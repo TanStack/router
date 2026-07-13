@@ -5,7 +5,6 @@ import type { AnyRoute } from './route'
 import type { RouterState } from './router'
 import type { FullSearchSchema } from './routeInfo'
 import type { ParsedLocation } from './location'
-import type { AnyRedirect } from './redirect'
 import type { AnyRouteMatch } from './Matches'
 
 export interface RouterReadableStore<TValue> {
@@ -71,24 +70,13 @@ export function createNonReactiveReadonlyStore<TValue>(
 
 export interface RouterStores<in out TRouteTree extends AnyRoute> {
   status: RouterWritableStore<RouterState<TRouteTree>['status']>
-  loadedAt: RouterWritableStore<number>
-  isLoading: RouterWritableStore<boolean>
-  isTransitioning: RouterWritableStore<boolean>
   location: RouterWritableStore<ParsedLocation<FullSearchSchema<TRouteTree>>>
   resolvedLocation: RouterWritableStore<
     ParsedLocation<FullSearchSchema<TRouteTree>> | undefined
   >
-  statusCode: RouterWritableStore<number>
-  redirect: RouterWritableStore<AnyRedirect | undefined>
   matchesId: RouterWritableStore<Array<string>>
-  pendingIds: RouterWritableStore<Array<string>>
-  /** @internal */
-  cachedIds: RouterWritableStore<Array<string>>
   matches: ReadableStore<Array<AnyRouteMatch>>
-  pendingMatches: ReadableStore<Array<AnyRouteMatch>>
   cachedMatches: ReadableStore<Array<AnyRouteMatch>>
-  firstId: ReadableStore<string | undefined>
-  hasPending: ReadableStore<boolean>
   matchRouteDeps: ReadableStore<{
     locationHref: string
     resolvedLocationHref: string | undefined
@@ -97,7 +85,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   __store: RouterReadableStore<RouterState<TRouteTree>>
 
   matchStores: Map<string, MatchStore>
-  pendingMatchStores: Map<string, MatchStore>
   cachedMatchStores: Map<string, MatchStore>
 
   /**
@@ -111,7 +98,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   ) => RouterReadableStore<AnyRouteMatch | undefined>
 
   setMatches: (nextMatches: Array<AnyRouteMatch>) => void
-  setPending: (nextMatches: Array<AnyRouteMatch>) => void
   setCached: (nextMatches: Array<AnyRouteMatch>) => void
 }
 
@@ -123,38 +109,21 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
   // non reactive utilities
   const matchStores = new Map<string, MatchStore>()
-  const pendingMatchStores = new Map<string, MatchStore>()
   const cachedMatchStores = new Map<string, MatchStore>()
 
   // atoms
   const status = createMutableStore(initialState.status)
-  const loadedAt = createMutableStore(initialState.loadedAt)
-  const isLoading = createMutableStore(initialState.isLoading)
-  const isTransitioning = createMutableStore(initialState.isTransitioning)
   const location = createMutableStore(initialState.location)
   const resolvedLocation = createMutableStore(initialState.resolvedLocation)
-  const statusCode = createMutableStore(initialState.statusCode)
-  const redirect = createMutableStore(initialState.redirect)
   const matchesId = createMutableStore<Array<string>>([])
-  const pendingIds = createMutableStore<Array<string>>([])
   const cachedIds = createMutableStore<Array<string>>([])
 
   // 1st order derived stores
   const matches = createReadonlyStore(() =>
     readPoolMatches(matchStores, matchesId.get()),
   )
-  const pendingMatches = createReadonlyStore(() =>
-    readPoolMatches(pendingMatchStores, pendingIds.get()),
-  )
   const cachedMatches = createReadonlyStore(() =>
     readPoolMatches(cachedMatchStores, cachedIds.get()),
-  )
-  const firstId = createReadonlyStore(() => matchesId.get()[0])
-  const hasPending = createReadonlyStore(() =>
-    matchesId.get().some((matchId) => {
-      const store = matchStores.get(matchId)
-      return store?.get().status === 'pending'
-    }),
   )
   const matchRouteDeps = createReadonlyStore(() => ({
     locationHref: location.get().href,
@@ -165,14 +134,10 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   // compatibility "big" state store
   const __store = createReadonlyStore(() => ({
     status: status.get(),
-    loadedAt: loadedAt.get(),
-    isLoading: isLoading.get(),
-    isTransitioning: isTransitioning.get(),
+    isLoading: status.get() === 'pending',
     matches: matches.get(),
     location: location.get(),
     resolvedLocation: resolvedLocation.get(),
-    statusCode: statusCode.get(),
-    redirect: redirect.get(),
   }))
 
   // Per-routeId computed store cache.
@@ -215,28 +180,17 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   const store = {
     // atoms
     status,
-    loadedAt,
-    isLoading,
-    isTransitioning,
     location,
     resolvedLocation,
-    statusCode,
-    redirect,
     matchesId,
-    pendingIds,
-    cachedIds,
 
     // derived
     matches,
-    pendingMatches,
     cachedMatches,
-    firstId,
-    hasPending,
     matchRouteDeps,
 
     // non-reactive state
     matchStores,
-    pendingMatchStores,
     cachedMatchStores,
 
     // compatibility "big" state
@@ -247,7 +201,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
     // methods
     setMatches,
-    setPending,
     setCached,
   }
 
@@ -261,16 +214,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
       nextMatches,
       matchStores,
       matchesId,
-      createMutableStore,
-      batch,
-    )
-  }
-
-  function setPending(nextMatches: Array<AnyRouteMatch>) {
-    reconcileMatchPool(
-      nextMatches,
-      pendingMatchStores,
-      pendingIds,
       createMutableStore,
       batch,
     )

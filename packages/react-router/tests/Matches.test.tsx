@@ -126,11 +126,11 @@ test('when filtering useMatches by loaderData', async () => {
 
 test('should show pendingComponent of root route', async () => {
   const root = createRootRoute({
-    pendingComponent: () => <div data-testId="root-pending" />,
+    pendingComponent: () => <div data-testid="root-pending" />,
     loader: async () => {
       await new Promise((r) => setTimeout(r, 50))
     },
-    component: () => <div data-testId="root-content" />,
+    component: () => <div data-testid="root-content" />,
   })
 
   const router = createRouter({
@@ -143,6 +143,59 @@ test('should show pendingComponent of root route', async () => {
 
   expect(await rendered.findByTestId('root-pending')).toBeInTheDocument()
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
+})
+
+test('a reused legacy notFoundRoute does not retain the previous parent layout', async () => {
+  const root = createRootRoute({ component: Outlet })
+  const parent = createRoute({
+    getParentRoute: () => root,
+    path: '/parent',
+    component: () => (
+      <div>
+        Parent layout
+        <Outlet />
+      </div>
+    ),
+  })
+  const known = createRoute({
+    getParentRoute: () => parent,
+    path: '/known',
+  })
+  const home = createRoute({
+    getParentRoute: () => root,
+    path: '/home',
+    component: () => <div>Home</div>,
+  })
+  const legacyNotFound = createRoute({
+    getParentRoute: () => root,
+    path: '/404',
+    loader: () => 'not found',
+    component: () => <div>Legacy not found</div>,
+    staleTime: Infinity,
+    gcTime: Infinity,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([parent.addChildren([known]), home]),
+    history: createMemoryHistory({ initialEntries: ['/parent/missing'] }),
+    notFoundRoute: legacyNotFound,
+  })
+
+  const rendered = render(<RouterProvider router={router} />)
+  expect(await rendered.findByText('Parent layout')).toBeInTheDocument()
+  expect(await rendered.findByText('Legacy not found')).toBeInTheDocument()
+
+  await act(async () => {
+    await router.navigate({ to: '/home' })
+  })
+  expect(await rendered.findByText('Home')).toBeInTheDocument()
+
+  await act(async () => {
+    await router.navigate({ to: '/missing' } as any)
+  })
+
+  expect(rendered.queryByText('Parent layout')).not.toBeInTheDocument()
+  expect(await rendered.findByText('Legacy not found')).toBeInTheDocument()
+  rendered.unmount()
 })
 
 describe('matching on different param types', () => {

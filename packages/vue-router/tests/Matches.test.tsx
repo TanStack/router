@@ -134,7 +134,7 @@ test('when filtering useMatches by loaderData', async () => {
 // Vue Suspense requires async setup functions or top-level await to trigger fallback.
 // Since TanStack Router throws Promises from render (not setup), Vue doesn't show
 // the pending component during initial load. Navigation-triggered pending states
-// DO work - see loaders.test.tsx 'cancelMatches after pending timeout'.
+// DO work - see loaders.test.tsx 'navigating away from a pending route aborts its loader'.
 test('should show pendingComponent of root route', async () => {
   const root = createRootRoute({
     pendingComponent: () => <div data-testId="root-pending" />,

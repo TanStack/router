@@ -2,11 +2,7 @@ import * as Vue from 'vue'
 import { invariant } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { isServer } from '@tanstack/router-core/isServer'
-import {
-  injectDummyPendingMatch,
-  injectPendingMatch,
-  routeIdContext,
-} from './matchContext'
+import { routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -114,11 +110,9 @@ export function useMatch<
     >
   }
 
-  const hasPendingNearestMatch = opts.from
-    ? injectDummyPendingMatch()
-    : injectPendingMatch()
   // Set up reactive match value based on lookup strategy.
   let match: Readonly<Vue.Ref<any>>
+  const nearestRouteId = Vue.inject(routeIdContext)
 
   if (opts.from) {
     // routeId case: single subscription via per-routeId computed store.
@@ -129,7 +123,6 @@ export function useMatch<
     // matchId case: use routeId from context for stable store lookup.
     // The routeId is provided by the nearest Match component and doesn't
     // change for the component's lifetime, so the store is stable.
-    const nearestRouteId = Vue.inject(routeIdContext)
     if (nearestRouteId) {
       match = useStore(
         router.stores.getRouteMatchStore(nearestRouteId),
@@ -141,26 +134,10 @@ export function useMatch<
     }
   }
 
-  const hasPendingRouteMatch = opts.from
-    ? useStore(router.stores.pendingRouteIds, (ids) => ids)
-    : undefined
-  const isTransitioning = useStore(
-    router.stores.isTransitioning,
-    (value) => value,
-    { equal: Object.is },
-  )
-
-  const result = Vue.computed(() => {
+  const result = Vue.computed<any>(() => {
     const selectedMatch = match.value
     if (selectedMatch === undefined) {
-      const hasPendingMatch = opts.from
-        ? Boolean(hasPendingRouteMatch?.value[opts.from!])
-        : hasPendingNearestMatch.value
-      if (
-        !hasPendingMatch &&
-        !isTransitioning.value &&
-        (opts.shouldThrow ?? true)
-      ) {
+      if (opts.shouldThrow ?? true) {
         if (process.env.NODE_ENV !== 'production') {
           throw new Error(
             `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,

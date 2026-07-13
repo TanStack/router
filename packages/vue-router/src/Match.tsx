@@ -1,23 +1,12 @@
 import * as Vue from 'vue'
-import {
-  createControlledPromise,
-  getLocationChangeInfo,
-  invariant,
-  isNotFound,
-  isRedirect,
-  rootRouteId,
-} from '@tanstack/router-core'
+import { invariant, isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useStore } from '@tanstack/vue-store'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
 import { CatchNotFound } from './not-found'
-import {
-  matchContext,
-  pendingMatchContext,
-  routeIdContext,
-} from './matchContext'
+import { matchContext, routeIdContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import type { VNode } from 'vue'
@@ -61,13 +50,6 @@ export const Match = Vue.defineComponent({
       router.stores.getRouteMatchStore(routeId),
       (value) => value,
     )
-    const isPendingMatchRef = useStore(
-      router.stores.pendingRouteIds,
-      (pendingRouteIds) => Boolean(pendingRouteIds[routeId]),
-      { equal: Object.is },
-    )
-    const loadedAt = useStore(router.stores.loadedAt, (value) => value)
-
     const matchData = Vue.computed(() => {
       const match = activeMatch.value
       if (!match) {
@@ -77,9 +59,8 @@ export const Match = Vue.defineComponent({
       return {
         matchId: match.id,
         routeId,
-        loadedAt: loadedAt.value,
+        fetchCount: match.fetchCount,
         ssr: match.ssr,
-        _displayPending: match._displayPending,
       }
     })
 
@@ -137,15 +118,12 @@ export const Match = Vue.defineComponent({
     )
     Vue.provide(matchContext, matchIdRef)
 
-    Vue.provide(pendingMatchContext, isPendingMatchRef)
-
     return (): VNode => {
       const actualMatchId = matchData.value?.matchId ?? props.matchId
 
       const resolvedNoSsr =
         matchData.value?.ssr === false || matchData.value?.ssr === 'data-only'
-      const shouldClientOnly =
-        resolvedNoSsr || !!matchData.value?._displayPending
+      const shouldClientOnly = resolvedNoSsr
 
       const renderMatchContent = (): VNode => {
         const matchInner = Vue.h(MatchInner, { matchId: actualMatchId })
@@ -186,7 +164,7 @@ export const Match = Vue.defineComponent({
         // Wrap in error boundary if needed
         if (routeErrorComponent.value) {
           content = CatchBoundary({
-            getResetKey: () => matchData.value?.loadedAt ?? 0,
+            getResetKey: () => matchData.value?.fetchCount ?? 0,
             errorComponent: routeErrorComponent.value || ErrorComponent,
             onCatch: (error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)
@@ -208,7 +186,6 @@ export const Match = Vue.defineComponent({
           content,
           isChildOfRoot
             ? Vue.h(Vue.Fragment, null, [
-                Vue.h(OnRendered),
                 router.options.scrollRestoration &&
                 (isServer ?? router.isServer)
                   ? Vue.h(ScrollRestoration)
@@ -239,48 +216,6 @@ export const Match = Vue.defineComponent({
 })
 
 // On Rendered can't happen above the root layout because it actually
-// renders a dummy dom element to track the rendered state of the app.
-// We render a script tag with a key that changes based on the current
-// location state.__TSR_key. Also, because it's below the root layout, it
-// allows us to fire onRendered events even after a hydration mismatch
-// error that occurred above the root layout (like bad head/link tags,
-// which is common).
-const OnRendered = Vue.defineComponent({
-  name: 'OnRendered',
-  setup() {
-    const router = useRouter()
-
-    const location = useStore(
-      router.stores.resolvedLocation,
-      (resolvedLocation) => resolvedLocation?.state.__TSR_key,
-    )
-
-    let prevHref: string | undefined
-
-    Vue.watch(
-      location,
-      () => {
-        if (location.value) {
-          const currentHref = router.latestLocation.href
-          if (prevHref === undefined || prevHref !== currentHref) {
-            router.emit({
-              type: 'onRendered',
-              ...getLocationChangeInfo(
-                router.stores.location.get(),
-                router.stores.resolvedLocation.get(),
-              ),
-            })
-            prevHref = currentHref
-          }
-        }
-      },
-      { immediate: true },
-    )
-
-    return () => null
-  },
-})
-
 export const MatchInner = Vue.defineComponent({
   name: 'MatchInner',
   props: {
@@ -333,9 +268,6 @@ export const MatchInner = Vue.defineComponent({
           status: match.status,
           error: match.error,
           ssr: match.ssr,
-          _forcePending: match._forcePending,
-          _displayPending: match._displayPending,
-          _nonReactive: match._nonReactive,
         },
         remountKey,
       }
@@ -349,43 +281,11 @@ export const MatchInner = Vue.defineComponent({
     const match = Vue.computed(() => combinedState.value?.match)
     const remountKey = Vue.computed(() => combinedState.value?.remountKey)
 
-    const getMatchPromise = (
-      match: {
-        id: string
-        _nonReactive: {
-          displayPendingPromise?: Promise<void>
-          minPendingPromise?: Promise<void>
-          loadPromise?: Promise<void>
-        }
-      },
-      key: 'displayPendingPromise' | 'minPendingPromise' | 'loadPromise',
-    ) => {
-      return (
-        router.getMatch(match.id)?._nonReactive[key] ?? match._nonReactive[key]
-      )
-    }
-
     return (): VNode | null => {
       // If match doesn't exist, return null (component is being unmounted or not ready)
       if (!combinedState.value || !match.value || !route.value) return null
 
       // Handle different match statuses
-      if (match.value._displayPending) {
-        const PendingComponent =
-          route.value.options.pendingComponent ??
-          router.options.defaultPendingComponent
-
-        return PendingComponent ? Vue.h(PendingComponent) : null
-      }
-
-      if (match.value._forcePending) {
-        const PendingComponent =
-          route.value.options.pendingComponent ??
-          router.options.defaultPendingComponent
-
-        return PendingComponent ? Vue.h(PendingComponent) : null
-      }
-
       if (match.value.status === 'notFound') {
         if (!isNotFound(match.value.error)) {
           if (process.env.NODE_ENV !== 'production') {
@@ -395,17 +295,6 @@ export const MatchInner = Vue.defineComponent({
           invariant()
         }
         return renderRouteNotFound(router, route.value, match.value.error)
-      }
-
-      if (match.value.status === 'redirected') {
-        if (!isRedirect(match.value.error)) {
-          if (process.env.NODE_ENV !== 'production') {
-            throw new Error('Invariant failed: Expected a redirect error')
-          }
-
-          invariant()
-        }
-        throw getMatchPromise(match.value, 'loadPromise')
       }
 
       if (match.value.status === 'error') {
@@ -434,29 +323,6 @@ export const MatchInner = Vue.defineComponent({
       }
 
       if (match.value.status === 'pending') {
-        const pendingMinMs =
-          route.value.options.pendingMinMs ?? router.options.defaultPendingMinMs
-
-        const routerMatch = router.getMatch(match.value.id)
-        if (
-          pendingMinMs &&
-          routerMatch &&
-          !routerMatch._nonReactive.minPendingPromise
-        ) {
-          // Create a promise that will resolve after the minPendingMs
-          if (!(isServer ?? router.isServer)) {
-            const minPendingPromise = createControlledPromise<void>()
-
-            routerMatch._nonReactive.minPendingPromise = minPendingPromise
-
-            setTimeout(() => {
-              minPendingPromise.resolve()
-              // We've handled the minPendingPromise, so we can delete it
-              routerMatch._nonReactive.minPendingPromise = undefined
-            }, pendingMinMs)
-          }
-        }
-
         // In Vue, we render the pending component directly instead of throwing a promise
         // because Vue's Suspense doesn't catch thrown promises like React does
         const PendingComponent =
@@ -540,7 +406,11 @@ export const Outlet = Vue.defineComponent({
         if (!route.value) {
           return null
         }
-        return renderRouteNotFound(router, route.value, undefined)
+        return renderRouteNotFound(
+          router,
+          route.value,
+          parentMatch.value?.error,
+        )
       }
 
       if (!childMatchData.value) {

@@ -172,7 +172,10 @@ export const renderRouterToStream = async ({
   return createSsrStreamResponse(
     router,
     new Response(responseStream as any, {
-      status: router.stores.statusCode.get(),
+      status:
+        router._serverResult?.type === 'render'
+          ? router._serverResult.status
+          : 200,
       headers: responseHeaders,
     }),
   )

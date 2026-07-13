@@ -8,9 +8,7 @@ import {
   rootRouteId,
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
-import { loadMatches } from '../src/load-matches'
 import type {
-  AnyRouter,
   LoaderStaleReloadMode,
   RootRouteOptions,
   RouterCore,
@@ -72,12 +70,18 @@ describe('redirect resolution', () => {
 
       await router.load()
 
-      expect(router.state.redirect).toEqual(
+      expect(router._serverResult).toEqual(
         expect.objectContaining({
-          options: expect.objectContaining({ href: '/undefined' }),
+          type: 'redirect',
+          redirect: expect.objectContaining({
+            options: expect.objectContaining({ href: '/undefined' }),
+          }),
         }),
       )
-      expect(router.state.redirect?.headers.get('Location')).toBe('/undefined')
+      expect(
+        router._serverResult?.type === 'redirect' &&
+          router._serverResult.redirect.headers.get('Location'),
+      ).toBe('/undefined')
     },
   )
 })
@@ -153,12 +157,7 @@ describe('beforeLoad skip or exec', () => {
   test('exec on regular nav', async () => {
     const beforeLoad = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ beforeLoad })
-    const navigation = router.navigate({ to: '/foo' })
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
-    expect(router.stores.pendingMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
-    await navigation
+    await router.navigate({ to: '/foo' })
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
@@ -181,7 +180,6 @@ describe('beforeLoad skip or exec', () => {
 
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.statusCode).toBe(500)
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -202,7 +200,6 @@ describe('beforeLoad skip or exec', () => {
 
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.statusCode).toBe(500)
     expect(router.state.matches.find((d) => d.id === '/foo/foo')?.error).toBe(
       thrown,
     )
@@ -213,12 +210,10 @@ describe('beforeLoad skip or exec', () => {
     const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
+    expect(router.state.location.pathname).toBe('/foo')
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -227,11 +222,9 @@ describe('beforeLoad skip or exec', () => {
     const router = setup({ beforeLoad })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
     await router.navigate({ to: '/foo' })
 
+    expect(router.state.location.pathname).toBe('/foo')
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -274,16 +267,10 @@ describe('beforeLoad skip or exec', () => {
       beforeLoad,
     })
     await router.preloadRoute({ to: '/foo' })
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -297,15 +284,9 @@ describe('beforeLoad skip or exec', () => {
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -421,12 +402,7 @@ describe('loader skip or exec', () => {
   test('exec on regular nav', async () => {
     const loader = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ loader })
-    const navigation = router.navigate({ to: '/foo' })
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.stores.pendingMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
-    await navigation
+    await router.navigate({ to: '/foo' })
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
@@ -445,12 +421,10 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
+    expect(router.state.location.pathname).toBe('/foo')
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
@@ -458,12 +432,10 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader, staleTime: 1000 })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
+    expect(router.state.location.pathname).toBe('/foo')
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
@@ -472,11 +444,9 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
     await router.navigate({ to: '/foo' })
 
+    expect(router.state.location.pathname).toBe('/foo')
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
@@ -495,7 +465,7 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('skip if pending preload (notFound)', async () => {
+  test('exec if pending preload returns notFound', async () => {
     const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw notFound()
@@ -507,7 +477,9 @@ describe('loader skip or exec', () => {
     await Promise.resolve()
     await router.navigate({ to: '/foo' })
 
-    expect(loader).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/foo')
+    expect(router.state.matches.at(-1)?.status).toBe('success')
+    expect(loader).toHaveBeenCalledTimes(2)
   })
 
   test('exec if rejected preload (redirect)', async () => {
@@ -519,20 +491,14 @@ describe('loader skip or exec', () => {
       loader,
     })
     await router.preloadRoute({ to: '/foo' })
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('skip if pending preload (redirect)', async () => {
+  test('exec if pending preload redirects', async () => {
     const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw redirect({ to: '/bar' })
@@ -542,38 +508,11 @@ describe('loader skip or exec', () => {
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.location.pathname).toBe('/bar')
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
-    expect(loader).toHaveBeenCalledTimes(1)
-  })
-
-  test('updateMatch removes redirected matches from cachedMatches', async () => {
-    const loader = vi.fn()
-    const router = setup({ loader })
-
-    await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
-
-    router.updateMatch('/foo/foo', (prev) => ({
-      ...prev,
-      status: 'redirected',
-    }))
-
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.id === '/foo/foo'),
-    ).toBe(false)
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
+    expect(router.state.location.pathname).toBe('/foo')
+    expect(router.state.matches.at(-1)?.status).toBe('success')
+    expect(loader).toHaveBeenCalledTimes(2)
   })
 
   test('exec if rejected preload (error)', async () => {
@@ -591,7 +530,7 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('skip if pending preload (error)', async () => {
+  test('exec if pending preload errors', async () => {
     const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw new Error('error')
@@ -603,7 +542,9 @@ describe('loader skip or exec', () => {
     await Promise.resolve()
     await router.navigate({ to: '/foo' })
 
-    expect(loader).toHaveBeenCalledTimes(1)
+    expect(router.state.location.pathname).toBe('/foo')
+    expect(router.state.matches.at(-1)?.status).toBe('success')
+    expect(loader).toHaveBeenCalledTimes(2)
   })
 })
 
@@ -698,21 +639,12 @@ describe('stale loader reload triggers', () => {
   const getMatchById = (
     router: RouterCore<any, any, any, any, any>,
     id: string,
-  ) =>
-    router.state.matches.find((match) => match.id === id) ??
-    router.stores.pendingMatches.get().find((match) => match.id === id) ??
-    router.stores.cachedMatches.get().find((match) => match.id === id)
+  ) => router.state.matches.find((match) => match.id === id)
 
   const hasActiveMatch = (
     router: RouterCore<any, any, any, any, any>,
     id: string,
   ) => router.state.matches.some((match) => match.id === id)
-
-  const hasPendingMatch = (
-    router: RouterCore<any, any, any, any, any>,
-    id: string,
-  ) =>
-    router.stores.pendingMatches.get().some((match) => match.id === id) ?? false
 
   const setup = ({
     loader,
@@ -784,22 +716,18 @@ describe('stale loader reload triggers', () => {
     await vi.advanceTimersByTimeAsync(1)
 
     const revisit = router.navigate({ to: '/foo' })
-    await Promise.resolve()
 
-    expect(loader).toHaveBeenCalledTimes(2)
+    await vi.waitFor(() => {
+      expect(loader).toHaveBeenCalledTimes(2)
+    })
     expect(hasActiveMatch(router, '/bar/bar')).toBe(true)
     expect(hasActiveMatch(router, '/foo/foo')).toBe(false)
-    expect(hasPendingMatch(router, '/foo/foo')).toBe(true)
-    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
-      value: 'first',
-    })
 
     resolveStaleReload()
     await revisit
 
     expect(loader).toHaveBeenCalledTimes(2)
     expect(hasActiveMatch(router, '/foo/foo')).toBe(true)
-    expect(hasPendingMatch(router, '/foo/foo')).toBe(false)
     expect(router.state.location.pathname).toBe('/foo')
     expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
       value: 'second',
@@ -819,26 +747,20 @@ describe('stale loader reload triggers', () => {
     await vi.advanceTimersByTimeAsync(1)
 
     const revisit = router.navigate({ to: '/foo' })
+    await revisit
 
     expect(loader).toHaveBeenCalledTimes(2)
-
-    await revisit
-    const backgroundReloadPromise = getMatchById(router, '/foo/foo')
-      ?._nonReactive.loaderPromise
-
-    expect(backgroundReloadPromise).toBeDefined()
     expect(hasActiveMatch(router, '/foo/foo')).toBe(true)
-    expect(hasPendingMatch(router, '/foo/foo')).toBe(false)
     expect(router.state.location.pathname).toBe('/foo')
     expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
       value: 'first',
     })
 
     resolveStaleReload()
-    await backgroundReloadPromise
-
-    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
-      value: 'second',
+    await vi.waitFor(() => {
+      expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
+        value: 'second',
+      })
     })
   }
 
@@ -1154,7 +1076,7 @@ describe('stale loader reload triggers', () => {
   })
 })
 
-test('cancelMatches after pending timeout', async () => {
+test('navigating away from a pending route aborts its loader', async () => {
   const WAIT_TIME = 5
   const onAbortMock = vi.fn()
   const rootRoute = new BaseRootRoute({})
@@ -1187,36 +1109,27 @@ test('cancelMatches after pending timeout', async () => {
   router.navigate({ to: '/foo' })
   await sleep(WAIT_TIME * 30)
 
-  // At this point, pending timeout should have triggered
-  const fooMatch = router.getMatch('/foo/foo')
-  expect(fooMatch).toBeDefined()
-
-  // Navigate away, which should cancel the pending match
   await router.navigate({ to: '/bar' })
-  await router.latestLoadPromise
 
   expect(router.state.location.pathname).toBe('/bar')
-
-  // Verify that abort was called and pending timeout was cleared
   expect(onAbortMock).toHaveBeenCalled()
-  const cancelledFooMatch = router.getMatch('/foo/foo')
-  expect(cancelledFooMatch?._nonReactive.pendingTimeout).toBeUndefined()
 })
 
 describe('head execution', () => {
+  const getTitle = (match: { meta?: unknown }) =>
+    (match.meta as Array<{ title?: string }> | undefined)?.[0]?.title
+
   const setupBeforeLoadNotFoundHierarchy = (throwAtIndex: 1 | 2 | 3) => {
     const loaderResolvers: Array<(() => void) | undefined> = []
 
-    const makeLoader = (index: number) =>
-      vi.fn(async () => {
-        await new Promise<void>((resolve) => {
-          loaderResolvers[index] = resolve
-        })
-        return { level: index }
+    const makeLoader = (index: number) => async () => {
+      await new Promise<void>((resolve) => {
+        loaderResolvers[index] = resolve
       })
+      return { level: index }
+    }
 
-    const makeHead = (label: string) =>
-      vi.fn(() => ({ meta: [{ title: label }] }))
+    const makeHead = (label: string) => () => ({ meta: [{ title: label }] })
 
     const rootRoute = new BaseRootRoute({
       loader: makeLoader(0),
@@ -1274,25 +1187,15 @@ describe('head execution', () => {
     })
 
     const routes = [rootRoute, level1Route, level2Route, level3Route] as const
-    const loaders = routes.map(
-      (route) => route.options.loader as ReturnType<typeof makeLoader>,
-    )
-    const heads = routes.map(
-      (route) => route.options.head as ReturnType<typeof makeHead>,
-    )
-
     return {
       router,
       routes,
-      loaders,
-      heads,
       loaderResolvers,
-      throwAtIndex,
     }
   }
 
   const assertBeforeLoadNotFoundHierarchy = async (throwAtIndex: 1 | 2 | 3) => {
-    const { router, routes, loaders, heads, loaderResolvers } =
+    const { router, routes, loaderResolvers } =
       setupBeforeLoadNotFoundHierarchy(throwAtIndex)
 
     let loadResolved = false
@@ -1303,26 +1206,20 @@ describe('head execution', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    for (let i = 0; i < routes.length; i++) {
-      const loader = loaders[i]!
-      const expectedCalls = i < throwAtIndex ? 1 : 0
-      expect(loader).toHaveBeenCalledTimes(expectedCalls)
-    }
-
     expect(loadResolved).toBe(false)
 
+    await vi.waitFor(() => {
+      expect(loaderResolvers.slice(0, throwAtIndex)).not.toContain(undefined)
+    })
     for (let i = 0; i < throwAtIndex; i++) {
-      expect(loaderResolvers[i]).toBeDefined()
       loaderResolvers[i]!()
     }
 
     await loadPromise
 
-    for (let i = 0; i < heads.length; i++) {
-      const head = heads[i]!
-      const expectedCalls = i <= throwAtIndex ? 1 : 0
-      expect(head).toHaveBeenCalledTimes(expectedCalls)
-    }
+    expect(router.state.matches.map(getTitle)).toEqual(
+      ['Root', 'Level 1', 'Level 2', 'Level 3'].slice(0, throwAtIndex + 1),
+    )
 
     for (let i = 0; i < throwAtIndex; i++) {
       const route = routes[i]!
@@ -1343,8 +1240,7 @@ describe('head execution', () => {
     })
   })
 
-  test('executes head once when loader throws notFound', async () => {
-    const head = vi.fn(() => ({ meta: [{ title: 'Test' }] }))
+  test('projects head when loader throws notFound', async () => {
     const rootRoute = new BaseRootRoute({})
     const testRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -1352,7 +1248,7 @@ describe('head execution', () => {
       loader: () => {
         throw notFound()
       },
-      head,
+      head: () => ({ meta: [{ title: 'Test' }] }),
     })
     const routeTree = rootRoute.addChildren([testRoute])
     const router = createTestRouter({
@@ -1362,23 +1258,17 @@ describe('head execution', () => {
 
     await router.load()
 
-    expect(head).toHaveBeenCalledTimes(1)
     const match = router.state.matches.find((m) => m.routeId === testRoute.id)
     expect(match?.status).toBe('notFound')
+    expect(match?.meta).toEqual([{ title: 'Test' }])
   })
 
   test('propagates sync beforeLoad non-notFound error running ancestor loaders and heads', async () => {
     const beforeLoadError = new Error('beforeLoad-sync-error')
-    const rootLoader = vi.fn(() => ({ level: 0 }))
-    const rootHead = vi.fn(() => ({ meta: [{ title: 'Root' }] }))
-
     const rootRoute = new BaseRootRoute({
-      loader: rootLoader,
-      head: rootHead,
+      loader: () => ({ level: 0 }),
+      head: () => ({ meta: [{ title: 'Root' }] }),
     })
-
-    const childLoader = vi.fn(() => ({ level: 1 }))
-    const childHead = vi.fn(() => ({ meta: [{ title: 'Child' }] }))
 
     const childRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -1386,8 +1276,8 @@ describe('head execution', () => {
       beforeLoad: () => {
         throw beforeLoadError
       },
-      loader: childLoader,
-      head: childHead,
+      loader: () => ({ level: 1 }),
+      head: () => ({ meta: [{ title: 'Child' }] }),
     })
 
     const routeTree = rootRoute.addChildren([childRoute])
@@ -1396,39 +1286,23 @@ describe('head execution', () => {
       history: createMemoryHistory({ initialEntries: ['/test'] }),
     })
 
-    const location = router.latestLocation
-    const matches = router.matchRoutes(location)
-    router.stores.setPending(matches)
+    await router.load()
 
-    await expect(
-      loadMatches({
-        router,
-        location,
-        matches,
-        updateMatch: router.updateMatch,
-      }),
-    ).rejects.toBe(beforeLoadError)
+    expect(
+      router.state.matches.find((match) => match.routeId === childRoute.id)
+        ?.error,
+    ).toBe(beforeLoadError)
 
-    expect(rootLoader).toHaveBeenCalledTimes(1)
-    expect(childLoader).toHaveBeenCalledTimes(0)
-    // Head functions still run for ancestors up to the erroring match so that
-    // SSR produces valid <head> content (e.g. charset, viewport, stylesheets).
-    expect(rootHead).toHaveBeenCalledTimes(1)
-    expect(childHead).toHaveBeenCalledTimes(1)
+    expect(router.state.matches[0]?.loaderData).toEqual({ level: 0 })
+    expect(router.state.matches.map(getTitle)).toEqual(['Root', 'Child'])
   })
 
   test('propagates async beforeLoad non-notFound error running ancestor loaders and heads', async () => {
     const beforeLoadError = new Error('beforeLoad-async-error')
-    const rootLoader = vi.fn(() => ({ level: 0 }))
-    const rootHead = vi.fn(() => ({ meta: [{ title: 'Root' }] }))
-
     const rootRoute = new BaseRootRoute({
-      loader: rootLoader,
-      head: rootHead,
+      loader: () => ({ level: 0 }),
+      head: () => ({ meta: [{ title: 'Root' }] }),
     })
-
-    const childLoader = vi.fn(() => ({ level: 1 }))
-    const childHead = vi.fn(() => ({ meta: [{ title: 'Child' }] }))
 
     const childRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -1437,8 +1311,8 @@ describe('head execution', () => {
         await Promise.resolve()
         throw beforeLoadError
       },
-      loader: childLoader,
-      head: childHead,
+      loader: () => ({ level: 1 }),
+      head: () => ({ meta: [{ title: 'Child' }] }),
     })
 
     const routeTree = rootRoute.addChildren([childRoute])
@@ -1447,25 +1321,15 @@ describe('head execution', () => {
       history: createMemoryHistory({ initialEntries: ['/test'] }),
     })
 
-    const location = router.latestLocation
-    const matches = router.matchRoutes(location)
-    router.stores.setPending(matches)
+    await router.load()
 
-    await expect(
-      loadMatches({
-        router,
-        location,
-        matches,
-        updateMatch: router.updateMatch,
-      }),
-    ).rejects.toBe(beforeLoadError)
+    expect(
+      router.state.matches.find((match) => match.routeId === childRoute.id)
+        ?.error,
+    ).toBe(beforeLoadError)
 
-    expect(rootLoader).toHaveBeenCalledTimes(1)
-    expect(childLoader).toHaveBeenCalledTimes(0)
-    // Head functions still run for ancestors up to the erroring match so that
-    // SSR produces valid <head> content (e.g. charset, viewport, stylesheets).
-    expect(rootHead).toHaveBeenCalledTimes(1)
-    expect(childHead).toHaveBeenCalledTimes(1)
+    expect(router.state.matches[0]?.loaderData).toEqual({ level: 0 })
+    expect(router.state.matches.map(getTitle)).toEqual(['Root', 'Child'])
   })
 
   describe('beforeLoad notFound parent loader outcomes', () => {
@@ -1478,32 +1342,34 @@ describe('head execution', () => {
       parentFailures: ParentFailureMap
       expectedErrorKind: 'notFound' | 'redirect' | 'error'
       expectedErrorSource?: string
-      expectedErrorRouteIndex?: 0 | 1 | 2 | 3
-      expectedLoaderMaxIndex: number
-      expectedRenderedHeadMaxIndex: number
-      withDefaultNotFoundComponent?: boolean
+      expectedBoundaryIndex?: 0 | 1 | 2 | 3
+      expectedHeadTitles: Array<string>
       beforeLoadNotFoundFactory?: (
         routes: readonly [any, any, any, any],
       ) => ReturnType<typeof notFound>
-      expectRootNotFoundComponentAssigned?: boolean
     }
 
     const setupScenario = ({
       throwAtIndex,
       parentFailures,
       beforeLoadNotFoundFactory,
-      withDefaultNotFoundComponent,
     }: {
       throwAtIndex: ThrowAtIndex
       parentFailures: ParentFailureMap
       beforeLoadNotFoundFactory?: Scenario['beforeLoadNotFoundFactory']
-      withDefaultNotFoundComponent?: boolean
     }) => {
-      const makeHead = (label: string) =>
-        vi.fn(() => ({ meta: [{ title: label }] }))
+      const makeHead = (label: string) => () => ({ meta: [{ title: label }] })
 
-      const makeLoader = (index: number) =>
-        vi.fn(() => {
+      const makeLoader =
+        (index: number) =>
+        ({ location }: { location: { pathname: string } }) => {
+          // Keep failures scoped to the route under test. A root loader which
+          // redirects unconditionally would also redirect the destination and
+          // describe an infinite redirect loop rather than precedence between
+          // the original lane's settled outcomes.
+          if (location.pathname === '/redirect-target') {
+            return { level: index }
+          }
           const failure = parentFailures[index as 0 | 1 | 2]
           if (failure === 'notFound') {
             throw notFound({ data: { source: `loader-${index}` } })
@@ -1511,8 +1377,11 @@ describe('head execution', () => {
           if (failure === 'redirect') {
             throw redirect({ to: '/redirect-target' })
           }
+          if (failure === 'error') {
+            throw new Error(`loader-${index}-error`)
+          }
           return { level: index }
-        })
+        }
 
       const rootRoute = new BaseRootRoute({
         loader: makeLoader(0),
@@ -1552,14 +1421,6 @@ describe('head execution', () => {
 
       const routes = [rootRoute, level1Route, level2Route, level3Route] as const
 
-      ;([0, 1, 2] as const).forEach((index) => {
-        if (parentFailures[index] === 'error') {
-          ;(routes[index].options as any).shouldReload = () => {
-            throw new Error(`loader-${index}-error`)
-          }
-        }
-      })
-
       const throwRoute = routes[throwAtIndex]!
       throwRoute.options.beforeLoad = () => {
         const beforeLoadNotFound = beforeLoadNotFoundFactory
@@ -1573,41 +1434,11 @@ describe('head execution', () => {
         history: createMemoryHistory({
           initialEntries: ['/level-1/level-2/level-3'],
         }),
-        ...(withDefaultNotFoundComponent
-          ? { defaultNotFoundComponent: () => null }
-          : {}),
       })
-
-      const loaders = routes.map(
-        (route) => route.options.loader as ReturnType<typeof makeLoader>,
-      )
-      const heads = routes.map(
-        (route) => route.options.head as ReturnType<typeof makeHead>,
-      )
 
       return {
         router,
         routes,
-        loaders,
-        heads,
-      }
-    }
-
-    const runLoadMatchesAndCapture = async (router: AnyRouter) => {
-      const location = router.latestLocation
-      const matches = router.matchRoutes(location)
-      router.stores.setPending(matches)
-
-      try {
-        await loadMatches({
-          router,
-          location,
-          matches,
-          updateMatch: router.updateMatch,
-        })
-        return { error: undefined, matches }
-      } catch (error) {
-        return { error, matches }
       }
     }
 
@@ -1618,8 +1449,8 @@ describe('head execution', () => {
         parentFailures: {} as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
         expectedErrorSource: 'beforeLoad-3',
-        expectedLoaderMaxIndex: 2,
-        expectedRenderedHeadMaxIndex: 3,
+        expectedBoundaryIndex: 3,
+        expectedHeadTitles: ['Root', 'Level 1', 'Level 2', 'Level 3'],
       },
       {
         name: 'uses parent loader notFound when parent loader throws notFound',
@@ -1627,8 +1458,8 @@ describe('head execution', () => {
         parentFailures: { 1: 'notFound' } as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
         expectedErrorSource: 'loader-1',
-        expectedLoaderMaxIndex: 2,
-        expectedRenderedHeadMaxIndex: 1,
+        expectedBoundaryIndex: 1,
+        expectedHeadTitles: ['Root', 'Level 1'],
       },
       {
         name: 'uses first parent loader notFound when multiple parent loaders throw notFound',
@@ -1636,8 +1467,8 @@ describe('head execution', () => {
         parentFailures: { 1: 'notFound', 2: 'notFound' } as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
         expectedErrorSource: 'loader-1',
-        expectedLoaderMaxIndex: 2,
-        expectedRenderedHeadMaxIndex: 1,
+        expectedBoundaryIndex: 1,
+        expectedHeadTitles: ['Root', 'Level 1'],
       },
       {
         name: 'uses parent loader notFound when root loader throws notFound',
@@ -1645,8 +1476,8 @@ describe('head execution', () => {
         parentFailures: { 0: 'notFound' } as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
         expectedErrorSource: 'loader-0',
-        expectedLoaderMaxIndex: 1,
-        expectedRenderedHeadMaxIndex: 0,
+        expectedBoundaryIndex: 0,
+        expectedHeadTitles: ['Root'],
       },
       {
         name: 'uses explicit routeId from beforeLoad notFound to target ancestor boundary',
@@ -1654,9 +1485,8 @@ describe('head execution', () => {
         parentFailures: {} as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
         expectedErrorSource: 'beforeLoad-explicit-level1',
-        expectedErrorRouteIndex: 1,
-        expectedLoaderMaxIndex: 1,
-        expectedRenderedHeadMaxIndex: 1,
+        expectedBoundaryIndex: 1,
+        expectedHeadTitles: ['Root', 'Level 1'],
         beforeLoadNotFoundFactory: (routes) =>
           notFound({
             routeId: routes[1].id as never,
@@ -1669,8 +1499,8 @@ describe('head execution', () => {
         parentFailures: {} as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
         expectedErrorSource: 'beforeLoad-invalid-route',
-        expectedLoaderMaxIndex: 0,
-        expectedRenderedHeadMaxIndex: 0,
+        expectedBoundaryIndex: 0,
+        expectedHeadTitles: ['Root'],
         beforeLoadNotFoundFactory: () =>
           notFound({
             routeId: '/does-not-exist' as never,
@@ -1683,28 +1513,12 @@ describe('head execution', () => {
         parentFailures: {} as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
         expectedErrorSource: 'beforeLoad-non-exact-route',
-        expectedLoaderMaxIndex: 0,
-        expectedRenderedHeadMaxIndex: 0,
+        expectedBoundaryIndex: 0,
+        expectedHeadTitles: ['Root'],
         beforeLoadNotFoundFactory: (routes) =>
           notFound({
             routeId: `${routes[1].id}/` as never,
             data: { source: 'beforeLoad-non-exact-route' },
-          }),
-      },
-      {
-        name: 'assigns defaultNotFoundComponent on root when unknown routeId falls back to root',
-        throwAtIndex: 3 as const,
-        parentFailures: {} as ParentFailureMap,
-        expectedErrorKind: 'notFound' as const,
-        expectedErrorSource: 'beforeLoad-invalid-route-default',
-        expectedLoaderMaxIndex: 0,
-        expectedRenderedHeadMaxIndex: 0,
-        withDefaultNotFoundComponent: true,
-        expectRootNotFoundComponentAssigned: true,
-        beforeLoadNotFoundFactory: () =>
-          notFound({
-            routeId: '/does-not-exist' as never,
-            data: { source: 'beforeLoad-invalid-route-default' },
           }),
       },
       {
@@ -1713,8 +1527,7 @@ describe('head execution', () => {
         parentFailures: { 0: 'redirect' } as ParentFailureMap,
         expectedErrorKind: 'redirect' as const,
         expectedErrorSource: undefined,
-        expectedLoaderMaxIndex: 2,
-        expectedRenderedHeadMaxIndex: -1,
+        expectedHeadTitles: ['Root'],
       },
       {
         name: 'prioritizes redirect over root-loader notFound when both appear in settled loaders',
@@ -1722,8 +1535,7 @@ describe('head execution', () => {
         parentFailures: { 0: 'notFound', 1: 'redirect' } as ParentFailureMap,
         expectedErrorKind: 'redirect' as const,
         expectedErrorSource: undefined,
-        expectedLoaderMaxIndex: 2,
-        expectedRenderedHeadMaxIndex: -1,
+        expectedHeadTitles: ['Root'],
       },
       {
         name: 'propagates regular loader error when mixed with loader notFound in settled loaders',
@@ -1731,67 +1543,58 @@ describe('head execution', () => {
         parentFailures: { 1: 'notFound', 2: 'error' } as ParentFailureMap,
         expectedErrorKind: 'error' as const,
         expectedErrorSource: 'loader-2-error',
-        expectedLoaderMaxIndex: 1,
-        expectedRenderedHeadMaxIndex: -1,
+        expectedBoundaryIndex: 2,
+        expectedHeadTitles: ['Root', 'Level 1', 'Level 2'],
       },
     ] satisfies Array<Scenario>
 
     test.each(scenarios)('$name', async (scenario) => {
-      const { router, routes, loaders, heads } = setupScenario({
+      const { router, routes } = setupScenario({
         throwAtIndex: scenario.throwAtIndex,
         parentFailures: scenario.parentFailures,
         beforeLoadNotFoundFactory: scenario.beforeLoadNotFoundFactory,
-        withDefaultNotFoundComponent: scenario.withDefaultNotFoundComponent,
       })
 
-      const { error, matches } = await runLoadMatchesAndCapture(router)
-
-      for (let i = 0; i < routes.length; i++) {
-        const loader = loaders[i]!
-        const expectedCalls = i <= scenario.expectedLoaderMaxIndex ? 1 : 0
-        expect(loader).toHaveBeenCalledTimes(expectedCalls)
-      }
-
-      for (let i = 0; i < heads.length; i++) {
-        const head = heads[i]!
-        const expectedCalls = i <= scenario.expectedRenderedHeadMaxIndex ? 1 : 0
-        expect(head).toHaveBeenCalledTimes(expectedCalls)
-      }
+      await router.load()
+      const matches = router.state.matches
 
       if (scenario.expectedErrorKind === 'redirect') {
-        expect(error).toEqual(
+        expect(router.state.location.pathname).toBe('/redirect-target')
+        expect(matches.at(-1)).toEqual(
           expect.objectContaining({
-            redirectHandled: true,
-            options: expect.objectContaining({
-              to: '/redirect-target',
-            }),
+            pathname: '/redirect-target',
+            status: 'success',
           }),
         )
-        return
-      }
-
-      if (scenario.expectedErrorKind === 'error') {
-        expect(error).toBeInstanceOf(Error)
-        expect((error as Error).message).toBe(scenario.expectedErrorSource)
-        return
-      }
-
-      expect(error).toEqual(
-        expect.objectContaining({
-          isNotFound: true,
-          data: { source: scenario.expectedErrorSource },
-        }),
-      )
-
-      if (scenario.expectedErrorRouteIndex !== undefined) {
-        expect((error as { routeId?: string }).routeId).toBe(
-          routes[scenario.expectedErrorRouteIndex]!.id,
+      } else {
+        const boundary = matches.at(-1)!
+        expect(boundary.routeId).toBe(
+          routes[scenario.expectedBoundaryIndex!]!.id,
         )
+
+        if (scenario.expectedErrorKind === 'error') {
+          expect(boundary.status).toBe('error')
+          expect((boundary.error as Error).message).toBe(
+            scenario.expectedErrorSource,
+          )
+        } else if (scenario.expectedBoundaryIndex === 0) {
+          expect(boundary.status).toBe('success')
+          expect(boundary.globalNotFound).toBe(true)
+        } else {
+          expect(boundary.status).toBe('notFound')
+          expect(boundary.error).toEqual(
+            expect.objectContaining({
+              isNotFound: true,
+              routeId: boundary.routeId,
+              data: { source: scenario.expectedErrorSource },
+            }),
+          )
+        }
       }
 
-      if (scenario.expectRootNotFoundComponentAssigned) {
-        expect(routes[0].options.notFoundComponent).toBeTypeOf('function')
-      }
+      expect(
+        matches.map(getTitle).filter((title) => title !== undefined),
+      ).toEqual(scenario.expectedHeadTitles)
     })
 
     test('sets globalNotFound on root match when beforeLoad notFound targets root boundary', async () => {
@@ -1805,22 +1608,20 @@ describe('head execution', () => {
           }),
       })
 
-      const { error, matches } = await runLoadMatchesAndCapture(router)
+      await router.load()
 
-      expect(error).toEqual(
+      const rootMatch = router.state.matches.find(
+        (m) => m.routeId === routes[0].id,
+      )
+
+      expect(rootMatch?.globalNotFound).toBe(true)
+      expect(rootMatch?.status).toBe('success')
+      expect(rootMatch?.error).toEqual(
         expect.objectContaining({
           isNotFound: true,
           data: { source: 'beforeLoad-root-explicit' },
         }),
       )
-
-      const rootMatch = router.stores.pendingMatches
-        .get()
-        .find((m) => m.routeId === routes[0].id)
-
-      expect(rootMatch?.globalNotFound).toBe(true)
-      expect(rootMatch?.status).toBe('success')
-      expect(rootMatch?.error).toBeUndefined()
     })
 
     test('clears stale root globalNotFound on subsequent successful load', async () => {
@@ -1834,87 +1635,19 @@ describe('head execution', () => {
           }),
       })
 
-      const first = await runLoadMatchesAndCapture(router)
-      expect(first.error).toEqual(expect.objectContaining({ isNotFound: true }))
+      await router.load()
+      expect(router.state.matches[0]?.globalNotFound).toBe(true)
 
       const throwingRoute = routes[3]
       throwingRoute.options.beforeLoad = undefined
 
-      const second = await runLoadMatchesAndCapture(router)
-      expect(second.error).toBeUndefined()
+      await router.load()
 
-      const rootMatch = router.stores.pendingMatches
-        .get()
-        .find((m) => m.routeId === routes[0].id)
-
-      expect(rootMatch?.globalNotFound).toBe(false)
-    })
-
-    test('clears stale root globalNotFound when root loader is skipped', async () => {
-      const rootLoader = vi.fn(() => ({ level: 0 }))
-      const rootRoute = new BaseRootRoute({
-        loader: rootLoader,
-        staleTime: Infinity,
-        shouldReload: () => false,
-      })
-
-      const childLoader = vi.fn(() => ({ level: 1 }))
-      const childRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/test',
-        loader: childLoader,
-        staleTime: Infinity,
-        shouldReload: () => false,
-      })
-
-      const routeTree = rootRoute.addChildren([childRoute])
-
-      const router = createTestRouter({
-        routeTree,
-        history: createMemoryHistory({ initialEntries: ['/test'] }),
-      })
-
-      const first = await runLoadMatchesAndCapture(router)
-      expect(first.error).toBeUndefined()
-      expect(rootLoader).toHaveBeenCalledTimes(1)
-
-      const staleRootNotFound = notFound({ data: { source: 'stale-root' } })
-      const currentRootMatchId = router.stores.pendingMatches
-        .get()
-        .find((m) => m.routeId === rootRoute.id)!.id
-
-      router.updateMatch(currentRootMatchId, (prev) => ({
-        ...prev,
-        status: 'success',
-        globalNotFound: true,
-        error: staleRootNotFound,
-      }))
-
-      const location = router.latestLocation
-      const matches = router.matchRoutes(location)
-      const pendingRootMatch = matches.find((m) => m.routeId === rootRoute.id)!
-      pendingRootMatch.status = 'success'
-      pendingRootMatch.globalNotFound = false
-      pendingRootMatch.error = undefined
-      router.stores.setPending(matches)
-
-      await expect(
-        loadMatches({
-          router,
-          location,
-          matches,
-          updateMatch: router.updateMatch,
-        }),
-      ).resolves.toBe(matches)
-
-      expect(rootLoader).toHaveBeenCalledTimes(1)
-
-      const rootMatch = router.stores.pendingMatches
-        .get()
-        .find((m) => m.routeId === rootRoute.id)
+      const rootMatch = router.state.matches.find(
+        (m) => m.routeId === routes[0].id,
+      )
 
       expect(rootMatch?.globalNotFound).toBe(false)
-      expect(rootMatch?.error).toBeUndefined()
     })
   })
 })
@@ -1975,7 +1708,6 @@ describe('params.parse notFound', () => {
 
     const match = router.state.matches.find((m) => m.routeId === testRoute.id)
     expect(match?.status).toBe('success')
-    expect(router.state.statusCode).toBe(200)
   })
 })
 

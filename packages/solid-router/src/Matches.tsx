@@ -62,20 +62,15 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = () => router.stores.firstId.get()
+  const matchId = () => router.stores.matchesId.get()[0]
   const routeId = () => (matchId() ? rootRouteId : undefined)
   const match = () =>
     routeId() ? router.stores.getRouteMatchStore(rootRouteId).get() : undefined
-  const hasPendingMatch = () =>
-    routeId()
-      ? Boolean(router.stores.pendingRouteIds.get()[rootRouteId])
-      : false
-  const resetKey = () => router.stores.loadedAt.get()
+  const resetKey = () => match()?.fetchCount ?? 0
   const nearestMatch = {
     matchId,
     routeId,
     match,
-    hasPending: hasPendingMatch,
   }
 
   const matchComponent = () => {

@@ -589,8 +589,8 @@ export function createStartHandler<TRegister = Register>(
         routerInstance.options.additionalContext = { serverContext }
         await routerInstance.load()
 
-        if (routerInstance.state.redirect) {
-          return normalizeSsrResponse(routerInstance.state.redirect)
+        if (routerInstance._serverResult?.type === 'redirect') {
+          return normalizeSsrResponse(routerInstance._serverResult.redirect)
         }
 
         earlyHints?.collectDynamic(routerInstance.stores.matches.get())

@@ -647,7 +647,7 @@ test('reproducer #4546', async () => {
   }
 })
 
-test('clears pendingTimeout when match resolves', async () => {
+test('does not show pending UI when loaders finish before their pending delays', async () => {
   const defaultPendingComponentOnMountMock = vi.fn()
   const nestedPendingComponentOnMountMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
@@ -716,7 +716,6 @@ test('clears pendingTimeout when match resolves', async () => {
   })
 
   render(<RouterProvider router={router} />)
-  await act(() => router.latestLoadPromise)
   const linkToFoo = await screen.findByTestId('link-to-foo')
   fireEvent.click(linkToFoo)
   const fooElement = await screen.findByText('Nested Foo page')
@@ -757,7 +756,7 @@ test('throw abortError from loader upon initial load with basepath', async () =>
   expect(window.location.pathname.startsWith('/app')).toBe(true)
 })
 
-test('cancelMatches after pending timeout', async () => {
+test('navigating away from a pending route aborts its loader', async () => {
   function getPendingComponent(onMount: () => void) {
     const PendingComponent = () => {
       useEffect(() => {
@@ -811,7 +810,6 @@ test('cancelMatches after pending timeout', async () => {
   const routeTree = rootRoute.addChildren([fooRoute, barRoute])
   const router = createRouter({ routeTree, history })
   render(<RouterProvider router={router} />)
-  await act(() => router.latestLoadPromise)
   const fooLink = await screen.findByTestId('link-to-foo')
   fireEvent.click(fooLink)
   await sleep(WAIT_TIME * 30)
@@ -912,30 +910,25 @@ test('reproducer for #6388 - rapid navigation between parameterized routes shoul
   })
 
   render(<RouterProvider router={router} />)
-  await act(() => router.latestLoadPromise)
-
-  const pendingComponent = screen.findByTestId('pending-component')
   expect(await screen.findByTestId('home-page')).toBeInTheDocument()
-
   const param1Link = await screen.findByTestId('link-to-param-1')
   fireEvent.click(param1Link)
-  expect(await pendingComponent).toBeInTheDocument()
+  expect(await screen.findByTestId('pending-component')).toBeInTheDocument()
 
   const param2Link = await screen.findByTestId('link-to-param-2')
   fireEvent.click(param2Link)
-  expect(await pendingComponent).toBeInTheDocument()
+  expect(await screen.findByTestId('pending-component')).toBeInTheDocument()
 
   fireEvent.click(param1Link)
-  expect(await pendingComponent).toBeInTheDocument()
+  expect(await screen.findByTestId('pending-component')).toBeInTheDocument()
 
-  await act(() => router.latestLoadPromise)
+  const paramPage = await screen.findByTestId('param-page')
 
   expect(onAbortMock).toHaveBeenCalled()
   expect(errorComponentRenderCount).not.toHaveBeenCalled()
   expect(screen.queryByTestId('error-component')).not.toBeInTheDocument()
-  expect(await pendingComponent).not.toBeInTheDocument()
+  expect(screen.queryByTestId('pending-component')).not.toBeInTheDocument()
 
-  const paramPage = await screen.findByTestId('param-page')
   expect(paramPage).toBeInTheDocument()
   expect(paramPage).toHaveTextContent('Param Component 1 Done')
   expect(loaderCompleteMock).toHaveBeenCalled()

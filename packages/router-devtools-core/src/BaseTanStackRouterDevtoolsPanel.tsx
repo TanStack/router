@@ -282,30 +282,19 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
-    let pendingMatches: Accessor<Array<AnyRouteMatch>>
+    const pendingMatches = () => {
+      const matches = routerState().matches
+      return matches.some((match: AnyRouteMatch) => match.status === 'pending')
+        ? matches
+        : []
+    }
     let cachedMatches: Accessor<Array<AnyRouteMatch>>
     // subscribable implementation
-    if ('subscribe' in router().stores.pendingMatches) {
-      const [_pendingMatches, setPending] = createSignal<Array<AnyRouteMatch>>(
-        [],
-      )
-      pendingMatches = _pendingMatches
-
+    if ('subscribe' in router().stores.cachedMatches) {
       const [_cachedMatches, setCached] = createSignal<Array<AnyRouteMatch>>([])
       cachedMatches = _cachedMatches
 
       type Subscribe = (fn: () => void) => { unsubscribe: () => void }
-      createEffect(() => {
-        const pendingMatchesStore = router().stores.pendingMatches
-        setPending(pendingMatchesStore.get())
-        const subscription = (
-          (pendingMatchesStore as any).subscribe as Subscribe
-        )(() => {
-          setPending(pendingMatchesStore.get())
-        })
-        onCleanup(() => subscription.unsubscribe())
-      })
-
       createEffect(() => {
         const cachedMatchesStore = router().stores.cachedMatches
         setCached(cachedMatchesStore.get())
@@ -319,7 +308,6 @@ export const BaseTanStackRouterDevtoolsPanel =
     }
     // signal implementation
     else {
-      pendingMatches = () => router().stores.pendingMatches.get()
       cachedMatches = () => router().stores.cachedMatches.get()
     }
 
@@ -392,7 +380,6 @@ export const BaseTanStackRouterDevtoolsPanel =
                 'stores',
                 'basepath',
                 'subscribers',
-                'latestLoadPromise',
                 '_scroll',
                 'tempLocationKey',
                 'latestLocation',
@@ -719,7 +706,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {pendingMatches().find((d) => d.id === activeMatch()?.id)
+                    {pendingMatches().find(
+                      (d: AnyRouteMatch) => d.id === activeMatch()?.id,
+                    )
                       ? 'Pending'
                       : routerState().matches.find(
                             (d: any) => d.id === activeMatch()?.id,

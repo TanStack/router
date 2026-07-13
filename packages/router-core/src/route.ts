@@ -700,10 +700,6 @@ export interface Route<
     THandlers
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
-  /** @internal */
-  _componentsPromise?: Promise<void>
-  /** @internal */
-  _componentsLoaded?: boolean
   lazyFn?: () => Promise<
     LazyRoute<
       Route<
@@ -729,9 +725,7 @@ export interface Route<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
-  /** @internal */
-  _lazyLoaded?: boolean
+  _lazy?: Promise<void> | true
   rank: number
   to: TrimPathRight<TFullPath>
   init: (opts: { originalIndex: number }) => void
@@ -1711,10 +1705,7 @@ export class BaseRoute<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
-  /** @internal */
-  _componentsPromise?: Promise<void>
-
+  _lazy?: Promise<void> | true
   constructor(
     options?: RouteOptions<
       TRegister,

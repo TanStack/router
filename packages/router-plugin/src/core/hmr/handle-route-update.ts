@@ -1,15 +1,9 @@
-import type {
-  AnyRoute,
-  AnyRouteMatch,
-  AnyRouter,
-  RouterWritableStore,
-} from '@tanstack/router-core'
+import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
 
 type AnyRouteWithPrivateProps = AnyRoute & {
   options: Record<string, unknown>
   parentRoute: AnyRoute
-  _componentsPromise?: Promise<void>
-  _lazyPromise?: Promise<void>
+  _lazy?: Promise<void> | true
   update: (options: Record<string, unknown>) => unknown
   _path: string
   _id: string
@@ -17,37 +11,18 @@ type AnyRouteWithPrivateProps = AnyRoute & {
   _to: string
 }
 
-type AnyRouterWithPrivateMaps = AnyRouter & {
+type AnyRouterWithPrivateState = AnyRouter & {
   routesById: Record<string, AnyRoute>
   buildRouteTree: () => Parameters<AnyRouter['setRoutes']>[0]
   setRoutes: AnyRouter['setRoutes']
-  stores: AnyRouter['stores'] & {
-    cachedMatchStores: Map<
-      string,
-      Pick<RouterWritableStore<AnyRouteMatch>, 'get' | 'set'>
-    >
-    pendingMatchStores: Map<
-      string,
-      Pick<RouterWritableStore<AnyRouteMatch>, 'get' | 'set'>
-    >
-    matchStores: Map<
-      string,
-      Pick<RouterWritableStore<AnyRouteMatch>, 'get' | 'set'>
-    >
-  }
-}
-
-type AnyRouteMatchWithPrivateProps = AnyRouteMatch & {
-  __beforeLoadContext?: unknown
-  __routeContext?: Record<string, unknown>
-  context?: Record<string, unknown>
+  _refreshRoute?: (routeId: string) => Promise<void>
 }
 
 function handleRouteUpdate(
   routeId: string,
   newRoute: AnyRouteWithPrivateProps,
 ) {
-  const router = window.__TSR_ROUTER__ as AnyRouterWithPrivateMaps
+  const router = window.__TSR_ROUTER__ as AnyRouterWithPrivateState
   const oldRoute = router.routesById[routeId] as
     | AnyRouteWithPrivateProps
     | undefined
@@ -63,14 +38,6 @@ function handleRouteUpdate(
   generatedRouteOptionKeys.forEach((key) => {
     if (key in oldRoute.options) {
       generatedRouteOptions[key] = oldRoute.options[key]
-    }
-  })
-
-  const removedKeys = new Set<string>()
-  Object.keys(oldRoute.options).forEach((key) => {
-    if (!generatedRouteOptionKeys.has(key) && !(key in newRoute.options)) {
-      removedKeys.add(key)
-      delete oldRoute.options[key]
     }
   })
 
@@ -106,60 +73,12 @@ function handleRouteUpdate(
 
   oldRoute.options = nextOptions
   oldRoute.update(nextOptions)
-  oldRoute._componentsPromise = undefined
-  oldRoute._lazyPromise = undefined
+  oldRoute._lazy = undefined
 
   router.setRoutes(router.buildRouteTree())
   syncHotRouteExport(oldRoute)
   router.resolvePathCache.clear()
-
-  const filter = (m: AnyRouteMatch) => m.routeId === oldRoute.id
-  const activeMatch = router.stores.matches.get().find(filter)
-  const pendingMatch = router.stores.pendingMatches.get().find(filter)
-  const cachedMatches = router.stores.cachedMatches.get().filter(filter)
-
-  if (activeMatch || pendingMatch || cachedMatches.length > 0) {
-    // Clear stale match data for removed route options BEFORE invalidating.
-    // Without this, router.invalidate() -> matchRoutes() reuses the existing
-    // match from the store (via ...existingMatch spread) and the stale
-    // loaderData / __beforeLoadContext survives the reload cycle.
-    //
-    // We must update the store directly (not via router.updateMatch) because
-    // updateMatch wraps in startTransition which may defer the state update,
-    // and we need the clear to be visible before invalidate reads the store.
-    if (removedKeys.has('loader') || removedKeys.has('beforeLoad')) {
-      const matchIds = [
-        activeMatch?.id,
-        pendingMatch?.id,
-        ...cachedMatches.map((match) => match.id),
-      ].filter(Boolean) as Array<string>
-      router.batch(() => {
-        for (const matchId of matchIds) {
-          const store =
-            router.stores.pendingMatchStores.get(matchId) ||
-            router.stores.matchStores.get(matchId) ||
-            router.stores.cachedMatchStores.get(matchId)
-          if (store) {
-            store.set((prev) => {
-              const next: AnyRouteMatchWithPrivateProps = { ...prev }
-
-              if (removedKeys.has('loader')) {
-                next.loaderData = undefined
-              }
-              if (removedKeys.has('beforeLoad')) {
-                next.__beforeLoadContext = undefined
-                next.context = rebuildMatchContextWithoutBeforeLoad(next)
-              }
-
-              return next
-            })
-          }
-        }
-      })
-    }
-
-    router.invalidate({ filter, sync: true })
-  }
+  void router._refreshRoute?.(oldRoute.id)
 
   function syncHotRouteExport(liveRoute: AnyRouteWithPrivateProps) {
     // routeTree.gen.ts mutates the original module export with generated
@@ -171,66 +90,6 @@ function handleRouteUpdate(
     newRoute._id = liveRoute._id
     newRoute._fullPath = liveRoute._fullPath
     newRoute._to = liveRoute._to
-  }
-
-  function getStoreMatch(matchId: string) {
-    return (
-      router.stores.pendingMatchStores.get(matchId)?.get() ||
-      router.stores.matchStores.get(matchId)?.get() ||
-      router.stores.cachedMatchStores.get(matchId)?.get()
-    )
-  }
-
-  function getMatchList(matchId: string) {
-    const pendingMatches = router.stores.pendingMatches.get()
-    if (pendingMatches.some((match) => match.id === matchId)) {
-      return pendingMatches
-    }
-
-    const activeMatches = router.stores.matches.get()
-    if (activeMatches.some((match) => match.id === matchId)) {
-      return activeMatches
-    }
-
-    const cachedMatches = router.stores.cachedMatches.get()
-    if (cachedMatches.some((match) => match.id === matchId)) {
-      return cachedMatches
-    }
-
-    return []
-  }
-
-  function getParentMatch(match: AnyRouteMatch) {
-    const matchList = getMatchList(match.id)
-    const matchIndex = matchList.findIndex((item) => item.id === match.id)
-
-    if (matchIndex <= 0) {
-      return undefined
-    }
-
-    const parentMatch = matchList[matchIndex - 1]!
-    return getStoreMatch(parentMatch.id) || parentMatch
-  }
-
-  function rebuildMatchContextWithoutBeforeLoad(
-    match: AnyRouteMatchWithPrivateProps,
-  ) {
-    const parentMatch = getParentMatch(match)
-    const getParentContext = (
-      router as unknown as {
-        getParentContext?: (
-          parentMatch?: AnyRouteMatch,
-        ) => Record<string, unknown> | undefined
-      }
-    ).getParentContext
-    const parentContext = getParentContext
-      ? getParentContext.call(router, parentMatch)
-      : (parentMatch?.context ?? router.options.context)
-
-    return {
-      ...(parentContext ?? {}),
-      ...(match.__routeContext ?? {}),
-    }
   }
 }
 

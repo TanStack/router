@@ -70,9 +70,8 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatch = opts.from
-    ? undefined
-    : Solid.useContext(nearestMatchContext)
+  const contextMatch = Solid.useContext(nearestMatchContext)
+  const nearestMatch = opts.from ? undefined : contextMatch
 
   const match = () => {
     if (opts.from) {
@@ -87,15 +86,7 @@ export function useMatch<
       return
     }
 
-    const hasPendingMatch = opts.from
-      ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
-      : (nearestMatch?.hasPending() ?? false)
-
-    if (
-      !hasPendingMatch &&
-      !router.stores.isTransitioning.get() &&
-      (opts.shouldThrow ?? true)
-    ) {
+    if (opts.shouldThrow ?? true) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
           `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
@@ -110,17 +101,6 @@ export function useMatch<
     const selectedMatch = match()
 
     if (selectedMatch === undefined) {
-      const hasPendingMatch = opts.from
-        ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
-        : (nearestMatch?.hasPending() ?? false)
-
-      if (
-        prev !== undefined &&
-        (hasPendingMatch || router.stores.isTransitioning.get())
-      ) {
-        return prev
-      }
-
       return undefined
     }
 

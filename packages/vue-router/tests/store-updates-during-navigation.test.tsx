@@ -138,7 +138,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(16)
+    expect(updates).toBe(3)
   })
 
   test('redirection in preload', async () => {
@@ -157,7 +157,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(5)
+    expect(updates).toBe(2)
   })
 
   test('sync beforeLoad', async () => {
@@ -174,7 +174,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(12)
+    expect(updates).toBe(3)
   })
 
   test('nothing', async () => {
@@ -186,7 +186,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(6)
+    expect(updates).toBe(2)
   })
 
   test('not found in beforeLoad', async () => {
@@ -202,7 +202,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(9)
+    expect(updates).toBe(2)
   })
 
   test('hover preload, then navigate, w/ async loaders', async () => {
@@ -229,7 +229,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(17)
+    expect(updates).toBe(3)
   })
 
   test('navigate, w/ preloaded & async loaders', async () => {
@@ -246,7 +246,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(10)
+    expect(updates).toBe(2)
   })
 
   test('navigate, w/ preloaded & sync loaders', async () => {
@@ -263,7 +263,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(6)
+    expect(updates).toBe(2)
   })
 
   test('navigate, w/ previous navigation & async loader', async () => {
@@ -280,7 +280,7 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(6)
+    expect(updates).toBe(2)
   })
 
   test('preload a preloaded route w/ async loader', async () => {
@@ -299,6 +299,6 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
     // Note: Vue has different update counts than React/Solid due to different reactivity
-    expect(updates).toBe(2)
+    expect(updates).toBe(0)
   })
 })

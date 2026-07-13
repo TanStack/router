@@ -11,7 +11,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  useLoaderData,
   useRouter,
 } from '../src'
 
@@ -660,7 +659,7 @@ test('reproducer #4546', async () => {
   }
 })
 
-test('clears pendingTimeout when match resolves', async () => {
+test('does not show pending UI when loaders finish before their pending delays', async () => {
   const defaultPendingComponentOnMountMock = vi.fn()
   const nestedPendingComponentOnMountMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
@@ -728,7 +727,6 @@ test('clears pendingTimeout when match resolves', async () => {
   })
 
   render(() => <RouterProvider router={router} />)
-  await router.latestLoadPromise
   const linkToFoo = await screen.findByTestId('link-to-foo')
   fireEvent.click(linkToFoo)
   const fooElement = await screen.findByText('Nested Foo page')
@@ -742,52 +740,7 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
 
-test('useLoaderData retains previous data while route match is pending', async () => {
-  const history = createMemoryHistory({ initialEntries: ['/app'] })
-  const rootRoute = createRootRoute({
-    component: () => {
-      const loaderData = useLoaderData({ from: '/app' })
-
-      return (
-        <>
-          <div data-testid="combined">{`${loaderData().length}:0`}</div>
-          <Outlet />
-        </>
-      )
-    },
-  })
-  const appRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/app',
-    loader: () => 'loaded',
-    component: () => <div>App route</div>,
-  })
-  const routeTree = rootRoute.addChildren([appRoute])
-  const router = createRouter({ routeTree, history })
-
-  render(() => <RouterProvider router={router} />)
-
-  expect(await screen.findByTestId('combined')).toHaveTextContent('6:0')
-
-  const appMatch = router.state.matches.find(
-    (match) => match.routeId === '/app',
-  )
-
-  expect(appMatch).toBeDefined()
-
-  if (!appMatch) {
-    throw new Error('Expected /app match to be active')
-  }
-
-  router.stores.setPending([{ ...appMatch, id: `${appMatch.id}__pending` }])
-  router.stores.setMatches(
-    router.state.matches.filter((match) => match.routeId !== '/app'),
-  )
-
-  expect(screen.getByTestId('combined')).toHaveTextContent('6:0')
-})
-
-test('cancelMatches after pending timeout', async () => {
+test('navigating away from a pending route aborts its loader', async () => {
   function getPendingComponent(onMount: () => void) {
     const PendingComponent = () => {
       onMount()
@@ -839,7 +792,6 @@ test('cancelMatches after pending timeout', async () => {
   const routeTree = rootRoute.addChildren([fooRoute, barRoute])
   const router = createRouter({ routeTree, history })
   render(() => <RouterProvider router={router} />)
-  await router.latestLoadPromise
   const fooLink = await screen.findByTestId('link-to-foo')
   fireEvent.click(fooLink)
   await sleep(WAIT_TIME * 30)

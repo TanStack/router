@@ -1,41 +1,59 @@
 'use client'
 
 import * as React from 'react'
-import { batch, useStore } from '@tanstack/react-store'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
-import { useLayoutEffect, usePrevious } from './utils'
+import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
 
 export function Transitioner() {
   const router = useRouter()
-  const mountLoadForRouter = React.useRef({ router, mounted: false })
+  const mountLoadForRouter = React.useRef<
+    [typeof router, typeof router.history] | undefined
+  >(undefined)
+  const acknowledgements = React.useRef<Array<(rendered: boolean) => void>>(
+    [],
+  ).current
 
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
-  // Track pending state changes
-  const isLoading = useStore(router.stores.isLoading, (value) => value)
-  const hasPending = useStore(router.stores.hasPending, (value) => value)
+  useLayoutEffect(() => {
+    const previousTransition = router.startTransition
+    const previousRendered = router._rendered
+    const rendered = () => {
+      for (const resolve of acknowledgements.splice(0)) {
+        resolve(true)
+      }
+    }
+    const transition = (fn: () => void) => {
+      return new Promise<boolean>((resolve) => {
+        acknowledgements.push(resolve)
+        React.startTransition(fn)
+      })
+    }
+    router._rendered = rendered
+    router.startTransition = transition
+    return () => {
+      for (const resolve of acknowledgements.splice(0)) {
+        resolve(false)
+      }
+      if (router._rendered === rendered) {
+        router._rendered = previousRendered
+      }
+      if (router.startTransition === transition) {
+        router.startTransition = previousTransition
+      }
+    }
+  }, [acknowledgements, router])
 
-  const previousIsLoading = usePrevious(isLoading)
-
-  const isAnyPending = isLoading || isTransitioning || hasPending
-  const previousIsAnyPending = usePrevious(isAnyPending)
-
-  const isPagePending = isLoading || hasPending
-  const previousIsPagePending = usePrevious(isPagePending)
-
-  router.startTransition = (fn: () => void) => {
-    setIsTransitioning(true)
-    React.startTransition(() => {
-      fn()
-      setIsTransitioning(false)
-    })
-  }
-
-  // Subscribe to location changes
-  // and try to load the new location
-  React.useEffect(() => {
+  // Subscribe before canonicalizing so the initial URL has exactly one load.
+  useLayoutEffect(() => {
     const unsub = router.history.subscribe(router.load)
 
+    const mounted = mountLoadForRouter.current
+    if (mounted?.[0] === router && mounted[1] === router.history) {
+      return unsub
+    }
+    mountLoadForRouter.current = [router, router.history]
+
+    router.updateLatestLocation()
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,
       search: true,
@@ -53,79 +71,26 @@ export function Transitioner() {
       trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
+      return unsub
     }
 
-    return () => {
-      unsub()
-    }
-  }, [router, router.history])
-
-  // Try to load the initial location
-  useLayoutEffect(() => {
+    const resolvedLocation = router.stores.resolvedLocation.get()
+    const historyLocation = router.history.location
     if (
-      // if we are hydrating from SSR, loading is triggered in ssr-client
-      (typeof window !== 'undefined' && router.ssr) ||
-      (mountLoadForRouter.current.router === router &&
-        mountLoadForRouter.current.mounted)
+      resolvedLocation &&
+      resolvedLocation.publicHref === historyLocation.href &&
+      resolvedLocation.state.__TSR_key === historyLocation.state.__TSR_key
     ) {
-      return
-    }
-    mountLoadForRouter.current = { router, mounted: true }
-
-    const tryLoad = async () => {
-      try {
-        await router.load()
-      } catch (err) {
-        console.error(err)
-      }
-    }
-
-    tryLoad()
-  }, [router])
-
-  useLayoutEffect(() => {
-    // The router was loading and now it's not
-    if (previousIsLoading && !isLoading) {
       router.emit({
-        type: 'onLoad', // When the new URL has committed, when the new matches have been loaded into state.matches
-        ...getLocationChangeInfo(
-          router.stores.location.get(),
-          router.stores.resolvedLocation.get(),
-        ),
+        type: 'onRendered',
+        ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
       })
+    } else {
+      router.load().catch(console.error)
     }
-  }, [previousIsLoading, router, isLoading])
 
-  useLayoutEffect(() => {
-    // emit onBeforeRouteMount
-    if (previousIsPagePending && !isPagePending) {
-      router.emit({
-        type: 'onBeforeRouteMount',
-        ...getLocationChangeInfo(
-          router.stores.location.get(),
-          router.stores.resolvedLocation.get(),
-        ),
-      })
-    }
-  }, [isPagePending, previousIsPagePending, router])
-
-  useLayoutEffect(() => {
-    if (previousIsAnyPending && !isAnyPending) {
-      const changeInfo = getLocationChangeInfo(
-        router.stores.location.get(),
-        router.stores.resolvedLocation.get(),
-      )
-      router.emit({
-        type: 'onResolved',
-        ...changeInfo,
-      })
-
-      batch(() => {
-        router.stores.status.set('idle')
-        router.stores.resolvedLocation.set(router.stores.location.get())
-      })
-    }
-  }, [isAnyPending, previousIsAnyPending, router])
+    return unsub
+  }, [router, router.history])
 
   return null
 }

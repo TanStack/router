@@ -28,12 +28,14 @@ export function lazyRouteComponent<
 
   const load = () => {
     if (!loadPromise) {
+      error = undefined
       loadPromise = importer()
         .then((res) => {
           loadPromise = undefined
           comp = res[exportName ?? 'default']
         })
         .catch((err) => {
+          loadPromise = undefined
           // We don't want an error thrown from preload in this case, because
           // there's nothing we want to do about module not found during preload.
           // Record the error, the rest is handled during the render path.

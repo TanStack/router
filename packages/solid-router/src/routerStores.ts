@@ -16,8 +16,6 @@ declare module '@tanstack/router-core' {
   export interface RouterStores<in out TRouteTree extends AnyRoute> {
     /** Maps each active routeId to the matchId of its child in the match tree. */
     childMatchIdByRouteId: RouterReadableStore<Record<string, string>>
-    /** Maps each pending routeId to true for quick lookup. */
-    pendingRouteIds: RouterReadableStore<Record<string, boolean>>
   }
 }
 
@@ -34,18 +32,6 @@ function initRouterStores(
       const parentStore = stores.matchStores.get(ids[i]!)
       if (parentStore?.routeId) {
         obj[parentStore.routeId] = ids[i + 1]!
-      }
-    }
-    return obj
-  })
-
-  stores.pendingRouteIds = createReadonlyStore(() => {
-    const ids = stores.pendingIds.get()
-    const obj: Record<string, boolean> = {}
-    for (const id of ids) {
-      const store = stores.pendingMatchStores.get(id)
-      if (store?.routeId) {
-        obj[store.routeId] = true
       }
     }
     return obj

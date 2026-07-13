@@ -18,6 +18,7 @@ export function lazyRouteComponent<
 
   const load = () => {
     if (!loadPromise) {
+      error = undefined
       loadPromise = importer()
         .then((res) => {
           loadPromise = undefined
@@ -25,6 +26,7 @@ export function lazyRouteComponent<
           return comp
         })
         .catch((err) => {
+          loadPromise = undefined
           error = err
         })
     }

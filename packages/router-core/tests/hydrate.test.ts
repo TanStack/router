@@ -91,7 +91,7 @@ describe('hydrate', () => {
 
     mockRouter.options.serializationAdapters = [mockSerializer]
 
-    const mockMatches = [{ id: '/', routeId: '/', index: 0, _nonReactive: {} }]
+    const mockMatches = [{ id: '/', routeId: '/', index: 0 }]
     mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
     mockRouter.state.matches = mockMatches
 
@@ -100,7 +100,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: '/',
         matches: [],
       },
       h: vi.fn(),
@@ -129,7 +128,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: '/',
         matches: [],
       },
       h: vi.fn(),
@@ -151,7 +149,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: '/',
         matches: [],
       },
       h: vi.fn(),
@@ -176,14 +173,12 @@ describe('hydrate', () => {
         routeId: '/',
         index: 0,
         ssr: undefined,
-        _nonReactive: {},
       },
       {
         id: '/other',
         routeId: '/other',
         index: 1,
         ssr: undefined,
-        _nonReactive: {},
       },
     ]
 
@@ -204,7 +199,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: '/',
         matches: dehydratedMatches,
       },
       h: vi.fn(),
@@ -217,7 +211,8 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    const { id, loaderData, ssr, status } = mockMatches[0] as AnyRouteMatch
+    const { id, loaderData, ssr, status } = mockRouter.state
+      .matches[0] as AnyRouteMatch
     expect(id).toBe('/')
     expect(loaderData).toEqual({ indexData: 'server-data' })
     expect(status).toBe('success')
@@ -231,7 +226,6 @@ describe('hydrate', () => {
         routeId: '/',
         index: 0,
         ssr: undefined,
-        _nonReactive: {},
       },
     ]
 
@@ -252,7 +246,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: '/',
         matches: dehydratedMatches,
       },
       h: vi.fn(),
@@ -265,7 +258,9 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBe(true)
+    expect((mockRouter.state.matches[0] as AnyRouteMatch).globalNotFound).toBe(
+      true,
+    )
   })
 
   it('should leave globalNotFound undefined when dehydrated flag is omitted', async () => {
@@ -275,7 +270,6 @@ describe('hydrate', () => {
         routeId: '/',
         index: 0,
         ssr: undefined,
-        _nonReactive: {},
       },
     ]
 
@@ -295,7 +289,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: '/',
         matches: dehydratedMatches,
       },
       h: vi.fn(),
@@ -308,7 +301,9 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBeUndefined()
+    expect(
+      (mockRouter.state.matches[0] as AnyRouteMatch).globalNotFound,
+    ).toBeUndefined()
   })
 
   it('should preserve existing globalNotFound when dehydrated flag is omitted', async () => {
@@ -318,7 +313,6 @@ describe('hydrate', () => {
         routeId: '/',
         index: 0,
         ssr: undefined,
-        _nonReactive: {},
         globalNotFound: true,
       },
     ]
@@ -339,7 +333,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: '/',
         matches: dehydratedMatches,
       },
       h: vi.fn(),
@@ -352,7 +345,9 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBe(true)
+    expect((mockRouter.state.matches[0] as AnyRouteMatch).globalNotFound).toBe(
+      true,
+    )
   })
 
   it('should decode dehydrated match ids before hydration lookup and SPA-mode checks', async () => {
@@ -364,7 +359,6 @@ describe('hydrate', () => {
         routeId: '/',
         index: 0,
         ssr: undefined,
-        _nonReactive: {},
       },
     ]
 
@@ -375,7 +369,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: dehydrateSsrMatchId('/'),
         matches: [
           {
             i: dehydrateSsrMatchId('/'),
@@ -434,7 +427,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: { rewrite: true },
-        lastMatchId: '/internal/internal',
         matches: [
           {
             i: '__root__/',
@@ -473,9 +465,7 @@ describe('hydrate', () => {
       throw notFound()
     })
 
-    const mockMatches = [
-      { id: '/', routeId: '/', index: 0, ssr: true, _nonReactive: {} },
-    ]
+    const mockMatches = [{ id: '/', routeId: '/', index: 0, ssr: true }]
 
     mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
     mockRouter.state.matches = mockMatches
@@ -484,7 +474,6 @@ describe('hydrate', () => {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        lastMatchId: '/',
         matches: [
           {
             i: '/',

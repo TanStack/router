@@ -99,8 +99,12 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matchId = useStore(router.stores.firstId, (id) => id)
-    const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+    const matchId = useStore(router.stores.matchesId, (ids) => ids[0])
+    const resetKey = Vue.computed(() =>
+      matchId.value
+        ? (router.stores.matchStores.get(matchId.value)?.get().fetchCount ?? 0)
+        : 0,
+    )
 
     // Create a ref for the match id to provide
     const matchIdRef = Vue.computed(() => matchId.value)

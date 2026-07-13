@@ -9,7 +9,7 @@ import type {
   RouteIds,
 } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, SSROption } from './router'
-import type { Constrain, ControlledPromise } from './utils'
+import type { Constrain } from './utils'
 
 export type AnyMatchAndValue = { match: any; value: any }
 
@@ -137,20 +137,6 @@ export interface RouteMatch<
   paramsError: unknown
   searchError: unknown
   updatedAt: number
-  _nonReactive: {
-    /** @internal */
-    beforeLoadPromise?: ControlledPromise<void>
-    /** @internal */
-    loaderPromise?: ControlledPromise<void>
-    /** @internal */
-    pendingTimeout?: ReturnType<typeof setTimeout>
-    loadPromise?: ControlledPromise<void>
-    displayPendingPromise?: Promise<void>
-    minPendingPromise?: ControlledPromise<void>
-    dehydrated?: boolean
-    /** @internal */
-    error?: unknown
-  }
   loaderData?: TLoaderData
   /** @internal */
   __routeContext?: Record<string, unknown>
@@ -170,8 +156,6 @@ export interface RouteMatch<
   staticData: StaticDataRouteOption
   /** This attribute is not reactive */
   ssr?: SSROption
-  _forcePending?: boolean
-  _displayPending?: boolean
 }
 
 export interface PreValidationErrorHandlingRouteMatch<

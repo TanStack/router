@@ -540,10 +540,6 @@ export function attachRouterServerSsrUtils({
         manifest: manifestToDehydrate,
         matches,
       }
-      const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
-      if (lastMatchId) {
-        dehydratedRouter.lastMatchId = dehydrateSsrMatchId(lastMatchId)
-      }
       const dehydratedData = await router.options.dehydrate?.()
       if (dehydratedData) {
         dehydratedRouter.dehydratedData = dehydratedData

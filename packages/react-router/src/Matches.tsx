@@ -7,6 +7,7 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useStructuralSharing } from './useMatch'
+import { useLayoutEffect } from './utils'
 import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
@@ -61,10 +62,12 @@ export function Matches() {
       : React.Suspense
 
   const inner = (
-    <ResolvedSuspense fallback={pendingElement}>
+    <>
       {!(isServer ?? router.isServer) && <Transitioner />}
-      <MatchesInner />
-    </ResolvedSuspense>
+      <ResolvedSuspense fallback={pendingElement}>
+        <MatchesInner />
+      </ResolvedSuspense>
+    </>
   )
 
   return router.options.InnerWrap ? (
@@ -77,14 +80,17 @@ export function Matches() {
 function MatchesInner() {
   const router = useRouter()
   const _isServer = isServer ?? router.isServer
-  const matchId = _isServer
-    ? router.stores.firstId.get()
+  const matches = _isServer
+    ? router.stores.matches.get()
     : // eslint-disable-next-line react-hooks/rules-of-hooks
-      useStore(router.stores.firstId, (id) => id)
-  const resetKey = _isServer
-    ? router.stores.loadedAt.get()
-    : // eslint-disable-next-line react-hooks/rules-of-hooks
-      useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+      useStore(router.stores.matches, (value) => value)
+  const match = matches[0]
+  const matchId = match?.id
+  const resetKey = match ? `${match.id}:${match.fetchCount}` : ''
+
+  useLayoutEffect(() => {
+    router._rendered?.()
+  }, [matches, router])
 
   const matchComponent = matchId ? <Match matchId={matchId} /> : null
 
