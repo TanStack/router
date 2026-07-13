@@ -1255,6 +1255,13 @@ async function runClientTransaction(
       }
       finishPending(router, tx)
       commitMatches(router, tx, result.matches)
+      if (router._tx !== tx) {
+        return
+      }
+      router.emit({ type: 'onLoad', ...changeInfo })
+      if (router._tx === tx) {
+        router.emit({ type: 'onBeforeRouteMount', ...changeInfo })
+      }
     }
     const rendered = await router.startTransition(commit)
     if (router._tx !== tx) {
@@ -1263,8 +1270,6 @@ async function runClientTransaction(
     router.batch(() => {
       router.stores.resolvedLocation.set(toLocation)
       router.stores.status.set('idle')
-      router.emit({ type: 'onLoad', ...changeInfo })
-      router.emit({ type: 'onBeforeRouteMount', ...changeInfo })
       if (router._tx === tx) {
         router.emit({ type: 'onResolved', ...changeInfo })
       }
@@ -1284,7 +1289,6 @@ export async function loadClientRouter(
   router: AnyRouter,
   opts?: {
     sync?: boolean
-    resolvedPrefix?: number
     /** @internal */
     _refreshRouteId?: string
   },
@@ -1303,20 +1307,15 @@ export async function loadClientRouter(
         return true
       }
     : undefined
-  clientRouter._committedMatches ??= router.stores.matches.get()
-  const resolvedPrefix =
-    opts?.resolvedPrefix ??
-    (router.ssr && !router.stores.resolvedLocation.get()
-      ? clientRouter._committedMatches.length
-      : undefined)
+  const committed = (clientRouter._committedMatches ??=
+    router.stores.matches.get())
   const previousOwner = clientRouter._tx
-  const previousLocation =
-    router.stores.resolvedLocation.get() ?? router.stores.location.get()
+  const resolvedLocation = router.stores.resolvedLocation.get()
+  const previousLocation = resolvedLocation ?? router.stores.location.get()
   const controller = new AbortController()
   clientRouter._preflight?.abort()
   clientRouter._preflight = controller
 
-  router.updateLatestLocation()
   const location = router.latestLocation
   let matches: Array<AnyRouteMatch>
   try {
@@ -1355,6 +1354,28 @@ export async function loadClientRouter(
     return
   }
   clientRouter._preflight = undefined
+  const sameHref = previousLocation.href === location.href
+
+  let resolvedPrefix: number | undefined
+  if (
+    !refreshRouteId &&
+    router.ssr &&
+    !resolvedLocation &&
+    sameHref &&
+    previousLocation.state.__TSR_key === location.state.__TSR_key &&
+    committed.every(
+      (match, index) => !match.invalid && match.id === matches[index]?.id,
+    )
+  ) {
+    resolvedPrefix = committed.length
+    if (
+      resolvedPrefix &&
+      (committed[resolvedPrefix - 1]!.status !== 'success' ||
+        committed[resolvedPrefix - 1]!.globalNotFound)
+    ) {
+      matches.length = resolvedPrefix
+    }
+  }
 
   const tx: LoadTransaction = {
     location,
@@ -1365,7 +1386,7 @@ export async function loadClientRouter(
         runClientTransaction(
           clientRouter,
           tx,
-          refreshRouteId ? false : previousLocation.href === location.href,
+          refreshRouteId ? false : sameHref,
           refreshRouteId ? undefined : () => offerPending(clientRouter, tx),
           opts?.sync,
           resolvedPrefix,

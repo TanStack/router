@@ -2441,14 +2441,12 @@ export class RouterCore<
 
     this._serverResult = undefined
     this.updateLatestLocation()
-    const historyAction = opts?.action?.type
-    if (historyAction) {
-      locationHistoryActions.set(this.latestLocation, historyAction)
-    } else {
-      locationHistoryActions.delete(this.latestLocation)
+    const location = this.latestLocation
+    if (opts?.action) {
+      locationHistoryActions.set(location, opts.action.type)
     }
     const locationChangeInfo = getLocationChangeInfo(
-      this.latestLocation,
+      location,
       this.stores.resolvedLocation.get(),
     )
     this.emit({ type: 'onBeforeNavigate', ...locationChangeInfo })

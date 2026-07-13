@@ -177,6 +177,257 @@ describe('hydration asset currentness', () => {
     expect(newHead).toHaveBeenCalledTimes(1)
   })
 
+  test('a navigation during hydration handoff does not adopt a different route prefix', async () => {
+    const oldBeforeLoad = vi.fn(() => ({ source: 'old-client' }))
+    const oldLoader = vi.fn(() => 'old-client')
+    const newBeforeLoad = vi.fn(() => ({ source: 'new-client' }))
+    const newLoader = vi.fn(() => 'new-client')
+    const rootRoute = new BaseRootRoute({})
+    const oldRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/old',
+      beforeLoad: oldBeforeLoad,
+      loader: oldLoader,
+    })
+    const newRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/new',
+      beforeLoad: newBeforeLoad,
+      loader: newLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([oldRoute, newRoute]),
+      history: createMemoryHistory({ initialEntries: ['/old'] }),
+      isServer: false,
+    })
+    const oldMatches = router.matchRoutes(router.stores.location.get())
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: testManifest,
+        dehydratedData: {},
+        matches: [
+          {
+            i: oldMatches[0]!.id,
+            s: 'success',
+            ssr: true,
+            u: Date.now(),
+          },
+          {
+            i: oldMatches[1]!.id,
+            s: 'success',
+            ssr: 'data-only',
+            b: { source: 'old-server' },
+            l: 'old-server',
+            u: Date.now(),
+          },
+        ],
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(router)
+    await router.navigate({ to: '/new' })
+
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: newRoute.id,
+      status: 'success',
+      context: { source: 'new-client' },
+      loaderData: 'new-client',
+    })
+    expect(newBeforeLoad).toHaveBeenCalledTimes(1)
+    expect(newLoader).toHaveBeenCalledTimes(1)
+    expect(oldBeforeLoad).not.toHaveBeenCalled()
+    expect(oldLoader).not.toHaveBeenCalled()
+  })
+
+  test('same-location hydration only adopts the matching server match identities', async () => {
+    let version = 1
+    const beforeLoad = vi.fn(() => ({ source: 'client' }))
+    const loader = vi.fn(() => 'client')
+    const rootRoute = new BaseRootRoute({})
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      loaderDeps: () => ({ version }),
+      beforeLoad,
+      loader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+    const serverMatches = router.matchRoutes(router.stores.location.get())
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: testManifest,
+        dehydratedData: {},
+        matches: [
+          {
+            i: serverMatches[0]!.id,
+            s: 'success',
+            ssr: true,
+            u: Date.now(),
+          },
+          {
+            i: serverMatches[1]!.id,
+            s: 'success',
+            ssr: 'data-only',
+            b: { source: 'server' },
+            l: 'server',
+            u: Date.now(),
+          },
+        ],
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(router)
+    version = 2
+    await router.load()
+
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: pageRoute.id,
+      status: 'success',
+      context: { source: 'client' },
+      loaderData: 'client',
+    })
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(loader).toHaveBeenCalledTimes(1)
+  })
+
+  test('invalidation during hydration handoff reloads the server prefix', async () => {
+    const rootLoader = vi.fn(() => 'client')
+    const rootRoute = new BaseRootRoute({ loader: rootLoader })
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+    const serverMatches = router.matchRoutes(router.stores.location.get())
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: testManifest,
+        dehydratedData: {},
+        matches: [
+          {
+            i: serverMatches[0]!.id,
+            s: 'success',
+            ssr: true,
+            l: 'server',
+            u: Date.now(),
+          },
+          {
+            i: serverMatches[1]!.id,
+            s: 'success',
+            ssr: 'data-only',
+            u: Date.now(),
+          },
+        ],
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(router)
+    await router.invalidate({
+      filter: (match) => match.routeId === rootRoute.id,
+    })
+
+    expect(rootLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches[0]).toMatchObject({
+      routeId: rootRoute.id,
+      status: 'success',
+      loaderData: 'client',
+    })
+  })
+
+  test('an adopted data-only error does not run its server-omitted descendants', async () => {
+    const childBeforeLoad = vi.fn()
+    const childLoader = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: childBeforeLoad,
+      loader: childLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: false,
+    })
+    const serverMatches = router.matchRoutes(router.stores.location.get())
+    const serverError = new Error('server failed')
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: testManifest,
+        dehydratedData: {},
+        matches: [
+          {
+            i: serverMatches[0]!.id,
+            s: 'success',
+            ssr: true,
+            u: Date.now(),
+          },
+          {
+            i: serverMatches[1]!.id,
+            s: 'error',
+            ssr: 'data-only',
+            e: serverError,
+            u: Date.now(),
+          },
+        ],
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(router)
+    await router.load()
+
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      parentRoute.id,
+    ])
+    expect(router.state.matches.at(-1)).toMatchObject({
+      status: 'error',
+      error: serverError,
+    })
+    expect(childBeforeLoad).not.toHaveBeenCalled()
+    expect(childLoader).not.toHaveBeenCalled()
+  })
+
   test('a same-href load owns route hooks when an older hydration chunk settles later', async () => {
     const routeChunkGate = createControlledPromise<void>()
     const Page = Object.assign(() => null, {

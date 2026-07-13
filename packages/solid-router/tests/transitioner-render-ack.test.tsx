@@ -111,7 +111,7 @@ test('an older rendered destination cannot resolve a superseding navigation', as
   })
   expect(screen.getByText('First')).toBeInTheDocument()
   expect(screen.queryByText('Next')).not.toBeInTheDocument()
-  expect(renderedPaths).toEqual(['/first'])
+  expect(renderedPaths).toEqual([])
   expect(resolvedPaths).toEqual([])
 
   nextLoader.resolve()
@@ -120,7 +120,7 @@ test('an older rendered destination cannot resolve a superseding navigation', as
   await waitFor(() => {
     expect(screen.getByText('Next')).toBeInTheDocument()
   })
-  expect(renderedPaths).toEqual(['/first', '/next'])
+  expect(renderedPaths).toEqual(['/next'])
   expect(resolvedPaths).toEqual(['/next'])
 
   for (const unsubscribe of unsubscribers) {

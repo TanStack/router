@@ -40,7 +40,7 @@ export function useTransitionerSetup() {
 
     const resolvedLocation = router.stores.resolvedLocation.get()
     if (
-      resolvedLocation?.publicHref === router.latestLocation.publicHref &&
+      resolvedLocation?.href === router.latestLocation.href &&
       resolvedLocation.state.__TSR_key === router.latestLocation.state.__TSR_key
     ) {
       router.emit({

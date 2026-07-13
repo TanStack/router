@@ -22,10 +22,14 @@ describe('hydrated stay match data preservation', () => {
   })
 
   it('keeps server loader data on a stay match during ordinary client loading', async () => {
+    const rootBeforeLoad = vi.fn(() => ({ auth: 'client' }))
     const rootLoader = vi.fn(() => ({ root: 'client' }))
     const history = createMemoryHistory({ initialEntries: ['/a'] })
 
-    const rootRoute = new BaseRootRoute({ loader: rootLoader })
+    const rootRoute = new BaseRootRoute({
+      beforeLoad: rootBeforeLoad,
+      loader: rootLoader,
+    })
     const aRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/a',
@@ -56,6 +60,7 @@ describe('hydrated stay match data preservation', () => {
             i: rootMatch.id,
             s: 'success' as const,
             ssr: true,
+            b: { auth: 'server' },
             l: { root: 'server' },
             u: Date.now(),
           },
@@ -75,10 +80,14 @@ describe('hydrated stay match data preservation', () => {
     expect(
       router.state.matches.find((m) => m.routeId === aRoute.id)?.loaderData,
     ).toBe('a client data')
+    expect(rootBeforeLoad).not.toHaveBeenCalled()
     expect(rootLoader).not.toHaveBeenCalled()
     expect(
-      router.state.matches.find((m) => m.routeId === rootRoute.id)?.loaderData,
-    ).toEqual({ root: 'server' })
+      router.state.matches.find((m) => m.routeId === rootRoute.id),
+    ).toMatchObject({
+      context: { auth: 'server' },
+      loaderData: { root: 'server' },
+    })
 
     // Client-side navigation: root is a stay match and must keep server data.
     await router.navigate({ to: '/b' })

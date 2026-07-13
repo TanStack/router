@@ -54,8 +54,9 @@ export function Transitioner() {
     mountLoadForRouter.current = [router, router.history]
 
     router.updateLatestLocation()
+    const location = router.latestLocation
     const nextLocation = router.buildLocation({
-      to: router.latestLocation.pathname,
+      to: location.pathname,
       search: true,
       params: true,
       hash: true,
@@ -67,7 +68,7 @@ export function Transitioner() {
     // Compare publicHref (browser-facing URL) for consistency with
     // the server-side redirect check in router.beforeLoad.
     if (
-      trimPathRight(router.latestLocation.publicHref) !==
+      trimPathRight(location.publicHref) !==
       trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
@@ -75,11 +76,9 @@ export function Transitioner() {
     }
 
     const resolvedLocation = router.stores.resolvedLocation.get()
-    const historyLocation = router.history.location
     if (
-      resolvedLocation &&
-      resolvedLocation.publicHref === historyLocation.href &&
-      resolvedLocation.state.__TSR_key === historyLocation.state.__TSR_key
+      resolvedLocation?.href === location.href &&
+      resolvedLocation.state.__TSR_key === location.state.__TSR_key
     ) {
       router.emit({
         type: 'onRendered',
