@@ -37,6 +37,7 @@ export type ProjectedLane = Lane<'projected'>
 const success = 0
 const error = 1
 const notFound = 2
+// Control outcomes stay contiguous so the hot path can test them together.
 const redirected = 3
 const canceled = 4
 
@@ -601,7 +602,7 @@ function createTask(
   const chunkFailure = Promise.resolve()
     .then(() => loadRouteChunk(route))
     .then(
-      (): IndexedOutcome | undefined => undefined,
+      () => undefined,
       (cause): IndexedOutcome => [index, normalizeError(route, cause)],
     )
   const ready = outcome
@@ -620,10 +621,10 @@ function createTask(
   if (!background) {
     return task.match
   }
-  const candidate = {
+  const candidate: WorkMatch = {
     ...match,
     _flight: undefined,
-  } as WorkMatch
+  }
   const backgroundOutcome = loadResource(
     router,
     workerRouter,
@@ -678,36 +679,66 @@ async function reduceLane(
   options: ExecuteLaneOptions,
   serialFailure?: IndexedOutcome,
 ): Promise<ReducedLane | ControlOutcome> {
+  // Background reductions do not compare against the committed lane.
+  const background = !options.base
   let control =
-    serialFailure?.[1][0] === redirected || serialFailure?.[1][0] === canceled
-      ? serialFailure
-      : undefined
-  let firstError = serialFailure?.[1][0] === error ? serialFailure : undefined
-  let firstNotFound =
-    serialFailure?.[1][0] === notFound ? serialFailure : undefined
+    (serialFailure?.[1][0] ?? 0) >= redirected ? serialFailure : undefined
+  let loaderFailure: IndexedOutcome | undefined
 
   for (let index = 0; index < tasks.length; index++) {
     const task = tasks[index]!
-    const taskIndex = (task as BackgroundTask).index ?? index
     const outcome = await task.outcome
-    if (outcome[0] === redirected || outcome[0] === canceled) {
+    const taskIndex = (task as BackgroundTask).index ?? index
+    if (outcome[0] >= redirected) {
       control = [taskIndex, outcome]
       break
     }
-    if (outcome[0] === error && (!firstError || taskIndex < firstError[0])) {
-      firstError = [taskIndex, outcome]
-    } else if (
-      outcome[0] === notFound &&
-      (!firstNotFound || taskIndex < firstNotFound[0])
-    ) {
-      firstNotFound = [taskIndex, outcome]
+    if (outcome[0] !== success) {
+      loaderFailure ||= [taskIndex, outcome]
     }
   }
 
-  if (control?.[1][0] === redirected && !control[1][1].options.reloadDocument) {
-    if ((options.redirects ?? 0) >= 20) {
-      firstError = [control[0], [error, new Error('Redirect cycle detected')]]
-      control = undefined
+  let failure = loaderFailure ?? serialFailure
+
+  if (
+    control?.[1][0] === redirected &&
+    !control[1][1].options.reloadDocument &&
+    (options.redirects ?? 0) >= 20
+  ) {
+    failure = [control[0], [error, new Error('Redirect cycle detected')]]
+    control = undefined
+  }
+
+  if (!control) {
+    const readinessEnd = failure
+      ? failure[1][0] === notFound
+        ? getNotFoundBoundary(router, lane.matches, failure)
+        : failure[0]
+      : lane.matches.length
+    for (let index = 0; index < tasks.length; index++) {
+      const task = tasks[index]!
+      if (((task as BackgroundTask).index ?? index) >= readinessEnd) {
+        break
+      }
+      const chunkFailure = await task.ready
+      if (chunkFailure) {
+        if (chunkFailure[1][0] === redirected) {
+          if (
+            !chunkFailure[1][1].options.reloadDocument &&
+            (options.redirects ?? 0) >= 20
+          ) {
+            failure = [
+              chunkFailure[0],
+              [error, new Error('Redirect cycle detected')],
+            ]
+          } else {
+            control = chunkFailure
+          }
+        } else {
+          failure = chunkFailure
+        }
+        break
+      }
     }
   }
 
@@ -722,51 +753,42 @@ async function reduceLane(
     return control[1] as ControlOutcome
   }
 
-  const failure = firstError ?? firstNotFound
-  const readinessEnd = failure?.[0] ?? lane.matches.length
-  for (let index = 0; index < tasks.length; index++) {
-    const task = tasks[index]!
-    if (((task as BackgroundTask).index ?? index) >= readinessEnd) {
-      break
+  if (failure) {
+    const [index, outcome] = failure
+    const kind = outcome[0]
+    const boundary =
+      kind === notFound
+        ? getNotFoundBoundary(router, lane.matches, failure)
+        : index
+    let match = lane.matches[boundary]!
+    if (
+      background &&
+      !(tasks as Array<BackgroundTask>).some((task) => task.index === boundary)
+    ) {
+      match = lane.matches[boundary] = { ...match, _flight: undefined }
     }
-    const chunkFailure = await task.ready
-    if (chunkFailure) {
-      firstError = chunkFailure
-      break
-    }
-  }
-
-  if (firstError) {
-    const [index, outcome] = firstError
-    const match = lane.matches[index]!
-    match.status = 'error'
-    match.error = outcome[1]
-    match.isFetching = false
-    try {
-      await loadRouteChunk(getRoute(router, match), 'errorComponent')
-    } catch {}
-    trimLane(router, lane, index + 1)
-    return lane as ReducedLane
-  }
-
-  if (failure?.[1][0] === notFound) {
-    const boundary = getNotFoundBoundary(router, lane.matches, failure)
-    const match = lane.matches[boundary]!
-    const cause = failure[1][1]
-    cause.routeId = match.routeId
-    if (match.routeId === router.routeTree.id) {
-      match.status = 'success'
-      match.globalNotFound = true
-      match.error = cause
+    const cause = outcome[1]
+    match.globalNotFound = undefined
+    if (kind === error) {
+      match.status = 'error'
     } else {
-      match.status = 'notFound'
-      match.error = cause
+      ;(cause as NotFoundError).routeId = match.routeId
+      if (match.routeId === router.routeTree.id) {
+        match.status = 'success'
+        match.globalNotFound = true
+      } else {
+        match.status = 'notFound'
+      }
     }
+    match.error = cause
     match.isFetching = false
     try {
-      await loadRouteChunk(getRoute(router, match), 'notFoundComponent')
+      await loadRouteChunk(
+        getRoute(router, match),
+        kind === error ? 'errorComponent' : 'notFoundComponent',
+      )
     } catch {}
-    trimLane(router, lane, boundary + 1)
+    trimLane(router, lane, boundary + 1, background)
     return lane as ReducedLane
   }
 
@@ -777,10 +799,13 @@ function trimLane(
   router: ClientRouter,
   lane: ContextualizedLane,
   length: number,
+  background: boolean,
 ): void {
-  discardMatchResources(router as AnyRouter, lane.matches.slice(length))
+  if (!background) {
+    discardMatchResources(router as AnyRouter, lane.matches.slice(length))
+  }
   lane.matches.length = length
-  if (!lane.background) {
+  if (!lane.background || background) {
     return
   }
   let write = 0
@@ -801,29 +826,28 @@ async function projectLane(
 ): Promise<ProjectedLane> {
   for (let index = start; index < lane.matches.length; index++) {
     const match = lane.matches[index]!
-    const route = getRoute(router, match)
-    if (!route.options.head && !route.options.scripts) {
-      continue
-    }
-    try {
-      const context = {
-        ssr: router.options.ssr,
-        matches: lane.matches,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
+    const routeOptions = getRoute(router, match).options
+    if (routeOptions.head || routeOptions.scripts) {
+      try {
+        const context = {
+          ssr: router.options.ssr,
+          matches: lane.matches,
+          match,
+          params: match.params,
+          loaderData: match.loaderData,
+        }
+        const [head, scripts] = await Promise.all([
+          routeOptions.head?.(context),
+          routeOptions.scripts?.(context),
+        ])
+        match.meta = head?.meta
+        match.links = head?.links
+        match.headScripts = head?.scripts
+        match.styles = head?.styles
+        match.scripts = scripts
+      } catch (cause) {
+        console.error(cause)
       }
-      const [head, scripts] = await Promise.all([
-        route.options.head?.(context),
-        route.options.scripts?.(context),
-      ])
-      match.meta = head?.meta
-      match.links = head?.links
-      match.headScripts = head?.scripts
-      match.styles = head?.styles
-      match.scripts = scripts
-    } catch (cause) {
-      console.error(`Error executing head for route ${route.id}:`, cause)
     }
   }
   return lane as ProjectedLane
@@ -861,7 +885,7 @@ export async function executeClientLane(
       end,
       getNotFoundBoundary(workerRouter, contextualized.matches, failure) + 1,
     )
-  } else if (failure?.[1][0] === redirected || failure?.[1][0] === canceled) {
+  } else if ((failure?.[1][0] ?? 0) >= redirected) {
     end = 0
   }
   for (let index = 0; index < end; index++) {
@@ -938,12 +962,10 @@ function renderPending(
   tx: LoadTransaction,
   boundary: number,
 ): Promise<boolean> {
-  const offered = tx.matches.slice(0, boundary + 1) as Array<WorkMatch>
-  offered[boundary] = {
-    ...offered[boundary]!,
-    _flight: undefined,
-    status: 'pending',
-  }
+  const offered = tx.matches
+    .slice(0, boundary + 1)
+    .map((match) => ({ ...match, _flight: undefined }))
+  offered[boundary]!.status = 'pending'
   return router.startTransition(() => {
     router.stores.setMatches(offered)
   })

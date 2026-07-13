@@ -8,7 +8,11 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { z } from 'zod'
-import { composeRewrites, notFound } from '@tanstack/router-core'
+import {
+  composeRewrites,
+  createControlledPromise,
+  notFound,
+} from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -2564,8 +2568,9 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     expect(await screen.findByText(/Not Found/)).toBeInTheDocument()
   })
 
-  it('renders notFound when async child beforeLoad throws and parent has an immediate pending component', async () => {
+  it('renders the parent notFound after showing pending UI for the child', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
+    const beforeLoad = createControlledPromise<void>()
 
     const rootRoute = createRootRoute({
       component: () => <Outlet />,
@@ -2587,10 +2592,6 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     const parentRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/parent',
-      pendingMs: 0,
-      pendingComponent: () => (
-        <div data-testid="pending-component">Loading...</div>
-      ),
       component: () => (
         <div data-testid="parent-component">
           Parent
@@ -2605,8 +2606,12 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     const childRoute = createRoute({
       getParentRoute: () => parentRoute,
       path: '/child',
+      pendingMs: 0,
+      pendingComponent: () => (
+        <div data-testid="pending-component">Loading...</div>
+      ),
       beforeLoad: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10))
+        await beforeLoad
         throw notFound()
       },
       component: () => <div data-testid="child-component">Child</div>,
@@ -2622,9 +2627,26 @@ describe('notFound in beforeLoad with pendingComponent', () => {
 
     expect(await screen.findByTestId('home-page')).toBeInTheDocument()
 
-    await act(() => router.navigate({ to: '/parent/child' }))
+    let navigation!: Promise<void>
+    act(() => {
+      navigation = router.navigate({ to: '/parent/child' })
+    })
 
-    expect(await screen.findByText(/Not Found/)).toBeInTheDocument()
+    try {
+      expect(await screen.findByTestId('pending-component')).toHaveTextContent(
+        'Loading...',
+      )
+    } finally {
+      await act(async () => {
+        beforeLoad.resolve()
+        await navigation
+      })
+    }
+
+    expect(await screen.findByTestId('parent-not-found')).toHaveTextContent(
+      'Parent Not Found',
+    )
+    expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
   })
 })
 

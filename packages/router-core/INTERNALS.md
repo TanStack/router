@@ -19,8 +19,9 @@ The loader is built around these rules:
 
 1. A foreground navigation builds a private lane. Only the current transaction
    may commit it, and presentation remains separate from accepted semantics.
-2. Context is materialized serially from parent to child; independent loader and
-   chunk work runs concurrently, then reduces in structural route order.
+2. Context is materialized serially from parent to child. Independent loader and
+   chunk work starts concurrently, while each parallel phase consumes results in
+   structural route order.
 3. Shared work never grants publication authority. Losing work releases its
    resources and cannot publish after it becomes stale.
 4. Runtime state exists only for a real ownership, publication, or completion
@@ -40,7 +41,7 @@ Router.load lifecycle events
   -> install transaction and requested location
   -> serial beforeLoad contextualization
   -> concurrent loader and route-chunk work
-  -> structural reduction
+  -> phase-local reduction
   -> projection
   -> guarded foreground commit
   -> transition acknowledgement
@@ -324,15 +325,16 @@ pending loader flight may still be shared while navigation runs its own serial
 `preload: false` does not suppress speculative `beforeLoad`: the hook still runs
 with `preload: true`, but its context is not donated. The loader is skipped and
 the match remains invalid, so navigation reruns `beforeLoad` and performs the
-loader work.
+loader work. Normal component and pending-component readiness may still run for
+the preload.
 
-After contextualization reaches its terminal prefix, task creation starts loader
-and route-chunk work without awaiting siblings. Loaders therefore run
-concurrently. Each task exposes three related milestones:
+On the client, after contextualization reaches its terminal prefix, task
+creation starts loader and route-chunk work without awaiting siblings. Loaders
+therefore run concurrently. Each client task exposes three related milestones:
 
 - `outcome`: the semantic loader result,
 - `ready`: a successful outcome plus the route's render chunk readiness, and
-- `match`: the parent-facing match promise; the server resolves it to a snapshot.
+- `match`: the parent-facing match promise.
 
 Separating `outcome` from `ready` is essential. A redirect or error can win
 without waiting for irrelevant successful descendant chunks, while a successful
@@ -346,36 +348,58 @@ of it, under the href/key/id/currentness checks described below. Joinable work
 already attached to an adopted prefix is still accounted for, and projection may
 restart at its retained terminal match.
 
-## Ordered reduction and failure boundaries
+## Phase-local reduction and failure boundaries
 
-Although work runs concurrently, reduction consumes it in structural route
-order. The reducer:
+Failure selection deliberately follows execution phases instead of running a
+global comparator over every possible boundary. The client and server use the
+same small reduction policy:
 
-1. recognizes redirect/cancel control outcomes,
-2. selects the terminal error or not-found outcome,
-3. checks relevant successful route chunks in route order,
-4. loads the component required by the selected terminal match,
-5. trims descendants beyond the semantic cutoff, and
-6. releases resources owned by the trimmed suffix.
+1. Param/search validation and `beforeLoad` run serially. The first terminal
+   outcome stops contextualization. Route `context` ran earlier during planning;
+   if it throws, no lane exists and the planning-failure rules apply.
+2. Loaders for the permitted ancestor prefix have already started concurrently.
+   Their promises are consumed from root to leaf. The first ordinary error or
+   not-found fills one loader-failure slot; redirect/cancel is kept separately as
+   control flow.
+3. Control flow wins. Otherwise the loader-failure slot wins, falling back to
+   the serial failure when loaders succeeded.
+4. The selected outcome determines one semantic cutoff. Only successful normal
+   chunks needed before that cutoff are considered, again in route order. The
+   first relevant chunk failure replaces the selected failure; if that failure
+   is a redirect, it becomes control flow.
+5. Core applies the result once, trims once, and attempts the selected terminal
+   component once. Terminal-component preload is best-effort: rejection is
+   swallowed, does not call route `onError`, and does not restart selection.
+6. Projection runs after semantic reduction and cannot replace its result.
 
-Errors take precedence over not-found outcomes on the client when both are
-present. An ordinary error marks the throwing match and trims its descendants;
-the framework's nested catch boundaries may ultimately render a parent, default,
-or root error component. A not-found outcome is instead assigned to the nearest
-eligible ancestor not-found match before trimming. The semantic cutoff and the
-component that visibly handles a failure are therefore related but not
-identical. A global root not-found remains a successful root match marked
+An ordinary serial failure still permits loaders above its effective boundary to
+run, so the terminal render keeps the ancestor data it is allowed to expose. A
+serial redirect/cancel starts no loader work.
+
+“First” inside a concurrent phase means structural route order, not promise
+settlement timing. There is no error-over-not-found priority, render-boundary
+ranking, sorting, or convergence loop. Consumption stops at the first structural
+redirect/cancel; already-started later work may settle, but it is not considered
+for this lane.
+
+An ordinary error marks its throwing match and trims descendants. The
+framework's nested catch boundaries may ultimately render a parent, default, or
+root error component. A not-found is assigned to the nearest eligible ancestor
+not-found match before trimming. Its throwing route and terminal match may
+therefore differ. A global root not-found remains a successful root match marked
 `globalNotFound`, because the root shell still renders while presenting the
 global not-found result.
 
-Control outcomes take precedence over error and not-found outcomes regardless of
-relative route depth. After that, client and server selection deliberately
-differ:
+The server uses redirect control flow and `skipped` for `ssr: false`; the client
+also has cancellation control flow. Those representation differences do not
+change the failure-selection policy.
 
-| Environment | Selection rule                                                                                                                |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| Client      | Redirect/cancel is control flow. Otherwise any ordinary error wins over not-found, with route order selecting within a kind.  |
-| Server      | Redirect wins. Otherwise the structurally earliest render boundary wins, with ordinary error winning a tie against not-found. |
+A `globalNotFound` assigned while matching is planned presentation metadata, not
+a thrown lane outcome. The client retains the planned lane and the framework
+stops rendering below the marked boundary. The server caps and trims its
+request-local lane at that boundary before rendering the 404. Do not feed this
+case into the thrown-outcome reducer merely to make the two storage shapes look
+identical.
 
 Redirect and cancellation outcomes never become committed match states. Internal
 redirects are followed by a replacement navigation. Redirect depth is inherited
@@ -385,9 +409,12 @@ redirect successor to inherit the count; an unrelated superseding navigation
 must not inherit it. The count clears when a semantic lane completes without
 redirecting.
 
-Projection runs only after reduction, so head/scripts see the final lane and
-loader data. Client projection failures are decorative: they are logged without
-replacing a semantic loader result.
+Projection runs only after reduction, so head/scripts/headers see the final lane
+and loader data. Projection hooks for one route start together. Their results are
+applied only if that group resolves; a rejection is logged and swallowed without
+replacing the semantic result. Discarding a failed group means applying no new
+projection output; reused matches may retain output from their previous
+generation.
 
 ## Foreground transaction lifecycle
 
@@ -454,19 +481,22 @@ Client lifecycle ordering is part of the protocol:
    then emits `onRendered` only when the framework confirmed that the publication
    rendered.
 
-Listeners may start another navigation. Currentness is checked again while
-emitting lifecycle events: a route callback suppresses stale `onLoad`, and an
+Listeners may start another navigation. Currentness is checked while emitting
+the pre-mount lifecycle: a route callback suppresses stale `onLoad`, and an
 `onLoad` listener that supersedes the writer suppresses stale
-`onBeforeRouteMount`, `onResolved`, and `onRendered`. Listener exceptions are
+`onBeforeRouteMount` and later completion publication. Listener exceptions are
 isolated and do not stop later listeners or leave acknowledgement cleanup
 unfinished.
 
 ## Pending presentation and renderer acknowledgement
 
 Pending UI is a projection of an in-progress transaction, never a semantic lane.
-`renderPending` publishes a prefix ending at the selected pending boundary. It
-clones that boundary, changes only its presentation status to `pending`, and
-removes `_flight` so a rendered clone cannot accidentally own loader work.
+`renderPending` publishes a cloned prefix ending at the selected pending
+boundary. Every visible match is a snapshot with `_flight` removed, and only the
+terminal snapshot changes status to `pending`. Presentation therefore never
+shares a mutable match object with the private writer lane. A later failure may
+bubble to a visible ancestor without mutating the pending UI in place or being
+hidden from fine-grained match stores by unchanged object identity.
 
 The boundary is the shallowest non-success match, or the shallowest successful
 match already visibly presented as pending. If that boundary has no route or
@@ -632,6 +662,15 @@ handoff. Losing background candidates release their resources. Background
 publication updates matches through the normal publication primitive rather
 than inventing a second commit protocol.
 
+A background lane intentionally has mixed ownership. Reload task indexes contain
+private candidates, while untouched indexes still reference the committed base.
+An ordinary failure can mutate its private candidate directly. If a not-found
+bubbles to an untouched ancestor, reduction first clones that boundary and
+removes `_flight`; the committed generation retains its object and lease until
+the guarded publication succeeds. Trimming a background lane likewise leaves
+shared suffix resources alone. The final transfer or discard of the background
+batch is the single resource authority.
+
 Background publication replaces an already-resolved presentation directly. It
 does not enter the pending/renderer-acknowledgement protocol, change
 `stores.status` or `resolvedLocation`, or emit foreground navigation lifecycle
@@ -661,9 +700,10 @@ background-specific cancellation flag.
 Normal successful readiness loads the route component and pending component.
 Error and not-found component preloads are requested only for the semantic
 terminal match selected by reduction. A framework may still bubble an ordinary
-error to a visibly different ancestor catch boundary. Client chunk work begins
-alongside loader work, but a normal chunk failure is semantically considered only
-when its loader outcome succeeds.
+error to a visibly different ancestor catch boundary. Terminal-component
+preloading is best-effort; failure is swallowed because semantic selection has
+already finished. Client chunk work begins alongside loader work, but a normal
+chunk failure is semantically considered only when its loader outcome succeeds.
 
 `route._lazy` has three compact states:
 
@@ -691,7 +731,9 @@ uses a separate typed lane with the same high-level ordering:
 
 ```text
 match -> resolve SSR + contextualize serially -> run loaders concurrently
-      -> reduce -> load selected chunks -> project -> render or redirect
+      -> select serial/loader result -> load normal chunks before its cutoff
+      -> apply and trim once -> preload terminal component once
+      -> project -> render or redirect
 ```
 
 SSR policy is resolved parent-first before each route's `beforeLoad`:
@@ -706,20 +748,27 @@ SSR policy is resolved parent-first before each route's `beforeLoad`:
   `true` descendant at `data-only`, whether explicit, computed, or inherited.
 - Shell mode renders only the root route.
 
+If an `ssr` callback throws, the server normalizes it through that route's
+`onError`, records it as the serial failure for the route, and stops serial
+descent just like a `beforeLoad` failure.
+
 Hydration adopts the semantic work produced by `true` and `data-only`;
 `data-only` still requires client rendering, while `false` begins the unresolved
 client suffix. Prefix adoption is governed by exact location and match identity,
 not stale-time rules. The handoff rules are detailed below.
 
-Loaders start concurrently and retain parent match promises. Server failure
-precedence follows the comparison above. The request-local lane awaits every
-started loader before selecting the winner, aborts the trimmed suffix, and gives
-a newly selected failure-boundary chunk one final attempt.
+Loaders start concurrently and retain parent match promises. The request-local
+lane consumes their outcomes in route order, keeping redirect as control flow and
+the first ordinary error/not-found as its loader failure. Only after loader
+selection does the server start normal route-chunk work concurrently for the
+permitted prefix and consume those results in route order. It applies and trims
+once, then attempts the terminal component once. For a planned global 404, the
+server preloads both the normal shell and not-found component at the boundary.
 
-Server projection runs only for `ssr: true` matches. Headers are response output
-and are always awaited; a header failure is logged and non-fatal. Head and scripts
-are decorative; their failure is logged and must not hang the request or
-overwrite loader semantics.
+Server projection runs only for `ssr: true` matches. Head, scripts, and headers
+start together for each route. If any rejects, the rejection is logged and the
+route's projection group is discarded; projection failure is non-fatal and never
+overwrites loader semantics.
 
 The final result is a closed union: either a render result with status and
 matches, or a redirect. `loadServerRouter` is the only publisher of that result
@@ -844,7 +893,8 @@ When modifying this system, keep these invariants explicit:
 5. Parent route context is materialized first, and parent `beforeLoad` context is
    complete before child `beforeLoad` or loader work.
 6. Match id controls reuse; route id controls enter/stay/leave semantics.
-7. Outcome ordering is structural, not promise-settlement ordering.
+7. Concurrent loader and normal-chunk selection is structural, not
+   promise-settlement ordering.
 8. Pending UI is a flight-free presentation clone and never semantic authority.
 9. Flight registry membership and flight lease ownership are different facts;
    an accepted generation's lease and public signal may outlive promise

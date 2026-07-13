@@ -386,35 +386,6 @@ function getNotFoundBoundary(
   return cause.routeId ? index : 0
 }
 
-function chooseFailure(
-  router: ServerWorker,
-  matches: Array<AnyRouteMatch>,
-  outcomes: Array<IndexedOutcome>,
-): IndexedOutcome | undefined {
-  let winner: IndexedOutcome | undefined
-  let winnerBoundary = Infinity
-  for (const indexed of outcomes) {
-    const kind = indexed[1][0]
-    if (kind === redirected) {
-      return indexed
-    }
-    const boundary =
-      kind === notFound
-        ? getNotFoundBoundary(router, matches, indexed)
-        : indexed[0]
-    if (
-      boundary < winnerBoundary ||
-      (boundary === winnerBoundary &&
-        kind === error &&
-        winner?.[1][0] === notFound)
-    ) {
-      winner = indexed
-      winnerBoundary = boundary
-    }
-  }
-  return winner
-}
-
 function abortMatches(matches: Array<AnyRouteMatch>, start = 0): void {
   for (let index = start; index < matches.length; index++) {
     matches[index]!.abortController.abort()
@@ -448,6 +419,7 @@ function applyFailure(
   const [index, outcome] = indexed
   if (outcome[0] === error) {
     const match = lane.matches[index]!
+    match.globalNotFound = undefined
     match.status = 'error'
     match.error = outcome[1]
     match.isFetching = false
@@ -460,6 +432,7 @@ function applyFailure(
   const match = lane.matches[boundary]!
   const cause = outcome[1] as NotFoundError
   cause.routeId = match.routeId
+  match.globalNotFound = undefined
   if (match.routeId === router.routeTree.id) {
     match.status = 'success'
     match.globalNotFound = true
@@ -474,75 +447,41 @@ function applyFailure(
   return { status: 404, boundary, kind: notFound }
 }
 
-async function loadSelectedChunks(
+async function loadNormalChunks(
   router: ServerWorker,
   lane: ContextualizedLane,
-  terminal: ReturnType<typeof applyFailure>,
-): Promise<Array<IndexedOutcome>> {
+  end: number,
+): Promise<IndexedOutcome | undefined> {
   const chunks = lane.matches.map(async (match, index) => {
-    if (match.ssr !== true) {
+    if (index >= end || match.ssr !== true || match.status !== 'success') {
       return undefined
     }
     const route = getRoute(router, match)
     try {
-      if (terminal.boundary === index && terminal.kind === error) {
-        await loadRouteChunk(route, 'errorComponent')
-      } else if (terminal.boundary === index && terminal.kind === notFound) {
-        if (match.globalNotFound) {
-          await Promise.all([
-            loadRouteChunk(route),
-            loadRouteChunk(route, 'notFoundComponent'),
-          ])
-        } else {
-          await loadRouteChunk(route, 'notFoundComponent')
-        }
-      } else {
-        await loadRouteChunk(route)
-      }
-      return undefined
+      await loadRouteChunk(route)
     } catch (cause) {
-      return [index, stampNotFound(match, normalizeError(route, cause))] as
-        | IndexedOutcome
-        | undefined
+      return [
+        index,
+        stampNotFound(match, normalizeError(route, cause)),
+      ] as IndexedOutcome
     }
+    return undefined
   })
-  const settled = await Promise.all(chunks)
-  return settled.filter(Boolean) as Array<IndexedOutcome>
-}
-
-async function ensureFailureChunk(
-  router: ServerWorker,
-  lane: ContextualizedLane,
-  terminal: ReturnType<typeof applyFailure>,
-): Promise<IndexedOutcome | undefined> {
-  if (terminal.boundary === undefined || terminal.kind === undefined) {
-    return
+  for (const chunk of chunks) {
+    const indexed = await chunk
+    if (indexed) {
+      return indexed
+    }
   }
-  const match = lane.matches[terminal.boundary]!
-  if (match.ssr !== true) {
-    return
-  }
-  const route = getRoute(router, match)
-  try {
-    await loadRouteChunk(
-      route,
-      terminal.kind === error ? 'errorComponent' : 'notFoundComponent',
-    )
-    return
-  } catch (cause) {
-    return [
-      terminal.boundary,
-      stampNotFound(match, normalizeError(route, cause)),
-    ]
-  }
+  return undefined
 }
 
 async function project(router: ServerWorker, lane: ReducedLane): Promise<void> {
   for (const match of lane.matches) {
-    const route = getRoute(router, match)
+    const routeOptions = getRoute(router, match).options
     if (
       match.ssr !== true ||
-      (!route.options.head && !route.options.scripts && !route.options.headers)
+      (!routeOptions.head && !routeOptions.scripts && !routeOptions.headers)
     ) {
       continue
     }
@@ -553,66 +492,21 @@ async function project(router: ServerWorker, lane: ReducedLane): Promise<void> {
       params: match.params,
       loaderData: match.loaderData,
     }
-    let closed = false
-    let failAssets!: () => void
-    const assetFailure = new Promise<void>((resolve) => {
-      failAssets = resolve
-    })
-    const run = (
-      fn: ((context: any) => any) | undefined,
-      commit: (value: any) => void,
-      decorative: boolean,
-    ) => {
-      let value: unknown
-      try {
-        value = fn?.(context)
-      } catch (cause) {
-        console.error(`Error executing route asset for ${route.id}:`, cause)
-        if (decorative) {
-          failAssets()
-        }
-        return Promise.resolve()
-      }
-      return Promise.resolve(value).then(
-        (result) => {
-          if (!closed) {
-            commit(result)
-          }
-        },
-        (cause) => {
-          console.error(`Error executing route asset for ${route.id}:`, cause)
-          if (decorative) {
-            failAssets()
-          }
-        },
-      )
+    try {
+      const [head, scripts, headers] = await Promise.all([
+        routeOptions.head?.(context),
+        routeOptions.scripts?.(context),
+        routeOptions.headers?.(context),
+      ])
+      match.meta = head?.meta
+      match.links = head?.links
+      match.headScripts = head?.scripts
+      match.styles = head?.styles
+      match.scripts = scripts
+      match.headers = headers
+    } catch (cause) {
+      console.error(cause)
     }
-    const head = run(
-      route.options.head,
-      (value) => {
-        match.meta = value?.meta
-        match.links = value?.links
-        match.headScripts = value?.scripts
-        match.styles = value?.styles
-      },
-      true,
-    )
-    const scripts = run(
-      route.options.scripts,
-      (value) => {
-        match.scripts = value
-      },
-      true,
-    )
-    await run(
-      route.options.headers,
-      (value) => {
-        match.headers = value
-      },
-      false,
-    )
-    await Promise.race([Promise.all([head, scripts]), assetFailure])
-    closed = true
   }
 }
 
@@ -651,7 +545,8 @@ export async function loadServer(
     tasks.push(task)
   }
 
-  const outcomes = lane.failure ? [lane.failure] : []
+  let loaderFailure: IndexedOutcome | undefined
+  let control = lane.failure?.[1][0] === redirected ? lane.failure : undefined
   for (const task of tasks) {
     const outcome = await task.outcome
     if (outcome[0] === success) {
@@ -662,35 +557,56 @@ export async function loadServer(
       match.invalid = false
       match.isFetching = false
       match.updatedAt = Date.now()
+    } else if (outcome[0] === redirected) {
+      control = [task.index, outcome]
+      break
     } else if (outcome[0] !== skipped) {
-      outcomes.push([task.index, outcome])
+      loaderFailure ??= [task.index, outcome]
     }
   }
 
-  let failure = chooseFailure(worker, lane.matches, outcomes)
-  if (failure?.[1][0] === redirected) {
+  if (control?.[1][0] === redirected) {
     abortMatches(lane.matches)
-    return resolveServerRedirect(worker, location, failure[1][1])
+    return resolveServerRedirect(worker, location, control[1][1])
   }
 
-  let terminal = applyFailure(worker, lane, failure)
-  const chunkOutcomes = await loadSelectedChunks(worker, lane, terminal)
-  if (chunkOutcomes.length) {
-    failure = chooseFailure(worker, lane.matches, [
-      ...outcomes,
-      ...chunkOutcomes,
-    ])
-    if (failure?.[1][0] === redirected) {
+  let failure = loaderFailure ?? lane.failure
+  const plannedBoundary = lane.matches.findIndex(
+    (match) => match.globalNotFound,
+  )
+  const readinessEnd = failure
+    ? failure[1][0] === notFound
+      ? getNotFoundBoundary(worker, lane.matches, failure)
+      : failure[0]
+    : plannedBoundary < 0
+      ? lane.matches.length
+      : plannedBoundary
+  const chunkFailure = await loadNormalChunks(worker, lane, readinessEnd)
+  if (chunkFailure) {
+    if (chunkFailure[1][0] === redirected) {
       abortMatches(lane.matches)
-      return resolveServerRedirect(worker, location, failure[1][1])
+      return resolveServerRedirect(worker, location, chunkFailure[1][1])
     }
-    terminal = applyFailure(worker, lane, failure)
-    const boundaryFailure = await ensureFailureChunk(worker, lane, terminal)
-    if (boundaryFailure?.[1][0] === redirected) {
-      abortMatches(lane.matches)
-      return resolveServerRedirect(worker, location, boundaryFailure[1][1])
-    } else if (boundaryFailure) {
-      terminal = applyFailure(worker, lane, boundaryFailure)
+    failure = chunkFailure
+  }
+
+  const terminal = applyFailure(worker, lane, failure)
+  if (terminal.boundary !== undefined) {
+    const match = lane.matches[terminal.boundary]!
+    if (match.ssr === true) {
+      const route = getRoute(worker, match)
+      try {
+        if (terminal.kind === error) {
+          await loadRouteChunk(route, 'errorComponent')
+        } else if (match.globalNotFound) {
+          await Promise.all([
+            loadRouteChunk(route),
+            loadRouteChunk(route, 'notFoundComponent'),
+          ])
+        } else {
+          await loadRouteChunk(route, 'notFoundComponent')
+        }
+      } catch {}
     }
   }
 

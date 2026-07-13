@@ -1340,7 +1340,7 @@ describe('head execution', () => {
       name: string
       throwAtIndex: ThrowAtIndex
       parentFailures: ParentFailureMap
-      expectedErrorKind: 'notFound' | 'redirect' | 'error'
+      expectedErrorKind: 'notFound' | 'redirect'
       expectedErrorSource?: string
       expectedBoundaryIndex?: 0 | 1 | 2 | 3
       expectedHeadTitles: Array<string>
@@ -1538,13 +1538,13 @@ describe('head execution', () => {
         expectedHeadTitles: ['Root'],
       },
       {
-        name: 'propagates regular loader error when mixed with loader notFound in settled loaders',
+        name: 'keeps the first loader notFound when a later loader errors',
         throwAtIndex: 3 as const,
         parentFailures: { 1: 'notFound', 2: 'error' } as ParentFailureMap,
-        expectedErrorKind: 'error' as const,
-        expectedErrorSource: 'loader-2-error',
-        expectedBoundaryIndex: 2,
-        expectedHeadTitles: ['Root', 'Level 1', 'Level 2'],
+        expectedErrorKind: 'notFound' as const,
+        expectedErrorSource: 'loader-1',
+        expectedBoundaryIndex: 1,
+        expectedHeadTitles: ['Root', 'Level 1'],
       },
     ] satisfies Array<Scenario>
 
@@ -1572,12 +1572,7 @@ describe('head execution', () => {
           routes[scenario.expectedBoundaryIndex!]!.id,
         )
 
-        if (scenario.expectedErrorKind === 'error') {
-          expect(boundary.status).toBe('error')
-          expect((boundary.error as Error).message).toBe(
-            scenario.expectedErrorSource,
-          )
-        } else if (scenario.expectedBoundaryIndex === 0) {
+        if (scenario.expectedBoundaryIndex === 0) {
           expect(boundary.status).toBe('success')
           expect(boundary.globalNotFound).toBe(true)
         } else {

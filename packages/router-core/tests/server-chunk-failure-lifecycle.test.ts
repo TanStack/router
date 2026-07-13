@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, notFound } from '../src'
+import { BaseRootRoute, BaseRoute, notFound, redirect } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 /**
@@ -96,5 +96,43 @@ describe('server route chunk failure lifecycle', () => {
     expect(response.status).toBe(404)
     expect(match?.status).toBe('notFound')
     expect(match?.error).toEqual(expect.objectContaining({ isNotFound: true }))
+  })
+
+  test('the first route-order chunk failure determines the response', async () => {
+    const rootError = new Error('root component failed')
+    const RootComponent = Object.assign(() => null, {
+      preload: () => Promise.reject(rootError),
+    })
+    const ChildComponent = Object.assign(() => null, {
+      preload: () => Promise.reject(new Error('child component failed')),
+    })
+
+    const rootRoute = new BaseRootRoute({
+      component: RootComponent as any,
+      errorComponent: () => null,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      component: ChildComponent as any,
+      onError: () => {
+        throw redirect({ to: '/elsewhere' })
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/child')
+
+    expect(response.status).toBe(500)
+    expect(router.state.matches).toHaveLength(1)
+    expect(router.state.matches[0]).toMatchObject({
+      routeId: rootRoute.id,
+      status: 'error',
+      error: rootError,
+    })
   })
 })

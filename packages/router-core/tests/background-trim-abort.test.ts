@@ -1,6 +1,11 @@
 import { expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  createControlledPromise,
+  notFound,
+} from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 test('background error trimming aborts a discarded descendant loader signal', async () => {
@@ -52,6 +57,56 @@ test('background error trimming aborts a discarded descendant loader signal', as
   expect(discardedChildSignal).not.toBe(retainedParentSignal)
   expect(retainedParentSignal?.aborted).toBe(false)
   expect(discardedChildSignal?.aborted).toBe(true)
+})
+
+test('a background notFound stays private until its parent boundary is ready', async () => {
+  const boundaryReady = createControlledPromise<void>()
+  const ParentNotFound = Object.assign(() => null, {
+    preload: () => boundaryReady,
+  })
+  let childLoads = 0
+
+  const rootRoute = new BaseRootRoute({})
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    notFoundComponent: ParentNotFound,
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loader: () => {
+      if (++childLoads > 1) {
+        throw notFound()
+      }
+      return 'initial child data'
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+  })
+
+  await router.load()
+  await router.invalidate({
+    filter: (match) => match.routeId === childRoute.id,
+  })
+  await vi.waitFor(() => expect(childLoads).toBe(2))
+
+  expect(router.state.matches.map((match) => match.status)).toEqual([
+    'success',
+    'success',
+    'success',
+  ])
+
+  boundaryReady.resolve()
+  await vi.waitFor(() => {
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      parentRoute.id,
+    ])
+    expect(router.state.matches.at(-1)?.status).toBe('notFound')
+  })
 })
 
 test('foreground supersession aborts every loader in a background batch', async () => {

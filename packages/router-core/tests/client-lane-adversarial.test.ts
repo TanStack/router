@@ -121,7 +121,7 @@ describe('adversarial client lane ownership', () => {
     expect(cOnEnter).toHaveBeenCalledTimes(1)
   })
 
-  test('a shallow regular error wins over a deeper concurrent notFound', async () => {
+  test('commits a failing parent loader without projecting its trimmed child', async () => {
     const parentError = new Error('parent failed')
     const childHead = vi.fn(() => ({
       meta: [{ title: 'unreachable child' }],
