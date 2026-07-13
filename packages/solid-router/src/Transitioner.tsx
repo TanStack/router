@@ -26,6 +26,7 @@ export function Transitioner() {
   // and try to load the new location
   Solid.onMount(() => {
     const unsub = router.history.subscribe(router.load)
+    Solid.onCleanup(unsub)
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,
@@ -59,10 +60,6 @@ export function Transitioner() {
     } else {
       router.load().catch(console.error)
     }
-
-    Solid.onCleanup(() => {
-      unsub()
-    })
   })
 
   return null
