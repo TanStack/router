@@ -1549,6 +1549,7 @@ export async function preloadClientRoute(
       throw cause
     }
     controller.abort()
+    discardMatchResources(router, matches)
     if (clientRouter._tx !== owner) {
       return
     }
@@ -1565,7 +1566,6 @@ export async function preloadClientRoute(
     if (!isNotFound(cause)) {
       console.error(cause)
     }
-    discardMatchResources(router, matches)
     return
   }
 }

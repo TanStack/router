@@ -73,3 +73,49 @@ test('an adopted loader signal lives until public replacement and unload', async
   await router.navigate({ to: '/' })
   expect(replacementSignal?.aborted).toBe(true)
 })
+
+test('a superseded preload releases its borrowed loader signal lease', async () => {
+  const signals: Array<AbortSignal> = []
+  let navigation!: Promise<void>
+
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return 'parent data'
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    beforeLoad: ({ navigate, preload }) => {
+      if (preload) {
+        navigation = navigate({ to: '/' })
+        throw navigation
+      }
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      homeRoute,
+      parentRoute.addChildren([childRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/parent'] }),
+  })
+
+  await router.load()
+  const signal = signals[0]
+  expect(signal?.aborted).toBe(false)
+
+  await router.preloadRoute({ to: '/parent/child' })
+  await navigation
+
+  expect(router.state.location.pathname).toBe('/')
+  expect(signal?.aborted).toBe(true)
+})
