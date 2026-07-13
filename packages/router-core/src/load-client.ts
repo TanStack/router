@@ -57,6 +57,8 @@ export type LoaderFlight = [
 
 type WorkMatch = AnyRouteMatch & {
   _flight?: LoaderFlight
+  _preloadContext?: number
+  _preloadBeforeLoad?: AnyRoute['options']['beforeLoad']
 }
 
 type ClientRouter = AnyRouter & {
@@ -192,6 +194,7 @@ async function contextualize(
   lane: MatchedLane,
   options: ExecuteLaneOptions,
 ): Promise<IndexedOutcome | undefined> {
+  let reusePreloadContext = !options.preload
   for (
     let index = options.resolvedPrefix ?? 0;
     index < lane.matches.length;
@@ -206,6 +209,8 @@ async function contextualize(
       return [index, normalizeError(route, serialError)]
     }
 
+    // Fresh matches already own this lane's controller; cached matches do not.
+    reusePreloadContext &&= match.abortController !== options.controller
     match.abortController = options.controller
     // Contextualization is serial, so the previous match already contains the
     // complete parent context for this route.
@@ -216,13 +221,33 @@ async function contextualize(
       ...match.__routeContext,
     }
 
-    if (!route.options.beforeLoad) {
+    const beforeLoad = route.options.beforeLoad
+    if (!beforeLoad) {
       match.__beforeLoadContext = {}
       match.context = context
       continue
     }
 
     const preload = !!options.preload
+    // A child can only reuse context from the same parent generation.
+    const donor = match._preloadContext
+    const reuse =
+      reusePreloadContext &&
+      donor != null &&
+      !shouldReloadMatch(router, match, route, options, undefined, donor)
+    match._preloadContext = undefined
+    if (process.env.NODE_ENV !== 'production') {
+      match._preloadBeforeLoad = undefined
+    }
+    if (reuse) {
+      match.context = {
+        ...context,
+        ...match.__beforeLoadContext,
+      }
+      continue
+    }
+    reusePreloadContext = false
+
     const beforeLoadContext: BeforeLoadContextOptions<
       any,
       any,
@@ -251,7 +276,7 @@ async function contextualize(
     try {
       match.isFetching = 'beforeLoad'
       const result = await waitFor(
-        route.options.beforeLoad(beforeLoadContext),
+        beforeLoad(beforeLoadContext),
         options.controller.signal,
       )
       match.isFetching = false
@@ -264,6 +289,12 @@ async function contextualize(
       match.context = {
         ...context,
         ...result,
+      }
+      if (preload && route.options.preload !== false) {
+        match._preloadContext = Date.now()
+        if (process.env.NODE_ENV !== 'production') {
+          match._preloadBeforeLoad = beforeLoad
+        }
       }
     } catch (cause) {
       match.isFetching = false
@@ -435,18 +466,14 @@ async function loadResource(
   }
 }
 
-function shouldReload(
+function shouldReloadMatch(
   router: WorkerRouter,
-  lane: ContextualizedLane,
   match: WorkMatch,
   route: AnyRoute,
-  index: number,
-  tasks: Array<Task>,
   options: ExecuteLaneOptions,
+  configured?: any,
+  donor?: number,
 ): boolean {
-  if (index < (options.resolvedPrefix ?? 0)) {
-    return false
-  }
   if (match.status !== 'success') {
     return true
   }
@@ -454,36 +481,21 @@ function shouldReload(
   const preload = !!options.preload
   const preloadStaleTime = route.options.preloadStaleTime
   const staleAge =
-    preload || (match.preload && preloadStaleTime !== undefined)
+    preload ||
+    ((donor != null || match.preload) && preloadStaleTime !== undefined)
       ? (preloadStaleTime ?? router.options.defaultPreloadStaleTime ?? 30_000)
       : (route.options.staleTime ?? router.options.defaultStaleTime ?? 0)
-  const reload = route.options.shouldReload
-  const configured =
-    typeof reload === 'function'
-      ? reload(
-          getLoaderContext(
-            router,
-            lane,
-            match,
-            route,
-            options.controller,
-            tasks[index - 1]?.match,
-            preload,
-          ),
-        )
-      : reload
-  const previous = options.base?.find(
-    (candidate) => candidate.routeId === match.routeId,
-  )
-
   return !!(
     match.invalid ||
     configured ||
     (configured === undefined &&
-      Date.now() - match.updatedAt >= staleAge &&
+      Date.now() - (donor ?? match.updatedAt) >= staleAge &&
       (options.forceStaleReload ||
         match.cause === 'enter' ||
-        (!!previous && previous.id !== match.id)))
+        options.base?.some(
+          (candidate) =>
+            candidate.routeId === match.routeId && candidate.id !== match.id,
+        )))
   )
 }
 
@@ -513,17 +525,34 @@ function createTask(
   let reload = false
   let reloadFailure: LoaderOutcome | undefined
   try {
-    reload = shouldReload(
-      workerRouter,
-      lane,
-      match,
-      route,
-      index,
-      tasks,
-      options,
-    )
-    reload ||=
-      index < (options.resolvedPrefix ?? 0) && !!router._flights?.get(match.id)
+    if (index < (options.resolvedPrefix ?? 0)) {
+      reload = !!router._flights?.get(match.id)
+    } else {
+      let configured
+      if (match.status === 'success') {
+        configured = route.options.shouldReload
+        if (typeof configured === 'function') {
+          configured = configured(
+            getLoaderContext(
+              workerRouter,
+              lane,
+              match,
+              route,
+              options.controller,
+              tasks[index - 1]?.match,
+              preload,
+            ),
+          )
+        }
+      }
+      reload = shouldReloadMatch(
+        workerRouter,
+        match,
+        route,
+        options,
+        configured,
+      )
+    }
   } catch (cause) {
     releaseFlight(router, match)
     reloadFailure = normalizeError(route, cause)
@@ -1021,15 +1050,23 @@ function commitMatches(
   const now = Date.now()
   let write = 0
   for (const match of cached) {
-    const route = getRoute(router, match as WorkMatch)
-    const gcTime =
-      (match.preload
-        ? (route.options.preloadGcTime ?? router.options.defaultPreloadGcTime)
-        : (route.options.gcTime ?? router.options.defaultGcTime)) ?? 300_000
+    const work = match as WorkMatch
+    const route = getRoute(router, work)
+    const preloadGcTime =
+      route.options.preloadGcTime ??
+      router.options.defaultPreloadGcTime ??
+      300_000
+    const donor = work._preloadContext
     if (
-      route.options.loader &&
       match.status === 'success' &&
-      now - match.updatedAt < gcTime
+      ((donor != null && now - donor < preloadGcTime) ||
+        (route.options.loader &&
+          now - match.updatedAt <
+            (match.preload
+              ? preloadGcTime
+              : (route.options.gcTime ??
+                router.options.defaultGcTime ??
+                300_000))))
     ) {
       cached[write++] = match
     }
@@ -1450,7 +1487,18 @@ export async function preloadClientRoute(
     )
     const previous = router.stores.cachedMatches.get()
     const candidates: Array<AnyRouteMatch> = []
+    let obsoleteContext = false
     for (const match of matches as Array<WorkMatch>) {
+      if (process.env.NODE_ENV !== 'production') {
+        obsoleteContext ||=
+          match._preloadContext != null &&
+          match._preloadBeforeLoad !==
+            getRoute(router, match).options.beforeLoad
+        if (obsoleteContext) {
+          releaseFlight(clientRouter, match)
+          continue
+        }
+      }
       if (
         active.has(match.id) ||
         previous.find((candidate) => candidate.id === match.id) !==

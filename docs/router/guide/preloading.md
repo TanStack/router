@@ -130,6 +130,8 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 ```
 
+Client-side preloading also runs each new route's `beforeLoad` with `preload: true`. When a completed successful preload is still fresh under the built-in freshness and invalidation policy used for preloaded loader data, the client router can reuse the context returned by that invocation instead of calling `beforeLoad` again with `preload: false`. Reuse follows route match identity, including `loaderDeps`, and requires a reusable parent context. The `shouldReload` option remains loader-only. Pending, failed, invalidated, or stale preloads do not donate their `beforeLoad` context to a client navigation.
+
 ## Preloading with External Libraries
 
 When integrating external caching libraries like React Query, which have their own mechanisms for determining stale data, you may want to override the default preloading and stale-while-revalidate logic of TanStack Router. These libraries often use options like staleTime to control the freshness of data.
