@@ -89,6 +89,10 @@ export async function prerender({
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
+    const taskErrors: Array<unknown> = []
+    queue.onError((error) => {
+      taskErrors.push(error)
+    })
     const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
     const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
 
@@ -105,6 +109,10 @@ export async function prerender({
     }
 
     await queue.start()
+
+    if (taskErrors.length > 0) {
+      throw taskErrors[0]
+    }
 
     return Array.from(prerendered)
 
@@ -126,105 +134,109 @@ export async function prerender({
         return
       }
 
+      // Errors are collected via queue.onError() and rethrown once the queue
+      // settles. Suppress intermediate errors by catching here.
+      queue.add(() => renderPage(page)).catch(() => {})
+    }
+
+    async function renderPage(page: Page): Promise<void> {
       const prerenderOptions = {
         ...startConfig.prerender,
         ...page.prerender,
       }
 
-      queue.add(async () => {
-        logger.info(`Crawling: ${page.path}`)
-        const retries = retriesByPath.get(page.path) || 0
+      logger.info(`Crawling: ${page.path}`)
+      const retries = retriesByPath.get(page.path) || 0
 
-        try {
-          const res = await requestWithRedirects(
-            withTrailingSlash(withBase(page.path, routerBasePath)),
-            {
-              headers: {
-                ...(prerenderOptions.headers ?? {}),
-              },
+      try {
+        const res = await requestWithRedirects(
+          withTrailingSlash(withBase(page.path, routerBasePath)),
+          {
+            headers: {
+              ...(prerenderOptions.headers ?? {}),
             },
-            prerenderOptions.maxRedirects,
-          )
+          },
+          prerenderOptions.maxRedirects,
+        )
 
-          if (!res.ok) {
-            if (isRedirectResponse(res)) {
-              logger.warn(`Max redirects reached for ${page.path}`)
-            }
-
-            throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
-              cause: res,
-            })
+        if (!res.ok) {
+          if (isRedirectResponse(res)) {
+            logger.warn(`Max redirects reached for ${page.path}`)
           }
 
-          const cleanPagePath = (
-            prerenderOptions.outputPath || page.path
-          ).split(/[?#]/)[0]!
-
-          const contentType = res.headers.get('content-type') || ''
-          const isImplicitHTML =
-            !cleanPagePath.endsWith('.html') && contentType.includes('html')
-
-          const routeWithIndex = cleanPagePath.endsWith('/')
-            ? cleanPagePath + 'index'
-            : cleanPagePath
-
-          const isSpaShell =
-            startConfig.spa?.prerender.outputPath === cleanPagePath
-
-          let htmlPath: string
-          if (isSpaShell) {
-            htmlPath = cleanPagePath + '.html'
-          } else if (
-            cleanPagePath.endsWith('/') ||
-            (prerenderOptions.autoSubfolderIndex ?? true)
-          ) {
-            htmlPath = joinURL(cleanPagePath, 'index.html')
-          } else {
-            htmlPath = cleanPagePath + '.html'
-          }
-
-          const filename = withoutBase(
-            isImplicitHTML ? htmlPath : routeWithIndex,
-            routerBasePath,
-          )
-
-          const html = await res.text()
-          const filepath = path.join(outputDir, filename)
-
-          await fsp.mkdir(path.dirname(filepath), {
-            recursive: true,
+          throw new Error(`Failed to fetch ${page.path}: ${res.statusText}`, {
+            cause: res,
           })
+        }
 
-          await fsp.writeFile(filepath, html)
+        const cleanPagePath = (
+          prerenderOptions.outputPath || page.path
+        ).split(/[?#]/)[0]!
 
-          prerendered.add(page.path)
+        const contentType = res.headers.get('content-type') || ''
+        const isImplicitHTML =
+          !cleanPagePath.endsWith('.html') && contentType.includes('html')
 
-          const newPage = await prerenderOptions.onSuccess?.({ page, html })
+        const routeWithIndex = cleanPagePath.endsWith('/')
+          ? cleanPagePath + 'index'
+          : cleanPagePath
 
-          if (newPage) {
-            Object.assign(page, newPage)
-          }
+        const isSpaShell =
+          startConfig.spa?.prerender.outputPath === cleanPagePath
 
-          if (prerenderOptions.crawlLinks ?? true) {
-            const links = extractLinks(html)
-            for (const link of links) {
-              addCrawlPageTask({ path: link, fromCrawl: true })
-            }
-          }
-        } catch (error) {
-          if (retries < (prerenderOptions.retryCount ?? 0)) {
-            const retryDelay = normalizeRetryDelay(prerenderOptions.retryDelay)
-            logger.warn(
-              `Encountered error, retrying: ${page.path} in ${retryDelay}ms`,
-            )
-            await new Promise((resolve) => setTimeout(resolve, retryDelay))
-            retriesByPath.set(page.path, retries + 1)
-            addCrawlPageTask(page)
-          } else if (prerenderOptions.failOnError ?? true) {
-            throw error
+        let htmlPath: string
+        if (isSpaShell) {
+          htmlPath = cleanPagePath + '.html'
+        } else if (
+          cleanPagePath.endsWith('/') ||
+          (prerenderOptions.autoSubfolderIndex ?? true)
+        ) {
+          htmlPath = joinURL(cleanPagePath, 'index.html')
+        } else {
+          htmlPath = cleanPagePath + '.html'
+        }
+
+        const filename = withoutBase(
+          isImplicitHTML ? htmlPath : routeWithIndex,
+          routerBasePath,
+        )
+
+        const html = await res.text()
+        const filepath = path.join(outputDir, filename)
+
+        await fsp.mkdir(path.dirname(filepath), {
+          recursive: true,
+        })
+
+        await fsp.writeFile(filepath, html)
+
+        prerendered.add(page.path)
+
+        const newPage = await prerenderOptions.onSuccess?.({ page, html })
+
+        if (newPage) {
+          Object.assign(page, newPage)
+        }
+
+        if (prerenderOptions.crawlLinks ?? true) {
+          const links = extractLinks(html)
+          for (const link of links) {
+            addCrawlPageTask({ path: link, fromCrawl: true })
           }
         }
-      })
+      } catch (error) {
+        if (retries < (prerenderOptions.retryCount ?? 0)) {
+          const retryDelay = normalizeRetryDelay(prerenderOptions.retryDelay)
+          logger.warn(
+            `Encountered error, retrying: ${page.path} in ${retryDelay}ms`,
+          )
+          await new Promise((resolve) => setTimeout(resolve, retryDelay))
+          retriesByPath.set(page.path, retries + 1)
+          queue.add(() => renderPage(page)).catch(() => {})
+        } else if (prerenderOptions.failOnError ?? true) {
+          throw error
+        }
+      }
     }
   }
 
