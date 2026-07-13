@@ -44,7 +44,7 @@ import {
   loadClientRouter,
   preloadClientRoute,
   refreshClientRoute,
-} from './load.client'
+} from './load-client'
 import { loadRouteChunk, routeNeedsPreload } from './route-chunks'
 import {
   composeRewrites,
@@ -64,8 +64,8 @@ import type {
   LoadTransaction,
   LoaderFlight,
   PendingSession,
-} from './load.client'
-import type { ServerLoadResult } from './load.server'
+} from './load-client'
+import type { ServerLoadResult } from './load-server'
 import type {
   HistoryAction,
   HistoryLocation,

@@ -1,3 +1,5 @@
+// Keep this filename free of a secondary extension so declaration generation
+// can rewrite relative imports for both ESM and CJS.
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
 import { loadRouteChunk } from './route-chunks'
