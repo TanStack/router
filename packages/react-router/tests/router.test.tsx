@@ -2464,7 +2464,10 @@ describe('notFound in beforeLoad with pendingComponent', () => {
 
     await act(() => router.navigate({ to: '/parent/child' }))
 
-    expect(await screen.findByText(/Not Found/)).toBeInTheDocument()
+    expect(await screen.findByTestId('parent-not-found')).toHaveTextContent(
+      'Parent Not Found',
+    )
+    expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
   })
 
   it('renders notFound when child beforeLoad throws without a pending component', async () => {
