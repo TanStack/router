@@ -6,6 +6,7 @@ minimumReleaseAgeExclude:
   - babel-preset-solid
   - babel-plugin-jsx-dom-expressions
   - '@dom-expressions/*'
+  - vite-plugin-solid
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true
