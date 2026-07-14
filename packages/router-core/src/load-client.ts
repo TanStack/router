@@ -23,7 +23,7 @@ type Lane<TPhase extends Phase> = {
   readonly [lanePhase]?: TPhase
   location: ParsedLocation
   matches: Array<WorkMatch>
-  background?: Array<BackgroundTask>
+  background?: Array<BackgroundLoaderTask>
 }
 
 type MatchedLane = Lane<'matched'>
@@ -97,13 +97,13 @@ type WorkerRouter = Pick<
   'buildLocation' | 'navigate' | 'options' | 'routeTree' | 'routesById'
 >
 
-type Task = {
+type LoaderTask = {
   outcome: Promise<LoaderOutcome>
   ready: Promise<IndexedOutcome | undefined>
   match?: Promise<WorkMatch>
 }
 
-type BackgroundTask = Task & {
+type BackgroundLoaderTask = LoaderTask & {
   index: number
   candidate: WorkMatch
 }
@@ -502,12 +502,12 @@ function applySuccess(match: WorkMatch, data: unknown): void {
   match.updatedAt = Date.now()
 }
 
-function createTask(
+function createLoaderTask(
   router: ClientRouter,
   workerRouter: WorkerRouter,
   lane: ContextualizedLane,
   index: number,
-  tasks: Array<Task>,
+  tasks: Array<LoaderTask>,
   semanticParent: Promise<WorkMatch> | undefined,
   options: ExecuteLaneOptions,
 ): Promise<WorkMatch> {
@@ -666,7 +666,7 @@ function getNotFoundBoundary(
 async function reduceLane(
   router: WorkerRouter & ClientRouter,
   lane: ContextualizedLane,
-  tasks: Array<Task>,
+  tasks: Array<LoaderTask>,
   options: ExecuteLaneOptions,
   serialFailure?: IndexedOutcome,
 ): Promise<ReducedLane | ControlOutcome> {
@@ -679,7 +679,7 @@ async function reduceLane(
   for (let index = 0; index < tasks.length; index++) {
     const task = tasks[index]!
     const outcome = await task.outcome
-    const taskIndex = (task as BackgroundTask).index ?? index
+    const taskIndex = (task as BackgroundLoaderTask).index ?? index
     if (outcome[0] >= REDIRECTED) {
       control = [taskIndex, outcome]
       break
@@ -708,7 +708,7 @@ async function reduceLane(
       : lane.matches.length
     for (let index = 0; index < tasks.length; index++) {
       const task = tasks[index]!
-      if (((task as BackgroundTask).index ?? index) >= readinessEnd) {
+      if (((task as BackgroundLoaderTask).index ?? index) >= readinessEnd) {
         break
       }
       const chunkFailure = await task.ready
@@ -754,7 +754,7 @@ async function reduceLane(
     let match = lane.matches[boundary]!
     if (
       background &&
-      !(tasks as Array<BackgroundTask>).some((task) => task.index === boundary)
+      !(tasks as Array<BackgroundLoaderTask>).some((task) => task.index === boundary)
     ) {
       match = lane.matches[boundary] = { ...match, _flight: undefined }
     }
@@ -868,7 +868,7 @@ export async function executeClientLane(
     options.sync = true
   }
   const contextualized = matched as ContextualizedLane
-  const tasks: Array<Task> = []
+  const tasks: Array<LoaderTask> = []
   let semanticParent: Promise<WorkMatch> | undefined
   let end = failure?.[0] ?? contextualized.matches.length
   if (failure?.[1][0] === NOT_FOUND) {
@@ -883,7 +883,7 @@ export async function executeClientLane(
     if (options.controller.signal.aborted) {
       break
     }
-    semanticParent = createTask(
+    semanticParent = createLoaderTask(
       clientRouter,
       workerRouter,
       contextualized,
@@ -1138,7 +1138,7 @@ async function runBackground(
   router: CoordinatorRouter,
   tx: LoadTransaction,
   base: Array<AnyRouteMatch>,
-  tasks: Array<BackgroundTask>,
+  tasks: Array<BackgroundLoaderTask>,
 ): Promise<void> {
   const backgroundMatches = tasks.map((task) => task.candidate)
   const next = base.slice() as Array<WorkMatch>
