@@ -17,7 +17,9 @@ import type { AnyRouter } from './router'
 
 declare const lanePhase: unique symbol
 
-type Lane<TPhase extends 'matched' | 'contextualized' | 'reduced' | 'projected'> = {
+type Lane<
+  TPhase extends 'matched' | 'contextualized' | 'reduced' | 'projected',
+> = {
   readonly [lanePhase]?: TPhase
   location: ParsedLocation
   matches: Array<WorkMatch>
@@ -79,7 +81,6 @@ type CoordinatorRouter = AnyRouter & {
   /** Cancels reentrant synchronous planning without replacing the current writer. */
   _preflight?: AbortController
 }
-
 
 type LoaderTask = {
   outcome: Promise<LoaderOutcome>
@@ -517,13 +518,7 @@ function createLoaderTask(
           )
         }
       }
-      reload = shouldReloadMatch(
-        router,
-        match,
-        route,
-        options,
-        configured,
-      )
+      reload = shouldReloadMatch(router, match, route, options, configured)
     }
   } catch (cause) {
     releaseFlight(router, match)
@@ -1130,12 +1125,7 @@ async function runBackground(
     controller: tx.controller,
     redirects: tx.redirects,
   }
-  const reduced = await reduceLane(
-    router,
-    lane,
-    tasks,
-    options,
-  )
+  const reduced = await reduceLane(router, lane, tasks, options)
   if (Array.isArray(reduced)) {
     discardMatchResources(router, backgroundMatches)
     if (
@@ -1296,8 +1286,7 @@ export async function loadClientRouter(
         return true
       }
     : undefined
-  const committed = (router._committedMatches ??=
-    router.stores.matches.get())
+  const committed = (router._committedMatches ??= router.stores.matches.get())
   const previousOwner = router._tx
   const resolvedLocation = router.stores.resolvedLocation.get()
   const previousLocation = resolvedLocation ?? router.stores.location.get()
@@ -1315,8 +1304,7 @@ export async function loadClientRouter(
         : { _controller: controller },
     )
   } catch (cause) {
-    const stale =
-      controller.signal.aborted || router._tx !== previousOwner
+    const stale = controller.signal.aborted || router._tx !== previousOwner
     controller.abort()
     if (stale) {
       await awaitCurrent(router, previousOwner)
@@ -1490,9 +1478,7 @@ export async function preloadClientRoute(
       return
     }
 
-    const active = new Set(
-      semanticMatches(router).map((match) => match.id),
-    )
+    const active = new Set(semanticMatches(router).map((match) => match.id))
     const previous = router.stores.cachedMatches.get()
     const candidates: Array<AnyRouteMatch> = []
     let obsoleteContext = false
