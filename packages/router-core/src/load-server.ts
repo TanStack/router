@@ -35,18 +35,18 @@ type ContextualizedLane = ServerLane<'contextualized'> & {
 
 type ReducedLane = ServerLane<'reduced'>
 
-const success = 0
-const error = 1
-const notFound = 2
-const redirected = 3
-const skipped = 4
+const SUCCESS = 0
+const ERROR = 1
+const NOT_FOUND = 2
+const REDIRECTED = 3
+const SKIPPED = 4
 
 type LoadOutcome =
-  | [typeof success, data: unknown]
-  | [typeof error, error: unknown]
-  | [typeof notFound, error: NotFoundError]
-  | [typeof redirected, redirect: AnyRedirect]
-  | [typeof skipped]
+  | [typeof SUCCESS, data: unknown]
+  | [typeof ERROR, error: unknown]
+  | [typeof NOT_FOUND, error: NotFoundError]
+  | [typeof REDIRECTED, redirect: AnyRedirect]
+  | [typeof SKIPPED]
 
 type LoaderTask = {
   index: number
@@ -79,17 +79,17 @@ function getRoute(router: ServerWorker, match: AnyRouteMatch): AnyRoute {
 
 function normalize(value: unknown, rejected: boolean): LoadOutcome {
   if (isRedirect(value)) {
-    return [redirected, value]
+    return [REDIRECTED, value]
   }
   if (isNotFound(value)) {
-    return [notFound, value]
+    return [NOT_FOUND, value]
   }
-  return rejected ? [error, value] : [success, value]
+  return rejected ? [ERROR, value] : [SUCCESS, value]
 }
 
 function normalizeError(route: AnyRoute, cause: unknown): LoadOutcome {
   let outcome = normalize(cause, true)
-  if (outcome[0] !== error) {
+  if (outcome[0] !== ERROR) {
     return outcome
   }
   try {
@@ -169,7 +169,7 @@ function stampNotFound(
   match: AnyRouteMatch,
   outcome: LoadOutcome,
 ): LoadOutcome {
-  if (outcome[0] === notFound && !outcome[1].routeId) {
+  if (outcome[0] === NOT_FOUND && !outcome[1].routeId) {
     outcome[1].routeId = match.routeId
   }
   return outcome
@@ -247,7 +247,7 @@ async function contextualize(
     try {
       const beforeLoadContext = await route.options.beforeLoad(options)
       const outcome = stampNotFound(match, normalize(beforeLoadContext, false))
-      if (outcome[0] !== success) {
+      if (outcome[0] !== SUCCESS) {
         failure = [index, outcome]
         end = index
         break
@@ -312,12 +312,12 @@ function startLoader(
   let outcome: Promise<LoadOutcome>
 
   if (match.ssr === false) {
-    outcome = Promise.resolve<LoadOutcome>([skipped])
+    outcome = Promise.resolve<LoadOutcome>([SKIPPED])
   } else {
     const option = route.options.loader
     const loader = typeof option === 'function' ? option : option?.handler
     if (!loader) {
-      outcome = Promise.resolve<LoadOutcome>([success, undefined])
+      outcome = Promise.resolve<LoadOutcome>([SUCCESS, undefined])
     } else {
       let value: unknown
       let rejected = false
@@ -343,14 +343,14 @@ function startLoader(
 
   const parentMatch = outcome.then((result) => {
     const snapshot = { ...match }
-    if (result[0] === success) {
+    if (result[0] === SUCCESS) {
       snapshot.loaderData = result[1]
       snapshot.status = 'success'
       snapshot.error = undefined
-    } else if (result[0] === error) {
+    } else if (result[0] === ERROR) {
       snapshot.status = 'error'
       snapshot.error = result[1]
-    } else if (result[0] === notFound) {
+    } else if (result[0] === NOT_FOUND) {
       snapshot.status = 'notFound'
       snapshot.error = result[1]
     }
@@ -406,13 +406,13 @@ function applyFailure(
     if (boundary >= 0) {
       abortMatches(lane.matches, boundary + 1)
       lane.matches.length = boundary + 1
-      return { status: 404, boundary, kind: notFound }
+      return { status: 404, boundary, kind: NOT_FOUND }
     }
     return { status: 200 }
   }
 
   const [index, outcome] = indexed
-  if (outcome[0] === error) {
+  if (outcome[0] === ERROR) {
     const match = lane.matches[index]!
     match.globalNotFound = undefined
     match.status = 'error'
@@ -420,7 +420,7 @@ function applyFailure(
     match.isFetching = false
     abortMatches(lane.matches, index + 1)
     lane.matches.length = index + 1
-    return { status: 500, boundary: index, kind: error }
+    return { status: 500, boundary: index, kind: ERROR }
   }
 
   const boundary = getNotFoundBoundary(router, lane.matches, indexed)
@@ -439,7 +439,7 @@ function applyFailure(
   match.isFetching = false
   abortMatches(lane.matches, boundary + 1)
   lane.matches.length = boundary + 1
-  return { status: 404, boundary, kind: notFound }
+  return { status: 404, boundary, kind: NOT_FOUND }
 }
 
 async function loadNormalChunks(
@@ -525,9 +525,9 @@ export async function loadServer(
   const lane = await contextualize(worker, matched, preload)
 
   let loaderEnd = lane.end
-  if (lane.failure?.[1][0] === redirected) {
+  if (lane.failure?.[1][0] === REDIRECTED) {
     loaderEnd = 0
-  } else if (lane.failure?.[1][0] === notFound) {
+  } else if (lane.failure?.[1][0] === NOT_FOUND) {
     loaderEnd = Math.min(
       loaderEnd,
       getNotFoundBoundary(worker, lane.matches, lane.failure) + 1,
@@ -541,10 +541,10 @@ export async function loadServer(
   }
 
   let loaderFailure: IndexedOutcome | undefined
-  let control = lane.failure?.[1][0] === redirected ? lane.failure : undefined
+  let control = lane.failure?.[1][0] === REDIRECTED ? lane.failure : undefined
   for (const task of tasks) {
     const outcome = await task.outcome
-    if (outcome[0] === success) {
+    if (outcome[0] === SUCCESS) {
       const match = lane.matches[task.index]!
       match.loaderData = outcome[1]
       match.status = 'success'
@@ -552,15 +552,15 @@ export async function loadServer(
       match.invalid = false
       match.isFetching = false
       match.updatedAt = Date.now()
-    } else if (outcome[0] === redirected) {
+    } else if (outcome[0] === REDIRECTED) {
       control = [task.index, outcome]
       break
-    } else if (outcome[0] !== skipped) {
+    } else if (outcome[0] !== SKIPPED) {
       loaderFailure ??= [task.index, outcome]
     }
   }
 
-  if (control?.[1][0] === redirected) {
+  if (control?.[1][0] === REDIRECTED) {
     abortMatches(lane.matches)
     return resolveServerRedirect(worker, location, control[1][1])
   }
@@ -570,7 +570,7 @@ export async function loadServer(
     (match) => match.globalNotFound,
   )
   const readinessEnd = failure
-    ? failure[1][0] === notFound
+    ? failure[1][0] === NOT_FOUND
       ? getNotFoundBoundary(worker, lane.matches, failure)
       : failure[0]
     : plannedBoundary < 0
@@ -578,7 +578,7 @@ export async function loadServer(
       : plannedBoundary
   const chunkFailure = await loadNormalChunks(worker, lane, readinessEnd)
   if (chunkFailure) {
-    if (chunkFailure[1][0] === redirected) {
+    if (chunkFailure[1][0] === REDIRECTED) {
       abortMatches(lane.matches)
       return resolveServerRedirect(worker, location, chunkFailure[1][1])
     }
@@ -591,7 +591,7 @@ export async function loadServer(
     if (match.ssr === true) {
       const route = getRoute(worker, match)
       try {
-        if (terminal.kind === error) {
+        if (terminal.kind === ERROR) {
           await loadRouteChunk(route, 'errorComponent')
         } else if (match.globalNotFound) {
           await Promise.all([
