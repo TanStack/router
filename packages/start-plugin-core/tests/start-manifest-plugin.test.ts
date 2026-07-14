@@ -33,6 +33,7 @@ function loadDevManifest(opts: { bundledDev: boolean }) {
           },
         },
       }) as any,
+    getClientEntry: () => '/app/src/client.tsx',
   }) as Array<any>
   const plugin = plugins.find(
     (item) => item.name === 'tanstack-start:start-manifest-plugin',
