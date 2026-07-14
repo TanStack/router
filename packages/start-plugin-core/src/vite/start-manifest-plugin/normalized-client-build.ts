@@ -150,7 +150,10 @@ function selectEntryChunkFileName(
 
   throw new Error(
     `multiple entries detected: ${entryChunks
-      .map((chunk) => `${chunk.fileName} (${chunk.facadeModuleId ?? 'unknown module'})`)
+      .map(
+        (chunk) =>
+          `${chunk.fileName} (${chunk.facadeModuleId ?? 'unknown module'})`,
+      )
       .join(', ')}`,
   )
 }
