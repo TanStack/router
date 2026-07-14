@@ -20,7 +20,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.61.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@typescript-eslint/eslint-plugin": "^8.44.1",
     "@typescript-eslint/parser": "^8.44.1",

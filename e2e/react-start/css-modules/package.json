@@ -35,7 +35,7 @@
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.29.0",
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.61.0",
     "@tanstack/router-e2e-utils": "workspace:*",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
