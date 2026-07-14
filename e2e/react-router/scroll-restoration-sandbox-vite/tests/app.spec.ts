@@ -131,7 +131,6 @@ test('PUSH resets scroll before the destination can render a frame (#7815)', asy
     window.__scrollPaintTestState = state
   }, sourceScrollY)
 
-
   await page.evaluate(
     () =>
       new Promise<void>((resolve) => {
@@ -185,9 +184,7 @@ test('PUSH resets scroll before the destination can render a frame (#7815)', asy
     sourceScrollY,
   )
   expect(observation.finalScrollY).toBe(0)
-  expect(observation.destinationFrameScrollYs.length).toBeGreaterThanOrEqual(
-    2,
-  )
+  expect(observation.destinationFrameScrollYs.length).toBeGreaterThanOrEqual(2)
   expect(
     observation.destinationFrameScrollYs.every(
       (scrollY) => Math.abs(scrollY) <= 1,
