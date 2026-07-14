@@ -45,7 +45,7 @@ We highly recommend using TypeScript with TanStack Start. Create a `tsconfig.jso
 ```
 
 > [!NOTE]
-> TanStack Start does not support `verbatimModuleSyntax` enabled — it can cause server-only code to leak into client bundles.
+> Enabling `verbatimModuleSyntax` can result in server-only code leaking into client bundles when types are imported from modules that also contain server-only code. It is recommended to keep this option disabled.
 >
 > TypeScript's compiler default is still `false`, but `tsc --init` (TypeScript 5.9+ and 6.0) generates `"verbatimModuleSyntax": true` as a recommended option. If you use `tsc --init`, explicitly set `"verbatimModuleSyntax": false` in your `tsconfig.json`.
 
