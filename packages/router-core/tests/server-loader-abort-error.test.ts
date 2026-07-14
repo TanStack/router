@@ -5,12 +5,12 @@ import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 /**
  * A server loader that throws an AbortError while the match's own signal is
- * NOT aborted (e.g. the loader's own fetch timed out) is not a route
- * failure. It settles the match as a non-error instead of committing a 500.
+ * NOT aborted (e.g. the loader's own fetch timed out) is a route failure.
+ * Only a router-aborted generation may discard AbortError as cancellation.
  */
 
 describe('server loader AbortError', () => {
-  test('settles as non-error with a 200 status when the match signal is not aborted', async () => {
+  test('settles as an error when the match signal is not aborted', async () => {
     const rootRoute = new BaseRootRoute({})
     const abortingRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -30,8 +30,11 @@ describe('server loader AbortError', () => {
     const match = router.state.matches.find(
       (item) => item.routeId === abortingRoute.id,
     )
-    expect(response.status).toBe(200)
-    expect(match?.status).toBe('success')
-    expect(match?.error).toBeUndefined()
+    expect(response.status).toBe(500)
+    expect(match?.status).toBe('error')
+    expect(match?.error).toMatchObject({
+      name: 'AbortError',
+      message: 'The operation was aborted.',
+    })
   })
 })

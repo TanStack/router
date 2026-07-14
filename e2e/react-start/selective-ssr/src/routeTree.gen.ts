@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as Issue4614RouteImport } from './routes/issue-4614'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Issue4614Route = Issue4614RouteImport.update({
+  id: '/issue-4614',
+  path: '/issue-4614',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -31,30 +37,34 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/issue-4614': typeof Issue4614Route
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/issue-4614': typeof Issue4614Route
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/issue-4614': typeof Issue4614Route
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/posts' | '/posts/$postId'
+  fullPaths: '/' | '/issue-4614' | '/posts' | '/posts/$postId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/posts' | '/posts/$postId'
-  id: '__root__' | '/' | '/posts' | '/posts/$postId'
+  to: '/' | '/issue-4614' | '/posts' | '/posts/$postId'
+  id: '__root__' | '/' | '/issue-4614' | '/posts' | '/posts/$postId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  Issue4614Route: typeof Issue4614Route
   PostsRoute: typeof PostsRouteWithChildren
 }
 
@@ -65,6 +75,13 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issue-4614': {
+      id: '/issue-4614'
+      path: '/issue-4614'
+      fullPath: '/issue-4614'
+      preLoaderRoute: typeof Issue4614RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -96,6 +113,7 @@ const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  Issue4614Route: Issue4614Route,
   PostsRoute: PostsRouteWithChildren,
 }
 export const routeTree = rootRouteImport

@@ -3,17 +3,11 @@ import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
-// https://github.com/TanStack/router/issues/4476
 // A navigation that adopts an in-flight preload's loader run must reuse that
-// run: it must NOT abort the preload's loader signal, and it must NOT re-run
-// the loader. Aborting mid-flight is what surfaced as a CancelledError from a
-// signal-aware queryFn (e.g. queryClient.fetchQuery) when the user clicked
-// through during an intent preload.
-//
-// This shape is not covered by preload-adoption.test.ts (serial-phase decline
-// and sibling-preload adoption); the distinguishing assertion here is that the
-// adopted loader's captured signal is never aborted.
-describe('issue #4476 - navigation adopting an in-flight preload does not abort the loader', () => {
+// run: it must not abort the preload's loader signal or rerun the loader. This
+// is generic router adoption coverage; issue #4476 is covered separately with
+// the React Query observer-unmount sequence from its reproduction.
+describe('navigation adopting an in-flight preload', () => {
   test('adopted preload loader runs once and its signal is not aborted', async () => {
     const loaderGate = createControlledPromise<string>()
     let capturedSignal: AbortSignal | undefined

@@ -732,17 +732,20 @@ test('does not show pending UI when loaders finish before their pending delays',
 test('throw abortError from loader upon initial load with basepath', async () => {
   window.history.replaceState(null, 'root', '/app')
   const rootRoute = createRootRoute({})
+  const abortError = new DOMException('Aborted', 'AbortError')
+  const renderedError = vi.fn()
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
     loader: async () => {
-      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+      return Promise.reject(abortError)
     },
     component: () => <div>Index route content</div>,
-    errorComponent: () => (
-      <div data-testid="index-error">indexErrorComponent</div>
-    ),
+    errorComponent: ({ error }) => {
+      renderedError(error)
+      return <div data-testid="index-error">indexErrorComponent</div>
+    },
   })
 
   const routeTree = rootRoute.addChildren([indexRoute])
@@ -750,10 +753,55 @@ test('throw abortError from loader upon initial load with basepath', async () =>
 
   render(<RouterProvider router={router} />)
 
-  const indexElement = await screen.findByText('Index route content')
-  expect(indexElement).toBeInTheDocument()
-  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  expect(screen.queryByText('Index route content')).not.toBeInTheDocument()
+  expect(renderedError).toHaveBeenCalledWith(abortError)
+  expect(
+    router.state.matches.find((match) => match.routeId === indexRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: abortError,
+  })
   expect(window.location.pathname.startsWith('/app')).toBe(true)
+})
+
+// https://github.com/TanStack/router/pull/7673
+test('#7673: aborted loader does not render the route component with undefined loaderData', async () => {
+  const abortError = new DOMException('Aborted', 'AbortError')
+  const routeComponentRendered = vi.fn()
+  const renderedError = vi.fn()
+  const rootRoute = createRootRoute({})
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: (): Promise<{ value: string }> => Promise.reject(abortError),
+    component: () => {
+      routeComponentRendered()
+      const data = indexRoute.useLoaderData()
+      return <div data-testid="index-content">{data.value}</div>
+    },
+    errorComponent: ({ error }) => {
+      renderedError(error)
+      return <div data-testid="index-error">indexErrorComponent</div>
+    },
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
+  expect(routeComponentRendered).not.toHaveBeenCalled()
+  expect(renderedError).toHaveBeenCalledWith(abortError)
+  expect(
+    router.state.matches.find((match) => match.routeId === indexRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: abortError,
+  })
 })
 
 test('navigating away from a pending route aborts its loader', async () => {
