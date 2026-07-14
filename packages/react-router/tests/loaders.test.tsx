@@ -943,6 +943,7 @@ test('reproducer for #6388 - rapid navigation between parameterized routes shoul
 
 test('aborting a reused parent match does not clear the replacement load promise', async () => {
   const rootAbortMock = vi.fn()
+  const rootLoaderMock = vi.fn()
   const indexAbortMock = vi.fn()
   const errorComponentMock = vi.fn()
 
@@ -963,9 +964,11 @@ test('aborting a reused parent match does not clear the replacement load promise
 
   const rootRoute = createRootRoute({
     loader: async ({ abortController }) => {
+      rootLoaderMock()
       await abortableDelay(abortController, rootAbortMock)
       return 'root loaded'
     },
+    shouldReload: true,
     component: Outlet,
     errorComponent: ({ error }) => {
       errorComponentMock(error)
@@ -985,10 +988,12 @@ test('aborting a reused parent match does not clear the replacement load promise
       return deps.filter
     },
     component: () => {
+      const data = indexRoute.useLoaderData()
       const search = indexRoute.useSearch()
       const navigate = indexRoute.useNavigate()
       return (
         <div data-testid="index-page">
+          <div data-testid="index-loader-data">{data}</div>
           <input
             data-testid="filter-input"
             value={search.filter}
@@ -1018,10 +1023,14 @@ test('aborting a reused parent match does not clear the replacement load promise
   }
   await act(() => router.latestLoadPromise)
 
+  expect(rootLoaderMock.mock.calls.length).toBeGreaterThan(1)
   expect(rootAbortMock).toHaveBeenCalled()
   expect(indexAbortMock).toHaveBeenCalled()
   expect(errorComponentMock).not.toHaveBeenCalled()
   expect(screen.queryByTestId('route-error')).not.toBeInTheDocument()
   expect(await screen.findByTestId('index-page')).toBeInTheDocument()
+  expect(await screen.findByTestId('index-loader-data')).toHaveTextContent(
+    'abcdef',
+  )
   expect(router.state.location.search).toEqual({ filter: 'abcdef' })
 })
