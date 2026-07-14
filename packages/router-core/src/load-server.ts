@@ -26,7 +26,7 @@ type ServerLane<TPhase extends 'matched' | 'contextualized' | 'reduced'> = {
 
 type MatchedLane = ServerLane<'matched'>
 
-type IndexedOutcome = [index: number, outcome: LoadOutcome]
+type IndexedOutcome = [index: number, outcome: LoaderOutcome]
 
 type ContextualizedLane = ServerLane<'contextualized'> & {
   end: number
@@ -41,7 +41,7 @@ const NOT_FOUND = 2
 const REDIRECTED = 3
 const SKIPPED = 4
 
-type LoadOutcome =
+type LoaderOutcome =
   | [typeof SUCCESS, data: unknown]
   | [typeof ERROR, error: unknown]
   | [typeof NOT_FOUND, error: NotFoundError]
@@ -50,7 +50,7 @@ type LoadOutcome =
 
 type LoaderTask = {
   index: number
-  outcome: Promise<LoadOutcome>
+  outcome: Promise<LoaderOutcome>
   match: Promise<AnyRouteMatch>
 }
 
@@ -77,7 +77,7 @@ function getRoute(router: ServerWorker, match: AnyRouteMatch): AnyRoute {
   return (router.routesById as Record<string, AnyRoute>)[match.routeId]!
 }
 
-function normalize(value: unknown, rejected: boolean): LoadOutcome {
+function normalize(value: unknown, rejected: boolean): LoaderOutcome {
   if (isRedirect(value)) {
     return [REDIRECTED, value]
   }
@@ -87,7 +87,7 @@ function normalize(value: unknown, rejected: boolean): LoadOutcome {
   return rejected ? [ERROR, value] : [SUCCESS, value]
 }
 
-function normalizeError(route: AnyRoute, cause: unknown): LoadOutcome {
+function normalizeError(route: AnyRoute, cause: unknown): LoaderOutcome {
   let outcome = normalize(cause, true)
   if (outcome[0] !== ERROR) {
     return outcome
@@ -167,8 +167,8 @@ async function resolveSsr(
 
 function stampNotFound(
   match: AnyRouteMatch,
-  outcome: LoadOutcome,
-): LoadOutcome {
+  outcome: LoaderOutcome,
+): LoaderOutcome {
   if (outcome[0] === NOT_FOUND && !outcome[1].routeId) {
     outcome[1].routeId = match.routeId
   }
@@ -309,15 +309,15 @@ function startLoader(
 ): LoaderTask {
   const match = lane.matches[index]!
   const route = getRoute(router, match)
-  let outcome: Promise<LoadOutcome>
+  let outcome: Promise<LoaderOutcome>
 
   if (match.ssr === false) {
-    outcome = Promise.resolve<LoadOutcome>([SKIPPED])
+    outcome = Promise.resolve<LoaderOutcome>([SKIPPED])
   } else {
     const option = route.options.loader
     const loader = typeof option === 'function' ? option : option?.handler
     if (!loader) {
-      outcome = Promise.resolve<LoadOutcome>([SUCCESS, undefined])
+      outcome = Promise.resolve<LoaderOutcome>([SUCCESS, undefined])
     } else {
       let value: unknown
       let rejected = false
