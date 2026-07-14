@@ -162,10 +162,7 @@ function normalize(
   return rejected ? [error, value] : [success, value]
 }
 
-function normalizeError(
-  route: AnyRoute,
-  cause: unknown,
-): LoaderOutcome {
+function normalizeError(route: AnyRoute, cause: unknown): LoaderOutcome {
   let outcome = normalize(cause, true, route.id)
   if (outcome[0] !== error) {
     return outcome
@@ -358,9 +355,7 @@ function startFlight(
             ? [canceled]
             : normalize(value, false, route.id),
         (cause) =>
-          controller.signal.aborted
-            ? [canceled]
-            : normalizeError(route, cause),
+          controller.signal.aborted ? [canceled] : normalizeError(route, cause),
       ),
     controller,
     1,
