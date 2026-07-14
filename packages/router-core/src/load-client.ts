@@ -492,9 +492,7 @@ function shouldReloadMatch(
 }
 
 function applySuccess(match: WorkMatch, data: unknown): void {
-  if (data !== undefined) {
-    match.loaderData = data
-  }
+  match.loaderData = data
   match.error = undefined
   match.status = 'success'
   match.invalid = false
