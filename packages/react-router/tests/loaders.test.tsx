@@ -940,3 +940,88 @@ test('reproducer for #6388 - rapid navigation between parameterized routes shoul
   expect(paramPage).toHaveTextContent('Param Component 1 Done')
   expect(loaderCompleteMock).toHaveBeenCalled()
 })
+
+test('aborting a reused parent match does not clear the replacement load promise', async () => {
+  const rootAbortMock = vi.fn()
+  const indexAbortMock = vi.fn()
+  const errorComponentMock = vi.fn()
+
+  const abortableDelay = (
+    abortController: AbortController,
+    onAbort: () => void,
+  ) =>
+    new Promise<void>((resolve, reject) => {
+      const timer = setTimeout(resolve, WAIT_TIME)
+      abortController.signal.addEventListener('abort', () => {
+        clearTimeout(timer)
+        onAbort()
+        reject(
+          new DOMException('signal is aborted without reason', 'AbortError'),
+        )
+      })
+    })
+
+  const rootRoute = createRootRoute({
+    loader: async ({ abortController }) => {
+      await abortableDelay(abortController, rootAbortMock)
+      return 'root loaded'
+    },
+    component: Outlet,
+    errorComponent: ({ error }) => {
+      errorComponentMock(error)
+      return <div data-testid="route-error">{error.message}</div>
+    },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    validateSearch: (search): { filter: string } => ({
+      filter: typeof search.filter === 'string' ? search.filter : '',
+    }),
+    loaderDeps: ({ search }) => ({ filter: search.filter }),
+    loader: async ({ deps, abortController }) => {
+      await abortableDelay(abortController, indexAbortMock)
+      return deps.filter
+    },
+    component: () => {
+      const search = indexRoute.useSearch()
+      const navigate = indexRoute.useNavigate()
+      return (
+        <div data-testid="index-page">
+          <input
+            data-testid="filter-input"
+            value={search.filter}
+            onChange={(event) => {
+              void navigate({
+                to: '/',
+                search: { filter: event.target.value },
+              })
+            }}
+          />
+        </div>
+      )
+    },
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+  await act(() => router.latestLoadPromise)
+
+  const input = await screen.findByTestId('filter-input')
+  for (const filter of ['a', 'ab', 'abc', 'abcd', 'abcde', 'abcdef']) {
+    fireEvent.change(input, { target: { value: filter } })
+  }
+  await act(() => router.latestLoadPromise)
+
+  expect(rootAbortMock).toHaveBeenCalled()
+  expect(indexAbortMock).toHaveBeenCalled()
+  expect(errorComponentMock).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('route-error')).not.toBeInTheDocument()
+  expect(await screen.findByTestId('index-page')).toBeInTheDocument()
+  expect(router.state.location.search).toEqual({ filter: 'abcdef' })
+})

@@ -14,6 +14,7 @@ import type {
 } from './route'
 import type { AnyRouteMatch, MakeRouteMatch } from './Matches'
 import type { AnyRouter, SSROption, UpdateMatchFn } from './router'
+import type { ControlledPromise } from './utils'
 
 /**
  * An object of this shape is created when calling `loadMatches`.
@@ -35,6 +36,7 @@ type InnerLoadContext = {
   forceStaleReload?: boolean
   onReady?: () => Promise<void>
   sync?: boolean
+  loadPromises: Array<ControlledPromise<void> | undefined>
 }
 
 const triggerOnReady = (inner: InnerLoadContext): void | Promise<void> => {
@@ -395,10 +397,12 @@ const executeBeforeLoad = (
 
   // explicitly capture the previous loadPromise
   let prevLoadPromise = match._nonReactive.loadPromise
-  match._nonReactive.loadPromise = createControlledPromise<void>(() => {
+  const loadPromise = createControlledPromise<void>(() => {
     prevLoadPromise?.resolve()
     prevLoadPromise = undefined
   })
+  match._nonReactive.loadPromise = loadPromise
+  inner.loadPromises[index] = loadPromise
 
   const { paramsError, searchError } = match
 
@@ -727,8 +731,7 @@ const runLoader = async (
 
       if ((error as any)?.name === 'AbortError') {
         if (match.abortController.signal.aborted) {
-          match._nonReactive.loaderPromise?.resolve()
-          match._nonReactive.loaderPromise = undefined
+          // loadRouteMatch resolves the promises owned by this execution.
           return
         }
         inner.updateMatch(matchId, (prev) => ({
@@ -835,11 +838,13 @@ const loadRouteMatch = async (
       ;(async () => {
         try {
           await runLoader(inner, matchPromises, matchId, index, route)
-          const match = inner.router.getMatch(matchId)!
-          match._nonReactive.loaderPromise?.resolve()
-          match._nonReactive.loadPromise?.resolve()
-          match._nonReactive.loaderPromise = undefined
-          match._nonReactive.loadPromise = undefined
+          loaderPromise?.resolve()
+          loadPromise?.resolve()
+          const nonReactive = inner.router.getMatch(matchId)?._nonReactive
+          if (nonReactive && nonReactive.loadPromise === loadPromise) {
+            nonReactive.loaderPromise = undefined
+            nonReactive.loadPromise = undefined
+          }
         } catch (err) {
           if (isRedirect(err)) {
             await inner.router.navigate(err.options)
@@ -854,6 +859,8 @@ const loadRouteMatch = async (
   }
 
   const { id: matchId, routeId } = inner.matches[index]!
+  const loadPromise = inner.loadPromises[index]
+  let loaderPromise: ControlledPromise<void> | undefined
   let loaderShouldRunAsync = false
   let loaderIsRunningAsync = false
   const route = inner.router.looseRoutesById[routeId]!
@@ -910,6 +917,8 @@ const loadRouteMatch = async (
       }
 
       if (match.status === 'pending') {
+        loaderPromise = createControlledPromise<void>()
+        match._nonReactive.loaderPromise = loaderPromise
         await handleLoader(
           preload,
           prevMatch,
@@ -922,7 +931,8 @@ const loadRouteMatch = async (
       const nextPreload =
         preload && !inner.router.stores.matchStores.has(matchId)
       const match = inner.router.getMatch(matchId)!
-      match._nonReactive.loaderPromise = createControlledPromise<void>()
+      loaderPromise = createControlledPromise<void>()
+      match._nonReactive.loaderPromise = loaderPromise
       if (nextPreload !== match.preload) {
         inner.updateMatch(matchId, (prev) => ({
           ...prev,
@@ -935,14 +945,20 @@ const loadRouteMatch = async (
   }
   const match = inner.router.getMatch(matchId)!
   if (!loaderIsRunningAsync) {
-    match._nonReactive.loaderPromise?.resolve()
-    match._nonReactive.loadPromise?.resolve()
-    match._nonReactive.loadPromise = undefined
+    loaderPromise?.resolve()
+    loadPromise?.resolve()
   }
 
+  if (match._nonReactive.loadPromise !== loadPromise) {
+    return match
+  }
+
+  if (!loaderIsRunningAsync) {
+    match._nonReactive.loadPromise = undefined
+    match._nonReactive.loaderPromise = undefined
+  }
   clearTimeout(match._nonReactive.pendingTimeout)
   match._nonReactive.pendingTimeout = undefined
-  if (!loaderIsRunningAsync) match._nonReactive.loaderPromise = undefined
   match._nonReactive.dehydrated = undefined
 
   const nextIsFetching = loaderIsRunningAsync ? match.isFetching : false
@@ -968,7 +984,7 @@ export async function loadMatches(arg: {
   updateMatch: UpdateMatchFn
   sync?: boolean
 }): Promise<Array<MakeRouteMatch>> {
-  const inner: InnerLoadContext = arg
+  const inner: InnerLoadContext = { ...arg, loadPromises: [] }
   const matchPromises: Array<Promise<AnyRouteMatch>> = []
 
   // make sure the pending component is immediately rendered when hydrating a match that is not SSRed
