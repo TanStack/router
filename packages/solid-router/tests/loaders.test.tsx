@@ -346,7 +346,13 @@ test('throw abortError from loader upon initial load with basepath', async () =>
 
   expect(await screen.findByTestId('index-error')).toBeInTheDocument()
   expect(screen.queryByText('Index route content')).not.toBeInTheDocument()
-  expect(renderedError).toHaveBeenCalledWith(abortError)
+  // jsdom creates DOMException in another realm, so Solid wraps the error.
+  expect(renderedError).toHaveBeenCalledWith(
+    expect.objectContaining({
+      message: 'Unknown error',
+      cause: abortError,
+    }),
+  )
   expect(
     router.state.matches.find((match) => match.routeId === indexRoute.id),
   ).toMatchObject({
@@ -385,7 +391,13 @@ test('#7673: aborted loader does not render the route component with undefined l
   expect(await screen.findByTestId('index-error')).toBeInTheDocument()
   expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
   expect(routeComponentRendered).not.toHaveBeenCalled()
-  expect(renderedError).toHaveBeenCalledWith(abortError)
+  // jsdom creates DOMException in another realm, so Solid wraps the error.
+  expect(renderedError).toHaveBeenCalledWith(
+    expect.objectContaining({
+      message: 'Unknown error',
+      cause: abortError,
+    }),
+  )
   expect(
     router.state.matches.find((match) => match.routeId === indexRoute.id),
   ).toMatchObject({

@@ -319,11 +319,6 @@ function startLoader(
     if (!loader) {
       outcome = Promise.resolve<LoadOutcome>([success, undefined])
     } else {
-      const failed = (cause: unknown): LoadOutcome =>
-        (cause as any)?.name === 'AbortError' &&
-        !match.abortController.signal.aborted
-          ? [success, undefined]
-          : normalizeError(route, cause)
       let value: unknown
       let rejected = false
       try {
@@ -337,11 +332,11 @@ function startLoader(
       outcome = Promise.resolve(value).then(
         (result) => {
           const normalized = rejected
-            ? failed(result)
+            ? normalizeError(route, result)
             : normalize(result, false)
           return stampNotFound(match, normalized)
         },
-        (cause) => stampNotFound(match, failed(cause)),
+        (cause) => stampNotFound(match, normalizeError(route, cause)),
       )
     }
   }

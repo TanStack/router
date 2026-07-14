@@ -165,11 +165,7 @@ function normalize(
 function normalizeError(
   route: AnyRoute,
   cause: unknown,
-  signal?: AbortSignal,
 ): LoaderOutcome {
-  if (signal && (cause as any)?.name === 'AbortError') {
-    return signal.aborted ? [canceled] : [success, undefined]
-  }
   let outcome = normalize(cause, true, route.id)
   if (outcome[0] !== error) {
     return outcome
@@ -364,7 +360,7 @@ function startFlight(
         (cause) =>
           controller.signal.aborted
             ? [canceled]
-            : normalizeError(route, cause, controller.signal),
+            : normalizeError(route, cause),
       ),
     controller,
     1,
