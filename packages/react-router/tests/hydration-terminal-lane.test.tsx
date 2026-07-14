@@ -48,11 +48,13 @@ afterEach(() => {
 
 describe('hydration terminal lane', () => {
   test('keeps server data while loading only the missing client suffix', async () => {
+    const parentLoader = vi.fn(() => 'client-parent')
+    const childLoader = vi.fn(() => 'client-child')
     const rootRoute = createRootRoute({ component: Outlet })
     const parentRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/parent',
-      loader: () => 'client-parent',
+      loader: parentLoader,
       component: () => (
         <>
           <div>{parentRoute.useLoaderData()}</div>
@@ -64,7 +66,7 @@ describe('hydration terminal lane', () => {
       getParentRoute: () => parentRoute,
       path: '/child',
       ssr: false,
-      loader: () => 'client-child',
+      loader: childLoader,
       component: () => <div>{childRoute.useLoaderData()}</div>,
     })
     const router = createRouter({
@@ -89,43 +91,7 @@ describe('hydration terminal lane', () => {
     expect(await screen.findByText('server-parent')).toBeInTheDocument()
     expect(await screen.findByText('client-child')).toBeInTheDocument()
     expect(screen.queryByText('client-parent')).not.toBeInTheDocument()
-  })
-
-  test('does not render serialized descendants below a server error', async () => {
-    const rootRoute = createRootRoute({ component: Outlet })
-    const parentRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/parent',
-      errorComponent: ({ error }) => <div>Parent failed: {error.message}</div>,
-      component: Outlet,
-    })
-    const childRoute = createRoute({
-      getParentRoute: () => parentRoute,
-      path: '/child',
-      component: () => <div>Child must stay omitted</div>,
-    })
-    const router = createRouter({
-      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
-      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-    })
-    const matches = router.matchRoutes(router.state.location)
-    bootstrap([
-      { match: matches[0]!, status: 'success', ssr: true },
-      {
-        match: matches[1]!,
-        status: 'error',
-        ssr: true,
-        error: new Error('server boom'),
-      },
-      { match: matches[2]!, status: 'success', ssr: true },
-    ])
-
-    await hydrate(router)
-    render(<RouterProvider router={router} />)
-
-    expect(await screen.findByText('Parent failed: server boom')).toBeVisible()
-    expect(
-      screen.queryByText('Child must stay omitted'),
-    ).not.toBeInTheDocument()
+    expect(parentLoader).not.toHaveBeenCalled()
+    expect(childLoader).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,9 +1,12 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { describe, expect, test, vi } from 'vitest'
-import { BaseRootRoute, BaseRoute, notFound } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  createControlledPromise,
+  notFound,
+} from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 // https://github.com/TanStack/router/issues/6221
 //
@@ -14,74 +17,98 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 // 2. Revisiting a cached success match that gets a stale reload — the head
 //    title must not lag one loaderData run behind.
 describe('issue #6221: head does not run before loader data is ready', () => {
-  test('head sees fresh loaderData when a previously-notFound route loads successfully', async () => {
+  test('existing-behavior control: head sees fresh loaderData after a notFound visit', async () => {
     let authed = false
-    const headLoaderData: Array<unknown> = []
+    const articleResponse = createControlledPromise<{ title: string }>()
+    const successfulLoadStarted = createControlledPromise<void>()
 
-    const articleLoader = vi.fn(async () => {
-      await sleep(5)
-      if (!authed) throw notFound()
-      return { title: 'Article 123' }
-    })
+    const articleLoader = async () => {
+      if (!authed) {
+        await Promise.resolve()
+        throw notFound()
+      }
+
+      successfulLoadStarted.resolve()
+      return articleResponse
+    }
 
     const rootRoute = new BaseRootRoute({})
-    const indexRoute = new BaseRoute({
+    const dashboardRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
-      path: '/',
+      path: '/dashboard',
     })
     const articleRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/article',
       loader: articleLoader,
       notFoundComponent: () => 'Not found',
-      head: ({ loaderData }) => {
-        headLoaderData.push(loaderData)
-        return {
-          meta: [{ title: (loaderData as any)?.title ?? 'Generic title' }],
-        }
-      },
+      head: ({ loaderData }) => ({
+        meta: [{ title: loaderData?.title ?? 'Generic title' }],
+      }),
     })
 
     const router = createTestRouter({
-      routeTree: rootRoute.addChildren([indexRoute, articleRoute]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
+      routeTree: rootRoute.addChildren([dashboardRoute, articleRoute]),
+      history: createMemoryHistory({ initialEntries: ['/article'] }),
     })
+    const backLoadFinished = createControlledPromise<void>()
+    let backLoadStarted = false
+    let unsubscribe: (() => void) | undefined
 
-    await router.load()
+    try {
+      await router.load()
+      const notFoundMatch = router.state.matches.find(
+        (match) => match.routeId === articleRoute.id,
+      )
+      expect(notFoundMatch?.status).toBe('notFound')
+      expect(notFoundMatch?.meta).toEqual([{ title: 'Generic title' }])
 
-    // Logged out: the article loader throws notFound.
-    await router.navigate({ to: '/article' })
-    const notFoundMatch = router.state.matches.find(
-      (match) => match.routeId === articleRoute.id,
-    )
-    expect(notFoundMatch?.status).toBe('notFound')
+      // Model the reported auth redirect and browser Back without relying on a
+      // wall-clock loader delay.
+      authed = true
+      await router.navigate({ to: '/dashboard' })
+      unsubscribe = router.history.subscribe(() => {
+        backLoadStarted = true
+        void router.load().then(
+          () => backLoadFinished.resolve(),
+          (error) => backLoadFinished.reject(error),
+        )
+      })
+      router.history.back()
+      await successfulLoadStarted
+      expect(articleResponse.status).toBe('pending')
 
-    // Log in, go elsewhere, then come back (the issue's back-button step).
-    authed = true
-    await router.navigate({ to: '/' })
-    await router.navigate({ to: '/article' })
+      articleResponse.resolve({ title: 'Article 123' })
+      await backLoadFinished
 
-    await vi.waitFor(() => {
       const articleMatch = router.state.matches.find(
         (match) => match.routeId === articleRoute.id,
       )
       expect(articleMatch?.status).toBe('success')
+      expect(articleMatch?.loaderData).toEqual({ title: 'Article 123' })
       expect(articleMatch?.meta).toEqual([{ title: 'Article 123' }])
-    })
-
-    // The head executed for the successful lane saw the fresh loaderData.
-    expect(headLoaderData[headLoaderData.length - 1]).toEqual({
-      title: 'Article 123',
-    })
+    } finally {
+      articleResponse.resolve({ title: 'Article 123' })
+      if (backLoadStarted) {
+        await backLoadFinished.catch(() => undefined)
+      }
+      unsubscribe?.()
+    }
   })
 
   test('head title does not lag one loaderData run behind on revisits', async () => {
+    const secondLoaderStarted = createControlledPromise<void>()
+    const secondLoaderResponse = createControlledPromise<{ author: string }>()
     let version = 0
-    const quoteLoader = vi.fn(async () => {
-      await sleep(5)
+    const quoteLoader = () => {
       version += 1
-      return { author: `author-${version}` }
-    })
+      if (version === 2) {
+        secondLoaderStarted.resolve()
+        return secondLoaderResponse
+      }
+
+      return { author: 'author-1' }
+    }
 
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
@@ -92,8 +119,9 @@ describe('issue #6221: head does not run before loader data is ready', () => {
       getParentRoute: () => rootRoute,
       path: '/quote',
       loader: quoteLoader,
+      staleTime: 0,
       head: ({ loaderData }) => ({
-        meta: [{ title: `Quote by ${(loaderData as any)?.author ?? '...'}` }],
+        meta: [{ title: `Quote by ${loaderData?.author ?? '...'}` }],
       }),
     })
 
@@ -102,29 +130,33 @@ describe('issue #6221: head does not run before loader data is ready', () => {
       history: createMemoryHistory({ initialEntries: ['/'] }),
     })
 
-    await router.load()
+    const getQuoteMatch = () =>
+      router.state.matches.find((match) => match.routeId === quoteRoute.id)
+    try {
+      await router.load()
 
-    await router.navigate({ to: '/quote' })
-    await vi.waitFor(() => {
-      const quoteMatch = router.state.matches.find(
-        (match) => match.routeId === quoteRoute.id,
-      )
-      expect(quoteMatch?.meta).toEqual([{ title: 'Quote by author-1' }])
-    })
+      await router.navigate({ to: '/quote' })
+      expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-1' })
+      expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-1' }])
 
-    await router.navigate({ to: '/' })
-    await router.navigate({ to: '/quote' })
+      await router.navigate({ to: '/' })
+      const revisit = router.navigate({ to: '/quote' })
+      await secondLoaderStarted
+      await revisit
 
-    // The revisit reloads the stale match. Whether that reload is foreground
-    // or background, the committed head must reflect the loaderData it was
-    // committed with — never the previous run's data.
-    await vi.waitFor(() => {
-      expect(quoteLoader).toHaveBeenCalledTimes(2)
-      const quoteMatch = router.state.matches.find(
-        (match) => match.routeId === quoteRoute.id,
-      )
-      expect(quoteMatch?.loaderData).toEqual({ author: 'author-2' })
-      expect(quoteMatch?.meta).toEqual([{ title: 'Quote by author-2' }])
-    })
+      // The cached generation remains internally consistent while its stale
+      // loader is pending in the background.
+      expect(secondLoaderResponse.status).toBe('pending')
+      expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-1' })
+      expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-1' }])
+
+      secondLoaderResponse.resolve({ author: 'author-2' })
+      await vi.waitFor(() => {
+        expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-2' })
+        expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-2' }])
+      })
+    } finally {
+      secondLoaderResponse.resolve({ author: 'author-2' })
+    }
   })
 })

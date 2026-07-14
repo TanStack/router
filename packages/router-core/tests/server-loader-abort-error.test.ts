@@ -11,11 +11,13 @@ import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 describe('server loader AbortError', () => {
   test('settles as an error when the match signal is not aborted', async () => {
+    let loaderSignal: AbortSignal | undefined
     const rootRoute = new BaseRootRoute({})
     const abortingRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/aborting',
-      loader: () => {
+      loader: ({ abortController }) => {
+        loaderSignal = abortController.signal
         throw new DOMException('The operation was aborted.', 'AbortError')
       },
     })
@@ -31,6 +33,7 @@ describe('server loader AbortError', () => {
       (item) => item.routeId === abortingRoute.id,
     )
     expect(response.status).toBe(500)
+    expect(loaderSignal?.aborted).toBe(false)
     expect(match?.status).toBe('error')
     expect(match?.error).toMatchObject({
       name: 'AbortError',

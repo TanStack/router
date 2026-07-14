@@ -16,10 +16,6 @@ import { createTestRouter } from './routerTestUtils'
  */
 describe('issue #4444: param parse error on a route with a lazy child', () => {
   test('load settles, commits the error boundary, and leaves no match stuck pending', async () => {
-    const lazyFn = vi.fn(() =>
-      Promise.resolve({ options: { component: () => null } } as any),
-    )
-
     const rootRoute = new BaseRootRoute({})
     const langRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -38,7 +34,16 @@ describe('issue #4444: param parse error on a route with a lazy child', () => {
     const lazyChildRoute = new BaseRoute({
       getParentRoute: () => langRoute,
       path: '/lazy',
-    }).lazy(lazyFn)
+    })
+    const lazyFn = vi.fn(() =>
+      Promise.resolve({
+        options: {
+          id: lazyChildRoute.id,
+          component: () => null,
+        },
+      }),
+    )
+    lazyChildRoute.lazy(lazyFn)
 
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([
@@ -49,6 +54,7 @@ describe('issue #4444: param parse error on a route with a lazy child', () => {
 
     // The reported bug: this load never reached a settled render state.
     await router.load()
+    expect(router.state.status).toBe('idle')
 
     // The failing route commits the parse error for its error boundary…
     const langMatch = router.state.matches.find(
@@ -65,6 +71,7 @@ describe('issue #4444: param parse error on a route with a lazy child', () => {
     expect(
       router.state.matches.find((match) => match.status === 'pending'),
     ).toBeUndefined()
+    expect(lazyFn).not.toHaveBeenCalled()
     expect(router.state.isLoading).toBe(false)
   })
 })

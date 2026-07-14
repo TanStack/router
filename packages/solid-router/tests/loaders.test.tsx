@@ -17,9 +17,10 @@ import {
 import { sleep } from './utils'
 
 afterEach(() => {
+  cleanup()
+  vi.useRealTimers()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
-  cleanup()
 })
 
 const WAIT_TIME = 100
@@ -320,58 +321,22 @@ test('throw error from beforeLoad when navigating to route', async () => {
   expect(indexElement).toBeInTheDocument()
 })
 
-test('throw abortError from loader upon initial load with basepath', async () => {
+// https://github.com/TanStack/router/pull/7673
+test('#7673: a spontaneous loader AbortError renders the boundary without executing the route component', async () => {
   window.history.replaceState(null, 'root', '/app')
   const rootRoute = createRootRoute({})
   const abortError = new DOMException('Aborted', 'AbortError')
-  const renderedError = vi.fn()
-
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    loader: async () => {
-      return Promise.reject(abortError)
-    },
-    component: () => <div>Index route content</div>,
-    errorComponent: ({ error }) => {
-      renderedError(error)
-      return <div data-testid="index-error">indexErrorComponent</div>
-    },
-  })
-
-  const routeTree = rootRoute.addChildren([indexRoute])
-  const router = createRouter({ routeTree, basepath: '/app' })
-
-  render(() => <RouterProvider router={router} />)
-
-  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
-  expect(screen.queryByText('Index route content')).not.toBeInTheDocument()
-  // jsdom creates DOMException in another realm, so Solid wraps the error.
-  expect(renderedError).toHaveBeenCalledWith(
-    expect.objectContaining({
-      message: 'Unknown error',
-      cause: abortError,
-    }),
-  )
-  expect(
-    router.state.matches.find((match) => match.routeId === indexRoute.id),
-  ).toMatchObject({
-    status: 'error',
-    error: abortError,
-  })
-  expect(window.location.pathname.startsWith('/app')).toBe(true)
-})
-
-// https://github.com/TanStack/router/pull/7673
-test('#7673: aborted loader does not render the route component with undefined loaderData', async () => {
-  const abortError = new DOMException('Aborted', 'AbortError')
   const routeComponentRendered = vi.fn()
   const renderedError = vi.fn()
-  const rootRoute = createRootRoute({})
+  let routeSignal: AbortSignal | undefined
+
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    loader: (): Promise<{ value: string }> => Promise.reject(abortError),
+    loader: async ({ abortController }): Promise<{ value: string }> => {
+      routeSignal = abortController.signal
+      return Promise.reject(abortError)
+    },
     component: () => {
       routeComponentRendered()
       const data = indexRoute.useLoaderData()
@@ -382,13 +347,20 @@ test('#7673: aborted loader does not render the route component with undefined l
       return <div data-testid="index-error">indexErrorComponent</div>
     },
   })
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute]),
+
+  const routeTree = rootRoute.addChildren([indexRoute])
+  const router = createRouter({ routeTree, basepath: '/app' })
+  const rendered = new Promise<void>((resolve) => {
+    const unsubscribe = router.subscribe('onRendered', () => {
+      unsubscribe()
+      resolve()
+    })
   })
 
   render(() => <RouterProvider router={router} />)
 
   expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  await rendered
   expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
   expect(routeComponentRendered).not.toHaveBeenCalled()
   // jsdom creates DOMException in another realm, so Solid wraps the error.
@@ -398,12 +370,15 @@ test('#7673: aborted loader does not render the route component with undefined l
       cause: abortError,
     }),
   )
+  expect(routeSignal?.aborted).toBe(false)
   expect(
     router.state.matches.find((match) => match.routeId === indexRoute.id),
   ).toMatchObject({
     status: 'error',
     error: abortError,
   })
+  expect(window.location.pathname).toBe('/app')
+  expect(router.state.status).toBe('idle')
 })
 
 test('reproducer #4245', async () => {
@@ -786,12 +761,16 @@ test('does not show pending UI when loaders finish before their pending delays',
   })
 
   render(() => <RouterProvider router={router} />)
-  const linkToFoo = await screen.findByTestId('link-to-foo')
-  fireEvent.click(linkToFoo)
-  const fooElement = await screen.findByText('Nested Foo page')
+  await screen.findByTestId('link-to-foo')
+  vi.useFakeTimers()
+  const navigation = router.navigate({ to: '/nested/foo' })
+  await vi.advanceTimersByTimeAsync(WAIT_TIME * 5)
+  await navigation
+  const fooElement = screen.getByText('Nested Foo page')
   expect(fooElement).toBeInTheDocument()
 
   expect(router.state.location.href).toBe('/nested/foo')
+  expect(router.state.status).toBe('idle')
 
   // none of the pending components should have been called
   expect(defaultPendingComponentOnMountMock).not.toHaveBeenCalled()
@@ -809,6 +788,7 @@ test('navigating away from a pending route aborts its loader', async () => {
   }
   const onAbortMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
+  let fooSignal: AbortSignal | undefined
   const history = createMemoryHistory({ initialEntries: ['/'] })
   const rootRoute = createRootRoute({
     component: () => (
@@ -827,17 +807,18 @@ test('navigating away from a pending route aborts its loader', async () => {
   const fooRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/foo',
-    pendingMs: WAIT_TIME * 20,
+    pendingMs: 0,
     loader: async ({ abortController }) => {
+      fooSignal = abortController.signal
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(() => {
-          resolve()
-        }, WAIT_TIME * 40)
-        abortController.signal.addEventListener('abort', () => {
-          onAbortMock()
-          clearTimeout(timer)
-          resolve()
-        })
+        abortController.signal.addEventListener(
+          'abort',
+          () => {
+            onAbortMock()
+            resolve()
+          },
+          { once: true },
+        )
       })
     },
     pendingComponent: getPendingComponent(fooPendingComponentOnMountMock),
@@ -853,13 +834,18 @@ test('navigating away from a pending route aborts its loader', async () => {
   render(() => <RouterProvider router={router} />)
   const fooLink = await screen.findByTestId('link-to-foo')
   fireEvent.click(fooLink)
-  await sleep(WAIT_TIME * 30)
   const pendingElement = await screen.findByText('Pending...')
   expect(pendingElement).toBeInTheDocument()
-  const barLink = await screen.findByTestId('link-to-bar')
-  fireEvent.click(barLink)
-  const barElement = await screen.findByText('Bar page')
+  expect(fooSignal?.aborted).toBe(false)
+  await router.navigate({ to: '/bar' })
+  const barElement = screen.getByText('Bar page')
   expect(barElement).toBeInTheDocument()
+
   expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
-  expect(onAbortMock).toHaveBeenCalled()
+  expect(onAbortMock).toHaveBeenCalledTimes(1)
+  expect(fooSignal?.aborted).toBe(true)
+  expect(screen.queryByText('Pending...')).not.toBeInTheDocument()
+  expect(screen.queryByText('Foo page')).not.toBeInTheDocument()
+  expect(router.state.location.href).toBe('/bar')
+  expect(router.state.status).toBe('idle')
 })

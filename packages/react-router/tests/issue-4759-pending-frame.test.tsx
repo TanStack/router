@@ -26,13 +26,12 @@ afterEach(() => {
 
 // Repro for https://github.com/TanStack/router/issues/4759
 //
-// With pendingMs: 0 the pending fallback must be visible from the very first
-// paint of the initial load. Deferring pending publication to a macrotask
-// (setTimeout) leaves at least one committed render where the router outputs
-// nothing, which flashes the app shell background (the "red frame") before
-// the pending UI appears.
-describe('issue #4759: no blank frame before pending UI when pendingMs is 0', () => {
+// JSDOM cannot observe browser paints. This unit reduction verifies the event
+// ordering behind the issue: pending DOM must be published before the first
+// macrotask when pendingMs is 0.
+describe('issue #4759: pendingMs 0 publishes pending DOM before a macrotask', () => {
   test('pending fallback is committed on mount without waiting for a macrotask', async () => {
+    vi.useFakeTimers()
     let resolveLoader!: (value: string) => void
     const loaderPromise = new Promise<string>((resolve) => {
       resolveLoader = resolve
@@ -42,9 +41,6 @@ describe('issue #4759: no blank frame before pending UI when pendingMs is 0', ()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      pendingMs: 0,
-      pendingMinMs: 0,
-      pendingComponent: () => <div data-testid="pending">pending...</div>,
       loader: () => loaderPromise,
       component: () => <div data-testid="loaded">loaded</div>,
     })
@@ -53,19 +49,44 @@ describe('issue #4759: no blank frame before pending UI when pendingMs is 0', ()
       routeTree: rootRoute.addChildren([indexRoute]),
       history,
     })
+    let resolveRendered!: () => void
+    const rendered = new Promise<void>((resolve) => {
+      resolveRendered = resolve
+    })
+    const unsubscribe = router.subscribe('onRendered', (event) => {
+      if (event.toLocation.pathname === '/') {
+        resolveRendered()
+      }
+    })
 
-    render(<RouterProvider router={router} />)
+    try {
+      render(
+        <main>
+          <RouterProvider
+            router={router}
+            defaultPendingMs={0}
+            defaultPendingMinMs={0}
+            defaultPendingComponent={() => (
+              <div data-testid="pending">pending...</div>
+            )}
+          />
+        </main>,
+      )
 
-    // Flush microtasks only — deliberately no timer/macrotask turn. Any
-    // implementation that defers pending publication to setTimeout cannot
-    // have published yet, which is precisely the blank painted frame from
-    // the issue. The pending fallback must already be in the DOM here.
-    await act(async () => {})
-    expect(screen.getByTestId('pending')).toBeInTheDocument()
+      // Fake timers keep the first macrotask frozen. An implementation that
+      // publishes pending state with setTimeout cannot satisfy this assertion.
+      await act(async () => {})
+      expect(screen.getByTestId('pending')).toBeInTheDocument()
 
-    // Sanity: the load still completes normally afterwards.
-    resolveLoader('done')
-    expect(await screen.findByTestId('loaded')).toBeInTheDocument()
-    expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+      // Sanity: the load still completes normally afterwards.
+      resolveLoader('done')
+      await act(() => rendered)
+      expect(screen.getByTestId('loaded')).toBeInTheDocument()
+      expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+    } finally {
+      unsubscribe()
+      resolveLoader('done')
+      vi.useRealTimers()
+    }
   })
 })

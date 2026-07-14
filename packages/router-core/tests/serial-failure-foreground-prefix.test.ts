@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -64,13 +64,8 @@ describe('serial failure keeps ancestor reloads in the foreground lane', () => {
     // ...and the stale parent reloaded in the SAME foreground lane: fresh
     // loaderData is committed with the failure, not deferred to a discarded
     // background batch.
-    await vi.waitFor(() => {
-      expect(parentRuns).toBe(2)
-      expect(
-        router.state.matches.find((match) => match.routeId === parentRoute.id)
-          ?.loaderData,
-      ).toBe('parent run 2')
-    })
+    expect(parentRuns).toBe(2)
+    expect(parentMatch?.loaderData).toBe('parent run 2')
     expect(parentMatch?.status).toBe('success')
   })
 })

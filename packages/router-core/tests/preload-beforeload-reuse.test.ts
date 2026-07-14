@@ -128,6 +128,7 @@ describe('preloaded beforeLoad context reuse', () => {
     loaderGate.resolve('shared loader data')
     await Promise.all([preload, navigation])
 
+    expect(loader).toHaveBeenCalledTimes(1)
     expect(router.state.matches.at(-1)?.context).toEqual({ guard: 'loaded' })
     expect(router.state.matches.at(-1)?.loaderData).toBe('shared loader data')
   })
@@ -239,8 +240,11 @@ describe('preloaded beforeLoad context reuse', () => {
     const parentRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/parent',
-      loaderDeps: ({ search }: { search: Record<string, any> }) => ({
+      validateSearch: (search: Record<string, unknown>) => ({
         version: Number(search.version),
+      }),
+      loaderDeps: ({ search }) => ({
+        version: search.version,
       }),
       context: ({ deps }: { deps: { version: number } }) => ({
         version: deps.version,
@@ -264,11 +268,11 @@ describe('preloaded beforeLoad context reuse', () => {
     await router.preloadRoute({
       to: '/parent/child',
       search: { version: 1 },
-    } as any)
+    })
     await router.navigate({
       to: '/parent/child',
       search: { version: 2 },
-    } as any)
+    })
 
     expect(
       childBeforeLoad.mock.calls.map(([context]) => context.preload),
@@ -307,7 +311,8 @@ describe('preloaded beforeLoad context reuse', () => {
     await vi.waitFor(() => expect(oldBeforeLoad).toHaveBeenCalledTimes(1))
 
     guardedRoute.options.beforeLoad = newBeforeLoad as any
-    await router._refreshRoute?.(guardedRoute.id)
+    expect(router._refreshRoute).toBeDefined()
+    await router._refreshRoute!(guardedRoute.id)
     oldBeforeLoadGate.resolve()
     await preload
     await router.navigate({ to: '/guarded' })
@@ -358,7 +363,8 @@ describe('preloaded beforeLoad context reuse', () => {
     await vi.waitFor(() => expect(oldBeforeLoad).toHaveBeenCalledTimes(1))
 
     parentRoute.options.beforeLoad = newBeforeLoad as any
-    await router._refreshRoute?.(parentRoute.id)
+    expect(router._refreshRoute).toBeDefined()
+    await router._refreshRoute!(parentRoute.id)
     oldBeforeLoadGate.resolve()
     await preload
     await router.navigate({ to: '/parent/child' })
@@ -485,7 +491,7 @@ describe('preloaded beforeLoad context reuse', () => {
     expect(seen).toEqual([true, false])
   })
 
-  test('preload false leaves beforeLoad context unresolved for navigation', async () => {
+  test('preload false does not cache beforeLoad context for navigation', async () => {
     const seen: Array<boolean> = []
     const loader = vi.fn()
     const rootRoute = new BaseRootRoute({})
@@ -510,6 +516,10 @@ describe('preloaded beforeLoad context reuse', () => {
 
     await router.load()
     await router.preloadRoute({ to: '/guarded' })
+
+    expect(seen).toEqual([true])
+    expect(loader).not.toHaveBeenCalled()
+
     await router.navigate({ to: '/guarded' })
 
     expect(seen).toEqual([true, false])

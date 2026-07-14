@@ -1,5 +1,5 @@
 import { StrictMode, act } from 'react'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
 import {
   Outlet,
@@ -10,7 +10,12 @@ import {
   createRouter,
 } from '../src'
 
+const testCleanups: Array<() => void> = []
+
 afterEach(() => {
+  while (testCleanups.length) {
+    testCleanups.pop()!()
+  }
   cleanup()
 })
 
@@ -33,17 +38,21 @@ test('same-location invalidation resolves after its refreshed DOM commits', asyn
 
   render(<RouterProvider router={router} />)
   expect(await screen.findByText('Generation 1')).toBeInTheDocument()
+  await waitFor(() => {
+    expect(router.state.status).toBe('idle')
+    expect(router.state.resolvedLocation?.pathname).toBe('/')
+  })
 
   const refreshedDomWasVisible: Array<boolean> = []
   const unsubscribe = router.subscribe('onResolved', () => {
     refreshedDomWasVisible.push(screen.queryByText('Generation 2') !== null)
   })
+  testCleanups.push(unsubscribe)
 
   await act(() => router.invalidate())
-  expect(await screen.findByText('Generation 2')).toBeInTheDocument()
+  expect(screen.getByText('Generation 2')).toBeInTheDocument()
+  expect(screen.queryByText('Generation 1')).not.toBeInTheDocument()
   expect(refreshedDomWasVisible).toEqual([true])
-
-  unsubscribe()
 })
 
 test('StrictMode effect replay preserves renderer commit sequencing', async () => {
@@ -69,17 +78,28 @@ test('StrictMode effect replay preserves renderer commit sequencing', async () =
     </StrictMode>,
   )
   expect(await screen.findByText('Index')).toBeInTheDocument()
-
-  const resolvedWithDestination = new Promise<void>((resolve) => {
-    const unsubscribe = router.subscribe('onResolved', (event) => {
-      if (event.toLocation.pathname === '/next') {
-        expect(screen.getByText('Next')).toBeInTheDocument()
-        unsubscribe()
-        resolve()
-      }
-    })
+  await waitFor(() => {
+    expect(router.state.status).toBe('idle')
+    expect(router.state.resolvedLocation?.pathname).toBe('/')
   })
 
+  const eventLog: Array<string> = []
+  const unsubscribers = [
+    router.subscribe('onResolved', (event) => {
+      if (event.toLocation.pathname === '/next') {
+        eventLog.push('onResolved:/next')
+      }
+    }),
+    router.subscribe('onRendered', (event) => {
+      if (event.toLocation.pathname === '/next') {
+        eventLog.push('onRendered:/next')
+      }
+    }),
+  ]
+  testCleanups.push(...unsubscribers)
+
   await act(() => router.navigate({ to: '/next' }))
-  await resolvedWithDestination
+  expect(eventLog).toEqual(['onResolved:/next', 'onRendered:/next'])
+  expect(screen.getByText('Next')).toBeInTheDocument()
+  expect(screen.queryByText('Index')).not.toBeInTheDocument()
 })

@@ -1414,24 +1414,17 @@ describe('Link', () => {
       '/Dashboard/posts?page=2&filter=inactive',
     )
 
-    await fireEvent.click(updateSearchLink)
+    fireEvent.click(updateSearchLink)
 
-    // Wait for navigation to complete and search params to update
     await waitFor(() => {
+      expect(window.location.pathname).toBe('/Dashboard/posts')
       expect(window.location.search).toBe('?page=2&filter=inactive')
-    })
-
-    await screen.findByTestId('current-page')
-    // Verify search was updated
-    expect(window.location.pathname).toBe('/Dashboard/posts')
-    expect(window.location.search).toBe('?page=2&filter=inactive')
-
-    await waitFor(() => {
       expect(screen.getByTestId('current-page')).toHaveTextContent('Page: 2')
       expect(screen.getByTestId('current-filter')).toHaveTextContent(
         'Filter: inactive',
       )
     })
+    await vi.waitFor(() => expect(router.state.status).toBe('idle'))
   })
 
   test('when navigating to /posts with invalid search', async () => {

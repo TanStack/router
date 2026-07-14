@@ -56,7 +56,14 @@ test('a failed component download is retried from the route error UI', async () 
 
   render(<RouterProvider router={router} />)
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Retry' }))
+  const retryButton = await screen.findByRole('button', { name: 'Retry' })
+  expect(importer).toHaveBeenCalledTimes(1)
+
+  fireEvent.click(retryButton)
 
   expect(await screen.findByText('Page content')).toBeInTheDocument()
+  expect(importer).toHaveBeenCalledTimes(2)
+  expect(
+    screen.queryByRole('button', { name: 'Retry' }),
+  ).not.toBeInTheDocument()
 })

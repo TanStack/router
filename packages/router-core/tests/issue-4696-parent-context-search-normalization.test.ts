@@ -3,8 +3,8 @@ import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
-// https://github.com/TanStack/router/issues/4696
-test('#4696: normalized child search preserves parent context across reused matches', async () => {
+// Existing-behavior coverage for https://github.com/TanStack/router/issues/4696
+test('#4696 existing behavior: normalized child search keeps reused parent context', async () => {
   const rootLoader = vi.fn(
     ({ context }: { context: Record<string, unknown> }) => context,
   )
@@ -46,12 +46,25 @@ test('#4696: normalized child search preserves parent context across reused matc
   })
 
   await router.load()
+  expect(rootLoader).toHaveBeenCalledTimes(1)
+  expect(rootLoader.mock.calls[0]?.[0].context).toMatchObject({
+    isAuthenticated: true,
+  })
+  expect(router.state.location.pathname).toBe('/')
   router.update({
     history: createMemoryHistory({
       initialEntries: ['/dashboard?page=0'],
     }),
   })
   await router.load()
+  expect(router.state.location.pathname).toBe('/dashboard')
+  expect(rootLoader).toHaveBeenCalledTimes(1)
+  expect(dashboardBeforeLoad).toHaveBeenCalledTimes(1)
+  expect(dashboardBeforeLoad).toHaveBeenLastCalledWith(
+    expect.objectContaining({
+      context: expect.objectContaining({ isAuthenticated: true }),
+    }),
+  )
   expect(
     router.state.matches.find((match) => match.routeId === rootRoute.id)
       ?.loaderData,
@@ -63,11 +76,14 @@ test('#4696: normalized child search preserves parent context across reused matc
   })
   await router.load()
 
-  expect(dashboardBeforeLoad).toHaveBeenCalledWith(
+  expect(dashboardBeforeLoad).toHaveBeenCalledTimes(1)
+  expect(dashboardBeforeLoad).toHaveBeenLastCalledWith(
     expect.objectContaining({
       context: expect.objectContaining({ isAuthenticated: true }),
     }),
   )
+  expect(rootLoader).toHaveBeenCalledTimes(1)
+  expect(router.state.location.pathname).toBe('/dashboard')
   const rootMatch = router.state.matches.find(
     (match) => match.routeId === rootRoute.id,
   )

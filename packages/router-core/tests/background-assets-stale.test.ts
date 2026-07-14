@@ -11,12 +11,14 @@ describe('background decorative asset failure', () => {
 
   afterEach(() => {
     vi.useRealTimers()
+    vi.restoreAllMocks()
   })
 
   test('commits fresh loader data while preserving the previous projected assets', async () => {
+    const projectionError = new Error('head projection failed')
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     let resolveStaleReload!: (data: { title: string }) => void
     let loaderCalls = 0
-    let headCalls = 0
     const loader = () => {
       loaderCalls += 1
       if (loaderCalls === 1) {
@@ -34,11 +36,10 @@ describe('background decorative asset failure', () => {
       path: '/foo',
       loader,
       head: ({ loaderData }) => {
-        headCalls += 1
         // The loader always resolves before head runs in this test, so
         // loaderData is never undefined here.
         if (loaderData!.title === 'fresh') {
-          throw new Error('head projection failed')
+          throw projectionError
         }
 
         return {
@@ -73,5 +74,6 @@ describe('background decorative asset failure', () => {
     )
 
     expect(getMatch()?.meta).toEqual([{ title: 'old' }])
+    expect(log).toHaveBeenCalledWith(projectionError)
   })
 })

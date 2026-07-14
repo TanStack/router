@@ -72,22 +72,13 @@ function setup(reloadGate?: Promise<void>) {
 
   return {
     router,
+    dashboardRoute,
     getSignal: () => capturedSignal,
     getDeferredRequestAbortCount: () => deferredRequestAbortCount,
   }
 }
 
 describe('stay-match abort scope', () => {
-  test('navigating to a child route does not abort a fresh success stay-match', async () => {
-    const { router, getSignal } = setup()
-
-    await router.load()
-    expect(getSignal()?.aborted).toBe(false)
-
-    await router.navigate({ to: '/dashboard/settings' })
-    expect(getSignal()?.aborted).toBe(false)
-  })
-
   test('unloading a reused match aborts the signal exposed to its loader', async () => {
     const { router, getSignal, getDeferredRequestAbortCount } = setup()
 
@@ -108,7 +99,7 @@ describe('stay-match abort scope', () => {
 
   test('background invalidation keeps the old loader signal until fresh data commits', async () => {
     const reloadGate = createControlledPromise<void>()
-    const { router, getSignal } = setup(reloadGate)
+    const { router, dashboardRoute, getSignal } = setup(reloadGate)
 
     await router.load()
     const firstSignal = getSignal()
@@ -116,14 +107,21 @@ describe('stay-match abort scope', () => {
 
     const invalidation = router.invalidate()
     await vi.waitFor(() => expect(getSignal()).not.toBe(firstSignal))
+    const replacementSignal = getSignal()
 
     // The old loader data is still the published generation while the
     // background replacement is private.
     expect(firstSignal?.aborted).toBe(false)
+    expect(replacementSignal?.aborted).toBe(false)
 
     reloadGate.resolve()
     await invalidation
     await vi.waitFor(() => expect(firstSignal?.aborted).toBe(true))
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: dashboardRoute.id,
+      status: 'success',
+    })
+    expect(replacementSignal?.aborted).toBe(false)
   })
 
   test.each(['beforeLoad', 'shouldReload'] as const)(

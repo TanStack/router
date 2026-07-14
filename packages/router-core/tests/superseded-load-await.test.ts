@@ -4,10 +4,9 @@ import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 /**
- * awaiting router.load() or router.invalidate() should remain a
- * reliable synchronization point even when that load is superseded. If the
- * abandoned load resolves immediately, callers can observe router state before
- * the newer load has settled.
+ * Awaiting router.load() should remain a reliable synchronization point even
+ * when that load is superseded. If the abandoned load resolves immediately,
+ * callers can observe router state before the newer load has settled.
  *
  * This test starts a real public router.load() for /one, supersedes it with a
  * real navigation to /two, and resolves only the abandoned /one loader. The
@@ -81,5 +80,11 @@ describe('superseded load await', () => {
 
     expect(secondLoaderSettled).toBe(true)
     expect(supersededLoadSettled).toBe(true)
+    expect(router.state.location.pathname).toBe('/two')
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: secondRoute.id,
+      status: 'success',
+      loaderData: 'two',
+    })
   })
 })

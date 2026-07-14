@@ -4,6 +4,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import {
   Outlet,
   RouterProvider,
+  createControlledPromise,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -23,7 +24,7 @@ test('invalidate({ forcePending: true }) keeps rendering the pending fallback in
   })
   const errorComponentRendered = vi.fn()
   let shouldSuspendReload = false
-  let resolveReload: (() => void) | undefined
+  const reloadGate = createControlledPromise<void>()
 
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
@@ -36,9 +37,7 @@ test('invalidate({ forcePending: true }) keeps rendering the pending fallback in
     pendingMinMs: 10,
     loader: async () => {
       if (shouldSuspendReload) {
-        await new Promise<void>((resolve) => {
-          resolveReload = resolve
-        })
+        await reloadGate
       }
 
       return 'done'
@@ -82,11 +81,115 @@ test('invalidate({ forcePending: true }) keeps rendering the pending fallback in
   expect(screen.queryByTestId('force-pending-error')).not.toBeInTheDocument()
 
   act(() => {
-    resolveReload?.()
+    reloadGate.resolve()
   })
 
   await act(() => invalidation)
   expect(await screen.findByTestId('force-pending-route')).toHaveTextContent(
     'done',
   )
+  expect(screen.queryByTestId('force-pending-fallback')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('force-pending-error')).not.toBeInTheDocument()
+  expect(errorComponentRendered).not.toHaveBeenCalled()
+  expect(router.state.location.pathname).toBe('/force-pending')
+  expect(router.state.status).toBe('idle')
+})
+
+test('regular navigation keeps the current pending fallback while its loader is aborted', async () => {
+  const firstLoaderAborted = createControlledPromise<void>()
+  const secondLoaderStarted = createControlledPromise<void>()
+  const secondLoaderGate = createControlledPromise<void>()
+  const firstErrorComponentRendered = vi.fn()
+  let firstSignal: AbortSignal | undefined
+
+  const rootRoute = createRootRoute({
+    component: () => <Outlet />,
+  })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div data-testid="home-page">Home page</div>,
+  })
+  const firstRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/first',
+    pendingMs: 0,
+    loader: async ({ abortController }) => {
+      firstSignal = abortController.signal
+      await new Promise<void>((_resolve, reject) => {
+        abortController.signal.addEventListener(
+          'abort',
+          () => {
+            firstLoaderAborted.resolve()
+            reject(new DOMException('Aborted', 'AbortError'))
+          },
+          { once: true },
+        )
+      })
+      return 'first'
+    },
+    component: () => (
+      <div data-testid="first-page">{firstRoute.useLoaderData()}</div>
+    ),
+    pendingComponent: () => (
+      <div data-testid="first-pending">Pending first route</div>
+    ),
+    errorComponent: ({ error }) => {
+      firstErrorComponentRendered(error)
+      return <div data-testid="first-error">{String(error)}</div>
+    },
+  })
+  const secondRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/second',
+    loader: async () => {
+      secondLoaderStarted.resolve()
+      await secondLoaderGate
+      return 'second'
+    },
+    component: () => (
+      <div data-testid="second-page">{secondRoute.useLoaderData()}</div>
+    ),
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, firstRoute, secondRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    defaultPreload: false,
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByTestId('home-page')).toBeInTheDocument()
+
+  act(() => {
+    void router.navigate({ to: '/first' })
+  })
+  expect(await screen.findByTestId('first-pending')).toBeInTheDocument()
+  expect(firstSignal?.aborted).toBe(false)
+
+  let secondNavigation!: Promise<void>
+  act(() => {
+    secondNavigation = router.navigate({ to: '/second' })
+  })
+  await act(async () => {
+    await Promise.all([firstLoaderAborted, secondLoaderStarted])
+  })
+
+  expect(firstSignal?.aborted).toBe(true)
+  expect(screen.getByTestId('first-pending')).toBeInTheDocument()
+  expect(screen.queryByTestId('first-error')).not.toBeInTheDocument()
+  expect(firstErrorComponentRendered).not.toHaveBeenCalled()
+  expect(router.state.location.pathname).toBe('/second')
+  expect(router.state.status).toBe('pending')
+
+  act(() => {
+    secondLoaderGate.resolve()
+  })
+  await act(() => secondNavigation)
+
+  expect(await screen.findByTestId('second-page')).toHaveTextContent('second')
+  expect(screen.queryByTestId('first-pending')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('first-error')).not.toBeInTheDocument()
+  expect(firstErrorComponentRendered).not.toHaveBeenCalled()
+  expect(router.state.location.pathname).toBe('/second')
+  expect(router.state.status).toBe('idle')
 })

@@ -28,6 +28,7 @@ test('#6107: lazy chunk hover failure is non-fatal and navigation renders defaul
   const chunkError = new TypeError(
     'Failed to fetch dynamically imported module: /assets/posts.lazy.js',
   )
+  const defaultErrorRendered = vi.fn()
   let lazyCalls = 0
 
   const rootRoute = createRootRoute({
@@ -55,11 +56,11 @@ test('#6107: lazy chunk hover failure is non-fatal and navigation renders defaul
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
-    defaultPreload: 'intent',
     defaultPreloadDelay: 0,
-    defaultErrorComponent: ({ error }) => (
-      <div data-testid="default-error">{error.message}</div>
-    ),
+    defaultErrorComponent: ({ error }) => {
+      defaultErrorRendered(error)
+      return <div data-testid="default-error">{error.message}</div>
+    },
   })
   const preloadRoute = vi.spyOn(router, 'preloadRoute')
 
@@ -67,12 +68,13 @@ test('#6107: lazy chunk hover failure is non-fatal and navigation renders defaul
   expect(await screen.findByText('Index')).toBeInTheDocument()
 
   const link = screen.getByRole('link', { name: 'Posts' })
-  fireEvent.mouseOver(link)
+  fireEvent.mouseEnter(link)
   await waitFor(() => expect(preloadRoute).toHaveBeenCalledTimes(1))
-  await preloadRoute.mock.results[0]?.value
+  await preloadRoute.mock.results[0]!.value
   expect(lazyCalls).toBeGreaterThanOrEqual(1)
   expect(screen.getByText('Index')).toBeInTheDocument()
   expect(screen.queryByTestId('default-error')).not.toBeInTheDocument()
+  expect(defaultErrorRendered).not.toHaveBeenCalled()
 
   const callsAfterPreload = lazyCalls
   fireEvent.click(link)
@@ -80,5 +82,8 @@ test('#6107: lazy chunk hover failure is non-fatal and navigation renders defaul
     chunkError.message,
   )
   expect(lazyCalls).toBeGreaterThan(callsAfterPreload)
+  expect(defaultErrorRendered).toHaveBeenCalledWith(chunkError)
+  expect(screen.queryByText('Index')).not.toBeInTheDocument()
   expect(router.state.location.pathname).toBe('/posts')
+  expect(router.state.status).toBe('idle')
 })

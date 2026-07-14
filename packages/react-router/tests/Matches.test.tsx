@@ -145,7 +145,7 @@ test('should show pendingComponent of root route', async () => {
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
 })
 
-test('a reused legacy notFoundRoute does not retain the previous parent layout', async () => {
+test('legacy notFoundRoute drops a stale parent layout after navigation', async () => {
   const root = createRootRoute({ component: Outlet })
   const parent = createRoute({
     getParentRoute: () => root,

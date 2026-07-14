@@ -1,4 +1,11 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import {
   Link,
@@ -112,20 +119,34 @@ describe('transactional route loading', () => {
     render(<RouterProvider router={router} />)
 
     expect(await screen.findByText('Home route')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+      expect(router.state.resolvedLocation?.pathname).toBe('/')
+    })
     fireEvent.click(screen.getByText('Data route'))
 
     expect(await screen.findByText('parent-v1')).toBeInTheDocument()
     expect(await screen.findByText('child-saw-parent-v1')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+      expect(router.state.resolvedLocation?.pathname).toBe('/parent/child')
+    })
 
-    await new Promise((resolve) => setTimeout(resolve, 2))
     fireEvent.click(screen.getByText('Other route'))
     expect(await screen.findByText('Other route content')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+      expect(router.state.resolvedLocation?.pathname).toBe('/other')
+    })
 
-    await new Promise((resolve) => setTimeout(resolve, 2))
     fireEvent.click(screen.getByText('Data route'))
 
     expect(await screen.findByText('parent-v1')).toBeInTheDocument()
     expect(await screen.findByText('child-saw-parent-v1')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+      expect(router.state.resolvedLocation?.pathname).toBe('/parent/child')
+    })
 
     await act(async () => {
       parentRefresh.resolve('parent-v2')
@@ -142,10 +163,12 @@ describe('transactional route loading', () => {
       await Promise.resolve()
     })
 
-    expect(await screen.findByText('parent-v2')).toBeInTheDocument()
-    expect(await screen.findByText('child-saw-parent-v2')).toBeInTheDocument()
-    expect(screen.queryByText('parent-v1')).not.toBeInTheDocument()
-    expect(screen.queryByText('child-saw-parent-v1')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('parent-v2')).toBeInTheDocument()
+      expect(screen.getByText('child-saw-parent-v2')).toBeInTheDocument()
+      expect(screen.queryByText('parent-v1')).not.toBeInTheDocument()
+      expect(screen.queryByText('child-saw-parent-v1')).not.toBeInTheDocument()
+    })
   })
 
   test('renders a leaf error at the leaf boundary when its background refresh fails', async () => {
@@ -200,6 +223,10 @@ describe('transactional route loading', () => {
     render(<RouterProvider router={router} />)
     fireEvent.click(await screen.findByText('Open child'))
     expect(await screen.findByText('child data')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(router.state.status).toBe('idle')
+      expect(router.state.resolvedLocation?.pathname).toBe('/parent/child')
+    })
 
     await act(() => router.invalidate())
 

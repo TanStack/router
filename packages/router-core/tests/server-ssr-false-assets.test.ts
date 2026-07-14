@@ -4,12 +4,21 @@ import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 /**
- * `ssr: false` makes a route client-only. Its beforeLoad, loader, component,
- * and route assets must all stay out of the server response. Descendants
- * inherit that restriction even if they request `ssr: true` themselves.
+ * `ssr: false` makes a route client-only, so its route assets must stay out of
+ * the server response. Descendants inherit that restriction even if they
+ * request `ssr: true` themselves.
  */
 describe('server assets for ssr:false routes', () => {
   test('does not execute or publish assets for the client-only branch', async () => {
+    const rootHead = vi.fn(() => ({ meta: [{ title: 'server root' }] }))
+    const rootScripts = vi.fn(() => [
+      {
+        children: 'window.rootAssetRan = true',
+      },
+    ])
+    const rootHeaders = vi.fn(() => ({
+      'x-server-root': 'projected',
+    }))
     const parentHead = vi.fn(() => ({
       meta: [{ title: 'client-only parent' }],
     }))
@@ -33,7 +42,11 @@ describe('server assets for ssr:false routes', () => {
       'x-client-only-child': 'unexpected',
     }))
 
-    const rootRoute = new BaseRootRoute({})
+    const rootRoute = new BaseRootRoute({
+      head: rootHead,
+      scripts: rootScripts,
+      headers: rootHeaders,
+    })
     const clientOnlyRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/client-only',
@@ -63,29 +76,18 @@ describe('server assets for ssr:false routes', () => {
 
     const response = await loadServerResponse(router, '/client-only/child')
 
-    expect({
-      calls: {
-        parentHead: parentHead.mock.calls.length,
-        parentScripts: parentScripts.mock.calls.length,
-        parentHeaders: parentHeaders.mock.calls.length,
-        childHead: childHead.mock.calls.length,
-        childScripts: childScripts.mock.calls.length,
-        childHeaders: childHeaders.mock.calls.length,
-      },
-      responseHeaders: {
-        parent: response.headers.get('x-client-only-parent'),
-        child: response.headers.get('x-client-only-child'),
-      },
-    }).toEqual({
-      calls: {
-        parentHead: 0,
-        parentScripts: 0,
-        parentHeaders: 0,
-        childHead: 0,
-        childScripts: 0,
-        childHeaders: 0,
-      },
-      responseHeaders: { parent: null, child: null },
-    })
+    expect(response.status).toBe(200)
+    expect(rootHead).toHaveBeenCalledTimes(1)
+    expect(rootScripts).toHaveBeenCalledTimes(1)
+    expect(rootHeaders).toHaveBeenCalledTimes(1)
+    expect(response.headers.get('x-server-root')).toBe('projected')
+    expect(parentHead).not.toHaveBeenCalled()
+    expect(parentScripts).not.toHaveBeenCalled()
+    expect(parentHeaders).not.toHaveBeenCalled()
+    expect(childHead).not.toHaveBeenCalled()
+    expect(childScripts).not.toHaveBeenCalled()
+    expect(childHeaders).not.toHaveBeenCalled()
+    expect(response.headers.get('x-client-only-parent')).toBeNull()
+    expect(response.headers.get('x-client-only-child')).toBeNull()
   })
 })

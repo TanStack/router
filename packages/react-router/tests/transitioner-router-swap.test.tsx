@@ -10,7 +10,12 @@ import {
   createRouter,
 } from '../src'
 
+const testCleanups: Array<() => void> = []
+
 afterEach(() => {
+  while (testCleanups.length) {
+    testCleanups.pop()!()
+  }
   cleanup()
 })
 
@@ -54,6 +59,10 @@ test('a load finishing on an old router does not resolve the replacement router'
 
   const view = render(<RouterProvider router={routerA} />)
   expect(await screen.findByText('Router A')).toBeInTheDocument()
+  await waitFor(() => {
+    expect(routerA.state.status).toBe('idle')
+    expect(routerA.state.resolvedLocation?.pathname).toBe('/')
+  })
 
   let oldNavigation!: Promise<void>
   act(() => {
@@ -63,9 +72,13 @@ test('a load finishing on an old router does not resolve the replacement router'
 
   const onRendered = vi.fn()
   const unsubscribeRendered = routerB.subscribe('onRendered', onRendered)
+  testCleanups.push(unsubscribeRendered)
   view.rerender(<RouterProvider router={routerB} />)
   expect(await screen.findByText('Router B')).toBeInTheDocument()
-  await waitFor(() => expect(routerB.state.status).toBe('idle'))
+  await waitFor(() => {
+    expect(routerB.state.status).toBe('idle')
+    expect(routerB.state.resolvedLocation?.pathname).toBe('/b')
+  })
   await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(1))
   expect(onRendered.mock.calls[0]![0].fromLocation).toBeUndefined()
   expect(onRendered.mock.calls[0]![0].toLocation.pathname).toBe('/b')
@@ -78,23 +91,22 @@ test('a load finishing on an old router does not resolve the replacement router'
     routerB.subscribe('onBeforeRouteMount', onBeforeRouteMount),
     routerB.subscribe('onResolved', onResolved),
   ]
+  testCleanups.push(...unsubscribers)
 
-  slowLoader.resolve()
-  await act(() => oldNavigation)
-
-  // Flush the old transition's state update and the replacement provider's
-  // layout effects. Router B did no work during this interval.
-  await act(async () => {})
+  await act(async () => {
+    slowLoader.resolve()
+    await oldNavigation
+  })
 
   expect(onLoad).not.toHaveBeenCalled()
   expect(onBeforeRouteMount).not.toHaveBeenCalled()
   expect(onResolved).not.toHaveBeenCalled()
   expect(routerA.state.isLoading).toBe(false)
+  expect(routerA.state.status).toBe('idle')
+  expect(routerA.state.resolvedLocation?.pathname).toBe('/slow')
   expect(routerA.state.matches.at(-1)?.pathname).toBe('/slow')
   expect(screen.getByText('Router B')).toBeInTheDocument()
   expect(routerB.state.status).toBe('idle')
   expect(routerB.state.resolvedLocation?.pathname).toBe('/b')
-
-  unsubscribeRendered()
-  unsubscribers.forEach((unsubscribe) => unsubscribe())
+  expect(onRendered).toHaveBeenCalledTimes(1)
 })

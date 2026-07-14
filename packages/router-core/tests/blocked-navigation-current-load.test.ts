@@ -39,27 +39,37 @@ describe('blocked navigation does not cancel the current load', () => {
 
     await router.load()
 
-    const navigation = router.navigate({ to: '/slow' })
+    // Framework transitioners turn committed history changes into router
+    // loads. A blocked commit never reaches this subscriber.
+    const unsubscribe = router.history.subscribe(router.load)
+    let unblock: (() => void) | undefined
 
-    // Discard every later navigation commit. The blocker is async, so the
-    // discarded commit still sets pendingBuiltLocation for one microtask.
-    const unblock = router.history.block({ blockerFn: async () => true })
+    try {
+      const navigation = router.navigate({ to: '/slow' })
 
-    // Same tick: settle the loader, then issue a navigation the blocker
-    // discards. The loader continuation resumes inside the window where
-    // pendingBuiltLocation still points at /other.
-    loaderGate.resolve('slow data')
-    void router.navigate({ to: '/other' })
+      // Discard every later navigation commit. The blocker is async, so the
+      // discarded commit still sets pendingBuiltLocation for one microtask.
+      unblock = router.history.block({ blockerFn: async () => true })
 
-    await navigation
+      // Same tick: settle the loader, then issue a navigation the blocker
+      // discards. The loader continuation resumes inside the window where
+      // pendingBuiltLocation still points at /other.
+      loaderGate.resolve('slow data')
+      const blockedNavigation = router.navigate({ to: '/other' })
 
-    expect(router.state.location.pathname).toBe('/slow')
-    expect(
-      router.state.matches.find((m) => m.routeId === slowRoute.id),
-    ).toMatchObject({
-      status: 'success',
-      loaderData: 'slow data',
-    })
-    unblock()
+      await Promise.all([navigation, blockedNavigation])
+
+      expect(router.state.location.pathname).toBe('/slow')
+      expect(router.history.location.pathname).toBe('/slow')
+      expect(
+        router.state.matches.find((m) => m.routeId === slowRoute.id),
+      ).toMatchObject({
+        status: 'success',
+        loaderData: 'slow data',
+      })
+    } finally {
+      unblock?.()
+      unsubscribe()
+    }
   })
 })

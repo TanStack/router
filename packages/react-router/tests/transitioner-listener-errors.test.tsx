@@ -24,6 +24,7 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
   const secondOnEnter = vi.fn()
   const listenerError = new Error('onLoad listener failed')
   const laterOnLoad = vi.fn()
+  const loadedPaths: Array<string> = []
 
   const rootRoute = createRootRoute({ component: Outlet })
   const indexRoute = createRoute({
@@ -58,14 +59,16 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
   })
   const unsubscribeLater = router.subscribe('onLoad', (event) => {
     if (event.toLocation.pathname !== '/') {
+      loadedPaths.push(event.toLocation.pathname)
       laterOnLoad(event)
     }
   })
-  testCleanups.push(unsubscribeLater)
+  testCleanups.push(unsubscribe, unsubscribeLater)
 
   await act(() => router.navigate({ to: '/first' }))
 
   expect(screen.getByText('First route')).toBeInTheDocument()
+  expect(loadedPaths).toEqual(['/first'])
 
   unsubscribe()
   await act(() => router.navigate({ to: '/second' }))
@@ -74,4 +77,5 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
   expect(firstOnEnter).toHaveBeenCalledTimes(1)
   expect(secondOnEnter).toHaveBeenCalledTimes(1)
   expect(laterOnLoad).toHaveBeenCalledTimes(2)
+  expect(loadedPaths).toEqual(['/first', '/second'])
 })

@@ -8,12 +8,11 @@ import type { Manifest } from '../src/manifest'
 
 const testManifest: Manifest = { routes: {} }
 
-// https://github.com/TanStack/router/issues/5106
-// SSR: a child loader throws notFound(). The server commits a notFound-capped
-// lane and the client hydrates it. The parent route must not "freeze": every
-// hydrated match has to settle (a still-pending loadPromise suspends the
-// parent subtree forever in React) and no server loader may re-run client-side.
-describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
+// The child-owned case is supplemental Core state coverage for
+// https://github.com/TanStack/router/issues/5106. The reported rendered React
+// hydration symptom is not observable at this layer. The ancestor-owned case
+// is a generic terminal-prefix invariant, not an issue #5106 reproduction.
+describe('hydrated notFound boundary coverage', () => {
   let mockWindow: { $_TSR?: TsrSsrGlobal }
 
   beforeEach(() => {
@@ -26,7 +25,7 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
     vi.restoreAllMocks()
   })
 
-  it('child-owned boundary settles all matches without re-running loaders', async () => {
+  it('#5106 existing behavior: adopts a child-owned boundary without invoking its loaders during hydration', async () => {
     const postsLoader = vi.fn(() => 'posts-data')
     const postLoader = vi.fn(() => 'post-data')
     const history = createMemoryHistory({
@@ -64,14 +63,18 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
     })
 
     const matches = router.matchRoutes(router.stores.location.get())
-    expect(matches).toHaveLength(3)
+    expect(matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      postsRoute.id,
+      postRoute.id,
+    ])
 
     mockWindow.$_TSR = {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        // The child is its own notFound boundary, so the server lane still
-        // ends at the child match.
+        // This synthetic payload models a child-owned boundary, so its
+        // terminal prefix includes the child match.
         matches: [
           {
             i: matches[0]!.id,
@@ -106,26 +109,37 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
     await hydrate(router)
 
     const stateMatches = router.state.matches
-    expect(stateMatches).toHaveLength(3)
+    expect(router.state.location.pathname).toBe('/posts/i-do-not-exist')
+    expect(router.state.isLoading).toBe(false)
+    expect(stateMatches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      postsRoute.id,
+      postRoute.id,
+    ])
 
-    // Parent keeps its server data and status.
+    // The parent keeps the data and status supplied by the payload.
     expect(stateMatches[1]!.status).toBe('success')
     expect(stateMatches[1]!.loaderData).toBe('posts-data')
 
-    // Child hydrated as the notFound boundary.
+    // The child is adopted as the notFound boundary.
     expect(stateMatches[2]!.status).toBe('notFound')
     expect(isNotFound(stateMatches[2]!.error)).toBe(true)
 
-    // No server loader re-ran on the client.
+    // Hydration does not invoke either route loader represented by the
+    // payload.
     expect(postsLoader).not.toHaveBeenCalled()
     expect(postLoader).not.toHaveBeenCalled()
+    expect(safeLoader).not.toHaveBeenCalled()
 
-    // Prove the hydrated lane did not freeze the router by leaving it able to
-    // complete an ordinary client navigation. This observes the consequence
-    // that matters without reading hydration/readiness bookkeeping.
+    // Supplemental public liveness coverage: a later client navigation still
+    // completes. This does not exercise React's rendered hydration boundary.
     await router.navigate({ to: '/safe' })
     expect(router.state.location.pathname).toBe('/safe')
     expect(router.state.isLoading).toBe(false)
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      safeRoute.id,
+    ])
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: safeRoute.id,
       status: 'success',
@@ -136,7 +150,7 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
     expect(postLoader).not.toHaveBeenCalled()
   })
 
-  it('ancestor boundary replays the dehydrated notFound in the follow-up load instead of loading the omitted child', async () => {
+  it('generic terminal-prefix invariant: adopts an ancestor-owned boundary without presenting the omitted child', async () => {
     const postsLoader = vi.fn(() => 'posts-data')
     const postLoader = vi.fn(() => 'post-data')
     const history = createMemoryHistory({
@@ -151,8 +165,8 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
       component: () => 'Posts',
       notFoundComponent: () => 'Posts not found',
     })
-    // The child has no notFoundComponent, so the server selected the parent
-    // as the boundary and omitted the child match from the dehydrated lane.
+    // The child has no notFoundComponent, so the synthetic payload below
+    // represents the parent as the selected boundary and omits the child.
     const postRoute = new BaseRoute({
       getParentRoute: () => postsRoute,
       path: '/$postId',
@@ -176,13 +190,17 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
     })
 
     const matches = router.matchRoutes(router.stores.location.get())
-    expect(matches).toHaveLength(3)
+    expect(matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      postsRoute.id,
+      postRoute.id,
+    ])
 
     mockWindow.$_TSR = {
       router: {
         manifest: testManifest,
         dehydratedData: {},
-        // Server lane was capped at the parent boundary.
+        // The represented terminal lane is capped at the parent boundary.
         matches: [
           {
             i: matches[0]!.id,
@@ -210,26 +228,33 @@ describe('issue #5106 - hydrating a server-committed notFound boundary', () => {
 
     await hydrate(router)
 
-    // The server boundary is a complete terminal prefix. The omitted child
-    // is not client work and must remain absent.
-    expect(router.state.matches).toHaveLength(2)
-
+    // Hydration presents the complete terminal prefix and no omitted suffix.
     const stateMatches = router.state.matches
+    expect(router.state.location.pathname).toBe('/posts/i-do-not-exist')
+    expect(router.state.isLoading).toBe(false)
+    expect(stateMatches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      postsRoute.id,
+    ])
     expect(stateMatches[1]!.routeId).toBe(postsRoute.id)
     expect(stateMatches[1]!.status).toBe('notFound')
     expect(isNotFound(stateMatches[1]!.error)).toBe(true)
-    // The boundary keeps the parent's server loader data (the e2e
-    // parent-boundary spec renders it).
+    // The boundary keeps the parent loader data supplied by the payload.
     expect(stateMatches[1]!.loaderData).toBe('posts-data')
 
-    // Neither the omitted child nor the dehydrated parent re-ran client-side.
+    // Neither the omitted child nor the represented parent runs client-side.
     expect(postLoader).not.toHaveBeenCalled()
     expect(postsLoader).not.toHaveBeenCalled()
+    expect(safeLoader).not.toHaveBeenCalled()
 
-    // The replayed boundary must not strand subsequent client work.
+    // A later client navigation remains usable after adopting the prefix.
     await router.navigate({ to: '/safe' })
     expect(router.state.location.pathname).toBe('/safe')
     expect(router.state.isLoading).toBe(false)
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      safeRoute.id,
+    ])
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: safeRoute.id,
       status: 'success',

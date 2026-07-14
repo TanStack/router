@@ -1,5 +1,6 @@
 import * as React from 'react'
 import {
+  act,
   cleanup,
   configure,
   fireEvent,
@@ -8,6 +9,7 @@ import {
 } from '@testing-library/react'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { createControlledPromise } from '@tanstack/router-core'
 
 import {
   Link,
@@ -47,16 +49,17 @@ describe('redirect', () => {
 
     test('allows a same-location redirect to settle after a side effect', async () => {
       let firstLoad = true
+      const loader = vi.fn(() => {
+        if (firstLoad) {
+          firstLoad = false
+          throw redirect({ to: '/' })
+        }
+      })
       const rootRoute = createRootRoute()
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        loader: () => {
-          if (firstLoad) {
-            firstLoad = false
-            throw redirect({ to: '/' })
-          }
-        },
+        loader,
         component: () => <div>Index page</div>,
       })
       const router = createRouter({
@@ -68,17 +71,26 @@ describe('redirect', () => {
 
       expect(await screen.findByText('Index page')).toBeInTheDocument()
       expect(window.location.pathname).toBe('/')
+      expect(loader).toHaveBeenCalledTimes(2)
+      expect(router.state.status).toBe('idle')
     })
 
     test('renders an error for a same-location redirect cycle', async () => {
-      const rootRoute = createRootRoute()
+      const loader = vi.fn(() => {
+        throw redirect({ to: '/' })
+      })
+      const rootRoute = createRootRoute({
+        errorComponent: ({ error }) => (
+          <div data-testid="root-error">Root: {error.message}</div>
+        ),
+      })
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        loader: () => {
-          throw redirect({ to: '/' })
-        },
-        errorComponent: ({ error }) => <div>{error.message}</div>,
+        loader,
+        errorComponent: ({ error }) => (
+          <div data-testid="index-error">Index: {error.message}</div>
+        ),
       })
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute]),
@@ -87,32 +99,42 @@ describe('redirect', () => {
 
       render(<RouterProvider router={router} />)
 
-      expect(
-        await screen.findByText('Redirect cycle detected'),
-      ).toBeInTheDocument()
+      expect(await screen.findByTestId('index-error')).toHaveTextContent(
+        'Index: Redirect cycle detected',
+      )
+      expect(screen.queryByTestId('root-error')).not.toBeInTheDocument()
       expect(window.location.pathname).toBe('/')
+      expect(loader).toHaveBeenCalledTimes(21)
+      expect(router.state.status).toBe('idle')
     })
 
     test('renders an error for an alternating redirect cycle', async () => {
-      const rootRoute = createRootRoute()
-      const errorComponent = ({ error }: { error: any }) => (
-        <div>{error.message}</div>
-      )
+      const indexLoader = vi.fn(() => {
+        throw redirect({ to: '/other' })
+      })
+      const otherLoader = vi.fn(() => {
+        throw redirect({ to: '/' })
+      })
+      const rootRoute = createRootRoute({
+        errorComponent: ({ error }) => (
+          <div data-testid="root-error">Root: {error.message}</div>
+        ),
+      })
       const indexRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/',
-        loader: () => {
-          throw redirect({ to: '/other' })
-        },
-        errorComponent,
+        loader: indexLoader,
+        errorComponent: ({ error }) => (
+          <div data-testid="index-error">Index: {error.message}</div>
+        ),
       })
       const otherRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/other',
-        loader: () => {
-          throw redirect({ to: '/' })
-        },
-        errorComponent,
+        loader: otherLoader,
+        errorComponent: ({ error }) => (
+          <div data-testid="other-error">Other: {error.message}</div>
+        ),
       })
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, otherRoute]),
@@ -121,10 +143,15 @@ describe('redirect', () => {
 
       render(<RouterProvider router={router} />)
 
-      expect(
-        await screen.findByText('Redirect cycle detected'),
-      ).toBeInTheDocument()
-      expect(['/', '/other']).toContain(window.location.pathname)
+      expect(await screen.findByTestId('index-error')).toHaveTextContent(
+        'Index: Redirect cycle detected',
+      )
+      expect(screen.queryByTestId('other-error')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('root-error')).not.toBeInTheDocument()
+      expect(window.location.pathname).toBe('/')
+      expect(indexLoader).toHaveBeenCalledTimes(11)
+      expect(otherLoader).toHaveBeenCalledTimes(10)
+      expect(router.state.status).toBe('idle')
     })
 
     test('when `redirect` is thrown in `beforeLoad`', async () => {
@@ -197,6 +224,7 @@ describe('redirect', () => {
 
     test('when root `beforeLoad` redirects while root pendingComponent is showing and the target route is lazy', async () => {
       let hasRedirected = false
+      const beforeLoad = createControlledPromise<void>()
       const consoleError = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {})
@@ -206,7 +234,7 @@ describe('redirect', () => {
         pendingMs: 0,
         pendingComponent: () => <div data-testid="pending">loading</div>,
         beforeLoad: async () => {
-          await sleep(WAIT_TIME)
+          await beforeLoad
           if (!hasRedirected) {
             hasRedirected = true
             throw redirect({ to: '/posts' })
@@ -232,11 +260,20 @@ describe('redirect', () => {
 
       render(<RouterProvider router={router} />)
 
+      try {
+        expect(await screen.findByTestId('pending')).toBeInTheDocument()
+      } finally {
+        await act(() => {
+          beforeLoad.resolve()
+        })
+      }
+
       // The lazy target route adds the async boundary that exposes the stale
       // redirected-match render path this regression is guarding.
       expect(await screen.findByTestId('lazy-route-page')).toBeInTheDocument()
       expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
       expect(router.state.location.href).toBe('/posts')
+      expect(router.state.status).toBe('idle')
       expect(consoleError).not.toHaveBeenCalled()
     })
 

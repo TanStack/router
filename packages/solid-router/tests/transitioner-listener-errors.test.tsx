@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@solidjs/testing-library'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, test } from 'vitest'
 import {
   Outlet,
   RouterProvider,
@@ -14,8 +14,7 @@ afterEach(() => {
 })
 
 test('a throwing load-event listener cannot interrupt route hooks or later navigations', async () => {
-  const firstOnEnter = vi.fn()
-  const secondOnEnter = vi.fn()
+  const lifecycle: Array<string> = []
   const listenerError = new Error('onLoad listener failed')
 
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
@@ -27,13 +26,13 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
   const firstRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/first',
-    onEnter: firstOnEnter,
+    onEnter: () => lifecycle.push('enter:/first'),
     component: () => <div>First route</div>,
   })
   const secondRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/second',
-    onEnter: secondOnEnter,
+    onEnter: () => lifecycle.push('enter:/second'),
     component: () => <div>Second route</div>,
   })
   const router = createRouter({
@@ -44,18 +43,39 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
   render(() => <RouterProvider router={router} />)
   expect(await screen.findByText('Index route')).toBeInTheDocument()
 
-  const unsubscribe = router.subscribe('onLoad', (event) => {
-    if (event.toLocation.pathname === '/first') {
-      throw listenerError
+  const unsubscribers = [
+    router.subscribe('onLoad', (event) => {
+      if (event.toLocation.pathname === '/first') {
+        lifecycle.push('throw:/first')
+        throw listenerError
+      }
+    }),
+    router.subscribe('onLoad', (event) => {
+      if (event.toLocation.pathname !== '/') {
+        lifecycle.push(`load:${event.toLocation.pathname}`)
+      }
+    }),
+  ]
+
+  try {
+    await router.navigate({ to: '/first' })
+    expect(await screen.findByText('First route')).toBeInTheDocument()
+    expect(screen.queryByText('Index route')).not.toBeInTheDocument()
+    expect(lifecycle).toEqual(['enter:/first', 'throw:/first', 'load:/first'])
+
+    await router.navigate({ to: '/second' })
+    expect(await screen.findByText('Second route')).toBeInTheDocument()
+    expect(screen.queryByText('First route')).not.toBeInTheDocument()
+    expect(lifecycle).toEqual([
+      'enter:/first',
+      'throw:/first',
+      'load:/first',
+      'enter:/second',
+      'load:/second',
+    ])
+  } finally {
+    for (const unsubscribe of unsubscribers) {
+      unsubscribe()
     }
-  })
-
-  await router.navigate({ to: '/first' })
-  expect(await screen.findByText('First route')).toBeInTheDocument()
-  expect(firstOnEnter).toHaveBeenCalledTimes(1)
-
-  unsubscribe()
-  await router.navigate({ to: '/second' })
-  expect(await screen.findByText('Second route')).toBeInTheDocument()
-  expect(secondOnEnter).toHaveBeenCalledTimes(1)
+  }
 })

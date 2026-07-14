@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
-import ReactDOMServer from 'react-dom/server'
 
 import {
   Link,
@@ -14,6 +13,11 @@ import {
   createRouter,
   notFound,
 } from '../src'
+import {
+  RouterServer,
+  createRequestHandler,
+  renderRouterToString,
+} from '../src/ssr/server'
 import type { ErrorComponentProps, RouterHistory } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
@@ -314,7 +318,6 @@ test('errorComponent receives primitive errors thrown from beforeLoad', async ()
 })
 
 test('SSR errorComponent receives primitive errors thrown from beforeLoad', async () => {
-  const history = createMemoryHistory({ initialEntries: ['/about'] })
   const rootRoute = createRootRoute({
     component: function Root() {
       return <Outlet />
@@ -330,15 +333,25 @@ test('SSR errorComponent receives primitive errors thrown from beforeLoad', asyn
     errorComponent: ({ error }) => <div>Error: {String(error)}</div>,
   })
 
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([aboutRoute]),
-    history,
+  const handler = createRequestHandler({
+    request: new Request('http://localhost/about'),
+    createRouter: () =>
+      createRouter({
+        routeTree: rootRoute.addChildren([aboutRoute]),
+        isServer: true,
+      }),
   })
-  router.isServer = true
 
-  await router.load()
+  const response = await handler(({ router, responseHeaders }) =>
+    renderRouterToString({
+      router,
+      responseHeaders,
+      children: <RouterServer router={router} />,
+    }),
+  )
 
-  const html = ReactDOMServer.renderToString(<RouterProvider router={router} />)
+  expect(response.status).toBe(500)
+  const html = await response.text()
   expect(html).toContain('Error:')
   expect(html).toContain('primitive error thrown')
 })

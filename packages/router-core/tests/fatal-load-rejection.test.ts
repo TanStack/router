@@ -1,6 +1,11 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, redirect } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  createControlledPromise,
+  redirect,
+} from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 /**
@@ -15,18 +20,21 @@ import { createTestRouter } from './routerTestUtils'
 describe('fatal load rejection', () => {
   test('fatal rejection during a serial-redirect-capped pass settles the lane', async () => {
     const boom = new Error('resolveRedirect failed')
-    let blockErrorComponentPreload = true
-    const errorComponentPreload = vi.fn(() =>
-      blockErrorComponentPreload
-        ? new Promise<void>(() => {})
-        : Promise.resolve(),
-    )
+    const errorComponentGate = createControlledPromise<void>()
+    const errorComponentStarted = createControlledPromise<void>()
+    const errorComponentPreload = vi.fn(() => {
+      errorComponentStarted.resolve()
+      return errorComponentGate
+    })
+    const ErrorComponent = Object.assign(() => null, {
+      preload: errorComponentPreload,
+    })
 
     const rootRoute = new BaseRootRoute({
       // Never runs: the serial redirect caps the loader prefix at 0. Its
       // loadPromise (created for the beforeLoad phase) must still settle.
       loader: () => 'root data',
-      errorComponent: { preload: errorComponentPreload } as any,
+      errorComponent: ErrorComponent,
     })
     const badRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -52,10 +60,20 @@ describe('fatal load rejection', () => {
       history: createMemoryHistory({ initialEntries: ['/bad'] }),
     })
 
-    await router.load()
+    const load = router.load()
+    const outcome = await Promise.race([
+      load.then(() => 'load-settled' as const),
+      errorComponentStarted.then(() => 'error-preload-started' as const),
+    ])
+    if (outcome === 'error-preload-started') {
+      errorComponentGate.resolve()
+    }
+    expect(outcome).toBe('load-settled')
+    await load
     expect(errorComponentPreload).not.toHaveBeenCalled()
+    expect(router.state.status).toBe('idle')
 
-    blockErrorComponentPreload = false
+    errorComponentGate.resolve()
     await router.navigate({ to: '/safe' })
     expect(router.state.location.pathname).toBe('/safe')
     expect(router.state.matches.at(-1)).toMatchObject({

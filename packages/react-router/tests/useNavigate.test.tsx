@@ -2313,9 +2313,11 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
         path: 'param/$param',
         component: function ParamRoute() {
           const navigate = useNavigate()
+          const params = paramRoute.useParams()
           return (
             <>
               <h1>Param Route</h1>
+              <span data-testid="param-value">{params.param}</span>
               <button
                 onClick={() =>
                   navigate({ from: paramRoute.fullPath, to: './a' })
@@ -2532,10 +2534,12 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
       await waitFor(() => {
         expect(window.location.pathname).toBe(`${basepath}/param/foo/a/b`)
       })
+      expect(await screen.findByTestId('param-value')).toHaveTextContent('foo')
 
       const btn = await screen.findByTestId('btn-param-bar')
       fireEvent.click(btn)
       await waitFor(() => {
+        expect(screen.getByTestId('param-value')).toHaveTextContent('bar')
         expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
       })
     })

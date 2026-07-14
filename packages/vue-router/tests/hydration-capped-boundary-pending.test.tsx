@@ -11,6 +11,7 @@ import {
   createRouter,
   notFound,
 } from '../src'
+import { dehydrateToBootstrap } from './ssr-test-utils'
 import type { TsrSsrGlobal } from '@tanstack/router-core/ssr/client'
 
 declare global {
@@ -33,9 +34,11 @@ afterEach(async () => {
 describe('hydrating a server-capped boundary lane', () => {
   test.each([
     ['error', 'parent'],
+    ['notFound', 'parent'],
+    ['error', 'root'],
     ['notFound', 'root'],
   ] as const)(
-    'keeps the server-rendered %s %s boundary visible while the client replays it',
+    'keeps the server-rendered %s %s boundary visible through hydration',
     async (outcome, boundary) => {
       const childLoader = vi.fn(() => 'child data')
       const makeRouteTree = () => {
@@ -76,21 +79,25 @@ describe('hydrating a server-capped boundary lane', () => {
 
       const serverRouter = createRouter({
         routeTree: makeRouteTree(),
-        ...(boundary === 'root' ? { isShell: true } : {}),
         history: createMemoryHistory({
           initialEntries: ['/parent/child'],
         }),
       })
       serverRouter.isServer = true
-      await serverRouter.load()
+      testCleanups.push(() => serverRouter.serverSsr?.cleanup())
+      window.$_TSR = await dehydrateToBootstrap(serverRouter)
 
       const serverMatches = serverRouter.stores.matches.get()
       expect(serverMatches).toHaveLength(boundary === 'root' ? 1 : 2)
-      expect(serverMatches.at(-1)).toMatchObject(
-        boundary === 'root'
-          ? { status: 'success', globalNotFound: true }
-          : { status: 'error' },
-      )
+      const serverBoundary = serverMatches.at(-1)!
+      if (outcome === 'notFound' && boundary === 'root') {
+        expect(serverBoundary).toMatchObject({
+          status: 'success',
+          globalNotFound: true,
+        })
+      } else {
+        expect(serverBoundary.status).toBe(outcome)
+      }
 
       const serverApp = Vue.createSSRApp(
         Vue.defineComponent({
@@ -109,28 +116,6 @@ describe('hydrating a server-capped boundary lane', () => {
         }),
       })
 
-      window.$_TSR = {
-        router: {
-          manifest: { routes: {} },
-          dehydratedData: {},
-          matches: serverMatches.map((match) => ({
-            i: match.id,
-            u: match.updatedAt,
-            s: match.status,
-            l: match.loaderData,
-            e: match.error,
-            ssr: match.ssr,
-            ...(match.globalNotFound ? { g: true } : {}),
-          })),
-        },
-        h: vi.fn(),
-        e: vi.fn(),
-        c: vi.fn(),
-        p: vi.fn(),
-        buffer: [],
-        initialized: false,
-      }
-
       await hydrateRouter(clientRouter)
 
       const container = document.createElement('div')
@@ -145,9 +130,16 @@ describe('hydrating a server-capped boundary lane', () => {
           setup: () => () => <RouterProvider router={clientRouter} />,
         }),
       )
-      testCleanups.push(() => clientApp.unmount())
+      let clientAppMounted = false
+      testCleanups.push(() => {
+        if (clientAppMounted) {
+          clientApp.unmount()
+        }
+        container.remove()
+      })
 
       clientApp.mount(container)
+      clientAppMounted = true
       await Vue.nextTick()
 
       expect(container).toHaveTextContent(expectedBoundary)

@@ -10,7 +10,7 @@ import { createTestRouter } from './routerTestUtils'
 test('a fatal pre-rematch failure preserves the active generation and permits retry', async () => {
   const boom = new Error('loaderDeps failed during invalidation rematch')
   let failLoaderDeps = false
-  let activeSignal: AbortSignal | undefined
+  const loaderSignals: Array<AbortSignal> = []
 
   const rootRoute = new BaseRootRoute({})
   const targetRoute = new BaseRoute({
@@ -23,7 +23,7 @@ test('a fatal pre-rematch failure preserves the active generation and permits re
       return {}
     },
     loader: ({ abortController }) => {
-      activeSignal = abortController.signal
+      loaderSignals.push(abortController.signal)
       return 'target data'
     },
   })
@@ -33,6 +33,7 @@ test('a fatal pre-rematch failure preserves the active generation and permits re
   })
 
   await router.load()
+  const activeSignal = loaderSignals[0]
   expect(router.state.matches.at(-1)?.status).toBe('success')
 
   failLoaderDeps = true
@@ -40,13 +41,25 @@ test('a fatal pre-rematch failure preserves the active generation and permits re
 
   // The failed replacement never acquired a lane, so it must not cancel
   // resources owned by the still-active successful loader generation.
-  expect(activeSignal?.aborted).toBe(false)
-
-  failLoaderDeps = false
-  await router.invalidate()
   expect(router.state.matches.at(-1)).toMatchObject({
     routeId: targetRoute.id,
     status: 'success',
     loaderData: 'target data',
   })
+  expect(loaderSignals).toHaveLength(1)
+  expect(activeSignal?.aborted).toBe(false)
+
+  failLoaderDeps = false
+  await router.invalidate()
+  const retrySignal = loaderSignals[1]
+
+  expect(router.state.matches.at(-1)).toMatchObject({
+    routeId: targetRoute.id,
+    status: 'success',
+    loaderData: 'target data',
+  })
+  expect(loaderSignals).toHaveLength(2)
+  expect(retrySignal).not.toBe(activeSignal)
+  expect(activeSignal?.aborted).toBe(true)
+  expect(retrySignal?.aborted).toBe(false)
 })

@@ -1,5 +1,6 @@
 import { cleanup, render, screen } from '@solidjs/testing-library'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, test, vi } from 'vitest'
+import { createControlledPromise } from '@tanstack/router-core'
 import {
   Outlet,
   RouterProvider,
@@ -30,21 +31,13 @@ afterEach(async () => {
   resolvePendingPage2 = undefined
   pendingNavigation = undefined
   cleanup()
+  vi.useRealTimers()
 })
 
-function deferred<T>() {
-  let resolve!: (value: T | PromiseLike<T>) => void
-  const promise = new Promise<T>((resolver) => {
-    resolve = resolver
-  })
-
-  return { promise, resolve }
-}
-
 test('same-route pending replacement without fallback keeps stale content until pendingMs', async () => {
-  const pendingMs = 10_000
-  const page2Gate = deferred<void>()
-  const page2Started = deferred<void>()
+  const pendingMs = 100
+  const page2Gate = createControlledPromise<void>()
+  const page2Started = createControlledPromise<void>()
   resolvePendingPage2 = page2Gate.resolve
   const history = createMemoryHistory({ initialEntries: ['/posts?page=1'] })
   const root = createRootRoute({
@@ -67,7 +60,7 @@ test('same-route pending replacement without fallback keeps stale content until 
     loader: async ({ deps }) => {
       if (deps.page === 2) {
         page2Started.resolve()
-        await page2Gate.promise
+        await page2Gate
       }
 
       return `Page ${deps.page}`
@@ -83,21 +76,25 @@ test('same-route pending replacement without fallback keeps stale content until 
   render(() => <RouterProvider router={router} />)
   expect(await screen.findByText('Page 1')).toBeInTheDocument()
 
+  vi.useFakeTimers()
   const navigation = router.navigate({
     to: '/posts',
     search: { page: 2 },
   })
   pendingNavigation = navigation
 
-  await page2Started.promise
-
-  await new Promise((resolve) => setTimeout(resolve, 0))
+  await page2Started
+  await vi.advanceTimersByTimeAsync(pendingMs - 1)
 
   expect(screen.getByTestId('post-content')).toHaveTextContent('Page 1')
+  expect(screen.queryByText('Page 2')).not.toBeInTheDocument()
+  expect(router.state.status).toBe('pending')
 
   page2Gate.resolve()
   await navigation
   pendingNavigation = undefined
 
-  expect(await screen.findByText('Page 2')).toBeInTheDocument()
+  expect(screen.getByText('Page 2')).toBeInTheDocument()
+  expect(screen.queryByText('Page 1')).not.toBeInTheDocument()
+  expect(router.state.status).toBe('idle')
 })

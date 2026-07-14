@@ -1,7 +1,5 @@
-import { spawn } from 'node:child_process'
-import path from 'node:path'
 import { expect, test } from '@playwright/test'
-import type { ChildProcess } from 'node:child_process'
+import { devBaseURL } from '../dev-server'
 import type { Page } from '@playwright/test'
 
 // Regression test for https://github.com/TanStack/router/issues/7283
@@ -10,64 +8,8 @@ import type { Page } from '@playwright/test'
 // `pendingComponent` must hydrate cleanly in DEV mode. Solid only validates
 // hydration markers in dev, so the production webServer configured in
 // playwright.config.ts masks the mismatch ("template is not a function",
-// route never reaches its loaded component). This spec therefore boots its
-// own `vite dev` server on a dedicated port and drives the app against it.
-
-const DEV_PORT = 58283
-const devBaseURL = `http://localhost:${DEV_PORT}`
-
-let devServer: ChildProcess | undefined
-
-async function waitForServer(url: string, timeoutMs: number) {
-  const deadline = Date.now() + timeoutMs
-  let lastError: unknown
-  while (Date.now() < deadline) {
-    try {
-      const res = await fetch(url)
-      if (res.ok) return
-    } catch (err) {
-      lastError = err
-    }
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-  }
-  throw new Error(`dev server did not start on ${url}: ${lastError}`)
-}
-
-test.beforeAll(async () => {
-  const appDir = path.resolve(import.meta.dirname, '..')
-  devServer = spawn(
-    'pnpm',
-    [
-      'dev:e2e',
-      '--host',
-      'localhost',
-      '--port',
-      String(DEV_PORT),
-      '--strictPort',
-    ],
-    {
-      cwd: appDir,
-      env: {
-        ...process.env,
-        VITE_SERVER_PORT: String(DEV_PORT),
-        NODE_ENV: 'development',
-      },
-      stdio: 'ignore',
-      detached: true,
-    },
-  )
-  await waitForServer(`${devBaseURL}/`, 90_000)
-})
-
-test.afterAll(() => {
-  if (devServer?.pid) {
-    try {
-      process.kill(-devServer.pid, 'SIGTERM')
-    } catch {
-      // already gone
-    }
-  }
-})
+// route never reaches its loaded component). Playwright therefore owns a
+// separate `vite dev` server and drives the app against it.
 
 function collectHydrationFailures(page: Page) {
   const failures: Array<string> = []
@@ -97,13 +39,30 @@ test.describe('dev-mode hydration of selective SSR routes with pendingComponent'
 
     await page.goto(`${devBaseURL}/ssr-false-pending-min`)
 
-    // The loaded component must eventually replace the pending UI.
+    // The loaded component is the issue oracle: main never reaches it.
     await expect(page.getByTestId('ssr-false-target')).toBeVisible({
       timeout: 15_000,
     })
 
     // No dev hydration mismatch may occur along the way.
     expect(failures).toEqual([])
+
+    await expect(page.getByTestId('ssr-false-pending')).not.toBeAttached()
+
+    const lifecycleEvents = await page.evaluate(() =>
+      ((globalThis as any).__events ?? [])
+        .map((event: { type: string }) => event.type)
+        .filter((type: string) =>
+          ['pending-mounted', 'pending-unmounted', 'target-mounted'].includes(
+            type,
+          ),
+        ),
+    )
+    expect(lifecycleEvents.slice(-3)).toEqual([
+      'pending-mounted',
+      'pending-unmounted',
+      'target-mounted',
+    ])
   })
 
   test('data-only route with pendingComponent hydrates cleanly and reaches its loaded component (regression vs main)', async ({
@@ -113,6 +72,9 @@ test.describe('dev-mode hydration of selective SSR routes with pendingComponent'
 
     await page.goto(`${devBaseURL}/data-only-pending-component`)
 
+    await expect(
+      page.getByTestId('data-only-pending-component-pending'),
+    ).toBeAttached()
     await expect(
       page.getByTestId('data-only-pending-component-ready-label'),
     ).toHaveText('OK - loader finished', { timeout: 15_000 })

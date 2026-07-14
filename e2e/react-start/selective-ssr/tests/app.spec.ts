@@ -16,27 +16,26 @@ test.describe('selective ssr', () => {
       )
       .not.toBeUndefined()
 
-    const { rootBeforeLoad, targetBeforeLoad } = await page.evaluate(() => {
+    const { rootBeforeLoads, targetBeforeLoad } = await page.evaluate(() => {
       const rootBeforeLoads =
         (globalThis as any).__issue4614RootBeforeLoads ?? []
       return {
-        rootBeforeLoad: rootBeforeLoads.at(-1),
+        rootBeforeLoads,
         targetBeforeLoad: (globalThis as any).__issue4614TargetBeforeLoad,
       }
     })
 
-    expect(targetBeforeLoad).toMatchObject({
+    expect(rootBeforeLoads).toEqual([])
+    expect(targetBeforeLoad).toEqual({
       cause: 'preload',
       preload: true,
+      rootContext: 'server',
+      issue4614Context: 'server:cached',
       scenario: 'cached',
     })
-    expect(targetBeforeLoad.rootContext).toBe(rootBeforeLoad?.root ?? 'server')
-    expect(targetBeforeLoad.issue4614Context).toBe(
-      rootBeforeLoad?.issue4614Context ?? 'server:cached',
-    )
   })
 
-  test('child receives fresh parent context when loaderDeps force a same-preload reload', async ({
+  test('new loaderDeps match generation propagates fresh parent context to child (control)', async ({
     page,
   }) => {
     await page.goto('/')

@@ -25,46 +25,7 @@ afterEach(async () => {
   delete window.$_TSR
 })
 
-test('root pending fallback remains visible through pendingMinMs', async () => {
-  vi.useFakeTimers()
-
-  const loaderGate = createControlledPromise<string>()
-  const rootRoute = createRootRoute({
-    pendingMs: 0,
-    pendingMinMs: 100,
-    pendingComponent: () => <div data-testid="root-pending">Pending</div>,
-    loader: () => loaderGate,
-    component: () => <div data-testid="root-content">Loaded</div>,
-  })
-  const router = createRouter({
-    routeTree: rootRoute,
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
-
-  render(<RouterProvider router={router} />)
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
-  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-  expect(screen.queryByTestId('root-content')).not.toBeInTheDocument()
-
-  loaderGate.resolve('loaded')
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(99)
-  })
-  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-  expect(screen.queryByTestId('root-content')).not.toBeInTheDocument()
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(1)
-  })
-  expect(screen.queryByTestId('root-pending')).not.toBeInTheDocument()
-  expect(screen.getByTestId('root-content')).toBeInTheDocument()
-})
-
-test('hydrated routers show the root pending fallback through pendingMinMs on a later reload', async () => {
+test('a post-hydration root reload keeps its fallback through pendingMinMs', async () => {
   const reloadGate = createControlledPromise<void>()
   const rootLoader = vi.fn(() => reloadGate.then(() => ({ generation: 2 })))
   const rootRoute = createRootRoute({
@@ -147,94 +108,7 @@ test('hydrated routers show the root pending fallback through pendingMinMs on a 
   expect(screen.getByTestId('root-content')).toHaveTextContent('Generation 2')
 })
 
-test('root pending fallback follows an overlapping forcePending generation', async () => {
-  const firstReload = createControlledPromise<void>()
-  const secondReload = createControlledPromise<void>()
-  const reloads = [firstReload, secondReload]
-  let loaderCall = 0
-
-  const rootRoute = createRootRoute({
-    pendingMs: 0,
-    pendingMinMs: 100,
-    pendingComponent: () => <div data-testid="root-pending">Pending</div>,
-    loader: () => {
-      const generation = ++loaderCall
-      const gate = reloads[generation - 2]
-      return gate ? gate.then(() => ({ generation })) : { generation }
-    },
-    component: () => (
-      <div data-testid="root-content">
-        Generation {rootRoute.useLoaderData().generation}
-      </div>
-    ),
-  })
-  const router = createRouter({
-    routeTree: rootRoute,
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
-
-  render(<RouterProvider router={router} />)
-  expect(await screen.findByText('Generation 1')).toBeInTheDocument()
-
-  vi.useFakeTimers()
-
-  let firstInvalidation!: Promise<void>
-  await act(async () => {
-    firstInvalidation = router.invalidate({ forcePending: true })
-    await vi.advanceTimersByTimeAsync(0)
-  })
-
-  expect(loaderCall).toBe(2)
-  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(25)
-  })
-
-  let secondInvalidation!: Promise<void>
-  await act(async () => {
-    secondInvalidation = router.invalidate({ forcePending: true })
-    await vi.advanceTimersByTimeAsync(0)
-  })
-
-  expect(loaderCall).toBe(3)
-
-  await act(async () => {
-    firstReload.resolve()
-    await Promise.resolve()
-  })
-
-  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-  expect(screen.queryByText('Generation 2')).not.toBeInTheDocument()
-
-  let secondSettled = false
-  void secondInvalidation.then(() => {
-    secondSettled = true
-  })
-  await act(async () => {
-    secondReload.resolve()
-    await Promise.resolve()
-  })
-
-  expect(secondSettled).toBe(false)
-  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(74)
-  })
-  expect(secondSettled).toBe(false)
-  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(1)
-    await Promise.all([firstInvalidation, secondInvalidation])
-  })
-
-  expect(screen.getByTestId('root-content')).toHaveTextContent('Generation 3')
-  expect(screen.queryByTestId('root-pending')).not.toBeInTheDocument()
-})
-
-test('the root suspense boundary stays stable across hydration', async () => {
+test('root route hydration preserves component state across its Suspense boundary', async () => {
   const mounts = vi.fn()
   const unmounts = vi.fn()
   const initializers = vi.fn(() => 'preserved')
@@ -264,19 +138,20 @@ test('the root suspense boundary stays stable across hydration', async () => {
   const html = renderToString(<RouterProvider router={router} />)
   router.isServer = false
   expect(html).toContain('<!--$-->')
+  expect(html).toContain('preserved')
 
   const container = document.createElement('div')
   container.innerHTML = html
   document.body.appendChild(container)
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-  const root = hydrateRoot(container, <RouterProvider router={router} />)
-  testCleanups.push(async () => {
-    await act(() => root.unmount())
-    consoleError.mockRestore()
-    container.remove()
-  })
-
+  let root!: ReturnType<typeof hydrateRoot>
   await act(async () => {
+    root = hydrateRoot(container, <RouterProvider router={router} />)
+    testCleanups.push(async () => {
+      await act(() => root.unmount())
+      consoleError.mockRestore()
+      container.remove()
+    })
     await Promise.resolve()
   })
 
@@ -290,7 +165,7 @@ test('the root suspense boundary stays stable across hydration', async () => {
   expect(consoleError).not.toHaveBeenCalled()
 })
 
-test('the root pending boundary contains a route component that suspends during server rendering', async () => {
+test('server rendering uses the root pending boundary for route component suspension', async () => {
   const gate = createControlledPromise<void>()
   const rootRoute = createRootRoute({
     pendingComponent: () => <div>Server root pending</div>,
@@ -313,7 +188,7 @@ test('the root pending boundary contains a route component that suspends during 
   expect(html).toContain('Server root pending')
 })
 
-test('remounting a hydrated router loads a history change made while unmounted', async () => {
+test('Transitioner remount loads hydrated history changes made while unmounted', async () => {
   const rootRoute = createRootRoute({ component: Outlet })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,

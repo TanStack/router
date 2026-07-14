@@ -4,7 +4,7 @@ import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 // https://github.com/TanStack/router/issues/3179
-test('#3179: preload flags are not inherited from the active match generation', async () => {
+test('#3179: preloading the active route does not replay its load callbacks', async () => {
   const calls: Array<{
     phase: 'beforeLoad' | 'loader'
     cause: string
@@ -49,8 +49,8 @@ test('#3179: preload flags are not inherited from the active match generation', 
     { phase: 'loader', cause: 'enter', preload: false },
   ])
 
-  // Hover Home again while it is active. Reusing the active match must not
-  // rerun callbacks with the cached { cause: 'enter', preload: false } pair.
+  // Active matches are borrowed during preloading, so their callbacks do not
+  // run again with either fresh preload flags or the cached navigation flags.
   calls.length = 0
   await router.preloadRoute({ to: '/' })
   expect(calls).toEqual([])

@@ -11,6 +11,7 @@ import { createTestRouter } from './routerTestUtils'
  */
 test('child preload stays coherent with an overlapping parent background reload', async () => {
   const backgroundResponse = createControlledPromise<{ revision: number }>()
+  const childLoaderStarted = createControlledPromise<void>()
   let parentLoadCount = 0
 
   const parentLoader = vi.fn(() => {
@@ -18,6 +19,7 @@ test('child preload stays coherent with an overlapping parent background reload'
     return parentLoadCount === 1 ? { revision: 1 } : backgroundResponse
   })
   const childLoader = vi.fn(async ({ parentMatchPromise }) => {
+    childLoaderStarted.resolve()
     const parentMatch = await parentMatchPromise
     return {
       parentRevision: (parentMatch.loaderData as { revision: number }).revision,
@@ -56,20 +58,16 @@ test('child preload stays coherent with an overlapping parent background reload'
 
   const childPreload = router.preloadRoute({ to: '/parent/child' })
 
-  // Let the preload reach the borrowed parent while revision 2 is still in
-  // flight. This does not require the child to have started: a correct join is
-  // allowed to wait for the parent response.
-  await new Promise<void>((resolve) => setTimeout(resolve, 0))
+  // The child loader is waiting on its parent while revision 2 is still
+  // pending, so the two loader generations genuinely overlap.
+  await childLoaderStarted
+  expect(backgroundResponse.status).toBe('pending')
+  expect(parentLoader).toHaveBeenCalledTimes(2)
 
   backgroundResponse.resolve({ revision: 2 })
   await childPreload
-
-  await vi.waitFor(() => {
-    const parentMatch = router.state.matches.find(
-      (match) => match.routeId === parentRoute.id,
-    )
-    expect(parentMatch?.loaderData).toEqual({ revision: 2 })
-  })
+  expect(parentLoader).toHaveBeenCalledTimes(2)
+  expect(childLoader).toHaveBeenCalledTimes(1)
 
   await router.navigate({ to: '/parent/child' })
 

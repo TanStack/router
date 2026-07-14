@@ -73,6 +73,7 @@ test('#5778: intent preload sees a RouterProvider context update before the firs
     const [foo, setFoo] = React.useState('foo')
     return (
       <>
+        <output aria-label="Current context">{foo}</output>
         <button
           onClick={() => {
             setFoo('baz')
@@ -87,16 +88,26 @@ test('#5778: intent preload sees a RouterProvider context update before the firs
 
   render(<App />)
   expect(await screen.findByText('Home')).toBeInTheDocument()
-  expect(router.state.matches[0]?.context.foo).toBe('foo')
+  expect(screen.getByLabelText('Current context')).toHaveTextContent('foo')
 
   fireEvent.click(screen.getByRole('button', { name: 'Update context' }))
-  await waitFor(() => expect(router.options.context.foo).toBe('baz'))
+  await waitFor(() =>
+    expect(screen.getByLabelText('Current context')).toHaveTextContent('baz'),
+  )
 
-  seen.length = 0
-  fireEvent.mouseOver(screen.getByRole('link', { name: 'Foo' }))
+  expect(seen).toEqual([])
+  const link = screen.getByRole('link', { name: 'Foo' })
+  fireEvent.mouseEnter(link)
   await waitFor(() => expect(seen).toHaveLength(2))
   expect(seen).toEqual([
     { route: 'auth', foo: 'baz', cause: 'preload', preload: true },
     { route: 'foo', foo: 'baz', cause: 'preload', preload: true },
   ])
+  expect(screen.getByText('Home')).toBeInTheDocument()
+  expect(screen.queryByText('Foo page')).not.toBeInTheDocument()
+  expect(router.state.location.pathname).toBe('/')
+
+  fireEvent.click(link)
+  expect(await screen.findByText('Foo page')).toBeInTheDocument()
+  expect(router.state.location.pathname).toBe('/foo')
 })

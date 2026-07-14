@@ -22,15 +22,15 @@ afterEach(() => {
 /**
  * A component-only route can fail while preloading its code, then retry from
  * its error UI through invalidate(). The retry is a fresh pending generation:
- * it needs a match-local load promise so the rendered pending component can
- * attach pendingMinMs to the work that actually owns readiness.
+ * its fallback must remain visible until the retried component preload is
+ * ready and pendingMinMs has elapsed.
  */
-test('component preload retry owns readiness and honors pendingMinMs', async () => {
+test('component preload retry remains pending through pendingMinMs', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 
   const retryChunk = createControlledPromise<void>()
   let preloadAttempt = 0
-  let retryPromise: Promise<void> | undefined
+  let retryInvalidation!: Promise<void>
   let retrySettled = false
 
   const Page = Object.assign(
@@ -52,8 +52,8 @@ test('component preload retry owns readiness and honors pendingMinMs', async () 
         type="button"
         onClick={() => {
           reset()
-          retryPromise = router.invalidate()
-          void retryPromise.then(() => {
+          retryInvalidation = router.invalidate()
+          void retryInvalidation.then(() => {
             retrySettled = true
           })
         }}
@@ -94,7 +94,11 @@ test('component preload retry owns readiness and honors pendingMinMs', async () 
   await act(async () => {
     await vi.advanceTimersByTimeAsync(0)
   })
+  expect(Page.preload).toHaveBeenCalledTimes(2)
   expect(screen.getByTestId('page-pending')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Retry chunk' }),
+  ).not.toBeInTheDocument()
 
   await act(async () => {
     retryChunk.resolve()
@@ -112,10 +116,9 @@ test('component preload retry owns readiness and honors pendingMinMs', async () 
 
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1)
-    await retryPromise
+    await retryInvalidation
   })
 
-  expect(Page.preload).toHaveBeenCalledTimes(2)
   expect(screen.getByTestId('page-content')).toBeInTheDocument()
   expect(screen.queryByTestId('page-pending')).not.toBeInTheDocument()
 })

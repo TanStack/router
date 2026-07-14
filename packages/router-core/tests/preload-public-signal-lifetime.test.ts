@@ -1,27 +1,26 @@
 import { expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-function deferred<T>() {
-  let resolve!: (value?: T | PromiseLike<T>) => void
-  const promise = new Promise<T>((done) => {
-    resolve = (value) => done(value as T)
-  })
-  return { promise, resolve }
-}
 
 // Public contract: the AbortSignal supplied to loader code belongs to the
 // accepted data generation. Adopting preloaded data keeps it alive; accepting
 // replacement data aborts it; unloading aborts the replacement generation.
 test('an adopted loader signal lives until public replacement and unload', async () => {
-  const replacementGate = deferred<{ generation: number }>()
-  const signals: Array<AbortSignal> = []
+  const replacementGate = createControlledPromise<{ generation: number }>()
+  let generation = 0
+  let adoptedSignal: AbortSignal | undefined
+  let replacementSignal: AbortSignal | undefined
   const loader = vi.fn(
     ({ abortController }: { abortController: AbortController }) => {
-      signals.push(abortController.signal)
-      const generation = signals.length
-      return generation === 1 ? { generation } : replacementGate.promise
+      generation++
+      if (generation === 1) {
+        adoptedSignal = abortController.signal
+        return { generation }
+      }
+
+      replacementSignal = abortController.signal
+      return replacementGate
     },
   )
 
@@ -47,17 +46,19 @@ test('an adopted loader signal lives until public replacement and unload', async
 
   await router.load()
   await router.preloadRoute({ to: '/reports' })
-  const adoptedSignal = signals[0]
   expect(adoptedSignal?.aborted).toBe(false)
 
   await router.navigate({ to: '/reports' })
   expect(loader).toHaveBeenCalledTimes(1)
-  expect(router.state.matches.at(-1)?.loaderData).toEqual({ generation: 1 })
+  expect(
+    router.state.matches.find((match) => match.routeId === reportsRoute.id)
+      ?.loaderData,
+  ).toEqual({ generation: 1 })
   expect(adoptedSignal?.aborted).toBe(false)
 
   const replacement = router.invalidate({ forcePending: true })
   await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(2))
-  const replacementSignal = signals[1]
+  expect(replacementGate.status).toBe('pending')
 
   // Until replacement data is accepted, the currently rendered data still
   // owns the adopted signal.
@@ -66,7 +67,10 @@ test('an adopted loader signal lives until public replacement and unload', async
 
   replacementGate.resolve({ generation: 2 })
   await replacement
-  expect(router.state.matches.at(-1)?.loaderData).toEqual({ generation: 2 })
+  expect(
+    router.state.matches.find((match) => match.routeId === reportsRoute.id)
+      ?.loaderData,
+  ).toEqual({ generation: 2 })
   expect(adoptedSignal?.aborted).toBe(true)
   expect(replacementSignal?.aborted).toBe(false)
 
@@ -75,7 +79,7 @@ test('an adopted loader signal lives until public replacement and unload', async
 })
 
 test('a superseded preload releases its borrowed loader signal lease', async () => {
-  const signals: Array<AbortSignal> = []
+  let parentSignal: AbortSignal | undefined
   let navigation!: Promise<void>
 
   const rootRoute = new BaseRootRoute({})
@@ -87,7 +91,7 @@ test('a superseded preload releases its borrowed loader signal lease', async () 
     getParentRoute: () => rootRoute,
     path: '/parent',
     loader: ({ abortController }) => {
-      signals.push(abortController.signal)
+      parentSignal = abortController.signal
       return 'parent data'
     },
   })
@@ -110,12 +114,11 @@ test('a superseded preload releases its borrowed loader signal lease', async () 
   })
 
   await router.load()
-  const signal = signals[0]
-  expect(signal?.aborted).toBe(false)
+  expect(parentSignal?.aborted).toBe(false)
 
   await router.preloadRoute({ to: '/parent/child' })
   await navigation
 
   expect(router.state.location.pathname).toBe('/')
-  expect(signal?.aborted).toBe(true)
+  expect(parentSignal?.aborted).toBe(true)
 })

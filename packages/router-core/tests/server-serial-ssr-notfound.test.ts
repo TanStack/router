@@ -13,7 +13,7 @@ import { createTestRouter, loadServerResponse } from './routerTestUtils'
  * into a 200/500.
  */
 
-function setupRouter(childLoader: () => unknown) {
+function setupRouter() {
   const loaderCalls: Array<string> = []
 
   const rootRoute = new BaseRootRoute({})
@@ -33,7 +33,7 @@ function setupRouter(childLoader: () => unknown) {
     path: '/child',
     loader: () => {
       loaderCalls.push('child')
-      return childLoader()
+      throw new Error('child loader failed')
     },
   })
   const router = createTestRouter({
@@ -47,7 +47,7 @@ function setupRouter(childLoader: () => unknown) {
 
 describe('server serial ssr() notFound', () => {
   test('caps the loader prefix at the boundary and sets 404', async () => {
-    const { router, parentRoute, loaderCalls } = setupRouter(() => 'child')
+    const { router, parentRoute, loaderCalls } = setupRouter()
 
     const response = await loadServerResponse(router, '/parent/child')
 
@@ -62,16 +62,5 @@ describe('server serial ssr() notFound', () => {
     )
     // The lane is trimmed to the notFound boundary.
     expect(router.state.matches.at(-1)?.routeId).toBe(parentRoute.id)
-  })
-
-  test('a descendant loader that would reject fatally cannot displace the 404', async () => {
-    const { router, loaderCalls } = setupRouter(() => {
-      throw new Error('child loader failed')
-    })
-
-    const response = await loadServerResponse(router, '/parent/child')
-
-    expect(loaderCalls).toEqual([])
-    expect(response.status).toBe(404)
   })
 })

@@ -57,7 +57,6 @@ describe('adversarial client lane ownership', () => {
       router.subscribe(eventType, laterListener)
 
       await router.navigate({ to: '/target' })
-      await new Promise((resolve) => setTimeout(resolve, 0))
 
       expect(laterListener).toHaveBeenCalledTimes(1)
       expect(router.state.location.pathname).toBe('/target')
@@ -167,7 +166,7 @@ describe('adversarial client lane ownership', () => {
     expect(childOnEnter).not.toHaveBeenCalled()
   })
 
-  test('a redirect aborts the discarded loader generation before pending UI publishes', async () => {
+  test('a redirect aborts the discarded loader generation', async () => {
     let redirectSignal: AbortSignal | undefined
 
     const rootRoute = new BaseRootRoute({})
@@ -196,7 +195,10 @@ describe('adversarial client lane ownership', () => {
     await router.navigate({ to: '/source' })
 
     expect(router.state.location.pathname).toBe('/target')
-    expect(router.state.matches.at(-1)?.routeId).toBe(targetRoute.id)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: targetRoute.id,
+      status: 'success',
+    })
     expect(redirectSignal?.aborted).toBe(true)
   })
 
@@ -393,6 +395,7 @@ describe('adversarial client lane ownership', () => {
   test('a failed preflight cannot abort and strand the pending lane it attempted to supersede', async () => {
     const preflightError = new Error('next loaderDeps failed')
     const pendingGate = createControlledPromise<void>()
+    const brokenPreflightReached = createControlledPromise<void>()
     let pendingSignal: AbortSignal | undefined
     const pendingStarted = createControlledPromise<void>()
 
@@ -419,6 +422,7 @@ describe('adversarial client lane ownership', () => {
       getParentRoute: () => rootRoute,
       path: '/broken',
       loaderDeps: (): Record<string, never> => {
+        brokenPreflightReached.resolve()
         throw preflightError
       },
       loader: () => 'never runs',
@@ -433,7 +437,7 @@ describe('adversarial client lane ownership', () => {
     await pendingStarted
 
     const brokenNavigation = router.navigate({ to: '/broken' })
-    await new Promise((resolve) => setTimeout(resolve, 0))
+    await brokenPreflightReached
 
     expect(pendingSignal?.aborted).toBe(false)
 
@@ -444,5 +448,6 @@ describe('adversarial client lane ownership', () => {
       routeId: pendingRoute.id,
       status: 'success',
     })
+    expect(router.state.location.pathname).toBe('/pending')
   })
 })

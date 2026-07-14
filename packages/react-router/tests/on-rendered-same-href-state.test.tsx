@@ -10,7 +10,12 @@ import {
   createRouter,
 } from '../src'
 
+const testCleanups: Array<() => void> = []
+
 afterEach(() => {
+  while (testCleanups.length) {
+    testCleanups.pop()!()
+  }
   cleanup()
 })
 
@@ -28,9 +33,16 @@ test('onRendered fires for a same-href navigation with a new history key', async
 
   render(<RouterProvider router={router} />)
   expect(await screen.findByText('Index')).toBeInTheDocument()
+  await waitFor(() => {
+    expect(router.state.status).toBe('idle')
+    expect(router.state.resolvedLocation?.href).toBe('/')
+  })
+  const initialHistoryKey = router.state.resolvedLocation?.state.__TSR_key
+  expect(initialHistoryKey).toBeDefined()
 
   const onRendered = vi.fn()
   const unsubscribe = router.subscribe('onRendered', onRendered)
+  testCleanups.push(unsubscribe)
   await act(() =>
     router.navigate({
       to: '/',
@@ -45,6 +57,10 @@ test('onRendered fires for a same-href navigation with a new history key', async
   expect(event.fromLocation?.href).toBe('/')
   expect(event.toLocation.href).toBe('/')
   expect(event.hrefChanged).toBe(false)
-
-  unsubscribe()
+  expect(event.fromLocation?.state.__TSR_key).toBe(initialHistoryKey)
+  expect(event.toLocation.state.__TSR_key).toBeDefined()
+  expect(event.toLocation.state.__TSR_key).not.toBe(initialHistoryKey)
+  expect(router.state.resolvedLocation?.state.__TSR_key).toBe(
+    event.toLocation.state.__TSR_key,
+  )
 })

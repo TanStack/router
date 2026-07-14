@@ -1,6 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, notFound, redirect } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  createControlledPromise,
+  notFound,
+  redirect,
+} from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 /**
@@ -56,12 +62,7 @@ describe('server route chunk failure lifecycle', () => {
     expect(capturedErrors).toEqual([chunkError])
     expect(match?.status).toBe('error')
     expect(match?.error).toBe(chunkError)
-    // Failure finalization loads the errorComponent boundary chunk after
-    // onError ran. (The initial whole-route preload also requests it before
-    // the failure, hence lastIndexOf.)
-    expect(events.lastIndexOf('errorComponent-preload')).toBeGreaterThan(
-      events.indexOf('onError'),
-    )
+    expect(events).toEqual(['onError', 'errorComponent-preload'])
     expect(response.status).toBe(500)
   })
 
@@ -100,8 +101,10 @@ describe('server route chunk failure lifecycle', () => {
 
   test('the first route-order chunk failure determines the response', async () => {
     const rootError = new Error('root component failed')
+    const rootChunkGate = createControlledPromise<void>()
+    const childConverted = createControlledPromise<void>()
     const RootComponent = Object.assign(() => null, {
-      preload: () => Promise.reject(rootError),
+      preload: () => rootChunkGate,
     })
     const ChildComponent = Object.assign(() => null, {
       preload: () => Promise.reject(new Error('child component failed')),
@@ -116,6 +119,7 @@ describe('server route chunk failure lifecycle', () => {
       path: '/child',
       component: ChildComponent as any,
       onError: () => {
+        childConverted.resolve()
         throw redirect({ to: '/elsewhere' })
       },
     })
@@ -125,9 +129,13 @@ describe('server route chunk failure lifecycle', () => {
       isServer: true,
     })
 
-    const response = await loadServerResponse(router, '/child')
+    const responsePromise = loadServerResponse(router, '/child')
+    await childConverted
+    rootChunkGate.reject(rootError)
+    const response = await responsePromise
 
     expect(response.status).toBe(500)
+    expect(response.headers.get('Location')).toBeNull()
     expect(router.state.matches).toHaveLength(1)
     expect(router.state.matches[0]).toMatchObject({
       routeId: rootRoute.id,

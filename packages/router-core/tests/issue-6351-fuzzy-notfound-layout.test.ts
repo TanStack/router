@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -16,6 +16,8 @@ import { createTestRouter } from './routerTestUtils'
  * When no matched route defines a `notFoundComponent`, the previous
  * behavior (deepest matched route with children) is preserved, and
  * `notFoundMode: 'root'` still attributes the 404 to the root route.
+ * This Core suite asserts boundary ownership; rendered fallback output needs
+ * framework-level coverage.
  */
 
 function setup(opts: {
@@ -58,42 +60,52 @@ function globalNotFoundRouteIds(router: {
     .map((match) => match.routeId)
 }
 
-test('fuzzy notFound lands on the pathless layout that defines a notFoundComponent', async () => {
-  const { router, layoutRoute } = setup({
-    layoutNotFoundComponent: () => 'layout not found',
+describe('issue #6351: fuzzy notFound honors pathless layout boundaries', () => {
+  test('lands on the pathless layout when the deeper route has no boundary', async () => {
+    const { router, rootRoute, layoutRoute, agentsRoute } = setup({
+      layoutNotFoundComponent: () => 'layout not found',
+    })
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/agents/skill-agen')
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      layoutRoute.id,
+      agentsRoute.id,
+    ])
+    expect(globalNotFoundRouteIds(router)).toEqual([layoutRoute.id])
   })
 
-  await router.load()
+  test('boundary-enabled control: prefers the deeper matched route', async () => {
+    const { router, agentsRoute } = setup({
+      layoutNotFoundComponent: () => 'layout not found',
+      agentsNotFoundComponent: () => 'agents not found',
+    })
 
-  expect(globalNotFoundRouteIds(router)).toEqual([layoutRoute.id])
+    await router.load()
+
+    expect(globalNotFoundRouteIds(router)).toEqual([agentsRoute.id])
+  })
 })
 
-test('fuzzy notFound prefers the deepest matched route with a notFoundComponent', async () => {
-  const { router, agentsRoute } = setup({
-    layoutNotFoundComponent: () => 'layout not found',
-    agentsNotFoundComponent: () => 'agents not found',
+describe('generic global notFound attribution controls', () => {
+  test('fuzzy mode falls back to the deepest matched route with children when no boundary exists', async () => {
+    const { router, agentsRoute } = setup({})
+
+    await router.load()
+
+    expect(globalNotFoundRouteIds(router)).toEqual([agentsRoute.id])
   })
 
-  await router.load()
+  test('root mode attributes the notFound to root even when a layout boundary exists', async () => {
+    const { router, rootRoute } = setup({
+      layoutNotFoundComponent: () => 'layout not found',
+      notFoundMode: 'root',
+    })
 
-  expect(globalNotFoundRouteIds(router)).toEqual([agentsRoute.id])
-})
+    await router.load()
 
-test('fuzzy notFound falls back to the deepest matched route with children when no notFoundComponent exists', async () => {
-  const { router, agentsRoute } = setup({})
-
-  await router.load()
-
-  expect(globalNotFoundRouteIds(router)).toEqual([agentsRoute.id])
-})
-
-test("notFoundMode 'root' attributes the notFound to the root route even when a layout has a notFoundComponent", async () => {
-  const { router, rootRoute } = setup({
-    layoutNotFoundComponent: () => 'layout not found',
-    notFoundMode: 'root',
+    expect(globalNotFoundRouteIds(router)).toEqual([rootRoute.id])
   })
-
-  await router.load()
-
-  expect(globalNotFoundRouteIds(router)).toEqual([rootRoute.id])
 })

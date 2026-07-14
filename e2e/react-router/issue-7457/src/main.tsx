@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, useEffect } from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient } from '@tanstack/react-query'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
@@ -19,7 +19,9 @@ declare module '@tanstack/react-router' {
 }
 
 function DefaultPendingComponent() {
-  ;(globalThis as any).__pendingSeen = true
+  useEffect(() => {
+    ;(globalThis as any).__pendingSeen = true
+  }, [])
   return <div data-testid="app-pending">loading</div>
 }
 

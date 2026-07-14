@@ -1,6 +1,7 @@
 import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
+import { hydrate } from '@tanstack/router-core/ssr/client'
 import {
   Outlet,
   RouterProvider,
@@ -8,12 +9,14 @@ import {
   createRoute,
   createRouter,
 } from '../src'
+import type { TsrSsrGlobal } from '@tanstack/router-core/ssr/client'
 
 afterEach(() => {
   cleanup()
+  delete window.$_TSR
 })
 
-test('remounting an SSR-marked router loads a history change that happened while unmounted', async () => {
+test('remounting a hydrated router loads a history change that happened while unmounted', async () => {
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -31,10 +34,25 @@ test('remounting an SSR-marked router loads a history change that happened while
     history,
   })
 
-  // This is the stable post-hydration shape: server matches are active and
-  // the persistent SSR marker tells the first Transitioner mount not to load.
-  await router.load()
-  router.ssr = { manifest: { routes: {} } }
+  const matches = router.matchRoutes(router.latestLocation)
+  window.$_TSR = {
+    router: {
+      manifest: { routes: {} },
+      matches: matches.map((match) => ({
+        i: match.id,
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      })),
+    },
+    h: vi.fn(),
+    e: vi.fn(),
+    c: vi.fn(),
+    p: vi.fn(),
+    buffer: [],
+  } satisfies TsrSsrGlobal
+  await hydrate(router)
+  expect(router.ssr).toBeDefined()
 
   const firstRender = render(() => <RouterProvider router={router} />)
   expect(await screen.findByText('Index')).toBeInTheDocument()
@@ -53,30 +71,39 @@ test('remounting an SSR-marked router loads a history change that happened while
   await waitFor(() => {
     expect((router.state.location.state as any).remounted).toBe(true)
   })
+  expect(screen.getByText('Next')).toBeInTheDocument()
 })
 
 test('remounting the provider emits onRendered for the newly mounted DOM', async () => {
+  let mountLabel = 'First mount'
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    component: () => <div>Index</div>,
+    component: () => <div data-testid="index-route">{mountLabel}</div>,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
-  const onRendered = vi.fn()
-  const unsubscribe = router.subscribe('onRendered', onRendered)
+  const renderedDom: Array<string | null> = []
+  const unsubscribe = router.subscribe('onRendered', () => {
+    renderedDom.push(screen.queryByTestId('index-route')?.textContent ?? null)
+  })
 
-  const firstRender = render(() => <RouterProvider router={router} />)
-  expect(await screen.findByText('Index')).toBeInTheDocument()
-  await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(1))
+  try {
+    const firstRender = render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('First mount')).toBeInTheDocument()
+    await waitFor(() => expect(renderedDom).toEqual(['First mount']))
 
-  firstRender.unmount()
-  render(() => <RouterProvider router={router} />)
-  expect(await screen.findByText('Index')).toBeInTheDocument()
-  await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(2))
-
-  unsubscribe()
+    firstRender.unmount()
+    mountLabel = 'Second mount'
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('Second mount')).toBeInTheDocument()
+    await waitFor(() =>
+      expect(renderedDom).toEqual(['First mount', 'Second mount']),
+    )
+  } finally {
+    unsubscribe()
+  }
 })

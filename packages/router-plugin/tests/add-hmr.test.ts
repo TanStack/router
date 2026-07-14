@@ -126,6 +126,35 @@ describe('add-hmr works', () => {
     expect(output).toContain('newModule')
   })
 
+  it('generates lazy reset and scoped route refresh without route context mutation', async () => {
+    const filename = 'arrow-function.tsx'
+    const framework = 'react'
+    const file = await readFile(
+      path.join(getFrameworkDir(framework).files, filename),
+    )
+    const code = file.toString()
+    const compileResult = compileCodeSplitReferenceRoute({
+      code,
+      filename,
+      id: filename,
+      addHmr: true,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+      targetFramework: framework,
+      compilerPlugins: getReferenceRouteCompilerPlugins({
+        targetFramework: framework,
+        addHmr: true,
+      }),
+    })
+    if (!compileResult) {
+      throw new Error('Expected the reference route to be transformed')
+    }
+    const output = compileResult.code
+
+    expect(output).toContain('oldRoute._lazy = undefined;')
+    expect(output).toContain('void router._refreshRoute?.(oldRoute.id);')
+    expect(output).not.toContain('__routeContext')
+  })
+
   it('uses a generated route id fallback for Vite HMR', async () => {
     const statement = createRouteHmrStatement([], {
       hmrStyle: 'vite',

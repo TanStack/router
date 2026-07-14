@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import {
   BaseRootRoute,
   BaseRoute,
@@ -7,9 +9,18 @@ import {
   trimPathRight,
 } from '@tanstack/router-core'
 import { describe, expect, it, vi } from 'vitest'
+import { Fragment, act, createElement } from 'react'
+import { createPortal } from 'react-dom'
+import { createRoot } from 'react-dom/client'
 import { createMemoryHistory } from '../../history/src'
+import { HeadContent } from '../../react-router/src/HeadContent'
+import { RouterContextProvider } from '../../react-router/src/RouterProvider'
+import { Scripts } from '../../react-router/src/Scripts'
+import { Router as ReactRouter } from '../../react-router/src/router'
 import { getHandleRouteUpdateCode } from '../src/core/hmr'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
+
+vi.mock('@tanstack/router-core/isServer', () => ({ isServer: undefined }))
 
 const getStoreConfig: GetStoreConfig = () => ({
   createMutableStore: createNonReactiveMutableStore,
@@ -22,6 +33,10 @@ const getHandleRouteUpdate = () => {
     routeId: string,
     newRoute: AnyRoute,
   ) => void
+}
+
+function asAnyRoute<TRoute>(route: TRoute): TRoute & AnyRoute {
+  return route as unknown as TRoute & AnyRoute
 }
 
 function createTestHistory() {
@@ -52,10 +67,10 @@ function createTestHistory() {
   }
 }
 
-function createTestRouter(routeTree: AnyRoute) {
+function createTestRouter<TRouteTree>(routeTree: TRouteTree) {
   return new RouterCore(
     {
-      routeTree,
+      routeTree: asAnyRoute(routeTree),
       history: createTestHistory() as any,
       isServer: true,
     },
@@ -63,10 +78,13 @@ function createTestRouter(routeTree: AnyRoute) {
   )
 }
 
-function createClientTestRouter(routeTree: AnyRoute, initialEntry: string) {
+function createClientTestRouter<TRouteTree>(
+  routeTree: TRouteTree,
+  initialEntry: string,
+) {
   return new RouterCore(
     {
-      routeTree,
+      routeTree: asAnyRoute(routeTree),
       history: createMemoryHistory({ initialEntries: [initialEntry] }),
       isServer: false,
       origin: 'http://localhost',
@@ -75,27 +93,44 @@ function createClientTestRouter(routeTree: AnyRoute, initialEntry: string) {
   )
 }
 
+function createReactClientTestRouter<TRouteTree>(
+  routeTree: TRouteTree,
+  initialEntry: string,
+) {
+  return new ReactRouter({
+    routeTree: asAnyRoute(routeTree),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
+    isServer: false,
+    origin: 'http://localhost',
+  })
+}
+
 function withWindowRouter(router: RouterCore<any, any, any, any, any>) {
-  const previousWindow = (globalThis as any).window
-  ;(globalThis as any).window = { __TSR_ROUTER__: router }
+  const testWindow = globalThis.window as any
+  const hadOwnRouter = Object.prototype.hasOwnProperty.call(
+    testWindow,
+    '__TSR_ROUTER__',
+  )
+  const previousRouter = testWindow.__TSR_ROUTER__
+  testWindow.__TSR_ROUTER__ = router
 
   return () => {
-    if (previousWindow) {
-      ;(globalThis as any).window = previousWindow
+    if (hadOwnRouter) {
+      testWindow.__TSR_ROUTER__ = previousRouter
     } else {
-      delete (globalThis as any).window
+      delete testWindow.__TSR_ROUTER__
     }
   }
 }
 
-function runHandleRouteUpdate(
+function runHandleRouteUpdate<TRoute>(
   router: RouterCore<any, any, any, any, any>,
   routeId: string,
-  newRoute: AnyRoute,
+  newRoute: TRoute,
 ) {
   const restoreWindow = withWindowRouter(router)
   try {
-    getHandleRouteUpdate()(routeId, newRoute)
+    getHandleRouteUpdate()(routeId, asAnyRoute(newRoute))
   } finally {
     restoreWindow()
   }
@@ -112,25 +147,25 @@ describe('handleRouteUpdate', () => {
   it('keeps routesByPath pointed at an index route when a pathless layout updates', () => {
     const rootRoute = new BaseRootRoute({})
     const parentRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/livestock/$farmId/medicine',
     })
     const pathlessRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
+      getParentRoute: () => asAnyRoute(parentRoute),
       id: '_form',
     })
     const newRoute = new BaseRoute({
-      getParentRoute: () => pathlessRoute,
+      getParentRoute: () => asAnyRoute(pathlessRoute),
       path: 'new',
     })
     const indexRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
+      getParentRoute: () => asAnyRoute(parentRoute),
       path: '/',
     })
     const routeTree = rootRoute.addChildren([
       parentRoute.addChildren([
-        pathlessRoute.addChildren([newRoute]),
-        indexRoute,
+        pathlessRoute.addChildren([asAnyRoute(newRoute)]),
+        asAnyRoute(indexRoute),
       ]),
     ])
     const router = createTestRouter(routeTree)
@@ -140,7 +175,10 @@ describe('handleRouteUpdate', () => {
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(pathlessRoute.id, new BaseRoute({} as any))
+      getHandleRouteUpdate()(
+        pathlessRoute.id,
+        asAnyRoute(new BaseRoute({} as any)),
+      )
     } finally {
       restoreWindow()
     }
@@ -154,15 +192,15 @@ describe('handleRouteUpdate', () => {
   it('keeps an index route winning the trimmed path key when its parent updates', () => {
     const rootRoute = new BaseRootRoute({})
     const parentRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/path',
     })
     const indexRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
+      getParentRoute: () => asAnyRoute(parentRoute),
       path: '/',
     })
     const routeTree = rootRoute.addChildren([
-      parentRoute.addChildren([indexRoute]),
+      parentRoute.addChildren([asAnyRoute(indexRoute)]),
     ])
     const router = createTestRouter(routeTree)
     const key = trimPathRight(indexRoute.fullPath)
@@ -171,7 +209,10 @@ describe('handleRouteUpdate', () => {
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(parentRoute.id, new BaseRoute({} as any))
+      getHandleRouteUpdate()(
+        parentRoute.id,
+        asAnyRoute(new BaseRoute({} as any)),
+      )
     } finally {
       restoreWindow()
     }
@@ -185,7 +226,7 @@ describe('handleRouteUpdate', () => {
   it('refreshes matching data when params.parse changes', () => {
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/items/$itemId',
       params: {
         parse: ({ itemId }: { itemId: string }) => {
@@ -193,7 +234,7 @@ describe('handleRouteUpdate', () => {
         },
       },
     })
-    const routeTree = rootRoute.addChildren([itemRoute])
+    const routeTree = rootRoute.addChildren([asAnyRoute(itemRoute)])
     const router = createTestRouter(routeTree)
 
     expect(router.getMatchedRoutes('/items/abc').foundRoute?.id).toBeUndefined()
@@ -202,11 +243,13 @@ describe('handleRouteUpdate', () => {
     try {
       getHandleRouteUpdate()(
         itemRoute.id,
-        new BaseRoute({
-          params: {
-            parse: ({ itemId }: { itemId: string }) => ({ itemId }),
-          },
-        } as any),
+        asAnyRoute(
+          new BaseRoute({
+            params: {
+              parse: ({ itemId }: { itemId: string }) => ({ itemId }),
+            },
+          } as any),
+        ),
       )
     } finally {
       restoreWindow()
@@ -220,10 +263,10 @@ describe('handleRouteUpdate', () => {
   it('hydrates the hot module route export with generated route tree state', () => {
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/items/$itemId',
     })
-    const routeTree = rootRoute.addChildren([itemRoute])
+    const routeTree = rootRoute.addChildren([asAnyRoute(itemRoute)])
     const router = createTestRouter(routeTree)
     const newRoute = new BaseRoute({} as any)
 
@@ -231,7 +274,7 @@ describe('handleRouteUpdate', () => {
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(itemRoute.id, newRoute)
+      getHandleRouteUpdate()(itemRoute.id, asAnyRoute(newRoute))
     } finally {
       restoreWindow()
     }
@@ -244,20 +287,57 @@ describe('handleRouteUpdate', () => {
     expect((newRoute as any).options).toBe((itemRoute as any).options)
   })
 
+  it('clears lazy ownership and delegates rematerialization to the router', () => {
+    const rootRoute = new BaseRootRoute({})
+    const itemRoute = new BaseRoute({
+      getParentRoute: () => asAnyRoute(rootRoute),
+      path: '/items/$itemId',
+    })
+    const router = createTestRouter(
+      rootRoute.addChildren([asAnyRoute(itemRoute)]),
+    )
+    const lazyOwner = Promise.resolve()
+    const refreshRoute = vi.fn(async () => {})
+    ;(itemRoute as any)._lazy = lazyOwner
+    ;(router as any)._refreshRoute = refreshRoute
+
+    expect((itemRoute as any)._lazy).toBe(lazyOwner)
+
+    runHandleRouteUpdate(router, itemRoute.id, new BaseRoute({} as any))
+
+    expect((itemRoute as any)._lazy).toBeUndefined()
+    expect(refreshRoute).toHaveBeenCalledTimes(1)
+    expect(refreshRoute).toHaveBeenCalledWith(itemRoute.id)
+  })
+
   it('removes stale loader data when a hot route removes its loader', async () => {
-    const rootRoute = new BaseRootRoute({
+    const rootRoute = new BaseRootRoute({})
+    const hotRoute = new BaseRoute({
+      getParentRoute: () => asAnyRoute(rootRoute),
+      path: '/hot',
       loader: () => 'stale loader data',
     })
-    const router = createTestRouter(rootRoute)
+    const router = createClientTestRouter(
+      rootRoute.addChildren([asAnyRoute(hotRoute)]),
+      '/hot',
+    )
     await router.load()
 
-    expect(router.state.matches[0]?.loaderData).toBe('stale loader data')
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      hotRoute.id,
+    ])
+    expect(router.state.matches[1]!.loaderData).toBe('stale loader data')
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(rootRoute.id, new BaseRootRoute({}))
+      getHandleRouteUpdate()(hotRoute.id, asAnyRoute(new BaseRoute({} as any)))
       await vi.waitFor(() => {
-        expect(router.state.matches[0]?.loaderData).toBeUndefined()
+        expect(router.state.matches.map((match) => match.routeId)).toEqual([
+          rootRoute.id,
+          hotRoute.id,
+        ])
+        expect(router.state.matches[1]!.loaderData).toBeUndefined()
       })
     } finally {
       restoreWindow()
@@ -296,8 +376,9 @@ describe('handleRouteUpdate', () => {
     resolveStaleRefresh('stale')
     await oldRefresh
 
-    expect(newLoader).toHaveBeenCalled()
-    expect(router.state.matches[0]?.loaderData).toBe('hot')
+    expect(newLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches[0]!.routeId).toBe(rootRoute.id)
+    expect(router.state.matches[0]!.loaderData).toBe('hot')
   })
 
   it('does not cache an obsolete inactive preload that settles after a hot update', async () => {
@@ -309,13 +390,13 @@ describe('handleRouteUpdate', () => {
     const newLoader = vi.fn(() => 'hot')
     const rootRoute = new BaseRootRoute({})
     const hotRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/hot',
       loader: oldLoader,
       preloadStaleTime: Infinity,
     })
     const router = createClientTestRouter(
-      rootRoute.addChildren([hotRoute]),
+      rootRoute.addChildren([asAnyRoute(hotRoute)]),
       '/',
     )
 
@@ -340,7 +421,7 @@ describe('handleRouteUpdate', () => {
   it('observes hot parser and route-context changes on the active route', async () => {
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/items/$itemId',
       params: {
         parse: ({ itemId }: { itemId: string }) => ({
@@ -351,13 +432,17 @@ describe('handleRouteUpdate', () => {
       context: () => ({ source: 'old' }),
     })
     const router = createClientTestRouter(
-      rootRoute.addChildren([itemRoute]),
+      rootRoute.addChildren([asAnyRoute(itemRoute)]),
       '/items/abc',
     )
 
     await router.load()
-    expect(router.state.matches[1]?.params).toMatchObject({ parser: 'old' })
-    expect(router.state.matches[1]?.context).toMatchObject({ source: 'old' })
+    expect(router.state.matches[1]!.routeId).toBe(itemRoute.id)
+    expect(router.state.matches[1]!.params).toEqual({
+      itemId: 'abc',
+      parser: 'old',
+    })
+    expect(router.state.matches[1]!.context).toMatchObject({ source: 'old' })
 
     runHandleRouteUpdate(
       router,
@@ -374,25 +459,31 @@ describe('handleRouteUpdate', () => {
     )
 
     await vi.waitFor(() => {
-      expect(router.state.matches[1]?.params).toMatchObject({ parser: 'new' })
-      expect(router.state.matches[1]?.context).toMatchObject({ source: 'new' })
+      expect(router.state.matches[1]!.routeId).toBe(itemRoute.id)
+      expect(router.state.matches[1]!.params).toEqual({
+        itemId: 'abc',
+        parser: 'new',
+      })
+      expect(router.state.matches[1]!.context).toMatchObject({ source: 'new' })
     })
   })
 
   it('rematerializes descendants when a parent route definition changes', async () => {
     const rootRoute = new BaseRootRoute({})
     const parentRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/parent',
       context: () => ({ source: 'old' }),
     })
     const childRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
+      getParentRoute: () => asAnyRoute(parentRoute),
       path: '/child',
       context: ({ context }) => ({ inheritedSource: context.source }),
     })
     const router = createClientTestRouter(
-      rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      rootRoute.addChildren([
+        parentRoute.addChildren([asAnyRoute(childRoute)]),
+      ]),
       '/parent/child',
     )
 
@@ -419,7 +510,7 @@ describe('handleRouteUpdate', () => {
     const loader = vi.fn(() => 'hot loader data')
     const rootRoute = new BaseRootRoute({})
     const hotRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/hot',
       beforeLoad,
       loader,
@@ -427,11 +518,11 @@ describe('handleRouteUpdate', () => {
       gcTime: Infinity,
     })
     const otherRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/other',
     })
     const router = createClientTestRouter(
-      rootRoute.addChildren([hotRoute, otherRoute]),
+      rootRoute.addChildren([asAnyRoute(hotRoute), asAnyRoute(otherRoute)]),
       '/hot',
     )
 
@@ -448,14 +539,15 @@ describe('handleRouteUpdate', () => {
     )
     expect(beforeLoad).toHaveBeenCalledTimes(1)
     expect(loader).toHaveBeenCalledTimes(1)
-    expect(match?.loaderData).toBeUndefined()
-    expect(match?.context).not.toHaveProperty('hotBeforeLoad')
+    expect(match).toBeDefined()
+    expect(match!.loaderData).toBeUndefined()
+    expect(match!.context).not.toHaveProperty('hotBeforeLoad')
   })
 
-  it('removes projected head and body scripts after a hot update', async () => {
+  it('removes rendered HeadContent and Scripts output after a hot update', async () => {
     const rootRoute = new BaseRootRoute({})
     const hotRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+      getParentRoute: () => asAnyRoute(rootRoute),
       path: '/hot',
       head: () => ({
         meta: [{ title: 'hot title' }],
@@ -463,24 +555,80 @@ describe('handleRouteUpdate', () => {
       }),
       scripts: () => [{ src: '/hot-body.js' }],
     })
-    const router = createClientTestRouter(
-      rootRoute.addChildren([hotRoute]),
+    const router = createReactClientTestRouter(
+      rootRoute.addChildren([asAnyRoute(hotRoute)]),
       '/hot',
     )
 
     await router.load()
-    expect(router.state.matches[1]).toMatchObject({
+    expect(router.state.matches[1]!).toMatchObject({
+      routeId: hotRoute.id,
       meta: [{ title: 'hot title' }],
       headScripts: [{ src: '/hot-head.js' }],
       scripts: [{ src: '/hot-body.js' }],
     })
 
-    runHandleRouteUpdate(router, hotRoute.id, new BaseRoute({} as any))
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const reactRoot = createRoot(container)
+    const previousActEnvironment = (globalThis as any).IS_REACT_ACT_ENVIRONMENT
+    ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
 
-    await vi.waitFor(() => {
-      expect(router.state.matches[1]?.meta).toBeUndefined()
-      expect(router.state.matches[1]?.headScripts).toBeUndefined()
-      expect(router.state.matches[1]?.scripts).toBeUndefined()
-    })
+    try {
+      await act(async () => {
+        reactRoot.render(
+          createElement(RouterContextProvider, {
+            router,
+            children: createElement(
+              Fragment,
+              null,
+              createPortal(createElement(HeadContent), document.head),
+              createElement(Scripts),
+            ),
+          }),
+        )
+      })
+
+      expect(document.head.querySelector('title')?.textContent).toBe(
+        'hot title',
+      )
+      expect(
+        document.head.querySelector('script[src="/hot-head.js"]'),
+      ).not.toBeNull()
+      expect(
+        document.head.querySelector('script[src="/hot-body.js"]'),
+      ).not.toBeNull()
+
+      await act(async () => {
+        runHandleRouteUpdate(router, hotRoute.id, new BaseRoute({} as any))
+        await vi.waitFor(() => {
+          expect(router.state.matches[1]!.routeId).toBe(hotRoute.id)
+          expect(router.state.matches[1]!.meta).toBeUndefined()
+          expect(router.state.matches[1]!.headScripts).toBeUndefined()
+          expect(router.state.matches[1]!.scripts).toBeUndefined()
+        })
+      })
+
+      expect(document.head.querySelector('title')).toBeNull()
+      expect(
+        document.head.querySelector('script[src="/hot-head.js"]'),
+      ).toBeNull()
+      expect(
+        document.head.querySelector('script[src="/hot-body.js"]'),
+      ).toBeNull()
+    } finally {
+      try {
+        await act(async () => {
+          reactRoot.unmount()
+        })
+      } finally {
+        container.remove()
+        if (previousActEnvironment === undefined) {
+          delete (globalThis as any).IS_REACT_ACT_ENVIRONMENT
+        } else {
+          ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment
+        }
+      }
+    }
   })
 })

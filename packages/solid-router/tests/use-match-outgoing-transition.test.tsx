@@ -42,11 +42,13 @@ test('an outgoing component never observes its own active match disappear', asyn
 
   render(() => <RouterProvider router={router} />)
   expect(await screen.findByText('First')).toBeInTheDocument()
+  expect(observedRouteIds).toContain('/first')
 
   await router.navigate({ to: '/next' })
   expect(await screen.findByText('Next')).toBeInTheDocument()
+  expect(screen.queryByText('First')).not.toBeInTheDocument()
 
-  expect(observedRouteIds).toEqual(['/first'])
+  expect(observedRouteIds).not.toContain(undefined)
 })
 
 test('a persistent observer releases an explicit match only with the destination render', async () => {
@@ -94,15 +96,31 @@ test('a persistent observer releases an explicit match only with the destination
   const navigation = router.navigate({ to: '/next' })
   await Promise.resolve()
   expect(screen.queryByText('Next')).toBeNull()
-  expect(observations.every(({ routeId }) => routeId === '/first')).toBe(true)
+  expect(observations).toContainEqual({
+    routeId: '/first',
+    destinationRendered: false,
+  })
+  expect(observations.some(({ routeId }) => routeId === undefined)).toBe(false)
 
   nextLoader.resolve()
   await navigation
   expect(await screen.findByText('Next')).toBeInTheDocument()
+  expect(screen.queryByText('First')).not.toBeInTheDocument()
 
-  const missing = observations.filter(({ routeId }) => routeId === undefined)
-  expect(missing.length).toBeGreaterThan(0)
-  expect(missing.every(({ destinationRendered }) => destinationRendered)).toBe(
-    true,
+  const retainedWhilePending = observations.findIndex(
+    ({ routeId, destinationRendered }) =>
+      routeId === '/first' && !destinationRendered,
   )
+  const releasedWithDestination = observations.findIndex(
+    ({ routeId, destinationRendered }) =>
+      routeId === undefined && destinationRendered,
+  )
+  expect(retainedWhilePending).toBeGreaterThanOrEqual(0)
+  expect(releasedWithDestination).toBeGreaterThan(retainedWhilePending)
+  expect(
+    observations.some(
+      ({ routeId, destinationRendered }) =>
+        routeId === undefined && !destinationRendered,
+    ),
+  ).toBe(false)
 })

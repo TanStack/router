@@ -13,6 +13,7 @@ describe('server functional ssr() errors', () => {
   test('commits the throwing route as an error and returns 500', async () => {
     const boom = new Error('feature flag lookup failed')
     const loader = vi.fn(() => 'reports data')
+    const onError = vi.fn()
 
     const rootRoute = new BaseRootRoute({})
     const reportsRoute = new BaseRoute({
@@ -22,6 +23,7 @@ describe('server functional ssr() errors', () => {
         throw boom
       },
       loader,
+      onError,
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([reportsRoute]),
@@ -36,6 +38,8 @@ describe('server functional ssr() errors', () => {
     )
     expect(loader).not.toHaveBeenCalled()
     expect(response.status).toBe(500)
+    expect(onError).toHaveBeenCalledTimes(1)
+    expect(onError).toHaveBeenCalledWith(boom)
     expect(reportsMatch).toMatchObject({
       status: 'error',
       error: boom,

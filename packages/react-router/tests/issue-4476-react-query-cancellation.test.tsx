@@ -25,7 +25,7 @@ import {
 afterEach(cleanup)
 
 // https://github.com/TanStack/router/issues/4476
-test('#4476: pending navigation does not cancel fetchQuery when it unmounts the last useQuery observer', async () => {
+test('#4476: pending navigation keeps the query observer mounted and its fetchQuery signal alive', async () => {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, staleTime: 0 } },
   })
@@ -33,6 +33,7 @@ test('#4476: pending navigation does not cancel fetchQuery when it unmounts the 
   const queryKey = ['issue-4476'] as const
   const routeError = vi.fn()
   const pageTwoBeforeLoad = vi.fn()
+  const pendingComponentRendered = vi.fn()
   let querySignal: AbortSignal | undefined
 
   const rootRoute = createRootRoute({
@@ -90,7 +91,10 @@ test('#4476: pending navigation does not cancel fetchQuery when it unmounts the 
     defaultPreloadDelay: 0,
     defaultPreloadStaleTime: 0,
     defaultPendingMs: 0,
-    defaultPendingComponent: () => <div>Loading page two</div>,
+    defaultPendingComponent: () => {
+      pendingComponentRendered()
+      return <div data-testid="page-two-pending">Loading page two</div>
+    },
   })
 
   try {
@@ -107,14 +111,17 @@ test('#4476: pending navigation does not cancel fetchQuery when it unmounts the 
     fireEvent.click(link)
 
     await waitFor(() => expect(querySignal).toBeDefined())
-    // Give the zero-delay pending transition a chance to unmount Page one.
-    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.getByTestId('page-one')).toBeInTheDocument()
+    expect(screen.queryByTestId('page-two-pending')).not.toBeInTheDocument()
     expect(querySignal?.aborted).toBe(false)
     queryGate.resolve(10)
 
     expect(await screen.findByText('Page two: 10')).toBeInTheDocument()
     expect(routeError).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('page-one')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('page-two-pending')).not.toBeInTheDocument()
     expect(screen.queryByTestId('page-two-error')).not.toBeInTheDocument()
+    expect(router.state.location.pathname).toBe('/page-two')
   } finally {
     queryGate.resolve(10)
     queryClient.clear()

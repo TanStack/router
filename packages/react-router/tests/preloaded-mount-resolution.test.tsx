@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import * as React from 'react'
 import { createRoot } from 'react-dom/client'
 import { createMemoryHistory } from '@tanstack/history'
@@ -37,16 +37,6 @@ afterEach(() => {
   ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = prevActEnv
 })
 
-async function until(assert: () => boolean, what: string): Promise<void> {
-  const deadline = Date.now() + 5000
-  while (!assert()) {
-    if (Date.now() > deadline) {
-      throw new Error(`Timed out waiting for ${what}`)
-    }
-    await new Promise((resolve) => setTimeout(resolve, 10))
-  }
-}
-
 test('mounting after a settled load still resolves status and fires onRendered', async () => {
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
@@ -62,7 +52,11 @@ test('mounting after a settled load still resolves status and fires onRendered',
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
 
-  const onRendered = vi.fn()
+  let resolveRendered!: () => void
+  const rendered = new Promise<void>((resolve) => {
+    resolveRendered = resolve
+  })
+  const onRendered = vi.fn(() => resolveRendered())
   const onResolved = vi.fn()
   const onLoad = vi.fn()
   const unsubscribers = [
@@ -74,21 +68,34 @@ test('mounting after a settled load still resolves status and fires onRendered',
   const container = document.createElement('div')
   document.body.appendChild(container)
   const reactRoot = createRoot(container)
+  let renderedTimeout: ReturnType<typeof setTimeout> | undefined
 
   try {
     // Load fully settles before the provider mounts — the exact shape of the
     // memory benchmark's mount/unmount cycle.
     await router.load()
-    reactRoot.render(<RouterProvider router={router} />)
+    expect(router.state.status).toBe('idle')
+    expect(router.state.resolvedLocation?.pathname).toBe('/')
+    expect(onLoad).toHaveBeenCalledTimes(1)
+    expect(onResolved).toHaveBeenCalledTimes(1)
+    expect(onRendered).not.toHaveBeenCalled()
 
-    await until(
-      () => container.querySelector('[data-testid="home"]') !== null,
-      'route content to render',
-    )
-    await until(() => onRendered.mock.calls.length > 0, 'onRendered to fire')
-    await until(() => onResolved.mock.calls.length > 0, 'onResolved to fire')
-    await until(() => onLoad.mock.calls.length > 0, 'onLoad to fire')
+    reactRoot.render(<RouterProvider router={router} />)
+    await Promise.race([
+      rendered,
+      new Promise<never>((_, reject) => {
+        renderedTimeout = setTimeout(() => {
+          reject(new Error('Timed out waiting for onRendered'))
+        }, 2000)
+      }),
+    ])
+
+    expect(container.querySelector('[data-testid="home"]')).not.toBeNull()
+    expect(onRendered).toHaveBeenCalledTimes(1)
+    expect(router.state.status).toBe('idle')
+    expect(router.state.resolvedLocation?.pathname).toBe('/')
   } finally {
+    clearTimeout(renderedTimeout)
     unsubscribe()
     reactRoot.unmount()
     container.remove()
