@@ -752,7 +752,9 @@ async function reduceLane(
     let match = lane.matches[boundary]!
     if (
       background &&
-      !(tasks as Array<BackgroundLoaderTask>).some((task) => task.index === boundary)
+      !(tasks as Array<BackgroundLoaderTask>).some(
+        (task) => task.index === boundary,
+      )
     ) {
       match = lane.matches[boundary] = { ...match, _flight: undefined }
     }
