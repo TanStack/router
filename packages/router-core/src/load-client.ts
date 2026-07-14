@@ -17,9 +17,7 @@ import type { AnyRouter } from './router'
 
 declare const lanePhase: unique symbol
 
-type Phase = 'matched' | 'contextualized' | 'reduced' | 'projected'
-
-type Lane<TPhase extends Phase> = {
+type Lane<TPhase extends 'matched' | 'contextualized' | 'reduced' | 'projected'> = {
   readonly [lanePhase]?: TPhase
   location: ParsedLocation
   matches: Array<WorkMatch>
@@ -27,12 +25,9 @@ type Lane<TPhase extends Phase> = {
 }
 
 type MatchedLane = Lane<'matched'>
-
 type ContextualizedLane = Lane<'contextualized'>
-
 type ReducedLane = Lane<'reduced'>
-
-export type ProjectedLane = Lane<'projected'>
+type ProjectedLane = Lane<'projected'>
 
 const SUCCESS = 0
 const ERROR = 1
@@ -62,10 +57,6 @@ type WorkMatch = AnyRouteMatch & {
   _preloadBeforeLoad?: AnyRoute['options']['beforeLoad']
 }
 
-type ClientRouter = AnyRouter & {
-  _flights?: Map<string, LoaderFlight>
-}
-
 export type LoadTransaction = {
   location: ParsedLocation
   controller: AbortController
@@ -84,18 +75,11 @@ export type PendingSession = {
   ack?: Promise<boolean>
 }
 
-type CoordinatorRouter = ClientRouter & {
-  _tx?: LoadTransaction
-  _committedMatches?: Array<AnyRouteMatch>
-  _pending?: PendingSession
+type CoordinatorRouter = AnyRouter & {
   /** Cancels reentrant synchronous planning without replacing the current writer. */
   _preflight?: AbortController
 }
 
-type WorkerRouter = Pick<
-  AnyRouter,
-  'buildLocation' | 'navigate' | 'options' | 'routeTree' | 'routesById'
->
 
 type LoaderTask = {
   outcome: Promise<LoaderOutcome>
@@ -143,7 +127,7 @@ function waitFor<T>(
   })
 }
 
-function getRoute(router: WorkerRouter, match: WorkMatch): AnyRoute {
+function getRoute(router: AnyRouter, match: WorkMatch): AnyRoute {
   return (router.routesById as Record<string, AnyRoute>)[match.routeId]!
 }
 
@@ -175,7 +159,7 @@ function normalizeError(route: AnyRoute, cause: unknown): LoaderOutcome {
   return outcome
 }
 
-function navigateFrom(router: WorkerRouter, location: ParsedLocation) {
+function navigateFrom(router: AnyRouter, location: ParsedLocation) {
   return (opts: any) =>
     router.navigate({
       ...opts,
@@ -184,7 +168,7 @@ function navigateFrom(router: WorkerRouter, location: ParsedLocation) {
 }
 
 async function contextualize(
-  router: WorkerRouter,
+  router: AnyRouter,
   lane: MatchedLane,
   options: ExecuteLaneOptions,
 ): Promise<IndexedOutcome | undefined> {
@@ -199,7 +183,7 @@ async function contextualize(
     const serialError = match.paramsError ?? match.searchError
 
     if (serialError !== undefined) {
-      releaseFlight(router as ClientRouter, match)
+      releaseFlight(router, match)
       return [index, normalizeError(route, serialError)]
     }
 
@@ -276,7 +260,7 @@ async function contextualize(
       match.isFetching = false
       const outcome = normalize(result, false, route.id)
       if (outcome[0] !== SUCCESS) {
-        releaseFlight(router as ClientRouter, match)
+        releaseFlight(router, match)
         return [index, outcome]
       }
       match.__beforeLoadContext = result
@@ -298,7 +282,7 @@ async function contextualize(
       if (cause instanceof Promise) {
         throw cause
       }
-      releaseFlight(router as ClientRouter, match)
+      releaseFlight(router, match)
       return [index, normalizeError(route, cause)]
     }
   }
@@ -306,7 +290,7 @@ async function contextualize(
   return
 }
 
-function releaseFlight(router: ClientRouter, match: WorkMatch): void {
+function releaseFlight(router: AnyRouter, match: WorkMatch): void {
   const flight = match._flight
   if (!flight) {
     return
@@ -334,13 +318,13 @@ export function transferMatchResources(
 ): void {
   for (const match of previous as Array<WorkMatch>) {
     if (!next.includes(match)) {
-      releaseFlight(router as ClientRouter, match)
+      releaseFlight(router, match)
     }
   }
 }
 
 function startFlight(
-  router: ClientRouter,
+  router: AnyRouter,
   key: string,
   route: AnyRoute,
   invoke: (controller: AbortController) => unknown,
@@ -364,7 +348,7 @@ function startFlight(
   return flight
 }
 
-function closeFlight(router: ClientRouter, match: WorkMatch): void {
+function closeFlight(router: AnyRouter, match: WorkMatch): void {
   const flight = match._flight
   if (!flight) {
     return
@@ -375,7 +359,7 @@ function closeFlight(router: ClientRouter, match: WorkMatch): void {
 }
 
 function getLoaderContext(
-  router: WorkerRouter,
+  router: AnyRouter,
   lane: ContextualizedLane,
   match: WorkMatch,
   route: AnyRoute,
@@ -399,8 +383,7 @@ function getLoaderContext(
 }
 
 async function loadResource(
-  router: ClientRouter,
-  workerRouter: WorkerRouter,
+  router: AnyRouter,
   lane: ContextualizedLane,
   match: WorkMatch,
   route: AnyRoute,
@@ -426,7 +409,7 @@ async function loadResource(
       flight = startFlight(router, match.id, route, (controller) =>
         loader(
           getLoaderContext(
-            workerRouter,
+            router,
             lane,
             match,
             route,
@@ -459,7 +442,7 @@ async function loadResource(
 }
 
 function shouldReloadMatch(
-  router: WorkerRouter,
+  router: AnyRouter,
   match: WorkMatch,
   route: AnyRoute,
   options: ExecuteLaneOptions,
@@ -501,8 +484,7 @@ function applySuccess(match: WorkMatch, data: unknown): void {
 }
 
 function createLoaderTask(
-  router: ClientRouter,
-  workerRouter: WorkerRouter,
+  router: AnyRouter,
   lane: ContextualizedLane,
   index: number,
   tasks: Array<LoaderTask>,
@@ -510,7 +492,7 @@ function createLoaderTask(
   options: ExecuteLaneOptions,
 ): Promise<WorkMatch> {
   const match = lane.matches[index]!
-  const route = getRoute(workerRouter, match)
+  const route = getRoute(router, match)
   const preload = !!options.preload
   let reload = false
   let reloadFailure: LoaderOutcome | undefined
@@ -524,7 +506,7 @@ function createLoaderTask(
         if (typeof configured === 'function') {
           configured = configured(
             getLoaderContext(
-              workerRouter,
+              router,
               lane,
               match,
               route,
@@ -536,7 +518,7 @@ function createLoaderTask(
         }
       }
       reload = shouldReloadMatch(
-        workerRouter,
+        router,
         match,
         route,
         options,
@@ -557,7 +539,7 @@ function createLoaderTask(
     ((typeof routeLoader === 'function'
       ? undefined
       : routeLoader?.staleReloadMode) ??
-      workerRouter.options.defaultStaleReloadMode) !== 'blocking'
+      router.options.defaultStaleReloadMode) !== 'blocking'
   )
   const skippedPreload = preload && route.options.preload === false
   const loaded = reload && !skippedPreload
@@ -572,7 +554,6 @@ function createLoaderTask(
       ? Promise.resolve<LoaderOutcome>([SUCCESS, match.loaderData])
       : loadResource(
           router,
-          workerRouter,
           lane,
           match,
           route,
@@ -616,7 +597,6 @@ function createLoaderTask(
   }
   const backgroundOutcome = loadResource(
     router,
-    workerRouter,
     lane,
     candidate,
     route,
@@ -641,7 +621,7 @@ function createLoaderTask(
 }
 
 function getNotFoundBoundary(
-  router: WorkerRouter,
+  router: AnyRouter,
   matches: Array<WorkMatch>,
   indexed: IndexedOutcome,
 ): number {
@@ -662,7 +642,7 @@ function getNotFoundBoundary(
 }
 
 async function reduceLane(
-  router: WorkerRouter & ClientRouter,
+  router: AnyRouter,
   lane: ContextualizedLane,
   tasks: Array<LoaderTask>,
   options: ExecuteLaneOptions,
@@ -734,7 +714,7 @@ async function reduceLane(
   if (control) {
     if (lane.background) {
       discardMatchResources(
-        router as AnyRouter,
+        router,
         lane.background.map((task) => task.candidate),
       )
       lane.background = undefined
@@ -787,13 +767,13 @@ async function reduceLane(
 }
 
 function trimLane(
-  router: ClientRouter,
+  router: AnyRouter,
   lane: ContextualizedLane,
   length: number,
   background: boolean,
 ): void {
   if (!background) {
-    discardMatchResources(router as AnyRouter, lane.matches.slice(length))
+    discardMatchResources(router, lane.matches.slice(length))
   }
   lane.matches.length = length
   if (!lane.background || background) {
@@ -804,14 +784,14 @@ function trimLane(
     if (task.index < length) {
       lane.background[write++] = task
     } else {
-      discardMatchResources(router as AnyRouter, [task.candidate])
+      discardMatchResources(router, [task.candidate])
     }
   }
   lane.background.length = write
 }
 
 async function projectLane(
-  router: WorkerRouter,
+  router: AnyRouter,
   lane: ReducedLane,
   start = 0,
 ): Promise<ProjectedLane> {
@@ -850,20 +830,18 @@ export async function executeClientLane(
   matches: Array<AnyRouteMatch>,
   options: ExecuteLaneOptions,
 ): Promise<LaneResult> {
-  const clientRouter = router as ClientRouter
-  const workerRouter = router as WorkerRouter
-  const matched = {
+  const matched: MatchedLane = {
     location,
     matches: matches as Array<WorkMatch>,
-  } as MatchedLane
+  }
   for (const match of matched.matches) {
-    const flight = clientRouter._flights?.get(match.id) ?? match._flight
+    const flight = router._flights?.get(match.id) ?? match._flight
     if (flight) {
       match._flight = flight
       flight[2]++
     }
   }
-  const failure = await contextualize(workerRouter, matched, options)
+  const failure = await contextualize(router, matched, options)
   if (failure) {
     options.sync = true
   }
@@ -874,7 +852,7 @@ export async function executeClientLane(
   if (failure?.[1][0] === NOT_FOUND) {
     end = Math.min(
       end,
-      getNotFoundBoundary(workerRouter, contextualized.matches, failure) + 1,
+      getNotFoundBoundary(router, contextualized.matches, failure) + 1,
     )
   } else if ((failure?.[1][0] ?? 0) >= REDIRECTED) {
     end = 0
@@ -884,8 +862,7 @@ export async function executeClientLane(
       break
     }
     semanticParent = createLoaderTask(
-      clientRouter,
-      workerRouter,
+      router,
       contextualized,
       index,
       tasks,
@@ -894,7 +871,7 @@ export async function executeClientLane(
     )
   }
   const reduced = await reduceLane(
-    router as WorkerRouter & ClientRouter,
+    router,
     contextualized,
     tasks,
     options,
@@ -904,7 +881,7 @@ export async function executeClientLane(
     return reduced
   }
   return projectLane(
-    workerRouter,
+    router,
     reduced,
     Math.min(options.resolvedPrefix ?? 0, reduced.matches.length - 1),
   )
@@ -1154,7 +1131,7 @@ async function runBackground(
     redirects: tx.redirects,
   }
   const reduced = await reduceLane(
-    router as WorkerRouter & ClientRouter,
+    router,
     lane,
     tasks,
     options,
@@ -1177,7 +1154,7 @@ async function runBackground(
     }
     return
   }
-  const projected = await projectLane(router as WorkerRouter, reduced)
+  const projected = await projectLane(router, reduced)
   if (router._tx !== tx || router._committedMatches !== base) {
     discardMatchResources(router, backgroundMatches)
     return
@@ -1299,14 +1276,13 @@ async function runClientTransaction(
 }
 
 export async function loadClientRouter(
-  router: AnyRouter,
+  router: CoordinatorRouter,
   opts?: {
     sync?: boolean
     /** @internal */
     _refreshRouteId?: string
   },
 ): Promise<void> {
-  const clientRouter = router as CoordinatorRouter
   const refreshRouteId =
     process.env.NODE_ENV !== 'production' ? opts?._refreshRouteId : undefined
   const canReuse = refreshRouteId
@@ -1320,14 +1296,14 @@ export async function loadClientRouter(
         return true
       }
     : undefined
-  const committed = (clientRouter._committedMatches ??=
+  const committed = (router._committedMatches ??=
     router.stores.matches.get())
-  const previousOwner = clientRouter._tx
+  const previousOwner = router._tx
   const resolvedLocation = router.stores.resolvedLocation.get()
   const previousLocation = resolvedLocation ?? router.stores.location.get()
   const controller = new AbortController()
-  clientRouter._preflight?.abort()
-  clientRouter._preflight = controller
+  router._preflight?.abort()
+  router._preflight = controller
 
   const location = router.latestLocation
   let matches: Array<AnyRouteMatch>
@@ -1340,14 +1316,14 @@ export async function loadClientRouter(
     )
   } catch (cause) {
     const stale =
-      controller.signal.aborted || clientRouter._tx !== previousOwner
+      controller.signal.aborted || router._tx !== previousOwner
     controller.abort()
     if (stale) {
-      await awaitCurrent(clientRouter, previousOwner)
+      await awaitCurrent(router, previousOwner)
       return
     }
     if (!isRedirect(cause)) {
-      await awaitCurrent(clientRouter)
+      await awaitCurrent(router)
       router.commitLocationPromise?.resolve()
       router.commitLocationPromise = undefined
       return
@@ -1357,16 +1333,16 @@ export async function loadClientRouter(
       replace: true,
       ignoreBlocker: true,
     })
-    await awaitCurrent(clientRouter, previousOwner)
+    await awaitCurrent(router, previousOwner)
     return
   }
 
-  if (controller.signal.aborted || clientRouter._tx !== previousOwner) {
+  if (controller.signal.aborted || router._tx !== previousOwner) {
     controller.abort()
-    await awaitCurrent(clientRouter, previousOwner)
+    await awaitCurrent(router, previousOwner)
     return
   }
-  clientRouter._preflight = undefined
+  router._preflight = undefined
   const sameHref = previousLocation.href === location.href
 
   let resolvedPrefix: number | undefined
@@ -1397,24 +1373,24 @@ export async function loadClientRouter(
     done: Promise.resolve()
       .then(() =>
         runClientTransaction(
-          clientRouter,
+          router,
           tx,
           refreshRouteId ? false : sameHref,
-          refreshRouteId ? undefined : () => offerPending(clientRouter, tx),
+          refreshRouteId ? undefined : () => offerPending(router, tx),
           opts?.sync,
           resolvedPrefix,
         ),
       )
       .catch(() => {
-        if (clientRouter._tx === tx) {
-          finishPending(clientRouter, tx)
+        if (router._tx === tx) {
+          finishPending(router, tx)
           controller.abort()
           discardMatchResources(router, tx.matches)
           router.batch(() => {
             router.stores.status.set('idle')
-            router.stores.setMatches(clientRouter._committedMatches ?? [])
+            router.stores.setMatches(router._committedMatches ?? [])
           })
-          if (clientRouter._tx !== tx) {
+          if (router._tx !== tx) {
             return
           }
           router.commitLocationPromise?.resolve()
@@ -1423,7 +1399,7 @@ export async function loadClientRouter(
       }),
     redirects: previousOwner?.redirecting ? previousOwner.redirects : undefined,
   }
-  clientRouter._tx = tx
+  router._tx = tx
   previousOwner?.controller.abort()
   if (previousOwner) {
     discardMatchResources(router, previousOwner.matches)
@@ -1434,26 +1410,25 @@ export async function loadClientRouter(
     router.stores.location.set(location)
   })
   if (!refreshRouteId) {
-    offerPending(clientRouter, tx)
+    offerPending(router, tx)
   }
 
   try {
     await tx.done
   } finally {
-    await awaitCurrent(clientRouter, tx)
+    await awaitCurrent(router, tx)
   }
 }
 
 export function refreshClientRoute(
-  router: AnyRouter,
+  router: CoordinatorRouter,
   routeId: string,
 ): Promise<void> {
-  const clientRouter = router as CoordinatorRouter
-  if (clientRouter._flights) {
-    for (const flight of clientRouter._flights.values()) {
+  if (router._flights) {
+    for (const flight of router._flights.values()) {
       flight[1].abort()
     }
-    clientRouter._flights.clear()
+    router._flights.clear()
   }
   router.clearCache()
 
@@ -1461,17 +1436,16 @@ export function refreshClientRoute(
 }
 
 export async function preloadClientRoute(
-  router: AnyRouter,
+  router: CoordinatorRouter,
   opts: any,
   redirects = 0,
 ): Promise<Array<AnyRouteMatch> | undefined> {
   if (redirects > 20) {
     return
   }
-  const clientRouter = router as CoordinatorRouter
-  const owner = clientRouter._tx
+  const owner = router._tx
   const location = opts._builtLocation ?? router.buildLocation(opts)
-  const base = semanticMatches(clientRouter)
+  const base = semanticMatches(router)
   const plannedCache = router.stores.cachedMatches.get()
   const controller = new AbortController()
   let matches: Array<AnyRouteMatch> | undefined
@@ -1480,7 +1454,7 @@ export async function preloadClientRoute(
       throwOnError: true,
       preload: true,
       _controller: controller,
-      _isCurrent: () => clientRouter._tx === owner,
+      _isCurrent: () => router._tx === owner,
     })
     let resolvedPrefix = 0
     while (
@@ -1517,7 +1491,7 @@ export async function preloadClientRoute(
     }
 
     const active = new Set(
-      semanticMatches(clientRouter).map((match) => match.id),
+      semanticMatches(router).map((match) => match.id),
     )
     const previous = router.stores.cachedMatches.get()
     const candidates: Array<AnyRouteMatch> = []
@@ -1529,7 +1503,7 @@ export async function preloadClientRoute(
           match._preloadBeforeLoad !==
             getRoute(router, match).options.beforeLoad
         if (obsoleteContext) {
-          releaseFlight(clientRouter, match)
+          releaseFlight(router, match)
           continue
         }
       }
@@ -1538,10 +1512,10 @@ export async function preloadClientRoute(
         previous.find((candidate) => candidate.id === match.id) !==
           plannedCache.find((candidate) => candidate.id === match.id)
       ) {
-        releaseFlight(clientRouter, match)
+        releaseFlight(router, match)
         continue
       }
-      closeFlight(clientRouter, match)
+      closeFlight(router, match)
       candidates.push(match)
     }
     const ids = new Set(candidates.map((match) => match.id))
@@ -1551,7 +1525,7 @@ export async function preloadClientRoute(
     router.stores.setCached(cached)
     transferMatchResources(router, previous, [
       ...cached,
-      ...semanticMatches(clientRouter),
+      ...semanticMatches(router),
     ])
     return matches
   } catch (cause) {
@@ -1563,7 +1537,7 @@ export async function preloadClientRoute(
     }
     controller.abort()
     discardMatchResources(router, matches)
-    if (clientRouter._tx !== owner) {
+    if (router._tx !== owner) {
       return
     }
     if (isRedirect(cause) && !cause.options.reloadDocument) {

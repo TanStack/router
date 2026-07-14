@@ -1008,13 +1008,13 @@ export class RouterCore<
   shouldViewTransition?: boolean | ViewTransitionOptions = undefined
   isViewTransitionTypesSupported?: boolean = undefined
   subscribers = new Set<RouterListener<RouterEvent>>()
-  _tx?: LoadTransaction
-  _flights?: Map<string, LoaderFlight>
+  declare _tx?: LoadTransaction
+  declare _flights?: Map<string, LoaderFlight>
   /** Terminal semantic lane; pending presentation never becomes a planning base. */
-  _committedMatches?: Array<AnyRouteMatch>
-  _pending?: PendingSession
-  _serverResult?: ServerLoadResult
-  _rendered?: () => void
+  declare _committedMatches?: Array<AnyRouteMatch>
+  declare _pending?: PendingSession
+  declare _serverResult?: ServerLoadResult
+  declare _rendered?: () => void
   declare _refreshRoute: ((routeId: string) => Promise<void>) | undefined
 
   // Must build in constructor

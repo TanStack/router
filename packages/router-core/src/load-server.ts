@@ -54,17 +54,6 @@ type LoaderTask = {
   match: Promise<AnyRouteMatch>
 }
 
-type ServerWorker = Pick<
-  AnyRouter,
-  | 'buildLocation'
-  | 'isShell'
-  | 'navigate'
-  | 'options'
-  | 'resolveRedirect'
-  | 'routeTree'
-  | 'routesById'
->
-
 export type ServerLoadResult =
   | {
       type: 'render'
@@ -73,8 +62,8 @@ export type ServerLoadResult =
     }
   | { type: 'redirect'; redirect: AnyRedirect }
 
-function getRoute(router: ServerWorker, match: AnyRouteMatch): AnyRoute {
-  return (router.routesById as Record<string, AnyRoute>)[match.routeId]!
+function getRoute(router: AnyRouter, match: AnyRouteMatch): AnyRoute {
+  return router.routesById[match.routeId]
 }
 
 function normalize(value: unknown, rejected: boolean): LoaderOutcome {
@@ -110,7 +99,7 @@ function maybe<TValue>(
   return { status: 'success', value }
 }
 
-function navigateFrom(router: ServerWorker, location: ParsedLocation) {
+function navigateFrom(router: AnyRouter, location: ParsedLocation) {
   return (options: any) =>
     router.navigate({
       ...options,
@@ -119,7 +108,7 @@ function navigateFrom(router: ServerWorker, location: ParsedLocation) {
 }
 
 async function resolveSsr(
-  router: ServerWorker,
+  router: AnyRouter,
   lane: MatchedLane,
   index: number,
 ): Promise<SSROption> {
@@ -176,7 +165,7 @@ function stampNotFound(
 }
 
 async function contextualize(
-  router: ServerWorker,
+  router: AnyRouter,
   lane: MatchedLane,
   preload: boolean,
 ): Promise<ContextualizedLane> {
@@ -277,7 +266,7 @@ async function contextualize(
 }
 
 function loaderContext(
-  router: ServerWorker,
+  router: AnyRouter,
   lane: ContextualizedLane,
   match: AnyRouteMatch,
   route: AnyRoute,
@@ -289,7 +278,7 @@ function loaderContext(
     params: match.params,
     deps: match.loaderDeps,
     preload,
-    parentMatchPromise: tasks[index - 1]?.match as any,
+    parentMatchPromise: tasks[index - 1]?.match,
     abortController: match.abortController,
     context: match.context,
     location: lane.location,
@@ -301,7 +290,7 @@ function loaderContext(
 }
 
 function startLoader(
-  router: ServerWorker,
+  router: AnyRouter,
   lane: ContextualizedLane,
   index: number,
   tasks: Array<LoaderTask>,
@@ -361,7 +350,7 @@ function startLoader(
 }
 
 function getNotFoundBoundary(
-  router: ServerWorker,
+  router: AnyRouter,
   matches: Array<AnyRouteMatch>,
   indexed: IndexedOutcome,
 ): number {
@@ -388,7 +377,7 @@ function abortMatches(matches: Array<AnyRouteMatch>, start = 0): void {
 }
 
 function resolveServerRedirect(
-  router: ServerWorker,
+  router: AnyRouter,
   location: ParsedLocation,
   value: AnyRedirect,
 ): ServerLoadResult {
@@ -397,7 +386,7 @@ function resolveServerRedirect(
 }
 
 function applyFailure(
-  router: ServerWorker,
+  router: AnyRouter,
   lane: ContextualizedLane,
   indexed: IndexedOutcome | undefined,
 ): { status: 200 | 404 | 500; boundary?: number; kind?: number } {
@@ -443,7 +432,7 @@ function applyFailure(
 }
 
 async function loadNormalChunks(
-  router: ServerWorker,
+  router: AnyRouter,
   lane: ContextualizedLane,
   end: number,
 ): Promise<IndexedOutcome | undefined> {
@@ -471,7 +460,7 @@ async function loadNormalChunks(
   return undefined
 }
 
-async function project(router: ServerWorker, lane: ReducedLane): Promise<void> {
+async function project(router: AnyRouter, lane: ReducedLane): Promise<void> {
   for (const match of lane.matches) {
     const routeOptions = getRoute(router, match).options
     if (
@@ -511,7 +500,6 @@ export async function loadServer(
   matchedMatches: Array<AnyRouteMatch>,
   preload = false,
 ): Promise<ServerLoadResult> {
-  const worker = router as ServerWorker
   const matched = {
     location,
     matches: matchedMatches.map((match) => ({
@@ -522,7 +510,7 @@ export async function loadServer(
       abortController: new AbortController(),
     })),
   } as MatchedLane
-  const lane = await contextualize(worker, matched, preload)
+  const lane = await contextualize(router, matched, preload)
 
   let loaderEnd = lane.end
   if (lane.failure?.[1][0] === REDIRECTED) {
@@ -530,13 +518,13 @@ export async function loadServer(
   } else if (lane.failure?.[1][0] === NOT_FOUND) {
     loaderEnd = Math.min(
       loaderEnd,
-      getNotFoundBoundary(worker, lane.matches, lane.failure) + 1,
+      getNotFoundBoundary(router, lane.matches, lane.failure) + 1,
     )
   }
 
   const tasks: Array<LoaderTask> = []
   for (let index = 0; index < loaderEnd; index++) {
-    const task = startLoader(worker, lane, index, tasks, preload)
+    const task = startLoader(router, lane, index, tasks, preload)
     tasks.push(task)
   }
 
@@ -562,7 +550,7 @@ export async function loadServer(
 
   if (control?.[1][0] === REDIRECTED) {
     abortMatches(lane.matches)
-    return resolveServerRedirect(worker, location, control[1][1])
+    return resolveServerRedirect(router, location, control[1][1])
   }
 
   let failure = loaderFailure ?? lane.failure
@@ -571,25 +559,25 @@ export async function loadServer(
   )
   const readinessEnd = failure
     ? failure[1][0] === NOT_FOUND
-      ? getNotFoundBoundary(worker, lane.matches, failure)
+      ? getNotFoundBoundary(router, lane.matches, failure)
       : failure[0]
     : plannedBoundary < 0
       ? lane.matches.length
       : plannedBoundary
-  const chunkFailure = await loadNormalChunks(worker, lane, readinessEnd)
+  const chunkFailure = await loadNormalChunks(router, lane, readinessEnd)
   if (chunkFailure) {
     if (chunkFailure[1][0] === REDIRECTED) {
       abortMatches(lane.matches)
-      return resolveServerRedirect(worker, location, chunkFailure[1][1])
+      return resolveServerRedirect(router, location, chunkFailure[1][1])
     }
     failure = chunkFailure
   }
 
-  const terminal = applyFailure(worker, lane, failure)
+  const terminal = applyFailure(router, lane, failure)
   if (terminal.boundary !== undefined) {
     const match = lane.matches[terminal.boundary]!
     if (match.ssr === true) {
-      const route = getRoute(worker, match)
+      const route = getRoute(router, match)
       try {
         if (terminal.kind === ERROR) {
           await loadRouteChunk(route, 'errorComponent')
@@ -605,7 +593,7 @@ export async function loadServer(
     }
   }
 
-  await project(worker, {
+  await project(router, {
     location: lane.location,
     matches: lane.matches,
   } as ReducedLane)
