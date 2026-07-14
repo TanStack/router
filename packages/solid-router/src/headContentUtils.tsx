@@ -114,6 +114,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     return constructed
   })
 
+  const retainedManifestCssTags = new Map<string, RouterManagedTag>()
   const manifestCssTags = Solid.createMemo(() => {
     const manifest = router.ssr?.manifest
     const tags: Array<RouterManagedTag> = []
@@ -125,7 +126,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     for (const match of activeMatches()) {
       manifest.routes[match.routeId]?.css?.forEach((link) => {
         const resolvedLink = resolveManifestCssLink(link)
-        tags.push({
+        const tag: RouterManagedTag = {
           tag: 'link',
           attrs: {
             rel: 'stylesheet',
@@ -135,9 +136,16 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
               resolvedLink.crossOrigin,
             nonce,
           },
-        })
+        }
+        const key = JSON.stringify(tag)
+        if (!retainedManifestCssTags.has(key)) {
+          retainedManifestCssTags.set(key, tag)
+        }
       })
     }
+
+    // Lazy modules are cached and do not reinsert their CSS when revisited.
+    tags.push(...retainedManifestCssTags.values())
 
     if (manifest.inlineStyle) {
       tags.push({

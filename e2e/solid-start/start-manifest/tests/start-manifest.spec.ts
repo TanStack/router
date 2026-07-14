@@ -18,12 +18,14 @@ const buildUrl = (baseURL: string, pathname: string) =>
 async function getColor(testId: string, page: Page) {
   return page
     .getByTestId(testId)
+    .first()
     .evaluate((element) => getComputedStyle(element).color)
 }
 
 async function getBackgroundColor(testId: string, page: Page) {
   return page
     .getByTestId(testId)
+    .first()
     .evaluate((element) => getComputedStyle(element).backgroundColor)
 }
 
@@ -354,7 +356,7 @@ test('shared widget CSS stays applied when navigating from static to lazy route'
 }) => {
   await page.goto(buildUrl(baseURL!, '/lazy-css-static'))
 
-  const widget = page.getByTestId('shared-widget')
+  const widget = page.getByTestId('shared-widget').first()
   await expect(widget).toBeVisible()
   expect(await getBackgroundColor('shared-widget', page)).toBe(SHARED_WIDGET_BG)
   expect(
@@ -392,7 +394,7 @@ test('shared widget CSS stays applied when navigating from lazy to static route'
   await page.getByTestId('nav-/lazy-css-static').click()
   await page.waitForURL('**/lazy-css-static')
 
-  const widget = page.getByTestId('shared-widget')
+  const widget = page.getByTestId('shared-widget').first()
   await expect(widget).toBeVisible()
   await expect
     .poll(() => getBackgroundColor('shared-widget', page), {
@@ -413,7 +415,7 @@ test('shared widget CSS is applied on direct navigation to lazy route', async ({
   await page.goto(buildUrl(baseURL!, '/lazy-css-lazy'))
   await expect(page.getByTestId('lazy-css-lazy-heading')).toBeVisible()
 
-  const widget = page.getByTestId('shared-widget')
+  const widget = page.getByTestId('shared-widget').first()
   await expect(widget).toBeVisible()
 
   await expect

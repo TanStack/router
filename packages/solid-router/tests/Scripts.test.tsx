@@ -300,6 +300,68 @@ describe('ssr scripts', () => {
     ).toHaveLength(1)
   })
 
+  test('keeps an inactive manifest stylesheet mounted after navigation', async () => {
+    const history = createTestBrowserHistory()
+
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <HeadContent />
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const aRoute = createRoute({
+      path: '/a',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Route A</div>,
+    })
+
+    const bRoute = createRoute({
+      path: '/b',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Route B</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([aRoute, bRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        routes: {
+          [rootRoute.id]: {},
+          [aRoute.id]: { css: ['/route-a.css'] },
+          [bRoute.id]: {},
+        },
+      },
+    }
+
+    await router.navigate({ to: '/a' })
+    await router.load()
+
+    render(() => <RouterProvider router={router} />)
+
+    const getStylesheetLink = () =>
+      document.head.querySelector('link[rel="stylesheet"][href="/route-a.css"]')
+
+    await waitFor(() => {
+      expect(getStylesheetLink()).toBeInstanceOf(HTMLLinkElement)
+    })
+
+    const initialLink = getStylesheetLink()
+
+    await router.navigate({ to: '/b' })
+
+    await screen.findByText('Route B')
+
+    expect(getStylesheetLink()).toBe(initialLink)
+  })
+
   test('applies assetCrossOrigin to manifest stylesheets and preloads', async () => {
     const history = createTestBrowserHistory()
 
