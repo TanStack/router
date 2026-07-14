@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
+  HeadContent,
   Link,
   Outlet,
   RouterProvider,
@@ -354,6 +355,73 @@ test('SSR errorComponent receives primitive errors thrown from beforeLoad', asyn
   const html = await response.text()
   expect(html).toContain('Error:')
   expect(html).toContain('primitive error thrown')
+})
+
+// https://github.com/TanStack/router/issues/4684
+test('#4684: SSR renders head content when beforeLoad throws', async () => {
+  const rootRoute = createRootRoute({
+    head: () => ({
+      links: [{ rel: 'stylesheet', href: '/global.css' }],
+    }),
+    shellComponent: function RootDocument({ children }) {
+      return (
+        <html>
+          <head>
+            <HeadContent />
+          </head>
+          <body>{children}</body>
+        </html>
+      )
+    },
+    component: Outlet,
+  })
+  const failingRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/fail',
+    beforeLoad: () => {
+      throw new Error('beforeLoad failed')
+    },
+    head: ({ match }) => ({
+      meta: [{ title: match.error ? 'Error title' : 'Success title' }],
+    }),
+    component: function FailingRoute() {
+      return <div>Route content</div>
+    },
+    errorComponent: ({ error }) => <div>Error UI: {error.message}</div>,
+  })
+
+  const handler = createRequestHandler({
+    request: new Request('http://localhost/fail'),
+    createRouter: () =>
+      createRouter({
+        routeTree: rootRoute.addChildren([failingRoute]),
+        isServer: true,
+      }),
+  })
+
+  const response = await handler(({ router, responseHeaders }) =>
+    renderRouterToString({
+      router,
+      responseHeaders,
+      children: <RouterServer router={router} />,
+    }),
+  )
+
+  expect(response.status).toBe(500)
+  const html = await response.text()
+  const serverDocument = new DOMParser().parseFromString(html, 'text/html')
+
+  expect(serverDocument.body.textContent).toContain(
+    'Error UI: beforeLoad failed',
+  )
+  expect(serverDocument.head.querySelector('title')?.textContent).toBe(
+    'Error title',
+  )
+  expect(
+    serverDocument.head.querySelector(
+      'link[rel="stylesheet"][href="/global.css"]',
+    ),
+  ).not.toBeNull()
 })
 
 describe('notFoundComponent is rendered when an error is thrown in params.parse', () => {

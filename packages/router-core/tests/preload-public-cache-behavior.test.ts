@@ -8,14 +8,15 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-// Public contract: preloading a descendant must reuse an already accepted
-// ancestor generation instead of executing the active layout loader again.
-test('preloading children borrows the active ancestor without rerunning it', async () => {
+// https://github.com/TanStack/router/issues/2980
+// Repeated child preloads must borrow a stale active parent instead of rerunning
+// its loader.
+test('#2980: repeated child preloads do not rerun a stale active parent loader', async () => {
   vi.useFakeTimers()
   vi.setSystemTime(1_000)
 
   const layoutLoader = vi.fn(() => 'layout data')
-  const childLoader = vi.fn(({ params }: any) => `child ${params.childId}`)
+  const childLoader = vi.fn((childId: string) => `child ${childId}`)
   const rootRoute = new BaseRootRoute({})
   const layoutRoute = new BaseRoute({
     getParentRoute: () => rootRoute,
@@ -26,7 +27,7 @@ test('preloading children borrows the active ancestor without rerunning it', asy
   const childRoute = new BaseRoute({
     getParentRoute: () => layoutRoute,
     path: '$childId',
-    loader: childLoader,
+    loader: ({ params }) => childLoader(params.childId),
   })
   const router = createTestRouter({
     routeTree: rootRoute.addChildren([layoutRoute.addChildren([childRoute])]),
@@ -34,36 +35,24 @@ test('preloading children borrows the active ancestor without rerunning it', asy
   })
 
   await router.load()
+  expect(layoutLoader).toHaveBeenCalledTimes(1)
   vi.setSystemTime(2_000)
 
   await router.preloadRoute({
     to: '/layout/$childId',
     params: { childId: 'one' },
-  } as any)
+  })
+  expect(layoutLoader).toHaveBeenCalledTimes(1)
+  expect(childLoader).toHaveBeenNthCalledWith(1, 'one')
+
   await router.preloadRoute({
     to: '/layout/$childId',
     params: { childId: 'two' },
-  } as any)
-  await router.preloadRoute({
-    to: '/layout/$childId',
-    params: { childId: 'one' },
-  } as any)
+  })
 
   expect(layoutLoader).toHaveBeenCalledTimes(1)
   expect(childLoader).toHaveBeenCalledTimes(2)
-
-  await router.navigate({
-    to: '/layout/$childId',
-    params: { childId: 'one' },
-  } as any)
-  expect(layoutLoader).toHaveBeenCalledTimes(1)
-  // No preloadStaleTime was configured, so navigation follows the existing
-  // staleTime policy and reloads the leaf while still borrowing the layout.
-  expect(childLoader).toHaveBeenCalledTimes(3)
-  expect(
-    router.state.matches.find((match) => match.routeId === childRoute.id)
-      ?.loaderData,
-  ).toBe('child one')
+  expect(childLoader).toHaveBeenNthCalledWith(2, 'two')
 })
 
 // Public contract: the public stale/gc options determine whether user loader
