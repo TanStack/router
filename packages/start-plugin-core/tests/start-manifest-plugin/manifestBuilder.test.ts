@@ -37,6 +37,7 @@ function makeChunk(options: {
   importedCss?: Array<string>
   moduleIds?: Array<string>
   isEntry?: boolean
+  facadeModuleId?: string
 }): Rollup.OutputChunk {
   return {
     type: 'chunk',
@@ -47,7 +48,7 @@ function makeChunk(options: {
     moduleIds: options.moduleIds ?? [],
     isEntry: options.isEntry ?? false,
     isDynamicEntry: false,
-    facadeModuleId: null,
+    facadeModuleId: options.facadeModuleId ?? null,
     implicitlyLoadedBefore: [],
     importedBindings: {},
     modules: {},
@@ -138,6 +139,73 @@ describe('appendUniqueStrings', () => {
     const source = ['a', 'b']
 
     expect(appendUniqueStrings(undefined, source)).toBe(source)
+  })
+})
+
+describe('normalizeViteClientBuild entry selection', () => {
+  test('picks the configured entry among plugin-emitted entry chunks', () => {
+    const build = normalizeViteClientBuild(
+      {
+        'assets/index.js': makeChunk({
+          fileName: 'assets/index.js',
+          isEntry: true,
+          facadeModuleId: '/app/src/client.tsx',
+        }),
+        // e.g. vite-plugin-solid >= 3.0.0-next.6 emits a facade chunk per
+        // dynamically imported project module, flagged isEntry
+        'assets/posts.js': makeChunk({
+          fileName: 'assets/posts.js',
+          isEntry: true,
+          facadeModuleId: '/app/src/routes/posts.tsx?tsr-split=component',
+        }),
+      },
+      { clientEntryModuleId: '/app/src/client.tsx' },
+    )
+
+    expect(build.entryChunkFileName).toBe('assets/index.js')
+  })
+
+  test('falls back to the single entry when the configured entry does not match', () => {
+    const build = normalizeViteClientBuild(
+      {
+        'assets/index.js': makeChunk({
+          fileName: 'assets/index.js',
+          isEntry: true,
+          facadeModuleId: '/app/src/client.tsx',
+        }),
+      },
+      { clientEntryModuleId: '/app/src/other-entry.tsx' },
+    )
+
+    expect(build.entryChunkFileName).toBe('assets/index.js')
+  })
+
+  test('throws when multiple entries exist and none match the configured entry', () => {
+    expect(() =>
+      normalizeViteClientBuild(
+        {
+          'assets/index.js': makeChunk({
+            fileName: 'assets/index.js',
+            isEntry: true,
+            facadeModuleId: '/app/src/client.tsx',
+          }),
+          'assets/posts.js': makeChunk({
+            fileName: 'assets/posts.js',
+            isEntry: true,
+            facadeModuleId: '/app/src/routes/posts.tsx',
+          }),
+        },
+        { clientEntryModuleId: '/app/src/other-entry.tsx' },
+      ),
+    ).toThrow(/multiple entries detected/)
+  })
+
+  test('throws when no entry chunk exists', () => {
+    expect(() =>
+      normalizeViteClientBuild({
+        'assets/posts.js': makeChunk({ fileName: 'assets/posts.js' }),
+      }),
+    ).toThrow('No entry file found')
   })
 })
 

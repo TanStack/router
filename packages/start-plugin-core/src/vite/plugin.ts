@@ -239,6 +239,7 @@ export function tanStackStartVite(
     }),
     startManifestPlugin({
       getConfig,
+      getClientEntry: () => configContext.resolveEntries().entryPaths.client,
     }),
     // When the vite base and router basepath are misaligned (e.g. base: '/_ui/', basepath: '/'),
     // install a middleware that rewrites incoming request URLs to prepend the vite base prefix.
