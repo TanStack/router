@@ -99,7 +99,7 @@ function MatchesInner() {
         matchComponent
       ) : (
         <CatchBoundary
-          getResetKey={() => match ? `${matchId}:${match.fetchCount}` : ''}
+          getResetKey={() => (match ? `${matchId}:${match.fetchCount}` : '')}
           errorComponent={ErrorComponent}
           onCatch={
             process.env.NODE_ENV !== 'production'
