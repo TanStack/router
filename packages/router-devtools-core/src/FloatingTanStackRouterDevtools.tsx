@@ -1,6 +1,6 @@
 import { clsx as cx } from 'clsx'
 
-import { createEffect, createMemo, createSignal } from 'solid-js'
+import { Show, createEffect, createMemo, createSignal } from 'solid-js'
 import { Dynamic } from 'solid-js/web'
 
 import { DevtoolsOnCloseContext } from './context'
@@ -32,9 +32,7 @@ export interface FloatingDevtoolsOptions {
   /**
    * Use this to add props to the toggle button. For example, you can add class, style (merge and override default style), onClick (extend default handler), etc.
    */
-  toggleButtonProps?: any & {
-    ref?: any
-  }
+  toggleButtonProps?: Accessor<any>
   /**
    * The position of the TanStack Router logo to open and close the devtools panel.
    * Defaults to 'bottom-left'.
@@ -61,7 +59,7 @@ export function FloatingTanStackRouterDevtools({
   initialIsOpen,
   panelProps = {},
   closeButtonProps = {},
-  toggleButtonProps = {},
+  toggleButtonProps = () => undefined,
   position = 'bottom-left',
   containerElement: Container = 'footer',
   router,
@@ -193,12 +191,6 @@ export function FloatingTanStackRouterDevtools({
     ...otherCloseButtonProps
   } = closeButtonProps
 
-  const {
-    onClick: onToggleClick,
-    class: toggleButtonClassName,
-    ...otherToggleButtonProps
-  } = toggleButtonProps
-
   // Do not render on the server
   if (!isMounted()) return null
 
@@ -222,15 +214,6 @@ export function FloatingTanStackRouterDevtools({
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       ...(panelStyle || {}),
     }
-  })
-
-  const buttonStyle = createMemo(() => {
-    return cx(
-      styles().mainCloseBtn,
-      styles().mainCloseBtnPosition(position),
-      styles().mainCloseBtnAnimation(!!isOpen()),
-      toggleButtonClassName,
-    )
   })
 
   return (
@@ -262,27 +245,47 @@ export function FloatingTanStackRouterDevtools({
         )} */}
       </DevtoolsOnCloseContext.Provider>
 
-      <button
-        type="button"
-        {...otherToggleButtonProps}
-        aria-label="Open TanStack Router Devtools"
-        onClick={(e) => {
-          setIsOpen(true)
-          onToggleClick && onToggleClick(e)
+      <Show keyed when={toggleButtonProps() ?? {}}>
+        {(resolvedToggleButtonProps) => {
+          const {
+            onClick: onToggleClick,
+            class: solidToggleButtonClassName,
+            // React uses className while Solid uses class for the same DOM attribute.
+            className: reactToggleButtonClassName,
+            ...otherToggleButtonProps
+          } = resolvedToggleButtonProps
+
+          return (
+            <button
+              type="button"
+              aria-label="Open TanStack Router Devtools"
+              {...otherToggleButtonProps}
+              onClick={(e) => {
+                setIsOpen(true)
+                onToggleClick && onToggleClick(e)
+              }}
+              class={cx(
+                styles().mainCloseBtn,
+                styles().mainCloseBtnPosition(position),
+                styles().mainCloseBtnAnimation(!!isOpen()),
+                solidToggleButtonClassName,
+                reactToggleButtonClassName,
+              )}
+            >
+              <div class={styles().mainCloseBtnIconContainer}>
+                <div class={styles().mainCloseBtnIconOuter}>
+                  <TanStackLogo />
+                </div>
+                <div class={styles().mainCloseBtnIconInner}>
+                  <TanStackLogo />
+                </div>
+              </div>
+              <div class={styles().mainCloseBtnDivider}>-</div>
+              <div class={styles().routerLogoCloseButton}>TanStack Router</div>
+            </button>
+          )
         }}
-        class={buttonStyle()}
-      >
-        <div class={styles().mainCloseBtnIconContainer}>
-          <div class={styles().mainCloseBtnIconOuter}>
-            <TanStackLogo />
-          </div>
-          <div class={styles().mainCloseBtnIconInner}>
-            <TanStackLogo />
-          </div>
-        </div>
-        <div class={styles().mainCloseBtnDivider}>-</div>
-        <div class={styles().routerLogoCloseButton}>TanStack Router</div>
-      </button>
+      </Show>
     </Dynamic>
   )
 }
