@@ -4,6 +4,7 @@ import { isNotFound } from './not-found'
 import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './route-chunks'
+import { getLocationChangeInfo } from './router'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
@@ -265,7 +266,7 @@ async function contextualize(
   } as ContextualizedLane
 }
 
-function loaderContext(
+function getLoaderContext(
   router: AnyRouter,
   lane: ContextualizedLane,
   match: AnyRouteMatch,
@@ -289,7 +290,7 @@ function loaderContext(
   }
 }
 
-function startLoader(
+function createLoaderTask(
   router: AnyRouter,
   lane: ContextualizedLane,
   index: number,
@@ -302,31 +303,34 @@ function startLoader(
 
   if (match.ssr === false) {
     outcome = Promise.resolve<LoaderOutcome>([SKIPPED])
+  } else if (preload && route.options.preload === false) {
+    match.status = 'success'
+    match.invalid = true
+    match.isFetching = false
+    outcome = Promise.resolve<LoaderOutcome>([SKIPPED])
   } else {
-    const option = route.options.loader
-    const loader = typeof option === 'function' ? option : option?.handler
+    const routeLoader = route.options.loader
+    const loader =
+      typeof routeLoader === 'function' ? routeLoader : routeLoader?.handler
     if (!loader) {
       outcome = Promise.resolve<LoaderOutcome>([SUCCESS, undefined])
     } else {
-      let value: unknown
-      let rejected = false
-      try {
-        value = loader(
-          loaderContext(router, lane, match, route, index, tasks, preload),
+      outcome = Promise.resolve()
+        .then(() =>
+          loader(
+            getLoaderContext(router, lane, match, route, index, tasks, preload),
+          ),
         )
-      } catch (cause) {
-        value = cause
-        rejected = true
-      }
-      outcome = Promise.resolve(value).then(
-        (result) => {
-          const normalized = rejected
-            ? normalizeError(route, result)
-            : normalize(result, false)
-          return stampNotFound(match, normalized)
-        },
-        (cause) => stampNotFound(match, normalizeError(route, cause)),
-      )
+        .then(
+          (result): LoaderOutcome =>
+            match.abortController.signal.aborted
+              ? [SKIPPED]
+              : stampNotFound(match, normalize(result, false)),
+          (cause): LoaderOutcome =>
+            match.abortController.signal.aborted
+              ? [SKIPPED]
+              : stampNotFound(match, normalizeError(route, cause)),
+        )
     }
   }
 
@@ -336,6 +340,9 @@ function startLoader(
       snapshot.loaderData = result[1]
       snapshot.status = 'success'
       snapshot.error = undefined
+      snapshot.invalid = false
+      snapshot.preload = preload
+      snapshot.isFetching = false
     } else if (result[0] === ERROR) {
       snapshot.status = 'error'
       snapshot.error = result[1]
@@ -460,7 +467,10 @@ async function loadNormalChunks(
   return undefined
 }
 
-async function project(router: AnyRouter, lane: ReducedLane): Promise<void> {
+async function projectLane(
+  router: AnyRouter,
+  lane: ReducedLane,
+): Promise<void> {
   for (const match of lane.matches) {
     const routeOptions = getRoute(router, match).options
     if (
@@ -494,7 +504,7 @@ async function project(router: AnyRouter, lane: ReducedLane): Promise<void> {
   }
 }
 
-export async function loadServer(
+async function executeServerLane(
   router: AnyRouter,
   location: ParsedLocation,
   matchedMatches: Array<AnyRouteMatch>,
@@ -524,7 +534,7 @@ export async function loadServer(
 
   const tasks: Array<LoaderTask> = []
   for (let index = 0; index < loaderEnd; index++) {
-    const task = startLoader(router, lane, index, tasks, preload)
+    const task = createLoaderTask(router, lane, index, tasks, preload)
     tasks.push(task)
   }
 
@@ -593,14 +603,86 @@ export async function loadServer(
     }
   }
 
-  await project(router, {
+  await projectLane(router, {
     location: lane.location,
     matches: lane.matches,
   } as ReducedLane)
   return { type: 'render', status: terminal.status, matches: lane.matches }
 }
 
-export async function loadServerRouter(
+export async function preloadServerRoute(
+  router: AnyRouter,
+  opts: any,
+  redirects = 0,
+): Promise<Array<AnyRouteMatch> | undefined> {
+  if (redirects > 20) {
+    return
+  }
+  const location = opts._builtLocation ?? router.buildLocation(opts)
+
+  try {
+    const result = await executeServerLane(
+      router,
+      location,
+      router.matchRoutes(location, {
+        throwOnError: true,
+        preload: true,
+        dest: opts,
+      }),
+      true,
+    )
+    if (result.type === 'redirect') {
+      if (result.redirect.options.reloadDocument) {
+        return
+      }
+      return preloadServerRoute(
+        router,
+        {
+          ...result.redirect.options,
+          _fromLocation: location,
+        },
+        redirects + 1,
+      )
+    }
+    if (result.matches.some((match) => match.status !== 'success')) {
+      return
+    }
+
+    const active = new Set(router.stores.matchesId.get())
+    const candidates = result.matches.filter((match) => {
+      match.preload = !match.invalid
+      return !active.has(match.id)
+    })
+    const ids = new Set(candidates.map((match) => match.id))
+    router.stores.setCached(
+      router.stores.cachedMatches
+        .get()
+        .filter((match) => !ids.has(match.id))
+        .concat(candidates),
+    )
+    return result.matches
+  } catch (cause) {
+    if (isRedirect(cause)) {
+      if (cause.options.reloadDocument) {
+        return
+      }
+      return preloadServerRoute(
+        router,
+        {
+          ...cause.options,
+          _fromLocation: location,
+        },
+        redirects + 1,
+      )
+    }
+    if (!isNotFound(cause)) {
+      console.error(cause)
+    }
+    return
+  }
+}
+
+export async function loadServerRoute(
   router: AnyRouter,
   _opts?: Parameters<AnyRouter['load']>[0],
 ): Promise<void> {
@@ -624,21 +706,15 @@ export async function loadServerRouter(
     }
 
     const fromLocation = router.stores.resolvedLocation.get()
-    const changeInfo = {
-      fromLocation,
-      toLocation: next,
-      pathChanged: fromLocation?.pathname !== next.pathname,
-      hrefChanged: fromLocation?.href !== next.href,
-      hashChanged: fromLocation?.hash !== next.hash,
-    }
+    const changeInfo = getLocationChangeInfo(next, fromLocation)
     router.emit({ type: 'onBeforeNavigate', ...changeInfo })
     router.emit({ type: 'onBeforeLoad', ...changeInfo })
-    result = await loadServer(router, next, router.matchRoutes(next))
+    result = await executeServerLane(router, next, router.matchRoutes(next))
   } catch (cause) {
     if (!isRedirect(cause)) {
       throw cause
     }
-    result = { type: 'redirect', redirect: cause }
+    result = resolveServerRedirect(router, next, cause)
   }
 
   router._serverResult = result

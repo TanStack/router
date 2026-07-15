@@ -392,6 +392,33 @@ describe('adversarial client lane ownership', () => {
     expect(safeLoader).toHaveBeenCalledTimes(1)
   })
 
+  test('throwing a non-aborted router signal is an error, not cancellation', async () => {
+    let thrownSignal: AbortSignal | undefined
+    const rootRoute = new BaseRootRoute({})
+    const brokenRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/broken',
+      beforeLoad: ({ abortController }) => {
+        thrownSignal = abortController.signal
+        throw thrownSignal
+      },
+      errorComponent: () => null,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([brokenRoute]),
+      history: createMemoryHistory({ initialEntries: ['/broken'] }),
+    })
+
+    await router.load()
+
+    expect(thrownSignal?.aborted).toBe(false)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: brokenRoute.id,
+      status: 'error',
+      error: thrownSignal,
+    })
+  })
+
   test('a failed preflight cannot abort and strand the pending lane it attempted to supersede', async () => {
     const preflightError = new Error('next loaderDeps failed')
     const pendingGate = createControlledPromise<void>()

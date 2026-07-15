@@ -420,11 +420,11 @@ generation.
 
 `RouterCore.load` refreshes `latestLocation` once, uses that same parsed object
 for the history action and before-navigation events, and delegates to
-`loadClientRouter`. The client loader must not parse a second location object;
+`loadClientRoute`. The client loader must not parse a second location object;
 location object identity is also how scroll restoration associates a history
 action with the later lifecycle event.
 
-`loadClientRouter` first plans under `_preflight`. Only after planning succeeds
+`loadClientRoute` first plans under `_preflight`. Only after planning succeeds
 and both the preflight owner and previous writer are still current does it install
 a `LoadTransaction` as `_tx`. Installation then:
 
@@ -770,8 +770,10 @@ route's projection group is discarded; projection failure is non-fatal and never
 overwrites loader semantics.
 
 The final result is a closed union: either a render result with status and
-matches, or a redirect. `loadServerRouter` is the only publisher of that result
-to router stores.
+matches, or a redirect. `loadServerRoute` is the only publisher of that result
+to router stores. `preloadServerRoute` separately owns the complete speculative
+workflow: location building, matching, lane execution, bounded redirect
+following, and cache publication.
 
 ## Hydration handoff
 

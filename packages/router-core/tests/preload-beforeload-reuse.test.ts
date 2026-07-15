@@ -614,4 +614,78 @@ describe('preloaded beforeLoad context reuse', () => {
     expect(shouldReload).toHaveBeenCalledTimes(1)
     expect(router.state.matches.at(-1)?.context).toEqual({ guard: 'loaded' })
   })
+
+  test('a beforeLoad failure clears context from the previous generation', async () => {
+    const failure = new Error('guard failed')
+    let fail = false
+    const rootRoute = new BaseRootRoute({})
+    const guardedRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/guarded',
+      context: () => ({ routeContext: true }),
+      beforeLoad: () => {
+        if (fail) {
+          throw failure
+        }
+        return { guard: 'accepted' }
+      },
+      errorComponent: () => null,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([guardedRoute]),
+      history: createMemoryHistory({ initialEntries: ['/guarded'] }),
+    })
+
+    await router.load()
+    expect(router.state.matches.at(-1)?.context).toEqual({
+      routeContext: true,
+      guard: 'accepted',
+    })
+
+    fail = true
+    await router.load()
+
+    const failedMatch = router.state.matches.at(-1)
+    expect(failedMatch).toMatchObject({
+      status: 'error',
+      error: failure,
+    })
+    expect(failedMatch?.context).toEqual({ routeContext: true })
+  })
+
+  test('a validation failure clears context from the previous generation', async () => {
+    let fail = false
+    const rootRoute = new BaseRootRoute({})
+    const guardedRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/guarded',
+      validateSearch: () => {
+        if (fail) {
+          throw new Error('invalid search')
+        }
+        return {}
+      },
+      context: () => ({ routeContext: true }),
+      beforeLoad: () => ({ guard: 'accepted' }),
+      errorComponent: () => null,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([guardedRoute]),
+      history: createMemoryHistory({ initialEntries: ['/guarded'] }),
+    })
+
+    await router.load()
+    expect(router.state.matches.at(-1)?.context).toEqual({
+      routeContext: true,
+      guard: 'accepted',
+    })
+    fail = true
+    await router.load()
+
+    const failedMatch = router.state.matches.at(-1)
+    expect(failedMatch).toMatchObject({
+      status: 'error',
+    })
+    expect(failedMatch?.context).toEqual({ routeContext: true })
+  })
 })

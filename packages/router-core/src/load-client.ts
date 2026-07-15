@@ -174,6 +174,7 @@ async function contextualize(
   options: ExecuteLaneOptions,
 ): Promise<IndexedOutcome | undefined> {
   let reusePreloadContext = !options.preload
+  const signal = options.controller.signal
   for (
     let index = options.resolvedPrefix ?? 0;
     index < lane.matches.length;
@@ -181,12 +182,6 @@ async function contextualize(
   ) {
     const match = lane.matches[index]!
     const route = getRoute(router, match)
-    const serialError = match.paramsError ?? match.searchError
-
-    if (serialError !== undefined) {
-      releaseFlight(router, match)
-      return [index, normalizeError(route, serialError)]
-    }
 
     // Fresh matches already own this lane's controller; cached matches do not.
     reusePreloadContext &&= match.abortController !== options.controller
@@ -199,11 +194,18 @@ async function contextualize(
       ...parentContext,
       ...match.__routeContext,
     }
+    match.context = context
+    const validationError = match.paramsError ?? match.searchError
+
+    if (validationError !== undefined) {
+      match.__beforeLoadContext = {}
+      releaseFlight(router, match)
+      return [index, normalizeError(route, validationError)]
+    }
 
     const beforeLoad = route.options.beforeLoad
     if (!beforeLoad) {
       match.__beforeLoadContext = {}
-      match.context = context
       continue
     }
 
@@ -226,6 +228,7 @@ async function contextualize(
       continue
     }
     reusePreloadContext = false
+    match.__beforeLoadContext = {}
 
     const beforeLoadContext: BeforeLoadContextOptions<
       any,
@@ -254,10 +257,7 @@ async function contextualize(
 
     try {
       match.isFetching = 'beforeLoad'
-      const result = await waitFor(
-        beforeLoad(beforeLoadContext),
-        options.controller.signal,
-      )
+      const result = await waitFor(beforeLoad(beforeLoadContext), signal)
       match.isFetching = false
       const outcome = normalize(result, false, route.id)
       if (outcome[0] !== SUCCESS) {
@@ -277,7 +277,7 @@ async function contextualize(
       }
     } catch (cause) {
       match.isFetching = false
-      if (cause === options.controller.signal) {
+      if (cause === signal && signal.aborted) {
         return [index, [CANCELED]]
       }
       if (cause instanceof Promise) {
@@ -1270,7 +1270,7 @@ async function runClientTransaction(
   })
 }
 
-export async function loadClientRouter(
+export async function loadClientRoute(
   router: CoordinatorRouter,
   opts?: {
     sync?: boolean
@@ -1425,7 +1425,7 @@ export function refreshClientRoute(
   }
   router.clearCache()
 
-  return loadClientRouter(router, { sync: true, _refreshRouteId: routeId })
+  return loadClientRoute(router, { sync: true, _refreshRouteId: routeId })
 }
 
 export async function preloadClientRoute(

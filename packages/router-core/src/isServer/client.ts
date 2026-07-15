@@ -1,3 +1,3 @@
 export const isServer = false
-export const loadServer: never = undefined as never
-export const loadServerRouter: never = undefined as never
+export const preloadServerRoute: never = undefined as never
+export const loadServerRoute: never = undefined as never

@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -199,5 +199,43 @@ describe('server concurrent route failure ordering', () => {
     expect(response.headers.get('Location')).toBe('/target')
     expect(signals).toHaveLength(2)
     expect(signals.every((signal) => signal.aborted)).toBe(true)
+  })
+
+  test('an aborted child does not report its cancellation through onError', async () => {
+    const childStarted = createControlledPromise<void>()
+    const childLoader = createControlledPromise<never>()
+    const cancellation = new Error('discarded request aborted')
+    const childOnError = vi.fn()
+    const rootRoute = new BaseRootRoute({
+      loader: async () => {
+        await childStarted
+        throw redirect({ href: '/target' })
+      },
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      loader: ({ abortController }) => {
+        abortController.signal.addEventListener(
+          'abort',
+          () => childLoader.reject(cancellation),
+          { once: true },
+        )
+        childStarted.resolve()
+        return childLoader
+      },
+      onError: childOnError,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/child')
+    await expect(childLoader).rejects.toBe(cancellation)
+
+    expect(response.status).toBe(307)
+    expect(childOnError).not.toHaveBeenCalled()
   })
 })

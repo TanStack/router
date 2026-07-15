@@ -1,8 +1,8 @@
 import { createBrowserHistory, parseHref } from '@tanstack/history'
 import {
   isServer,
-  loadServer,
-  loadServerRouter,
+  loadServerRoute,
+  preloadServerRoute,
 } from '@tanstack/router-core/isServer'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
@@ -40,7 +40,7 @@ import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
 import {
-  loadClientRouter,
+  loadClientRoute,
   preloadClientRoute,
   refreshClientRoute,
   transferMatchResources,
@@ -2455,7 +2455,7 @@ export class RouterCore<
 
   load: LoadFn = async (opts): Promise<void> => {
     if (isServer ?? this.isServer) {
-      return loadServerRouter(this, opts)
+      return loadServerRoute(this, opts)
     }
 
     this._serverResult = undefined
@@ -2471,7 +2471,7 @@ export class RouterCore<
     )
     this.emit({ type: 'onBeforeNavigate', ...locationChangeInfo })
     this.emit({ type: 'onBeforeLoad', ...locationChangeInfo })
-    await loadClientRouter(this, opts)
+    await loadClientRoute(this, opts)
   }
 
   startViewTransition = async (fn: () => Promise<void>) => {
@@ -2644,63 +2644,7 @@ export class RouterCore<
     if (!(isServer ?? this.isServer)) {
       return preloadClientRoute(this, opts)
     }
-
-    const next = opts._builtLocation ?? this.buildLocation(opts as any)
-
-    try {
-      const result = await loadServer(
-        this,
-        next,
-        this.matchRoutes(next, {
-          throwOnError: true,
-          preload: true,
-          dest: opts,
-        }),
-        true,
-      )
-      if (result.type === 'redirect') {
-        if (result.redirect.options.reloadDocument) {
-          return
-        }
-        return this.preloadRoute({
-          ...result.redirect.options,
-          _fromLocation: next,
-        })
-      }
-      if (result.matches.some((match) => match.status !== 'success')) {
-        return
-      }
-
-      const active = new Set(this.stores.matchesId.get())
-      const candidates = result.matches.filter((match) => {
-        match.preload = true
-        return !active.has(match.id)
-      })
-      const ids = new Set(candidates.map((match) => match.id))
-      this.stores.setCached(
-        this.stores.cachedMatches
-          .get()
-          .filter((match) => !ids.has(match.id))
-          .concat(candidates),
-      )
-      return result.matches
-    } catch (err) {
-      if (isRedirect(err)) {
-        if (err.options.reloadDocument) {
-          return undefined
-        }
-
-        return await this.preloadRoute({
-          ...err.options,
-          _fromLocation: next,
-        })
-      }
-      if (!isNotFound(err)) {
-        // Preload errors are not fatal, but we should still log them
-        console.error(err)
-      }
-      return undefined
-    }
+    return preloadServerRoute(this, opts)
   }
 
   matchRoute: MatchRouteFn<
