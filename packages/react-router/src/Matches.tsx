@@ -86,7 +86,6 @@ function MatchesInner() {
         useStore(router.stores.matches, (value) => value)
   const match = matches[0]
   const matchId = match?.id
-  const resetKey = match ? `${match.id}:${match.fetchCount}` : ''
 
   useLayoutEffect(() => {
     router._rendered?.()
@@ -100,7 +99,7 @@ function MatchesInner() {
         matchComponent
       ) : (
         <CatchBoundary
-          getResetKey={() => resetKey}
+          getResetKey={() => match ? `${matchId}:${match.fetchCount}` : ''}
           errorComponent={ErrorComponent}
           onCatch={
             process.env.NODE_ENV !== 'production'
