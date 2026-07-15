@@ -158,8 +158,7 @@ async function collectCssNodes(
       continue
     }
     ordered.add(node)
-    const fileOrUrl = node.file ?? node.url
-    if (isCssFile(fileOrUrl) && !hasCssSideEffectFreeParam(node.url)) {
+    if (isCssFile(node.url) && !hasCssSideEffectFreeParam(node.url)) {
       orderedCssNodes.push(node)
     }
 
@@ -202,7 +201,7 @@ async function resolveModuleDeps(
 ): Promise<ReadonlyArray<EnvironmentModuleNode>> {
   // Vite's client transform already includes CSS @imports in the parent CSS.
   // Following either dependency source here would append the imported CSS again.
-  if (isCssFile(node.file ?? node.url)) {
+  if (isCssFile(node.url)) {
     return NO_DEPENDENCIES
   }
 

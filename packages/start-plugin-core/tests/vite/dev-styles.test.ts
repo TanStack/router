@@ -31,6 +31,40 @@ function createEntryNode(
 }
 
 describe('collectDevStyles', () => {
+  test('recognizes virtual Vue style blocks by URL', async () => {
+    const styleUrl = '/src/App.vue?vue&type=style&index=0&lang.css'
+    const entry = createEntryNode('/src/entry.tsx', styleUrl)
+    const vueStyle = createCssNode(styleUrl, '.vue-style {}')
+    vueStyle.file = '/app/src/App.vue'
+    const importedCss = createCssNode('/src/imported.css', '.imported {}')
+    vueStyle.transformResult!.deps = [importedCss.url]
+    vueStyle.importedModules.add(importedCss)
+    const modules = new Map(
+      [entry, vueStyle, importedCss].map((node) => [node.url, node]),
+    )
+    const environment = {
+      moduleGraph: {
+        async getModuleByUrl(url: string) {
+          return modules.get(url)
+        },
+      },
+      async transformRequest() {
+        return null
+      },
+    }
+
+    const css = await collectDevStyles({
+      serverEnvironment: environment,
+      rootDirectory: '/app',
+      entries: ['/app/src/entry.tsx'],
+      loadCssContents: (url) => fetchCssFromModule(environment, url),
+    })
+
+    expect(css).toContain(`/* ${styleUrl} */`)
+    expect(css).toContain('.vue-style {}')
+    expect(css).not.toContain('/* /src/imported.css */')
+  })
+
   test('does not traverse dependencies of CSS files', async () => {
     const entry = createEntryNode('/src/entry.tsx', '/src/importer.css')
     const importerCss = createCssNode(

@@ -4763,6 +4763,43 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
+  e2e/solid-start/dev-ssr-styles:
+    dependencies:
+      '@tanstack/solid-router':
+        specifier: workspace:*
+        version: link:../../../packages/solid-router
+      '@tanstack/solid-start':
+        specifier: workspace:*
+        version: link:../../../packages/solid-start
+      solid-js:
+        specifier: 1.9.12
+        version: 1.9.12
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.61.0
+        version: 1.61.1
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../../../packages/router-core
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:*
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      srvx:
+        specifier: ^0.11.9
+        version: 0.11.15
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+      vite:
+        specifier: ^8.0.14
+        version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vite-plugin-solid:
+        specifier: ^2.11.11
+        version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+
   e2e/solid-start/query-integration:
     dependencies:
       '@tanstack/solid-query':
@@ -6570,6 +6607,46 @@ importers:
       tsx:
         specifier: ^4.20.3
         version: 4.20.3
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+      vite:
+        specifier: ^8.0.14
+        version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+
+  e2e/vue-start/dev-ssr-styles:
+    dependencies:
+      '@tanstack/vue-router':
+        specifier: workspace:*
+        version: link:../../../packages/vue-router
+      '@tanstack/vue-start':
+        specifier: workspace:*
+        version: link:../../../packages/vue-start
+      vue:
+        specifier: ^3.5.16
+        version: 3.5.25(typescript@6.0.2)
+    devDependencies:
+      '@playwright/test':
+        specifier: ^1.61.0
+        version: 1.61.1
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../../../packages/router-core
+      '@tanstack/router-e2e-utils':
+        specifier: workspace:*
+        version: link:../../e2e-utils
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      '@vitejs/plugin-vue':
+        specifier: ^6.0.5
+        version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@6.0.2))
+      '@vitejs/plugin-vue-jsx':
+        specifier: ^5.1.5
+        version: 5.1.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@6.0.2))
+      srvx:
+        specifier: ^0.11.9
+        version: 0.11.15
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
