@@ -47,9 +47,7 @@ describe('loaderDepsHash uses configured search serializer', () => {
     await router.navigate({ to: '/foo' })
 
     // Find the foo route match (not the root)
-    const fooMatch = router.state.matches.find(
-      (m) => m.routeId === fooRoute.id,
-    )
+    const fooMatch = router.state.matches.find((m) => m.routeId === fooRoute.id)
     expect(fooMatch).toBeDefined()
   })
 
@@ -61,7 +59,9 @@ describe('loaderDepsHash uses configured search serializer', () => {
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
-      validateSearch: (input: any) => ({ filter: (input?.filter ?? '') as string }),
+      validateSearch: (input: any) => ({
+        filter: (input?.filter ?? '') as string,
+      }),
       loaderDeps: ({ search }) => ({
         filter: search.filter,
       }),
