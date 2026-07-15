@@ -14,7 +14,7 @@ export function Transitioner() {
   /**
    * This effect is meant to "polyfill" the fact that React.startTransition
    * does not return an awaitable promise.
-   * 
+   *
    * So we queue `acknowldgements` here, and `<MatchInner>` will call
    * `router._rendered` whenever it renders a new batch of matches.
    */
