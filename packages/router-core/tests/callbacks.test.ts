@@ -79,6 +79,9 @@ describe('callbacks', () => {
       expect(onEnter).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({ id: '/foo/foo' }),
+        expect.objectContaining({
+          location: expect.objectContaining({ pathname: '/foo' }),
+        }),
       )
 
       // Entering bar
@@ -86,6 +89,9 @@ describe('callbacks', () => {
       expect(onEnter).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({ id: '/bar/bar' }),
+        expect.objectContaining({
+          location: expect.objectContaining({ pathname: '/bar' }),
+        }),
       )
     })
   })
@@ -96,18 +102,24 @@ describe('callbacks', () => {
       const router = setup({ onLeave })
       await router.navigate({ to: '/foo' })
 
-      // Leaving foo to bar
+      // Leaving foo to bar — the received location is the destination (/bar)
       await router.navigate({ to: '/bar' })
       expect(onLeave).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({ id: '/foo/foo' }),
+        expect.objectContaining({
+          location: expect.objectContaining({ pathname: '/bar' }),
+        }),
       )
 
-      // Leaving bar to foo
+      // Leaving bar to foo — the received location is the destination (/foo)
       await router.navigate({ to: '/foo' })
       expect(onLeave).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({ id: '/bar/bar' }),
+        expect.objectContaining({
+          location: expect.objectContaining({ pathname: '/foo' }),
+        }),
       )
     })
   })
@@ -123,6 +135,12 @@ describe('callbacks', () => {
       expect(onStay).toHaveBeenNthCalledWith(
         1,
         expect.objectContaining({ id: '/foo/foo', search: { foo: 'baz' } }),
+        expect.objectContaining({
+          location: expect.objectContaining({
+            pathname: '/foo',
+            search: { foo: 'baz' },
+          }),
+        }),
       )
 
       // Staying on foo
@@ -130,6 +148,12 @@ describe('callbacks', () => {
       expect(onStay).toHaveBeenNthCalledWith(
         2,
         expect.objectContaining({ id: '/foo/foo', search: { foo: 'quux' } }),
+        expect.objectContaining({
+          location: expect.objectContaining({
+            pathname: '/foo',
+            search: { foo: 'quux' },
+          }),
+        }),
       )
     })
 
@@ -156,6 +180,36 @@ describe('callbacks', () => {
       expect(onEnter).toHaveBeenCalledTimes(1)
       expect(onLeave).toHaveBeenCalledTimes(0)
       expect(onStay).toHaveBeenCalledTimes(2)
+    })
+  })
+
+  // The second argument of every lifecycle hook exposes the resolved
+  // destination location of the navigation that triggered it.
+  describe('destination location argument', () => {
+    it('passes the resolved destination location to all lifecycle hooks', async () => {
+      const onEnter = vi.fn()
+      const onLeave = vi.fn()
+      const onStay = vi.fn()
+      const router = setup({ onEnter, onLeave, onStay })
+
+      await router.navigate({ to: '/foo', search: { q: 'a' } })
+      const enterCtx = onEnter.mock.calls[0]?.[1]
+      expect(enterCtx.location.pathname).toBe('/foo')
+      expect(enterCtx.location.search).toEqual({ q: 'a' })
+      expect(enterCtx.location.href).toContain('/foo')
+
+      // onLeave for /foo receives the location being navigated TO (/bar),
+      // not the location being left behind.
+      await router.navigate({ to: '/bar' })
+      const leaveCtx = onLeave.mock.calls[0]?.[1]
+      expect(leaveCtx.location.pathname).toBe('/bar')
+      expect(leaveCtx.location.search).toEqual({})
+
+      // onStay receives the destination location including its search state.
+      await router.navigate({ to: '/bar', search: { tab: 'two' } })
+      const stayCtx = onStay.mock.calls.at(-1)?.[1]
+      expect(stayCtx.location.pathname).toBe('/bar')
+      expect(stayCtx.location.search).toEqual({ tab: 'two' })
     })
   })
 

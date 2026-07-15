@@ -2591,6 +2591,7 @@ export class RouterCore<
                     for (const match of matches as Array<AnyRouteMatch>) {
                       this.looseRoutesById[match.routeId]!.options[hook]?.(
                         match,
+                        { location: next },
                       )
                     }
                   }
