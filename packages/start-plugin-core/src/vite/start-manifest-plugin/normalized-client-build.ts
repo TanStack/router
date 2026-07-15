@@ -1,4 +1,3 @@
-import { normalizePath } from 'vite'
 import { tsrSplit } from '@tanstack/router-plugin'
 import { tssHydrate } from '../../hydration-constants'
 import { getCssAssetSource } from '../../start-manifest-plugin/inlineCss'
@@ -39,19 +38,23 @@ export function normalizeViteClientChunks(
 
 export function normalizeViteClientBuild(
   clientBundle: Rollup.OutputBundle,
-  opts?: { clientEntryModuleId?: string },
 ): NormalizedClientBuild {
+  let entryChunkFileName: string | undefined
   const chunksByFileName = normalizeViteClientChunks(clientBundle)
   const chunkFileNamesByRouteFilePath = new Map<string, Array<string>>()
   const cssFilesBySourcePath = new Map<string, Array<string>>()
   const cssContentByFileName = new Map<string, string>()
-  const entryChunks: Array<Rollup.OutputChunk> = []
 
   for (const chunk of chunksByFileName.values()) {
     const bundleEntry = clientBundle[chunk.fileName] as Rollup.OutputChunk
 
     if (chunk.isEntry) {
-      entryChunks.push(bundleEntry)
+      if (entryChunkFileName) {
+        throw new Error(
+          `multiple entries detected: ${entryChunkFileName} ${chunk.fileName}`,
+        )
+      }
+      entryChunkFileName = chunk.fileName
     }
 
     for (const routeFilePath of chunk.routeFilePaths) {
@@ -95,10 +98,9 @@ export function normalizeViteClientBuild(
     }
   }
 
-  const entryChunkFileName = selectEntryChunkFileName(
-    entryChunks,
-    opts?.clientEntryModuleId,
-  )
+  if (!entryChunkFileName) {
+    throw new Error('No entry file found')
+  }
 
   return {
     entryChunkFileName,
@@ -107,55 +109,6 @@ export function normalizeViteClientBuild(
     cssFilesBySourcePath,
     cssContentByFileName,
   }
-}
-
-// Plugins may emit their own entry chunks into the client build (e.g.
-// vite-plugin-solid >= 3.0.0-next.6 emits a facade chunk per dynamically
-// imported project module to keep its manifest lookups stable). Those emitted
-// chunks are flagged `isEntry` just like the configured entry, so the real
-// entry must be picked by matching its facade module against the resolved
-// client entry path instead of asserting there is exactly one entry.
-function selectEntryChunkFileName(
-  entryChunks: Array<Rollup.OutputChunk>,
-  clientEntryModuleId: string | undefined,
-): string {
-  if (clientEntryModuleId !== undefined) {
-    const normalizedEntryModuleId = normalizePath(clientEntryModuleId)
-    const matching = entryChunks.filter(
-      (chunk) =>
-        chunk.facadeModuleId !== null &&
-        normalizePath(chunk.facadeModuleId) === normalizedEntryModuleId,
-    )
-
-    if (matching.length === 1) {
-      return matching[0]!.fileName
-    }
-
-    if (matching.length > 1) {
-      throw new Error(
-        `multiple client entry chunks matched ${clientEntryModuleId}: ${matching
-          .map((chunk) => chunk.fileName)
-          .join(', ')}`,
-      )
-    }
-  }
-
-  if (entryChunks.length === 1) {
-    return entryChunks[0]!.fileName
-  }
-
-  if (entryChunks.length === 0) {
-    throw new Error('No entry file found')
-  }
-
-  throw new Error(
-    `multiple entries detected: ${entryChunks
-      .map(
-        (chunk) =>
-          `${chunk.fileName} (${chunk.facadeModuleId ?? 'unknown module'})`,
-      )
-      .join(', ')}`,
-  )
 }
 
 export function getRouteFilePathsFromModuleIds(moduleIds: Array<string>) {

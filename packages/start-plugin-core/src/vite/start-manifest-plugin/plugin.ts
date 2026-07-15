@@ -21,7 +21,6 @@ type StartManifestEnvironment = {
 
 export function startManifestPlugin(opts: {
   getConfig: GetConfigFn
-  getClientEntry: () => string
 }): PluginOption {
   let clientBuild: NormalizedClientBuild | undefined
   let cssCodeSplitDisabledFileName: string | undefined
@@ -40,9 +39,7 @@ export function startManifestPlugin(opts: {
           )
         }
 
-        clientBuild = normalizeViteClientBuild(bundle, {
-          clientEntryModuleId: opts.getClientEntry(),
-        })
+        clientBuild = normalizeViteClientBuild(bundle)
         cssCodeSplitDisabledFileName = getAssetFileNameByName(
           bundle,
           'style.css',
