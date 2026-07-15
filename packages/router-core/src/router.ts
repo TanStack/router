@@ -1020,7 +1020,7 @@ export class RouterCore<
     reset?: boolean
   } = { next: true }
   declare shouldViewTransition?: boolean | ViewTransitionOptions
-  declare isViewTransitionTypesSupported?: boolean = undefined
+  declare isViewTransitionTypesSupported?: boolean
   subscribers = new Set<RouterListener<RouterEvent>>()
   declare _tx?: LoadTransaction
   declare _flights?: Map<string, LoaderFlight>
