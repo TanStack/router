@@ -120,8 +120,10 @@ export function tanStackStartRsbuild(
         const assetPrefix = rsbuildConfig.output?.assetPrefix
 
         // rsbuild normalizes output.assetPrefix to "/" when unset, same as
-        // server.base. Use the original config to distinguish user-set from
-        // default so createRsbuildEnvironmentPlan can choose the right fallback.
+        // server.base. Read the original config to tell "user set /" from
+        // "rsbuild filled in /" — when the user didn't set it, we forward
+        // undefined so rsbuild's own default and downstream plugins remain in
+        // control of the client environment's assetPrefix.
         const originalConfig = api.getRsbuildConfig('original')
         const userSetAssetPrefix =
           originalConfig.output?.assetPrefix !== undefined

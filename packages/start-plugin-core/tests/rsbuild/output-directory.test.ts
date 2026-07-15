@@ -161,23 +161,22 @@ describe('createRsbuildEnvironmentPlan assetPrefix', () => {
     expect(plan.environments.client!.output?.assetPrefix).toBe('/app/')
   })
 
-  test('defaults to "auto" when neither configured and publicBase is default', () => {
+  test('leaves assetPrefix undefined when neither configured and publicBase is default', () => {
     const plan = createRsbuildEnvironmentPlan({
       ...baseOptions,
       publicBase: '/',
     })
-    // '"auto"' lets rspack infer the public path from the document URL.
-    // For MF apps this enables inferAutoPublicPath; for non-MF apps it
-    // resolves identically to "/" (same-origin relative).
-    expect(plan.environments.client!.output?.assetPrefix).toBe('auto')
+    // Start forwards nothing so rsbuild's own default and downstream plugins
+    // (e.g. Module Federation gating on `=== undefined`) stay in control.
+    expect(plan.environments.client!.output?.assetPrefix).toBeUndefined()
   })
 
-  test('uses publicBase when assetPrefix is "auto"', () => {
+  test('forwards assetPrefix verbatim when explicitly set to "auto"', () => {
     const plan = createRsbuildEnvironmentPlan({
       ...baseOptions,
       assetPrefix: 'auto',
     })
-    expect(plan.environments.client!.output?.assetPrefix).toBe('/app/')
+    expect(plan.environments.client!.output?.assetPrefix).toBe('auto')
   })
 
   test('uses assetPrefix when explicitly set to a path', () => {

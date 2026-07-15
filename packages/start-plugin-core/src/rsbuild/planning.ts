@@ -107,12 +107,17 @@ export function createRsbuildEnvironmentPlan(opts: {
     )
   }
 
+  // When the user set output.assetPrefix, forward it. When they set
+  // server.base (and not assetPrefix), forward that via publicBase for
+  // backwards compatibility with the existing serverBase-precedence path.
+  // Otherwise leave assetPrefix unset so downstream plugins (e.g. Module
+  // Federation) and rsbuild's own default can take effect.
   const clientAssetPrefix =
-    typeof opts.assetPrefix === 'string' && opts.assetPrefix !== 'auto'
+    typeof opts.assetPrefix === 'string'
       ? opts.assetPrefix
       : opts.publicBase !== '/'
         ? opts.publicBase
-        : 'auto'
+        : undefined
 
   return {
     environments: {
