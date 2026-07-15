@@ -639,6 +639,20 @@ export interface MatchRoutesOpts {
   _canReuse?: (route: AnyRoute) => boolean
 }
 
+/**
+ * This function is used to ensure while synchronous `matchRouteInternal`
+ * is running, if any user-defined function calls `router.navigate(...)`
+ * we stop the work as we don't have the rights to the `_tx` anymore.
+ * This includes `router.navigate` calls from:
+ * - validateSearch
+ * - loaderDeps
+ * - params.parse
+ * - context
+ * 
+ * If we *trust* our users to never call `router.navigate` from within
+ * these functions, we could simply delete `assertMatchOwner` and
+ * remove all its call sites.
+ */
 function assertMatchOwner(opts?: MatchRoutesOpts) {
   const controller = opts?._controller
   if (
@@ -1329,7 +1343,9 @@ export class RouterCore<
       if (listener.eventType === routerEvent.type) {
         try {
           listener.fn(routerEvent)
-        } catch {}
+        } catch (e) {
+          console.error(e)
+        }
       }
     })
   }
@@ -2204,6 +2220,7 @@ export class RouterCore<
       trimPathRight(this.latestLocation.href) === trimPathRight(next.href)
 
     const previousCommitPromise = this.commitLocationPromise
+    // this is basically `createControlledPromise` but we don't use `createControlledPromise` anymore and this is lighter
     let resolve!: () => void
     const commitPromise = new Promise<void>((done) => {
       resolve = done
@@ -2510,6 +2527,7 @@ export class RouterCore<
    * Invalidate the current matches and optionally force them back into a pending state.
    *
    * - Marks all matches that pass the optional `filter` as `invalid: true`.
+   *
    * The next load decides when to publish pending UI, so invalidation does not
    * mutate the currently rendered status.
    */
@@ -2745,6 +2763,11 @@ export class RouterCore<
   serverSsrLifecycle?: RouterSsrLifecycle
 }
 
+/**
+ * In non-production environments,
+ * augment the RouterCore class with a `_refreshRoute` method
+ * dedicated to HMR.
+ */
 if (process.env.NODE_ENV !== 'production') {
   RouterCore.prototype._refreshRoute = async function (routeId) {
     this._serverResult = undefined

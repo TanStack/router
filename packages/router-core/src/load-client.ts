@@ -93,7 +93,7 @@ type BackgroundLoaderTask = LoaderTask & {
   candidate: WorkMatch
 }
 
-export type ExecuteLaneOptions = {
+type ExecuteLaneOptions = {
   preload?: boolean
   sync?: boolean
   forceStaleReload?: boolean
@@ -108,7 +108,7 @@ type ControlOutcome =
   | [typeof REDIRECTED, redirect: AnyRedirect]
   | [typeof CANCELED]
 
-export type LaneResult = ProjectedLane | ControlOutcome
+type LaneResult = ProjectedLane | ControlOutcome
 
 function waitFor<T>(
   value: T | PromiseLike<T>,
@@ -807,7 +807,7 @@ async function projectLane(
   return lane as ProjectedLane
 }
 
-export async function executeClientLane(
+async function executeClientLane(
   router: AnyRouter,
   location: ParsedLocation,
   matches: Array<AnyRouteMatch>,
