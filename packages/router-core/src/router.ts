@@ -1490,11 +1490,10 @@ export class RouterCore<
   }
 
   private getSemanticMatch(matchId: string) {
-    const committed = this._committedMatches
-    return committed
-      ? (committed.find((match) => match.id === matchId) ??
-          this.stores.cachedMatchStores.get(matchId)?.get())
-      : this.stores.matchStores.get(matchId)?.get()
+    return (
+      this._committedMatches?.find((match) => match.id === matchId) ??
+      this.stores.cachedMatchStores.get(matchId)?.get()
+    )
   }
 
   private matchRoutesInternal(
