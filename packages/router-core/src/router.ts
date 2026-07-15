@@ -1022,13 +1022,19 @@ export class RouterCore<
   declare shouldViewTransition?: boolean | ViewTransitionOptions
   declare isViewTransitionTypesSupported?: boolean
   subscribers = new Set<RouterListener<RouterEvent>>()
+  /** Current client load transaction and owner of navigation writes. */
   declare _tx?: LoadTransaction
+  /** Shared in-flight route loaders keyed by match ID. */
   declare _flights?: Map<string, LoaderFlight>
-  /** Terminal semantic lane; pending presentation never becomes a planning base. */
+  /** Last terminal matches, excluding temporary pending presentation. */
   declare _committedMatches?: Array<AnyRouteMatch>
+  /** Pending-boundary reveal and minimum-visible timing state. */
   declare _pending?: PendingSession
+  /** Result of the latest server load, used to render or redirect. */
   declare _serverResult?: ServerLoadResult
+  /** Framework callback that acknowledges the current matches rendered. (used to polyfill when the framework's `startTransition` does not return an awaitable promise) */
   declare _rendered?: () => void
+  /** Development-only HMR reload for a route and its descendants. */
   declare _refreshRoute: ((routeId: string) => Promise<void>) | undefined
 
   // Must build in constructor
@@ -1052,7 +1058,7 @@ export class RouterCore<
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
-  declare routeTree: TRouteTree
+  routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
