@@ -10,16 +10,19 @@ export function Transitioner() {
   const mountLoadForRouter = React.useRef<
     [typeof router, typeof router.history] | undefined
   >(undefined)
-  const acknowledgements = React.useRef<Array<(rendered: boolean) => void>>(
-    [],
-  ).current
 
+  /**
+   * This effect is meant to "polyfill" the fact that React.startTransition
+   * does not return an awaitable promise.
+   * 
+   * So we queue `acknowldgements` here, and `<MatchInner>` will call
+   * `router._rendered` whenever it renders a new batch of matches.
+   */
   useLayoutEffect(() => {
-    const previousTransition = router.startTransition
-    const previousRendered = router._rendered
-    const rendered = () => {
+    const acknowledgements: Array<(rendered: boolean) => void> = []
+    const rendered = (done: boolean) => {
       for (const resolve of acknowledgements.splice(0)) {
-        resolve(true)
+        resolve(done)
       }
     }
     const transition = (fn: () => void) => {
@@ -28,20 +31,10 @@ export function Transitioner() {
         React.startTransition(fn)
       })
     }
-    router._rendered = rendered
+    router._rendered = () => rendered(true)
     router.startTransition = transition
-    return () => {
-      for (const resolve of acknowledgements.splice(0)) {
-        resolve(false)
-      }
-      if (router._rendered === rendered) {
-        router._rendered = previousRendered
-      }
-      if (router.startTransition === transition) {
-        router.startTransition = previousTransition
-      }
-    }
-  }, [acknowledgements, router])
+    return () => rendered(false)
+  }, [router])
 
   // Subscribe before canonicalizing so the initial URL has exactly one load.
   useLayoutEffect(() => {

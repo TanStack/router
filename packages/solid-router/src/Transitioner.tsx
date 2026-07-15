@@ -10,17 +10,11 @@ export function Transitioner() {
     return null
   }
 
-  const previousTransition = router.startTransition
   const transition = async (fn: () => void) => {
     await Solid.startTransition(fn)
     return true
   }
   router.startTransition = transition
-  Solid.onCleanup(() => {
-    if (router.startTransition === transition) {
-      router.startTransition = previousTransition
-    }
-  })
 
   // Subscribe to location changes
   // and try to load the new location

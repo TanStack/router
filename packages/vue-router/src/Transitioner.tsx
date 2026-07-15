@@ -9,7 +9,6 @@ export function useTransitionerSetup() {
     return
   }
 
-  const previousTransition = router.startTransition
   const transition = async (fn: () => void) => {
     fn()
     await Vue.nextTick()
@@ -54,9 +53,6 @@ export function useTransitionerSetup() {
 
   Vue.onUnmounted(() => {
     unsubscribe?.()
-    if (router.startTransition === transition) {
-      router.startTransition = previousTransition
-    }
   })
 }
 
