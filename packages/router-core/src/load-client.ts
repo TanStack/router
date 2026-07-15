@@ -874,26 +874,31 @@ function semanticMatches(router: CoordinatorRouter): Array<AnyRouteMatch> {
   return router._committedMatches ?? router.stores.matches.get()
 }
 
+/**
+ * Finds the first route that should show pending UI and its two timing values.
+ * A fallback already on screen remains selected after its route loads, so we
+ * do not jump to a child fallback. Matches put back into pending by invalidation
+ * skip pendingMs, and a route without a usable fallback blocks pending UI for deeper routes.
+ */
 function pendingConfig(
   router: AnyRouter,
   matches: Array<AnyRouteMatch>,
-): [delay: number, boundary: number, min: number] | undefined {
+): [delay: number, boundary: number, min: number] | undefined | void {
   const presented = router.stores.matches.get()
   for (let index = 0; index < matches.length; index++) {
     const match = matches[index]!
+    const success = match.status === 'success'
     const visible =
-      match.status === 'success' &&
+      success &&
       presented[index]?.id === match.id &&
       presented[index]?.status === 'pending'
-    if (match.status === 'success' && !visible) {
+    if (success && !visible) {
       continue
     }
     const route = getRoute(router, match as WorkMatch)
-    const delay = visible
+    const delay = visible || match.invalid
       ? 0
-      : match.invalid
-        ? 0
-        : (route.options.pendingMs ?? router.options.defaultPendingMs)
+      : (route.options.pendingMs ?? router.options.defaultPendingMs)
     return (route.options.pendingComponent ??
       (router.options as any).defaultPendingComponent) &&
       typeof delay === 'number' &&
@@ -905,9 +910,14 @@ function pendingConfig(
         ]
       : undefined
   }
-  return undefined
 }
 
+/**
+ * Waits for `pendingMs`, then writes the chosen route and its parents to
+ * `stores.matches`, causing its fallback to render while children stay hidden.
+ * A replacement load for the same match keeps the timer; choosing a different
+ * match resets it. `pendingMinMs` starts after the fallback renders.
+ */
 function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   if (router._tx !== tx) {
     return
@@ -929,6 +939,8 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   const [delay, boundary, min] = config
   const matchId = tx.matches[boundary]!.id
   if (!session || session.boundary !== boundary || sessionMatchId !== matchId) {
+    // Hydration and redirects can preserve pending presentation without a session.
+    // Do not delay it again; conservatively start pendingMinMs from now.
     clearTimeout(session?.timer)
     const presented = router.stores.matches.get()[boundary]
     const visible = presented?.id === matchId && presented.status === 'pending'
@@ -966,6 +978,10 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     })
 }
 
+/**
+ * Cancels pending UI timing when its load ends. The ownership check prevents
+ * an older, superseded load from clearing pending UI that a newer load took over.
+ */
 function finishPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   const session = router._pending
   if (session?.owner === tx) {
@@ -1183,6 +1199,12 @@ async function runClientTransaction(
   tx.redirects = undefined
   const pending = router._pending
   if (pending?.owner === tx) {
+    /**
+     * Loading finished, so cancel any pending reveal. If the fallback rendered,
+     * wait out the rest of `pendingMinMs` before replacing it. If it never
+     * rendered, there is no minimum wait; if another load took it over, that
+     * load owns the deadline.
+     */
     clearTimeout(pending.timer)
     if (pending.ack) {
       const rendered = await pending.ack
