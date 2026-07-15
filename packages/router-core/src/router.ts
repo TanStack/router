@@ -1052,7 +1052,7 @@ export class RouterCore<
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
-  routeTree!: TRouteTree
+  declare routeTree: TRouteTree
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
