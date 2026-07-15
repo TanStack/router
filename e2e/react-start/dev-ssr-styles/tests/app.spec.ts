@@ -22,6 +22,37 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
   })
 
   if (ssrStylesMode === 'default') {
+    test('dev CSS order is stable after client modules load', async ({
+      page,
+    }) => {
+      const cssBodies: Array<Promise<string>> = []
+      page.on('response', (response) => {
+        if (
+          new URL(response.url()).pathname.endsWith(
+            '/@tanstack-start/styles.css',
+          )
+        ) {
+          cssBodies.push(response.text())
+        }
+      })
+
+      await page.goto('/css-import-order')
+      await expect(page.getByTestId('css-import-order')).toBeVisible()
+      await expect.poll(() => cssBodies.length).toBeGreaterThanOrEqual(1)
+
+      await page.reload()
+      await expect(page.getByTestId('css-import-order')).toBeVisible()
+      await expect.poll(() => cssBodies.length).toBeGreaterThanOrEqual(2)
+
+      const [initialCss, reloadedCss] = await Promise.all(cssBodies.slice(0, 2))
+      expect(reloadedCss).toBe(initialCss)
+      expect(initialCss).toContain('/* /src/styles/app.css */')
+      expect(initialCss).toContain('/* /src/styles/css-import-order.css */')
+      expect(initialCss.indexOf('/* /src/styles/app.css */')).toBeLessThan(
+        initialCss.indexOf('/* /src/styles/css-import-order.css */'),
+      )
+    })
+
     test.describe('default (enabled, basepath = vite base)', () => {
       test.use({ javaScriptEnabled: false, whitelistErrors })
 
@@ -52,7 +83,9 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(href).toMatch(/^\/@tanstack-start\/styles\.css/)
       })
 
-      test('CSS is applied on initial page load (SSR)', async ({ page }) => {
+      test('CSS from a code-split route component is applied during SSR', async ({
+        page,
+      }) => {
         await page.goto('/')
 
         const element = page.getByTestId('styled-box')
@@ -63,6 +96,36 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
           (el) => getComputedStyle(el).backgroundColor,
         )
         expect(backgroundColor).toBe('rgb(59, 130, 246)')
+      })
+
+      test('CSS @import dependencies are not appended after their importer', async ({
+        page,
+      }) => {
+        await page.goto('/css-import-order')
+
+        const element = page.getByTestId('css-import-order')
+        await expect(element).toBeVisible()
+
+        // css-import-order.css imports a white base rule, then overrides it
+        // with this dark background. Collecting the imported file separately
+        // appends the white rule and reverses the intended cascade.
+        const backgroundColor = await element.evaluate(
+          (el) => getComputedStyle(el).backgroundColor,
+        )
+        expect(backgroundColor).toBe('rgb(17, 24, 39)')
+
+        const devStylesHref = await page
+          .locator(`link[${DEV_STYLES_ATTR}]`)
+          .getAttribute('href')
+        expect(devStylesHref).toBeTruthy()
+
+        const cssResponse = await page.request.get(
+          new URL(devStylesHref!, page.url()).href,
+        )
+        expect(cssResponse.ok()).toBeTruthy()
+
+        const css = await cssResponse.text()
+        expect(css.match(/--css-import-base-marker/g)).toHaveLength(1)
       })
     })
   }

@@ -1,11 +1,7 @@
 import { isRunnableDevEnvironment } from 'vite'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
-import {
-  CSS_MODULES_REGEX,
-  collectDevStyles,
-  normalizeCssModuleCacheKey,
-} from './dev-styles'
+import { collectDevStyles, fetchCssFromModule } from './dev-styles'
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
 import type { GetConfigFn } from '../../types'
 
@@ -20,25 +16,11 @@ export function devServerPlugin({
 }): PluginOption {
   let isTest = false
 
-  // Cache CSS modules content during transform hook.
-  // For CSS modules, the transform hook receives the raw CSS content before
-  // Vite wraps it in JS. We capture this to use during SSR style collection.
-  const cssModulesCache: Record<string, string> = {}
-
   return [
     {
       name: 'tanstack-start-core:dev-server',
       config(_userConfig, { mode }) {
         isTest = isTest ? isTest : mode === 'test'
-      },
-      // Capture CSS modules content during transform
-      transform: {
-        filter: {
-          id: CSS_MODULES_REGEX,
-        },
-        handler(code, id) {
-          cssModulesCache[normalizeCssModuleCacheKey(id)] = code
-        },
       },
       configureServer(viteDevServer) {
         if (isTest) {
@@ -86,9 +68,19 @@ export function devServerPlugin({
               const css =
                 entries.length > 0
                   ? await collectDevStyles({
-                      viteDevServer,
+                      serverEnvironment:
+                        viteDevServer.environments[
+                          VITE_ENVIRONMENT_NAMES.server
+                        ],
+                      rootDirectory: viteDevServer.config.root,
                       entries,
-                      cssModulesCache,
+                      loadCssContents: (url) =>
+                        fetchCssFromModule(
+                          viteDevServer.environments[
+                            VITE_ENVIRONMENT_NAMES.client
+                          ],
+                          url,
+                        ),
                     })
                   : undefined
 
