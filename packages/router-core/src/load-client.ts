@@ -304,49 +304,20 @@ function releaseFlight(router: AnyRouter, match: WorkMatch): void {
     }
   }
 }
-
-export function discardMatchResources(
-  router: AnyRouter,
-  matches: Array<AnyRouteMatch>,
-): void {
-  transferMatchResources(router, matches, [])
-}
-
+/**
+ * Not passing in a `next` ownership recipient
+ * is equivalent to discarding the match resources
+ */
 export function transferMatchResources(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
-  next: Array<AnyRouteMatch>,
+  next?: Array<AnyRouteMatch>,
 ): void {
   for (const match of previous as Array<WorkMatch>) {
-    if (!next.includes(match)) {
+    if (!next?.includes(match)) {
       releaseFlight(router, match)
     }
   }
-}
-
-function startFlight(
-  router: AnyRouter,
-  key: string,
-  route: AnyRoute,
-  invoke: (controller: AbortController) => unknown,
-): LoaderFlight {
-  const controller = new AbortController()
-  const flight: LoaderFlight = [
-    Promise.resolve()
-      .then(() => invoke(controller))
-      .then(
-        (value) =>
-          controller.signal.aborted
-            ? [CANCELED]
-            : normalize(value, false, route.id),
-        (cause) =>
-          controller.signal.aborted ? [CANCELED] : normalizeError(route, cause),
-      ),
-    controller,
-    1,
-  ]
-  ;(router._flights ??= new Map()).set(key, flight)
-  return flight
 }
 
 function closeFlight(router: AnyRouter, match: WorkMatch): void {
@@ -407,19 +378,36 @@ async function loadResource(
   for (;;) {
     if (!joined) {
       releaseFlight(router, match)
-      flight = startFlight(router, match.id, route, (controller) =>
-        loader(
-          getLoaderContext(
-            router,
-            lane,
-            match,
-            route,
-            controller,
-            parentMatchPromise,
-            preload,
+      const controller = new AbortController()
+      flight = [
+        Promise.resolve()
+          .then(() =>
+            loader(
+              getLoaderContext(
+                router,
+                lane,
+                match,
+                route,
+                controller,
+                parentMatchPromise,
+                preload,
+              ),
+            ),
+          )
+          .then(
+            (value) =>
+              controller.signal.aborted
+                ? [CANCELED]
+                : normalize(value, false, route.id),
+            (cause) =>
+              controller.signal.aborted
+                ? [CANCELED]
+                : normalizeError(route, cause),
           ),
-        ),
-      )
+        controller,
+        1,
+      ]
+      ;(router._flights ??= new Map()).set(match.id, flight)
     }
     match._flight = flight
     match.abortController = flight![1]
@@ -708,7 +696,7 @@ async function reduceLane(
 
   if (control) {
     if (lane.background) {
-      discardMatchResources(
+      transferMatchResources(
         router,
         lane.background.map((task) => task.candidate),
       )
@@ -768,7 +756,7 @@ function trimLane(
   background: boolean,
 ): void {
   if (!background) {
-    discardMatchResources(router, lane.matches.slice(length))
+    transferMatchResources(router, lane.matches.slice(length))
   }
   lane.matches.length = length
   if (!lane.background || background) {
@@ -779,7 +767,7 @@ function trimLane(
     if (task.index < length) {
       lane.background[write++] = task
     } else {
-      discardMatchResources(router, [task.candidate])
+      transferMatchResources(router, [task.candidate])
     }
   }
   lane.background.length = write
@@ -920,20 +908,6 @@ function pendingConfig(
   return undefined
 }
 
-function renderPending(
-  router: CoordinatorRouter,
-  tx: LoadTransaction,
-  boundary: number,
-): Promise<boolean> {
-  const offered = tx.matches
-    .slice(0, boundary + 1)
-    .map((match) => ({ ...match, _flight: undefined }))
-  offered[boundary]!.status = 'pending'
-  return router.startTransition(() => {
-    router.stores.setMatches(offered)
-  })
-}
-
 function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   if (router._tx !== tx) {
     return
@@ -976,12 +950,20 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     }, remaining)
     return
   }
-  session.ack = renderPending(router, tx, boundary).then((rendered) => {
-    if (rendered && router._pending === session) {
-      session.deadline = Date.now() + min
-    }
-    return rendered
-  })
+  const offered = tx.matches
+    .slice(0, boundary + 1)
+    .map((match) => ({ ...match, _flight: undefined }))
+  offered[boundary]!.status = 'pending'
+  session.ack = router
+    .startTransition(() => {
+      router.stores.setMatches(offered)
+    })
+    .then((rendered) => {
+      if (rendered && router._pending === session) {
+        session.deadline = Date.now() + min
+      }
+      return rendered
+    })
 }
 
 function finishPending(router: CoordinatorRouter, tx: LoadTransaction): void {
@@ -1127,7 +1109,7 @@ async function runBackground(
   }
   const reduced = await reduceLane(router, lane, tasks, options)
   if (Array.isArray(reduced)) {
-    discardMatchResources(router, backgroundMatches)
+    transferMatchResources(router, backgroundMatches)
     if (
       reduced[0] === REDIRECTED &&
       router._tx === tx &&
@@ -1146,7 +1128,7 @@ async function runBackground(
   }
   const projected = await projectLane(router, reduced)
   if (router._tx !== tx || router._committedMatches !== base) {
-    discardMatchResources(router, backgroundMatches)
+    transferMatchResources(router, backgroundMatches)
     return
   }
   router.batch(() => {
@@ -1185,7 +1167,7 @@ async function runClientTransaction(
 
   if (Array.isArray(result)) {
     finishPending(router, tx)
-    discardMatchResources(router, tx.matches)
+    transferMatchResources(router, tx.matches)
     if (result[0] === REDIRECTED && router._tx === tx) {
       tx.redirects = (tx.redirects ?? 0) + 1
       tx.redirecting = true
@@ -1214,7 +1196,7 @@ async function runClientTransaction(
   }
   if (router._tx !== tx) {
     finishPending(router, tx)
-    discardMatchResources(router, result.matches)
+    transferMatchResources(router, result.matches)
     return
   }
   const toLocation = tx.location
@@ -1224,7 +1206,7 @@ async function runClientTransaction(
   )
   await router.startViewTransition(async () => {
     if (router._tx !== tx) {
-      discardMatchResources(router, result.matches)
+      transferMatchResources(router, result.matches)
       return
     }
     const commit = () => {
@@ -1373,7 +1355,7 @@ export async function loadClientRouter(
         if (router._tx === tx) {
           finishPending(router, tx)
           controller.abort()
-          discardMatchResources(router, tx.matches)
+          transferMatchResources(router, tx.matches)
           router.batch(() => {
             router.stores.status.set('idle')
             router.stores.setMatches(router._committedMatches ?? [])
@@ -1390,7 +1372,7 @@ export async function loadClientRouter(
   router._tx = tx
   previousOwner?.controller.abort()
   if (previousOwner) {
-    discardMatchResources(router, previousOwner.matches)
+    transferMatchResources(router, previousOwner.matches)
   }
 
   router.batch(() => {
@@ -1458,7 +1440,7 @@ export async function preloadClientRoute(
       resolvedPrefix,
     })
     if (Array.isArray(result)) {
-      discardMatchResources(router, matches)
+      transferMatchResources(router, matches)
       if (result[0] === REDIRECTED && !result[1].options.reloadDocument) {
         return preloadClientRoute(
           router,
@@ -1474,7 +1456,7 @@ export async function preloadClientRoute(
 
     matches = result.matches
     if (matches.some((match) => match.status !== 'success')) {
-      discardMatchResources(router, matches)
+      transferMatchResources(router, matches)
       return
     }
 
@@ -1522,7 +1504,7 @@ export async function preloadClientRoute(
       throw cause
     }
     controller.abort()
-    discardMatchResources(router, matches)
+    transferMatchResources(router, matches)
     if (router._tx !== owner) {
       return
     }

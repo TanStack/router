@@ -81,7 +81,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       break
     }
     index++
-    candidate.id = dehydrated.i
     candidate.__beforeLoadContext = dehydrated.b
     candidate.loaderData = dehydrated.l
     candidate.status = dehydrated.s

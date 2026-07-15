@@ -40,10 +40,10 @@ import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
 import {
-  discardMatchResources,
   loadClientRouter,
   preloadClientRoute,
   refreshClientRoute,
+  transferMatchResources,
 } from './load-client'
 import { loadRouteChunk, routeNeedsPreload } from './route-chunks'
 import {
@@ -2604,7 +2604,7 @@ export class RouterCore<
       if (filter && !filter(match as MakeRouteMatchUnion<this>)) {
         retained.push(match)
       } else {
-        discardMatchResources(this, [match])
+        transferMatchResources(this, [match])
       }
     }
     this.stores.setCached(retained)

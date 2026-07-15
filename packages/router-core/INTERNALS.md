@@ -491,7 +491,7 @@ unfinished.
 ## Pending presentation and renderer acknowledgement
 
 Pending UI is a projection of an in-progress transaction, never a semantic lane.
-`renderPending` publishes a cloned prefix ending at the selected pending
+Pending publication uses a cloned prefix ending at the selected pending
 boundary. Every visible match is a snapshot with `_flight` removed, and only the
 terminal snapshot changes status to `pending`. Presentation therefore never
 shares a mutable match object with the private writer lane. A later failure may
@@ -564,9 +564,8 @@ Two facts must remain separate:
 
 `closeFlight` removes joinability but does not release the owner's lease.
 `releaseFlight` removes one lease; only the last release aborts the loader and
-removes the registry entry. `transferMatchResources` and
-`discardMatchResources` are the bulk ownership operations, based on match object
-identity.
+removes the registry entry. `transferMatchResources` is the bulk ownership
+operations, based on match object identity.
 
 The lease intentionally may outlive promise settlement. Once successful data is
 accepted, closing registry membership prevents new joins while the accepted
