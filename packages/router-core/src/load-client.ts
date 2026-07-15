@@ -896,9 +896,10 @@ function pendingConfig(
       continue
     }
     const route = getRoute(router, match as WorkMatch)
-    const delay = visible || match.invalid
-      ? 0
-      : (route.options.pendingMs ?? router.options.defaultPendingMs)
+    const delay =
+      visible || match.invalid
+        ? 0
+        : (route.options.pendingMs ?? router.options.defaultPendingMs)
     return (route.options.pendingComponent ??
       (router.options as any).defaultPendingComponent) &&
       typeof delay === 'number' &&
