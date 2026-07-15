@@ -87,25 +87,19 @@ export const Match = React.memo(function MatchImpl({
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const match = useStore(matchStore, (value) => value, matchViewFieldsEqual)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const matchState = React.useMemo(() => {
-    const routeId = match.routeId as string
-    const parentRouteId = (router.routesById[routeId] as AnyRoute).parentRoute
-      ?.id
-
-    return {
-      routeId,
-      ssr: match.ssr,
-      parentRouteId: parentRouteId as string | undefined,
-    } satisfies MatchViewState
-  }, [match.routeId, match.ssr, router.routesById])
+  const routeId = match.routeId as string
+  const parentRouteId = (router.routesById[routeId] as AnyRoute).parentRoute?.id
 
   return (
     <MatchView
       router={router}
       matchId={matchId}
       resetKey={match.fetchCount}
-      matchState={matchState}
+      matchState={{
+        routeId,
+        ssr: match.ssr,
+        parentRouteId,
+      }}
     />
   )
 })

@@ -66,7 +66,6 @@ function MatchesInner() {
   const routeId = () => (matchId() ? rootRouteId : undefined)
   const match = () =>
     routeId() ? router.stores.getRouteMatchStore(rootRouteId).get() : undefined
-  const resetKey = () => match()?.fetchCount ?? 0
   const nearestMatch = {
     matchId,
     routeId,
@@ -87,7 +86,7 @@ function MatchesInner() {
         matchComponent()
       ) : (
         <CatchBoundary
-          getResetKey={() => resetKey()}
+          getResetKey={() => match()?.fetchCount ?? 0}
           errorComponent={ErrorComponent}
           onCatch={
             process.env.NODE_ENV !== 'production'
