@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { invariant } from '@tanstack/router-core'
-import { useStore } from '@tanstack/vue-store'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useStore } from './useStore'
 import {
   injectDummyPendingMatch,
   injectPendingMatch,
@@ -147,7 +147,7 @@ export function useMatch<
   const isTransitioning = useStore(
     router.stores.isTransitioning,
     (value) => value,
-    { equal: Object.is },
+    Object.is,
   )
 
   const result = Vue.computed(() => {

@@ -40,6 +40,13 @@ const outletMatchSelectionEqual = (
   b: OutletMatchSelection,
 ) => a[0] === b[0] && a[1] === b[1]
 
+const emptyMatchStore = {
+  get: () => undefined as AnyRouteMatch | undefined,
+  subscribe: (_listener: (value: AnyRouteMatch | undefined) => void) => ({
+    unsubscribe() {},
+  }),
+}
+
 export const Match = React.memo(function MatchImpl({
   matchId,
 }: {
@@ -550,8 +557,8 @@ export const Outlet = React.memo(function OutletImpl() {
     // Subscribe directly to the match store from the pool instead of
     // the two-level byId → matchStore pattern.
     const parentMatchStore = matchId
-      ? router.stores.matchStores.get(matchId)
-      : undefined
+      ? (router.stores.matchStores.get(matchId) ?? emptyMatchStore)
+      : emptyMatchStore
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     ;[routeId, parentGlobalNotFound] = useStore(

@@ -8,7 +8,7 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './useStore'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
@@ -64,7 +64,7 @@ export const Match = Vue.defineComponent({
     const isPendingMatchRef = useStore(
       router.stores.pendingRouteIds,
       (pendingRouteIds) => Boolean(pendingRouteIds[routeId]),
-      { equal: Object.is },
+      Object.is,
     )
     const loadedAt = useStore(router.stores.loadedAt, (value) => value)
 
