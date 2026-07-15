@@ -648,7 +648,7 @@ export interface MatchRoutesOpts {
  * - loaderDeps
  * - params.parse
  * - context
- * 
+ *
  * If we *trust* our users to never call `router.navigate` from within
  * these functions, we could simply delete `assertMatchOwner` and
  * remove all its call sites.
