@@ -134,3 +134,75 @@ describe('createRsbuildEnvironmentPlan client output', () => {
     )
   })
 })
+
+describe('createRsbuildEnvironmentPlan assetPrefix', () => {
+  const baseOptions = {
+    root: '/app',
+    entryAliases: {
+      client: '/app/src/client.tsx',
+      server: '/app/src/server.ts',
+      start: '/app/src/start.ts',
+      router: '/app/src/router.tsx',
+      alias: {
+        'virtual:tanstack-start-client-entry': '/app/src/client.tsx',
+        'virtual:tanstack-start-server-entry': '/app/src/server.ts',
+        '#tanstack-start-entry': '/app/src/start.ts',
+        '#tanstack-router-entry': '/app/src/router.tsx',
+      },
+    },
+    clientOutputDirectory: 'dist/client',
+    serverOutputDirectory: 'dist/server',
+    publicBase: '/app/',
+    serverFnProviderEnv: 'ssr',
+  }
+
+  test('uses publicBase when assetPrefix is not provided and publicBase is not default', () => {
+    const plan = createRsbuildEnvironmentPlan(baseOptions)
+    expect(plan.environments.client!.output?.assetPrefix).toBe('/app/')
+  })
+
+  test('defaults to "auto" when neither configured and publicBase is default', () => {
+    const plan = createRsbuildEnvironmentPlan({
+      ...baseOptions,
+      publicBase: '/',
+    })
+    // '"auto"' lets rspack infer the public path from the document URL.
+    // For MF apps this enables inferAutoPublicPath; for non-MF apps it
+    // resolves identically to "/" (same-origin relative).
+    expect(plan.environments.client!.output?.assetPrefix).toBe('auto')
+  })
+
+  test('uses publicBase when assetPrefix is "auto"', () => {
+    const plan = createRsbuildEnvironmentPlan({
+      ...baseOptions,
+      assetPrefix: 'auto',
+    })
+    expect(plan.environments.client!.output?.assetPrefix).toBe('/app/')
+  })
+
+  test('uses assetPrefix when explicitly set to a path', () => {
+    const plan = createRsbuildEnvironmentPlan({
+      ...baseOptions,
+      assetPrefix: '/cdn/',
+    })
+    expect(plan.environments.client!.output?.assetPrefix).toBe('/cdn/')
+  })
+
+  test('uses assetPrefix when explicitly set to a full URL', () => {
+    const plan = createRsbuildEnvironmentPlan({
+      ...baseOptions,
+      assetPrefix: 'https://cdn.example.com/',
+    })
+    expect(plan.environments.client!.output?.assetPrefix).toBe(
+      'https://cdn.example.com/',
+    )
+  })
+
+  test('server environment never gets an assetPrefix', () => {
+    const plan = createRsbuildEnvironmentPlan({
+      ...baseOptions,
+      assetPrefix: 'https://cdn.example.com/',
+    })
+    expect(plan.environments.ssr!.output?.assetPrefix).toBeUndefined()
+  })
+})

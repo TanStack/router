@@ -73,6 +73,7 @@ export function createRsbuildEnvironmentPlan(opts: {
   clientOutputDirectory: string
   serverOutputDirectory: string
   publicBase: string
+  assetPrefix?: string | undefined
   serverFnProviderEnv: string
   environmentOverrides?: RsbuildEnvironmentOverrides
   scriptFormat?: ScriptFormat
@@ -106,6 +107,13 @@ export function createRsbuildEnvironmentPlan(opts: {
     )
   }
 
+  const clientAssetPrefix =
+    typeof opts.assetPrefix === 'string' && opts.assetPrefix !== 'auto'
+      ? opts.assetPrefix
+      : opts.publicBase !== '/'
+        ? opts.publicBase
+        : 'auto'
+
   return {
     environments: {
       [RSBUILD_ENVIRONMENT_NAMES.client]: mergeRsbuildConfig(
@@ -134,7 +142,7 @@ export function createRsbuildEnvironmentPlan(opts: {
               media: `${RSBUILD_CLIENT_ASSETS_DIR}/media`,
               assets: `${RSBUILD_CLIENT_ASSETS_DIR}/assets`,
             },
-            assetPrefix: opts.publicBase,
+            assetPrefix: clientAssetPrefix,
           },
           resolve: {
             alias,

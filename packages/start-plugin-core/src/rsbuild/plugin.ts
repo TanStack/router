@@ -118,6 +118,14 @@ export function tanStackStartRsbuild(
 
         const serverBase = rsbuildConfig.server?.base
         const assetPrefix = rsbuildConfig.output?.assetPrefix
+
+        // rsbuild normalizes output.assetPrefix to "/" when unset, same as
+        // server.base. Use the original config to distinguish user-set from
+        // default so createRsbuildEnvironmentPlan can choose the right fallback.
+        const originalConfig = api.getRsbuildConfig('original')
+        const userSetAssetPrefix =
+          originalConfig.output?.assetPrefix !== undefined
+
         const publicBase = normalizePublicBase(
           typeof serverBase === 'string'
             ? serverBase
@@ -171,6 +179,7 @@ export function tanStackStartRsbuild(
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           publicBase: resolvedStartConfig.basePaths.publicBase,
+          assetPrefix: userSetAssetPrefix ? assetPrefix : undefined,
           serverFnProviderEnv,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           scriptFormat,
