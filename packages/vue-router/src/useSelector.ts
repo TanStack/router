@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
-import { useStore as useTanStackStore } from '@tanstack/vue-store'
+import { useSelector as useTanStackSelector } from '@tanstack/vue-store'
+import type { UseSelectorOptions } from '@tanstack/vue-store'
 
 type StoreSource<T> = {
   get: () => T
@@ -9,15 +10,15 @@ type StoreSource<T> = {
 }
 
 // Vue Router hooks can run while functional components render, where there is
-// no active effect scope for @tanstack/vue-store's useStore cleanup. Run the
+// no active effect scope for @tanstack/vue-store's useSelector cleanup. Run the
 // upstream hook in a scope tied to the current component's unmount lifecycle.
-export function useStore<TState, TSelected = NoInfer<TState>>(
+export function useSelector<TState, TSelected = NoInfer<TState>>(
   store: StoreSource<TState>,
   selector: (state: NoInfer<TState>) => TSelected = (state) =>
     state as unknown as TSelected,
-  compare?: (a: TSelected, b: TSelected) => boolean,
+  options?: UseSelectorOptions<TSelected>,
 ): Readonly<Vue.Ref<TSelected>> {
-  const run = () => useTanStackStore(store, selector, compare)
+  const run = () => useTanStackSelector(store, selector, options)
 
   if (Vue.getCurrentScope()) {
     return run()

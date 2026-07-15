@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
-import { useStore } from './useStore'
+import { useSelector } from './useSelector'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
@@ -17,7 +17,7 @@ export const Scripts = Vue.defineComponent({
   setup() {
     const router = useRouter()
     const nonce = router.options.ssr?.nonce
-    const matches = useStore(router.stores.matches, (value) => value)
+    const matches = useSelector(router.stores.matches)
 
     const getAssetScripts = (matches: Array<any>) => {
       const assetScripts: Array<RouterManagedTag> = []

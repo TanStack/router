@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from './useStore'
+import { useSelector } from './useSelector'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
@@ -99,8 +99,8 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matchId = useStore(router.stores.firstId, (id) => id)
-    const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+    const matchId = useSelector(router.stores.firstId)
+    const resetKey = useSelector(router.stores.loadedAt)
 
     // Create a ref for the match id to provide
     const matchIdRef = Vue.computed(() => matchId.value)
@@ -152,7 +152,7 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const routerState = useStore(router.stores.matchRouteDeps, (value) => value)
+  const routerState = useSelector(router.stores.matchRouteDeps)
 
   return <
     const TFrom extends string = string,
@@ -249,7 +249,7 @@ export const MatchRoute = Vue.defineComponent({
   },
   setup(props, { slots }) {
     const router = useRouter()
-    const status = useStore(
+    const status = useSelector(
       router.stores.matchRouteDeps,
       (value) => value.status,
     )
@@ -293,7 +293,7 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return useStore(router.stores.matches, (matches) => {
+  return useSelector(router.stores.matches, (matches) => {
     return opts?.select
       ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
       : (matches as any)

@@ -9,7 +9,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { useStore } from './useStore'
+import { useSelector } from './useSelector'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
 
@@ -219,11 +219,9 @@ export function useLinkProps<
     ) as unknown as LinkHTMLAttributes
   }
 
-  const currentLocation = useStore(
-    router.stores.location,
-    (l) => l,
-    (prev, next) => prev.href === next.href,
-  )
+  const currentLocation = useSelector(router.stores.location, (l) => l, {
+    compare: (prev, next) => prev.href === next.href,
+  })
 
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.

@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import {
   appendUniqueUserTags,
   deepEqual,
@@ -204,14 +204,14 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const routeMeta = useStore(
+  const routeMeta = useSelector(
     router.stores.matches,
     (matches) => {
       return matches
         .map((match) => match.meta)
         .filter((meta) => meta !== undefined)
     },
-    deepEqual,
+    { compare: deepEqual },
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
@@ -287,7 +287,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   }, [routeMeta, nonce])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const links = useStore(
+  const links = useSelector(
     router.stores.matches,
     (matches) => {
       const constructed = matches
@@ -303,11 +303,11 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
       return constructed
     },
-    deepEqual,
+    { compare: deepEqual },
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const manifestCssTags = useStore(
+  const manifestCssTags = useSelector(
     router.stores.matches,
     (matches) => {
       const manifest = router.ssr?.manifest
@@ -349,11 +349,11 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
       return tags
     },
-    deepEqual,
+    { compare: deepEqual },
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const preloadLinks = useStore(
+  const preloadLinks = useSelector(
     router.stores.matches,
     (matches) => {
       const preloadLinks: Array<RouterManagedTag> = []
@@ -377,11 +377,11 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
       return preloadLinks
     },
-    deepEqual,
+    { compare: deepEqual },
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const styles = useStore(
+  const styles = useSelector(
     router.stores.matches,
     (matches) => {
       return matches
@@ -396,11 +396,11 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
           children: children as string | undefined,
         })) satisfies Array<RouterManagedTag>
     },
-    deepEqual,
+    { compare: deepEqual },
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const headScripts: Array<RouterManagedTag> = useStore(
+  const headScripts: Array<RouterManagedTag> = useSelector(
     router.stores.matches,
     (matches) => {
       return matches
@@ -415,7 +415,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
           children: children as string | undefined,
         })) satisfies Array<RouterManagedTag>
     },
-    deepEqual,
+    { compare: deepEqual },
   )
 
   const tags: Array<RouterManagedTag> = []
