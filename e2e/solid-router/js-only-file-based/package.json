@@ -24,6 +24,6 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@tanstack/router-plugin": "workspace:^",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.8"
+    "vite-plugin-solid": "^3.0.0-next.10"
   }
 }
