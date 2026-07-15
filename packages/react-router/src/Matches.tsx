@@ -79,8 +79,7 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const _isServer = isServer ?? router.isServer
-  const matches = _isServer
+  const matches = isServer ?? router.isServer
     ? router.stores.matches.get()
     : // eslint-disable-next-line react-hooks/rules-of-hooks
       useStore(router.stores.matches, (value) => value)

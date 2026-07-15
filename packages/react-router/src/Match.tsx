@@ -25,9 +25,7 @@ type OutletMatchSelection = [
 ]
 
 const matchViewFieldsEqual = (a: AnyRouteMatch, b: AnyRouteMatch) =>
-  a.routeId === b.routeId &&
-  a.fetchCount === b.fetchCount &&
-  a.status === b.status
+  a.routeId === b.routeId && a.fetchCount === b.fetchCount
 
 const outletMatchSelectionEqual = (
   a: OutletMatchSelection,
