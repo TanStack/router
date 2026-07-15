@@ -79,10 +79,11 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matches = isServer ?? router.isServer
-    ? router.stores.matches.get()
-    : // eslint-disable-next-line react-hooks/rules-of-hooks
-      useStore(router.stores.matches, (value) => value)
+  const matches =
+    (isServer ?? router.isServer)
+      ? router.stores.matches.get()
+      : // eslint-disable-next-line react-hooks/rules-of-hooks
+        useStore(router.stores.matches, (value) => value)
   const match = matches[0]
   const matchId = match?.id
   const resetKey = match ? `${match.id}:${match.fetchCount}` : ''
