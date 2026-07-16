@@ -10,7 +10,7 @@
     "start": "pnpx srvx --prod -s ../client dist/server/server.js"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.18",
+    "@solidjs/web": "2.0.0-beta.19",
     "@tanstack/solid-query": "^6.0.0-beta.5",
     "@tanstack/solid-query-devtools": "^6.0.0-beta.5",
     "@tanstack/solid-router": "^2.0.0-beta.23",
@@ -18,7 +18,7 @@
     "@tanstack/solid-router-ssr-query": "^2.0.0-beta.24",
     "@tanstack/solid-start": "^2.0.0-beta.24",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.18",
+    "solid-js": "2.0.0-beta.19",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
@@ -27,7 +27,7 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.10",
+    "vite-plugin-solid": "^3.0.0-next.11",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

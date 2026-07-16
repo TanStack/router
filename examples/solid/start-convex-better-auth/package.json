@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.9.7",
-    "@solidjs/web": "2.0.0-beta.18",
+    "@solidjs/web": "2.0.0-beta.19",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "^2.0.0-beta.23",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
@@ -22,7 +22,7 @@
     "convex": "^1.28.2",
     "convex-solidjs": "^0.0.3",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.18",
+    "solid-js": "2.0.0-beta.19",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.2.2",
     "zod": "^4.4.3"
@@ -32,7 +32,7 @@
     "combinate": "^1.1.11",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.10",
+    "vite-plugin-solid": "^3.0.0-next.11",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

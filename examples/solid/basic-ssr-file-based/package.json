@@ -11,20 +11,20 @@
     "debug": "node --inspect-brk server"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.18",
+    "@solidjs/web": "2.0.0-beta.19",
     "@tanstack/router-plugin": "^1.168.18",
     "@tanstack/solid-router": "^2.0.0-beta.23",
     "compression": "^1.8.0",
     "express": "^5.2.1",
     "get-port": "^7.1.0",
     "node-fetch": "^3.3.2",
-    "solid-js": "2.0.0-beta.18"
+    "solid-js": "2.0.0-beta.19"
   },
   "devDependencies": {
     "@tanstack/solid-router-devtools": "^2.0.0-beta.18",
     "@types/express": "^5.0.6",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.10"
+    "vite-plugin-solid": "^3.0.0-next.11"
   }
 }

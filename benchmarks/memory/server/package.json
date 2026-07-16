@@ -11,7 +11,7 @@
     "#memory-server/flame-runner": "./flame-runner.ts"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.18",
+    "@solidjs/web": "2.0.0-beta.19",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/react-start": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
@@ -20,7 +20,7 @@
     "@tanstack/vue-start": "workspace:*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "solid-js": "2.0.0-beta.18",
+    "solid-js": "2.0.0-beta.19",
     "vue": "^3.5.16"
   },
   "devDependencies": {
@@ -31,7 +31,7 @@
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.10",
+    "vite-plugin-solid": "^3.0.0-next.11",
     "vitest": "^4.1.4"
   },
   "nx": {
