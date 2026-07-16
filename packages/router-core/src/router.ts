@@ -13,6 +13,7 @@ import {
   last,
   nullReplaceEqualDeep,
   replaceEqualDeep,
+  safeStringify,
 } from './utils'
 import {
   buildRouteBranch,
@@ -1535,7 +1536,7 @@ export class RouterCore<
           search: preMatchSearch,
         }) ?? ''
 
-      const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
+      const loaderDepsHash = loaderDeps ? safeStringify(loaderDeps) : ''
 
       const { interpolatedPath, usedParams } = interpolatePath({
         path: route.fullPath,
