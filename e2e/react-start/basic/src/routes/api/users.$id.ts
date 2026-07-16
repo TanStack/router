@@ -18,7 +18,9 @@ export const Route = createFileRoute('/api/users/$id')({
       GET: async ({ request, params }) => {
         console.info(`Fetching users by id=${params.id}... @`, request.url)
         try {
-          const res = await axios.get<User>(`${getQueryURL()}/users/` + params.id)
+          const res = await axios.get<User>(
+            `${getQueryURL()}/users/` + params.id,
+          )
 
           return Response.json({
             id: res.data.id,
