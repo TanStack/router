@@ -1,0 +1,4 @@
+task-exclusions:
+  - target: test:build
+    exclude-reads:
+      - LICENSE
