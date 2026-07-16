@@ -21,7 +21,7 @@ function getQueryURL() {
 export const fetchPost = createServerFn({ method: 'GET' })
   .validator((postId: string) => postId)
   .handler(async ({ data: postId }) => {
-    console.info(`Fetching post with id ${postId}...`)
+    console.info(`Fetching post with id ${postId} from ${getQueryURL()}...`)
     const post = await axios
       .get<PostType>(`${getQueryURL()}/posts/${postId}`)
       .then((r) => r.data)
@@ -38,7 +38,7 @@ export const fetchPost = createServerFn({ method: 'GET' })
 
 export const fetchPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
-    console.info('Fetching posts...')
+    console.info(`Fetching posts from ${getQueryURL()}...`)
     return axios
       .get<Array<PostType>>(`${getQueryURL()}/posts`)
       .then((r) => r.data.slice(0, 10))

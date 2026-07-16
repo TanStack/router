@@ -33,6 +33,8 @@ const prerenderConfiguration = {
       '/users',
     ].some((p) => page.path.includes(p)),
   maxRedirects: 100,
+  retryCount: 2,
+  retryDelay: 1000,
 }
 
 const outDir = process.env.E2E_DIST_DIR ?? 'dist'

@@ -17,17 +17,26 @@ export async function e2eStartDummyServer(input: string) {
  * request-time lookups. Everything is unref'd so the build process can exit.
  */
 export async function e2eStartDummyServerForBuild() {
-  // vite reloads the config file for the prerender preview server;
-  // an earlier load in this process already started the server
-  if (process.env.VITE_EXTERNAL_PORT) return
+  // vite reloads the config file for the prerender preview server; the first
+  // load in this process already started the server. Guard on our own flag —
+  // NOT on VITE_EXTERNAL_PORT, which could be pre-set in the environment and
+  // must not stop us from starting the server and setting VITE_NODE_ENV.
+  const globalState = globalThis as typeof globalThis & {
+    __tanstackRouterE2eBuildDummyServer?: { port: number }
+  }
 
-  const port = await getRandomPort()
+  if (!globalState.__tanstackRouterE2eBuildDummyServer) {
+    const port = await getRandomPort()
+    const server = await localDummyServer(port)
+    server.unref()
+    server.on('connection', (socket) => socket.unref())
+    globalState.__tanstackRouterE2eBuildDummyServer = { port }
+  }
+
   process.env.VITE_NODE_ENV = 'test'
-  process.env.VITE_EXTERNAL_PORT = String(port)
-
-  const server = await localDummyServer(port)
-  server.unref()
-  server.on('connection', (socket) => socket.unref())
+  process.env.VITE_EXTERNAL_PORT = String(
+    globalState.__tanstackRouterE2eBuildDummyServer.port,
+  )
 }
 
 export async function e2eStopDummyServer(input: string) {
