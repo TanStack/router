@@ -6,6 +6,7 @@ import {
   escapeHtml,
   isPlainArray,
   replaceEqualDeep,
+  safeStringify,
 } from '../src/utils'
 
 describe('replaceEqualDeep', () => {
@@ -1045,5 +1046,76 @@ describe('encodePathLikeUrl', () => {
     expect(encodePathLikeUrl('/path/\u{1F600}/file')).toBe(
       '/path/%F0%9F%98%80/file',
     )
+  })
+})
+
+describe('safeStringify', () => {
+  it('should stringify plain objects like JSON.stringify', () => {
+    expect(safeStringify({ a: 1, b: 'hello' })).toBe('{"a":1,"b":"hello"}')
+  })
+
+  it('should handle bigint values', () => {
+    expect(safeStringify({ a: 123n })).toBe('{"a":"123n"}')
+  })
+
+  it('should handle Set values', () => {
+    const result = safeStringify({ a: new Set([3, 1, 2]) })
+    const parsed = JSON.parse(result)
+    expect(parsed.a).toBeInstanceOf(Array)
+    expect(parsed.a).toHaveLength(3)
+  })
+
+  it('should handle Map values', () => {
+    expect(safeStringify({ a: new Map([['x', 1], ['y', 2]]) })).toBe(
+      '{"a":[["x",1],["y",2]]}',
+    )
+  })
+
+  it('should handle undefined values', () => {
+    expect(safeStringify({ a: undefined })).toBe('{"a":""}')
+  })
+
+  it('should handle null values', () => {
+    expect(safeStringify({ a: null })).toBe('{"a":null}')
+  })
+
+  it('should handle circular references without throwing', () => {
+    const obj: any = { a: 1 }
+    obj.self = obj
+    const result = safeStringify(obj)
+    expect(result).toContain('[Circular]')
+  })
+
+  it('should handle functions', () => {
+    expect(safeStringify({ a: () => {} })).toBe('{"a":"[Function]"}')
+  })
+
+  it('should handle symbols', () => {
+    expect(safeStringify({ a: Symbol('test') })).toBe('{"a":"test"}')
+  })
+
+  it('should handle Date objects', () => {
+    const date = new Date('2024-01-01')
+    expect(safeStringify({ a: date })).toBe('{"a":"2024-01-01T00:00:00.000Z"}')
+  })
+
+  it('should handle nested objects with mixed types', () => {
+    const val = {
+      num: 42,
+      big: 9007199254740993n,
+      set: new Set(['a', 'b']),
+      nested: { inner: new Map([[1, 'one']]) },
+    }
+    const result = safeStringify(val)
+    expect(result).toBe(
+      '{"big":"9007199254740993n","nested":{"inner":[[1,"one"]]},"num":42,"set":["a","b"]}',
+    )
+  })
+
+  it('should be deterministic (same input = same output)', () => {
+    const a = { b: 2, a: 1 }
+    const result1 = safeStringify(a)
+    const result2 = safeStringify({ a: 1, b: 2 })
+    expect(result1).toBe(result2)
   })
 })

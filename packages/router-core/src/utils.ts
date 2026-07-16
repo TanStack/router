@@ -725,3 +725,53 @@ export function arraysEqual<T>(a: Array<T>, b: Array<T>) {
   }
   return true
 }
+
+/**
+ * Safely stringify a value for use as a hash key, handling types that
+ * JSON.stringify cannot serialize (bigint, Set, Map, circular refs, etc.).
+ *
+ * - bigint → string representation (e.g. "123n")
+ * - Set/Map → sorted array / entries array
+ * - undefined → empty string
+ * - Circular references → detected and replaced with "[Circular]"
+ * - Functions/Symbols → replaced with "[Function]" / "[Symbol]"
+ */
+export function safeStringify(value: unknown): string {
+  const seen = new WeakSet<object>()
+
+  function serialize(val: unknown): any {
+    if (val === null) return null
+    if (val === undefined) return ''
+
+    if (typeof val === 'bigint') return val.toString() + 'n'
+    if (typeof val === 'symbol') return val.description ?? '[Symbol]'
+    if (typeof val === 'function') return '[Function]'
+
+    if (typeof val === 'object') {
+      if (seen.has(val as object)) return '[Circular]'
+      seen.add(val as object)
+
+      if (val instanceof Set) {
+        return Array.from(val).map(serialize)
+      }
+      if (val instanceof Map) {
+        return Array.from(val.entries()).map(([k, v]) => [
+          serialize(k),
+          serialize(v),
+        ])
+      }
+      if (val instanceof Date) return val.toISOString()
+      if (Array.isArray(val)) return val.map(serialize)
+
+      const obj: Record<string, any> = {}
+      for (const key of Object.keys(val as object).sort()) {
+        obj[key] = serialize((val as any)[key])
+      }
+      return obj
+    }
+
+    return val
+  }
+
+  return JSON.stringify(serialize(value))
+}
