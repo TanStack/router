@@ -77,15 +77,20 @@ if (process.env.CODSPEED_TOKEN) {
 
 codspeedArgs.push(
   '--',
-  'bash',
-  '-lc',
-  `NODE_ENV=production vitest bench --config ./${vitestConfig}`,
+  `NODE_ENV=production WITH_INSTRUMENTATION=1 vitest bench --config ./${vitestConfig}`,
 )
 
 await execFile(codspeed, codspeedArgs, {
   cwd: join(rootDir, benchmarkConfig.cwd),
   env: {
     ...process.env,
+    GH_MATRIX: process.env.GH_MATRIX ?? JSON.stringify({
+      benchmark,
+      framework,
+    }),
+    GH_STRATEGY: process.env.GH_STRATEGY ?? JSON.stringify({
+      'fail-fast': false,
+    }),
     WITH_INSTRUMENTATION: '1',
   },
 })
@@ -111,7 +116,7 @@ async function ensureGithubEventPath() {
       ...(pullRequestNumber ? { number: pullRequestNumber } : {}),
       head: {
         ref: process.env.GITHUB_HEAD_REF ?? process.env.GITHUB_REF_NAME ?? '',
-        sha: process.env.GITHUB_SHA ?? '',
+        sha: process.env.CODSPEED_PR_HEAD_SHA ?? process.env.GITHUB_SHA ?? '',
         repo: {
           full_name: repository,
           id: repositoryId,
@@ -119,6 +124,7 @@ async function ensureGithubEventPath() {
       },
       base: {
         ref: process.env.GITHUB_BASE_REF ?? '',
+        sha: process.env.CODSPEED_PR_BASE_SHA ?? '',
         repo: {
           full_name: repository,
           id: repositoryId,
