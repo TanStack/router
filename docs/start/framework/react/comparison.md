@@ -35,8 +35,7 @@ Feature/Capability Key:
 | **Full-Stack Features**                                           | --                                               | --                                            | --                                         |
 | SSR                                                               | ✅                                               | ✅                                            | ✅                                         |
 | Streaming SSR                                                     | ✅                                               | ✅                                            | ✅                                         |
-| Partial Pre Rendering PPR
-     | ✅                                         | 🛑              | ✅                                               |❓ 
+| Partial Pre Rendering PPR                                         | ✅                                               | 🛑                                            | ✅                                         |
 | Selective SSR (per-route)                                         | ✅                                               | 🔶                                            | 🔶                                         |
 | SPA Mode                                                          | ✅                                               | 🔶 (via "use client")                         | ✅                                         |
 | Built-in Client-Side SWR Caching                                  | ✅ (via TanStack Router)                         | 🔶 (fetch cache only)                         | 🛑                                         |
