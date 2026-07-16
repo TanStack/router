@@ -1,9 +1,14 @@
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/vue-start/plugin/vite'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+import { e2eStartDummyServerForBuild } from '@tanstack/router-e2e-utils'
 import { isSpaMode } from './tests/utils/isSpaMode'
 import { isPrerender } from './tests/utils/isPrerender'
 import tailwindcss from '@tailwindcss/vite'
+
+if (isPrerender) {
+  await e2eStartDummyServerForBuild()
+}
 
 const spaModeConfiguration = {
   enabled: true,
