@@ -54,8 +54,8 @@ jobs:
           fi
 
           pnpm nx run-many \
-            --projects=@benchmarks/client-nav,@benchmarks/ssr \
-            --targets=test:codspeed:react,test:codspeed:solid,test:codspeed:vue \
+            --projects=@benchmarks/client-nav \
+            --targets=test:codspeed:react,test:codspeed:vue \
             --outputStyle=stream
       - name: Stop Nx Agents
         if: ${{ always() }}
