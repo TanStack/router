@@ -8,18 +8,22 @@ export type PostType = {
   body: string
 }
 
-let queryURL = 'https://jsonplaceholder.typicode.com'
-
-if (import.meta.env.VITE_NODE_ENV === 'test') {
-  queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
+// resolved at request time (server-side only) so the built app picks up the
+// dummy server the e2e harness starts — Playwright at test time, the vite
+// config at prerender build time
+function getQueryURL() {
+  if (process.env.VITE_NODE_ENV === 'test') {
+    return `http://localhost:${process.env.VITE_EXTERNAL_PORT}`
+  }
+  return 'https://jsonplaceholder.typicode.com'
 }
 
 export const fetchPost = createServerFn({ method: 'GET' })
   .validator((postId: string) => postId)
   .handler(async ({ data: postId }) => {
-    console.info(`Fetching post with id ${postId}...`)
+    console.info(`Fetching post with id ${postId} from ${getQueryURL()}...`)
     const post = await axios
-      .get<PostType>(`${queryURL}/posts/${postId}`)
+      .get<PostType>(`${getQueryURL()}/posts/${postId}`)
       .then((r) => r.data)
       .catch((err) => {
         console.error(err)
@@ -34,9 +38,9 @@ export const fetchPost = createServerFn({ method: 'GET' })
 
 export const fetchPosts = createServerFn({ method: 'GET' }).handler(
   async () => {
-    console.info('Fetching posts...')
+    console.info(`Fetching posts from ${getQueryURL()}...`)
     return axios
-      .get<Array<PostType>>(`${queryURL}/posts`)
+      .get<Array<PostType>>(`${getQueryURL()}/posts`)
       .then((r) => r.data.slice(0, 10))
   },
 )

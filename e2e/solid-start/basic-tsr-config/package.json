@@ -11,18 +11,18 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.15",
+    "@solidjs/web": "2.0.0-beta.19",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
-    "solid-js": "2.0.0-beta.15"
+    "solid-js": "2.0.0-beta.19"
   },
   "devDependencies": {
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "srvx": "^0.11.9",
     "typescript": "^6.0.2",
-    "vite-plugin-solid": "^3.0.0-next.5",
+    "vite-plugin-solid": "^3.0.0-next.11",
     "vite": "^8.0.14"
   }
 }

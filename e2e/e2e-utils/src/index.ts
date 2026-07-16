@@ -2,7 +2,11 @@ export { derivePort, getDummyServerPort, getTestServerPort } from './derivePort'
 export { localDummyServer } from './localDummyServer'
 export { toRuntimePath } from './to-runtime-path'
 export { resolveRuntimeSuffix } from './resolve-runtime-suffix'
-export { e2eStartDummyServer, e2eStopDummyServer } from './e2eSetupTeardown'
+export {
+  e2eStartDummyServer,
+  e2eStartDummyServerForBuild,
+  e2eStopDummyServer,
+} from './e2eSetupTeardown'
 export { preOptimizeDevServer, waitForServer } from './devServerWarmup'
 export { createHmrFileEditor, replaceAll } from './hmrFileEditor'
 export type { HmrFileEditorOptions } from './hmrFileEditor'

@@ -38,10 +38,14 @@ const testMiddleware = createMiddleware()
     return result
   })
 
-let queryURL = 'https://jsonplaceholder.typicode.com'
-
-if (import.meta.env.VITE_NODE_ENV === 'test') {
-  queryURL = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}`
+// resolved at request time (server-side only) so the built app picks up the
+// dummy server the e2e harness starts — Playwright at test time, the vite
+// config at prerender build time
+function getQueryURL() {
+  if (process.env.VITE_NODE_ENV === 'test') {
+    return `http://localhost:${process.env.VITE_EXTERNAL_PORT}`
+  }
+  return 'https://jsonplaceholder.typicode.com'
 }
 
 export const Route = createFileRoute('/api/users')({
@@ -50,7 +54,7 @@ export const Route = createFileRoute('/api/users')({
     handlers: {
       GET: async ({ request }) => {
         console.info('Fetching users... @', request.url)
-        const res = await fetch(`${queryURL}/users`)
+        const res = await fetch(`${getQueryURL()}/users`)
         if (!res.ok) {
           throw new Error('Failed to fetch users')
         }
