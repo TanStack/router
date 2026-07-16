@@ -1,5 +1,18 @@
 # @tanstack/solid-start-server
 
+## 2.0.0-beta.24
+
+### Patch Changes
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.17`
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.18`
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.19` and `vite-plugin-solid` to `3.0.0-next.11`
+
+- Updated dependencies [[`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482), [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482), [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482), [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482)]:
+  - @tanstack/solid-router@2.0.0-beta.24
+
 ## 2.0.0-beta.23
 
 ### Patch Changes
