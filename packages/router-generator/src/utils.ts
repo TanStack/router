@@ -186,13 +186,12 @@ const DISALLOWED_ESCAPE_CHARS = new Set([
   '%',
 ])
 
-export function determineInitialRoutePath(routePath: string) {
+function determineInitialRoutePathFromParts(
+  routePath: string,
+  parts: Array<string>,
+) {
   const originalRoutePath =
-    cleanPath(
-      `/${(cleanPath(routePath) || '').split(SPLIT_REGEX).join('/')}`,
-    ) || ''
-
-  const parts = routePath.split(SPLIT_REGEX)
+    cleanPath(`/${cleanPath(parts.join('/')) || ''}`) || ''
 
   // Escape any characters that in square brackets
   // we keep the original path untouched
@@ -229,6 +228,21 @@ export function determineInitialRoutePath(routePath: string) {
     routePath: final,
     originalRoutePath,
   }
+}
+
+export function determineInitialRoutePath(routePath: string) {
+  return determineInitialRoutePathFromParts(
+    routePath,
+    routePath.split(SPLIT_REGEX),
+  )
+}
+
+/**
+ * Resolves bracket escapes in an explicit route path or ID without applying
+ * the dot-delimited flat-file route convention.
+ */
+export function determineInitialRoutePathFromExplicitPath(routePath: string) {
+  return determineInitialRoutePathFromParts(routePath, [routePath])
 }
 
 /**
