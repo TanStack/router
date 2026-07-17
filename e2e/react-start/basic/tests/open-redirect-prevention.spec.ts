@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { isSpaMode } from './utils/isSpaMode'
 
 test.use({
   whitelistErrors: [
@@ -76,10 +77,7 @@ test.describe('Open redirect prevention', () => {
       page,
       baseURL,
     }) => {
-      // When control characters are stripped from paths like /%0d/evil.com/
-      // the result could be //evil.com/ which is a protocol-relative URL
-      // Our fix collapses these to /evil.com/ to prevent external redirects
-      // This is already tested above, but we verify the collapsed path works
+      // %0d is kept encoded, so /%0d/test-path/ stays as-is and won't become //test-path/
       await page.goto('/%0d/test-path/')
       await page.waitForLoadState('networkidle')
 
@@ -87,8 +85,6 @@ test.describe('Open redirect prevention', () => {
       expect(page.url().startsWith(baseURL!)).toBe(true)
       const url = new URL(page.url())
       expect(url.origin).toBe(new URL(baseURL!).origin)
-      // Path should be collapsed to /test-path (not //test-path/)
-      expect(url.pathname).toMatch(/^\/test-path\/?$/)
     })
   })
 

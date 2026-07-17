@@ -12,6 +12,7 @@ import { useParams } from './useParams'
 import { useSearch } from './useSearch'
 import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
+import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
 import type {
   AnyContext,
@@ -105,10 +106,7 @@ export class RouteApi<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
-    return useMatch({
-      from: this.id as any,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -261,11 +259,7 @@ export class Route<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -430,7 +424,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
       TLoaderFn,
       TSSR,
       THandlers
-    >(options as any)
+    >(options)
   }
 }
 
@@ -507,11 +501,7 @@ export class RootRoute<
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      ...opts,
-      from: this.id,
-      select: (d) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
@@ -541,11 +531,7 @@ export class RootRoute<
   }
 
   Link: LinkComponentRoute<'/'> = ((props, ctx?: Vue.SetupContext) => {
-    return Vue.h(
-      Link as any,
-      { from: this.fullPath as never, ...(props as any) },
-      ctx?.slots,
-    )
+    return Vue.h(Link, { from: this.fullPath as never, ...props }, ctx?.slots)
   }) as LinkComponentRoute<'/'>
 }
 

@@ -22,10 +22,6 @@
               "to": "framework/react/getting-started"
             },
             {
-              "label": "Quick Start",
-              "to": "framework/react/quick-start"
-            },
-            {
               "label": "Build from Scratch",
               "to": "framework/react/build-from-scratch"
             },
@@ -55,10 +51,6 @@
               "to": "framework/solid/getting-started"
             },
             {
-              "label": "Quick Start",
-              "to": "framework/solid/quick-start"
-            },
-            {
               "label": "Build from Scratch",
               "to": "framework/solid/build-from-scratch"
             }
@@ -86,12 +78,20 @@
               "to": "framework/react/guide/code-execution-patterns"
             },
             {
+              "label": "Import Protection",
+              "to": "framework/react/guide/import-protection"
+            },
+            {
               "label": "Environment Variables",
               "to": "framework/react/guide/environment-variables"
             },
             {
               "label": "Server Functions",
               "to": "framework/react/guide/server-functions"
+            },
+            {
+              "label": "Server Components",
+              "to": "framework/react/guide/server-components"
             },
             {
               "label": "Static Server Functions",
@@ -118,6 +118,10 @@
               "to": "framework/react/guide/hydration-errors"
             },
             {
+              "label": "Deferred Hydration",
+              "to": "framework/react/guide/deferred-hydration"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/react/guide/selective-ssr"
             },
@@ -138,6 +142,18 @@
               "to": "framework/react/guide/server-entry-point"
             },
             {
+              "label": "Early Hints",
+              "to": "framework/react/guide/early-hints"
+            },
+            {
+              "label": "CDN Asset URLs",
+              "to": "framework/react/guide/cdn-asset-urls"
+            },
+            {
+              "label": "CSS Styling",
+              "to": "framework/react/guide/css-styling"
+            },
+            {
               "label": "Client Entry Point",
               "to": "framework/react/guide/client-entry-point"
             },
@@ -148,6 +164,10 @@
             {
               "label": "Authentication Overview",
               "to": "framework/react/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication Server Primitives",
+              "to": "framework/react/guide/authentication-server-primitives"
             },
             {
               "label": "Authentication",
@@ -178,8 +198,8 @@
               "to": "framework/react/guide/seo"
             },
             {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/react/guide/llmo"
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/react/guide/geo"
             }
           ]
         },
@@ -197,6 +217,10 @@
             {
               "label": "Code Execution Patterns",
               "to": "framework/solid/guide/code-execution-patterns"
+            },
+            {
+              "label": "Import Protection",
+              "to": "framework/solid/guide/import-protection"
             },
             {
               "label": "Environment Variables",
@@ -231,6 +255,10 @@
               "to": "framework/solid/guide/hydration-errors"
             },
             {
+              "label": "Deferred Hydration",
+              "to": "framework/solid/guide/deferred-hydration"
+            },
+            {
               "label": "Selective SSR",
               "to": "framework/solid/guide/selective-ssr"
             },
@@ -247,6 +275,14 @@
               "to": "framework/solid/guide/server-entry-point"
             },
             {
+              "label": "Early Hints",
+              "to": "framework/solid/guide/early-hints"
+            },
+            {
+              "label": "CSS Styling",
+              "to": "framework/solid/guide/css-styling"
+            },
+            {
               "label": "Client Entry Point",
               "to": "framework/solid/guide/client-entry-point"
             },
@@ -257,6 +293,10 @@
             {
               "label": "Authentication Overview",
               "to": "framework/solid/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication Server Primitives",
+              "to": "framework/solid/guide/authentication-server-primitives"
             },
             {
               "label": "Authentication",
@@ -283,8 +323,8 @@
               "to": "framework/solid/guide/seo"
             },
             {
-              "label": "LLM Optimization (LLMO)",
-              "to": "framework/solid/guide/llmo"
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/solid/guide/geo"
             }
           ]
         }
@@ -408,6 +448,19 @@
             {
               "label": "Fetching Data from External API",
               "to": "framework/react/tutorial/fetching-external-api"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Reading and Writing a File",
+              "to": "framework/solid/tutorial/reading-writing-file"
+            },
+            {
+              "label": "Fetching Data from External API",
+              "to": "framework/solid/tutorial/fetching-external-api"
             }
           ]
         }

@@ -2,7 +2,7 @@ import { redirect } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
 
 export const throwRedirect = createServerFn()
-  .inputValidator(
+  .validator(
     (opts: {
       target: 'internal' | 'external'
       reloadDocument?: boolean

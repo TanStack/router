@@ -49,13 +49,18 @@ export type BaseConfig = z.infer<typeof baseConfigSchema>
 export const configSchema = baseConfigSchema.extend({
   generatedRouteTree: z.string().optional().default('./src/routeTree.gen.ts'),
   disableTypes: z.boolean().optional().default(false),
-  verboseFileRoutes: z.boolean().optional(),
-  addExtensions: z.boolean().optional().default(false),
+  addExtensions: z
+    .union([z.boolean(), z.string()])
+    .optional()
+    .default(false)
+    .transform((v) =>
+      typeof v === 'string' ? (v.startsWith('.') ? v : `.${v}`) : v,
+    ),
   enableRouteTreeFormatting: z.boolean().optional().default(true),
   routeTreeFileFooter: z
     .union([
       z.array(z.string()).optional().default([]),
-      z.function().returns(z.array(z.string())),
+      z.custom<() => Array<string>>((value) => typeof value === 'function'),
     ])
     .optional(),
   autoCodeSplitting: z.boolean().optional(),

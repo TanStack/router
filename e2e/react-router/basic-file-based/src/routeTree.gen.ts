@@ -13,6 +13,7 @@ import { Route as RemountDepsRouteImport } from './routes/remountDeps'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
 import { Route as MasksRouteImport } from './routes/masks'
+import { Route as LazyErrorRouteImport } from './routes/lazy-error'
 import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
 import { Route as EditingBRouteImport } from './routes/editing-b'
 import { Route as EditingARouteImport } from './routes/editing-a'
@@ -42,6 +43,7 @@ import { Route as anotherGroupOnlyrouteinsideRouteImport } from './routes/(anoth
 import { Route as RelativeUseNavigateRouteRouteImport } from './routes/relative/useNavigate/route'
 import { Route as RelativeLinkRouteRouteImport } from './routes/relative/link/route'
 import { Route as PathlessLayoutLayoutRouteRouteImport } from './routes/pathless-layout/_layout/route'
+import { Route as ParamsPsStrictFalseRouteRouteImport } from './routes/params-ps/strict-false/route'
 import { Route as ParamsPsNonNestedRouteRouteImport } from './routes/params-ps/non-nested/route'
 import { Route as NonNestedSuffixRouteRouteImport } from './routes/non-nested/suffix/route'
 import { Route as NonNestedPrefixRouteRouteImport } from './routes/non-nested/prefix/route'
@@ -87,6 +89,7 @@ import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layo
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
 import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
+import { Route as ParamsPsStrictFalseVersionRouteRouteImport } from './routes/params-ps/strict-false/$version.route'
 import { Route as ParamsPsNonNestedFooRouteRouteImport } from './routes/params-ps/non-nested/$foo_/route'
 import { Route as ParamsPsNamedFooRouteRouteImport } from './routes/params-ps/named/$foo/route'
 import { Route as NonNestedSuffixChar123bazChar125suffixRouteRouteImport } from './routes/non-nested/suffix/{$baz}suffix.route'
@@ -147,6 +150,11 @@ const MasksRoute = MasksRouteImport.update({
   path: '/masks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LazyErrorRoute = LazyErrorRouteImport.update({
+  id: '/lazy-error',
+  path: '/lazy-error',
+  getParentRoute: () => rootRouteImport,
+} as any).lazy(() => import('./routes/lazy-error.lazy').then((d) => d.Route))
 const HoverPreloadHashRoute = HoverPreloadHashRouteImport.update({
   id: '/hover-preload-hash',
   path: '/hover-preload-hash',
@@ -294,6 +302,12 @@ const PathlessLayoutLayoutRouteRoute =
   PathlessLayoutLayoutRouteRouteImport.update({
     id: '/_layout',
     getParentRoute: () => PathlessLayoutRouteRoute,
+  } as any)
+const ParamsPsStrictFalseRouteRoute =
+  ParamsPsStrictFalseRouteRouteImport.update({
+    id: '/params-ps/strict-false',
+    path: '/params-ps/strict-false',
+    getParentRoute: () => rootRouteImport,
   } as any)
 const ParamsPsNonNestedRouteRoute = ParamsPsNonNestedRouteRouteImport.update({
   id: '/params-ps/non-nested',
@@ -539,6 +553,12 @@ const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
   path: '/insidelayout',
   getParentRoute: () => groupLayoutRoute,
 } as any)
+const ParamsPsStrictFalseVersionRouteRoute =
+  ParamsPsStrictFalseVersionRouteRouteImport.update({
+    id: '/$version',
+    path: '/$version',
+    getParentRoute: () => ParamsPsStrictFalseRouteRoute,
+  } as any)
 const ParamsPsNonNestedFooRouteRoute =
   ParamsPsNonNestedFooRouteRouteImport.update({
     id: '/$foo_',
@@ -760,9 +780,9 @@ const NonNestedDeepBazBarFooQuxRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/fullpath-test': typeof FullpathTestLayoutRouteRouteWithChildren
+  '/fullpath-test': typeof FullpathTestRouteRouteWithChildren
   '/non-nested': typeof NonNestedRouteRouteWithChildren
-  '/pathless-layout': typeof PathlessLayoutLayoutRouteRouteWithChildren
+  '/pathless-layout': typeof PathlessLayoutRouteRouteWithChildren
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/대한민국': typeof Char45824Char54620Char48124Char44397RouteRouteWithChildren
   '/anchor': typeof AnchorRoute
@@ -770,6 +790,7 @@ export interface FileRoutesByFullPath {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
+  '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
@@ -780,6 +801,7 @@ export interface FileRoutesByFullPath {
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
   '/non-nested/suffix': typeof NonNestedSuffixRouteRouteWithChildren
   '/params-ps/non-nested': typeof ParamsPsNonNestedRouteRouteWithChildren
+  '/params-ps/strict-false': typeof ParamsPsStrictFalseRouteRouteWithChildren
   '/relative/link': typeof RelativeLinkRouteRouteWithChildren
   '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
@@ -801,6 +823,7 @@ export interface FileRoutesByFullPath {
   '/non-nested/suffix/{$baz}suffix': typeof NonNestedSuffixChar123bazChar125suffixRouteRouteWithChildren
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo': typeof ParamsPsNonNestedFooRouteRouteWithChildren
+  '/params-ps/strict-false/$version': typeof ParamsPsStrictFalseVersionRouteRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -883,6 +906,7 @@ export interface FileRoutesByTo {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
+  '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/remountDeps': typeof RemountDepsRoute
@@ -892,6 +916,7 @@ export interface FileRoutesByTo {
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
   '/non-nested/suffix': typeof NonNestedSuffixRouteRouteWithChildren
   '/params-ps/non-nested': typeof ParamsPsNonNestedRouteRouteWithChildren
+  '/params-ps/strict-false': typeof ParamsPsStrictFalseRouteRouteWithChildren
   '/relative/link': typeof RelativeLinkRouteRouteWithChildren
   '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
   '/onlyrouteinside': typeof anotherGroupOnlyrouteinsideRoute
@@ -907,6 +932,7 @@ export interface FileRoutesByTo {
   '/search-params': typeof SearchParamsIndexRoute
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo': typeof ParamsPsNonNestedFooRouteRouteWithChildren
+  '/params-ps/strict-false/$version': typeof ParamsPsStrictFalseVersionRouteRoute
   '/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/subfolder/inside': typeof groupSubfolderInsideRoute
   '/layout-a': typeof LayoutLayout2LayoutARoute
@@ -988,6 +1014,7 @@ export interface FileRoutesById {
   '/editing-a': typeof EditingARoute
   '/editing-b': typeof EditingBRoute
   '/hover-preload-hash': typeof HoverPreloadHashRoute
+  '/lazy-error': typeof LazyErrorRoute
   '/masks': typeof MasksRouteWithChildren
   '/notRemountDeps': typeof NotRemountDepsRoute
   '/posts': typeof PostsRouteWithChildren
@@ -999,6 +1026,7 @@ export interface FileRoutesById {
   '/non-nested/prefix': typeof NonNestedPrefixRouteRouteWithChildren
   '/non-nested/suffix': typeof NonNestedSuffixRouteRouteWithChildren
   '/params-ps/non-nested': typeof ParamsPsNonNestedRouteRouteWithChildren
+  '/params-ps/strict-false': typeof ParamsPsStrictFalseRouteRouteWithChildren
   '/pathless-layout/_layout': typeof PathlessLayoutLayoutRouteRouteWithChildren
   '/relative/link': typeof RelativeLinkRouteRouteWithChildren
   '/relative/useNavigate': typeof RelativeUseNavigateRouteRouteWithChildren
@@ -1023,6 +1051,7 @@ export interface FileRoutesById {
   '/non-nested/suffix/{$baz}suffix': typeof NonNestedSuffixChar123bazChar125suffixRouteRouteWithChildren
   '/params-ps/named/$foo': typeof ParamsPsNamedFooRouteRouteWithChildren
   '/params-ps/non-nested/$foo_': typeof ParamsPsNonNestedFooRouteRouteWithChildren
+  '/params-ps/strict-false/$version': typeof ParamsPsStrictFalseVersionRouteRoute
   '/(group)/_layout/insidelayout': typeof groupLayoutInsidelayoutRoute
   '/(group)/subfolder/inside': typeof groupSubfolderInsideRoute
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
@@ -1108,6 +1137,7 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
+    | '/lazy-error'
     | '/masks'
     | '/notRemountDeps'
     | '/posts'
@@ -1118,6 +1148,7 @@ export interface FileRouteTypes {
     | '/non-nested/prefix'
     | '/non-nested/suffix'
     | '/params-ps/non-nested'
+    | '/params-ps/strict-false'
     | '/relative/link'
     | '/relative/useNavigate'
     | '/onlyrouteinside'
@@ -1139,6 +1170,7 @@ export interface FileRouteTypes {
     | '/non-nested/suffix/{$baz}suffix'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo'
+    | '/params-ps/strict-false/$version'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
@@ -1221,6 +1253,7 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
+    | '/lazy-error'
     | '/masks'
     | '/notRemountDeps'
     | '/remountDeps'
@@ -1230,6 +1263,7 @@ export interface FileRouteTypes {
     | '/non-nested/prefix'
     | '/non-nested/suffix'
     | '/params-ps/non-nested'
+    | '/params-ps/strict-false'
     | '/relative/link'
     | '/relative/useNavigate'
     | '/onlyrouteinside'
@@ -1245,6 +1279,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo'
+    | '/params-ps/strict-false/$version'
     | '/insidelayout'
     | '/subfolder/inside'
     | '/layout-a'
@@ -1325,6 +1360,7 @@ export interface FileRouteTypes {
     | '/editing-a'
     | '/editing-b'
     | '/hover-preload-hash'
+    | '/lazy-error'
     | '/masks'
     | '/notRemountDeps'
     | '/posts'
@@ -1336,6 +1372,7 @@ export interface FileRouteTypes {
     | '/non-nested/prefix'
     | '/non-nested/suffix'
     | '/params-ps/non-nested'
+    | '/params-ps/strict-false'
     | '/pathless-layout/_layout'
     | '/relative/link'
     | '/relative/useNavigate'
@@ -1360,6 +1397,7 @@ export interface FileRouteTypes {
     | '/non-nested/suffix/{$baz}suffix'
     | '/params-ps/named/$foo'
     | '/params-ps/non-nested/$foo_'
+    | '/params-ps/strict-false/$version'
     | '/(group)/_layout/insidelayout'
     | '/(group)/subfolder/inside'
     | '/_layout/_layout-2/layout-a'
@@ -1445,11 +1483,13 @@ export interface RootRouteChildren {
   EditingARoute: typeof EditingARoute
   EditingBRoute: typeof EditingBRoute
   HoverPreloadHashRoute: typeof HoverPreloadHashRoute
+  LazyErrorRoute: typeof LazyErrorRoute
   MasksRoute: typeof MasksRouteWithChildren
   NotRemountDepsRoute: typeof NotRemountDepsRoute
   PostsRoute: typeof PostsRouteWithChildren
   RemountDepsRoute: typeof RemountDepsRoute
   ParamsPsNonNestedRouteRoute: typeof ParamsPsNonNestedRouteRouteWithChildren
+  ParamsPsStrictFalseRouteRoute: typeof ParamsPsStrictFalseRouteRouteWithChildren
   RelativeLinkRouteRoute: typeof RelativeLinkRouteRouteWithChildren
   RelativeUseNavigateRouteRoute: typeof RelativeUseNavigateRouteRouteWithChildren
   anotherGroupOnlyrouteinsideRoute: typeof anotherGroupOnlyrouteinsideRoute
@@ -1507,6 +1547,13 @@ declare module '@tanstack/react-router' {
       path: '/masks'
       fullPath: '/masks'
       preLoaderRoute: typeof MasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lazy-error': {
+      id: '/lazy-error'
+      path: '/lazy-error'
+      fullPath: '/lazy-error'
+      preLoaderRoute: typeof LazyErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/hover-preload-hash': {
@@ -1711,6 +1758,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/pathless-layout'
       preLoaderRoute: typeof PathlessLayoutLayoutRouteRouteImport
       parentRoute: typeof PathlessLayoutRouteRoute
+    }
+    '/params-ps/strict-false': {
+      id: '/params-ps/strict-false'
+      path: '/params-ps/strict-false'
+      fullPath: '/params-ps/strict-false'
+      preLoaderRoute: typeof ParamsPsStrictFalseRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/params-ps/non-nested': {
       id: '/params-ps/non-nested'
@@ -2026,6 +2080,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/insidelayout'
       preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
       parentRoute: typeof groupLayoutRoute
+    }
+    '/params-ps/strict-false/$version': {
+      id: '/params-ps/strict-false/$version'
+      path: '/$version'
+      fullPath: '/params-ps/strict-false/$version'
+      preLoaderRoute: typeof ParamsPsStrictFalseVersionRouteRouteImport
+      parentRoute: typeof ParamsPsStrictFalseRouteRoute
     }
     '/params-ps/non-nested/$foo_': {
       id: '/params-ps/non-nested/$foo_'
@@ -2669,6 +2730,20 @@ const ParamsPsNonNestedRouteRouteWithChildren =
     ParamsPsNonNestedRouteRouteChildren,
   )
 
+interface ParamsPsStrictFalseRouteRouteChildren {
+  ParamsPsStrictFalseVersionRouteRoute: typeof ParamsPsStrictFalseVersionRouteRoute
+}
+
+const ParamsPsStrictFalseRouteRouteChildren: ParamsPsStrictFalseRouteRouteChildren =
+  {
+    ParamsPsStrictFalseVersionRouteRoute: ParamsPsStrictFalseVersionRouteRoute,
+  }
+
+const ParamsPsStrictFalseRouteRouteWithChildren =
+  ParamsPsStrictFalseRouteRoute._addFileChildren(
+    ParamsPsStrictFalseRouteRouteChildren,
+  )
+
 interface RelativeLinkRouteRouteChildren {
   RelativeLinkRelativeLinkARoute: typeof RelativeLinkRelativeLinkARoute
   RelativeLinkRelativeLinkBRoute: typeof RelativeLinkRelativeLinkBRoute
@@ -2806,11 +2881,13 @@ const rootRouteChildren: RootRouteChildren = {
   EditingARoute: EditingARoute,
   EditingBRoute: EditingBRoute,
   HoverPreloadHashRoute: HoverPreloadHashRoute,
+  LazyErrorRoute: LazyErrorRoute,
   MasksRoute: MasksRouteWithChildren,
   NotRemountDepsRoute: NotRemountDepsRoute,
   PostsRoute: PostsRouteWithChildren,
   RemountDepsRoute: RemountDepsRoute,
   ParamsPsNonNestedRouteRoute: ParamsPsNonNestedRouteRouteWithChildren,
+  ParamsPsStrictFalseRouteRoute: ParamsPsStrictFalseRouteRouteWithChildren,
   RelativeLinkRouteRoute: RelativeLinkRouteRouteWithChildren,
   RelativeUseNavigateRouteRoute: RelativeUseNavigateRouteRouteWithChildren,
   anotherGroupOnlyrouteinsideRoute: anotherGroupOnlyrouteinsideRoute,

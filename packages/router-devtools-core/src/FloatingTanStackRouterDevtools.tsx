@@ -246,7 +246,7 @@ export function FloatingTanStackRouterDevtools({
       >
         {/* {router() ? ( */}
         <BaseTanStackRouterDevtoolsPanel
-          ref={panelRef as any}
+          ref={panelRef}
           {...otherPanelProps}
           router={router}
           routerState={routerState}

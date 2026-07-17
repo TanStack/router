@@ -1,8 +1,9 @@
+'use client'
+
 import { useStore } from '@tanstack/react-store'
-import { useRef } from 'react'
-import { replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import { useStructuralSharing } from './useMatch'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -57,30 +58,19 @@ export function useRouterState<
   // Avoid subscribing to the store (and any structural sharing work) on the server.
   const _isServer = isServer ?? router.isServer
   if (_isServer) {
-    const state = router.state as RouterState<TRouter['routeTree']>
+    const state = router.stores.__store.get() as RouterState<
+      TRouter['routeTree']
+    >
     return (opts?.select ? opts.select(state) : state) as UseRouterStateResult<
       TRouter,
       TSelected
     >
   }
 
-  const previousResult =
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(undefined)
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  return useStore(router.__store, (state) => {
-    if (opts?.select) {
-      if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
-        const newSlice = replaceEqualDeep(
-          previousResult.current,
-          opts.select(state),
-        )
-        previousResult.current = newSlice
-        return newSlice
-      }
-      return opts.select(state)
-    }
-    return state
-  }) as UseRouterStateResult<TRouter, TSelected>
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  return useStore(
+    router.stores.__store,
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    useStructuralSharing(opts, router),
+  ) as UseRouterStateResult<TRouter, TSelected>
 }

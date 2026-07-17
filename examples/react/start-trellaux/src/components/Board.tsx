@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react'
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { boardQueries, useUpdateBoardMutation } from '../queries.js'
 import { NewColumn } from './NewColumn.js'

@@ -1,10 +1,10 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import invariant from 'tiny-invariant'
 
 import {
   Link,
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -93,6 +93,51 @@ describe('redirect', () => {
 
       expect(nestedLoaderMock).toHaveBeenCalled()
       expect(nestedFooLoaderMock).toHaveBeenCalled()
+    })
+
+    test('when root `beforeLoad` redirects while root pendingComponent is showing and the target route is lazy', async () => {
+      let hasRedirected = false
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+
+      const rootRoute = createRootRoute({
+        component: () => <Outlet />,
+        pendingMs: 0,
+        pendingComponent: () => <div data-testid="pending">loading</div>,
+        beforeLoad: async () => {
+          await sleep(WAIT_TIME)
+          if (!hasRedirected) {
+            hasRedirected = true
+            throw redirect({ to: '/posts' })
+          }
+        },
+      })
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div data-testid="index-page">Index page</div>,
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+      }).lazy(() => import('./lazy/normal').then((d) => d.Route('/posts')))
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      render(<RouterProvider router={router} />)
+
+      // The lazy target route adds the async boundary that exposes the stale
+      // redirected-match render path this regression is guarding.
+      expect(await screen.findByTestId('lazy-route-page')).toBeInTheDocument()
+      expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+      expect(router.state.location.href).toBe('/posts')
+      expect(consoleError).not.toHaveBeenCalled()
     })
 
     test('when `redirect` is thrown in `loader`', async () => {
@@ -283,9 +328,9 @@ describe('redirect', () => {
 
       expect(router.state.redirect).toBeDefined()
       expect(router.state.redirect).toBeInstanceOf(Response)
-      invariant(router.state.redirect)
+      const redirectResponse = router.state.redirect!
 
-      expect(router.state.redirect.options).toEqual({
+      expect(redirectResponse.options).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',
@@ -335,9 +380,9 @@ describe('redirect', () => {
 
       expect(currentRedirect).toBeDefined()
       expect(currentRedirect).toBeInstanceOf(Response)
-      invariant(currentRedirect)
+      const redirectResponse = currentRedirect!
 
-      expect(currentRedirect.options).toEqual({
+      expect(redirectResponse.options).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',

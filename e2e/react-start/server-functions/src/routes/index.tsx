@@ -117,6 +117,11 @@ function Home() {
             Server function with custom fetch implementation
           </Link>
         </li>
+        <li>
+          <Link to="/method-not-allowed">
+            Server function returns 405 when method is not allowed
+          </Link>
+        </li>
       </ul>
     </div>
   )

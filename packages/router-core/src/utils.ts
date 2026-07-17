@@ -212,8 +212,19 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   return updater
 }
 
-const hasOwn = Object.prototype.hasOwnProperty
+export const hasOwn = Object.prototype.hasOwnProperty
 const isEnumerable = Object.prototype.propertyIsEnumerable
+
+export function hasKeys(obj: Record<string, unknown>) {
+  for (const key in obj) {
+    if (hasOwn.call(obj, key)) return true
+  }
+  return false
+}
+
+export const createNull = () => Object.create(null)
+export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
+  replaceEqualDeep(prev, next, createNull)
 
 /**
  * This function returns `prev` if `_next` is deeply equal.
@@ -221,7 +232,12 @@ const isEnumerable = Object.prototype.propertyIsEnumerable
  * This can be used for structural sharing between immutable JSON values for example.
  * Do not use this with signals
  */
-export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
+export function replaceEqualDeep<T>(
+  prev: any,
+  _next: T,
+  _makeObj = () => ({}),
+  _depth = 0,
+): T {
   if (isServer) {
     return _next
   }
@@ -243,7 +259,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
   if (!nextItems) return next
   const prevSize = prevItems.length
   const nextSize = nextItems.length
-  const copy: any = array ? new Array(nextSize) : {}
+  const copy: any = array ? new Array(nextSize) : _makeObj()
 
   let equalItems = 0
 
@@ -268,7 +284,7 @@ export function replaceEqualDeep<T>(prev: any, _next: T, _depth = 0): T {
       continue
     }
 
-    const v = replaceEqualDeep(p, n, _depth + 1)
+    const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
     copy[key] = v
     if (v === p) equalItems++
   }
@@ -507,15 +523,26 @@ export function findLast<T>(
 }
 
 /**
- * Remove control characters that can cause open redirect vulnerabilities.
- * Characters like \r (CR) and \n (LF) can trick URL parsers into interpreting
- * paths like "/\r/evil.com" as "http://evil.com".
+ * Re-encode characters that are unsafe in URL paths.
+ * Includes ASCII control characters (0x00-0x1F, 0x7F) and a subset of the
+ * WHATWG URL "path percent-encode set" (", <, >, `, {, }).
+ *
+ * Space (0x20) is intentionally excluded — decodeURI decodes %20 to space
+ * and the router stores decoded spaces in location.pathname. The existing
+ * encodePathLikeUrl already handles re-encoding spaces for outgoing URLs.
+ *
+ * These characters are decoded by decodeURI but must remain percent-encoded
+ * in paths to match how upstream layers (CDNs, edge middleware, browsers)
+ * interpret the URL, preventing infinite redirect loops and path mismatches.
  */
+// eslint-disable-next-line no-control-regex
+const PATH_UNSAFE_RE = /[\x00-\x1f\x7f"<>`{}]/g
+
 function sanitizePathSegment(segment: string): string {
-  // Remove ASCII control characters (0x00-0x1F) and DEL (0x7F)
-  // These include CR (\r = 0x0D), LF (\n = 0x0A), and other potentially dangerous characters
-  // eslint-disable-next-line no-control-regex
-  return segment.replace(/[\x00-\x1f\x7f]/g, '')
+  return segment.replace(
+    PATH_UNSAFE_RE,
+    (ch) => '%' + ch.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'),
+  )
 }
 
 function decodeSegment(segment: string): string {
@@ -536,14 +563,22 @@ function decodeSegment(segment: string): string {
 }
 
 /**
- * List of URL protocols that are safe for navigation.
- * Only these protocols are allowed in redirects and navigation.
+ * Default list of URL protocols to allow in links, redirects, and navigation.
+ * Any absolute URL protocol not in this list is treated as dangerous by default.
  */
-export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
+export const DEFAULT_PROTOCOL_ALLOWLIST = [
+  // Standard web navigation
+  'http:',
+  'https:',
+
+  // Common browser-safe actions
+  'mailto:',
+  'tel:',
+]
 
 /**
- * Check if a URL string uses a protocol that is not in the safe list.
- * Returns true for dangerous protocols like javascript:, data:, vbscript:, etc.
+ * Check if a URL string uses a protocol that is not in the allowlist.
+ * Returns true for blocked protocols like javascript:, blob:, data:, etc.
  *
  * The URL constructor correctly normalizes:
  * - Mixed case (JavaScript: → javascript:)
@@ -553,16 +588,20 @@ export const SAFE_URL_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:']
  * For relative URLs (no protocol), returns false (safe).
  *
  * @param url - The URL string to check
- * @returns true if the URL uses a dangerous (non-whitelisted) protocol
+ * @param allowlist - Set of protocols to allow
+ * @returns true if the URL uses a protocol that is not allowed
  */
-export function isDangerousProtocol(url: string): boolean {
+export function isDangerousProtocol(
+  url: string,
+  allowlist: Set<string>,
+): boolean {
   if (!url) return false
 
   try {
     // Use the URL constructor - it correctly normalizes protocols
     // per WHATWG URL spec, handling all bypass attempts automatically
     const parsed = new URL(url)
-    return !SAFE_URL_PROTOCOLS.includes(parsed.protocol)
+    return !allowlist.has(parsed.protocol)
   } catch {
     // URL constructor throws for relative URLs (no protocol)
     // These are safe - they can't execute scripts
@@ -593,8 +632,8 @@ export function escapeHtml(str: string): string {
   return str.replace(HTML_ESCAPE_REGEX, (match) => HTML_ESCAPE_LOOKUP[match]!)
 }
 
-export function decodePath(path: string, decodeIgnore?: Array<string>): string {
-  if (!path) return path
+export function decodePath(path: string) {
+  if (!path) return { path, handledProtocolRelativeURL: false }
 
   // Fast path: most paths are already decoded and safe.
   // Only fall back to the slower scan/regex path when we see a '%' (encoded),
@@ -602,12 +641,10 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   // prefix which needs collapsing.
   // eslint-disable-next-line no-control-regex
   if (!/[%\\\x00-\x1f\x7f]/.test(path) && !path.startsWith('//')) {
-    return path
+    return { path, handledProtocolRelativeURL: false }
   }
 
-  const re = decodeIgnore
-    ? new RegExp(`${decodeIgnore.join('|')}`, 'gi')
-    : /%25|%5C/gi
+  const re = /%25|%5C/gi
   let cursor = 0
   let result = ''
   let match
@@ -618,13 +655,16 @@ export function decodePath(path: string, decodeIgnore?: Array<string>): string {
   result = result + decodeSegment(cursor ? path.slice(cursor) : path)
 
   // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
-  // After sanitizing control characters, paths like "/\r/evil.com" become "//evil.com"
-  // Collapse leading double slashes to a single slash
+  // This is defense-in-depth: since control characters are no longer decoded,
+  // paths like "/%0d/evil.com" can no longer become "//evil.com". But we keep
+  // this check to guard against other edge cases.
+  let handledProtocolRelativeURL = false
   if (result.startsWith('//')) {
+    handledProtocolRelativeURL = true
     result = '/' + result.replace(/^\/+/, '')
   }
 
-  return result
+  return { path: result, handledProtocolRelativeURL }
 }
 
 /**
@@ -675,4 +715,13 @@ export function buildDevStylesUrl(
   // Build normalized basepath: empty string for root, or '/path' for non-root
   const normalizedBasepath = trimmedBasepath === '' ? '' : `/${trimmedBasepath}`
   return `${normalizedBasepath}/@tanstack-start/styles.css?routes=${encodeURIComponent(routeIds.join(','))}`
+}
+
+export function arraysEqual<T>(a: Array<T>, b: Array<T>) {
+  if (a === b) return true
+  if (a.length !== b.length) return false
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false
+  }
+  return true
 }

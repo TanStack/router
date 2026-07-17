@@ -32,7 +32,7 @@ export const Html = Vue.defineComponent({
               if (Array.isArray(vnode.children)) {
                 for (const c of vnode.children) {
                   if (typeof c === 'object' && c !== null && 'type' in c) {
-                    headChildren.push(c as Vue.VNode)
+                    headChildren.push(c)
                   }
                 }
               }

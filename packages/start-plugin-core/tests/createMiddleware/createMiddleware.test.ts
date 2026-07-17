@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 import { describe, expect, test, vi } from 'vitest'
-import { StartCompiler } from '../../src/start-compiler-plugin/compiler'
+import { StartCompiler } from '../../src/start-compiler/compiler'
 
 // Default test options for StartCompiler
 function getDefaultTestOptions(env: 'client' | 'server') {
@@ -22,6 +22,7 @@ async function compile(opts: {
   env: 'client' | 'server'
   code: string
   id: string
+  warn?: (message: string) => void
 }) {
   const compiler = new StartCompiler({
     ...opts,
@@ -42,6 +43,8 @@ async function compile(opts: {
         kind: 'Root',
       },
     ],
+    warn: opts.warn,
+    getKnownServerFns: () => ({}),
     resolveId: async (id) => {
       return id
     },
@@ -72,6 +75,54 @@ describe('createMiddleware compiles correctly', async () => {
     })
   })
 
+  test('should compile validator method', async () => {
+    const code = `
+      import { createMiddleware } from '@tanstack/react-start'
+      const myMiddleware = createMiddleware({ type: 'function' })
+        .validator((input: string) => input)
+        .server(async ({ next }) => {
+          return next()
+        })`
+
+    const result = await compile({
+      env: 'client',
+      code,
+      id: 'test.ts',
+    })
+
+    expect(result!.code).toMatchInlineSnapshot(`
+      "import { createMiddleware } from '@tanstack/react-start';
+      const myMiddleware = createMiddleware({
+        type: 'function'
+      });"
+    `)
+  })
+
+  // TODO remove upon stable
+  test('should warn for deprecated inputValidator method', async () => {
+    const warn = vi.fn()
+    const code = `
+      import { createMiddleware } from '@tanstack/react-start'
+      const myMiddleware = createMiddleware({ type: 'function' })
+        .inputValidator((input: string) => input)
+        .server(async ({ next }) => {
+          return next()
+        })`
+
+    await compile({
+      env: 'client',
+      code,
+      id: 'test.ts',
+      warn,
+    })
+
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining(
+        'createMiddleware().inputValidator() is deprecated. Use createMiddleware().validator() instead.',
+      ),
+    )
+  })
+
   test('should use fast path for direct imports from known library (no extra resolveId calls)', async () => {
     const code = `
       import { createMiddleware } from '@tanstack/react-start'
@@ -93,6 +144,7 @@ describe('createMiddleware compiles correctly', async () => {
           kind: 'Root',
         },
       ],
+      getKnownServerFns: () => ({}),
       resolveId: resolveIdMock,
     })
 
@@ -101,15 +153,9 @@ describe('createMiddleware compiles correctly', async () => {
       id: 'test.ts',
     })
 
-    // resolveId should only be called once during init() for the library itself
-    // It should NOT be called again to resolve the import binding because
-    // the fast path uses knownRootImports map for O(1) lookup
-    // Note: init() now resolves from project root, not from a specific file
-    expect(resolveIdMock).toHaveBeenCalledTimes(1)
-    expect(resolveIdMock).toHaveBeenCalledWith(
-      '@tanstack/react-start',
-      undefined,
-    )
+    // Direct known-library imports use the knownRootImports fast path, so they
+    // do not need resolveId.
+    expect(resolveIdMock).not.toHaveBeenCalled()
   })
 
   test('should use slow path for factory pattern (resolveId called for import resolution)', async () => {
@@ -145,6 +191,7 @@ describe('createMiddleware compiles correctly', async () => {
           kind: 'Root',
         },
       ],
+      getKnownServerFns: () => ({}),
       resolveId: resolveIdMock,
     })
 
@@ -153,18 +200,122 @@ describe('createMiddleware compiles correctly', async () => {
       id: 'test.ts',
     })
 
-    // resolveId should be called exactly twice:
-    // 1. Once during init() for '@tanstack/react-start' (no importer - resolved from project root)
-    // 2. Once to resolve './factory' import (slow path - not in knownRootImports)
+    // resolveId should only be called for './factory'. Direct known-library
+    // imports use the knownRootImports fast path.
     //
     // Note: The factory module's import from '@tanstack/react-start' ALSO uses
     // the fast path (knownRootImports), so no additional resolveId call is needed there.
-    expect(resolveIdMock).toHaveBeenCalledTimes(2)
-    expect(resolveIdMock).toHaveBeenNthCalledWith(
-      1,
-      '@tanstack/react-start',
-      undefined,
-    )
-    expect(resolveIdMock).toHaveBeenNthCalledWith(2, './factory', 'test.ts')
+    expect(resolveIdMock).toHaveBeenCalledTimes(1)
+    expect(resolveIdMock).toHaveBeenNthCalledWith(1, './factory', 'test.ts')
+  })
+
+  test('should resolve createMiddleware from start-client-core implementation file', async () => {
+    const virtualModules: Record<string, string> = {
+      '@tanstack/start-client-core': `
+        export { createMiddleware } from './createMiddleware'
+        export { createIsomorphicFn } from '@tanstack/start-fn-stubs'
+      `,
+      '/virtual/compiler-known/middleware-factory.ts': `
+        export const createMiddleware = () => ({
+          server: () => createMiddleware(),
+        })
+      `,
+    }
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      lookupKinds: new Set(['Middleware', 'IsomorphicFn']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      resolveId: async (source) => {
+        if (source === '@tanstack/start-client-core') {
+          return '@tanstack/start-client-core'
+        }
+
+        if (source === './createMiddleware') {
+          return '/virtual/compiler-known/middleware-factory.ts'
+        }
+
+        return null
+      },
+    })
+
+    const result = await compiler.compile({
+      id: '/repo/packages/start-client-core/src/createCsrfMiddleware.ts',
+      code: `
+        import { createIsomorphicFn } from '@tanstack/start-fn-stubs'
+        import { createMiddleware } from './createMiddleware'
+
+        const innerCreateCsrfMiddleware = () => {
+          return createMiddleware().server(() => 'server-only-middleware')
+        }
+
+        export const createCsrfMiddleware = createIsomorphicFn()
+          .server(innerCreateCsrfMiddleware)
+      `,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).not.toContain('server-only-middleware')
+    expect(result!.code).not.toContain('createIsomorphicFn')
+  })
+
+  test('should resolve namespace createMiddleware from start-client-core implementation file', async () => {
+    const virtualModules: Record<string, string> = {
+      '@tanstack/start-client-core': `
+        export { createMiddleware } from './createMiddleware'
+      `,
+      '/virtual/compiler-known/middleware-factory.ts': `
+        export const createMiddleware = () => ({
+          server: () => createMiddleware(),
+        })
+      `,
+    }
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      loadModule: async (id) => {
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      lookupKinds: new Set(['Middleware']),
+      lookupConfigurations: [],
+      getKnownServerFns: () => ({}),
+      resolveId: async (source) => {
+        if (source === '@tanstack/start-client-core') {
+          return '@tanstack/start-client-core'
+        }
+
+        if (source === './createMiddleware') {
+          return '/virtual/compiler-known/middleware-factory.ts'
+        }
+
+        return null
+      },
+    })
+
+    const result = await compiler.compile({
+      id: '/repo/packages/start-client-core/src/internal.ts',
+      code: `
+        import * as middlewareModule from './createMiddleware'
+
+        export const middleware = middlewareModule.createMiddleware().server(() => {
+          return 'server-only-middleware'
+        })
+      `,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).not.toContain('server-only-middleware')
   })
 })

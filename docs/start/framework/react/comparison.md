@@ -41,7 +41,7 @@ Feature/Capability Key:
 | Data Fetching Library Integration                                 | ✅ (Official TanStack Query, Apollo, etc.)       | 🔶 (manual integration)                       | 🔶 (manual integration)                    |
 | Static Prerendering (SSG)                                         | ✅                                               | ✅                                            | ✅                                         |
 | Incremental Static Regeneration (ISR)                             | ✅ (via Cache-Control headers)                   | ✅ (Proprietary)                              | ✅ (via Cache-Control headers)             |
-| React Server Components                                           | 🛑 (In active development)                       | ✅                                            | 🟡 (Experimental)                          |
+| React Server Components                                           | 🟡 (Experimental)                                | ✅                                            | 🟡 (Experimental)                          |
 | Server Functions                                                  | ✅ (RPC-based)                                   | ✅ (Server Actions)                           | ✅ (Actions)                               |
 | Server Function Client Middleware                                 | ✅                                               | 🛑                                            | 🛑                                         |
 | Server Function Server Middleware                                 | ✅                                               | 🛑                                            | ✅                                         |
@@ -54,14 +54,14 @@ Feature/Capability Key:
 | Devtools                                                          | ✅                                               | 🛑                                            | 🟠 (3rd party)                             |
 | CLI Tooling                                                       | ✅                                               | ✅                                            | ✅                                         |
 | Dev Server Startup Speed                                          | ✅ (Fast)                                        | 🛑 (Slow)                                     | ✅ (Fast)                                  |
-| HMR Speed                                                         | ✅ (Fast, Vite)                                  | 🛑 (Slow, Webpack/Turbopack)                  | ✅ (Fast, Vite)                            |
+| HMR Speed                                                         | ✅ (Fast, Vite or Rsbuild)                       | 🛑 (Slow, Webpack/Turbopack)                  | ✅ (Fast, Vite)                            |
 | Dev Navigation Speed                                              | ✅                                               | 🟡                                            | ✅                                         |
 | Dev Resource Usage (CPU/RAM)                                      | ✅ (Lightweight)                                 | 🛑 (Heavy)                                    | ✅ (Lightweight)                           |
 | TypeScript Support                                                | ✅                                               | ✅                                            | ✅                                         |
 | Type-First Architecture                                           | ✅                                               | 🛑                                            | 🛑                                         |
 | --                                                                | --                                               | --                                            | --                                         |
 | **Deployment & Hosting**                                          | --                                               | --                                            | --                                         |
-| Deployment Flexibility                                            | ✅ (Any Vite-compatible host)                    | 🟡 (Optimized for Vercel, possible elsewhere) | ✅ (Multiple adapters)                     |
+| Deployment Flexibility                                            | ✅ (Vite and Rsbuild builds)                     | 🟡 (Optimized for Vercel, possible elsewhere) | ✅ (Multiple adapters)                     |
 | Edge Runtime Support                                              | ✅                                               | ✅                                            | ✅                                         |
 | Serverless Support                                                | ✅                                               | ✅                                            | ✅                                         |
 | Node.js Support                                                   | ✅                                               | ✅                                            | ✅                                         |
@@ -84,7 +84,7 @@ Feature/Capability Key:
 **Philosophy**: Maximum developer freedom with best-in-class type safety.
 
 - **Router-First**: Built on TanStack Router (see [full routing comparison][router-comparison])
-- **Deployment Agnostic**: Built on Vite, deploy anywhere without vendor lock-in
+- **Deployment Agnostic**: Built on Vite and Rsbuild integrations, deploy without vendor lock-in
 - **Composable Middleware**: Middleware system works at both the request level AND individual server function level (both client & server)
 - **Selective SSR**: Fine-grained control over SSR behavior per route (full SSR, data-only, or client-only)
 - **Developer Control**: Explicit, composable patterns over convention-based magic
@@ -115,7 +115,7 @@ Feature/Capability Key:
 ### Choose TanStack Start if you:
 
 - Want the absolute best type safety for routing (see [Router Comparison][router-comparison])
-- Need deployment flexibility without vendor lock-in (works with any Vite-compatible host)
+- Need deployment flexibility without vendor lock-in (works with Vite and Rsbuild builds)
 - Prefer composable, explicit patterns over convention
 - Want fine-grained control over SSR behavior (selective SSR per route)
 - Need composable middleware that works at both request and server function levels
@@ -188,7 +188,7 @@ function Post() {
 
 ```tsx
 export const getTodos = createServerFn({ method: 'GET' })
-  .inputValidator(zodValidator(z.object({ userId: z.string() })))
+  .validator(zodValidator(z.object({ userId: z.string() })))
   .middleware([authMiddleware])
   .handler(async ({ data, context }) => {
     // Fully typed data and context
@@ -217,6 +217,7 @@ Key differences:
 - Start's server functions support both client and server middleware
 - Start has built-in input validation
 - Start's approach is more explicit about the client/server boundary
+- Start's server functions support both GET and POST methods (configurable via the `method` option, defaults to GET), while Next.js Server Actions only support POST.
 - Next.js Server Actions integrate more seamlessly with forms
 
 ### Middleware Architecture
@@ -246,7 +247,7 @@ const authMiddleware = createMiddleware({ type: 'function' })
 
 ### Deployment Flexibility
 
-**TanStack Start** leverages Vite's ecosystem:
+**TanStack Start** leverages modern build tool ecosystems:
 
 - Deploy to Cloudflare Workers, Netlify, Vercel, Railway, Fly.io, AWS, etc.
 - Use Nitro for universal deployment support
@@ -264,10 +265,10 @@ const authMiddleware = createMiddleware({ type: 'function' })
 **Current Status**:
 
 - **Next.js**: Full production support with extensive ecosystem
-- **TanStack Start**: In active development, expected soon
+- **TanStack Start**: Experimental support available
 - **React Router**: Experimental support available
 
-RSC is still evolving, and TanStack Start is taking time to ensure the best possible implementation that aligns with its type-safety-first philosophy.
+TanStack Start's RSC implementation takes a client-led composition approach: server components are treated as data that the client can fetch, cache, and compose. See the [Server Components guide](/start/latest/docs/framework/react/guide/server-components) for details.
 
 ## Performance Considerations
 
@@ -275,7 +276,7 @@ RSC is still evolving, and TanStack Start is taking time to ensure the best poss
 
 All three frameworks are capable of achieving excellent production performance and top Lighthouse scores. The differences come down to optimization strategies:
 
-- **TanStack Start**: Vite's optimized builds, SWR caching reduces server load, lightweight runtime
+- **TanStack Start**: Optimized bundler builds, SWR caching reduces server load, lightweight runtime
 - **Next.js**: Automatic code splitting, image optimization, and built-in performance features
 - **React Router**: Web standards-based caching and optimization
 
@@ -285,7 +286,7 @@ This is where the frameworks differ significantly:
 
 **TanStack Start & React Router:**
 
-- ⚡ **Instant dev server startup** - Vite starts in milliseconds
+- ⚡ **Instant dev server startup** - Vite and Rsbuild start quickly
 - ⚡ **Lightning-fast HMR** - Changes reflect instantly without page refresh
 - ⚡ **Fast dev navigation** - Full-speed routing during development
 - ⚡ **Lightweight resource usage** - Minimal CPU and RAM consumption

@@ -1,4 +1,4 @@
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 import { forwardRef, useState } from 'react'
 
 import { CONTENT_TYPES } from '../types'

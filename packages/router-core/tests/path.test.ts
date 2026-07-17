@@ -15,6 +15,7 @@ import {
   parseSegment,
   processRouteTree,
 } from '../src/new-process-route-tree'
+import { createLRUCache } from '../src/lru-cache'
 import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
@@ -240,6 +241,29 @@ describe('resolvePath', () => {
       })
     },
   )
+
+  it('preserves explicit route-template param syntax', () => {
+    expect(
+      resolvePath({
+        base: '/{$language}',
+        to: '.',
+      }),
+    ).toBe('/{$language}')
+
+    expect(
+      resolvePath({
+        base: '/{$language}/posts',
+        to: '../{$language}',
+      }),
+    ).toBe('/{$language}/{$language}')
+  })
+
+  it('caches route-template paths without changing param syntax', () => {
+    const cache = createLRUCache<string, string>(10)
+
+    expect(resolvePath({ base: '/', to: '/{$id}', cache })).toBe('/{$id}')
+    expect(resolvePath({ base: '/', to: '/$id', cache })).toBe('/$id')
+  })
 })
 
 describe.each([{ server: true }, { server: false }])(
@@ -687,7 +711,7 @@ describe('matchPathname', () => {
         expectedMatchedParams: { id: '123' },
       },
       {
-        name: 'should match and return the the splat param',
+        name: 'should match and return the splat param',
         input: '/users/123',
         matchingOptions: {
           to: '/users/$',
@@ -736,7 +760,7 @@ describe('matchPathname', () => {
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
-        expectedMatchedParams,
+        toNullObj(expectedMatchedParams),
       )
     })
   })
@@ -800,7 +824,7 @@ describe('matchPathname', () => {
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
-        expectedMatchedParams,
+        toNullObj(expectedMatchedParams),
       )
     })
   })
@@ -879,7 +903,7 @@ describe('matchPathname', () => {
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
-        expectedMatchedParams,
+        toNullObj(expectedMatchedParams),
       )
     })
   })
@@ -1217,3 +1241,8 @@ describe('parsePathname', () => {
     })
   })
 })
+
+function toNullObj<T>(obj: T): T {
+  if (typeof obj === 'object') return Object.assign(Object.create(null), obj)
+  return obj
+}

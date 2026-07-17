@@ -501,81 +501,12 @@ describe('deepEqual', () => {
 })
 
 describe('decodePath', () => {
-  it('should decode a path segment with no ignored items existing', () => {
-    const itemsToCheck = ['%25', '%5C']
-    const stringToCheck =
-      'https://mozilla.org/?x=%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
-    const expectedResult = 'https://mozilla.org/?x=шеллы'
-
-    const result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
-  it('should decode a path segment with one ignored character and one ignored item existing', () => {
-    const itemsToCheck = ['%25']
-    const stringToCheck =
-      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    const expectedResult = 'https://mozilla.org/?x=%25ше\\ллы'
-
-    const result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
-  it('should decode a path segment with multiple ignored characters and first ignored item existing', () => {
-    const itemsToCheck = ['%25', '%5C']
-    let stringToCheck =
-      'https://mozilla.org/?x=%25%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
-    let expectedResult = 'https://mozilla.org/?x=%25шеллы'
-
-    let result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-
-    stringToCheck = 'https://mozilla.org/?x=%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    expectedResult = 'https://mozilla.org/?x=ше%5Cллы'
-
-    result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
-  it('should decode a path segment with multiple ignored characters and other ignored item existing', () => {
-    const itemsToCheck = ['%25', '%5C']
-    let stringToCheck =
-      'https://mozilla.org/?x=%5C%D1%88%D0%B5%D0%BB%D0%BB%D1%8B'
-    let expectedResult = 'https://mozilla.org/?x=%5Cшеллы'
-
-    let result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-
-    stringToCheck = 'https://mozilla.org/?x=%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    expectedResult = 'https://mozilla.org/?x=ше%5Cллы'
-
-    result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
-  it('should decode a path segment with multiple ignored characters and multiple ignored items existing', () => {
-    const itemsToCheck = ['%25', '%5C']
-    const stringToCheck =
-      'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B'
-    const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы'
-
-    const result = decodePath(stringToCheck, itemsToCheck)
-
-    expect(result).toBe(expectedResult)
-  })
-
   it('should decode a path segment, ignoring `%` and `\\` by default, with multiple ignored items existing', () => {
     const stringToCheck =
       'https://mozilla.org/?x=%25%D1%88%D0%B5%5C%D0%BB%D0%BB%D1%8B%2F'
     const expectedResult = 'https://mozilla.org/?x=%25ше%5Cллы%2F'
 
-    const result = decodePath(stringToCheck)
+    const result = decodePath(stringToCheck).path
 
     expect(result).toBe(expectedResult)
   })
@@ -583,86 +514,125 @@ describe('decodePath', () => {
   it('should handle malformed percent-encodings gracefully', () => {
     const stringToCheck = 'path%ZZ%D1%88test%5C%C3%A9'
     // Malformed sequences should remain as-is, valid ones decoded
-    const result = decodePath(stringToCheck)
+    const result = decodePath(stringToCheck).path
     expect(result).toBe(`path%ZZ%D1%88test%5Cé`)
   })
 
   it('should return empty string unchanged', () => {
-    expect(decodePath('')).toBe('')
+    expect(decodePath('').path).toBe('')
   })
 
   it('should return strings without encoding unchanged', () => {
     const stringToCheck = 'plain-text-path'
-    expect(decodePath(stringToCheck)).toBe(stringToCheck)
+    expect(decodePath(stringToCheck).path).toBe(stringToCheck)
   })
 
   it('should handle consecutive ignored characters', () => {
     const stringToCheck = 'test%25%25end'
     const expectedResult = 'test%25%25end'
-    expect(decodePath(stringToCheck)).toBe(expectedResult)
+    expect(decodePath(stringToCheck).path).toBe(expectedResult)
   })
 
   it('should handle multiple ignored items of the same type with varying case', () => {
     const stringToCheck = '/params-ps/named/foo%2Fabc/c%2Fh'
     const expectedResult = '/params-ps/named/foo%2Fabc/c%2Fh'
-    expect(decodePath(stringToCheck)).toBe(expectedResult)
+    expect(decodePath(stringToCheck).path).toBe(expectedResult)
 
     const stringToCheckWithLowerCase = '/params-ps/named/foo%2Fabc/c%5C%2f%5cAh'
     const expectedResultWithLowerCase =
       '/params-ps/named/foo%2Fabc/c%5C%2f%5cAh'
-    expect(decodePath(stringToCheckWithLowerCase)).toBe(
+    expect(decodePath(stringToCheckWithLowerCase).path).toBe(
       expectedResultWithLowerCase,
     )
   })
 
   describe('open redirect prevention', () => {
-    it('should strip CR (%0d) to prevent open redirect', () => {
-      // /%0d/google.com/ decodes to /\r/google.com/ which becomes //google.com/
-      // This must be sanitized to prevent protocol-relative URL interpretation
+    it('should keep CR (%0d) encoded to prevent open redirect', () => {
+      // %0d stays encoded — no decoding, no stripping, no path mismatch
+      // Output is uppercase hex per RFC 3986
       const result = decodePath('/%0d/google.com/')
-      expect(result).toBe('/google.com/')
-      expect(result).not.toMatch(/^\/\//)
+      expect(result.path).toBe('/%0D/google.com/')
+      expect(result.path).not.toMatch(/^\/\//)
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
-    it('should strip LF (%0a) to prevent open redirect', () => {
+    it('should keep LF (%0a) encoded to prevent open redirect', () => {
       const result = decodePath('/%0a/evil.com/')
-      expect(result).toBe('/evil.com/')
-      expect(result).not.toMatch(/^\/\//)
+      expect(result.path).toBe('/%0A/evil.com/')
+      expect(result.path).not.toMatch(/^\/\//)
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
-    it('should strip CRLF (%0d%0a) to prevent open redirect', () => {
+    it('should keep CRLF (%0d%0a) encoded to prevent open redirect', () => {
       const result = decodePath('/%0d%0a/evil.com/')
-      expect(result).toBe('/evil.com/')
-      expect(result).not.toMatch(/^\/\//)
+      expect(result.path).toBe('/%0D%0A/evil.com/')
+      expect(result.path).not.toMatch(/^\/\//)
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
-    it('should strip multiple control characters to prevent open redirect', () => {
+    it('should keep multiple control characters encoded', () => {
       const result = decodePath('/%0d%0d%0d/evil.com/')
-      expect(result).toBe('/evil.com/')
-      expect(result).not.toMatch(/^\/\//)
+      expect(result.path).toBe('/%0D%0D%0D/evil.com/')
+      expect(result.path).not.toMatch(/^\/\//)
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
-    it('should strip null bytes and other control characters', () => {
+    it('should keep null bytes encoded', () => {
       const result = decodePath('/%00/test/')
-      expect(result).toBe('/test/')
+      expect(result.path).toBe('/%00/test/')
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
     it('should collapse leading double slashes to prevent protocol-relative URLs', () => {
-      // After stripping control chars, ensure we don't end up with //evil.com
-      const result = decodePath('/%0d%0a/evil.com/path')
-      // Should resolve to localhost, not evil.com
-      const url = new URL(result, 'http://localhost:3000')
+      // Direct // input should still be collapsed as defense-in-depth
+      const result = decodePath('//evil.com/path')
+      const url = new URL(result.path, 'http://localhost:3000')
       expect(url.origin).toBe('http://localhost:3000')
+      expect(result.handledProtocolRelativeURL).toBe(true)
     })
 
     it('should handle normal paths unchanged', () => {
-      expect(decodePath('/users/profile/')).toBe('/users/profile/')
-      expect(decodePath('/api/v1/data')).toBe('/api/v1/data')
+      expect(decodePath('/users/profile/').path).toBe('/users/profile/')
+      expect(decodePath('/users/profile/').handledProtocolRelativeURL).toBe(
+        false,
+      )
+      expect(decodePath('/api/v1/data').path).toBe('/api/v1/data')
+      expect(decodePath('/api/v1/data').handledProtocolRelativeURL).toBe(false)
     })
 
     it('should handle double slash only input', () => {
       // Direct // input should also be collapsed
-      expect(decodePath('//')).toBe('/')
+      const result = decodePath('//')
+      expect(result.path).toBe('/')
+      expect(result.handledProtocolRelativeURL).toBe(true)
+    })
+  })
+
+  describe('WHATWG path percent-encode set preserved', () => {
+    it('should keep curly braces encoded', () => {
+      const result = decodePath('/%7B%7Bapp_name%7D%7D/Makefile')
+      expect(result.path).toBe('/%7B%7Bapp_name%7D%7D/Makefile')
+    })
+
+    it('should keep angle brackets encoded', () => {
+      expect(decodePath('/%3Ctest%3E').path).toBe('/%3Ctest%3E')
+    })
+
+    it('should keep double quotes encoded', () => {
+      expect(decodePath('/foo%22bar').path).toBe('/foo%22bar')
+    })
+
+    it('should keep backticks encoded', () => {
+      expect(decodePath('/back%60tick').path).toBe('/back%60tick')
+    })
+
+    it('should decode space (handled by encodePathLikeUrl for outgoing URLs)', () => {
+      expect(decodePath('/file%20name').path).toBe('/file name')
+    })
+
+    it('should still decode safe characters', () => {
+      // Regular letters/unicode should still be decoded
+      expect(decodePath('/%D1%88%D0%B5%D0%BB%D0%BB%D1%8B').path).toBe('/шеллы')
     })
   })
 })

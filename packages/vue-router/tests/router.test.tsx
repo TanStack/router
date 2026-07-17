@@ -839,6 +839,50 @@ describe('router emits events during rendering', () => {
     unsub()
   })
 
+  it('should emit the "onRendered" event when a route renders, after navigation, and after param/search updates', async () => {
+    const { router } = createTestRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      scrollRestoration: true,
+    })
+
+    const mockOnRendered = vi.fn()
+    const unsub = router.subscribe('onRendered', mockOnRendered)
+    await router.load()
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(0))
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(1))
+    expect(mockOnRendered.mock.calls[0]?.[0]?.toLocation.pathname).toBe('/')
+
+    await router.navigate({ to: '/posts/$slug', params: { slug: 'first' } })
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(2))
+    expect(mockOnRendered.mock.calls[1]?.[0]?.toLocation.pathname).toBe(
+      '/posts/first',
+    )
+
+    await router.navigate({ to: '/posts/$slug', params: { slug: 'second' } })
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(3))
+    expect(mockOnRendered.mock.calls[2]?.[0]?.toLocation.pathname).toBe(
+      '/posts/second',
+    )
+
+    await router.navigate({
+      to: '/posts/$slug',
+      params: { slug: 'second' },
+      search: { root: 'search-change' },
+    })
+
+    await waitFor(() => expect(mockOnRendered).toBeCalledTimes(4))
+    expect(mockOnRendered.mock.calls[3]?.[0]?.toLocation.search.root).toBe(
+      'search-change',
+    )
+
+    unsub()
+  })
+
   it('during initial load, should emit the "onBeforeRouteMount" and "onResolved" events in the correct order', async () => {
     const mockOnBeforeRouteMount = vi.fn()
     const mockOnResolved = vi.fn()

@@ -492,3 +492,29 @@ test.describe('Unicode params', () => {
     })
   })
 })
+
+test.describe('useParams strict false uses parsed child params', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/params-ps')
+  })
+
+  test('parent receives parsed values after child navigation', async ({
+    page,
+  }) => {
+    await page.getByTestId('strict-false-version-1').click()
+    await page.waitForURL('/params-ps/strict-false/1')
+
+    await expect(page.getByTestId('strict-false-version-type')).toHaveText(
+      'number',
+    )
+    await expect(page.getByTestId('strict-false-version-value')).toHaveText('1')
+
+    await page.getByTestId('strict-false-version-2').click()
+    await page.waitForURL('/params-ps/strict-false/2')
+
+    await expect(page.getByTestId('strict-false-version-type')).toHaveText(
+      'number',
+    )
+    await expect(page.getByTestId('strict-false-version-value')).toHaveText('2')
+  })
+})

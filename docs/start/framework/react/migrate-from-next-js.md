@@ -52,23 +52,49 @@ rm postcss.config.* next.config.*
 
 ### 2. Install Required Dependencies
 
-TanStack Start leverages [Vite](https://vite.dev) and TanStack Router:
+TanStack Start leverages TanStack Router and supports [Vite](https://vite.dev) or [Rsbuild](https://rsbuild.dev/) as the build tool. The Vite setup below includes [Nitro](https://nitro.build/) as a deployment plugin.
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ```sh
-npm i @tanstack/react-router @tanstack/react-start
+npm i @tanstack/react-router @tanstack/react-start nitro vite @vitejs/plugin-react
 ```
 
-For Tailwind CSS and resolving imports using path aliases:
+# Rsbuild
 
 ```sh
-npm i -D vite @vitejs/plugin-react @tailwindcss/vite tailwindcss vite-tsconfig-paths
+npm i @tanstack/react-router @tanstack/react-start @rsbuild/core @rsbuild/plugin-react
 ```
+
+<!-- ::end:tabs -->
+
+For Tailwind CSS, install the build tool integration you want to use:
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```sh
+npm i -D @tailwindcss/vite tailwindcss
+```
+
+# Rsbuild
+
+```sh
+npm i -D @tailwindcss/postcss tailwindcss
+```
+
+<!-- ::end:tabs -->
 
 ### 3. Update Project Configuration
 
 Now that you've installed the necessary dependencies, update your project configuration files to work with TanStack Start.
 
-- `package.json`
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ```json
 {
@@ -81,24 +107,41 @@ Now that you've installed the necessary dependencies, update your project config
 }
 ```
 
-- `vite.config.ts`
+# Rsbuild
 
-```ts
-// vite.config.ts
+```json
+{
+  "type": "module",
+  "scripts": {
+    "dev": "rsbuild dev",
+    "build": "rsbuild build"
+  }
+}
+```
+
+<!-- ::end:tabs -->
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
 import tailwindcss from '@tailwindcss/vite'
+import { nitro } from 'nitro/vite'
 
 export default defineConfig({
   server: {
     port: 3000,
   },
+  resolve: {
+    // Enables Vite to resolve imports using path aliases.
+    tsconfigPaths: true,
+  },
   plugins: [
     tailwindcss(),
-    // Enables Vite to resolve imports using path aliases.
-    tsconfigPaths(),
     tanstackStart({
       srcDirectory: 'src', // This is the default
       router: {
@@ -107,9 +150,44 @@ export default defineConfig({
       },
     }),
     viteReact(),
+    nitro(),
   ],
 })
 ```
+
+# Rsbuild
+
+```ts title="rsbuild.config.ts"
+import { defineConfig } from '@rsbuild/core'
+import { pluginReact } from '@rsbuild/plugin-react'
+import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
+
+export default defineConfig({
+  server: {
+    port: 3000,
+  },
+  plugins: [
+    pluginReact(),
+    tanstackStart({
+      srcDirectory: 'src', // This is the default
+      router: {
+        // Specifies the directory TanStack Router uses for your routes.
+        routesDirectory: 'app', // Defaults to "routes", relative to srcDirectory
+      },
+    }),
+  ],
+})
+```
+
+```js title="postcss.config.mjs"
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+  },
+}
+```
+
+<!-- ::end:tabs -->
 
 By default, `routesDirectory` is set to `routes`. To maintain consistency with Next.js App Router conventions, you can set it to `app` instead.
 

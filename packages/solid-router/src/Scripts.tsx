@@ -1,74 +1,82 @@
+import * as Solid from 'solid-js'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
-import { useRouterState } from './useRouterState'
 import { useRouter } from './useRouter'
-import type { RouterManagedTag } from '@tanstack/router-core'
+import type { AnyRouteMatch, RouterManagedTag } from '@tanstack/router-core'
 
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const assetScripts = useRouterState({
-    select: (state) => {
-      const assetScripts: Array<RouterManagedTag> = []
-      const manifest = router.ssr?.manifest
 
-      if (!manifest) {
-        return []
+  const getAssetScripts = (matches: Array<AnyRouteMatch>) => {
+    const assetScripts: Array<RouterManagedTag> = []
+    const manifest = router.ssr?.manifest
+
+    if (!manifest) {
+      return []
+    }
+
+    for (const match of matches) {
+      const scripts = manifest.routes[match.routeId]?.scripts
+
+      if (!scripts) {
+        continue
       }
 
-      state.matches
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          manifest.routes[route.id]?.assets
-            ?.filter((d) => d.tag === 'script')
-            .forEach((asset) => {
-              assetScripts.push({
-                tag: 'script',
-                attrs: { ...asset.attrs, nonce },
-                children: asset.children,
-              } as any)
-            }),
-        )
+      for (const asset of scripts) {
+        assetScripts.push({
+          tag: 'script',
+          attrs: { ...asset.attrs, nonce },
+          children: asset.children,
+        })
+      }
+    }
 
-      return assetScripts
-    },
-  })
-
-  const scripts = useRouterState({
-    select: (state) => ({
-      scripts: (
-        state.matches
-          .map((match) => match.scripts!)
-          .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...script }) => ({
-        tag: 'script',
-        attrs: {
-          ...script,
-          nonce,
-        },
-        children,
-      })),
-    }),
-  })
-
-  let serverBufferedScript: RouterManagedTag | undefined = undefined
-
-  if (router.serverSsr) {
-    serverBufferedScript = router.serverSsr.takeBufferedScripts()
+    return assetScripts
   }
 
-  const allScripts = [
-    ...scripts().scripts,
-    ...assetScripts(),
-  ] as Array<RouterManagedTag>
+  const getScripts = (matches: Array<AnyRouteMatch>): Array<RouterManagedTag> =>
+    (
+      matches
+        .map((match) => match.scripts!)
+        .flat(1)
+        .filter(Boolean) as Array<RouterManagedTag>
+    ).map(
+      ({ children, ...script }) =>
+        ({
+          tag: 'script',
+          attrs: {
+            ...script,
+            nonce,
+          },
+          children,
+        }) satisfies RouterManagedTag,
+    )
 
-  if (serverBufferedScript) {
-    allScripts.unshift(serverBufferedScript)
+  const activeMatches = Solid.createMemo(() => router.stores.matches.get())
+  const assetScripts = Solid.createMemo(() => getAssetScripts(activeMatches()))
+  const scripts = Solid.createMemo(() => getScripts(activeMatches()))
+
+  return renderScripts(router, scripts(), assetScripts())
+}
+
+function renderScripts(
+  router: ReturnType<typeof useRouter>,
+  scripts: Array<RouterManagedTag>,
+  assetScripts: Array<RouterManagedTag>,
+) {
+  const allScripts = [...scripts, ...assetScripts] as Array<RouterManagedTag>
+
+  if ((isServer ?? router.isServer) && router.serverSsr) {
+    const serverBufferedScript = router.serverSsr.takeBufferedScripts()
+    if (serverBufferedScript) {
+      allScripts.unshift(serverBufferedScript)
+    }
   }
 
   return (
     <>
-      {allScripts.map((asset, i) => (
+      {allScripts.map((asset) => (
         <Asset {...asset} />
       ))}
     </>

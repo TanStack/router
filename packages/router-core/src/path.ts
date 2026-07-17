@@ -167,33 +167,7 @@ export function resolvePath({
     }
   }
 
-  let segment
-  let joined = ''
-  for (let i = 0; i < baseSegments.length; i++) {
-    if (i > 0) joined += '/'
-    const part = baseSegments[i]!
-    if (!part) continue
-    segment = parseSegment(part, 0, segment)
-    const kind = segment[0]
-    if (kind === SEGMENT_TYPE_PATHNAME) {
-      joined += part
-      continue
-    }
-    const end = segment[5]
-    const prefix = part.substring(0, segment[1])
-    const suffix = part.substring(segment[4], end)
-    const value = part.substring(segment[2], segment[3])
-    if (kind === SEGMENT_TYPE_PARAM) {
-      joined += prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
-    } else if (kind === SEGMENT_TYPE_WILDCARD) {
-      joined += prefix || suffix ? `${prefix}{$}${suffix}` : '$'
-    } else {
-      // SEGMENT_TYPE_OPTIONAL_PARAM
-      joined += `${prefix}{-$${value}}${suffix}`
-    }
-  }
-  joined = cleanPath(joined)
-  const result = joined || '/'
+  const result = cleanPath(baseSegments.join('/')) || '/'
   if (key && cache) cache.set(key, result)
   return result
 }
@@ -271,19 +245,22 @@ export function interpolatePath({
   path,
   params,
   decoder,
-  server,
+  // `server` is marked @internal and stripped from .d.ts by `stripInternal`.
+  // We avoid destructuring it in the function signature so the emitted
+  // declaration doesn't reference a property that no longer exists.
+  ...rest
 }: InterpolatePathOptions): InterPolatePathResult {
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
   let isMissingParams = false
-  const usedParams: Record<string, unknown> = {}
+  const usedParams: Record<string, unknown> = Object.create(null)
 
   if (!path || path === '/')
     return { interpolatedPath: '/', usedParams, isMissingParams }
   if (!path.includes('$'))
     return { interpolatedPath: path, usedParams, isMissingParams }
 
-  if (isServer ?? server) {
+  if (isServer ?? rest.server) {
     // Fast path for common templates like `/posts/$id` or `/files/$`.
     // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
     // handled by the general parser below.

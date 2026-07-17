@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { NotFound } from 'src/components/NotFound'
-import { UserErrorComponent } from 'src/components/UserError'
+import { NotFound } from '../components/NotFound'
+import { UserErrorComponent } from '../components/UserError'
 import type { User } from '../utils/users'
 
 export const Route = createFileRoute('/users/$userId')({

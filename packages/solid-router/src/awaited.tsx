@@ -30,18 +30,39 @@ export function Await<T>(
     children: (result: T) => SolidNode
   },
 ) {
-  const [resource] = Solid.createResource(
-    () => defer(props.promise),
-    // Simple passthrough - just return the promise for Solid to await
-    (p) => p,
-    {
-      deferStream: true,
-    },
-  )
+  if (!('fallback' in props)) {
+    const [resource] = Solid.createResource(
+      () => defer(props.promise),
+      (p) => p,
+      {
+        deferStream: true,
+      },
+    )
+
+    return (
+      <Solid.Show when={resource()}>
+        {(data) => props.children(data())}
+      </Solid.Show>
+    )
+  }
 
   return (
-    <Solid.Show fallback={props.fallback} when={resource()}>
-      {(data) => props.children(data())}
-    </Solid.Show>
+    <Solid.Suspense fallback={props.fallback}>
+      <AwaitInner {...props} />
+    </Solid.Suspense>
   )
+}
+
+function AwaitInner<T>(
+  props: AwaitOptions<T> & {
+    fallback?: SolidNode
+    children: (result: T) => SolidNode
+  },
+) {
+  const [resource] = Solid.createResource(
+    () => defer(props.promise),
+    (p) => p,
+  )
+
+  return props.children(resource() as T)
 }

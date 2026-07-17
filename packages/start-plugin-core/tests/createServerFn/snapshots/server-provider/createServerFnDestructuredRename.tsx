@@ -2,10 +2,10 @@ import { createServerRpc } from '@tanstack/react-start/server-rpc';
 import { createServerFn as serverFn } from '@tanstack/react-start';
 import { z } from 'zod';
 const withUseServer_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  id: "b6fe31e85836ae6c65d8ab262dd1af6a68620aeef609029d50127f4cceaaf320",
   name: "withUseServer",
   filename: "src/test.ts"
-}, (opts, signal) => withUseServer.__executeServer(opts, signal));
+}, opts => withUseServer.__executeServer(opts));
 const withUseServer = serverFn({
   method: 'GET'
 }).handler(withUseServer_createServerFn_handler, async function () {
@@ -14,10 +14,10 @@ const withUseServer = serverFn({
   return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 });
 const withoutUseServer_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRob3V0VXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  id: "c0d9fdeb2b01aafecc782f439416b86f666cb5334ac9a934546b177e5698bbb2",
   name: "withoutUseServer",
   filename: "src/test.ts"
-}, (opts, signal) => withoutUseServer.__executeServer(opts, signal));
+}, opts => withoutUseServer.__executeServer(opts));
 const withoutUseServer = serverFn({
   method: 'GET'
 }).handler(withoutUseServer_createServerFn_handler, async () => {
@@ -26,10 +26,10 @@ const withoutUseServer = serverFn({
   return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 });
 const withVariable_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVmFyaWFibGVfY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9",
+  id: "7d36cb30c30bd688b9773bd7f85a0d51d83f868255e127605e4f236615fefe70",
   name: "withVariable",
   filename: "src/test.ts"
-}, (opts, signal) => withVariable.__executeServer(opts, signal));
+}, opts => withVariable.__executeServer(opts));
 const withVariable = serverFn({
   method: 'GET'
 }).handler(withVariable_createServerFn_handler, abstractedFunction);
@@ -44,10 +44,10 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
   };
 }
 const withZodValidator_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoWm9kVmFsaWRhdG9yX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  id: "43606a369c85444a332f701d6399564b6a3691aabab63dfc9a0b7c341fb798f3",
   name: "withZodValidator",
   filename: "src/test.ts"
-}, (opts, signal) => withZodValidator.__executeServer(opts, signal));
+}, opts => withZodValidator.__executeServer(opts));
 const withZodValidator = serverFn({
   method: 'GET'
 }).handler(withZodValidator_createServerFn_handler, zodValidator(z.number(), input => {

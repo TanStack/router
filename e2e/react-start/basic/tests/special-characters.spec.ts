@@ -64,6 +64,22 @@ test.describe('Unicode route rendering', () => {
 
       expect(param).toBe('대|')
     })
+
+    test('should not cause redirect loop for curly braces in path params', async ({
+      page,
+      baseURL,
+    }) => {
+      // %7B/%7D (curly braces) must not trigger infinite 307 redirects
+      const res = await page.goto('/specialChars/%7B%7Bapp_name%7D%7D')
+      await page.waitForLoadState('load')
+
+      // Should not redirect — URL stays encoded
+      expect(page.url()).toBe(`${baseURL}/specialChars/%7B%7Bapp_name%7D%7D`)
+      expect(res!.status()).toBe(200)
+
+      const param = await page.getByTestId('special-param').textContent()
+      expect(param).toBe('{{app_name}}')
+    })
   })
 
   test.describe('Special characters in search params', () => {
@@ -77,11 +93,23 @@ test.describe('Unicode route rendering', () => {
         `${baseURL}/specialChars/search?searchParam=%EB%8C%80|`,
       )
 
+      await page.waitForLoadState('networkidle')
+
       const searchParam = await page
         .getByTestId('special-search-param')
         .textContent()
 
       expect(searchParam).toBe('대|')
+
+      const loadedOn = await page
+        .getByTestId('special-search-loaded-info')
+        .textContent()
+
+      if (isSpaMode) {
+        expect(loadedOn).toBe('Loaded on: client')
+      } else {
+        expect(loadedOn).toBe('Loaded on: server')
+      }
     })
 
     test('should render route correctly on router navigation', async ({
@@ -175,6 +203,12 @@ test.describe('Unicode route rendering', () => {
   })
 
   test.describe('malformed paths', () => {
+    const malformedPathnames = [
+      '/specialChars/malformed/%E0%A4',
+      '/specialChars/malformed/%80',
+      '/specialChars/malformed/%FF',
+    ]
+
     test.use({
       whitelistErrors: [
         'Failed to load resource: the server responded with a status of 404',
@@ -182,24 +216,22 @@ test.describe('Unicode route rendering', () => {
       ],
     })
 
-    test('un-matched malformed paths should return not found on direct navigation', async ({
-      page,
-    }) => {
-      const res = await page.goto('/specialChars/malformed/%E0%A4')
+    for (const pathname of malformedPathnames) {
+      test(`un-matched malformed path "${pathname}" should return bad request on direct navigation`, async ({
+        page,
+      }) => {
+        const res = await page.goto(pathname)
 
-      await page.waitForLoadState(`load`)
+        await page.waitForLoadState(`load`)
 
-      // in spa mode this is caught and handled at server level
-      if (!isSpaMode) {
-        expect(res!.status()).toBe(404)
-
-        await expect(
-          page.getByTestId('default-not-found-component'),
-        ).toBeInViewport()
-      } else {
-        expect(res!.status()).toBe(400)
-      }
-    })
+        // in spa mode this is caught and handled at server level
+        if (!isSpaMode) {
+          expect(res!.status()).toBe(400)
+        } else {
+          expect(res!.status()).toBe(400)
+        }
+      })
+    }
 
     test('malformed path params should return not found on router link', async ({
       page,

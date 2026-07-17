@@ -2,10 +2,10 @@ import { createServerRpc } from '@tanstack/react-start/server-rpc';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 const withUseServer_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  id: "b6fe31e85836ae6c65d8ab262dd1af6a68620aeef609029d50127f4cceaaf320",
   name: "withUseServer",
   filename: "src/test.ts"
-}, (opts, signal) => withUseServer.__executeServer(opts, signal));
+}, opts => withUseServer.__executeServer(opts));
 const withUseServer = createServerFn({
   method: 'GET'
 }).handler(withUseServer_createServerFn_handler, async function () {
@@ -14,26 +14,26 @@ const withUseServer = createServerFn({
   return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 });
 const withArrowFunction_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoQXJyb3dGdW5jdGlvbl9jcmVhdGVTZXJ2ZXJGbl9oYW5kbGVyIn0",
+  id: "a311dfd9a6554bc0bb9371ef4fbc72c852d0b5532829a2613a29157b8595a793",
   name: "withArrowFunction",
   filename: "src/test.ts"
-}, (opts, signal) => withArrowFunction.__executeServer(opts, signal));
+}, opts => withArrowFunction.__executeServer(opts));
 const withArrowFunction = createServerFn({
   method: 'GET'
 }).handler(withArrowFunction_createServerFn_handler, async () => null);
 const withArrowFunctionAndFunction_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoQXJyb3dGdW5jdGlvbkFuZEZ1bmN0aW9uX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  id: "dbe1f77c6ea7590bce3212a75b06d3cee83b425bcf493014cb47462ef725e36e",
   name: "withArrowFunctionAndFunction",
   filename: "src/test.ts"
-}, (opts, signal) => withArrowFunctionAndFunction.__executeServer(opts, signal));
+}, opts => withArrowFunctionAndFunction.__executeServer(opts));
 const withArrowFunctionAndFunction = createServerFn({
   method: 'GET'
 }).handler(withArrowFunctionAndFunction_createServerFn_handler, async () => test());
 const withoutUseServer_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRob3V0VXNlU2VydmVyX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  id: "c0d9fdeb2b01aafecc782f439416b86f666cb5334ac9a934546b177e5698bbb2",
   name: "withoutUseServer",
   filename: "src/test.ts"
-}, (opts, signal) => withoutUseServer.__executeServer(opts, signal));
+}, opts => withoutUseServer.__executeServer(opts));
 const withoutUseServer = createServerFn({
   method: 'GET'
 }).handler(withoutUseServer_createServerFn_handler, async () => {
@@ -42,10 +42,10 @@ const withoutUseServer = createServerFn({
   return axios.get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts').then(r => r.data.slice(0, 10));
 });
 const withVariable_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVmFyaWFibGVfY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9",
+  id: "7d36cb30c30bd688b9773bd7f85a0d51d83f868255e127605e4f236615fefe70",
   name: "withVariable",
   filename: "src/test.ts"
-}, (opts, signal) => withVariable.__executeServer(opts, signal));
+}, opts => withVariable.__executeServer(opts));
 const withVariable = createServerFn({
   method: 'GET'
 }).handler(withVariable_createServerFn_handler, abstractedFunction);
@@ -60,10 +60,10 @@ function zodValidator<TSchema extends z.ZodSchema, TResult>(schema: TSchema, fn:
   };
 }
 const withZodValidator_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoWm9kVmFsaWRhdG9yX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  id: "43606a369c85444a332f701d6399564b6a3691aabab63dfc9a0b7c341fb798f3",
   name: "withZodValidator",
   filename: "src/test.ts"
-}, (opts, signal) => withZodValidator.__executeServer(opts, signal));
+}, opts => withZodValidator.__executeServer(opts));
 const withZodValidator = createServerFn({
   method: 'GET'
 }).handler(withZodValidator_createServerFn_handler, zodValidator(z.number(), input => {
@@ -72,13 +72,13 @@ const withZodValidator = createServerFn({
   };
 }));
 const withValidatorFn_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJ3aXRoVmFsaWRhdG9yRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9",
+  id: "5cf922ac733d835fee496964cbf0b4b4067cb43d51f2efa484d072e6bb7dae44",
   name: "withValidatorFn",
   filename: "src/test.ts"
-}, (opts, signal) => withValidatorFn.__executeServer(opts, signal));
+}, opts => withValidatorFn.__executeServer(opts));
 const withValidatorFn = createServerFn({
   method: 'GET'
-}).inputValidator(z.number()).handler(withValidatorFn_createServerFn_handler, async ({
+}).validator(z.number()).handler(withValidatorFn_createServerFn_handler, async ({
   input
 }) => {
   return null;

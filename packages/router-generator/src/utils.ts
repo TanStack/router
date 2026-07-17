@@ -4,7 +4,11 @@ import path from 'node:path'
 import * as prettier from 'prettier'
 import { rootPathId } from './filesystem/physical/rootPathId'
 import type { Config, TokenMatcher } from './config'
-import type { ImportDeclaration, RouteNode } from './types'
+import type {
+  ImportDeclaration,
+  RouteNode,
+  RoutePathSegmentMetadata,
+} from './types'
 
 /**
  * Prefix map for O(1) parent route lookups.
@@ -13,7 +17,6 @@ import type { ImportDeclaration, RouteNode } from './types'
  */
 export class RoutePrefixMap {
   private prefixToRoute: Map<string, RouteNode> = new Map()
-  private layoutRoutes: Array<RouteNode> = []
 
   constructor(routes: Array<RouteNode>) {
     for (const route of routes) {
@@ -34,20 +37,7 @@ export class RoutePrefixMap {
 
       // Index by exact path for direct lookups
       this.prefixToRoute.set(route.routePath, route)
-
-      if (
-        route._fsRouteType === 'pathless_layout' ||
-        route._fsRouteType === 'layout' ||
-        route._fsRouteType === '__root'
-      ) {
-        this.layoutRoutes.push(route)
-      }
     }
-
-    // Sort by path length descending for longest-match-first
-    this.layoutRoutes.sort(
-      (a, b) => (b.routePath?.length ?? 0) - (a.routePath?.length ?? 0),
-    )
   }
 
   /**
@@ -131,6 +121,30 @@ export function multiSortBy<T>(
     result[i] = indexed[i]!.item
   }
   return result
+}
+
+/**
+ * Sorts route nodes by root, path depth, index status, and finally `routePath`.
+ * The `routePath` comparison keeps the output consistent when the earlier
+ * values are the same.
+ */
+export function sortRouteNodes(
+  routeNodes: Array<RouteNode>,
+  indexTokenSegmentRegex: RegExp,
+): Array<RouteNode> {
+  return multiSortBy(routeNodes, [
+    (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
+    (d) =>
+      d.routePath === undefined
+        ? undefined
+        : countSlashSeparatedParts(d.routePath),
+    (d) => {
+      const segments = d.routePath?.split('/').filter(Boolean) ?? []
+      const last = segments[segments.length - 1] ?? ''
+      return indexTokenSegmentRegex.test(last) ? -1 : 1
+    },
+    (d) => d.routePath,
+  ])
 }
 
 export function cleanPath(path: string) {
@@ -258,6 +272,169 @@ export function hasEscapedTrailingUnderscore(originalSegment: string): boolean {
   )
 }
 
+export function countRoutePathSegments(routePath?: string): number {
+  const path = routePath ?? ''
+  let count = 0
+  let inSegment = false
+
+  for (let i = 0; i < path.length; i++) {
+    if (path[i] === '/') {
+      inSegment = false
+      continue
+    }
+
+    if (!inSegment) {
+      count++
+      inSegment = true
+    }
+  }
+
+  return count
+}
+
+export function countSlashSeparatedParts(path: string): number {
+  let count = 1
+
+  for (let i = 0; i < path.length; i++) {
+    if (path[i] === '/') count++
+  }
+
+  return count
+}
+
+export function hasRoutePathSegmentMetadata(
+  metadata: RoutePathSegmentMetadata | undefined,
+): metadata is RoutePathSegmentMetadata {
+  return !!(
+    metadata?.literalLeadingUnderscore || metadata?.literalTrailingUnderscore
+  )
+}
+
+function mergeRoutePathSegmentMetadata(
+  current: RoutePathSegmentMetadata | undefined,
+  incoming: RoutePathSegmentMetadata | undefined,
+): RoutePathSegmentMetadata | undefined {
+  const hasCurrent = hasRoutePathSegmentMetadata(current)
+  const hasIncoming = hasRoutePathSegmentMetadata(incoming)
+
+  if (!hasCurrent) return hasIncoming ? incoming : undefined
+  if (!hasIncoming) return current
+
+  return {
+    literalLeadingUnderscore:
+      current.literalLeadingUnderscore || incoming.literalLeadingUnderscore,
+    literalTrailingUnderscore:
+      current.literalTrailingUnderscore || incoming.literalTrailingUnderscore,
+  }
+}
+
+export function createRoutePathSegmentMetadata(
+  routePath: string = '/',
+  originalPath?: string,
+): Array<RoutePathSegmentMetadata | undefined> | undefined {
+  if (!originalPath) return undefined
+
+  const routeSegments = routePath.split('/')
+  const originalSegments = originalPath.split('/')
+  const metadata = new Array<RoutePathSegmentMetadata | undefined>(
+    routeSegments.length,
+  )
+  let hasMetadata = false
+
+  for (let i = 0; i < routeSegments.length; i++) {
+    const segment = routeSegments[i]!
+    const originalSegment = originalSegments[i] || ''
+    const literalLeadingUnderscore =
+      segment.startsWith('_') && hasEscapedLeadingUnderscore(originalSegment)
+    const literalTrailingUnderscore =
+      segment.endsWith('_') && hasEscapedTrailingUnderscore(originalSegment)
+
+    if (!literalLeadingUnderscore && !literalTrailingUnderscore) continue
+
+    hasMetadata = true
+    metadata[i] = {
+      literalLeadingUnderscore: literalLeadingUnderscore || undefined,
+      literalTrailingUnderscore: literalTrailingUnderscore || undefined,
+    }
+  }
+
+  return hasMetadata ? metadata : undefined
+}
+
+export function createLiteralRoutePathSegmentMetadata(
+  routePath: string,
+  parent?: RouteNode,
+  literalNewSegments = false,
+): Array<RoutePathSegmentMetadata | undefined> | undefined {
+  const routeSegments = routePath.split('/')
+  const metadata = new Array<RoutePathSegmentMetadata | undefined>(
+    routeSegments.length,
+  )
+  const parentDepth = countRoutePathSegments(parent?.routePath)
+  let hasMetadata = false
+  let depth = 0
+
+  for (let i = 0; i < routeSegments.length; i++) {
+    const segment = routeSegments[i]
+    metadata[i] = parent?._routePathSegmentMetadata?.[i]
+    hasMetadata ||= hasRoutePathSegmentMetadata(metadata[i])
+
+    if (!segment) continue
+
+    if (literalNewSegments && depth >= parentDepth) {
+      const literalLeadingUnderscore = segment.startsWith('_')
+      const literalTrailingUnderscore = segment.endsWith('_')
+
+      if (literalLeadingUnderscore || literalTrailingUnderscore) {
+        metadata[i] = mergeRoutePathSegmentMetadata(metadata[i], {
+          literalLeadingUnderscore: literalLeadingUnderscore || undefined,
+          literalTrailingUnderscore: literalTrailingUnderscore || undefined,
+        })
+        hasMetadata = true
+      }
+    }
+
+    depth++
+  }
+
+  return hasMetadata ? metadata : undefined
+}
+
+export function joinRoutePathSegmentMetadata(
+  routePath: string,
+  prefixPath: string,
+  prefixMetadata: Array<RoutePathSegmentMetadata | undefined> | undefined,
+  childMetadata: Array<RoutePathSegmentMetadata | undefined> | undefined,
+): Array<RoutePathSegmentMetadata | undefined> | undefined {
+  const metadata = new Array<RoutePathSegmentMetadata | undefined>(
+    countSlashSeparatedParts(routePath),
+  )
+  let hasMetadata = false
+
+  if (prefixMetadata) {
+    for (let i = 0; i < prefixMetadata.length && i < metadata.length; i++) {
+      metadata[i] = prefixMetadata[i]
+      hasMetadata ||= hasRoutePathSegmentMetadata(metadata[i])
+    }
+  }
+
+  const offset = countRoutePathSegments(prefixPath)
+  if (childMetadata) {
+    for (let i = 1; i < childMetadata.length; i++) {
+      const targetIndex = offset + i
+      if (targetIndex >= metadata.length) break
+
+      metadata[targetIndex] = mergeRoutePathSegmentMetadata(
+        metadata[targetIndex],
+        childMetadata[i],
+      )
+      hasMetadata ||= hasRoutePathSegmentMetadata(metadata[targetIndex])
+    }
+  }
+
+  return hasMetadata ? metadata : undefined
+}
+
 const backslashRegex = /\\/g
 
 export function replaceBackslash(s: string) {
@@ -328,6 +505,23 @@ export function removeUnderscores(s?: string) {
     .replace(underscoreSlashRegex, '/')
 }
 
+function removeUnderscoresFromSegment(
+  segment: string,
+  metadata?: RoutePathSegmentMetadata,
+): string {
+  let result = segment
+
+  if (result.startsWith('_') && !metadata?.literalLeadingUnderscore) {
+    result = result.slice(1)
+  }
+
+  if (result.endsWith('_') && !metadata?.literalTrailingUnderscore) {
+    result = result.slice(0, -1)
+  }
+
+  return result
+}
+
 /**
  * Removes underscores from a path, but preserves underscores that were escaped
  * in the original path (indicated by [_] syntax).
@@ -344,30 +538,50 @@ export function removeUnderscoresWithEscape(
   if (!originalPath) return removeUnderscores(routePath) ?? ''
 
   const routeSegments = routePath.split('/')
+  const metadata = createRoutePathSegmentMetadata(routePath, originalPath)
+  const newSegments = new Array<string>(routeSegments.length)
+
+  for (let i = 0; i < routeSegments.length; i++) {
+    newSegments[i] = removeUnderscoresFromSegment(
+      routeSegments[i]!,
+      metadata?.[i],
+    )
+  }
+
+  return newSegments.join('/')
+}
+
+export function removeLayoutSegmentsAndUnderscoresWithEscape(
+  routePath: string = '/',
+  originalPath?: string,
+  routePathSegmentMetadata?: Array<RoutePathSegmentMetadata | undefined>,
+): string {
+  if (!originalPath) {
+    return removeUnderscores(removeLayoutSegments(routePath)) ?? ''
+  }
+
+  const metadata =
+    routePathSegmentMetadata ??
+    createRoutePathSegmentMetadata(routePath, originalPath)
+
+  const routeSegments = routePath.split('/')
   const originalSegments = originalPath.split('/')
+  const newSegments: Array<string> = []
 
-  const newSegments = routeSegments.map((segment, i) => {
+  for (let i = 0; i < routeSegments.length; i++) {
+    const segment = routeSegments[i]!
     const originalSegment = originalSegments[i] || ''
+    const segmentMetadata = metadata?.[i]
 
-    // Check if leading underscore is escaped
-    const leadingEscaped = hasEscapedLeadingUnderscore(originalSegment)
-    // Check if trailing underscore is escaped
-    const trailingEscaped = hasEscapedTrailingUnderscore(originalSegment)
-
-    let result = segment
-
-    // Remove leading underscore only if not escaped
-    if (result.startsWith('_') && !leadingEscaped) {
-      result = result.slice(1)
+    if (
+      !segmentMetadata?.literalLeadingUnderscore &&
+      isSegmentPathless(segment, originalSegment)
+    ) {
+      continue
     }
 
-    // Remove trailing underscore only if not escaped
-    if (result.endsWith('_') && !trailingEscaped) {
-      result = result.slice(0, -1)
-    }
-
-    return result
-  })
+    newSegments.push(removeUnderscoresFromSegment(segment, segmentMetadata))
+  }
 
   return newSegments.join('/')
 }
@@ -414,7 +628,7 @@ export function isSegmentPathless(
   return !hasEscapedLeadingUnderscore(originalSegment)
 }
 
-function escapeRegExp(s: string): string {
+export function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
@@ -482,7 +696,7 @@ export function createTokenRegex(
   }
 }
 
-export function isBracketWrappedSegment(segment: string): boolean {
+function isBracketWrappedSegment(segment: string): boolean {
   return segment.startsWith('[') && segment.endsWith(']')
 }
 
@@ -531,8 +745,13 @@ export function capitalize(s: string) {
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-export function removeExt(d: string, keepExtension: boolean = false) {
-  return keepExtension ? d : d.substring(0, d.lastIndexOf('.')) || d
+export function removeExt(d: string, addExtensions: boolean | string = false) {
+  if (typeof addExtensions === 'string') {
+    const dotIndex = d.lastIndexOf('.')
+    if (dotIndex === -1) return d
+    return d.substring(0, dotIndex) + addExtensions
+  }
+  return addExtensions ? d : d.substring(0, d.lastIndexOf('.')) || d
 }
 
 /**
@@ -681,25 +900,9 @@ export const getResolvedRouteNodeVariableName = (
 }
 
 /**
- * Checks if a given RouteNode is valid for augmenting it with typing based on conditions.
- * Also asserts that the RouteNode is defined.
- *
- * @param routeNode - The RouteNode to check.
- * @returns A boolean indicating whether the RouteNode is defined.
- */
-export function isRouteNodeValidForAugmentation(
-  routeNode?: RouteNode,
-): routeNode is RouteNode {
-  if (!routeNode || routeNode.isVirtual) {
-    return false
-  }
-  return true
-}
-
-/**
  * Infers the path for use by TS
  */
-export const inferPath = (routeNode: RouteNode): string => {
+const inferPath = (routeNode: RouteNode): string => {
   if (routeNode.cleanedPath === '/') {
     return routeNode.cleanedPath ?? ''
   }
@@ -711,12 +914,10 @@ export const inferPath = (routeNode: RouteNode): string => {
  */
 export const inferFullPath = (routeNode: RouteNode): string => {
   const fullPath = removeGroups(
-    removeUnderscoresWithEscape(
-      removeLayoutSegmentsWithEscape(
-        routeNode.routePath,
-        routeNode.originalRoutePath,
-      ),
+    removeLayoutSegmentsAndUnderscoresWithEscape(
+      routeNode.routePath,
       routeNode.originalRoutePath,
+      routeNode._routePathSegmentMetadata,
     ),
   )
 
@@ -741,6 +942,46 @@ const shouldPreferIndexRoute = (
   return existing.cleanedPath === '/' && current.cleanedPath !== '/'
 }
 
+const isIndexRouteNode = (routeNode: RouteNode): boolean => {
+  return routeNode.routePath?.endsWith('/') ?? false
+}
+
+const isPathlessRouteNode = (routeNode: RouteNode): boolean => {
+  return routeNode._fsRouteType === 'pathless_layout'
+}
+
+const shouldReplaceRouteNodeForTo = (
+  current: RouteNode,
+  existing: RouteNode,
+): boolean => {
+  const currentIsIndex = isIndexRouteNode(current)
+  const existingIsIndex = isIndexRouteNode(existing)
+  if (currentIsIndex !== existingIsIndex) {
+    return currentIsIndex
+  }
+
+  const currentIsPathless = isPathlessRouteNode(current)
+  const existingIsPathless = isPathlessRouteNode(existing)
+  if (currentIsPathless !== existingIsPathless) {
+    return !currentIsPathless
+  }
+
+  return true
+}
+
+const shouldReplaceRouteNodeForFullPath = (
+  current: RouteNode,
+  existing: RouteNode,
+): boolean => {
+  const currentIsPathless = isPathlessRouteNode(current)
+  const existingIsPathless = isPathlessRouteNode(existing)
+  if (currentIsPathless !== existingIsPathless) {
+    return !currentIsPathless
+  }
+
+  return true
+}
+
 /**
  * Creates a map from fullPath to routeNode
  */
@@ -757,6 +998,11 @@ export const createRouteNodesByFullPath = (
       if (shouldPreferIndexRoute(routeNode, existing)) {
         continue
       }
+    }
+
+    const existing = map.get(fullPath)
+    if (existing && !shouldReplaceRouteNodeForFullPath(routeNode, existing)) {
+      continue
     }
 
     map.set(fullPath, routeNode)
@@ -776,11 +1022,9 @@ export const createRouteNodesByTo = (
   for (const routeNode of dedupeBranchesAndIndexRoutes(routeNodes)) {
     const to = inferTo(routeNode)
 
-    if (to === '/' && map.has('/')) {
-      const existing = map.get('/')!
-      if (shouldPreferIndexRoute(routeNode, existing)) {
-        continue
-      }
+    const existing = map.get(to)
+    if (existing && !shouldReplaceRouteNodeForTo(routeNode, existing)) {
+      continue
     }
 
     map.set(to, routeNode)
@@ -806,7 +1050,7 @@ export const createRouteNodesById = (
 /**
  * Infers to path
  */
-export const inferTo = (routeNode: RouteNode): string => {
+const inferTo = (routeNode: RouteNode): string => {
   const fullPath = inferFullPath(routeNode)
 
   if (fullPath === '/') return fullPath
@@ -817,7 +1061,7 @@ export const inferTo = (routeNode: RouteNode): string => {
 /**
  * Dedupes branches and index routes
  */
-export const dedupeBranchesAndIndexRoutes = (
+const dedupeBranchesAndIndexRoutes = (
   routes: Array<RouteNode>,
 ): Array<RouteNode> => {
   return routes.filter((route) => {
@@ -939,14 +1183,6 @@ export function buildImportString(
     : ''
 }
 
-export function lowerCaseFirstChar(value: string) {
-  if (!value[0]) {
-    return value
-  }
-
-  return value[0].toLowerCase() + value.slice(1)
-}
-
 export function mergeImportDeclarations(
   imports: Array<ImportDeclaration>,
 ): Array<ImportDeclaration> {
@@ -1017,7 +1253,7 @@ export function buildFileRoutesByPathInterface(opts: {
 }`
 }
 
-export function getImportPath(
+function getImportPath(
   node: RouteNode,
   config: Config,
   generatedRouteTreePath: string,

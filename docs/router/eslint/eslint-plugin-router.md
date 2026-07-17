@@ -9,27 +9,12 @@ TanStack Router comes with its own ESLint plugin. This plugin is used to enforce
 
 The plugin is a separate package that you need to install:
 
-```sh
-npm install -D @tanstack/eslint-plugin-router
-```
+<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
 
-or
+react: @tanstack/eslint-plugin-router
+solid: @tanstack/eslint-plugin-router
 
-```sh
-pnpm add -D @tanstack/eslint-plugin-router
-```
-
-or
-
-```sh
-yarn add -D @tanstack/eslint-plugin-router
-```
-
-or
-
-```sh
-bun add -D @tanstack/eslint-plugin-router
-```
+<!-- ::end:tabs -->
 
 ## Flat Config (`eslint.config.js`)
 
@@ -40,8 +25,9 @@ The release of ESLint 9.0 introduced a new way to configure ESLint using a flat 
 
 To enable all of the recommended rules for our plugin, add the following config:
 
-```js
-// eslint.config.js
+<!-- ::start:tabs variant="files" -->
+
+```js title="eslint.config.js"
 import pluginRouter from '@tanstack/eslint-plugin-router'
 
 export default [
@@ -50,12 +36,15 @@ export default [
 ]
 ```
 
+<!-- ::end:tabs -->
+
 ### Custom Flat Config setup
 
 Alternatively, you can load the plugin and configure only the rules you want to use:
 
-```js
-// eslint.config.js
+<!-- ::start:tabs variant="files" -->
+
+```js title="eslint.config.js"
 import pluginRouter from '@tanstack/eslint-plugin-router'
 
 export default [
@@ -70,6 +59,8 @@ export default [
   // Any other config...
 ]
 ```
+
+<!-- ::end:tabs -->
 
 ## Legacy Config (`.eslintrc`)
 
@@ -112,7 +103,7 @@ If you have other ESLint plugins installed, they may rules that conflict with th
 
 The [`@typescript-eslint/only-throw-error`](https://typescript-eslint.io/rules/only-throw-error/) rule, enabled by default in the `recommended-type-checked` and `strict-type-checked` rulesets, disallows the throwing of non-Error values as exceptions, which is considered a good practice.
 
-To make sure it that it does not conflict with TanStack Router, you should add `redirect` to the allowed as a throwable objects.
+To ensure it does not conflict with TanStack Router, you should allow `redirect` and `notFound` as throwable objects.
 
 ```json
 {
@@ -125,6 +116,11 @@ To make sure it that it does not conflict with TanStack Router, you should add `
             "from": "package",
             "package": "@tanstack/router-core",
             "name": "Redirect"
+          },
+          {
+            "from": "package",
+            "package": "@tanstack/router-core",
+            "name": "NotFoundError"
           }
         ]
       }

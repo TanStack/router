@@ -1,4 +1,3 @@
-import warning from 'tiny-warning'
 import { createRoute } from './route'
 
 import { useMatch } from './useMatch'
@@ -8,6 +7,7 @@ import { useSearch } from './useSearch'
 import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
 import { useRouter } from './useRouter'
+import { useRouteContext } from './useRouteContext'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
@@ -27,7 +27,7 @@ import type {
   RouteById,
   RouteConstraints,
   RouteIds,
-  RouteLoaderFn,
+  RouteLoaderEntry,
   UpdatableRouteOptions,
   UseNavigateResult,
 } from '@tanstack/router-core'
@@ -56,11 +56,6 @@ export function createFileRoute<
 >(
   path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  if (typeof path === 'object') {
-    return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-      silent: true,
-    }).createRoute(path) as any
-  }
   return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
     silent: true,
   }).createRoute
@@ -149,10 +144,13 @@ export class FileRoute<
     TMiddlewares,
     THandlers
   > => {
-    warning(
-      this.silent,
-      'FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
-    )
+    if (process.env.NODE_ENV !== 'production') {
+      if (!this.silent) {
+        console.warn(
+          'Warning: FileRoute is deprecated and will be removed in the next major version. Use the createFileRoute(path)(options) function instead.',
+        )
+      }
+    }
     const route = createRoute(options as any)
     ;(route as any).isRoot = false
     return route as any
@@ -171,7 +169,7 @@ export function FileRouteLoader<
 ): <TLoaderFn>(
   loaderFn: Constrain<
     TLoaderFn,
-    RouteLoaderFn<
+    RouteLoaderEntry<
       Register,
       TRoute['parentRoute'],
       TRoute['types']['id'],
@@ -183,10 +181,11 @@ export function FileRouteLoader<
     >
   >,
 ) => TLoaderFn {
-  warning(
-    false,
-    `FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
-  )
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      `Warning: FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
+    )
+  }
   return (loaderFn) => loaderFn as any
 }
 
@@ -213,7 +212,6 @@ export class LazyRoute<TRoute extends AnyRoute> {
     } & LazyRouteOptions,
   ) {
     this.options = opts
-    ;(this as any).$$typeof = Symbol.for('react.memo')
   }
 
   useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
@@ -225,10 +223,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
-    return useMatch({
-      from: this.options.id,
-      select: (d: any) => (opts?.select ? opts.select(d.context) : d.context),
-    }) as any
+    return useRouteContext({ ...(opts as any), from: this.options.id })
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {

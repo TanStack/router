@@ -64,7 +64,7 @@ export default createServerEntry({
 
 When your server needs to pass additional, typed data into request handlers (for example, authenticated user info, a database connection, or per-request flags), register a request context type via TypeScript module augmentation. The registered context is delivered as the second argument to the server `fetch` handler and is available throughout the server-side middleware chain — including global middleware, request/function middleware, server routes, server functions, and the router itself.
 
-To add types for your request context, augment the `Register` interface from `@tanstack/react-start` with a `server.requestContext` property. The runtime `context` you pass to `handler.fetch` will then match that type. Example:
+To add types for your request context, augment the `Register` interface from `@tanstack/react-router` with a `server.requestContext` property. The runtime `context` you pass to `handler.fetch` will then match that type. Example:
 
 ```tsx
 import handler, { createServerEntry } from '@tanstack/react-start/server-entry'
@@ -74,7 +74,7 @@ type MyRequestContext = {
   foo: number
 }
 
-declare module '@tanstack/react-start' {
+declare module '@tanstack/react-router' {
   interface Register {
     server: {
       requestContext: MyRequestContext
@@ -100,3 +100,7 @@ The server entry point is where you can configure server-specific behavior:
 - Logging and monitoring
 
 This flexibility allows you to customize how your TanStack Start application handles server-side rendering while maintaining the framework's conventions.
+
+## Cloudflare Workers
+
+When deploying to Cloudflare Workers, you can extend `server.ts` to handle additional Workers features like queues, scheduled events, and Durable Objects. For a comprehensive guide, see the [Cloudflare Workers documentation for TanStack Start](https://developers.cloudflare.com/workers/framework-guides/web-apps/tanstack-start/#custom-entrypoints).

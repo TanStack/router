@@ -137,19 +137,6 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         ].join(''),
       }
       break
-    case 'file-modification-verboseFileRoutes-true':
-      config.verboseFileRoutes = true
-      break
-    case 'file-modification-verboseFileRoutes-false':
-      config.verboseFileRoutes = false
-      break
-    // these two folders contain type tests which are executed separately
-    case 'nested-verboseFileRoutes-true':
-      config.verboseFileRoutes = true
-      break
-    case 'nested-verboseFileRoutes-false':
-      config.verboseFileRoutes = false
-      break
     case 'routeFileIgnore':
       config.routeFileIgnorePattern = 'ignoredPattern'
       config.routeFileIgnorePrefix = 'imIgnored'
@@ -178,6 +165,22 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         ])
         config.virtualRouteConfig = virtualRouteConfig
       }
+      break
+    case 'virtual-root-sibling-routes':
+      {
+        // Test case for issue #5431: Virtual routes that are siblings at the root level
+        // should NOT be auto-nested based on shared path prefix.
+        // /device/$id and /device/$id/history/$filename are both children of root,
+        // NOT parent-child of each other.
+        const virtualRouteConfig = rootRoute('__root.tsx', [
+          route('/device/$id', 'device/route.tsx'),
+          route('/device/$id/history/$filename', 'history/route.tsx'),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'add-extensions-custom':
+      config.addExtensions = '.js'
       break
     case 'virtual-nested-layouts-with-virtual-route':
       {
@@ -224,8 +227,49 @@ async function preprocess(folderName: string) {
     await fs.copyFile(templatePath, makeRoutePath('foo.tsx'))
     await fs.copyFile(lazyTemplatePath, makeRoutePath('initiallyLazy.tsx'))
     await fs.copyFile(templatePath, makeRoutePath('bar.lazy.tsx'))
+    await fs.copyFile(templatePath, makeRoutePath('double-quotes.tsx'))
+    await fs.copyFile(templatePath, makeRoutePath('template-literal.tsx'))
+    await fs.copyFile(templatePath, makeRoutePath('duplicate-import.tsx'))
     await makeEmptyFile('initiallyEmpty.tsx')
     await makeEmptyFile('initiallyEmpty.lazy.tsx')
+
+    await fs.writeFile(
+      makeRoutePath('double-quotes.tsx'),
+      (await fs.readFile(makeRoutePath('double-quotes.tsx'), 'utf-8')).replace(
+        "createFileRoute('/foo/bar')",
+        'createFileRoute("/foo/bar")',
+      ),
+    )
+
+    await fs.writeFile(
+      makeRoutePath('template-literal.tsx'),
+      (
+        await fs.readFile(makeRoutePath('template-literal.tsx'), 'utf-8')
+      ).replace("createFileRoute('/foo/bar')", 'createFileRoute(`/foo/bar`)'),
+    )
+
+    await fs.writeFile(
+      makeRoutePath('duplicate-import.tsx'),
+      [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        "import * as React from 'react'",
+        "import { Link, Outlet } from '@tanstack/react-router'",
+        '',
+        "export const Route = createFileRoute('/foo/bar')({",
+        '  component: PostsLayoutComponent,',
+        '})',
+        '',
+        'function PostsLayoutComponent() {',
+        '  return (',
+        '    <>',
+        '      <Link to="/">Home</Link>',
+        '      <Outlet />',
+        '    </>',
+        '  )',
+        '}',
+        '',
+      ].join('\n'),
+    )
   } else if (folderName === 'custom-scaffolding') {
     const makeEmptyFile = async (...file: Array<string>) => {
       const filePath = join(makeFolderDir(folderName), 'routes', ...file)
@@ -244,8 +288,7 @@ async function preprocess(folderName: string) {
 
 async function postprocess(folderName: string) {
   switch (folderName) {
-    case 'file-modification-verboseFileRoutes-false':
-    case 'file-modification-verboseFileRoutes-true': {
+    case 'file-modification': {
       const routeFiles = await readDir(folderName, 'routes', '(test)')
       await Promise.all(
         routeFiles

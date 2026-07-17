@@ -2,6 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   RoutePrefixMap,
   cleanPath,
+  createLiteralRoutePathSegmentMetadata,
+  createRoutePathSegmentMetadata,
+  createRouteNodesByFullPath,
+  createRouteNodesByTo,
+  createTokenRegex,
   determineInitialRoutePath,
   hasEscapedLeadingUnderscore,
   hasEscapedTrailingUnderscore,
@@ -10,12 +15,14 @@ import {
   mergeImportDeclarations,
   multiSortBy,
   removeExt,
+  removeLayoutSegmentsAndUnderscoresWithEscape,
   removeLayoutSegmentsWithEscape,
   removeLeadingUnderscores,
   removeTrailingUnderscores,
   removeUnderscores,
   removeUnderscoresWithEscape,
   routePathToVariable,
+  sortRouteNodes,
 } from '../src/utils'
 import type { ImportDeclaration, RouteNode } from '../src/types'
 
@@ -36,6 +43,169 @@ describe('inferFullPath', () => {
 
     // This avoids inferred fullPath "" which breaks match.fullPath unions
     expect(inferFullPath(node)).toBe('/')
+  })
+
+  it('preserves escaped leading underscores after removing pathless ancestors', () => {
+    const node = {
+      routePath: '/_layout/_foo',
+      originalRoutePath: '/_layout/[_]foo',
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/_foo')
+  })
+
+  it('preserves multiple escaped leading underscores after removing pathless ancestors', () => {
+    const node = {
+      routePath: '/_layout/__foo',
+      originalRoutePath: '/_layout/[__foo]',
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/__foo')
+  })
+
+  it('preserves explicit literal leading underscores on index routes after removing pathless ancestors', () => {
+    const parent = {
+      routePath: '/_layout',
+    } as unknown as RouteNode
+    const node = {
+      routePath: '/_layout/_nested/',
+      originalRoutePath: '/_layout/_nested/',
+      _routePathSegmentMetadata: createLiteralRoutePathSegmentMetadata(
+        '/_layout/_nested',
+        parent,
+        true,
+      ),
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/_nested/')
+  })
+
+  it('removes pathless index route segments when they are not marked literal', () => {
+    const node = {
+      routePath: '/_layout/_nested/',
+      originalRoutePath: '/_layout/_nested/',
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/')
+  })
+
+  it('preserves escaped trailing underscores on index routes', () => {
+    const node = {
+      routePath: '/_layout/foo_/',
+      originalRoutePath: '/_layout/foo[_]/',
+      _routePathSegmentMetadata: createRoutePathSegmentMetadata(
+        '/_layout/foo_/',
+        '/_layout/foo[_]/',
+      ),
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/foo_/')
+  })
+
+  it('removes unescaped trailing underscores on index routes', () => {
+    const node = {
+      routePath: '/_layout/foo_/',
+      originalRoutePath: '/_layout/foo_/',
+    } as unknown as RouteNode
+
+    expect(inferFullPath(node)).toBe('/foo/')
+  })
+})
+
+describe('createRoutePathSegmentMetadata', () => {
+  it('preserves escaped trailing underscores on index routes', () => {
+    const metadata = createRoutePathSegmentMetadata('/foo_/', '/foo[_]/')
+
+    expect(metadata).toHaveLength(3)
+    expect(metadata?.[1]).toEqual({ literalTrailingUnderscore: true })
+  })
+
+  it('preserves mixed escaped leading and trailing underscores', () => {
+    const metadata = createRoutePathSegmentMetadata('/_foo_/', '/[_]foo[_]/')
+
+    expect(metadata).toHaveLength(3)
+    expect(metadata?.[1]).toEqual({
+      literalLeadingUnderscore: true,
+      literalTrailingUnderscore: true,
+    })
+  })
+
+  it('tracks multiple literal underscore segments independently', () => {
+    const metadata = createRoutePathSegmentMetadata(
+      '/_foo/bar_/_baz_/',
+      '/[_]foo/bar[_]/[_baz_]/',
+    )
+
+    expect(metadata).toHaveLength(5)
+    expect(metadata?.[1]).toEqual({ literalLeadingUnderscore: true })
+    expect(metadata?.[2]).toEqual({ literalTrailingUnderscore: true })
+    expect(metadata?.[3]).toEqual({
+      literalLeadingUnderscore: true,
+      literalTrailingUnderscore: true,
+    })
+  })
+})
+
+describe('createRouteNodesByTo', () => {
+  const createRoute = (
+    overrides: Partial<RouteNode> & { routePath: string },
+  ): RouteNode => ({
+    filePath: 'test.tsx',
+    fullPath: overrides.routePath,
+    variableName: 'Test',
+    _fsRouteType: 'static',
+    cleanedPath: overrides.routePath.endsWith('/')
+      ? '/'
+      : overrides.routePath.split('/').at(-1),
+    ...overrides,
+  })
+
+  it('prefers index routes over pathless layouts for duplicate public to paths', () => {
+    const pathlessRoute = createRoute({
+      routePath: '/livestock/$farmId/medicine/_form',
+      _fsRouteType: 'pathless_layout',
+      variableName: 'Pathless',
+    })
+    const indexRoute = createRoute({
+      routePath: '/livestock/$farmId/medicine/',
+      cleanedPath: '/',
+      variableName: 'Index',
+    })
+
+    const map = createRouteNodesByTo([pathlessRoute, indexRoute])
+
+    expect(map.get('/livestock/$farmId/medicine')).toBe(indexRoute)
+  })
+})
+
+describe('createRouteNodesByFullPath', () => {
+  const createRoute = (
+    overrides: Partial<RouteNode> & { routePath: string },
+  ): RouteNode => ({
+    filePath: 'test.tsx',
+    fullPath: overrides.routePath,
+    variableName: 'Test',
+    _fsRouteType: 'static',
+    cleanedPath: overrides.routePath.endsWith('/')
+      ? '/'
+      : overrides.routePath.split('/').at(-1),
+    ...overrides,
+  })
+
+  it('prefers concrete routes over pathless layouts for duplicate full paths', () => {
+    const concreteRoute = createRoute({
+      routePath: '/livestock/$farmId/medicine',
+      variableName: 'Concrete',
+    })
+    const pathlessRoute = createRoute({
+      routePath: '/livestock/$farmId/medicine/_form',
+      _fsRouteType: 'pathless_layout',
+      variableName: 'Pathless',
+    })
+
+    const map = createRouteNodesByFullPath([concreteRoute, pathlessRoute])
+
+    expect(map.get('/livestock/$farmId/medicine')).toBe(concreteRoute)
   })
 })
 
@@ -256,6 +426,30 @@ describe('removeExt', () => {
   it('removes extension when in a route path', () => {
     expect(removeExt('/test/test.ts')).toBe('/test/test')
   })
+
+  it('keeps extension when addExtensions is true', () => {
+    expect(removeExt('test.tsx', true)).toBe('test.tsx')
+  })
+
+  it('keeps extension with route path when addExtensions is true', () => {
+    expect(removeExt('/routes/__root.tsx', true)).toBe('/routes/__root.tsx')
+  })
+
+  it('replaces extension when addExtensions is a dot-prefixed string', () => {
+    expect(removeExt('test.tsx', '.js')).toBe('test.js')
+  })
+
+  it('replaces extension with route path when addExtensions is a string', () => {
+    expect(removeExt('/routes/__root.tsx', '.js')).toBe('/routes/__root.js')
+  })
+
+  it('replaces extension with multiple dots when addExtensions is a string', () => {
+    expect(removeExt('test.lazy.tsx', '.js')).toBe('test.lazy.js')
+  })
+
+  it('returns unchanged when no extension and addExtensions is a string', () => {
+    expect(removeExt('test', '.js')).toBe('test')
+  })
 })
 
 describe('removeUnderscores', () => {
@@ -326,6 +520,7 @@ describe('hasEscapedLeadingUnderscore', () => {
   it('returns true for fully escaped segment starting with underscore', () => {
     expect(hasEscapedLeadingUnderscore('[_layout]')).toBe(true)
     expect(hasEscapedLeadingUnderscore('[_foo]')).toBe(true)
+    expect(hasEscapedLeadingUnderscore('[__foo]')).toBe(true)
     expect(hasEscapedLeadingUnderscore('[_1nd3x]')).toBe(true)
     expect(hasEscapedLeadingUnderscore('[_]')).toBe(true)
   })
@@ -357,6 +552,7 @@ describe('hasEscapedTrailingUnderscore', () => {
   it('returns true for fully escaped segment ending with underscore', () => {
     expect(hasEscapedTrailingUnderscore('[blog_]')).toBe(true)
     expect(hasEscapedTrailingUnderscore('[foo_]')).toBe(true)
+    expect(hasEscapedTrailingUnderscore('[foo__]')).toBe(true)
     expect(hasEscapedTrailingUnderscore('[_r0ut3_]')).toBe(true)
     expect(hasEscapedTrailingUnderscore('[_]')).toBe(true)
   })
@@ -391,6 +587,7 @@ describe('isSegmentPathless', () => {
 
   it('returns false for fully escaped segment', () => {
     expect(isSegmentPathless('_layout', '[_layout]')).toBe(false)
+    expect(isSegmentPathless('__layout', '[__layout]')).toBe(false)
     expect(isSegmentPathless('_1nd3x', '[_1nd3x]')).toBe(false)
   })
 
@@ -506,6 +703,69 @@ describe('removeLayoutSegmentsWithEscape', () => {
   it('handles root path', () => {
     expect(removeLayoutSegmentsWithEscape('/')).toBe('/')
     expect(removeLayoutSegmentsWithEscape()).toBe('/')
+  })
+})
+
+describe('removeLayoutSegmentsAndUnderscoresWithEscape', () => {
+  it('removes layout segments and preserves escaped underscores in remaining segments', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/_foo',
+        '/_layout/[_]foo',
+      ),
+    ).toBe('/_foo')
+  })
+
+  it('removes multiple layout segments before escaped underscores', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/_nested/_foo',
+        '/_layout/_nested/[_]foo',
+      ),
+    ).toBe('/_foo')
+  })
+
+  it('preserves multiple escaped leading underscores in remaining segments', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/__foo',
+        '/_layout/[__foo]',
+      ),
+    ).toBe('/__foo')
+
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/__foo',
+        '/_layout/[_][_]foo',
+      ),
+    ).toBe('/__foo')
+  })
+
+  it('removes non-escaped underscores from remaining segments', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/foo_/bar_',
+        '/_layout/foo_/bar_',
+      ),
+    ).toBe('/foo/bar')
+  })
+
+  it('preserves escaped trailing underscores after removing pathless ancestors', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/foo_/',
+        '/_layout/foo[_]/',
+      ),
+    ).toBe('/foo_/')
+  })
+
+  it('preserves mixed escaped leading and trailing underscores after removing pathless ancestors', () => {
+    expect(
+      removeLayoutSegmentsAndUnderscoresWithEscape(
+        '/_layout/_foo_/',
+        '/_layout/[_]foo[_]/',
+      ),
+    ).toBe('/_foo_/')
   })
 })
 
@@ -705,5 +965,87 @@ describe('RoutePrefixMap', () => {
 
       expect(map.findParent('/users')).toBeNull()
     })
+  })
+})
+
+describe('sortRouteNodes', () => {
+  const indexTokenSegmentRegex = createTokenRegex('index', { type: 'segment' })
+
+  const node = (routePath: string): RouteNode =>
+    ({ routePath }) as unknown as RouteNode
+
+  const sortPaths = (routePaths: Array<string>): Array<string | undefined> =>
+    sortRouteNodes(routePaths.map(node), indexTokenSegmentRegex).map(
+      (n) => n.routePath,
+    )
+
+  /** Every distinct ordering of `arr` (Heap-free recursive permutation). */
+  function permutations<T>(arr: Array<T>): Array<Array<T>> {
+    if (arr.length <= 1) {
+      return [arr]
+    }
+    const result: Array<Array<T>> = []
+    arr.forEach((item, i) => {
+      const rest = [...arr.slice(0, i), ...arr.slice(i + 1)]
+      for (const perm of permutations(rest)) {
+        result.push([item, ...perm])
+      }
+    })
+    return result
+  }
+
+  it('orders tied siblings by routePath', () => {
+    // Same segment count, both non-index: they tie on every key before routePath.
+    const expected = ['/account/beta-features', '/account/busy-guard']
+    expect(
+      sortPaths(['/account/busy-guard', '/account/beta-features']),
+    ).toEqual(expected)
+    expect(
+      sortPaths(['/account/beta-features', '/account/busy-guard']),
+    ).toEqual(expected)
+  })
+
+  it('applies root, segment-count and index precedence before the routePath tiebreaker', () => {
+    const sorted = sortPaths([
+      '/posts',
+      '/account/busy-guard',
+      '/index',
+      '/__root',
+      '/account/beta-features',
+      '/about',
+      '/posts/index',
+    ])
+
+    expect(sorted).toEqual([
+      '/__root', // root always first
+      '/index', // depth 1, index segment before non-index
+      '/about', // depth 1, non-index, routePath tiebreak
+      '/posts', // depth 1, non-index, routePath tiebreak
+      '/posts/index', // depth 2, index segment before non-index
+      '/account/beta-features', // depth 2, non-index, routePath tiebreak
+      '/account/busy-guard', // depth 2, non-index, routePath tiebreak
+    ])
+  })
+
+  it('is deterministic for every input permutation (stable sort)', () => {
+    // Includes several sets that tie on all keys before routePath (the two
+    // `/account/*` leaves, `/about` vs `/posts`) — exactly the case that the
+    // former whole-object tiebreaker left in an engine- and input-order-
+    // dependent order. `sortRouteNodes` must map every permutation to the
+    // same output.
+    const routePaths = [
+      '/__root',
+      '/index',
+      '/about',
+      '/posts',
+      '/account/beta-features',
+      '/account/busy-guard',
+    ]
+
+    const reference = sortPaths(routePaths)
+
+    for (const permutation of permutations(routePaths)) {
+      expect(sortPaths(permutation)).toEqual(reference)
+    }
   })
 })

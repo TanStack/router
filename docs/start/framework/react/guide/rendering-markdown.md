@@ -332,7 +332,7 @@ type FetchDocsParams = {
 }
 
 export const fetchDocs = createServerFn({ method: 'GET' })
-  .inputValidator((params: FetchDocsParams) => params)
+  .validator((params: FetchDocsParams) => params)
   .handler(async ({ data: { repo, branch, filePath } }) => {
     const url = `https://raw.githubusercontent.com/${repo}/${branch}/${filePath}`
 
@@ -364,7 +364,7 @@ For production, add appropriate cache headers:
 
 ```tsx
 export const fetchDocs = createServerFn({ method: 'GET' })
-  .inputValidator((params: FetchDocsParams) => params)
+  .validator((params: FetchDocsParams) => params)
   .handler(async ({ data: { repo, branch, filePath }, context }) => {
     // Set cache headers for CDN caching
     context.response.headers.set(
@@ -426,9 +426,7 @@ type GitHubContent = {
 }
 
 export const fetchRepoContents = createServerFn({ method: 'GET' })
-  .inputValidator(
-    (params: { repo: string; branch: string; path: string }) => params,
-  )
+  .validator((params: { repo: string; branch: string; path: string }) => params)
   .handler(async ({ data: { repo, branch, path } }) => {
     const url = `https://api.github.com/repos/${repo}/contents/${path}?ref=${branch}`
 

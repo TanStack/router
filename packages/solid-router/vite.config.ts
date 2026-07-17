@@ -1,5 +1,5 @@
 import { defineConfig, mergeConfig } from 'vitest/config'
-import { tanstackViteConfig } from '@tanstack/config/vite'
+import { tanstackViteConfig } from '@tanstack/vite-config'
 import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 import type { ViteUserConfig } from 'vitest/config'
@@ -53,6 +53,7 @@ export default defineConfig((env) =>
   mergeConfig(
     config(env),
     tanstackViteConfig({
+      tsconfigPath: './tsconfig.build.json',
       entry: [
         './src/index.tsx',
         './src/index.dev.tsx',

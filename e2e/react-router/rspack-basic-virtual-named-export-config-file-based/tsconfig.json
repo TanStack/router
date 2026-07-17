@@ -12,6 +12,6 @@
     "useDefineForClassFields": true,
     "allowJs": true
   },
-  "include": ["src", "playwright.config.ts", "tests", "./routes.ts"],
+  "include": ["src", "tests", "./routes.ts"],
   "exclude": ["node_modules", "dist"]
 }
