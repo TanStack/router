@@ -1076,7 +1076,7 @@ function commitMatches(
       try {
         getRoute(router, oldMatch as WorkMatch).options.onLeave?.(oldMatch)
       } catch (cause) {
-        Promise.reject(cause)
+        console.error(cause)
       }
     }
     if (match) {
@@ -1085,7 +1085,7 @@ function commitMatches(
           oldMatch?.routeId === match.routeId ? 'onStay' : 'onEnter'
         ]?.(match)
       } catch (cause) {
-        Promise.reject(cause)
+        console.error(cause)
       }
     }
   }
