@@ -1,5 +1,12 @@
 # @tanstack/router-generator
 
+## 1.167.21
+
+### Patch Changes
+
+- [#7845](https://github.com/TanStack/router/pull/7845) [`78dd1a6`](https://github.com/TanStack/router/commit/78dd1a645dc1a9e9f4f649d9aff12005044d4fcc) - Preserve dots in explicit virtual route paths and pathless layout IDs instead
+  of treating them as flat-file route separators.
+
 ## 1.167.20
 
 ### Patch Changes
