@@ -24,7 +24,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.168.20",
+    "@tanstack/router-plugin": "^1.168.21",
     "@types/express": "^5.0.6",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",

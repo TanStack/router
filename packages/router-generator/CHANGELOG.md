@@ -1,5 +1,11 @@
 # @tanstack/router-generator
 
+## 1.167.20
+
+### Patch Changes
+
+- [#7751](https://github.com/TanStack/router/pull/7751) [`e56a677`](https://github.com/TanStack/router/commit/e56a67742da9021b009b8db0cdc8bfe99878c25b) - Make `buildRouteTree` route ordering deterministic. Its final sort tiebreaker compared whole route-node objects (`(d) => d`), which coerce to `"[object Object]"` and so never order — an inconsistent comparator that left routes tying on segment-count/index-token in an engine- and input-dependent order, producing non-deterministic `routeTree.gen.ts` diffs across machines. The tiebreaker now compares `routePath`, mirroring the pre-sort and giving a stable total order.
+
 ## 1.167.19
 
 ### Patch Changes
