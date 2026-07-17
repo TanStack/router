@@ -6,6 +6,7 @@ import {
   createRoutePathSegmentMetadata,
   createRouteNodesByFullPath,
   createRouteNodesByTo,
+  createTokenRegex,
   determineInitialRoutePath,
   hasEscapedLeadingUnderscore,
   hasEscapedTrailingUnderscore,
@@ -21,6 +22,7 @@ import {
   removeUnderscores,
   removeUnderscoresWithEscape,
   routePathToVariable,
+  sortRouteNodes,
 } from '../src/utils'
 import type { ImportDeclaration, RouteNode } from '../src/types'
 
@@ -963,5 +965,87 @@ describe('RoutePrefixMap', () => {
 
       expect(map.findParent('/users')).toBeNull()
     })
+  })
+})
+
+describe('sortRouteNodes', () => {
+  const indexTokenSegmentRegex = createTokenRegex('index', { type: 'segment' })
+
+  const node = (routePath: string): RouteNode =>
+    ({ routePath }) as unknown as RouteNode
+
+  const sortPaths = (routePaths: Array<string>): Array<string | undefined> =>
+    sortRouteNodes(routePaths.map(node), indexTokenSegmentRegex).map(
+      (n) => n.routePath,
+    )
+
+  /** Every distinct ordering of `arr` (Heap-free recursive permutation). */
+  function permutations<T>(arr: Array<T>): Array<Array<T>> {
+    if (arr.length <= 1) {
+      return [arr]
+    }
+    const result: Array<Array<T>> = []
+    arr.forEach((item, i) => {
+      const rest = [...arr.slice(0, i), ...arr.slice(i + 1)]
+      for (const perm of permutations(rest)) {
+        result.push([item, ...perm])
+      }
+    })
+    return result
+  }
+
+  it('orders tied siblings by routePath', () => {
+    // Same segment count, both non-index: they tie on every key before routePath.
+    const expected = ['/account/beta-features', '/account/busy-guard']
+    expect(
+      sortPaths(['/account/busy-guard', '/account/beta-features']),
+    ).toEqual(expected)
+    expect(
+      sortPaths(['/account/beta-features', '/account/busy-guard']),
+    ).toEqual(expected)
+  })
+
+  it('applies root, segment-count and index precedence before the routePath tiebreaker', () => {
+    const sorted = sortPaths([
+      '/posts',
+      '/account/busy-guard',
+      '/index',
+      '/__root',
+      '/account/beta-features',
+      '/about',
+      '/posts/index',
+    ])
+
+    expect(sorted).toEqual([
+      '/__root', // root always first
+      '/index', // depth 1, index segment before non-index
+      '/about', // depth 1, non-index, routePath tiebreak
+      '/posts', // depth 1, non-index, routePath tiebreak
+      '/posts/index', // depth 2, index segment before non-index
+      '/account/beta-features', // depth 2, non-index, routePath tiebreak
+      '/account/busy-guard', // depth 2, non-index, routePath tiebreak
+    ])
+  })
+
+  it('is deterministic for every input permutation (stable sort)', () => {
+    // Includes several sets that tie on all keys before routePath (the two
+    // `/account/*` leaves, `/about` vs `/posts`) — exactly the case that the
+    // former whole-object tiebreaker left in an engine- and input-order-
+    // dependent order. `sortRouteNodes` must map every permutation to the
+    // same output.
+    const routePaths = [
+      '/__root',
+      '/index',
+      '/about',
+      '/posts',
+      '/account/beta-features',
+      '/account/busy-guard',
+    ]
+
+    const reference = sortPaths(routePaths)
+
+    for (const permutation of permutations(routePaths)) {
+      expect(sortPaths(permutation)).toEqual(reference)
+    }
   })
 })

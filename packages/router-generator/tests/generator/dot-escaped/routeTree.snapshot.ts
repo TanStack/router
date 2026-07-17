@@ -9,25 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ScriptDotjsRouteImport } from './routes/script[.]js'
 import { Route as NestedDotjsRouteImport } from './routes/nested[.]js'
-import { Route as NestedDotjsScriptDotjsRouteImport } from './routes/nested[.]js.script[.]js'
+import { Route as ScriptDotjsRouteImport } from './routes/script[.]js'
 import { Route as NestedDotjsDoubleDotextDotjsRouteImport } from './routes/nested[.]js.double[.]ext[.]js'
+import { Route as NestedDotjsScriptDotjsRouteImport } from './routes/nested[.]js.script[.]js'
 
-const ScriptDotjsRoute = ScriptDotjsRouteImport.update({
-  id: '/script.js',
-  path: '/script.js',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const NestedDotjsRoute = NestedDotjsRouteImport.update({
   id: '/nested.js',
   path: '/nested.js',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NestedDotjsScriptDotjsRoute = NestedDotjsScriptDotjsRouteImport.update({
+const ScriptDotjsRoute = ScriptDotjsRouteImport.update({
   id: '/script.js',
   path: '/script.js',
-  getParentRoute: () => NestedDotjsRoute,
+  getParentRoute: () => rootRouteImport,
 } as any)
 const NestedDotjsDoubleDotextDotjsRoute =
   NestedDotjsDoubleDotextDotjsRouteImport.update({
@@ -35,6 +30,11 @@ const NestedDotjsDoubleDotextDotjsRoute =
     path: '/double.ext.js',
     getParentRoute: () => NestedDotjsRoute,
   } as any)
+const NestedDotjsScriptDotjsRoute = NestedDotjsScriptDotjsRouteImport.update({
+  id: '/script.js',
+  path: '/script.js',
+  getParentRoute: () => NestedDotjsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/nested.js': typeof NestedDotjsRouteWithChildren
@@ -83,13 +83,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/script.js': {
-      id: '/script.js'
-      path: '/script.js'
-      fullPath: '/script.js'
-      preLoaderRoute: typeof ScriptDotjsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/nested.js': {
       id: '/nested.js'
       path: '/nested.js'
@@ -97,18 +90,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NestedDotjsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/nested.js/script.js': {
-      id: '/nested.js/script.js'
+    '/script.js': {
+      id: '/script.js'
       path: '/script.js'
-      fullPath: '/nested.js/script.js'
-      preLoaderRoute: typeof NestedDotjsScriptDotjsRouteImport
-      parentRoute: typeof NestedDotjsRoute
+      fullPath: '/script.js'
+      preLoaderRoute: typeof ScriptDotjsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/nested.js/double.ext.js': {
       id: '/nested.js/double.ext.js'
       path: '/double.ext.js'
       fullPath: '/nested.js/double.ext.js'
       preLoaderRoute: typeof NestedDotjsDoubleDotextDotjsRouteImport
+      parentRoute: typeof NestedDotjsRoute
+    }
+    '/nested.js/script.js': {
+      id: '/nested.js/script.js'
+      path: '/script.js'
+      fullPath: '/nested.js/script.js'
+      preLoaderRoute: typeof NestedDotjsScriptDotjsRouteImport
       parentRoute: typeof NestedDotjsRoute
     }
   }

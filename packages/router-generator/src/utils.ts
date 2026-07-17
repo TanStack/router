@@ -123,6 +123,30 @@ export function multiSortBy<T>(
   return result
 }
 
+/**
+ * Sorts route nodes by root, path depth, index status, and finally `routePath`.
+ * The `routePath` comparison keeps the output consistent when the earlier
+ * values are the same.
+ */
+export function sortRouteNodes(
+  routeNodes: Array<RouteNode>,
+  indexTokenSegmentRegex: RegExp,
+): Array<RouteNode> {
+  return multiSortBy(routeNodes, [
+    (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
+    (d) =>
+      d.routePath === undefined
+        ? undefined
+        : countSlashSeparatedParts(d.routePath),
+    (d) => {
+      const segments = d.routePath?.split('/').filter(Boolean) ?? []
+      const last = segments[segments.length - 1] ?? ''
+      return indexTokenSegmentRegex.test(last) ? -1 : 1
+    },
+    (d) => d.routePath,
+  ])
+}
+
 export function cleanPath(path: string) {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
