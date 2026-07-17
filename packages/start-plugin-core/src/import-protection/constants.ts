@@ -1,7 +1,3 @@
-import { SERVER_FN_LOOKUP } from '../constants'
-
-export const SERVER_FN_LOOKUP_QUERY = `?${SERVER_FN_LOOKUP}`
-
 export const MOCK_MODULE_ID = 'tanstack-start-import-protection:mock'
 export const MOCK_BUILD_PREFIX = 'tanstack-start-import-protection:mock:build:'
 export const MOCK_EDGE_PREFIX = 'tanstack-start-import-protection:mock-edge:'
