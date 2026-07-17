@@ -7,7 +7,7 @@ import {
   notFound,
   redirect,
 } from '../src'
-import { createTestRouter } from './routerTestUtils'
+import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 afterEach(() => {
   vi.useRealTimers()
@@ -392,32 +392,58 @@ describe('adversarial client lane ownership', () => {
     expect(safeLoader).toHaveBeenCalledTimes(1)
   })
 
-  test('throwing a non-aborted router signal is an error, not cancellation', async () => {
-    let thrownSignal: AbortSignal | undefined
-    const rootRoute = new BaseRootRoute({})
-    const brokenRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/broken',
-      beforeLoad: ({ abortController }) => {
-        thrownSignal = abortController.signal
-        throw thrownSignal
+  test.each(
+    ([false, true] as const).flatMap((isServer) => [
+      {
+        isServer,
+        thrownType: 'AbortSignal',
+        createThrownValue: (signal: AbortSignal) => signal,
       },
-      errorComponent: () => null,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([brokenRoute]),
-      history: createMemoryHistory({ initialEntries: ['/broken'] }),
-    })
+      {
+        isServer,
+        thrownType: 'AbortError',
+        createThrownValue: () =>
+          new DOMException('The operation was aborted.', 'AbortError'),
+      },
+    ]),
+  )(
+    'treats a user-thrown $thrownType in beforeLoad as an ordinary route error (isServer=$isServer)',
+    async ({ isServer, createThrownValue }) => {
+      let matchSignal: AbortSignal | undefined
+      let thrownValue: unknown
+      const rootRoute = new BaseRootRoute({})
+      const brokenRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/broken',
+        beforeLoad: ({ abortController }) => {
+          matchSignal = abortController.signal
+          thrownValue = createThrownValue(matchSignal)
+          throw thrownValue
+        },
+        errorComponent: () => null,
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([brokenRoute]),
+        history: createMemoryHistory({ initialEntries: ['/broken'] }),
+        isServer,
+      })
 
-    await router.load()
+      if (isServer) {
+        const response = await loadServerResponse(router, '/broken')
+        expect(response.status).toBe(500)
+      } else {
+        await router.load()
+      }
 
-    expect(thrownSignal?.aborted).toBe(false)
-    expect(router.state.matches.at(-1)).toMatchObject({
-      routeId: brokenRoute.id,
-      status: 'error',
-      error: thrownSignal,
-    })
-  })
+      const match = router.state.matches.at(-1)
+      expect(matchSignal?.aborted).toBe(false)
+      expect(match).toMatchObject({
+        routeId: brokenRoute.id,
+        status: 'error',
+      })
+      expect(match?.error).toBe(thrownValue)
+    },
+  )
 
   test('a failed preflight cannot abort and strand the pending lane it attempted to supersede', async () => {
     const preflightError = new Error('next loaderDeps failed')

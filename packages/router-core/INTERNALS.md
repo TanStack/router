@@ -631,9 +631,8 @@ removed from the cache; failed, not-found, expired, and loaderless entries
 without reusable context provenance are discarded. Clearing the cache releases
 leases before publishing the retained cache entries.
 
-Server `preloadRoute` is different: it runs the request-local server lane and may
-cache an all-success result, but it has no client transaction or loader-flight
-protocol.
+Server `preloadRoute` is a no-op. Server work is owned exclusively by normal
+request loading.
 
 ## Background stale reloads
 
@@ -770,10 +769,8 @@ route's projection group is discarded; projection failure is non-fatal and never
 overwrites loader semantics.
 
 The final result is a closed union: either a render result with status and
-matches, or a redirect. `loadServerRoute` is the only publisher of that result
-to router stores. `preloadServerRoute` separately owns the complete speculative
-workflow: location building, matching, lane execution, bounded redirect
-following, and cache publication.
+matches, or a redirect. `loadServerRoute` owns the complete server workflow and
+is the only publisher of that result to router stores.
 
 ## Hydration handoff
 

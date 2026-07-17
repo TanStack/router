@@ -1,9 +1,5 @@
 import { createBrowserHistory, parseHref } from '@tanstack/history'
-import {
-  isServer,
-  loadServerRoute,
-  preloadServerRoute,
-} from '@tanstack/router-core/isServer'
+import { isServer, loadServerRoute } from '@tanstack/router-core/isServer'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
   decodePath,
@@ -630,7 +626,6 @@ export type SubscribeFn = <TType extends keyof RouterEvents>(
 export interface MatchRoutesOpts {
   preload?: boolean
   throwOnError?: boolean
-  dest?: BuildNextOptions
   /** @internal */
   _controller?: AbortController
   /** @internal */
@@ -2644,7 +2639,7 @@ export class RouterCore<
     if (!(isServer ?? this.isServer)) {
       return preloadClientRoute(this, opts)
     }
-    return preloadServerRoute(this, opts)
+    return undefined
   }
 
   matchRoute: MatchRouteFn<

@@ -9,10 +9,17 @@ import {
 } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
-describe('server concurrent route failure ordering', () => {
-  test.each(['parent-first', 'child-first'] as const)(
-    'commits the first route-order loader failure and aborts its descendants (%s)',
-    async (settlementOrder) => {
+const concurrentModes = [
+  ['parent-first', false],
+  ['parent-first', true],
+  ['child-first', false],
+  ['child-first', true],
+] as const
+
+describe('concurrent route failure ordering', () => {
+  test.each(concurrentModes)(
+    'commits the first route-order loader failure and aborts its descendants (%s, isServer=%s)',
+    async (settlementOrder, isServer) => {
       const parentError = new Error('parent loader failed')
       const parentGate = createControlledPromise<void>()
       const childGate = createControlledPromise<void>()
@@ -56,10 +63,12 @@ describe('server concurrent route failure ordering', () => {
           parentRoute.addChildren([childRoute]),
         ]),
         history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
-        isServer: true,
+        isServer,
       })
 
-      const responsePromise = loadServerResponse(router, '/parent/child')
+      const responsePromise = isServer
+        ? loadServerResponse(router, '/parent/child')
+        : router.load().then(() => undefined)
       await Promise.all([parentStarted, childStarted])
       if (settlementOrder === 'parent-first') {
         parentGate.resolve()
@@ -74,7 +83,9 @@ describe('server concurrent route failure ordering', () => {
       }
       const response = await responsePromise
 
-      expect(response.status).toBe(500)
+      if (isServer) {
+        expect(response?.status).toBe(500)
+      }
       expect(settlements).toEqual(
         settlementOrder === 'parent-first'
           ? ['parent', 'child']
@@ -93,9 +104,9 @@ describe('server concurrent route failure ordering', () => {
     },
   )
 
-  test.each(['parent-first', 'child-first'] as const)(
-    'does not replace an earlier route-order loader notFound with a later error (%s)',
-    async (settlementOrder) => {
+  test.each(concurrentModes)(
+    'does not replace an earlier route-order loader notFound with a later error (%s, isServer=%s)',
+    async (settlementOrder, isServer) => {
       const parentGate = createControlledPromise<void>()
       const childGate = createControlledPromise<void>()
       const parentStarted = createControlledPromise<void>()
@@ -133,10 +144,12 @@ describe('server concurrent route failure ordering', () => {
           parentRoute.addChildren([childRoute]),
         ]),
         history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
-        isServer: true,
+        isServer,
       })
 
-      const responsePromise = loadServerResponse(router, '/parent/child')
+      const responsePromise = isServer
+        ? loadServerResponse(router, '/parent/child')
+        : router.load().then(() => undefined)
       await Promise.all([parentStarted, childStarted])
       if (settlementOrder === 'parent-first') {
         parentGate.resolve()
@@ -151,7 +164,9 @@ describe('server concurrent route failure ordering', () => {
       }
       const response = await responsePromise
 
-      expect(response.status).toBe(404)
+      if (isServer) {
+        expect(response?.status).toBe(404)
+      }
       expect(settlements).toEqual(
         settlementOrder === 'parent-first'
           ? ['parent', 'child']
@@ -201,41 +216,69 @@ describe('server concurrent route failure ordering', () => {
     expect(signals.every((signal) => signal.aborted)).toBe(true)
   })
 
-  test('an aborted child does not report its cancellation through onError', async () => {
-    const childStarted = createControlledPromise<void>()
-    const childLoader = createControlledPromise<never>()
-    const cancellation = new Error('discarded request aborted')
-    const childOnError = vi.fn()
-    const rootRoute = new BaseRootRoute({
-      loader: async () => {
-        await childStarted
-        throw redirect({ href: '/target' })
-      },
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/child',
-      loader: ({ abortController }) => {
-        abortController.signal.addEventListener(
-          'abort',
-          () => childLoader.reject(cancellation),
-          { once: true },
-        )
-        childStarted.resolve()
-        return childLoader
-      },
-      onError: childOnError,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([childRoute]),
-      history: createMemoryHistory({ initialEntries: ['/child'] }),
-      isServer: true,
-    })
+  test.each([false, true])(
+    'an aborted child does not report its cancellation through onError (isServer=%s)',
+    async (isServer) => {
+      const childStarted = createControlledPromise<void>()
+      const childLoader = createControlledPromise<never>()
+      const cancellation = new Error('discarded request aborted')
+      const childOnError = vi.fn()
+      let childSignal: AbortSignal | undefined
+      const rootRoute = new BaseRootRoute({})
+      const sourceRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/source',
+        loader: async () => {
+          await childStarted
+          throw redirect({ to: '/target' })
+        },
+      })
+      const childRoute = new BaseRoute({
+        getParentRoute: () => sourceRoute,
+        path: '/child',
+        loader: ({ abortController }) => {
+          childSignal = abortController.signal
+          abortController.signal.addEventListener(
+            'abort',
+            () => childLoader.reject(cancellation),
+            { once: true },
+          )
+          childStarted.resolve()
+          return childLoader
+        },
+        onError: childOnError,
+      })
+      const targetRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([
+          sourceRoute.addChildren([childRoute]),
+          targetRoute,
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/source/child'] }),
+        isServer,
+      })
 
-    const response = await loadServerResponse(router, '/child')
-    await expect(childLoader).rejects.toBe(cancellation)
+      const childCancellation = expect(childLoader).rejects.toBe(cancellation)
+      const loadPromise = isServer
+        ? loadServerResponse(router, '/source/child')
+        : router.load().then(() => undefined)
+      const [response] = await Promise.all([loadPromise, childCancellation])
 
-    expect(response.status).toBe(307)
-    expect(childOnError).not.toHaveBeenCalled()
-  })
+      expect(childSignal?.aborted).toBe(true)
+      expect(childOnError).not.toHaveBeenCalled()
+      if (isServer) {
+        expect(response?.status).toBe(307)
+        expect(response?.headers.get('Location')).toBe('/target')
+      } else {
+        expect(router.state.location.pathname).toBe('/target')
+        expect(router.state.matches.at(-1)).toMatchObject({
+          routeId: targetRoute.id,
+          status: 'success',
+        })
+      }
+    },
+  )
 })

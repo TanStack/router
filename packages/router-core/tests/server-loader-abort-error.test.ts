@@ -3,41 +3,55 @@ import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
-/**
- * A server loader that throws an AbortError while the match's own signal is
- * NOT aborted (e.g. the loader's own fetch timed out) is a route failure.
- * Only a router-aborted generation may discard AbortError as cancellation.
- */
-
-describe('server loader AbortError', () => {
-  test('settles as an error when the match signal is not aborted', async () => {
-    let loaderSignal: AbortSignal | undefined
-    const rootRoute = new BaseRootRoute({})
-    const abortingRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/aborting',
-      loader: ({ abortController }) => {
-        loaderSignal = abortController.signal
-        throw new DOMException('The operation was aborted.', 'AbortError')
+describe('loader user-thrown abort values', () => {
+  test.each(
+    ([false, true] as const).flatMap((isServer) => [
+      {
+        isServer,
+        thrownType: 'AbortSignal',
+        createThrownValue: (signal: AbortSignal) => signal,
       },
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([abortingRoute]),
-      history: createMemoryHistory({ initialEntries: ['/aborting'] }),
-      isServer: true,
-    })
+      {
+        isServer,
+        thrownType: 'AbortError',
+        createThrownValue: () =>
+          new DOMException('The operation was aborted.', 'AbortError'),
+      },
+    ]),
+  )(
+    'treats a user-thrown $thrownType as an ordinary route error (isServer=$isServer)',
+    async ({ isServer, createThrownValue }) => {
+      let matchSignal: AbortSignal | undefined
+      let thrownValue: unknown
+      const rootRoute = new BaseRootRoute({})
+      const abortingRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/aborting',
+        loader: ({ abortController }) => {
+          matchSignal = abortController.signal
+          thrownValue = createThrownValue(matchSignal)
+          throw thrownValue
+        },
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([abortingRoute]),
+        history: createMemoryHistory({ initialEntries: ['/aborting'] }),
+        isServer,
+      })
 
-    const response = await loadServerResponse(router, '/aborting')
+      if (isServer) {
+        const response = await loadServerResponse(router, '/aborting')
+        expect(response.status).toBe(500)
+      } else {
+        await router.load()
+      }
 
-    const match = router.state.matches.find(
-      (item) => item.routeId === abortingRoute.id,
-    )
-    expect(response.status).toBe(500)
-    expect(loaderSignal?.aborted).toBe(false)
-    expect(match?.status).toBe('error')
-    expect(match?.error).toMatchObject({
-      name: 'AbortError',
-      message: 'The operation was aborted.',
-    })
-  })
+      const match = router.state.matches.find(
+        (item) => item.routeId === abortingRoute.id,
+      )
+      expect(matchSignal?.aborted).toBe(false)
+      expect(match?.status).toBe('error')
+      expect(match?.error).toBe(thrownValue)
+    },
+  )
 })

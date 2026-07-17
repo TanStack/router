@@ -168,7 +168,6 @@ function stampNotFound(
 async function contextualize(
   router: AnyRouter,
   lane: MatchedLane,
-  preload: boolean,
 ): Promise<ContextualizedLane> {
   let end = lane.matches.length
   let failure: IndexedOutcome | undefined
@@ -223,12 +222,12 @@ async function contextualize(
       search: match.search,
       abortController,
       params: match.params,
-      preload,
+      preload: false,
       context,
       location: lane.location,
       navigate: navigateFrom(router, lane.location),
       buildLocation: router.buildLocation,
-      cause: preload ? 'preload' : match.cause,
+      cause: match.cause,
       matches: lane.matches,
       routeId: route.id,
       ...router.options.additionalContext,
@@ -273,18 +272,17 @@ function getLoaderContext(
   route: AnyRoute,
   index: number,
   tasks: Array<LoaderTask>,
-  preload: boolean,
 ): LoaderFnContext {
   return {
     params: match.params,
     deps: match.loaderDeps,
-    preload,
+    preload: false,
     parentMatchPromise: tasks[index - 1]?.match,
     abortController: match.abortController,
     context: match.context,
     location: lane.location,
     navigate: navigateFrom(router, lane.location),
-    cause: preload ? 'preload' : match.cause,
+    cause: match.cause,
     route,
     ...router.options.additionalContext,
   }
@@ -295,18 +293,12 @@ function createLoaderTask(
   lane: ContextualizedLane,
   index: number,
   tasks: Array<LoaderTask>,
-  preload: boolean,
 ): LoaderTask {
   const match = lane.matches[index]!
   const route = getRoute(router, match)
   let outcome: Promise<LoaderOutcome>
 
   if (match.ssr === false) {
-    outcome = Promise.resolve<LoaderOutcome>([SKIPPED])
-  } else if (preload && route.options.preload === false) {
-    match.status = 'success'
-    match.invalid = true
-    match.isFetching = false
     outcome = Promise.resolve<LoaderOutcome>([SKIPPED])
   } else {
     const routeLoader = route.options.loader
@@ -317,9 +309,7 @@ function createLoaderTask(
     } else {
       outcome = Promise.resolve()
         .then(() =>
-          loader(
-            getLoaderContext(router, lane, match, route, index, tasks, preload),
-          ),
+          loader(getLoaderContext(router, lane, match, route, index, tasks)),
         )
         .then(
           (result): LoaderOutcome =>
@@ -341,7 +331,6 @@ function createLoaderTask(
       snapshot.status = 'success'
       snapshot.error = undefined
       snapshot.invalid = false
-      snapshot.preload = preload
       snapshot.isFetching = false
     } else if (result[0] === ERROR) {
       snapshot.status = 'error'
@@ -508,7 +497,6 @@ async function executeServerLane(
   router: AnyRouter,
   location: ParsedLocation,
   matchedMatches: Array<AnyRouteMatch>,
-  preload = false,
 ): Promise<ServerLoadResult> {
   const matched = {
     location,
@@ -520,7 +508,7 @@ async function executeServerLane(
       abortController: new AbortController(),
     })),
   } as MatchedLane
-  const lane = await contextualize(router, matched, preload)
+  const lane = await contextualize(router, matched)
 
   let loaderEnd = lane.end
   if (lane.failure?.[1][0] === REDIRECTED) {
@@ -534,7 +522,7 @@ async function executeServerLane(
 
   const tasks: Array<LoaderTask> = []
   for (let index = 0; index < loaderEnd; index++) {
-    const task = createLoaderTask(router, lane, index, tasks, preload)
+    const task = createLoaderTask(router, lane, index, tasks)
     tasks.push(task)
   }
 
@@ -608,78 +596,6 @@ async function executeServerLane(
     matches: lane.matches,
   } as ReducedLane)
   return { type: 'render', status: terminal.status, matches: lane.matches }
-}
-
-export async function preloadServerRoute(
-  router: AnyRouter,
-  opts: any,
-  redirects = 0,
-): Promise<Array<AnyRouteMatch> | undefined> {
-  if (redirects > 20) {
-    return
-  }
-  const location = opts._builtLocation ?? router.buildLocation(opts)
-
-  try {
-    const result = await executeServerLane(
-      router,
-      location,
-      router.matchRoutes(location, {
-        throwOnError: true,
-        preload: true,
-        dest: opts,
-      }),
-      true,
-    )
-    if (result.type === 'redirect') {
-      if (result.redirect.options.reloadDocument) {
-        return
-      }
-      return preloadServerRoute(
-        router,
-        {
-          ...result.redirect.options,
-          _fromLocation: location,
-        },
-        redirects + 1,
-      )
-    }
-    if (result.matches.some((match) => match.status !== 'success')) {
-      return
-    }
-
-    const active = new Set(router.stores.matchesId.get())
-    const candidates = result.matches.filter((match) => {
-      match.preload = !match.invalid
-      return !active.has(match.id)
-    })
-    const ids = new Set(candidates.map((match) => match.id))
-    router.stores.setCached(
-      router.stores.cachedMatches
-        .get()
-        .filter((match) => !ids.has(match.id))
-        .concat(candidates),
-    )
-    return result.matches
-  } catch (cause) {
-    if (isRedirect(cause)) {
-      if (cause.options.reloadDocument) {
-        return
-      }
-      return preloadServerRoute(
-        router,
-        {
-          ...cause.options,
-          _fromLocation: location,
-        },
-        redirects + 1,
-      )
-    }
-    if (!isNotFound(cause)) {
-      console.error(cause)
-    }
-    return
-  }
 }
 
 export async function loadServerRoute(
