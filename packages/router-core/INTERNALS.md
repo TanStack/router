@@ -4,6 +4,11 @@ This document describes the match-loading architecture shared by router core and
 the React, Solid, and Vue adapters. It is intended for maintainers changing
 navigation, preloading, pending UI, SSR, hydration, route chunks, or route HMR.
 
+Its scope ends at route-match publication and the immediate framework handoff.
+The request handler, manifest reduction, Seroval stream protocol, backpressure,
+and HTTP response cleanup in `src/ssr/` are separate concerns except where they
+determine the server-to-client match handoff described here.
+
 The implementation is deliberately a small ownership and publication protocol,
 not a second match-status state machine. TypeScript brands constrain
 phase-specific call sites, and closed outcome unions make control results
@@ -19,11 +24,11 @@ The loader is built around these rules:
 
 1. A foreground navigation builds a private lane. Only the current transaction
    may commit it, and presentation remains separate from accepted semantics.
-2. Context is materialized serially from parent to child. Independent loader and
-   chunk work starts concurrently, while each parallel phase consumes results in
-   structural route order.
-3. Shared work never grants publication authority. Losing work releases its
-   resources and cannot publish after it becomes stale.
+2. Context is materialized serially from parent to child. Client loader and chunk
+   work start concurrently; server chunks start after concurrent loader
+   selection. Each parallel phase consumes results in structural route order.
+3. Shared work never grants semantic publication authority. Losing work releases
+   its resources and cannot commit a stale lane.
 4. Runtime state exists only for a real ownership, publication, or completion
    boundary. Phase naming and impossible local transitions belong in TypeScript.
 
@@ -60,31 +65,39 @@ The location and match references intentionally advance at different moments:
 | Transaction installed                   | new               | old                       | old lane            | old lane or new pending prefix | `pending` |
 | Terminal commit, before acknowledgement | new               | old                       | new lane            | new lane                       | `pending` |
 | Transition acknowledgement settled      | new               | new                       | new lane            | new lane                       | `idle`    |
+| Installed transaction rolls back        | new               | old                       | old lane            | old lane                       | `idle`    |
 
 `latestLocation` is the parsed history input captured before planning. It is not
 another published phase. In particular, `stores.location` advancing does not
-mean that destination matches have committed or rendered.
+mean that destination matches have committed or rendered. After an unexpected
+post-install orchestration failure, `idle` likewise does not imply that
+`stores.location` and `stores.resolvedLocation` are equal.
 
 ## File map
 
-- `src/router.ts` matches locations, owns the router-level authorities, and
-  starts client or server loads.
-- `src/load-client.ts` contains client lanes, foreground transactions, loader
-  flights, preloads, pending presentation, background reloads, and atomic
-  commits.
-- `src/load-server.ts` contains the request-local server lane and SSR selection.
-- `src/hydrate.ts` reconstructs the server-resolved prefix and hands unresolved
-  work to the ordinary client loader.
-- `src/route-chunks.ts` owns lazy-route option installation and component
-  preloading.
-- `src/stores.ts` projects matches into fine-grained framework stores. These
-  stores are reactive presentation/indexing machinery, not another loading
-  authority.
-- `src/ssr/` serializes and streams server results.
+Paths in this section are repository-relative.
+
+- `packages/router-core/src/router.ts` matches locations, owns router-level
+  authorities, and starts client or server loads.
+- `packages/router-core/src/load-client.ts` contains client lanes, foreground
+  transactions, loader flights, preloads, pending presentation, background
+  reloads, and atomic commits.
+- `packages/router-core/src/load-server.ts` contains the request-local server
+  lane and SSR selection.
+- `packages/router-core/src/hydrate.ts` reconstructs the server-resolved prefix
+  and hands unresolved work to the ordinary client loader.
+- `packages/router-core/src/route-chunks.ts` owns lazy-route option installation
+  and component preloading.
+- `packages/router-core/src/stores.ts` owns the common active/cache pool topology
+  and reconciliation algorithm. Adapter `routerStores.ts` files provide the
+  reactive or non-reactive primitives and optional derived indexes.
+- `packages/router-core/src/ssr/` serializes server results and coordinates the
+  stream and response lifecycle, which is mostly outside this document's scope.
 - `packages/{react,solid,vue}-router/src/Transitioner.*` connect history and
   renderer transitions to router core.
-- `packages/{react,solid,vue}-router/src/Match.*` render pending, error,
-  not-found, selective-SSR, and client-only boundaries.
+- Adapter `Matches.*` files own aggregate/root rendering and React's render
+  acknowledgement. Adapter `Match.*` and `ClientOnly.*` files own per-route
+  pending, error, not-found, selective-SSR, and client-only boundaries.
 - `packages/router-plugin/src/core/hmr/handle-route-update.ts` installs route
   updates and asks core for a development-only refresh.
 
@@ -127,7 +140,7 @@ flight may be joined; a lease means a particular match owns that generation and
 its `AbortSignal`.
 
 **Projection** computes non-loader route output such as head metadata, scripts,
-styles, and server headers after semantic outcomes have been reduced.
+styles, and, on the server, headers after semantic outcomes have been reduced.
 
 **Authority** is an identity or state comparison whose equality permits a
 publication or resource mutation. A boolean that merely restates an authority is
@@ -141,13 +154,13 @@ There are intentionally few independent authorities:
 | -------------------------- | -------------------------------------------------------------- | -------------------------------------- |
 | `router._tx`               | Latest foreground transaction; equality authorizes publication | A loading boolean; use `stores.status` |
 | `router._committedMatches` | Accepted active semantic generation                            | The currently rendered lane            |
-| `stores.matches`           | Current presentation                                           | A semantic planning base               |
+| `stores.matches`           | Presentation offered to the renderer                           | A semantic planning base               |
 | `stores.cachedMatches`     | Off-screen semantic cache                                      | Active routes or in-progress work      |
 | `stores.status`            | Public loading-state projection                                | Foreground writer identity             |
 | `stores.location`          | Requested location                                             | Proof that loading finished            |
 | `stores.resolvedLocation`  | Last location whose load/hydration settled                     | The requested location                 |
 | `router._pending`          | One pending reveal/minimum-duration session                    | A second navigation transaction        |
-| `router._preflight`        | Owner of synchronous foreground planning                       | A second writer                        |
+| `router._preflight`        | Latest synchronous foreground planning controller              | A second writer                        |
 | `router._flights`          | Joinable loader work by match id                               | Ownership of every flight              |
 | `route._lazy`              | Current lazy-route import owner or loaded marker               | A component-module cache               |
 
@@ -163,7 +176,14 @@ stores.matches            -> renderer presentation, including pending prefixes
 Pending presentation can remove hidden suffix entries from the reactive match
 pool. Planning from it would therefore forget valid committed matches and make
 presentation timing affect loader semantics. Once `_committedMatches` is
-initialized, all semantic lookups use it and the terminal cache.
+initialized, full lane planning and semantic reuse use it and the terminal
+cache. Lightweight matching for `buildLocation` may still consult the active
+presentation pool only to reuse already-parsed params; it is not loader planning.
+
+The active and cached pools remain separate, so the same match id may exist in
+both. Reconciliation preserves existing per-id stores, suppresses exact
+same-object writes, and updates each pool's id order only when that order changes.
+These are framework-notification and indexing rules, not loading authority.
 
 ### Completion scopes
 
@@ -175,11 +195,15 @@ Promises also have deliberately narrow ownership:
 | `tx.done`                  | One private foreground transaction                     |
 | Pending/transition ack     | Settlement and render confirmation for one publication |
 | `commitLocationPromise`    | History/navigation completion                          |
-| `parentMatchPromise`       | One loader's view of its semantic parent result        |
+| `parentMatchPromise`       | One loader's view after its parent's loader settles    |
 
 These scopes are not interchangeable. A new “latest load” promise usually
 duplicates transaction or history-completion authority and makes supersession
-ambiguous.
+ambiguous. On the client, a successful parent has already received its loader
+data when `parentMatchPromise` resolves; parent error/not-found reduction may not
+yet have run. The server instead resolves the promise to a snapshot with the raw
+loader outcome applied, not the final reduced lane or selected not-found
+boundary.
 
 ## Planning a lane
 
@@ -189,10 +213,12 @@ The first pass:
 
 1. validates and accumulates search,
 2. computes `loaderDeps`,
-3. interpolates and parses params,
-4. derives the match id,
-5. reuses a committed or cached semantic match when allowed, and
-6. creates a fresh work match otherwise.
+3. interpolates the raw path params,
+4. derives the match id from route id, interpolated path, and serialized loader
+   dependencies,
+5. looks up an allowed committed or cached semantic match, and
+6. parses strict params only for a fresh match, then creates or clones the work
+   match.
 
 The second pass finalizes params and runs route `context` functions for fresh
 matches in parent-first order.
@@ -217,7 +243,9 @@ itself as writer.
 until a replacement has finished matching successfully. Folding preflight into
 `_tx` would require publishing a partially constructed transaction and then
 rolling it back if matching throws. The small preflight controller represents a
-real synchronous ownership boundary and avoids that invalid partial state.
+real synchronous ownership boundary and avoids that invalid partial state. Its
+presence alone does not prove planning is active: a failed current plan may leave
+an aborted controller installed until the next plan replaces it.
 
 Client preloads do not replace `_preflight`. They use a local controller and a
 snapshot of `_tx`, because speculative work may be canceled by foreground
@@ -269,13 +297,25 @@ success(data) | error(error) | notFound(error) | redirected(redirect) | canceled
 ```
 
 The server counterpart uses `skipped` for an `ssr: false` loader instead of
-`canceled`.
+`canceled`. It also uses `skipped` when a server loader settles after that
+match's controller has been aborted; the server has no lane-level cancellation
+outcome.
 
 The compact numeric representation is internal. The union matters because
 cancellation and redirects are control outcomes, not match states, while errors
 and not-found results become terminal match semantics at the reducer's selected
 cutoff. Resolved and thrown redirects/not-found values normalize to the same
 outcomes. `onError` may transform an ordinary error by throwing a control value.
+Lane waiting and `beforeLoad` recognize cancellation only from the exact aborted
+lane signal; an arbitrary `AbortError` or user-thrown signal is an ordinary
+error. A loader flight instead normalizes either settlement branch to canceled
+whenever its own controller is already aborted, regardless of the settled value.
+
+A native `Promise` used as the thrown value or rejection reason of `beforeLoad`
+is a deliberate exception: contextualization rethrows that value to the lane
+owner instead of reducing it into route error state. An ordinary rejected
+`beforeLoad` promise is still a route error, and a promise thrown by a loader is
+normalized like any other loader error.
 
 The client phase driver, `executeClientLane`, performs:
 
@@ -287,7 +327,10 @@ adopt flight leases
   -> project assets
 ```
 
-No phase publishes router state.
+No phase publishes the terminal semantic lane. Foreground task readiness may
+offer pending presentation through its `onReady` callback. Background lanes
+reuse the phases with mixed ownership; their current projection caveat is
+documented below.
 
 ## Contextualization and concurrent work
 
@@ -316,6 +359,11 @@ Execution then makes two independent decisions:
   freshness, navigation cause/forced reload, and blocking versus background
   reload mode. Reusing a match therefore does not imply reusing its loader data.
 
+Age-based staleness alone does not reload every successful stay match. Unless
+the match is invalid or `shouldReload` says otherwise, the stale-time branch also
+requires a forced stale reload, an entering match, or another active id for the
+same route.
+
 An accepted `beforeLoad` donor may have run with `preload: true`. Navigation
 intentionally reuses that context without rerunning the hook merely to call it
 with `preload: false`. Pending or failed `beforeLoad` work is never donated. A
@@ -338,15 +386,17 @@ therefore run concurrently. Each client task exposes three related milestones:
 
 Separating `outcome` from `ready` is essential. A redirect or error can win
 without waiting for irrelevant successful descendant chunks, while a successful
-lane cannot commit before the chunks it needs to render are ready.
+lane cannot commit before the chunks it needs to render are ready. The client
+`match` promise resolves after the loader outcome settles; successful data has
+already been applied, but error/not-found state is selected later by reduction.
 
 `resolvedPrefix` skips repeated contextualization and loader work while
 preserving the task chain needed for parent promises and chunk readiness. A
 client preload derives it from the contiguous active successful same-id prefix.
-The initial hydration handoff instead adopts its entire committed prefix or none
-of it, under the href/key/id/currentness checks described below. Joinable work
-already attached to an adopted prefix is still accounted for, and projection may
-restart at its retained terminal match.
+The subsequent unresolved-suffix transaction after hydration instead adopts the
+entire committed prefix or none of it, under the href/key/id/currentness checks
+described below. Joinable work already attached to an adopted prefix is still
+accounted for, and projection may restart at its retained terminal match.
 
 ## Phase-local reduction and failure boundaries
 
@@ -368,12 +418,16 @@ same small reduction policy:
    first relevant chunk failure replaces the selected failure; if that failure
    is a redirect, it becomes control flow.
 5. Core applies the result once, trims once, and attempts the selected terminal
-   component once. Terminal-component preload is best-effort: rejection is
-   swallowed, does not call route `onError`, and does not restart selection.
+   component once. In ordinary client/server lane reduction, terminal-component
+   preload is best-effort: rejection is swallowed, does not call route `onError`,
+   and does not restart selection. Hydration readiness is stricter, as described
+   below.
 6. Projection runs after semantic reduction and cannot replace its result.
 
-An ordinary serial failure still permits loaders above its effective boundary to
-run, so the terminal render keeps the ancestor data it is allowed to expose. A
+An ordinary serial error still permits loaders strictly above the throwing route
+to run. A serial not-found permits work through its effective not-found boundary,
+but never past the throwing route: an ancestor boundary's loader runs, while the
+throwing route's loader does not run when that route is itself the boundary. A
 serial redirect/cancel starts no loader work.
 
 “First” inside a concurrent phase means structural route order, not promise
@@ -390,9 +444,9 @@ therefore differ. A global root not-found remains a successful root match marked
 `globalNotFound`, because the root shell still renders while presenting the
 global not-found result.
 
-The server uses redirect control flow and `skipped` for `ssr: false`; the client
-also has cancellation control flow. Those representation differences do not
-change the failure-selection policy.
+The server uses redirect control flow and `skipped` for omitted or aborted work;
+the client also has cancellation control flow. Those representation differences
+do not change the failure-selection policy.
 
 A `globalNotFound` assigned while matching is planned presentation metadata, not
 a thrown lane outcome. The client retains the planned lane and the framework
@@ -401,28 +455,35 @@ request-local lane at that boundary before rendering the 404. Do not feed this
 case into the thrown-outcome reducer merely to make the two storage shapes look
 identical.
 
-Redirect and cancellation outcomes never become committed match states. Internal
-redirects are followed by a replacement navigation. Redirect depth is inherited
-one hop at a time across the whole redirect-produced replacement chain and is
-capped at 20. The current transaction's `redirecting` marker authorizes only its
-redirect successor to inherit the count; an unrelated superseding navigation
-must not inherit it. The count clears when a semantic lane completes without
-redirecting.
+Redirect and cancellation outcomes never become committed match states.
+Installed foreground and background client-lane redirects are followed by
+replacement navigation. Their depth is inherited one hop at a time, and the 21st
+non-document redirect is reduced to `Redirect cycle detected`. The current
+transaction's `redirecting` boolean is the inheritance condition; it is not an
+identity binding to a particular destination. Redirects thrown during
+synchronous foreground planning are followed before transaction installation and
+do not participate in that counter. Client preloads recursively preload a
+redirect target under a separate limit and stop quietly beyond it; a preload
+planning redirect remains the caller's planning error. The server returns a
+redirect result to its request layer.
 
-Projection runs only after reduction, so head/scripts/headers see the final lane
-and loader data. Projection hooks for one route start together. Their results are
-applied only if that group resolves; a rejection is logged and swallowed without
-replacing the semantic result. Discarding a failed group means applying no new
-projection output; reused matches may retain output from their previous
-generation.
+Ordinary client/server projection runs only after reduction, so hooks see the
+final lane and loader data. Client projection starts `head` and `scripts`
+together; server projection also starts `headers`. Results for one route are
+applied only if the whole group resolves. A rejection is logged and swallowed
+without replacing the semantic result. Reused matches may therefore retain
+projection output from their previous generation. Hydration uses a different,
+serial projection policy described below.
 
 ## Foreground transaction lifecycle
 
-`RouterCore.load` refreshes `latestLocation` once, uses that same parsed object
-for the history action and before-navigation events, and delegates to
-`loadClientRoute`. The client loader must not parse a second location object;
-location object identity is also how scroll restoration associates a history
-action with the later lifecycle event.
+`RouterCore.load` refreshes `latestLocation` and captures that object for
+`onBeforeNavigate` and `onBeforeLoad`. It then delegates to `loadClientRoute`,
+which reads the current `latestLocation` after those synchronous listeners have
+run. A reentrant listener can therefore replace the location that the outer call
+would otherwise plan; preflight and transaction currentness decide which load
+wins. Scroll restoration consumes lifecycle location values and `_scroll` state,
+not parsed-location object identity.
 
 `loadClientRoute` first plans under `_preflight`. Only after planning succeeds
 and both the preflight owner and previous writer are still current does it install
@@ -486,7 +547,9 @@ the pre-mount lifecycle: a route callback suppresses stale `onLoad`, and an
 `onLoad` listener that supersedes the writer suppresses stale
 `onBeforeRouteMount` and later completion publication. Listener exceptions are
 isolated and do not stop later listeners or leave acknowledgement cleanup
-unfinished.
+unfinished. There is currently no currentness recheck between `onResolved` and
+`onRendered`; a synchronous navigation started by an `onResolved` listener can
+therefore coexist with the acknowledged transaction's `onRendered` event.
 
 ## Pending presentation and renderer acknowledgement
 
@@ -564,8 +627,8 @@ Two facts must remain separate:
 
 `closeFlight` removes joinability but does not release the owner's lease.
 `releaseFlight` removes one lease; only the last release aborts the loader and
-removes the registry entry. `transferMatchResources` is the bulk ownership
-operations, based on match object identity.
+removes the registry entry. `transferMatchResources` performs bulk ownership
+transfers based on match object identity.
 
 The lease intentionally may outlive promise settlement. Once successful data is
 accepted, closing registry membership prevents new joins while the accepted
@@ -582,6 +645,10 @@ outcome. If shared work yields an error, not-found, redirect, or cancellation,
 the joining lane closes/releases that flight and runs its own loader. This lets
 work be shared without allowing a preload's control outcome or failure context to
 govern a navigation.
+
+When a lane adopts leases, the registry's current joinable flight takes
+precedence over a copied, closed `_flight`. An accepted old generation therefore
+cannot hide newer joinable work for the same match id.
 
 Transaction cancellation races the shared promise through `waitFor`. Losing the
 race releases that lane's lease; it does not abort work still leased elsewhere.
@@ -624,12 +691,20 @@ adding a version counter. Development refreshes also reject context produced by 
 `beforeLoad` function that is no longer installed, together with the descendant
 suffix that depended on it.
 
+The compare-and-swap is per match id, not a global cache epoch. `clearCache()`
+releases entries present at that moment, but a still-running preload planned
+against an absent entry may later publish whenever the entry is also absent at
+publication. The slot need not have remained continuously empty between those
+two snapshots.
+
 Foreground commits retain successful exiting matches only when they have either
 fresh loader-backed data within the applicable normal/preload GC window or
 reusable preloaded `beforeLoad` context within `preloadGcTime`. Active ids are
 removed from the cache; failed, not-found, expired, and loaderless entries
 without reusable context provenance are discarded. Clearing the cache releases
-leases before publishing the retained cache entries.
+leases before publishing the retained cache entries. GC is opportunistic:
+foreground commits apply these age checks; there is no eviction timer, and
+preload publication does not sweep unrelated entries by age.
 
 Server `preloadRoute` is a no-op. Server work is owned exclusively by normal
 request loading.
@@ -669,6 +744,14 @@ the guarded publication succeeds. Trimming a background lane likewise leaves
 shared suffix resources alone. The final transfer or discard of the background
 batch is the single resource authority.
 
+The two guards above protect final lane publication, not every pre-commit effect.
+`projectLane` currently runs user `head`/`scripts` hooks before those guards over
+the mixed lane, and it can write projection fields onto an untouched shared base
+match even if the final compare-and-swap loses. This is a current sharp edge, not
+an authority to copy. Strengthening stale-publication isolation requires
+detached projection output or resource-aware, flight-free clones; an ordinary
+clone must not accidentally duplicate a flight lease.
+
 Background publication replaces an already-resolved presentation directly. It
 does not enter the pending/renderer-acknowledgement protocol, change
 `stores.status` or `resolvedLocation`, or emit foreground navigation lifecycle
@@ -695,15 +778,19 @@ background-specific cancellation flag.
 
 ## Route chunks
 
-Normal successful readiness loads the route component and pending component.
-Error and not-found component preloads are requested only for the semantic
-terminal match selected by reduction. A framework may still bubble an ordinary
-error to a visibly different ancestor catch boundary. Terminal-component
-preloading is best-effort; failure is swallowed because semantic selection has
-already finished. Client chunk work begins alongside loader work, but a normal
-chunk failure is semantically considered only when its loader outcome succeeds.
+On the client, normal component and pending-component preload starts
+speculatively for every created task alongside loader work. Its failure is
+semantically considered only when that loader succeeds and the task lies before
+the selected cutoff. On the server, normal chunk work starts after loader
+selection for the retained `ssr: true` prefix.
 
-`route._lazy` has three compact states:
+Error and not-found component preloads are requested only for the semantic
+terminal match selected by ordinary lane reduction. A framework may still bubble
+an ordinary error to a visibly different ancestor catch boundary. These terminal
+preloads are best-effort because semantic selection has already finished;
+hydration chunk readiness, including terminal boundary chunks, is required.
+
+The current `route._lazy` encoding has three compact states:
 
 ```text
 undefined = no current owner
@@ -731,29 +818,40 @@ uses a separate typed lane with the same high-level ordering:
 match -> resolve SSR + contextualize serially -> run loaders concurrently
       -> select serial/loader result -> load normal chunks before its cutoff
       -> apply and trim once -> preload terminal component once
-      -> project -> render or redirect
+      -> project -> publish a render descriptor or redirect
 ```
 
 SSR policy is resolved parent-first before each route's `beforeLoad`:
 
-- `ssr: true` runs `beforeLoad`, loads data and render chunks, and projects
-  assets.
+- `ssr: true` runs `beforeLoad`, loads data and render chunks, and runs route
+  projection hooks.
 - `ssr: 'data-only'` loads data but does not render that route's component or
-  project its assets on the server. Its `beforeLoad` still runs.
-- `ssr: false` skips server `beforeLoad`, loader, chunks, and assets for that
-  route. Its synchronous route context was already created during matching.
+  run its route projection hooks on the server. Its `beforeLoad` still runs.
+- `ssr: false` skips server `beforeLoad`, loader, route chunks, and route
+  projection hooks. Its synchronous route context and params/search validation
+  still run, so matching validation may still produce a server error or 404.
 - A `false` parent forces descendants to `false`; a `data-only` parent caps any
   `true` descendant at `data-only`, whether explicit, computed, or inherited.
-- Shell mode renders only the root route.
+- Shell mode forces the root to `true` and every descendant to `false`. The
+  server presentation lane may retain those client-only descendants and render
+  their first applicable pending fallback, while dehydration retains only the
+  root semantic match.
+
+These bullets concern route-hook output. Bundler-manifest CSS, preloads, or
+scripts may still be emitted for matched client-only routes so that the browser
+can load them.
 
 If an `ssr` callback throws, the server normalizes it through that route's
 `onError`, records it as the serial failure for the route, and stops serial
-descent just like a `beforeLoad` failure.
+descent just like a `beforeLoad` failure. The callback receives wrapped
+search/params results and parent-first match summaries; `undefined` falls back to
+`defaultSsr` before the parent restriction is applied. Shell mode bypasses route
+SSR callbacks.
 
 Hydration adopts the semantic work produced by `true` and `data-only`;
 `data-only` still requires client rendering, while `false` begins the unresolved
-client suffix. Prefix adoption is governed by exact location and match identity,
-not stale-time rules. The handoff rules are detailed below.
+client suffix. Initial reconstruction and the later unresolved-suffix handoff use
+different identity checks, detailed below.
 
 Loaders start concurrently and retain parent match promises. The request-local
 lane consumes their outcomes in route order, keeping redirect as control flow and
@@ -769,25 +867,37 @@ route's projection group is discarded; projection failure is non-fatal and never
 overwrites loader semantics.
 
 The final result is a closed union: either a render result with status and
-matches, or a redirect. `loadServerRoute` owns the complete server workflow and
-is the only publisher of that result to router stores.
+matches, or a redirect. `loadServerRoute` owns matching, loading, reduction,
+projection, and publication of that route result to router stores. The request
+handler and framework adapter separately own dehydration, HTTP response
+construction, rendering/streaming, redirect responses, and request cleanup.
+
+Before matching, server loading canonicalizes `publicHref`; a mismatch becomes a
+redirect before lifecycle events are emitted. On the canonical path it emits
+`onBeforeNavigate` and `onBeforeLoad`, but not the client mount/render lifecycle
+events.
 
 ## Hydration handoff
 
 Hydration reconstructs what the server actually resolved; it does not rerun a
-parallel hydration loader.
+parallel hydration loader. Before matching, it installs serialization adapters
+and flushes buffered bootstrap scripts when adapters are configured, marks the
+bootstrap initialized, installs the dehydrated manifest/CSP nonce, and awaits the
+application's custom hydration hook.
 
 For the current location, `hydrate`:
 
-1. matches a fresh candidate lane,
-2. walks the serialized server matches while ids agree,
+1. publishes the current requested location and matches a fresh candidate lane,
+2. walks candidates while serialized match ids agree,
 3. copies serialized loader/before-load/error/SSR data into a local resolved
    prefix,
-4. loads the chunks needed to hydrate that prefix,
-5. rebuilds complete route contexts before running any head/script hook,
-6. rebuilds client head/script projection and derives the presentation frontier,
-   and
-7. after all asynchronous work and currentness checks, installs
+4. makes the server's effective SSR decisions visible to immediate client
+   rendering/planning,
+5. loads the chunks needed to hydrate that prefix,
+6. rebuilds complete route contexts before running any head/script hook,
+7. rebuilds client head then script projection and derives the presentation
+   frontier, and
+8. after all asynchronous work and currentness checks, installs
    `_committedMatches` and publishes the presentation frontier.
 
 The presentation frontier is the candidate prefix initially shown to the
@@ -798,6 +908,12 @@ for `data-only`. For the initial handoff, committed `beforeLoad` and loader work
 is authoritative and does not rerun; hydration rebuilds route context, chunks,
 and client head/script output as required.
 
+The initial serialized payload carries match ids but no server href/history key.
+Bootstrap reconstruction therefore matches the browser's current location and
+adopts only the contiguous serialized same-id prefix; it tolerates an unused
+serialized suffix. Exact href/key comparison applies to the subsequent ordinary
+client transaction, not this initial reconstruction.
+
 If the whole location was resolved, hydration sets `resolvedLocation`. Otherwise
 the framework Transitioner observes the unresolved location and starts an
 ordinary client transaction. That transaction adopts the whole committed prefix
@@ -805,23 +921,35 @@ or none of it. Adoption requires the same canonical href and history key, exact
 match ids at every committed index, and no invalidated match or development
 refresh. A terminal adopted prefix also caps the candidate lane, so descendants
 omitted below a server error/not-found boundary cannot execute on the client.
-These checks derive `resolvedPrefix` from existing authorities; there is no
-hydration-specific scheduler, flag, or completion authority.
+These checks derive `resolvedPrefix` from existing authorities; core adds no
+second authority for deciding whether that transaction may adopt the committed
+hydration prefix. Bootstrap and framework layers do have their own initialization
+and hydration-completion state.
 
 Candidate matching may already have invoked route `context`. After lazy options
 are installed, hydration deliberately rebuilds context parent-first for the
 accepted prefix and awaits each result before projection. Context functions must
 therefore tolerate this hydration re-entry. Hydration also copies each serialized
 SSR decision onto the route options so later client planning and framework
-rendering observe the server's resolved mode.
+rendering observe the server's resolved mode; that mutation is the current
+mechanism, not a required representation.
 
-Unlike ordinary decorative projection, a non-not-found head/script failure
-during hydration rejects hydration. A not-found is logged and attached to its
-match. Preserve this call-site-specific policy.
+Hydration chunk and context readiness is required. A chunk failure is suppressed
+when hydration became stale and otherwise rejects; a rejected context rebuild
+propagates directly, with currentness checked only after successful context work.
+Projection is deliberately serial within each route: `head` is awaited before
+`scripts`, and hydration does not rerun `headers`. A current non-not-found
+projection failure is logged, attached, and rethrown; a current not-found is
+logged and attached without rejecting, while stale projection failures are
+suppressed. Preserve these call-site-specific policies.
 
-Hydration snapshots `_tx` and checks it after asynchronous user/chunk work. A
-navigation that starts during hydration wins; stale hydration does not overwrite
-it.
+Hydration snapshots `_tx` and checks it after successful custom hydration,
+chunk, context, and projection steps. Candidate matching and rejected custom or
+context work can still throw after ownership changed, but stale hydration cannot
+reach the final committed-lane/presentation publication. Hydration does set
+`stores.location` and copy SSR decisions before its final guard, so this
+currentness guarantee is specifically about semantic match publication, not
+complete side-effect or failure isolation.
 
 Framework `Match` implementations combine the SSR mode with match presentation.
 `ssr: false` and `data-only` content is behind `ClientOnly`, with the pending
@@ -870,19 +998,21 @@ not be mistaken for an already-rendered mount.
 
 React additionally guards the router/history pair across Strict Mode effect
 replay and refreshes `latestLocation` from history before canonicalization.
-Swapping routers or histories still installs the correct subscription and initial
-load. Listener errors must not prevent cleanup or leave transition
-acknowledgements unresolved.
+In React, swapping routers or histories installs the correct subscription and
+initial load; Solid and Vue capture their router during setup and currently cover
+unmount/remount catch-up instead. Listener errors must not prevent cleanup or
+leave transition acknowledgements unresolved.
 
 ## Invariants to preserve
 
 When modifying this system, keep these invariants explicit:
 
-1. `stores.matches` never becomes a semantic planning base after
+1. `stores.matches` never becomes a full-lane semantic planning base after
    `_committedMatches` exists.
-2. Only the current `_tx` may redirect foreground client navigation, commit its
-   lane, or publish its completion; only the current `PendingSession` owner may
-   finish that session.
+2. Only the current `_tx` may redirect from an installed foreground lane, commit
+   that lane, or publish its completion; planning redirects require the current
+   preflight and unchanged previous writer. Only the current `PendingSession`
+   owner may finish that session.
 3. `_preflight` can invalidate synchronous foreground planning but cannot
    publish; preload planning uses its local controller and foreground-owner
    snapshot.
@@ -902,11 +1032,12 @@ When modifying this system, keep these invariants explicit:
     authority.
 12. Preloaded `beforeLoad` provenance is independent from loader-data provenance,
     and its reuse is prefix-closed.
-13. Background publication requires both current-writer identity and exact-base
-    identity.
-14. Hydration builds its resolved prefix privately, publishes it only after
-    currentness checks, and delegates the remainder to the normal client
-    transaction.
+13. Final background lane publication requires both current-writer identity and
+    exact-base identity. Untouched matches are currently shared during
+    pre-publication projection, as noted above.
+14. Hydration builds its committed resolved prefix privately, publishes that
+    prefix only after currentness checks, and delegates the remainder to the
+    normal client transaction.
 15. Planning cancellation is not a lane failure; a current preload planning
     error remains the caller's error.
 16. Invalidation replaces semantic generation identity and reloads through the
@@ -930,36 +1061,61 @@ and the absence of broader/default boundary output. A generic `/Not Found/` or
 
 Useful category-level suites include:
 
-- `packages/router-core/tests/client-lane-adversarial.test.ts` and
-  `preflight-reentrant-context.test.ts` for ordering and reentrancy; plus
-  `fatal-load-rejection.test.ts`, `blocked-navigation-current-load.test.ts`, and
-  `superseded-load-await.test.ts` for planning, rollback, and waiter ownership,
-- `preload-adoption.test.ts`, `preload-public-cache-behavior.test.ts`, and
-  `preload-background-parent-coherence.test.ts` for shared work and cache
-  publication, and `preload-beforeload-reuse.test.ts` for serial context
-  donation,
-- `background-assets-stale.test.ts`, `background-trim-abort.test.ts`, and
-  `invalidate-pre-rematch-failure.test.ts` for identity-CAS publication,
-- `preload-public-signal-lifetime.test.ts` and `stay-match-abort.test.ts` for
-  flight lease and accepted-generation signal lifetime,
-- `hydration-currentness.test.ts`, `hydration-boundary-chunks.test.ts`, and the
-  framework hydration suites for the server/client frontier,
-- `server-concurrent-error-notfound.test.ts`,
-  `server-chunk-failure-lifecycle.test.ts`, and the selective-SSR E2E suites for
-  server reduction,
-- framework `store-updates-during-navigation.test.*`, pending-min, transitioner
-  acknowledgement, and transactional-loading suites for rendered behavior.
+Unless a path is shown, core filenames below are relative to
+`packages/router-core/tests/`:
 
-Framework coverage should include canonicalization, exact href/key reuse,
-same-href new-key navigation, unmounted catch-up, remount/Strict Mode,
-router/history swaps, transition acknowledgement, and listener failures. The
-relevant suites follow the `transitioner-*`, `on-rendered-*`,
-`preloaded-mount-*`, and listener-error naming patterns.
+- `client-lane-adversarial.test.ts` and `preflight-reentrant-context.test.ts` for
+  ordering and reentrancy; `fatal-load-rejection.test.ts`,
+  `blocked-navigation-current-load.test.ts`, and `superseded-load-await.test.ts`
+  for planning, rollback, and waiter ownership,
+- `preload-adoption.test.ts`, `preload-navigation-adoption.test.ts`,
+  `preload-public-cache-behavior.test.ts`, and
+  `preload-background-parent-coherence.test.ts` for shared work and cache
+  publication; `preload-beforeload-reuse.test.ts` for serial context donation,
+- `background-assets-stale.test.ts` and `background-trim-abort.test.ts` for
+  background projection, trimming, ownership, and writer supersession;
+  `invalidate-pre-rematch-failure.test.ts` for generation replacement across a
+  failed plan,
+- `preload-public-signal-lifetime.test.ts`, `stay-match-abort.test.ts`, and
+  `issue-7759-in-flight-preload-eviction.test.ts` for leases, accepted-generation
+  signal lifetime, and cache clearing,
+- `granular-stores.test.ts` for active/cached pool identity and notification;
+  `parent-match-promise.test.ts` and `loader-thrown-promise.test.ts` for promise
+  boundaries,
+- `chunk-failure-lifecycle.test.ts`, `boundary-component-chunk.test.ts`, and
+  `load-route-chunk.test.ts` for normal, terminal, and lazy-option chunk behavior,
+- `hydration-currentness.test.ts`, `hydration-boundary-chunks.test.ts`,
+  `hydration-asset-context-order.test.ts`,
+  `hydration-terminal-error-child-head.test.ts`, and
+  `issue-5427-hydration-root-global-not-found.test.ts` for bootstrap
+  reconstruction and the server/client frontier,
+- `server-concurrent-error-notfound.test.ts`,
+  `server-chunk-failure-lifecycle.test.ts`, `server-ssr-option-error.test.ts`,
+  `server-ssr-false-assets.test.ts`, and the selective-SSR E2E suites for server
+  reduction and policy,
+- `transformStreamWithRouter.test.ts`, `ssr-server-manifest.test.ts`, and
+  `ssr-server-cleanup.test.ts` when changing the adjacent streaming/serialization
+  system outside this document's primary scope,
+- framework `store-updates-during-navigation.test.*`, pending-min, transitioner
+  acknowledgement, and transactional-loading tests for rendered behavior, and
+- `packages/router-plugin/tests/handle-route-update.test.ts`,
+  `packages/router-plugin/tests/add-hmr.test.ts`, and the React Start HMR E2E
+  suite for development refresh.
+
+Framework coverage is distributed unevenly and equivalent tests do not always
+share filenames. Shared bootstrap changes should cover canonicalization, exact
+href/key reuse, same-href new-key navigation, unmounted catch-up, remount,
+transition acknowledgement, and listener failures in every affected adapter.
+React additionally needs Strict Mode and live router/history-swap coverage. Do
+not infer cross-framework coverage from the presence of one `transitioner-*`,
+`on-rendered-*`, or pending-min file.
 
 Run category suites while developing, then the affected core/framework unit and
-type suites. Changes to client runtime paths must also run the production bundle
-benchmarks. Development-only helpers, diagnostics, and HMR paths must be verified
-as absent from production output.
+type suites. Changes to client runtime paths must also run
+`CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache`.
+For development-only helpers, diagnostics, and HMR paths, inspect the emitted
+production output to verify that they are absent; package `test:build` is not a
+bundle-size or dead-code-elimination check.
 
 If a regression appears to require another flag, counter, copied deadline, or
 completion authority, stop and identify which existing authority is ambiguous.
