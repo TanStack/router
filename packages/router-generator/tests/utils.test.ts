@@ -8,6 +8,7 @@ import {
   createRouteNodesByTo,
   createTokenRegex,
   determineInitialRoutePath,
+  determineInitialRoutePathFromExplicitPath,
   hasEscapedLeadingUnderscore,
   hasEscapedTrailingUnderscore,
   inferFullPath,
@@ -304,6 +305,26 @@ describe('determineInitialRoutePath', () => {
     expect(determineInitialRoutePath('a_.route.b')).toStrictEqual({
       routePath: `/a_/route/b`,
       originalRoutePath: '/a_/route/b',
+    })
+  })
+})
+
+describe('determineInitialRoutePathFromExplicitPath', () => {
+  it('preserves dots as literal route path characters', () => {
+    expect(
+      determineInitialRoutePathFromExplicitPath('pathless.layout'),
+    ).toStrictEqual({
+      routePath: '/pathless.layout',
+      originalRoutePath: '/pathless.layout',
+    })
+  })
+
+  it('resolves bracket escapes without applying file-route separators', () => {
+    expect(
+      determineInitialRoutePathFromExplicitPath('pathless[.]layout'),
+    ).toStrictEqual({
+      routePath: '/pathless.layout',
+      originalRoutePath: '/pathless[.]layout',
     })
   })
 })
