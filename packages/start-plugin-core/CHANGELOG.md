@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.171.23
+
+### Patch Changes
+
+- [#7844](https://github.com/TanStack/router/pull/7844) [`ffdd64e`](https://github.com/TanStack/router/commit/ffdd64e842acacbc9d368a4803a9e474e9f0c0ff) - Preserve exact Vite-resolved module IDs, including virtual prefixes and query variants, when the Start compiler recursively loads imports. Clean IDs only for file-oriented diagnostics and invalidation, and preserve existing query strings when adding compiler-owned lookup flags, so virtual modules such as import-protection mocks reach their plugin load hooks unchanged.
+
 ## 1.171.22
 
 ### Patch Changes
