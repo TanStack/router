@@ -456,8 +456,8 @@ function createLoaderTask(
     !preload &&
     !options.sync &&
     ((typeof routeLoader === 'function'
-       ? undefined
-       : routeLoader?.staleReloadMode) ??
+      ? undefined
+      : routeLoader?.staleReloadMode) ??
       router.options.defaultStaleReloadMode) !== 'blocking'
   const skippedPreload = preload && route.options.preload === false
   const loaded = reload && !skippedPreload
