@@ -310,6 +310,39 @@ describe('handleRouteUpdate', () => {
     expect(refreshRoute).toHaveBeenCalledWith(itemRoute.id)
   })
 
+  it('uses the new source-chained lazy importer during a hot refresh', async () => {
+    const oldImporter = vi.fn(async () => ({ options: {} }) as any)
+    const newImporter = vi.fn(async () => ({ options: {} }) as any)
+    const rootRoute = new BaseRootRoute({})
+    const hotRoute = new BaseRoute({
+      getParentRoute: () => asAnyRoute(rootRoute),
+      path: '/hot',
+    }).lazy(oldImporter)
+    const router = createClientTestRouter(
+      rootRoute.addChildren([asAnyRoute(hotRoute)]),
+      '/hot',
+    )
+
+    await router.load()
+    expect(oldImporter).toHaveBeenCalledOnce()
+    const originalRefreshRoute = router._refreshRoute!.bind(router)
+    let refreshPromise: Promise<void> | undefined
+    router._refreshRoute = (routeId) => {
+      refreshPromise = originalRefreshRoute(routeId)
+      return refreshPromise
+    }
+
+    const newRoute = new BaseRoute({} as any).lazy(newImporter)
+    runHandleRouteUpdate(router, hotRoute.id, newRoute)
+
+    expect(refreshPromise).toBeDefined()
+    await refreshPromise
+
+    expect.soft(hotRoute.lazyFn).toBe(newImporter)
+    expect.soft(oldImporter).toHaveBeenCalledOnce()
+    expect(newImporter).toHaveBeenCalledOnce()
+  })
+
   it('removes stale loader data when a hot route removes its loader', async () => {
     const rootRoute = new BaseRootRoute({})
     const hotRoute = new BaseRoute({
