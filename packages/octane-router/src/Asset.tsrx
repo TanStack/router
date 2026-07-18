@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'octane';
+import { createElement, useLayoutEffect } from 'octane';
 import { isServer } from '@tanstack/router-core/isServer';
 import { useRouter } from './context.ts';
 import { useHydrated } from './ClientOnly.tsrx';
@@ -93,11 +93,11 @@ export function Asset(props) @{
 				<link {...props.attrs} data-tsr-managed-key={props.assetKey} />
 			}
 			@case 'style': {
-				<style
-					{...props.attrs}
-					data-tsr-managed-key={props.assetKey}
-					dangerouslySetInnerHTML={{ __html: props.children ?? '' }}
-				/>
+				{createElement('style', {
+					...props.attrs,
+					'data-tsr-managed-key': props.assetKey,
+					dangerouslySetInnerHTML: { __html: props.children ?? '' },
+				})}
 			}
 			@case 'script': {
 				<script

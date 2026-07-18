@@ -34,6 +34,7 @@ describe('@tanstack/octane-router SSR', () => {
     expect(normalizedHtml).toContain(
       '<meta name="description" content="Rendered by Octane"',
     )
+    expect(normalizedHtml).toContain(':root { --route-style: present; }')
     expect(normalizedHtml).toContain(
       '<body class="document-body"><div id="__app">',
     )

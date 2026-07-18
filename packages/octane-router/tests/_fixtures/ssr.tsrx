@@ -49,6 +49,7 @@ export function makeSsrRouter(
 				{ title: 'Octane Router SSR' },
 				{ name: 'description', content: 'Rendered by Octane' },
 			],
+			styles: [{ children: ':root { --route-style: present; }' }],
 		}),
 		scripts: () => [{ src: '/entry.js' }],
 	});
