@@ -42,7 +42,7 @@ export default defineConfig((configEnv) => {
         target: 'solid',
         autoCodeSplitting: true,
       }),
-      solid({ compiler: 'babel' }),
+      solid(),
     ],
     build: configEnv.mode === 'server' ? serverBuildConfig : clientBuildConfig,
   }

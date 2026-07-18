@@ -17,7 +17,7 @@ export default defineConfig({
         basepath: '/app',
       },
     }),
-    solid({ compiler: 'babel', ssr: true, hot: false, dev: false }),
+    solid({ ssr: true, hot: false, dev: false }),
   ],
   build: {
     outDir: './dist',

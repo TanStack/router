@@ -11,6 +11,6 @@ export default defineConfig({
     tanstackStart({
       srcDirectory: './src/app',
     }),
-    viteSolid({ compiler: 'babel', ssr: true }),
+    viteSolid({ ssr: true }),
   ],
 })

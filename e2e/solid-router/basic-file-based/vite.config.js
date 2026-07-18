@@ -10,6 +10,6 @@ export default defineConfig({
     tanstackRouter({
       target: 'solid',
     }),
-    solid({ compiler: 'babel' }),
+    solid(),
   ],
 })

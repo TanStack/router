@@ -3,5 +3,5 @@ import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import solid from 'vite-plugin-solid'
 
 export default defineConfig({
-  plugins: [tanstackStart(), solid({ compiler: 'babel', ssr: true })],
+  plugins: [tanstackStart(), solid({ ssr: true })],
 })

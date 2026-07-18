@@ -11,6 +11,6 @@ export default defineConfig({
       target: 'solid',
       disableTypes: true,
     }),
-    solid({ compiler: 'babel' }),
+    solid(),
   ],
 })

@@ -25,6 +25,6 @@ export default defineConfig({
           !path.startsWith('/deferred'),
       },
     }),
-    viteSolid({ compiler: 'babel', ssr: true }),
+    viteSolid({ ssr: true }),
   ],
 })

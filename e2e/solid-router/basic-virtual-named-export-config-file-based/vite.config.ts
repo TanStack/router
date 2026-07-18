@@ -12,6 +12,6 @@ export default defineConfig({
       autoCodeSplitting: true,
       virtualRouteConfig: './routes.ts',
     }),
-    solid({ compiler: 'babel' }),
+    solid(),
   ],
 })

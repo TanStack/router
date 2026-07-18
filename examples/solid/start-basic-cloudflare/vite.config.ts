@@ -15,6 +15,6 @@ export default defineConfig({
     tailwindcss(),
     cloudflare({ viteEnvironment: { name: 'ssr' } }),
     tanstackStart(),
-    viteSolid({ compiler: 'babel', ssr: true }),
+    viteSolid({ ssr: true }),
   ],
 })

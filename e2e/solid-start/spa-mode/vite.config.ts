@@ -25,6 +25,6 @@ export default defineConfig({
         },
       ],
     }),
-    viteSolid({ compiler: 'babel', ssr: true }),
+    viteSolid({ ssr: true }),
   ],
 })

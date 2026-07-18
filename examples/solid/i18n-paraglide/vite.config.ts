@@ -39,7 +39,7 @@ export default defineConfig({
       ],
     }),
     tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
-    viteSolid({ compiler: 'babel' }),
+    viteSolid(),
   ],
   resolve: {
     alias: {

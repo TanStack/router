@@ -3,7 +3,7 @@ import { tanstackViteConfig } from '@tanstack/vite-config'
 import solid from 'vite-plugin-solid'
 
 const config = defineConfig({
-  plugins: [solid({ compiler: 'babel' })],
+  plugins: [solid()],
 })
 
 export default mergeConfig(

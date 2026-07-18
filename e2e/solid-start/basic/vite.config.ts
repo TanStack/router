@@ -53,6 +53,6 @@ export default defineConfig({
       spa: isSpaMode ? spaModeConfiguration : undefined,
       prerender: isPrerender ? prerenderConfiguration : undefined,
     }),
-    viteSolid({ compiler: 'babel', ssr: true }),
+    viteSolid({ ssr: true }),
   ],
 })

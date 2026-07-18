@@ -15,6 +15,6 @@ export default defineConfig({
     tailwindcss(),
     netlify(),
     tanstackStart(),
-    viteSolid({ compiler: 'babel', ssr: true }),
+    viteSolid({ ssr: true }),
   ],
 })

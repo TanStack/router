@@ -15,6 +15,6 @@ export default defineConfig({
         filter: (page) => page.path === '/static',
       },
     }),
-    viteSolid({ compiler: 'babel', ssr: true }),
+    viteSolid({ ssr: true }),
   ],
 })

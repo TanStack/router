@@ -9,5 +9,5 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [tanstackStart(), viteSolid({ compiler: 'babel', ssr: true })],
+  plugins: [tanstackStart(), viteSolid({ ssr: true })],
 })

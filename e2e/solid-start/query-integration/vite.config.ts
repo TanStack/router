@@ -5,9 +5,5 @@ import tailwindcss from '@tailwindcss/vite'
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [
-    tailwindcss(),
-    tanstackStart(),
-    solid({ compiler: 'babel', ssr: true }),
-  ],
+  plugins: [tailwindcss(), tanstackStart(), solid({ ssr: true })],
 })

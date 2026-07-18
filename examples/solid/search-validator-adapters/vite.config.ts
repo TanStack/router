@@ -32,6 +32,6 @@ export default defineConfig({
       target: 'solid',
       autoCodeSplitting: true,
     }),
-    solid({ compiler: 'babel' }),
+    solid(),
   ],
 })

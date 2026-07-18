@@ -5,9 +5,5 @@ import tailwindcss from '@tailwindcss/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [
-    tailwindcss(),
-    tanstackRouter({ target: 'solid' }),
-    solid({ compiler: 'babel' }),
-  ],
+  plugins: [tailwindcss(), tanstackRouter({ target: 'solid' }), solid()],
 })

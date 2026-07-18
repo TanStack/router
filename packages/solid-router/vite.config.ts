@@ -8,7 +8,7 @@ const config = defineConfig(({ mode }) => {
   if (mode === 'server') {
     return {
       plugins: [
-        solid({ compiler: 'babel', ssr: true, hot: !process.env.VITEST }),
+        solid({ ssr: true, hot: !process.env.VITEST }),
       ] as ViteUserConfig['plugins'],
       test: {
         name: `${packageJson.name} (server)`,
@@ -33,9 +33,7 @@ const config = defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [
-      solid({ compiler: 'babel', hot: !process.env.VITEST }),
-    ] as ViteUserConfig['plugins'],
+    plugins: [solid({ hot: !process.env.VITEST })] as ViteUserConfig['plugins'],
     // Add 'development' condition for tests to resolve @tanstack/router-core/isServer
     // to the development export (isServer = undefined) instead of node (isServer = true)
     ...(process.env.VITEST && {

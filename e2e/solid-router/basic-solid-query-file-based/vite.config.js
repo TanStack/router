@@ -8,6 +8,6 @@ export default defineConfig({
   plugins: [
     tailwindcss(),
     tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
-    solid({ compiler: 'babel' }),
+    solid(),
   ],
 })

@@ -33,7 +33,7 @@ export function ClientOnly(props: ClientOnlyProps) {
   const hydrated = useHydrated()
   return (
     <Solid.Show when={hydrated()} fallback={props.fallback ?? null}>
-      <>{props.children}</>
+      {props.children}
     </Solid.Show>
   )
 }

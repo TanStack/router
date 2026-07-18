@@ -11,9 +11,5 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
-  plugins: [
-    tailwindcss(),
-    tanstackStart(),
-    viteSolid({ compiler: 'babel', ssr: true }),
-  ],
+  plugins: [tailwindcss(), tanstackStart(), viteSolid({ ssr: true })],
 })
