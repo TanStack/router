@@ -18,8 +18,8 @@
     "@tanstack/react-router": "^1.170.18",
     "@tanstack/react-router-devtools": "^1.167.0",
     "@tanstack/react-router-ssr-query": "^1.167.1",
-    "@tanstack/react-start": "^1.168.28",
-    "@tanstack/router-plugin": "^1.168.20",
+    "@tanstack/react-start": "^1.168.30",
+    "@tanstack/router-plugin": "^1.168.22",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "tailwindcss": "^4.2.2"
