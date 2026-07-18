@@ -13,6 +13,6 @@ export default defineConfig({
       autoCodeSplitting: true,
       virtualRouteConfig: routes,
     }),
-    solid(),
+    solid({ compiler: 'babel' }),
   ],
 })

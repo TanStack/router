@@ -22,6 +22,6 @@ export default defineConfig({
         },
       },
     }),
-    solid(),
+    solid({ compiler: 'babel' }),
   ],
 })

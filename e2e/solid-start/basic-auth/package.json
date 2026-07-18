@@ -16,12 +16,12 @@
     "@libsql/client": "^0.15.15",
     "@prisma/adapter-libsql": "^7.0.0",
     "@prisma/client": "^7.0.0",
-    "@solidjs/web": "2.0.0-beta.19",
+    "@solidjs/web": "2.0.0-beta.20",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.19",
+    "solid-js": "2.0.0-beta.20",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
@@ -34,7 +34,7 @@
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite-plugin-solid": "^3.0.0-next.11",
+    "vite-plugin-solid": "^3.0.0-next.13",
     "vite": "^8.0.14"
   }
 }

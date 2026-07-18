@@ -6,5 +6,5 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-  plugins: [tanstackStart(), viteSolid({ ssr: true })],
+  plugins: [tanstackStart(), viteSolid({ compiler: 'babel', ssr: true })],
 })

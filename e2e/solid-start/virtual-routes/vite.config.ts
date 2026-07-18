@@ -15,6 +15,6 @@ export default defineConfig({
         virtualRouteConfig: './routes.ts',
       },
     }),
-    viteSolid({ ssr: true }),
+    viteSolid({ compiler: 'babel', ssr: true }),
   ],
 })

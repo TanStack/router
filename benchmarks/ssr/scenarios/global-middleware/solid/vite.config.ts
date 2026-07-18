@@ -14,7 +14,7 @@ export default defineConfig({
     tanstackStart({
       srcDirectory: 'src',
     }),
-    solid({ ssr: true, hot: false, dev: false }),
+    solid({ compiler: 'babel', ssr: true, hot: false, dev: false }),
   ],
   build: {
     outDir: './dist',

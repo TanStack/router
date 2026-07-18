@@ -47,7 +47,7 @@ export default defineConfig((configEnv) => {
     plugins: [
       tailwindcss(),
       tanstackRouter({ target: 'solid', autoCodeSplitting: true }),
-      solid({ ssr: true }),
+      solid({ compiler: 'babel', ssr: true }),
     ],
     build: configEnv.isSsrBuild ? ssrBuildConfig : clientBuildConfig,
   }

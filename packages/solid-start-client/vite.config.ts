@@ -5,7 +5,7 @@ import packageJson from './package.json'
 import type { ViteUserConfig } from 'vitest/config'
 
 const config = defineConfig({
-  plugins: [solid()] as ViteUserConfig['plugins'],
+  plugins: [solid({ compiler: 'babel' })] as ViteUserConfig['plugins'],
   test: {
     typecheck: { enabled: true },
     name: packageJson.name,

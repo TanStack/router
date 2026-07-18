@@ -15,7 +15,7 @@ export default defineConfig({
   plugins: [
     !!(process.env.VITEST && process.env.WITH_INSTRUMENTATION) &&
       codspeedPlugin(),
-    solid({ hot: false, dev: false }),
+    solid({ compiler: 'babel', hot: false, dev: false }),
   ],
   build: {
     outDir: './solid/dist',

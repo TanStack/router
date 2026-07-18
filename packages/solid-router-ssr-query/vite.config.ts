@@ -4,7 +4,7 @@ import solid from 'vite-plugin-solid'
 import packageJson from './package.json'
 
 const config = defineConfig({
-  plugins: [solid()],
+  plugins: [solid({ compiler: 'babel' })],
   test: {
     name: packageJson.name,
     dir: './tests',

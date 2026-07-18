@@ -15,7 +15,7 @@ export default defineConfig({
       entryRoot: 'src',
       tsconfigPath: path.join(__dirname, 'tsconfig.json'),
     }),
-    solid(),
+    solid({ compiler: 'babel' }),
   ],
   build: {
     outDir: './dist',

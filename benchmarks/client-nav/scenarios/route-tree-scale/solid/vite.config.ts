@@ -22,7 +22,7 @@ export default defineConfig({
       routesDirectory: `${rootDir}src/routes`,
       generatedRouteTree: `${rootDir}src/routeTree.gen.ts`,
     }),
-    solid({ hot: false, dev: false }),
+    solid({ compiler: 'babel', hot: false, dev: false }),
   ],
   build: {
     outDir: './dist',

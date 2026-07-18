@@ -5,5 +5,5 @@ import { tanstackRouter } from '@tanstack/router-plugin/vite'
 // https://vitejs.dev/config/
 export default defineConfig({
   base: '/app/',
-  plugins: [tanstackRouter({ target: 'solid' }), solid()],
+  plugins: [tanstackRouter({ target: 'solid' }), solid({ compiler: 'babel' })],
 })

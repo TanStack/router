@@ -40,7 +40,7 @@ const config = defineConfig({
       ],
     }),
     tanstackStart(),
-    viteSolid({ ssr: true }),
+    viteSolid({ compiler: 'babel', ssr: true }),
     tailwindcss(),
   ],
 })
