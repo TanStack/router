@@ -140,10 +140,6 @@ export default defineConfig({
 })
 ```
 
-For Octane, set `target: 'octane'`, configure the Octane route-generator
-adapter, and place `octane()` before `tanstackRouter()` so `.tsrx` modules are
-compiled before route analysis.
-
 Or reference a file path:
 
 ```ts

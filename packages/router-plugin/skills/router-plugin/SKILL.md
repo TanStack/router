@@ -18,7 +18,7 @@ sources:
 
 Bundler plugin that powers TanStack Router's file-based routing and automatic code splitting. Works with Vite, Webpack, Rspack, and esbuild via unplugin.
 
-> **CRITICAL**: For React, Solid, and Vue, the router plugin must come before the framework plugin. Octane is the inverse: `octane()` must come before the router plugin so `.tsrx` is compiled before route analysis.
+> **CRITICAL**: The router plugin MUST come before the framework plugin (React, Solid, Vue) in the Vite config. Wrong order causes route generation and code splitting to fail silently.
 
 ## Install
 
@@ -44,27 +44,6 @@ export default defineConfig({
       autoCodeSplitting: true,
     }),
     react(),
-  ],
-})
-```
-
-For Octane, install the official route-source adapter and put the Octane
-compiler first:
-
-```ts
-import { defineConfig } from 'vite'
-import { octane } from 'octane/compiler/vite'
-import { octaneRouteGeneratorPlugin } from '@tanstack/octane-router/generator-plugin'
-import { tanstackRouter } from '@tanstack/router-plugin/vite'
-
-export default defineConfig({
-  plugins: [
-    octane(),
-    tanstackRouter({
-      target: 'octane',
-      autoCodeSplitting: true,
-      plugins: [octaneRouteGeneratorPlugin()],
-    }),
   ],
 })
 ```
@@ -121,13 +100,13 @@ esbuild.build({
 
 ### Core Options
 
-| Option                  | Type                                      | Default                    | Description                                |
-| ----------------------- | ----------------------------------------- | -------------------------- | ------------------------------------------ |
-| `target`                | `'react' \| 'solid' \| 'vue' \| 'octane'` | `'react'`                  | Target framework                           |
-| `routesDirectory`       | `string`                                  | `'./src/routes'`           | Directory containing route files           |
-| `generatedRouteTree`    | `string`                                  | `'./src/routeTree.gen.ts'` | Path for generated route tree              |
-| `autoCodeSplitting`     | `boolean`                                 | `undefined`                | Enable automatic code splitting            |
-| `enableRouteGeneration` | `boolean`                                 | `true`                     | Set to `false` to disable route generation |
+| Option                  | Type                          | Default                    | Description                                |
+| ----------------------- | ----------------------------- | -------------------------- | ------------------------------------------ |
+| `target`                | `'react' \| 'solid' \| 'vue'` | `'react'`                  | Target framework                           |
+| `routesDirectory`       | `string`                      | `'./src/routes'`           | Directory containing route files           |
+| `generatedRouteTree`    | `string`                      | `'./src/routeTree.gen.ts'` | Path for generated route tree              |
+| `autoCodeSplitting`     | `boolean`                     | `undefined`                | Enable automatic code splitting            |
+| `enableRouteGeneration` | `boolean`                     | `true`                     | Set to `false` to disable route generation |
 
 ### File Convention Options
 
@@ -163,14 +142,14 @@ tanstackRouter({
 
 ### Output Options
 
-| Option                      | Type                   | Default                     | Description                      |
-| --------------------------- | ---------------------- | --------------------------- | -------------------------------- |
-| `quoteStyle`                | `'single' \| 'double'` | `'single'`                  | Quote style in generated code    |
-| `semicolons`                | `boolean`              | `false`                     | Use semicolons in generated code |
-| `disableTypes`              | `boolean`              | `false`                     | Disable TypeScript types         |
-| `disableLogging`            | `boolean`              | `false`                     | Suppress plugin logs             |
-| `addExtensions`             | `boolean \| string`    | `false` (`true` for Octane) | Add file extensions to imports   |
-| `enableRouteTreeFormatting` | `boolean`              | `true`                      | Format generated route tree      |
+| Option                      | Type                   | Default    | Description                      |
+| --------------------------- | ---------------------- | ---------- | -------------------------------- |
+| `quoteStyle`                | `'single' \| 'double'` | `'single'` | Quote style in generated code    |
+| `semicolons`                | `boolean`              | `false`    | Use semicolons in generated code |
+| `disableTypes`              | `boolean`              | `false`    | Disable TypeScript types         |
+| `disableLogging`            | `boolean`              | `false`    | Suppress plugin logs             |
+| `addExtensions`             | `boolean \| string`    | `false`    | Add file extensions to imports   |
+| `enableRouteTreeFormatting` | `boolean`              | `true`     | Format generated route tree      |
 
 ### Virtual Route Config
 
