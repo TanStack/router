@@ -7,7 +7,7 @@ declare module 'octane/compiler/vite' {
     server?: 'render' | 'client-only' | 'unsupported'
     intrinsics?: string
     text?: 'reject' | 'ignore' | 'host'
-    capabilities?: Array<string>
+    capabilities?: ReadonlyArray<string>
   }
 
   export interface OctaneRendererBoundary {

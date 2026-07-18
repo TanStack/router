@@ -18,7 +18,7 @@ export interface OctaneRendererDescriptor {
   server?: 'render' | 'client-only' | 'unsupported'
   intrinsics?: string
   text?: 'reject' | 'ignore' | 'host'
-  capabilities?: Array<string>
+  capabilities?: ReadonlyArray<string>
 }
 
 export interface OctaneRendererBoundary {
