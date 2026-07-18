@@ -1,0 +1,66 @@
+{
+  "name": "@tanstack/octane-start-server",
+  "version": "1.167.22",
+  "description": "Server runtime for TanStack Start applications built with Octane",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/octane-start-server"
+  },
+  "homepage": "https://tanstack.com/start",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "octane",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:build && pnpm test:unit",
+    "test:unit": "vitest",
+    "test:eslint": "eslint ./src",
+    "test:types": "tsc --noEmit",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
+    "build": "vite build"
+  },
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@tanstack/octane-router": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/start-server-core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": ">=22",
+    "octane": "catalog:",
+    "vite": "*"
+  },
+  "peerDependencies": {
+    "octane": ">=0.1.8"
+  }
+}

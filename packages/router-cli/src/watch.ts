@@ -1,9 +1,6 @@
 import chokidar from 'chokidar'
-import {
-  Generator,
-  getConfig,
-  resolveConfigPath,
-} from '@tanstack/router-generator'
+import { getConfig, resolveConfigPath } from '@tanstack/router-generator'
+import { createGenerator } from './create-generator'
 import type { FileEventType } from '@tanstack/router-generator'
 
 export function watch(root: string) {
@@ -14,11 +11,11 @@ export function watch(root: string) {
 
   let watcher = new chokidar.FSWatcher({})
 
-  const generatorWatcher = () => {
+  const generatorWatcher = async () => {
     const config = getConfig()
-    const generator = new Generator({ config, root })
+    const generator = await createGenerator(config, root)
 
-    watcher.close()
+    await watcher.close()
 
     console.info(`TSR: Watching routes (${config.routesDirectory})...`)
     watcher = chokidar.watch(config.routesDirectory)
@@ -56,6 +53,13 @@ export function watch(root: string) {
     })
   }
 
-  configWatcher.on('ready', generatorWatcher)
-  configWatcher.on('change', generatorWatcher)
+  const reloadGenerator = () => {
+    void generatorWatcher().catch((err) => {
+      console.error(err)
+      console.info()
+    })
+  }
+
+  configWatcher.on('ready', reloadGenerator)
+  configWatcher.on('change', reloadGenerator)
 }

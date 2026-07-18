@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "paths": {
+      "@tanstack/octane-start/server": ["./src/server.ts"]
+    }
+  },
+  "include": ["src/default-entry"]
+}

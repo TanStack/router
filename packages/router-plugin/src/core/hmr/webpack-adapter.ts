@@ -20,6 +20,7 @@ export function createWebpackHmrStatement(
   opts: {
     targetFramework: Config['target']
     routeId?: string
+    routeSignature?: string
   },
 ): Array<t.Statement> {
   const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
@@ -27,6 +28,14 @@ export function createWebpackHmrStatement(
     typeof opts.routeId === 'string'
       ? JSON.stringify(opts.routeId)
       : 'undefined'
+  const routeSignature =
+    typeof opts.routeSignature === 'string'
+      ? JSON.stringify(opts.routeSignature)
+      : 'undefined'
+  const shouldInvalidateRoute =
+    opts.targetFramework === 'octane'
+      ? `typeof routeSignature !== 'string' || previousRouteSignature !== routeSignature`
+      : 'true'
 
   // React-only: route modules aren't React Refresh "boundaries" (they export
   // a non-component `Route`), so the bundler's react-refresh runtime won't
@@ -69,6 +78,10 @@ export function createWebpackHmrStatement(
 if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot
   const hotData = hot.data ??= {}
+  const routeSignature = ${routeSignature}
+  const previousRouteSignature = hotData['tsr-route-signature']
+  const shouldInvalidateRoute = ${shouldInvalidateRoute}
+  hotData['tsr-route-signature'] = routeSignature
   const routeId = hotData['tsr-route-id'] ?? Route.id ?? (Route.isRoot ? '__root__' : ${staticRouteIdLiteral})
   if (routeId) {
     hotData['tsr-route-id'] = routeId
@@ -78,12 +91,13 @@ if (import.meta.webpackHot) {
       ? window.__TSR_ROUTER__?.routesById?.[routeId]
       : undefined
   if (routeId && existingRoute && existingRoute !== Route) {
-    (${handleRouteUpdateCode})(routeId, Route)${reactRefreshCall}
+    (${handleRouteUpdateCode})(routeId, Route, shouldInvalidateRoute)${reactRefreshCall}
   }
   hot.dispose((data) => {
     if (routeId) {
       data['tsr-route-id'] = routeId
     }
+    data['tsr-route-signature'] = routeSignature
   })
   hot.accept()
 }

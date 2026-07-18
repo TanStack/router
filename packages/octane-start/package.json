@@ -1,0 +1,132 @@
+{
+  "name": "@tanstack/octane-start",
+  "version": "1.168.28",
+  "description": "Full-stack application framework for Octane built on TanStack Router",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/octane-start"
+  },
+  "homepage": "https://tanstack.com/start",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "octane",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test": "pnpm test:eslint && pnpm test:types && pnpm test:unit && pnpm test:build",
+    "test:eslint": "eslint ./src",
+    "test:types": "tsc --noEmit",
+    "test:unit": "vitest",
+    "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
+    "build": "vite build && vite build -c vite.config.server-entry.ts"
+  },
+  "type": "module",
+  "types": "dist/esm/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/esm/index.d.ts",
+        "default": "./dist/esm/index.js"
+      }
+    },
+    "./client": {
+      "import": {
+        "types": "./dist/esm/client.d.ts",
+        "default": "./dist/esm/client.js"
+      }
+    },
+    "./client-rpc": {
+      "import": {
+        "types": "./dist/esm/client-rpc.d.ts",
+        "default": "./dist/esm/client-rpc.js"
+      }
+    },
+    "./server-rpc": {
+      "import": {
+        "types": "./dist/esm/server-rpc.d.ts",
+        "default": "./dist/esm/server-rpc.js"
+      }
+    },
+    "./ssr-rpc": {
+      "import": {
+        "types": "./dist/esm/ssr-rpc.d.ts",
+        "default": "./dist/esm/ssr-rpc.js"
+      }
+    },
+    "./server": {
+      "import": {
+        "types": "./dist/esm/server.d.ts",
+        "default": "./dist/esm/server.js"
+      }
+    },
+    "./plugin/vite": {
+      "import": {
+        "types": "./dist/esm/plugin/vite.d.ts",
+        "default": "./dist/esm/plugin/vite.js"
+      }
+    },
+    "./server-entry": {
+      "import": {
+        "types": "./dist/default-entry/esm/server.d.ts",
+        "default": "./dist/default-entry/esm/server.js"
+      }
+    },
+    "./server-only": {
+      "import": {
+        "types": "./dist/esm/server-only.d.ts",
+        "default": "./dist/esm/server-only.js"
+      }
+    },
+    "./client-only": {
+      "import": {
+        "types": "./dist/esm/client-only.d.ts",
+        "default": "./dist/esm/client-only.js"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "@tanstack/octane-router": "workspace:*",
+    "@tanstack/octane-start-client": "workspace:*",
+    "@tanstack/octane-start-server": "workspace:*",
+    "@tanstack/start-client-core": "workspace:*",
+    "@tanstack/start-plugin-core": "workspace:*",
+    "@tanstack/start-server-core": "workspace:*",
+    "pathe": "^2.0.3"
+  },
+  "devDependencies": {
+    "@tanstack/router-utils": "workspace:*",
+    "@types/node": ">=20",
+    "octane": "catalog:",
+    "vite": "*"
+  },
+  "peerDependencies": {
+    "octane": ">=0.1.8",
+    "vite": ">=7.0.0"
+  },
+  "peerDependenciesMeta": {
+    "vite": {
+      "optional": true
+    }
+  }
+}

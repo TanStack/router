@@ -23,7 +23,10 @@ function getReferencePlugin(
   return plugin
 }
 
-async function configurePlugin(plugin: UnpluginOptions) {
+async function configurePlugin(
+  plugin: UnpluginOptions,
+  pluginNames: Array<string> = [referencePluginName],
+) {
   const hook = plugin.vite?.configResolved
   if (!hook) {
     return
@@ -31,7 +34,7 @@ async function configurePlugin(plugin: UnpluginOptions) {
 
   const config = {
     root: process.cwd(),
-    plugins: [{ name: referencePluginName }],
+    plugins: pluginNames.map((name) => ({ name })),
   } as never
 
   if (typeof hook === 'function') {
@@ -77,6 +80,71 @@ function countProgramHotDeclarations(code: string) {
 }
 
 describe('router plugin context', () => {
+  it.each([
+    ['react', 'vite:react-babel'],
+    ['solid', 'solid'],
+  ] as const)(
+    'keeps the router before the %s source transform',
+    async (target, frameworkPluginName) => {
+      const context = createRouterPluginContext()
+      const splitter = getReferencePlugin(
+        createRouterCodeSplitterPlugin({ target }, context),
+      )
+
+      await expect(
+        configurePlugin(splitter, [frameworkPluginName, referencePluginName]),
+      ).rejects.toThrow("is placed before '@tanstack/router-plugin'")
+      await expect(
+        configurePlugin(splitter, [referencePluginName, frameworkPluginName]),
+      ).resolves.toBeUndefined()
+    },
+  )
+
+  it('requires the Octane compiler to lower TSRX before route analysis', async () => {
+    const context = createRouterPluginContext()
+    const splitter = getReferencePlugin(
+      createRouterCodeSplitterPlugin({ target: 'octane' }, context),
+    )
+
+    await expect(configurePlugin(splitter)).rejects.toThrow(
+      "'octane/compiler/vite' is required for the 'octane' target",
+    )
+    await expect(
+      configurePlugin(splitter, [referencePluginName, 'octane']),
+    ).rejects.toThrow(
+      "'octane/compiler/vite' is placed after '@tanstack/router-plugin'",
+    )
+  })
+
+  it('accepts the Octane compiler before route analysis', async () => {
+    const context = createRouterPluginContext()
+    const splitter = getReferencePlugin(
+      createRouterCodeSplitterPlugin({ target: 'octane' }, context),
+    )
+
+    await expect(
+      configurePlugin(splitter, ['octane', referencePluginName]),
+    ).resolves.toBeUndefined()
+  })
+
+  it('requires the Octane compiler when code splitting is disabled', async () => {
+    const context = createRouterPluginContext()
+    const hmrPlugin = createRouterHmrPlugin({ target: 'octane' }, context)
+    const hmr = Array.isArray(hmrPlugin) ? hmrPlugin[0]! : hmrPlugin
+
+    await expect(configurePlugin(hmr, ['tanstack-router:hmr'])).rejects.toThrow(
+      "'octane/compiler/vite' is required for the 'octane' target",
+    )
+    await expect(
+      configurePlugin(hmr, ['tanstack-router:hmr', 'octane']),
+    ).rejects.toThrow(
+      "'octane/compiler/vite' is placed after '@tanstack/router-plugin'",
+    )
+    await expect(
+      configurePlugin(hmr, ['octane', 'tanstack-router:hmr']),
+    ).resolves.toBeUndefined()
+  })
+
   it('keeps multiple code-splitter instances isolated by explicit context', async () => {
     const routeFile = normalizePath(
       path.join(process.cwd(), 'src/routes-a/owned.tsx'),
@@ -177,5 +245,33 @@ export const Route = createFileRoute('/owned')({
 
     expect(hmrCode).not.toBeNull()
     expect(hmrCode).toContain('TSRFastRefreshAnchor')
+  })
+
+  it('adds Octane HMR handling to compiled .tsrx routes', async () => {
+    const routeFile = normalizePath(
+      path.join(process.cwd(), 'src/routes/owned.tsrx'),
+    )
+    const routeCode = `
+import { createFileRoute } from '@tanstack/octane-router'
+
+function Component() {}
+
+export const Route = createFileRoute('/owned')({
+  component: Component,
+})
+`
+    const context = createRouterPluginContext()
+    context.routesByFile.set(routeFile, { routeId: '/owned' })
+    const hmrPlugin = createRouterHmrPlugin({ target: 'octane' }, context)
+    const hmrResult = await transformReferenceRoute(
+      Array.isArray(hmrPlugin) ? hmrPlugin[0]! : hmrPlugin,
+      routeCode,
+      routeFile,
+    )
+    const hmrCode = getCode(hmrResult)
+
+    expect(hmrCode).not.toBeNull()
+    expect(hmrCode).toContain('hot.accept')
+    expect(hmrCode).toContain("from '@tanstack/octane-router'")
   })
 })

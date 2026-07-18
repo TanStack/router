@@ -19,8 +19,10 @@ export type TokenMatcherJson = string | z.infer<typeof tokenJsonRegexSchema>
 
 export type TokenMatcher = z.infer<typeof tokenMatcherSchema>
 
+export const routerFrameworks = ['react', 'solid', 'vue', 'octane'] as const
+
 export const baseConfigSchema = z.object({
-  target: z.enum(['react', 'solid', 'vue']).optional().default('react'),
+  target: z.enum(routerFrameworks).optional().default('react'),
   virtualRouteConfig: virtualRootRouteSchema.or(z.string()).optional(),
   routeFilePrefix: z.string().optional(),
   routeFileIgnorePrefix: z.string().optional().default('-'),
@@ -102,6 +104,7 @@ export function getConfig(
   const exists = existsSync(configFilePathJson)
 
   let config: Config
+  let rawConfig: Partial<Config>
 
   if (exists) {
     // Parse file config (allows JSON regex-object form)
@@ -113,9 +116,18 @@ export function getConfig(
       ...fileConfigRaw,
       ...inlineConfig,
     }
+    rawConfig = merged
     config = configSchema.parse(merged)
   } else {
+    rawConfig = inlineConfig
     config = configSchema.parse(inlineConfig)
+  }
+
+  // Vite does not resolve `.tsrx` from extensionless imports. Keep Octane's
+  // generated route tree runnable without requiring every app to repeat this
+  // target-specific setting, while still honoring an explicit override.
+  if (config.target === 'octane' && rawConfig.addExtensions === undefined) {
+    config.addExtensions = true
   }
 
   // If typescript is disabled, make sure the generated route tree is a .js file

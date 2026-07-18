@@ -45,6 +45,7 @@ import { transform } from './transform/transform'
 import { validateRouteParams } from './validate-route-params'
 import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
+import type { TransformOptions } from './transform/types'
 import type {
   FsRouteType,
   GetRouteNodesResult,
@@ -70,6 +71,17 @@ interface fs {
   >
   chmod: (filePath: string, mode: number) => Promise<void>
   chown: (filePath: string, uid: number, gid: number) => Promise<void>
+}
+
+function getRootRouteFileExtension(config: Config): string {
+  switch (config.target) {
+    case 'vue':
+      return 'vue'
+    case 'octane':
+      return 'tsrx'
+    default:
+      return config.disableTypes ? 'js' : 'tsx'
+  }
 }
 
 function getRoutePathSegmentMetadataForPath(
@@ -303,6 +315,47 @@ export class Generator {
     )
   }
 
+  private async fillRouteTemplate(
+    node: RouteNode,
+    template: string,
+    values: Parameters<typeof fillTemplate>[2],
+  ): Promise<string> {
+    return fillTemplate(this.config, template, values, async (source) => {
+      let result = source
+      let wasFormatted = false
+      for (const plugin of this.plugins) {
+        const pluginResult = await plugin.formatRoute?.({
+          source: result,
+          node,
+        })
+        if (pluginResult !== undefined) {
+          result = pluginResult
+          wasFormatted = true
+        }
+      }
+      return wasFormatted ? result : format(source, this.config)
+    })
+  }
+
+  private async getParseSource(
+    opts: Pick<TransformOptions, 'source' | 'filename' | 'node'>,
+  ): Promise<string | undefined> {
+    let result = opts.source
+    let wasTransformed = false
+    for (const plugin of this.plugins) {
+      const pluginResult = await plugin.transformRouteSource?.({
+        source: result,
+        filename: opts.filename ?? opts.node.fullPath,
+        node: opts.node,
+      })
+      if (pluginResult !== undefined) {
+        result = pluginResult
+        wasTransformed = true
+      }
+    }
+    return wasTransformed ? result : undefined
+  }
+
   public async run(event?: GeneratorEvent): Promise<void> {
     if (
       event &&
@@ -410,7 +463,8 @@ export class Generator {
     if (rootRouteNode === undefined) {
       let errorMessage = `rootRouteNode must not be undefined. Make sure you've added your root route into the route-tree.`
       if (!this.config.virtualRouteConfig) {
-        errorMessage += `\nMake sure that you add a "${rootPathId}.${this.config.disableTypes ? 'js' : 'tsx'}" file to your routes directory.\nAdd the file in: "${this.config.routesDirectory}/${rootPathId}.${this.config.disableTypes ? 'js' : 'tsx'}"`
+        const rootRouteExtension = getRootRouteFileExtension(this.config)
+        errorMessage += `\nMake sure that you add a "${rootPathId}.${rootRouteExtension}" file to your routes directory.\nAdd the file in: "${this.config.routesDirectory}/${rootPathId}.${rootRouteExtension}"`
       }
       throw new Error(errorMessage)
     }
@@ -1049,8 +1103,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         const tLazyRouteTemplate = this.targetTemplate.lazyRoute
         // Check by default check if the user has a specific lazy route template
         // If not, check if the user has a route template and use that instead
-        updatedCacheEntry.fileContent = await fillTemplate(
-          this.config,
+        updatedCacheEntry.fileContent = await this.fillRouteTemplate(
+          node,
           (this.config.customScaffolding?.lazyRouteTemplate ||
             this.config.customScaffolding?.routeTemplate) ??
             tLazyRouteTemplate.template(),
@@ -1078,8 +1132,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
         ).every((d) => d !== node._fsRouteType)
       ) {
         const tRouteTemplate = this.targetTemplate.route
-        updatedCacheEntry.fileContent = await fillTemplate(
-          this.config,
+        updatedCacheEntry.fileContent = await this.fillRouteTemplate(
+          node,
           this.config.customScaffolding?.routeTemplate ??
             tRouteTemplate.template(),
           {
@@ -1101,7 +1155,7 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
 
     if (!isVueFile) {
       // transform the file
-      const transformResult = await transform({
+      const transformOptions = {
         source: updatedCacheEntry.fileContent,
         filename: node.fullPath,
         ctx: {
@@ -1110,6 +1164,10 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           lazy: node._fsRouteType === 'lazy',
         },
         node,
+      } satisfies TransformOptions
+      const transformResult = await transform({
+        ...transformOptions,
+        parseSource: await this.getParseSource(transformOptions),
       })
 
       if (transformResult.result === 'no-route-export') {
@@ -1360,8 +1418,8 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
     // scaffold the root route
     if (!rootNodeFile.fileContent) {
       const rootTemplate = this.targetTemplate.rootRoute
-      const rootRouteContent = await fillTemplate(
-        this.config,
+      const rootRouteContent = await this.fillRouteTemplate(
+        node,
         rootTemplate.template(),
         {
           tsrImports: rootTemplate.imports.tsrImports(),

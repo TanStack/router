@@ -18,16 +18,25 @@ export const Route = createFileRoute('/posts')({
 if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot;
   const hotData = hot.data ??= {};
+  const routeSignature = "e1ab40bd20014cf5";
+  const previousRouteSignature = hotData['tsr-route-signature'];
+  const shouldInvalidateRoute = true;
+  hotData['tsr-route-signature'] = routeSignature;
   const routeId = hotData['tsr-route-id'] ?? Route.id ?? (Route.isRoot ? '__root__' : undefined);
   if (routeId) {
     hotData['tsr-route-id'] = routeId;
   }
   const existingRoute = typeof window !== 'undefined' && routeId ? window.__TSR_ROUTER__?.routesById?.[routeId] : undefined;
   if (routeId && existingRoute && existingRoute !== Route) {
-    (function handleRouteUpdate(routeId, newRoute) {
+    (function handleRouteUpdate(routeId, newRoute, shouldApplyRouteUpdate = true) {
       const router = window.__TSR_ROUTER__;
       const oldRoute = router.routesById[routeId];
       if (!oldRoute) {
+        return;
+      }
+      ;
+      if (!shouldApplyRouteUpdate) {
+        syncHotRouteExport(oldRoute);
         return;
       }
       ;
@@ -153,7 +162,7 @@ if (import.meta.webpackHot) {
           ...(match.__routeContext ?? {})
         };
       }
-    })(routeId, Route);
+    })(routeId, Route, shouldInvalidateRoute);
     try {
       const tsrReactRefreshUtils = typeof __react_refresh_utils__ !== 'undefined' ? __react_refresh_utils__ : undefined;
       const tsrEnqueueUpdate = tsrReactRefreshUtils && typeof tsrReactRefreshUtils.enqueueUpdate === 'function' ? tsrReactRefreshUtils.enqueueUpdate : undefined;
@@ -166,6 +175,7 @@ if (import.meta.webpackHot) {
     if (routeId) {
       data['tsr-route-id'] = routeId;
     }
+    data['tsr-route-signature'] = routeSignature;
   });
   hot.accept();
 }

@@ -1,0 +1,85 @@
+{
+  "name": "@tanstack/octane-router",
+  "version": "1.170.18",
+  "description": "Modern and scalable routing for Octane applications",
+  "author": "Tanner Linsley",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TanStack/router.git",
+    "directory": "packages/octane-router"
+  },
+  "homepage": "https://tanstack.com/router",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/tannerlinsley"
+  },
+  "keywords": [
+    "octane",
+    "location",
+    "router",
+    "routing",
+    "async",
+    "async router",
+    "typescript"
+  ],
+  "scripts": {
+    "clean": "rimraf ./dist && rimraf ./coverage",
+    "test:eslint": "eslint",
+    "test:types": "tsc --noEmit",
+    "test:unit": "vitest",
+    "test:unit:dev": "pnpm run test:unit --watch --hideSkippedTests",
+    "test:build": "publint --strict && attw --pack . --profile esm-only --ignore-rules no-resolution internal-resolution-error",
+    "build": "tsc --noEmit -p tsconfig.build.json"
+  },
+  "type": "module",
+  "types": "src/index.ts",
+  "main": "src/index.ts",
+  "module": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./history": "./src/history.ts",
+    "./ssr/server": {
+      "types": "./src/ssr/server.ts",
+      "default": "./src/ssr/server.ts"
+    },
+    "./ssr/client": {
+      "types": "./src/ssr/client.ts",
+      "default": "./src/ssr/client.ts"
+    },
+    "./generator-plugin": {
+      "types": "./src/generator-plugin.d.ts",
+      "default": "./src/generator-plugin.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "src",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "octane": {
+    "hookSlots": {
+      "manual": [
+        "src"
+      ]
+    }
+  },
+  "dependencies": {
+    "@tanstack/history": "workspace:*",
+    "@tanstack/router-core": "workspace:*",
+    "@tanstack/store": "^0.9.3",
+    "isbot": "^5.1.22"
+  },
+  "devDependencies": {
+    "@types/node": ">=22",
+    "octane": "catalog:",
+    "vite": "*"
+  },
+  "peerDependencies": {
+    "octane": ">=0.1.8"
+  }
+}

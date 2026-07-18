@@ -5,6 +5,7 @@ import { createRouteHmrStatement } from './hmr'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
 import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
+import { validateFrameworkPluginOrder } from './framework-plugin-order'
 import type { UnpluginFactory } from 'unplugin'
 import type { Config } from './config'
 import type { RouterPluginContext } from './router-plugin-context'
@@ -33,7 +34,7 @@ export function createRouterHmrPlugin(
     transform: {
       filter: {
         // this is necessary for webpack / rspack to avoid matching .html files
-        id: /\.(m|c)?(j|t)sx?$/,
+        id: [/\.(m|c)?(j|t)sx?$/, /\.tsrx(?:$|\?)/],
         code: {
           include: routeFactoryCallCodeFilter,
         },
@@ -101,6 +102,11 @@ export function createRouterHmrPlugin(
       configResolved(config) {
         ROOT = config.root
         userConfig = resolveUserConfig()
+        validateFrameworkPluginOrder({
+          framework: userConfig.target,
+          plugins: config.plugins,
+          routerPluginName: 'tanstack-router:hmr',
+        })
       },
       applyToEnvironment(environment) {
         if (userConfig.plugin?.vite?.environmentName) {

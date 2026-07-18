@@ -31,6 +31,7 @@ packages:
   - 'e2e/react-start/*'
   - 'e2e/solid-start/*'
   - 'e2e/vue-start/*'
+  - 'e2e/octane-start/*'
   - 'e2e/eslint-plugin-start'
 
 catalog:
@@ -46,6 +47,7 @@ catalog:
   '@tanstack/react-query': ^5.99.0
   '@tanstack/solid-query': ^5.99.0
   '@tanstack/vue-query': ^5.99.0
+  octane: ^0.1.8
 
 overrides:
   '@types/babel__traverse': '^7.28.0'
@@ -66,6 +68,7 @@ overrides:
   '@tanstack/history': 'workspace:*'
   '@tanstack/router-core': 'workspace:*'
   '@tanstack/react-router': 'workspace:*'
+  '@tanstack/octane-router': 'workspace:*'
   '@tanstack/router-cli': 'workspace:*'
   '@tanstack/router-devtools': 'workspace:*'
   '@tanstack/router-devtools-core': 'workspace:^'
@@ -92,6 +95,9 @@ overrides:
   '@tanstack/vue-start': 'workspace:*'
   '@tanstack/vue-start-client': 'workspace:*'
   '@tanstack/vue-start-server': 'workspace:*'
+  '@tanstack/octane-start': 'workspace:*'
+  '@tanstack/octane-start-client': 'workspace:*'
+  '@tanstack/octane-start-server': 'workspace:*'
   '@tanstack/start-plugin-core': 'workspace:*'
   '@tanstack/start-client-core': 'workspace:*'
   '@tanstack/start-server-core': 'workspace:*'
@@ -102,6 +108,7 @@ overrides:
   '@tanstack/router-utils': 'workspace:*'
   '@tanstack/start-static-server-functions': 'workspace:*'
   '@tanstack/nitro-v2-vite-plugin': 'workspace:*'
+  octane: 'github:tannerlinsley/octane#690053baee01b38f836c6b662cc2c0efe8403a51&path:/packages/octane'
 
 allowBuilds:
   # root dependency

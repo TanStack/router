@@ -8,6 +8,7 @@ import { normalizePath } from 'vite'
 import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { routesManifestPlugin } from '../../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugins/prerender-routes-plugin'
+import { composeGeneratorPlugins } from '../../start-router-plugin/generator-plugins/compose-generator-plugins'
 import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
 import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
 import { SERVER_PROP } from '../../start-router-plugin/constants'
@@ -146,10 +147,18 @@ export function tanStackStartRouter(
     clientTreePlugin,
     tanstackRouterGenerator(() => {
       const routerConfig = getConfig().startConfig.router
-      const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
+      const builtInPlugins: Array<GeneratorPlugin> = [
+        clientTreeGeneratorPlugin,
+        routesManifestPlugin(),
+      ]
       if (startPluginOpts.prerender?.enabled === true) {
-        plugins.push(prerenderRoutesPlugin())
+        builtInPlugins.push(prerenderRoutesPlugin())
       }
+      const plugins = composeGeneratorPlugins({
+        frameworkPlugins: corePluginOpts.routerGeneratorPlugins,
+        userPlugins: routerConfig.plugins,
+        builtInPlugins,
+      })
       return {
         ...routerConfig,
         target: corePluginOpts.framework,

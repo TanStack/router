@@ -56,3 +56,16 @@ export type ReferenceRouteCompilerPlugin = {
     ctx: ReferenceRouteSplitPropertyCompilerPluginContext,
   ) => void | t.Expression
 }
+
+export type VirtualRouteCompilerPluginContext = {
+  programPath: babel.NodePath<t.Program>
+  splitNodeMeta: SplitNodeMeta
+  localExporterIdent: string
+}
+
+export type VirtualRouteCompilerPlugin = {
+  name: string
+  onExportSplitRouteProperty?: (
+    ctx: VirtualRouteCompilerPluginContext,
+  ) => void | t.Identifier
+}

@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": ["node"]
+  },
+  "include": [
+    "src",
+    "tests/**/*.test-d.ts",
+    "tests/externalHydration.test.ts",
+    "tests/generator-plugin.test.ts",
+    "tests/setup.ts",
+    "vite.config.ts",
+    "eslint.config.ts"
+  ]
+}

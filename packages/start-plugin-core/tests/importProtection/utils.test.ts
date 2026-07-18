@@ -76,6 +76,7 @@ describe('withoutKnownExtension', () => {
   test('removes known source extension', () => {
     expect(withoutKnownExtension('/a/b.ts')).toBe('/a/b')
     expect(withoutKnownExtension('/a/b.tsx')).toBe('/a/b')
+    expect(withoutKnownExtension('/a/b.tsrx')).toBe('/a/b')
   })
 
   test('keeps unknown extension', () => {
