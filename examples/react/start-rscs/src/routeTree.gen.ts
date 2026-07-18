@@ -9,26 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as PokemonRscRouteImport } from './routes/pokemon-rsc'
-import { Route as PokemonRouteImport } from './routes/pokemon'
-import { Route as LowLevelApiRouteImport } from './routes/low-level-api'
-import { Route as ECommerceRouteImport } from './routes/e-commerce'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ECommerceRouteImport } from './routes/e-commerce'
+import { Route as LowLevelApiRouteImport } from './routes/low-level-api'
+import { Route as PokemonRouteImport } from './routes/pokemon'
+import { Route as PokemonRscRouteImport } from './routes/pokemon-rsc'
 import { Route as ApiRscRouteImport } from './routes/api/rsc'
 
-const PokemonRscRoute = PokemonRscRouteImport.update({
-  id: '/pokemon-rsc',
-  path: '/pokemon-rsc',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PokemonRoute = PokemonRouteImport.update({
-  id: '/pokemon',
-  path: '/pokemon',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LowLevelApiRoute = LowLevelApiRouteImport.update({
-  id: '/low-level-api',
-  path: '/low-level-api',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ECommerceRoute = ECommerceRouteImport.update({
@@ -36,9 +26,19 @@ const ECommerceRoute = ECommerceRouteImport.update({
   path: '/e-commerce',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LowLevelApiRoute = LowLevelApiRouteImport.update({
+  id: '/low-level-api',
+  path: '/low-level-api',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PokemonRoute = PokemonRouteImport.update({
+  id: '/pokemon',
+  path: '/pokemon',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PokemonRscRoute = PokemonRscRouteImport.update({
+  id: '/pokemon-rsc',
+  path: '/pokemon-rsc',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRscRoute = ApiRscRouteImport.update({
@@ -110,25 +110,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/pokemon-rsc': {
-      id: '/pokemon-rsc'
-      path: '/pokemon-rsc'
-      fullPath: '/pokemon-rsc'
-      preLoaderRoute: typeof PokemonRscRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pokemon': {
-      id: '/pokemon'
-      path: '/pokemon'
-      fullPath: '/pokemon'
-      preLoaderRoute: typeof PokemonRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/low-level-api': {
-      id: '/low-level-api'
-      path: '/low-level-api'
-      fullPath: '/low-level-api'
-      preLoaderRoute: typeof LowLevelApiRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/e-commerce': {
@@ -138,11 +124,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ECommerceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/low-level-api': {
+      id: '/low-level-api'
+      path: '/low-level-api'
+      fullPath: '/low-level-api'
+      preLoaderRoute: typeof LowLevelApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pokemon': {
+      id: '/pokemon'
+      path: '/pokemon'
+      fullPath: '/pokemon'
+      preLoaderRoute: typeof PokemonRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pokemon-rsc': {
+      id: '/pokemon-rsc'
+      path: '/pokemon-rsc'
+      fullPath: '/pokemon-rsc'
+      preLoaderRoute: typeof PokemonRscRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/rsc': {
