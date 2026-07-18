@@ -18,20 +18,20 @@ declare module 'octane/compiler/vite' {
   }
 
   export interface OctaneRendererRule {
-    include: string | Array<string>
-    exclude?: string | Array<string>
+    include: string | ReadonlyArray<string>
+    exclude?: string | ReadonlyArray<string>
     renderer: string
   }
 
   export interface OctaneRendererConfig {
     default?: string
     registry?: Record<string, string | OctaneRendererDescriptor>
-    rules?: Array<OctaneRendererRule>
+    rules?: ReadonlyArray<OctaneRendererRule>
     boundaries?: Record<string, Record<string, OctaneRendererBoundary>>
   }
 
   export interface OctaneCompilerOptions {
-    exclude?: Array<string>
+    exclude?: ReadonlyArray<string>
     hmr?: boolean
     profile?: boolean
     renderers?: OctaneRendererConfig
