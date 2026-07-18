@@ -4,12 +4,11 @@ import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 /**
- * A preload that borrows an active parent while that parent is revalidating in
- * the background must derive descendant data from the revalidated generation.
- * Otherwise the preload can cache a child snapshot based on stale parent data,
- * then combine it with the freshly committed parent on navigation.
+ * A preload only adopts an identical active lane. A child preload therefore
+ * uses completed cached parent data instead of borrowing a parent from a
+ * different background-revalidation lane.
  */
-test('child preload stays coherent with an overlapping parent background reload', async () => {
+test('child preload does not borrow an overlapping parent background reload', async () => {
   const backgroundResponse = createControlledPromise<{ revision: number }>()
   const childLoaderStarted = createControlledPromise<void>()
   let parentLoadCount = 0
@@ -58,8 +57,8 @@ test('child preload stays coherent with an overlapping parent background reload'
 
   const childPreload = router.preloadRoute({ to: '/parent/child' })
 
-  // The child loader is waiting on its parent while revision 2 is still
-  // pending, so the two loader generations genuinely overlap.
+  // The child loader and background parent generation genuinely overlap, but
+  // the child can use the completed cached parent generation immediately.
   await childLoaderStarted
   expect(backgroundResponse.status).toBe('pending')
   expect(parentLoader).toHaveBeenCalledTimes(2)
@@ -81,5 +80,5 @@ test('child preload stays coherent with an overlapping parent background reload'
   expect(parentLoader).toHaveBeenCalledTimes(2)
   expect(childLoader).toHaveBeenCalledTimes(1)
   expect(parentMatch?.loaderData).toEqual({ revision: 2 })
-  expect(childMatch?.loaderData).toEqual({ parentRevision: 2 })
+  expect(childMatch?.loaderData).toEqual({ parentRevision: 1 })
 })

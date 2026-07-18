@@ -361,12 +361,13 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
 
 /**
  * Perform a deep equality check with options for partial comparison and
- * ignoring `undefined` values. Optimized for router state comparisons.
+ * ignoring `undefined` values. Passing `false` is shorthand for exact object
+ * keys, including keys whose value is `undefined`.
  */
 export function deepEqual(
   a: any,
   b: any,
-  opts?: { partial?: boolean; ignoreUndefined?: boolean },
+  opts?: { partial?: boolean; ignoreUndefined?: boolean } | false,
 ): boolean {
   if (a === b) {
     return true
@@ -385,9 +386,9 @@ export function deepEqual(
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const ignoreUndefined = opts?.ignoreUndefined ?? true
+    const ignoreUndefined = opts !== false && opts?.ignoreUndefined !== false
 
-    if (opts?.partial) {
+    if ((opts as any)?.partial) {
       for (const k in b) {
         if (!ignoreUndefined || b[k] !== undefined) {
           if (!deepEqual(a[k], b[k], opts)) return false

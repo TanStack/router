@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  createControlledPromise,
+  notFound,
+} from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 afterEach(() => {
@@ -11,10 +16,9 @@ afterEach(() => {
  * Preload adoption edge cases. The happy path (navigation adopts an
  * in-flight preload's successful loader run) and the control-flow
  * non-leakage path are pinned in load.test.ts; this file pins the
- * adoption boundary: a donor must have its loader genuinely in flight. A
- * preload still in its serial phase can itself be waiting on the navigation
- * through the borrow protocol, while a stale successful donor can still have
- * fresh loader work pending behind its cached snapshot.
+ * complete-lane adoption boundary. Identical lanes can be shared during either
+ * serial contextualization or loader execution; different lanes never join
+ * individual route loaders.
  */
 
 describe('preload adoption', () => {
@@ -26,7 +30,6 @@ describe('preload adoption', () => {
       notifications: Array<string>
     }>()
     const revalidationStarted = createControlledPromise<void>()
-    const navigationReachedReloadDecision = createControlledPromise<void>()
     let loaderCalls = 0
 
     const rootRoute = new BaseRootRoute({})
@@ -40,11 +43,7 @@ describe('preload adoption', () => {
       staleTime: 0,
       preloadStaleTime: 0,
       gcTime: 60_000,
-      shouldReload: ({ preload }) => {
-        if (!preload) {
-          navigationReachedReloadDecision.resolve()
-        }
-      },
+      shouldReload: () => undefined,
       loader: {
         staleReloadMode: 'blocking',
         handler: () => {
@@ -82,7 +81,7 @@ describe('preload adoption', () => {
     const navigation = router.navigate({ to: '/notifications' }).then(() => {
       navigationSettled = true
     })
-    await navigationReachedReloadDecision
+    await Promise.resolve()
 
     // The navigation may share the revalidation, but it must not treat the
     // stale cached snapshot as the completed result while fresh work runs.
@@ -102,7 +101,7 @@ describe('preload adoption', () => {
     ).toEqual({ notifications: ['fresh'] })
   })
 
-  test('navigating during the preload serial phase does not deadlock (adoption declined)', async () => {
+  test('navigation adopts an identical preload during its serial phase', async () => {
     const beforeLoadGate = createControlledPromise<void>()
     const preloadSerialStarted = createControlledPromise<void>()
     let beforeLoadCalls = 0
@@ -140,23 +139,19 @@ describe('preload adoption', () => {
     await preloadSerialStarted
     expect(beforeLoadCalls).toBe(1)
 
-    // The navigation must not join a donor whose loader is not in flight;
-    // it runs its own loader and completes without waiting on the preload.
-    await router.navigate({ to: '/foo' })
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(
-      router.state.matches.find((match) => match.routeId === fooRoute.id)
-        ?.status,
-    ).toBe('success')
+    const navigation = router.navigate({ to: '/foo' })
+    await Promise.resolve()
+    expect(beforeLoadCalls).toBe(1)
+    expect(loader).not.toHaveBeenCalled()
 
     beforeLoadGate.resolve()
-    await preload
+    await Promise.all([preload, navigation])
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
-  test("a sibling preload adopts another preload lane's in-flight loader", async () => {
+  test('identical concurrent preloads share one full lane', async () => {
     const loaderGate = createControlledPromise<string>()
     const loaderStarted = createControlledPromise<void>()
-    const secondPreloadStarted = createControlledPromise<void>()
     let preloadBeforeLoadCalls = 0
     const loader = vi.fn(() => {
       loaderStarted.resolve()
@@ -173,8 +168,8 @@ describe('preload adoption', () => {
       path: '/foo',
       preloadStaleTime: Infinity,
       beforeLoad: ({ preload }) => {
-        if (preload && ++preloadBeforeLoadCalls === 2) {
-          secondPreloadStarted.resolve()
+        if (preload) {
+          preloadBeforeLoadCalls++
         }
       },
       loader,
@@ -191,8 +186,8 @@ describe('preload adoption', () => {
     await loaderStarted
 
     const second = router.preloadRoute({ to: '/foo' } as any)
-    await secondPreloadStarted
-    expect(preloadBeforeLoadCalls).toBe(2)
+    await Promise.resolve()
+    expect(preloadBeforeLoadCalls).toBe(1)
     expect(loader).toHaveBeenCalledTimes(1)
 
     loaderGate.resolve('once')
@@ -211,7 +206,6 @@ describe('preload adoption', () => {
   test('a fulfilled undefined loader result is adopted as success', async () => {
     const loaderGate = createControlledPromise<undefined>()
     const loaderStarted = createControlledPromise<void>()
-    const navigationStarted = createControlledPromise<void>()
     const loader = vi.fn(() => {
       loaderStarted.resolve()
       return loaderGate
@@ -225,11 +219,7 @@ describe('preload adoption', () => {
     const fooRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/foo',
-      beforeLoad: ({ preload }) => {
-        if (!preload) {
-          navigationStarted.resolve()
-        }
-      },
+      beforeLoad: () => undefined,
       loader,
     })
 
@@ -243,7 +233,7 @@ describe('preload adoption', () => {
     const preload = router.preloadRoute({ to: '/foo' })
     await loaderStarted
     const navigation = router.navigate({ to: '/foo' })
-    await navigationStarted
+    await Promise.resolve()
     expect(loaderGate.status).toBe('pending')
     expect(loader).toHaveBeenCalledTimes(1)
 
@@ -258,16 +248,111 @@ describe('preload adoption', () => {
     expect(match?.loaderData).toBeUndefined()
   })
 
-  test('a non-joinable earlier lane does not hide a later lane with its loader in flight', async () => {
-    const beforeLoadGate = createControlledPromise<void>()
-    const firstPreloadSerialStarted = createControlledPromise<void>()
-    const loaderStarted = createControlledPromise<void>()
-    const navigationSerialStarted = createControlledPromise<void>()
-    let beforeLoadCalls = 0
-    const loaderGate = createControlledPromise<string>()
-    const loader = vi.fn(() => {
-      loaderStarted.resolve()
-      return loaderGate
+  test('navigation does not adopt a preload with different loader deps', async () => {
+    const preloadBeforeLoadStarted = createControlledPromise<void>()
+    const preloadBeforeLoadGate = createControlledPromise<void>()
+    let generation = 1
+    const loader = vi.fn(({ deps }) => deps.generation)
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      loaderDeps: () => ({ generation }),
+      beforeLoad: async ({ preload }) => {
+        if (preload) {
+          preloadBeforeLoadStarted.resolve()
+          await preloadBeforeLoadGate
+        }
+      },
+      loader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    const preload = router.preloadRoute({ to: '/target' })
+    await preloadBeforeLoadStarted
+
+    generation = 2
+    await router.navigate({ to: '/target' })
+
+    expect(loader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.at(-1)?.loaderData).toBe(2)
+
+    preloadBeforeLoadGate.resolve()
+    await preload
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('navigation does not adopt a preload with different parsed params', async () => {
+    const preloadBeforeLoadStarted = createControlledPromise<void>()
+    const preloadBeforeLoadGate = createControlledPromise<void>()
+    let generation = 1
+    const loader = vi.fn(({ params }) => params.generation)
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target/$id',
+      params: {
+        parse: ({ id }) => ({ id, generation }),
+        stringify: ({ id }) => ({ id }),
+      },
+      beforeLoad: async ({ preload }) => {
+        if (preload) {
+          preloadBeforeLoadStarted.resolve()
+          await preloadBeforeLoadGate
+        }
+      },
+      loader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    const preload = router.preloadRoute({
+      to: '/target/$id',
+      params: { id: 'one', generation: 1 },
+    })
+    await preloadBeforeLoadStarted
+
+    generation = 2
+    await router.navigate({
+      to: '/target/$id',
+      params: { id: 'one', generation: 2 },
+    })
+
+    expect(loader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.at(-1)?.loaderData).toBe(2)
+
+    preloadBeforeLoadGate.resolve()
+    await preload
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('navigation retries a root not-found preload result', async () => {
+    const preloadLoaderStarted = createControlledPromise<void>()
+    const preloadLoaderGate = createControlledPromise<void>()
+    const loader = vi.fn(async ({ preload }) => {
+      if (preload) {
+        preloadLoaderStarted.resolve()
+        await preloadLoaderGate
+        throw notFound()
+      }
+      return 'navigation data'
     })
 
     const rootRoute = new BaseRootRoute({})
@@ -275,63 +360,182 @@ describe('preload adoption', () => {
       getParentRoute: () => rootRoute,
       path: '/',
     })
-    const fooRoute = new BaseRoute({
+    const targetRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
-      path: '/foo',
-      beforeLoad: async ({ preload }) => {
-        beforeLoadCalls++
-        if (!preload) {
-          navigationSerialStarted.resolve()
-        } else if (beforeLoadCalls === 1) {
-          // Keep the FIRST preload's serial phase in flight so its lane
-          // holds a non-joinable donor; later calls proceed immediately.
-          firstPreloadSerialStarted.resolve()
-          await beforeLoadGate
-        }
-      },
+      path: '/target',
       loader,
     })
-
     const router = createTestRouter({
-      routeTree: rootRoute.addChildren([indexRoute, fooRoute]),
+      routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     })
 
     await router.load()
+    const preload = router.preloadRoute({ to: '/target' })
+    await preloadLoaderStarted
+    const navigation = router.navigate({ to: '/target' })
 
-    // First lane: registered first, stuck in its serial phase.
-    const first = router.preloadRoute({ to: '/foo' } as any)
-    await firstPreloadSerialStarted
-    expect(beforeLoadCalls).toBe(1)
+    preloadLoaderGate.resolve()
+    await Promise.all([preload, navigation])
 
-    // Second lane: its loader is in flight and therefore joinable.
-    const second = router.preloadRoute({ to: '/foo' } as any)
-    await loaderStarted
-
-    // The navigation must scan PAST the first (serial-phase) lane and adopt
-    // the second lane's in-flight loader run instead of re-running it.
-    const navigation = router.navigate({ to: '/foo' })
-    await navigationSerialStarted
-    expect(beforeLoadCalls).toBe(3)
-    expect(loader).toHaveBeenCalledTimes(1)
-
-    loaderGate.resolve('once')
-    await Promise.all([navigation, second])
-
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(
-      router.state.matches.find((match) => match.routeId === fooRoute.id)
-        ?.loaderData,
-    ).toBe('once')
-
-    beforeLoadGate.resolve()
-    await first
+    expect(loader).toHaveBeenCalledTimes(2)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: targetRoute.id,
+      loaderData: 'navigation data',
+    })
+    expect(router.state.matches.some((match) => match.globalNotFound)).toBe(
+      false,
+    )
   })
 
-  test('navigation retries a failed joined preload without starving sibling work', async () => {
+  test('a superseded navigation stops waiting for an independent preload', async () => {
+    const beforeLoadStarted = createControlledPromise<void>()
+    const beforeLoadGate = createControlledPromise<void>()
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const slowRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/slow',
+      beforeLoad: async () => {
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      },
+      loader: () => 'slow data',
+    })
+    const otherRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, slowRoute, otherRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    let preloadSettled = false
+    const preload = router.preloadRoute({ to: '/slow' }).then(() => {
+      preloadSettled = true
+    })
+    await beforeLoadStarted
+
+    let navigationSettled = false
+    const navigation = router.navigate({ to: '/slow' }).then(() => {
+      navigationSettled = true
+    })
+    await Promise.resolve()
+
+    await router.navigate({ to: '/other' })
+    await navigation
+
+    expect(navigationSettled).toBe(true)
+    expect(preloadSettled).toBe(false)
+    expect(beforeLoadGate.status).toBe('pending')
+
+    beforeLoadGate.resolve()
+    await preload
+  })
+
+  test('clearing cache prevents a captured preload generation from being claimed', async () => {
+    const stalePreloadStarted = createControlledPromise<void>()
+    const stalePreloadGate = createControlledPromise<string>()
+    const freshNavigationGate = createControlledPromise<string>()
+    let loaderCalls = 0
+    const loader = vi.fn(() => {
+      loaderCalls++
+      if (loaderCalls === 1) {
+        return 'initial'
+      }
+      if (loaderCalls === 2) {
+        stalePreloadStarted.resolve()
+        return stalePreloadGate
+      }
+      return freshNavigationGate
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      shouldReload: true,
+      loader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    await router.preloadRoute({ to: '/target' })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    const preload = router.preloadRoute({ to: '/target' })
+    await stalePreloadStarted
+
+    let navigationSettled = false
+    const navigation = router.navigate({ to: '/target' }).then(() => {
+      navigationSettled = true
+    })
+    await Promise.resolve()
+    expect(loader).toHaveBeenCalledTimes(2)
+    router.clearCache()
+
+    stalePreloadGate.resolve('stale')
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(3))
+    expect(navigationSettled).toBe(false)
+
+    freshNavigationGate.resolve('fresh')
+    await Promise.all([preload, navigation])
+
+    expect(router.state.matches.at(-1)?.loaderData).toBe('fresh')
+  })
+
+  test('an adopted beforeLoad signal is aborted when its navigation unloads', async () => {
+    const beforeLoadStarted = createControlledPromise<void>()
+    const beforeLoadGate = createControlledPromise<void>()
+    let signal: AbortSignal | undefined
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      beforeLoad: async ({ abortController }) => {
+        signal = abortController.signal
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      },
+      loader: () => 'target data',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    const preload = router.preloadRoute({ to: '/target' })
+    await beforeLoadStarted
+    const navigation = router.navigate({ to: '/target' })
+
+    beforeLoadGate.resolve()
+    await Promise.all([preload, navigation])
+    expect(signal?.aborted).toBe(false)
+
+    await router.navigate({ to: '/' })
+    expect(signal?.aborted).toBe(true)
+  })
+
+  test('navigation retries the full lane after an adopted preload fails', async () => {
     const preloadParentStarted = createControlledPromise<void>()
     const preloadFailureGate = createControlledPromise<void>()
-    const navigationStarted = createControlledPromise<void>()
     const navigationParentRetryStarted = createControlledPromise<void>()
     const childStarted = createControlledPromise<void>()
     const childGate = createControlledPromise<string>()
@@ -345,11 +549,7 @@ describe('preload adoption', () => {
     const parentRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/parent',
-      beforeLoad: ({ preload }) => {
-        if (!preload) {
-          navigationStarted.resolve()
-        }
-      },
+      beforeLoad: () => undefined,
       loader: async ({ preload }) => {
         parentLoads++
         if (preload) {
@@ -385,21 +585,24 @@ describe('preload adoption', () => {
     expect(childLoads).toBe(1)
 
     const navigation = router.navigate({ to: '/parent/child' })
-    await navigationStarted
+    await Promise.resolve()
     expect(preloadFailureGate.status).toBe('pending')
     expect(parentLoads).toBe(1)
     expect(childLoads).toBe(1)
 
     preloadFailureGate.resolve()
+    await Promise.resolve()
+    expect(parentLoads).toBe(1)
+    childGate.resolve('child data')
+
     await navigationParentRetryStarted
     expect(parentLoads).toBe(2)
-    expect(childLoads).toBe(1)
+    expect(childLoads).toBe(2)
 
-    childGate.resolve('child data')
     await Promise.all([navigation, preload])
 
     expect(parentLoads).toBe(2)
-    expect(childLoads).toBe(1)
+    expect(childLoads).toBe(2)
     expect(router.state.location.pathname).toBe('/parent/child')
     expect(
       router.state.matches.find((match) => match.routeId === parentRoute.id)

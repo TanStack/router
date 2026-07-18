@@ -56,11 +56,7 @@ import type {
 } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
-import type {
-  LoadTransaction,
-  LoaderFlight,
-  PendingSession,
-} from './load-client'
+import type { LoadTransaction, PendingSession } from './load-client'
 import type { ServerLoadResult } from './load-server'
 import type {
   HistoryAction,
@@ -1019,8 +1015,6 @@ export class RouterCore<
   subscribers = new Set<RouterListener<RouterEvent>>()
   /** Current client load transaction and owner of navigation writes. */
   declare _tx?: LoadTransaction
-  /** Shared in-flight route loaders keyed by match ID. */
-  declare _flights?: Map<string, LoaderFlight>
   /** Last terminal matches, excluding temporary pending presentation. */
   declare _committedMatches?: Array<AnyRouteMatch>
   /** Pending-boundary reveal and minimum-visible timing state. */
@@ -2622,7 +2616,7 @@ export class RouterCore<
       if (filter && !filter(match as MakeRouteMatchUnion<this>)) {
         retained.push(match)
       } else {
-        transferMatchResources(this, [match])
+        transferMatchResources([match])
       }
     }
     this.stores.setCached(retained)

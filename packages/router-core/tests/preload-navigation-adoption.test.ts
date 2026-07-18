@@ -11,12 +11,7 @@ describe('navigation adopting an in-flight preload', () => {
   test('adopted preload loader runs once and its signal is not aborted', async () => {
     const loaderGate = createControlledPromise<string>()
     const loaderStarted = createControlledPromise<void>()
-    const navigationStarted = createControlledPromise<void>()
-    const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => {
-      if (!preload) {
-        navigationStarted.resolve()
-      }
-    })
+    const beforeLoad = vi.fn()
     let preloadSignal: AbortSignal | undefined
     const loader = vi.fn(
       ({ abortController }: { abortController: AbortController }) => {
@@ -55,13 +50,11 @@ describe('navigation adopting an in-flight preload', () => {
     expect(preloadSignal).toBeDefined()
     expect(preloadSignal?.aborted).toBe(false)
 
-    // Wait until the navigation has run its own public beforeLoad while the
-    // preload loader remains pending, making the overlap explicit.
+    // The identical navigation claims the whole active preload lane.
     const navigation = router.navigate({ to: '/foo' })
-    await navigationStarted
+    await Promise.resolve()
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
-      false,
     ])
     expect(loaderGate.status).toBe('pending')
     expect(loader).toHaveBeenCalledTimes(1)

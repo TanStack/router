@@ -419,6 +419,13 @@ describe('deepEqual', () => {
         expect(deepEqual([a], [b], { partial, ignoreUndefined })).toEqual(false)
         expect(deepEqual([b], [a], { partial, ignoreUndefined })).toEqual(false)
       })
+
+      it('supports false as exact object-key shorthand', () => {
+        const a = { nested: { value: undefined } }
+        const b = { nested: {} }
+        expect(deepEqual(a, b, false)).toEqual(false)
+        expect(deepEqual(b, a, false)).toEqual(false)
+      })
     })
     describe('partial = true', () => {
       const partial = true

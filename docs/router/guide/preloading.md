@@ -130,7 +130,7 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 ```
 
-Client-side preloading also runs each new route's `beforeLoad` with `preload: true`. When a completed successful preload is still fresh under the built-in freshness and invalidation policy used for preloaded loader data, the client router can reuse the context returned by that invocation instead of calling `beforeLoad` again with `preload: false`. Reuse follows route match identity, including `loaderDeps`, and requires a reusable parent context. The `shouldReload` option remains loader-only. Pending, failed, invalidated, or stale preloads do not donate their `beforeLoad` context to a client navigation.
+Client-side preloading also runs each new route's `beforeLoad` with `preload: true`. If navigation begins while an identical preload lane is still running, the navigation can adopt that complete lane, including its `beforeLoad` context and loaders. Lane identity includes the complete route sequence, params, `loaderDeps`, and search. After a preload finishes, its `beforeLoad` context is discarded and navigation calls `beforeLoad` again with `preload: false`; successful loader data remains independently cacheable according to the route's preload freshness settings. The `shouldReload` option remains loader-only.
 
 ## Preloading with External Libraries
 
