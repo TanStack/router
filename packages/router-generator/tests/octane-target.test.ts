@@ -66,6 +66,7 @@ describe('octane target', () => {
       target: 'octane',
       routesDirectory,
       generatedRouteTree: path.join(root, 'src/routeTree.gen.ts'),
+      tmpDir: path.join(root, '.tanstack/tmp'),
       disableLogging: true,
       plugins: [sourcePlugin, userPlugin],
     })
@@ -115,6 +116,7 @@ describe('octane target', () => {
       target: 'octane',
       routesDirectory,
       generatedRouteTree: path.join(root, 'src/routeTree.gen.js'),
+      tmpDir: path.join(root, '.tanstack/tmp'),
       disableLogging: true,
       disableTypes: true,
     })

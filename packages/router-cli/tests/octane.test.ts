@@ -57,6 +57,7 @@ describe('Octane route generation', () => {
       target: 'octane',
       routesDirectory,
       generatedRouteTree: path.join(root, 'src/routeTree.gen.ts'),
+      tmpDir: path.join(root, '.tanstack/tmp'),
       disableLogging: true,
     })
     const generator = await createGenerator(config, root)

@@ -2,6 +2,9 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "module": "esnext",
+    "paths": {
+      "@tanstack/octane-start/client": ["./src/client.ts"]
+    },
     "types": ["node"]
   },
   "include": ["src", "tests", "vite.config.ts", "vite.config.server-entry.ts"]
