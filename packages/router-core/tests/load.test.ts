@@ -215,7 +215,7 @@ describe('beforeLoad skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
   })
 
   test('exec if rejected preload (notFound)', async () => {
@@ -409,7 +409,7 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
-  test('exec if resolved preload (success)', async () => {
+  test('reuses a resolved preload within the default preload stale time', async () => {
     const loader = vi.fn()
     const router = setup({ loader })
     await router.preloadRoute({ to: '/foo' })
@@ -417,7 +417,7 @@ describe('loader skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(loader).toHaveBeenCalledTimes(2)
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
   test('skip if resolved preload (success) within staleTime duration', async () => {
@@ -832,7 +832,7 @@ describe('stale loader reload triggers', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('reloads a stale preloaded loader when switching to a different match id of the same route', async () => {
+  test('reuses fresh preloaded loaders when switching match ids', async () => {
     const rootRoute = new BaseRootRoute({})
     const rootLoader = vi.fn(() => ({ ok: true }))
     const childLoader = vi.fn(() => ({ ok: true }))
@@ -890,8 +890,8 @@ describe('stale loader reload triggers', () => {
       search: { page: '2' },
     })
 
-    expect(rootLoader).toHaveBeenCalledTimes(3)
-    expect(childLoader).toHaveBeenCalledTimes(3)
+    expect(rootLoader).toHaveBeenCalledTimes(2)
+    expect(childLoader).toHaveBeenCalledTimes(2)
   })
 
   test('skips stale ancestor loader when only a child path param changes', async () => {

@@ -7,8 +7,8 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('preloaded beforeLoad context reuse', () => {
-  test('reuses fresh nested context for navigation and child loaders', async () => {
+describe('preloaded beforeLoad context lifetime', () => {
+  test('reruns nested beforeLoad while reusing completed loader data', async () => {
     const parentBeforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
       parent: preload ? 'preloaded parent' : 'loaded parent',
     }))
@@ -62,24 +62,19 @@ describe('preloaded beforeLoad context reuse', () => {
     await router.preloadRoute({ to: '/parent/child' })
     await router.navigate({ to: '/parent/child' })
 
-    expect(parentBeforeLoad).toHaveBeenCalledTimes(1)
-    expect(parentBeforeLoad).toHaveBeenCalledWith(
-      expect.objectContaining({ preload: true }),
-    )
-    expect(childBeforeLoad).toHaveBeenCalledTimes(1)
-    expect(childBeforeLoad).toHaveBeenCalledWith(
-      expect.objectContaining({
-        context: expect.objectContaining({ parent: 'preloaded parent' }),
-        preload: true,
-      }),
-    )
+    expect(
+      parentBeforeLoad.mock.calls.map(([context]) => context.preload),
+    ).toEqual([true, false])
+    expect(
+      childBeforeLoad.mock.calls.map(([context]) => context.preload),
+    ).toEqual([true, false])
     expect(childLoader).toHaveBeenCalledTimes(1)
     const match = router.state.matches.find(
       (candidate) => candidate.routeId === childRoute.id,
     )
     expect(match?.context).toEqual({
-      parent: 'preloaded parent',
-      child: 'preloaded parent:true',
+      parent: 'loaded parent',
+      child: 'loaded parent:false',
     })
     expect(match?.loaderData).toEqual({
       context: {
@@ -90,7 +85,7 @@ describe('preloaded beforeLoad context reuse', () => {
     })
   })
 
-  test('keeps beforeLoad independent while joining a pending preload loader', async () => {
+  test('adopts beforeLoad with an identical active preload lane', async () => {
     const loaderGate = createControlledPromise<string>()
     const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
       guard: preload ? 'preloaded' : 'loaded',
@@ -118,10 +113,9 @@ describe('preloaded beforeLoad context reuse', () => {
     await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
 
     const navigation = router.navigate({ to: '/guarded' })
-    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
+    await Promise.resolve()
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
-      false,
     ])
     expect(loader).toHaveBeenCalledTimes(1)
 
@@ -129,60 +123,13 @@ describe('preloaded beforeLoad context reuse', () => {
     await Promise.all([preload, navigation])
 
     expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.state.matches.at(-1)?.context).toEqual({ guard: 'loaded' })
+    expect(router.state.matches.at(-1)?.context).toEqual({
+      guard: 'preloaded',
+    })
     expect(router.state.matches.at(-1)?.loaderData).toBe('shared loader data')
   })
 
-  test.each([
-    { age: 50, expected: [false, true], guard: 'preloaded' },
-    { age: 100, expected: [false, true, false], guard: 'loaded' },
-  ])(
-    'uses the beforeLoad completion time when loader data remains navigation-owned at age $age',
-    async ({ age, expected, guard }) => {
-      vi.useFakeTimers()
-      vi.setSystemTime(1_000)
-      const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
-        guard: preload ? 'preloaded' : 'loaded',
-      }))
-      const loader = vi.fn(({ preload }: { preload: boolean }) => preload)
-      const rootRoute = new BaseRootRoute({})
-      const indexRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
-      })
-      const guardedRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/guarded',
-        staleTime: Infinity,
-        preloadStaleTime: 100,
-        beforeLoad,
-        shouldReload: false,
-        loader,
-      })
-      const router = createTestRouter({
-        routeTree: rootRoute.addChildren([indexRoute, guardedRoute]),
-        history: createMemoryHistory({ initialEntries: ['/'] }),
-      })
-
-      await router.load()
-      await router.navigate({ to: '/guarded' })
-      await router.navigate({ to: '/' })
-      vi.setSystemTime(5_000)
-      await router.preloadRoute({ to: '/guarded' })
-      vi.setSystemTime(5_000 + age)
-      await router.navigate({ to: '/guarded' })
-
-      expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual(
-        expected,
-      )
-      expect(loader.mock.calls.map(([context]) => context.preload)).toEqual([
-        false,
-      ])
-      expect(router.state.matches.at(-1)?.context).toEqual({ guard })
-    },
-  )
-
-  test('keeps a fresh beforeLoad-only preload across an unrelated navigation', async () => {
+  test('does not cache a beforeLoad-only preload across navigation', async () => {
     const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
       guard: preload ? 'preloaded' : 'loaded',
     }))
@@ -214,9 +161,10 @@ describe('preloaded beforeLoad context reuse', () => {
 
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
+      false,
     ])
     expect(router.state.matches.at(-1)?.context).toEqual({
-      guard: 'preloaded',
+      guard: 'loaded',
     })
   })
 
@@ -371,7 +319,7 @@ describe('preloaded beforeLoad context reuse', () => {
 
     expect(oldBeforeLoad).toHaveBeenCalledTimes(1)
     expect(newBeforeLoad).toHaveBeenCalledTimes(1)
-    expect(childLoader).toHaveBeenCalledTimes(2)
+    expect(childLoader).toHaveBeenCalledTimes(1)
     expect(router.state.matches.at(-1)?.loaderData).toBe('new')
   })
 
@@ -557,7 +505,7 @@ describe('preloaded beforeLoad context reuse', () => {
     await router.preloadRoute({ to: '/guarded' })
     await router.navigate({ to: '/guarded' })
 
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
     expect(loader).toHaveBeenCalledTimes(2)
     expect(loader.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
@@ -566,7 +514,7 @@ describe('preloaded beforeLoad context reuse', () => {
     expect(shouldReload).toHaveBeenCalledTimes(1)
     expect(shouldReload).toHaveBeenCalledWith(
       expect.objectContaining({
-        context: expect.objectContaining({ guard: 'preloaded' }),
+        context: expect.objectContaining({ guard: 'loaded' }),
         preload: false,
       }),
     )

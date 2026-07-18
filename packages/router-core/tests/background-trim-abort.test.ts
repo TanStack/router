@@ -173,3 +173,51 @@ test('foreground supersession aborts every loader in a background batch', async 
   expect(backgroundSignals.every((signal) => signal.aborted)).toBe(true)
   expect(router.state.matches.at(-1)?.routeId).toBe(otherRoute.id)
 })
+
+test('background reload does not wait for an already-loaded route chunk', async () => {
+  let chunkLoads = 0
+  let loaderCalls = 0
+  let backgroundSignal: AbortSignal | undefined
+  const RouteComponent = Object.assign(() => null, {
+    preload: () => {
+      chunkLoads++
+      return Promise.resolve()
+    },
+  })
+
+  const rootRoute = new BaseRootRoute({})
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    component: RouteComponent,
+    loader: ({ abortController }) => {
+      loaderCalls++
+      if (loaderCalls > 1) {
+        backgroundSignal = abortController.signal
+      }
+      return `generation ${loaderCalls}`
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([targetRoute, otherRoute]),
+    history: createMemoryHistory({ initialEntries: ['/target'] }),
+  })
+
+  await router.load()
+  await router.invalidate()
+  await vi.waitFor(() => expect(backgroundSignal).toBeDefined())
+  await vi.waitFor(() =>
+    expect(router.state.matches.at(-1)?.loaderData).toBe('generation 2'),
+  )
+
+  expect(chunkLoads).toBe(1)
+  expect(backgroundSignal?.aborted).toBe(false)
+
+  await router.navigate({ to: '/other' })
+
+  expect(backgroundSignal?.aborted).toBe(true)
+})

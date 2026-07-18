@@ -135,9 +135,8 @@ length, not a zero-based boundary index.
 `stores.cachedMatches`. The cache is neither active presentation nor a registry
 of in-progress work.
 
-**Flight** is one loader generation and its outcome. Registry membership means a
-flight may be joined; a lease means a particular match owns that generation and
-its `AbortSignal`.
+**Flight** is one loader generation and its outcome. A lease means a particular
+match owns that generation and its `AbortSignal`.
 
 **Projection** computes non-loader route output such as head metadata, scripts,
 styles, and, on the server, headers after semantic outcomes have been reduced.
@@ -161,7 +160,7 @@ There are intentionally few independent authorities:
 | `stores.resolvedLocation`  | Last location whose load/hydration settled                     | The requested location                 |
 | `router._pending`          | One pending reveal/minimum-duration session                    | A second navigation transaction        |
 | `router._preflight`        | Latest synchronous foreground planning controller              | A second writer                        |
-| `router._flights`          | Joinable loader work by match id                               | Ownership of every flight              |
+| `router._preloads`         | Active complete preload lanes                                  | Per-match loader sharing               |
 | `route._lazy`              | Current lazy-route import owner or loaded marker               | A component-module cache               |
 
 The most important separation is:
@@ -191,7 +190,7 @@ Promises also have deliberately narrow ownership:
 
 | Promise or acknowledgement | Scope                                                  |
 | -------------------------- | ------------------------------------------------------ |
-| Flight outcome             | Shareable loader work                                  |
+| Flight outcome             | One loader invocation                                  |
 | `tx.done`                  | One private foreground transaction                     |
 | Pending/transition ack     | Settlement and render confirmation for one publication |
 | `commitLocationPromise`    | History/navigation completion                          |
@@ -329,8 +328,7 @@ adopt flight leases
 
 No phase publishes the terminal semantic lane. Foreground task readiness may
 offer pending presentation through its `onReady` callback. Background lanes
-reuse the phases with mixed ownership; their current projection caveat is
-documented below.
+reuse the phases with mixed semantic ownership and detached projection output.
 
 ## Contextualization and concurrent work
 
@@ -338,8 +336,7 @@ documented below.
 
 1. handles param/search validation failures,
 2. combines the completed parent context with route context,
-3. reuses an accepted preloaded result only while the contiguous parent prefix
-   remains reusable, otherwise awaits `beforeLoad`, and
+3. awaits `beforeLoad` unless the prefix was already resolved by hydration, and
 4. merges the selected result before advancing to the child.
 
 This guarantees that child `beforeLoad`, child loader context, and
@@ -350,11 +347,10 @@ This guarantees that child `beforeLoad`, child loader context, and
 Matching first decides whether a semantic match object can be reused by id.
 Execution then makes two independent decisions:
 
-- `beforeLoad` normally reruns for navigation. It is skipped only for an adopted
-  hydration prefix or a fresh, completed client-preload donor. The donor's
-  `beforeLoad` completion timestamp is its own freshness and cache-GC origin;
-  custom `shouldReload` remains loader-only. Donation is prefix-closed, so a
-  parent that cannot donate forces every descendant `beforeLoad` to rerun.
+- `beforeLoad` reruns for every independently executed navigation lane. An
+  adopted active preload supplies its complete already-contextualized lane;
+  completed preload context is never cached. Hydration may skip the accepted
+  server-rendered prefix. Custom `shouldReload` remains loader-only.
 - Loader execution considers status, invalidation, configured `shouldReload`,
   freshness, navigation cause/forced reload, and blocking versus background
   reload mode. Reusing a match therefore does not imply reusing its loader data.
@@ -364,14 +360,13 @@ the match is invalid or `shouldReload` says otherwise, the stale-time branch als
 requires a forced stale reload, an entering match, or another active id for the
 same route.
 
-An accepted `beforeLoad` donor may have run with `preload: true`. Navigation
-intentionally reuses that context without rerunning the hook merely to call it
-with `preload: false`. Pending or failed `beforeLoad` work is never donated. A
-pending loader flight may still be shared while navigation runs its own serial
-`beforeLoad` chain.
+An adopted active preload ran `beforeLoad` with `preload: true`, and navigation
+intentionally accepts that context as part of the complete lane. A navigation
+that does not adopt the complete lane runs its own serial `beforeLoad` chain and
+its own loader work.
 
 `preload: false` does not suppress speculative `beforeLoad`: the hook still runs
-with `preload: true`, but its context is not donated. The loader is skipped and
+with `preload: true`, but its completed context is not cached. The loader is skipped and
 the match remains invalid, so navigation reruns `beforeLoad` and performs the
 loader work. Normal component and pending-component readiness may still run for
 the preload.
@@ -617,42 +612,29 @@ rendered output, not `_rendered` itself.
 ## Loader flights and resource ownership
 
 A `LoaderFlight` contains one outcome promise, its own abort controller, and a
-lease count. The controller belongs to the shared work rather than any one
-transaction.
+lease count. Each loader execution creates its own flight; there is no global
+per-match join registry. `match._flight === flight` means that match owns one
+lease. Copies accepted from active or cached semantic generations acquire a
+lease before execution.
 
-Two facts must remain separate:
-
-- `_flights.get(match.id) === flight` means the flight is joinable.
-- `match._flight === flight` means that match owns one lease.
-
-`closeFlight` removes joinability but does not release the owner's lease.
-`releaseFlight` removes one lease; only the last release aborts the loader and
-removes the registry entry. `transferMatchResources` performs bulk ownership
-transfers based on match object identity.
+`releaseFlight` removes one lease and aborts the loader only after the last
+owner releases it. `transferMatchResources` performs bulk ownership transfers
+based on match object identity.
 
 The lease intentionally may outlive promise settlement. Once successful data is
-accepted, closing registry membership prevents new joins while the accepted
-match keeps the loader generation's public `AbortSignal` alive. That signal is
-aborted only when the last owner is replaced, unloaded, expired, or rejected from
-cache. Promise state therefore cannot replace the lease count.
+accepted, the accepted match keeps the loader generation's public `AbortSignal`
+alive. That signal is aborted only when the last owner is replaced, unloaded,
+expired, or rejected from cache. Promise state therefore cannot replace the
+lease count.
 
-Every semantic publication closes joinability for the published matches. A
-later navigation cannot join already-published work through `_flights`, even
-though the accepted matches continue to own their leases and signals.
+Active work sharing occurs only by adopting an entire identical preload lane,
+not by joining individual loader flights. A failed, not-found, redirected, or
+canceled adopted lane is discarded and the navigation executes its own complete
+lane. Transaction cancellation races the preload promise through `waitFor`, so a
+superseded navigation settles without forcing an otherwise independent preload
+to stop.
 
-A navigation may join a preload's same-id flight. It adopts only a successful
-outcome. If shared work yields an error, not-found, redirect, or cancellation,
-the joining lane closes/releases that flight and runs its own loader. This lets
-work be shared without allowing a preload's control outcome or failure context to
-govern a navigation.
-
-When a lane adopts leases, the registry's current joinable flight takes
-precedence over a copied, closed `_flight`. An accepted old generation therefore
-cannot hide newer joinable work for the same match id.
-
-Transaction cancellation races the shared promise through `waitFor`. Losing the
-race releases that lane's lease; it does not abort work still leased elsewhere.
-The flight also checks its own controller after both loader resolution and
+Every loader flight checks its own controller after both loader resolution and
 rejection. A loader that ignores `AbortSignal` therefore still normalizes to
 canceled and cannot resurrect obsolete cache state.
 
@@ -663,11 +645,13 @@ flags.
 ## Client preloading and the terminal cache
 
 Client preloading uses the same matcher, contextualizer, task builder, reducer,
-projector, and flight protocol as navigation, but it never becomes `_tx`.
+projector, and loader-flight ownership protocol as navigation, but it never
+becomes `_tx`.
 
-`beforeLoad` donation, loader reload, and `preload: false` behavior are defined in
-the contextualization section above. Preloading adds speculative ownership,
-redirect handling, and cache publication; it does not add another reuse policy.
+Loader reload and `preload: false` behavior are defined in the contextualization
+section above. Preloading adds speculative ownership, redirect handling, active
+complete-lane sharing, and cache publication; it does not add another per-match
+reuse policy.
 
 A preload snapshots the current writer and plans with an `_isCurrent` guard. It
 derives the already-resolved active prefix, executes the lane, follows internal
@@ -677,11 +661,16 @@ The planning cancellation/error distinction is described above. Routes with
 as described in the reuse section.
 
 The `_isCurrent` guard protects synchronous planning. Once a preload lane exists,
-a new foreground transaction does not blindly abort it: useful loader flights may
-still be shared, while active-id and cache-entry identity checks prevent obsolete
-cache publication. Unexpected post-plan exceptions belong to the preload lane.
-It aborts its controller; while still current, it follows eligible redirects,
-absorbs not-found, logs other unexpected failures, and releases its resources. A
+it is registered in `_preloads`. Another preload or a navigation may adopt it
+only when the complete route sequence, match ids, params, and search are equal.
+A navigation claim is accepted only if the captured committed base and cache
+array remain current. Successful adoption transfers cancellation ownership to
+the navigation; failed adoption retries the navigation's complete lane in
+blocking mode. HMR may abort all active preload lanes.
+
+Unexpected post-plan exceptions belong to the preload lane. It aborts its
+controller; while still current, it follows eligible redirects, absorbs
+not-found, logs other unexpected failures, and releases its resources. A
 superseded lane must likewise release its resources before returning.
 
 Cache publication is an identity compare-and-swap. A preload candidate is
@@ -697,12 +686,12 @@ against an absent entry may later publish whenever the entry is also absent at
 publication. The slot need not have remained continuously empty between those
 two snapshots.
 
-Foreground commits retain successful exiting matches only when they have either
-fresh loader-backed data within the applicable normal/preload GC window or
-reusable preloaded `beforeLoad` context within `preloadGcTime`. Active ids are
-removed from the cache; failed, not-found, expired, and loaderless entries
-without reusable context provenance are discarded. Clearing the cache releases
-leases before publishing the retained cache entries. GC is opportunistic:
+Completed preloads discard `beforeLoad` context before caching. Foreground
+commits retain successful exiting matches only when they have fresh loader-backed
+data within the applicable normal/preload GC window. Active ids are removed from
+the cache; failed, not-found, expired, and loaderless entries are discarded.
+Clearing the cache releases leases before publishing the retained cache entries.
+GC is opportunistic:
 foreground commits apply these age checks; there is no eviction timer, and
 preload publication does not sweep unrelated entries by age.
 
@@ -716,8 +705,11 @@ candidate reloads in the background. This is used only for loader-backed,
 non-preload, non-sync work whose effective stale reload mode is not blocking.
 
 Foreground reduction and commit proceed with the existing successful match. The
-background candidate uses the same loader outcome and projection rules. It may
-publish only if both conditions still hold:
+background candidate uses the same loader outcome and projection rules. A
+successful background reload does not wait for the normal route chunk, which is
+already loaded for the committed match; error and not-found reduction still
+loads the selected boundary chunk. The candidate may publish only if both
+conditions still hold:
 
 ```text
 router._tx === owningTransaction
@@ -735,8 +727,8 @@ handoff. Losing background candidates release their resources. Background
 publication updates matches through the normal publication primitive rather
 than inventing a second commit protocol.
 
-A background lane intentionally has mixed ownership. Reload task indexes contain
-private candidates, while untouched indexes still reference the committed base.
+A background lane intentionally begins with mixed ownership. Reload task indexes
+contain private candidates, while untouched indexes reference the committed base.
 An ordinary failure can mutate its private candidate directly. If a not-found
 bubbles to an untouched ancestor, reduction first clones that boundary and
 removes `_flight`; the committed generation retains its object and lease until
@@ -744,13 +736,13 @@ the guarded publication succeeds. Trimming a background lane likewise leaves
 shared suffix resources alone. The final transfer or discard of the background
 batch is the single resource authority.
 
-The two guards above protect final lane publication, not every pre-commit effect.
-`projectLane` currently runs user `head`/`scripts` hooks before those guards over
-the mixed lane, and it can write projection fields onto an untouched shared base
-match even if the final compare-and-swap loses. This is a current sharp edge, not
-an authority to copy. Strengthening stale-publication isolation requires
-detached projection output or resource-aware, flight-free clones; an ordinary
-clone must not accidentally duplicate a flight lease.
+Projection runs on detached, flight-free match copies so asynchronous
+`head`/`scripts` hooks cannot mutate the committed base before the two guards are
+rechecked. On successful publication, loader-flight ownership moves from the
+mixed semantic lane into the projected copies. On rejection, candidates are
+released and the committed base retains its leases. Projection awaits are raced
+against the lane controller, and projection-only copies preserve untouched
+matches' `fetchCount`.
 
 Background publication replaces an already-resolved presentation directly. It
 does not enter the pending/renderer-acknowledgement protocol, change
@@ -967,14 +959,15 @@ Refresh requires it, installs new route options, rebuilds route indexes, syncs
 the hot module's route export, clears the lazy owner and path cache, and calls
 `router._refreshRoute(routeId)`. Core then:
 
-1. aborts and retires joinable flights,
+1. aborts all preload lanes, releasing their leases,
 2. clears cached match leases,
 3. plans synchronously while refusing semantic reuse for the changed route and
-   its descendants, and
-4. commits through the ordinary foreground transaction protocol without pending
-   presentation.
+   its descendants, then
+4. installs and commits through the ordinary foreground transaction protocol
+   without pending presentation; installation retires the previous foreground
+   transaction and releases its leases.
 
-Flight/cache retirement is deliberately global because old route code may own
+Preload/cache retirement is deliberately global because old route code may own
 work outside the visible subtree. Semantic rematerialization remains scoped to
 the changed route and descendants; ancestors stay reusable.
 
@@ -1024,17 +1017,16 @@ When modifying this system, keep these invariants explicit:
 7. Concurrent loader and normal-chunk selection is structural, not
    promise-settlement ordering.
 8. Pending UI is a flight-free presentation clone and never semantic authority.
-9. Flight registry membership and flight lease ownership are different facts;
-   an accepted generation's lease and public signal may outlive promise
-   settlement.
+9. An accepted loader generation's lease and public signal may outlive promise
+   settlement; a lease is resource ownership, not promise state.
 10. Every discarded match releases its resources exactly once.
-11. A shared preload result may donate successful work, not control or failure
-    authority.
-12. Preloaded `beforeLoad` provenance is independent from loader-data provenance,
-    and its reuse is prefix-closed.
+11. Only an identical complete active preload lane may be adopted. Control or
+    failure results cause the navigation to execute its own lane.
+12. Completed preload `beforeLoad` context is discarded independently from
+    cacheable loader data.
 13. Final background lane publication requires both current-writer identity and
-    exact-base identity. Untouched matches are currently shared during
-    pre-publication projection, as noted above.
+    exact-base identity. Projection runs on detached matches before those guards
+    transfer resources and publish.
 14. Hydration builds its committed resolved prefix privately, publishes that
     prefix only after currentness checks, and delegates the remainder to the
     normal client transaction.
@@ -1070,8 +1062,9 @@ Unless a path is shown, core filenames below are relative to
   for planning, rollback, and waiter ownership,
 - `preload-adoption.test.ts`, `preload-navigation-adoption.test.ts`,
   `preload-public-cache-behavior.test.ts`, and
-  `preload-background-parent-coherence.test.ts` for shared work and cache
-  publication; `preload-beforeload-reuse.test.ts` for serial context donation,
+  `preload-background-parent-coherence.test.ts` for complete-lane sharing and
+  cache publication; `preload-beforeload-reuse.test.ts` for active adoption and
+  completed-context lifetime,
 - `background-assets-stale.test.ts` and `background-trim-abort.test.ts` for
   background projection, trimming, ownership, and writer supersession;
   `invalidate-pre-rematch-failure.test.ts` for generation replacement across a

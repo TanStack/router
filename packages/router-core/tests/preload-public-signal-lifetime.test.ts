@@ -122,3 +122,214 @@ test('a superseded preload releases its borrowed loader signal lease', async () 
   expect(router.state.location.pathname).toBe('/')
   expect(parentSignal?.aborted).toBe(true)
 })
+
+test('HMR aborts a preload waiting in asset projection', async () => {
+  const headStarted = createControlledPromise<void>()
+  const headGate = createControlledPromise<void>()
+  let signal: AbortSignal | undefined
+
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    loader: ({ abortController }) => {
+      signal = abortController.signal
+      return 'target data'
+    },
+    head: async () => {
+      headStarted.resolve()
+      await headGate
+      return { meta: [{ title: 'obsolete' }] }
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([homeRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const preload = router.preloadRoute({ to: '/target' })
+  await headStarted
+  expect(signal?.aborted).toBe(false)
+
+  expect(router._refreshRoute).toBeDefined()
+  await router._refreshRoute!(targetRoute.id)
+  await preload
+
+  expect(signal?.aborted).toBe(true)
+  expect(headGate.status).toBe('pending')
+  expect(
+    router.stores.cachedMatches
+      .get()
+      .some((match) => match.routeId === targetRoute.id),
+  ).toBe(false)
+})
+
+test('HMR aborts a preload waiting for its route chunk', async () => {
+  const chunkStarted = createControlledPromise<void>()
+  const chunkGate = createControlledPromise<void>()
+  let signal: AbortSignal | undefined
+  const RouteComponent = Object.assign(() => null, {
+    preload: () => {
+      chunkStarted.resolve()
+      return chunkGate
+    },
+  })
+
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    component: RouteComponent,
+    loader: ({ abortController }) => {
+      signal = abortController.signal
+      return 'target data'
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([homeRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const preload = router.preloadRoute({ to: '/target' })
+  await chunkStarted
+  expect(signal?.aborted).toBe(false)
+
+  expect(router._refreshRoute).toBeDefined()
+  await router._refreshRoute!(targetRoute.id)
+  await preload
+
+  expect(signal?.aborted).toBe(true)
+  expect(chunkGate.status).toBe('pending')
+})
+
+test('HMR does not release an inherited flight before preload execution', async () => {
+  let parentSignal: AbortSignal | undefined
+
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    loader: ({ abortController }) => {
+      parentSignal = abortController.signal
+      return 'parent data'
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      homeRoute,
+      parentRoute.addChildren([childRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/parent'] }),
+  })
+
+  await router.load()
+  expect(parentSignal?.aborted).toBe(false)
+
+  const preload = router.preloadRoute({ to: '/parent/child' })
+  expect(router._refreshRoute).toBeDefined()
+  await Promise.all([router._refreshRoute!(childRoute.id), preload])
+
+  expect(parentSignal?.aborted).toBe(false)
+  await router.navigate({ to: '/' })
+  expect(parentSignal?.aborted).toBe(true)
+})
+
+test('a superseded claim does not retain the preload controller', async () => {
+  const loaderStarted = createControlledPromise<void>()
+  const loaderGate = createControlledPromise<string>()
+  let beforeLoadSignal: AbortSignal | undefined
+
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    beforeLoad: ({ abortController }) => {
+      beforeLoadSignal = abortController.signal
+    },
+    loader: () => {
+      loaderStarted.resolve()
+      return loaderGate
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([homeRoute, targetRoute, otherRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const preload = router.preloadRoute({ to: '/target' })
+  await loaderStarted
+  const navigation = router.navigate({ to: '/target' })
+  const superseding = preload.then(() => router.navigate({ to: '/other' }))
+
+  loaderGate.resolve('target data')
+  await Promise.all([navigation, superseding])
+
+  expect(router.state.location.pathname).toBe('/other')
+  expect(beforeLoadSignal?.aborted).toBe(true)
+})
+
+test('fatal adopted-lane cleanup aborts the transferred controller', async () => {
+  const loaderStarted = createControlledPromise<void>()
+  const loaderGate = createControlledPromise<string>()
+  let beforeLoadSignal: AbortSignal | undefined
+
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    beforeLoad: ({ abortController }) => {
+      beforeLoadSignal = abortController.signal
+    },
+    loader: () => {
+      loaderStarted.resolve()
+      return loaderGate
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([homeRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  router.startTransition = () => Promise.reject(new Error('render failed'))
+
+  const preload = router.preloadRoute({ to: '/target' })
+  await loaderStarted
+  const navigation = router.navigate({ to: '/target' })
+
+  loaderGate.resolve('target data')
+  await Promise.all([preload, navigation])
+
+  expect(beforeLoadSignal?.aborted).toBe(true)
+})
