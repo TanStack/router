@@ -32,6 +32,10 @@ import type {
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
 
+type RouteFileInfo = GetRoutesByFileMapResultValue & {
+  serverSsr?: true | false | 'data-only'
+}
+
 const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
 
@@ -130,7 +134,7 @@ export function createRouterCodeSplitterPlugin(
   const handleCompilingReferenceFile = (
     code: string,
     id: string,
-    generatorNodeInfo: GetRoutesByFileMapResultValue,
+    generatorNodeInfo: RouteFileInfo,
   ): UnpluginTransformResult => {
     if (debug) console.info('Compiling Route: ', id)
 
@@ -193,6 +197,7 @@ export function createRouterCodeSplitterPlugin(
       hmrStyle,
       hmrRouteId: generatorNodeInfo.routeId,
       sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
+      serverSsr: generatorNodeInfo.serverSsr,
       compilerPlugins,
     })
 

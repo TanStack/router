@@ -7,6 +7,7 @@ import {
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
+import { withSsrRouteOptionPruning } from '../start-router-plugin/ssr-route-options'
 import {
   CLIENT_ROUTE_OPTION_DELETE_NODES,
   SERVER_ROUTE_OPTION_DELETE_NODES,
@@ -83,11 +84,16 @@ export function registerRouterPlugins(
         {
           ...routerConfig,
           target: opts.corePluginOpts.framework,
-          codeSplittingOptions: {
-            ...routerConfig.codeSplittingOptions,
-            deleteNodes,
-            addHmr: isClient,
-          },
+          codeSplittingOptions: isClient
+            ? {
+                ...routerConfig.codeSplittingOptions,
+                deleteNodes,
+                addHmr: true,
+              }
+            : withSsrRouteOptionPruning(routerConfig.codeSplittingOptions, {
+                deleteNodes,
+                addHmr: false,
+              }),
         },
         routerPluginContext,
       )
