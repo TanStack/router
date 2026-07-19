@@ -112,34 +112,44 @@ function component() {
       const context = createRouterPluginContext()
       context.routesByFile.set(routeFile, { routeId: '/lowercase' })
 
-      const plugins = createRouterCodeSplitterPlugin(
-        {
-          target: 'react',
-          autoCodeSplitting: true,
-          codeSplittingOptions: production ? undefined : { addHmr: false },
-        },
-        context,
-      )
-      const referencePlugin = getReferencePlugin(plugins)
-      const virtualPlugin = getCodeSplitterPlugin(plugins, virtualPluginName)
+      if (production) {
+        vi.stubEnv('NODE_ENV', 'production')
+      }
 
-      await configurePlugin(referencePlugin, production ? 'build' : 'serve')
+      try {
+        const plugins = createRouterCodeSplitterPlugin(
+          {
+            target: 'react',
+            autoCodeSplitting: true,
+            codeSplittingOptions: production ? undefined : { addHmr: false },
+          },
+          context,
+        )
+        const referencePlugin = getReferencePlugin(plugins)
+        const virtualPlugin = getCodeSplitterPlugin(plugins, virtualPluginName)
 
-      const referenceCode = getCode(
-        await transformReferenceRoute(referencePlugin, routeCode, routeFile),
-      )
-      const virtualCode = getCode(
-        await transformReferenceRoute(
-          virtualPlugin,
-          routeCode,
-          `${routeFile}?tsr-split=component`,
-        ),
-      )
+        await configurePlugin(referencePlugin, production ? 'build' : 'serve')
 
-      expect(referenceCode).not.toContain('TSRFastRefreshAnchor')
-      expect(virtualCode).toContain('function component()')
-      expect(virtualCode).toContain('export { component }')
-      expect(virtualCode).not.toContain('SplitComponent')
+        const referenceCode = getCode(
+          await transformReferenceRoute(referencePlugin, routeCode, routeFile),
+        )
+        const virtualCode = getCode(
+          await transformReferenceRoute(
+            virtualPlugin,
+            routeCode,
+            `${routeFile}?tsr-split=component`,
+          ),
+        )
+
+        expect(referenceCode).not.toContain('TSRFastRefreshAnchor')
+        expect(virtualCode).toContain('function component()')
+        expect(virtualCode).toContain('export { component }')
+        expect(virtualCode).not.toContain('SplitComponent')
+      } finally {
+        if (production) {
+          vi.unstubAllEnvs()
+        }
+      }
     },
   )
 
