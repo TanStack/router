@@ -50,11 +50,13 @@ export async function prerenderWithVite({
   let baseUrl: URL
 
   try {
-    routeOptionsOutputDir = await importRouteOptionsEntry({
-      startConfig,
-      serverEnv,
-      prerenderEnv: builder.environments[VITE_ENVIRONMENT_NAMES.prerender],
-    })
+    if (!startConfig.spa?.enabled) {
+      routeOptionsOutputDir = await importRouteOptionsEntry({
+        startConfig,
+        serverEnv,
+        prerenderEnv: builder.environments[VITE_ENVIRONMENT_NAMES.prerender],
+      })
+    }
 
     previewServer = await startPreviewServer(serverEnv.config)
     baseUrl = getResolvedUrl(previewServer)
