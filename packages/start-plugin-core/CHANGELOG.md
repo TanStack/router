@@ -1,5 +1,12 @@
 # @tanstack/start-plugin-core
 
+## 1.171.24
+
+### Patch Changes
+
+- Updated dependencies [[`49f6863`](https://github.com/TanStack/router/commit/49f686324574ea65851317cbba084eb386a911c6)]:
+  - @tanstack/router-plugin@1.168.23
+
 ## 1.171.23
 
 ### Patch Changes
