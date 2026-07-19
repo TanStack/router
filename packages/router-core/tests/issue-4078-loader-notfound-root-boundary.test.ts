@@ -18,7 +18,7 @@ import { createTestRouter } from './routerTestUtils'
 // root component + notFoundComponent, but a loader-thrown notFound did not.
 //
 // At Router Core's boundary, root attribution is represented by the root match
-// with globalNotFound. These assertions do not distinguish the
+// with _notFound. These assertions do not distinguish the
 // configured root notFoundComponent from the router default; that reported
 // rendering behavior requires framework-level coverage.
 describe('#4078 / #2255 existing Core root-boundary attribution', () => {
@@ -63,7 +63,7 @@ describe('#4078 / #2255 existing Core root-boundary attribution', () => {
 
     return {
       routeId: rootMatch?.routeId,
-      globalNotFound: rootMatch?.globalNotFound,
+      _notFound: rootMatch?._notFound,
     }
   }
 
@@ -84,7 +84,7 @@ describe('#4078 / #2255 existing Core root-boundary attribution', () => {
     expect(router.state.location.pathname).toBe('/about')
     expect(getRootBoundaryProjection(router)).toEqual({
       routeId: rootRouteId,
-      globalNotFound: true,
+      _notFound: true,
     })
   })
 
@@ -94,7 +94,7 @@ describe('#4078 / #2255 existing Core root-boundary attribution', () => {
     const unmatchedProjection = getRootBoundaryProjection(unmatched.router)
     expect(unmatchedProjection).toEqual({
       routeId: rootRouteId,
-      globalNotFound: true,
+      _notFound: true,
     })
 
     const loaderNotFound = setup(['/'])

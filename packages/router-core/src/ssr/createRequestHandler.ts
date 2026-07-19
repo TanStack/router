@@ -1,11 +1,15 @@
 import { createMemoryHistory } from '@tanstack/history'
+import { _getRenderedMatches } from '../rendered-matches'
 import { mergeHeaders } from './headers'
 import {
   attachRouterServerSsrUtils,
   getNormalizedURL,
   getOrigin,
 } from './ssr-server'
-import { normalizeSsrResponse } from './handlerCallback'
+import {
+  bindSsrResponseToRequest,
+  normalizeSsrResponse,
+} from './handlerCallback'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
 import type { AnyRouter } from '../router'
@@ -14,6 +18,27 @@ import type { ServerManifest } from '../manifest'
 export type RequestHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
 ) => Promise<Response>
+
+export function waitForRequest<T>(
+  value: T | PromiseLike<T>,
+  signal: AbortSignal,
+  onLate?: (value: T) => void,
+): Promise<T> {
+  signal.throwIfAborted()
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason)
+    signal.addEventListener('abort', abort, { once: true })
+    Promise.resolve(value)
+      .then((result) => {
+        if (signal.aborted) {
+          onLate?.(result)
+        } else {
+          resolve(result)
+        }
+      }, reject)
+      .finally(() => signal.removeEventListener('abort', abort))
+  })
+}
 
 export function createRequestHandler<TRouter extends AnyRouter>({
   createRouter,
@@ -25,13 +50,14 @@ export function createRequestHandler<TRouter extends AnyRouter>({
   getRouterManifest?: () => ServerManifest | Promise<ServerManifest>
 }): RequestHandler<TRouter> {
   return async (cb) => {
+    request.signal.throwIfAborted()
     const router = createRouter()
     let responseOwnsCleanup = false
 
     try {
       attachRouterServerSsrUtils({
         router,
-        manifest: await getRouterManifest?.(),
+        manifest: await waitForRequest(getRouterManifest?.(), request.signal),
       })
 
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
@@ -50,20 +76,44 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         origin: router.options.origin ?? origin,
       })
 
-      await router.load()
+      await router.load({
+        _signal: request.signal,
+      })
+      request.signal.throwIfAborted()
 
-      await router.serverSsr?.dehydrate()
+      const result = router._serverResult
+      if (result?.type === 'redirect') {
+        return result.redirect
+      }
+
+      await waitForRequest(router.serverSsr?.dehydrate(), request.signal)
+      request.signal.throwIfAborted()
 
       const responseHeaders = getRequestHeaders({
         router,
       })
 
-      const response = await cb({
-        request,
+      request.signal.throwIfAborted()
+      const response = await waitForRequest(
+        cb({
+          request,
+          router,
+          responseHeaders,
+        }),
+        request.signal,
+        (late) => {
+          const ssrResponse = normalizeSsrResponse(late)
+          if (ssrResponse.serverSsrCleanup === 'stream') {
+            void ssrResponse.dispose(request.signal.reason)
+          }
+        },
+      )
+      const ssrResponse = bindSsrResponseToRequest(
         router,
-        responseHeaders,
-      })
-      const ssrResponse = normalizeSsrResponse(response)
+        response,
+        request.signal,
+      )
+      request.signal.throwIfAborted()
       responseOwnsCleanup = ssrResponse.serverSsrCleanup === 'stream'
       return ssrResponse.response
     } finally {
@@ -79,14 +129,8 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
 function getRequestHeaders(opts: { router: AnyRouter }): Headers {
   const matchHeaders: Array<AnyHeaders> = []
-  for (const match of opts.router.stores.matches.get()) {
+  for (const match of _getRenderedMatches(opts.router.stores.matches.get())) {
     matchHeaders.push(match.headers)
-  }
-
-  // Handle Redirects
-  const result = opts.router._serverResult
-  if (result?.type === 'redirect') {
-    matchHeaders.push(result.redirect.headers)
   }
 
   return mergeHeaders(

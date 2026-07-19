@@ -8,35 +8,32 @@ import {
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
-test('background error trimming aborts a discarded descendant loader signal', async () => {
+test('a background boundary keeps the matched branch and its lifecycle stable', async () => {
   let parentLoads = 0
-  let childLoads = 0
-  let retainedParentSignal: AbortSignal | undefined
-  let discardedChildSignal: AbortSignal | undefined
   const parentError = new Error('parent background reload failed')
+  const childOnEnter = vi.fn()
+  const childOnLeave = vi.fn()
 
   const rootRoute = new BaseRootRoute({})
   const parentRoute = new BaseRoute({
     getParentRoute: () => rootRoute,
     path: '/parent',
-    loader: ({ abortController }) => {
-      if (++parentLoads > 1) {
-        retainedParentSignal = abortController.signal
+    loader: () => {
+      if (++parentLoads === 2) {
         throw parentError
       }
-      return 'initial parent data'
+      return `parent data ${parentLoads}`
     },
     errorComponent: () => null,
   })
   const childRoute = new BaseRoute({
     getParentRoute: () => parentRoute,
     path: '/child',
-    loader: ({ abortController }) => {
-      if (++childLoads > 1) {
-        discardedChildSignal = abortController.signal
-      }
+    loader: () => {
       return 'child data'
     },
+    onEnter: childOnEnter,
+    onLeave: childOnLeave,
   })
   const router = createTestRouter({
     routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
@@ -46,17 +43,28 @@ test('background error trimming aborts a discarded descendant loader signal', as
   await router.load()
   await router.invalidate()
 
-  await expect.poll(() => router.state.matches.at(-1)?.status).toBe('error')
+  await expect.poll(() => router.state.matches[1]?.status).toBe('error')
 
   expect(router.state.matches.map((match) => match.routeId)).toEqual([
     rootRoute.id,
     parentRoute.id,
+    childRoute.id,
   ])
-  expect(retainedParentSignal).toBeDefined()
-  expect(discardedChildSignal).toBeDefined()
-  expect(discardedChildSignal).not.toBe(retainedParentSignal)
-  expect(retainedParentSignal?.aborted).toBe(false)
-  expect(discardedChildSignal?.aborted).toBe(true)
+  expect(router.state.matches[1]).toMatchObject({
+    status: 'error',
+    error: parentError,
+  })
+  expect(router.state.matches[2]).toMatchObject({
+    status: 'success',
+    loaderData: 'child data',
+  })
+  expect(childOnEnter).toHaveBeenCalledTimes(1)
+  expect(childOnLeave).not.toHaveBeenCalled()
+
+  await router.invalidate()
+  await expect.poll(() => router.state.matches[1]?.status).toBe('success')
+  expect(childOnEnter).toHaveBeenCalledTimes(1)
+  expect(childOnLeave).not.toHaveBeenCalled()
 })
 
 test('a background notFound stays private until its parent boundary is ready', async () => {
@@ -104,8 +112,10 @@ test('a background notFound stays private until its parent boundary is ready', a
     expect(router.state.matches.map((match) => match.routeId)).toEqual([
       rootRoute.id,
       parentRoute.id,
+      childRoute.id,
     ])
-    expect(router.state.matches.at(-1)?.status).toBe('notFound')
+    expect(router.state.matches[1]?.status).toBe('notFound')
+    expect(router.state.matches[2]?.status).toBe('success')
   })
 })
 

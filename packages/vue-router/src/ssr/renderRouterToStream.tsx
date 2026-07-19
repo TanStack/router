@@ -214,7 +214,7 @@ export const renderRouterToStream = async ({
   const responseStream = transformReadableStreamWithRouter(
     router,
     doctypedStream,
-    { onAbort: abortVuePipe },
+    { signal: request.signal, onAbort: abortVuePipe },
   )
 
   return createSsrStreamResponse(

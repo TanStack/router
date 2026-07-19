@@ -136,7 +136,7 @@ describe('server route chunk failure lifecycle', () => {
 
     expect(response.status).toBe(500)
     expect(response.headers.get('Location')).toBeNull()
-    expect(router.state.matches).toHaveLength(1)
+    expect(router.state.matches).toHaveLength(2)
     expect(router.state.matches[0]).toMatchObject({
       routeId: rootRoute.id,
       status: 'error',

@@ -2,7 +2,6 @@ import type { Manifest } from '../manifest'
 import type { MakeRouteMatch } from '../Matches'
 
 export interface DehydratedMatch {
-  i: MakeRouteMatch['id']
   b?: MakeRouteMatch['__beforeLoadContext']
   l?: MakeRouteMatch['loaderData']
   e?: MakeRouteMatch['error']
@@ -15,7 +14,6 @@ export interface DehydratedMatch {
 export interface DehydratedRouter {
   manifest: Manifest | undefined
   dehydratedData?: any
-  lastMatchId?: string
   matches: Array<DehydratedMatch>
 }
 

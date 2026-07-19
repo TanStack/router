@@ -25,7 +25,6 @@ function bootstrap(
     router: {
       manifest: undefined,
       matches: matches.map(({ match, status, ssr, data, error }) => ({
-        i: match.id,
         l: data,
         e: error,
         s: status,

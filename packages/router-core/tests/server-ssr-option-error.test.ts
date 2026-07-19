@@ -45,4 +45,47 @@ describe('server functional ssr() errors', () => {
       error: boom,
     })
   })
+
+  test('retains inherited renderability and loads the lazy error boundary', async () => {
+    const boom = new Error('SSR policy failed')
+    const errorBoundaryPreload = vi.fn(() => Promise.resolve())
+    const ErrorBoundary = Object.assign(() => null, {
+      preload: errorBoundaryPreload,
+    })
+    const rootRoute = new BaseRootRoute({})
+    const reportsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reports',
+      ssr: async () => {
+        await Promise.resolve()
+        throw boom
+      },
+    })
+    const lazy = vi.fn(() =>
+      Promise.resolve({
+        options: {
+          id: reportsRoute.id,
+          errorComponent: ErrorBoundary,
+        },
+      }),
+    )
+    reportsRoute.lazy(lazy as any)
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([reportsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/reports'] }),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/reports')
+
+    expect(response.status).toBe(500)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: reportsRoute.id,
+      status: 'error',
+      error: boom,
+      ssr: true,
+    })
+    expect(lazy).toHaveBeenCalledTimes(1)
+    expect(errorBoundaryPreload).toHaveBeenCalledTimes(1)
+  })
 })

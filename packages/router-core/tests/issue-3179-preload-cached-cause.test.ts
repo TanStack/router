@@ -49,9 +49,11 @@ test('#3179: preloading the active route does not replay its load callbacks', as
     { phase: 'loader', cause: 'enter', preload: false },
   ])
 
-  // Active matches are borrowed during preloading, so their callbacks do not
-  // run again with either fresh preload flags or the cached navigation flags.
+  // beforeLoad is contextualization, not loader cache data, so a later preload
+  // reruns it with fresh flags while retaining the accepted loader generation.
   calls.length = 0
   await router.preloadRoute({ to: '/' })
-  expect(calls).toEqual([])
+  expect(calls).toEqual([
+    { phase: 'beforeLoad', cause: 'preload', preload: true },
+  ])
 })

@@ -50,6 +50,60 @@ afterEach(() => {
 })
 
 describe('ssr scripts', () => {
+  test('updates route data scripts after client navigation', async () => {
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <Outlet />
+          <Scripts />
+        </>
+      ),
+    })
+    const firstRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/first',
+      scripts: () => [
+        {
+          id: 'first-route-data',
+          type: 'application/json',
+          children: 'first',
+        },
+      ],
+      component: () => <Link to="/second">Second</Link>,
+    })
+    const secondRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/second',
+      scripts: () => [
+        {
+          id: 'second-route-data',
+          type: 'application/json',
+          children: 'second',
+        },
+      ],
+      component: () => <div>Second route</div>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([firstRoute, secondRoute]),
+      history: createMemoryHistory({ initialEntries: ['/first'] }),
+    })
+
+    const { container } = render(() => <RouterProvider router={router} />)
+    await screen.findByRole('link', { name: 'Second' })
+    expect(container.querySelector('#first-route-data')?.textContent).toBe(
+      'first',
+    )
+
+    fireEvent.click(screen.getByRole('link', { name: 'Second' }))
+    expect(await screen.findByText('Second route')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(container.querySelector('#first-route-data')).toBeNull()
+      expect(container.querySelector('#second-route-data')?.textContent).toBe(
+        'second',
+      )
+    })
+  })
+
   test('it works', async () => {
     const rootRoute = createRootRoute({
       // loader: () => new Promise((r) => setTimeout(r, 1)),

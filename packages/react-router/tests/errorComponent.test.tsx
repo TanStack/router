@@ -7,6 +7,7 @@ import {
   Outlet,
   RouterProvider,
   createBrowserHistory,
+  createControlledPromise,
   createLazyRoute,
   createMemoryHistory,
   createRootRoute,
@@ -318,6 +319,46 @@ test('errorComponent receives primitive errors thrown from beforeLoad', async ()
   expect(screen.queryByText('About route content')).not.toBeInTheDocument()
 })
 
+test.each(['beforeLoad', 'loader'] as const)(
+  'a Promise synchronously thrown from %s renders the route error UI',
+  async (hook) => {
+    const thrown = Promise.resolve('not route data')
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad:
+        hook === 'beforeLoad'
+          ? () => {
+              throw thrown
+            }
+          : undefined,
+      loader:
+        hook === 'loader'
+          ? () => {
+              throw thrown
+            }
+          : undefined,
+      errorComponent: ({ error }) => (
+        <div>
+          {error instanceof Error && error.cause === thrown
+            ? 'Promise route error'
+            : 'Wrong route error'}
+        </div>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Promise route error')).toBeInTheDocument()
+    expect(screen.queryByText('Wrong route error')).not.toBeInTheDocument()
+  },
+)
+
 test('SSR errorComponent receives primitive errors thrown from beforeLoad', async () => {
   const rootRoute = createRootRoute({
     component: function Root() {
@@ -355,6 +396,209 @@ test('SSR errorComponent receives primitive errors thrown from beforeLoad', asyn
   const html = await response.text()
   expect(html).toContain('Error:')
   expect(html).toContain('primitive error thrown')
+})
+
+test('a later ancestor loader failure does not hide the first child error', async () => {
+  const parentStarted = createControlledPromise<void>()
+  const childStarted = createControlledPromise<void>()
+  const parentGate = createControlledPromise<void>()
+  const childGate = createControlledPromise<void>()
+  const childSettled = createControlledPromise<void>()
+  const rootRoute = createRootRoute({ component: Outlet })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Home</div>,
+  })
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    component: Outlet,
+    loader: async () => {
+      parentStarted.resolve()
+      await parentGate
+      throw new Error('later parent failure')
+    },
+    errorComponent: () => <div>Parent error boundary</div>,
+  })
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loader: async () => {
+      childStarted.resolve()
+      await childGate
+      childSettled.resolve()
+      throw new Error('first child failure')
+    },
+    errorComponent: () => <div>Child error boundary</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  render(<RouterProvider router={router} />)
+
+  let navigation!: Promise<void>
+  await act(async () => {
+    navigation = router.navigate({ to: '/parent/child' })
+    await Promise.all([parentStarted, childStarted])
+  })
+  await act(async () => {
+    childGate.resolve()
+    await childSettled
+    parentGate.resolve()
+    await navigation
+  })
+
+  expect(screen.getByText('Child error boundary')).toBeInTheDocument()
+  expect(screen.queryByText('Parent error boundary')).not.toBeInTheDocument()
+})
+
+test('a losing ancestor loader still waits for its lazy component before rendering the child error', async () => {
+  const parentStarted = createControlledPromise<void>()
+  const childStarted = createControlledPromise<void>()
+  const parentGate = createControlledPromise<void>()
+  const childGate = createControlledPromise<void>()
+  const childSettled = createControlledPromise<void>()
+  const lazyParentOptions = createLazyRoute('/parent')({
+    component: () => (
+      <>
+        <div>Lazy parent shell</div>
+        <Outlet />
+      </>
+    ),
+  })
+  const parentChunk = createControlledPromise<typeof lazyParentOptions>()
+  const rootRoute = createRootRoute({ component: Outlet })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Home</div>,
+  })
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    loader: async () => {
+      parentStarted.resolve()
+      await parentGate
+      throw new Error('later parent failure')
+    },
+    errorComponent: () => <div>Parent error boundary</div>,
+  }).lazy(() => parentChunk)
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loader: async () => {
+      childStarted.resolve()
+      await childGate
+      childSettled.resolve()
+      throw new Error('first child failure')
+    },
+    errorComponent: () => <div>Child error boundary</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  render(<RouterProvider router={router} />)
+
+  let navigation: Promise<void> | undefined
+  try {
+    await act(async () => {
+      navigation = router.navigate({ to: '/parent/child' })
+      await Promise.all([parentStarted, childStarted])
+    })
+    await act(async () => {
+      childGate.resolve()
+      await childSettled
+      parentGate.resolve()
+      await Promise.resolve()
+    })
+
+    expect(parentChunk.status).toBe('pending')
+    expect(screen.getByText('Home')).toBeInTheDocument()
+    expect(screen.queryByText('Child error boundary')).not.toBeInTheDocument()
+  } finally {
+    await act(async () => {
+      childGate.resolve()
+      parentGate.resolve()
+      parentChunk.resolve(lazyParentOptions)
+      await navigation
+    })
+  }
+
+  expect(screen.getByText('Lazy parent shell')).toBeInTheDocument()
+  expect(screen.getByText('Child error boundary')).toBeInTheDocument()
+  expect(screen.queryByText('Parent error boundary')).not.toBeInTheDocument()
+})
+
+test('SSR renders the first child loader error after a later ancestor failure', async () => {
+  const parentStarted = createControlledPromise<void>()
+  const childStarted = createControlledPromise<void>()
+  const parentGate = createControlledPromise<void>()
+  const childGate = createControlledPromise<void>()
+  const childSettled = createControlledPromise<void>()
+  const rootRoute = createRootRoute({ component: Outlet })
+  const parentRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    component: Outlet,
+    loader: async () => {
+      parentStarted.resolve()
+      await parentGate
+      throw new Error('later parent failure')
+    },
+    errorComponent: () => <div>Parent error boundary</div>,
+  })
+  const childRoute = createRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loader: async () => {
+      childStarted.resolve()
+      await childGate
+      childSettled.resolve()
+      throw new Error('first child failure')
+    },
+    errorComponent: () => <div>Child error boundary</div>,
+  })
+  const handler = createRequestHandler({
+    request: new Request('http://localhost/parent/child'),
+    createRouter: () =>
+      createRouter({
+        routeTree: rootRoute.addChildren([
+          parentRoute.addChildren([childRoute]),
+        ]),
+        isServer: true,
+      }),
+  })
+
+  const responsePromise = handler(({ router, responseHeaders }) =>
+    renderRouterToString({
+      router,
+      responseHeaders,
+      children: <RouterServer router={router} />,
+    }),
+  )
+  await Promise.all([parentStarted, childStarted])
+  childGate.resolve()
+  await childSettled
+  parentGate.resolve()
+  const response = await responsePromise
+  const html = await response.text()
+
+  expect(response.status).toBe(500)
+  expect(html).toContain('Child error boundary')
+  expect(html).not.toContain('Parent error boundary')
 })
 
 // https://github.com/TanStack/router/issues/4684

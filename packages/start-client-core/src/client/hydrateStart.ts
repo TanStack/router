@@ -52,7 +52,7 @@ async function hydrateStart(): Promise<AnyRouter> {
     basepath: process.env.TSS_ROUTER_BASEPATH,
     ...{ serializationAdapters },
   })
-  if (!router.stores.matchesId.get().length) {
+  if (!router.stores.ids.get().length) {
     await hydrate(router)
   }
 

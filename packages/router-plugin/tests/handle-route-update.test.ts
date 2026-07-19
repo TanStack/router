@@ -20,7 +20,10 @@ import { Router as ReactRouter } from '../../react-router/src/router'
 import { getHandleRouteUpdateCode } from '../src/core/hmr'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 
-vi.mock('@tanstack/router-core/isServer', () => ({ isServer: undefined }))
+vi.mock('@tanstack/router-core/isServer', async (importOriginal) => ({
+  ...(await importOriginal()),
+  isServer: undefined,
+}))
 
 const getStoreConfig: GetStoreConfig = () => ({
   createMutableStore: createNonReactiveMutableStore,

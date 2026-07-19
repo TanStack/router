@@ -4,7 +4,7 @@ import { test } from '@tanstack/router-e2e-utils'
 const testCount = 7
 
 test.describe('selective ssr', () => {
-  test('#4614: ssr false child receives context from its parent load generation', async ({
+  test('#4614: cached parent loader data does not cache its beforeLoad context', async ({
     page,
   }) => {
     await page.goto('/')
@@ -25,12 +25,19 @@ test.describe('selective ssr', () => {
       }
     })
 
-    expect(rootBeforeLoads).toEqual([])
+    expect(rootBeforeLoads).toEqual([
+      {
+        cause: 'preload',
+        preload: true,
+        root: 'client',
+        issue4614Context: 'client:cached',
+      },
+    ])
     expect(targetBeforeLoad).toEqual({
       cause: 'preload',
       preload: true,
-      rootContext: 'server',
-      issue4614Context: 'server:cached',
+      rootContext: 'client',
+      issue4614Context: 'client:cached',
       scenario: 'cached',
     })
   })

@@ -146,6 +146,7 @@ test('should show pendingComponent of root route', async () => {
 })
 
 test('legacy notFoundRoute drops a stale parent layout after navigation', async () => {
+  let legacyLoads = 0
   const root = createRootRoute({ component: Outlet })
   const parent = createRoute({
     getParentRoute: () => root,
@@ -161,21 +162,19 @@ test('legacy notFoundRoute drops a stale parent layout after navigation', async 
     getParentRoute: () => parent,
     path: '/known',
   })
-  const home = createRoute({
-    getParentRoute: () => root,
-    path: '/home',
-    component: () => <div>Home</div>,
-  })
   const legacyNotFound = createRoute({
     getParentRoute: () => root,
     path: '/404',
-    loader: () => 'not found',
+    loader: () => {
+      legacyLoads++
+      return 'not found'
+    },
     component: () => <div>Legacy not found</div>,
     staleTime: Infinity,
     gcTime: Infinity,
   })
   const router = createRouter({
-    routeTree: root.addChildren([parent.addChildren([known]), home]),
+    routeTree: root.addChildren([parent.addChildren([known])]),
     history: createMemoryHistory({ initialEntries: ['/parent/missing'] }),
     notFoundRoute: legacyNotFound,
   })
@@ -183,11 +182,7 @@ test('legacy notFoundRoute drops a stale parent layout after navigation', async 
   const rendered = render(<RouterProvider router={router} />)
   expect(await rendered.findByText('Parent layout')).toBeInTheDocument()
   expect(await rendered.findByText('Legacy not found')).toBeInTheDocument()
-
-  await act(async () => {
-    await router.navigate({ to: '/home' })
-  })
-  expect(await rendered.findByText('Home')).toBeInTheDocument()
+  expect(legacyLoads).toBe(1)
 
   await act(async () => {
     await router.navigate({ to: '/missing' } as any)
@@ -195,6 +190,7 @@ test('legacy notFoundRoute drops a stale parent layout after navigation', async 
 
   expect(rendered.queryByText('Parent layout')).not.toBeInTheDocument()
   expect(await rendered.findByText('Legacy not found')).toBeInTheDocument()
+  expect(legacyLoads).toBe(1)
   rendered.unmount()
 })
 

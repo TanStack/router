@@ -12,6 +12,7 @@ import {
   Outlet,
   RouterProvider,
   createBrowserHistory,
+  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -233,5 +234,95 @@ describe('transactional route loading', () => {
     expect(await screen.findByText('Child refresh failed')).toBeInTheDocument()
     expect(screen.getByText('Root shell')).toBeInTheDocument()
     expect(screen.getByText('Parent shell')).toBeInTheDocument()
+  })
+
+  test('renders the first settled background failure after foreground work completes', async () => {
+    const rootRefresh = deferred<void>()
+    const parentStarted = deferred<void>()
+    const childStarted = deferred<void>()
+    const parentGate = deferred<void>()
+    const childGate = deferred<void>()
+    const parentSettled = deferred<void>()
+    const childSettled = deferred<void>()
+    let rootLoads = 0
+    let parentLoads = 0
+    let childLoads = 0
+
+    const rootRoute = createRootRoute({
+      loader: {
+        staleReloadMode: 'blocking',
+        handler: async () => {
+          if (++rootLoads > 1) {
+            await rootRefresh.promise
+          }
+        },
+      },
+      component: Outlet,
+    })
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      loader: {
+        staleReloadMode: 'background',
+        handler: async () => {
+          if (++parentLoads > 1) {
+            parentStarted.resolve(undefined)
+            await parentGate.promise
+            parentSettled.resolve(undefined)
+            throw new Error('later parent failure')
+          }
+          return 'parent data'
+        },
+      },
+      component: Outlet,
+      errorComponent: () => <div>Parent refresh failed</div>,
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: {
+        staleReloadMode: 'background',
+        handler: async () => {
+          if (++childLoads > 1) {
+            childStarted.resolve(undefined)
+            await childGate.promise
+            childSettled.resolve(undefined)
+            throw new Error('first child failure')
+          }
+          return 'child data'
+        },
+      },
+      component: () => <div>{childRoute.useLoaderData()}</div>,
+      errorComponent: () => <div>Child refresh failed</div>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('child data')).toBeInTheDocument()
+    await waitFor(() => expect(router.state.status).toBe('idle'))
+
+    let invalidation!: Promise<void>
+    await act(async () => {
+      invalidation = router.invalidate()
+      await Promise.all([parentStarted.promise, childStarted.promise])
+    })
+    await act(async () => {
+      childGate.resolve(undefined)
+      await childSettled.promise
+      parentGate.resolve(undefined)
+      await parentSettled.promise
+    })
+    expect(screen.getByText('child data')).toBeInTheDocument()
+
+    await act(async () => {
+      rootRefresh.resolve(undefined)
+      await invalidation
+    })
+
+    expect(screen.getByText('Child refresh failed')).toBeInTheDocument()
+    expect(screen.queryByText('Parent refresh failed')).not.toBeInTheDocument()
   })
 })

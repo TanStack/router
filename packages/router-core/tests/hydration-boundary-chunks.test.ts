@@ -159,9 +159,10 @@ describe('hydration route chunks below a server boundary', () => {
     expect(serverRouter.state.matches.map((match) => match.routeId)).toEqual([
       serverRootRoute.id,
       serverParentRoute.id,
+      serverChildRoute.id,
     ])
-    expect(serverRouter.state.matches.at(-1)?.status).toBe('notFound')
-    expect(isNotFound(serverRouter.state.matches.at(-1)?.error)).toBe(true)
+    expect(serverRouter.state.matches[1]?.status).toBe('notFound')
+    expect(isNotFound(serverRouter.state.matches[1]?.error)).toBe(true)
     const childChunkError = new Error('omitted child chunk unavailable')
     const childComponentPreload = vi.fn(() => Promise.reject(childChunkError))
     const ChildComponent = Object.assign(() => null, {
@@ -195,9 +196,11 @@ describe('hydration route chunks below a server boundary', () => {
     expect(router.state.matches.map((match) => match.routeId)).toEqual([
       rootRoute.id,
       parentRoute.id,
+      childRoute.id,
     ])
     expect(router.state.matches[1]?.status).toBe('notFound')
     expect(isNotFound(router.state.matches[1]?.error)).toBe(true)
+    expect(router.state.matches[2]?.status).toBe('pending')
     expect(router.state.location.pathname).toBe('/parent/child')
     expect(router.state.resolvedLocation?.pathname).toBe('/parent/child')
     expect(childComponentPreload).not.toHaveBeenCalled()

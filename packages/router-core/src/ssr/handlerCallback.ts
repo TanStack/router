@@ -43,18 +43,47 @@ export function createSsrStreamResponse<TRouter extends AnyRouter>(
     response,
     serverSsrCleanup: 'stream',
     async dispose(reason?: unknown) {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
       disposed = true
+
+      // Sever router ownership before asking user/renderer stream machinery to
+      // cancel. A custom stream is allowed to ignore cancellation forever.
+      router.serverSsr?.cleanup()
 
       try {
         await response.body!.cancel(reason)
       } catch {
-        // ignore; fallback cleanup below still releases router SSR state
+        // Cleanup above already released router SSR state.
       }
-
-      router.serverSsr?.cleanup()
     },
   }
+}
+
+export function bindSsrResponseToRequest(
+  router: AnyRouter | undefined,
+  result: HandlerCallbackResult,
+  signal: AbortSignal,
+): SsrResponse {
+  const ssrResponse = normalizeSsrResponse(result)
+  if (ssrResponse.serverSsrCleanup !== 'stream') {
+    return ssrResponse
+  }
+
+  const abort = () => {
+    void ssrResponse.dispose(signal.reason)
+  }
+  if (signal.aborted) {
+    abort()
+    return ssrResponse
+  }
+
+  signal.addEventListener('abort', abort, { once: true })
+  router?.serverSsr?.onCleanup(() => {
+    signal.removeEventListener('abort', abort)
+  })
+  return ssrResponse
 }
 
 export async function replaceSsrResponse(

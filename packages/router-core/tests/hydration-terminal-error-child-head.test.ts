@@ -83,8 +83,9 @@ describe('hydrated terminal error prefix', () => {
     expect(serverRouter.state.matches.map((match) => match.routeId)).toEqual([
       serverRootRoute.id,
       serverAppRoute.id,
+      serverChildRoute.id,
     ])
-    expect(serverRouter.state.matches.at(-1)).toMatchObject({
+    expect(serverRouter.state.matches[1]).toMatchObject({
       routeId: serverAppRoute.id,
       status: 'error',
       error: serverError,
@@ -136,12 +137,14 @@ describe('hydrated terminal error prefix', () => {
 
     await hydrate(router)
 
-    // Hydration must present only the terminal prefix represented by the
-    // payload.
+    // Hydration reconstructs the full matched branch while adopting only the
+    // terminal prefix represented by the payload.
     expect(router.state.matches.map((match) => match.routeId)).toEqual([
       rootRoute.id,
       appRoute.id,
+      childRoute.id,
     ])
+    expect(router.state.matches[2]?.status).toBe('pending')
 
     const committedApp = router.state.matches.find(
       (match) => match.routeId === appRoute.id,

@@ -1,6 +1,7 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, redirect } from '../src'
+import { createRequestHandler } from '../src/ssr/server'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 test.each([false, true])(
@@ -40,3 +41,39 @@ test.each([false, true])(
     }
   },
 )
+
+test('the generic request handler returns a redirect without rendering', async () => {
+  const rootRoute = new BaseRootRoute({})
+  const sourceRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/source',
+    loader: () =>
+      redirect({
+        to: '/target',
+        statusCode: 308,
+        headers: { 'x-redirect': 'route' },
+      }),
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/source'] }),
+    isServer: true,
+  })
+  const render = vi.fn(() => new Response('must not render'))
+  const handler = createRequestHandler({
+    createRouter: () => router,
+    request: new Request('http://localhost/source'),
+  })
+
+  const response = await handler(render)
+
+  expect(response.status).toBe(308)
+  expect(response.headers.get('Location')).toBe('/target')
+  expect(response.headers.get('x-redirect')).toBe('route')
+  expect(await response.text()).toBe('')
+  expect(render).not.toHaveBeenCalled()
+})

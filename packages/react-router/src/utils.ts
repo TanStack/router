@@ -1,5 +1,6 @@
 'use client'
 import * as React from 'react'
+import { isServer } from '@tanstack/router-core/isServer'
 
 // Safe version of React.use() that will not cause compilation errors against
 // React 18 with Webpack, which statically analyzes imports and fails when it
@@ -27,7 +28,9 @@ export function useStableCallback<T extends (...args: Array<any>) => any>(
 }
 
 export const useLayoutEffect =
-  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+  (isServer ?? typeof window === 'undefined')
+    ? React.useEffect
+    : React.useLayoutEffect
 
 /**
  * Taken from https://www.developerway.com/posts/implementing-advanced-use-previous-hook#part3

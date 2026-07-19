@@ -5,7 +5,7 @@ import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
 
 export function CatchBoundary(props: {
-  getResetKey: () => number | string
+  getResetKey: () => unknown
   children: React.ReactNode
   errorComponent?: ErrorRouteComponent
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
@@ -31,18 +31,18 @@ export function CatchBoundary(props: {
 }
 
 class CatchBoundaryImpl extends React.Component<{
-  getResetKey: () => number | string
+  getResetKey: () => unknown
   children: (props: {
     error: Error | null
     reset: () => void
   }) => React.ReactNode
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: Error | null; resetKey?: string | number }
+  state = { error: null } as { error: Error | null; resetKey?: unknown }
 
   static getDerivedStateFromProps(
-    props: { getResetKey: () => string | number },
-    state: { resetKey?: string | number; error: Error | null },
+    props: { getResetKey: () => unknown },
+    state: { resetKey?: unknown; error: Error | null },
   ) {
     const resetKey = props.getResetKey()
 

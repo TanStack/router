@@ -7,7 +7,7 @@ interface ErrorComponentProps {
 }
 
 type CatchBoundaryProps = {
-  getResetKey: () => number | string
+  getResetKey: () => unknown
   children: Vue.VNode
   errorComponent?: ErrorRouteComponent | Vue.Component
   onCatch?: (error: Error) => void
@@ -17,7 +17,7 @@ const VueErrorBoundary = Vue.defineComponent({
   name: 'VueErrorBoundary',
   props: {
     onError: Function,
-    resetKey: [String, Number],
+    resetKey: [String, Number, Object],
   },
   emits: ['catch'],
   setup(props, { slots }) {
@@ -85,7 +85,7 @@ const CatchBoundaryWrapper = Vue.defineComponent({
       return Vue.h(
         VueErrorBoundary,
         {
-          resetKey: resetKey.value,
+          resetKey: resetKey.value as any,
           onError: props.onCatch,
         },
         {

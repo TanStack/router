@@ -5,6 +5,7 @@ import { createMemoryHistory } from '@tanstack/history'
 import {
   Outlet,
   RouterProvider,
+  createControlledPromise,
   createRootRoute,
   createRoute,
   createRouter,
@@ -38,6 +39,13 @@ afterEach(() => {
 })
 
 test('mounting after a settled load still resolves status and fires onRendered', async () => {
+  const lifecycle: Array<'layout' | 'rendered'> = []
+  const Home = () => {
+    React.useLayoutEffect(() => {
+      lifecycle.push('layout')
+    }, [])
+    return <div data-testid="home">Home</div>
+  }
   const rootRoute = createRootRoute({
     component: () => <Outlet />,
   })
@@ -45,7 +53,7 @@ test('mounting after a settled load still resolves status and fires onRendered',
     getParentRoute: () => rootRoute,
     path: '/',
     loader: () => 'home data',
-    component: () => <div data-testid="home">Home</div>,
+    component: Home,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
@@ -56,7 +64,10 @@ test('mounting after a settled load still resolves status and fires onRendered',
   const rendered = new Promise<void>((resolve) => {
     resolveRendered = resolve
   })
-  const onRendered = vi.fn(() => resolveRendered())
+  const onRendered = vi.fn(() => {
+    lifecycle.push('rendered')
+    resolveRendered()
+  })
   const onResolved = vi.fn()
   const onLoad = vi.fn()
   const unsubscribers = [
@@ -92,11 +103,51 @@ test('mounting after a settled load still resolves status and fires onRendered',
 
     expect(container.querySelector('[data-testid="home"]')).not.toBeNull()
     expect(onRendered).toHaveBeenCalledTimes(1)
+    expect(lifecycle).toEqual(['layout', 'rendered'])
     expect(router.state.status).toBe('idle')
     expect(router.state.resolvedLocation?.pathname).toBe('/')
   } finally {
     clearTimeout(renderedTimeout)
     unsubscribe()
+    reactRoot.unmount()
+    container.remove()
+  }
+})
+
+test('mounting during a load keeps the existing generation', async () => {
+  const gate = createControlledPromise<void>()
+  const beforeLoad = vi.fn()
+  const loader = vi.fn(() => gate)
+  const rootRoute = createRootRoute({ component: () => <Outlet /> })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    beforeLoad,
+    loader,
+    component: () => <div data-testid="home">Home</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  const load = router.load()
+  await vi.waitFor(() => expect(loader).toHaveBeenCalledOnce())
+
+  const container = document.createElement('div')
+  document.body.appendChild(container)
+  const reactRoot = createRoot(container)
+  try {
+    reactRoot.render(<RouterProvider router={router} />)
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledOnce())
+    gate.resolve()
+    await load
+    await vi.waitFor(() => {
+      expect(container.querySelector('[data-testid="home"]')).not.toBeNull()
+    })
+
+    expect(beforeLoad).toHaveBeenCalledOnce()
+    expect(loader).toHaveBeenCalledOnce()
+  } finally {
     reactRoot.unmount()
     container.remove()
   }

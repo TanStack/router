@@ -79,7 +79,7 @@ export function useMatch<
     const nearestRouteId = opts.from ? undefined : Vue.inject(routeIdContext)
     const matchStore =
       (opts.from ?? nearestRouteId)
-        ? router.stores.getRouteMatchStore(opts.from ?? nearestRouteId!)
+        ? router.stores.getMatchStore(opts.from ?? nearestRouteId!)
         : undefined
     const match = matchStore?.get()
 
@@ -115,17 +115,16 @@ export function useMatch<
   const nearestRouteId = Vue.inject(routeIdContext)
 
   if (opts.from) {
-    // routeId case: single subscription via per-routeId computed store.
-    // The store reference is stable (cached by routeId).
-    const matchStore = router.stores.getRouteMatchStore(opts.from)
+    // routeId case: subscribe to the stable per-route presentation atom.
+    const matchStore = router.stores.getMatchStore(opts.from)
     match = useStore(matchStore, (value) => value)
   } else {
-    // matchId case: use routeId from context for stable store lookup.
+    // Nearest-match case: use the routeId from context for stable lookup.
     // The routeId is provided by the nearest Match component and doesn't
     // change for the component's lifetime, so the store is stable.
     if (nearestRouteId) {
       match = useStore(
-        router.stores.getRouteMatchStore(nearestRouteId),
+        router.stores.getMatchStore(nearestRouteId),
         (value) => value,
       )
     } else {

@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -639,7 +645,7 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('3')
 
     const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('3')
+    await waitFor(() => expect(loaderData).toHaveTextContent('3'))
   }
 
   fireEvent.click(invalidateRouterButton)
@@ -669,7 +675,7 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('5')
 
     const loaderData = await screen.findByTestId('id-loader-data')
-    expect(loaderData).toHaveTextContent('5')
+    await waitFor(() => expect(loaderData).toHaveTextContent('5'))
   }
 })
 

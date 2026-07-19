@@ -103,6 +103,7 @@ export {
   resolveManifestCssLink,
 } from './manifest'
 export { isMatch } from './Matches'
+export { _getRenderedMatches } from './rendered-matches'
 export type {
   AnyMatchAndValue,
   FindValueByIndex,
@@ -242,7 +243,6 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-  getMatchedRoutes,
   trailingSlashOptions,
 } from './router'
 

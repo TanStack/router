@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  createControlledPromise,
+  notFound,
+} from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 /**
@@ -76,5 +81,97 @@ describe('route boundary component preloads', () => {
     expect(match?.error).toBe(routeError)
 
     componentGate.resolve()
+  })
+
+  test('global notFound does not wait for component chunks below its boundary', async () => {
+    const hiddenComponentGate = createControlledPromise<void>()
+    const notFoundPreload = vi.fn(() => Promise.resolve())
+    pendingGates.push(hiddenComponentGate)
+
+    const NotFoundBoundary = Object.assign(() => null, {
+      preload: notFoundPreload,
+    })
+    const HiddenComponent = Object.assign(() => null, {
+      preload: () => hiddenComponentGate,
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const layoutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      notFoundComponent: NotFoundBoundary as any,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/child',
+      component: HiddenComponent as any,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([layoutRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({
+        initialEntries: ['/child/does-not-exist'],
+      }),
+      notFoundMode: 'fuzzy',
+    })
+
+    const loading = router.load()
+    pendingLoads.push(loading)
+    await loading
+
+    expect(hiddenComponentGate.status).toBe('pending')
+    expect(notFoundPreload).toHaveBeenCalledOnce()
+    expect(router.state.matches.find((match) => match._notFound)?.routeId).toBe(
+      layoutRoute.id,
+    )
+  })
+
+  test('a late normal component chunk cannot replace a selected not-found boundary', async () => {
+    const componentGate = createControlledPromise<void>()
+    const notFoundGate = createControlledPromise<void>()
+    const notFoundPreload = vi.fn(() => notFoundGate)
+    pendingGates.push(componentGate, notFoundGate)
+
+    const ParentComponent = Object.assign(() => null, {
+      preload: () => componentGate,
+    })
+    const NotFoundBoundary = Object.assign(() => null, {
+      preload: notFoundPreload,
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      loader: () => 'ready',
+      component: ParentComponent as any,
+      notFoundComponent: NotFoundBoundary as any,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw notFound({ routeId: parentRoute.id })
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+    })
+
+    const loading = router.load()
+    pendingLoads.push(loading)
+    await vi.waitFor(() => expect(notFoundPreload).toHaveBeenCalledOnce())
+
+    componentGate.resolve()
+    await Promise.resolve()
+    notFoundGate.resolve()
+    await loading
+
+    expect(
+      router.state.matches.find((match) => match.routeId === parentRoute.id),
+    ).toMatchObject({
+      status: 'notFound',
+      loaderData: 'ready',
+    })
   })
 })

@@ -71,7 +71,10 @@ export const renderRouterToStream = async ({
     const responseStream = transformReadableStreamWithRouter(
       router,
       stream as unknown as ReadableStream,
-      { onAbort: () => stream.cancel().catch(() => {}) },
+      {
+        signal: request.signal,
+        onAbort: () => stream.cancel().catch(() => {}),
+      },
     )
     return createSsrStreamResponse(
       router,
@@ -180,7 +183,7 @@ export const renderRouterToStream = async ({
     const responseStream = transformPipeableStreamWithRouter(
       router,
       reactAppPassthrough,
-      { onAbort: abortPipeable },
+      { signal: request.signal, onAbort: abortPipeable },
     )
     responseAttached = true
 

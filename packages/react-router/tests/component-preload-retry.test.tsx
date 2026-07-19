@@ -15,6 +15,7 @@ import type { ErrorComponentProps } from '../src'
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  sessionStorage.clear()
 })
 
 test('a failed component download is retried from the route error UI', async () => {
@@ -66,4 +67,35 @@ test('a failed component download is retried from the route error UI', async () 
   expect(
     screen.queryByRole('button', { name: 'Retry' }),
   ).not.toBeInTheDocument()
+})
+
+test('renders after retrying a module download that failed during preload', async () => {
+  const PageContent = () => <div>Page content</div>
+  const importer = vi
+    .fn<() => Promise<{ default: typeof PageContent }>>()
+    .mockRejectedValueOnce(
+      new TypeError(
+        'Failed to fetch dynamically imported module: /assets/page.js',
+      ),
+    )
+    .mockResolvedValue({ default: PageContent })
+  const Page = lazyRouteComponent(importer)
+
+  await Page.preload?.()
+
+  const rootRoute = createRootRoute()
+  const pageRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    component: Page,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([pageRoute]),
+    history: createMemoryHistory({ initialEntries: ['/page'] }),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('Page content')).toBeInTheDocument()
+  expect(importer).toHaveBeenCalledTimes(2)
 })

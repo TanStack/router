@@ -8,9 +8,9 @@ import {
 import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
 import { rootRouteId } from '../root'
+import { _getRenderedMatches } from '../rendered-matches'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
-import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
 import type { LRUCache } from '../lru-cache'
@@ -34,7 +34,6 @@ const P_SUFFIX = ')'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
-    i: dehydrateSsrMatchId(match.id),
     u: match.updatedAt,
     s: match.status,
   }
@@ -51,7 +50,7 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
       dehydratedMatch[shorthand] = match[key]
     }
   }
-  if (match.globalNotFound) {
+  if (match._notFound) {
     dehydratedMatch.g = true
   }
   return dehydratedMatch
@@ -389,7 +388,7 @@ export function attachRouterServerSsrUtils({
       if (!manifest) return manifest
 
       const requestAssets = getRequestAssets?.()
-      const matches = router.stores.matches.get()
+      const matches = _getRenderedMatches(router.stores.matches.get())
       const hasAssets = hasRequestAssets(requestAssets)
 
       if (!hasAssets && !manifest.inlineCss) {
@@ -495,8 +494,9 @@ export function attachRouterServerSsrUtils({
 
         invariant()
       }
-      let matchesToDehydrate = router.stores.matches.get()
-      if (router.isShell()) {
+      let matchesToDehydrate = _getRenderedMatches(router.stores.matches.get())
+      const isShell = router.isShell()
+      if (isShell) {
         // In SPA mode we only want to dehydrate the root match
         matchesToDehydrate = matchesToDehydrate.slice(0, 1)
       }
@@ -541,6 +541,9 @@ export function attachRouterServerSsrUtils({
         matches,
       }
       const dehydratedData = await router.options.dehydrate?.()
+      if (cleanupStarted) {
+        return
+      }
       if (dehydratedData) {
         dehydratedRouter.dehydratedData = dehydratedData
       }

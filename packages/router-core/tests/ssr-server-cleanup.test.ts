@@ -338,6 +338,101 @@ describe('serverSsr.cleanup', () => {
     expect(router.serverSsr).toBeUndefined()
   })
 
+  test('request abort settles while the render callback is still pending', async () => {
+    const router = buildRouter()
+    const requestController = new AbortController()
+    const renderStarted = deferred<void>()
+    const renderResult = deferred<ReturnType<typeof createSsrStreamResponse>>()
+    let cleanupCalls = 0
+    let cancelCalls = 0
+    let lateStreamResponse!: ReturnType<typeof createSsrStreamResponse>
+    const handler = createRequestHandler({
+      createRouter: () => router,
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+    })
+
+    const response = handler(({ router: requestRouter }) => {
+      const serverSsr = requestRouter.serverSsr!
+      const cleanup = serverSsr.cleanup
+      serverSsr.cleanup = () => {
+        cleanupCalls++
+        cleanup()
+      }
+      lateStreamResponse = createSsrStreamResponse(
+        requestRouter,
+        new Response(
+          new ReadableStream({
+            cancel() {
+              cancelCalls++
+              return new Promise<void>(() => {})
+            },
+          }),
+        ),
+      )
+      renderStarted.resolve()
+      return renderResult.promise
+    })
+
+    await renderStarted.promise
+    const cancellation = new Error('request disconnected')
+    requestController.abort(cancellation)
+
+    await expect(response).rejects.toBe(cancellation)
+    expect(cleanupCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+
+    renderResult.resolve(lateStreamResponse)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(cleanupCalls).toBe(1)
+    expect(cancelCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+  })
+
+  test('request abort disposes a stream after response handoff', async () => {
+    const router = buildRouter()
+    const requestController = new AbortController()
+    let cleanupCalls = 0
+    let cancelCalls = 0
+    const handler = createRequestHandler({
+      createRouter: () => router,
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+    })
+
+    const response = await handler(({ router: requestRouter }) => {
+      const serverSsr = requestRouter.serverSsr!
+      const cleanup = serverSsr.cleanup
+      serverSsr.cleanup = () => {
+        cleanupCalls++
+        cleanup()
+      }
+      return createSsrStreamResponse(
+        requestRouter,
+        new Response(
+          new ReadableStream({
+            cancel() {
+              cancelCalls++
+              return new Promise<void>(() => {})
+            },
+          }),
+        ),
+      )
+    })
+
+    expect(response.body).not.toBeNull()
+    expect(cleanupCalls).toBe(0)
+    requestController.abort(new Error('request disconnected'))
+    await Promise.resolve()
+
+    expect(cleanupCalls).toBe(1)
+    expect(cancelCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+  })
+
   test('request handler defers cleanup for stream response metadata', async () => {
     const router = buildRouter()
     let cleanupCalls = 0

@@ -56,6 +56,7 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(rawSearchParams: unknown) => TSearchSchema`
 - Optional
 - A function that will be called when this route is matched and passed the raw search params from the current location and return valid parsed search params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's search params and the return type will be inferred into the rest of the router.
+- This is a planning callback. It must be deterministic and side-effect-free for the same input; do not navigate or mutate application/router state from it.
 - Optionally, the parameter type can be tagged with the `SearchSchemaInput` type like this: `(searchParams: TSearchSchemaInput & SearchSchemaInput) => TSearchSchema`. If this tag is present, `TSearchSchemaInput` will be used to type the `search` property of `<Link />` and `navigate()` **instead of** `TSearchSchema`. The difference between `TSearchSchemaInput` and `TSearchSchema` can be useful, for example, to express optional search parameters.
 
 ### `search.middlewares` property
@@ -70,6 +71,7 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(rawParams: Record<string, string>) => TParams`
 - Optional
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
+- This is a planning callback. It must be deterministic and side-effect-free for the same input.
 
 ### `stringifyParams` method (⚠️ deprecated, use `params.stringify` instead)
 
@@ -82,6 +84,7 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(rawParams: Record<string, string>) => TParams | false`
 - Optional
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function returns parsed params, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
+- This is a planning callback. It must be deterministic and side-effect-free for the same input.
 - Experimental: returning `false` during incoming route matching skips this route and allows matching to continue to another candidate route.
 
 ### `params.priority` property
@@ -176,6 +179,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 - Optional
 - A function that will be called before this route is matched to provide additional unique identification to the route match and serve as a dependency tracker for when the match should be reloaded. It should return any serializable value that can uniquely identify the route match from navigation to navigation.
+- This is a planning callback and cache-key function. It must be deterministic and side-effect-free for the same validated search input. The returned value and any serialization methods on it, such as `toJSON`, must also be side-effect-free.
 - By default, path params are already used to uniquely identify a route match, so it's unnecessary to return these here.
 - If your route match relies on search params for unique identification, it's required that you return them here so they can be made available in the `loader`'s `deps` argument.
 
@@ -191,14 +195,14 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `number`
 - Optional
 - Defaults to `routerOptions.defaultPreloadStaleTime`, which defaults to `30_000` ms (30 seconds)
-- The amount of time in milliseconds that a route match's loader data will be considered fresh when preloading. If a route match is preloaded again within this time frame, its loader data will not be reloaded. If a route match is loaded (for navigation) within this time frame, the normal `staleTime` is used instead.
+- The amount of time in milliseconds that loader data produced by a preload is considered fresh. Another preload or the first navigation can reuse it within this interval. After navigation accepts the generation, subsequent freshness uses `staleTime`.
 
 ### `gcTime` property
 
 - Type: `number`
 - Optional
-- Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
-- The amount of time in milliseconds that a route match's loader data will be kept in memory after a preload or it is no longer in use.
+- Defaults to `routerOptions.defaultGcTime`, which defaults to 5 minutes.
+- The amount of time in milliseconds that loader data from an ordinary load will be kept in memory after it is no longer in use.
 
 ### `shouldReload` property
 
@@ -234,12 +238,12 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Defaults to `routerOptions.defaultPendingMinMs` which defaults to `500`
 - The minimum amount of time in milliseconds that the pending component will be shown for if it is shown. This is useful to prevent the pending component from flashing on the screen for a split second.
 
-### `preloadMaxAge` property
+### `preloadGcTime` property
 
 - Type: `number`
 - Optional
-- Defaults to `30_000` ms (30 seconds)
-- The maximum amount of time in milliseconds that a route's preloaded route data will be cached for. If a route is not matched within this time frame, its loader data will be discarded.
+- Defaults to `routerOptions.defaultPreloadGcTime`, which defaults to 5 minutes.
+- The amount of time in milliseconds that loader data produced by a preload can remain in memory while it is not in use. This controls retention; use `preloadStaleTime` to control whether retained data is fresh enough to reuse without reloading.
 
 ### `preSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)
 

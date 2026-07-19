@@ -104,12 +104,12 @@ describe('hydrating a server-capped boundary lane', () => {
       await serverRouter.load()
 
       const serverMatches = serverRouter.stores.matches.get()
-      expect(serverMatches).toHaveLength(boundary === 'root' ? 1 : 2)
-      const serverBoundary = serverMatches.at(-1)!
+      expect(serverMatches).toHaveLength(3)
+      const serverBoundary = serverMatches[boundary === 'root' ? 0 : 1]!
       if (outcome === 'notFound' && boundary === 'root') {
         expect(serverBoundary).toMatchObject({
           status: 'success',
-          globalNotFound: true,
+          _notFound: true,
         })
       } else {
         expect(serverBoundary.status).toBe(outcome)
@@ -133,15 +133,16 @@ describe('hydrating a server-capped boundary lane', () => {
         router: {
           manifest: { routes: {} },
           dehydratedData: {},
-          matches: serverMatches.map((match) => ({
-            i: match.id,
-            u: match.updatedAt,
-            s: match.status,
-            l: match.loaderData,
-            e: match.error,
-            ssr: match.ssr,
-            ...(match.globalNotFound ? { g: true } : {}),
-          })),
+          matches: serverMatches
+            .slice(0, boundary === 'root' ? 1 : 2)
+            .map((match) => ({
+              u: match.updatedAt,
+              s: match.status,
+              l: match.loaderData,
+              e: match.error,
+              ssr: match.ssr,
+              ...(match._notFound ? { g: true } : {}),
+            })),
         },
         h: vi.fn(),
         e: vi.fn(),

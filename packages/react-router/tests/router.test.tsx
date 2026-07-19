@@ -2489,6 +2489,7 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     expect(router.state.matches.map((match) => match.routeId)).toEqual([
       rootRoute.id,
       parentRoute.id,
+      childRoute.id,
     ])
     expect(router.state.status).toBe('idle')
   })
@@ -2600,6 +2601,7 @@ describe('notFound in beforeLoad with pendingComponent', () => {
     expect(router.state.matches.map((match) => match.routeId)).toEqual([
       rootRoute.id,
       parentRoute.id,
+      childRoute.id,
     ])
     expect(router.state.status).toBe('idle')
   })
@@ -2719,6 +2721,7 @@ describe('notFound in beforeLoad with pendingComponent', () => {
       expect(router.state.matches.map((match) => match.routeId)).toEqual([
         rootRoute.id,
         parentRoute.id,
+        childRoute.id,
       ])
       expect(router.state.status).toBe('idle')
     },

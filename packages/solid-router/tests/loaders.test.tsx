@@ -650,7 +650,8 @@ test('reproducer #4546', async () => {
   fireEvent.click(indexLink)
 
   {
-    // Wait for navigation to complete before checking values
+    // beforeLoad is fresh for this navigation, while the cached loader data is
+    // allowed to remain visible until its background reload completes.
     await screen.findByText('Index route')
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('3')
@@ -659,7 +660,7 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('3')
 
     const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('3')
+    await vi.waitFor(() => expect(loaderData).toHaveTextContent('3'))
   }
 
   fireEvent.click(invalidateRouterButton)
@@ -680,7 +681,7 @@ test('reproducer #4546', async () => {
   fireEvent.click(idLink)
 
   {
-    // Wait for navigation to complete before checking values
+    // This loader generation can likewise begin with reusable cached data.
     await screen.findByText('$id route')
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('5')
@@ -689,7 +690,7 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('5')
 
     const loaderData = await screen.findByTestId('id-loader-data')
-    expect(loaderData).toHaveTextContent('5')
+    await vi.waitFor(() => expect(loaderData).toHaveTextContent('5'))
   }
 })
 

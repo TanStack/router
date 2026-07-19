@@ -4,10 +4,10 @@ import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 /**
- * A failed rematch must preserve resources owned by the accepted route and
- * leave the router usable for a later retry.
+ * A planning failure is a route error generation and leaves the router usable
+ * for a later retry.
  */
-test('a fatal pre-rematch failure preserves the active generation and permits retry', async () => {
+test('a fatal pre-rematch failure publishes an error and permits retry', async () => {
   const boom = new Error('loaderDeps failed during invalidation rematch')
   let failLoaderDeps = false
   const loaderSignals: Array<AbortSignal> = []
@@ -39,15 +39,13 @@ test('a fatal pre-rematch failure preserves the active generation and permits re
   failLoaderDeps = true
   await router.invalidate({ forcePending: true })
 
-  // The failed replacement never acquired a lane, so it must not cancel
-  // resources owned by the still-active successful loader generation.
   expect(router.state.matches.at(-1)).toMatchObject({
     routeId: targetRoute.id,
-    status: 'success',
-    loaderData: 'target data',
+    status: 'error',
+    error: boom,
   })
   expect(loaderSignals).toHaveLength(1)
-  expect(activeSignal?.aborted).toBe(false)
+  expect(activeSignal?.aborted).toBe(true)
 
   failLoaderDeps = false
   await router.invalidate()

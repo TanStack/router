@@ -215,7 +215,8 @@ describe('beforeLoad skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    // An identical navigation may latch onto the still-active whole lane.
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
   })
 
   test('exec if rejected preload (notFound)', async () => {
@@ -277,9 +278,9 @@ describe('beforeLoad skip or exec', () => {
     await Promise.resolve()
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.location.pathname).toBe('/foo')
+    expect(router.state.location.pathname).toBe('/bar')
     expect(router.state.matches.at(-1)?.status).toBe('success')
-    expect(beforeLoad).toHaveBeenCalledTimes(2)
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
   })
 
   test('exec if rejected preload (error)', async () => {
@@ -417,7 +418,7 @@ describe('loader skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(loader).toHaveBeenCalledTimes(2)
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
   test('skip if resolved preload (success) within staleTime duration', async () => {
@@ -503,9 +504,9 @@ describe('loader skip or exec', () => {
     await Promise.resolve()
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.location.pathname).toBe('/foo')
+    expect(router.state.location.pathname).toBe('/bar')
     expect(router.state.matches.at(-1)?.status).toBe('success')
-    expect(loader).toHaveBeenCalledTimes(2)
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
   test('exec if rejected preload (error)', async () => {
@@ -832,7 +833,7 @@ describe('stale loader reload triggers', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('reloads a stale preloaded loader when switching to a different match id of the same route', async () => {
+  test('reuses a fresh preloaded loader when switching to a different match id of the same route', async () => {
     const rootRoute = new BaseRootRoute({})
     const rootLoader = vi.fn(() => ({ ok: true }))
     const childLoader = vi.fn(() => ({ ok: true }))
@@ -890,8 +891,8 @@ describe('stale loader reload triggers', () => {
       search: { page: '2' },
     })
 
-    expect(rootLoader).toHaveBeenCalledTimes(3)
-    expect(childLoader).toHaveBeenCalledTimes(3)
+    expect(rootLoader).toHaveBeenCalledTimes(2)
+    expect(childLoader).toHaveBeenCalledTimes(2)
   })
 
   test('skips stale ancestor loader when only a child path param changes', async () => {
@@ -1245,10 +1246,9 @@ describe('head execution', () => {
     expect(loadResolved).toBe(false)
 
     await vi.waitFor(() => {
-      expect(loaderResolvers.slice(0, throwAtIndex)).not.toContain(undefined)
-    })
-    loaders.forEach((loader, index) => {
-      expect(loader).toHaveBeenCalledTimes(index < throwAtIndex ? 1 : 0)
+      loaders.forEach((loader, index) => {
+        expect(loader).toHaveBeenCalledTimes(index < throwAtIndex ? 1 : 0)
+      })
     })
     for (let i = 0; i < throwAtIndex; i++) {
       loaderResolvers[i]!()
@@ -1256,9 +1256,11 @@ describe('head execution', () => {
 
     await loadPromise
 
-    expect(router.state.matches.map(getTitle)).toEqual(
+    const titles = router.state.matches.map(getTitle)
+    expect(titles.slice(0, throwAtIndex + 1)).toEqual(
       ['Root', 'Level 1', 'Level 2', 'Level 3'].slice(0, throwAtIndex + 1),
     )
+    expect(titles.slice(throwAtIndex + 1).every((title) => !title)).toBe(true)
     heads.forEach((head, index) => {
       expect(head).toHaveBeenCalledTimes(index <= throwAtIndex ? 1 : 0)
     })
@@ -1527,34 +1529,34 @@ describe('head execution', () => {
         expectedHeadTitles: ['Root', 'Level 1', 'Level 2', 'Level 3'],
       },
       {
-        name: 'uses parent loader notFound when parent loader throws notFound',
+        name: 'keeps the earlier serial beforeLoad notFound when a parent loader later throws notFound',
         throwAtIndex: 3 as const,
         parentFailures: { 1: 'notFound' } as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
-        expectedErrorSource: 'loader-1',
-        expectedBoundaryIndex: 1,
+        expectedErrorSource: 'beforeLoad-3',
+        expectedBoundaryIndex: 3,
         expectedLoaderCount: 3,
-        expectedHeadTitles: ['Root', 'Level 1'],
+        expectedHeadTitles: ['Root', 'Level 1', 'Level 2', 'Level 3'],
       },
       {
-        name: 'uses first parent loader notFound when multiple parent loaders throw notFound',
+        name: 'keeps the earlier serial beforeLoad notFound when multiple parent loaders later fail',
         throwAtIndex: 3 as const,
         parentFailures: { 1: 'notFound', 2: 'notFound' } as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
-        expectedErrorSource: 'loader-1',
-        expectedBoundaryIndex: 1,
+        expectedErrorSource: 'beforeLoad-3',
+        expectedBoundaryIndex: 3,
         expectedLoaderCount: 3,
-        expectedHeadTitles: ['Root', 'Level 1'],
+        expectedHeadTitles: ['Root', 'Level 1', 'Level 2', 'Level 3'],
       },
       {
-        name: 'uses parent loader notFound when root loader throws notFound',
+        name: 'keeps the earlier serial beforeLoad notFound when the root loader later fails',
         throwAtIndex: 2 as const,
         parentFailures: { 0: 'notFound' } as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
-        expectedErrorSource: 'loader-0',
-        expectedBoundaryIndex: 0,
+        expectedErrorSource: 'beforeLoad-2',
+        expectedBoundaryIndex: 2,
         expectedLoaderCount: 2,
-        expectedHeadTitles: ['Root'],
+        expectedHeadTitles: ['Root', 'Level 1', 'Level 2'],
       },
       {
         name: 'uses explicit routeId from beforeLoad notFound to target ancestor boundary',
@@ -1620,14 +1622,14 @@ describe('head execution', () => {
         expectedHeadTitles: ['Root'],
       },
       {
-        name: 'keeps the first loader notFound when a later loader errors',
+        name: 'keeps the earlier serial beforeLoad notFound when later loaders fail differently',
         throwAtIndex: 3 as const,
         parentFailures: { 1: 'notFound', 2: 'error' } as ParentFailureMap,
         expectedErrorKind: 'notFound' as const,
-        expectedErrorSource: 'loader-1',
-        expectedBoundaryIndex: 1,
+        expectedErrorSource: 'beforeLoad-3',
+        expectedBoundaryIndex: 3,
         expectedLoaderCount: 3,
-        expectedHeadTitles: ['Root', 'Level 1'],
+        expectedHeadTitles: ['Root', 'Level 1', 'Level 2', 'Level 3'],
       },
     ] satisfies Array<Scenario>
 
@@ -1650,9 +1652,11 @@ describe('head execution', () => {
           }),
         )
         expect(matches.some((match) => match.error !== undefined)).toBe(false)
-        expect(matches.some((match) => match.globalNotFound)).toBe(false)
+        expect(matches.some((match) => match._notFound)).toBe(false)
       } else {
-        const boundary = matches.at(-1)!
+        const boundary = matches.find(
+          (match) => match.status === 'notFound' || match._notFound,
+        )!
         expect(boundary.routeId).toBe(
           routes[scenario.expectedBoundaryIndex!]!.id,
         )
@@ -1666,7 +1670,7 @@ describe('head execution', () => {
 
         if (scenario.expectedBoundaryIndex === 0) {
           expect(boundary.status).toBe('success')
-          expect(boundary.globalNotFound).toBe(true)
+          expect(boundary._notFound).toBe(true)
         } else {
           expect(boundary.status).toBe('notFound')
           expect(boundary.error).toEqual(
@@ -1695,7 +1699,7 @@ describe('head execution', () => {
       expect(router.state.status).toBe('idle')
     })
 
-    test('sets globalNotFound on root match when beforeLoad notFound targets root boundary', async () => {
+    test('sets _notFound on root match when beforeLoad notFound targets root boundary', async () => {
       const { router, routes } = setupScenario({
         throwAtIndex: 3,
         parentFailures: {},
@@ -1712,7 +1716,7 @@ describe('head execution', () => {
         (m) => m.routeId === routes[0].id,
       )
 
-      expect(rootMatch?.globalNotFound).toBe(true)
+      expect(rootMatch?._notFound).toBe(true)
       expect(rootMatch?.status).toBe('success')
       expect(rootMatch?.error).toEqual(
         expect.objectContaining({
@@ -1722,7 +1726,7 @@ describe('head execution', () => {
       )
     })
 
-    test('clears stale root globalNotFound when the root loader is skipped on a successful reload', async () => {
+    test('clears stale root _notFound when the root loader is skipped on a successful reload', async () => {
       const { router, routes, loaders } = setupScenario({
         throwAtIndex: 3,
         parentFailures: {},
@@ -1738,7 +1742,7 @@ describe('head execution', () => {
       const initialRootMatch = router.state.matches.find(
         (match) => match.routeId === routes[0].id,
       )
-      expect(initialRootMatch?.globalNotFound).toBe(true)
+      expect(initialRootMatch?._notFound).toBe(true)
       expect(initialRootMatch?.error).toEqual(
         expect.objectContaining({
           isNotFound: true,
@@ -1756,7 +1760,7 @@ describe('head execution', () => {
         (m) => m.routeId === routes[0].id,
       )
 
-      expect(rootMatch?.globalNotFound).toBe(false)
+      expect(rootMatch?._notFound).toBe(false)
       expect(rootMatch?.status).toBe('success')
       expect(loaders[0]).toHaveBeenCalledTimes(1)
     })

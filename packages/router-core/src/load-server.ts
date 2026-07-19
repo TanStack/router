@@ -4,7 +4,7 @@ import { isNotFound } from './not-found'
 import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './route-chunks'
-import { getLocationChangeInfo } from './router'
+import { getLocationChangeInfo, runRouteLifecycle } from './router'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
@@ -12,6 +12,7 @@ import type {
   AnyRoute,
   BeforeLoadContextOptions,
   LoaderFnContext,
+  RouteContextOptions,
   SsrContextOptions,
 } from './route'
 import type { AnyRedirect } from './redirect'
@@ -74,6 +75,9 @@ function normalize(value: unknown, rejected: boolean): LoaderOutcome {
   if (isNotFound(value)) {
     return [NOT_FOUND, value]
   }
+  if (rejected && typeof (value as any)?.then === 'function') {
+    value = new Error('A Promise was thrown', { cause: value })
+  }
   return rejected ? [ERROR, value] : [SUCCESS, value]
 }
 
@@ -83,7 +87,7 @@ function normalizeError(route: AnyRoute, cause: unknown): LoaderOutcome {
     return outcome
   }
   try {
-    route.options.onError?.(cause)
+    route.options.onError?.(outcome[1])
   } catch (onErrorCause) {
     outcome = normalize(onErrorCause, true)
   }
@@ -108,6 +112,22 @@ function navigateFrom(router: AnyRouter, location: ParsedLocation) {
     })
 }
 
+function waitFor<T>(value: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) {
+    return value
+  }
+  if (signal.aborted) {
+    return Promise.reject(signal.reason)
+  }
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(signal.reason)
+    signal.addEventListener('abort', abort, { once: true })
+    value.then(resolve, reject).finally(() => {
+      signal.removeEventListener('abort', abort)
+    })
+  })
+}
+
 async function resolveSsr(
   router: AnyRouter,
   lane: MatchedLane,
@@ -128,9 +148,13 @@ async function resolveSsr(
     return value === true && parentSsr === 'data-only' ? 'data-only' : value
   }
   const defaultSsr = router.options.defaultSsr ?? true
+  const inheritedDefault = inherit(defaultSsr)
+  // A functional override can fail. Establish the inherited policy first so
+  // the selected error boundary retains the route's actual renderability.
+  match.ssr = inheritedDefault
   const option = route.options.ssr
   if (option === undefined) {
-    return inherit(defaultSsr)
+    return inheritedDefault
   }
   if (typeof option !== 'function') {
     return inherit(option)
@@ -168,6 +192,7 @@ function stampNotFound(
 async function contextualize(
   router: AnyRouter,
   lane: MatchedLane,
+  signal?: AbortSignal,
 ): Promise<ContextualizedLane> {
   let end = lane.matches.length
   let failure: IndexedOutcome | undefined
@@ -181,17 +206,51 @@ async function contextualize(
     try {
       match.ssr = await resolveSsr(router, lane, index)
     } catch (cause) {
+      signal?.throwIfAborted()
       failure = [index, stampNotFound(match, normalizeError(route, cause))]
       end = index
       break
     }
+    signal?.throwIfAborted()
 
-    const context = {
-      ...parentContext,
-      ...match.__routeContext,
+    match.__beforeLoadContext = undefined
+    let context = parentContext
+    try {
+      let routeContext
+      if (route.options.context) {
+        const routeContextOptions: RouteContextOptions<
+          any,
+          any,
+          any,
+          any,
+          any
+        > = {
+          deps: match.loaderDeps,
+          params: match.params,
+          context: parentContext,
+          location: lane.location,
+          navigate: navigateFrom(router, lane.location),
+          buildLocation: router.buildLocation,
+          cause: match.cause,
+          abortController: match.abortController,
+          preload: false,
+          matches: lane.matches,
+          routeId: route.id,
+        }
+        routeContext = route.options.context(routeContextOptions) ?? undefined
+      }
+      context = {
+        ...parentContext,
+        ...routeContext,
+      }
+      match.context = context
+    } catch (cause) {
+      signal?.throwIfAborted()
+      failure = [index, stampNotFound(match, normalizeError(route, cause))]
+      end = index
+      break
     }
-    match.context = context
-
+    signal?.throwIfAborted()
     const validationError = match.paramsError ?? match.searchError
     if (validationError !== undefined) {
       failure = [
@@ -201,6 +260,7 @@ async function contextualize(
       end = index
       break
     }
+    signal?.throwIfAborted()
 
     if (match.ssr === false || !route.options.beforeLoad) {
       parentContext = context
@@ -235,6 +295,7 @@ async function contextualize(
 
     try {
       const beforeLoadContext = await route.options.beforeLoad(options)
+      signal?.throwIfAborted()
       const outcome = stampNotFound(match, normalize(beforeLoadContext, false))
       if (outcome[0] !== SUCCESS) {
         failure = [index, outcome]
@@ -248,9 +309,7 @@ async function contextualize(
       }
       parentContext = match.context
     } catch (cause) {
-      if (cause instanceof Promise) {
-        throw cause
-      }
+      signal?.throwIfAborted()
       failure = [index, stampNotFound(match, normalizeError(route, cause))]
       end = index
       break
@@ -293,6 +352,7 @@ function createLoaderTask(
   lane: ContextualizedLane,
   index: number,
   tasks: Array<LoaderTask>,
+  signal?: AbortSignal,
 ): LoaderTask {
   const match = lane.matches[index]!
   const route = getRoute(router, match)
@@ -312,15 +372,21 @@ function createLoaderTask(
           loader(getLoaderContext(router, lane, match, route, index, tasks)),
         )
         .then(
-          (result): LoaderOutcome =>
-            match.abortController.signal.aborted
-              ? [SKIPPED]
-              : stampNotFound(match, normalize(result, false)),
-          (cause): LoaderOutcome =>
-            match.abortController.signal.aborted
-              ? [SKIPPED]
-              : stampNotFound(match, normalizeError(route, cause)),
+          (result) => normalize(result, false),
+          (cause) => normalize(cause, true),
         )
+        .then((result): LoaderOutcome => {
+          if (
+            result[0] !== REDIRECTED &&
+            (signal?.aborted || match.abortController.signal.reason === lane)
+          ) {
+            return [SKIPPED]
+          }
+          if (result[0] === ERROR) {
+            result = normalizeError(route, result[1])
+          }
+          return stampNotFound(match, result)
+        })
     }
   }
 
@@ -345,30 +411,45 @@ function createLoaderTask(
   return { index, outcome, match: parentMatch }
 }
 
-function getNotFoundBoundary(
+async function getNotFoundBoundary(
   router: AnyRouter,
   matches: Array<AnyRouteMatch>,
-  indexed: IndexedOutcome,
-): number {
-  const [throwingIndex, outcome] = indexed
-  const cause = outcome[1] as NotFoundError
-  let index = cause.routeId
+  indexed: IndexedOutcome | undefined,
+  signal?: AbortSignal,
+  fallback = 0,
+): Promise<number> {
+  const cause = indexed?.[1][1] as NotFoundError | undefined
+  let index = cause?.routeId
     ? matches.findIndex((match) => match.routeId === cause.routeId)
-    : throwingIndex
+    : (indexed?.[0] ?? matches.length - 1)
   if (index < 0) {
     index = 0
   }
   for (let candidate = index; candidate >= 0; candidate--) {
-    if (getRoute(router, matches[candidate]!).options.notFoundComponent) {
+    const route = getRoute(router, matches[candidate]!)
+    const loading = loadRouteChunk(route, false)
+    if (loading) {
+      try {
+        await loading
+      } catch {
+        signal?.throwIfAborted()
+      }
+    }
+    signal?.throwIfAborted()
+    if (route.options.notFoundComponent) {
       return candidate
     }
   }
-  return cause.routeId ? index : 0
+  return cause?.routeId ? index : fallback
 }
 
-function abortMatches(matches: Array<AnyRouteMatch>, start = 0): void {
+function abortMatches(
+  matches: Array<AnyRouteMatch>,
+  start = 0,
+  reason?: unknown,
+): void {
   for (let index = start; index < matches.length; index++) {
-    matches[index]!.abortController.abort()
+    matches[index]!.abortController.abort(reason)
   }
 }
 
@@ -381,16 +462,16 @@ function resolveServerRedirect(
   return { type: 'redirect', redirect: router.resolveRedirect(value) }
 }
 
-function applyFailure(
+async function applyFailure(
   router: AnyRouter,
   lane: ContextualizedLane,
   indexed: IndexedOutcome | undefined,
-): { status: 200 | 404 | 500; boundary?: number; kind?: number } {
+  signal?: AbortSignal,
+): Promise<{ status: 200 | 404 | 500; boundary?: number; kind?: number }> {
   if (!indexed) {
-    const boundary = lane.matches.findIndex((match) => match.globalNotFound)
+    const boundary = lane.matches.findIndex((match) => match._notFound)
     if (boundary >= 0) {
       abortMatches(lane.matches, boundary + 1)
-      lane.matches.length = boundary + 1
       return { status: 404, boundary, kind: NOT_FOUND }
     }
     return { status: 200 }
@@ -399,23 +480,27 @@ function applyFailure(
   const [index, outcome] = indexed
   if (outcome[0] === ERROR) {
     const match = lane.matches[index]!
-    match.globalNotFound = undefined
+    match._notFound = undefined
     match.status = 'error'
     match.error = outcome[1]
     match.isFetching = false
     abortMatches(lane.matches, index + 1)
-    lane.matches.length = index + 1
     return { status: 500, boundary: index, kind: ERROR }
   }
 
-  const boundary = getNotFoundBoundary(router, lane.matches, indexed)
+  const boundary = await getNotFoundBoundary(
+    router,
+    lane.matches,
+    indexed,
+    signal,
+  )
   const match = lane.matches[boundary]!
   const cause = outcome[1] as NotFoundError
   cause.routeId = match.routeId
-  match.globalNotFound = undefined
+  match._notFound = undefined
   if (match.routeId === router.routeTree.id) {
     match.status = 'success'
-    match.globalNotFound = true
+    match._notFound = true
     match.error = cause
   } else {
     match.status = 'notFound'
@@ -423,7 +508,6 @@ function applyFailure(
   }
   match.isFetching = false
   abortMatches(lane.matches, boundary + 1)
-  lane.matches.length = boundary + 1
   return { status: 404, boundary, kind: NOT_FOUND }
 }
 
@@ -431,6 +515,7 @@ async function loadNormalChunks(
   router: AnyRouter,
   lane: ContextualizedLane,
   end: number,
+  signal?: AbortSignal,
 ): Promise<IndexedOutcome | undefined> {
   const chunks = lane.matches.map(async (match, index) => {
     if (index >= end || match.ssr !== true || match.status !== 'success') {
@@ -440,11 +525,13 @@ async function loadNormalChunks(
     try {
       await loadRouteChunk(route)
     } catch (cause) {
+      signal?.throwIfAborted()
       return [
         index,
         stampNotFound(match, normalizeError(route, cause)),
       ] as IndexedOutcome
     }
+    signal?.throwIfAborted()
     return undefined
   })
   for (const chunk of chunks) {
@@ -459,36 +546,41 @@ async function loadNormalChunks(
 async function projectLane(
   router: AnyRouter,
   lane: ReducedLane,
+  signal?: AbortSignal,
 ): Promise<void> {
   for (const match of lane.matches) {
     const routeOptions = getRoute(router, match).options
     if (
-      match.ssr !== true ||
-      (!routeOptions.head && !routeOptions.scripts && !routeOptions.headers)
+      match.ssr !== false &&
+      (routeOptions.head || routeOptions.scripts || routeOptions.headers)
     ) {
-      continue
+      const context = {
+        ssr: router.options.ssr,
+        matches: lane.matches,
+        match,
+        params: match.params,
+        loaderData: match.loaderData,
+      }
+      try {
+        const [head, scripts, headers] = await Promise.all([
+          routeOptions.head?.(context),
+          routeOptions.scripts?.(context),
+          routeOptions.headers?.(context),
+        ])
+        signal?.throwIfAborted()
+        match.meta = head?.meta
+        match.links = head?.links
+        match.headScripts = head?.scripts
+        match.styles = head?.styles
+        match.scripts = scripts
+        match.headers = headers
+      } catch (cause) {
+        signal?.throwIfAborted()
+        console.error(cause)
+      }
     }
-    const context = {
-      ssr: router.options.ssr,
-      matches: lane.matches,
-      match,
-      params: match.params,
-      loaderData: match.loaderData,
-    }
-    try {
-      const [head, scripts, headers] = await Promise.all([
-        routeOptions.head?.(context),
-        routeOptions.scripts?.(context),
-        routeOptions.headers?.(context),
-      ])
-      match.meta = head?.meta
-      match.links = head?.links
-      match.headScripts = head?.scripts
-      match.styles = head?.styles
-      match.scripts = scripts
-      match.headers = headers
-    } catch (cause) {
-      console.error(cause)
+    if (match.status !== 'success' || match._notFound) {
+      break
     }
   }
 }
@@ -497,6 +589,7 @@ async function executeServerLane(
   router: AnyRouter,
   location: ParsedLocation,
   matchedMatches: Array<AnyRouteMatch>,
+  signal?: AbortSignal,
 ): Promise<ServerLoadResult> {
   const matched = {
     location,
@@ -508,102 +601,175 @@ async function executeServerLane(
       abortController: new AbortController(),
     })),
   } as MatchedLane
-  const lane = await contextualize(router, matched)
+  const abortLane = () => abortMatches(matched.matches, 0, signal?.reason)
+  if (signal?.aborted) {
+    abortLane()
+    signal.throwIfAborted()
+  }
+  signal?.addEventListener('abort', abortLane, { once: true })
 
-  let loaderEnd = lane.end
-  if (lane.failure?.[1][0] === REDIRECTED) {
-    loaderEnd = 0
-  } else if (lane.failure?.[1][0] === NOT_FOUND) {
-    loaderEnd = Math.min(
-      loaderEnd,
-      getNotFoundBoundary(router, lane.matches, lane.failure) + 1,
+  try {
+    const plannedGlobalBoundary = matched.matches.findIndex(
+      (match) => match._notFound,
     )
-  }
-
-  const tasks: Array<LoaderTask> = []
-  for (let index = 0; index < loaderEnd; index++) {
-    const task = createLoaderTask(router, lane, index, tasks)
-    tasks.push(task)
-  }
-
-  let loaderFailure: IndexedOutcome | undefined
-  let control = lane.failure?.[1][0] === REDIRECTED ? lane.failure : undefined
-  for (const task of tasks) {
-    const outcome = await task.outcome
-    if (outcome[0] === SUCCESS) {
-      const match = lane.matches[task.index]!
-      match.loaderData = outcome[1]
-      match.status = 'success'
-      match.error = undefined
-      match.invalid = false
-      match.isFetching = false
-      match.updatedAt = Date.now()
-    } else if (outcome[0] === REDIRECTED) {
-      control = [task.index, outcome]
-      break
-    } else if (outcome[0] !== SKIPPED) {
-      loaderFailure ??= [task.index, outcome]
+    if (router.options.notFoundMode !== 'root' && plannedGlobalBoundary >= 0) {
+      const boundary = await getNotFoundBoundary(
+        router,
+        matched.matches,
+        undefined,
+        signal,
+        plannedGlobalBoundary,
+      )
+      if (boundary !== plannedGlobalBoundary) {
+        matched.matches[plannedGlobalBoundary]!._notFound = undefined
+        matched.matches[boundary]!._notFound = true
+      }
     }
-  }
+    const lane = await contextualize(router, matched, signal)
+    signal?.throwIfAborted()
 
-  if (control?.[1][0] === REDIRECTED) {
-    abortMatches(lane.matches)
-    return resolveServerRedirect(router, location, control[1][1])
-  }
-
-  let failure = loaderFailure ?? lane.failure
-  const plannedBoundary = lane.matches.findIndex(
-    (match) => match.globalNotFound,
-  )
-  const readinessEnd = failure
-    ? failure[1][0] === NOT_FOUND
-      ? getNotFoundBoundary(router, lane.matches, failure)
-      : failure[0]
-    : plannedBoundary < 0
-      ? lane.matches.length
-      : plannedBoundary
-  const chunkFailure = await loadNormalChunks(router, lane, readinessEnd)
-  if (chunkFailure) {
-    if (chunkFailure[1][0] === REDIRECTED) {
-      abortMatches(lane.matches)
-      return resolveServerRedirect(router, location, chunkFailure[1][1])
+    let loaderEnd = lane.end
+    if (lane.failure?.[1][0] === REDIRECTED) {
+      loaderEnd = 0
+    } else if (lane.failure?.[1][0] === NOT_FOUND) {
+      loaderEnd = Math.min(
+        loaderEnd,
+        (await getNotFoundBoundary(
+          router,
+          lane.matches,
+          lane.failure,
+          signal,
+        )) + 1,
+      )
     }
-    failure = chunkFailure
-  }
 
-  const terminal = applyFailure(router, lane, failure)
-  if (terminal.boundary !== undefined) {
-    const match = lane.matches[terminal.boundary]!
-    if (match.ssr === true) {
-      const route = getRoute(router, match)
-      try {
-        if (terminal.kind === ERROR) {
-          await loadRouteChunk(route, 'errorComponent')
-        } else if (match.globalNotFound) {
-          await Promise.all([
-            loadRouteChunk(route),
-            loadRouteChunk(route, 'notFoundComponent'),
-          ])
-        } else {
-          await loadRouteChunk(route, 'notFoundComponent')
-        }
-      } catch {}
+    const tasks: Array<LoaderTask> = []
+    for (let index = 0; index < loaderEnd; index++) {
+      const task = createLoaderTask(router, lane, index, tasks, signal)
+      tasks.push(task)
     }
-  }
 
-  await projectLane(router, {
-    location: lane.location,
-    matches: lane.matches,
-  } as ReducedLane)
-  return { type: 'render', status: terminal.status, matches: lane.matches }
+    let loaderFailure: IndexedOutcome | undefined
+    let control = lane.failure?.[1][0] === REDIRECTED ? lane.failure : undefined
+    try {
+      await Promise.all(
+        tasks.map((task) =>
+          task.outcome.then((loadedOutcome) => {
+            const match = lane.matches[task.index]!
+            const outcome = loadedOutcome
+            if (outcome[0] === SUCCESS) {
+              match.loaderData = outcome[1]
+              match.status = 'success'
+              match.error = undefined
+              match.invalid = false
+              match.isFetching = false
+              match.updatedAt = Date.now()
+            } else if (outcome[0] === REDIRECTED) {
+              control = [task.index, outcome]
+              throw control
+            } else {
+              // A selective-SSR skip must stay pending for hydration. Every
+              // settled server attempt is otherwise renderable unless
+              // reduction selects it as the lane's terminal failure.
+              if (match.ssr !== false) {
+                match.status = 'success'
+                match.error = undefined
+                match.invalid = true
+                match.isFetching = false
+              }
+              if (!loaderFailure && outcome[0] !== SKIPPED) {
+                loaderFailure = [task.index, outcome]
+              }
+            }
+          }),
+        ),
+      )
+    } catch (cause) {
+      if (!Array.isArray(cause)) {
+        throw cause
+      }
+      control = cause as IndexedOutcome
+    }
+    signal?.throwIfAborted()
+
+    if (control?.[1][0] === REDIRECTED) {
+      abortMatches(lane.matches, 0, lane)
+      return resolveServerRedirect(router, location, control[1][1])
+    }
+
+    let failure = lane.failure ?? loaderFailure
+    const plannedBoundary = lane.matches.findIndex((match) => match._notFound)
+    const readinessEnd = failure
+      ? failure[1][0] === NOT_FOUND
+        ? await getNotFoundBoundary(router, lane.matches, failure, signal)
+        : failure[0]
+      : plannedBoundary < 0
+        ? lane.matches.length
+        : plannedBoundary
+    const chunkFailure = await loadNormalChunks(
+      router,
+      lane,
+      readinessEnd,
+      signal,
+    )
+    signal?.throwIfAborted()
+    if (chunkFailure) {
+      if (chunkFailure[1][0] === REDIRECTED) {
+        abortMatches(lane.matches)
+        return resolveServerRedirect(router, location, chunkFailure[1][1])
+      }
+      failure ??= chunkFailure
+    }
+
+    const terminal = await applyFailure(router, lane, failure, signal)
+    if (terminal.boundary !== undefined) {
+      const match = lane.matches[terminal.boundary]!
+      if (match.ssr === true) {
+        const route = getRoute(router, match)
+        try {
+          if (terminal.kind === ERROR) {
+            await loadRouteChunk(route, 'errorComponent')
+          } else if (match._notFound) {
+            await Promise.all([
+              loadRouteChunk(route),
+              loadRouteChunk(route, 'notFoundComponent'),
+            ])
+          } else {
+            await loadRouteChunk(route, 'notFoundComponent')
+          }
+        } catch {}
+        signal?.throwIfAborted()
+      }
+    }
+
+    signal?.throwIfAborted()
+    await projectLane(
+      router,
+      {
+        location: lane.location,
+        matches: lane.matches,
+      } as ReducedLane,
+      signal,
+    )
+    signal?.throwIfAborted()
+    router.serverSsr?.onCleanup(abortLane)
+    return { type: 'render', status: terminal.status, matches: lane.matches }
+  } finally {
+    signal?.removeEventListener('abort', abortLane)
+  }
+}
+
+type ServerLoadOptions = NonNullable<Parameters<AnyRouter['load']>[0]> & {
+  _signal?: AbortSignal
 }
 
 export async function loadServerRoute(
   router: AnyRouter,
-  _opts?: Parameters<AnyRouter['load']>[0],
+  opts?: ServerLoadOptions,
 ): Promise<void> {
   router.updateLatestLocation()
   const next = router.latestLocation
+  const previous = router._committed
   let result: ServerLoadResult
   try {
     const canonical = router.buildLocation({
@@ -625,8 +791,14 @@ export async function loadServerRoute(
     const changeInfo = getLocationChangeInfo(next, fromLocation)
     router.emit({ type: 'onBeforeNavigate', ...changeInfo })
     router.emit({ type: 'onBeforeLoad', ...changeInfo })
-    result = await executeServerLane(router, next, router.matchRoutes(next))
+    opts?._signal?.throwIfAborted()
+    result = await waitFor(
+      executeServerLane(router, next, router.matchRoutes(next), opts?._signal),
+      opts?._signal,
+    )
+    opts?._signal?.throwIfAborted()
   } catch (cause) {
+    opts?._signal?.throwIfAborted()
     if (!isRedirect(cause)) {
       throw cause
     }
@@ -643,8 +815,9 @@ export async function loadServerRoute(
     }
   })
   if (result.type === 'render') {
-    router._committedMatches = result.matches
+    router._committed = result.matches
+    runRouteLifecycle(router, previous, result.matches)
   }
-  router.commitLocationPromise?.resolve()
-  router.commitLocationPromise = undefined
+  router._commitPromise?.resolve()
+  router._commitPromise = undefined
 }

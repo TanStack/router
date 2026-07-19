@@ -10,7 +10,6 @@ import {
 } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
-import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRouteMatch, AnyRouter, LocationRewrite } from '../src'
 import type { ServerManifest } from '../src/manifest'
@@ -118,7 +117,7 @@ describe('hydrate', () => {
     },
   )
 
-  it('round-trips the manifest and encoded matches without running client loaders', async () => {
+  it('round-trips the manifest and matches without running client loaders', async () => {
     const serverRootRoute = new BaseRootRoute({})
     const serverProductRoute = new BaseRoute({
       getParentRoute: () => serverRootRoute,
@@ -143,10 +142,6 @@ describe('hydrate', () => {
     mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, manifest)
 
     const serverMatches = serverRouter.state.matches
-    expect(mockWindow.$_TSR.router?.matches.map((match) => match.i)).toEqual(
-      serverMatches.map((match) => dehydrateSsrMatchId(match.id)),
-    )
-
     const clientLoader = vi.fn(() => ({
       productId: 'client',
       source: 'client',
@@ -240,7 +235,7 @@ describe('hydrate', () => {
     expect(clientLoader).not.toHaveBeenCalled()
   })
 
-  it('round-trips a server root notFound lane as globalNotFound', async () => {
+  it('round-trips a server root notFound lane as _notFound', async () => {
     const serverRootRoute = new BaseRootRoute({
       notFoundComponent: () => 'Not Found',
     })
@@ -259,11 +254,11 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
 
-    expect(serverRouter.state.matches).toHaveLength(1)
+    expect(serverRouter.state.matches).toHaveLength(2)
     expect(serverRouter.state.matches[0]).toMatchObject({
       routeId: serverRootRoute.id,
       status: 'success',
-      globalNotFound: true,
+      _notFound: true,
     })
     expect(isNotFound(serverRouter.state.matches[0]?.error)).toBe(true)
 
@@ -284,11 +279,15 @@ describe('hydrate', () => {
 
     await hydrate(clientRouter)
 
-    expect(clientRouter.state.matches).toHaveLength(1)
+    expect(clientRouter.state.matches).toHaveLength(2)
     expect(clientRouter.state.matches[0]).toMatchObject({
       routeId: clientRootRoute.id,
       status: 'success',
-      globalNotFound: true,
+      _notFound: true,
+    })
+    expect(clientRouter.state.matches[1]).toMatchObject({
+      routeId: clientMissingRoute.id,
+      status: 'pending',
     })
     expect(isNotFound(clientRouter.state.matches[0]?.error)).toBe(true)
     expect(clientRouter.state.matches[0]?.error).toEqual(
@@ -297,41 +296,42 @@ describe('hydrate', () => {
     expect(clientLoader).not.toHaveBeenCalled()
   })
 
-  it('preserves matcher-owned globalNotFound when a compatibility payload omits the flag', async () => {
-    const rootRoute = new BaseRootRoute({
+  it('preserves a client-matched _notFound when a shell payload omits the flag', async () => {
+    const serverRootRoute = new BaseRootRoute({
       notFoundComponent: () => 'Not Found',
     })
-    const knownRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
+    const serverKnownRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
       path: '/known',
     })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([knownRoute]),
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([serverKnownRoute]),
+      history: createMemoryHistory({ initialEntries: ['/known'] }),
+      isServer: true,
+      isShell: true,
+    })
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+
+    const clientRootRoute = new BaseRootRoute({
+      notFoundComponent: () => 'Not Found',
+    })
+    const clientKnownRoute = new BaseRoute({
+      getParentRoute: () => clientRootRoute,
+      path: '/known',
+    })
+    const clientRouter = createTestRouter({
+      routeTree: clientRootRoute.addChildren([clientKnownRoute]),
       history: createMemoryHistory({ initialEntries: ['/does-not-exist'] }),
       isServer: false,
     })
-    const matcherOwnedMatches = router.matchRoutes(router.stores.location.get())
-    expect(matcherOwnedMatches).toHaveLength(1)
-    expect(matcherOwnedMatches[0]?.globalNotFound).toBe(true)
 
-    mockWindow.$_TSR = createMockBootstrap({
-      manifest: testManifest,
-      dehydratedData: {},
-      matches: matcherOwnedMatches.map((match) => ({
-        i: dehydrateSsrMatchId(match.id),
-        s: 'success' as const,
-        ssr: true,
-        u: Date.now(),
-      })),
-    })
+    await hydrate(clientRouter)
 
-    await hydrate(router)
-
-    expect(router.state.matches).toHaveLength(1)
-    expect(router.state.matches[0]).toMatchObject({
-      routeId: rootRoute.id,
+    expect(clientRouter.state.matches).toHaveLength(1)
+    expect(clientRouter.state.matches[0]).toMatchObject({
+      routeId: clientRootRoute.id,
       status: 'success',
-      globalNotFound: true,
+      _notFound: true,
     })
   })
 
@@ -340,6 +340,12 @@ describe('hydrate', () => {
       input: ({ url }) => {
         if (url.pathname === '/public') {
           url.pathname = '/internal'
+        }
+        return url
+      },
+      output: ({ url }) => {
+        if (url.pathname === '/internal') {
+          url.pathname = '/public'
         }
         return url
       },
@@ -389,23 +395,26 @@ describe('hydrate', () => {
     expect(clientRouter.state.location.publicHref).toBe('/public')
     expect(
       clientRouter.state.matches.map((match: AnyRouteMatch) => ({
-        id: match.id,
         routeId: match.routeId,
         status: match.status,
         loaderData: match.loaderData,
       })),
-    ).toEqual(
-      serverRouter.state.matches.map((match) => ({
-        id: match.id,
-        routeId: match.routeId,
-        status: match.status,
-        loaderData: match.loaderData,
-      })),
-    )
+    ).toEqual([
+      {
+        routeId: clientRootRoute.id,
+        status: 'success',
+        loaderData: undefined,
+      },
+      {
+        routeId: clientInternalRoute.id,
+        status: 'success',
+        loaderData: 'server internal data',
+      },
+    ])
     expect(clientLoader).not.toHaveBeenCalled()
   })
 
-  it('records a notFound thrown by a route head on the hydrated match', async () => {
+  it('logs and swallows a notFound thrown by a hydrated route head', async () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     mockHead.mockImplementation(() => {
       throw notFound({ data: { source: 'index head' } })
@@ -416,7 +425,6 @@ describe('hydrate', () => {
       manifest: testManifest,
       dehydratedData: {},
       matches: matched.map((match: AnyRouteMatch) => ({
-        i: dehydrateSsrMatchId(match.id),
         s: 'success' as const,
         ssr: true,
         u: Date.now(),
@@ -430,11 +438,9 @@ describe('hydrate', () => {
     ) as AnyRouteMatch | undefined
     expect(match).toBeDefined()
     expect(match?.status).toBe('success')
-    expect(isNotFound(match?.error)).toBe(true)
-    expect(match?.error).toEqual({ isNotFound: true })
+    expect(match?.error).toBeUndefined()
     expect(mockHead).toHaveBeenCalledOnce()
     expect(consoleSpy).toHaveBeenCalledWith(
-      'NotFound error during hydration for routeId: /',
       expect.objectContaining({
         isNotFound: true,
         data: { source: 'index head' },

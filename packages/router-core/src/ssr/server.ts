@@ -1,6 +1,7 @@
-export { createRequestHandler } from './createRequestHandler'
+export { createRequestHandler, waitForRequest } from './createRequestHandler'
 export type { RequestHandler } from './createRequestHandler'
 export {
+  bindSsrResponseToRequest,
   createSsrStreamResponse,
   defineHandlerCallback,
   isSsrResponse,

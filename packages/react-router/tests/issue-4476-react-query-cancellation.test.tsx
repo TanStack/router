@@ -112,7 +112,7 @@ test('#4476: pending navigation keeps the query observer mounted and its fetchQu
 
     await waitFor(() => expect(querySignal).toBeDefined())
     expect(screen.getByTestId('page-one')).toBeInTheDocument()
-    expect(screen.queryByTestId('page-two-pending')).not.toBeInTheDocument()
+    expect(screen.getByTestId('page-two-pending')).toBeInTheDocument()
     expect(querySignal?.aborted).toBe(false)
     queryGate.resolve(10)
 
