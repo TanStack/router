@@ -1,5 +1,11 @@
 # @tanstack/router-plugin
 
+## 1.168.23
+
+### Patch Changes
+
+- [#7855](https://github.com/TanStack/router/pull/7855) [`49f6863`](https://github.com/TanStack/router/commit/49f686324574ea65851317cbba084eb386a911c6) - Preserve React component state during HMR when route components are declared with lowercase function names. The development-only React transforms cover split route component groups and unsplit root route component options, including shell, pending, and error components, without changing production output.
+
 ## 1.168.22
 
 ### Patch Changes
