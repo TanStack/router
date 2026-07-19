@@ -15,6 +15,7 @@ import { Route as ComponentHmrRouteImport } from './routes/component-hmr'
 import { Route as ComponentHmrInlineErrorSplitRouteImport } from './routes/component-hmr-inline-error-split'
 import { Route as ComponentHmrInlineNosplitRouteImport } from './routes/component-hmr-inline-nosplit'
 import { Route as ComponentHmrInlineSplitRouteImport } from './routes/component-hmr-inline-split'
+import { Route as ComponentHmrLowercaseNamedSplitRouteImport } from './routes/component-hmr-lowercase-named-split'
 import { Route as ComponentHmrNamedErrorSplitRouteImport } from './routes/component-hmr-named-error-split'
 import { Route as ComponentHmrNamedNosplitRouteImport } from './routes/component-hmr-named-nosplit'
 import { Route as ComponentHmrNamedSplitRouteImport } from './routes/component-hmr-named-split'
@@ -55,6 +56,12 @@ const ComponentHmrInlineSplitRoute = ComponentHmrInlineSplitRouteImport.update({
   path: '/component-hmr-inline-split',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComponentHmrLowercaseNamedSplitRoute =
+  ComponentHmrLowercaseNamedSplitRouteImport.update({
+    id: '/component-hmr-lowercase-named-split',
+    path: '/component-hmr-lowercase-named-split',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ComponentHmrNamedErrorSplitRoute =
   ComponentHmrNamedErrorSplitRouteImport.update({
     id: '/component-hmr-named-error-split',
@@ -101,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/component-hmr-inline-error-split': typeof ComponentHmrInlineErrorSplitRoute
   '/component-hmr-inline-nosplit': typeof ComponentHmrInlineNosplitRoute
   '/component-hmr-inline-split': typeof ComponentHmrInlineSplitRoute
+  '/component-hmr-lowercase-named-split': typeof ComponentHmrLowercaseNamedSplitRoute
   '/component-hmr-named-error-split': typeof ComponentHmrNamedErrorSplitRoute
   '/component-hmr-named-nosplit': typeof ComponentHmrNamedNosplitRoute
   '/component-hmr-named-split': typeof ComponentHmrNamedSplitRoute
@@ -116,6 +124,7 @@ export interface FileRoutesByTo {
   '/component-hmr-inline-error-split': typeof ComponentHmrInlineErrorSplitRoute
   '/component-hmr-inline-nosplit': typeof ComponentHmrInlineNosplitRoute
   '/component-hmr-inline-split': typeof ComponentHmrInlineSplitRoute
+  '/component-hmr-lowercase-named-split': typeof ComponentHmrLowercaseNamedSplitRoute
   '/component-hmr-named-error-split': typeof ComponentHmrNamedErrorSplitRoute
   '/component-hmr-named-nosplit': typeof ComponentHmrNamedNosplitRoute
   '/component-hmr-named-split': typeof ComponentHmrNamedSplitRoute
@@ -132,6 +141,7 @@ export interface FileRoutesById {
   '/component-hmr-inline-error-split': typeof ComponentHmrInlineErrorSplitRoute
   '/component-hmr-inline-nosplit': typeof ComponentHmrInlineNosplitRoute
   '/component-hmr-inline-split': typeof ComponentHmrInlineSplitRoute
+  '/component-hmr-lowercase-named-split': typeof ComponentHmrLowercaseNamedSplitRoute
   '/component-hmr-named-error-split': typeof ComponentHmrNamedErrorSplitRoute
   '/component-hmr-named-nosplit': typeof ComponentHmrNamedNosplitRoute
   '/component-hmr-named-split': typeof ComponentHmrNamedSplitRoute
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/component-hmr-inline-error-split'
     | '/component-hmr-inline-nosplit'
     | '/component-hmr-inline-split'
+    | '/component-hmr-lowercase-named-split'
     | '/component-hmr-named-error-split'
     | '/component-hmr-named-nosplit'
     | '/component-hmr-named-split'
@@ -164,6 +175,7 @@ export interface FileRouteTypes {
     | '/component-hmr-inline-error-split'
     | '/component-hmr-inline-nosplit'
     | '/component-hmr-inline-split'
+    | '/component-hmr-lowercase-named-split'
     | '/component-hmr-named-error-split'
     | '/component-hmr-named-nosplit'
     | '/component-hmr-named-split'
@@ -179,6 +191,7 @@ export interface FileRouteTypes {
     | '/component-hmr-inline-error-split'
     | '/component-hmr-inline-nosplit'
     | '/component-hmr-inline-split'
+    | '/component-hmr-lowercase-named-split'
     | '/component-hmr-named-error-split'
     | '/component-hmr-named-nosplit'
     | '/component-hmr-named-split'
@@ -195,6 +208,7 @@ export interface RootRouteChildren {
   ComponentHmrInlineErrorSplitRoute: typeof ComponentHmrInlineErrorSplitRoute
   ComponentHmrInlineNosplitRoute: typeof ComponentHmrInlineNosplitRoute
   ComponentHmrInlineSplitRoute: typeof ComponentHmrInlineSplitRoute
+  ComponentHmrLowercaseNamedSplitRoute: typeof ComponentHmrLowercaseNamedSplitRoute
   ComponentHmrNamedErrorSplitRoute: typeof ComponentHmrNamedErrorSplitRoute
   ComponentHmrNamedNosplitRoute: typeof ComponentHmrNamedNosplitRoute
   ComponentHmrNamedSplitRoute: typeof ComponentHmrNamedSplitRoute
@@ -245,6 +259,13 @@ declare module '@tanstack/react-router' {
       path: '/component-hmr-inline-split'
       fullPath: '/component-hmr-inline-split'
       preLoaderRoute: typeof ComponentHmrInlineSplitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/component-hmr-lowercase-named-split': {
+      id: '/component-hmr-lowercase-named-split'
+      path: '/component-hmr-lowercase-named-split'
+      fullPath: '/component-hmr-lowercase-named-split'
+      preLoaderRoute: typeof ComponentHmrLowercaseNamedSplitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/component-hmr-named-error-split': {
@@ -319,6 +340,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComponentHmrInlineErrorSplitRoute: ComponentHmrInlineErrorSplitRoute,
   ComponentHmrInlineNosplitRoute: ComponentHmrInlineNosplitRoute,
   ComponentHmrInlineSplitRoute: ComponentHmrInlineSplitRoute,
+  ComponentHmrLowercaseNamedSplitRoute: ComponentHmrLowercaseNamedSplitRoute,
   ComponentHmrNamedErrorSplitRoute: ComponentHmrNamedErrorSplitRoute,
   ComponentHmrNamedNosplitRoute: ComponentHmrNamedNosplitRoute,
   ComponentHmrNamedSplitRoute: ComponentHmrNamedSplitRoute,
