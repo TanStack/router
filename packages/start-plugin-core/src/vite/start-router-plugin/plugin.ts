@@ -15,7 +15,7 @@ import {
   SERVER_PROP,
   SERVER_ROUTE_OPTION_DELETE_NODES,
 } from '../../start-router-plugin/constants'
-import { shouldSeparateRouteOptions } from '../../prerender-route-options-env'
+import { shouldStripRouteOptionsFromServer } from '../../prerender-route-options-env'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type {
@@ -183,7 +183,7 @@ export function tanStackStartRouter(
         ...routerConfig,
         codeSplittingOptions: {
           ...routerConfig.codeSplittingOptions,
-          deleteNodes: shouldSeparateRouteOptions(startConfig)
+          deleteNodes: shouldStripRouteOptionsFromServer(startConfig)
             ? SERVER_ROUTE_OPTION_DELETE_NODES
             : undefined,
           addHmr: false,

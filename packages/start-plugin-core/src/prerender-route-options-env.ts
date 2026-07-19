@@ -29,13 +29,26 @@ export function restorePrerenderEnv(state: PrerenderEnvState) {
 export function shouldSeparateRouteOptions(
   startConfig: TanStackStartOutputConfig,
 ) {
-  if (startConfig.prerender?.separateRouteOptionsBundle === false) {
-    return false
-  }
+  return (
+    !startConfig.spa?.enabled &&
+    isPrerenderEnabled(startConfig) &&
+    startConfig.prerender?.separateRouteOptionsBundle !== false
+  )
+}
 
-  const prerenderEnabled =
+export function shouldStripRouteOptionsFromServer(
+  startConfig: TanStackStartOutputConfig,
+) {
+  return (
+    Boolean(startConfig.spa?.enabled) ||
+    !isPrerenderEnabled(startConfig) ||
+    startConfig.prerender?.separateRouteOptionsBundle !== false
+  )
+}
+
+function isPrerenderEnabled(startConfig: TanStackStartOutputConfig) {
+  return (
     startConfig.prerender?.enabled ??
     startConfig.pages.some((page) => page.prerender?.enabled)
-
-  return prerenderEnabled || Boolean(startConfig.spa?.enabled)
+  )
 }

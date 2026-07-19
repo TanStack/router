@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { shouldSeparateRouteOptions } from '../src/prerender-route-options-env'
+import {
+  shouldSeparateRouteOptions,
+  shouldStripRouteOptionsFromServer,
+} from '../src/prerender-route-options-env'
 import { parseStartConfig } from '../src/schema'
 
 describe('separate prerender route options environment', () => {
@@ -28,7 +31,7 @@ describe('separate prerender route options environment', () => {
     expect(shouldSeparateRouteOptions(startConfig)).toBe(false)
   })
 
-  it('is enabled for SPA builds so final server output is stripped', () => {
+  it('is disabled for SPA builds', () => {
     const startConfig = parseStartConfig(
       {
         spa: { enabled: true },
@@ -38,6 +41,43 @@ describe('separate prerender route options environment', () => {
       process.cwd(),
     )
 
-    expect(shouldSeparateRouteOptions(startConfig)).toBe(true)
+    expect(shouldSeparateRouteOptions(startConfig)).toBe(false)
   })
+})
+
+describe('final server route option stripping', () => {
+  it.each([
+    { name: 'SSR', input: {}, expected: true },
+    {
+      name: 'SPA',
+      input: { spa: { enabled: true } },
+      expected: true,
+    },
+    {
+      name: 'separate prerender bundle',
+      input: { prerender: { enabled: true } },
+      expected: true,
+    },
+    {
+      name: 'shared prerender bundle',
+      input: {
+        prerender: {
+          enabled: true,
+          separateRouteOptionsBundle: false,
+        },
+      },
+      expected: false,
+    },
+  ])(
+    'strips route options from $name final server output: $expected',
+    ({ input, expected }) => {
+      const startConfig = parseStartConfig(
+        input,
+        { framework: 'react' },
+        process.cwd(),
+      )
+
+      expect(shouldStripRouteOptionsFromServer(startConfig)).toBe(expected)
+    },
+  )
 })
