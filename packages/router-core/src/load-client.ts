@@ -359,7 +359,7 @@ export function laneInputs(
   location: ParsedLocation,
 ): LaneInputs {
   return [
-    router.options.context,
+    router.options.context ?? {},
     router.options.additionalContext,
     _getUserHistoryState(location.state),
     location.search,

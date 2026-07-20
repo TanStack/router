@@ -986,6 +986,62 @@ describe('public hydration contracts', () => {
     expect(router.state.matches.at(-1)?.loaderData).toBe('client new')
   })
 
+  test('keeps a hydration handoff when a provider initializes an empty context', async () => {
+    const rootBeforeLoad = vi.fn(() => ({ source: 'client' }))
+    const rootLoader = vi.fn(() => 'client root')
+    const pageLoader = vi.fn(
+      ({ context }: { context: { source?: string } }) => context.source,
+    )
+    const rootRoute = new BaseRootRoute({
+      beforeLoad: rootBeforeLoad,
+      loader: rootLoader,
+    })
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      ssr: false,
+      loader: pageLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(mockWindow, [
+      {
+        i: dehydrateSsrMatchId(matches[0]!.id),
+        s: 'success',
+        b: { source: 'server' },
+        l: 'server root',
+        ssr: true,
+        u: Date.now(),
+      },
+      {
+        i: dehydrateSsrMatchId(matches[1]!.id),
+        s: 'pending',
+        ssr: false,
+        u: Date.now(),
+      },
+    ])
+
+    await hydrate(router)
+    router.update({
+      ...router.options,
+      context: { ...router.options.context },
+    })
+    await router.load()
+
+    expect(rootBeforeLoad).not.toHaveBeenCalled()
+    expect(rootLoader).not.toHaveBeenCalled()
+    expect(pageLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches[0]).toMatchObject({
+      context: { source: 'server' },
+      loaderData: 'server root',
+    })
+    expect(router.state.matches[1]).toMatchObject({ loaderData: 'server' })
+  })
+
   test('does not hand transported context across a router-context generation change', async () => {
     const rootBeforeLoad = vi.fn(({ context }: { context: any }) => ({
       auth: context.auth,
