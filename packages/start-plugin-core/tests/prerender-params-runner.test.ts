@@ -680,11 +680,7 @@ describe('runPrerenderParams streaming', () => {
       },
     })
 
-    expect(emitted).toEqual([
-      '/posts/first',
-      '/posts/second',
-      '/about',
-    ])
+    expect(emitted).toEqual(['/posts/first', '/posts/second', '/about'])
   })
 
   it('streams entries from async generators without buffering them all', async () => {

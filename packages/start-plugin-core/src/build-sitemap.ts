@@ -78,7 +78,10 @@ export function createSitemapWriter({
 
       if (page.sitemap?.alternateRefs?.length) {
         for (const ref of page.sitemap.alternateRefs) {
-          builder.ele('xhtml:link').att('rel', 'alternate').att('href', ref.href)
+          builder
+            .ele('xhtml:link')
+            .att('rel', 'alternate')
+            .att('href', ref.href)
           if (ref.hreflang) {
             builder.att('hreflang', ref.hreflang)
           }

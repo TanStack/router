@@ -92,17 +92,13 @@ function runCollect(prerenderParams: () => unknown) {
 }
 
 describe(`prerenderParams streaming (${paramsCount} entries)`, () => {
-  bench(
-    'prebuilt sync array',
-    () => runStreaming(() => prebuiltArrayEntries),
-    { warmupIterations: 1 },
-  )
+  bench('prebuilt sync array', () => runStreaming(() => prebuiltArrayEntries), {
+    warmupIterations: 1,
+  })
 
-  bench(
-    'created sync array',
-    () => runStreaming(() => createArrayEntries()),
-    { warmupIterations: 1 },
-  )
+  bench('created sync array', () => runStreaming(() => createArrayEntries()), {
+    warmupIterations: 1,
+  })
 
   bench(
     'created async array',
@@ -110,17 +106,13 @@ describe(`prerenderParams streaming (${paramsCount} entries)`, () => {
     { warmupIterations: 1 },
   )
 
-  bench(
-    'sync generator',
-    () => runStreaming(() => syncGeneratorEntries()),
-    { warmupIterations: 1 },
-  )
+  bench('sync generator', () => runStreaming(() => syncGeneratorEntries()), {
+    warmupIterations: 1,
+  })
 
-  bench(
-    'async generator',
-    () => runStreaming(() => asyncGeneratorEntries()),
-    { warmupIterations: 1 },
-  )
+  bench('async generator', () => runStreaming(() => asyncGeneratorEntries()), {
+    warmupIterations: 1,
+  })
 
   bench(
     'created async array from pages',

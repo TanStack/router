@@ -52,8 +52,7 @@ export async function prerender({
     }
 
     const outputDir = handler.getClientOutputDirectory()
-    const concurrency =
-      startConfig.prerender.concurrency ?? os.cpus().length
+    const concurrency = startConfig.prerender.concurrency ?? os.cpus().length
     const maxPending = Math.max(concurrency * 4, concurrency + 1)
     // +1 reserves a slot for the streaming sentinel below.
     const queue = new Queue({ concurrency: concurrency + 1 })
@@ -100,8 +99,7 @@ export async function prerender({
         pages: initialPages,
         logger,
         filter,
-        prerenderParamsTimeout:
-          startConfig.prerender.prerenderParamsTimeout,
+        prerenderParamsTimeout: startConfig.prerender.prerenderParamsTimeout,
         onPage: seedPage,
       })
     } else {

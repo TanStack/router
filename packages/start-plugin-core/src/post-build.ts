@@ -88,7 +88,9 @@ export async function postBuild({
   try {
     if (startConfig.prerender.enabled) {
       await adapter.prerender(startConfig, {
-        pageSink: sitemapWriter ? (page) => sitemapWriter.write(page) : undefined,
+        pageSink: sitemapWriter
+          ? (page) => sitemapWriter.write(page)
+          : undefined,
       })
     } else if (sitemapWriter) {
       for (const page of startConfig.pages) {
