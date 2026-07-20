@@ -44,8 +44,9 @@ describe('pruneServerRoutePieces', () => {
     const unknownRoute = createRouteNode('/unknown', undefined)
     const component = createPiece('component')
     const loader = createPiece('loader')
+    const lazy = createPiece('lazy')
     const pendingComponent = createPiece('pendingComponent')
-    const routePieces = { component, loader, pendingComponent }
+    const routePieces = { component, loader, lazy, pendingComponent }
     const acc: HandleNodeAccumulator = {
       routeTree: [],
       routeNodes: [noneRoute, dataRoute, fullRoute, unknownRoute],
@@ -68,6 +69,7 @@ describe('pruneServerRoutePieces', () => {
 
     expect(result.routePiecesByPath['/__root']).toEqual({
       loader,
+      lazy,
       pendingComponent,
     })
     expect(result.routePiecesByPath['/none']).toEqual({
@@ -75,6 +77,7 @@ describe('pruneServerRoutePieces', () => {
     })
     expect(result.routePiecesByPath['/data']).toEqual({
       loader,
+      lazy,
       pendingComponent,
     })
     expect(result.routePiecesByPath['/full']).toBe(routePieces)
@@ -105,6 +108,7 @@ describe('pruneServerRoutePieces', () => {
         "export const Route = createFileRoute('/data')({ ssr: 'data-only' })",
       'data.component.tsx': piece('/data', 'component'),
       'data.loader.ts': piece('/data', 'loader'),
+      'data.lazy.tsx': "export const Route = createLazyFileRoute('/data')({})",
       'full.tsx':
         "export const Route = createFileRoute('/full')({ ssr: true })",
       'full.component.tsx': piece('/full', 'component'),
@@ -113,6 +117,8 @@ describe('pruneServerRoutePieces', () => {
         "export const Route = createFileRoute('/unknown')({ ssr: () => false })",
       'unknown.component.tsx': piece('/unknown', 'component'),
       'unknown.loader.ts': piece('/unknown', 'loader'),
+      'unknown.lazy.tsx':
+        "export const Route = createLazyFileRoute('/unknown')({})",
     }
 
     try {
@@ -147,11 +153,12 @@ describe('pruneServerRoutePieces', () => {
         './routes/none.errorComponent',
         './routes/none.notFoundComponent',
         './routes/none.pendingComponent',
-        './routes/none.lazy',
         './routes/data.loader',
+        './routes/data.lazy',
         './routes/full.component',
         './routes/full.loader',
         './routes/unknown.component',
+        './routes/unknown.lazy',
         './routes/unknown.loader',
       ])
       expect(imports).toEqual(expectedImports)

@@ -31,6 +31,7 @@ export function pruneServerRoutePieces({
       const serverPieces = { ...pieces }
       delete serverPieces.component
       delete serverPieces.loader
+      delete serverPieces.lazy
       routePiecesByPath[node.routePath] = serverPieces
     } else if (node.serverSsr === 'data-only') {
       const serverPieces = { ...pieces }
