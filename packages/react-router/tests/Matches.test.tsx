@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   Link,
@@ -11,6 +18,7 @@ import {
   isMatch,
   useMatchRoute,
   useMatches,
+  usePendingMatches,
 } from '../src'
 
 const rootRoute = createRootRoute()
@@ -353,4 +361,65 @@ describe('matching on different param types', () => {
       expect(JSON.parse(matchesToCheck.textContent)).toEqual(matchParams)
     },
   )
+})
+
+describe('usePendingMatches', () => {
+  afterEach(() => cleanup())
+
+  test('exposes the destination matches while a navigation is loading', async () => {
+    let resolveLoader!: () => void
+    const loaderPromise = new Promise<void>((resolve) => {
+      resolveLoader = resolve
+    })
+
+    const RootComponent = () => {
+      const pendingPath = usePendingMatches({
+        select: (matches) => matches[matches.length - 1]?.pathname ?? '',
+      })
+      return (
+        <>
+          <div data-testid="pending-path">{pendingPath}</div>
+          <Outlet />
+        </>
+      )
+    }
+
+    const root = createRootRoute({
+      component: RootComponent,
+    })
+
+    const home = createRoute({
+      getParentRoute: () => root,
+      path: '/',
+      component: () => <Link to="/posts">To Posts</Link>,
+    })
+
+    const posts = createRoute({
+      getParentRoute: () => root,
+      path: 'posts',
+      loader: () => loaderPromise,
+      component: () => <div>Posts</div>,
+    })
+
+    const router = createRouter({
+      routeTree: root.addChildren([home, posts]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    fireEvent.click(await screen.findByText('To Posts'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('pending-path').textContent).toBe('/posts'),
+    )
+
+    await act(async () => {
+      resolveLoader()
+      await loaderPromise
+    })
+
+    await screen.findByText('Posts')
+    expect(screen.getByTestId('pending-path').textContent).toBe('')
+  })
 })

@@ -228,6 +228,7 @@ export {
   useMatchRoute,
   MatchRoute,
   useMatches,
+  usePendingMatches,
   useParentMatches,
   useChildMatches,
 } from './Matches'

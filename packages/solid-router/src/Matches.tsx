@@ -218,6 +218,23 @@ export function useMatches<
   }) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }
 
+export function usePendingMatches<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
+  const router = useRouter<TRouter>()
+  return Solid.createMemo((prev: TSelected | undefined) => {
+    const matches = router.stores.pendingMatches.get() as Array<
+      MakeRouteMatchUnion<TRouter>
+    >
+    const res = opts?.select ? opts.select(matches) : matches
+    if (prev === undefined) return res
+    return replaceEqualDeep(prev, res) as any
+  }) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
+}
+
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,

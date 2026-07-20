@@ -255,6 +255,48 @@ export function useMatches<
 }
 
 /**
+ * Read the array of pending route matches or select a derived subset.
+ *
+ * Pending matches are populated while the router is loading the next
+ * location and are cleared once the navigation resolves, so the array is
+ * empty outside of an active navigation.
+ *
+ * Useful for optimistic UI during navigation, e.g. highlighting the target
+ * navigation item from the pending matches' `staticData` before the
+ * transition commits.
+ *
+ * @returns The array of pending matches (or the selected value).
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/usePendingMatchesHook
+ */
+export function usePendingMatches<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+  TStructuralSharing extends boolean = boolean,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected, TStructuralSharing> &
+    StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
+): UseMatchesResult<TRouter, TSelected> {
+  const router = useRouter<TRouter>()
+
+  if (isServer ?? router.isServer) {
+    const matches = router.stores.pendingMatches.get() as Array<
+      MakeRouteMatchUnion<TRouter>
+    >
+    return (opts?.select ? opts.select(matches) : matches) as UseMatchesResult<
+      TRouter,
+      TSelected
+    >
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  return useStore(
+    router.stores.pendingMatches,
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    useStructuralSharing(opts, router),
+  ) as UseMatchesResult<TRouter, TSelected>
+}
+
+/**
  * Read the full array of active route matches or select a derived subset.
  *
  * Useful for debugging, breadcrumbs, or aggregating metadata across matches.
