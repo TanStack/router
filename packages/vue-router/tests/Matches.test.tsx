@@ -384,8 +384,7 @@ describe('usePendingMatches', () => {
 
     const PendingPath = () => {
       const pendingPath = usePendingMatches({
-        select: (matches: Array<any>) =>
-          matches[matches.length - 1]?.pathname ?? '',
+        select: (matches) => matches[matches.length - 1]?.pathname ?? '',
       })
       return (
         <>

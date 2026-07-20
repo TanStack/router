@@ -3,7 +3,7 @@ id: usePendingMatchesHook
 title: usePendingMatches hook
 ---
 
-The `usePendingMatches` hook returns the [`RouteMatch`](./RouteMatchType.md) objects for the location the router is currently navigating to. While a navigation is loading, these are the matches for the destination location. Once the navigation resolves (or when no navigation is in flight), the array is empty and the resolved matches are available via [`useMatches`](./useMatchesHook.md).
+The `usePendingMatches` hook returns the [`RouteMatch`](./RouteMatchType.md) objects for the location the router is currently navigating to. While a navigation is in flight — running `beforeLoad`, loading code-split chunks, or awaiting loaders — these are the matches for the destination location. Once the navigation resolves (or when no navigation is in flight), the array is empty and the resolved matches are available via [`useMatches`](./useMatchesHook.md).
 
 This is useful for optimistic UI during navigation, e.g. highlighting the navigation item of the destination route from its `staticData` before its chunks and loaders have finished.
 
@@ -24,6 +24,7 @@ The `usePendingMatches` hook accepts a single _optional_ argument, an `options` 
 
 - Type: `boolean`
 - Optional
+- Only supported by `@tanstack/react-router`.
 - Configures whether structural sharing is enabled for the value returned by `select`.
 - See the [Render Optimizations guide](../../guide/render-optimizations.md) for more information.
 
