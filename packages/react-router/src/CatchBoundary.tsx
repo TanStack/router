@@ -38,7 +38,11 @@ class CatchBoundaryImpl extends React.Component<{
   }) => React.ReactNode
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: Error | null; resetKey?: string | number }
+  state = { error: null, hasError: false } as {
+    error: Error | null
+    hasError: boolean
+    resetKey?: string | number
+  }
 
   static getDerivedStateFromProps(
     props: { getResetKey: () => string | number },
@@ -53,10 +57,10 @@ class CatchBoundaryImpl extends React.Component<{
     return { resetKey }
   }
   static getDerivedStateFromError(error: Error) {
-    return { error }
+    return { error, hasError: true }
   }
   reset() {
-    this.setState({ error: null })
+    this.setState({ error: null, hasError: false })
   }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (this.props.onCatch) {
@@ -65,7 +69,7 @@ class CatchBoundaryImpl extends React.Component<{
   }
   render() {
     return this.props.children({
-      error: this.state.error,
+      error: this.state.hasError ? this.state.error : null,
       reset: () => {
         this.reset()
       },

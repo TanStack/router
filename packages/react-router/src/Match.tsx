@@ -368,7 +368,12 @@ export const MatchInner = React.memo(function MatchInnerImpl({
 
         invariant()
       }
-      throw getMatchPromise(match, 'loadPromise')
+
+      const loadPromise = getMatchPromise(match, 'loadPromise')
+
+      if (loadPromise) {
+        throw loadPromise
+      }
     }
 
     if (match.status === 'error') {
@@ -491,7 +496,17 @@ export const MatchInner = React.memo(function MatchInnerImpl({
       invariant()
     }
 
-    throw getMatchPromise(match, 'loadPromise')
+    const loadPromise = getMatchPromise(match, 'loadPromise')
+
+    // The loadPromise may have been cleared by the time this stale render
+    // runs (race: the redirect navigation settled before MatchInner
+    // re-rendered). Throwing undefined would escape CatchBoundary (falsy
+    // check) and unmount the whole app. Instead, let React render the
+    // component — the redirect has already been processed and the match
+    // will be replaced on the next store update.
+    if (loadPromise) {
+      throw loadPromise
+    }
   }
 
   if (match.status === 'error') {
