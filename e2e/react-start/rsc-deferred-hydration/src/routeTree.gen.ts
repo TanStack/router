@@ -9,19 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ServerClientRouteImport } from './routes/server-client'
-import { Route as CssRouteImport } from './routes/css'
-import { Route as CompositeRouteImport } from './routes/composite'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CompositeRouteImport } from './routes/composite'
+import { Route as CssRouteImport } from './routes/css'
+import { Route as ServerClientRouteImport } from './routes/server-client'
 
-const ServerClientRoute = ServerClientRouteImport.update({
-  id: '/server-client',
-  path: '/server-client',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CssRoute = CssRouteImport.update({
-  id: '/css',
-  path: '/css',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CompositeRoute = CompositeRouteImport.update({
@@ -29,9 +24,14 @@ const CompositeRoute = CompositeRouteImport.update({
   path: '/composite',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CssRoute = CssRouteImport.update({
+  id: '/css',
+  path: '/css',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServerClientRoute = ServerClientRouteImport.update({
+  id: '/server-client',
+  path: '/server-client',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -71,18 +71,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/server-client': {
-      id: '/server-client'
-      path: '/server-client'
-      fullPath: '/server-client'
-      preLoaderRoute: typeof ServerClientRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/css': {
-      id: '/css'
-      path: '/css'
-      fullPath: '/css'
-      preLoaderRoute: typeof CssRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/composite': {
@@ -92,11 +85,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompositeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/css': {
+      id: '/css'
+      path: '/css'
+      fullPath: '/css'
+      preLoaderRoute: typeof CssRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/server-client': {
+      id: '/server-client'
+      path: '/server-client'
+      fullPath: '/server-client'
+      preLoaderRoute: typeof ServerClientRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

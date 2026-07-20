@@ -9,61 +9,21 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SyncOnlyRouteImport } from './routes/sync-only'
-import { Route as StreamRouteImport } from './routes/stream'
-import { Route as SlowRenderRouteImport } from './routes/slow-render'
-import { Route as QueryHeavyRouteImport } from './routes/query-heavy'
-import { Route as NestedDeferredRouteImport } from './routes/nested-deferred'
-import { Route as ManyPromisesRouteImport } from './routes/many-promises'
-import { Route as FastSerialRouteImport } from './routes/fast-serial'
-import { Route as DeferredRejectionRouteImport } from './routes/deferred-rejection'
-import { Route as DeferredRouteImport } from './routes/deferred'
-import { Route as ConcurrentRouteImport } from './routes/concurrent'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConcurrentRouteImport } from './routes/concurrent'
+import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as DeferredRejectionRouteImport } from './routes/deferred-rejection'
+import { Route as FastSerialRouteImport } from './routes/fast-serial'
+import { Route as ManyPromisesRouteImport } from './routes/many-promises'
+import { Route as NestedDeferredRouteImport } from './routes/nested-deferred'
+import { Route as QueryHeavyRouteImport } from './routes/query-heavy'
+import { Route as SlowRenderRouteImport } from './routes/slow-render'
+import { Route as StreamRouteImport } from './routes/stream'
+import { Route as SyncOnlyRouteImport } from './routes/sync-only'
 
-const SyncOnlyRoute = SyncOnlyRouteImport.update({
-  id: '/sync-only',
-  path: '/sync-only',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const StreamRoute = StreamRouteImport.update({
-  id: '/stream',
-  path: '/stream',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SlowRenderRoute = SlowRenderRouteImport.update({
-  id: '/slow-render',
-  path: '/slow-render',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const QueryHeavyRoute = QueryHeavyRouteImport.update({
-  id: '/query-heavy',
-  path: '/query-heavy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NestedDeferredRoute = NestedDeferredRouteImport.update({
-  id: '/nested-deferred',
-  path: '/nested-deferred',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ManyPromisesRoute = ManyPromisesRouteImport.update({
-  id: '/many-promises',
-  path: '/many-promises',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FastSerialRoute = FastSerialRouteImport.update({
-  id: '/fast-serial',
-  path: '/fast-serial',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeferredRejectionRoute = DeferredRejectionRouteImport.update({
-  id: '/deferred-rejection',
-  path: '/deferred-rejection',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeferredRoute = DeferredRouteImport.update({
-  id: '/deferred',
-  path: '/deferred',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConcurrentRoute = ConcurrentRouteImport.update({
@@ -71,9 +31,49 @@ const ConcurrentRoute = ConcurrentRouteImport.update({
   path: '/concurrent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DeferredRoute = DeferredRouteImport.update({
+  id: '/deferred',
+  path: '/deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeferredRejectionRoute = DeferredRejectionRouteImport.update({
+  id: '/deferred-rejection',
+  path: '/deferred-rejection',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FastSerialRoute = FastSerialRouteImport.update({
+  id: '/fast-serial',
+  path: '/fast-serial',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManyPromisesRoute = ManyPromisesRouteImport.update({
+  id: '/many-promises',
+  path: '/many-promises',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NestedDeferredRoute = NestedDeferredRouteImport.update({
+  id: '/nested-deferred',
+  path: '/nested-deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const QueryHeavyRoute = QueryHeavyRouteImport.update({
+  id: '/query-heavy',
+  path: '/query-heavy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SlowRenderRoute = SlowRenderRouteImport.update({
+  id: '/slow-render',
+  path: '/slow-render',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StreamRoute = StreamRouteImport.update({
+  id: '/stream',
+  path: '/stream',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SyncOnlyRoute = SyncOnlyRouteImport.update({
+  id: '/sync-only',
+  path: '/sync-only',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -175,67 +175,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sync-only': {
-      id: '/sync-only'
-      path: '/sync-only'
-      fullPath: '/sync-only'
-      preLoaderRoute: typeof SyncOnlyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stream': {
-      id: '/stream'
-      path: '/stream'
-      fullPath: '/stream'
-      preLoaderRoute: typeof StreamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/slow-render': {
-      id: '/slow-render'
-      path: '/slow-render'
-      fullPath: '/slow-render'
-      preLoaderRoute: typeof SlowRenderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/query-heavy': {
-      id: '/query-heavy'
-      path: '/query-heavy'
-      fullPath: '/query-heavy'
-      preLoaderRoute: typeof QueryHeavyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/nested-deferred': {
-      id: '/nested-deferred'
-      path: '/nested-deferred'
-      fullPath: '/nested-deferred'
-      preLoaderRoute: typeof NestedDeferredRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/many-promises': {
-      id: '/many-promises'
-      path: '/many-promises'
-      fullPath: '/many-promises'
-      preLoaderRoute: typeof ManyPromisesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/fast-serial': {
-      id: '/fast-serial'
-      path: '/fast-serial'
-      fullPath: '/fast-serial'
-      preLoaderRoute: typeof FastSerialRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/deferred-rejection': {
-      id: '/deferred-rejection'
-      path: '/deferred-rejection'
-      fullPath: '/deferred-rejection'
-      preLoaderRoute: typeof DeferredRejectionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/deferred': {
-      id: '/deferred'
-      path: '/deferred'
-      fullPath: '/deferred'
-      preLoaderRoute: typeof DeferredRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/concurrent': {
@@ -245,11 +189,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConcurrentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deferred-rejection': {
+      id: '/deferred-rejection'
+      path: '/deferred-rejection'
+      fullPath: '/deferred-rejection'
+      preLoaderRoute: typeof DeferredRejectionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fast-serial': {
+      id: '/fast-serial'
+      path: '/fast-serial'
+      fullPath: '/fast-serial'
+      preLoaderRoute: typeof FastSerialRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/many-promises': {
+      id: '/many-promises'
+      path: '/many-promises'
+      fullPath: '/many-promises'
+      preLoaderRoute: typeof ManyPromisesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/nested-deferred': {
+      id: '/nested-deferred'
+      path: '/nested-deferred'
+      fullPath: '/nested-deferred'
+      preLoaderRoute: typeof NestedDeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/query-heavy': {
+      id: '/query-heavy'
+      path: '/query-heavy'
+      fullPath: '/query-heavy'
+      preLoaderRoute: typeof QueryHeavyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/slow-render': {
+      id: '/slow-render'
+      path: '/slow-render'
+      fullPath: '/slow-render'
+      preLoaderRoute: typeof SlowRenderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stream': {
+      id: '/stream'
+      path: '/stream'
+      fullPath: '/stream'
+      preLoaderRoute: typeof StreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sync-only': {
+      id: '/sync-only'
+      path: '/sync-only'
+      fullPath: '/sync-only'
+      preLoaderRoute: typeof SyncOnlyRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

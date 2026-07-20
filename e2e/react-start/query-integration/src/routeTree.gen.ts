@@ -9,14 +9,14 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UseSuspenseQueryRouteImport } from './routes/useSuspenseQuery'
-import { Route as UseQueryRouteImport } from './routes/useQuery'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UseQueryRouteImport } from './routes/useQuery'
+import { Route as UseSuspenseQueryRouteImport } from './routes/useSuspenseQuery'
 import { Route as LoaderFetchQueryTypeRouteImport } from './routes/loader-fetchQuery/$type'
 
-const UseSuspenseQueryRoute = UseSuspenseQueryRouteImport.update({
-  id: '/useSuspenseQuery',
-  path: '/useSuspenseQuery',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UseQueryRoute = UseQueryRouteImport.update({
@@ -24,9 +24,9 @@ const UseQueryRoute = UseQueryRouteImport.update({
   path: '/useQuery',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const UseSuspenseQueryRoute = UseSuspenseQueryRouteImport.update({
+  id: '/useSuspenseQuery',
+  path: '/useSuspenseQuery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
@@ -80,11 +80,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/useSuspenseQuery': {
-      id: '/useSuspenseQuery'
-      path: '/useSuspenseQuery'
-      fullPath: '/useSuspenseQuery'
-      preLoaderRoute: typeof UseSuspenseQueryRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/useQuery': {
@@ -94,11 +94,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UseQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/useSuspenseQuery': {
+      id: '/useSuspenseQuery'
+      path: '/useSuspenseQuery'
+      fullPath: '/useSuspenseQuery'
+      preLoaderRoute: typeof UseSuspenseQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/loader-fetchQuery/$type': {

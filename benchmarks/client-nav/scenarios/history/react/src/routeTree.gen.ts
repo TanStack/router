@@ -9,29 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PhotosPhotoIdRouteImport } from './routes/photos.$photoId'
+import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as PagesNRouteImport } from './routes/pages.$n'
+import { Route as PhotosPhotoIdRouteImport } from './routes/photos.$photoId'
 
-const GalleryRoute = GalleryRouteImport.update({
-  id: '/gallery',
-  path: '/gallery',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PhotosPhotoIdRoute = PhotosPhotoIdRouteImport.update({
-  id: '/photos/$photoId',
-  path: '/photos/$photoId',
+const GalleryRoute = GalleryRouteImport.update({
+  id: '/gallery',
+  path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PagesNRoute = PagesNRouteImport.update({
   id: '/pages/$n',
   path: '/pages/$n',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PhotosPhotoIdRoute = PhotosPhotoIdRouteImport.update({
+  id: '/photos/$photoId',
+  path: '/photos/$photoId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -71,13 +71,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/gallery': {
-      id: '/gallery'
-      path: '/gallery'
-      fullPath: '/gallery'
-      preLoaderRoute: typeof GalleryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -85,11 +78,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/photos/$photoId': {
-      id: '/photos/$photoId'
-      path: '/photos/$photoId'
-      fullPath: '/photos/$photoId'
-      preLoaderRoute: typeof PhotosPhotoIdRouteImport
+    '/gallery': {
+      id: '/gallery'
+      path: '/gallery'
+      fullPath: '/gallery'
+      preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pages/$n': {
@@ -97,6 +90,13 @@ declare module '@tanstack/react-router' {
       path: '/pages/$n'
       fullPath: '/pages/$n'
       preLoaderRoute: typeof PagesNRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/photos/$photoId': {
+      id: '/photos/$photoId'
+      path: '/photos/$photoId'
+      fullPath: '/photos/$photoId'
+      preLoaderRoute: typeof PhotosPhotoIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

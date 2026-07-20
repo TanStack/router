@@ -9,8 +9,8 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as L1RouteImport } from './routes/l1'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as L1RouteImport } from './routes/l1'
 import { Route as L1L2RouteImport } from './routes/l1.l2'
 import { Route as L1L2L3RouteImport } from './routes/l1.l2.l3'
 import { Route as L1L2L3L4RouteImport } from './routes/l1.l2.l3.l4'
@@ -19,14 +19,14 @@ import { Route as L1L2L3L4L5L6RouteImport } from './routes/l1.l2.l3.l4.l5.l6'
 import { Route as L1L2L3L4L5L6L7RouteImport } from './routes/l1.l2.l3.l4.l5.l6.l7'
 import { Route as L1L2L3L4L5L6L7L8RouteImport } from './routes/l1.l2.l3.l4.l5.l6.l7.l8'
 
-const L1Route = L1RouteImport.update({
-  id: '/l1',
-  path: '/l1',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const L1Route = L1RouteImport.update({
+  id: '/l1',
+  path: '/l1',
   getParentRoute: () => rootRouteImport,
 } as any)
 const L1L2Route = L1L2RouteImport.update({
@@ -142,18 +142,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/l1': {
-      id: '/l1'
-      path: '/l1'
-      fullPath: '/l1'
-      preLoaderRoute: typeof L1RouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/l1': {
+      id: '/l1'
+      path: '/l1'
+      fullPath: '/l1'
+      preLoaderRoute: typeof L1RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/l1/l2': {

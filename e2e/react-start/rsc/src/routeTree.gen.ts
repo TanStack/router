@@ -9,252 +9,57 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RscUseServerFnRouteImport } from './routes/rsc-use-server-fn'
-import { Route as RscTreeRouteImport } from './routes/rsc-tree'
-import { Route as RscSuspenseRouteImport } from './routes/rsc-suspense'
-import { Route as RscStreamingRouteImport } from './routes/rsc-streaming'
-import { Route as RscStreamReadableRouteImport } from './routes/rsc-stream-readable'
-import { Route as RscStreamLoaderRouteImport } from './routes/rsc-stream-loader'
-import { Route as RscStreamGeneratorRouteImport } from './routes/rsc-stream-generator'
-import { Route as RscSsrFalseRouteImport } from './routes/rsc-ssr-false'
-import { Route as RscSsrDataOnlyRouteImport } from './routes/rsc-ssr-data-only'
-import { Route as RscSlotsRouteImport } from './routes/rsc-slots'
-import { Route as RscSlotJsxArgsRouteImport } from './routes/rsc-slot-jsx-args'
-import { Route as RscServerRedirectRouteImport } from './routes/rsc-server-redirect'
-import { Route as RscServerNotFoundRouteImport } from './routes/rsc-server-not-found'
-import { Route as RscRequestHeadersRouteImport } from './routes/rsc-request-headers'
-import { Route as RscReactCacheRouteImport } from './routes/rsc-react-cache'
-import { Route as RscParallelRouteImport } from './routes/rsc-parallel'
-import { Route as RscNestedStructureRouteImport } from './routes/rsc-nested-structure'
-import { Route as RscNestedRouteImport } from './routes/rsc-nested'
-import { Route as RscMultiRouteImport } from './routes/rsc-multi'
-import { Route as RscLinkRouteImport } from './routes/rsc-link'
-import { Route as RscLargeRouteImport } from './routes/rsc-large'
-import { Route as RscInvalidationRouteImport } from './routes/rsc-invalidation'
-import { Route as RscHydrationRouteImport } from './routes/rsc-hydration'
-import { Route as RscGlobalCssRouteImport } from './routes/rsc-global-css'
-import { Route as RscFormsRouteImport } from './routes/rsc-forms'
-import { Route as RscFlightApiRouteImport } from './routes/rsc-flight-api'
-import { Route as RscExternalRouteImport } from './routes/rsc-external'
-import { Route as RscErrorRouteImport } from './routes/rsc-error'
-import { Route as RscDirectLoaderRouteImport } from './routes/rsc-direct-loader'
-import { Route as RscDeferredComponentRouteImport } from './routes/rsc-deferred-component'
-import { Route as RscDeferredRouteImport } from './routes/rsc-deferred'
-import { Route as RscCssPreloadComplexRouteImport } from './routes/rsc-css-preload-complex'
-import { Route as RscCssModulesRouteImport } from './routes/rsc-css-modules'
-import { Route as RscCssAutoinjectRouteImport } from './routes/rsc-css-autoinject'
-import { Route as RscContextRouteImport } from './routes/rsc-context'
-import { Route as RscComponentSlotRouteImport } from './routes/rsc-component-slot'
-import { Route as RscClientPreloadRouteImport } from './routes/rsc-client-preload'
-import { Route as RscCachingRouteImport } from './routes/rsc-caching'
-import { Route as RscBundleRouteImport } from './routes/rsc-bundle'
-import { Route as RscBasicRouteImport } from './routes/rsc-basic'
-import { Route as RscAsyncBundleRouteImport } from './routes/rsc-async-bundle'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as RscParamIndexRouteImport } from './routes/rsc-param/index'
-import { Route as RscCssConditionalIndexRouteImport } from './routes/rsc-css-conditional.index'
-import { Route as RscParamIdRouteImport } from './routes/rsc-param/$id'
-import { Route as RscCssConditionalBranchRouteImport } from './routes/rsc-css-conditional.$branch'
+import { Route as RscAsyncBundleRouteImport } from './routes/rsc-async-bundle'
+import { Route as RscBasicRouteImport } from './routes/rsc-basic'
+import { Route as RscBundleRouteImport } from './routes/rsc-bundle'
+import { Route as RscCachingRouteImport } from './routes/rsc-caching'
+import { Route as RscClientPreloadRouteImport } from './routes/rsc-client-preload'
+import { Route as RscComponentSlotRouteImport } from './routes/rsc-component-slot'
+import { Route as RscContextRouteImport } from './routes/rsc-context'
+import { Route as RscCssAutoinjectRouteImport } from './routes/rsc-css-autoinject'
+import { Route as RscCssModulesRouteImport } from './routes/rsc-css-modules'
+import { Route as RscCssPreloadComplexRouteImport } from './routes/rsc-css-preload-complex'
+import { Route as RscDeferredRouteImport } from './routes/rsc-deferred'
+import { Route as RscDeferredComponentRouteImport } from './routes/rsc-deferred-component'
+import { Route as RscDirectLoaderRouteImport } from './routes/rsc-direct-loader'
+import { Route as RscErrorRouteImport } from './routes/rsc-error'
+import { Route as RscExternalRouteImport } from './routes/rsc-external'
+import { Route as RscFlightApiRouteImport } from './routes/rsc-flight-api'
+import { Route as RscFormsRouteImport } from './routes/rsc-forms'
+import { Route as RscGlobalCssRouteImport } from './routes/rsc-global-css'
+import { Route as RscHydrationRouteImport } from './routes/rsc-hydration'
+import { Route as RscInvalidationRouteImport } from './routes/rsc-invalidation'
+import { Route as RscLargeRouteImport } from './routes/rsc-large'
+import { Route as RscLinkRouteImport } from './routes/rsc-link'
+import { Route as RscMultiRouteImport } from './routes/rsc-multi'
+import { Route as RscNestedRouteImport } from './routes/rsc-nested'
+import { Route as RscNestedStructureRouteImport } from './routes/rsc-nested-structure'
+import { Route as RscParallelRouteImport } from './routes/rsc-parallel'
+import { Route as RscReactCacheRouteImport } from './routes/rsc-react-cache'
+import { Route as RscRequestHeadersRouteImport } from './routes/rsc-request-headers'
+import { Route as RscServerNotFoundRouteImport } from './routes/rsc-server-not-found'
+import { Route as RscServerRedirectRouteImport } from './routes/rsc-server-redirect'
+import { Route as RscSlotJsxArgsRouteImport } from './routes/rsc-slot-jsx-args'
+import { Route as RscSlotsRouteImport } from './routes/rsc-slots'
+import { Route as RscSsrDataOnlyRouteImport } from './routes/rsc-ssr-data-only'
+import { Route as RscSsrFalseRouteImport } from './routes/rsc-ssr-false'
+import { Route as RscStreamGeneratorRouteImport } from './routes/rsc-stream-generator'
+import { Route as RscStreamLoaderRouteImport } from './routes/rsc-stream-loader'
+import { Route as RscStreamReadableRouteImport } from './routes/rsc-stream-readable'
+import { Route as RscStreamingRouteImport } from './routes/rsc-streaming'
+import { Route as RscSuspenseRouteImport } from './routes/rsc-suspense'
+import { Route as RscTreeRouteImport } from './routes/rsc-tree'
+import { Route as RscUseServerFnRouteImport } from './routes/rsc-use-server-fn'
 import { Route as ApiRscFlightRouteImport } from './routes/api.rsc-flight'
+import { Route as RscCssConditionalIndexRouteImport } from './routes/rsc-css-conditional.index'
+import { Route as RscCssConditionalBranchRouteImport } from './routes/rsc-css-conditional.$branch'
+import { Route as RscParamIndexRouteImport } from './routes/rsc-param/index'
+import { Route as RscParamIdRouteImport } from './routes/rsc-param/$id'
 
-const RscUseServerFnRoute = RscUseServerFnRouteImport.update({
-  id: '/rsc-use-server-fn',
-  path: '/rsc-use-server-fn',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscTreeRoute = RscTreeRouteImport.update({
-  id: '/rsc-tree',
-  path: '/rsc-tree',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscSuspenseRoute = RscSuspenseRouteImport.update({
-  id: '/rsc-suspense',
-  path: '/rsc-suspense',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscStreamingRoute = RscStreamingRouteImport.update({
-  id: '/rsc-streaming',
-  path: '/rsc-streaming',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscStreamReadableRoute = RscStreamReadableRouteImport.update({
-  id: '/rsc-stream-readable',
-  path: '/rsc-stream-readable',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscStreamLoaderRoute = RscStreamLoaderRouteImport.update({
-  id: '/rsc-stream-loader',
-  path: '/rsc-stream-loader',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscStreamGeneratorRoute = RscStreamGeneratorRouteImport.update({
-  id: '/rsc-stream-generator',
-  path: '/rsc-stream-generator',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscSsrFalseRoute = RscSsrFalseRouteImport.update({
-  id: '/rsc-ssr-false',
-  path: '/rsc-ssr-false',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscSsrDataOnlyRoute = RscSsrDataOnlyRouteImport.update({
-  id: '/rsc-ssr-data-only',
-  path: '/rsc-ssr-data-only',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscSlotsRoute = RscSlotsRouteImport.update({
-  id: '/rsc-slots',
-  path: '/rsc-slots',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscSlotJsxArgsRoute = RscSlotJsxArgsRouteImport.update({
-  id: '/rsc-slot-jsx-args',
-  path: '/rsc-slot-jsx-args',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscServerRedirectRoute = RscServerRedirectRouteImport.update({
-  id: '/rsc-server-redirect',
-  path: '/rsc-server-redirect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscServerNotFoundRoute = RscServerNotFoundRouteImport.update({
-  id: '/rsc-server-not-found',
-  path: '/rsc-server-not-found',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscRequestHeadersRoute = RscRequestHeadersRouteImport.update({
-  id: '/rsc-request-headers',
-  path: '/rsc-request-headers',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscReactCacheRoute = RscReactCacheRouteImport.update({
-  id: '/rsc-react-cache',
-  path: '/rsc-react-cache',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscParallelRoute = RscParallelRouteImport.update({
-  id: '/rsc-parallel',
-  path: '/rsc-parallel',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscNestedStructureRoute = RscNestedStructureRouteImport.update({
-  id: '/rsc-nested-structure',
-  path: '/rsc-nested-structure',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscNestedRoute = RscNestedRouteImport.update({
-  id: '/rsc-nested',
-  path: '/rsc-nested',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscMultiRoute = RscMultiRouteImport.update({
-  id: '/rsc-multi',
-  path: '/rsc-multi',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscLinkRoute = RscLinkRouteImport.update({
-  id: '/rsc-link',
-  path: '/rsc-link',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscLargeRoute = RscLargeRouteImport.update({
-  id: '/rsc-large',
-  path: '/rsc-large',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscInvalidationRoute = RscInvalidationRouteImport.update({
-  id: '/rsc-invalidation',
-  path: '/rsc-invalidation',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscHydrationRoute = RscHydrationRouteImport.update({
-  id: '/rsc-hydration',
-  path: '/rsc-hydration',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscGlobalCssRoute = RscGlobalCssRouteImport.update({
-  id: '/rsc-global-css',
-  path: '/rsc-global-css',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscFormsRoute = RscFormsRouteImport.update({
-  id: '/rsc-forms',
-  path: '/rsc-forms',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscFlightApiRoute = RscFlightApiRouteImport.update({
-  id: '/rsc-flight-api',
-  path: '/rsc-flight-api',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscExternalRoute = RscExternalRouteImport.update({
-  id: '/rsc-external',
-  path: '/rsc-external',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscErrorRoute = RscErrorRouteImport.update({
-  id: '/rsc-error',
-  path: '/rsc-error',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscDirectLoaderRoute = RscDirectLoaderRouteImport.update({
-  id: '/rsc-direct-loader',
-  path: '/rsc-direct-loader',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscDeferredComponentRoute = RscDeferredComponentRouteImport.update({
-  id: '/rsc-deferred-component',
-  path: '/rsc-deferred-component',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscDeferredRoute = RscDeferredRouteImport.update({
-  id: '/rsc-deferred',
-  path: '/rsc-deferred',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscCssPreloadComplexRoute = RscCssPreloadComplexRouteImport.update({
-  id: '/rsc-css-preload-complex',
-  path: '/rsc-css-preload-complex',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscCssModulesRoute = RscCssModulesRouteImport.update({
-  id: '/rsc-css-modules',
-  path: '/rsc-css-modules',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscCssAutoinjectRoute = RscCssAutoinjectRouteImport.update({
-  id: '/rsc-css-autoinject',
-  path: '/rsc-css-autoinject',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscContextRoute = RscContextRouteImport.update({
-  id: '/rsc-context',
-  path: '/rsc-context',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscComponentSlotRoute = RscComponentSlotRouteImport.update({
-  id: '/rsc-component-slot',
-  path: '/rsc-component-slot',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscClientPreloadRoute = RscClientPreloadRouteImport.update({
-  id: '/rsc-client-preload',
-  path: '/rsc-client-preload',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscCachingRoute = RscCachingRouteImport.update({
-  id: '/rsc-caching',
-  path: '/rsc-caching',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscBundleRoute = RscBundleRouteImport.update({
-  id: '/rsc-bundle',
-  path: '/rsc-bundle',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RscBasicRoute = RscBasicRouteImport.update({
-  id: '/rsc-basic',
-  path: '/rsc-basic',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RscAsyncBundleRoute = RscAsyncBundleRouteImport.update({
@@ -262,14 +67,209 @@ const RscAsyncBundleRoute = RscAsyncBundleRouteImport.update({
   path: '/rsc-async-bundle',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const RscBasicRoute = RscBasicRouteImport.update({
+  id: '/rsc-basic',
+  path: '/rsc-basic',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RscParamIndexRoute = RscParamIndexRouteImport.update({
-  id: '/rsc-param/',
-  path: '/rsc-param/',
+const RscBundleRoute = RscBundleRouteImport.update({
+  id: '/rsc-bundle',
+  path: '/rsc-bundle',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscCachingRoute = RscCachingRouteImport.update({
+  id: '/rsc-caching',
+  path: '/rsc-caching',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscClientPreloadRoute = RscClientPreloadRouteImport.update({
+  id: '/rsc-client-preload',
+  path: '/rsc-client-preload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscComponentSlotRoute = RscComponentSlotRouteImport.update({
+  id: '/rsc-component-slot',
+  path: '/rsc-component-slot',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscContextRoute = RscContextRouteImport.update({
+  id: '/rsc-context',
+  path: '/rsc-context',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscCssAutoinjectRoute = RscCssAutoinjectRouteImport.update({
+  id: '/rsc-css-autoinject',
+  path: '/rsc-css-autoinject',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscCssModulesRoute = RscCssModulesRouteImport.update({
+  id: '/rsc-css-modules',
+  path: '/rsc-css-modules',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscCssPreloadComplexRoute = RscCssPreloadComplexRouteImport.update({
+  id: '/rsc-css-preload-complex',
+  path: '/rsc-css-preload-complex',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscDeferredRoute = RscDeferredRouteImport.update({
+  id: '/rsc-deferred',
+  path: '/rsc-deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscDeferredComponentRoute = RscDeferredComponentRouteImport.update({
+  id: '/rsc-deferred-component',
+  path: '/rsc-deferred-component',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscDirectLoaderRoute = RscDirectLoaderRouteImport.update({
+  id: '/rsc-direct-loader',
+  path: '/rsc-direct-loader',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscErrorRoute = RscErrorRouteImport.update({
+  id: '/rsc-error',
+  path: '/rsc-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscExternalRoute = RscExternalRouteImport.update({
+  id: '/rsc-external',
+  path: '/rsc-external',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscFlightApiRoute = RscFlightApiRouteImport.update({
+  id: '/rsc-flight-api',
+  path: '/rsc-flight-api',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscFormsRoute = RscFormsRouteImport.update({
+  id: '/rsc-forms',
+  path: '/rsc-forms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscGlobalCssRoute = RscGlobalCssRouteImport.update({
+  id: '/rsc-global-css',
+  path: '/rsc-global-css',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscHydrationRoute = RscHydrationRouteImport.update({
+  id: '/rsc-hydration',
+  path: '/rsc-hydration',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscInvalidationRoute = RscInvalidationRouteImport.update({
+  id: '/rsc-invalidation',
+  path: '/rsc-invalidation',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscLargeRoute = RscLargeRouteImport.update({
+  id: '/rsc-large',
+  path: '/rsc-large',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscLinkRoute = RscLinkRouteImport.update({
+  id: '/rsc-link',
+  path: '/rsc-link',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscMultiRoute = RscMultiRouteImport.update({
+  id: '/rsc-multi',
+  path: '/rsc-multi',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscNestedRoute = RscNestedRouteImport.update({
+  id: '/rsc-nested',
+  path: '/rsc-nested',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscNestedStructureRoute = RscNestedStructureRouteImport.update({
+  id: '/rsc-nested-structure',
+  path: '/rsc-nested-structure',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscParallelRoute = RscParallelRouteImport.update({
+  id: '/rsc-parallel',
+  path: '/rsc-parallel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscReactCacheRoute = RscReactCacheRouteImport.update({
+  id: '/rsc-react-cache',
+  path: '/rsc-react-cache',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscRequestHeadersRoute = RscRequestHeadersRouteImport.update({
+  id: '/rsc-request-headers',
+  path: '/rsc-request-headers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscServerNotFoundRoute = RscServerNotFoundRouteImport.update({
+  id: '/rsc-server-not-found',
+  path: '/rsc-server-not-found',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscServerRedirectRoute = RscServerRedirectRouteImport.update({
+  id: '/rsc-server-redirect',
+  path: '/rsc-server-redirect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscSlotJsxArgsRoute = RscSlotJsxArgsRouteImport.update({
+  id: '/rsc-slot-jsx-args',
+  path: '/rsc-slot-jsx-args',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscSlotsRoute = RscSlotsRouteImport.update({
+  id: '/rsc-slots',
+  path: '/rsc-slots',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscSsrDataOnlyRoute = RscSsrDataOnlyRouteImport.update({
+  id: '/rsc-ssr-data-only',
+  path: '/rsc-ssr-data-only',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscSsrFalseRoute = RscSsrFalseRouteImport.update({
+  id: '/rsc-ssr-false',
+  path: '/rsc-ssr-false',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscStreamGeneratorRoute = RscStreamGeneratorRouteImport.update({
+  id: '/rsc-stream-generator',
+  path: '/rsc-stream-generator',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscStreamLoaderRoute = RscStreamLoaderRouteImport.update({
+  id: '/rsc-stream-loader',
+  path: '/rsc-stream-loader',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscStreamReadableRoute = RscStreamReadableRouteImport.update({
+  id: '/rsc-stream-readable',
+  path: '/rsc-stream-readable',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscStreamingRoute = RscStreamingRouteImport.update({
+  id: '/rsc-streaming',
+  path: '/rsc-streaming',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscSuspenseRoute = RscSuspenseRouteImport.update({
+  id: '/rsc-suspense',
+  path: '/rsc-suspense',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscTreeRoute = RscTreeRouteImport.update({
+  id: '/rsc-tree',
+  path: '/rsc-tree',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscUseServerFnRoute = RscUseServerFnRouteImport.update({
+  id: '/rsc-use-server-fn',
+  path: '/rsc-use-server-fn',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRscFlightRoute = ApiRscFlightRouteImport.update({
+  id: '/api/rsc-flight',
+  path: '/api/rsc-flight',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RscCssConditionalIndexRoute = RscCssConditionalIndexRouteImport.update({
@@ -277,19 +277,19 @@ const RscCssConditionalIndexRoute = RscCssConditionalIndexRouteImport.update({
   path: '/rsc-css-conditional/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RscParamIdRoute = RscParamIdRouteImport.update({
-  id: '/rsc-param/$id',
-  path: '/rsc-param/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RscCssConditionalBranchRoute = RscCssConditionalBranchRouteImport.update({
   id: '/rsc-css-conditional/$branch',
   path: '/rsc-css-conditional/$branch',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiRscFlightRoute = ApiRscFlightRouteImport.update({
-  id: '/api/rsc-flight',
-  path: '/api/rsc-flight',
+const RscParamIndexRoute = RscParamIndexRouteImport.update({
+  id: '/rsc-param/',
+  path: '/rsc-param/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscParamIdRoute = RscParamIdRouteImport.update({
+  id: '/rsc-param/$id',
+  path: '/rsc-param/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -643,284 +643,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/rsc-use-server-fn': {
-      id: '/rsc-use-server-fn'
-      path: '/rsc-use-server-fn'
-      fullPath: '/rsc-use-server-fn'
-      preLoaderRoute: typeof RscUseServerFnRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-tree': {
-      id: '/rsc-tree'
-      path: '/rsc-tree'
-      fullPath: '/rsc-tree'
-      preLoaderRoute: typeof RscTreeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-suspense': {
-      id: '/rsc-suspense'
-      path: '/rsc-suspense'
-      fullPath: '/rsc-suspense'
-      preLoaderRoute: typeof RscSuspenseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-streaming': {
-      id: '/rsc-streaming'
-      path: '/rsc-streaming'
-      fullPath: '/rsc-streaming'
-      preLoaderRoute: typeof RscStreamingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-stream-readable': {
-      id: '/rsc-stream-readable'
-      path: '/rsc-stream-readable'
-      fullPath: '/rsc-stream-readable'
-      preLoaderRoute: typeof RscStreamReadableRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-stream-loader': {
-      id: '/rsc-stream-loader'
-      path: '/rsc-stream-loader'
-      fullPath: '/rsc-stream-loader'
-      preLoaderRoute: typeof RscStreamLoaderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-stream-generator': {
-      id: '/rsc-stream-generator'
-      path: '/rsc-stream-generator'
-      fullPath: '/rsc-stream-generator'
-      preLoaderRoute: typeof RscStreamGeneratorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-ssr-false': {
-      id: '/rsc-ssr-false'
-      path: '/rsc-ssr-false'
-      fullPath: '/rsc-ssr-false'
-      preLoaderRoute: typeof RscSsrFalseRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-ssr-data-only': {
-      id: '/rsc-ssr-data-only'
-      path: '/rsc-ssr-data-only'
-      fullPath: '/rsc-ssr-data-only'
-      preLoaderRoute: typeof RscSsrDataOnlyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-slots': {
-      id: '/rsc-slots'
-      path: '/rsc-slots'
-      fullPath: '/rsc-slots'
-      preLoaderRoute: typeof RscSlotsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-slot-jsx-args': {
-      id: '/rsc-slot-jsx-args'
-      path: '/rsc-slot-jsx-args'
-      fullPath: '/rsc-slot-jsx-args'
-      preLoaderRoute: typeof RscSlotJsxArgsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-server-redirect': {
-      id: '/rsc-server-redirect'
-      path: '/rsc-server-redirect'
-      fullPath: '/rsc-server-redirect'
-      preLoaderRoute: typeof RscServerRedirectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-server-not-found': {
-      id: '/rsc-server-not-found'
-      path: '/rsc-server-not-found'
-      fullPath: '/rsc-server-not-found'
-      preLoaderRoute: typeof RscServerNotFoundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-request-headers': {
-      id: '/rsc-request-headers'
-      path: '/rsc-request-headers'
-      fullPath: '/rsc-request-headers'
-      preLoaderRoute: typeof RscRequestHeadersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-react-cache': {
-      id: '/rsc-react-cache'
-      path: '/rsc-react-cache'
-      fullPath: '/rsc-react-cache'
-      preLoaderRoute: typeof RscReactCacheRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-parallel': {
-      id: '/rsc-parallel'
-      path: '/rsc-parallel'
-      fullPath: '/rsc-parallel'
-      preLoaderRoute: typeof RscParallelRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-nested-structure': {
-      id: '/rsc-nested-structure'
-      path: '/rsc-nested-structure'
-      fullPath: '/rsc-nested-structure'
-      preLoaderRoute: typeof RscNestedStructureRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-nested': {
-      id: '/rsc-nested'
-      path: '/rsc-nested'
-      fullPath: '/rsc-nested'
-      preLoaderRoute: typeof RscNestedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-multi': {
-      id: '/rsc-multi'
-      path: '/rsc-multi'
-      fullPath: '/rsc-multi'
-      preLoaderRoute: typeof RscMultiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-link': {
-      id: '/rsc-link'
-      path: '/rsc-link'
-      fullPath: '/rsc-link'
-      preLoaderRoute: typeof RscLinkRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-large': {
-      id: '/rsc-large'
-      path: '/rsc-large'
-      fullPath: '/rsc-large'
-      preLoaderRoute: typeof RscLargeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-invalidation': {
-      id: '/rsc-invalidation'
-      path: '/rsc-invalidation'
-      fullPath: '/rsc-invalidation'
-      preLoaderRoute: typeof RscInvalidationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-hydration': {
-      id: '/rsc-hydration'
-      path: '/rsc-hydration'
-      fullPath: '/rsc-hydration'
-      preLoaderRoute: typeof RscHydrationRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-global-css': {
-      id: '/rsc-global-css'
-      path: '/rsc-global-css'
-      fullPath: '/rsc-global-css'
-      preLoaderRoute: typeof RscGlobalCssRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-forms': {
-      id: '/rsc-forms'
-      path: '/rsc-forms'
-      fullPath: '/rsc-forms'
-      preLoaderRoute: typeof RscFormsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-flight-api': {
-      id: '/rsc-flight-api'
-      path: '/rsc-flight-api'
-      fullPath: '/rsc-flight-api'
-      preLoaderRoute: typeof RscFlightApiRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-external': {
-      id: '/rsc-external'
-      path: '/rsc-external'
-      fullPath: '/rsc-external'
-      preLoaderRoute: typeof RscExternalRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-error': {
-      id: '/rsc-error'
-      path: '/rsc-error'
-      fullPath: '/rsc-error'
-      preLoaderRoute: typeof RscErrorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-direct-loader': {
-      id: '/rsc-direct-loader'
-      path: '/rsc-direct-loader'
-      fullPath: '/rsc-direct-loader'
-      preLoaderRoute: typeof RscDirectLoaderRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-deferred-component': {
-      id: '/rsc-deferred-component'
-      path: '/rsc-deferred-component'
-      fullPath: '/rsc-deferred-component'
-      preLoaderRoute: typeof RscDeferredComponentRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-deferred': {
-      id: '/rsc-deferred'
-      path: '/rsc-deferred'
-      fullPath: '/rsc-deferred'
-      preLoaderRoute: typeof RscDeferredRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-css-preload-complex': {
-      id: '/rsc-css-preload-complex'
-      path: '/rsc-css-preload-complex'
-      fullPath: '/rsc-css-preload-complex'
-      preLoaderRoute: typeof RscCssPreloadComplexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-css-modules': {
-      id: '/rsc-css-modules'
-      path: '/rsc-css-modules'
-      fullPath: '/rsc-css-modules'
-      preLoaderRoute: typeof RscCssModulesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-css-autoinject': {
-      id: '/rsc-css-autoinject'
-      path: '/rsc-css-autoinject'
-      fullPath: '/rsc-css-autoinject'
-      preLoaderRoute: typeof RscCssAutoinjectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-context': {
-      id: '/rsc-context'
-      path: '/rsc-context'
-      fullPath: '/rsc-context'
-      preLoaderRoute: typeof RscContextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-component-slot': {
-      id: '/rsc-component-slot'
-      path: '/rsc-component-slot'
-      fullPath: '/rsc-component-slot'
-      preLoaderRoute: typeof RscComponentSlotRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-client-preload': {
-      id: '/rsc-client-preload'
-      path: '/rsc-client-preload'
-      fullPath: '/rsc-client-preload'
-      preLoaderRoute: typeof RscClientPreloadRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-caching': {
-      id: '/rsc-caching'
-      path: '/rsc-caching'
-      fullPath: '/rsc-caching'
-      preLoaderRoute: typeof RscCachingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-bundle': {
-      id: '/rsc-bundle'
-      path: '/rsc-bundle'
-      fullPath: '/rsc-bundle'
-      preLoaderRoute: typeof RscBundleRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/rsc-basic': {
-      id: '/rsc-basic'
-      path: '/rsc-basic'
-      fullPath: '/rsc-basic'
-      preLoaderRoute: typeof RscBasicRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rsc-async-bundle': {
@@ -930,18 +657,291 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RscAsyncBundleRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/rsc-basic': {
+      id: '/rsc-basic'
+      path: '/rsc-basic'
+      fullPath: '/rsc-basic'
+      preLoaderRoute: typeof RscBasicRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rsc-param/': {
-      id: '/rsc-param/'
-      path: '/rsc-param'
-      fullPath: '/rsc-param/'
-      preLoaderRoute: typeof RscParamIndexRouteImport
+    '/rsc-bundle': {
+      id: '/rsc-bundle'
+      path: '/rsc-bundle'
+      fullPath: '/rsc-bundle'
+      preLoaderRoute: typeof RscBundleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-caching': {
+      id: '/rsc-caching'
+      path: '/rsc-caching'
+      fullPath: '/rsc-caching'
+      preLoaderRoute: typeof RscCachingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-client-preload': {
+      id: '/rsc-client-preload'
+      path: '/rsc-client-preload'
+      fullPath: '/rsc-client-preload'
+      preLoaderRoute: typeof RscClientPreloadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-component-slot': {
+      id: '/rsc-component-slot'
+      path: '/rsc-component-slot'
+      fullPath: '/rsc-component-slot'
+      preLoaderRoute: typeof RscComponentSlotRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-context': {
+      id: '/rsc-context'
+      path: '/rsc-context'
+      fullPath: '/rsc-context'
+      preLoaderRoute: typeof RscContextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-css-autoinject': {
+      id: '/rsc-css-autoinject'
+      path: '/rsc-css-autoinject'
+      fullPath: '/rsc-css-autoinject'
+      preLoaderRoute: typeof RscCssAutoinjectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-css-modules': {
+      id: '/rsc-css-modules'
+      path: '/rsc-css-modules'
+      fullPath: '/rsc-css-modules'
+      preLoaderRoute: typeof RscCssModulesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-css-preload-complex': {
+      id: '/rsc-css-preload-complex'
+      path: '/rsc-css-preload-complex'
+      fullPath: '/rsc-css-preload-complex'
+      preLoaderRoute: typeof RscCssPreloadComplexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-deferred': {
+      id: '/rsc-deferred'
+      path: '/rsc-deferred'
+      fullPath: '/rsc-deferred'
+      preLoaderRoute: typeof RscDeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-deferred-component': {
+      id: '/rsc-deferred-component'
+      path: '/rsc-deferred-component'
+      fullPath: '/rsc-deferred-component'
+      preLoaderRoute: typeof RscDeferredComponentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-direct-loader': {
+      id: '/rsc-direct-loader'
+      path: '/rsc-direct-loader'
+      fullPath: '/rsc-direct-loader'
+      preLoaderRoute: typeof RscDirectLoaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-error': {
+      id: '/rsc-error'
+      path: '/rsc-error'
+      fullPath: '/rsc-error'
+      preLoaderRoute: typeof RscErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-external': {
+      id: '/rsc-external'
+      path: '/rsc-external'
+      fullPath: '/rsc-external'
+      preLoaderRoute: typeof RscExternalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-flight-api': {
+      id: '/rsc-flight-api'
+      path: '/rsc-flight-api'
+      fullPath: '/rsc-flight-api'
+      preLoaderRoute: typeof RscFlightApiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-forms': {
+      id: '/rsc-forms'
+      path: '/rsc-forms'
+      fullPath: '/rsc-forms'
+      preLoaderRoute: typeof RscFormsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-global-css': {
+      id: '/rsc-global-css'
+      path: '/rsc-global-css'
+      fullPath: '/rsc-global-css'
+      preLoaderRoute: typeof RscGlobalCssRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-hydration': {
+      id: '/rsc-hydration'
+      path: '/rsc-hydration'
+      fullPath: '/rsc-hydration'
+      preLoaderRoute: typeof RscHydrationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-invalidation': {
+      id: '/rsc-invalidation'
+      path: '/rsc-invalidation'
+      fullPath: '/rsc-invalidation'
+      preLoaderRoute: typeof RscInvalidationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-large': {
+      id: '/rsc-large'
+      path: '/rsc-large'
+      fullPath: '/rsc-large'
+      preLoaderRoute: typeof RscLargeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-link': {
+      id: '/rsc-link'
+      path: '/rsc-link'
+      fullPath: '/rsc-link'
+      preLoaderRoute: typeof RscLinkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-multi': {
+      id: '/rsc-multi'
+      path: '/rsc-multi'
+      fullPath: '/rsc-multi'
+      preLoaderRoute: typeof RscMultiRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-nested': {
+      id: '/rsc-nested'
+      path: '/rsc-nested'
+      fullPath: '/rsc-nested'
+      preLoaderRoute: typeof RscNestedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-nested-structure': {
+      id: '/rsc-nested-structure'
+      path: '/rsc-nested-structure'
+      fullPath: '/rsc-nested-structure'
+      preLoaderRoute: typeof RscNestedStructureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-parallel': {
+      id: '/rsc-parallel'
+      path: '/rsc-parallel'
+      fullPath: '/rsc-parallel'
+      preLoaderRoute: typeof RscParallelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-react-cache': {
+      id: '/rsc-react-cache'
+      path: '/rsc-react-cache'
+      fullPath: '/rsc-react-cache'
+      preLoaderRoute: typeof RscReactCacheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-request-headers': {
+      id: '/rsc-request-headers'
+      path: '/rsc-request-headers'
+      fullPath: '/rsc-request-headers'
+      preLoaderRoute: typeof RscRequestHeadersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-server-not-found': {
+      id: '/rsc-server-not-found'
+      path: '/rsc-server-not-found'
+      fullPath: '/rsc-server-not-found'
+      preLoaderRoute: typeof RscServerNotFoundRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-server-redirect': {
+      id: '/rsc-server-redirect'
+      path: '/rsc-server-redirect'
+      fullPath: '/rsc-server-redirect'
+      preLoaderRoute: typeof RscServerRedirectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-slot-jsx-args': {
+      id: '/rsc-slot-jsx-args'
+      path: '/rsc-slot-jsx-args'
+      fullPath: '/rsc-slot-jsx-args'
+      preLoaderRoute: typeof RscSlotJsxArgsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-slots': {
+      id: '/rsc-slots'
+      path: '/rsc-slots'
+      fullPath: '/rsc-slots'
+      preLoaderRoute: typeof RscSlotsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-ssr-data-only': {
+      id: '/rsc-ssr-data-only'
+      path: '/rsc-ssr-data-only'
+      fullPath: '/rsc-ssr-data-only'
+      preLoaderRoute: typeof RscSsrDataOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-ssr-false': {
+      id: '/rsc-ssr-false'
+      path: '/rsc-ssr-false'
+      fullPath: '/rsc-ssr-false'
+      preLoaderRoute: typeof RscSsrFalseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-stream-generator': {
+      id: '/rsc-stream-generator'
+      path: '/rsc-stream-generator'
+      fullPath: '/rsc-stream-generator'
+      preLoaderRoute: typeof RscStreamGeneratorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-stream-loader': {
+      id: '/rsc-stream-loader'
+      path: '/rsc-stream-loader'
+      fullPath: '/rsc-stream-loader'
+      preLoaderRoute: typeof RscStreamLoaderRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-stream-readable': {
+      id: '/rsc-stream-readable'
+      path: '/rsc-stream-readable'
+      fullPath: '/rsc-stream-readable'
+      preLoaderRoute: typeof RscStreamReadableRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-streaming': {
+      id: '/rsc-streaming'
+      path: '/rsc-streaming'
+      fullPath: '/rsc-streaming'
+      preLoaderRoute: typeof RscStreamingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-suspense': {
+      id: '/rsc-suspense'
+      path: '/rsc-suspense'
+      fullPath: '/rsc-suspense'
+      preLoaderRoute: typeof RscSuspenseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-tree': {
+      id: '/rsc-tree'
+      path: '/rsc-tree'
+      fullPath: '/rsc-tree'
+      preLoaderRoute: typeof RscTreeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-use-server-fn': {
+      id: '/rsc-use-server-fn'
+      path: '/rsc-use-server-fn'
+      fullPath: '/rsc-use-server-fn'
+      preLoaderRoute: typeof RscUseServerFnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/rsc-flight': {
+      id: '/api/rsc-flight'
+      path: '/api/rsc-flight'
+      fullPath: '/api/rsc-flight'
+      preLoaderRoute: typeof ApiRscFlightRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/rsc-css-conditional/': {
@@ -951,13 +951,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RscCssConditionalIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/rsc-param/$id': {
-      id: '/rsc-param/$id'
-      path: '/rsc-param/$id'
-      fullPath: '/rsc-param/$id'
-      preLoaderRoute: typeof RscParamIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/rsc-css-conditional/$branch': {
       id: '/rsc-css-conditional/$branch'
       path: '/rsc-css-conditional/$branch'
@@ -965,11 +958,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RscCssConditionalBranchRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/rsc-flight': {
-      id: '/api/rsc-flight'
-      path: '/api/rsc-flight'
-      fullPath: '/api/rsc-flight'
-      preLoaderRoute: typeof ApiRscFlightRouteImport
+    '/rsc-param/': {
+      id: '/rsc-param/'
+      path: '/rsc-param'
+      fullPath: '/rsc-param/'
+      preLoaderRoute: typeof RscParamIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-param/$id': {
+      id: '/rsc-param/$id'
+      path: '/rsc-param/$id'
+      fullPath: '/rsc-param/$id'
+      preLoaderRoute: typeof RscParamIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

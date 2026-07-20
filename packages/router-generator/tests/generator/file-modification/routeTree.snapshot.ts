@@ -11,12 +11,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as testTemplateLiteralRouteImport } from './routes/(test)/template-literal'
-import { Route as testInitiallyLazyRouteImport } from './routes/(test)/initiallyLazy'
-import { Route as testInitiallyEmptyRouteImport } from './routes/(test)/initiallyEmpty'
-import { Route as testFooRouteImport } from './routes/(test)/foo'
-import { Route as testDuplicateImportRouteImport } from './routes/(test)/duplicate-import'
 import { Route as testDoubleQuotesRouteImport } from './routes/(test)/double-quotes'
+import { Route as testDuplicateImportRouteImport } from './routes/(test)/duplicate-import'
+import { Route as testFooRouteImport } from './routes/(test)/foo'
+import { Route as testInitiallyEmptyRouteImport } from './routes/(test)/initiallyEmpty'
+import { Route as testInitiallyLazyRouteImport } from './routes/(test)/initiallyLazy'
+import { Route as testTemplateLiteralRouteImport } from './routes/(test)/template-literal'
 import { Route as testFooBarRouteImport } from './routes/(test)/foo.bar'
 
 const testBarLazyRouteImport = createFileRoute('/(test)/bar')()
@@ -28,14 +28,19 @@ const testBarLazyRoute = testBarLazyRouteImport
     getParentRoute: () => rootRouteImport,
   } as any)
   .lazy(() => import('./routes/(test)/bar.lazy').then((d) => d.Route))
-const testTemplateLiteralRoute = testTemplateLiteralRouteImport.update({
-  id: '/(test)/template-literal',
-  path: '/template-literal',
+const testDoubleQuotesRoute = testDoubleQuotesRouteImport.update({
+  id: '/(test)/double-quotes',
+  path: '/double-quotes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const testInitiallyLazyRoute = testInitiallyLazyRouteImport.update({
-  id: '/(test)/initiallyLazy',
-  path: '/initiallyLazy',
+const testDuplicateImportRoute = testDuplicateImportRouteImport.update({
+  id: '/(test)/duplicate-import',
+  path: '/duplicate-import',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testFooRoute = testFooRouteImport.update({
+  id: '/(test)/foo',
+  path: '/foo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const testInitiallyEmptyRoute = testInitiallyEmptyRouteImport
@@ -47,19 +52,14 @@ const testInitiallyEmptyRoute = testInitiallyEmptyRouteImport
   .lazy(() =>
     import('./routes/(test)/initiallyEmpty.lazy').then((d) => d.Route),
   )
-const testFooRoute = testFooRouteImport.update({
-  id: '/(test)/foo',
-  path: '/foo',
+const testInitiallyLazyRoute = testInitiallyLazyRouteImport.update({
+  id: '/(test)/initiallyLazy',
+  path: '/initiallyLazy',
   getParentRoute: () => rootRouteImport,
 } as any)
-const testDuplicateImportRoute = testDuplicateImportRouteImport.update({
-  id: '/(test)/duplicate-import',
-  path: '/duplicate-import',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const testDoubleQuotesRoute = testDoubleQuotesRouteImport.update({
-  id: '/(test)/double-quotes',
-  path: '/double-quotes',
+const testTemplateLiteralRoute = testTemplateLiteralRouteImport.update({
+  id: '/(test)/template-literal',
+  path: '/template-literal',
   getParentRoute: () => rootRouteImport,
 } as any)
 const testFooBarRoute = testFooBarRouteImport.update({
@@ -151,32 +151,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testBarLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(test)/template-literal': {
-      id: '/(test)/template-literal'
-      path: '/template-literal'
-      fullPath: '/template-literal'
-      preLoaderRoute: typeof testTemplateLiteralRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(test)/initiallyLazy': {
-      id: '/(test)/initiallyLazy'
-      path: '/initiallyLazy'
-      fullPath: '/initiallyLazy'
-      preLoaderRoute: typeof testInitiallyLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(test)/initiallyEmpty': {
-      id: '/(test)/initiallyEmpty'
-      path: '/initiallyEmpty'
-      fullPath: '/initiallyEmpty'
-      preLoaderRoute: typeof testInitiallyEmptyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(test)/foo': {
-      id: '/(test)/foo'
-      path: '/foo'
-      fullPath: '/foo'
-      preLoaderRoute: typeof testFooRouteImport
+    '/(test)/double-quotes': {
+      id: '/(test)/double-quotes'
+      path: '/double-quotes'
+      fullPath: '/double-quotes'
+      preLoaderRoute: typeof testDoubleQuotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(test)/duplicate-import': {
@@ -186,11 +165,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testDuplicateImportRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(test)/double-quotes': {
-      id: '/(test)/double-quotes'
-      path: '/double-quotes'
-      fullPath: '/double-quotes'
-      preLoaderRoute: typeof testDoubleQuotesRouteImport
+    '/(test)/foo': {
+      id: '/(test)/foo'
+      path: '/foo'
+      fullPath: '/foo'
+      preLoaderRoute: typeof testFooRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(test)/initiallyEmpty': {
+      id: '/(test)/initiallyEmpty'
+      path: '/initiallyEmpty'
+      fullPath: '/initiallyEmpty'
+      preLoaderRoute: typeof testInitiallyEmptyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(test)/initiallyLazy': {
+      id: '/(test)/initiallyLazy'
+      path: '/initiallyLazy'
+      fullPath: '/initiallyLazy'
+      preLoaderRoute: typeof testInitiallyLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(test)/template-literal': {
+      id: '/(test)/template-literal'
+      path: '/template-literal'
+      fullPath: '/template-literal'
+      preLoaderRoute: typeof testTemplateLiteralRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(test)/foo/bar': {
