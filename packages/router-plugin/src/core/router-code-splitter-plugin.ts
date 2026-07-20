@@ -354,7 +354,7 @@ export function createRouterCodeSplitterPlugin(
 
       transform: {
         filter: {
-          id: /tsr-split/,
+          id: /[?&]tsr-split=/,
         },
         handler(code, id) {
           const url = pathToFileURL(id)
@@ -379,7 +379,7 @@ export function createRouterCodeSplitterPlugin(
 
       transform: {
         filter: {
-          id: /tsr-shared/,
+          id: /[?&]tsr-shared=/,
         },
         handler(code, id) {
           const url = pathToFileURL(id)
