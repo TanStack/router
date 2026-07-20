@@ -623,8 +623,9 @@ describe('createStartHandler request cancellation', () => {
     const middlewareStarted = new Promise<void>((resolve) => {
       notifyMiddlewareStarted = resolve
     })
-    let releaseMiddleware!: (response: Response) => void
-    const middlewareResult = new Promise<Response>((resolve) => {
+    const dispose = vi.fn(() => Promise.resolve())
+    let releaseMiddleware!: (response: any) => void
+    const middlewareResult = new Promise<any>((resolve) => {
       releaseMiddleware = resolve
     })
     startMocks.requestMiddleware = [
@@ -648,8 +649,157 @@ describe('createStartHandler request cancellation', () => {
     expect((await response).status).toBe(500)
     expect(render).not.toHaveBeenCalled()
 
-    releaseMiddleware(new Response('late'))
-    await Promise.resolve()
+    releaseMiddleware({
+      response: new Response('late'),
+      serverSsrCleanup: 'stream',
+      dispose,
+    })
+    await vi.waitFor(() => expect(dispose).toHaveBeenCalledOnce())
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('unwinds nested middleware when an inner operation ignores cancellation', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    const outerFinally = vi.fn()
+    let notifyInnerStarted!: () => void
+    const innerStarted = new Promise<void>((resolve) => {
+      notifyInnerStarted = resolve
+    })
+    const pending = new Promise<Response>(() => {})
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(async ({ next }) => {
+        try {
+          return await next()
+        } finally {
+          outerFinally()
+        }
+      }),
+      createMiddleware().server(() => {
+        notifyInnerStarted()
+        return pending
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await innerStarted
+    requestController.abort(new Error('request disconnected'))
+
+    expect((await response).status).toBe(500)
+    expect(outerFinally).toHaveBeenCalledOnce()
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('cancels an all-synchronous direct next chain', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    let notifyInnerStarted!: () => void
+    const innerStarted = new Promise<void>((resolve) => {
+      notifyInnerStarted = resolve
+    })
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(() => {
+        notifyInnerStarted()
+        return new Promise<Response>(() => {})
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await innerStarted
+    requestController.abort(new Error('request disconnected'))
+
+    expect((await response).status).toBe(500)
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('preserves the abort reason when direct next rejects during abort', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    const reason = new Error('request disconnected')
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(() => {
+        requestController.abort(reason)
+        throw new Response('must not escape', { status: 418 })
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(500)
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('preserves aborts that race with a fulfilled direct next promise', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    const reason = new Error('request disconnected')
+    const observedErrors: Array<unknown> = []
+    const afterNext = vi.fn()
+    const ssrResponse = makeStreamResponse(router)
+    const dispose = vi.spyOn(ssrResponse as any, 'dispose')
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        try {
+          const result = await next()
+          afterNext()
+          return result
+        } catch (error) {
+          observedErrors.push(error)
+          throw error
+        }
+      }),
+      createMiddleware().server(({ next }) => {
+        const pending = next()
+        void Promise.resolve(pending).then(() =>
+          requestController.abort(reason),
+        )
+        return pending
+      }),
+      createMiddleware().server(() => ssrResponse as any),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(500)
+    await vi.waitFor(() => expect(observedErrors).toEqual([reason]))
+    await vi.waitFor(() => expect(dispose).toHaveBeenCalledWith(reason))
+    expect(afterNext).not.toHaveBeenCalled()
     expect(render).not.toHaveBeenCalled()
   })
 })

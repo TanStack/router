@@ -1,5 +1,4 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { waitForReason } from '../await-signal'
 import { _getRenderedMatches } from '../rendered-matches'
 import { mergeHeaders } from './headers'
 import {
@@ -21,12 +20,77 @@ export type RequestHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
 ) => Promise<Response>
 
+type RequestWaiter = ((reason: unknown) => void) | undefined
+
+const requestWaiters = new WeakMap<AbortSignal, Array<RequestWaiter>>()
+
+function removeRequestWaiter(
+  waiters: Array<RequestWaiter>,
+  index: number,
+  reject: (reason: unknown) => void,
+) {
+  if (waiters[index] !== reject) {
+    return
+  }
+  if (index !== waiters.length - 1) {
+    waiters[index] = undefined
+    return
+  }
+
+  waiters.pop()
+  while (waiters.length && waiters[waiters.length - 1] === undefined) {
+    waiters.pop()
+  }
+}
+
 export function waitForRequest<T>(
   value: T | PromiseLike<T>,
   signal: AbortSignal,
   onLate?: (value: T) => void,
 ): Promise<T> {
-  return waitForReason(value, signal, onLate)
+  const promise = Promise.resolve(value)
+  if (signal.aborted) {
+    void promise.then(onLate, () => {})
+    return Promise.reject(signal.reason)
+  }
+
+  return new Promise<T>((resolve, reject) => {
+    let waiters = requestWaiters.get(signal)
+    let index: number
+    if (waiters) {
+      index = waiters.push(reject) - 1
+    } else {
+      const newWaiters: Array<RequestWaiter> = [reject]
+      waiters = newWaiters
+      index = 0
+      requestWaiters.set(signal, newWaiters)
+      signal.addEventListener(
+        'abort',
+        () => {
+          requestWaiters.delete(signal)
+          for (const rejectWaiter of newWaiters) {
+            rejectWaiter?.(signal.reason)
+          }
+          newWaiters.length = 0
+        },
+        { once: true },
+      )
+    }
+    void promise.then(
+      (result) => {
+        removeRequestWaiter(waiters, index, reject)
+        if (signal.aborted) {
+          onLate?.(result)
+        } else {
+          resolve(result)
+        }
+      },
+      (error) => {
+        removeRequestWaiter(waiters, index, reject)
+        reject(error)
+      },
+    )
+  })
 }
 
 export function createRequestHandler<TRouter extends AnyRouter>({
