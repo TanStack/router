@@ -150,8 +150,10 @@ describe('add-hmr works', () => {
     }
     const output = compileResult.code
 
-    expect(output).toContain('oldRoute._lazy = undefined;')
-    expect(output).toContain('void router._refreshRoute?.(oldRoute.id);')
+    expect(output).toContain(
+      'router._replaceRouteChunk(oldRoute, newRoute.lazyFn);',
+    )
+    expect(output).toContain('void router._refreshRoute?.();')
     expect(output).not.toContain('__routeContext')
   })
 

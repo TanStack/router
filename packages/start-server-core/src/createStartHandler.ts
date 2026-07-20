@@ -16,6 +16,7 @@ import {
 import {
   attachRouterServerSsrUtils,
   bindSsrResponseToRequest,
+  disposeSsrResponseDetached,
   getNormalizedURL,
   getOrigin,
   isSsrResponse,
@@ -214,7 +215,7 @@ function handleCtxResult(result: TODO) {
 function disposeLateResponse(result: TODO, signal: AbortSignal): void {
   const response = handleCtxResult(result)?.response
   if (isSsrResponse(response) && response.serverSsrCleanup === 'stream') {
-    void response.dispose(signal.reason)
+    disposeSsrResponseDetached(response, signal.reason)
   }
 }
 
@@ -321,12 +322,6 @@ async function executeMiddleware(
         setResponse(err)
         return ctx
       }
-      const disposal = disposeStreamResponse(
-        signal.aborted ? signal.reason : err,
-      )
-      if (!signal.aborted) {
-        await disposal
-      }
       throw err
     }
 
@@ -352,7 +347,9 @@ async function executeMiddleware(
     return { ctx, response }
   } catch (err) {
     const disposal = disposeStreamResponse(signal.aborted ? signal.reason : err)
-    if (!signal.aborted) {
+    if (signal.aborted) {
+      void disposal.catch(console.error)
+    } else {
       await disposal
     }
     throw err

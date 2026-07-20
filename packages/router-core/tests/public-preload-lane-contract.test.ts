@@ -1078,4 +1078,74 @@ describe('public preload lane contracts', () => {
       loaderData: 'target data',
     })
   })
+
+  test('preloads the target of a twenty-hop redirect chain', async () => {
+    const beforeLoad = vi.fn(({ params }) => {
+      const hop = Number(params.hop)
+      if (hop < 20) {
+        throw redirect({
+          to: '/hop/$hop',
+          params: { hop: String(hop + 1) },
+        } as any)
+      }
+    })
+    const rootRoute = new BaseRootRoute({})
+    const hopRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hop/$hop',
+      beforeLoad,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([hopRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const matches = await router.preloadRoute({
+      to: '/hop/$hop',
+      params: { hop: '0' },
+    } as any)
+
+    expect(beforeLoad).toHaveBeenCalledTimes(21)
+    expect(matches?.at(-1)).toMatchObject({
+      routeId: hopRoute.id,
+      status: 'success',
+      params: { hop: '20' },
+    })
+  })
+
+  test('stops a preload after the twenty-hop redirect limit', async () => {
+    const beforeLoad = vi.fn(({ params }) => {
+      const hop = Number(params.hop)
+      if (hop < 22) {
+        throw redirect({
+          to: '/hop/$hop',
+          params: { hop: String(hop + 1) },
+        } as any)
+      }
+    })
+    const rootRoute = new BaseRootRoute({})
+    const hopRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hop/$hop',
+      beforeLoad,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([hopRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const matches = await router.preloadRoute({
+      to: '/hop/$hop',
+      params: { hop: '0' },
+    } as any)
+
+    expect(beforeLoad).toHaveBeenCalledTimes(21)
+    expect(matches?.at(-1)).toMatchObject({
+      routeId: hopRoute.id,
+      status: 'error',
+      error: expect.objectContaining({
+        message: 'Redirect cycle detected',
+      }),
+    })
+  })
 })

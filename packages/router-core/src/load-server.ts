@@ -4,6 +4,7 @@ import { isNotFound } from './not-found'
 import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './route-chunks'
+import { waitForReason } from './await-signal'
 import { getLocationChangeInfo, runRouteLifecycle } from './router'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
@@ -113,19 +114,7 @@ function navigateFrom(router: AnyRouter, location: ParsedLocation) {
 }
 
 function waitFor<T>(value: Promise<T>, signal?: AbortSignal): Promise<T> {
-  if (!signal) {
-    return value
-  }
-  if (signal.aborted) {
-    return Promise.reject(signal.reason)
-  }
-  return new Promise<T>((resolve, reject) => {
-    const abort = () => reject(signal.reason)
-    signal.addEventListener('abort', abort, { once: true })
-    value.then(resolve, reject).finally(() => {
-      signal.removeEventListener('abort', abort)
-    })
-  })
+  return signal ? waitForReason(value, signal) : value
 }
 
 async function resolveSsr(
@@ -209,9 +198,11 @@ async function contextualize(
       signal?.throwIfAborted()
       failure = [index, stampNotFound(match, normalizeError(route, cause))]
       end = index
-      break
     }
     signal?.throwIfAborted()
+    if (failure?.[1][0] === REDIRECTED) {
+      break
+    }
 
     match.__beforeLoadContext = undefined
     let context = parentContext
@@ -246,11 +237,16 @@ async function contextualize(
       match.context = context
     } catch (cause) {
       signal?.throwIfAborted()
-      failure = [index, stampNotFound(match, normalizeError(route, cause))]
+      if (!failure) {
+        failure = [index, stampNotFound(match, normalizeError(route, cause))]
+      }
       end = index
       break
     }
     signal?.throwIfAborted()
+    if (failure) {
+      break
+    }
     const validationError = match.paramsError ?? match.searchError
     if (validationError !== undefined) {
       failure = [

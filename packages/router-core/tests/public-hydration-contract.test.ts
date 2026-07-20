@@ -9,6 +9,7 @@ import {
 } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
+import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRouteMatch, AnyRouter } from '../src'
 import type { DehydratedRouter, TsrSsrGlobal } from '../src/ssr/types'
@@ -98,6 +99,7 @@ describe('public hydration contracts', () => {
     installHydrationPayload(
       mockWindow,
       matches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
         s: 'success' as const,
         ssr: true,
         u: Date.now(),
@@ -152,13 +154,17 @@ describe('public hydration contracts', () => {
     })
     expect(serverLoader).not.toHaveBeenCalled()
 
+    const routeContext = vi.fn(() => ({ routeContext: true }))
     const beforeLoad = vi.fn(() => ({ clientContext: true }))
-    const loader = vi.fn(({ context }) => context.clientContext)
+    const loader = vi.fn(
+      ({ context }) => context.clientContext && context.routeContext,
+    )
     const rootRoute = new BaseRootRoute({})
     const clientOnlyRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/client-only',
       ssr: false,
+      context: routeContext,
       beforeLoad,
       loader,
     })
@@ -190,6 +196,8 @@ describe('public hydration contracts', () => {
       { routeId: childRoute.id, ssr: true },
     ])
     expect(router.state.resolvedLocation).toBeUndefined()
+    expect(router.state.matches[1]?.context).toEqual({ routeContext: true })
+    expect(routeContext).toHaveBeenCalledTimes(1)
     expect(beforeLoad).not.toHaveBeenCalled()
     expect(loader).not.toHaveBeenCalled()
 
@@ -197,6 +205,7 @@ describe('public hydration contracts', () => {
 
     expect(beforeLoad).toHaveBeenCalledTimes(1)
     expect(loader).toHaveBeenCalledTimes(1)
+    expect(routeContext).toHaveBeenCalledTimes(1)
     expect(router.state.matches[1]).toMatchObject({
       routeId: clientOnlyRoute.id,
       status: 'success',
@@ -302,6 +311,7 @@ describe('public hydration contracts', () => {
     const matches = router.matchRoutes(router.stores.location.get())
     installHydrationPayload(mockWindow, [
       {
+        i: dehydrateSsrMatchId(matches[0]!.id),
         s: 'success',
         ssr: true,
         u: Date.now(),
@@ -356,11 +366,13 @@ describe('public hydration contracts', () => {
     const matches = router.matchRoutes(router.stores.location.get())
     installHydrationPayload(mockWindow, [
       {
+        i: dehydrateSsrMatchId(matches[0]!.id),
         s: 'success',
         ssr: true,
         u: Date.now(),
       },
       {
+        i: dehydrateSsrMatchId(matches[1]!.id),
         s: 'error',
         e: new Error('App failed on the server'),
         ssr: true,
@@ -415,11 +427,13 @@ describe('public hydration contracts', () => {
     const matches = router.matchRoutes(router.stores.location.get())
     installHydrationPayload(mockWindow, [
       {
+        i: dehydrateSsrMatchId(matches[0]!.id),
         s: 'success',
         ssr: true,
         u: Date.now(),
       },
       {
+        i: dehydrateSsrMatchId(matches[1]!.id),
         s: 'error',
         e: serverError,
         ssr: true,
@@ -488,11 +502,13 @@ describe('public hydration contracts', () => {
     const matches = router.matchRoutes(router.stores.location.get())
     installHydrationPayload(mockWindow, [
       {
+        i: dehydrateSsrMatchId(matches[0]!.id),
         s: 'success',
         ssr: true,
         u: Date.now(),
       },
       {
+        i: dehydrateSsrMatchId(matches[1]!.id),
         s: 'error',
         e: serverError,
         ssr: true,
@@ -778,6 +794,7 @@ describe('public hydration contracts', () => {
     installHydrationPayload(
       mockWindow,
       matches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
         s: 'success' as const,
         ssr: true,
         u: Date.now(),
@@ -826,6 +843,7 @@ describe('public hydration contracts', () => {
     installHydrationPayload(
       mockWindow,
       matches.map((match, index) => ({
+        i: dehydrateSsrMatchId(match.id),
         s: index ? ('pending' as const) : ('success' as const),
         ssr: index ? false : true,
         u: Date.now(),
@@ -859,6 +877,215 @@ describe('public hydration contracts', () => {
     expect(router.state.resolvedLocation?.pathname).toBe('/page')
   })
 
+  test('does not hand transported context to a reentrant navigation for another location', async () => {
+    const rootBeforeLoad = vi.fn(() => ({ source: 'client' }))
+    const newLoader = vi.fn(
+      ({ context }: { context: { source?: string } }) => context.source,
+    )
+    const rootRoute = new BaseRootRoute({ beforeLoad: rootBeforeLoad })
+    const oldRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/old',
+      ssr: false,
+    })
+    const newRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/new',
+      loader: newLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([oldRoute, newRoute]),
+      history: createMemoryHistory({ initialEntries: ['/old'] }),
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(mockWindow, [
+      {
+        i: dehydrateSsrMatchId(matches[0]!.id),
+        s: 'success',
+        b: { source: 'server old' },
+        ssr: true,
+        u: Date.now(),
+      },
+      {
+        i: dehydrateSsrMatchId(matches[1]!.id),
+        s: 'pending',
+        ssr: false,
+        u: Date.now(),
+      },
+    ])
+
+    await hydrate(router)
+    let winningNavigation: Promise<void> | undefined
+    const unsubscribe = router.subscribe('onBeforeNavigate', () => {
+      unsubscribe()
+      winningNavigation = router.navigate({ to: '/new' })
+    })
+
+    await router.load()
+    await winningNavigation
+
+    expect(router.state.resolvedLocation?.pathname).toBe('/new')
+    expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
+    expect(newLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.at(-1)?.loaderData).toBe('client')
+  })
+
+  test('does not hand transported context to a reentrant history-state change', async () => {
+    const rootBeforeLoad = vi.fn(({ location }: { location: any }) => ({
+      auth: location.state.auth,
+    }))
+    const pageLoader = vi.fn(
+      ({ context }: { context: { auth?: string } }) => context.auth,
+    )
+    const rootRoute = new BaseRootRoute({ beforeLoad: rootBeforeLoad })
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      ssr: false,
+      loader: pageLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(mockWindow, [
+      {
+        i: dehydrateSsrMatchId(matches[0]!.id),
+        s: 'success',
+        b: { auth: 'server old' },
+        ssr: true,
+        u: Date.now(),
+      },
+      {
+        i: dehydrateSsrMatchId(matches[1]!.id),
+        s: 'pending',
+        ssr: false,
+        u: Date.now(),
+      },
+    ])
+
+    await hydrate(router)
+    let winningNavigation: Promise<void> | undefined
+    const unsubscribe = router.subscribe('onBeforeNavigate', () => {
+      unsubscribe()
+      winningNavigation = router.navigate({
+        to: '/page',
+        state: { auth: 'client new' } as any,
+      })
+    })
+
+    await router.load()
+    await winningNavigation
+
+    expect(router.state.resolvedLocation?.pathname).toBe('/page')
+    expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
+    expect(pageLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.at(-1)?.loaderData).toBe('client new')
+  })
+
+  test('does not hand transported context across a router-context generation change', async () => {
+    const rootBeforeLoad = vi.fn(({ context }: { context: any }) => ({
+      auth: context.auth,
+    }))
+    const pageLoader = vi.fn(
+      ({ context }: { context: { auth?: string } }) => context.auth,
+    )
+    const rootRoute = new BaseRootRoute({ beforeLoad: rootBeforeLoad })
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      ssr: false,
+      loader: pageLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+      context: { auth: 'server old' },
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(mockWindow, [
+      {
+        i: dehydrateSsrMatchId(matches[0]!.id),
+        s: 'success',
+        b: { auth: 'server old' },
+        ssr: true,
+        u: Date.now(),
+      },
+      {
+        i: dehydrateSsrMatchId(matches[1]!.id),
+        s: 'pending',
+        ssr: false,
+        u: Date.now(),
+      },
+    ])
+
+    await hydrate(router)
+    router.update({
+      ...router.options,
+      context: { auth: 'client new' },
+    })
+    await router.load()
+
+    expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
+    expect(pageLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.at(-1)?.loaderData).toBe('client new')
+  })
+
+  test('rejects a hydration handoff when its prefix identity changes before finish', async () => {
+    let generation = 'server'
+    const rootBeforeLoad = vi.fn(() => ({ source: 'client' }))
+    const pageLoader = vi.fn(
+      ({ context }: { context: { source?: string } }) => context.source,
+    )
+    const rootRoute = new BaseRootRoute({
+      loaderDeps: () => ({ generation }),
+      beforeLoad: rootBeforeLoad,
+    })
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      ssr: false,
+      loader: pageLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(mockWindow, [
+      {
+        i: dehydrateSsrMatchId(matches[0]!.id),
+        s: 'success',
+        b: { source: 'server' },
+        ssr: true,
+        u: Date.now(),
+      },
+      {
+        i: dehydrateSsrMatchId(matches[1]!.id),
+        s: 'pending',
+        ssr: false,
+        u: Date.now(),
+      },
+    ])
+
+    await hydrate(router)
+    const unsubscribe = router.subscribe('onBeforeNavigate', () => {
+      unsubscribe()
+      generation = 'client'
+    })
+
+    await router.load()
+
+    expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
+    expect(pageLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.at(-1)?.loaderData).toBe('client')
+  })
+
   test('turns a client route-context reconstruction failure into a route error', async () => {
     const contextError = new Error('client context failed')
     const onError = vi.fn()
@@ -883,6 +1110,7 @@ describe('public hydration contracts', () => {
     installHydrationPayload(
       mockWindow,
       matches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
         s: 'success' as const,
         l: match.routeId === pageRoute.id ? 'server data' : undefined,
         ssr: true,
@@ -937,6 +1165,7 @@ describe('public hydration contracts', () => {
     installHydrationPayload(
       mockWindow,
       matches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
         s: 'success' as const,
         ssr: true,
         u: Date.now(),
@@ -1055,6 +1284,7 @@ describe('public hydration contracts', () => {
     installHydrationPayload(
       mockWindow,
       matches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
         s: 'success' as const,
         l: match.routeId === pageRoute.id ? 'server data' : undefined,
         ssr: true,
@@ -1085,5 +1315,115 @@ describe('public hydration contracts', () => {
     expect(onError).toHaveBeenCalledTimes(1)
     expect(onError).toHaveBeenCalledWith(chunkError)
     expect(loader).not.toHaveBeenCalled()
+  })
+
+  test('retries from the earliest failed hydration chunk regardless of rejection order', async () => {
+    const rootChunkError = new Error('root component failed to load')
+    const childChunkError = new Error('child component failed to load')
+    const rootChunkGate = createControlledPromise<void>()
+    const rootChunkStarted = createControlledPromise<void>()
+    const RootComponent = Object.assign(() => 'Root', {
+      preload: () => {
+        rootChunkStarted.resolve()
+        return rootChunkGate
+      },
+    })
+    const childComponentPreload = vi.fn(() => Promise.reject(childChunkError))
+    const ChildComponent = Object.assign(() => 'Child', {
+      preload: childComponentPreload,
+    })
+    const rootContext = vi.fn(() => ({}))
+    const rootRoute = new BaseRootRoute({
+      component: RootComponent,
+      context: rootContext,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      component: ChildComponent,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(
+      mockWindow,
+      matches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      })),
+    )
+
+    const hydration = hydrate(router)
+    await rootChunkStarted
+    await vi.waitFor(() => {
+      expect(childComponentPreload).toHaveBeenCalledTimes(1)
+    })
+    rootChunkGate.reject(rootChunkError)
+    await expect(hydration).resolves.toBeUndefined()
+
+    expect(rootContext).not.toHaveBeenCalled()
+    expect(router.state.resolvedLocation).toBeUndefined()
+  })
+
+  test('does not wait for descendant chunks after an earlier chunk fails', async () => {
+    const rootChunkError = new Error('root component failed to load')
+    const childChunkGate = createControlledPromise<void>()
+    const childChunkStarted = createControlledPromise<void>()
+    const RootComponent = Object.assign(() => 'Root', {
+      preload: () => Promise.reject(rootChunkError),
+    })
+    const ChildComponent = Object.assign(() => 'Child', {
+      preload: () => {
+        childChunkStarted.resolve()
+        return childChunkGate
+      },
+    })
+    const rootContext = vi.fn(() => ({}))
+    const rootRoute = new BaseRootRoute({
+      component: RootComponent,
+      context: rootContext,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      component: ChildComponent,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(
+      mockWindow,
+      matches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      })),
+    )
+
+    let settled = false
+    const hydration = hydrate(router).then(() => {
+      settled = true
+    })
+    try {
+      await childChunkStarted
+      await vi.waitFor(() => {
+        expect(settled).toBe(true)
+      })
+    } finally {
+      childChunkGate.resolve()
+      await hydration
+    }
+
+    expect(rootContext).not.toHaveBeenCalled()
+    expect(router.state.resolvedLocation).toBeUndefined()
   })
 })

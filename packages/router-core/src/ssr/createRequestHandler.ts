@@ -1,4 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
+import { waitForReason } from '../await-signal'
 import { _getRenderedMatches } from '../rendered-matches'
 import { mergeHeaders } from './headers'
 import {
@@ -8,6 +9,7 @@ import {
 } from './ssr-server'
 import {
   bindSsrResponseToRequest,
+  disposeSsrResponseDetached,
   normalizeSsrResponse,
 } from './handlerCallback'
 import type { HandlerCallback } from './handlerCallback'
@@ -24,20 +26,7 @@ export function waitForRequest<T>(
   signal: AbortSignal,
   onLate?: (value: T) => void,
 ): Promise<T> {
-  signal.throwIfAborted()
-  return new Promise<T>((resolve, reject) => {
-    const abort = () => reject(signal.reason)
-    signal.addEventListener('abort', abort, { once: true })
-    Promise.resolve(value)
-      .then((result) => {
-        if (signal.aborted) {
-          onLate?.(result)
-        } else {
-          resolve(result)
-        }
-      }, reject)
-      .finally(() => signal.removeEventListener('abort', abort))
-  })
+  return waitForReason(value, signal, onLate)
 }
 
 export function createRequestHandler<TRouter extends AnyRouter>({
@@ -104,7 +93,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         (late) => {
           const ssrResponse = normalizeSsrResponse(late)
           if (ssrResponse.serverSsrCleanup === 'stream') {
-            void ssrResponse.dispose(request.signal.reason)
+            disposeSsrResponseDetached(ssrResponse, request.signal.reason)
           }
         },
       )

@@ -65,17 +65,19 @@ type WorkMatch = AnyRouteMatch & {
   _flight?: LoaderFlight
 }
 
+export type LaneInputs = [
+  context: unknown,
+  additionalContext: unknown,
+  state: object,
+  search: object,
+]
+
 export type ActivePreload = [
   matches: Array<AnyRouteMatch>,
   controller: AbortController,
   result: Promise<LaneResult>,
   semanticOwner: Array<AnyRouteMatch>,
-  inputs: [
-    context: unknown,
-    additionalContext: unknown,
-    state: object,
-    search: object,
-  ],
+  inputs: LaneInputs,
   routeTree: AnyRoute,
 ]
 
@@ -146,20 +148,18 @@ export function waitFor<T>(
   signal: AbortSignal,
 ): Promise<T> {
   if (signal.aborted) {
-    return Promise.reject(signal)
+    return Promise.race([Promise.reject(signal), value])
   }
   return new Promise<T>((resolve, reject) => {
     const abort = () => reject(signal)
     signal.addEventListener('abort', abort, { once: true })
     Promise.resolve(value)
       .then(resolve, reject)
-      .finally(() => {
-        signal.removeEventListener('abort', abort)
-      })
+      .finally(() => signal.removeEventListener('abort', abort))
   })
 }
 
-function getRoute(router: AnyRouter, match: WorkMatch): AnyRoute {
+export function getRoute(router: AnyRouter, match: WorkMatch): AnyRoute {
   return (router.routesById as Record<string, AnyRoute>)[match.routeId]!
 }
 
@@ -206,7 +206,7 @@ function normalizeLaneError(
   return normalizeError(route, cause)
 }
 
-function navigateFrom(router: AnyRouter, location: ParsedLocation) {
+export function navigateFrom(router: AnyRouter, location: ParsedLocation) {
   return (opts: any) =>
     router.navigate({
       ...opts,
@@ -354,10 +354,10 @@ function releaseFlight(router: AnyRouter, match: WorkMatch): void {
   match._flight = undefined
   releaseOwnedFlight(router, match.id, flight)?.abort()
 }
-function preloadInputs(
+export function laneInputs(
   router: AnyRouter,
   location: ParsedLocation,
-): ActivePreload[4] {
+): LaneInputs {
   return [
     router.options.context,
     router.options.additionalContext,
@@ -374,7 +374,7 @@ function samePreloadLane(
   return (
     preload[3] === router._committed &&
     preload[5] === router.routeTree &&
-    deepEqual(preload[4], preloadInputs(router, location)) &&
+    deepEqual(preload[4], laneInputs(router, location)) &&
     !preload[0].some(
       (match) => getRoute(router, match as WorkMatch).options.preload === false,
     )
@@ -1195,8 +1195,8 @@ function pendingConfig(
 }
 
 /**
- * Waits for `pendingMs`, then writes the chosen route and its parents to
- * `stores.matches`, causing its fallback to render while children stay hidden.
+ * Waits for `pendingMs`, then presents the complete lane. Rendering applies the
+ * selected boundary cutoff while retaining every match's structural state.
  * A replacement load for the same match keeps the timer; choosing a different
  * match resets it. `pendingMinMs` starts after the fallback renders.
  */
@@ -1816,7 +1816,7 @@ export async function preloadClientRoute(
   opts: any,
   redirects = 0,
 ): Promise<Array<AnyRouteMatch> | undefined> {
-  if (redirects >= 20) {
+  if (redirects > 20) {
     return
   }
   const owner = router._tx
@@ -1864,7 +1864,7 @@ export async function preloadClientRoute(
       controller,
       promise,
       base,
-      preloadInputs(router, location),
+      laneInputs(router, location),
       router.routeTree,
     ]
     ;(router._preloads ??= new Map()).set(location.href, preload)

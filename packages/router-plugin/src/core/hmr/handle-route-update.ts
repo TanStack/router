@@ -15,7 +15,8 @@ type AnyRouterWithPrivateState = AnyRouter & {
   routesById: Record<string, AnyRoute>
   buildRouteTree: () => Parameters<AnyRouter['setRoutes']>[0]
   setRoutes: AnyRouter['setRoutes']
-  _refreshRoute?: (routeId: string) => Promise<void>
+  _refreshRoute?: () => Promise<void>
+  _replaceRouteChunk: (route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void
 }
 
 function handleRouteUpdate(
@@ -73,12 +74,12 @@ function handleRouteUpdate(
 
   oldRoute.options = nextOptions
   oldRoute.update(nextOptions)
-  oldRoute._lazy = undefined
+  router._replaceRouteChunk(oldRoute, newRoute.lazyFn)
 
   router.setRoutes(router.buildRouteTree())
   syncHotRouteExport(oldRoute)
   router.resolvePathCache.clear()
-  void router._refreshRoute?.(oldRoute.id)
+  void router._refreshRoute?.()
 
   function syncHotRouteExport(liveRoute: AnyRouteWithPrivateProps) {
     // routeTree.gen.ts mutates the original module export with generated

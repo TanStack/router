@@ -4,6 +4,7 @@ import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
+import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRouter, NavigateFn } from '../src'
 import type { DehydratedRouter, TsrSsrGlobal } from '../src/ssr/types'
@@ -90,6 +91,7 @@ describe('hydration asset currentness', () => {
     const matches = router.matchRoutes(router.stores.location.get())
     installHydrationPayload(mockWindow, [
       {
+        i: dehydrateSsrMatchId(matches[0]!.id),
         s: 'success',
         ssr: true,
         u: Date.now(),
@@ -109,6 +111,106 @@ describe('hydration asset currentness', () => {
     })
     expect(router.state.resolvedLocation).toBeUndefined()
     expect(childLoader).not.toHaveBeenCalled()
+  })
+
+  test('settles when navigation supersedes a pending custom hydrate hook', async () => {
+    const hydrateGate = createControlledPromise<void>()
+    const hydrateStarted = createControlledPromise<void>()
+    const rootRoute = new BaseRootRoute({})
+    const oldRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/old',
+    })
+    const newRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/new',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([oldRoute, newRoute]),
+      history: createMemoryHistory({ initialEntries: ['/old'] }),
+      isServer: false,
+    })
+    router.options.hydrate = () => {
+      hydrateStarted.resolve()
+      return hydrateGate
+    }
+    const oldMatches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(
+      mockWindow,
+      oldMatches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      })),
+    )
+
+    const hydration = hydrate(router)
+    try {
+      await hydrateStarted
+      await router.navigate({ to: '/new' })
+      await expect(hydration).resolves.toBeUndefined()
+
+      expect(router.state.resolvedLocation?.pathname).toBe('/new')
+      expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
+    } finally {
+      hydrateGate.resolve()
+      await hydration
+    }
+  })
+
+  test('does not publish an old hydration lane after a newer navigation commits', async () => {
+    const oldChunkGate = createControlledPromise<void>()
+    const oldChunkStarted = createControlledPromise<void>()
+    const OldComponent = Object.assign(() => null, {
+      preload: () => {
+        oldChunkStarted.resolve()
+        return oldChunkGate
+      },
+    })
+    const rootRoute = new BaseRootRoute({})
+    const oldRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/old',
+      component: OldComponent,
+    })
+    const newRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/new',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([oldRoute, newRoute]),
+      history: createMemoryHistory({ initialEntries: ['/old'] }),
+      isServer: false,
+    })
+    const oldMatches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(
+      mockWindow,
+      oldMatches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      })),
+    )
+
+    const hydration = hydrate(router)
+    try {
+      await oldChunkStarted
+      await router.navigate({ to: '/new' })
+
+      expect(router.state.resolvedLocation?.pathname).toBe('/new')
+      expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
+
+      await hydration
+
+      expect(router.state.location.pathname).toBe('/new')
+      expect(router.state.resolvedLocation?.pathname).toBe('/new')
+      expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
+    } finally {
+      oldChunkGate.resolve()
+      await hydration
+    }
   })
 
   test('an aborted hydration handoff falls back to a fresh client continuation', async () => {
@@ -133,11 +235,13 @@ describe('hydration asset currentness', () => {
     const matches = router.matchRoutes(router.stores.location.get())
     installHydrationPayload(mockWindow, [
       {
+        i: dehydrateSsrMatchId(matches[0]!.id),
         s: 'success',
         ssr: true,
         u: Date.now(),
       },
       {
+        i: dehydrateSsrMatchId(matches[1]!.id),
         s: 'pending',
         ssr: false,
         u: Date.now(),
@@ -206,6 +310,7 @@ describe('hydration asset currentness', () => {
     installHydrationPayload(
       mockWindow,
       oldMatches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
         s: 'success' as const,
         ssr: true,
         u: Date.now(),

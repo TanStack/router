@@ -356,7 +356,9 @@ rules.
 Hydration is not a general `beforeLoad` cache. Its temporary handoff is valid
 only for the initial client load of the same document entry and exact committed
 owner; rejection, invalidation, or any later load returns to normal serial
-execution. That initial load may transfer the accepted hydration prefix and
+execution. The claim also requires the same route tree, root/additional context,
+search, user history state, and exact browser history generation. That initial
+load may transfer the accepted hydration prefix and
 keep its transported context while it completes a selective-SSR suffix. A
 preload never claims this prefix. Frameworks must start the initial client load
 before descendant route code can preload; invoking a preload in the gap after
@@ -978,6 +980,9 @@ A parent restriction cannot be relaxed by a child: `false` remains false, and a
 If a functional `ssr` option throws, the inherited/default policy is established
 before calling it. The failure therefore retains the correct boundary
 renderability instead of leaving `ssr` undefined.
+An ordinary policy failure still reconstructs route context for its boundary;
+if route context also fails, the original policy failure keeps precedence.
+Redirects remain control flow and skip route-context reconstruction.
 
 Shell mode resolves and dehydrates the root semantic match while the presented
 server lane may include the first client-only pending boundary and its
@@ -988,8 +993,9 @@ descendants. This permits server and initial client presentation to agree.
 Hydration reconstructs server work; it does not run a competing hydration
 loader. While reconstruction is asynchronous, its controller is `_preflight`.
 No client transaction may exist. Framework entry points prevent navigation or
-preloading during reconstruction; currentness checks remain around route
-context because it is the supported reentrant callback in this phase.
+preloading during reconstruction. The same controller interrupts asynchronous
+application hydration and chunk work, and every asynchronous phase rechecks
+currentness before mutating or publishing.
 
 Once hydration has accepted a semantic prefix and is ready to publish it,
 `_preflight` is no longer the right authority: no planning operation is in
@@ -1009,13 +1015,15 @@ The high-level process is:
 
 1. install serialization adapters and application-dehydrated data,
 2. match a fresh candidate lane for the browser location,
-3. accept the serialized lane as the ordered prefix guaranteed by the document
-   protocol,
+3. accept the identity-compatible serialized lane as the ordered prefix
+   guaranteed by the document protocol,
 4. copy server loader data, `beforeLoad` context, terminal state, and effective
    SSR policy into private candidates, and install each transported effective
    SSR value on its route so a functional server policy is not re-evaluated,
-5. load exactly the chunks required by the accepted prefix and any selected
-   terminal boundary,
+5. start exactly the chunks required by the accepted prefix and any selected
+   terminal boundary concurrently, then consume their outcomes in route order
+   so the earliest failed position can retire its suffix without waiting for
+   irrelevant descendants,
 6. rebuild route context parent-first,
 7. project client `head` and `scripts` through the same projection
    function used after an ordinary client load, and
@@ -1023,17 +1031,21 @@ The high-level process is:
 
 For ordinary SSR, the browser receives dehydrated data produced for the exact
 document URL it requested, by the same route build, and the serialized matches
-are an ordered prefix of the client lane. The payload does not serialize a
-second URL identity for the client to defend against an impossible mismatch.
+are an ordered prefix of the client lane. The payload carries compact per-match
+IDs to prevent stale or cross-build data from attaching to a different local
+match, but does not serialize a second URL identity.
 
 An SPA shell uses the same ordered-prefix protocol for its root-only payload.
 The framework owns making that shell payload applicable to the document it
-serves. Hydration does not add a second URL or match-identity authority to
-second-guess that transport contract.
+serves. Hydration does not add a second URL authority to second-guess that
+transport contract.
 
 Ordinary and selective SSR payloads are ordered prefixes from the same route
-build and exact document URL. Hydration therefore does not defensively validate
-the root or every descendant, or serialize a second set of match identities.
+build and exact document URL. Hydration bounds reconstruction to the local lane
+and validates each transported position by compact match ID. A mismatch ends
+the accepted prefix and leaves the local suffix for ordinary client loading. A
+longer server lane is accepted only through a local global not-found boundary
+that already caps the branch; otherwise no transported prefix is accepted.
 A terminal server error, not-found, or global not-found caps client execution so omitted descendants do
 not run. The client still reconstructs those descendants as unresolved matches
 to preserve structural membership. Terminal hydration loads the selected
@@ -1082,13 +1094,14 @@ reconstruction fails, only the accepted prefix is committed as described above;
 the complete branch remains presentation, not semantic reuse authority.
 
 Only the subsequent ordinary client load may transfer the whole hydration
-prefix, and only while the exact committed-prefix owner and live hydration
-controller remain current with no active transaction. The capability does not
-carry a second URL or history-entry identity: the initial load is guaranteed by
-the framework protocol to rematch the document location using the same build.
-That exact-document contract also makes defensive ID/params/search checks
-redundant. Core does not coordinate speculative work started between raw
-`hydrate()` and that load; framework adapters own the supported ordering.
+prefix, and only while the exact committed-prefix owner, structurally shared
+parsed history-state generation, and live hydration controller remain current
+with no active transaction. The payload does not serialize a second URL
+authority: Core captures the reconstructed browser generation only to prevent a
+supported reentrant lifecycle event from handing document work to a successor
+location. The transported prefix must also pass finish-time match-ID validation.
+Core does not coordinate speculative work started between raw `hydrate()` and
+that load; framework adapters own the supported ordering.
 
 The two-phase transfer proceeds as follows:
 
@@ -1097,7 +1110,8 @@ The two-phase transfer proceeds as follows:
 2. It installs its own `_preflight`, emits the events, matches a private lane,
    and asks the capability to finish the transfer.
 3. Finish revalidates capability identity, transaction absence, hydration
-   controller liveness, and the exact committed owner.
+   controller liveness, captured location identity, and the exact committed
+   owner.
 4. On rejection, the capability clears itself before aborting its controller,
    so abort listeners cannot reenter and claim a rejected handoff.
 5. On acceptance, the prefix replaces the planner's private copies. A terminal
@@ -1154,17 +1168,17 @@ When changing this architecture, verify all of the following:
    successful loader generation, but rebuilds merged context and reruns the
    serial `beforeLoad` chain.
 8. Hydration is the only completed-work exception for `beforeLoad` reuse. It
-   verifies the root loader identity, reconstructs the transported ordered
+   verifies each transported match identity, reconstructs the accepted ordered
    prefix, reruns route context locally, preserves terminal/selective-SSR
    authority, and presents the full local branch while executing only the
    accepted prefix. Its two-phase handoff is claimable only by the supported
-   initial document load and revalidates the live controller and exact committed
-   owner; URL identity and descendant compatibility come from the framework's
-   exact-document ordered-prefix contract, not duplicate runtime guards or
-   serialized per-match IDs. It clears before abort on rejection and remains
-   reclaimable until `_tx` exists. Framework adapters start that load before
-   descendant route code can create unsupported speculative work in the handoff
-   gap.
+   initial document load and revalidates the live controller, captured location,
+   and exact committed owner. The framework's exact-document contract remains
+   the URL authority; the captured location rejects supported reentrant
+   successors, while compact serialized match IDs guard prefix compatibility.
+   It clears before abort on rejection and remains reclaimable until `_tx`
+   exists. Framework adapters start that load before descendant route code can
+   create unsupported speculative work in the handoff gap.
 9. Match-id cache compatibility and route-id lifecycle identity are not mixed.
 10. Cache publication retains only the generation allowed by its planning CAS;
     same-ID committed and cached generations invalidate together, and accepted

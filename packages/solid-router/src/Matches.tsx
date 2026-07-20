@@ -85,7 +85,7 @@ function MatchesInner() {
         matchComponent()
       ) : (
         <CatchBoundary
-          getResetKey={() => match()?.abortController}
+          getResetKey={match}
           errorComponent={ErrorComponent}
           onCatch={
             process.env.NODE_ENV !== 'production'

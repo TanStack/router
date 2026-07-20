@@ -1,11 +1,16 @@
 import {
   cacheLoaderMatch,
+  getRoute,
+  laneInputs,
+  navigateFrom,
   projectLane,
   transferMatchResources,
+  waitFor,
 } from './load-client'
 import { loadRouteChunk } from './route-chunks'
+import { hydrateSsrMatchId } from './ssr/ssr-match-id'
+import { deepEqual } from './utils'
 import type { AnyRouteMatch } from './Matches'
-import type { AnyRoute } from './route'
 import type { AnyRouter } from './router'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { AnySerializationAdapter } from './ssr/serializer/transformer'
@@ -53,35 +58,59 @@ export async function hydrate(router: AnyRouter): Promise<void> {
 
   const dehydratedMatches = dehydratedRouter!.matches
 
-  await router.options.hydrate?.(dehydratedRouter!.dehydratedData)
-  router.updateLatestLocation()
-  const location = router.latestLocation
-  router.stores.location.set(location)
-
   const controller = new AbortController()
+  const previousPreflight = router._preflight
   router._preflight = controller
-  const isCurrent = () => {
-    const current =
-      !router._tx &&
-      router._preflight === controller &&
-      !controller.signal.aborted
-    if (!current) {
-      controller.abort()
+  previousPreflight?.abort()
+  const retire = (cause?: unknown) => {
+    if (router._preflight === controller) {
+      router._preflight = undefined
     }
-    return current
+    controller.abort(cause)
+    return false
   }
+  const isCurrent = () =>
+    (!router._tx &&
+      router._preflight === controller &&
+      !controller.signal.aborted) ||
+    retire()
 
-  const candidates = router.matchRoutes(location, {
-    _controller: controller,
-  })
+  let location!: AnyRouter['latestLocation']
+  let candidates!: Array<AnyRouteMatch>
+  let handoffInputs!: ReturnType<typeof laneInputs>
+  let routeTree!: AnyRouter['routeTree']
+  try {
+    await waitFor(
+      router.options.hydrate?.(dehydratedRouter!.dehydratedData),
+      controller.signal,
+    )
+    if (!isCurrent()) {
+      return
+    }
+    router.updateLatestLocation()
+    location = router.latestLocation
+    router.stores.location.set(location)
+    handoffInputs = laneInputs(router, location)
+    routeTree = router.routeTree
+    candidates = router.matchRoutes(location, {
+      _controller: controller,
+    })
+  } catch (cause) {
+    retire(cause)
+    if (cause !== controller.signal) {
+      throw cause
+    }
+  }
+  if (!isCurrent()) {
+    return
+  }
   const committed: Array<AnyRouteMatch> = []
   let pendingBoundary: number | undefined
   const retryFrom = (index: number) => {
     const removed = committed.splice(index)
     for (const match of removed) {
       if (
-        (router.routesById as Record<string, AnyRoute>)[match.routeId]!.options
-          .loader &&
+        getRoute(router, match).options.loader &&
         (match.status === 'success' ||
           (!match.invalid && 'loaderData' in match))
       ) {
@@ -100,19 +129,30 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     transferMatchResources(router, removed)
   }
 
-  const shared = dehydratedMatches.length
+  // A longer server lane is valid only when the local match already caps the
+  // branch at a global not-found boundary. Otherwise no transported work is
+  // safe to attach to the shorter client lane.
+  const shared =
+    dehydratedMatches.length > candidates.length
+      ? candidates.findIndex((match) => match._notFound) + 1
+      : Math.min(dehydratedMatches.length, candidates.length)
   let isTerminal = false
   for (let index = 0; index < shared; index++) {
     const candidate = candidates[index]!
     const dehydrated = dehydratedMatches[index]!
+    if (
+      typeof dehydrated.i !== 'string' ||
+      hydrateSsrMatchId(dehydrated.i) !== candidate.id
+    ) {
+      pendingBoundary ??= index
+      break
+    }
     if ('l' in dehydrated) {
       candidate.loaderData = dehydrated.l
     }
     candidate.status = dehydrated.s
     candidate.ssr = dehydrated.ssr
-    ;(router.routesById as Record<string, AnyRoute>)[
-      candidate.routeId
-    ]!.options.ssr = candidate.ssr
+    getRoute(router, candidate).options.ssr = candidate.ssr
     candidate.updatedAt = dehydrated.u
     candidate.error = dehydrated.e
     candidate._notFound ||= dehydrated.g
@@ -149,64 +189,76 @@ export async function hydrate(router: AnyRouter): Promise<void> {
 
   // Hooks observe structural membership. Execution remains limited to
   // `committed`, the accepted server prefix.
-  const chunkFailures = await Promise.all(
-    committed.map(async (match, index) => {
-      try {
-        const route = (router.routesById as Record<string, AnyRoute>)[
-          match.routeId
-        ]!
-        if (match._notFound) {
-          await Promise.all([
-            loadRouteChunk(route),
-            loadRouteChunk(route, 'notFoundComponent'),
-          ])
-        } else {
-          await loadRouteChunk(
-            route,
-            match.status === 'error'
-              ? 'errorComponent'
-              : match.status === 'notFound'
-                ? 'notFoundComponent'
-                : undefined,
-          )
-        }
-        return undefined
-      } catch {
-        return index
+  const chunks = committed.map(async (match) => {
+    try {
+      const route = getRoute(router, match)
+      if (match._notFound) {
+        await Promise.all([
+          loadRouteChunk(route),
+          loadRouteChunk(route, 'notFoundComponent'),
+        ])
+      } else {
+        await loadRouteChunk(
+          route,
+          match.status === 'error'
+            ? 'errorComponent'
+            : match.status === 'notFound'
+              ? 'notFoundComponent'
+              : undefined,
+        )
       }
-    }),
-  )
-  const chunkFailure = chunkFailures.find((index) => index !== undefined)
-  if (chunkFailure !== undefined) {
+      return true
+    } catch {
+      return false
+    }
+  })
+  let chunkFailure = 0
+  try {
+    while (
+      chunkFailure < chunks.length &&
+      (await waitFor(chunks[chunkFailure]!, controller.signal))
+    ) {
+      chunkFailure++
+    }
+  } catch {
+    isCurrent()
+    return
+  }
+  if (!isCurrent()) {
+    return
+  }
+  if (chunkFailure < committed.length) {
     retryFrom(chunkFailure)
   }
 
-  // Build every accepted context before any head hook receives the lane.
-  for (let index = 0; index < committed.length; index++) {
-    const match = committed[index]!
-    const route = (router.routesById as Record<string, AnyRoute>)[
-      match.routeId
-    ]!
+  // The first pending match is already visible, so prepare its route context
+  // without granting its beforeLoad or loader any hydration authority.
+  const contextEnd =
+    pendingBoundary === committed.length
+      ? Math.min(committed.length + 1, candidates.length)
+      : committed.length
+  for (let index = 0; index < contextEnd; index++) {
+    const match = candidates[index]!
+    const route = getRoute(router, match)
     const parentContext =
-      committed[index - 1]?.context ?? router.options.context
+      candidates[index - 1]?.context ?? router.options.context ?? {}
     let routeContext
     if (route.options.context) {
       try {
-        routeContext = route.options.context({
-          deps: match.loaderDeps,
-          params: match.params,
-          context: parentContext ?? {},
-          location,
-          navigate: (opts: any) =>
-            router.navigate({ ...opts, _fromLocation: location }),
-          buildLocation: router.buildLocation,
-          cause: match.cause,
-          abortController: controller,
-          preload: false,
-          matches: candidates,
-          routeId: route.id,
-        })
-        match._ctx = routeContext || {}
+        routeContext = match._ctx =
+          route.options.context({
+            deps: match.loaderDeps,
+            params: match.params,
+            context: parentContext,
+            location,
+            navigate: navigateFrom(router, location),
+            buildLocation: router.buildLocation,
+            cause: match.cause,
+            abortController: controller,
+            preload: false,
+            matches: candidates,
+            routeId: route.id,
+          }) || {}
       } catch {
         if (!isCurrent()) {
           return
@@ -227,7 +279,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     match.context = {
       ...parentContext,
       ...routeContext,
-      ...dehydratedMatches[index]!.b,
+      ...(committed[index] && dehydratedMatches[index]!.b),
     }
   }
 
@@ -238,6 +290,9 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     0,
     committed.length,
   )
+  if (!isCurrent()) {
+    return
+  }
   const needsClientLoad =
     pendingBoundary !== undefined || committed.length < shared
   const committedMatches =
@@ -253,31 +308,33 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     }
   }
 
+  const claim = () =>
+    needsClientLoad &&
+    !router._tx &&
+    router.latestLocation.state === location.state &&
+    router.routeTree === routeTree &&
+    deepEqual(handoffInputs, laneInputs(router, router.latestLocation)) &&
+    router._committed === committedMatches &&
+    committedMatches.length &&
+    !controller.signal.aborted
+      ? controller
+      : undefined
   const handoff: NonNullable<AnyRouter['_handoff']> = [
-    () =>
-      needsClientLoad &&
-      !router._tx &&
-      router._committed === committedMatches &&
-      !!committedMatches.length &&
-      !controller.signal.aborted
-        ? controller
-        : undefined,
+    claim,
     (matches) => {
-      const owns = router._handoff === handoff
-      if (
-        !matches ||
-        !owns ||
-        router._tx ||
-        controller.signal.aborted ||
-        router._committed !== committedMatches
-      ) {
-        if (owns) {
-          router._handoff = undefined
-          controller.abort()
-        }
+      if (router._handoff !== handoff) {
         return
       }
       const prefix = committedMatches.length
+      if (
+        !matches ||
+        !claim() ||
+        committedMatches.some((match, index) => match.id !== matches[index]?.id)
+      ) {
+        router._handoff = undefined
+        controller.abort()
+        return
+      }
       transferMatchResources(
         router,
         matches.splice(
@@ -287,7 +344,12 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         ),
       )
       for (let index = prefix; index < matches.length; index++) {
-        matches[index]!.abortController = controller
+        const match = matches[index]!
+        const hydrated = candidates[index]
+        if (hydrated?.id === match.id && hydrated._ctx) {
+          match._ctx = hydrated._ctx
+        }
+        match.abortController = controller
       }
       return prefix
     },

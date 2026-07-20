@@ -11,6 +11,7 @@ import { rootRouteId } from '../root'
 import { _getRenderedMatches } from '../rendered-matches'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
+import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
 import type { LRUCache } from '../lru-cache'
@@ -34,6 +35,7 @@ const P_SUFFIX = ')'
 
 export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
   const dehydratedMatch: DehydratedMatch = {
+    i: dehydrateSsrMatchId(match.id),
     u: match.updatedAt,
     s: match.status,
   }

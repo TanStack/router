@@ -41,7 +41,7 @@ import {
   refreshClientRoute,
   transferMatchResources,
 } from './load-client'
-import { loadRouteChunk } from './route-chunks'
+import { loadRouteChunk, replaceRouteChunk } from './route-chunks'
 import {
   composeRewrites,
   executeRewriteInput,
@@ -794,13 +794,6 @@ export interface MatchRoutesFn {
   ): Array<AnyRouteMatch>
 }
 
-export type GetMatchFn = (matchId: string) => AnyRouteMatch | undefined
-
-export type UpdateMatchFn = (
-  id: string,
-  updater: (match: AnyRouteMatch) => AnyRouteMatch,
-) => void
-
 export type LoadRouteChunkFn = (route: AnyRoute) => Promise<Array<void>>
 
 export type ResolveRedirect = (err: AnyRedirect) => ResolvedRedirect
@@ -1030,10 +1023,7 @@ export interface RouterCore<
   /** Owns cancellable work before a client transaction publishes. */
   _preflight?: AbortController
   /** Transfers one reconstructed SSR prefix into its initial client load. */
-  _handoff?: [
-    claim: () => AbortController | undefined,
-    finish: (matches?: Array<AnyRouteMatch>) => number | undefined,
-  ]
+  _handoff?: HydrationHandoff
   /** Pending-boundary reveal and minimum-visible timing state. */
   _pending?: PendingSession
   /** Result of the latest server load, used to render or redirect. */
@@ -1041,8 +1031,17 @@ export interface RouterCore<
   /** Framework callback that acknowledges an exact matches publication. */
   _rendered?: (matches: Array<AnyRouteMatch>) => void
   /** Development-only HMR reload for a route and its descendants. */
-  _refreshRoute: ((routeId: string) => Promise<void>) | undefined
+  _refreshRoute: (() => Promise<void>) | undefined
+  /** Development-only replacement for a route's lazy chunk owner. */
+  _replaceRouteChunk:
+    | ((route: AnyRoute, lazyFn: AnyRoute['lazyFn']) => void)
+    | undefined
 }
+
+export type HydrationHandoff = [
+  claim: () => AbortController | undefined,
+  finish: (matches?: Array<AnyRouteMatch>) => number | undefined,
+]
 
 /**
  * Core, framework-agnostic router engine that powers TanStack Router.
@@ -2659,6 +2658,7 @@ export class RouterCore<
  * dedicated to HMR.
  */
 if (process.env.NODE_ENV !== 'production') {
+  RouterCore.prototype._replaceRouteChunk = replaceRouteChunk
   RouterCore.prototype._refreshRoute = async function () {
     this._serverResult = undefined
     this.updateLatestLocation()

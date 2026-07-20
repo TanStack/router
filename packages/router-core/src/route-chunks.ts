@@ -6,6 +6,14 @@ type RouteComponentType =
   | 'errorComponent'
   | 'notFoundComponent'
 
+export function replaceRouteChunk(
+  route: AnyRoute,
+  lazyFn: AnyRoute['lazyFn'],
+): void {
+  route.lazyFn = lazyFn ?? route.lazyFn
+  route._lazy = undefined
+}
+
 function preloadComponent(
   route: AnyRoute,
   type: RouteComponentType,

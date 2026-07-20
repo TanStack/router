@@ -79,8 +79,8 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const match = useStore(router.stores.matches, (matches) => matches[0])
-    const routeId = Vue.computed(() => match.value?.routeId)
+    const matches = useStore(router.stores.matches)
+    const routeId = Vue.computed(() => matches.value[0]?.routeId)
 
     return () => {
       // Generate a placeholder element if routeId.value is not present
@@ -94,7 +94,7 @@ const MatchesInner = Vue.defineComponent({
       }
 
       return Vue.h(CatchBoundary, {
-        getResetKey: () => match.value?.abortController,
+        getResetKey: () => matches.value,
         errorComponent: errorComponentFn,
         onCatch:
           process.env.NODE_ENV !== 'production'

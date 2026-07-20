@@ -4,6 +4,8 @@ export {
   bindSsrResponseToRequest,
   createSsrStreamResponse,
   defineHandlerCallback,
+  disposeSsrResponse,
+  disposeSsrResponseDetached,
   isSsrResponse,
   normalizeSsrResponse,
   replaceSsrResponse,
