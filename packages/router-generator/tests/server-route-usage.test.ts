@@ -83,4 +83,56 @@ describe('resolveServerSsr', () => {
       await fs.rm(root, { recursive: true, force: true })
     }
   })
+
+  it('notifies plugins when root route SSR changes', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'tsr-root-ssr-'))
+    const routesDirectory = path.join(root, 'routes')
+    const rootRoutePath = path.join(routesDirectory, '__root.tsx')
+    await fs.mkdir(routesDirectory)
+    await fs.writeFile(
+      rootRoutePath,
+      'export const Route = createRootRoute({ ssr: true })',
+    )
+
+    const changes: Array<[unknown, unknown]> = []
+
+    try {
+      const generator = new Generator({
+        root,
+        config: getConfig(
+          {
+            disableLogging: true,
+            routesDirectory,
+            generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+            plugins: [
+              {
+                name: 'root-ssr-observer',
+                afterTransform({ node, prevNode }) {
+                  if (node._fsRouteType === '__root') {
+                    changes.push([node.staticSsr, prevNode?.staticSsr])
+                  }
+                },
+              },
+            ],
+          },
+          root,
+        ),
+      })
+
+      await generator.run()
+      await fs.writeFile(
+        rootRoutePath,
+        'export const Route = createRootRoute({ ssr: false })',
+      )
+      await generator.run({ type: 'update', path: rootRoutePath })
+      await generator.run()
+
+      expect(changes).toEqual([
+        [true, undefined],
+        [false, true],
+      ])
+    } finally {
+      await fs.rm(root, { recursive: true, force: true })
+    }
+  })
 })

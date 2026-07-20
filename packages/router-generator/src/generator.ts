@@ -1409,6 +1409,12 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       node.fullPath,
     )
 
+    if (result.status === 'stale') {
+      for (const plugin of this.plugins) {
+        plugin.afterTransform?.({ node, prevNode: result.cacheEntry?.node })
+      }
+    }
+
     // scaffold the root route
     if (!rootNodeFile.fileContent) {
       const rootTemplate = this.targetTemplate.rootRoute
