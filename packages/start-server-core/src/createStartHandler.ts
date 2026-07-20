@@ -219,6 +219,10 @@ function disposeLateResponse(result: TODO, signal: AbortSignal): void {
   }
 }
 
+function isSignalAborted(signal: AbortSignal): boolean {
+  return signal.aborted
+}
+
 /**
  * Execute a middleware chain
  */
@@ -288,8 +292,18 @@ async function executeMiddleware(
     return response
   }
 
-  const next = async (nextCtx?: TODO): Promise<TODO> => {
-    signal.throwIfAborted()
+  let nextPromise: Promise<TODO> | undefined
+
+  function next(nextCtx?: TODO): Promise<TODO> {
+    const result = runNext(nextCtx)
+    nextPromise = result
+    return result
+  }
+
+  async function runNext(nextCtx?: TODO): Promise<TODO> {
+    if (signal.aborted) {
+      throw signal.reason
+    }
 
     // Merge context if provided using safeObjectMerge for prototype pollution prevention
     if (nextCtx) {
@@ -312,13 +326,25 @@ async function executeMiddleware(
 
     let result: TODO
     try {
-      result = await waitForRequest(
-        middleware({ ...ctx, next }),
-        signal,
-        (late) => disposeLateResponse(late, signal),
-      )
+      const pending = middleware({ ...ctx, next })
+      // A directly returned next() promise already propagates request aborts.
+      if (pending === nextPromise) {
+        nextPromise = undefined
+        result = await pending
+        if (isSignalAborted(signal)) {
+          disposeLateResponse(result, signal)
+          throw signal.reason
+        }
+      } else {
+        result = await waitForRequest(pending, signal, (late) =>
+          disposeLateResponse(late, signal),
+        )
+      }
     } catch (err) {
-      if (!signal.aborted && isSpecialResponse(err)) {
+      if (isSignalAborted(signal)) {
+        throw signal.reason
+      }
+      if (isSpecialResponse(err)) {
         setResponse(err)
         return ctx
       }
@@ -339,11 +365,13 @@ async function executeMiddleware(
   }
 
   try {
-    await next()
+    await runNext()
     const response = await waitForRequest(getFinalResponse(), signal, (late) =>
       disposeLateResponse(late, signal),
     )
-    signal.throwIfAborted()
+    if (signal.aborted) {
+      throw signal.reason
+    }
     return { ctx, response }
   } catch (err) {
     const disposal = disposeStreamResponse(signal.aborted ? signal.reason : err)
