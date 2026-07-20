@@ -60,6 +60,7 @@ describe('resolveServerSsr', () => {
             disableLogging: true,
             routesDirectory,
             generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+            tmpDir: path.join(root, '.tanstack', 'tmp'),
           },
           root,
         ),
@@ -104,6 +105,7 @@ describe('resolveServerSsr', () => {
             disableLogging: true,
             routesDirectory,
             generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+            tmpDir: path.join(root, '.tanstack', 'tmp'),
             plugins: [
               {
                 name: 'root-ssr-observer',

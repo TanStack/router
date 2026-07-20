@@ -134,6 +134,7 @@ describe('pruneServerRoutePieces', () => {
             disableLogging: true,
             routesDirectory,
             generatedRouteTree: path.join(root, 'routeTree.gen.ts'),
+            tmpDir: path.join(root, '.tanstack', 'tmp'),
             routeTreeFileFooter: ['const serverFooter = true'],
           },
           root,
