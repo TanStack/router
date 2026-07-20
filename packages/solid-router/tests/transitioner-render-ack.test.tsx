@@ -312,7 +312,10 @@ test('same-location invalidation resolves after its refreshed DOM commits', asyn
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    loader: () => ++generation,
+    loader: {
+      staleReloadMode: 'blocking',
+      handler: () => ++generation,
+    },
     component: () => <div>Generation {indexRoute.useLoaderData()()}</div>,
   })
   const router = createRouter({

@@ -1,9 +1,16 @@
-import { invariant } from './invariant'
-import { isNotFound } from './not-found'
+import {
+  cacheLoaderMatch,
+  getRoute,
+  laneInputs,
+  navigateFrom,
+  projectLane,
+  transferMatchResources,
+  waitFor,
+} from './load-client'
 import { loadRouteChunk } from './route-chunks'
 import { hydrateSsrMatchId } from './ssr/ssr-match-id'
+import { deepEqual } from './utils'
 import type { AnyRouteMatch } from './Matches'
-import type { AnyRoute } from './route'
 import type { AnyRouter } from './router'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { AnySerializationAdapter } from './ssr/serializer/transformer'
@@ -17,40 +24,31 @@ declare global {
 }
 
 export async function hydrate(router: AnyRouter): Promise<void> {
-  if (!window.$_TSR) {
-    if (process.env.NODE_ENV !== 'production') {
-      throw new Error(
-        'Invariant failed: Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
-      )
-    }
-    invariant()
+  if (process.env.NODE_ENV !== 'production' && !window.$_TSR) {
+    throw new Error(
+      'Invariant failed: Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
+    )
   }
+  const tsr = window.$_TSR!
 
   const adapters = router.options.serializationAdapters as
     | Array<AnySerializationAdapter>
     | undefined
   if (adapters?.length) {
-    window.$_TSR.t = new Map(
+    tsr.t = new Map(
       adapters.map((adapter) => [adapter.key, adapter.fromSerializable]),
     )
-    window.$_TSR.buffer.forEach((script) => script())
+    tsr.buffer.forEach((script) => script())
   }
-  window.$_TSR.initialized = true
+  tsr.initialized = true
 
-  const dehydratedRouter = window.$_TSR.router
-  if (!dehydratedRouter) {
-    if (process.env.NODE_ENV !== 'production') {
-      throw new Error(
-        'Invariant failed: Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
-      )
-    }
-    invariant()
+  const dehydratedRouter = tsr.router
+  if (process.env.NODE_ENV !== 'production' && !dehydratedRouter) {
+    throw new Error(
+      'Invariant failed: Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
+    )
   }
-
-  for (const match of dehydratedRouter.matches) {
-    match.i = hydrateSsrMatchId(match.i)
-  }
-  router.ssr = { manifest: dehydratedRouter.manifest }
+  router.ssr = { manifest: dehydratedRouter!.manifest }
   const nonce = (
     document.querySelector('meta[property="csp-nonce"]') as
       | HTMLMetaElement
@@ -58,183 +56,307 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   )?.content
   router.options.ssr = { nonce }
 
-  const owner = router._tx
-  const isCurrent = () => router._tx === owner
+  const dehydratedMatches = dehydratedRouter!.matches
 
-  await router.options.hydrate?.(dehydratedRouter.dehydratedData)
+  const controller = new AbortController()
+  const previousPreflight = router._preflight
+  router._preflight = controller
+  previousPreflight?.abort()
+  const retire = (cause?: unknown) => {
+    if (router._preflight === controller) {
+      router._preflight = undefined
+    }
+    controller.abort(cause)
+    return false
+  }
+  const isCurrent = () =>
+    (!router._tx &&
+      router._preflight === controller &&
+      !controller.signal.aborted) ||
+    retire()
+
+  let location!: AnyRouter['latestLocation']
+  let candidates!: Array<AnyRouteMatch>
+  let handoffInputs!: ReturnType<typeof laneInputs>
+  let routeTree!: AnyRouter['routeTree']
+  try {
+    await waitFor(
+      router.options.hydrate?.(dehydratedRouter!.dehydratedData),
+      controller.signal,
+    )
+    if (!isCurrent()) {
+      return
+    }
+    router.updateLatestLocation()
+    location = router.latestLocation
+    router.stores.location.set(location)
+    handoffInputs = laneInputs(router, location)
+    routeTree = router.routeTree
+    candidates = router.matchRoutes(location, {
+      _controller: controller,
+    })
+  } catch (cause) {
+    retire(cause)
+    if (cause !== controller.signal) {
+      throw cause
+    }
+  }
   if (!isCurrent()) {
     return
   }
-  router.updateLatestLocation()
-  const location = router.latestLocation
-  router.stores.location.set(location)
-
-  const candidates = router.matchRoutes(location)
   const committed: Array<AnyRouteMatch> = []
-  let index = 0
-  let needsClientLoad: true | undefined
+  let pendingBoundary: number | undefined
+  const retryFrom = (index: number) => {
+    const removed = committed.splice(index)
+    for (const match of removed) {
+      if (
+        getRoute(router, match).options.loader &&
+        (match.status === 'success' ||
+          (!match.invalid && 'loaderData' in match))
+      ) {
+        cacheLoaderMatch(
+          router,
+          {
+            ...match,
+            status: 'success',
+            error: undefined,
+            preload: true,
+          },
+          router._cache.get(match.id),
+        )
+      }
+    }
+    transferMatchResources(router, removed)
+  }
 
-  for (const candidate of candidates) {
-    const dehydrated = dehydratedRouter.matches[index]
-    if (!dehydrated || dehydrated.i !== candidate.id) {
-      needsClientLoad = true
+  // A longer server lane is valid only when the local match already caps the
+  // branch at a global not-found boundary. Otherwise no transported work is
+  // safe to attach to the shorter client lane.
+  const shared =
+    dehydratedMatches.length > candidates.length
+      ? candidates.findIndex((match) => match._notFound) + 1
+      : Math.min(dehydratedMatches.length, candidates.length)
+  let isTerminal = false
+  for (let index = 0; index < shared; index++) {
+    const candidate = candidates[index]!
+    const dehydrated = dehydratedMatches[index]!
+    if (
+      typeof dehydrated.i !== 'string' ||
+      hydrateSsrMatchId(dehydrated.i) !== candidate.id
+    ) {
+      pendingBoundary ??= index
       break
     }
-    index++
-    candidate.__beforeLoadContext = dehydrated.b
-    candidate.loaderData = dehydrated.l
+    if ('l' in dehydrated) {
+      candidate.loaderData = dehydrated.l
+    }
     candidate.status = dehydrated.s
     candidate.ssr = dehydrated.ssr
-    ;(router.routesById as Record<string, AnyRoute>)[
-      candidate.routeId
-    ]!.options.ssr = candidate.ssr
+    getRoute(router, candidate).options.ssr = candidate.ssr
     candidate.updatedAt = dehydrated.u
     candidate.error = dehydrated.e
-    candidate.globalNotFound = dehydrated.g ?? candidate.globalNotFound
-
-    if (candidate.ssr === false || candidate.status === 'pending') {
-      needsClientLoad = true
+    candidate._notFound ||= dehydrated.g
+    const terminal =
+      candidate.status === 'error' ||
+      candidate.status === 'notFound' ||
+      candidate._notFound
+    if (terminal) {
+      isTerminal = true
+      committed.push(candidate)
+      if (candidate.ssr === false || candidate.ssr === 'data-only') {
+        pendingBoundary ??= index
+      }
+      break
+    }
+    if (candidate.status === 'pending') {
+      pendingBoundary ??= index
       break
     }
 
     committed.push(candidate)
-    if (
-      candidate.status === 'error' ||
-      candidate.status === 'notFound' ||
-      candidate.globalNotFound
-    ) {
-      break
+    if (candidate.ssr === 'data-only') {
+      pendingBoundary ??= index
     }
   }
 
-  try {
-    await Promise.all(
-      committed.map(async (match) => {
-        const route = (router.routesById as Record<string, AnyRoute>)[
-          match.routeId
-        ]!
-        if (match.globalNotFound) {
-          await Promise.all([
-            loadRouteChunk(route),
-            loadRouteChunk(route, 'notFoundComponent'),
-          ])
-        } else {
-          await loadRouteChunk(
-            route,
-            match.status === 'error'
-              ? 'errorComponent'
-              : match.status === 'notFound'
-                ? 'notFoundComponent'
-                : undefined,
-          )
-        }
-      }),
-    )
-  } catch (cause) {
-    if (!isCurrent()) {
-      return
+  if (
+    !isTerminal &&
+    committed.length === shared &&
+    shared < candidates.length
+  ) {
+    pendingBoundary = shared
+  }
+
+  // Hooks observe structural membership. Execution remains limited to
+  // `committed`, the accepted server prefix.
+  const chunks = committed.map(async (match) => {
+    try {
+      const route = getRoute(router, match)
+      if (match._notFound) {
+        await Promise.all([
+          loadRouteChunk(route),
+          loadRouteChunk(route, 'notFoundComponent'),
+        ])
+      } else {
+        await loadRouteChunk(
+          route,
+          match.status === 'error'
+            ? 'errorComponent'
+            : match.status === 'notFound'
+              ? 'notFoundComponent'
+              : undefined,
+        )
+      }
+      return true
+    } catch {
+      return false
     }
-    throw cause
+  })
+  let chunkFailure = 0
+  try {
+    while (
+      chunkFailure < chunks.length &&
+      (await waitFor(chunks[chunkFailure]!, controller.signal))
+    ) {
+      chunkFailure++
+    }
+  } catch {
+    isCurrent()
+    return
   }
   if (!isCurrent()) {
     return
   }
+  if (chunkFailure < committed.length) {
+    retryFrom(chunkFailure)
+  }
 
-  // Install lazy options first, then build every context before any head hook
-  // receives the lane through `matches`.
-  for (const match of committed) {
-    const route = (router.routesById as Record<string, AnyRoute>)[
-      match.routeId
-    ]!
+  // The first pending match is already visible, so prepare its route context
+  // without granting its beforeLoad or loader any hydration authority.
+  const contextEnd =
+    pendingBoundary === committed.length
+      ? Math.min(committed.length + 1, candidates.length)
+      : committed.length
+  for (let index = 0; index < contextEnd; index++) {
+    const match = candidates[index]!
+    const route = getRoute(router, match)
     const parentContext =
-      committed[match.index - 1]?.context ?? router.options.context
+      candidates[index - 1]?.context ?? router.options.context ?? {}
+    let routeContext
     if (route.options.context) {
-      match.__routeContext =
-        (await route.options.context({
-          deps: match.loaderDeps,
-          params: match.params,
-          context: parentContext ?? {},
-          location,
-          navigate: (opts: any) =>
-            router.navigate({ ...opts, _fromLocation: location }),
-          buildLocation: router.buildLocation,
-          cause: match.cause,
-          abortController: match.abortController,
-          preload: false,
-          matches: committed,
-          routeId: route.id,
-        })) ?? undefined
+      try {
+        routeContext = match._ctx =
+          route.options.context({
+            deps: match.loaderDeps,
+            params: match.params,
+            context: parentContext,
+            location,
+            navigate: navigateFrom(router, location),
+            buildLocation: router.buildLocation,
+            cause: match.cause,
+            abortController: controller,
+            preload: false,
+            matches: candidates,
+            routeId: route.id,
+          }) || {}
+      } catch {
+        if (!isCurrent()) {
+          return
+        }
+        if (
+          match.status !== 'error' &&
+          match.status !== 'notFound' &&
+          !match._notFound
+        ) {
+          retryFrom(index)
+          break
+        }
+      }
       if (!isCurrent()) {
         return
       }
     }
     match.context = {
       ...parentContext,
-      ...match.__routeContext,
-      ...match.__beforeLoadContext,
+      ...routeContext,
+      ...(committed[index] && dehydratedMatches[index]!.b),
     }
   }
 
-  for (const match of committed) {
-    try {
-      const route = (router.routesById as Record<string, AnyRoute>)[
-        match.routeId
-      ]!
-      const context = {
-        ssr: router.options.ssr,
-        matches: committed,
-        match,
-        params: match.params,
-        loaderData: match.loaderData,
-      }
-      const head = await route.options.head?.(context)
-      if (!isCurrent()) {
-        return
-      }
-      const scripts = await route.options.scripts?.(context)
-      if (!isCurrent()) {
-        return
-      }
-      match.meta = head?.meta
-      match.links = head?.links
-      match.headScripts = head?.scripts
-      match.styles = head?.styles
-      match.scripts = scripts
-    } catch (cause) {
-      if (!isCurrent()) {
-        return
-      }
-      if (isNotFound(cause)) {
-        match.error = { isNotFound: true }
-        console.error(
-          `NotFound error during hydration for routeId: ${match.routeId}`,
-          cause,
-        )
-      } else {
-        match.error = cause
-        console.error(
-          `Error during hydration for route ${match.routeId}:`,
-          cause,
-        )
-        throw cause
-      }
+  await projectLane(
+    router,
+    [location, candidates] as any,
+    controller.signal,
+    0,
+    committed.length,
+  )
+  if (!isCurrent()) {
+    return
+  }
+  const needsClientLoad =
+    pendingBoundary !== undefined || committed.length < shared
+  const committedMatches =
+    isTerminal && committed.length === shared ? candidates : committed
+  let presented = needsClientLoad ? candidates : committedMatches
+  if (needsClientLoad && pendingBoundary !== undefined) {
+    presented = presented.slice()
+    presented[pendingBoundary] = {
+      ...presented[pendingBoundary]!,
+      status: 'pending',
+      ssr:
+        presented[pendingBoundary]!.ssr === 'data-only' ? 'data-only' : false,
     }
   }
 
-  let presented = candidates.slice(0, index)
-  for (let boundary = 0; boundary < committed.length; boundary++) {
-    if (committed[boundary]!.ssr === 'data-only') {
-      presented = presented.slice(0, boundary + 1)
-      presented[boundary] = {
-        ...presented[boundary]!,
-        status: 'pending',
+  const claim = () =>
+    needsClientLoad &&
+    !router._tx &&
+    router.latestLocation.state === location.state &&
+    router.routeTree === routeTree &&
+    deepEqual(handoffInputs, laneInputs(router, router.latestLocation)) &&
+    router._committed === committedMatches &&
+    committedMatches.length &&
+    !controller.signal.aborted
+      ? controller
+      : undefined
+  const handoff: NonNullable<AnyRouter['_handoff']> = [
+    claim,
+    (matches) => {
+      if (router._handoff !== handoff) {
+        return
       }
-      needsClientLoad = true
-      break
-    }
-  }
-
-  router._committedMatches = committed
+      const prefix = committedMatches.length
+      if (
+        !matches ||
+        !claim() ||
+        committedMatches.some((match, index) => match.id !== matches[index]?.id)
+      ) {
+        router._handoff = undefined
+        controller.abort()
+        return
+      }
+      transferMatchResources(
+        router,
+        matches.splice(
+          0,
+          prefix,
+          ...committedMatches.map((match) => ({ ...match })),
+        ),
+      )
+      for (let index = prefix; index < matches.length; index++) {
+        const match = matches[index]!
+        const hydrated = candidates[index]
+        if (hydrated?.id === match.id && hydrated._ctx) {
+          match._ctx = hydrated._ctx
+        }
+        match.abortController = controller
+      }
+      return prefix
+    },
+  ]
+  router._committed = committedMatches
+  router._handoff = handoff
+  router._preflight = undefined
   router.batch(() => {
     router.stores.setMatches(presented)
     router.stores.status.set('idle')

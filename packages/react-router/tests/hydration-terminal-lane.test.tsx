@@ -1,6 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { hydrate } from '@tanstack/router-core/ssr/client'
+import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 import {
   Outlet,
   RouterProvider,
@@ -25,7 +26,7 @@ function bootstrap(
     router: {
       manifest: undefined,
       matches: matches.map(({ match, status, ssr, data, error }) => ({
-        i: match.id,
+        i: dehydrateSsrMatchId(match.id),
         l: data,
         e: error,
         s: status,

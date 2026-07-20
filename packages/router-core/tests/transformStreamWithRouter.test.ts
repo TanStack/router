@@ -436,6 +436,38 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
 })
 
 describe('transformStreamWithRouter — cleanup side-effects', () => {
+  test.each([
+    ['fast', true],
+    ['main', false],
+  ] as const)(
+    'request abort cleans the %s transform without consuming its response body',
+    async (_path, fastPath) => {
+      const { router, cleanupCalls } = makeRouter({
+        isSerializationFinished: () => fastPath,
+        reserveStreamFastPath: () => fastPath,
+        takeBufferedHtml: () => undefined,
+      })
+      const upstream = makeManualUpstream()
+      const request = new AbortController()
+
+      const responseBody = transformStreamWithRouter(
+        router as any,
+        upstream.stream as any,
+        { signal: request.signal },
+      )
+
+      expect(responseBody.locked).toBe(false)
+
+      const reason = new Error('request-gone')
+      request.abort(reason)
+      await flush()
+
+      expect(responseBody.locked).toBe(false)
+      expect(upstream.cancelled).toEqual({ value: true, reason })
+      expect(cleanupCalls.count).toBe(1)
+    },
+  )
+
   test('downstream cancel propagates upstream and calls serverSsr.cleanup once', async () => {
     // Fast path: simpler, no scanner. Verifies cancel + cleanup contract.
     const { router, cleanupCalls } = makeRouter({

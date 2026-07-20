@@ -40,7 +40,7 @@ test.each([false, true])(
   },
 )
 
-test('client preload=false parentMatchPromise exposes a successful invalid parent', async () => {
+test('client preload=false parentMatchPromise exposes the skipped pending parent', async () => {
   const seen: Array<unknown> = []
   const parentLoader = vi.fn()
   const rootRoute = new BaseRootRoute({})
@@ -76,9 +76,46 @@ test('client preload=false parentMatchPromise exposes a successful invalid paren
   expect(seen).toHaveLength(1)
   expect(seen[0]).toMatchObject({
     routeId: parentRoute.id,
-    status: 'success',
-    invalid: true,
+    status: 'pending',
+    invalid: false,
     preload: false,
     isFetching: false,
+  })
+})
+
+test('server parentMatchPromise exposes the error selected by onError', async () => {
+  const original = new Error('original')
+  const selected = new Error('selected')
+  let seen: unknown
+  const rootRoute = new BaseRootRoute({})
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    loader: () => {
+      throw original
+    },
+    onError: () => {
+      throw selected
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loader: async ({ parentMatchPromise }) => {
+      seen = await parentMatchPromise
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+    isServer: true,
+  })
+
+  await router.load()
+
+  expect(seen).toMatchObject({
+    routeId: parentRoute.id,
+    status: 'error',
+    error: selected,
   })
 })

@@ -6,6 +6,14 @@ type RouteComponentType =
   | 'errorComponent'
   | 'notFoundComponent'
 
+export function replaceRouteChunk(
+  route: AnyRoute,
+  lazyFn: AnyRoute['lazyFn'],
+): void {
+  route.lazyFn = lazyFn ?? route.lazyFn
+  route._lazy = undefined
+}
+
 function preloadComponent(
   route: AnyRoute,
   type: RouteComponentType,
@@ -24,33 +32,34 @@ function loadComponents(route: AnyRoute): Promise<void> | undefined {
 
 export function loadRouteChunk(
   route: AnyRoute,
-  componentType?: 'errorComponent' | 'notFoundComponent',
+  // `false` waits only for lazy route options, before a boundary is selected.
+  componentType?: 'errorComponent' | 'notFoundComponent' | false,
 ): Promise<void> | undefined {
   const afterLazy = () =>
-    componentType
-      ? preloadComponent(route, componentType)
-      : loadComponents(route)
-
+    componentType === false
+      ? undefined
+      : componentType
+        ? preloadComponent(route, componentType)
+        : loadComponents(route)
   const current = route._lazy
   if (current) {
     return current === true ? afterLazy() : current.then(afterLazy)
   }
   if (!route.lazyFn) {
-    route._lazy = true
     return afterLazy()
   }
 
   const promise = route.lazyFn().then(
     (lazyRoute) => {
       // HMR clears the owner before an obsolete import can settle.
-      if (route._lazy === promise) {
+      if (process.env.NODE_ENV === 'production' || route._lazy === promise) {
         const { id: _id, ...options } = lazyRoute.options
         Object.assign(route.options, options)
         route._lazy = true
       }
     },
     (error) => {
-      if (route._lazy === promise) {
+      if (process.env.NODE_ENV === 'production' || route._lazy === promise) {
         route._lazy = undefined
       }
       throw error
@@ -58,11 +67,4 @@ export function loadRouteChunk(
   )
   route._lazy = promise
   return promise.then(afterLazy)
-}
-
-export function routeNeedsPreload(route: AnyRoute): boolean {
-  return !!(
-    (route.options.component as any)?.preload ||
-    (route.options.pendingComponent as any)?.preload
-  )
 }

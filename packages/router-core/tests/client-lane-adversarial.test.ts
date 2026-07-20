@@ -28,6 +28,59 @@ function abortAwareGate(signal: AbortSignal): Promise<void> {
 }
 
 describe('adversarial client lane ownership', () => {
+  test('a navigation started by a pre-load listener supersedes the emitting load before it can continue', async () => {
+    const firstBeforeLoad = vi.fn()
+    const secondBeforeLoad = vi.fn()
+    const firstLoader = vi.fn(() => 'first data')
+    const secondLoader = vi.fn(() => 'second data')
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const firstRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/first',
+      beforeLoad: firstBeforeLoad,
+      loader: firstLoader,
+    })
+    const secondRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/second',
+      beforeLoad: secondBeforeLoad,
+      loader: secondLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, firstRoute, secondRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    const beforeLoadLocations: Array<string> = []
+    router.subscribe('onBeforeLoad', (event) => {
+      beforeLoadLocations.push(event.toLocation.pathname)
+    })
+    router.subscribe('onBeforeNavigate', (event) => {
+      if (event.toLocation.pathname === '/first') {
+        void router.navigate({ to: '/second' })
+      }
+    })
+
+    await router.navigate({ to: '/first' })
+
+    expect(router.state.location.pathname).toBe('/second')
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: secondRoute.id,
+      status: 'success',
+    })
+    expect(beforeLoadLocations).toEqual(['/second'])
+    expect(firstBeforeLoad).not.toHaveBeenCalled()
+    expect(firstLoader).not.toHaveBeenCalled()
+    expect(secondBeforeLoad).toHaveBeenCalledTimes(1)
+    expect(secondLoader).toHaveBeenCalledTimes(1)
+  })
+
   test.each(['onBeforeNavigate', 'onBeforeLoad'] as const)(
     'a throwing %s listener cannot interrupt later listeners or navigation finalization',
     async (eventType) => {
@@ -120,7 +173,7 @@ describe('adversarial client lane ownership', () => {
     expect(cOnEnter).toHaveBeenCalledTimes(1)
   })
 
-  test('commits a failing parent loader without projecting its trimmed child', async () => {
+  test('keeps a hidden child matched without projecting it below a parent error', async () => {
     const parentError = new Error('parent failed')
     const childHead = vi.fn(() => ({
       meta: [{ title: 'unreachable child' }],
@@ -156,14 +209,15 @@ describe('adversarial client lane ownership', () => {
     expect(router.state.matches.map((match) => match.routeId)).toEqual([
       rootRoute.id,
       parentRoute.id,
+      childRoute.id,
     ])
-    expect(router.state.matches.at(-1)).toMatchObject({
+    expect(router.state.matches[1]).toMatchObject({
       routeId: parentRoute.id,
       status: 'error',
       error: parentError,
     })
     expect(childHead).not.toHaveBeenCalled()
-    expect(childOnEnter).not.toHaveBeenCalled()
+    expect(childOnEnter).toHaveBeenCalledTimes(1)
   })
 
   test('a redirect aborts the discarded loader generation', async () => {
@@ -202,10 +256,9 @@ describe('adversarial client lane ownership', () => {
     expect(redirectSignal?.aborted).toBe(true)
   })
 
-  test('trimming a successful descendant aborts its discarded loader generation', async () => {
+  test('keeps successful descendant data behind an ancestor boundary', async () => {
     const parentError = new Error('parent failed')
-    let childSignal: AbortSignal | undefined
-    let deferredRequestAborted = false
+    const childData = { value: 'child data' }
 
     const rootRoute = new BaseRootRoute({})
     const parentRoute = new BaseRoute({
@@ -219,20 +272,7 @@ describe('adversarial client lane ownership', () => {
     const childRoute = new BaseRoute({
       getParentRoute: () => parentRoute,
       path: '/child',
-      loader: ({ abortController }) => {
-        childSignal = abortController.signal
-        const deferredRequest = new Promise<'aborted'>((resolve) => {
-          abortController.signal.addEventListener(
-            'abort',
-            () => {
-              deferredRequestAborted = true
-              resolve('aborted')
-            },
-            { once: true },
-          )
-        })
-        return { deferredRequest }
-      },
+      loader: () => childData,
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
@@ -241,18 +281,21 @@ describe('adversarial client lane ownership', () => {
 
     await router.load()
 
-    expect(router.state.matches.at(-1)).toMatchObject({
+    expect(router.state.matches[1]).toMatchObject({
       routeId: parentRoute.id,
       status: 'error',
       error: parentError,
     })
-    expect(childSignal?.aborted).toBe(true)
-    expect(deferredRequestAborted).toBe(true)
+    expect(router.state.matches[2]).toMatchObject({
+      routeId: childRoute.id,
+      status: 'success',
+      loaderData: childData,
+    })
   })
 
-  test('preload trimming aborts a successful descendant owned only by the discarded lane', async () => {
+  test('a terminal preload retains reusable descendant loader data', async () => {
     const parentError = new Error('preload parent failed')
-    let childSignal: AbortSignal | undefined
+    const childLoader = vi.fn(() => 'child data')
 
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
@@ -270,18 +313,7 @@ describe('adversarial client lane ownership', () => {
     const childRoute = new BaseRoute({
       getParentRoute: () => parentRoute,
       path: '/child',
-      loader: ({ abortController }) => {
-        childSignal = abortController.signal
-        return {
-          deferredRequest: new Promise<'aborted'>((resolve) => {
-            abortController.signal.addEventListener(
-              'abort',
-              () => resolve('aborted'),
-              { once: true },
-            )
-          }),
-        }
-      },
+      loader: childLoader,
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([
@@ -293,8 +325,14 @@ describe('adversarial client lane ownership', () => {
 
     await router.load()
     await router.preloadRoute({ to: '/parent/child' })
+    await router.navigate({ to: '/parent/child' })
 
-    expect(childSignal?.aborted).toBe(true)
+    expect(childLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches[2]).toMatchObject({
+      routeId: childRoute.id,
+      status: 'success',
+      loaderData: 'child data',
+    })
   })
 
   test('navigation started by route context cannot be overwritten by the stale matching pass', async () => {
@@ -350,7 +388,7 @@ describe('adversarial client lane ownership', () => {
     expect(retainedLoaderSignal?.aborted).toBe(false)
   })
 
-  test('a context failure aborts pass controllers from the partial preflight lane', async () => {
+  test('a context-failure lane stays live until its terminal generation is replaced', async () => {
     const contextError = new Error('context failed after starting work')
 
     let contextSignal: AbortSignal | undefined
@@ -384,12 +422,14 @@ describe('adversarial client lane ownership', () => {
     })
 
     await router.load()
-    expect(contextSignal?.aborted).toBe(true)
-    expect(contextWorkAborted).toBe(true)
+    expect(contextSignal?.aborted).toBe(false)
+    expect(contextWorkAborted).toBe(false)
 
     await router.navigate({ to: '/safe' })
     expect(router.state.location.pathname).toBe('/safe')
     expect(safeLoader).toHaveBeenCalledTimes(1)
+    expect(contextSignal?.aborted).toBe(true)
+    expect(contextWorkAborted).toBe(true)
   })
 
   test.each(
@@ -436,7 +476,7 @@ describe('adversarial client lane ownership', () => {
       }
 
       const match = router.state.matches.at(-1)
-      expect(matchSignal?.aborted).toBe(false)
+      expect(matchSignal?.aborted).toBe(isServer)
       expect(match).toMatchObject({
         routeId: brokenRoute.id,
         status: 'error',
@@ -445,7 +485,7 @@ describe('adversarial client lane ownership', () => {
     },
   )
 
-  test('a failed preflight cannot abort and strand the pending lane it attempted to supersede', async () => {
+  test('a planning failure becomes the successor lane instead of stranding navigation', async () => {
     const preflightError = new Error('next loaderDeps failed')
     const pendingGate = createControlledPromise<void>()
     const brokenPreflightReached = createControlledPromise<void>()
@@ -492,15 +532,16 @@ describe('adversarial client lane ownership', () => {
     const brokenNavigation = router.navigate({ to: '/broken' })
     await brokenPreflightReached
 
-    expect(pendingSignal?.aborted).toBe(false)
+    await vi.waitFor(() => expect(pendingSignal?.aborted).toBe(true))
 
     pendingGate.resolve()
     await Promise.all([pendingNavigation, brokenNavigation])
 
     expect(router.state.matches.at(-1)).toMatchObject({
-      routeId: pendingRoute.id,
-      status: 'success',
+      routeId: brokenRoute.id,
+      status: 'error',
+      error: preflightError,
     })
-    expect(router.state.location.pathname).toBe('/pending')
+    expect(router.state.location.pathname).toBe('/broken')
   })
 })

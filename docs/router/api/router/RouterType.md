@@ -35,16 +35,6 @@ An instance of the `Router` has the following properties and methods:
 - Matches a pathname and search params against the router's route tree and returns an array of route matches.
 - If `opts.throwOnError` is `true`, any errors that occur during the matching process will be thrown (in addition to being returned in the route match's `error` property).
 
-### `.cancelMatch` method
-
-- Type: `(matchId: string) => void`
-- Cancels a route match that is currently pending by calling `match.abortController.abort()`.
-
-### `.cancelMatches` method
-
-- Type: `() => void`
-- Cancels all route matches that are currently pending by calling `match.abortController.abort()` on each one.
-
 ### `.buildLocation` method
 
 Builds a new parsed location object that can be used later to navigate to a new location.
@@ -138,23 +128,27 @@ Navigates to a new location.
 
 ### `.invalidate` method
 
-Invalidates route matches by forcing their `beforeLoad` and `load` functions to be called again.
+Invalidates selected route-match generations, reruns their loading lifecycle,
+reruns `beforeLoad`, and reloads their loaders through the normal loading
+protocol.
 
 - Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean, sync?: boolean, forcePending?: boolean }) => Promise<void>`
 - This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
-- if `filter` is not supplied, all matches will be invalidated
-- if `filter` is supplied, only matches for which `filter` returns `true` will be invalidated.
-- if `sync` is true, the promise returned by this function will only resolve once all loaders have finished.
-- if `forcePending` is true, the invalidated matches will be put into `'pending'` state regardless whether they are in `'error'` state or not.
+- If `filter` is not supplied, all committed and cached match generations are invalidated.
+- If `filter` is supplied, it is evaluated against committed and cached matches. Selecting one generation invalidates every committed or cached generation with the same match ID.
+- Invalidation reruns `beforeLoad`; reusable loader data is marked stale and reloads through the normal loading protocol. Route-level `context` remains reusable while the match ID is unchanged.
+- If `sync` is `true`, stale loader work is blocking and the returned promise resolves after it finishes instead of leaving a background refresh detached.
+- If `forcePending` is `true`, selected routes that need loading enter the normal pending protocol even when successful data was already available.
 - You might also want to invalidate the Router if you imperatively `reset` the router's `CatchBoundary` to trigger loaders again.
 
 ### `.clearCache` method
 
-Remove cached route matches.
+Remove cached route matches and matching active preloads.
 
 - Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean}) => void`
-- if `filter` is not supplied, all cached matches will be removed
-- if `filter` is supplied, only matches for which `filter` returns `true` will be removed.
+- If `filter` is not supplied, all cached matches and active preload lanes are removed.
+- If `filter` is supplied, matching cached matches are removed. An active preload lane is canceled when any match in that lane passes the filter.
+- Current committed and presented matches are not removed.
 
 ### `.load` method
 
@@ -170,16 +164,25 @@ Loads all of the currently matched route matches and resolves when they are all 
 
 Preloads all of the matches that match the provided `NavigateOptions`.
 
-> ⚠️⚠️⚠️ **Preloaded route matches are not stored long-term in the router state. They are only stored until the next attempted navigation action.**
+An active preload is speculative and is not published as the current match
+presentation. Successful loader data can enter the normal in-memory route cache
+and remain reusable according to `preloadStaleTime` and `preloadGcTime`.
 
-- Type: `(opts?: NavigateOptions) => Promise<RouteMatch[]>`
+Completed preload `beforeLoad` context is not cached. A later navigation reruns
+`beforeLoad` unless it adopts an identical whole-route preload that is still
+active. Adoption also requires unchanged router context, additional context,
+and user-supplied location state.
+
+- Type: `(opts: NavigateOptions) => Promise<RouteMatch[] | undefined>`
 - Properties
   - `opts`
     - Type: `NavigateOptions`
-    - Optional, defaults to the current location.
+    - Required.
     - The options that will be used to determine which route matches to preload.
 - Returns
-  - A promise that resolves with an array of all of the route matches that were preloaded.
+  - A promise that resolves with the speculative route-match lane. An ordinary error or not-found is represented by a terminal match array rather than a rejected promise.
+  - It resolves with `undefined` when cancellation or control flow does not produce a reusable lane.
+  - The method is also available on server router instances. It remains speculative and does not change the request's current location or presented matches.
 
 ### `.loadRouteChunk` method
 

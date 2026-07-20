@@ -4,7 +4,7 @@ import { useStore } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
-import { matchContext } from './matchContext'
+import { routeIdContext } from './matchContext'
 import { Match } from './Match'
 import type {
   AnyRouter,
@@ -32,51 +32,31 @@ declare module '@tanstack/router-core' {
   }
 }
 
-// Create a component that renders MatchesInner with Transitioner's setup logic inlined.
-// This is critical for proper hydration - we call useTransitionerSetup() as a composable
-// rather than rendering it as a component, which avoids Fragment/element mismatches.
-const MatchesContent = Vue.defineComponent({
-  name: 'MatchesContent',
-  setup() {
-    // IMPORTANT: We need to ensure Transitioner's setup() runs.
-    // Transitioner sets up critical functionality:
-    // - router.startTransition
-    // - History subscription via router.history.subscribe(router.load)
-    // - Watchers for router events
-    //
-    // We inline Transitioner's setup logic here. Since Transitioner returns null,
-    // we can call its setup function directly without affecting the render tree.
-    // This is done by importing and calling useTransitionerSetup.
-    useTransitionerSetup()
-
-    return () => Vue.h(MatchesInner)
-  },
-})
-
 export const Matches = Vue.defineComponent({
   name: 'Matches',
   setup() {
     const router = useRouter()
+    useTransitionerSetup()
 
     return () => {
-      const pendingElement = router?.options?.defaultPendingComponent
+      const pendingElement = router.options.defaultPendingComponent
         ? Vue.h(router.options.defaultPendingComponent)
         : null
 
       // Do not render a root Suspense during SSR or hydrating from SSR
       const inner =
-        (isServer ?? router?.isServer ?? false) ||
-        (typeof document !== 'undefined' && router?.ssr)
-          ? Vue.h(MatchesContent)
+        (isServer ?? router.isServer) ||
+        (typeof document !== 'undefined' && router.ssr)
+          ? Vue.h(MatchesInner)
           : Vue.h(
               Vue.Suspense,
               { fallback: pendingElement },
               {
-                default: () => Vue.h(MatchesContent),
+                default: () => Vue.h(MatchesInner),
               },
             )
 
-      return router?.options?.InnerWrap
+      return router.options.InnerWrap
         ? Vue.h(router.options.InnerWrap, null, { default: () => inner })
         : inner
     }
@@ -99,23 +79,13 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matchId = useStore(router.stores.matchesId, (ids) => ids[0])
-    const resetKey = Vue.computed(() =>
-      matchId.value
-        ? (router.stores.matchStores.get(matchId.value)?.get().fetchCount ?? 0)
-        : 0,
-    )
-
-    // Create a ref for the match id to provide
-    const matchIdRef = Vue.computed(() => matchId.value)
-
-    // Provide the matchId for child components using the InjectionKey
-    Vue.provide(matchContext, matchIdRef)
+    const matches = useStore(router.stores.matches)
+    const routeId = Vue.computed(() => matches.value[0]?.routeId)
 
     return () => {
-      // Generate a placeholder element if matchId.value is not present
-      const childElement = matchId.value
-        ? Vue.h(Match, { matchId: matchId.value })
+      // Generate a placeholder element if routeId.value is not present
+      const childElement = routeId.value
+        ? Vue.h(Match, { routeId: routeId.value })
         : Vue.h('div')
 
       // If disableGlobalCatchBoundary is true, don't wrap in CatchBoundary
@@ -124,7 +94,7 @@ const MatchesInner = Vue.defineComponent({
       }
 
       return Vue.h(CatchBoundary, {
-        getResetKey: () => resetKey.value,
+        getResetKey: () => matches.value,
         errorComponent: errorComponentFn,
         onCatch:
           process.env.NODE_ENV !== 'production'
@@ -156,7 +126,7 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const routerState = useStore(router.stores.matchRouteDeps, (value) => value)
+  const routerState = useStore(router.stores.loadDeps, (value) => value)
 
   return <
     const TFrom extends string = string,
@@ -253,10 +223,7 @@ export const MatchRoute = Vue.defineComponent({
   },
   setup(props, { slots }) {
     const router = useRouter()
-    const status = useStore(
-      router.stores.matchRouteDeps,
-      (value) => value.status,
-    )
+    const status = useStore(router.stores.loadDeps, (value) => value[2])
 
     return () => {
       if (!status.value) return null
@@ -310,15 +277,13 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
-  // Use matchContext with proper type
-  const contextMatchId = Vue.inject<Vue.Ref<string | undefined>>(matchContext)
-  const safeMatchId = Vue.computed(() => contextMatchId?.value || '')
+  const contextRouteId = Vue.inject(routeIdContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
-        matches.findIndex((d) => d.id === safeMatchId.value),
+        matches.findIndex((d) => d.routeId === contextRouteId),
       )
       return opts?.select ? opts.select(matches) : matches
     },
@@ -331,14 +296,12 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
-  // Use matchContext with proper type
-  const contextMatchId = Vue.inject<Vue.Ref<string | undefined>>(matchContext)
-  const safeMatchId = Vue.computed(() => contextMatchId?.value || '')
+  const contextRouteId = Vue.inject(routeIdContext)
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
-        matches.findIndex((d) => d.id === safeMatchId.value) + 1,
+        matches.findIndex((d) => d.routeId === contextRouteId) + 1,
       )
       return opts?.select ? opts.select(matches) : matches
     },

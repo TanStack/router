@@ -88,12 +88,12 @@ describe('hydrating a server-capped boundary lane', () => {
       window.$_TSR = await dehydrateToBootstrap(serverRouter)
 
       const serverMatches = serverRouter.stores.matches.get()
-      expect(serverMatches).toHaveLength(boundary === 'root' ? 1 : 2)
-      const serverBoundary = serverMatches.at(-1)!
+      expect(serverMatches).toHaveLength(3)
+      const serverBoundary = serverMatches[boundary === 'root' ? 0 : 1]!
       if (outcome === 'notFound' && boundary === 'root') {
         expect(serverBoundary).toMatchObject({
           status: 'success',
-          globalNotFound: true,
+          _notFound: true,
         })
       } else {
         expect(serverBoundary.status).toBe(outcome)

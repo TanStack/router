@@ -20,7 +20,10 @@ import { Router as ReactRouter } from '../../react-router/src/router'
 import { getHandleRouteUpdateCode } from '../src/core/hmr'
 import type { AnyRoute, GetStoreConfig } from '@tanstack/router-core'
 
-vi.mock('@tanstack/router-core/isServer', () => ({ isServer: undefined }))
+vi.mock('@tanstack/router-core/isServer', async (importOriginal) => ({
+  ...(await importOriginal()),
+  isServer: undefined,
+}))
 
 const getStoreConfig: GetStoreConfig = () => ({
   createMutableStore: createNonReactiveMutableStore,
@@ -307,7 +310,30 @@ describe('handleRouteUpdate', () => {
 
     expect((itemRoute as any)._lazy).toBeUndefined()
     expect(refreshRoute).toHaveBeenCalledTimes(1)
-    expect(refreshRoute).toHaveBeenCalledWith(itemRoute.id)
+    expect(refreshRoute).toHaveBeenCalledWith()
+  })
+
+  it('uses a fresh source lazy importer without erasing an omitted one', () => {
+    const oldImporter = vi.fn(async () => ({ options: {} }) as any)
+    const newImporter = vi.fn(async () => ({ options: {} }) as any)
+    const rootRoute = new BaseRootRoute({})
+    const itemRoute = new BaseRoute({
+      getParentRoute: () => asAnyRoute(rootRoute),
+      path: '/items/$itemId',
+    }).lazy(oldImporter)
+    const router = createTestRouter(
+      rootRoute.addChildren([asAnyRoute(itemRoute)]),
+    )
+
+    runHandleRouteUpdate(
+      router,
+      itemRoute.id,
+      new BaseRoute({} as any).lazy(newImporter),
+    )
+    expect(itemRoute.lazyFn).toBe(newImporter)
+
+    runHandleRouteUpdate(router, itemRoute.id, new BaseRoute({} as any))
+    expect(itemRoute.lazyFn).toBe(newImporter)
   })
 
   it('removes stale loader data when a hot route removes its loader', async () => {

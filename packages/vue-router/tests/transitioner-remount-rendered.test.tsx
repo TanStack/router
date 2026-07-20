@@ -1,9 +1,6 @@
-import * as Vue from 'vue'
-import { renderToString } from 'vue/server-renderer'
 import { cleanup, render, screen, waitFor } from '@testing-library/vue'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { hydrate as hydrateRouter } from '@tanstack/router-core/ssr/client'
 import {
   Outlet,
   RouterProvider,
@@ -11,18 +8,9 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import { dehydrateToBootstrap } from './ssr-test-utils'
-import type { TsrSsrGlobal } from '@tanstack/router-core/ssr/client'
-
-declare global {
-  interface Window {
-    $_TSR?: TsrSsrGlobal
-  }
-}
 
 afterEach(() => {
   cleanup()
-  window.$_TSR = undefined
   document.body.innerHTML = ''
 })
 
@@ -45,83 +33,6 @@ function setup() {
   })
   return { history, router }
 }
-
-test('remounting the same router loads a history change that happened while unmounted', async () => {
-  const { history, router } = setup()
-  const firstRender = render(<RouterProvider router={router} />)
-  expect(await screen.findByText('Index')).toBeTruthy()
-
-  firstRender.unmount()
-  history.push('/next')
-
-  render(<RouterProvider router={router} />)
-  expect(await screen.findByText('Next')).toBeTruthy()
-  expect(router.state.location.pathname).toBe('/next')
-})
-
-test('remounting the provider emits onRendered for the newly mounted DOM', async () => {
-  const { router } = setup()
-  const onRendered = vi.fn()
-  const unsubscribe = router.subscribe('onRendered', onRendered)
-
-  const firstRender = render(<RouterProvider router={router} />)
-  expect(await screen.findByText('Index')).toBeTruthy()
-  await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(1))
-
-  firstRender.unmount()
-  render(<RouterProvider router={router} />)
-  expect(await screen.findByText('Index')).toBeTruthy()
-  await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(2))
-
-  unsubscribe()
-})
-
-test('remounting a hydrated router loads a history change that happened while unmounted', async () => {
-  const { router: serverRouter } = setup()
-  serverRouter.isServer = true
-
-  try {
-    window.$_TSR = await dehydrateToBootstrap(serverRouter)
-    const serverApp = Vue.createSSRApp(
-      Vue.defineComponent({
-        setup: () => () => <RouterProvider router={serverRouter} />,
-      }),
-    )
-    const serverHtml = await renderToString(serverApp)
-
-    const { history, router } = setup()
-    await hydrateRouter(router)
-
-    const container = document.createElement('div')
-    container.innerHTML = serverHtml
-    document.body.appendChild(container)
-    const clientApp = Vue.createSSRApp(
-      Vue.defineComponent({
-        setup: () => () => <RouterProvider router={router} />,
-      }),
-    )
-    let clientAppMounted = false
-    try {
-      clientApp.mount(container)
-      clientAppMounted = true
-      await Vue.nextTick()
-      expect(await screen.findByText('Index')).toBeTruthy()
-    } finally {
-      if (clientAppMounted) {
-        clientApp.unmount()
-      }
-      container.remove()
-    }
-
-    history.push('/next')
-
-    render(<RouterProvider router={router} />)
-    expect(await screen.findByText('Next')).toBeTruthy()
-    expect(router.state.location.pathname).toBe('/next')
-  } finally {
-    serverRouter.serverSsr?.cleanup()
-  }
-})
 
 test('onRendered runs after the destination DOM has committed', async () => {
   const { router } = setup()

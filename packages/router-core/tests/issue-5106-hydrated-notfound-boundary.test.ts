@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, isNotFound } from '../src'
 import { hydrate } from '../src/ssr/client'
+import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { Manifest } from '../src/manifest'
@@ -77,20 +78,20 @@ describe('hydrated notFound boundary coverage', () => {
         // terminal prefix includes the child match.
         matches: [
           {
-            i: matches[0]!.id,
+            i: dehydrateSsrMatchId(matches[0]!.id),
             s: 'success' as const,
             ssr: true,
             u: Date.now(),
           },
           {
-            i: matches[1]!.id,
+            i: dehydrateSsrMatchId(matches[1]!.id),
             s: 'success' as const,
             l: 'posts-data',
             ssr: true,
             u: Date.now(),
           },
           {
-            i: matches[2]!.id,
+            i: dehydrateSsrMatchId(matches[2]!.id),
             s: 'notFound' as const,
             e: { isNotFound: true },
             ssr: true,
@@ -203,13 +204,13 @@ describe('hydrated notFound boundary coverage', () => {
         // The represented terminal lane is capped at the parent boundary.
         matches: [
           {
-            i: matches[0]!.id,
+            i: dehydrateSsrMatchId(matches[0]!.id),
             s: 'success' as const,
             ssr: true,
             u: Date.now(),
           },
           {
-            i: matches[1]!.id,
+            i: dehydrateSsrMatchId(matches[1]!.id),
             s: 'notFound' as const,
             l: 'posts-data',
             e: { isNotFound: true },
@@ -228,19 +229,25 @@ describe('hydrated notFound boundary coverage', () => {
 
     await hydrate(router)
 
-    // Hydration presents the complete terminal prefix and no omitted suffix.
+    // Hydration reconstructs the complete branch but executes only the
+    // represented terminal prefix.
     const stateMatches = router.state.matches
     expect(router.state.location.pathname).toBe('/posts/i-do-not-exist')
     expect(router.state.isLoading).toBe(false)
     expect(stateMatches.map((match) => match.routeId)).toEqual([
       rootRoute.id,
       postsRoute.id,
+      postRoute.id,
     ])
     expect(stateMatches[1]!.routeId).toBe(postsRoute.id)
     expect(stateMatches[1]!.status).toBe('notFound')
     expect(isNotFound(stateMatches[1]!.error)).toBe(true)
     // The boundary keeps the parent loader data supplied by the payload.
     expect(stateMatches[1]!.loaderData).toBe('posts-data')
+    expect(stateMatches[2]).toMatchObject({
+      routeId: postRoute.id,
+      status: 'pending',
+    })
 
     // Neither the omitted child nor the represented parent runs client-side.
     expect(postLoader).not.toHaveBeenCalled()

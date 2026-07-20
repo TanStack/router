@@ -79,4 +79,30 @@ describe('disableGlobalCatchBoundary option', () => {
     )
     expect(externalErrorElement).toBeInTheDocument()
   })
+
+  test('the global boundary recovers when the same match is reloaded', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    let shouldThrow = true
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => {
+        if (shouldThrow) throw new Error('Temporary error')
+        return <div>Recovered</div>
+      },
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('Temporary error')).toBeInTheDocument()
+
+    shouldThrow = false
+    await router.invalidate()
+
+    expect(await screen.findByText('Recovered')).toBeInTheDocument()
+  })
 })

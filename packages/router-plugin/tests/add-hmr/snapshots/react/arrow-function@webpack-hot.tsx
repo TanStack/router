@@ -56,11 +56,11 @@ if (import.meta.webpackHot) {
       };
       oldRoute.options = nextOptions;
       oldRoute.update(nextOptions);
-      oldRoute._lazy = undefined;
+      router._replaceRouteChunk(oldRoute, newRoute.lazyFn);
       router.setRoutes(router.buildRouteTree());
       syncHotRouteExport(oldRoute);
       router.resolvePathCache.clear();
-      void router._refreshRoute?.(oldRoute.id);
+      void router._refreshRoute?.();
       function syncHotRouteExport(liveRoute) {
         newRoute.options = liveRoute.options;
         newRoute.parentRoute = liveRoute.parentRoute;

@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { isModuleNotFoundError } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { reactUse } from './utils'
 import type { AsyncRouteComponent } from './route'
 
@@ -24,7 +25,6 @@ export function lazyRouteComponent<
   let loadPromise: Promise<any> | undefined
   let comp: T[TKey] | T['default']
   let error: any
-  let reload: boolean
 
   const load = () => {
     if (!loadPromise) {
@@ -40,28 +40,6 @@ export function lazyRouteComponent<
           // there's nothing we want to do about module not found during preload.
           // Record the error, the rest is handled during the render path.
           error = err
-          // If the load fails due to module not found, it may mean a new version of
-          // the build was deployed and the user's browser is still using an old version.
-          // If this happens, the old version in the user's browser would have an outdated
-          // URL to the lazy module.
-          // In that case, we want to attempt one window refresh to get the latest.
-          if (isModuleNotFoundError(error)) {
-            if (
-              error instanceof Error &&
-              typeof window !== 'undefined' &&
-              typeof sessionStorage !== 'undefined'
-            ) {
-              // Again, we want to reload one time on module not found error and not enter
-              // a reload loop if there is some other issue besides an old deploy.
-              // That's why we store our reload attempt in sessionStorage.
-              // Use error.message as key because it contains the module path that failed.
-              const storageKey = `tanstack_router_reload:${error.message}`
-              if (!sessionStorage.getItem(storageKey)) {
-                sessionStorage.setItem(storageKey, '1')
-                reload = true
-              }
-            }
-          }
         })
     }
 
@@ -69,15 +47,23 @@ export function lazyRouteComponent<
   }
 
   const lazyComp = function Lazy(props: any) {
-    // Now that we're out of preload and into actual render path,
-    if (reload) {
-      // If it was a module loading error,
-      // throw eternal suspense while we wait for window to reload
-      window.location.reload()
-      throw new Promise(() => {})
-    }
     if (error) {
-      // Otherwise, just throw the error
+      // A missing module can mean that a newer deployment replaced the URL.
+      // Reload only for the error that is still current at render time, so a
+      // successful retry cannot leave a stale reload request armed.
+      if (
+        isModuleNotFoundError(error) &&
+        !(isServer ?? typeof window === 'undefined') &&
+        typeof sessionStorage !== 'undefined'
+      ) {
+        const storageKey = `tanstack_router_reload:${error.message}`
+        if (!sessionStorage.getItem(storageKey)) {
+          sessionStorage.setItem(storageKey, '1')
+          window.location.reload()
+          // Suspend forever while the document reloads.
+          throw new Promise(() => {})
+        }
+      }
       throw error
     }
 

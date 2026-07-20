@@ -3,18 +3,32 @@ import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
-test.each([false, true])(
-  'a synchronously thrown loader Promise has the same meaning with isServer=%s',
-  async (isServer) => {
+test.each([
+  ['beforeLoad', false],
+  ['beforeLoad', true],
+  ['loader', false],
+  ['loader', true],
+] as const)(
+  'a synchronously thrown %s Promise has the same meaning with isServer=%s',
+  async (hook, isServer) => {
     const thrown = Promise.resolve('not loader data')
     const onError = vi.fn()
     const rootRoute = new BaseRootRoute({})
     const targetRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/target',
-      loader: () => {
-        throw thrown
-      },
+      beforeLoad:
+        hook === 'beforeLoad'
+          ? () => {
+              throw thrown
+            }
+          : undefined,
+      loader:
+        hook === 'loader'
+          ? () => {
+              throw thrown
+            }
+          : undefined,
       onError,
       errorComponent: () => null,
     })
@@ -31,11 +45,13 @@ test.each([false, true])(
       await router.load()
     }
 
+    const error = router.state.matches.at(-1)?.error
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: targetRoute.id,
       status: 'error',
-      error: thrown,
     })
-    expect(onError).toHaveBeenCalledWith(thrown)
+    expect(error).toBeInstanceOf(Error)
+    expect((error as Error).cause).toBe(thrown)
+    expect(onError).toHaveBeenCalledWith(error)
   },
 )

@@ -167,7 +167,7 @@ export const renderRouterToStream = async ({
   const responseStream = transformReadableStreamWithRouter(
     router,
     readable as unknown as ReadableStream,
-    { onAbort: abortSolidPipe },
+    { signal: request.signal, onAbort: abortSolidPipe },
   )
   return createSsrStreamResponse(
     router,

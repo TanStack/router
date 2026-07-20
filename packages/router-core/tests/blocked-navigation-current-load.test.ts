@@ -5,7 +5,7 @@ import { createTestRouter } from './routerTestUtils'
 
 /**
  * A history blocker can discard a navigation commit AFTER
- * buildAndCommitLocation set router.pendingBuiltLocation (it is cleared a
+ * buildAndCommitLocation set router._pendingLocation (it is cleared a
  * microtask later). A continuation of the still-current in-flight load that
  * resumes inside that window must not treat the merely-built location as
  * ownership loss: a blocked commit never starts a replacement load, so
@@ -48,12 +48,12 @@ describe('blocked navigation does not cancel the current load', () => {
       const navigation = router.navigate({ to: '/slow' })
 
       // Discard every later navigation commit. The blocker is async, so the
-      // discarded commit still sets pendingBuiltLocation for one microtask.
+      // discarded commit still sets _pendingLocation for one microtask.
       unblock = router.history.block({ blockerFn: async () => true })
 
       // Same tick: settle the loader, then issue a navigation the blocker
       // discards. The loader continuation resumes inside the window where
-      // pendingBuiltLocation still points at /other.
+      // _pendingLocation still points at /other.
       loaderGate.resolve('slow data')
       const blockedNavigation = router.navigate({ to: '/other' })
 

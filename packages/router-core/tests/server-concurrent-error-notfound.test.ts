@@ -18,7 +18,7 @@ const concurrentModes = [
 
 describe('concurrent route failure ordering', () => {
   test.each(concurrentModes)(
-    'commits the first route-order loader failure and aborts its descendants (%s, isServer=%s)',
+    'commits the first loader failure across the full matched branch (%s, isServer=%s)',
     async (settlementOrder, isServer) => {
       const parentError = new Error('parent loader failed')
       const parentGate = createControlledPromise<void>()
@@ -28,15 +28,11 @@ describe('concurrent route failure ordering', () => {
       const parentSettled = createControlledPromise<void>()
       const childSettled = createControlledPromise<void>()
       const settlements: Array<string> = []
-      let parentSignal: AbortSignal | undefined
-      let childSignal: AbortSignal | undefined
-
       const rootRoute = new BaseRootRoute({})
       const parentRoute = new BaseRoute({
         getParentRoute: () => rootRoute,
         path: '/parent',
-        loader: async ({ abortController }) => {
-          parentSignal = abortController.signal
+        loader: async () => {
           parentStarted.resolve()
           await parentGate
           settlements.push('parent')
@@ -48,8 +44,7 @@ describe('concurrent route failure ordering', () => {
       const childRoute = new BaseRoute({
         getParentRoute: () => parentRoute,
         path: '/child',
-        loader: async ({ abortController }) => {
-          childSignal = abortController.signal
+        loader: async () => {
           childStarted.resolve()
           await childGate
           settlements.push('child')
@@ -83,8 +78,9 @@ describe('concurrent route failure ordering', () => {
       }
       const response = await responsePromise
 
+      const childWon = settlementOrder === 'child-first'
       if (isServer) {
-        expect(response?.status).toBe(500)
+        expect(response?.status).toBe(childWon ? 404 : 500)
       }
       expect(settlements).toEqual(
         settlementOrder === 'parent-first'
@@ -94,18 +90,18 @@ describe('concurrent route failure ordering', () => {
       expect(router.state.matches.map((match) => match.routeId)).toEqual([
         rootRoute.id,
         parentRoute.id,
+        childRoute.id,
       ])
-      expect(router.state.matches[1]).toMatchObject({
-        status: 'error',
-        error: parentError,
-      })
-      expect(parentSignal?.aborted).toBe(false)
-      expect(childSignal?.aborted).toBe(true)
+      expect(router.state.matches[childWon ? 2 : 1]).toMatchObject(
+        childWon
+          ? { status: 'notFound' }
+          : { status: 'error', error: parentError },
+      )
     },
   )
 
   test.each(concurrentModes)(
-    'does not replace an earlier route-order loader notFound with a later error (%s, isServer=%s)',
+    'does not replace the first loader failure with a later one (%s, isServer=%s)',
     async (settlementOrder, isServer) => {
       const parentGate = createControlledPromise<void>()
       const childGate = createControlledPromise<void>()
@@ -164,8 +160,9 @@ describe('concurrent route failure ordering', () => {
       }
       const response = await responsePromise
 
+      const childWon = settlementOrder === 'child-first'
       if (isServer) {
-        expect(response?.status).toBe(404)
+        expect(response?.status).toBe(childWon ? 500 : 404)
       }
       expect(settlements).toEqual(
         settlementOrder === 'parent-first'
@@ -175,9 +172,10 @@ describe('concurrent route failure ordering', () => {
       expect(router.state.matches.map((match) => match.routeId)).toEqual([
         rootRoute.id,
         parentRoute.id,
+        childRoute.id,
       ])
-      expect(router.state.matches[1]).toMatchObject({
-        status: 'notFound',
+      expect(router.state.matches[childWon ? 2 : 1]).toMatchObject({
+        status: childWon ? 'error' : 'notFound',
       })
     },
   )
@@ -214,6 +212,86 @@ describe('concurrent route failure ordering', () => {
     expect(response.headers.get('Location')).toBe('/target')
     expect(signals).toHaveLength(2)
     expect(signals.every((signal) => signal.aborted)).toBe(true)
+  })
+
+  test('a started descendant can redirect after its ancestor fails', async () => {
+    const childStarted = createControlledPromise<void>()
+    const childRedirect = createControlledPromise<void>()
+    const parentError = new Error('parent failed')
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      loader: async () => {
+        await childStarted
+        throw parentError
+      },
+      errorComponent: () => null,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: async () => {
+        childStarted.resolve()
+        await childRedirect
+        throw redirect({ to: '/target' })
+      },
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        parentRoute.addChildren([childRoute]),
+        targetRoute,
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: true,
+    })
+
+    const responsePromise = loadServerResponse(router, '/parent/child')
+    await childStarted
+    childRedirect.resolve()
+    const response = await responsePromise
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('Location')).toBe('/target')
+  })
+
+  test('a redirect does not abort a later server generation on the same router', async () => {
+    let generation = 0
+    const rootRoute = new BaseRootRoute({})
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      loader: () => {
+        generation++
+        if (generation === 2) {
+          throw redirect({ to: '/target' })
+        }
+        return `data ${generation}`
+      },
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: true,
+    })
+
+    expect((await loadServerResponse(router, '/page')).status).toBe(200)
+    expect((await loadServerResponse(router, '/page')).status).toBe(307)
+    expect((await loadServerResponse(router, '/page')).status).toBe(200)
+
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: pageRoute.id,
+      status: 'success',
+      loaderData: 'data 3',
+    })
   })
 
   test.each([false, true])(

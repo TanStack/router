@@ -63,14 +63,11 @@ describe('issue #4444: param parse error on a route with a lazy child', () => {
     expect(langMatch?.status).toBe('error')
     expect(langMatch?.error).toBeInstanceOf(PathParamError)
 
-    // …and the lazy child below the boundary is trimmed out of the lane, so
-    // nothing is left pending on a chunk that will never load.
+    // …while the structurally matched lazy child remains unresolved and hidden
+    // below that boundary without starting its chunk.
     expect(
       router.state.matches.find((match) => match.routeId === lazyChildRoute.id),
-    ).toBeUndefined()
-    expect(
-      router.state.matches.find((match) => match.status === 'pending'),
-    ).toBeUndefined()
+    ).toMatchObject({ status: 'pending', isFetching: false })
     expect(lazyFn).not.toHaveBeenCalled()
     expect(router.state.isLoading).toBe(false)
   })

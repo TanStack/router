@@ -4,7 +4,7 @@ import { HeadContent } from '../HeadContent'
 import { RouterProvider } from '../RouterProvider'
 import type { AnyRouter } from '@tanstack/router-core'
 
-let hydrationPromise: Promise<void | Array<Array<void>>> | undefined
+let hydrationPromise: Promise<void> | undefined
 
 export const RouterClient = Vue.defineComponent({
   name: 'RouterClient',
@@ -17,24 +17,13 @@ export const RouterClient = Vue.defineComponent({
   setup(props) {
     const isHydrated = Vue.ref(false)
 
-    if (!hydrationPromise) {
-      if (!props.router.stores.matchesId.get().length) {
-        hydrationPromise = hydrate(props.router)
-      } else {
-        hydrationPromise = Promise.resolve()
-      }
-    }
+    hydrationPromise ??= hydrate(props.router).finally(() => window.$_TSR!.h())
 
     Vue.onMounted(() => {
-      hydrationPromise!.then(() => {
+      return hydrationPromise!.then(() => {
         isHydrated.value = true
       })
     })
-
-    // For SSR, we're already hydrated
-    if (typeof window === 'undefined') {
-      isHydrated.value = true
-    }
 
     return () => {
       if (!isHydrated.value) {

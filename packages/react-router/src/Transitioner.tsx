@@ -4,47 +4,57 @@ import * as React from 'react'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
+import type { AnyRouteMatch } from '@tanstack/router-core'
 
 export function Transitioner() {
   const router = useRouter()
-  const mountLoadForRouter = React.useRef<
-    [typeof router, typeof router.history] | undefined
+  const acknowledgement = React.useRef<
+    [Array<AnyRouteMatch>, (rendered: boolean) => void] | undefined
   >(undefined)
+  const mounted =
+    process.env.NODE_ENV !== 'production'
+      ? // eslint-disable-next-line react-hooks/rules-of-hooks
+        React.useRef(false)
+      : undefined
 
-  /**
-   * This effect is meant to "polyfill" the fact that React.startTransition
-   * does not return an awaitable promise.
-   *
-   * So we queue `acknowldgements` here, and `<MatchInner>` will call
-   * `router._rendered` whenever it renders a new batch of matches.
-   */
-  useLayoutEffect(() => {
-    const acknowledgements: Array<(rendered: boolean) => void> = []
-    const rendered = (done: boolean) => {
-      for (const resolve of acknowledgements.splice(0)) {
-        resolve(done)
-      }
+  // `<Transitioner>` precedes `<MatchesInner>`, so install the render
+  // acknowledgement before the latter can publish a rendered lane.
+  router._rendered = (matches) => {
+    const current = acknowledgement.current
+    if (
+      current?.[0].length === matches.length &&
+      current[0].every(
+        (match, index) =>
+          match.id === matches[index]!.id &&
+          match.abortController === matches[index]!.abortController &&
+          match.status === matches[index]!.status,
+      )
+    ) {
+      acknowledgement.current = undefined
+      current[1](true)
     }
-    const transition = (fn: () => void) => {
-      return new Promise<boolean>((resolve) => {
-        acknowledgements.push(resolve)
+  }
+  router.startTransition = (fn, expected, urgent) =>
+    new Promise((resolve) => {
+      acknowledgement.current?.[1](false)
+      acknowledgement.current = [expected, resolve]
+      if (urgent) {
+        fn()
+      } else {
         React.startTransition(fn)
-      })
-    }
-    router._rendered = () => rendered(true)
-    router.startTransition = transition
-    return () => rendered(false)
-  }, [router])
+      }
+    })
 
   // Subscribe before canonicalizing so the initial URL has exactly one load.
   useLayoutEffect(() => {
     const unsub = router.history.subscribe(router.load)
 
-    const mounted = mountLoadForRouter.current
-    if (mounted?.[0] === router && mounted[1] === router.history) {
-      return unsub
+    if (mounted?.current) {
+      return process.env.NODE_ENV !== 'production' ? unsub : undefined
     }
-    mountLoadForRouter.current = [router, router.history]
+    if (mounted) {
+      mounted.current = true
+    }
 
     router.updateLatestLocation()
     const location = router.latestLocation
@@ -58,14 +68,14 @@ export function Transitioner() {
     })
 
     // Check if the current URL matches the canonical form.
-    // Compare publicHref (browser-facing URL) for consistency with
-    // the server-side redirect check in router.beforeLoad.
+    // Compare publicHref (browser-facing URL) consistently with server
+    // canonicalization.
     if (
       trimPathRight(location.publicHref) !==
       trimPathRight(nextLocation.publicHref)
     ) {
       router.commitLocation({ ...nextLocation, replace: true })
-      return unsub
+      return process.env.NODE_ENV !== 'production' ? unsub : undefined
     }
 
     const resolvedLocation = router.stores.resolvedLocation.get()
@@ -73,15 +83,24 @@ export function Transitioner() {
       resolvedLocation?.href === location.href &&
       resolvedLocation.state.__TSR_key === location.state.__TSR_key
     ) {
-      router.emit({
-        type: 'onRendered',
-        ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
-      })
-    } else {
+      acknowledgement.current = [
+        router.stores.matches.get(),
+        (rendered) => {
+          if (rendered) {
+            router.emit({
+              type: 'onRendered',
+              ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
+            })
+          }
+        },
+      ]
+    } else if (!router._tx) {
       router.load().catch(console.error)
     }
 
-    return unsub
+    return process.env.NODE_ENV !== 'production' ? unsub : undefined
+    // `mounted` exists only in development and is a stable ref when present.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, router.history])
 
   return null

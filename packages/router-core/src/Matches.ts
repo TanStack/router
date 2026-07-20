@@ -131,7 +131,7 @@ export interface RouteMatch<
   pathname: string
   params: TAllParams
   _strictParams: TAllParams
-  status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
+  status: 'pending' | 'success' | 'error' | 'notFound'
   isFetching: false | 'beforeLoad' | 'loader'
   error: unknown
   paramsError: unknown
@@ -139,20 +139,19 @@ export interface RouteMatch<
   updatedAt: number
   loaderData?: TLoaderData
   /** @internal */
-  __routeContext?: Record<string, unknown>
+  _ctx?: Record<string, unknown>
   /** @internal */
   __beforeLoadContext?: Record<string, unknown>
   context: TAllContext
   search: TFullSearchSchema
   _strictSearch: TFullSearchSchema
-  fetchCount: number
   abortController: AbortController
   cause: 'preload' | 'enter' | 'stay'
   loaderDeps: TLoaderDeps
   preload: boolean
   invalid: boolean
   headers?: Record<string, string>
-  globalNotFound?: boolean
+  _notFound?: boolean
   staticData: StaticDataRouteOption
   /** This attribute is not reactive */
   ssr?: SSROption

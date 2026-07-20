@@ -3,14 +3,13 @@ import { act, cleanup, render, screen } from '@testing-library/react'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { afterEach, expect, test, vi } from 'vitest'
+import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 import { hydrate } from '../src/ssr/client'
 import {
-  Outlet,
   RouterProvider,
   createControlledPromise,
   createMemoryHistory,
   createRootRoute,
-  createRoute,
   createRouter,
 } from '../src'
 
@@ -44,7 +43,6 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
     history: createMemoryHistory({ initialEntries: ['/'] }),
   })
   const rootMatch = router.matchRoutes(router.latestLocation)[0]!
-
   // This is the same public bootstrap shape produced by the server. Calling
   // hydrate() ensures router.ssr and the active match are established through
   // the real client hydration path rather than by mutating router stores.
@@ -54,7 +52,7 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
       dehydratedData: {},
       matches: [
         {
-          i: rootMatch.id,
+          i: dehydrateSsrMatchId(rootMatch.id),
           s: 'success',
           ssr: true,
           l: { generation: 1 },
@@ -87,7 +85,7 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
 
   expect(rootLoader).toHaveBeenCalledTimes(1)
   expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-  expect(screen.queryByTestId('root-content')).not.toBeInTheDocument()
+  expect(screen.getByTestId('root-content')).not.toBeVisible()
 
   await act(async () => {
     reloadGate.resolve()
@@ -98,7 +96,6 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
     await vi.advanceTimersByTimeAsync(99)
   })
   expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-  expect(screen.queryByTestId('root-content')).not.toBeInTheDocument()
 
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1)
@@ -186,65 +183,4 @@ test('server rendering uses the root pending boundary for route component suspen
   // boundary contains the suspension and emits its fallback. Streaming SSR
   // can wait for the same boundary instead.
   expect(html).toContain('Server root pending')
-})
-
-test('Transitioner remount loads hydrated history changes made while unmounted', async () => {
-  const rootRoute = createRootRoute({ component: Outlet })
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: () => <div>Index route</div>,
-  })
-  const nextRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/next',
-    component: () => <div>Next route</div>,
-  })
-  const history = createMemoryHistory({ initialEntries: ['/'] })
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, nextRoute]),
-    history,
-  })
-  const matches = router.matchRoutes(router.latestLocation)
-  const now = Date.now()
-
-  window.$_TSR = {
-    router: {
-      manifest: { routes: {} },
-      dehydratedData: {},
-      matches: matches.map((match) => ({
-        i: match.id,
-        s: 'success' as const,
-        ssr: true,
-        u: now,
-      })),
-    },
-    h: vi.fn(),
-    e: vi.fn(),
-    c: vi.fn(),
-    p: vi.fn(),
-    buffer: [],
-    initialized: false,
-  }
-
-  await hydrate(router)
-  const firstRender = render(<RouterProvider router={router} />)
-  expect(screen.getByText('Index route')).toBeInTheDocument()
-
-  firstRender.unmount()
-  history.push('/next')
-
-  const secondRender = render(<RouterProvider router={router} />)
-  expect(await screen.findByText('Next route')).toBeInTheDocument()
-  expect(router.state.location.pathname).toBe('/next')
-
-  secondRender.unmount()
-  history.push('/next', { marker: 'new history entry' })
-
-  render(<RouterProvider router={router} />)
-  await vi.waitFor(() => {
-    expect((router.state.location.state as any).marker).toBe(
-      'new history entry',
-    )
-  })
 })

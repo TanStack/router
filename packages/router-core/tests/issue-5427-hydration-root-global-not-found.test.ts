@@ -25,30 +25,60 @@ function createRouter(initialEntry: string, isServer: boolean) {
   return { rootRoute, router }
 }
 
-// https://github.com/TanStack/router/issues/5427
+function createLayoutRouter(initialEntry: string, isServer: boolean) {
+  const rootRoute = new BaseRootRoute({})
+  const layoutRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    id: '_layout',
+    notFoundComponent: () => 'Layout not found',
+  })
+  const notFoundRoute = new BaseRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/404',
+  })
+  const notFoundIndexRoute = new BaseRoute({
+    getParentRoute: () => notFoundRoute,
+    path: '/',
+  })
+  const agentsRoute = new BaseRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/agents',
+  })
+  const skillAgentRoute = new BaseRoute({
+    getParentRoute: () => agentsRoute,
+    path: '/skill-agent',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      layoutRoute.addChildren([
+        notFoundRoute.addChildren([notFoundIndexRoute]),
+        agentsRoute.addChildren([skillAgentRoute]),
+      ]),
+    ]),
+    history: createMemoryHistory({ initialEntries: [initialEntry] }),
+    isServer,
+  })
+
+  return { layoutRoute, router }
+}
+
 describe('issue #5427: root-only global not-found hydration', () => {
   test('resolves the client URL when the dehydrated /404 lane has a child match', async () => {
-    const { router: bootstrapRouter } = createRouter('/404', true)
-    await bootstrapRouter.load()
+    const { router: serverRouter } = createRouter('/404', true)
+    await serverRouter.load()
 
-    const dehydratedMatches = bootstrapRouter.state.matches.map(dehydrateMatch)
-    const lastMatchId = dehydratedMatches.at(-1)?.i
     const bootstrap: TsrSsrGlobal = {
       router: {
         manifest: { routes: {} },
         dehydratedData: {},
-        matches: dehydratedMatches,
-        lastMatchId,
+        matches: serverRouter.state.matches.map(dehydrateMatch),
       },
       h: () => {},
       e: () => {},
       c: () => {},
       p: () => {},
       buffer: [],
-      initialized: false,
     }
-
-    const hadBootstrap = Object.prototype.hasOwnProperty.call(window, '$_TSR')
     const previousBootstrap = window.$_TSR
     window.$_TSR = bootstrap
 
@@ -63,14 +93,49 @@ describe('issue #5427: root-only global not-found hydration', () => {
       expect(router.state.matches).toHaveLength(1)
       expect(router.state.matches[0]).toMatchObject({
         routeId: rootRoute.id,
-        globalNotFound: true,
+        _notFound: true,
       })
     } finally {
-      if (hadBootstrap) {
-        window.$_TSR = previousBootstrap
-      } else {
-        delete window.$_TSR
-      }
+      window.$_TSR = previousBootstrap
+    }
+  })
+
+  test('resolves a fuzzy client URL capped by an ancestor layout boundary', async () => {
+    const { router: serverRouter } = createLayoutRouter('/404', true)
+    await serverRouter.load()
+    expect(serverRouter.state.matches).toHaveLength(4)
+
+    const bootstrap: TsrSsrGlobal = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        matches: serverRouter.state.matches.map(dehydrateMatch),
+      },
+      h: () => {},
+      e: () => {},
+      c: () => {},
+      p: () => {},
+      buffer: [],
+    }
+    const previousBootstrap = window.$_TSR
+    window.$_TSR = bootstrap
+
+    try {
+      const { layoutRoute, router } = createLayoutRouter(
+        '/agents/missing',
+        false,
+      )
+
+      await hydrate(router)
+
+      expect(router.state.resolvedLocation?.pathname).toBe('/agents/missing')
+      expect(router.state.matches).toHaveLength(3)
+      expect(router.state.matches[1]).toMatchObject({
+        routeId: layoutRoute.id,
+        _notFound: true,
+      })
+    } finally {
+      window.$_TSR = previousBootstrap
     }
   })
 })

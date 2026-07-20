@@ -288,28 +288,24 @@ export const BaseTanStackRouterDevtoolsPanel =
         ? matches
         : []
     }
-    let cachedMatches: Accessor<Array<AnyRouteMatch>>
-    // subscribable implementation
-    if ('subscribe' in router().stores.cachedMatches) {
-      const [_cachedMatches, setCached] = createSignal<Array<AnyRouteMatch>>([])
-      cachedMatches = _cachedMatches
+    let cache = router()._cache
+    let cacheSize = cache.size
+    const [cachedMatches, setCachedMatches] = createSignal([...cache.values()])
 
-      type Subscribe = (fn: () => void) => { unsubscribe: () => void }
-      createEffect(() => {
-        const cachedMatchesStore = router().stores.cachedMatches
-        setCached(cachedMatchesStore.get())
-        const subscription = (
-          (cachedMatchesStore as any).subscribe as Subscribe
-        )(() => {
-          setCached(cachedMatchesStore.get())
-        })
-        onCleanup(() => subscription.unsubscribe())
-      })
-    }
-    // signal implementation
-    else {
-      cachedMatches = () => router().stores.cachedMatches.get()
-    }
+    createEffect(() => {
+      const refreshCache = () => {
+        const next = router()._cache
+        // Core replaces the map for writes and only deletes entries in place.
+        if (next !== cache || next.size !== cacheSize) {
+          cache = next
+          cacheSize = next.size
+          setCachedMatches([...next.values()])
+        }
+      }
+      refreshCache()
+      const interval = setInterval(refreshCache, 500)
+      onCleanup(() => clearInterval(interval))
+    })
 
     createEffect(() => {
       const matches = routerState().matches

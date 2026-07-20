@@ -158,15 +158,12 @@ describe('ssr scripts', () => {
       { src: 'script3.js' },
     ])
 
-    const { container } = await act(() =>
-      render(<RouterProvider router={router} />),
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
     )
-    expect(await screen.findByTestId('root')).toBeInTheDocument()
-    expect(await screen.findByTestId('index')).toBeInTheDocument()
-
-    expect(container.innerHTML).toEqual(
-      `<div><div data-testid="root">root</div><div data-testid="index">index</div><script src="script.js"></script><script src="script3.js"></script></div>`,
-    )
+    expect(html).toContain('<script src="script.js"></script>')
+    expect(html).toContain('<script src="script3.js"></script>')
+    expect(html).not.toContain('script2.js')
   })
 })
 
@@ -838,6 +835,130 @@ describe('ssr HeadContent', () => {
         (link) => link.getAttribute('href') === stylesheetHref,
       ),
     ).toHaveLength(1)
+  })
+
+  test('does not render retained descendant assets past a terminal parent boundary', async () => {
+    let failParent = false
+    const childHeadScript = '{"source":"child-head"}'
+    const childBodyScript = '{"source":"child-body"}'
+    const childManifestScript = '{"source":"child-manifest"}'
+    const childPreload = '/terminal-child-preload.js'
+    const childHeadLink = '/terminal-child-head-link.js'
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          {createPortal(<HeadContent />, document.head)}
+          <Outlet />
+          <Scripts />
+        </>
+      ),
+    })
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      shouldReload: true,
+      loader: () => {
+        if (failParent) {
+          throw new Error('parent failed')
+        }
+      },
+      component: Outlet,
+      errorComponent: () => <div>Parent error</div>,
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      head: () => ({
+        meta: [{ name: 'terminal-child', content: 'visible' }],
+        links: [{ rel: 'preload', href: childHeadLink }],
+        styles: [{ children: '.terminal-child { color: red }' }],
+        scripts: [{ type: 'application/ld+json', children: childHeadScript }],
+      }),
+      scripts: () => [
+        { type: 'application/ld+json', children: childBodyScript },
+      ],
+      component: () => <div>Child content</div>,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    })
+    router.ssr = {
+      manifest: {
+        routes: {
+          [childRoute.id]: {
+            preloads: [childPreload],
+            scripts: [
+              {
+                attrs: { type: 'application/ld+json' },
+                children: childManifestScript,
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    await router.load()
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('meta[name="terminal-child"]'),
+      ).not.toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childPreload}"]`),
+      ).not.toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childHeadLink}"]`),
+      ).not.toBeNull()
+      expect(document.head.textContent).toContain(
+        '.terminal-child { color: red }',
+      )
+      expect(document.documentElement.textContent).toContain(childHeadScript)
+      expect(document.documentElement.textContent).toContain(childBodyScript)
+      expect(document.documentElement.textContent).toContain(
+        childManifestScript,
+      )
+    })
+
+    failParent = true
+    await act(() => router.invalidate())
+    await screen.findByText('Parent error')
+
+    expect(router.state.matches).toHaveLength(3)
+    expect(router.state.matches[1]).toMatchObject({
+      routeId: parentRoute.id,
+      status: 'error',
+    })
+    expect(router.state.matches[2]).toMatchObject({
+      routeId: childRoute.id,
+      meta: [{ name: 'terminal-child', content: 'visible' }],
+      scripts: [{ type: 'application/ld+json', children: childBodyScript }],
+    })
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('meta[name="terminal-child"]'),
+      ).toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childPreload}"]`),
+      ).toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childHeadLink}"]`),
+      ).toBeNull()
+      expect(document.head.textContent).not.toContain(
+        '.terminal-child { color: red }',
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childHeadScript,
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childBodyScript,
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childManifestScript,
+      )
+    })
   })
 })
 

@@ -52,11 +52,11 @@ function setup(opts: {
   return { router, rootRoute, layoutRoute, agentsRoute }
 }
 
-function globalNotFoundRouteIds(router: {
-  state: { matches: Array<{ routeId: string; globalNotFound?: boolean }> }
+function _notFoundRouteIds(router: {
+  state: { matches: Array<{ routeId: string; _notFound?: boolean }> }
 }) {
   return router.state.matches
-    .filter((match) => match.globalNotFound)
+    .filter((match) => match._notFound)
     .map((match) => match.routeId)
 }
 
@@ -74,7 +74,7 @@ describe('issue #6351: fuzzy notFound honors pathless layout boundaries', () => 
       layoutRoute.id,
       agentsRoute.id,
     ])
-    expect(globalNotFoundRouteIds(router)).toEqual([layoutRoute.id])
+    expect(_notFoundRouteIds(router)).toEqual([layoutRoute.id])
   })
 
   test('boundary-enabled control: prefers the deeper matched route', async () => {
@@ -85,7 +85,7 @@ describe('issue #6351: fuzzy notFound honors pathless layout boundaries', () => 
 
     await router.load()
 
-    expect(globalNotFoundRouteIds(router)).toEqual([agentsRoute.id])
+    expect(_notFoundRouteIds(router)).toEqual([agentsRoute.id])
   })
 })
 
@@ -95,7 +95,7 @@ describe('generic global notFound attribution controls', () => {
 
     await router.load()
 
-    expect(globalNotFoundRouteIds(router)).toEqual([agentsRoute.id])
+    expect(_notFoundRouteIds(router)).toEqual([agentsRoute.id])
   })
 
   test('root mode attributes the notFound to root even when a layout boundary exists', async () => {
@@ -106,6 +106,6 @@ describe('generic global notFound attribution controls', () => {
 
     await router.load()
 
-    expect(globalNotFoundRouteIds(router)).toEqual([rootRoute.id])
+    expect(_notFoundRouteIds(router)).toEqual([rootRoute.id])
   })
 })

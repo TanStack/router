@@ -3,6 +3,17 @@ import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
+function getResolvedLocation(router: ReturnType<typeof useRouter>) {
+  const resolvedLocation = router.stores.resolvedLocation.get()
+  if (
+    resolvedLocation?.href === router.latestLocation.href &&
+    resolvedLocation.state.__TSR_key === router.latestLocation.state.__TSR_key
+  ) {
+    return resolvedLocation
+  }
+  return
+}
+
 export function Transitioner() {
   const router = useRouter()
 
@@ -10,17 +21,15 @@ export function Transitioner() {
     return null
   }
 
-  const transition = async (fn: () => void) => {
+  router.startTransition = async (fn) => {
     await Solid.startTransition(fn)
     return true
   }
-  router.startTransition = transition
 
   // Subscribe to location changes
   // and try to load the new location
   Solid.onMount(() => {
-    const unsub = router.history.subscribe(router.load)
-    Solid.onCleanup(unsub)
+    router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,
@@ -32,8 +41,8 @@ export function Transitioner() {
     })
 
     // Check if the current URL matches the canonical form.
-    // Compare publicHref (browser-facing URL) for consistency with
-    // the server-side redirect check in router.beforeLoad.
+    // Compare publicHref (browser-facing URL) consistently with server
+    // canonicalization.
     if (
       trimPathRight(router.latestLocation.publicHref) !==
       trimPathRight(nextLocation.publicHref)
@@ -42,19 +51,24 @@ export function Transitioner() {
       return
     }
 
-    const resolvedLocation = router.stores.resolvedLocation.get()
-    if (
-      resolvedLocation?.href === router.latestLocation.href &&
-      resolvedLocation.state.__TSR_key === router.latestLocation.state.__TSR_key
-    ) {
-      router.emit({
-        type: 'onRendered',
-        ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
-      })
-    } else {
+    if (!getResolvedLocation(router) && !router._tx) {
       router.load().catch(console.error)
     }
   })
 
+  return null
+}
+
+export function Rendered() {
+  const router = useRouter()
+  Solid.onMount(() => {
+    const resolvedLocation = getResolvedLocation(router)
+    if (resolvedLocation) {
+      router.emit({
+        type: 'onRendered',
+        ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
+      })
+    }
+  })
   return null
 }

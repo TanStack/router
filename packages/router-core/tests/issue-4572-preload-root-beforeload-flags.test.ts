@@ -8,12 +8,8 @@ import { createTestRouter } from './routerTestUtils'
  * callbacks with stale navigation flags. Direct preloadRoute calls provide
  * the core-level reduction of the reported Link hover behavior.
  *
- * Desired behavior:
- * - Preloading a sibling route does not re-run beforeLoad of
- *   already-active ancestors: the preload borrows them read-only.
- * - The preloaded route's own beforeLoad sees cause 'preload' and
- *   preload true.
- * - Preloading the currently active route runs no beforeLoad at all.
+ * A completed beforeLoad result is never cached. Every new preload therefore
+ * contextualizes its full route lane with fresh preload flags.
  */
 
 function createPreloadFixture() {
@@ -63,7 +59,7 @@ function createPreloadFixture() {
   }
 }
 
-test('#4572: sibling preload borrows active ancestors and flags the new match', async () => {
+test('#4572: sibling preload contextualizes the full target lane with preload flags', async () => {
   const {
     rootBeforeLoad,
     indexBeforeLoad,
@@ -81,17 +77,20 @@ test('#4572: sibling preload borrows active ancestors and flags the new match', 
   )
 
   await router.preloadRoute({ to: '/about' })
-  expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
+  expect(rootBeforeLoad).toHaveBeenCalledTimes(2)
   expect(indexBeforeLoad).toHaveBeenCalledTimes(1)
   expect(aboutBeforeLoad).toHaveBeenCalledTimes(1)
   expect(aboutBeforeLoad).toHaveBeenCalledWith(
+    expect.objectContaining({ cause: 'preload', preload: true }),
+  )
+  expect(rootBeforeLoad).toHaveBeenLastCalledWith(
     expect.objectContaining({ cause: 'preload', preload: true }),
   )
   expect(bagBeforeLoad).not.toHaveBeenCalled()
   expect(nestedBeforeLoad).not.toHaveBeenCalled()
 })
 
-test('#4572: active-route preload does not replay beforeLoad', async () => {
+test('#4572: active-route preload reruns beforeLoad with preload flags', async () => {
   const {
     rootBeforeLoad,
     indexBeforeLoad,
@@ -111,14 +110,20 @@ test('#4572: active-route preload does not replay beforeLoad', async () => {
   rootBeforeLoad.mockClear()
   indexBeforeLoad.mockClear()
   await router.preloadRoute({ to: '/' })
-  expect(rootBeforeLoad).not.toHaveBeenCalled()
-  expect(indexBeforeLoad).not.toHaveBeenCalled()
+  expect(rootBeforeLoad).toHaveBeenCalledOnce()
+  expect(indexBeforeLoad).toHaveBeenCalledOnce()
+  expect(rootBeforeLoad).toHaveBeenCalledWith(
+    expect.objectContaining({ cause: 'preload', preload: true }),
+  )
+  expect(indexBeforeLoad).toHaveBeenCalledWith(
+    expect.objectContaining({ cause: 'preload', preload: true }),
+  )
   expect(aboutBeforeLoad).not.toHaveBeenCalled()
   expect(bagBeforeLoad).not.toHaveBeenCalled()
   expect(nestedBeforeLoad).not.toHaveBeenCalled()
 })
 
-test('#4572: active nested preload does not replay pathless ancestors', async () => {
+test('#4572: active nested preload reruns its full pathless lane', async () => {
   const {
     rootBeforeLoad,
     indexBeforeLoad,
@@ -155,9 +160,14 @@ test('#4572: active nested preload does not replay pathless ancestors', async ()
   nestedBeforeLoad.mockClear()
 
   await router.preloadRoute({ to: '/_bag/nested' })
-  expect(rootBeforeLoad).not.toHaveBeenCalled()
+  expect(rootBeforeLoad).toHaveBeenCalledOnce()
   expect(indexBeforeLoad).not.toHaveBeenCalled()
   expect(aboutBeforeLoad).not.toHaveBeenCalled()
-  expect(bagBeforeLoad).not.toHaveBeenCalled()
-  expect(nestedBeforeLoad).not.toHaveBeenCalled()
+  expect(bagBeforeLoad).toHaveBeenCalledOnce()
+  expect(nestedBeforeLoad).toHaveBeenCalledOnce()
+  for (const beforeLoad of [rootBeforeLoad, bagBeforeLoad, nestedBeforeLoad]) {
+    expect(beforeLoad).toHaveBeenCalledWith(
+      expect.objectContaining({ cause: 'preload', preload: true }),
+    )
+  }
 })

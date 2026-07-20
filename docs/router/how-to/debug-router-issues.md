@@ -322,11 +322,16 @@ const route = createRoute({
 
 ```tsx
 function DataLoadingDebug() {
-  const location = useLocation()
+  const state = useRouterState()
 
   console.log('Route status:', {
-    isLoading: location.isLoading,
-    isTransitioning: location.isTransitioning,
+    status: state.status,
+    isLoading: state.isLoading,
+    matches: state.matches.map((match) => ({
+      routeId: match.routeId,
+      status: match.status,
+      isFetching: match.isFetching,
+    })),
   })
 
   return null

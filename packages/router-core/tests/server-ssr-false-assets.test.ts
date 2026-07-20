@@ -90,4 +90,46 @@ describe('server assets for ssr:false routes', () => {
     expect(response.headers.get('x-client-only-parent')).toBeNull()
     expect(response.headers.get('x-client-only-child')).toBeNull()
   })
+
+  test('projects assets for a data-only branch', async () => {
+    const head = vi.fn(({ loaderData }) => ({
+      meta: [{ title: `report: ${loaderData}` }],
+    }))
+    const scripts = vi.fn(({ loaderData }) => [
+      { children: `window.report = ${JSON.stringify(loaderData)}` },
+    ])
+    const headers = vi.fn(({ loaderData }) => ({
+      'x-report': String(loaderData),
+    }))
+    const rootRoute = new BaseRootRoute({})
+    const reportRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/report',
+      ssr: 'data-only',
+      loader: () => 'server data',
+      head,
+      scripts,
+      headers,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([reportRoute]),
+      history: createMemoryHistory({ initialEntries: ['/report'] }),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/report')
+    const match = router.state.matches.at(-1)
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('x-report')).toBe('server data')
+    expect(match).toMatchObject({
+      ssr: 'data-only',
+      meta: [{ title: 'report: server data' }],
+      scripts: [{ children: 'window.report = "server data"' }],
+      headers: { 'x-report': 'server data' },
+    })
+    expect(head).toHaveBeenCalledTimes(1)
+    expect(scripts).toHaveBeenCalledTimes(1)
+    expect(headers).toHaveBeenCalledTimes(1)
+  })
 })

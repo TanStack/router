@@ -16,9 +16,8 @@ export function useTransitionerSetup() {
   }
   router.startTransition = transition
 
-  let unsubscribe: (() => void) | undefined
   Vue.onMounted(() => {
-    unsubscribe = router.history.subscribe(router.load)
+    router.history.subscribe(router.load)
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,
@@ -49,10 +48,6 @@ export function useTransitionerSetup() {
     } else {
       router.load().catch(console.error)
     }
-  })
-
-  Vue.onUnmounted(() => {
-    unsubscribe?.()
   })
 }
 

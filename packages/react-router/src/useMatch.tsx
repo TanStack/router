@@ -20,12 +20,7 @@ import type {
   ThrowOrOptional,
 } from '@tanstack/router-core'
 
-const dummyStore = {
-  get() {},
-  subscribe() {
-    return { unsubscribe() {} }
-  },
-} as any
+const dummyMatch = {}
 
 export function useStructuralSharing<
   TRouter extends AnyRouter,
@@ -147,16 +142,15 @@ export function useMatch<
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
   const router = useRouter<TRouter>()
-  const nearestMatchId = React.useContext(
+  const nearestRouteId = React.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
 
-  const matchStore = opts.from
-    ? router.stores.getRouteMatchStore(opts.from)
-    : router.stores.matchStores.get(nearestMatchId!)
+  const routeId = opts.from ?? nearestRouteId
+  const matchStore = router.stores.getMatchStore(routeId!)
 
   if (isServer ?? router.isServer) {
-    const match = matchStore?.get()
+    const match = matchStore.get()
     if (!match) {
       if (opts.shouldThrow ?? true) {
         if (process.env.NODE_ENV !== 'production') {
@@ -179,12 +173,12 @@ export function useMatch<
     useStructuralSharing(opts, router)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const matchSelection = useStore(matchStore ?? dummyStore, (match) =>
-    match ? selector(match as any) : dummyStore,
+  const matchSelection = useStore(matchStore, (match) =>
+    match ? selector(match as any) : dummyMatch,
   )
 
-  if (matchSelection !== dummyStore) {
-    return matchSelection
+  if (matchSelection !== dummyMatch) {
+    return matchSelection as any
   }
 
   if (opts.shouldThrow ?? true) {
