@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.20",
+    "@solidjs/web": "2.0.0-beta.21",
     "@tanstack/react-router": "workspace:^",
     "@tanstack/react-start": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
@@ -12,7 +12,7 @@
     "@tanstack/vue-start": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "solid-js": "2.0.0-beta.20",
+    "solid-js": "2.0.0-beta.21",
     "vue": "^3.5.16"
   },
   "devDependencies": {
@@ -22,7 +22,7 @@
     "seroval": "^1.5.4",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.13",
+    "vite-plugin-solid": "^3.0.0-next.14",
     "vitest": "^4.1.4"
   },
   "nx": {

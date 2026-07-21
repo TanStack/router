@@ -9,12 +9,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.20",
+    "@solidjs/web": "2.0.0-beta.21",
     "@tanstack/solid-devtools": "^0.7.0",
     "@tanstack/solid-router": "^2.0.0-beta.25",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.20",
     "@tanstack/solid-start": "^2.0.0-beta.26",
-    "solid-js": "2.0.0-beta.20"
+    "solid-js": "2.0.0-beta.21"
   },
   "devDependencies": {
     "@inlang/paraglide-js": "^2.4.0",
@@ -23,6 +23,6 @@
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.13"
+    "vite-plugin-solid": "^3.0.0-next.14"
   }
 }
