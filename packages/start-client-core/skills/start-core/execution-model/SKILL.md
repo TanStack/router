@@ -8,7 +8,7 @@ description: >-
   safety (VITE_ prefix, process.env).
 type: sub-skill
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.170.14'
 requires:
   - start-core
 sources:
@@ -24,6 +24,7 @@ Understanding where code runs is fundamental to TanStack Start. This skill cover
 > **CRITICAL**: ALL code in TanStack Start is isomorphic by default — it runs in BOTH server and client bundles. Route loaders run on BOTH server (during SSR) AND client (during navigation). Server-only operations MUST use `createServerFn`.
 > **CRITICAL**: Module-level `process.env` access is wrong on **two** axes — security (values leak into the client bundle) AND runtime correctness (on Cloudflare Workers and other edge runtimes, env is injected per-request, so module-level reads evaluate to `undefined` even on the server). Read env inside `.handler()` or another per-request function, never at module scope.
 > **CRITICAL**: `VITE_` prefixed environment variables are exposed to the client bundle. Server secrets must NOT have the `VITE_` prefix.
+> **CRITICAL**: Relative URLs belong to browser-only code. An isomorphic loader also runs during SSR, where `fetch('/api/...')` may have no base URL. Call a server function from the loader, or keep the fetch inside an explicit environment boundary.
 
 ## Execution Control APIs
 

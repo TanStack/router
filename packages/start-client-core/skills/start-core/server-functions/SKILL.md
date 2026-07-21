@@ -8,7 +8,7 @@ description: >-
   handling, file organization (.functions.ts, .server.ts).
 type: sub-skill
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.170.14'
 requires:
   - start-core
 sources:
@@ -92,6 +92,41 @@ function DeleteButton({ postId }: { postId: string }) {
 }
 ```
 
+## Cache-Coherent Mutations
+
+Keep reads and writes behind server functions that use the same authoritative store. Await the write, then invalidate the route cache so its loader reads the persisted result:
+
+```tsx
+const listIssues = createServerFn({ method: 'GET' }).handler(() => {
+  return db.issues.findMany()
+})
+
+const createIssue = createServerFn({ method: 'POST' })
+  .validator((data: { title: string }) => data)
+  .handler(async ({ data }) => {
+    return db.issues.create({ data })
+  })
+
+export const Route = createFileRoute('/issues')({
+  loader: () => listIssues(),
+  component: IssuesPage,
+})
+
+function IssuesPage() {
+  const router = useRouter()
+  const createIssueFn = useServerFn(createIssue)
+
+  const handleCreate = async (title: string) => {
+    await createIssueFn({ data: { title } })
+    await router.invalidate({ sync: true })
+  }
+
+  // render Route.useLoaderData() and call handleCreate from the form
+}
+```
+
+Do not update only local component state after a persistent mutation. Verify the rendered list after create, update, delete, and a fresh page load.
+
 ## Input Validation
 
 ### Basic Validator
@@ -122,6 +157,8 @@ const createUser = createServerFn({ method: 'POST' })
     return `Created user: ${data.name}, age ${data.age}`
   })
 ```
+
+Input validation does not validate output serialization. When a response schema changes, update the database selection, service return value, server-function result, loader consumer, and UI. Add a runtime test that calls the handler or HTTP boundary and asserts the new field in the returned payload.
 
 ### FormData
 
@@ -424,6 +461,22 @@ const signupFn = useServerFn(signup) // signup throws redirect on success
 ```
 
 If in doubt: wrap with `useServerFn`. It's a no-op for plain-data functions and the safe default when a function might later add a redirect.
+
+### 8. CRITICAL: Self-fetching a relative API URL from a loader
+
+```tsx
+// WRONG — this loader also runs during SSR, where a relative URL may fail
+export const Route = createFileRoute('/issues')({
+  loader: () => fetch('/api/issues').then((response) => response.json()),
+})
+
+// CORRECT — call the server function; the client build gets an RPC stub
+export const Route = createFileRoute('/issues')({
+  loader: () => listIssues(),
+})
+```
+
+Relative `fetch` is fine in a browser-only event handler. It is not a universal loader data strategy.
 
 ## Cross-References
 

@@ -14,7 +14,7 @@ description: >-
   comparison.
 type: sub-skill
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.168.32'
 requires:
   - react-start
   - start-core/server-functions

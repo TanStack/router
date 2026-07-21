@@ -10,7 +10,7 @@ description: >-
   router-core/auth-and-guards for the routing side.
 type: sub-skill
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.170.14'
 requires:
   - start-core
   - start-core/server-functions
@@ -38,6 +38,7 @@ This skill covers the **server half** of authentication: session storage, cookie
 - Use CSRF or same-origin protections for non-GET server functions and server routes.
 - Log authentication events and monitor failures.
 - Test direct unauthenticated calls to protected server functions; they should reject before returning data.
+- Follow the anonymous redirect and inspect its HTML and serialized state. Login and unauthorized pages must not name the protected user, tenant, or record.
 
 ## Session Cookies
 

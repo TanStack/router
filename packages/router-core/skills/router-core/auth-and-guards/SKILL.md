@@ -8,10 +8,9 @@ description: >-
   for auth state.
 type: sub-skill
 library: tanstack-router
-library_version: '1.166.2'
+library_version: '1.171.15'
 requires:
   - router-core
-  - router-core/data-loading
 sources:
   - TanStack/router:docs/router/guide/authenticated-routes.md
   - TanStack/router:docs/router/how-to/setup-authentication.md
@@ -410,6 +409,9 @@ const getMyOrders = createServerFn({ method: 'GET' })
 
 Rule of thumb: every `createServerFn`, server route, or API endpoint that touches user data needs `authMiddleware` (or an equivalent in-handler check). The route guard is for the page experience; the endpoint guard is for the data. See [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md) for the full session/middleware pattern.
 
+### CRITICAL: The anonymous destination can still disclose protected data
+Protect the entire anonymous response, not only the API call. A public login or unauthorized page still leaks data if its title, copy, search params, or serialized loader state names the protected user, tenant, record, or resource. Test a direct anonymous request and follow redirects. Assert that the handler rejects before reading private data, no protected loader runs, the final HTML and serialized state contain no protected identity, and the redirect contains only a sanitized relative return URL.
+
 ### HIGH: Auth check in component instead of beforeLoad
 
 Component-level auth checks cause a **flash of protected content** before the redirect:
@@ -489,8 +491,6 @@ export const Route = createFileRoute('/_authenticated')({
 ```
 
 Place protected routes as children of the `_authenticated` layout route. Public routes (login, home, etc.) live outside it.
-
----
 
 ## Cross-References
 

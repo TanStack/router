@@ -7,7 +7,7 @@ description: >-
   masking (mask option, createRouteMask, unmaskOnReload).
 type: sub-skill
 library: tanstack-router
-library_version: '1.166.2'
+library_version: '1.171.15'
 requires:
   - router-core
 sources:

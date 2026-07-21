@@ -9,7 +9,7 @@ description: >-
   history on server, data serialization, document head management.
 type: sub-skill
 library: tanstack-router
-library_version: '1.166.2'
+library_version: '1.171.15'
 requires:
   - router-core
   - router-core/data-loading

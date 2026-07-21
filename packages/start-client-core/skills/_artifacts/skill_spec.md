@@ -17,26 +17,27 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 | Skill               | Type      | Domain                   | What it covers                                          | Failure modes |
 | ------------------- | --------- | ------------------------ | ------------------------------------------------------- | ------------- |
-| start-core          | core      | project-setup            | tanstackStart(), getRouter(), root route, entries       | 3             |
-| server-functions    | core      | server-functions         | createServerFn, validation, useServerFn, streaming      | 4             |
+| start-core          | core      | project-setup            | tanstackStart(), getRouter(), root route, entries       | 4             |
+| server-functions    | core      | server-functions         | createServerFn, validation, useServerFn, streaming      | 8             |
 | middleware          | core      | middleware-and-context   | createMiddleware, context, global middleware, factories | 3             |
-| execution-model     | core      | execution-model          | Isomorphic defaults, environment functions, env vars    | 4             |
-| server-routes       | core      | server-routes            | server property, HTTP handlers, createHandlers          | 2             |
+| execution-model     | core      | execution-model          | Isomorphic defaults, environment functions, env vars    | 5             |
+| server-routes       | core      | server-routes            | server property, HTTP handlers, createHandlers          | 5             |
 | deployment          | core      | deployment-and-rendering | Hosting, SSR modes, prerendering, SEO                   | 3             |
 | react-start         | framework | project-setup            | React bindings, useServerFn, full setup                 | 3             |
 | migrate-from-nextjs | lifecycle | project-setup            | Next.js App Router migration checklist                  | 3             |
 
 ## Failure Mode Inventory
 
-### start-core (3 failure modes)
+### start-core (4 failure modes)
 
 | #   | Mistake                                         | Priority | Source                  |
 | --- | ----------------------------------------------- | -------- | ----------------------- |
 | 1   | React plugin before Start plugin in Vite config | CRITICAL | docs/build-from-scratch |
 | 2   | Enabling verbatimModuleSyntax in tsconfig       | HIGH     | docs/build-from-scratch |
 | 3   | Missing Scripts component in root route         | HIGH     | docs/guide/routing      |
+| 4   | Loading every overlapping Start skill          | HIGH     | protocol-v4 evaluation  |
 
-### server-functions (4 failure modes)
+### server-functions (8 failure modes)
 
 | #   | Mistake                                                                     | Priority | Source                      |
 | --- | --------------------------------------------------------------------------- | -------- | --------------------------- |
@@ -44,6 +45,10 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 | 2   | Generating Next.js/Remix server patterns ("use server", getServerSideProps) | CRITICAL | maintainer interview        |
 | 3   | Using dynamic imports for server functions                                  | HIGH     | docs/guide/server-functions |
 | 4   | Not using useServerFn for component calls                                   | MEDIUM   | docs/guide/server-functions |
+| 5   | Relying on a route guard to protect a server function                       | CRITICAL | protocol-v4 evaluation      |
+| 6   | Self-fetching a relative API URL from an SSR loader                         | CRITICAL | protocol-v4 evaluation      |
+| 7   | Mutating without invalidating the loader or query cache                     | HIGH     | protocol-v4 evaluation      |
+| 8   | Treating typecheck as proof of output schema propagation                    | CRITICAL | protocol-v4 evaluation      |
 
 ### middleware (3 failure modes)
 
@@ -53,7 +58,7 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 | 2   | Confusing request vs server function middleware       | MEDIUM   | docs/guide/middleware |
 | 3   | Wrong middleware method order                         | MEDIUM   | docs/guide/middleware |
 
-### execution-model (4 failure modes)
+### execution-model (5 failure modes)
 
 | #   | Mistake                                           | Priority | Source                           |
 | --- | ------------------------------------------------- | -------- | -------------------------------- |
@@ -61,13 +66,17 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 | 2   | Exposing secrets via module-level process.env     | CRITICAL | docs/guide/execution-model       |
 | 3   | Using VITE\_ prefix for server secrets            | CRITICAL | docs/guide/environment-variables |
 | 4   | Hydration mismatches from env-dependent rendering | HIGH     | docs/guide/execution-model       |
+| 5   | Using relative fetch in an isomorphic loader       | CRITICAL | protocol-v4 evaluation           |
 
-### server-routes (2 failure modes)
+### server-routes (5 failure modes)
 
 | #   | Mistake                                  | Priority | Source                   |
 | --- | ---------------------------------------- | -------- | ------------------------ |
 | 1   | Duplicate route path resolution          | MEDIUM   | docs/guide/server-routes |
 | 2   | Forgetting to await request body methods | MEDIUM   | docs/guide/server-routes |
+| 3   | Relying on page auth to protect the API   | CRITICAL | protocol-v4 evaluation  |
+| 4   | Self-fetching the API from an SSR loader  | CRITICAL | protocol-v4 evaluation  |
+| 5   | Omitting a field from serialized output   | CRITICAL | protocol-v4 evaluation  |
 
 ### deployment (3 failure modes)
 

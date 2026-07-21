@@ -7,7 +7,7 @@ description: >-
   virtualRouteConfig option.
 type: core
 library: tanstack-router
-library_version: '1.161.4'
+library_version: '1.162.0'
 sources:
   - TanStack/router:packages/virtual-file-routes/src
   - TanStack/router:docs/router/routing/virtual-file-routes.md
@@ -16,6 +16,8 @@ sources:
 # Virtual File Routes (`@tanstack/virtual-file-routes`)
 
 Build route trees programmatically instead of relying on filesystem conventions. Useful when you want explicit control over route structure, need to mix virtual and physical routes, or want to define route subtrees within file-based routing directories.
+
+Use this skill only when the project config contains `virtualRouteConfig`, a virtual route config file, or `__virtual.ts`. Ordinary file-route changes belong to Router Core and the Router Plugin.
 
 > **CRITICAL**: Types are FULLY INFERRED. Never cast, never annotate inferred values.
 
@@ -216,3 +218,13 @@ layout('dashboardLayout.tsx', [route('/dashboard', 'dashboard.tsx')])
 
 // The URL is /dashboard, and dashboardLayout.tsx wraps it
 ```
+
+## Refactor Audit
+
+After changing a virtual tree:
+
+1. Confirm there is exactly one `rootRoute` and that every referenced file exists relative to `routesDirectory`.
+2. Check each `route`, `layout`, and `physical` node for duplicate effective paths or IDs.
+3. Confirm each `physical()` directory is mounted once at the intended path prefix and does not overlap a virtual child.
+4. Regenerate `routeTree.gen.ts` and inspect parentage, full paths, and imports. Do not edit generated output.
+5. Update links, redirects, params, and `from` narrowing, then run generator tests, type tests, and a production build.

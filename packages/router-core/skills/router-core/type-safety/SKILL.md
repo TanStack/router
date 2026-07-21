@@ -8,7 +8,7 @@ description: >-
   and ValidateLinkOptions type utilities, as const satisfies pattern.
 type: sub-skill
 library: tanstack-router
-library_version: '1.166.2'
+library_version: '1.171.15'
 requires:
   - router-core
 sources:
@@ -488,5 +488,10 @@ const search = Route.useSearch()
 ```
 
 If a build error mentions `react-router-dom`, `next/`, `pages/_app`, or duplicate `/` routes, fix the import — don't paper over with type assertions.
+
+### 6. CRITICAL: Treating typecheck as proof of runtime schema propagation
+Types can say a field exists while a database projection, API serializer, or server function omits it. When adding or renaming a field, trace the value through storage, validation, handler output, loader data, and rendered UI. Do not cast the response to the desired type.
+Add a runtime assertion against the real handler or serialized response, such as `expect(await getOrder({ data: { id } })).toMatchObject({ totalCents: 2599 })`.
+Then run the route-level test and production build. The type test remains necessary, but it is not the runtime contract test.
 
 See also: router-core (Register setup), router-core/navigation (from narrowing), router-core/code-splitting (getRouteApi).

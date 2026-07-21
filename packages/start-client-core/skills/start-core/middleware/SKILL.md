@@ -8,7 +8,7 @@ description: >-
   enforcement, fetch override precedence.
 type: sub-skill
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.170.14'
 requires:
   - start-core
   - start-core/server-functions
