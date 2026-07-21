@@ -10,22 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SsrCallIdRouteImport } from './routes/ssr-call.$id'
 import { Route as ApiFnUrlsRouteImport } from './routes/api.fn-urls'
+import { Route as SsrCallIdRouteImport } from './routes/ssr-call.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SsrCallIdRoute = SsrCallIdRouteImport.update({
-  id: '/ssr-call/$id',
-  path: '/ssr-call/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiFnUrlsRoute = ApiFnUrlsRouteImport.update({
   id: '/api/fn-urls',
   path: '/api/fn-urls',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SsrCallIdRoute = SsrCallIdRouteImport.update({
+  id: '/ssr-call/$id',
+  path: '/ssr-call/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -68,18 +68,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ssr-call/$id': {
-      id: '/ssr-call/$id'
-      path: '/ssr-call/$id'
-      fullPath: '/ssr-call/$id'
-      preLoaderRoute: typeof SsrCallIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/fn-urls': {
       id: '/api/fn-urls'
       path: '/api/fn-urls'
       fullPath: '/api/fn-urls'
       preLoaderRoute: typeof ApiFnUrlsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ssr-call/$id': {
+      id: '/ssr-call/$id'
+      path: '/ssr-call/$id'
+      fullPath: '/ssr-call/$id'
+      preLoaderRoute: typeof SsrCallIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

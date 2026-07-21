@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds"
+    "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds",
+    "test:unit": "node --test ../../scripts/benchmarks/bundle-size/pr-report.test.mjs"
   },
   "nx": {
     "targets": {
@@ -22,6 +23,14 @@
             ],
             "target": "build"
           }
+        ]
+      },
+      "test:unit": {
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/pr-report.mjs",
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/pr-report.test.mjs"
         ]
       }
     }

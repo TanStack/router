@@ -9,26 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TargetRouteImport } from './routes/target'
-import { Route as Hop2RouteImport } from './routes/hop2'
-import { Route as Hop1RouteImport } from './routes/hop1'
-import { Route as BrokenRouteImport } from './routes/broken'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BrokenRouteImport } from './routes/broken'
+import { Route as Hop1RouteImport } from './routes/hop1'
+import { Route as Hop2RouteImport } from './routes/hop2'
+import { Route as TargetRouteImport } from './routes/target'
 import { Route as MissingIdRouteImport } from './routes/missing.$id'
 
-const TargetRoute = TargetRouteImport.update({
-  id: '/target',
-  path: '/target',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Hop2Route = Hop2RouteImport.update({
-  id: '/hop2',
-  path: '/hop2',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const Hop1Route = Hop1RouteImport.update({
-  id: '/hop1',
-  path: '/hop1',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BrokenRoute = BrokenRouteImport.update({
@@ -36,9 +26,19 @@ const BrokenRoute = BrokenRouteImport.update({
   path: '/broken',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const Hop1Route = Hop1RouteImport.update({
+  id: '/hop1',
+  path: '/hop1',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Hop2Route = Hop2RouteImport.update({
+  id: '/hop2',
+  path: '/hop2',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TargetRoute = TargetRouteImport.update({
+  id: '/target',
+  path: '/target',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MissingIdRoute = MissingIdRouteImport.update({
@@ -98,25 +98,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/target': {
-      id: '/target'
-      path: '/target'
-      fullPath: '/target'
-      preLoaderRoute: typeof TargetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hop2': {
-      id: '/hop2'
-      path: '/hop2'
-      fullPath: '/hop2'
-      preLoaderRoute: typeof Hop2RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hop1': {
-      id: '/hop1'
-      path: '/hop1'
-      fullPath: '/hop1'
-      preLoaderRoute: typeof Hop1RouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/broken': {
@@ -126,11 +112,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrokenRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/hop1': {
+      id: '/hop1'
+      path: '/hop1'
+      fullPath: '/hop1'
+      preLoaderRoute: typeof Hop1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hop2': {
+      id: '/hop2'
+      path: '/hop2'
+      fullPath: '/hop2'
+      preLoaderRoute: typeof Hop2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/target': {
+      id: '/target'
+      path: '/target'
+      fullPath: '/target'
+      preLoaderRoute: typeof TargetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/missing/$id': {
