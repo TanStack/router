@@ -77,11 +77,11 @@ export function getTargetTemplate(config: Config): TargetTemplate {
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-              'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
+              'function RouteComponent() { return (<><div>Hello "%%tsrPath%%"!</div><Outlet /></>) };\n',
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/react-router';",
+              "import { Outlet, createFileRoute } from '@tanstack/react-router';",
             tsrExportStart: (routePath) =>
               `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
@@ -130,11 +130,11 @@ export function getTargetTemplate(config: Config): TargetTemplate {
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-              'function RouteComponent() { return <div>Hello "%%tsrPath%%"!</div> };\n',
+              'function RouteComponent() { return (<><div>Hello "%%tsrPath%%"!</div><Outlet /></>) };\n',
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/solid-router';",
+              "import { Outlet, createFileRoute } from '@tanstack/solid-router';",
             tsrExportStart: (routePath) =>
               `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
@@ -186,11 +186,11 @@ export function getTargetTemplate(config: Config): TargetTemplate {
               '%%tsrImports%%',
               '\n\n',
               '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
-              'function RouteComponent() { return h("div", {}, "Hello \\"%%tsrPath%%\\"!") };\n',
+              'function RouteComponent() { return h("div", {}, ["Hello \\"%%tsrPath%%\\"!", h(Outlet)]) };\n',
             ].join(''),
           imports: {
             tsrImports: () =>
-              "import { createFileRoute } from '@tanstack/vue-router';",
+              "import { Outlet, createFileRoute } from '@tanstack/vue-router';",
             tsrExportStart: (routePath) =>
               `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
