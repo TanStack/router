@@ -172,9 +172,7 @@ describe('server route chunk failure lifecycle', () => {
 
     expect(response.status).toBe(500)
     expect(
-      router.state.matches.find(
-        (match) => match.routeId === ancestorRoute.id,
-      ),
+      router.state.matches.find((match) => match.routeId === ancestorRoute.id),
     ).toMatchObject({ status: 'error', error: chunkError })
   })
 })

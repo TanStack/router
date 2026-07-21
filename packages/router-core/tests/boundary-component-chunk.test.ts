@@ -201,9 +201,7 @@ describe('route boundary component preloads', () => {
     await router.load()
 
     expect(
-      router.state.matches.find(
-        (match) => match.routeId === ancestorRoute.id,
-      ),
+      router.state.matches.find((match) => match.routeId === ancestorRoute.id),
     ).toMatchObject({ status: 'error', error: chunkError })
   })
 })

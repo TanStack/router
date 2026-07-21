@@ -213,9 +213,7 @@ test('ancestor route errorComponent resets when a background child generation re
   let loaderCalls = 0
   const rootRoute = createRootRoute({
     component: Outlet,
-    errorComponent: ({ error }) => (
-      <div>Ancestor error: {error.message}</div>
-    ),
+    errorComponent: ({ error }) => <div>Ancestor error: {error.message}</div>,
   })
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,

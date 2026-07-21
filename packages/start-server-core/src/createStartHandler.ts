@@ -277,10 +277,7 @@ async function executeMiddleware(
   const disposeAbandonedResult = (result: TODO) => {
     const exposed = handleCtxResult(result)?.response
     const response = isSsrResponse(exposed) ? exposed.response : exposed
-    if (
-      streamResponse &&
-      isResponseAlias(response, streamResponse.response)
-    ) {
+    if (streamResponse && isResponseAlias(response, streamResponse.response)) {
       void disposeStreamResponse(signal.reason).catch(console.error)
       return
     }
@@ -288,8 +285,7 @@ async function executeMiddleware(
       response instanceof Response &&
       retiredStreamIdentities &&
       (retiredStreamIdentities.has(response) ||
-        (response.body !== null &&
-          retiredStreamIdentities.has(response.body)))
+        (response.body !== null && retiredStreamIdentities.has(response.body)))
     ) {
       return
     }

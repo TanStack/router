@@ -113,9 +113,7 @@ describe('server assets for ssr:false routes', () => {
     ])
     const rootHeaders = vi.fn(() => ({ 'x-root-shell': 'projected' }))
     const childHead = vi.fn(() => ({ meta: [{ title: 'child' }] }))
-    const childScripts = vi.fn(() => [
-      { children: 'window.childRan = true' },
-    ])
+    const childScripts = vi.fn(() => [{ children: 'window.childRan = true' }])
     const childHeaders = vi.fn(() => ({ 'x-child': 'unexpected' }))
     const rootRoute = new BaseRootRoute({
       ssr: false,
