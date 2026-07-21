@@ -126,7 +126,12 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const routerState = useStore(router.stores.loadDeps, (value) => value)
+  const location = useStore(router.stores.location, (value) => value.href)
+  const resolvedLocation = useStore(
+    router.stores.resolvedLocation,
+    (value) => value?.href,
+  )
+  const status = useStore(router.stores.status)
 
   return <
     const TFrom extends string = string,
@@ -138,12 +143,11 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   ): Vue.Ref<
     false | ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']
   > => {
-    const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
-
     const matchRoute = Vue.computed(() => {
-      // Access routerState to establish dependency
-
-      routerState.value
+      location.value
+      resolvedLocation.value
+      status.value
+      const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
@@ -222,24 +226,20 @@ export const MatchRoute = Vue.defineComponent({
     },
   },
   setup(props, { slots }) {
-    const router = useRouter()
-    const status = useStore(router.stores.loadDeps, (value) => value[2])
+    const params = useMatchRoute()(props)
 
     return () => {
-      if (!status.value) return null
-
-      const matchRoute = useMatchRoute()
-      const params = matchRoute(props).value as boolean
+      const match = params.value as boolean
 
       // Create a component that renders the slot in a reactive manner
-      if (!params || !slots.default) {
+      if (!match || !slots.default) {
         return null
       }
 
       // For function slots, pass the params
       if (typeof slots.default === 'function') {
         // Use h to create a wrapper component that will call the slot function
-        return Vue.h(Vue.Fragment, null, slots.default(params))
+        return Vue.h(Vue.Fragment, null, slots.default(match))
       }
 
       // For normal slots, just render them

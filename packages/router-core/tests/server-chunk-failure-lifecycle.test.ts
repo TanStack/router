@@ -17,8 +17,8 @@ import { createTestRouter, loadServerResponse } from './routerTestUtils'
  * chunk is loaded. Only boundary component chunk failures commit directly
  * without recursing into another boundary chunk.
  *
- * These tests use a real server router load with a route component whose
- * preload rejects.
+ * These tests use real server router loads and public component preload/lazy
+ * route APIs.
  */
 
 describe('server route chunk failure lifecycle', () => {
@@ -142,5 +142,37 @@ describe('server route chunk failure lifecycle', () => {
       status: 'error',
       error: rootError,
     })
+  })
+
+  test('a required ancestor lazy chunk failure wins over a deeper loader notFound', async () => {
+    const chunkError = new Error('ancestor lazy chunk failed')
+    const rootRoute = new BaseRootRoute({})
+    const ancestorRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/ancestor',
+      errorComponent: () => null,
+    }).lazy(() => Promise.reject(chunkError))
+    const childRoute = new BaseRoute({
+      getParentRoute: () => ancestorRoute,
+      path: '/child',
+      loader: () => {
+        throw notFound()
+      },
+      notFoundComponent: () => null,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        ancestorRoute.addChildren([childRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/ancestor/child'] }),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/ancestor/child')
+
+    expect(response.status).toBe(500)
+    expect(
+      router.state.matches.find((match) => match.routeId === ancestorRoute.id),
+    ).toMatchObject({ status: 'error', error: chunkError })
   })
 })

@@ -32,11 +32,6 @@ type OutletMatchSelection = [
   parentNotFoundError: unknown,
 ]
 
-const matchViewFieldsEqual = (
-  a: AnyRouteMatch | undefined,
-  b: AnyRouteMatch | undefined,
-) => a?.abortController === b?.abortController && a?.status === b?.status
-
 const outletMatchSelectionEqual = (
   a: OutletMatchSelection,
   b: OutletMatchSelection,
@@ -56,7 +51,7 @@ export const Match = React.memo(function MatchImpl({
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value, matchViewFieldsEqual)
+  const match = useStore(matchStore, (value) => value)
   return <MatchView router={router} match={match!} />
 })
 
@@ -106,7 +101,7 @@ function MatchView({
       <matchContext.Provider value={match.routeId}>
         <ResolvedSuspenseBoundary fallback={pendingElement}>
           <ResolvedCatchBoundary
-            getResetKey={() => match.abortController}
+            getResetKey={() => match}
             errorComponent={routeErrorComponent as any}
             onCatch={(error, errorInfo) => {
               // Forward not found errors (we don't want to show the error component for these)

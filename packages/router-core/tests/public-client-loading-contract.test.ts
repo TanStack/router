@@ -189,11 +189,15 @@ describe('public client loading contracts', () => {
     await router.invalidate()
 
     expect(loader).toHaveBeenCalledTimes(22)
-    expect(router.state.matches.at(-1)).toMatchObject({
-      routeId: pageRoute.id,
-      status: 'error',
-      error: expect.objectContaining({ message: 'Redirect cycle detected' }),
-    })
+    await vi.waitFor(() =>
+      expect(
+        router.state.matches.find((match) => match.status !== 'success'),
+      ).toMatchObject({
+        routeId: rootRoute.id,
+        status: 'error',
+        error: expect.objectContaining({ message: 'Too many redirects' }),
+      }),
+    )
   })
 
   test('a blocking child observes the fresh semantic parent generation', async () => {
@@ -492,6 +496,101 @@ describe('public client loading contracts', () => {
       routeId: finalRoute.id,
       status: 'success',
     })
+    expect(router.state.status).toBe('idle')
+  })
+
+  test('a redirect-limit error aborts concurrent work in its final lane', async () => {
+    const finalRootAborted = createControlledPromise<void>()
+    const finalRootData = createControlledPromise<string>()
+    const errorComponentStarted = createControlledPromise<void>()
+    const errorComponentGate = createControlledPromise<void>()
+    let finalRootSignal: AbortSignal | undefined
+    const ErrorComponent = Object.assign(() => null, {
+      preload: () => {
+        errorComponentStarted.resolve()
+        return errorComponentGate
+      },
+    })
+
+    const rootRoute = new BaseRootRoute({
+      errorComponent: ErrorComponent as any,
+      loader: ({ location, abortController }) => {
+        if (location.pathname !== '/hop/20/child') {
+          return 'root data'
+        }
+        finalRootSignal = abortController.signal
+        finalRootSignal.addEventListener(
+          'abort',
+          () => finalRootAborted.resolve(),
+          { once: true },
+        )
+        return finalRootData
+      },
+    })
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hop/$hop',
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: ({ params }) => {
+        throw redirect({
+          to: '/hop/$hop/child',
+          params: { hop: String(Number(params.hop) + 1) },
+        } as any)
+      },
+    })
+    const cleanupRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/cleanup',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        parentRoute.addChildren([childRoute]),
+        cleanupRoute,
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/hop/0/child'],
+      }),
+    })
+    const loading = router.load()
+
+    try {
+      await errorComponentStarted
+      expect(finalRootData.status).toBe('pending')
+      errorComponentGate.resolve()
+      await finalRootAborted
+      await expect(loading).resolves.toBeUndefined()
+
+      expect(router.state.location.pathname).toBe('/hop/20/child')
+      const firstTerminalMatch = router.state.matches.find(
+        (match) => match.status !== 'success',
+      )
+      expect(firstTerminalMatch).toMatchObject({
+        routeId: rootRoute.id,
+        status: 'error',
+        isFetching: false,
+        error: expect.objectContaining({ message: 'Too many redirects' }),
+      })
+      expect(finalRootData.status).toBe('pending')
+      expect(finalRootSignal?.aborted).toBe(true)
+      expect(
+        router.state.matches.every((match) => match.isFetching === false),
+      ).toBe(true)
+      expect(router.state.status).toBe('idle')
+      expect(router.state.isLoading).toBe(false)
+    } finally {
+      finalRootData.resolve('late root data')
+      errorComponentGate.resolve()
+      await Promise.allSettled([loading])
+    }
+
+    await router.navigate({ to: '/cleanup' })
+    expect(router.state.location.pathname).toBe('/cleanup')
+    expect(
+      router.state.matches.every((match) => match.status === 'success'),
+    ).toBe(true)
     expect(router.state.status).toBe('idle')
   })
 

@@ -908,12 +908,13 @@ export function getLocationChangeInfo(
   location: ParsedLocation,
   resolvedLocation?: ParsedLocation,
 ) {
-  const fromLocation = resolvedLocation
-  const toLocation = location
-  const pathChanged = fromLocation?.pathname !== toLocation.pathname
-  const hrefChanged = fromLocation?.href !== toLocation.href
-  const hashChanged = fromLocation?.hash !== toLocation.hash
-  return { fromLocation, toLocation, pathChanged, hrefChanged, hashChanged }
+  return {
+    fromLocation: resolvedLocation,
+    toLocation: location,
+    pathChanged: resolvedLocation?.pathname !== location.pathname,
+    hrefChanged: resolvedLocation?.href !== location.href,
+    hashChanged: resolvedLocation?.hash !== location.hash,
+  }
 }
 
 /** Return only state owned by the application, excluding history bookkeeping. */
@@ -922,6 +923,8 @@ export function _getUserHistoryState({
   __TSR_key: _tsrKey,
   __TSR_index: _tsrIndex,
   __hashScrollIntoViewOptions: _hashScroll,
+  __tempLocation: _tempLocation,
+  __tempKey: _tempKey,
   ...state
 }: ParsedHistoryState): HistoryState {
   return state
@@ -1261,7 +1264,6 @@ export class RouterCore<
       }
     }
 
-    let needsLocationUpdate = false
     const nextBasepath = this.options.basepath ?? '/'
     const nextRewriteOption = this.options.rewrite
     const basepathChanged = basepathWasUnset || prevBasepath !== nextBasepath
@@ -1294,11 +1296,9 @@ export class RouterCore<
         this.updateLatestLocation()
       }
 
-      needsLocationUpdate = true
-    }
-
-    if (needsLocationUpdate && this.stores) {
-      this.stores.location.set(this.latestLocation)
+      if (this.stores) {
+        this.stores.location.set(this.latestLocation)
+      }
     }
   }
 
@@ -1369,7 +1369,7 @@ export class RouterCore<
   }
 
   emit: EmitFn = (routerEvent) => {
-    this.subscribers.forEach((listener) => {
+    for (const listener of this.subscribers) {
       if (listener.eventType === routerEvent.type) {
         try {
           listener.fn(routerEvent)
@@ -1377,7 +1377,7 @@ export class RouterCore<
           console.error(e)
         }
       }
-    })
+    }
   }
 
   /**
@@ -1995,12 +1995,12 @@ export class RouterCore<
         nextSearch = validatedSearch
       }
 
-      nextSearch = applySearchMiddleware({
-        search: nextSearch,
+      nextSearch = applySearchMiddleware(
+        nextSearch,
         dest,
         destRoutes,
-        _includeValidateSearch: opts._includeValidateSearch,
-      })
+        opts._includeValidateSearch,
+      )
 
       // Replace the equal deep
       nextSearch = nullReplaceEqualDeep(fromSearch, nextSearch)
@@ -2735,28 +2735,12 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
-/**
- * TODO: once caches are persisted across requests on the server,
- * we can cache the built middleware chain using `last(destRoutes)` as the key
- */
-function applySearchMiddleware({
-  search,
-  dest,
-  destRoutes,
-  _includeValidateSearch,
-}: {
-  search: any
-  dest: { search?: unknown }
-  destRoutes: ReadonlyArray<AnyRoute>
-  _includeValidateSearch: boolean | undefined
-}) {
-  const middleware = buildMiddlewareChain(destRoutes)
-  return middleware(search, dest, _includeValidateSearch ?? false)
-}
-
-function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
-  let dest: BuildNextOptions
-  let includeValidateSearch: boolean | undefined
+function applySearchMiddleware(
+  search: any,
+  dest: BuildNextOptions,
+  destRoutes: ReadonlyArray<AnyRoute>,
+  includeValidateSearch: boolean | undefined,
+) {
   const middlewares = [] as Array<SearchMiddleware<any>>
 
   for (const route of destRoutes) {
@@ -2849,15 +2833,7 @@ function buildMiddlewareChain(destRoutes: ReadonlyArray<AnyRoute>) {
     return (middlewares[index]! as any)({ search: currentSearch, next, meta })
   }
 
-  return function middleware(
-    search: any,
-    nextDest: BuildNextOptions,
-    _includeValidateSearch: boolean,
-  ) {
-    dest = nextDest
-    includeValidateSearch = _includeValidateSearch
-    return applyNext(0, search)
-  }
+  return applyNext(0, search)
 }
 
 function findGlobalNotFoundRouteId(

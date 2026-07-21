@@ -214,7 +214,7 @@ function handleCtxResult(result: TODO) {
 
 function disposeLateResponse(result: TODO, signal: AbortSignal): void {
   const response = handleCtxResult(result)?.response
-  if (isSsrResponse(response) && response.serverSsrCleanup === 'stream') {
+  if (isSsrResponse(response) || isSpecialResponse(response)) {
     disposeSsrResponseDetached(response, signal.reason)
   }
 }
@@ -235,6 +235,13 @@ async function executeMiddleware(
   let streamResponse:
     | Extract<SsrResponse, { serverSsrCleanup: 'stream' }>
     | undefined
+  let retiredStreamIdentities: WeakSet<object> | undefined
+
+  const isResponseAlias = (candidate: unknown, response: Response) =>
+    candidate === response ||
+    (candidate instanceof Response &&
+      response.body !== null &&
+      candidate.body === response.body)
 
   const setResponse = (response: TODO) => {
     if (isSsrResponse(response)) {
@@ -255,16 +262,35 @@ async function executeMiddleware(
     }
 
     streamResponse = undefined
+    retiredStreamIdentities ??= new WeakSet()
+    retiredStreamIdentities.add(response.response)
+    if (response.response.body) {
+      retiredStreamIdentities.add(response.response.body)
+    }
     const currentResponse = ctx.response
-    if (
-      currentResponse === response.response ||
-      (currentResponse instanceof Response &&
-        response.response.body !== null &&
-        currentResponse.body === response.response.body)
-    ) {
+    if (isResponseAlias(currentResponse, response.response)) {
       ctx.response = undefined
     }
     await response.dispose(reason)
+  }
+
+  const disposeAbandonedResult = (result: TODO) => {
+    const exposed = handleCtxResult(result)?.response
+    const response = isSsrResponse(exposed) ? exposed.response : exposed
+    if (streamResponse && isResponseAlias(response, streamResponse.response)) {
+      void disposeStreamResponse(signal.reason).catch(console.error)
+      return
+    }
+    if (
+      response instanceof Response &&
+      retiredStreamIdentities &&
+      (retiredStreamIdentities.has(response) ||
+        (response.body !== null && retiredStreamIdentities.has(response.body)))
+    ) {
+      return
+    }
+
+    disposeLateResponse(result, signal)
   }
 
   const getFinalResponse = async (): Promise<HandlerCallbackResult> => {
@@ -332,13 +358,11 @@ async function executeMiddleware(
         nextPromise = undefined
         result = await pending
         if (isSignalAborted(signal)) {
-          disposeLateResponse(result, signal)
+          disposeAbandonedResult(result)
           throw signal.reason
         }
       } else {
-        result = await waitForRequest(pending, signal, (late) =>
-          disposeLateResponse(late, signal),
-        )
+        result = await waitForRequest(pending, signal, disposeAbandonedResult)
       }
     } catch (err) {
       if (isSignalAborted(signal)) {
@@ -366,10 +390,13 @@ async function executeMiddleware(
 
   try {
     await runNext()
-    const response = await waitForRequest(getFinalResponse(), signal, (late) =>
-      disposeLateResponse(late, signal),
+    const response = await waitForRequest(
+      getFinalResponse(),
+      signal,
+      disposeAbandonedResult,
     )
     if (signal.aborted) {
+      disposeAbandonedResult(response)
       throw signal.reason
     }
     return { ctx, response }

@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, test } from 'vitest'
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { createMemoryHistory } from '@tanstack/history'
+import { createControlledPromise } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -143,6 +151,85 @@ test('should show pendingComponent of root route', async () => {
 
   expect(await rendered.findByTestId('root-pending')).toBeInTheDocument()
   expect(await rendered.findByTestId('root-content')).toBeInTheDocument()
+})
+
+test('useMatchRoute follows superseding pending locations', async () => {
+  const aGate = createControlledPromise<void>()
+  const bGate = createControlledPromise<void>()
+
+  function Layout() {
+    const matchRoute = useMatchRoute()
+    return (
+      <div>
+        <span data-testid="pending-a">
+          {String(Boolean(matchRoute({ to: '/a', pending: true })))}
+        </span>
+        <span data-testid="pending-b">
+          {String(Boolean(matchRoute({ to: '/b', pending: true })))}
+        </span>
+        <span data-testid="resolved-b">
+          {String(Boolean(matchRoute({ to: '/b', pending: false })))}
+        </span>
+        <Outlet />
+      </div>
+    )
+  }
+
+  const root = createRootRoute({ component: Layout })
+  const index = createRoute({
+    getParentRoute: () => root,
+    path: '/',
+  })
+  const a = createRoute({
+    getParentRoute: () => root,
+    path: '/a',
+    loader: () => aGate,
+  })
+  const b = createRoute({
+    getParentRoute: () => root,
+    path: '/b',
+    loader: () => bGate,
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([index, a, b]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  render(<RouterProvider router={router} />)
+
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-a')).toHaveTextContent('false')
+    expect(router.stores.status.get()).toBe('idle')
+    expect(router.stores.resolvedLocation.get()?.pathname).toBe('/')
+  })
+
+  let navigationA!: Promise<void>
+  act(() => {
+    navigationA = router.navigate({ to: '/a' })
+  })
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-a')).toHaveTextContent('true')
+    expect(screen.getByTestId('resolved-b')).toHaveTextContent('false')
+  })
+
+  let navigationB!: Promise<void>
+  act(() => {
+    navigationB = router.navigate({ to: '/b' })
+  })
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-a')).toHaveTextContent('false')
+    expect(screen.getByTestId('pending-b')).toHaveTextContent('true')
+    expect(screen.getByTestId('resolved-b')).toHaveTextContent('false')
+  })
+
+  await act(async () => {
+    aGate.resolve()
+    bGate.resolve()
+    await Promise.allSettled([navigationA, navigationB])
+  })
+  await waitFor(() => {
+    expect(screen.getByTestId('pending-b')).toHaveTextContent('false')
+    expect(screen.getByTestId('resolved-b')).toHaveTextContent('true')
+  })
 })
 
 test('legacy notFoundRoute drops a stale parent layout after navigation', async () => {

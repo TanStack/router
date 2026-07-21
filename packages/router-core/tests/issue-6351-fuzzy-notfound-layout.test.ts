@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -23,7 +23,11 @@ import { createTestRouter } from './routerTestUtils'
 function setup(opts: {
   layoutNotFoundComponent?: () => unknown
   agentsNotFoundComponent?: () => unknown
+  agentsContext?: () => Record<string, never>
+  agentsBeforeLoad?: () => Record<string, never>
+  agentsLoader?: () => null
   notFoundMode?: 'fuzzy' | 'root'
+  isServer?: boolean
 }) {
   const rootRoute = new BaseRootRoute({})
   const layoutRoute = new BaseRoute({
@@ -35,6 +39,9 @@ function setup(opts: {
     getParentRoute: () => layoutRoute,
     path: '/agents',
     notFoundComponent: opts.agentsNotFoundComponent,
+    context: opts.agentsContext,
+    beforeLoad: opts.agentsBeforeLoad,
+    loader: opts.agentsLoader,
   })
   const skillAgentRoute = new BaseRoute({
     getParentRoute: () => agentsRoute,
@@ -47,6 +54,7 @@ function setup(opts: {
     ]),
     history: createMemoryHistory({ initialEntries: ['/agents/skill-agen'] }),
     notFoundMode: opts.notFoundMode,
+    isServer: opts.isServer,
   })
 
   return { router, rootRoute, layoutRoute, agentsRoute }
@@ -87,6 +95,29 @@ describe('issue #6351: fuzzy notFound honors pathless layout boundaries', () => 
 
     expect(_notFoundRouteIds(router)).toEqual([agentsRoute.id])
   })
+
+  test.each(['client', 'server'] as const)(
+    'fuzzy ancestor 404 skips hidden descendant lifecycle callbacks on the %s',
+    async (environment) => {
+      const context = vi.fn(() => ({}))
+      const beforeLoad = vi.fn(() => ({}))
+      const loader = vi.fn(() => null)
+      const { router } = setup({
+        layoutNotFoundComponent: () => 'layout not found',
+        agentsContext: context,
+        agentsBeforeLoad: beforeLoad,
+        agentsLoader: loader,
+        notFoundMode: 'fuzzy',
+        isServer: environment === 'server',
+      })
+
+      await router.load()
+
+      expect(context).not.toHaveBeenCalled()
+      expect(beforeLoad).not.toHaveBeenCalled()
+      expect(loader).not.toHaveBeenCalled()
+    },
+  )
 })
 
 describe('generic global notFound attribution controls', () => {

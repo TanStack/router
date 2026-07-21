@@ -16,7 +16,7 @@ export function CatchNotFound(props: {
     router.stores.location,
     (location) => location.pathname,
   )
-  const status = useStore(router.stores.status, (value) => value)
+  const status = useStore(router.stores.status)
 
   // Create a function that returns a VNode to match the SyncRouteComponent signature
   const errorComponentFn = (componentProps: ErrorComponentProps) => {

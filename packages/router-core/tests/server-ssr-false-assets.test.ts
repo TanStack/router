@@ -4,12 +4,12 @@ import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 /**
- * `ssr: false` makes a route client-only, so its route assets must stay out of
- * the server response. Descendants inherit that restriction even if they
- * request `ssr: true` themselves.
+ * The first `ssr: false` route contributes the assets needed for its server
+ * shell. Descendants inherit the client-only restriction and do not execute
+ * their route asset callbacks, even if they request `ssr: true` themselves.
  */
 describe('server assets for ssr:false routes', () => {
-  test('does not execute or publish assets for the client-only branch', async () => {
+  test('executes assets at the client-only boundary but not below it', async () => {
     const rootHead = vi.fn(() => ({ meta: [{ title: 'server root' }] }))
     const rootScripts = vi.fn(() => [
       {
@@ -28,8 +28,10 @@ describe('server assets for ssr:false routes', () => {
       },
     ])
     const parentHeaders = vi.fn(() => ({
-      'x-client-only-parent': 'unexpected',
+      'x-client-only-parent': 'projected',
     }))
+    const parentBeforeLoad = vi.fn(() => ({}))
+    const parentLoader = vi.fn(() => 'unexpected')
     const childHead = vi.fn(() => ({
       meta: [{ title: 'client-only child' }],
     }))
@@ -51,6 +53,8 @@ describe('server assets for ssr:false routes', () => {
       getParentRoute: () => rootRoute,
       path: '/client-only',
       ssr: false,
+      beforeLoad: parentBeforeLoad,
+      loader: parentLoader,
       head: parentHead,
       scripts: parentScripts,
       headers: parentHeaders,
@@ -81,14 +85,67 @@ describe('server assets for ssr:false routes', () => {
     expect(rootScripts).toHaveBeenCalledTimes(1)
     expect(rootHeaders).toHaveBeenCalledTimes(1)
     expect(response.headers.get('x-server-root')).toBe('projected')
-    expect(parentHead).not.toHaveBeenCalled()
-    expect(parentScripts).not.toHaveBeenCalled()
-    expect(parentHeaders).not.toHaveBeenCalled()
+    expect(parentHead).toHaveBeenCalledTimes(1)
+    expect(parentScripts).toHaveBeenCalledTimes(1)
+    expect(parentHeaders).toHaveBeenCalledTimes(1)
+    expect(parentBeforeLoad).not.toHaveBeenCalled()
+    expect(parentLoader).not.toHaveBeenCalled()
+    expect(response.headers.get('x-client-only-parent')).toBe('projected')
+    expect(
+      router.state.matches.find(
+        (match) => match.routeId === clientOnlyRoute.id,
+      ),
+    ).toMatchObject({
+      meta: [{ title: 'client-only parent' }],
+      scripts: [{ children: 'window.parentAssetRan = true' }],
+      headers: { 'x-client-only-parent': 'projected' },
+    })
     expect(childHead).not.toHaveBeenCalled()
     expect(childScripts).not.toHaveBeenCalled()
     expect(childHeaders).not.toHaveBeenCalled()
-    expect(response.headers.get('x-client-only-parent')).toBeNull()
     expect(response.headers.get('x-client-only-child')).toBeNull()
+  })
+
+  test('executes assets when the root route is client-only', async () => {
+    const rootHead = vi.fn(() => ({ meta: [{ title: 'root shell' }] }))
+    const rootScripts = vi.fn(() => [
+      { children: 'window.rootShellRan = true' },
+    ])
+    const rootHeaders = vi.fn(() => ({ 'x-root-shell': 'projected' }))
+    const childHead = vi.fn(() => ({ meta: [{ title: 'child' }] }))
+    const childScripts = vi.fn(() => [{ children: 'window.childRan = true' }])
+    const childHeaders = vi.fn(() => ({ 'x-child': 'unexpected' }))
+    const rootRoute = new BaseRootRoute({
+      ssr: false,
+      head: rootHead,
+      scripts: rootScripts,
+      headers: rootHeaders,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      ssr: true,
+      head: childHead,
+      scripts: childScripts,
+      headers: childHeaders,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/child')
+
+    expect(response.status).toBe(200)
+    expect(rootHead).toHaveBeenCalledTimes(1)
+    expect(rootScripts).toHaveBeenCalledTimes(1)
+    expect(rootHeaders).toHaveBeenCalledTimes(1)
+    expect(response.headers.get('x-root-shell')).toBe('projected')
+    expect(childHead).not.toHaveBeenCalled()
+    expect(childScripts).not.toHaveBeenCalled()
+    expect(childHeaders).not.toHaveBeenCalled()
+    expect(response.headers.get('x-child')).toBeNull()
   })
 
   test('projects assets for a data-only branch', async () => {

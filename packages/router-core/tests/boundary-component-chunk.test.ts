@@ -174,4 +174,34 @@ describe('route boundary component preloads', () => {
       loaderData: 'ready',
     })
   })
+
+  test('a required ancestor lazy chunk failure wins over a deeper loader notFound', async () => {
+    const chunkError = new Error('ancestor lazy chunk failed')
+    const rootRoute = new BaseRootRoute({})
+    const ancestorRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/ancestor',
+      errorComponent: () => null,
+    }).lazy(() => Promise.reject(chunkError))
+    const childRoute = new BaseRoute({
+      getParentRoute: () => ancestorRoute,
+      path: '/child',
+      loader: () => {
+        throw notFound()
+      },
+      notFoundComponent: () => null,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        ancestorRoute.addChildren([childRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/ancestor/child'] }),
+    })
+
+    await router.load()
+
+    expect(
+      router.state.matches.find((match) => match.routeId === ancestorRoute.id),
+    ).toMatchObject({ status: 'error', error: chunkError })
+  })
 })

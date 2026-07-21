@@ -574,6 +574,45 @@ describe('Link', () => {
       ).toHaveTextContent('false')
     })
 
+    test('updates href when link options change reactively', async () => {
+      const [to, setTo] = Solid.createSignal<'/a' | '/b'>('/a')
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <button onClick={() => setTo('/b')}>Change destination</button>
+            <Link data-testid="dynamic-link" to={to()}>
+              Destination
+            </Link>
+          </>
+        ),
+      })
+      const aRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/a',
+      })
+      const bRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/b',
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([aRoute, bRoute]),
+        history,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const link = await screen.findByTestId('dynamic-link')
+      expect(link).toHaveAttribute('href', '/a')
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Change destination' }),
+      )
+
+      await waitFor(() => {
+        expect(link).toHaveAttribute('href', '/b')
+      })
+    })
+
     test('updates exact and fuzzy active state before the next route renders', async () => {
       const postLoader = createControlledPromise()
 

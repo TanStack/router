@@ -207,3 +207,59 @@ test('global catch boundary resets when a background child generation recovers',
     screen.queryByText('stale child render failed'),
   ).not.toBeInTheDocument()
 })
+
+test('ancestor route errorComponent resets when a background child generation recovers', async () => {
+  const refresh = createControlledPromise<number>()
+  let loaderCalls = 0
+  const rootRoute = createRootRoute({
+    component: Outlet,
+    errorComponent: ({ error }) => <div>Ancestor error: {error.message}</div>,
+  })
+  const childRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: {
+      staleReloadMode: 'background',
+      handler: () => (++loaderCalls === 1 ? 1 : refresh),
+    },
+    component: () => {
+      const revision = childRoute.useLoaderData()
+      if (revision.value === 1) {
+        throw new Error('stale child render failed')
+      }
+      return <div>Recovered child revision {revision.value}</div>
+    },
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([childRoute]),
+  })
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+
+  let invalidation: Promise<void> | undefined
+  try {
+    render(<RouterProvider router={router} />)
+    expect(
+      await screen.findByText('Ancestor error: stale child render failed'),
+    ).toBeInTheDocument()
+
+    invalidation = router.invalidate({
+      filter: (match) => match.routeId === childRoute.id,
+    })
+    await vi.waitFor(() => expect(loaderCalls).toBe(2))
+    expect(
+      screen.getByText('Ancestor error: stale child render failed'),
+    ).toBeInTheDocument()
+    refresh.resolve(2)
+    await invalidation
+
+    expect(
+      await screen.findByText('Recovered child revision 2'),
+    ).toBeInTheDocument()
+  } finally {
+    refresh.resolve(2)
+    if (invalidation) {
+      await Promise.allSettled([invalidation])
+    }
+  }
+})

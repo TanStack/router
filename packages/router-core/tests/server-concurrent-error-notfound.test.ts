@@ -9,18 +9,29 @@ import {
 } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
-const concurrentModes = [
-  ['parent-first', false],
-  ['parent-first', true],
-  ['child-first', false],
-  ['child-first', true],
+const requiredPrefixModes = [
+  ['fresh', 'error', false, 'child-first'],
+  ['fresh', 'error', true, 'child-first'],
+  ['fresh', 'notFound', false, 'child-first'],
+  ['fresh', 'notFound', true, 'child-first'],
+  ['retained', 'error', false, 'child-first'],
+  ['retained', 'notFound', false, 'child-first'],
+  ['retained', 'error', false, 'parent-first'],
 ] as const
 
 describe('concurrent route failure ordering', () => {
-  test.each(concurrentModes)(
-    'commits the first loader failure across the full matched branch (%s, isServer=%s)',
-    async (settlementOrder, isServer) => {
-      const parentError = new Error('parent loader failed')
+  test.each(requiredPrefixModes)(
+    'selects the reachable failure (parentData=%s, parent=%s, isServer=%s, order=%s)',
+    async (parentData, parentOutcome, isServer, settlementOrder) => {
+      const parentFailure =
+        parentOutcome === 'error'
+          ? new Error('parent loader failed')
+          : notFound()
+      const childFailure =
+        parentOutcome === 'error'
+          ? notFound()
+          : new Error('child loader failed')
+      const childOutcome = parentOutcome === 'error' ? 'notFound' : 'error'
       const parentGate = createControlledPromise<void>()
       const childGate = createControlledPromise<void>()
       const parentStarted = createControlledPromise<void>()
@@ -28,29 +39,39 @@ describe('concurrent route failure ordering', () => {
       const parentSettled = createControlledPromise<void>()
       const childSettled = createControlledPromise<void>()
       const settlements: Array<string> = []
+      let failing = parentData === 'fresh'
       const rootRoute = new BaseRootRoute({})
       const parentRoute = new BaseRoute({
         getParentRoute: () => rootRoute,
         path: '/parent',
+        ssr: 'data-only',
         loader: async () => {
+          if (!failing) {
+            return undefined
+          }
           parentStarted.resolve()
           await parentGate
           settlements.push('parent')
           parentSettled.resolve()
-          throw parentError
+          throw parentFailure
         },
         errorComponent: () => null,
+        notFoundComponent: () => null,
       })
       const childRoute = new BaseRoute({
         getParentRoute: () => parentRoute,
         path: '/child',
         loader: async () => {
+          if (!failing) {
+            return 'child data'
+          }
           childStarted.resolve()
           await childGate
           settlements.push('child')
           childSettled.resolve()
-          throw notFound()
+          throw childFailure
         },
+        errorComponent: () => null,
         notFoundComponent: () => null,
       })
       const router = createTestRouter({
@@ -59,124 +80,208 @@ describe('concurrent route failure ordering', () => {
         ]),
         history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
         isServer,
+        defaultStaleReloadMode: 'blocking',
       })
+
+      if (parentData === 'retained') {
+        await router.load()
+        const parentMatch = router.state.matches.find(
+          (match) => match.routeId === parentRoute.id,
+        )
+        expect(parentMatch).toMatchObject({
+          routeId: parentRoute.id,
+          status: 'success',
+          loaderData: undefined,
+        })
+        failing = true
+      }
 
       const responsePromise = isServer
         ? loadServerResponse(router, '/parent/child')
-        : router.load().then(() => undefined)
+        : (parentData === 'retained'
+            ? router.invalidate()
+            : router.load()
+          ).then(() => undefined)
       await Promise.all([parentStarted, childStarted])
-      if (settlementOrder === 'parent-first') {
-        parentGate.resolve()
-        await parentSettled
+      if (settlementOrder === 'child-first') {
         childGate.resolve()
         await childSettled
+        parentGate.resolve()
+        await parentSettled
       } else {
-        childGate.resolve()
-        await childSettled
         parentGate.resolve()
         await parentSettled
+        childGate.resolve()
+        await childSettled
       }
       const response = await responsePromise
 
-      const childWon = settlementOrder === 'child-first'
+      const parentWon =
+        parentData === 'fresh' || settlementOrder === 'parent-first'
+      const selectedOutcome = parentWon ? parentOutcome : childOutcome
+      const selectedFailure = parentWon ? parentFailure : childFailure
       if (isServer) {
-        expect(response?.status).toBe(childWon ? 404 : 500)
+        expect(response?.status).toBe(selectedOutcome === 'error' ? 500 : 404)
       }
       expect(settlements).toEqual(
-        settlementOrder === 'parent-first'
-          ? ['parent', 'child']
-          : ['child', 'parent'],
+        settlementOrder === 'child-first'
+          ? ['child', 'parent']
+          : ['parent', 'child'],
       )
-      expect(router.state.matches.map((match) => match.routeId)).toEqual([
-        rootRoute.id,
-        parentRoute.id,
-        childRoute.id,
-      ])
-      expect(router.state.matches[childWon ? 2 : 1]).toMatchObject(
-        childWon
-          ? { status: 'notFound' }
-          : { status: 'error', error: parentError },
+      const terminalMatch = router.state.matches.find(
+        (match) => match.status === 'error' || match.status === 'notFound',
       )
+      expect(terminalMatch).toMatchObject({
+        routeId: parentWon ? parentRoute.id : childRoute.id,
+        status: selectedOutcome,
+        error: selectedFailure,
+      })
+      expect(router.state.status).toBe('idle')
     },
   )
 
-  test.each(concurrentModes)(
-    'does not replace the first loader failure with a later one (%s, isServer=%s)',
-    async (settlementOrder, isServer) => {
-      const parentGate = createControlledPromise<void>()
+  test.each([false, true])(
+    'recomputes chunk readiness after a notFound ancestor promotes to root (isServer=%s)',
+    async (isServer) => {
+      const chunkError = new Error('intermediate lazy chunk failed')
+      const childError = new Error('child loader failed')
+      const rootNotFound = notFound()
+      const ancestorGate = createControlledPromise<void>()
       const childGate = createControlledPromise<void>()
-      const parentStarted = createControlledPromise<void>()
+      const ancestorStarted = createControlledPromise<void>()
       const childStarted = createControlledPromise<void>()
-      const parentSettled = createControlledPromise<void>()
+      const ancestorSettled = createControlledPromise<void>()
       const childSettled = createControlledPromise<void>()
       const settlements: Array<string> = []
-      const rootRoute = new BaseRootRoute({})
-      const parentRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/parent',
-        loader: async () => {
-          parentStarted.resolve()
-          await parentGate
-          settlements.push('parent')
-          parentSettled.resolve()
-          throw notFound()
-        },
+      const intermediateLazy = vi.fn(() => Promise.reject(chunkError))
+      const rootRoute = new BaseRootRoute({
         notFoundComponent: () => null,
       })
+      const intermediateRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/intermediate',
+        errorComponent: () => null,
+      }).lazy(intermediateLazy)
+      const ancestorRoute = new BaseRoute({
+        getParentRoute: () => intermediateRoute,
+        path: '/ancestor',
+        loader: async () => {
+          ancestorStarted.resolve()
+          await ancestorGate
+          settlements.push('ancestor')
+          ancestorSettled.resolve()
+          throw rootNotFound
+        },
+      })
       const childRoute = new BaseRoute({
-        getParentRoute: () => parentRoute,
+        getParentRoute: () => ancestorRoute,
         path: '/child',
         loader: async () => {
           childStarted.resolve()
           await childGate
           settlements.push('child')
           childSettled.resolve()
-          throw new Error('child loader failed')
+          throw childError
         },
         errorComponent: () => null,
       })
       const router = createTestRouter({
         routeTree: rootRoute.addChildren([
-          parentRoute.addChildren([childRoute]),
+          intermediateRoute.addChildren([
+            ancestorRoute.addChildren([childRoute]),
+          ]),
         ]),
-        history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+        history: createMemoryHistory({
+          initialEntries: ['/intermediate/ancestor/child'],
+        }),
         isServer,
       })
 
       const responsePromise = isServer
-        ? loadServerResponse(router, '/parent/child')
+        ? loadServerResponse(router, '/intermediate/ancestor/child')
         : router.load().then(() => undefined)
-      await Promise.all([parentStarted, childStarted])
-      if (settlementOrder === 'parent-first') {
-        parentGate.resolve()
-        await parentSettled
-        childGate.resolve()
-        await childSettled
-      } else {
-        childGate.resolve()
-        await childSettled
-        parentGate.resolve()
-        await parentSettled
-      }
+      await Promise.all([ancestorStarted, childStarted])
+      childGate.resolve()
+      await childSettled
+      ancestorGate.resolve()
+      await ancestorSettled
       const response = await responsePromise
 
-      const childWon = settlementOrder === 'child-first'
       if (isServer) {
-        expect(response?.status).toBe(childWon ? 500 : 404)
+        expect(response?.status).toBe(404)
       }
-      expect(settlements).toEqual(
-        settlementOrder === 'parent-first'
-          ? ['parent', 'child']
-          : ['child', 'parent'],
-      )
-      expect(router.state.matches.map((match) => match.routeId)).toEqual([
-        rootRoute.id,
-        parentRoute.id,
-        childRoute.id,
-      ])
-      expect(router.state.matches[childWon ? 2 : 1]).toMatchObject({
-        status: childWon ? 'error' : 'notFound',
+      expect(settlements).toEqual(['child', 'ancestor'])
+      expect(intermediateLazy).toHaveBeenCalled()
+      expect(
+        router.state.matches.find((match) => match.routeId === rootRoute.id),
+      ).toMatchObject({
+        status: 'success',
+        error: rootNotFound,
       })
+      expect(
+        router.state.matches.some((match) => match.error === chunkError),
+      ).toBe(false)
+    },
+  )
+
+  test.each([
+    [false, 'beforeLoad'],
+    [false, 'loader'],
+    [true, 'beforeLoad'],
+    [true, 'loader'],
+  ] as const)(
+    'keeps a resolved notFound boundary stable within one load (isServer=%s, phase=%s)',
+    async (isServer, phase) => {
+      const lazyError = new Error('lazy boundary lookup failed')
+      const notFoundError = notFound()
+      const resolveAt = phase === 'beforeLoad' ? 2 : 3
+      let lazyCalls = 0
+      const rootRoute = new BaseRootRoute({
+        notFoundComponent: () => null,
+      })
+      const intermediateRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/intermediate',
+      }).lazy(() => {
+        lazyCalls++
+        if (lazyCalls < resolveAt) {
+          return Promise.reject(lazyError)
+        }
+        return Promise.resolve({
+          options: { notFoundComponent: () => null },
+        } as any)
+      })
+      function throwNotFound() {
+        throw notFoundError
+      }
+      const childRoute = new BaseRoute({
+        getParentRoute: () => intermediateRoute,
+        path: '/child',
+        beforeLoad: phase === 'beforeLoad' ? throwNotFound : undefined,
+        loader: phase === 'loader' ? throwNotFound : undefined,
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([
+          intermediateRoute.addChildren([childRoute]),
+        ]),
+        history: createMemoryHistory({
+          initialEntries: ['/intermediate/child'],
+        }),
+        isServer,
+      })
+
+      const response = isServer
+        ? await loadServerResponse(router, '/intermediate/child')
+        : await router.load().then(() => undefined)
+
+      if (isServer) {
+        expect(response?.status).toBe(404)
+      }
+      expect(lazyCalls).toBe(!isServer && phase === 'loader' ? 2 : 1)
+      expect(
+        router.state.matches.find((match) => match.error === notFoundError)
+          ?.routeId,
+      ).toBe(rootRoute.id)
     },
   )
 

@@ -398,6 +398,36 @@ describe('serverSsr.cleanup', () => {
     expect(router.serverSsr).toBeUndefined()
   })
 
+  test('request abort cancels a plain response resolved by the callback later', async () => {
+    const router = buildRouter()
+    const requestController = new AbortController()
+    const callbackStarted = deferred<void>()
+    const callbackResult = deferred<Response>()
+    const cancel = vi.fn((_reason: unknown) => new Promise<void>(() => {}))
+    const handler = createRequestHandler({
+      createRouter: () => router,
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+    })
+
+    const response = handler(() => {
+      callbackStarted.resolve()
+      return callbackResult.promise
+    })
+
+    await callbackStarted.promise
+    const cancellation = new Error('request disconnected')
+    requestController.abort(cancellation)
+
+    await expect(response).rejects.toBe(cancellation)
+    callbackResult.resolve(new Response(new ReadableStream({ cancel })))
+    await vi.waitFor(() => {
+      expect(cancel).toHaveBeenCalledTimes(1)
+      expect(cancel).toHaveBeenCalledWith(cancellation)
+    })
+  })
+
   test.each(['throw', 'reject'] as const)(
     'reports a %s from disposal of a late render response',
     async (failureMode) => {

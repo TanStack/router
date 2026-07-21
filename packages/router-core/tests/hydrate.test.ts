@@ -218,6 +218,46 @@ describe('hydrate', () => {
     expect(clientLoader).not.toHaveBeenCalled()
   })
 
+  it('omits undefined loader data from hydrated matches', async () => {
+    const serverRootRoute = new BaseRootRoute({})
+    const serverRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/page',
+      loader: () => undefined,
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([serverRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: true,
+    })
+
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    expect(mockWindow.$_TSR.router?.matches[1]).not.toHaveProperty('l')
+
+    const clientLoader = vi.fn(() => undefined)
+    const clientRootRoute = new BaseRootRoute({})
+    const clientRoute = new BaseRoute({
+      getParentRoute: () => clientRootRoute,
+      path: '/page',
+      loader: clientLoader,
+    })
+    const clientRouter = createTestRouter({
+      routeTree: clientRootRoute.addChildren([clientRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+
+    await hydrate(clientRouter)
+
+    expect(clientLoader).not.toHaveBeenCalled()
+    const match = clientRouter.state.matches[1]
+    expect(match).toMatchObject({
+      routeId: clientRoute.id,
+      status: 'success',
+    })
+    expect(match).not.toHaveProperty('loaderData')
+  })
+
   it.each([
     ['mismatched', dehydrateSsrMatchId('/different-match')],
     ['missing', undefined],

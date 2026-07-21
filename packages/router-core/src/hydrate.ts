@@ -78,7 +78,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   let location!: AnyRouter['latestLocation']
   let candidates!: Array<AnyRouteMatch>
   let handoffInputs!: ReturnType<typeof laneInputs>
-  let routeTree!: AnyRouter['routeTree']
   try {
     await waitFor(
       router.options.hydrate?.(dehydratedRouter!.dehydratedData),
@@ -91,7 +90,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     location = router.latestLocation
     router.stores.location.set(location)
     handoffInputs = laneInputs(router, location)
-    routeTree = router.routeTree
     candidates = router.matchRoutes(location, {
       _controller: controller,
     })
@@ -135,7 +133,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   const shared =
     dehydratedMatches.length > candidates.length
       ? candidates.findIndex((match) => match._notFound) + 1
-      : Math.min(dehydratedMatches.length, candidates.length)
+      : dehydratedMatches.length
   let isTerminal = false
   for (let index = 0; index < shared; index++) {
     const candidate = candidates[index]!
@@ -235,7 +233,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   // without granting its beforeLoad or loader any hydration authority.
   const contextEnd =
     pendingBoundary === committed.length
-      ? Math.min(committed.length + 1, candidates.length)
+      ? committed.length + 1
       : committed.length
   for (let index = 0; index < contextEnd; index++) {
     const match = candidates[index]!
@@ -312,7 +310,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     needsClientLoad &&
     !router._tx &&
     router.latestLocation.state === location.state &&
-    router.routeTree === routeTree &&
     deepEqual(handoffInputs, laneInputs(router, router.latestLocation)) &&
     router._committed === committedMatches &&
     committedMatches.length &&

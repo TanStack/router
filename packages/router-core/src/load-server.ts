@@ -29,7 +29,7 @@ type ServerLane<TPhase extends 'matched' | 'contextualized' | 'reduced'> = {
 
 type MatchedLane = ServerLane<'matched'>
 
-type IndexedOutcome = [index: number, outcome: LoaderOutcome]
+type IndexedOutcome = [index: number, outcome: LoaderOutcome, boundary?: number]
 
 type ContextualizedLane = ServerLane<'contextualized'> & {
   end: number
@@ -183,13 +183,14 @@ async function contextualize(
   lane: MatchedLane,
   signal?: AbortSignal,
 ): Promise<ContextualizedLane> {
-  let end = lane.matches.length
+  const globalBoundary = lane.matches.findIndex((match) => match._notFound)
+  let end = globalBoundary < 0 ? lane.matches.length : globalBoundary + 1
   let failure: IndexedOutcome | undefined
   let parentContext: Record<string, unknown> = {
     ...(router.options.context ?? {}),
   }
 
-  for (let index = 0; index < lane.matches.length; index++) {
+  for (let index = 0; index < end; index++) {
     const match = lane.matches[index]!
     const route = getRoute(router, match)
     try {
@@ -484,12 +485,9 @@ async function applyFailure(
     return { status: 500, boundary: index, kind: ERROR }
   }
 
-  const boundary = await getNotFoundBoundary(
-    router,
-    lane.matches,
-    indexed,
-    signal,
-  )
+  const boundary =
+    indexed[2] ??
+    (await getNotFoundBoundary(router, lane.matches, indexed, signal))
   const match = lane.matches[boundary]!
   const cause = outcome[1] as NotFoundError
   cause.routeId = match.routeId
@@ -546,10 +544,7 @@ async function projectLane(
 ): Promise<void> {
   for (const match of lane.matches) {
     const routeOptions = getRoute(router, match).options
-    if (
-      match.ssr !== false &&
-      (routeOptions.head || routeOptions.scripts || routeOptions.headers)
-    ) {
+    if (routeOptions.head || routeOptions.scripts || routeOptions.headers) {
       const context = {
         ssr: router.options.ssr,
         matches: lane.matches,
@@ -575,7 +570,7 @@ async function projectLane(
         console.error(cause)
       }
     }
-    if (match.status !== 'success' || match._notFound) {
+    if (match.ssr === false || match.status !== 'success' || match._notFound) {
       break
     }
   }
@@ -628,15 +623,13 @@ async function executeServerLane(
     if (lane.failure?.[1][0] === REDIRECTED) {
       loaderEnd = 0
     } else if (lane.failure?.[1][0] === NOT_FOUND) {
-      loaderEnd = Math.min(
-        loaderEnd,
-        (await getNotFoundBoundary(
-          router,
-          lane.matches,
-          lane.failure,
-          signal,
-        )) + 1,
+      lane.failure[2] = await getNotFoundBoundary(
+        router,
+        lane.matches,
+        lane.failure,
+        signal,
       )
+      loaderEnd = Math.min(loaderEnd, lane.failure[2] + 1)
     }
 
     const tasks: Array<LoaderTask> = []
@@ -695,26 +688,48 @@ async function executeServerLane(
 
     let failure = lane.failure ?? loaderFailure
     const plannedBoundary = lane.matches.findIndex((match) => match._notFound)
-    const readinessEnd = failure
-      ? failure[1][0] === NOT_FOUND
-        ? await getNotFoundBoundary(router, lane.matches, failure, signal)
-        : failure[0]
-      : plannedBoundary < 0
-        ? lane.matches.length
-        : plannedBoundary
-    const chunkFailure = await loadNormalChunks(
+    let readinessEnd: number
+    if (failure) {
+      const outcomeEnd = (failure[2] ??=
+        failure[1][0] === NOT_FOUND
+          ? await getNotFoundBoundary(router, lane.matches, failure, signal)
+          : failure[0])
+      for (const task of tasks) {
+        if (task.index >= outcomeEnd) {
+          break
+        }
+        const outcome = await task.outcome
+        // Presence means a loader previously succeeded, even with `undefined`.
+        if (
+          outcome[0] !== SUCCESS &&
+          outcome[0] < REDIRECTED &&
+          !('loaderData' in lane.matches[task.index]!)
+        ) {
+          failure = [task.index, outcome]
+          failure[2] =
+            outcome[0] === NOT_FOUND
+              ? await getNotFoundBoundary(router, lane.matches, failure, signal)
+              : task.index
+          break
+        }
+      }
+      readinessEnd = failure[2]
+    } else {
+      readinessEnd = plannedBoundary < 0 ? lane.matches.length : plannedBoundary
+    }
+    const requiredFailure = await loadNormalChunks(
       router,
       lane,
       readinessEnd,
       signal,
     )
     signal?.throwIfAborted()
-    if (chunkFailure) {
-      if (chunkFailure[1][0] === REDIRECTED) {
+    if (requiredFailure) {
+      if (requiredFailure[1][0] === REDIRECTED) {
         abortMatches(lane.matches)
-        return resolveServerRedirect(router, location, chunkFailure[1][1])
+        return resolveServerRedirect(router, location, requiredFailure[1][1])
       }
-      failure ??= chunkFailure
+      failure = requiredFailure
     }
 
     const terminal = await applyFailure(router, lane, failure, signal)

@@ -298,12 +298,13 @@ There are two deliberate exceptions.
 
 A navigation may latch onto an entry in `router._preloads` that is still running
 only when the whole lane is identical. Admission is decided before rematching
-from the preload's href, route-tree identity, semantic owner, parsed search,
-router root context, additional context, and user-supplied location state;
-router-managed history keys do not participate. With deterministic route
-planning, those inputs imply the same ordered routes, params, validated search,
-and global-path-miss meaning. They may be observed by `beforeLoad` even when the
-route lane is unchanged.
+from the preload's href and redirect depth, route-tree identity, semantic owner,
+parsed search, router root context, additional context, user-supplied location
+state, and any explicit mask's href, search, user state, and
+`unmaskOnReload`. Router-managed history and temporary-mask keys do not
+participate. With deterministic route planning, those inputs imply the same
+ordered routes, params, validated search, and global-path-miss meaning. They may
+be observed by `beforeLoad` even when the route lane is unchanged.
 Adoption inputs are treated as immutable values: replace a context/state object
 to express a generation change; in-place mutation is not detected.
 Adoption is all-or-nothing. There is no prefix donation and no
@@ -397,14 +398,15 @@ and successful loader data remain reusable by design.
 
 Hydration retry is the transported-work exception because it did not run those
 client loader tasks. There, `loaderData` membership together with
-`invalid === false` proves a successful generation even when terminal boundary
-state is attached to the match. Hydration normalizes that copy before passing it
-through the same cache compare-and-swap and lease rules.
+`invalid === false` proves a transported successful generation even when
+terminal boundary state is attached to the match. Hydration normalizes that
+copy before passing it through the same cache compare-and-swap and lease rules.
 
-The dehydrated payload omits `loaderData` when no loader result exists.
-Reconstruction must preserve that absence. Manufacturing an own
-`loaderData: undefined` property would falsely turn a terminal match whose
-loader never ran into reusable success during hydration retry.
+The dehydrated payload omits `loaderData` both when no loader result exists and
+when the accepted result is `undefined`. This deliberately keeps the HTML
+payload smaller at the cost of making those states indistinguishable after
+transport. Reconstruction preserves the absence and does not treat an omitted
+value as reusable loader success during hydration retry.
 
 The cache may deliberately contain a successful generation with the same match
 ID as a committed match. For example, a speculative lane can produce reusable
@@ -546,12 +548,13 @@ proves that an aborted descendant is obsolete. The client calls a discarded
 non-result `canceled`, while the server calls it `skipped`; neither is a
 publishable terminal state.
 
-The client and server follow the same deliberately chronological policy.
+The client and server follow the same chronological and required-prefix policy.
 
 ### Serial phase
 
 Route context, validation, and `beforeLoad` run parent-first. The first terminal
-serial outcome stops descent and wins over later ordinary work.
+serial outcome stops descent and wins over later ordinary work when its required
+ancestor prefix remains renderable.
 
 An ordinary serial error allows loaders strictly above the throwing route to
 finish. A serial not-found allows work through its effective ancestor boundary,
@@ -561,9 +564,15 @@ loader work.
 ### Parallel loader phase
 
 Eligible loaders start concurrently. The first ordinary loader error or
-not-found to settle becomes the ordinary loader failure. This is promise
-settlement chronology, not route-order ranking and not a shallowest-boundary
-comparator.
+not-found to settle becomes the provisional ordinary loader failure. This is
+promise settlement chronology, not route-order ranking and not a
+shallowest-boundary comparator. After settlement, the required render prefix is
+checked root-to-leaf. The first failed ancestor without its own accepted
+`loaderData` property replaces a deeper failure because that deeper boundary is
+not reachable. Locally retained loader data, including an accepted `undefined`,
+keeps the ancestor renderable with stale data and preserves settlement
+chronology. An `undefined` result reconstructed from SSR is intentionally absent
+under the transport policy above.
 
 A redirect is control flow and wins even after an ancestor loader has already
 failed ordinarily. Reduction therefore waits for started descendant loader work
@@ -576,11 +585,11 @@ candidate owns; the server may abort work below the selected boundary.
 
 Loader settlement does not directly install an error or not-found on the lane.
 It leaves a failed attempt as a renderable, invalid success until reduction
-installs the one selected terminal outcome. This keeps every ancestor of a
-deeper chronological winner renderable, while ensuring that a swallowed losing
-attempt is reloaded rather than treated as fresh cache data. Semantic
-`parentMatchPromise` snapshots still expose each loader's own outcome to its
-descendants.
+installs the one selected terminal outcome. A losing ancestor remains renderable
+only when it retains accepted loader data; otherwise required-prefix reduction
+promotes it. Every swallowed losing attempt remains invalid and must reload
+rather than being treated as fresh cache data. Semantic `parentMatchPromise`
+snapshots still expose each loader's own outcome to its descendants.
 
 No error-over-not-found sort is performed. The selected not-found is moved to
 its effective not-found boundary; an untargeted not-found searches eligible
@@ -595,16 +604,21 @@ For a fuzzy global miss, synchronous matching installs the best boundary visible
 from eager route options. Before contextualization, client and server feed that
 fallback through the same lazy-aware ancestor search used for explicit
 not-found outcomes. This prevents serial hooks below the effective boundary
-from running while still preserving the historical deepest-route-with-children
-fallback when no route supplies a not-found component. `notFoundMode: 'root'`
-bypasses that search.
+from running and prevents loader tasks from starting there, while retaining the
+complete structural branch. The historical deepest-route-with-children fallback
+still applies when no route supplies a not-found component. When `notFoundMode`
+is `'root'`, the search is bypassed but the same execution cap applies at root.
 
 ### Chunk readiness
 
 Normal route chunks needed before the selected cutoff are awaited. Although the
 work may start concurrently, readiness outcomes are consumed root-to-leaf. The
-first relevant ordinary chunk failure is used only when no serial or loader
-failure already won; a redirect from relevant readiness remains control flow.
+first relevant ordinary chunk failure replaces a deeper selected serial or
+loader failure because that boundary is no longer reachable; a redirect from
+relevant readiness remains control flow.
+The resolved boundary is retained while that selected failure remains current;
+a later lazy retry in the same lane cannot expand the required prefix after its
+readiness has already been consumed.
 Terminal boundary-component preloading is best effort during normal loading; it
 does not start a second failure-selection algorithm.
 
@@ -970,9 +984,11 @@ params/search validation handling, and `beforeLoad`:
   assets, and renders the component.
 - `'data-only'` runs server `beforeLoad` and loaders and projects `head`,
   `scripts`, and `headers`, but does not render that route component.
-- `false` skips server `beforeLoad`, loaders, and route projection/component
-  chunks. Route context and params/search validation still run, so their errors
-  remain real server outcomes.
+- `false` skips server `beforeLoad`, loaders, and component chunks. The first
+  `false` boundary still projects `head`, `scripts`, and `headers` for its server
+  shell, then projection stops before descendants that inherit `false`. Route
+  context and params/search validation still run, so their errors remain real
+  server outcomes.
 
 A parent restriction cannot be relaxed by a child: `false` remains false, and a
 `'data-only'` parent caps a child requesting `true` at `'data-only'`.
@@ -1189,8 +1205,9 @@ When changing this architecture, verify all of the following:
     after the reload decision, and accepted signal lifetime may outlive promise
     settlement.
 12. Child `parentMatchPromise` follows the fresh semantic parent generation.
-13. The first parallel ordinary failure is chronological, while any started
-    descendant redirect can still win as control flow.
+13. The first parallel ordinary failure is chronological unless a required
+    ancestor failure has no accepted loader data or its required chunk fails;
+    any started descendant redirect can still win as control flow.
 14. Projection errors are logged and swallowed, and global path misses retain
     their `_notFound` representation, which may be a successful fuzzy/root
     match without an attached error.
