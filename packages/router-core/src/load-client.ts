@@ -9,7 +9,7 @@ import {
   getLocationChangeInfo,
   runRouteLifecycle,
 } from './router'
-import { deepEqual, hasOwn } from './utils'
+import { deepEqual } from './utils'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
@@ -930,10 +930,11 @@ async function reduceLane(
         break
       }
       const outcome = await task[1]
+      // Presence means a loader previously succeeded, even with `undefined`.
       if (
         outcome[0] !== SUCCESS &&
         outcome[0] < REDIRECTED &&
-        !hasOwn.call(matches[task[0]]!, 'loaderData')
+        !('loaderData' in matches[task[0]]!)
       ) {
         failure = [task[0], outcome]
         readinessEnd = failure[2] = await boundaryOf(failure)

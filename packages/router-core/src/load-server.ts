@@ -6,7 +6,6 @@ import { rootRouteId } from './root'
 import { loadRouteChunk } from './route-chunks'
 import { waitForReason } from './await-signal'
 import { getLocationChangeInfo, runRouteLifecycle } from './router'
-import { hasOwn } from './utils'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
@@ -700,10 +699,11 @@ async function executeServerLane(
           break
         }
         const outcome = await task.outcome
+        // Presence means a loader previously succeeded, even with `undefined`.
         if (
           outcome[0] !== SUCCESS &&
           outcome[0] < REDIRECTED &&
-          !hasOwn.call(lane.matches[task.index]!, 'loaderData')
+          !('loaderData' in lane.matches[task.index]!)
         ) {
           failure = [task.index, outcome]
           failure[2] =

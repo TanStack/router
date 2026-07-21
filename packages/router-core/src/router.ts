@@ -1106,9 +1106,10 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: LRUCache<string, string>
-  private matchCache = new WeakMap<
-    AnyRoute | ParsedLocation,
-    ReadonlyArray<AnyRoute> | LightweightRouteMatchCacheEntry
+  private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
+  private lightweightCache = new WeakMap<
+    ParsedLocation,
+    LightweightRouteMatchCacheEntry
   >()
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
@@ -1476,12 +1477,10 @@ export class RouterCore<
   }
 
   private getRouteBranch(route: AnyRoute) {
-    let branch = this.matchCache.get(route) as
-      | ReadonlyArray<AnyRoute>
-      | undefined
+    let branch = this.routeBranchCache.get(route)
     if (!branch) {
       branch = buildRouteBranch(route)
-      this.matchCache.set(route, branch)
+      this.routeBranchCache.set(route, branch)
     }
     return branch
   }
@@ -1761,9 +1760,7 @@ export class RouterCore<
       ? this.stores.byRoute.get(lastRouteId)!.get()
       : undefined
     const lastStateMatchId = lastStateMatch?.id
-    const cached = this.matchCache.get(location) as
-      | LightweightRouteMatchCacheEntry
-      | undefined
+    const cached = this.lightweightCache.get(location)
     if (cached && cached[0] === lastStateMatchId) {
       return cached[1]
     }
@@ -1826,7 +1823,7 @@ export class RouterCore<
       search: accumulatedSearch,
       params,
     }
-    this.matchCache.set(location, [lastStateMatchId, result])
+    this.lightweightCache.set(location, [lastStateMatchId, result])
     return result
   }
 
