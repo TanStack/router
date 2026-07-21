@@ -190,10 +190,12 @@ describe('public client loading contracts', () => {
 
     expect(loader).toHaveBeenCalledTimes(22)
     await vi.waitFor(() =>
-      expect(router.state.matches.at(-1)).toMatchObject({
-        routeId: pageRoute.id,
+      expect(
+        router.state.matches.find((match) => match.status !== 'success'),
+      ).toMatchObject({
+        routeId: rootRoute.id,
         status: 'error',
-        error: expect.objectContaining({ message: 'Redirect cycle detected' }),
+        error: expect.objectContaining({ message: 'Too many redirects' }),
       }),
     )
   })
@@ -497,13 +499,12 @@ describe('public client loading contracts', () => {
     expect(router.state.status).toBe('idle')
   })
 
-  test('a redirect-cycle error aborts concurrent work in its final lane', async () => {
-    const finalParentAborted = createControlledPromise<void>()
-    const finalParentData = createControlledPromise<string>()
-    const finalParentSettled = createControlledPromise<void>()
+  test('a redirect-limit error aborts concurrent work in its final lane', async () => {
+    const finalRootAborted = createControlledPromise<void>()
+    const finalRootData = createControlledPromise<string>()
     const errorComponentStarted = createControlledPromise<void>()
     const errorComponentGate = createControlledPromise<void>()
-    let finalParentSignal: AbortSignal | undefined
+    let finalRootSignal: AbortSignal | undefined
     const ErrorComponent = Object.assign(() => null, {
       preload: () => {
         errorComponentStarted.resolve()
@@ -511,26 +512,24 @@ describe('public client loading contracts', () => {
       },
     })
 
-    const rootRoute = new BaseRootRoute({})
+    const rootRoute = new BaseRootRoute({
+      errorComponent: ErrorComponent as any,
+      loader: ({ location, abortController }) => {
+        if (location.pathname !== '/hop/20/child') {
+          return 'root data'
+        }
+        finalRootSignal = abortController.signal
+        finalRootSignal.addEventListener(
+          'abort',
+          () => finalRootAborted.resolve(),
+          { once: true },
+        )
+        return finalRootData
+      },
+    })
     const parentRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/hop/$hop',
-      errorComponent: ErrorComponent as any,
-      loader: ({ params, abortController }) => {
-        if (params.hop !== '20') {
-          return
-        }
-        finalParentSignal = abortController.signal
-        finalParentSignal.addEventListener(
-          'abort',
-          () => finalParentAborted.resolve(),
-          { once: true },
-        )
-        return finalParentData.then((data) => {
-          finalParentSettled.resolve()
-          return data
-        })
-      },
     })
     const childRoute = new BaseRoute({
       getParentRoute: () => parentRoute,
@@ -559,10 +558,9 @@ describe('public client loading contracts', () => {
 
     try {
       await errorComponentStarted
-      finalParentData.resolve('late parent data')
-      await finalParentSettled
-      await new Promise((resolve) => setTimeout(resolve, 0))
+      expect(finalRootData.status).toBe('pending')
       errorComponentGate.resolve()
+      await finalRootAborted
       await expect(loading).resolves.toBeUndefined()
 
       expect(router.state.location.pathname).toBe('/hop/20/child')
@@ -570,184 +568,30 @@ describe('public client loading contracts', () => {
         (match) => match.status !== 'success',
       )
       expect(firstTerminalMatch).toMatchObject({
-        routeId: parentRoute.id,
+        routeId: rootRoute.id,
         status: 'error',
         isFetching: false,
-        error: expect.objectContaining({ message: 'Redirect cycle detected' }),
+        error: expect.objectContaining({ message: 'Too many redirects' }),
       })
-      expect(firstTerminalMatch?.loaderData).toBeUndefined()
-      await finalParentAborted
-      expect(finalParentSignal?.aborted).toBe(true)
+      expect(finalRootData.status).toBe('pending')
+      expect(finalRootSignal?.aborted).toBe(true)
       expect(
         router.state.matches.every((match) => match.isFetching === false),
       ).toBe(true)
       expect(router.state.status).toBe('idle')
       expect(router.state.isLoading).toBe(false)
     } finally {
-      finalParentData.resolve('late parent data')
+      finalRootData.resolve('late root data')
       errorComponentGate.resolve()
       await Promise.allSettled([loading])
-      await router.navigate({ to: '/cleanup' })
     }
-  })
 
-  test('a required parent chunk failure wins over a deeper redirect cycle', async () => {
-    const chunkError = new Error('parent lazy chunk failed')
-    const parentLoader = vi.fn(() => 'parent data')
-    const rootRoute = new BaseRootRoute({})
-    const parentRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/hop/$hop',
-      loader: parentLoader,
-      errorComponent: () => null,
-    }).lazy(() => Promise.reject(chunkError))
-    const childRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
-      path: '/child',
-      loader: async ({ params, parentMatchPromise }) => {
-        await parentMatchPromise
-        throw redirect({
-          to: '/hop/$hop/child',
-          params: { hop: String(Number(params.hop) + 1) },
-        } as any)
-      },
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-      history: createMemoryHistory({
-        initialEntries: ['/hop/0/child'],
-      }),
-    })
-
-    await router.load()
-
-    expect(router.state.location.pathname).toBe('/hop/20/child')
-    const firstTerminalMatch = router.state.matches.find(
-      (match) => match.status !== 'success',
-    )
-    expect(firstTerminalMatch).toMatchObject({
-      routeId: parentRoute.id,
-      status: 'error',
-      loaderData: 'parent data',
-    })
-    expect(firstTerminalMatch?.error).toBe(chunkError)
-    expect(parentLoader).toHaveBeenCalledTimes(21)
+    await router.navigate({ to: '/cleanup' })
+    expect(router.state.location.pathname).toBe('/cleanup')
+    expect(
+      router.state.matches.every((match) => match.status === 'success'),
+    ).toBe(true)
     expect(router.state.status).toBe('idle')
-  })
-
-  test('an existing cycle checks a required chunk without waiting for its loader', async () => {
-    const parentData = createControlledPromise<string>()
-    const finalLaneStarted = createControlledPromise<void>()
-    const finalParentAborted = createControlledPromise<void>()
-    const errorComponentStarted = createControlledPromise<void>()
-    const errorComponentGate = createControlledPromise<void>()
-    const chunkError = new Error('parent component failed')
-    let cycling = false
-    let finalParentSignal: AbortSignal | undefined
-    const ParentComponent = Object.assign(() => null, {
-      preload: () => (cycling ? Promise.reject(chunkError) : Promise.resolve()),
-    })
-    const ErrorComponent = Object.assign(() => null, {
-      preload: () => {
-        errorComponentStarted.resolve()
-        return errorComponentGate
-      },
-    })
-    const rootRoute = new BaseRootRoute({})
-    const parentRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/parent',
-      shouldReload: true,
-      component: ParentComponent as any,
-      errorComponent: ErrorComponent as any,
-      loader: {
-        staleReloadMode: 'blocking',
-        handler: ({ abortController }) => {
-          if (cycling) {
-            finalParentSignal = abortController.signal
-            finalParentSignal.addEventListener(
-              'abort',
-              () => finalParentAborted.resolve(),
-              { once: true },
-            )
-          }
-          return cycling ? parentData : 'retained parent data'
-        },
-      },
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
-      path: '/child',
-      shouldReload: true,
-      validateSearch: (search: Record<string, unknown>) => ({
-        hop: Number(search.hop ?? 0),
-      }),
-      loader: {
-        staleReloadMode: 'blocking',
-        handler: ({ location }) => {
-          if (cycling) {
-            const hop = Number((location.search as { hop?: unknown }).hop ?? 0)
-            if (hop === 20) {
-              finalLaneStarted.resolve()
-            }
-            throw redirect({
-              to: '/parent/child',
-              search: { hop: hop + 1 },
-            } as any)
-          }
-          return 'child data'
-        },
-      },
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
-    })
-
-    let invalidation: Promise<void> | undefined
-    try {
-      await router.load()
-      cycling = true
-      invalidation = router.invalidate()
-
-      await finalLaneStarted
-      const reachedBoundaryBeforeData = await Promise.race([
-        errorComponentStarted.then(() => true),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 0)),
-      ])
-
-      errorComponentGate.resolve()
-      const abortedBeforeData = reachedBoundaryBeforeData
-        ? await Promise.race([
-            finalParentAborted.then(() => true),
-            new Promise<false>((resolve) =>
-              setTimeout(() => resolve(false), 0),
-            ),
-          ])
-        : false
-
-      if (!abortedBeforeData) {
-        parentData.resolve('late parent data')
-      }
-
-      await invalidation
-
-      expect(reachedBoundaryBeforeData).toBe(true)
-      expect(abortedBeforeData).toBe(true)
-      expect(router.state.matches[1]).toMatchObject({
-        routeId: parentRoute.id,
-        status: 'error',
-        error: chunkError,
-        loaderData: 'retained parent data',
-      })
-      expect(finalParentSignal?.aborted).toBe(true)
-    } finally {
-      parentData.resolve('late parent data')
-      errorComponentGate.resolve()
-      if (invalidation) {
-        await Promise.allSettled([invalidation])
-      }
-    }
   })
 
   test('a redirect is not blocked by an abort-ignoring sibling loader', async () => {

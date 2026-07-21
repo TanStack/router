@@ -559,11 +559,13 @@ test('loaderDeps redirects use the bounded navigation redirect policy', async ()
   await router.load()
 
   expect(router.state.location.pathname).toBe('/step-20')
-  expect(router.state.matches.at(-1)).toMatchObject({
-    routeId: routes[20]!.id,
+  expect(
+    router.state.matches.find((match) => match.status !== 'success'),
+  ).toMatchObject({
+    routeId: rootRoute.id,
     status: 'error',
     error: expect.objectContaining({
-      message: 'Redirect cycle detected',
+      message: 'Too many redirects',
     }),
   })
 })

@@ -75,7 +75,7 @@ describe('redirect', () => {
       expect(router.state.status).toBe('idle')
     })
 
-    test('renders an error for a same-location redirect cycle', async () => {
+    test('renders a root error after too many same-location redirects', async () => {
       const loader = vi.fn(() => {
         throw redirect({ to: '/' })
       })
@@ -99,16 +99,16 @@ describe('redirect', () => {
 
       render(<RouterProvider router={router} />)
 
-      expect(await screen.findByTestId('index-error')).toHaveTextContent(
-        'Index: Redirect cycle detected',
+      expect(await screen.findByTestId('root-error')).toHaveTextContent(
+        'Root: Too many redirects',
       )
-      expect(screen.queryByTestId('root-error')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
       expect(window.location.pathname).toBe('/')
       expect(loader).toHaveBeenCalledTimes(21)
       expect(router.state.status).toBe('idle')
     })
 
-    test('renders an error for an alternating redirect cycle', async () => {
+    test('renders a root error after too many alternating redirects', async () => {
       const indexLoader = vi.fn(() => {
         throw redirect({ to: '/other' })
       })
@@ -143,11 +143,11 @@ describe('redirect', () => {
 
       render(<RouterProvider router={router} />)
 
-      expect(await screen.findByTestId('index-error')).toHaveTextContent(
-        'Index: Redirect cycle detected',
+      expect(await screen.findByTestId('root-error')).toHaveTextContent(
+        'Root: Too many redirects',
       )
+      expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
       expect(screen.queryByTestId('other-error')).not.toBeInTheDocument()
-      expect(screen.queryByTestId('root-error')).not.toBeInTheDocument()
       expect(window.location.pathname).toBe('/')
       expect(indexLoader).toHaveBeenCalledTimes(11)
       expect(otherLoader).toHaveBeenCalledTimes(10)

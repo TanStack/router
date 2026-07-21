@@ -217,10 +217,12 @@ describe('public preload lane contracts', () => {
         sharedBeforeLoad.mock.calls.map(([context]) => context.preload),
       ).toEqual([true, false])
       expect(router.state.location.pathname).toBe('/shared')
-      expect(router.state.matches.at(-1)).toMatchObject({
-        routeId: sharedRoute.id,
+      expect(
+        router.state.matches.find((match) => match.status !== 'success'),
+      ).toMatchObject({
+        routeId: rootRoute.id,
         status: 'error',
-        error: expect.objectContaining({ message: 'Redirect cycle detected' }),
+        error: expect.objectContaining({ message: 'Too many redirects' }),
       })
       expect(router.state.status).toBe('idle')
     } finally {
@@ -1356,11 +1358,11 @@ describe('public preload lane contracts', () => {
     } as any)
 
     expect(beforeLoad).toHaveBeenCalledTimes(21)
-    expect(matches?.at(-1)).toMatchObject({
-      routeId: hopRoute.id,
+    expect(matches?.find((match) => match.status !== 'success')).toMatchObject({
+      routeId: rootRoute.id,
       status: 'error',
       error: expect.objectContaining({
-        message: 'Redirect cycle detected',
+        message: 'Too many redirects',
       }),
     })
   })
@@ -1394,103 +1396,28 @@ describe('public preload lane contracts', () => {
     expect(matches).toBeUndefined()
   })
 
-  test('moves a loader redirect cycle above a fresh preload-disabled ancestor', async () => {
+  test('reports a chunk redirect limit at root', async () => {
+    const chunkError = new Error('route chunk failed')
     const rootRoute = new BaseRootRoute({})
-    const parentRoute = new BaseRoute({
+    const loopRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
-      path: '/parent',
-      preload: false,
-      loader: () => 'parent data',
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
-      path: '/child',
-      loader: () => {
-        throw redirect({ to: '/parent/child' })
-      },
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    const matches = await router.preloadRoute({ to: '/parent/child' })
-    const terminal = matches?.find((match) => match.status !== 'success')
-
-    expect(terminal).toMatchObject({
-      routeId: parentRoute.id,
-      status: 'error',
-      error: expect.objectContaining({ message: 'Redirect cycle detected' }),
-    })
-    expect(terminal).not.toHaveProperty('loaderData')
-  })
-
-  test('moves a chunk redirect cycle above a fresh preload-disabled ancestor', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const parentRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/parent',
-      preload: false,
-      loader: () => 'parent data',
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
-      path: '/child',
+      path: '/loop',
       onError: () => {
-        throw redirect({ to: '/parent/child' })
+        throw redirect({ to: '/loop' })
       },
-    }).lazy(() => Promise.reject(new Error('child chunk failed')))
+    }).lazy(() => Promise.reject(chunkError))
     const router = createTestRouter({
-      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      routeTree: rootRoute.addChildren([loopRoute]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     })
 
-    const matches = await router.preloadRoute({ to: '/parent/child' })
+    const matches = await router.preloadRoute({ to: '/loop' })
 
     const terminal = matches?.find((match) => match.status !== 'success')
     expect(terminal).toMatchObject({
-      routeId: parentRoute.id,
-      status: 'error',
-      error: expect.objectContaining({ message: 'Redirect cycle detected' }),
-    })
-    expect(terminal).not.toHaveProperty('loaderData')
-  })
-
-  test('a required chunk clears loader-data deletion after cycle promotion', async () => {
-    const chunkError = new Error('root component failed')
-    const RootComponent = Object.assign(() => null, {
-      preload: () => Promise.reject(chunkError),
-    })
-    const rootRoute = new BaseRootRoute({
-      component: RootComponent as any,
-      errorComponent: () => null,
-      loader: () => 'root data',
-    })
-    const parentRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/parent',
-      preload: false,
-      loader: () => 'parent data',
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
-      path: '/child',
-      loader: () => {
-        throw redirect({ to: '/parent/child' })
-      },
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    const matches = await router.preloadRoute({ to: '/parent/child' })
-
-    expect(matches?.[0]).toMatchObject({
       routeId: rootRoute.id,
       status: 'error',
-      error: chunkError,
-      loaderData: 'root data',
+      error: expect.objectContaining({ message: 'Too many redirects' }),
     })
   })
 })
