@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.21",
-    "@tanstack/solid-router": "^2.0.0-beta.25",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.20",
-    "@tanstack/solid-start": "^2.0.0-beta.26",
+    "@tanstack/solid-router": "^2.0.0-beta.26",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.21",
+    "@tanstack/solid-start": "^2.0.0-beta.27",
     "solid-js": "2.0.0-beta.21",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
