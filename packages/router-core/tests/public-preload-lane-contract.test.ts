@@ -153,6 +153,221 @@ describe('public preload lane contracts', () => {
     })
   })
 
+  test('a depth-20 navigation does not adopt a depth-0 active preload redirect', async () => {
+    const redirectGate = createControlledPromise<void>()
+    const sharedBeforeLoad = vi.fn(async (_context: { preload: boolean }) => {
+      await redirectGate
+      throw redirect({ to: '/target' })
+    })
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const hopRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hop/$hop',
+      beforeLoad: ({ params }) => {
+        const hop = Number(params.hop)
+        if (hop < 19) {
+          throw redirect({
+            to: '/hop/$hop',
+            params: { hop: String(hop + 1) },
+          } as any)
+        }
+        throw redirect({ to: '/shared' })
+      },
+    })
+    const sharedRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/shared',
+      beforeLoad: sharedBeforeLoad,
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        hopRoute,
+        sharedRoute,
+        targetRoute,
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    let preload: Promise<unknown> | undefined
+    let navigation: Promise<unknown> | undefined
+    try {
+      await router.load()
+      preload = router.preloadRoute({ to: '/shared' })
+      await vi.waitFor(() => expect(sharedBeforeLoad).toHaveBeenCalledOnce())
+
+      navigation = router.navigate({
+        to: '/hop/$hop',
+        params: { hop: '0' },
+      } as any)
+      await vi.waitFor(() => expect(sharedBeforeLoad).toHaveBeenCalledTimes(2))
+
+      redirectGate.resolve()
+      await Promise.all([preload, navigation])
+
+      expect(
+        sharedBeforeLoad.mock.calls.map(([context]) => context.preload),
+      ).toEqual([true, false])
+      expect(router.state.location.pathname).toBe('/shared')
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: sharedRoute.id,
+        status: 'error',
+        error: expect.objectContaining({ message: 'Redirect cycle detected' }),
+      })
+      expect(router.state.status).toBe('idle')
+    } finally {
+      redirectGate.resolve()
+      const activeWork: Array<Promise<unknown>> = []
+      if (preload) {
+        activeWork.push(preload)
+      }
+      if (navigation) {
+        activeWork.push(navigation)
+      }
+      await Promise.allSettled(activeWork)
+    }
+  })
+
+  test.each([
+    {
+      difference: 'pathname',
+      preloadMask: { to: '/mask-a' },
+      navigationMask: { to: '/mask-b' },
+      preloadPathname: '/mask-a',
+      navigationPathname: '/mask-b',
+    },
+    {
+      difference: 'unmaskOnReload',
+      preloadMask: { to: '/mask-a' },
+      navigationMask: { to: '/mask-a', unmaskOnReload: true },
+      preloadPathname: '/mask-a',
+      navigationPathname: '/mask-a',
+    },
+    {
+      difference: 'search',
+      preloadMask: { to: '/mask-a', search: { source: 'preload' } },
+      navigationMask: { to: '/mask-a', search: { source: 'navigation' } },
+      preloadPathname: '/mask-a',
+      navigationPathname: '/mask-a',
+    },
+    {
+      difference: 'state',
+      preloadMask: { to: '/mask-a', state: { source: 'preload' } },
+      navigationMask: { to: '/mask-a', state: { source: 'navigation' } },
+      preloadPathname: '/mask-a',
+      navigationPathname: '/mask-a',
+    },
+  ])(
+    'navigation reruns beforeLoad for a different explicit mask $difference on the same destination',
+    async ({
+      preloadMask,
+      navigationMask,
+      preloadPathname,
+      navigationPathname,
+    }) => {
+      const beforeLoadGate = createControlledPromise<void>()
+      const loaderGate = createControlledPromise<string>()
+      const beforeLoad = vi.fn(
+        async (context: {
+          location: { maskedLocation?: { pathname: string } }
+          preload: boolean
+        }) => {
+          if (context.preload) {
+            await beforeLoadGate
+          }
+          return { source: context.preload ? 'preload' : 'navigation' }
+        },
+      )
+      const loader = vi.fn(() => loaderGate)
+      const rootRoute = new BaseRootRoute({})
+      const indexRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+      })
+      const targetRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+        beforeLoad,
+        loader,
+      })
+      const maskARoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/mask-a',
+      })
+      const maskBRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/mask-b',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          targetRoute,
+          maskARoute,
+          maskBRoute,
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      let preload: Promise<unknown> | undefined
+      let navigation: Promise<unknown> | undefined
+      try {
+        await router.load()
+        preload = router.preloadRoute({
+          to: '/target',
+          mask: preloadMask as any,
+        })
+        await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(1))
+
+        beforeLoadGate.resolve()
+        await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
+
+        navigation = router.navigate({
+          to: '/target',
+          mask: navigationMask as any,
+        })
+        await vi.waitFor(() =>
+          expect(
+            beforeLoad.mock.calls.map(([callContext]) => ({
+              preload: callContext.preload,
+              pathname: callContext.location.maskedLocation?.pathname,
+            })),
+          ).toEqual([
+            { preload: true, pathname: preloadPathname },
+            { preload: false, pathname: navigationPathname },
+          ]),
+        )
+
+        loaderGate.resolve('shared loader data')
+        await Promise.all([preload, navigation])
+
+        expect(router.state.matches.at(-1)?.context).toEqual({
+          source: 'navigation',
+        })
+        expect(router.history.location.pathname).toBe(navigationPathname)
+        expect(loader).toHaveBeenCalledTimes(1)
+      } finally {
+        beforeLoadGate.resolve()
+        loaderGate.resolve('shared loader data')
+        const activeWork: Array<Promise<unknown>> = []
+        if (preload) {
+          activeWork.push(preload)
+        }
+        if (navigation) {
+          activeWork.push(navigation)
+        }
+        await Promise.allSettled(activeWork)
+      }
+    },
+  )
+
   test('identical active preloads await the same redirect chain', async () => {
     const redirectGate = createControlledPromise<void>()
     const loaderGate = createControlledPromise<void>()

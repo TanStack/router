@@ -45,7 +45,7 @@ export function useTransitionerSetup() {
         type: 'onRendered',
         ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
       })
-    } else {
+    } else if (!router._tx) {
       router.load().catch(console.error)
     }
   })

@@ -15,23 +15,28 @@ import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 export const Match = (props: { routeId: string }) => {
   const router = useRouter()
 
-  const match = Solid.createMemo(
+  const currentMatch = Solid.createMemo(
     () => router.stores.byRoute.get(props.routeId)!.get()!,
   )
 
   const nearestMatch = {
     routeId: () => props.routeId,
-    match,
+    match: currentMatch,
   }
 
-  const currentMatch = match
   const route: AnyRoute = router.routesById[props.routeId]
 
+  // Lazy route option mutations become observable with the next match publication.
+  const routeOptions = () => {
+    currentMatch()
+    return route.options
+  }
+
   const resolvePendingComponent = () =>
-    route.options.pendingComponent ?? router.options.defaultPendingComponent
+    routeOptions().pendingComponent ?? router.options.defaultPendingComponent
 
   const routeErrorComponent = () =>
-    route.options.errorComponent ?? router.options.defaultErrorComponent
+    routeOptions().errorComponent ?? router.options.defaultErrorComponent
 
   const routeOnCatch = () =>
     route.options.onCatch ?? router.options.defaultOnCatch
@@ -39,9 +44,9 @@ export const Match = (props: { routeId: string }) => {
   const routeNotFoundComponent = () =>
     route.isRoot
       ? // If it's the root route, use the _notFound option, with fallback to the notFoundRoute's component
-        (route.options.notFoundComponent ??
+        (routeOptions().notFoundComponent ??
         router.options.notFoundRoute?.options.component)
-      : route.options.notFoundComponent
+      : routeOptions().notFoundComponent
 
   const resolvedNoSsr = () =>
     currentMatch().ssr === false || currentMatch().ssr === 'data-only'
@@ -84,7 +89,7 @@ export const Match = (props: { routeId: string }) => {
         >
           <Dynamic
             component={ResolvedCatchBoundary()}
-            getResetKey={() => currentMatch().abortController}
+            getResetKey={currentMatch}
             errorComponent={routeErrorComponent() as any}
             onCatch={(error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)

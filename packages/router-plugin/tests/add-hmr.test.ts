@@ -134,9 +134,8 @@ describe('add-hmr works', () => {
       addHmr: true,
       codeSplitGroupings: defaultCodeSplitGroupings,
       targetFramework: framework,
-      compilerPlugins: getReferenceRouteCompilerPlugins({
+      compilerPlugins: getFrameworkHmrCompilerPlugins({
         targetFramework: framework,
-        addHmr: true,
       }),
     })
     if (!compileResult) {

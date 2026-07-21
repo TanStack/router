@@ -4,6 +4,7 @@ import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
   BaseRoute,
+  createControlledPromise,
   createSerializationAdapter,
   isNotFound,
   notFound,
@@ -216,6 +217,111 @@ describe('hydrate', () => {
       source: 'server',
     })
     expect(clientLoader).not.toHaveBeenCalled()
+  })
+
+  it('uses hydrated undefined loader data to select a child-first revalidation boundary', async () => {
+    const serverRootRoute = new BaseRootRoute({})
+    const serverParentRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/parent',
+      loader: () => undefined,
+    })
+    const serverChildRoute = new BaseRoute({
+      getParentRoute: () => serverParentRoute,
+      path: '/child',
+      loader: () => 'server child data',
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([
+        serverParentRoute.addChildren([serverChildRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: true,
+    })
+
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+
+    const parentFailure = new Error('parent revalidation failed')
+    const parentGate = createControlledPromise<void>()
+    const childGate = createControlledPromise<void>()
+    const parentStarted = createControlledPromise<void>()
+    const childStarted = createControlledPromise<void>()
+    const parentSettled = createControlledPromise<void>()
+    const childSettled = createControlledPromise<void>()
+    const settlements: Array<string> = []
+    const clientParentLoader = vi.fn(async () => {
+      parentStarted.resolve()
+      await parentGate
+      settlements.push('parent')
+      parentSettled.resolve()
+      throw parentFailure
+    })
+    const clientChildLoader = vi.fn(async () => {
+      childStarted.resolve()
+      await childGate
+      settlements.push('child')
+      childSettled.resolve()
+      throw notFound()
+    })
+    const clientRootRoute = new BaseRootRoute({})
+    const clientParentRoute = new BaseRoute({
+      getParentRoute: () => clientRootRoute,
+      path: '/parent',
+      loader: clientParentLoader,
+      errorComponent: () => null,
+    })
+    const clientChildRoute = new BaseRoute({
+      getParentRoute: () => clientParentRoute,
+      path: '/child',
+      loader: clientChildLoader,
+      notFoundComponent: () => null,
+    })
+    const clientRouter = createTestRouter({
+      routeTree: clientRootRoute.addChildren([
+        clientParentRoute.addChildren([clientChildRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: false,
+      defaultStaleReloadMode: 'blocking',
+    })
+
+    await hydrate(clientRouter)
+
+    expect(clientParentLoader).not.toHaveBeenCalled()
+    expect(clientChildLoader).not.toHaveBeenCalled()
+    expect(clientRouter.state.matches[1]).toMatchObject({
+      routeId: clientParentRoute.id,
+      status: 'success',
+      loaderData: undefined,
+    })
+    expect(clientRouter.state.matches[2]).toMatchObject({
+      routeId: clientChildRoute.id,
+      status: 'success',
+      loaderData: 'server child data',
+    })
+
+    const revalidation = clientRouter.invalidate()
+    await Promise.all([parentStarted, childStarted])
+    childGate.resolve()
+    await childSettled
+    parentGate.resolve()
+    await parentSettled
+    await revalidation
+
+    expect(settlements).toEqual(['child', 'parent'])
+    const terminalMatch = clientRouter.state.matches.find(
+      (match) => match.status === 'error' || match.status === 'notFound',
+    )
+    expect(terminalMatch).toMatchObject({
+      routeId: clientChildRoute.id,
+      status: 'notFound',
+    })
+    expect(isNotFound(terminalMatch?.error)).toBe(true)
+    expect(clientRouter.state.matches[1]).toMatchObject({
+      routeId: clientParentRoute.id,
+      status: 'success',
+      loaderData: undefined,
+    })
   })
 
   it.each([

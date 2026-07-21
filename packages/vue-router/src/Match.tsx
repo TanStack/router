@@ -28,6 +28,7 @@ export const Match = Vue.defineComponent({
     const activeMatch = useStore(
       router.stores.getMatchStore(routeId),
       (value) => value,
+      { equal: Object.is },
     )
     const matchData = Vue.computed(() => {
       const match = activeMatch.value
@@ -38,7 +39,6 @@ export const Match = Vue.defineComponent({
       return {
         matchId: match.id,
         routeId,
-        abortController: match.abortController,
         ssr: match.ssr,
       }
     })
@@ -104,7 +104,7 @@ export const Match = Vue.defineComponent({
         // Wrap in error boundary if needed
         if (routeErrorComponent) {
           content = CatchBoundary({
-            getResetKey: () => data?.abortController,
+            getResetKey: () => activeMatch.value,
             errorComponent: routeErrorComponent,
             onCatch: (error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)

@@ -45,11 +45,23 @@ export function disposeSsrResponse(
 }
 
 export function disposeSsrResponseDetached(
-  response: SsrResponse,
+  result: HandlerCallbackResult,
   reason?: unknown,
   onError: (error: unknown) => void = console.error,
 ): void {
-  void disposeSsrResponse(response, reason).catch(onError)
+  const ssrResponse = normalizeSsrResponse(result)
+  if (ssrResponse.serverSsrCleanup === 'stream') {
+    void disposeSsrResponse(ssrResponse, reason).catch(onError)
+    return
+  }
+
+  if (ssrResponse.response.body) {
+    try {
+      void ssrResponse.response.body.cancel(reason).catch(onError)
+    } catch (error) {
+      onError(error)
+    }
+  }
 }
 
 export function createSsrStreamResponse<TRouter extends AnyRouter>(
@@ -90,6 +102,9 @@ export function bindSsrResponseToRequest(
 ): SsrResponse {
   const ssrResponse = normalizeSsrResponse(result)
   if (ssrResponse.serverSsrCleanup !== 'stream') {
+    if (signal.aborted) {
+      disposeSsrResponseDetached(result, signal.reason)
+    }
     return ssrResponse
   }
 

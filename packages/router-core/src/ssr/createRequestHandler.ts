@@ -9,7 +9,6 @@ import {
 import {
   bindSsrResponseToRequest,
   disposeSsrResponseDetached,
-  normalizeSsrResponse,
 } from './handlerCallback'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
@@ -155,10 +154,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
         }),
         request.signal,
         (late) => {
-          const ssrResponse = normalizeSsrResponse(late)
-          if (ssrResponse.serverSsrCleanup === 'stream') {
-            disposeSsrResponseDetached(ssrResponse, request.signal.reason)
-          }
+          disposeSsrResponseDetached(late, request.signal.reason)
         },
       )
       const ssrResponse = bindSsrResponseToRequest(

@@ -5,7 +5,7 @@ import {
   createInlineCssStyleAsset,
   getStylesheetHref,
 } from '../manifest'
-import { decodePath } from '../utils'
+import { decodePath, hasOwn } from '../utils'
 import { createLRUCache } from '../lru-cache'
 import { rootRouteId } from '../root'
 import { _getRenderedMatches } from '../rendered-matches'
@@ -47,8 +47,12 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
     ['ssr', 'ssr'],
   ] as const
 
+  // `l` presence distinguishes accepted `undefined` from absent loader data.
   for (const [key, shorthand] of properties) {
-    if (match[key] !== undefined) {
+    if (
+      match[key] !== undefined ||
+      (key === 'loaderData' && hasOwn.call(match, key))
+    ) {
       dehydratedMatch[shorthand] = match[key]
     }
   }

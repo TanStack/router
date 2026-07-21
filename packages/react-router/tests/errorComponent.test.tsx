@@ -319,6 +319,65 @@ test('global catch boundary resets when a background child generation recovers',
   ).not.toBeInTheDocument()
 })
 
+test('ancestor route errorComponent resets when a background child generation recovers', async () => {
+  const refresh = createControlledPromise<number>()
+  let loaderCalls = 0
+  const rootRoute = createRootRoute({
+    component: Outlet,
+    errorComponent: ({ error }) => (
+      <div>Ancestor error: {error.message}</div>
+    ),
+  })
+  const childRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: {
+      staleReloadMode: 'background',
+      handler: () => (++loaderCalls === 1 ? 1 : refresh),
+    },
+    component: () => {
+      const revision = childRoute.useLoaderData()
+      if (revision === 1) {
+        throw new Error('stale child render failed')
+      }
+      return <div>Recovered child revision {revision}</div>
+    },
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([childRoute]),
+    history,
+  })
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+
+  let invalidation: Promise<void> | undefined
+  try {
+    render(<RouterProvider router={router} />)
+    expect(
+      await screen.findByText('Ancestor error: stale child render failed'),
+    ).toBeInTheDocument()
+
+    invalidation = router.invalidate({
+      filter: (match) => match.routeId === childRoute.id,
+    })
+    await vi.waitFor(() => expect(loaderCalls).toBe(2))
+    expect(
+      screen.getByText('Ancestor error: stale child render failed'),
+    ).toBeInTheDocument()
+    refresh.resolve(2)
+    await invalidation
+
+    expect(
+      await screen.findByText('Recovered child revision 2'),
+    ).toBeInTheDocument()
+  } finally {
+    refresh.resolve(2)
+    if (invalidation) {
+      await Promise.allSettled([invalidation])
+    }
+  }
+})
+
 test('errorComponent receives primitive errors thrown from beforeLoad', async () => {
   const rootRoute = createRootRoute()
   const indexRoute = createRoute({
@@ -444,7 +503,7 @@ test('SSR errorComponent receives primitive errors thrown from beforeLoad', asyn
   expect(html).toContain('primitive error thrown')
 })
 
-test('a later ancestor loader failure does not hide the first child error', async () => {
+test('a later fresh ancestor loader failure owns the reachable boundary', async () => {
   const parentStarted = createControlledPromise<void>()
   const childStarted = createControlledPromise<void>()
   const parentGate = createControlledPromise<void>()
@@ -501,11 +560,11 @@ test('a later ancestor loader failure does not hide the first child error', asyn
     await navigation
   })
 
-  expect(screen.getByText('Child error boundary')).toBeInTheDocument()
-  expect(screen.queryByText('Parent error boundary')).not.toBeInTheDocument()
+  expect(screen.getByText('Parent error boundary')).toBeInTheDocument()
+  expect(screen.queryByText('Child error boundary')).not.toBeInTheDocument()
 })
 
-test('a losing ancestor loader still waits for its lazy component before rendering the child error', async () => {
+test('a fresh ancestor failure waits for lazy options before rendering its error', async () => {
   const parentStarted = createControlledPromise<void>()
   const childStarted = createControlledPromise<void>()
   const parentGate = createControlledPromise<void>()
@@ -573,7 +632,9 @@ test('a losing ancestor loader still waits for its lazy component before renderi
 
     expect(parentChunk.status).toBe('pending')
     expect(screen.getByText('Home')).toBeInTheDocument()
+    expect(screen.queryByText('Parent error boundary')).not.toBeInTheDocument()
     expect(screen.queryByText('Child error boundary')).not.toBeInTheDocument()
+    expect(screen.queryByText('Lazy parent shell')).not.toBeInTheDocument()
   } finally {
     await act(async () => {
       childGate.resolve()
@@ -583,12 +644,12 @@ test('a losing ancestor loader still waits for its lazy component before renderi
     })
   }
 
-  expect(screen.getByText('Lazy parent shell')).toBeInTheDocument()
-  expect(screen.getByText('Child error boundary')).toBeInTheDocument()
-  expect(screen.queryByText('Parent error boundary')).not.toBeInTheDocument()
+  expect(screen.getByText('Parent error boundary')).toBeInTheDocument()
+  expect(screen.queryByText('Lazy parent shell')).not.toBeInTheDocument()
+  expect(screen.queryByText('Child error boundary')).not.toBeInTheDocument()
 })
 
-test('SSR renders the first child loader error after a later ancestor failure', async () => {
+test('SSR renders a later fresh ancestor loader failure', async () => {
   const parentStarted = createControlledPromise<void>()
   const childStarted = createControlledPromise<void>()
   const parentGate = createControlledPromise<void>()
@@ -643,8 +704,8 @@ test('SSR renders the first child loader error after a later ancestor failure', 
   const html = await response.text()
 
   expect(response.status).toBe(500)
-  expect(html).toContain('Child error boundary')
-  expect(html).not.toContain('Parent error boundary')
+  expect(html).toContain('Parent error boundary')
+  expect(html).not.toContain('Child error boundary')
 })
 
 // https://github.com/TanStack/router/issues/4684

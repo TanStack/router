@@ -9,7 +9,7 @@ import {
   getLocationChangeInfo,
   runRouteLifecycle,
 } from './router'
-import { deepEqual } from './utils'
+import { deepEqual, hasOwn } from './utils'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
@@ -53,7 +53,7 @@ type LoaderOutcome =
   | [typeof REDIRECTED, redirect: AnyRedirect]
   | [typeof CANCELED]
 
-type IndexedOutcome = [index: number, outcome: LoaderOutcome]
+type IndexedOutcome = [index: number, outcome: LoaderOutcome, boundary?: number]
 
 export type LoaderFlight = [
   outcome: Promise<LoaderOutcome>,
@@ -70,6 +70,14 @@ export type LaneInputs = [
   additionalContext: unknown,
   state: object,
   search: object,
+  maskedLocation:
+    | [
+        href: string,
+        state: object,
+        search: object,
+        unmaskOnReload: boolean | undefined,
+      ]
+    | undefined,
 ]
 
 export type ActivePreload = [
@@ -79,6 +87,7 @@ export type ActivePreload = [
   semanticOwner: Array<AnyRouteMatch>,
   inputs: LaneInputs,
   routeTree: AnyRoute,
+  redirects: number,
 ]
 
 export type LoadTransaction = [
@@ -109,6 +118,7 @@ type LoaderTask = [
   index: number,
   outcome: Promise<LoaderOutcome>,
   ready: Promise<IndexedOutcome | undefined>,
+  rawReady: Promise<IndexedOutcome | undefined>,
   candidate?: WorkMatch,
 ]
 
@@ -116,6 +126,7 @@ type BackgroundLoaderTask = [
   index: number,
   outcome: Promise<LoaderOutcome>,
   ready: Promise<IndexedOutcome | undefined>,
+  rawReady: Promise<IndexedOutcome | undefined>,
   candidate: WorkMatch,
 ]
 
@@ -218,11 +229,12 @@ async function contextualize(
   router: AnyRouter,
   lane: MatchedLane,
   options: ExecuteLaneOptions,
+  end: number,
 ): Promise<IndexedOutcome | undefined> {
   const [location, matches] = lane
   const signal = options[0].signal
   const preload = !!options[4]
-  for (let index = options[7] ?? 0; index < matches.length; index++) {
+  for (let index = options[7] ?? 0; index < end; index++) {
     const match = matches[index]!
     const route = getRoute(router, match)
 
@@ -358,11 +370,22 @@ export function laneInputs(
   router: AnyRouter,
   location: ParsedLocation,
 ): LaneInputs {
+  let maskedLocation: LaneInputs[4]
+  const masked = location.maskedLocation
+  if (masked) {
+    const {
+      __tempLocation: _tempLocation,
+      __tempKey: _tempKey,
+      ...state
+    } = _getUserHistoryState(masked.state)
+    maskedLocation = [masked.href, state, masked.search, masked.unmaskOnReload]
+  }
   return [
     router.options.context ?? {},
     router.options.additionalContext,
     _getUserHistoryState(location.state),
     location.search,
+    maskedLocation,
   ]
 }
 
@@ -370,10 +393,12 @@ function samePreloadLane(
   preload: ActivePreload,
   router: AnyRouter,
   location: ParsedLocation,
+  redirects: number,
 ): boolean {
   return (
     preload[3] === router._committed &&
     preload[5] === router.routeTree &&
+    preload[6] === redirects &&
     deepEqual(preload[4], laneInputs(router, location)) &&
     !preload[0].some(
       (match) => getRoute(router, match as WorkMatch).options.preload === false,
@@ -743,35 +768,34 @@ function createLoaderTask(
     return result
   })
 
-  const chunkFailure = waitFor(
+  const rawChunkFailure = waitFor(
     Promise.resolve().then(() => loadRouteChunk(route)),
     options[0].signal,
+  ).then(
+    () => {
+      options[8]?.()
+      return undefined
+    },
+    (cause): IndexedOutcome => [
+      index,
+      normalizeLaneError(route, cause, options),
+    ],
   )
-    .then(
-      () => {
-        options[8]?.()
-        return undefined
-      },
-      (cause): IndexedOutcome => [
-        index,
-        normalizeLaneError(route, cause, options),
-      ],
-    )
-    .then(async (failure) => {
-      const result = await outcome
-      if (
-        blocking &&
-        !failure &&
-        result[0] === SUCCESS &&
-        match.status === 'pending' &&
-        options[2]()
-      ) {
-        match.status = 'success'
-        options[8]?.()
-      }
-      return failure
-    })
-  tasks.push([index, outcome, chunkFailure])
+  const chunkFailure = rawChunkFailure.then(async (failure) => {
+    const result = await outcome
+    if (
+      blocking &&
+      !failure &&
+      result[0] === SUCCESS &&
+      match.status === 'pending' &&
+      options[2]()
+    ) {
+      match.status = 'success'
+      options[8]?.()
+    }
+    return failure
+  })
+  tasks.push([index, outcome, chunkFailure, rawChunkFailure])
   if (!background) {
     return outcome.then((result) => getParentSnapshot(match, result))
   }
@@ -797,7 +821,13 @@ function createLoaderTask(
     settleInto(candidate, result, false)
     return result
   })
-  ;(lane[2] ??= []).push([index, backgroundOutcome, chunkFailure, candidate])
+  ;(lane[2] ??= []).push([
+    index,
+    backgroundOutcome,
+    chunkFailure,
+    rawChunkFailure,
+    candidate,
+  ])
   return backgroundOutcome.then((result) =>
     getParentSnapshot(candidate, result),
   )
@@ -840,7 +870,7 @@ function discardBackground(router: AnyRouter, lane: Lane<any>): void {
   if (lane[2]) {
     transferMatchResources(
       router,
-      lane[2].map((task) => task[3]),
+      lane[2].map((task) => task[4]),
     )
     lane[2] = undefined
   }
@@ -904,6 +934,7 @@ async function reduceLane(
   const settled = await settlement
   let control = (settled?.[1][0] ?? 0) >= REDIRECTED ? settled : undefined
   let failure = control ? undefined : settled
+  let dropLoaderData = false
   const plannedBoundary = matches.findIndex((match) => match._notFound)
   const boundaryOf = (found: IndexedOutcome) =>
     found[1][0] === NOT_FOUND
@@ -911,11 +942,27 @@ async function reduceLane(
       : found[0]
 
   if (!control) {
-    const readinessEnd = failure
-      ? await boundaryOf(failure)
-      : plannedBoundary < 0
-        ? matches.length
-        : plannedBoundary
+    let readinessEnd: number
+    if (failure) {
+      readinessEnd = failure[2] ??= await boundaryOf(failure)
+      for (const task of tasks) {
+        if (task[0] >= readinessEnd) {
+          break
+        }
+        const outcome = await task[1]
+        if (
+          outcome[0] !== SUCCESS &&
+          outcome[0] < REDIRECTED &&
+          !hasOwn.call(matches[task[0]]!, 'loaderData')
+        ) {
+          failure = [task[0], outcome]
+          readinessEnd = failure[2] = await boundaryOf(failure)
+          break
+        }
+      }
+    } else {
+      readinessEnd = plannedBoundary < 0 ? matches.length : plannedBoundary
+    }
     for (const task of tasks) {
       if (task[0] >= readinessEnd) {
         break
@@ -925,31 +972,73 @@ async function reduceLane(
         if (chunkFailure[1][0] >= REDIRECTED) {
           control = chunkFailure
         } else {
-          failure ??= chunkFailure
+          failure = chunkFailure
         }
         break
       }
     }
   }
 
-  if (
-    control?.[1][0] === REDIRECTED &&
-    !control[1][1].options.reloadDocument &&
-    (redirects ?? 0) >= 20
-  ) {
-    failure = [control[0], [ERROR, new Error('Redirect cycle detected')]]
-    control = undefined
-  }
-
   if (control) {
-    discardBackground(router, lane)
-    return control[1] as ControlOutcome
+    if (
+      control[1][0] === REDIRECTED &&
+      !control[1][1].options.reloadDocument &&
+      (redirects ?? 0) >= 20
+    ) {
+      // Keep control as the cycle marker and move its boundary above any fresh
+      // ancestor that cannot render the redirecting match's error boundary.
+      const unrenderable = matches.findIndex(
+        (match, index) =>
+          index < control![0] &&
+          (match.status !== 'success' || match.invalid) &&
+          !hasOwn.call(match, 'loaderData'),
+      )
+      dropLoaderData = unrenderable >= 0
+      failure = [
+        dropLoaderData ? unrenderable : control[0],
+        [ERROR, new Error('Redirect cycle detected')],
+      ]
+      // Required ancestor chunks remain readiness gates even though unrelated
+      // loader outcomes are about to be canceled with the cycle lane.
+      for (const task of tasks) {
+        if (task[0] >= failure[0]) {
+          break
+        }
+        const chunkFailure = await task[3]
+        if (!chunkFailure) {
+          continue
+        }
+        dropLoaderData = false
+        const chunkOutcome = chunkFailure[1]
+        if (
+          chunkOutcome[0] === CANCELED ||
+          (chunkOutcome[0] === REDIRECTED &&
+            chunkOutcome[1].options.reloadDocument)
+        ) {
+          discardBackground(router, lane)
+          return chunkOutcome as ControlOutcome
+        }
+        if (chunkOutcome[0] === REDIRECTED) {
+          control = chunkFailure
+          failure = [
+            chunkFailure[0],
+            [ERROR, new Error('Redirect cycle detected')],
+          ]
+        } else {
+          failure = chunkFailure
+        }
+        break
+      }
+    } else {
+      discardBackground(router, lane)
+      return control[1] as ControlOutcome
+    }
   }
 
   if (failure) {
     const [, outcome] = failure
     const kind = outcome[0]
-    const boundary = await boundaryOf(failure)
+    const boundary = failure[2] ?? (await boundaryOf(failure))
     const match = matches[boundary]!
     const cause = outcome[1]
     match._notFound = undefined
@@ -981,6 +1070,33 @@ async function reduceLane(
         discardBackground(router, lane)
         return [CANCELED]
       }
+    }
+    if (control) {
+      controller.abort()
+      await Promise.all([
+        ...tasks.map((task) => task[1]),
+        ...tasks.map((task) => task[2]),
+        ...(lane[2] ?? []).map((task) => task[1]),
+      ])
+      discardBackground(router, lane)
+      transferMatchResources(router, matches.slice(boundary))
+      if (dropLoaderData) {
+        delete match.loaderData
+      }
+      match._notFound = undefined
+      if (kind === ERROR) {
+        match.status = 'error'
+      } else {
+        ;(cause as NotFoundError).routeId = match.routeId
+        if (match.routeId === router.routeTree.id) {
+          match.status = 'success'
+          match._notFound = true
+        } else {
+          match.status = 'notFound'
+        }
+      }
+      match.error = cause
+      match.isFetching = false
     }
   } else if (plannedBoundary >= 0) {
     const match = matches[plannedBoundary]!
@@ -1058,7 +1174,7 @@ async function executeClientLane(
   options: ExecuteLaneOptions,
 ): Promise<LaneResult> {
   const matched = [location, matches as Array<WorkMatch>] as MatchedLane
-  const plannedBoundary = matches.findIndex((match) => match._notFound)
+  let plannedBoundary = matches.findIndex((match) => match._notFound)
   if (router.options.notFoundMode !== 'root' && plannedBoundary >= 0) {
     const boundary = await getNotFoundBoundary(
       router,
@@ -1071,8 +1187,10 @@ async function executeClientLane(
       matches[plannedBoundary]!._notFound = undefined
       matches[boundary]!._notFound = true
     }
+    plannedBoundary = boundary
   }
-  const failure = await contextualize(router, matched, options)
+  let end = plannedBoundary < 0 ? matches.length : plannedBoundary + 1
+  const failure = await contextualize(router, matched, options, end)
   if (failure) {
     options[5] = true
   }
@@ -1083,17 +1201,15 @@ async function executeClientLane(
   let semanticParent = start
     ? Promise.resolve(contextualizedMatches[start - 1]!)
     : undefined
-  let end = failure?.[0] ?? contextualizedMatches.length
+  end = failure?.[0] ?? end
   if (failure?.[1][0] === NOT_FOUND) {
-    end = Math.min(
-      end,
-      (await getNotFoundBoundary(
-        router,
-        contextualizedMatches,
-        failure,
-        options[0].signal,
-      )) + 1,
+    failure[2] = await getNotFoundBoundary(
+      router,
+      contextualizedMatches,
+      failure,
+      options[0].signal,
     )
+    end = Math.min(end, failure[2] + 1)
   } else if ((failure?.[1][0] ?? 0) >= REDIRECTED) {
     end = 0
   }
@@ -1414,7 +1530,7 @@ async function runBackground(
   acquireMatchResources(next)
   for (const task of tasks) {
     releaseFlight(router, next[task[0]]!)
-    next[task[0]] = task[3]
+    next[task[0]] = task[4]
   }
   const lane = [tx[2], next] as ContextualizedLane
   let reduced: ReducedLane | ControlOutcome
@@ -1658,7 +1774,13 @@ export async function loadClientRoute(
   let retained: ActivePreload | undefined
   if (
     adopted &&
-    (hydrationController || !samePreloadLane(adopted, router, location))
+    (hydrationController ||
+      !samePreloadLane(
+        adopted,
+        router,
+        pendingLocation?.href === location.href ? pendingLocation : location,
+        redirects ?? 0,
+      ))
   ) {
     router._preloads!.delete(location.href)
     // Keep incompatible loader flights alive through the real lane's reload
@@ -1829,7 +1951,7 @@ export async function preloadClientRoute(
   try {
     const pending = router._preloads?.get(location.href)
     if (pending) {
-      if (samePreloadLane(pending, router, location)) {
+      if (samePreloadLane(pending, router, location, redirects)) {
         const result = await pending[2]
         return isControl(result)
           ? followPreloadRedirect(router, result, location, owner, redirects)
@@ -1866,6 +1988,7 @@ export async function preloadClientRoute(
       base,
       laneInputs(router, location),
       router.routeTree,
+      redirects,
     ]
     ;(router._preloads ??= new Map()).set(location.href, preload)
     const result = await promise

@@ -189,11 +189,13 @@ describe('public client loading contracts', () => {
     await router.invalidate()
 
     expect(loader).toHaveBeenCalledTimes(22)
-    expect(router.state.matches.at(-1)).toMatchObject({
-      routeId: pageRoute.id,
-      status: 'error',
-      error: expect.objectContaining({ message: 'Redirect cycle detected' }),
-    })
+    await vi.waitFor(() =>
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: pageRoute.id,
+        status: 'error',
+        error: expect.objectContaining({ message: 'Redirect cycle detected' }),
+      }),
+    )
   })
 
   test('a blocking child observes the fresh semantic parent generation', async () => {
@@ -492,6 +494,144 @@ describe('public client loading contracts', () => {
       routeId: finalRoute.id,
       status: 'success',
     })
+    expect(router.state.status).toBe('idle')
+  })
+
+  test('a redirect-cycle error aborts concurrent work in its final lane', async () => {
+    const finalParentAborted = createControlledPromise<void>()
+    const finalParentData = createControlledPromise<string>()
+    const finalParentSettled = createControlledPromise<void>()
+    const errorComponentStarted = createControlledPromise<void>()
+    const errorComponentGate = createControlledPromise<void>()
+    let finalParentSignal: AbortSignal | undefined
+    const ErrorComponent = Object.assign(() => null, {
+      preload: () => {
+        errorComponentStarted.resolve()
+        return errorComponentGate
+      },
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hop/$hop',
+      errorComponent: ErrorComponent as any,
+      loader: ({ params, abortController }) => {
+        if (params.hop !== '20') {
+          return
+        }
+        finalParentSignal = abortController.signal
+        finalParentSignal.addEventListener(
+          'abort',
+          () => finalParentAborted.resolve(),
+          { once: true },
+        )
+        return finalParentData.then((data) => {
+          finalParentSettled.resolve()
+          return data
+        })
+      },
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: ({ params }) => {
+        throw redirect({
+          to: '/hop/$hop/child',
+          params: { hop: String(Number(params.hop) + 1) },
+        } as any)
+      },
+    })
+    const cleanupRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/cleanup',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        parentRoute.addChildren([childRoute]),
+        cleanupRoute,
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/hop/0/child'],
+      }),
+    })
+    const loading = router.load()
+
+    try {
+      await errorComponentStarted
+      finalParentData.resolve('late parent data')
+      await finalParentSettled
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      errorComponentGate.resolve()
+      await expect(loading).resolves.toBeUndefined()
+
+      expect(router.state.location.pathname).toBe('/hop/20/child')
+      const firstTerminalMatch = router.state.matches.find(
+        (match) => match.status !== 'success',
+      )
+      expect(firstTerminalMatch).toMatchObject({
+        routeId: parentRoute.id,
+        status: 'error',
+        isFetching: false,
+        error: expect.objectContaining({ message: 'Redirect cycle detected' }),
+      })
+      expect(firstTerminalMatch?.loaderData).toBeUndefined()
+      await finalParentAborted
+      expect(finalParentSignal?.aborted).toBe(true)
+      expect(
+        router.state.matches.every((match) => match.isFetching === false),
+      ).toBe(true)
+      expect(router.state.status).toBe('idle')
+      expect(router.state.isLoading).toBe(false)
+    } finally {
+      finalParentData.resolve('late parent data')
+      errorComponentGate.resolve()
+      await Promise.allSettled([loading])
+      await router.navigate({ to: '/cleanup' })
+    }
+  })
+
+  test('a required parent chunk failure wins over a deeper redirect cycle', async () => {
+    const chunkError = new Error('parent lazy chunk failed')
+    const parentLoader = vi.fn(() => 'parent data')
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hop/$hop',
+      loader: parentLoader,
+      errorComponent: () => null,
+    }).lazy(() => Promise.reject(chunkError))
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: async ({ params, parentMatchPromise }) => {
+        await parentMatchPromise
+        throw redirect({
+          to: '/hop/$hop/child',
+          params: { hop: String(Number(params.hop) + 1) },
+        } as any)
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({
+        initialEntries: ['/hop/0/child'],
+      }),
+    })
+
+    await router.load()
+
+    expect(router.state.location.pathname).toBe('/hop/20/child')
+    const firstTerminalMatch = router.state.matches.find(
+      (match) => match.status !== 'success',
+    )
+    expect(firstTerminalMatch).toMatchObject({
+      routeId: parentRoute.id,
+      status: 'error',
+      loaderData: 'parent data',
+    })
+    expect(firstTerminalMatch?.error).toBe(chunkError)
+    expect(parentLoader).toHaveBeenCalledTimes(21)
     expect(router.state.status).toBe('idle')
   })
 
