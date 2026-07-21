@@ -1,10 +1,6 @@
 import * as Vue from 'vue'
+import type { ErrorComponentProps } from '@tanstack/router-core'
 import type { ErrorRouteComponent } from './route'
-
-interface ErrorComponentProps {
-  error: Error
-  reset: () => void
-}
 
 type CatchBoundaryProps = {
   getResetKey: () => number | string
@@ -109,7 +105,7 @@ export function CatchBoundary(props: CatchBoundaryProps) {
 export const ErrorComponent = Vue.defineComponent({
   name: 'ErrorComponent',
   props: {
-    error: Object,
+    error: null,
     reset: Function,
   },
   setup(props) {

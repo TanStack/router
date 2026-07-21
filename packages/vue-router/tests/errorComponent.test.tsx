@@ -12,7 +12,10 @@ import {
 import type { ErrorComponentProps } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
-  return <div>Error: {props.error.message}</div>
+  const message =
+    props.error instanceof Error ? props.error.message : String(props.error)
+
+  return <div>Error: {message}</div>
 }
 
 async function asyncToThrowFn() {

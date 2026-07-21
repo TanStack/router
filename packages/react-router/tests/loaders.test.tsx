@@ -895,9 +895,12 @@ test('reproducer for #6388 - rapid navigation between parameterized routes shoul
     },
     errorComponent: ({ error }) => {
       errorComponentRenderCount(error)
+      const message = error instanceof Error ? error.message : ''
+      const name = error instanceof Error ? error.name : ''
+
       return (
         <div data-testid="error-component">
-          Error Component: {error.message} | Name: {error.name}
+          Error Component: {message} | Name: {name}
         </div>
       )
     },

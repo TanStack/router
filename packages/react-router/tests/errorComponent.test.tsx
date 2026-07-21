@@ -23,7 +23,10 @@ import {
 import type { ErrorComponentProps, RouterHistory } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
-  return <div>Error: {props.error.message}</div>
+  const message =
+    props.error instanceof Error ? props.error.message : String(props.error)
+
+  return <div>Error: {message}</div>
 }
 
 async function asyncToThrowFn() {
@@ -380,7 +383,11 @@ test('#4684: SSR renders head content when beforeLoad throws', async () => {
     component: function FailingRoute() {
       return <div>Route content</div>
     },
-    errorComponent: ({ error }) => <div>Error UI: {error.message}</div>,
+    errorComponent: ({ error }) => (
+      <div>
+        Error UI: {error instanceof Error ? error.message : String(error)}
+      </div>
+    ),
   })
 
   const handler = createRequestHandler({

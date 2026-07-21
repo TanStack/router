@@ -1853,7 +1853,7 @@ describe('search params in URL', () => {
 
     describe.each(testCases)('search param validation', (validateSearch) => {
       it('does not throw an error when the search param is valid', async () => {
-        let errorSpy: Error | undefined
+        let errorSpy: unknown
         const rootRoute = createRootRoute({
           validateSearch,
           errorComponent: ({ error }) => {
@@ -1873,7 +1873,7 @@ describe('search params in URL', () => {
       })
 
       it('throws an error when the search param is not valid', async () => {
-        let errorSpy: Error | undefined
+        let errorSpy: unknown
         const rootRoute = createRootRoute({
           validateSearch,
           errorComponent: ({ error }) => {
@@ -1888,7 +1888,9 @@ describe('search params in URL', () => {
         await act(() => router.load())
 
         expect(errorSpy).toBeInstanceOf(SearchParamError)
-        expect(errorSpy?.cause).toBeInstanceOf(TestValidationError)
+        expect((errorSpy as SearchParamError).cause).toBeInstanceOf(
+          TestValidationError,
+        )
       })
     })
   })

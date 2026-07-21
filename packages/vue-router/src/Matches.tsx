@@ -89,7 +89,12 @@ const errorComponentFn: ErrorRouteComponentType = (
 ) => {
   return Vue.h('div', { class: 'error' }, [
     Vue.h('h1', null, 'Error'),
-    Vue.h('p', null, props.error.message || String(props.error)),
+    Vue.h(
+      'p',
+      null,
+      (props.error instanceof Error ? props.error.message : '') ||
+        String(props.error),
+    ),
     Vue.h('button', { onClick: props.reset }, 'Try Again'),
   ])
 }

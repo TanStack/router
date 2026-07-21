@@ -943,7 +943,11 @@ export const Route = createFileRoute('/')({
     // If this fails, the errorComponent renders
     Greeting: await getGreeting(),
   }),
-  errorComponent: ({ error }) => <div>Failed to load: {error.message}</div>,
+  errorComponent: ({ error }) => (
+    <div>
+      Failed to load: {error instanceof Error ? error.message : String(error)}
+    </div>
+  ),
   component: HomePage,
 })
 ```
