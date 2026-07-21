@@ -133,7 +133,9 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     return Solid.createMemo(() => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      router.stores.loadDeps.get()
+      router.stores.location.get()
+      router.stores.resolvedLocation.get()
+      router.stores.status.get()
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,

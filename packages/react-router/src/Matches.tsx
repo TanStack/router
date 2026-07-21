@@ -141,7 +141,11 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
   if (!(isServer ?? router.isServer)) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    useStore(router.stores.loadDeps, (d) => d)
+    useStore(router.stores.location, (location) => location.href)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useStore(router.stores.resolvedLocation, (location) => location?.href)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    useStore(router.stores.status, (status) => status)
   }
 
   return React.useCallback(

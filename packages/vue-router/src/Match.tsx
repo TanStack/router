@@ -30,27 +30,13 @@ export const Match = Vue.defineComponent({
       (value) => value,
       { equal: Object.is },
     )
-    const matchData = Vue.computed(() => {
-      const match = activeMatch.value
-      if (!match) {
-        return null
-      }
-
-      return {
-        matchId: match.id,
-        routeId,
-        ssr: match.ssr,
-      }
-    })
     // Provide routeId context (stable string) for children.
     // MatchInner, Outlet, and useMatch all consume this.
     Vue.provide(routeIdContext, routeId)
 
     return (): VNode => {
-      const data = matchData.value
-      const route = data
-        ? (router.routesById[data.routeId] as AnyRoute)
-        : undefined
+      const match = activeMatch.value
+      const route = match ? (router.routesById[routeId] as AnyRoute) : undefined
       const PendingComponent =
         route?.options.pendingComponent ??
         router.options.defaultPendingComponent
@@ -68,7 +54,7 @@ export const Match = Vue.defineComponent({
       const ShellComponent = route?.isRoot
         ? ((route.options as RootRouteOptions).shellComponent as any)
         : undefined
-      const resolvedNoSsr = data?.ssr === false || data?.ssr === 'data-only'
+      const resolvedNoSsr = match?.ssr === false || match?.ssr === 'data-only'
 
       const renderMatchContent = (): VNode => {
         const matchInner = Vue.h(MatchInner)
@@ -89,9 +75,9 @@ export const Match = Vue.defineComponent({
         if (routeNotFoundComponent) {
           content = Vue.h(CatchNotFound, {
             fallback: (error: any) => {
-              error.routeId ??= data!.routeId
+              error.routeId ??= routeId
 
-              if (error.routeId !== data!.routeId) {
+              if (error.routeId !== routeId) {
                 throw error
               }
 
@@ -109,11 +95,11 @@ export const Match = Vue.defineComponent({
             onCatch: (error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) {
-                error.routeId ??= data?.routeId
+                error.routeId ??= routeId
                 throw error
               }
               if (process.env.NODE_ENV !== 'production') {
-                console.warn(`Warning: Error in route match: ${data?.matchId}`)
+                console.warn(`Warning: Error in route match: ${match?.id}`)
               }
               routeOnCatch?.(error)
             },
@@ -121,25 +107,18 @@ export const Match = Vue.defineComponent({
           })
         }
 
-        // Add scroll restoration if needed
-        const withScrollRestoration: Array<VNode> = [
-          content,
-          route?.parentRoute?.id === rootRouteId
-            ? Vue.h(Vue.Fragment, null, [
-                router.options.scrollRestoration &&
-                (isServer ?? router.isServer)
-                  ? Vue.h(ScrollRestoration)
-                  : null,
-              ])
-            : null,
-        ].filter(Boolean) as Array<VNode>
-
-        // Return single child directly to avoid Fragment wrapper that causes hydration mismatch
-        if (withScrollRestoration.length === 1) {
-          return withScrollRestoration[0]!
+        if (route?.parentRoute?.id !== rootRouteId) {
+          return content
         }
 
-        return Vue.h(Vue.Fragment, null, withScrollRestoration)
+        return Vue.h(Vue.Fragment, null, [
+          content,
+          Vue.h(Vue.Fragment, null, [
+            (isServer ?? router.isServer) && router.options.scrollRestoration
+              ? Vue.h(ScrollRestoration)
+              : null,
+          ]),
+        ])
       }
 
       if (!ShellComponent) {
@@ -163,10 +142,7 @@ export const MatchInner = Vue.defineComponent({
 
     // Use routeId from context (provided by parent Match) — stable string.
     const routeId = Vue.inject(routeIdContext)!
-    const activeMatch = useStore(
-      router.stores.getMatchStore(routeId),
-      (value) => value,
-    )
+    const activeMatch = useStore(router.stores.getMatchStore(routeId))
 
     // Combined selector for match state AND remount key
     // This ensures both are computed in the same selector call with consistent data
@@ -184,18 +160,19 @@ export const MatchInner = Vue.defineComponent({
         (router.routesById[matchRouteId] as AnyRoute).options.remountDeps ??
         router.options.defaultRemountDeps
 
-      let remountKey: string | undefined
-      if (remountFn) {
-        const remountDeps = remountFn({
-          routeId: matchRouteId,
-          loaderDeps: match.loaderDeps,
-          params: match._strictParams,
-          search: match._strictSearch,
-        })
-        remountKey = remountDeps ? JSON.stringify(remountDeps) : undefined
-      }
+      const remountDeps = remountFn
+        ? remountFn({
+            routeId: matchRouteId,
+            loaderDeps: match.loaderDeps,
+            params: match._strictParams,
+            search: match._strictSearch,
+          })
+        : undefined
 
-      return [match, remountKey] as const
+      return [
+        match,
+        remountDeps ? JSON.stringify(remountDeps) : undefined,
+      ] as const
     })
 
     return (): VNode | null => {
@@ -275,51 +252,39 @@ export const Outlet = Vue.defineComponent({
     const router = useRouter()
     const parentRouteId = Vue.inject(routeIdContext)!
 
-    const parentMatch = useStore(
-      router.stores.getMatchStore(parentRouteId),
-      (v) => v,
-    )
+    const parentMatch = useStore(router.stores.getMatchStore(parentRouteId))
 
     const route = router.routesById[parentRouteId]!
-
-    const parentGlobalNotFound = Vue.computed(
-      () => parentMatch.value?._notFound ?? false,
-    )
 
     const childMatch = useStore(router.stores.matches, (matches) => {
       const index = matches.findIndex(
         (match) => match.routeId === parentRouteId,
       )
-      return matches[index + 1]
+      const child = matches[index + 1]
+      return child
+        ? ([
+            child.routeId,
+            child.routeId + JSON.stringify(child._strictParams),
+          ] as const)
+        : undefined
     })
 
-    const childMatchData = Vue.computed(() => {
+    return (): VNode | null => {
+      if (parentMatch.value?._notFound) {
+        return renderRouteNotFound(router, route, parentMatch.value.error)
+      }
+
       const child = childMatch.value
       if (!child) {
         return null
       }
 
-      return {
-        routeId: child.routeId,
+      const nextMatch = Vue.h(Match, {
+        routeId: child[0],
         // Key based on routeId + params only (not loaderDeps)
         // This ensures component recreates when params change,
         // but NOT when only loaderDeps change
-        paramsKey: child.routeId + JSON.stringify(child._strictParams),
-      }
-    })
-
-    return (): VNode | null => {
-      if (parentGlobalNotFound.value) {
-        return renderRouteNotFound(router, route, parentMatch.value!.error)
-      }
-
-      if (!childMatchData.value) {
-        return null
-      }
-
-      const nextMatch = Vue.h(Match, {
-        routeId: childMatchData.value.routeId,
-        key: childMatchData.value.paramsKey,
+        key: child[1],
       })
 
       // Note: We intentionally do NOT wrap in Suspense here.

@@ -72,9 +72,6 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   >
   ids: RouterWritableStore<Array<string>>
   matches: ReadableStore<Array<AnyRouteMatch>>
-  loadDeps: ReadableStore<
-    [string, string | undefined, RouterState<TRouteTree>['status']]
-  >
   __store: RouterReadableStore<RouterState<TRouteTree>>
 
   byRoute: Map<string, MatchStore>
@@ -110,9 +107,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   const matches = createReadonlyStore(() =>
     ids.get().map((id) => byRoute.get(id)!.get()!),
   )
-  const loadDeps = createReadonlyStore<
-    [string, string | undefined, RouterState<TRouteTree>['status']]
-  >(() => [location.get().href, resolvedLocation.get()?.href, status.get()])
 
   // compatibility "big" state store
   const __store = createReadonlyStore(() => ({
@@ -141,7 +135,6 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
     // derived
     matches,
-    loadDeps,
 
     // non-reactive state
     byRoute,

@@ -398,14 +398,15 @@ and successful loader data remain reusable by design.
 
 Hydration retry is the transported-work exception because it did not run those
 client loader tasks. There, `loaderData` membership together with
-`invalid === false` proves a successful generation even when terminal boundary
-state is attached to the match. Hydration normalizes that copy before passing it
-through the same cache compare-and-swap and lease rules.
+`invalid === false` proves a transported successful generation even when
+terminal boundary state is attached to the match. Hydration normalizes that
+copy before passing it through the same cache compare-and-swap and lease rules.
 
-The dehydrated payload omits `loaderData` when no loader result exists.
-Reconstruction must preserve that absence. Manufacturing an own
-`loaderData: undefined` property would falsely turn a terminal match whose
-loader never ran into reusable success during hydration retry.
+The dehydrated payload omits `loaderData` both when no loader result exists and
+when the accepted result is `undefined`. This deliberately keeps the HTML
+payload smaller at the cost of making those states indistinguishable after
+transport. Reconstruction preserves the absence and does not treat an omitted
+value as reusable loader success during hydration retry.
 
 The cache may deliberately contain a successful generation with the same match
 ID as a committed match. For example, a speculative lane can produce reusable
@@ -568,8 +569,10 @@ promise settlement chronology, not route-order ranking and not a
 shallowest-boundary comparator. After settlement, the required render prefix is
 checked root-to-leaf. The first failed ancestor without its own accepted
 `loaderData` property replaces a deeper failure because that deeper boundary is
-not reachable. Retained loader data, including an accepted `undefined`, keeps
-the ancestor renderable with stale data and preserves settlement chronology.
+not reachable. Locally retained loader data, including an accepted `undefined`,
+keeps the ancestor renderable with stale data and preserves settlement
+chronology. An `undefined` result reconstructed from SSR is intentionally absent
+under the transport policy above.
 
 A redirect is control flow and wins even after an ancestor loader has already
 failed ordinarily. Reduction therefore waits for started descendant loader work

@@ -10,7 +10,22 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
-import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
+import type {
+  AnyRoute,
+  AnyRouter,
+  RootRouteOptions,
+} from '@tanstack/router-core'
+
+// Keep the client constant undefined so the server-only script can be dropped.
+const renderScrollRestoration =
+  isServer === false
+    ? undefined
+    : (router: AnyRouter, route: AnyRoute) =>
+        (isServer ?? router.isServer) &&
+        route.parentRoute?.id === rootRouteId &&
+        router.options.scrollRestoration ? (
+          <ScrollRestoration />
+        ) : null
 
 export const Match = (props: { routeId: string }) => {
   const router = useRouter()
@@ -38,9 +53,6 @@ export const Match = (props: { routeId: string }) => {
   const routeErrorComponent = () =>
     routeOptions().errorComponent ?? router.options.defaultErrorComponent
 
-  const routeOnCatch = () =>
-    route.options.onCatch ?? router.options.defaultOnCatch
-
   const routeNotFoundComponent = () =>
     route.isRoot
       ? // If it's the root route, use the _notFound option, with fallback to the notFoundRoute's component
@@ -55,12 +67,6 @@ export const Match = (props: { routeId: string }) => {
     (isServer ?? router.isServer)
       ? resolvedNoSsr()
       : currentMatch().ssr === 'data-only'
-
-  const ResolvedCatchBoundary = () =>
-    routeErrorComponent() ? CatchBoundary : SafeFragment
-
-  const ResolvedNotFoundBoundary = () =>
-    routeNotFoundComponent() ? CatchNotFound : SafeFragment
 
   const ShellComponent = route.isRoot
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
@@ -88,7 +94,7 @@ export const Match = (props: { routeId: string }) => {
           }
         >
           <Dynamic
-            component={ResolvedCatchBoundary()}
+            component={routeErrorComponent() ? CatchBoundary : SafeFragment}
             getResetKey={currentMatch}
             errorComponent={routeErrorComponent() as any}
             onCatch={(error: Error) => {
@@ -103,11 +109,13 @@ export const Match = (props: { routeId: string }) => {
                   `Warning: Error in route match: ${currentMatch().routeId}`,
                 )
               }
-              routeOnCatch()?.(error)
+              ;(route.options.onCatch ?? router.options.defaultOnCatch)?.(error)
             }}
           >
             <Dynamic
-              component={ResolvedNotFoundBoundary()}
+              component={
+                routeNotFoundComponent() ? CatchNotFound : SafeFragment
+              }
               fallback={(error: any) => {
                 const notFoundError = getNotFound(error) ?? error
 
@@ -142,11 +150,7 @@ export const Match = (props: { routeId: string }) => {
         </Solid.Suspense>
       </nearestMatchContext.Provider>
 
-      {(isServer ?? router.isServer) &&
-      route.parentRoute?.id === rootRouteId &&
-      router.options.scrollRestoration ? (
-        <ScrollRestoration />
-      ) : null}
+      {renderScrollRestoration?.(router, route)}
     </ShellComponent>
   )
 }

@@ -182,4 +182,40 @@ describe('navigation adopting an in-flight preload', () => {
       authorization: 'new:false',
     })
   })
+
+  test('reruns beforeLoad when the route tree changes during an active preload', async () => {
+    const loaderGate = createControlledPromise<string>()
+    const beforeLoad = vi.fn()
+    const loader = vi.fn(() => loaderGate)
+    const createRouteTree = () => {
+      const rootRoute = new BaseRootRoute({})
+      const indexRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+      })
+      const guardedRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/guarded',
+        beforeLoad,
+        loader,
+      })
+      return rootRoute.addChildren([indexRoute, guardedRoute])
+    }
+    const router = createTestRouter({
+      routeTree: createRouteTree(),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    const preload = router.preloadRoute({ to: '/guarded' })
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledOnce())
+
+    router.update({ ...router.options, routeTree: createRouteTree() })
+    const navigation = router.navigate({ to: '/guarded' })
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
+
+    loaderGate.resolve('shared')
+    await Promise.all([preload, navigation])
+    expect(loader).toHaveBeenCalledOnce()
+  })
 })

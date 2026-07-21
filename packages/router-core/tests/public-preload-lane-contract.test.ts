@@ -313,6 +313,7 @@ describe('public preload lane contracts', () => {
           maskARoute,
           maskBRoute,
         ]),
+        ...('search' in preloadMask ? { stringifySearch: () => '' } : {}),
         history: createMemoryHistory({ initialEntries: ['/'] }),
       })
 
@@ -1361,6 +1362,135 @@ describe('public preload lane contracts', () => {
       error: expect.objectContaining({
         message: 'Redirect cycle detected',
       }),
+    })
+  })
+
+  test('forwards a document redirect at the redirect limit', async () => {
+    const beforeLoad = vi.fn(({ params }) => {
+      const hop = Number(params.hop)
+      throw redirect({
+        to: '/hop/$hop',
+        params: { hop: String(hop + 1) },
+        reloadDocument: hop === 20,
+      } as any)
+    })
+    const rootRoute = new BaseRootRoute({})
+    const hopRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/hop/$hop',
+      beforeLoad,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([hopRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const matches = await router.preloadRoute({
+      to: '/hop/$hop',
+      params: { hop: '0' },
+    } as any)
+
+    expect(beforeLoad).toHaveBeenCalledTimes(21)
+    expect(matches).toBeUndefined()
+  })
+
+  test('moves a loader redirect cycle above a fresh preload-disabled ancestor', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      preload: false,
+      loader: () => 'parent data',
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: () => {
+        throw redirect({ to: '/parent/child' })
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const matches = await router.preloadRoute({ to: '/parent/child' })
+    const terminal = matches?.find((match) => match.status !== 'success')
+
+    expect(terminal).toMatchObject({
+      routeId: parentRoute.id,
+      status: 'error',
+      error: expect.objectContaining({ message: 'Redirect cycle detected' }),
+    })
+    expect(terminal).not.toHaveProperty('loaderData')
+  })
+
+  test('moves a chunk redirect cycle above a fresh preload-disabled ancestor', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      preload: false,
+      loader: () => 'parent data',
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      onError: () => {
+        throw redirect({ to: '/parent/child' })
+      },
+    }).lazy(() => Promise.reject(new Error('child chunk failed')))
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const matches = await router.preloadRoute({ to: '/parent/child' })
+
+    const terminal = matches?.find((match) => match.status !== 'success')
+    expect(terminal).toMatchObject({
+      routeId: parentRoute.id,
+      status: 'error',
+      error: expect.objectContaining({ message: 'Redirect cycle detected' }),
+    })
+    expect(terminal).not.toHaveProperty('loaderData')
+  })
+
+  test('a required chunk clears loader-data deletion after cycle promotion', async () => {
+    const chunkError = new Error('root component failed')
+    const RootComponent = Object.assign(() => null, {
+      preload: () => Promise.reject(chunkError),
+    })
+    const rootRoute = new BaseRootRoute({
+      component: RootComponent as any,
+      errorComponent: () => null,
+      loader: () => 'root data',
+    })
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      preload: false,
+      loader: () => 'parent data',
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: () => {
+        throw redirect({ to: '/parent/child' })
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const matches = await router.preloadRoute({ to: '/parent/child' })
+
+    expect(matches?.[0]).toMatchObject({
+      routeId: rootRoute.id,
+      status: 'error',
+      error: chunkError,
+      loaderData: 'root data',
     })
   })
 })
