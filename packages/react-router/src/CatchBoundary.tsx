@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { useRouterRenderer } from './routerRenderer'
 import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
 
@@ -10,7 +11,9 @@ export function CatchBoundary(props: {
   errorComponent?: ErrorRouteComponent
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }) {
-  const errorComponent = props.errorComponent ?? ErrorComponent
+  const renderer = useRouterRenderer()
+  const errorComponent =
+    props.errorComponent ?? renderer?.errorComponent ?? ErrorComponent
 
   return (
     <CatchBoundaryImpl

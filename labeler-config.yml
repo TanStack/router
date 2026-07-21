@@ -13,6 +13,9 @@
 'package: nitro-v2-vite-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/nitro-v2-vite-plugin/**/*'
+'package: react-nativescript-router':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/react-nativescript-router/**/*'
 'package: react-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router/**/*'

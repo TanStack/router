@@ -26,6 +26,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint ./src",
+    "test:unit": "vitest",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
@@ -68,11 +69,13 @@
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
     "chokidar": "^5.0.0",
+    "yaml": "^2.9.0",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
     "@types/node": ">=20",
     "@types/yargs": "^17.0.33",
+    "vitest": "^4.1.4",
     "vite": "*"
   }
 }

@@ -56,6 +56,8 @@ export type ParsedHistoryState = HistoryState & {
   key?: string // TODO: Remove in v2 - use __TSR_key instead
   __TSR_key?: string
   __TSR_index: number
+  __TSR_entryId?: string
+  __TSR_nativeMinStackState?: 'active' | 'paused'
 }
 
 type ShouldAllowNavigation = any

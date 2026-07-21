@@ -1,0 +1,8 @@
+The App_Resources directory is derived from @nativescript/template-blank
+version 9.0.0, maintained by the NativeScript team:
+
+https://github.com/NativeScript/nativescript-app-templates
+
+The files have been modified for the TanStack NativeScript scaffold. The
+original resources are licensed under the Apache License 2.0 included in this
+directory.

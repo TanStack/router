@@ -41,6 +41,8 @@ export default mergeConfig(
       './src/rsbuild/ssr-decode.ts',
       './src/plugin/rsbuild.ts',
       './src/plugin/vite.ts',
+      './src/plugin/nativescript.ts',
+      './src/nativescript.ts',
       './src/server-only.ts',
       './src/client-only.ts',
     ],

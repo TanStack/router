@@ -11,6 +11,8 @@ import { Transitioner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match } from './Match'
 import { SafeFragment } from './SafeFragment'
+import { useRouterStateSnapshotStore } from './routerStateSnapshot'
+import { useRouterRenderer } from './routerRenderer'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -44,7 +46,11 @@ declare module '@tanstack/router-core' {
  * Internal component that renders the router's active match tree with
  * suspense, error, and not-found boundaries. Rendered by `RouterProvider`.
  */
-export function Matches() {
+export function Matches({
+  includeTransitioner = true,
+}: {
+  includeTransitioner?: boolean
+} = {}) {
   const router = useRouter()
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
 
@@ -62,7 +68,9 @@ export function Matches() {
 
   const inner = (
     <ResolvedSuspense fallback={pendingElement}>
-      {!(isServer ?? router.isServer) && <Transitioner />}
+      {includeTransitioner && !(isServer ?? router.isServer) && (
+        <Transitioner />
+      )}
       <MatchesInner />
     </ResolvedSuspense>
   )
@@ -76,15 +84,22 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
+  const renderer = useRouterRenderer()
+  const snapshotStore = useRouterStateSnapshotStore(router)
   const _isServer = isServer ?? router.isServer
   const matchId = _isServer
-    ? router.stores.firstId.get()
+    ? (snapshotStore?.get().matches[0]?.id ?? router.stores.firstId.get())
     : // eslint-disable-next-line react-hooks/rules-of-hooks
-      useStore(router.stores.firstId, (id) => id)
+      useStore((snapshotStore ?? router.stores.firstId) as any, (value: any) =>
+        snapshotStore ? value.matches[0]?.id : value,
+      )
   const resetKey = _isServer
-    ? router.stores.loadedAt.get()
+    ? (snapshotStore?.get().loadedAt ?? router.stores.loadedAt.get())
     : // eslint-disable-next-line react-hooks/rules-of-hooks
-      useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+      useStore(
+        (snapshotStore ?? router.stores.loadedAt) as any,
+        (value: any) => (snapshotStore ? value.loadedAt : value),
+      )
 
   const matchComponent = matchId ? <Match matchId={matchId} /> : null
 
@@ -95,7 +110,7 @@ function MatchesInner() {
       ) : (
         <CatchBoundary
           getResetKey={() => resetKey}
-          errorComponent={ErrorComponent}
+          errorComponent={renderer?.errorComponent ?? ErrorComponent}
           onCatch={
             process.env.NODE_ENV !== 'production'
               ? (error) => {
@@ -140,10 +155,14 @@ export type UseMatchRouteOptions<
  */
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
+  const snapshotStore = useRouterStateSnapshotStore(router)
 
   if (!(isServer ?? router.isServer)) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    useStore(router.stores.matchRouteDeps, (d) => d)
+    useStore(
+      (snapshotStore ?? router.stores.matchRouteDeps) as any,
+      (value: any) => (snapshotStore ? value.loadedAt : value),
+    )
   }
 
   return React.useCallback(
@@ -164,9 +183,14 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         caseSensitive,
         fuzzy,
         includeSearch,
+        _baseLocation:
+          snapshotStore && pending !== true
+            ? (snapshotStore.get().resolvedLocation ??
+              snapshotStore.get().location)
+            : undefined,
       })
     },
-    [router],
+    [router, snapshotStore],
   )
 }
 
@@ -235,11 +259,12 @@ export function useMatches<
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseMatchesResult<TRouter, TSelected> {
   const router = useRouter<TRouter>()
+  const snapshotStore = useRouterStateSnapshotStore(router)
 
   if (isServer ?? router.isServer) {
-    const matches = router.stores.matches.get() as Array<
-      MakeRouteMatchUnion<TRouter>
-    >
+    const matches = (
+      snapshotStore ? snapshotStore.get().matches : router.stores.matches.get()
+    ) as Array<MakeRouteMatchUnion<TRouter>>
     return (opts?.select ? opts.select(matches) : matches) as UseMatchesResult<
       TRouter,
       TSelected
@@ -247,10 +272,12 @@ export function useMatches<
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  const select = useStructuralSharing(opts, router)
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(
-    router.stores.matches,
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-    useStructuralSharing(opts, router),
+    (snapshotStore ?? router.stores.matches) as any,
+    (value: any) => select(snapshotStore ? value.matches : value),
   ) as UseMatchesResult<TRouter, TSelected>
 }
 

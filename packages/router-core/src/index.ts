@@ -23,6 +23,10 @@ export type {
   AbsoluteToPath,
   RelativeToPathAutoComplete,
   NavigateOptions,
+  NavigateOptionProps,
+  NativeNavigateOptions,
+  StackBehavior,
+  StackMatch,
   ToOptions,
   ToMaskOptions,
   ToSubOptions,
@@ -285,6 +289,7 @@ export type {
   ClearCacheFn,
   CreateRouterFn,
   SSROption,
+  BackOptions,
 } from './router'
 
 export * from './config'
@@ -292,6 +297,7 @@ export * from './config'
 export type {
   MatchLocation,
   CommitLocationOptions,
+  BackFn,
   NavigateFn,
   BuildLocationFn,
 } from './RouterProvider'

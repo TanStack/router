@@ -4,6 +4,7 @@ import { useStore } from '@tanstack/react-store'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useStructuralSharing } from './useMatch'
+import { useRouterStateSnapshotStore } from './routerStateSnapshot'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -53,14 +54,14 @@ export function useRouterState<
     warn: opts?.router === undefined,
   })
   const router = opts?.router || contextRouter
+  const snapshotStore = useRouterStateSnapshotStore(router)
+  const store = snapshotStore ?? router.stores.__store
 
   // During SSR we render exactly once and do not need reactivity.
   // Avoid subscribing to the store (and any structural sharing work) on the server.
   const _isServer = isServer ?? router.isServer
   if (_isServer) {
-    const state = router.stores.__store.get() as RouterState<
-      TRouter['routeTree']
-    >
+    const state = store.get() as RouterState<TRouter['routeTree']>
     return (opts?.select ? opts.select(state) : state) as UseRouterStateResult<
       TRouter,
       TSelected
@@ -69,7 +70,7 @@ export function useRouterState<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(
-    router.stores.__store,
+    store as any,
     // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router),
   ) as UseRouterStateResult<TRouter, TSelected>

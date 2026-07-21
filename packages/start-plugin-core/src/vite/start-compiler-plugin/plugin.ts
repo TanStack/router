@@ -1,4 +1,4 @@
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { resolve as resolvePath } from 'pathe'
 import {
   SERVER_FN_LOOKUP,
@@ -229,6 +229,8 @@ export interface StartCompilerPluginOptions {
    * The Vite environment name for the server function provider.
    */
   providerEnvName: string
+  /** Override Vite's environment mode for separately-built client targets. */
+  compilerMode?: 'dev' | 'build'
 }
 
 export function startCompilerPlugin(
@@ -326,7 +328,9 @@ export function startCompilerPlugin(
 
           if (!compiler) {
             // Default to 'dev' mode for unknown environments (conservative: no caching)
-            const mode = this.environment.mode === 'build' ? 'build' : 'dev'
+            const mode =
+              opts.compilerMode ??
+              (this.environment.mode === 'build' ? 'build' : 'dev')
 
             compiler = createStartCompiler({
               env: environment.type,

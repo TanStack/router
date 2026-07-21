@@ -4,6 +4,7 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { useStore } from '@tanstack/react-store'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
+import { useRouterStateSnapshotStore } from './routerStateSnapshot'
 import type { ErrorInfo } from 'react'
 import type { NotFoundError } from '@tanstack/router-core'
 
@@ -13,10 +14,13 @@ export function CatchNotFound(props: {
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const snapshotStore = useRouterStateSnapshotStore(router)
 
   if (isServer ?? router.isServer) {
-    const pathname = router.stores.location.get().pathname
-    const status = router.stores.status.get()
+    const snapshot = snapshotStore?.get()
+    const pathname =
+      snapshot?.location.pathname ?? router.stores.location.get().pathname
+    const status = snapshot?.status ?? router.stores.status.get()
     const resetKey = `not-found-${pathname}-${status}`
 
     return (
@@ -45,11 +49,14 @@ export function CatchNotFound(props: {
   // TODO: Some way for the user to programmatically reset the not-found boundary?
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const pathname = useStore(
-    router.stores.location,
-    (location) => location.pathname,
+    (snapshotStore ?? router.stores.location) as any,
+    (value: any) => (snapshotStore ? value.location.pathname : value.pathname),
   )
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const status = useStore(router.stores.status, (status) => status)
+  const status = useStore(
+    (snapshotStore ?? router.stores.status) as any,
+    (value: any) => (snapshotStore ? value.status : value),
+  )
   const resetKey = `not-found-${pathname}-${status}`
 
   return (

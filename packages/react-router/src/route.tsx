@@ -13,7 +13,7 @@ import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
 import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
-import { Link } from './link'
+import { RouteLink } from './routeLink'
 import type {
   AnyContext,
   AnyRoute,
@@ -159,7 +159,7 @@ export class RouteApi<
     React.forwardRef((props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
       const router = useRouter()
       const fullPath = router.routesById[this.id as string].fullPath
-      return <Link ref={ref} from={fullPath as never} {...props} />
+      return <RouteLink ref={ref} from={fullPath as never} {...props} />
     }) as unknown as LinkComponentRoute<
       RouteTypesById<TRouter, TId>['fullPath']
     >
@@ -304,7 +304,7 @@ export class Route<
 
   Link: LinkComponentRoute<TFullPath> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      return <Link ref={ref} from={this.fullPath as never} {...props} />
+      return <RouteLink ref={ref} from={this.fullPath as never} {...props} />
     },
   ) as unknown as LinkComponentRoute<TFullPath>
 }
@@ -575,7 +575,7 @@ export class RootRoute<
 
   Link: LinkComponentRoute<'/'> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      return <Link ref={ref} from={this.fullPath} {...props} />
+      return <RouteLink ref={ref} from={this.fullPath} {...props} />
     },
   ) as unknown as LinkComponentRoute<'/'>
 }

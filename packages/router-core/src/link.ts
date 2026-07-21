@@ -294,11 +294,27 @@ export type NavigateOptions<
   TMaskTo extends string = '.',
 > = ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & NavigateOptionProps
 
+export type StackBehavior = 'auto' | 'push' | 'replace' | 'reuse'
+
+export type StackMatch = 'nearest' | 'oldest'
+
+export interface NativeNavigateOptions {
+  minStackState?: 'active' | 'paused'
+}
+
 /**
  * The NavigateOptions type is used to describe the options that can be used when describing a navigation action in TanStack Router.
  * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType)
  */
 export interface NavigateOptionProps {
+  /** Controls how this navigation interacts with a native-style stack. */
+  stackBehavior?: StackBehavior
+  /** Selects which matching entry is reused when more than one exists. */
+  stackMatch?: StackMatch
+  /** Explicit identity used by `stackBehavior: 'reuse'`. */
+  entryId?: string
+  /** Renderer-independent metadata persisted for native adapters. */
+  native?: NativeNavigateOptions
   /**
    * If set to `true`, the router will scroll the element with an id matching the hash into view with default `ScrollIntoViewOptions`.
    * If set to `false`, the router will not scroll the element with an id matching the hash into view.

@@ -10,6 +10,7 @@ import {
   functionalUpdate,
   hasKeys,
   isDangerousProtocol,
+  isPromise,
   last,
   nullReplaceEqualDeep,
   replaceEqualDeep,
@@ -95,6 +96,7 @@ import type {
   MatchRouteOptions,
 } from './Matches'
 import type {
+  BackFn,
   BuildLocationFn,
   CommitLocationOptions,
   NavigateFn,
@@ -750,6 +752,33 @@ export type LoadFn = (opts?: {
   action?: { type: HistoryAction }
 }) => Promise<void>
 
+type BackCommonOptions = {
+  ifMissing?: 'push' | 'replace' | 'noop'
+  ignoreBlocker?: boolean
+}
+
+export type BackOptions<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+> =
+  | (BackCommonOptions & {
+      steps?: number
+      to?: never
+      entryId?: never
+    })
+  | (BackCommonOptions & {
+      to: 'root'
+      steps?: never
+      entryId?: never
+    })
+  | (BackCommonOptions &
+      ToOptions<TRouter, TFrom, TTo> & {
+        to: TTo extends 'root' ? never : TTo
+        entryId?: string
+        steps?: never
+      })
+
 export type CommitLocationFn = ({
   viewTransition,
   ignoreBlocker,
@@ -1018,6 +1047,10 @@ export class RouterCore<
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
+  private historyEntriesByIndex = new Map<
+    number,
+    { entryId: string; href: string; pathname: string }
+  >()
 
   /**
    * @deprecated Use the `createRouter` function instead
@@ -1104,12 +1137,16 @@ export class RouterCore<
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
+      const previousHistory = this.history
       if (!this.options.history) {
         if (!(isServer ?? this.isServer)) {
           this.history = createBrowserHistory() as TRouterHistory
         }
       } else {
         this.history = this.options.history
+      }
+      if (previousHistory && previousHistory !== this.history) {
+        this.historyEntriesByIndex.clear()
       }
     }
 
@@ -1230,11 +1267,31 @@ export class RouterCore<
     return this.stores.__store.get()
   }
 
-  updateLatestLocation = () => {
+  updateLatestLocation = (action?: HistoryAction) => {
     this.latestLocation = this.parseLocation(
       this.history.location,
       this.latestLocation,
     )
+
+    const index = this.latestLocation.state.__TSR_index
+    if (typeof index !== 'number') {
+      return
+    }
+
+    if (action === 'PUSH') {
+      for (const existingIndex of this.historyEntriesByIndex.keys()) {
+        if (existingIndex > index) {
+          this.historyEntriesByIndex.delete(existingIndex)
+        }
+      }
+    }
+
+    this.historyEntriesByIndex.set(index, {
+      entryId:
+        this.latestLocation.state.__TSR_entryId ?? this.latestLocation.href,
+      href: this.latestLocation.href,
+      pathname: this.latestLocation.pathname,
+    })
   }
 
   buildRouteTree = () => {
@@ -1836,6 +1893,26 @@ export class RouterCore<
     })
   }
 
+  private resolveHrefBuildOptions = (
+    options: BuildNextOptions,
+  ): BuildNextOptions => {
+    if (!options.href) {
+      return options
+    }
+
+    const parsed = parseHref(options.href, undefined)
+    const hrefUrl = new URL(parsed.pathname, this.origin)
+    const rewrittenUrl = executeRewriteInput(this.rewrite, hrefUrl)
+
+    return {
+      ...options,
+      href: undefined,
+      to: rewrittenUrl.pathname,
+      search: this.options.parseSearch(parsed.search),
+      hash: parsed.hash.slice(1),
+    }
+  }
+
   /**
    * Build the next ParsedLocation from navigation options without committing.
    * Resolves `to`/`from`, params/search/hash/state, applies search validation
@@ -1844,6 +1921,8 @@ export class RouterCore<
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
   buildLocation: BuildLocationFn = (opts) => {
+    opts = this.resolveHrefBuildOptions(opts as BuildNextOptions) as typeof opts
+
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
@@ -2191,6 +2270,9 @@ export class RouterCore<
       previousCommitPromise?.resolve()
       previousCommitPromise = undefined
     })
+    const commitPromise = this.commitLocationPromise
+    let historyResult: void | Promise<void> = undefined
+    let previousHistoryKey: string | undefined
 
     // Don't commit to history if nothing changed
     if (isSameUrl && isSameState()) {
@@ -2240,11 +2322,24 @@ export class RouterCore<
 
       historyAction = next.replace ? 'REPLACE' : 'PUSH'
 
-      this.history[historyAction === 'REPLACE' ? 'replace' : 'push'](
-        nextHistory.publicHref,
-        nextHistory.state,
-        { ignoreBlocker },
-      )
+      previousHistoryKey = this.history.location.state.__TSR_key
+      historyResult = this.history[
+        historyAction === 'REPLACE' ? 'replace' : 'push'
+      ](nextHistory.publicHref, nextHistory.state, {
+        ignoreBlocker,
+      }) as unknown as void | Promise<void>
+    }
+
+    if (isPromise(historyResult)) {
+      await historyResult
+
+      if (this.history.location.state.__TSR_key === previousHistoryKey) {
+        commitPromise.resolve()
+        if (this.commitLocationPromise === commitPromise) {
+          this.commitLocationPromise = undefined
+        }
+        return commitPromise
+      }
     }
 
     this._scroll.next = next.resetScroll ?? true
@@ -2259,7 +2354,18 @@ export class RouterCore<
       )
     }
 
-    return this.commitLocationPromise
+    return commitPromise
+  }
+
+  /** Build a location from either typed route options or a prebuilt href. */
+  private buildNavigateLocation = ({
+    replace: _replace,
+    ...rest
+  }: BuildNextOptions & { replace?: boolean }) => {
+    return this.buildLocation({
+      ...(rest as any),
+      _includeValidateSearch: true,
+    })
   }
 
   /** Convenience helper: build a location from options, then commit it. */
@@ -2272,28 +2378,10 @@ export class RouterCore<
     href,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}) => {
-    if (href) {
-      const currentIndex = this.history.location.state.__TSR_index
-
-      const parsed = parseHref(href, {
-        __TSR_index: replace ? currentIndex : currentIndex + 1,
-      })
-
-      // If the href contains the basepath, we need to strip it before setting `to`
-      // because `buildLocation` will add the basepath back when creating the final URL.
-      // Without this, hrefs like '/app/about' would become '/app/app/about'.
-      const hrefUrl = new URL(parsed.pathname, this.origin)
-      const rewrittenUrl = executeRewriteInput(this.rewrite, hrefUrl)
-
-      rest.to = rewrittenUrl.pathname
-      rest.search = this.options.parseSearch(parsed.search)
-      // remove the leading `#` from the hash
-      rest.hash = parsed.hash.slice(1)
-    }
-
-    const location = this.buildLocation({
-      ...(rest as any),
-      _includeValidateSearch: true,
+    const location = this.buildNavigateLocation({
+      ...rest,
+      href,
+      replace,
     })
 
     this.pendingBuiltLocation = location as ParsedLocation<
@@ -2332,6 +2420,10 @@ export class RouterCore<
     reloadDocument,
     href,
     publicHref,
+    stackBehavior = 'auto',
+    stackMatch = 'nearest',
+    entryId,
+    native,
     ...rest
   }) => {
     let hrefIsUrl = false
@@ -2401,20 +2493,215 @@ export class RouterCore<
       return
     }
 
+    const nextOptions = rest as BuildNextOptions & CommitLocationOptions
+
+    if (stackBehavior === 'replace') {
+      nextOptions.replace = true
+    } else if (stackBehavior === 'push') {
+      nextOptions.replace = false
+    }
+
+    let resolvedEntryId = entryId
+    if (stackBehavior === 'reuse') {
+      const targetLocation = this.buildNavigateLocation({
+        ...nextOptions,
+        href,
+        to: to as string,
+      } as any)
+      resolvedEntryId ??= targetLocation.href
+
+      const currentIndex = this.history.location.state.__TSR_index
+      const currentEntry = this.historyEntriesByIndex.get(currentIndex)
+
+      if (currentEntry?.entryId === resolvedEntryId) {
+        const hasStateUpdate =
+          nextOptions.state !== undefined || native?.minStackState !== undefined
+        if (currentEntry.href === targetLocation.href && !hasStateUpdate) {
+          return
+        }
+        nextOptions.replace = true
+      } else {
+        const matchingIndices = Array.from(this.historyEntriesByIndex.entries())
+          .filter(
+            ([index, entry]) =>
+              index < currentIndex && entry.entryId === resolvedEntryId,
+          )
+          .map(([index]) => index)
+          .sort((left, right) =>
+            stackMatch === 'oldest' ? left - right : right - left,
+          )
+
+        const matchingIndex = matchingIndices[0]
+        if (matchingIndex !== undefined) {
+          return this.goToHistoryIndex(matchingIndex, nextOptions.ignoreBlocker)
+        }
+
+        nextOptions.replace = false
+      }
+    }
+
+    if (resolvedEntryId !== undefined || native?.minStackState !== undefined) {
+      const inputState = nextOptions.state
+      nextOptions.state = (previousState: ParsedHistoryState) => {
+        const resolvedState =
+          inputState === true
+            ? previousState
+            : inputState
+              ? functionalUpdate(inputState, previousState)
+              : {}
+
+        return {
+          ...resolvedState,
+          ...(resolvedEntryId !== undefined
+            ? { __TSR_entryId: resolvedEntryId }
+            : undefined),
+          ...(native?.minStackState !== undefined
+            ? { __TSR_nativeMinStackState: native.minStackState }
+            : undefined),
+        }
+      }
+    }
+
     return this.buildAndCommitLocation({
-      ...rest,
+      ...nextOptions,
       href,
       to: to as string,
       _isNavigate: true,
     })
   }
 
+  private goToHistoryIndex = async (
+    index: number,
+    ignoreBlocker?: boolean,
+  ): Promise<void> => {
+    const currentIndex = this.history.location.state.__TSR_index
+    const delta = index - currentIndex
+    if (!delta) {
+      return Promise.resolve()
+    }
+
+    let historyNotified = false
+    let resolveHistoryNotification!: () => void
+    const historyNotification = new Promise<void>((resolve) => {
+      resolveHistoryNotification = resolve
+    })
+    const unsubscribe = this.history.subscribe(() => {
+      historyNotified = true
+      resolveHistoryNotification()
+    })
+    let historyResult: void | Promise<void>
+
+    try {
+      historyResult = this.history.go(delta, {
+        ignoreBlocker,
+      }) as unknown as void | Promise<void>
+
+      const hasAsyncResult = isPromise(historyResult)
+      if (hasAsyncResult) {
+        await historyResult
+      }
+
+      if (
+        !historyNotified &&
+        this.history.location.state.__TSR_index === currentIndex
+      ) {
+        if (hasAsyncResult) {
+          return
+        }
+
+        await historyNotification
+      }
+    } finally {
+      unsubscribe()
+    }
+
+    const loadPromise = this.latestLoadPromise
+
+    if (this.history.location.state.__TSR_index === currentIndex) {
+      await loadPromise
+      return
+    }
+
+    if (loadPromise) {
+      return loadPromise
+    }
+
+    return this.load({ action: { type: 'GO' } })
+  }
+
+  back: BackFn = async (options = {}) => {
+    const {
+      steps,
+      to,
+      entryId,
+      ifMissing = 'push',
+      ignoreBlocker,
+      ...targetOptions
+    } = options as {
+      steps?: number
+      to?: string | 'root'
+      entryId?: string
+      ifMissing?: 'push' | 'replace' | 'noop'
+      ignoreBlocker?: boolean
+    } & Record<string, unknown>
+    const currentIndex = this.history.location.state.__TSR_index
+
+    if (to === 'root') {
+      return this.goToHistoryIndex(0, ignoreBlocker)
+    }
+
+    if (to !== undefined) {
+      const targetLocation = this.buildLocation({
+        ...targetOptions,
+        to,
+        _includeValidateSearch: true,
+      } as any)
+
+      if (targetLocation.href === this.history.location.href) {
+        return
+      }
+
+      for (let index = currentIndex - 1; index >= 0; index--) {
+        const candidate = this.historyEntriesByIndex.get(index)
+        if (
+          candidate &&
+          (entryId !== undefined
+            ? candidate.entryId === entryId
+            : candidate.pathname === targetLocation.pathname)
+        ) {
+          return this.goToHistoryIndex(index, ignoreBlocker)
+        }
+      }
+
+      if (ifMissing !== 'noop') {
+        return this.navigate({
+          ...targetOptions,
+          to,
+          entryId,
+          replace: ifMissing === 'replace',
+          ignoreBlocker,
+        } as any)
+      }
+      return
+    }
+
+    if (steps !== undefined && (!Number.isFinite(steps) || steps < 1)) {
+      throw new RangeError('back steps must be a positive finite number')
+    }
+
+    const requestedSteps = Math.floor(steps ?? 1)
+    return this.goToHistoryIndex(
+      Math.max(0, currentIndex - requestedSteps),
+      ignoreBlocker,
+    )
+  }
+
   latestLoadPromise: undefined | Promise<void>
 
-  beforeLoad = () => {
+  beforeLoad = (action?: HistoryAction) => {
     // Cancel any pending matches
     this.cancelMatches()
-    this.updateLatestLocation()
+    this.updateLatestLocation(action)
 
     if (isServer ?? this.isServer) {
       // for SPAs on the initial load, this is handled by the Transitioner
@@ -2470,7 +2757,7 @@ export class RouterCore<
     loadPromise = new Promise<void>((resolve) => {
       this.startTransition(async () => {
         try {
-          this.beforeLoad()
+          this.beforeLoad(historyAction)
           if (historyAction) {
             this._scroll.hash =
               historyAction === 'PUSH' || historyAction === 'REPLACE'
@@ -2974,9 +3261,11 @@ export class RouterCore<
     const pending =
       opts?.pending === undefined ? !this.stores.isLoading.get() : opts.pending
 
-    const baseLocation = pending
-      ? this.latestLocation
-      : this.stores.resolvedLocation.get() || this.stores.location.get()
+    const baseLocation =
+      opts?._baseLocation ??
+      (pending
+        ? this.latestLocation
+        : this.stores.resolvedLocation.get() || this.stores.location.get())
 
     const match = findSingleMatch(
       next.pathname,

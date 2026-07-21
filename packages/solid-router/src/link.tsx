@@ -70,6 +70,10 @@ export function useLinkProps<
       'startTransition',
       'resetScroll',
       'viewTransition',
+      'stackBehavior',
+      'stackMatch',
+      'entryId',
+      'native',
       'target',
       'disabled',
       'style',
@@ -342,6 +346,10 @@ export function useLinkProps<
         hashScrollIntoView: local.hashScrollIntoView,
         startTransition: local.startTransition,
         viewTransition: local.viewTransition,
+        stackBehavior: local.stackBehavior,
+        stackMatch: local.stackMatch,
+        entryId: local.entryId,
+        native: local.native,
         ignoreBlocker: local.ignoreBlocker,
       })
     }

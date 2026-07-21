@@ -73,6 +73,10 @@ export function useLinkProps<
     startTransition,
     resetScroll,
     viewTransition,
+    stackBehavior,
+    stackMatch,
+    entryId,
+    native,
     // element props
     children,
     target,
@@ -635,6 +639,10 @@ export function useLinkProps<
         hashScrollIntoView,
         startTransition,
         viewTransition,
+        stackBehavior,
+        stackMatch,
+        entryId,
+        native,
         ignoreBlocker,
       })
     }

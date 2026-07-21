@@ -176,6 +176,14 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     return
   }
 
+  if (
+    typeof document === 'undefined' ||
+    typeof history === 'undefined' ||
+    typeof scrollTo === 'undefined'
+  ) {
+    return
+  }
+
   const getKey =
     router.options.getScrollRestorationKey || defaultGetScrollRestorationKey
   const trackedScrollTargets = new Set<Document | Element>()

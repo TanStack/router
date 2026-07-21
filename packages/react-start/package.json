@@ -26,6 +26,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test": "pnpm test:build",
+    "test:unit": "vitest",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build && vite build -c vite.config.server-entry.ts"
   },
@@ -92,6 +93,18 @@
       "import": {
         "types": "./dist/esm/plugin/rsbuild.d.ts",
         "default": "./dist/esm/plugin/rsbuild.js"
+      }
+    },
+    "./plugin/nativescript": {
+      "import": {
+        "types": "./dist/esm/plugin/nativescript.d.ts",
+        "default": "./dist/esm/plugin/nativescript.js"
+      }
+    },
+    "./nativescript": {
+      "import": {
+        "types": "./dist/esm/nativescript.d.ts",
+        "default": "./dist/esm/nativescript.js"
       }
     },
     "./server-entry": {
@@ -164,6 +177,7 @@
     "@tanstack/react-start-client": "workspace:*",
     "@tanstack/react-start-rsc": "workspace:*",
     "@tanstack/react-start-server": "workspace:*",
+    "@tanstack/router-plugin": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
@@ -171,16 +185,23 @@
     "pathe": "^2.0.3"
   },
   "peerDependencies": {
+    "@tanstack/react-nativescript-router": "workspace:*",
     "@rsbuild/core": "^2.0.0",
     "react": ">=18.0.0 || >=19.0.0",
     "react-dom": ">=18.0.0 || >=19.0.0",
     "vite": ">=7.0.0"
   },
   "peerDependenciesMeta": {
+    "@tanstack/react-nativescript-router": {
+      "optional": true
+    },
     "@rsbuild/core": {
       "optional": true
     },
     "@vitejs/plugin-rsc": {
+      "optional": true
+    },
+    "react-dom": {
       "optional": true
     },
     "vite": {
@@ -189,6 +210,7 @@
   },
   "devDependencies": {
     "@rsbuild/core": "^2.0.11",
+    "@tanstack/react-nativescript-router": "workspace:*",
     "@types/node": ">=20"
   }
 }

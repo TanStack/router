@@ -62,6 +62,12 @@
         "default": "./dist/esm/vite/index.js"
       }
     },
+    "./vite/client-compiler": {
+      "import": {
+        "types": "./dist/esm/vite/client-compiler-plugin.d.ts",
+        "default": "./dist/esm/vite/client-compiler-plugin.js"
+      }
+    },
     "./rsbuild": {
       "import": {
         "types": "./dist/esm/rsbuild/index.d.ts",

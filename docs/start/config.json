@@ -70,6 +70,10 @@
               "to": "framework/react/guide/routing"
             },
             {
+              "label": "NativeScript",
+              "to": "framework/react/guide/nativescript"
+            },
+            {
               "label": "Execution Model",
               "to": "framework/react/guide/execution-model"
             },
