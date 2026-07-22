@@ -239,6 +239,14 @@ async function getResponse(fn: () => Promise<Response>) {
     if (error instanceof Response) {
       response = error
     } else {
+      // Skip logging benign cancellation errors — the caller deliberately
+      // aborted and will handle the rejection.
+      if (
+        error instanceof DOMException &&
+        error.name === 'AbortError'
+      ) {
+        throw error
+      }
       console.log(error)
       throw error
     }
