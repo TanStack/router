@@ -127,6 +127,13 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/a/{$}b', '/a/$'])
         expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{$}b')
       })
+
+      it('wildcard suffix only matches against the remaining path tail', () => {
+        const tree = makeTree(['/a/b/{$}/b/c', '/a/b/$'])
+        const result = findRouteMatch('/a/b/c', tree)
+        expect(result?.route.id).toBe('/a/b/$')
+        expect(result?.rawParams).toEqual({ '*': 'c', _splat: 'c' })
+      })
     })
 
     describe('prefix / suffix lengths', () => {
@@ -482,6 +489,181 @@ describe('findRouteMatch', () => {
         '/A{$id}B',
       )
     })
+
+    it('case sensitive prefix/suffix miss falls through to an insensitive sibling', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/aa{$id}bb',
+            fullPath: '/aa{$id}bb',
+            path: 'aa{$id}bb',
+            options: { caseSensitive: false },
+          },
+          {
+            id: '/A{$id}B',
+            fullPath: '/A{$id}B',
+            path: 'A{$id}B',
+            options: { caseSensitive: true },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const result = findRouteMatch('/aafooBB', processedTree)
+      expect(result?.route.id).toBe('/aa{$id}bb')
+      expect(result?.rawParams).toEqual({ id: 'foo' })
+    })
+
+    it('sorts parsed dynamic siblings by params priority', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/{$low}',
+            fullPath: '/a/{$low}',
+            path: 'a/{$low}',
+            options: {
+              params: {
+                priority: 1,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+          {
+            id: '/a/{$high}',
+            fullPath: '/a/{$high}',
+            path: 'a/{$high}',
+            options: {
+              params: {
+                priority: 10,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/a/value', processedTree)?.route.id).toBe(
+        '/a/{$high}',
+      )
+    })
+
+    it('falls back to lower priority parsed dynamic siblings', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/{$low}',
+            fullPath: '/a/{$low}',
+            path: 'a/{$low}',
+            options: {
+              params: {
+                priority: 1,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+          {
+            id: '/a/{$high}',
+            fullPath: '/a/{$high}',
+            path: 'a/{$high}',
+            options: {
+              params: {
+                priority: 10,
+                parse: () => false,
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const result = findRouteMatch('/a/value', processedTree)
+      expect(result?.route.id).toBe('/a/{$low}')
+      expect(result?.rawParams).toEqual({ low: 'value' })
+    })
+
+    it('sorts parsed optional siblings by params priority', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/{-$low}',
+            fullPath: '/a/{-$low}',
+            path: 'a/{-$low}',
+            options: {
+              params: {
+                priority: 1,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+          {
+            id: '/a/{-$high}',
+            fullPath: '/a/{-$high}',
+            path: 'a/{-$high}',
+            options: {
+              params: {
+                priority: 10,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/a/value', processedTree)?.route.id).toBe(
+        '/a/{-$high}',
+      )
+    })
+
+    it('sorts parsed wildcard siblings by params priority', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/a/low{$}-low',
+            fullPath: '/a/low{$}',
+            path: 'a/low{$}',
+            options: {
+              params: {
+                priority: 1,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+          {
+            id: '/a/low{$}-high',
+            fullPath: '/a/low{$}',
+            path: 'a/low{$}',
+            options: {
+              params: {
+                priority: 10,
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/a/low/value', processedTree)?.route).toBe(
+        tree.children[1],
+      )
+    })
   })
 
   describe('basic matching', () => {
@@ -505,6 +687,20 @@ describe('findRouteMatch', () => {
     it('single wildcard', () => {
       const tree = makeTree(['/$'])
       expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/$')
+    })
+
+    it('literal dollar after the segment start stays static', () => {
+      const tree = makeTree(['/price$', '/price$x'])
+      expect(findRouteMatch('/price$', tree)?.route.id).toBe('/price$')
+      expect(findRouteMatch('/price$x', tree)?.route.id).toBe('/price$x')
+      expect(findRouteMatch('/priceabc', tree)).toBeNull()
+    })
+
+    it('malformed curly param syntax stays static', () => {
+      const tree = makeTree(['/foo{$id', '/foo{-$id'])
+      expect(findRouteMatch('/foo{$id', tree)?.route.id).toBe('/foo{$id')
+      expect(findRouteMatch('/foo{-$id', tree)?.route.id).toBe('/foo{-$id')
+      expect(findRouteMatch('/foo123bar', tree)).toBeNull()
     })
 
     describe('prefix / suffix variations', () => {
@@ -1671,5 +1867,47 @@ describe('processRouteMasks', { sequential: true }, () => {
     const res = findFlatMatch('/a/b/file/path.txt', processedTree)
     expect(res?.route.from).toBe('/a/b/{$}.txt')
     expect(res?.rawParams).toEqual({ '*': 'file/path', _splat: 'file/path' })
+  })
+
+  it('sorts dynamic route masks by specificity', () => {
+    const { processedTree: maskTree } = processRouteTree(routeTree)
+    processRouteMasks(
+      [
+        { from: '/a/$param', routeTree },
+        { from: '/a/file-{$param}.txt', routeTree },
+      ],
+      maskTree,
+    )
+    const res = findFlatMatch('/a/file-value.txt', maskTree)
+    expect(res?.route.from).toBe('/a/file-{$param}.txt')
+    expect(res?.rawParams).toEqual({ param: 'value' })
+  })
+
+  it('sorts optional route masks by specificity', () => {
+    const { processedTree: maskTree } = processRouteTree(routeTree)
+    processRouteMasks(
+      [
+        { from: '/a/{-$param}', routeTree },
+        { from: '/a/file-{-$param}.txt', routeTree },
+      ],
+      maskTree,
+    )
+    const res = findFlatMatch('/a/file-value.txt', maskTree)
+    expect(res?.route.from).toBe('/a/file-{-$param}.txt')
+    expect(res?.rawParams).toEqual({ param: 'value' })
+  })
+
+  it('sorts wildcard route masks by specificity', () => {
+    const { processedTree: maskTree } = processRouteTree(routeTree)
+    processRouteMasks(
+      [
+        { from: '/a/$', routeTree },
+        { from: '/a/file-{$}.txt', routeTree },
+      ],
+      maskTree,
+    )
+    const res = findFlatMatch('/a/file-path.txt', maskTree)
+    expect(res?.route.from).toBe('/a/file-{$}.txt')
+    expect(res?.rawParams).toEqual({ '*': 'path', _splat: 'path' })
   })
 })
