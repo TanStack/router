@@ -3,7 +3,9 @@
   "compilerOptions": {
     "module": "esnext",
     "paths": {
-      "@tanstack/octane-start/client": ["./src/client.ts"]
+      "@tanstack/octane-start": ["./src/index.ts"],
+      "@tanstack/octane-start/client": ["./src/client.ts"],
+      "@tanstack/octane-start/server": ["./src/server.ts"]
     },
     "types": ["node"]
   },

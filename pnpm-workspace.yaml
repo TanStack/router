@@ -47,7 +47,7 @@ catalog:
   '@tanstack/react-query': ^5.99.0
   '@tanstack/solid-query': ^5.99.0
   '@tanstack/vue-query': ^5.99.0
-  octane: ^0.1.12
+  octane: ^0.1.13
 
 overrides:
   '@types/babel__traverse': '^7.28.0'

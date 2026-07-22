@@ -128,7 +128,7 @@
     "vite": "*"
   },
   "peerDependencies": {
-    "octane": ">=0.1.12",
+    "octane": ">=0.1.13",
     "vite": "^8.0.16"
   },
   "peerDependenciesMeta": {
