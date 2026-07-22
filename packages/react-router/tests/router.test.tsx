@@ -12,6 +12,7 @@ import { composeRewrites, notFound } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
+  PathParamError,
   RouterProvider,
   SearchParamError,
   createBrowserHistory,
@@ -1890,6 +1891,39 @@ describe('search params in URL', () => {
         expect(errorSpy).toBeInstanceOf(SearchParamError)
         expect(errorSpy?.cause).toBeInstanceOf(TestValidationError)
       })
+    })
+  })
+
+  describe('validates path params', () => {
+    it('wraps a failing params.parse error in PathParamError', async () => {
+      let errorSpy: Error | undefined
+      const rootRoute = createRootRoute()
+      const postRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/$id',
+        params: {
+          parse: ({ id }: { id: string }) => {
+            if (Number.isNaN(Number(id))) {
+              throw new Error('id must be a number')
+            }
+            return { id: Number(id) }
+          },
+          stringify: ({ id }: { id: number }) => ({ id: String(id) }),
+        },
+        errorComponent: ({ error }) => {
+          errorSpy = error
+          return null
+        },
+      })
+      const routeTree = rootRoute.addChildren([postRoute])
+      const history = createMemoryHistory({
+        initialEntries: ['/posts/not-a-number'],
+      })
+      const router = createRouter({ routeTree, history })
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
+      expect(errorSpy).toBeInstanceOf(PathParamError)
     })
   })
 })
