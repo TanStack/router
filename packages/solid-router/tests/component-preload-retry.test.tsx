@@ -14,6 +14,31 @@ import type { ErrorComponentProps } from '../src'
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+test('a successful server component download is reused', async () => {
+  vi.stubGlobal('window', undefined)
+  const importer = vi.fn().mockResolvedValue({ default: () => null })
+  const Page = lazyRouteComponent(importer)
+
+  const preload = Page.preload?.()
+  await preload
+
+  expect(Page.preload?.()).toBe(preload)
+  expect(importer).toHaveBeenCalledTimes(1)
+})
+
+test('a component loads when rendered before preload', async () => {
+  const importer = vi.fn().mockResolvedValue({
+    default: () => <div>Page content</div>,
+  })
+  const Page = lazyRouteComponent(importer)
+
+  render(() => <Page />)
+
+  expect(await screen.findByText('Page content')).toBeInTheDocument()
+  expect(importer).toHaveBeenCalledTimes(1)
 })
 
 test('a failed component download is retried from the route error UI', async () => {

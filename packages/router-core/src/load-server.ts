@@ -511,25 +511,44 @@ async function loadNormalChunks(
   end: number,
   signal?: AbortSignal,
 ): Promise<IndexedOutcome | undefined> {
-  const chunks = lane.matches.map(async (match, index) => {
+  const chunks: Array<
+    IndexedOutcome | Promise<IndexedOutcome | undefined>
+  > = []
+  for (let index = 0; index < lane.matches.length; index++) {
+    const match = lane.matches[index]!
     if (index >= end || match.ssr !== true || match.status !== 'success') {
-      return undefined
+      continue
     }
     const route = getRoute(router, match)
     try {
-      await loadRouteChunk(route)
+      const loading = loadRouteChunk(route)
+      if (loading) {
+        chunks.push(
+          loading.then(
+            () => {
+              signal?.throwIfAborted()
+              return undefined
+            },
+            (cause) => {
+              signal?.throwIfAborted()
+              return [
+                index,
+                stampNotFound(match, normalizeError(route, cause)),
+              ] as IndexedOutcome
+            },
+          ),
+        )
+      }
     } catch (cause) {
       signal?.throwIfAborted()
-      return [
+      chunks.push([
         index,
         stampNotFound(match, normalizeError(route, cause)),
-      ] as IndexedOutcome
+      ])
     }
-    signal?.throwIfAborted()
-    return undefined
-  })
+  }
   for (const chunk of chunks) {
-    const indexed = await chunk
+    const indexed = Array.isArray(chunk) ? chunk : await chunk
     if (indexed) {
       return indexed
     }
