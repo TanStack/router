@@ -54,7 +54,7 @@ describe('redirect resolution', () => {
   })
 
   test.each(['/$a', '/$toString', '/$__proto__'])(
-    'server startup redirects initial path %s to /undefined',
+    'server startup preserves initial path %s and matches it as a param value',
     async (initialPath) => {
       const rootRoute = new BaseRootRoute({})
       const slugRoute = new BaseRoute({
@@ -72,12 +72,14 @@ describe('redirect resolution', () => {
 
       await router.load()
 
-      expect(router.state.redirect).toEqual(
-        expect.objectContaining({
-          options: expect.objectContaining({ href: '/undefined' }),
-        }),
-      )
-      expect(router.state.redirect?.headers.get('Location')).toBe('/undefined')
+      // The concrete pathname must not be treated as a route template, so
+      // there is nothing to canonicalize and no redirect. Inherited object
+      // properties (toString, __proto__) must not leak into the result.
+      expect(router.state.redirect).toBeUndefined()
+      expect(router.state.location.pathname).toBe(initialPath)
+      expect(router.state.matches.at(-1)?.params).toEqual({
+        slug: initialPath.slice(1),
+      })
     },
   )
 })
