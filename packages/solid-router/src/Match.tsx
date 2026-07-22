@@ -43,12 +43,13 @@ export const Match = (props: { routeId: string }) => {
 
   // Lazy route option mutations become observable with the next client match
   // publication. Server stores are non-reactive and options load before render.
-  const routeOptions = (isServer ?? router.isServer)
-    ? () => route.options
-    : () => {
-        currentMatch()
-        return route.options
-      }
+  const routeOptions =
+    (isServer ?? router.isServer)
+      ? () => route.options
+      : () => {
+          currentMatch()
+          return route.options
+        }
 
   const resolvePendingComponent = () =>
     routeOptions().pendingComponent ?? router.options.defaultPendingComponent

@@ -511,9 +511,7 @@ async function loadNormalChunks(
   end: number,
   signal?: AbortSignal,
 ): Promise<IndexedOutcome | undefined> {
-  const chunks: Array<
-    IndexedOutcome | Promise<IndexedOutcome | undefined>
-  > = []
+  const chunks: Array<IndexedOutcome | Promise<IndexedOutcome | undefined>> = []
   for (let index = 0; index < lane.matches.length; index++) {
     const match = lane.matches[index]!
     if (index >= end || match.ssr !== true || match.status !== 'success') {
@@ -541,10 +539,7 @@ async function loadNormalChunks(
       }
     } catch (cause) {
       signal?.throwIfAborted()
-      chunks.push([
-        index,
-        stampNotFound(match, normalizeError(route, cause)),
-      ])
+      chunks.push([index, stampNotFound(match, normalizeError(route, cause))])
     }
   }
   for (const chunk of chunks) {
