@@ -37,6 +37,8 @@ export interface RouterHistory {
   destroy: () => void
   notify: (action: SubscriberHistoryAction) => void
   _ignoreSubscribers?: boolean
+  /** Whether navigation methods may settle asynchronously after host transitions. */
+  supportsNavigationPromises?: boolean
 }
 
 export interface HistoryLocation extends ParsedPath {

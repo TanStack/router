@@ -6,6 +6,8 @@ describe('createNativeScriptHistory', () => {
   test('preserves URL state and branches after back navigation', () => {
     const history = createNativeScriptHistory({ initialPath: '/?tab=home' })
 
+    expect(history.supportsNavigationPromises).toBe(true)
+
     history.push('/posts?sort=new#top', { source: 'test' })
     history.push('/settings')
     history.back()

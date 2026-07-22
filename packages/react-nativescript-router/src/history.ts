@@ -164,6 +164,7 @@ export function createNativeScriptHistory(
   }
 
   const history: NativeScriptRouterHistory = {
+    supportsNavigationPromises: true,
     get location() {
       return location
     },
