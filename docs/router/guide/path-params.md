@@ -721,6 +721,97 @@ function PostsComponent() {
 
 <!-- ::end:framework -->
 
+## Variadic Path Parameters
+
+A regular path param matches exactly one segment. A variadic path parameter, written `{...$paramName}`, matches **zero or more** segments and provides them back to you as an array. The path can keep going after it, so it also works between fixed parts of the URL:
+
+- `files/{...$path}/preview`
+- `$bucket/{...$folders}/$file`
+
+Let's build a route for files that can be nested in arbitrarily deep folders:
+
+<!-- ::start:framework -->
+
+# React
+
+```tsx title="src/routes/$bucket/{...$folders}/$file.tsx"
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/$bucket/{...$folders}/$file')({
+  loader: ({ params }) => {
+    // params.folders is an Array<string>
+    return fetchFile([params.bucket, ...params.folders, params.file])
+  },
+  component: FileComponent,
+})
+
+function FileComponent() {
+  const { bucket, folders, file } = Route.useParams()
+  return <div>{[bucket, ...folders, file].join(' / ')}</div>
+}
+```
+
+# Solid
+
+```tsx title="src/routes/$bucket/{...$folders}/$file.tsx"
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/$bucket/{...$folders}/$file')({
+  loader: ({ params }) => {
+    // params.folders is an Array<string>
+    return fetchFile([params.bucket, ...params.folders, params.file])
+  },
+  component: FileComponent,
+})
+
+function FileComponent() {
+  const params = Route.useParams()
+  return (
+    <div>
+      {[params().bucket, ...params().folders, params().file].join(' / ')}
+    </div>
+  )
+}
+```
+
+<!-- ::end:framework -->
+
+This one route matches `/media/kyoto.jpg`, `/media/photos/kyoto.jpg` and `/media/photos/2026/kyoto.jpg`, binding `folders` to `[]`, `['photos']` and `['photos', '2026']` respectively. The array is never `undefined` since a variadic that matched nothing gives you an empty array. Matching is non-greedy, so the variadic consumes as few segments as the rest of the path allows, and static, required or optional segments in the same position always win over it. Each matched segment is percent-decoded on its own, so an encoded `/` inside a folder name stays inside that folder's value.
+
+When navigating, pass an array for the variadic param. An empty (or omitted) array drops the segment entirely:
+
+```tsx
+function Component() {
+  return (
+    <div>
+      {/* navigates to /media/photos/2026/kyoto.jpg */}
+      <Link
+        to="/$bucket/{...$folders}/$file"
+        params={{
+          bucket: 'media',
+          folders: ['photos', '2026'],
+          file: 'kyoto.jpg',
+        }}
+      >
+        Kyoto Photo
+      </Link>
+
+      {/* navigates to /media/kyoto.jpg */}
+      <Link
+        to="/$bucket/{...$folders}/$file"
+        params={{ bucket: 'media', folders: [], file: 'kyoto.jpg' }}
+      >
+        Kyoto Photo (root)
+      </Link>
+    </div>
+  )
+}
+```
+
+A route path can contain up to three variadic segments, as long as consecutive ones are separated by at least one static segment; they resolve left to right, each consuming as little as possible. Prefixes and suffixes are not supported on variadic segments, and a variadic must be separated from a splat by at least one static segment.
+
+> 🧠 Use a variadic parameter when segments _between_ two known parts of the URL vary in depth. If you just want to capture "the rest of the URL" with no routes after it, a [splat route](../routing/routing-concepts.md#splat--catch-all-routes) (`$`) is simpler.
+
 ## Internationalization (i18n) with Optional Path Parameters
 
 Optional path parameters are excellent for implementing internationalization (i18n) routing patterns. You can use prefix patterns to handle multiple languages while maintaining clean, SEO-friendly URLs.

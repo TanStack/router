@@ -103,6 +103,28 @@ describe('extractParamsFromSegment', () => {
     })
   })
 
+  it('should extract variadic {...$param} format', () => {
+    const result = extractParamsFromSegment('{...$items}')
+    expect(result).toHaveLength(1)
+    expect(result[0]).toEqual({
+      fullParam: '...$items',
+      paramName: 'items',
+      isOptional: false,
+      isValid: true,
+    })
+  })
+
+  it('should mark invalid variadic param names', () => {
+    const result = extractParamsFromSegment('{...$123invalid}')
+    expect(result).toHaveLength(1)
+    expect(result[0]?.isValid).toBe(false)
+    expect(result[0]?.paramName).toBe('123invalid')
+  })
+
+  it('should skip a nameless variadic {...$}', () => {
+    expect(extractParamsFromSegment('{...$}')).toEqual([])
+  })
+
   it('should mark invalid param names', () => {
     const result = extractParamsFromSegment('$123invalid')
     expect(result).toHaveLength(1)

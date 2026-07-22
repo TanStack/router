@@ -338,14 +338,15 @@ Now that you have migrated the basic structure of your Next.js application to Ta
 
 ### Routing Concepts
 
-| Route Example                  | Next.js                            | TanStack Start            |
-| ------------------------------ | ---------------------------------- | ------------------------- |
-| Root Layout                    | `src/app/layout.tsx`               | `src/app/__root.tsx`      |
-| `/` (Home Page)                | `src/app/page.tsx`                 | `src/app/index.tsx`       |
-| `/posts` (Static Route)        | `src/app/posts/page.tsx`           | `src/app/posts.tsx`       |
-| `/posts/[slug]` (Dynamic)      | `src/app/posts/[slug]/page.tsx`    | `src/app/posts/$slug.tsx` |
-| `/posts/[...slug]` (Catch-All) | `src/app/posts/[...slug]/page.tsx` | `src/app/posts/$.tsx`     |
-| `/api/endpoint` (API Route)    | `src/app/api/endpoint/route.ts`    | `src/app/api/endpoint.ts` |
+| Route Example                             | Next.js                              | TanStack Start                 |
+| ----------------------------------------- | ------------------------------------ | ------------------------------ |
+| Root Layout                               | `src/app/layout.tsx`                 | `src/app/__root.tsx`           |
+| `/` (Home Page)                           | `src/app/page.tsx`                   | `src/app/index.tsx`            |
+| `/posts` (Static Route)                   | `src/app/posts/page.tsx`             | `src/app/posts.tsx`            |
+| `/posts/[slug]` (Dynamic)                 | `src/app/posts/[slug]/page.tsx`      | `src/app/posts/$slug.tsx`      |
+| `/posts/[...slug]` (Catch-All)            | `src/app/posts/[...slug]/page.tsx`   | `src/app/posts/$.tsx`          |
+| `/posts/[[...slug]]` (Optional Catch-All) | `src/app/posts/[[...slug]]/page.tsx` | `src/app/posts.{...$slug}.tsx` |
+| `/api/endpoint` (API Route)               | `src/app/api/endpoint/route.ts`      | `src/app/api/endpoint.ts`      |
 
 Learn more about the [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts).
 
