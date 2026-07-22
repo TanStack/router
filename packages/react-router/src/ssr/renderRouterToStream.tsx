@@ -46,12 +46,24 @@ export const renderRouterToStream = async ({
   router,
   responseHeaders,
   children,
+  isBot,
 }: {
   request: Request
   router: AnyRouter
   responseHeaders: Headers
   children: ReactNode
+  /**
+   * Whether to treat the request as a bot/crawler. Bots wait for the full
+   * document (React's `allReady`) before responding instead of streaming the
+   * shell first. Defaults to the built-in `isbot` User-Agent check.
+   */
+  isBot?: boolean | ((request: Request) => boolean)
 }) => {
+  const isBotRequest =
+    typeof isBot === 'function'
+      ? isBot(request)
+      : (isBot ?? isbot(request.headers.get('User-Agent')))
+
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
@@ -64,7 +76,7 @@ export const renderRouterToStream = async ({
       },
     })
 
-    if (isbot(request.headers.get('User-Agent'))) {
+    if (isBotRequest) {
       await waitForReadyOrAbort(stream.allReady, request.signal)
     }
 
@@ -150,7 +162,7 @@ export const renderRouterToStream = async ({
       pipeable = ReactDOMServer.renderToPipeableStream(children, {
         nonce: router.options.ssr?.nonce,
         progressiveChunkSize: Number.POSITIVE_INFINITY,
-        ...(isbot(request.headers.get('User-Agent'))
+        ...(isBotRequest
           ? {
               onAllReady() {
                 pipeable!.pipe(reactAppPassthrough)

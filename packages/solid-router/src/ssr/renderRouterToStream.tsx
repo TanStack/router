@@ -38,12 +38,24 @@ export const renderRouterToStream = async ({
   router,
   responseHeaders,
   children,
+  isBot,
 }: {
   request: Request
   router: AnyRouter
   responseHeaders: Headers
   children: () => JSXElement
+  /**
+   * Whether to treat the request as a bot/crawler. Bots wait for the full
+   * server render before streaming. Defaults to the built-in `isbot`
+   * User-Agent check.
+   */
+  isBot?: boolean | ((request: Request) => boolean)
 }) => {
+  const isBotRequest =
+    typeof isBot === 'function'
+      ? isBot(request)
+      : (isBot ?? isbot(request.headers.get('User-Agent')))
+
   const { writable, readable } = new TransformStream()
 
   const docType = Solid.ssr('<!DOCTYPE html>')
@@ -121,7 +133,7 @@ export const renderRouterToStream = async ({
     })
   }
 
-  if (isbot(request.headers.get('User-Agent'))) {
+  if (isBotRequest) {
     await waitForReadyOrAbort(
       Promise.resolve(stream as unknown),
       request.signal,
