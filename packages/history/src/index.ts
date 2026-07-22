@@ -502,7 +502,9 @@ export function createBrowserHistory(opts?: {
       win.history.forward()
     },
     go: (n, ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+      }
       nextPopIsGo = true
       win.history.go(n)
     },
