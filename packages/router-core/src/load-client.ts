@@ -1352,7 +1352,7 @@ function commitMatches(
   for (const match of matches) {
     match.preload = false
     if (resolvedPrefix) {
-      match._dataOnlyAssetEnd = undefined
+      match._assetEnd = undefined
     }
   }
   const rendered = _getRenderedMatches(matches)

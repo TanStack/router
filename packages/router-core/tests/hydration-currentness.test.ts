@@ -225,7 +225,7 @@ describe('hydration asset currentness', () => {
     let continuationAssetEnd: number | undefined
     let router!: AnyRouter
     const childLoader = vi.fn(() => {
-      continuationAssetEnd = router._tx?.[3][1]?._dataOnlyAssetEnd
+      continuationAssetEnd = router._tx?.[3][1]?._assetEnd
       return childLoaderResult
     })
     const rootRoute = new BaseRootRoute({})
@@ -260,12 +260,12 @@ describe('hydration asset currentness', () => {
     expect(
       _getAssetMatches(router.state.matches).map((match) => match.routeId),
     ).toEqual([rootRoute.id, parentRoute.id, childRoute.id])
-    expect(router.state.matches[1]?._dataOnlyAssetEnd).toBe(3)
+    expect(router.state.matches[1]?._assetEnd).toBe(3)
 
     childLoaderResult.resolve('client child data')
     await load
 
-    expect(router.state.matches[1]?._dataOnlyAssetEnd).toBeUndefined()
+    expect(router.state.matches[1]?._assetEnd).toBeUndefined()
     expect(router.state.matches[2]).toMatchObject({
       status: 'success',
       loaderData: 'client child data',

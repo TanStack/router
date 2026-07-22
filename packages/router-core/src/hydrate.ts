@@ -326,7 +326,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       ...boundary,
       status: 'pending',
       ssr: boundary.ssr === 'data-only' ? 'data-only' : false,
-      _dataOnlyAssetEnd: dataOnlyAssetEnd,
+      _assetEnd: dataOnlyAssetEnd,
     }
   }
 
@@ -366,19 +366,11 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           }
         }
       }
-      transferMatchResources(
-        router,
-        matches.splice(
-          0,
-          prefix,
-          ...committedMatches.map((match, index) => ({
-            ...match,
-            ...(index === pendingBoundary && handoffAssetEnd !== undefined
-              ? { _dataOnlyAssetEnd: handoffAssetEnd }
-              : undefined),
-          })),
-        ),
-      )
+      const clones = committedMatches.map((match) => ({ ...match }))
+      if (handoffAssetEnd !== undefined) {
+        clones[pendingBoundary!]!._assetEnd = handoffAssetEnd
+      }
+      transferMatchResources(router, matches.splice(0, prefix, ...clones))
       for (let index = prefix; index < matches.length; index++) {
         const match = matches[index]!
         const hydrated = candidates[index]

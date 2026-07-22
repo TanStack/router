@@ -18,14 +18,11 @@ export function _getAssetMatches(
   let end = matches.length
   for (let index = 0; index < end; index++) {
     const match = matches[index]!
-    if (
-      match.status === 'pending' &&
-      match.ssr === 'data-only' &&
-      match.error === undefined &&
-      !match._notFound &&
-      match._dataOnlyAssetEnd !== undefined
-    ) {
-      end = Math.min(end, Math.max(index + 1, match._dataOnlyAssetEnd))
+    // `_assetEnd` is only ever set on hydration presentation clones that are
+    // `status: 'pending'`, `ssr: 'data-only'`, error-free, and not not-found
+    // (see hydrate.ts), and commits clear it — so its presence alone is the guard.
+    if (match._assetEnd !== undefined) {
+      end = Math.min(end, Math.max(index + 1, match._assetEnd))
       continue
     }
     if (match.status !== 'success' || match._notFound) {
@@ -33,5 +30,6 @@ export function _getAssetMatches(
       break
     }
   }
-  return end && end < matches.length ? matches.slice(0, end) : matches
+  // `end` only ever shrinks to `index + 1 >= 1`, so no zero guard is needed.
+  return end < matches.length ? matches.slice(0, end) : matches
 }

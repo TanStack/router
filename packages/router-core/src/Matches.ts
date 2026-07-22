@@ -139,7 +139,7 @@ export interface RouteMatch<
   updatedAt: number
   loaderData?: TLoaderData
   /** @internal Exclusive end of the SSR-verified asset prefix. */
-  _dataOnlyAssetEnd?: number
+  _assetEnd?: number
   /** @internal */
   _ctx?: Record<string, unknown>
   /** @internal */

@@ -19,7 +19,7 @@ describe('_getAssetMatches', () => {
       {
         status: 'pending',
         ssr: 'data-only',
-        _dataOnlyAssetEnd: 3,
+        _assetEnd: 3,
       },
       { status: 'success' },
       { status: 'success' },
