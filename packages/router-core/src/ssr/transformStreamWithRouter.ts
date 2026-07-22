@@ -124,6 +124,24 @@ function findHtmlBoundary(str: string): number {
   return lastClosingTagEnd
 }
 
+function findHtmlEndTagEnd(str: string, searchFrom: number): number {
+  for (let i = searchFrom; i <= str.length - 7; i++) {
+    if (
+      str.charCodeAt(i) === 60 &&
+      str.charCodeAt(i + 1) === 47 &&
+      (str.charCodeAt(i + 2) | 32) === 104 &&
+      (str.charCodeAt(i + 3) | 32) === 116 &&
+      (str.charCodeAt(i + 4) | 32) === 109 &&
+      (str.charCodeAt(i + 5) | 32) === 108 &&
+      str.charCodeAt(i + 6) === 62
+    ) {
+      return i + 7
+    }
+  }
+
+  return -1
+}
+
 /**
  * Releasing the lock can throw if a pending read is still settling or if the
  * lock was already released.
@@ -522,6 +540,7 @@ function makeMainStream(
     clearPendingRouterHtml()
     leftover = ''
     pendingTail = ''
+    pendingTailComplete = false
     clearPending()
 
     if (cancelReader) {
@@ -551,8 +570,11 @@ function makeMainStream(
   // between-chunk text buffer; keep bounded to avoid unbounded memory
   let leftover = ''
 
-  // captured bytes from </body> onward; must stay behind router scripts.
+  // Captured closing tags that must stay after router-injected scripts.
+  // Some renderers, like Solid, continue streaming boundary chunks after
+  // </html>; those chunks should still pass through before these tags.
   let pendingTail = ''
+  let pendingTailComplete = false
 
   let streamBarrierLifted = false
   let streamBarrierMarkerSeen = false
@@ -785,10 +807,42 @@ function makeMainStream(
 
         const chunkString = leftover ? leftover + text : text
 
-        // If we already saw </body>, everything else is tail. Keep it bounded
-        // and held until router scripts are ready so injection remains before </body>.
+        // If we've captured the closing tags, keep streaming subsequent app
+        // chunks before those tags instead of buffering them until render end.
         if (state >= MergeState.HoldingTail) {
-          appendTail(chunkString)
+          if (!pendingTailComplete) {
+            const htmlEndTagEnd = findHtmlEndTagEnd(chunkString, 0)
+            if (htmlEndTagEnd === -1) {
+              appendTail(chunkString)
+              leftover = ''
+              continue
+            }
+
+            appendTail(chunkString.slice(0, htmlEndTagEnd))
+            pendingTailComplete = true
+
+            const afterClosingTags = chunkString.slice(htmlEndTagEnd)
+            flushPendingRouterHtml()
+            if (afterClosingTags) {
+              writeChunk(afterClosingTags)
+              if (cleanedUp || isDone()) return
+              noteBarrierMarker(afterClosingTags)
+              liftBarrierAfterBoundary()
+              if (cleanedUp || isDone()) return
+              flushPendingRouterHtml()
+            }
+
+            leftover = ''
+            continue
+          }
+
+          flushPendingRouterHtml()
+          writeChunk(chunkString)
+          if (cleanedUp || isDone()) return
+          noteBarrierMarker(chunkString)
+          liftBarrierAfterBoundary()
+          if (cleanedUp || isDone()) return
+          flushPendingRouterHtml()
           leftover = ''
           continue
         }
@@ -796,8 +850,14 @@ function makeMainStream(
         const boundary = findHtmlBoundary(chunkString)
         if (boundary < -1) {
           const bodyEndIndex = -boundary - 2
+          const htmlEndTagEnd = findHtmlEndTagEnd(chunkString, bodyEndIndex)
           state = MergeState.HoldingTail
-          appendTail(chunkString.slice(bodyEndIndex))
+          if (htmlEndTagEnd === -1) {
+            appendTail(chunkString.slice(bodyEndIndex))
+          } else {
+            appendTail(chunkString.slice(bodyEndIndex, htmlEndTagEnd))
+            pendingTailComplete = true
+          }
           const bodyChunk = chunkString.slice(0, bodyEndIndex)
           writeChunk(bodyChunk)
           if (cleanedUp || isDone()) return
@@ -805,6 +865,17 @@ function makeMainStream(
           liftBarrierAfterBoundary()
           if (cleanedUp || isDone()) return
           flushPendingRouterHtml()
+          if (htmlEndTagEnd !== -1) {
+            const afterClosingTags = chunkString.slice(htmlEndTagEnd)
+            if (afterClosingTags) {
+              writeChunk(afterClosingTags)
+              if (cleanedUp || isDone()) return
+              noteBarrierMarker(afterClosingTags)
+              liftBarrierAfterBoundary()
+              if (cleanedUp || isDone()) return
+              flushPendingRouterHtml()
+            }
+          }
           leftover = ''
           continue
         }
