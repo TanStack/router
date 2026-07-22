@@ -1,8 +1,8 @@
 import { describe, expectTypeOf, test } from 'vitest'
+import { buildLocationFromHref } from '../src/nativeNavigation'
 import type {
   AnyRouter,
   BackOptions,
-  BuildLocationFn,
   NavigateOptionProps,
   NativeNavigateOptions,
   StackBehavior,
@@ -27,10 +27,10 @@ describe('native stack navigation types', () => {
     }>()
   })
 
-  test('buildLocation accepts a fully built href', () => {
-    expectTypeOf<{ href: string }>().toMatchTypeOf<
-      Parameters<BuildLocationFn>[0]
-    >()
+  test('buildLocationFromHref accepts a fully built href', () => {
+    expectTypeOf<
+      Parameters<typeof buildLocationFromHref>[1]
+    >().toEqualTypeOf<string>()
   })
 
   test('back targets are mutually exclusive', () => {

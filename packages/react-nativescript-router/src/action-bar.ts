@@ -1,7 +1,7 @@
-import type { AnyRouter } from '@tanstack/router-core'
+import type { BackFn } from '@tanstack/router-core'
 
 export function getDefaultNavigationButtonProps(
-  router: AnyRouter,
+  router: { back: BackFn },
   backTitle: string | undefined,
   visible: boolean,
 ) {

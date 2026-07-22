@@ -2,11 +2,11 @@ import { createNativePageRecord, getNativePageRecord } from './page'
 import { getNativeScriptNavigationOptions } from './navigation-state'
 import { resolveNativeScriptTransition } from './route-options'
 import { getNativeStackAction } from './screen'
-import type { AnyRouter } from '@tanstack/router-core'
 import type { BackstackEntry, NavigationEntry, Page } from '@nativescript/core'
 import type { NativePageRecord, NativePageRenderOptions } from './page'
 import type { NativeScriptRouterHistory } from './history'
 import type { NativeScreenSnapshot } from './screen'
+import type { AnyNativeScriptRouter } from './router'
 
 export interface NativeScriptBackstackEntryLike {
   resolvedPage: Page
@@ -46,7 +46,7 @@ export class NativeStackController {
 
   constructor(
     private frame: NativeScriptFrameLike,
-    private router: AnyRouter,
+    private router: AnyNativeScriptRouter,
     options: NativeStackControllerOptions,
     dependencies: NativeStackControllerDependencies = {},
   ) {

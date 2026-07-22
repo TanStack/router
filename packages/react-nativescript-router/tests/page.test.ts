@@ -1,15 +1,10 @@
 import { describe, expect, test, vi } from 'vitest'
 import { getDefaultNavigationButtonProps } from '../src/action-bar'
-import type { AnyRouter } from '@tanstack/router-core'
 
 describe('NativeScript action bar', () => {
   test('uses an accessible Android system back button', () => {
     const back = vi.fn().mockResolvedValue(undefined)
-    const props = getDefaultNavigationButtonProps(
-      { back } as unknown as AnyRouter,
-      undefined,
-      true,
-    )
+    const props = getDefaultNavigationButtonProps({ back }, undefined, true)
 
     expect(props).toMatchObject({
       text: 'Back',
@@ -23,7 +18,7 @@ describe('NativeScript action bar', () => {
 
   test('preserves an explicit back title and collapsed state', () => {
     const props = getDefaultNavigationButtonProps(
-      { back: vi.fn() } as unknown as AnyRouter,
+      { back: vi.fn() },
       'Accounts',
       false,
     )

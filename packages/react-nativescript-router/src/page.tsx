@@ -20,6 +20,7 @@ import type {
   AnyRouter,
   WritableRouterStateSnapshotStore,
 } from '@tanstack/react-router/native'
+import type { AnyNativeScriptRouter } from './router'
 import type { EventData, Page } from '@nativescript/core'
 import type { NativeScreenSnapshot } from './screen'
 import type {
@@ -28,7 +29,7 @@ import type {
 } from './route-options'
 
 export interface NativeScriptActionBarProps {
-  router: AnyRouter
+  router: AnyNativeScriptRouter
   context: NativeScriptRouteContext
 }
 
@@ -104,7 +105,7 @@ function NativeActionBar({
   router,
   options,
 }: {
-  router: AnyRouter
+  router: AnyNativeScriptRouter
   options: NativePageRenderOptions
 }) {
   const state = useRouterState()
@@ -183,7 +184,7 @@ function NativePageTree({
   activeStore,
   optionsStore,
 }: {
-  router: AnyRouter
+  router: AnyNativeScriptRouter
   store: WritableRouterStateSnapshotStore<AnyRouter>
   activeStore: Store<boolean>
   optionsStore: Store<NativePageRenderOptions>
@@ -215,7 +216,7 @@ export function createNativePageRecord({
   onNavigatedTo,
   onDisposed,
 }: {
-  router: AnyRouter
+  router: AnyNativeScriptRouter
   screen: NativeScreenSnapshot
   options: NativePageRenderOptions
   onNavigatedTo: (record: NativePageRecord, isBackNavigation: boolean) => void

@@ -4,7 +4,7 @@ import { createNativeScriptHistory } from '../src/history'
 import { createNativeScriptNavigationState } from '../src/navigation-state'
 import { NativeStackController } from '../src/native-stack-controller'
 import { nativePageRecordKey } from '../src/page'
-import type { AnyRouter } from '@tanstack/router-core'
+import type { AnyNativeScriptRouter } from '../src/router'
 import type {
   NativeScriptBackstackEntryLike,
   NativeScriptFrameLike,
@@ -68,7 +68,7 @@ class TestFrame implements NativeScriptFrameLike {
 
 function createHarness(initialEntries: Array<string> = ['/']) {
   const history = createNativeScriptHistory({ initialEntries })
-  const router = { history } as AnyRouter
+  const router = { history } as AnyNativeScriptRouter
   const frame = new TestFrame()
   const callbacks = new Map<Page, Pick<CreatePageRecordArgs, 'onNavigatedTo'>>()
   const records = new Map<string, NativePageRecord>()

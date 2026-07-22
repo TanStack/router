@@ -1,14 +1,21 @@
 import { Router as ReactRouter } from '@tanstack/react-router/native'
 import { isDangerousProtocol } from '@tanstack/router-core'
 import {
+  backWithStack,
+  navigateWithStack,
+} from '@tanstack/router-core/native-navigation'
+import { parseHref } from '@tanstack/history'
+import {
   AbortController as NativeScriptAbortController,
   AbortSignal as NativeScriptAbortSignal,
 } from '@nativescript/core/abortcontroller'
 import { openUrlAsync } from '@nativescript/core/utils'
-import { createNativeScriptHistory } from './history'
+import { createNativeScriptHistory, isNativeScriptHistory } from './history'
 import { resolveNativeScriptNavigateOptions } from './native-navigation'
-import type { AnyRoute } from '@tanstack/react-router/native'
+import type { AnyRoute, AnyRouter } from '@tanstack/react-router/native'
 import type {
+  BackFn,
+  CommitLocationFn,
   NavigateFn,
   RouterConstructorOptions,
   StackBehavior,
@@ -93,6 +100,8 @@ export class NativeScriptRouter<
   NativeScriptRouterHistory,
   TDehydrated
 > {
+  back!: BackFn
+
   constructor(
     options: RouterConstructorOptions<
       TRouteTree,
@@ -105,6 +114,36 @@ export class NativeScriptRouter<
     super(options)
 
     const navigate = this.navigate
+    const commitLocation = this.commitLocation
+
+    this.commitLocation = (async (next) => {
+      const blockers = this.history.getBlockers()
+      if (next.ignoreBlocker || blockers.length === 0) {
+        return commitLocation(next)
+      }
+
+      const currentLocation = this.history.location
+      const nextLocation = parseHref(next.publicHref, next.state)
+      const action = next.replace ? 'REPLACE' : 'PUSH'
+
+      for (const blocker of blockers) {
+        const isBlocked = await blocker.blockerFn({
+          currentLocation,
+          nextLocation,
+          action,
+        })
+        if (isBlocked) {
+          return
+        }
+      }
+
+      if (this.history.location !== currentLocation) {
+        return
+      }
+
+      return commitLocation({ ...next, ignoreBlocker: true })
+    }) as CommitLocationFn
+
     this.navigate = (async (options) => {
       const href = options.href ? String(options.href) : undefined
       let isExternal = false
@@ -152,8 +191,36 @@ export class NativeScriptRouter<
         this,
         options as never,
       )
-      return navigate({ ...resolved, reloadDocument: false } as never)
+      return navigateWithStack(
+        this,
+        { ...resolved, reloadDocument: false } as never,
+        navigate,
+      )
     }) as NavigateFn
+
+    this.back = ((backOptions) =>
+      backWithStack(this, backOptions as never, this.navigate)) as BackFn
+  }
+}
+
+export type AnyNativeScriptRouter = NativeScriptRouter<any, any, any, any>
+
+export function isNativeScriptRouter(
+  router: AnyRouter,
+): router is AnyNativeScriptRouter {
+  return (
+    router instanceof NativeScriptRouter &&
+    isNativeScriptHistory(router.history)
+  )
+}
+
+export function assertNativeScriptRouter(
+  router: AnyRouter,
+): asserts router is AnyNativeScriptRouter {
+  if (!isNativeScriptRouter(router)) {
+    throw new Error(
+      'NativeScriptRouterProvider requires a NativeScriptRouter. Create it with createNativeScriptRouter, or configure the NativeScript Vite plugin to alias @tanstack/react-router.',
+    )
   }
 }
 

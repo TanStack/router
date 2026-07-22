@@ -1,12 +1,15 @@
 import {
-  createRouter as createReactRouter,
   createRootRoute,
   createRoute,
+  createRouter as createWebRouter,
 } from '@tanstack/react-router'
 import { describe, expect, test, vi } from 'vitest'
-import { createNativeScriptHistory } from '../src/history'
 import { resolveNativeScriptNavigateOptions } from '../src/native-navigation'
-import { createNativeScriptRouter } from '../src/router'
+import {
+  assertNativeScriptRouter,
+  createNativeScriptRouter,
+  isNativeScriptRouter,
+} from '../src/router'
 
 vi.mock('@nativescript/core/abortcontroller', () => ({
   AbortController: globalThis.AbortController,
@@ -37,9 +40,8 @@ function createRouter(options?: {
       stackMatch: 'oldest',
     },
   })
-  const router = createReactRouter({
+  const router = createNativeScriptRouter({
     routeTree: rootRoute.addChildren([plainRoute, itemRoute]),
-    history: createNativeScriptHistory(),
     native: {
       defaultStackBehavior: options?.defaultStackBehavior,
       openExternalUrl: options?.openExternalUrl,
@@ -50,6 +52,19 @@ function createRouter(options?: {
 }
 
 describe('resolveNativeScriptNavigateOptions', () => {
+  test('identifies adapter routers and rejects web routers', () => {
+    const rootRoute = createRootRoute()
+    const nativeRouter = createNativeScriptRouter({ routeTree: rootRoute })
+    const webRouter = createWebRouter({ routeTree: rootRoute })
+
+    expect(isNativeScriptRouter(nativeRouter)).toBe(true)
+    expect(isNativeScriptRouter(webRouter)).toBe(false)
+    expect(() => assertNativeScriptRouter(nativeRouter)).not.toThrow()
+    expect(() => assertNativeScriptRouter(webRouter)).toThrow(
+      'NativeScriptRouterProvider requires a NativeScriptRouter',
+    )
+  })
+
   test('defaults to exact-location reuse', async () => {
     const { router } = createRouter()
     await router.load()

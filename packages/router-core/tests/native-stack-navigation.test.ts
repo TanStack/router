@@ -1,7 +1,13 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { describe, expect, test } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
+import {
+  backWithStack,
+  buildLocationFromHref,
+  navigateWithStack,
+} from '../src/nativeNavigation'
 import { createTestRouter } from './routerTestUtils'
+import type { BackFn, NavigateFn } from '../src'
 
 declare module '@tanstack/history' {
   interface HistoryState {
@@ -34,17 +40,25 @@ async function createStackRouter() {
   })
 
   await router.load()
+  const standardNavigate = router.navigate
+  router.navigate = ((options) =>
+    navigateWithStack(router, options as never, standardNavigate)) as NavigateFn
+  const nativeRouter = router as typeof router & { back: BackFn }
+  nativeRouter.back = ((options) =>
+    backWithStack(
+      nativeRouter,
+      options as never,
+      nativeRouter.navigate,
+    )) as BackFn
 
-  return { history, router }
+  return { history, router: nativeRouter }
 }
 
 describe('native stack navigation', () => {
   test('buildLocation parses direct href search and hash state', async () => {
     const { router } = await createStackRouter()
 
-    const location = router.buildLocation({
-      href: '/search?q=direct#results',
-    })
+    const location = buildLocationFromHref(router, '/search?q=direct#results')
 
     expect(location).toMatchObject({
       pathname: '/search',

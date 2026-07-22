@@ -12,11 +12,13 @@ import { createNativeScreenSnapshot } from './screen'
 import { setupNativeScriptLinking } from './linking'
 import { Link } from './Link'
 import { nativeScriptRouterRenderer } from './fallbacks'
+import { assertNativeScriptRouter } from './router'
 import type {
   AnyRouter,
   RegisteredRouter,
   RouterProps,
 } from '@tanstack/react-router/native'
+import type { AnyNativeScriptRouter } from './router'
 import type {
   NativeScriptFrameLike,
   NativeStackControllerOptions,
@@ -49,7 +51,7 @@ function useNativeScriptLinking(
   }, [linking, router])
 }
 
-function useAndroidBackHandler(router: AnyRouter) {
+function useAndroidBackHandler(router: AnyNativeScriptRouter) {
   React.useEffect(() => {
     if (!isAndroid) {
       return
@@ -82,7 +84,7 @@ function NativeFrameHost({
   actionBarVisibility,
   controllerOptions,
 }: {
-  router: AnyRouter
+  router: AnyNativeScriptRouter
   actionBarVisibility: 'auto' | 'never' | 'always'
   controllerOptions: NativeStackControllerOptions
 }) {
@@ -148,6 +150,8 @@ export function NativeScriptRouterProvider<
   animated,
   transition,
 }: NativeScriptRouterProviderProps<TRouter>) {
+  assertNativeScriptRouter(router)
+
   const resolvedLinking =
     linking === undefined
       ? ((

@@ -4,6 +4,7 @@ import {
   exactPathTest,
   removeTrailingSlash,
 } from '@tanstack/router-core'
+import { buildLocationFromHref } from '@tanstack/router-core/native-navigation'
 import { useRouter, useRouterState } from '@tanstack/react-router/native'
 import type {
   AnyRouter,
@@ -129,7 +130,14 @@ export function useNativeScriptLinkProps(props: NativeScriptLinkProps) {
     ],
   )
   const next = React.useMemo(
-    () => router.buildLocation(navigationOptions),
+    () =>
+      navigationOptions.href
+        ? buildLocationFromHref(
+            router,
+            String(navigationOptions.href),
+            navigationOptions as never,
+          )
+        : router.buildLocation(navigationOptions),
     [navigationOptions, router],
   )
   const isActive = useRouterState({

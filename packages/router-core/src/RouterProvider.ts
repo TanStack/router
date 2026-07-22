@@ -52,8 +52,6 @@ export type BuildLocationFn = <
   TMaskTo extends string = '',
 >(
   opts: ToOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
-    /** A fully built internal href to parse into a location. */
-    href?: string
     leaveParams?: boolean
     _includeValidateSearch?: boolean
     _isNavigate?: boolean

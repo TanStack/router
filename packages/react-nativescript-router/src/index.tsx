@@ -9,10 +9,13 @@ export type {
 
 export {
   NativeScriptRouter,
+  assertNativeScriptRouter,
   createNativeScriptRouter,
   createNativeScriptRouter as createRouter,
+  isNativeScriptRouter,
 } from './router'
 export type {
+  AnyNativeScriptRouter,
   CreateNativeScriptRouterOptions,
   NativeScriptRouterOptions,
 } from './router'

@@ -1,4 +1,5 @@
 import { resolveNativeRouteOptions } from '@tanstack/react-router/native'
+import { buildLocationFromHref } from '@tanstack/router-core/native-navigation'
 import type {
   AnyRoute,
   AnyRouter,
@@ -17,10 +18,15 @@ export function resolveNativeScriptNavigateOptions<
   router: TRouter,
   options: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
-  const location = router.buildLocation({
-    ...options,
-    _includeValidateSearch: true,
-  })
+  const location = options.href
+    ? buildLocationFromHref(router, String(options.href), {
+        ...options,
+        _includeValidateSearch: true,
+      } as never)
+    : router.buildLocation({
+        ...options,
+        _includeValidateSearch: true,
+      })
   const matches = router.matchRoutes(location)
   const { options: routeOptions } = resolveNativeRouteOptions(router, {
     ...router.state,

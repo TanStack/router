@@ -1,4 +1,11 @@
-import { createNativeScriptRouter, createRootRoute } from '../src'
+import { createRouter as createWebRouter } from '@tanstack/react-router'
+import {
+  NativeScriptRouterProvider,
+  createNativeScriptRouter,
+  createRootRoute,
+  startNativeScriptApp,
+} from '../src'
+import type { AnyNativeScriptRouter } from '../src'
 
 declare module '@tanstack/react-router/native' {
   interface NativeRouteOptionsExtensions {
@@ -21,10 +28,23 @@ const routeTree = createRootRoute({
   }),
 })
 
-createNativeScriptRouter({
+const router = createNativeScriptRouter({
   routeTree,
   initialPath: '/account',
 })
+
+const anyNativeRouter: AnyNativeScriptRouter = router
+void anyNativeRouter.back()
+NativeScriptRouterProvider({ router })
+void startNativeScriptApp({ router })
+
+const sharedRouter = createWebRouter({ routeTree })
+NativeScriptRouterProvider({ router: sharedRouter })
+void startNativeScriptApp({ router: sharedRouter })
+
+// @ts-expect-error A web Router is accepted at the aliased app boundary, but is not itself a NativeScriptRouter.
+const invalidNativeRouter: AnyNativeScriptRouter = sharedRouter
+void invalidNativeRouter
 
 createNativeScriptRouter({
   routeTree,
