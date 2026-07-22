@@ -79,6 +79,24 @@ describe('Search Params serialization and deserialization', () => {
   })
 
   /*
+   * Regression coverage for #7650: opaque strings that happen to be valid
+   * JSON (hex codes, large integers, scientific-notation numbers) must
+   * not be destructively coerced into JSON values. The default parser
+   * uses a roundtrip check that rejects parses whose re-serialization
+   * does not match the original string.
+   */
+  test.each([
+    ['?codAut=662E41', { codAut: '662E41' }],
+    ['?id=723421968459640832', { id: '723421968459640832' }],
+    ['?sig=abcdef0123456789', { sig: 'abcdef0123456789' }],
+    ['?ulid=01H8XGJWBWBAQ4ZEXAMPLE0000', {
+      ulid: '01H8XGJWBWBAQ4ZEXAMPLE0000',
+    }],
+  ])('opaque string roundtrip %s', (input, expected) => {
+    expect(defaultParseSearch(input)).toEqual(expected)
+  })
+
+  /*
    * It can serialize stuff that really shouldn't be passed as input.
    * But just in case, this test serves as documentation of "what would happen"
    * if you did.

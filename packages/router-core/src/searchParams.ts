@@ -15,11 +15,23 @@ export const defaultStringifySearch = stringifySearchWith(
  * The returned function strips a leading `?`, decodes values, and attempts to
  * JSON-parse string values using the given `parser`.
  *
+ * To prevent lossy coercion of opaque strings (hex codes, large integers,
+ * scientific-notation numbers, etc.) the parsed value is only accepted when
+ * re-serializing it with `stringify` reproduces the original string.
+ * This rejects conversions like `'662E41'` → `6.62e+43` and
+ * `'723421968459640832'` → `723421968459640800`.
+ *
  * @param parser Function to parse a string value (e.g. `JSON.parse`).
+ * @param stringify Function to re-serialize the parsed value for the
+ *   roundtrip check. Defaults to `JSON.stringify`. Pass a matching
+ *   serializer when `parser` is something other than `JSON.parse`.
  * @returns A `parseSearch` function compatible with `Router` options.
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
-export function parseSearchWith(parser: (str: string) => any) {
+export function parseSearchWith(
+  parser: (str: string) => any,
+  stringify: (val: any) => string = JSON.stringify,
+) {
   return (searchStr: string): AnySchema => {
     if (searchStr[0] === '?') {
       searchStr = searchStr.substring(1)
@@ -27,12 +39,19 @@ export function parseSearchWith(parser: (str: string) => any) {
 
     const query: Record<string, unknown> = decode(searchStr)
 
-    // Try to parse any query params that might be json
+    // Try to parse any query params that might be json. A roundtrip check
+    // guards against lossy coercion: strings like `"662E41"` or
+    // `"723421968459640832"` parse to valid JSON values, but the original
+    // string cannot be recovered once the parsed number/string has been
+    // re-serialized.
     for (const key in query) {
       const value = query[key]
       if (typeof value === 'string') {
         try {
-          query[key] = parser(value)
+          const parsed = parser(value)
+          if (stringify(parsed) === value) {
+            query[key] = parsed
+          }
         } catch (_err) {
           // silent
         }
