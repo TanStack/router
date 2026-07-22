@@ -1,5 +1,29 @@
 # @tanstack/router-core
 
+## 1.171.15
+
+### Patch Changes
+
+- [#7807](https://github.com/TanStack/router/pull/7807) [`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa) - fix(router-core): handle window and element scroll restoration independently
+
+  Window and element scroll targets are now handled independently. Restoring one target no longer suppresses resets for other uncached configured targets, and a restored element is no longer reset when the window has no cached position.
+
+  Hash navigation no longer resets elements configured through `scrollToTopSelectors` and retains precedence over stale window positions through destination invalidations.
+
+  Scroll positions are sampled when leaving a route, preserving live changes made after the most recent scroll event. This also prevents client hydration from undoing nested positions restored by the SSR script.
+
+  Fixes [#7687](https://github.com/TanStack/router/issues/7687).
+
+## 1.171.14
+
+### Patch Changes
+
+- [#7695](https://github.com/TanStack/router/pull/7695) [`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b) - fix(router-core): re-encode URL-unsafe characters in `sanitizePathSegment` to prevent infinite redirect loops
+
+  `sanitizePathSegment` now re-encodes characters in the WHATWG URL "path percent-encode set" (`<`, `>`, `"`, `` ` ``, `{`, `}`) and ASCII control characters back to their percent-encoded form, instead of stripping control characters. This prevents mismatches between the original URL and the router's internal representation that previously caused infinite 307 redirect loops on paths containing these characters (e.g. `/%7B%7Btemplate%7D%7D`).
+
+  Fixes [#7587](https://github.com/TanStack/router/issues/7587).
+
 ## 1.171.13
 
 ### Patch Changes
