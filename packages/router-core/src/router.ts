@@ -1912,7 +1912,9 @@ export class RouterCore<
    */
   buildLocation: BuildLocationFn = (opts) => {
     if (opts.href) {
-      opts = this.resolveHrefBuildOptions(opts as BuildNextOptions) as typeof opts
+      opts = this.resolveHrefBuildOptions(
+        opts as BuildNextOptions,
+      ) as typeof opts
     }
 
     const build = (
