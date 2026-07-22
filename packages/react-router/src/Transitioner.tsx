@@ -34,16 +34,47 @@ export function Transitioner() {
       current[1](true)
     }
   }
-  router.startTransition = (fn, expected, urgent) =>
-    new Promise((resolve) => {
-      acknowledgement.current?.[1](false)
-      acknowledgement.current = [expected, resolve]
-      if (urgent) {
-        fn()
-      } else {
-        React.startTransition(fn)
-      }
-    })
+  if (process.env.NODE_ENV === 'production') {
+    router.startTransition = (fn, expected, urgent) =>
+      new Promise((resolve) => {
+        acknowledgement.current?.[1](false)
+        acknowledgement.current = [expected, resolve]
+        if (urgent) {
+          fn()
+        } else {
+          React.startTransition(fn)
+        }
+      })
+  } else {
+    router.startTransition = (fn, expected, urgent) =>
+      new Promise((resolve, reject) => {
+        acknowledgement.current?.[1](false)
+        const next: NonNullable<typeof acknowledgement.current> = [
+          expected,
+          resolve,
+        ]
+        acknowledgement.current = next
+        try {
+          if (urgent) {
+            fn()
+          } else {
+            React.startTransition(fn)
+          }
+        } catch (cause) {
+          if (acknowledgement.current === next) {
+            acknowledgement.current = undefined
+          }
+          reject(cause)
+        }
+      })
+    ;(
+      router as typeof router & { _cancelTransition?: () => void }
+    )._cancelTransition = () => {
+      const current = acknowledgement.current
+      acknowledgement.current = undefined
+      current?.[1](false)
+    }
+  }
 
   // Subscribe before canonicalizing so the initial URL has exactly one load.
   useLayoutEffect(() => {
@@ -74,7 +105,11 @@ export function Transitioner() {
       trimPathRight(location.publicHref) !==
       trimPathRight(nextLocation.publicHref)
     ) {
-      router.commitLocation({ ...nextLocation, replace: true })
+      router.commitLocation({
+        ...nextLocation,
+        replace: true,
+        ignoreBlocker: true,
+      })
       return process.env.NODE_ENV !== 'production' ? unsub : undefined
     }
 

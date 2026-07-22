@@ -144,6 +144,67 @@ describe('server route chunk failure lifecycle', () => {
     })
   })
 
+  test('does not leave later chunk rejections unhandled after request abort', async () => {
+    const rootError = new Error('root component failed')
+    const abortError = new Error('request closed')
+    const rootChunkGate = createControlledPromise<void>()
+    const childChunkGate = createControlledPromise<void>()
+    const rootChunkStarted = createControlledPromise<void>()
+    const childChunkStarted = createControlledPromise<void>()
+    const RootComponent = Object.assign(() => null, {
+      preload: () => {
+        rootChunkStarted.resolve()
+        return rootChunkGate
+      },
+    })
+    const ChildComponent = Object.assign(() => null, {
+      preload: () => {
+        childChunkStarted.resolve()
+        return childChunkGate
+      },
+    })
+    const rootRoute = new BaseRootRoute({
+      component: RootComponent as any,
+      errorComponent: () => null,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      component: ChildComponent as any,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+      isServer: true,
+    })
+    const controller = new AbortController()
+    const unhandled: Array<unknown> = []
+    const onUnhandled = (error: unknown) => {
+      unhandled.push(error)
+    }
+    process.on('unhandledRejection', onUnhandled)
+
+    try {
+      const responsePromise = loadServerResponse(
+        router,
+        '/child',
+        controller.signal,
+      )
+      await Promise.all([rootChunkStarted, childChunkStarted])
+
+      rootChunkGate.reject(rootError)
+      await expect(responsePromise).resolves.toMatchObject({ status: 500 })
+
+      controller.abort(abortError)
+      childChunkGate.resolve()
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+      expect(unhandled).not.toContain(abortError)
+    } finally {
+      process.off('unhandledRejection', onUnhandled)
+    }
+  })
+
   test('a required ancestor lazy chunk failure wins over a deeper loader notFound', async () => {
     const chunkError = new Error('ancestor lazy chunk failed')
     const rootRoute = new BaseRootRoute({})

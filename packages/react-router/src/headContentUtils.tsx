@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import {
-  _getRenderedMatches,
+  _getAssetMatches,
   appendUniqueUserTags,
   deepEqual,
   escapeHtml,
@@ -23,7 +23,7 @@ function buildTagsFromMatches(
   matches: Array<AnyRouteMatch>,
   assetCrossOrigin?: AssetCrossOriginConfig,
 ): Array<RouterManagedTag> {
-  matches = _getRenderedMatches(matches)
+  matches = _getAssetMatches(matches)
   const routeMeta = matches
     .map((match) => match.meta)
     .filter((meta) => meta !== undefined)

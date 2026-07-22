@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import {
-  _getRenderedMatches,
+  _getAssetMatches,
   appendUniqueUserTags,
   escapeHtml,
   getAssetCrossOrigin,
@@ -16,7 +16,7 @@ import type {
 
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
-  const matches = useStore(router.stores.matches, _getRenderedMatches)
+  const matches = useStore(router.stores.matches, _getAssetMatches)
 
   const tags = Vue.computed<Array<RouterManagedTag>>(() => {
     const currentMatches = matches.value

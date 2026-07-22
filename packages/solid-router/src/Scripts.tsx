@@ -1,5 +1,5 @@
 import * as Solid from 'solid-js'
-import { _getRenderedMatches, replaceEqualDeep } from '@tanstack/router-core'
+import { _getAssetMatches, replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -11,7 +11,7 @@ export const Scripts = () => {
 
   const scripts = Solid.createMemo(
     (previous: Array<RouterManagedTag> | undefined) => {
-      const matches = _getRenderedMatches(router.stores.matches.get())
+      const matches = _getAssetMatches(router.stores.matches.get())
       const next: Array<RouterManagedTag> = []
       const assets: Array<RouterManagedTag> = []
       const manifest = router.ssr?.manifest

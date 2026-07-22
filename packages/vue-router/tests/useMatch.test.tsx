@@ -235,6 +235,44 @@ describe('useMatch', () => {
     }
   })
 
+  test('an outgoing component never observes its own match disappear', async () => {
+    const observedRouteIds: Array<string | undefined> = []
+    const rootRoute = createRootRoute({ component: () => <Outlet /> })
+    const firstRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/first',
+      component: Vue.defineComponent({
+        setup() {
+          const match = useMatch({
+            from: '/first',
+            shouldThrow: false,
+          })
+          Vue.watchEffect(() => observedRouteIds.push(match.value?.routeId), {
+            flush: 'sync',
+          })
+          return () => <div>First route</div>
+        },
+      }),
+    })
+    const nextRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/next',
+      component: () => <div>Next route</div>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([firstRoute, nextRoute]),
+      history: createMemoryHistory({ initialEntries: ['/first'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('First route')).toBeInTheDocument()
+
+    await router.navigate({ to: '/next' })
+
+    expect(await screen.findByText('Next route')).toBeInTheDocument()
+    expect(observedRouteIds).not.toContain(undefined)
+  })
+
   describe('when match is not found', () => {
     test.each([undefined, true])(
       'throws if shouldThrow = %s',

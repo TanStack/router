@@ -104,7 +104,10 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   }
   const committed: Array<AnyRouteMatch> = []
   let pendingBoundary: number | undefined
+  let verifiedAssetEnd = 0
   const retryFrom = (index: number) => {
+    // The failing route's identity is still verified, but no descendant is.
+    verifiedAssetEnd = Math.min(verifiedAssetEnd, index + 1)
     const removed = committed.splice(index)
     for (const match of removed) {
       if (
@@ -145,12 +148,19 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       pendingBoundary ??= index
       break
     }
-    if ('l' in dehydrated) {
+    verifiedAssetEnd = index + 1
+    const route = getRoute(router, candidate)
+    if (
+      'l' in dehydrated ||
+      (dehydrated.s === 'success' &&
+        dehydrated.e === undefined &&
+        route.options.loader)
+    ) {
       candidate.loaderData = dehydrated.l
     }
     candidate.status = dehydrated.s
     candidate.ssr = dehydrated.ssr
-    getRoute(router, candidate).options.ssr = candidate.ssr
+    route.options.ssr = candidate.ssr
     candidate.updatedAt = dehydrated.u
     candidate.error = dehydrated.e
     candidate._notFound ||= dehydrated.g
@@ -176,6 +186,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       pendingBoundary ??= index
     }
   }
+  let verifiedContextEnd = verifiedAssetEnd
 
   if (
     !isTerminal &&
@@ -226,15 +237,18 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     return
   }
   if (chunkFailure < committed.length) {
+    verifiedContextEnd = Math.min(verifiedContextEnd, chunkFailure)
     retryFrom(chunkFailure)
   }
 
   // The first pending match is already visible, so prepare its route context
   // without granting its beforeLoad or loader any hydration authority.
-  const contextEnd =
+  const contextEnd = Math.max(
     pendingBoundary === committed.length
       ? committed.length + 1
-      : committed.length
+      : committed.length,
+    verifiedContextEnd,
+  )
   for (let index = 0; index < contextEnd; index++) {
     const match = candidates[index]!
     const route = getRoute(router, match)
@@ -286,7 +300,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     [location, candidates] as any,
     controller.signal,
     0,
-    committed.length,
+    verifiedAssetEnd,
   )
   if (!isCurrent()) {
     return
@@ -296,13 +310,23 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   const committedMatches =
     isTerminal && committed.length === shared ? candidates : committed
   let presented = needsClientLoad ? candidates : committedMatches
+  let dataOnlyAssetEnd: number | undefined
   if (needsClientLoad && pendingBoundary !== undefined) {
+    const boundary = presented[pendingBoundary]!
+    dataOnlyAssetEnd =
+      boundary.status === 'success' &&
+      boundary.ssr === 'data-only' &&
+      boundary.error === undefined &&
+      !boundary._notFound &&
+      verifiedAssetEnd > pendingBoundary + 1
+        ? verifiedAssetEnd
+        : undefined
     presented = presented.slice()
     presented[pendingBoundary] = {
-      ...presented[pendingBoundary]!,
+      ...boundary,
       status: 'pending',
-      ssr:
-        presented[pendingBoundary]!.ssr === 'data-only' ? 'data-only' : false,
+      ssr: boundary.ssr === 'data-only' ? 'data-only' : false,
+      _dataOnlyAssetEnd: dataOnlyAssetEnd,
     }
   }
 
@@ -332,12 +356,27 @@ export async function hydrate(router: AnyRouter): Promise<void> {
         controller.abort()
         return
       }
+      let handoffAssetEnd = dataOnlyAssetEnd
+      if (handoffAssetEnd !== undefined) {
+        for (let index = prefix; index < handoffAssetEnd; index++) {
+          if (candidates[index]?.id !== matches[index]?.id) {
+            handoffAssetEnd =
+              index > (pendingBoundary ?? -1) + 1 ? index : undefined
+            break
+          }
+        }
+      }
       transferMatchResources(
         router,
         matches.splice(
           0,
           prefix,
-          ...committedMatches.map((match) => ({ ...match })),
+          ...committedMatches.map((match, index) => ({
+            ...match,
+            ...(index === pendingBoundary && handoffAssetEnd !== undefined
+              ? { _dataOnlyAssetEnd: handoffAssetEnd }
+              : undefined),
+          })),
         ),
       )
       for (let index = prefix; index < matches.length; index++) {

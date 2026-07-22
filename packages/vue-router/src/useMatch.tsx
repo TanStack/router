@@ -130,8 +130,15 @@ export function useMatch<
     }
   }
 
+  const ownsMatch =
+    nearestRouteId !== undefined &&
+    (opts.from ?? nearestRouteId) === nearestRouteId
+  let lastOwnedMatch: any
   const result = Vue.computed<any>(() => {
-    const selectedMatch = match.value
+    if (match.value !== undefined && ownsMatch) {
+      lastOwnedMatch = match.value
+    }
+    const selectedMatch = match.value ?? lastOwnedMatch
     if (selectedMatch === undefined) {
       if (opts.shouldThrow ?? true) {
         if (process.env.NODE_ENV !== 'production') {

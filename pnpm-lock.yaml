@@ -13006,6 +13006,9 @@ importers:
         specifier: ^2.1.16
         version: 2.1.16(csstype@3.2.3)
     devDependencies:
+      '@testing-library/jest-dom':
+        specifier: ^6.6.3
+        version: 6.6.3
       solid-js:
         specifier: 1.9.12
         version: 1.9.12

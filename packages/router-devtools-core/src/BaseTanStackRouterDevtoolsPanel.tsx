@@ -289,17 +289,27 @@ export const BaseTanStackRouterDevtoolsPanel =
         : []
     }
     let cache = router()._cache
-    let cacheSize = cache.size
-    const [cachedMatches, setCachedMatches] = createSignal([...cache.values()])
+    let cacheMatches = [...cache.values()]
+    const [cachedMatches, setCachedMatches] = createSignal(cacheMatches)
 
     createEffect(() => {
       const refreshCache = () => {
         const next = router()._cache
-        // Core replaces the map for writes and only deletes entries in place.
-        if (next !== cache || next.size !== cacheSize) {
+        let valuesChanged = next.size !== cacheMatches.length
+        if (!valuesChanged) {
+          let index = 0
+          for (const match of next.values()) {
+            if (match !== cacheMatches[index++]) {
+              valuesChanged = true
+              break
+            }
+          }
+        }
+
+        if (next !== cache || valuesChanged) {
           cache = next
-          cacheSize = next.size
-          setCachedMatches([...next.values()])
+          cacheMatches = [...next.values()]
+          setCachedMatches(cacheMatches)
         }
       }
       refreshCache()

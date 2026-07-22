@@ -4,6 +4,7 @@ import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
   BaseRoute,
+  _getAssetMatches,
   createSerializationAdapter,
   isNotFound,
   notFound,
@@ -218,7 +219,7 @@ describe('hydrate', () => {
     expect(clientLoader).not.toHaveBeenCalled()
   })
 
-  it('omits undefined loader data from hydrated matches', async () => {
+  it('restores undefined loader data without serializing it', async () => {
     const serverRootRoute = new BaseRootRoute({})
     const serverRoute = new BaseRoute({
       getParentRoute: () => serverRootRoute,
@@ -255,7 +256,71 @@ describe('hydrate', () => {
       routeId: clientRoute.id,
       status: 'success',
     })
-    expect(match).not.toHaveProperty('loaderData')
+    expect(match).toHaveProperty('loaderData', undefined)
+  })
+
+  it('preserves successful undefined loader data when selecting a later failure', async () => {
+    const serverRootRoute = new BaseRootRoute({})
+    const serverParentRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/parent',
+      loader: () => undefined,
+    })
+    const serverChildRoute = new BaseRoute({
+      getParentRoute: () => serverParentRoute,
+      path: '/child',
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([
+        serverParentRoute.addChildren([serverChildRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: true,
+    })
+
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    expect(mockWindow.$_TSR.router?.matches[1]).not.toHaveProperty('l')
+
+    const parentError = new Error('parent reload failed')
+    const childError = new Error('child guard failed')
+    const clientRootRoute = new BaseRootRoute({})
+    const clientParentRoute = new BaseRoute({
+      getParentRoute: () => clientRootRoute,
+      path: '/parent',
+      loader: () => {
+        throw parentError
+      },
+      errorComponent: () => null,
+    })
+    const clientChildRoute = new BaseRoute({
+      getParentRoute: () => clientParentRoute,
+      path: '/child',
+      beforeLoad: () => {
+        throw childError
+      },
+      errorComponent: () => null,
+    })
+    const clientRouter = createTestRouter({
+      routeTree: clientRootRoute.addChildren([
+        clientParentRoute.addChildren([clientChildRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: false,
+    })
+
+    await hydrate(clientRouter)
+    await clientRouter.invalidate()
+
+    expect(
+      clientRouter.state.matches.find(
+        (match) => match.routeId === clientParentRoute.id,
+      ),
+    ).toMatchObject({ status: 'success', error: undefined })
+    expect(
+      clientRouter.state.matches.find(
+        (match) => match.routeId === clientChildRoute.id,
+      ),
+    ).toMatchObject({ status: 'error', error: childError })
   })
 
   it.each([
@@ -372,6 +437,11 @@ describe('hydrate', () => {
     })
     expect(childContext).not.toHaveBeenCalled()
     expect(clientParentLoader).not.toHaveBeenCalled()
+    expect(
+      _getAssetMatches(clientRouter.state.matches).map(
+        (match) => match.routeId,
+      ),
+    ).toEqual([clientRootRoute.id, clientParentRoute.id])
 
     await clientRouter.load()
 

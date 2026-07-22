@@ -97,6 +97,9 @@ export type LoadTransaction = [
   matches: Array<AnyRouteMatch>,
   startedAt: number,
   done: Promise<void>,
+  refresh?: true,
+  refreshPresentation?: Array<AnyRouteMatch>,
+  refreshHandoff?: NonNullable<AnyRouter['_handoff']>,
 ]
 
 export type PendingSession = [
@@ -112,6 +115,17 @@ export type PendingSession = [
 type CoordinatorRouter = AnyRouter & {
   /** Whole speculative lanes that a matching navigation may adopt. */
   _preloads?: Map<string, ActivePreload>
+  _refreshNextLoad?: boolean
+  _rollbackRefresh?: () => void
+  _cancelTransition?: () => void
+}
+
+type PublicationCheckpoint = {
+  previousMatches: Array<AnyRouteMatch>
+  previousPresentation: Array<AnyRouteMatch>
+  previousCache: Map<string, AnyRouteMatch>
+  commitPromise: CoordinatorRouter['_commitPromise']
+  published: boolean
 }
 
 type LoaderTask = [
@@ -1331,11 +1345,15 @@ function commitMatches(
   router: CoordinatorRouter,
   tx: LoadTransaction,
   matches: Array<AnyRouteMatch>,
+  resolvedPrefix?: number,
 ): void {
   const previous = router._committed
   const previousCached = router._cache
   for (const match of matches) {
     match.preload = false
+    if (resolvedPrefix) {
+      match._dataOnlyAssetEnd = undefined
+    }
   }
   const rendered = _getRenderedMatches(matches)
   const cached = new Map<string, AnyRouteMatch>()
@@ -1382,6 +1400,155 @@ function commitMatches(
     [...matches, ...cached.values()],
   )
   runRouteLifecycle(router, previous, matches, () => router._tx === tx)
+}
+
+function commitRefreshMatches(
+  router: CoordinatorRouter,
+  tx: LoadTransaction,
+  matches: Array<AnyRouteMatch>,
+  checkpoint: PublicationCheckpoint,
+): void {
+  const previous = router._committed
+  const previousCached = router._cache
+  for (const match of matches) {
+    match.preload = false
+  }
+  const cached = new Map<string, AnyRouteMatch>()
+  // Delay releasing the previous owners until the HMR render is acknowledged.
+  // Old generations must not become reusable cache entries after refresh.
+  tx[3] = []
+  router._cache = cached
+  checkpoint.previousMatches = previous
+  checkpoint.previousCache = previousCached
+  checkpoint.published = true
+  publishMatches(router, matches)
+  if (!checkpoint.published || router._tx !== tx) {
+    return
+  }
+  runRouteLifecycle(router, previous, matches, () => router._tx === tx)
+}
+
+function settlePublication(
+  router: CoordinatorRouter,
+  checkpoint: PublicationCheckpoint,
+): void {
+  if (!checkpoint.published) {
+    return
+  }
+  checkpoint.published = false
+  transferMatchResources(
+    router,
+    [...checkpoint.previousCache.values(), ...checkpoint.previousMatches],
+    [...router._cache.values(), ...router._committed],
+  )
+}
+
+function rollbackPublication(
+  router: CoordinatorRouter,
+  tx: LoadTransaction,
+  lane: ProjectedLane,
+  checkpoint: PublicationCheckpoint,
+): boolean {
+  if (
+    !checkpoint.published ||
+    router._tx !== tx ||
+    router._committed !== lane[1]
+  ) {
+    settlePublication(router, checkpoint)
+    return false
+  }
+
+  const discarded = [...router._cache.values(), ...router._committed]
+  const restored = [
+    ...checkpoint.previousCache.values(),
+    ...checkpoint.previousMatches,
+  ]
+  router._cache = checkpoint.previousCache
+  router._committed = checkpoint.previousMatches
+  checkpoint.published = false
+
+  for (const match of discarded as Array<WorkMatch>) {
+    if (
+      !restored.includes(match) &&
+      match._flight &&
+      router._flights?.get(match.id) === match._flight
+    ) {
+      router._flights.delete(match.id)
+    }
+  }
+
+  finishPending(router, tx)
+  router.batch(() => {
+    router.stores.status.set('idle')
+    router.stores.setMatches(checkpoint.previousPresentation)
+  })
+  tx[0].abort()
+  transferMatchResources(router, discarded, restored)
+  discardBackground(router, lane)
+  if (router._tx === tx && router._commitPromise === checkpoint.commitPromise) {
+    router._commitPromise?.resolve()
+    router._commitPromise = undefined
+  }
+  return true
+}
+
+async function transitionRefresh(
+  router: CoordinatorRouter,
+  tx: LoadTransaction,
+  lane: ProjectedLane,
+  changeInfo: ReturnType<typeof getLocationChangeInfo>,
+): Promise<boolean | undefined> {
+  const checkpoint: PublicationCheckpoint = {
+    previousMatches: router._committed,
+    previousPresentation: tx[7] ?? router.stores.matches.get(),
+    previousCache: router._cache,
+    commitPromise: router._commitPromise,
+    published: false,
+  }
+  const commit = () => {
+    finishPending(router, tx)
+    router._rollbackRefresh = rollback
+    commitRefreshMatches(router, tx, lane[1], checkpoint)
+    if (!checkpoint.published || router._tx !== tx) {
+      return
+    }
+    router.emit({ type: 'onLoad', ...changeInfo })
+    if (router._tx === tx) {
+      router.emit({ type: 'onBeforeRouteMount', ...changeInfo })
+    }
+  }
+  const rollback = () => {
+    if (router._rollbackRefresh === rollback) {
+      router._rollbackRefresh = undefined
+    }
+    const restored = rollbackPublication(router, tx, lane, checkpoint)
+    router._cancelTransition?.()
+    return restored
+  }
+  try {
+    const rendered = await router.startTransition(commit, lane[1])
+    if (router._rollbackRefresh === rollback) {
+      router._rollbackRefresh = undefined
+    }
+    if (checkpoint.published) {
+      const handoff = tx[8]
+      if (handoff && router._handoff === handoff) {
+        handoff[1]()
+      }
+      if (router._tx === tx) {
+        tx[6] = undefined
+        tx[7] = undefined
+        tx[8] = undefined
+      }
+    }
+    settlePublication(router, checkpoint)
+    return rendered
+  } catch (cause) {
+    if (rollback()) {
+      return
+    }
+    throw cause
+  }
 }
 
 async function awaitCurrent(
@@ -1543,6 +1710,9 @@ async function runClientTransaction(
       transferMatchResources(router, tx[3])
       tx[3] = []
       if (router._tx === tx) {
+        if (process.env.NODE_ENV !== 'production' && tx[6]) {
+          router._refreshNextLoad = true
+        }
         await followRedirect(router, tx, result[1])
       }
     } else {
@@ -1603,7 +1773,7 @@ async function runClientTransaction(
     }
     const commit = () => {
       finishPending(router, tx)
-      commitMatches(router, tx, result[1])
+      commitMatches(router, tx, result[1], resolvedPrefix)
       if (router._tx !== tx) {
         return
       }
@@ -1612,7 +1782,17 @@ async function runClientTransaction(
         router.emit({ type: 'onBeforeRouteMount', ...changeInfo })
       }
     }
-    const rendered = await router.startTransition(commit, result[1])
+    const rendered =
+      process.env.NODE_ENV !== 'production' && tx[6]
+        ? await transitionRefresh(router, tx, result, changeInfo)
+        : await router.startTransition(commit, result[1])
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      tx[6] &&
+      rendered === undefined
+    ) {
+      return
+    }
     if (router._tx !== tx) {
       discardBackground(router, result)
       return
@@ -1647,6 +1827,14 @@ export async function loadClientRoute(
   router: CoordinatorRouter,
   opts?: { sync?: boolean },
 ): Promise<void> {
+  let rematerialize = false
+  if (process.env.NODE_ENV !== 'production') {
+    router._rollbackRefresh?.()
+    rematerialize = !!router._refreshNextLoad || !!router._tx?.[6]
+  }
+  const refreshPresentation = rematerialize
+    ? router.stores.matches.get()
+    : undefined
   const previousOwner = router._tx
   const resolvedLocation = router.stores.resolvedLocation.get()
   const previousLocation = resolvedLocation ?? router.stores.location.get()
@@ -1659,11 +1847,11 @@ export async function loadClientRoute(
       ? (pendingLocation._redirects ?? 0)
       : 0
   const handoff = router._handoff
-  const hydrationController = handoff?.[0]()
+  const hydrationController = rematerialize ? undefined : handoff?.[0]()
   const preflight = new AbortController()
   const previousPreflight = router._preflight
   router._preflight = preflight
-  if (!hydrationController) {
+  if (!rematerialize && !hydrationController) {
     handoff?.[1]()
   }
   previousPreflight?.abort()
@@ -1685,6 +1873,16 @@ export async function loadClientRoute(
   const sameHref = previousLocation.href === location.href
   let adopted = router._preloads?.get(location.href)
   let retained: ActivePreload | undefined
+  if (rematerialize && adopted) {
+    router._preloads!.delete(location.href)
+    discardPreload(router, adopted)
+    adopted = undefined
+    if (preflight.signal.aborted || router._tx !== previousOwner) {
+      preflight.abort()
+      await awaitCurrent(router, previousOwner)
+      return
+    }
+  }
   if (
     adopted &&
     (hydrationController ||
@@ -1710,7 +1908,13 @@ export async function loadClientRoute(
     router._preloads!.delete(location.href)
   } else {
     try {
-      matches = router.matchRoutes(location, { _controller: preflight })
+      matches =
+        process.env.NODE_ENV !== 'production' && rematerialize
+          ? router.matchRoutes(location, {
+              _controller: preflight,
+              _rematerialize: true,
+            })
+          : router.matchRoutes(location, { _controller: preflight })
       acquireMatchResources(matches)
     } catch (cause) {
       preflight.abort()
@@ -1718,6 +1922,9 @@ export async function loadClientRoute(
         discardPreload(router, retained)
       }
       if (!isRedirect(cause)) {
+        if (process.env.NODE_ENV !== 'production' && rematerialize) {
+          router._refreshNextLoad = undefined
+        }
         await awaitCurrent(router)
         router._commitPromise?.resolve()
         router._commitPromise = undefined
@@ -1771,8 +1978,14 @@ export async function loadClientRoute(
         }
       }),
   ]
+  if (process.env.NODE_ENV !== 'production' && rematerialize) {
+    tx[6] = true
+    tx[7] = refreshPresentation
+    tx[8] = handoff
+    router._refreshNextLoad = undefined
+  }
   router._tx = tx
-  if (router._handoff === handoff) {
+  if (!rematerialize && router._handoff === handoff) {
     router._handoff = undefined
   }
   if (previousOwner) {
@@ -1806,20 +2019,22 @@ export async function loadClientRoute(
   }
 }
 
-export function refreshClientRoute(router: CoordinatorRouter): Promise<void> {
-  if (router._flights) {
-    const flights = [...router._flights.values()]
-    router._flights.clear()
-    for (const flight of flights) {
-      flight[1].abort()
+export async function refreshClientRoute(
+  router: CoordinatorRouter,
+): Promise<void> {
+  router._rollbackRefresh?.()
+  const pending = router._tx
+  if (pending && !pending[6] && router.stores.status.get() === 'pending') {
+    await pending[5]
+    if (router._tx !== pending) {
+      await awaitCurrent(router, pending)
     }
   }
-  const committed = router._committed
-  router._committed = []
+  // Existing owners remain alive for rollback but cannot donate stale work.
+  router._flights?.clear()
   router.clearCache()
-  transferMatchResources(router, committed)
-
-  return router.load({ sync: true })
+  router._refreshNextLoad = true
+  await loadClientRoute(router, { sync: true })
 }
 
 function followPreloadRedirect(
@@ -1855,6 +2070,12 @@ export async function preloadClientRoute(
     return
   }
   const owner = router._tx
+  if (
+    process.env.NODE_ENV !== 'production' &&
+    (router._refreshNextLoad || owner?.[6])
+  ) {
+    return
+  }
   const location = opts._builtLocation ?? router.buildLocation(opts)
   const base = router._committed
   const controller = new AbortController()

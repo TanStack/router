@@ -138,6 +138,8 @@ export interface RouteMatch<
   searchError: unknown
   updatedAt: number
   loaderData?: TLoaderData
+  /** @internal Exclusive end of the SSR-verified asset prefix. */
+  _dataOnlyAssetEnd?: number
   /** @internal */
   _ctx?: Record<string, unknown>
   /** @internal */

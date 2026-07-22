@@ -47,7 +47,11 @@ export function Transitioner() {
       trimPathRight(router.latestLocation.publicHref) !==
       trimPathRight(nextLocation.publicHref)
     ) {
-      router.commitLocation({ ...nextLocation, replace: true })
+      router.commitLocation({
+        ...nextLocation,
+        replace: true,
+        ignoreBlocker: true,
+      })
       return
     }
 
