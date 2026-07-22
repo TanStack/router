@@ -12,8 +12,8 @@ import type {
   UseParamsRoute,
   UseRouteContextRoute,
   UseSearchRoute,
-} from './hooks'
-import type { LinkComponentRoute } from './link'
+} from './routeHookTypes'
+import type { LinkComponentRoute } from './linkTypes'
 
 export type OctaneElementAttributes = Record<
   string,

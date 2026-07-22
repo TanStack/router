@@ -1,5 +1,44 @@
+import fs from 'node:fs'
+import path from 'node:path'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+
+const fixtureRoot = path.resolve(import.meta.dirname, '..')
+
+test.use({
+  whitelistErrors: [
+    'Failed to load resource: the server responded with a status of 404',
+  ],
+})
+
+function getOutputDir() {
+  return path.resolve(fixtureRoot, process.env.E2E_DIST_DIR ?? '.output')
+}
+
+function findBuiltAsset(extension: string, sourceNeedle: string) {
+  const assetsDir = path.join(getOutputDir(), 'public', 'assets')
+  const matches = fs.readdirSync(assetsDir).filter((fileName) => {
+    return (
+      fileName.endsWith(extension) &&
+      fs
+        .readFileSync(path.join(assetsDir, fileName), 'utf8')
+        .includes(sourceNeedle)
+    )
+  })
+
+  expect(matches).toHaveLength(1)
+  return matches[0]!
+}
+
+function readStartManifest() {
+  const serverDir = path.join(getOutputDir(), 'server')
+  const matches = fs
+    .readdirSync(serverDir)
+    .filter((fileName) => fileName.startsWith('_tanstack-start-manifest_'))
+
+  expect(matches).toHaveLength(1)
+  return fs.readFileSync(path.join(serverDir, matches[0]!), 'utf8')
+}
 
 test('renders a full Start document and hydrates Octane', async ({
   page,
@@ -59,6 +98,58 @@ test('streams deferred values through the Start serializer', async ({
   await expect(page.getByTestId('deferred-value')).toHaveText(
     '2026-07-16T22:00:00.000Z streamed',
   )
+})
+
+test('loads GET server functions from loaders, including deferred results', async ({
+  page,
+}) => {
+  const serverFunctionRequests: Array<string> = []
+  page.on('request', (request) => {
+    if (request.url().includes('/_serverFn/')) {
+      serverFunctionRequests.push(request.method())
+    }
+  })
+
+  await page.goto('/')
+  await page.getByRole('link', { name: 'Deferred' }).click()
+
+  await expect(page.getByTestId('regular-person')).toHaveText(
+    'Octane immediate',
+  )
+  await expect(page.getByTestId('deferred-person')).toHaveText(
+    'TanStack deferred',
+  )
+  expect(serverFunctionRequests.length).toBeGreaterThanOrEqual(2)
+  expect(serverFunctionRequests.every((method) => method === 'GET')).toBe(true)
+})
+
+test('preserves parent route state while navigating between child routes', async ({
+  page,
+}) => {
+  await page.goto('/posts')
+  await expect(page.getByTestId('posts-index')).toBeVisible()
+
+  await page.getByTestId('posts-parent-counter').click()
+  await expect(page.getByTestId('posts-parent-counter')).toHaveText(
+    'Parent count 1',
+  )
+
+  await page.getByRole('link', { name: 'Second post' }).click()
+  await expect(page.getByTestId('post-detail')).toContainText(
+    'Body of the second post.',
+  )
+  await expect(page.getByTestId('posts-parent-counter')).toHaveText(
+    'Parent count 1',
+  )
+})
+
+test('routes notFound thrown by a loader server function to its boundary', async ({
+  page,
+}) => {
+  const response = await page.goto('/posts/missing')
+
+  expect(response?.status()).toBe(404)
+  await expect(page.getByTestId('post-not-found')).toHaveText('Post not found')
 })
 
 test('round-trips typed values through a server function', async ({ page }) => {
@@ -146,4 +237,133 @@ test('preserves redirect and not-found response status', async ({
   const missingResponse = await request.get('/missing')
   expect(missingResponse.status()).toBe(404)
   expect(await missingResponse.text()).toContain('Not found')
+})
+
+test('adopts deferred Hydrate HTML while keeping its JavaScript lazy', async ({
+  page,
+  request,
+}) => {
+  const deferredJavaScript = findBuiltAsset(
+    '.js',
+    '__octaneStartDeferredHydrationModuleLoaded',
+  )
+  const deferredCss = findBuiltAsset(
+    '.css',
+    '.octane-start-deferred-hydration-proof',
+  )
+  const manifest = readStartManifest()
+
+  const response = await request.get('/hydrate')
+  expect(response.status()).toBe(200)
+  const html = await response.text()
+
+  expect(html).toContain('deferred hydration clicks 0')
+  expect(html).toContain('server fallback')
+  expect(html).not.toContain('client-only module rendered')
+  expect(html).toContain(`/assets/${deferredCss}`)
+  expect(html).not.toContain(`/assets/${deferredJavaScript}`)
+  expect(manifest).toContain(`/assets/${deferredCss}`)
+  expect(manifest).not.toContain(`/assets/${deferredJavaScript}`)
+
+  const unrelatedResponse = await request.get('/about')
+  expect(unrelatedResponse.status()).toBe(200)
+  expect(await unrelatedResponse.text()).not.toContain(`/assets/${deferredCss}`)
+
+  const browserErrors: Array<string> = []
+  const requestedScripts: Array<string> = []
+  page.on('console', (message) => {
+    if (message.type() === 'error' || message.type() === 'warning') {
+      browserErrors.push(message.text())
+    }
+  })
+  page.on('pageerror', (error) => browserErrors.push(error.message))
+  page.on('request', (pageRequest) => {
+    if (pageRequest.resourceType() === 'script') {
+      requestedScripts.push(new URL(pageRequest.url()).pathname)
+    }
+  })
+
+  await page.addInitScript(() => {
+    const proof = window as typeof window & {
+      __octaneStartDeferredHydrationServerNode?: Element | null
+    }
+    const captureServerNode = () => {
+      const node = document.querySelector(
+        '.octane-start-deferred-hydration-proof',
+      )
+      if (node !== null) {
+        proof.__octaneStartDeferredHydrationServerNode ??= node
+        observer.disconnect()
+      }
+    }
+    const observer = new MutationObserver(captureServerNode)
+    observer.observe(document, { childList: true, subtree: true })
+    captureServerNode()
+  })
+
+  await page.goto('/hydrate')
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        return (
+          window as typeof window & {
+            __octaneStartHydrateRouteReady?: boolean
+          }
+        ).__octaneStartHydrateRouteReady
+      }),
+    )
+    .toBe(true)
+  await expect(page.getByTestId('hydrate-eager')).toHaveText(
+    'eager route content',
+  )
+  await expect(page.getByTestId('client-only-proof')).toHaveText(
+    'client-only module rendered',
+  )
+  await expect(page.getByTestId('client-only-fallback')).toHaveCount(0)
+
+  const deferredProof = page.getByTestId('deferred-hydration-proof')
+  await expect(deferredProof).toHaveText('deferred hydration clicks 0')
+  await expect(deferredProof).toHaveCSS('color', 'rgb(12, 34, 56)')
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+      }),
+  )
+
+  const deferredScriptPath = `/assets/${deferredJavaScript}`
+  expect(requestedScripts).not.toContain(deferredScriptPath)
+  expect(
+    await deferredProof.evaluate((node) => {
+      const proof = window as typeof window & {
+        __octaneStartDeferredHydrationModuleLoaded?: boolean
+        __octaneStartDeferredHydrationServerNode?: Element | null
+      }
+      return {
+        dormant: node.parentElement?.getAttribute('data-octane-hydrate-when'),
+        moduleLoaded: proof.__octaneStartDeferredHydrationModuleLoaded === true,
+        sameNode: proof.__octaneStartDeferredHydrationServerNode === node,
+      }
+    }),
+  ).toEqual({ dormant: 'interaction', moduleLoaded: false, sameNode: true })
+
+  await deferredProof.click()
+  await expect(deferredProof).toHaveText('deferred hydration clicks 1')
+  await expect
+    .poll(() => requestedScripts.includes(deferredScriptPath))
+    .toBe(true)
+  expect(
+    await deferredProof.evaluate((node) => {
+      const proof = window as typeof window & {
+        __octaneStartDeferredHydrationModuleLoaded?: boolean
+        __octaneStartDeferredHydrationServerNode?: Element | null
+      }
+      return {
+        dormant: node.parentElement?.hasAttribute('data-octane-hydrate-when'),
+        moduleLoaded: proof.__octaneStartDeferredHydrationModuleLoaded === true,
+        sameNode: proof.__octaneStartDeferredHydrationServerNode === node,
+      }
+    }),
+  ).toEqual({ dormant: false, moduleLoaded: true, sameNode: true })
+  expect(browserErrors).toEqual([])
 })

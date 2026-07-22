@@ -108,4 +108,13 @@ describe('@tanstack/octane-router — same-route search-param navigation (concur
 
     r.unmount()
   })
+
+  it('exposes a canonical server redirect after the load settles', async () => {
+    const router = makeSameRouteSearchRouter('/', { isServer: true })
+    await router.load()
+
+    expect(router.state.redirect?.options.href).toBe('/?page=1')
+    expect(router.state.redirect?.status).toBe(307)
+    expect(router.state.statusCode).toBe(router.state.redirect?.status)
+  })
 })

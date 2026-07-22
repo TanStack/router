@@ -40,14 +40,14 @@ catalog:
   '@types/react': ^19.2.8
   '@types/react-dom': ^19.2.3
   eslint: ^9.22.0
-  vite: ^8.0.14
+  vite: ^8.0.16
   '@types/node': 25.0.9
   '@playwright/test': ^1.61.0
   '@tanstack/query-core': ^5.99.0
   '@tanstack/react-query': ^5.99.0
   '@tanstack/solid-query': ^5.99.0
   '@tanstack/vue-query': ^5.99.0
-  octane: ^0.1.8
+  octane: ^0.1.12
 
 overrides:
   '@types/babel__traverse': '^7.28.0'
@@ -108,7 +108,6 @@ overrides:
   '@tanstack/router-utils': 'workspace:*'
   '@tanstack/start-static-server-functions': 'workspace:*'
   '@tanstack/nitro-v2-vite-plugin': 'workspace:*'
-  octane: 'github:tannerlinsley/octane#690053baee01b38f836c6b662cc2c0efe8403a51&path:/packages/octane'
 
 allowBuilds:
   # root dependency

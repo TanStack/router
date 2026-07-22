@@ -95,6 +95,12 @@
         "default": "./dist/esm/client-only.js"
       }
     },
+    "./hydration": {
+      "import": {
+        "types": "./dist/esm/hydration.d.ts",
+        "default": "./dist/esm/hydration.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -112,6 +118,7 @@
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
+    "magic-string": "^0.30.21",
     "pathe": "^2.0.3"
   },
   "devDependencies": {
@@ -121,8 +128,8 @@
     "vite": "*"
   },
   "peerDependencies": {
-    "octane": ">=0.1.8",
-    "vite": ">=7.0.0"
+    "octane": ">=0.1.12",
+    "vite": "^8.0.16"
   },
   "peerDependenciesMeta": {
     "vite": {

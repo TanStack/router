@@ -2,6 +2,21 @@ import { describe, expect, it } from 'vitest'
 import { maskOctaneRouteSource } from '../src/generator-plugin'
 
 describe('maskOctaneRouteSource', () => {
+  it('passes plain TypeScript server routes through unchanged', () => {
+    const source = `import { createFileRoute } from '@tanstack/octane-router'
+
+export const Route = createFileRoute('/rss[.]xml')({
+  server: {
+    handlers: {
+      GET: async () => new Response('<rss />'),
+    },
+  },
+})
+`
+
+    expect(maskOctaneRouteSource(source, '/routes/rss[.]xml.ts')).toBe(source)
+  })
+
   it('preserves offsets while masking Octane component templates', () => {
     const source = `import { createFileRoute } from '@tanstack/octane-router'
 
@@ -15,7 +30,7 @@ function Page() @{
 }
 `
 
-    const masked = maskOctaneRouteSource(source)
+    const masked = maskOctaneRouteSource(source, '/routes/index.tsrx')
 
     expect(masked).toHaveLength(source.length)
     expect(masked.indexOf("createFileRoute('/wrong')")).toBe(

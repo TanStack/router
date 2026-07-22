@@ -118,6 +118,7 @@ export interface NormalizedClientChunk {
   css: Array<string>
   routeFilePaths: Array<string>
   hydrationIds: Array<string>
+  hydrationSourcePaths: Array<string>
 }
 
 export interface NormalizedClientBuild {

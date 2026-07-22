@@ -1,14 +1,16 @@
 // @vitest-environment node
 
 import { describe, expect, it } from 'vitest'
-import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
+import {
+  attachRouterServerSsrUtils,
+  isSsrResponse,
+} from '@tanstack/router-core/ssr/server'
 import { getScrollRestorationScriptForRouter } from '@tanstack/router-core/scroll-restoration-script'
 import {
   RouterServer,
   renderRouterToStream,
   renderRouterToString,
 } from '../../src/ssr/server'
-import { relocateLeadingOctaneStylesToHead } from '../../src/ssr/renderRouterToStream'
 import { makeSsrRouter } from '../_fixtures/ssr.tsrx'
 
 describe('@tanstack/octane-router SSR', () => {
@@ -91,15 +93,24 @@ describe('@tanstack/octane-router SSR', () => {
     await router.load()
     await router.serverSsr.dehydrate()
 
-    const response = await renderRouterToStream({
+    const result = await renderRouterToStream({
       request: new Request('http://localhost/', {
-        headers: { 'user-agent': 'Mozilla/5.0' },
+        headers: {
+          'user-agent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36',
+        },
       }),
       router,
       responseHeaders: new Headers({ 'content-type': 'text/html' }),
       App: RouterServer,
     })
-    const html = await response.text()
+    expect(isSsrResponse(result)).toBe(true)
+    if (!isSsrResponse(result)) {
+      throw new Error('Expected the streaming SSR response contract')
+    }
+    expect(result.serverSsrCleanup).toBe('stream')
+
+    const html = await result.response.text()
     const doctype = html.indexOf('<!DOCTYPE html>')
     const document = html.indexOf('<html')
     const head = html.indexOf('<head')
@@ -114,88 +125,5 @@ describe('@tanstack/octane-router SSR', () => {
     expect(html.slice(0, document)).not.toContain('<style data-octane=')
     expect(html.slice(style, headClose)).toContain('nonce="octane-csp"')
     expect(html.slice(style, headClose)).toContain('rgb(12, 34, 56)')
-  })
-
-  it('releases the normalized shell before later stream chunks', async () => {
-    const encoder = new TextEncoder()
-    const decoder = new TextDecoder()
-    let releaseTail!: () => void
-    const tailReady = new Promise<void>((resolve) => {
-      releaseTail = resolve
-    })
-    const chunks = [
-      '<sty',
-      'le data-octane="tsrx-shell" nonce="test-nonce">.shell{color:red}</sty',
-      'le><!--[--><html lang="en"><he',
-      'ad data-label=">"><title>Stream</title></head><body>shell',
-    ]
-    let index = 0
-    const source = new ReadableStream<Uint8Array>({
-      async pull(controller) {
-        if (index < chunks.length) {
-          controller.enqueue(encoder.encode(chunks[index++]))
-          return
-        }
-        await tailReady
-        controller.enqueue(
-          encoder.encode(
-            '<style data-octane="tsrx-late" nonce="test-nonce">.late{color:blue}</style><aside>late</aside></body></html>',
-          ),
-        )
-        controller.close()
-      },
-    })
-
-    const reader = relocateLeadingOctaneStylesToHead(source).getReader()
-    const shellResult = await reader.read()
-    const shell = decoder.decode(shellResult.value)
-
-    expect(shell).toContain(
-      '<head data-label=">"><style data-octane="tsrx-shell" nonce="test-nonce">',
-    )
-    expect(shell.indexOf('<html')).toBeLessThan(shell.indexOf('<head'))
-    expect(shell.indexOf('<head')).toBeLessThan(
-      shell.indexOf('<style data-octane='),
-    )
-
-    let tailReleased = false
-    const tailResult = reader.read().then((result) => {
-      tailReleased = true
-      return result
-    })
-    await Promise.resolve()
-    expect(tailReleased).toBe(false)
-
-    releaseTail()
-    expect(decoder.decode((await tailResult).value)).toBe(
-      '<style data-octane="tsrx-late" nonce="test-nonce">.late{color:blue}</style><aside>late</aside></body></html>',
-    )
-  })
-
-  it('propagates cancellation through document normalization', async () => {
-    const encoder = new TextEncoder()
-    const reason = new Error('client disconnected')
-    let markCancelled!: (reason: unknown) => void
-    const cancelled = new Promise<unknown>((resolve) => {
-      markCancelled = resolve
-    })
-    const source = new ReadableStream<Uint8Array>({
-      start(controller) {
-        controller.enqueue(
-          encoder.encode(
-            '<style data-octane="tsrx-shell">.shell{}</style><html><head></head><body>',
-          ),
-        )
-      },
-      cancel(cancelReason) {
-        markCancelled(cancelReason)
-      },
-    })
-    const reader = relocateLeadingOctaneStylesToHead(source).getReader()
-
-    await reader.read()
-    await reader.cancel(reason)
-
-    expect(await cancelled).toBe(reason)
   })
 })

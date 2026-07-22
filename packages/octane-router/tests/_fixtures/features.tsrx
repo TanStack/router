@@ -33,6 +33,18 @@ function AwaitPage() @{
 	</div>
 }
 
+// Router-owned hydration promises can be frozen. Await must never annotate
+// those inputs directly while adapting them to Octane's external hydration.
+const frozenExternalPromise = Object.freeze(Promise.resolve('externally hydrated'));
+
+function ExternalAwaitPage() @{
+	<div class="external-await-page">
+		<Await promise={frozenExternalPromise} fallback="loading">
+			{(value) => <span class="external-await-resolved">{value as string}</span>}
+		</Await>
+	</div>
+}
+
 export function makeLazyRouter() {
 	const rootRoute = createRootRoute({ component: RootLayout });
 	const lazyRoute = createRoute({
@@ -52,6 +64,19 @@ export function makeAwaitRouter() {
 		getParentRoute: () => rootRoute,
 		path: '/',
 		component: AwaitPage,
+	});
+	return createRouter({
+		routeTree: rootRoute.addChildren([awaitRoute]),
+		history: createMemoryHistory({ initialEntries: ['/'] }),
+	});
+}
+
+export function makeExternalAwaitRouter() {
+	const rootRoute = createRootRoute({ component: RootLayout });
+	const awaitRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: '/',
+		component: ExternalAwaitPage,
 	});
 	return createRouter({
 		routeTree: rootRoute.addChildren([awaitRoute]),

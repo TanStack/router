@@ -36,6 +36,7 @@ export default mergeConfig(
       './src/plugin/vite.ts',
       './src/server-only.ts',
       './src/client-only.ts',
+      './src/hydration.ts',
     ],
     externalDeps: [
       '@tanstack/octane-start-client',

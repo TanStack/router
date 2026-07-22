@@ -61,6 +61,6 @@
     "vite": "*"
   },
   "peerDependencies": {
-    "octane": ">=0.1.8"
+    "octane": ">=0.1.12"
   }
 }

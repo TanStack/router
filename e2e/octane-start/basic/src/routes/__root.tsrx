@@ -41,6 +41,7 @@ function RootLayout() @{
 			<Link to="/">Home</Link>
 			<Link to="/about">About</Link>
 			<Link to="/deferred">Deferred</Link>
+			<Link to="/posts">Posts</Link>
 		</nav>
 		<main>
 			<Outlet />

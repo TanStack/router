@@ -22,7 +22,7 @@ export default defineConfig({
   use: { baseURL },
   webServer: {
     command: isDev
-      ? `pnpm dev:e2e --port ${port} --strictPort`
+      ? `pnpm dev:e2e --host 127.0.0.1 --port ${port} --strictPort`
       : `PORT=${port} node ${distDir}/server/index.mjs`,
     url: baseURL,
     reuseExistingServer: !process.env.CI,

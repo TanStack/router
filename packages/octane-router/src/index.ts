@@ -122,10 +122,11 @@ export type {
   UseSearchBaseOptions,
   UseSearchOptions,
   UseSearchRoute,
-} from './hooks'
+} from './routeHookTypes'
 export { useAwaited } from './useAwaited'
 export type { AwaitOptions } from './useAwaited'
 export { useLinkProps, createLink, linkOptions } from './link'
+export type { LinkOptionsFn, LinkOptionsFnOptions } from './link'
 export type {
   ActiveLinkOptionProps,
   ActiveLinkOptions,
@@ -133,14 +134,12 @@ export type {
   LinkComponent,
   LinkComponentProps,
   LinkComponentRoute,
-  LinkOptionsFn,
-  LinkOptionsFnOptions,
   LinkProps,
   LinkPropsChildren,
   OctaneAnchorProps,
   OctaneRenderable,
   UseLinkPropsOptions,
-} from './link'
+} from './linkTypes'
 export { useBlocker, Block } from './useBlocker.tsrx'
 export type {
   BlockerResolver,
@@ -182,6 +181,10 @@ export { Head } from './Head'
 export type { HeadProps } from './Head'
 export { Body } from './Body'
 export type { BodyProps } from './Body'
+export type {
+  OctaneElementAttributes,
+  OctaneScriptAttributes,
+} from './frameworkTypes'
 
 export type {
   InferStructuralSharing,

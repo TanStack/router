@@ -40,8 +40,8 @@ import type {
   UseParamsRoute,
   UseRouteContextRoute,
   UseSearchRoute,
-} from './hooks'
-import type { LinkComponentRoute } from './link'
+} from './routeHookTypes'
+import type { LinkComponentRoute } from './linkTypes'
 
 function attachRouteHooks(self: any, strictLoaderHooks: boolean): void {
   self.useMatch = (...args: Array<any>) => {
@@ -151,19 +151,24 @@ export class RouteApi<
       const [, slot] = splitSlot(args)
       const router = useRouter()
       return internalHooks.useNavigate(
-        { from: router.routesById[this.id as string].fullPath },
+        {
+          from: (router.routesById as Record<string, any>)[this.id as string]
+            .fullPath,
+        },
         subSlot(slot, 'r:n'),
       )
     }) as typeof this.useNavigate
     this.Link = ((props: Record<string, unknown>) => {
       const router = useRouter()
-      const fullPath = router.routesById[this.id as string].fullPath
+      const fullPath = (router.routesById as Record<string, any>)[
+        this.id as string
+      ].fullPath
       return createElement(Link as any, { from: fullPath, ...props })
     }) as unknown as typeof this.Link
   }
 
   notFound = (opts?: NotFoundError) => {
-    return notFound({ routeId: this.id as string, ...opts })
+    return notFound({ routeId: this.id, ...opts } as NotFoundError)
   }
 }
 

@@ -2,7 +2,7 @@ import {
   createStartHandler,
   defaultStreamHandler,
 } from '@tanstack/octane-start/server'
-import type { Register } from '@tanstack/octane-router'
+import type { Register } from '@tanstack/octane-start'
 import type { RequestHandler } from '@tanstack/octane-start/server'
 
 const fetch = createStartHandler(defaultStreamHandler)

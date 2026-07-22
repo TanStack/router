@@ -5,6 +5,7 @@ import {
 	Outlet,
 	Link,
 	useParams,
+	notFound,
 } from '@tanstack/octane-router';
 import { createMemoryHistory } from '@tanstack/octane-router';
 
@@ -26,6 +27,18 @@ function IndexPage() @{
 
 function AboutPage() @{
 	<h1 class="about">{'About page'}</h1>
+}
+
+function LoadFailurePage() @{
+	<h1 class="load-failure">{'Load failure'}</h1>
+}
+
+function LoadNotFoundPage() @{
+	<h1 class="load-not-found">{'Load not found'}</h1>
+}
+
+function EnterFailurePage() @{
+	<h1 class="enter-failure">{'Enter failure'}</h1>
 }
 
 // Reads a path param via useParams (loose access).
@@ -62,6 +75,30 @@ export function makeRouter(initial: string) {
 		path: '/about',
 		component: AboutPage,
 	});
+	const loadFailureRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: '/load-failure',
+		loader: () => {
+			throw new Error('load failed');
+		},
+		component: LoadFailurePage,
+	});
+	const loadNotFoundRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: '/load-not-found',
+		loader: () => {
+			throw notFound();
+		},
+		component: LoadNotFoundPage,
+	});
+	const enterFailureRoute = createRoute({
+		getParentRoute: () => rootRoute,
+		path: '/enter-failure',
+		onEnter: () => {
+			throw new Error('enter failed');
+		},
+		component: EnterFailurePage,
+	});
 	const itemRoute = createRoute({
 		getParentRoute: () => rootRoute,
 		path: 'item/$id',
@@ -81,6 +118,9 @@ export function makeRouter(initial: string) {
 		routeTree: rootRoute.addChildren([
 			indexRoute,
 			aboutRoute,
+			loadFailureRoute,
+			loadNotFoundRoute,
+			enterFailureRoute,
 			itemRoute,
 			postsRoute.addChildren([postsIndexRoute]),
 		]),

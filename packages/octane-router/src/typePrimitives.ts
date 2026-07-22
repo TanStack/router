@@ -10,8 +10,8 @@ import type {
   InferTo,
   RegisteredRouter,
 } from '@tanstack/router-core'
-import type { LinkComponentProps } from './link'
-import type { UseParamsOptions, UseSearchOptions } from './hooks'
+import type { LinkComponentProps } from './linkTypes'
+import type { UseParamsOptions, UseSearchOptions } from './routeHookTypes'
 
 export type ValidateLinkOptions<
   TRouter extends AnyRouter = RegisteredRouter,

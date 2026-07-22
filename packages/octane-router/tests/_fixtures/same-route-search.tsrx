@@ -78,7 +78,10 @@ function StoriesPage() @{
 }
 
 // Builds a single-route router whose '/' route reads `?page` and suspends per page.
-export function makeSameRouteSearchRouter(initial: string) {
+export function makeSameRouteSearchRouter(
+	initial: string,
+	options: { isServer?: boolean } = {},
+) {
 	const rootRoute = createRootRoute({ component: RootLayout });
 	const indexRoute = createRoute({
 		getParentRoute: () => rootRoute,
@@ -92,5 +95,6 @@ export function makeSameRouteSearchRouter(initial: string) {
 	return createRouter({
 		routeTree: rootRoute.addChildren([indexRoute]),
 		history: createMemoryHistory({ initialEntries: [initial] }),
+		isServer: options.isServer,
 	});
 }

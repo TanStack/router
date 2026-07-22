@@ -11,10 +11,14 @@
 import { Route as rootRouteImport } from './routes/__root.tsrx'
 import { Route as ServerFunctionRouteImport } from './routes/server-function.tsrx'
 import { Route as RedirectRouteImport } from './routes/redirect.tsrx'
+import { Route as PostsRouteImport } from './routes/posts.tsrx'
+import { Route as HydrateRouteImport } from './routes/hydrate.tsrx'
 import { Route as DeferredErrorRouteImport } from './routes/deferred-error.tsrx'
 import { Route as DeferredRouteImport } from './routes/deferred.tsrx'
 import { Route as AboutRouteImport } from './routes/about.tsrx'
 import { Route as IndexRouteImport } from './routes/index.tsrx'
+import { Route as PostsIndexRouteImport } from './routes/posts.index.tsrx'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId.tsrx'
 
 const ServerFunctionRoute = ServerFunctionRouteImport.update({
   id: '/server-function',
@@ -24,6 +28,16 @@ const ServerFunctionRoute = ServerFunctionRouteImport.update({
 const RedirectRoute = RedirectRouteImport.update({
   id: '/redirect',
   path: '/redirect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HydrateRoute = HydrateRouteImport.update({
+  id: '/hydrate',
+  path: '/hydrate',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DeferredErrorRoute = DeferredErrorRouteImport.update({
@@ -46,22 +60,39 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PostsIndexRoute = PostsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PostsRoute,
+} as any)
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
+  id: '/$postId',
+  path: '/$postId',
+  getParentRoute: () => PostsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/deferred': typeof DeferredRoute
   '/deferred-error': typeof DeferredErrorRoute
+  '/hydrate': typeof HydrateRoute
+  '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/server-function': typeof ServerFunctionRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/': typeof PostsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
   '/deferred': typeof DeferredRoute
   '/deferred-error': typeof DeferredErrorRoute
+  '/hydrate': typeof HydrateRoute
   '/redirect': typeof RedirectRoute
   '/server-function': typeof ServerFunctionRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts': typeof PostsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +100,12 @@ export interface FileRoutesById {
   '/about': typeof AboutRoute
   '/deferred': typeof DeferredRoute
   '/deferred-error': typeof DeferredErrorRoute
+  '/hydrate': typeof HydrateRoute
+  '/posts': typeof PostsRouteWithChildren
   '/redirect': typeof RedirectRoute
   '/server-function': typeof ServerFunctionRoute
+  '/posts/$postId': typeof PostsPostIdRoute
+  '/posts/': typeof PostsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -79,24 +114,35 @@ export interface FileRouteTypes {
     | '/about'
     | '/deferred'
     | '/deferred-error'
+    | '/hydrate'
+    | '/posts'
     | '/redirect'
     | '/server-function'
+    | '/posts/$postId'
+    | '/posts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/about'
     | '/deferred'
     | '/deferred-error'
+    | '/hydrate'
     | '/redirect'
     | '/server-function'
+    | '/posts/$postId'
+    | '/posts'
   id:
     | '__root__'
     | '/'
     | '/about'
     | '/deferred'
     | '/deferred-error'
+    | '/hydrate'
+    | '/posts'
     | '/redirect'
     | '/server-function'
+    | '/posts/$postId'
+    | '/posts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -104,6 +150,8 @@ export interface RootRouteChildren {
   AboutRoute: typeof AboutRoute
   DeferredRoute: typeof DeferredRoute
   DeferredErrorRoute: typeof DeferredErrorRoute
+  HydrateRoute: typeof HydrateRoute
+  PostsRoute: typeof PostsRouteWithChildren
   RedirectRoute: typeof RedirectRoute
   ServerFunctionRoute: typeof ServerFunctionRoute
 }
@@ -122,6 +170,20 @@ declare module '@tanstack/octane-router' {
       path: '/redirect'
       fullPath: '/redirect'
       preLoaderRoute: typeof RedirectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hydrate': {
+      id: '/hydrate'
+      path: '/hydrate'
+      fullPath: '/hydrate'
+      preLoaderRoute: typeof HydrateRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/deferred-error': {
@@ -152,14 +214,42 @@ declare module '@tanstack/octane-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRoute
+    }
   }
 }
+
+interface PostsRouteChildren {
+  PostsPostIdRoute: typeof PostsPostIdRoute
+  PostsIndexRoute: typeof PostsIndexRoute
+}
+
+const PostsRouteChildren: PostsRouteChildren = {
+  PostsPostIdRoute: PostsPostIdRoute,
+  PostsIndexRoute: PostsIndexRoute,
+}
+
+const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AboutRoute: AboutRoute,
   DeferredRoute: DeferredRoute,
   DeferredErrorRoute: DeferredErrorRoute,
+  HydrateRoute: HydrateRoute,
+  PostsRoute: PostsRouteWithChildren,
   RedirectRoute: RedirectRoute,
   ServerFunctionRoute: ServerFunctionRoute,
 }

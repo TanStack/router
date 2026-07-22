@@ -5,48 +5,48 @@ import {
 import { octaneRouteGeneratorPlugin } from '@tanstack/octane-router/generator-plugin'
 import { octane } from 'octane/compiler/vite'
 import { octaneStartDefaultEntryPaths } from './shared'
+import { transformOctaneStartSource } from './source-transform'
 import { validateOctaneCompilerOptions } from './validate-options'
 import type {
   TanStackStartViteInputConfig,
   TanStackStartVitePluginCoreOptions,
 } from '@tanstack/start-plugin-core/vite'
+import type {
+  OctaneRendererBoundaryOptions,
+  OctaneRendererConfigOptions,
+  OctaneRendererRegistryEntry,
+  OctaneRendererRuleOptions,
+  OctaneVitePluginOptions,
+} from 'octane/compiler/vite'
 import type { PluginOption } from 'vite'
 
-export interface OctaneRendererDescriptor {
-  module: string
-  target?: 'dom' | 'universal'
-  server?: 'render' | 'client-only' | 'unsupported'
-  intrinsics?: string
-  text?: 'reject' | 'ignore' | 'host'
-  capabilities?: ReadonlyArray<string>
-}
+// These modules must remain source-served so Start can remove their
+// environment-specific branches. The router subpaths are predeclared to avoid
+// a cold-cache optimized-dependency reload during hydration.
+const SOURCE_DEPENDENCY_EXCLUDES = [
+  '@tanstack/octane-start',
+  '@tanstack/octane-start-client',
+  '@tanstack/octane-router',
+  '@tanstack/start-client-core',
+  '@tanstack/start-storage-context',
+  '@tanstack/start-fn-stubs',
+  '@tanstack/start-static-server-functions',
+  'octane',
+]
 
-export interface OctaneRendererBoundary {
-  ownerRenderer: string
-  childRenderer: string
-  prop: string
-  server?: 'omit-child'
-}
+const SOURCE_DEPENDENCY_INCLUDES = [
+  '@tanstack/octane-router > @tanstack/router-core/isServer',
+  '@tanstack/octane-router > @tanstack/router-core/scroll-restoration-script',
+]
 
-export interface OctaneRendererRule {
-  include: string | ReadonlyArray<string>
-  exclude?: string | ReadonlyArray<string>
-  renderer: string
-}
-
-export interface OctaneRendererConfig {
-  default?: string
-  registry?: Record<string, string | OctaneRendererDescriptor>
-  rules?: ReadonlyArray<OctaneRendererRule>
-  boundaries?: Record<string, Record<string, OctaneRendererBoundary>>
-}
-
-export interface OctaneCompilerOptions {
-  exclude?: ReadonlyArray<string>
-  hmr?: boolean
-  profile?: boolean
-  renderers?: OctaneRendererConfig
-}
+export type OctaneRendererDescriptor = Exclude<
+  OctaneRendererRegistryEntry,
+  string
+>
+export type OctaneRendererBoundary = OctaneRendererBoundaryOptions
+export type OctaneRendererRule = OctaneRendererRuleOptions
+export type OctaneRendererConfig = OctaneRendererConfigOptions
+export type OctaneCompilerOptions = Omit<OctaneVitePluginOptions, 'ssr'>
 
 export type TanStackOctaneStartViteInputConfig =
   TanStackStartViteInputConfig & {
@@ -71,6 +71,23 @@ export function tanstackStart(
   }
 
   return [
+    {
+      name: 'tanstack-octane-start:source-transform',
+      enforce: 'pre',
+      transform: {
+        filter: {
+          id: { include: [/\.tsrx($|\?)/] },
+          code: { include: ['Hydrate', 'ClientOnly'] },
+        },
+        handler(code, id, transformOptions) {
+          return transformOctaneStartSource(code, id, {
+            server:
+              transformOptions?.ssr === true ||
+              this.environment.name === START_ENVIRONMENT_NAMES.server,
+          })
+        },
+      },
+    },
     octane(octaneOptions),
     {
       name: 'tanstack-octane-start:config',
@@ -81,12 +98,8 @@ export function tanstackStart(
             (environmentName === START_ENVIRONMENT_NAMES.server &&
               options.optimizeDeps?.noDiscovery === false)
               ? {
-                  exclude: [
-                    '@tanstack/octane-start',
-                    '@tanstack/octane-router',
-                    '@tanstack/start-static-server-functions',
-                    'octane',
-                  ],
+                  exclude: [...SOURCE_DEPENDENCY_EXCLUDES],
+                  include: [...SOURCE_DEPENDENCY_INCLUDES],
                 }
               : undefined,
         }

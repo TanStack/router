@@ -4,7 +4,19 @@ import { parseStartConfig } from '../src/schema'
 import { getLookupConfigurationsForEnv } from '../src/start-compiler/config'
 import { composeGeneratorPlugins } from '../src/start-router-plugin/generator-plugins/compose-generator-plugins'
 import { startFrameworks } from '../src/types'
+import { importProtectionPlugin } from '../src/vite/import-protection-plugin/plugin'
 import type { GeneratorPlugin } from '@tanstack/router-generator'
+import type { Plugin, PluginOption } from 'vite'
+
+function flattenPlugins(options: PluginOption): Array<Plugin> {
+  if (Array.isArray(options)) {
+    return options.flatMap(flattenPlugins)
+  }
+  if (!options || typeof options !== 'object' || 'then' in options) {
+    return []
+  }
+  return [options]
+}
 
 describe('Octane framework configuration', () => {
   it('is a supported Start compiler framework', () => {
@@ -34,6 +46,37 @@ describe('Octane framework configuration', () => {
     expect(
       TRANSFORM_ID_REGEX.some((pattern) =>
         pattern.test('route.tsrx?tsr-split=component'),
+      ),
+    ).toBe(true)
+  })
+
+  it('caches post-transform TSRX for import-protection verification', () => {
+    const plugins = flattenPlugins(
+      importProtectionPlugin({
+        getConfig: () => {
+          throw new Error('not used while inspecting plugin filters')
+        },
+        framework: 'octane',
+        environments: [
+          { name: 'client', type: 'client' },
+          { name: 'ssr', type: 'server' },
+        ],
+        providerEnvName: 'ssr',
+      }),
+    )
+    const cachePlugin = plugins.find(
+      (plugin) =>
+        plugin.name === 'tanstack-start-core:import-protection-transform-cache',
+    )
+    const transform = cachePlugin?.transform as
+      | {
+          filter?: { id?: { include?: Array<RegExp> } }
+        }
+      | undefined
+
+    expect(
+      transform?.filter?.id?.include?.some((pattern) =>
+        pattern.test('/src/routes/index.tsrx?tsr-split=component'),
       ),
     ).toBe(true)
   })

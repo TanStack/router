@@ -1,5 +1,7 @@
-import { hydrateRoot } from 'octane'
+import { hydrateRoot, initializeHydrationEventCapture } from 'octane'
 import { StartClient, hydrateStart } from '@tanstack/octane-start/client'
+
+initializeHydrationEventCapture()
 
 hydrateStart().then((router) => {
   const container = document.getElementById('__app')

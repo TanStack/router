@@ -1,5 +1,14 @@
-declare module 'octane/compiler/vite' {
-  import type { Plugin } from 'vite'
+declare module 'octane/compiler' {
+  export function compile(
+    source: string,
+    filename: string,
+    options?: { mode?: 'client' | 'server' },
+  ): { code: string; map?: unknown }
+}
 
-  export function octane(options?: unknown): Plugin
+declare module 'octane/compiler/volar' {
+  export function compileToVolarMappings(
+    source: string,
+    filename?: string,
+  ): { sourceAst: unknown }
 }

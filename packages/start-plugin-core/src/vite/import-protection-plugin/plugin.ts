@@ -3,7 +3,7 @@ import { normalizePath } from 'vite'
 import { dirname, relative } from 'pathe'
 
 import { escapeRegExp, resolveViteId } from '../../utils'
-import { VITE_ENVIRONMENT_NAMES } from '../../constants'
+import { TRANSFORM_ID_REGEX, VITE_ENVIRONMENT_NAMES } from '../../constants'
 import {
   ImportGraph,
   buildTrace,
@@ -2149,7 +2149,7 @@ export function importProtectionPlugin(
       transform: {
         filter: {
           id: {
-            include: [/\.[cm]?[tj]sx?($|\?)/],
+            include: [...TRANSFORM_ID_REGEX],
           },
         },
         async handler(code, id) {

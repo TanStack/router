@@ -9,4 +9,4 @@
 '@tanstack/start-plugin-core': patch
 ---
 
-Add first-class Octane Router and TanStack Start support, including `.tsrx` file routes, code splitting, SSR, streaming hydration, and Vite integration.
+Add first-class Octane Router and TanStack Start support, including `.tsrx` file routes, typed router APIs, code splitting, native Octane streaming injection, deferred hydration, `ClientOnly` server isolation, and Vite integration.
