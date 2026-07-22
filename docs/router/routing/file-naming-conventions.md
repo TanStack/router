@@ -2,7 +2,7 @@
 title: File Naming Conventions
 ---
 
-File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees & Nesting](./route-trees.md) guide.
+File-based routing requires that you follow a few simple file naming conventions to ensure that your routes are generated correctly. The concepts these conventions enable are covered in detail in the [Route Trees](./route-trees.md) guide.
 
 | Feature                            | Description                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -40,4 +40,4 @@ Pathless routes wrap child routes with either logic or a component without requi
 | ʦ `_app.a.tsx` | /a         | `<Root><App><A>` |
 | ʦ `_app.b.tsx` | /b         | `<Root><App><B>` |
 
-To learn more about pathless routes, see the [Routing Concepts - Pathless Routes](./routing-concepts.md#pathless-layout-routes) guide.
+To learn more about pathless routes, see the [Routing Concepts - Pathless Layout Routes](./routing-concepts.md#pathless-layout-routes) guide.
