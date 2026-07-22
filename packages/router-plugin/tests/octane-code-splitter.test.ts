@@ -130,6 +130,32 @@ describe('Octane code-split component companions', () => {
     expect(component).toContain('export { TSROctaneComponent as component }')
   })
 
+  it('inserts Octane HMR imports for every virtual module when plugins are reused', () => {
+    const compilerPlugins = getVirtualRouteCompilerPlugins({
+      targetFramework: 'octane',
+      addHmr: true,
+      hmrStyle: 'vite',
+    })
+    const component = compileCodeSplitVirtualRoute({
+      code,
+      filename: 'posts.tsrx?tsr-split=component',
+      splitTargets: ['component'],
+      compilerPlugins,
+    }).code
+    const errorComponent = compileCodeSplitVirtualRoute({
+      code,
+      filename: 'posts.tsrx?tsr-split=errorComponent',
+      splitTargets: ['errorComponent'],
+      compilerPlugins,
+    }).code
+
+    for (const output of [component, errorComponent]) {
+      expect(output).toContain('hmr as TSROctaneHmr')
+      expect(output).toContain('HMR as TSROctaneHmrSymbol')
+      expect(output).toContain('TSROctaneHmr(')
+    }
+  })
+
   it('invalidates routes for route dependencies but not split component dependencies', () => {
     const source = `
 import { createFileRoute } from '@tanstack/octane-router'

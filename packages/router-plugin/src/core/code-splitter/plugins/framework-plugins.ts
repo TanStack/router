@@ -3,41 +3,32 @@ import { createReactRefreshRouteComponentsPlugin } from './react-refresh-route-c
 import { createStableHmrSplitRouteComponentsPlugin } from './react-stable-hmr-split-route-components'
 import { createOctaneSplitRouteComponentsPlugin } from './octane-split-route-components'
 import { createOctaneHmrSplitRouteComponentsPlugin } from './octane-hmr-split-route-components'
-import type {
-  ReferenceRouteCompilerPlugin,
-  VirtualRouteCompilerPlugin,
-} from '../plugins'
+import type { CodeSplitCompilerPlugin } from '../plugins'
 import type { Config, HmrStyle } from '../../config'
 
-export function getReferenceRouteCompilerPlugins(opts: {
+export function getFrameworkHmrCompilerPlugins(opts: {
   targetFramework: Config['target']
-  addHmr?: boolean
   hmrStyle?: HmrStyle
-}): Array<ReferenceRouteCompilerPlugin> | undefined {
+}): Array<CodeSplitCompilerPlugin> | undefined {
   switch (opts.targetFramework) {
     case 'react': {
-      if (opts.addHmr) {
-        const hmrStyle = opts.hmrStyle ?? 'vite'
-        return [
-          ...(hmrStyle === 'vite'
-            ? [createReactRefreshIgnoredRouteExportsPlugin()]
-            : []),
-          createReactRefreshRouteComponentsPlugin(),
-          createStableHmrSplitRouteComponentsPlugin({ hmrStyle }),
-        ]
-      }
-      return undefined
+      const hmrStyle = opts.hmrStyle ?? 'vite'
+      return [
+        ...(hmrStyle === 'vite'
+          ? [createReactRefreshIgnoredRouteExportsPlugin()]
+          : []),
+        createReactRefreshRouteComponentsPlugin(),
+        createStableHmrSplitRouteComponentsPlugin({ hmrStyle }),
+      ]
     }
     case 'octane': {
       return [
-        createOctaneSplitRouteComponentsPlugin(),
-        ...(opts.addHmr
-          ? [
-              createStableHmrSplitRouteComponentsPlugin({
-                hmrStyle: opts.hmrStyle ?? 'vite',
-              }),
-            ]
-          : []),
+        createStableHmrSplitRouteComponentsPlugin({
+          hmrStyle: opts.hmrStyle ?? 'vite',
+        }),
+        createOctaneHmrSplitRouteComponentsPlugin({
+          hmrStyle: opts.hmrStyle ?? 'vite',
+        }),
       ]
     }
     default:
@@ -45,18 +36,36 @@ export function getReferenceRouteCompilerPlugins(opts: {
   }
 }
 
+export function getFrameworkCompilerPlugins(opts: {
+  targetFramework: Config['target']
+  addHmr?: boolean
+  hmrStyle?: HmrStyle
+}): Array<CodeSplitCompilerPlugin> | undefined {
+  const plugins = [
+    ...(opts.targetFramework === 'octane'
+      ? [createOctaneSplitRouteComponentsPlugin()]
+      : []),
+    ...(opts.addHmr ? (getFrameworkHmrCompilerPlugins(opts) ?? []) : []),
+  ]
+  return plugins.length > 0 ? plugins : undefined
+}
+
+export function getReferenceRouteCompilerPlugins(opts: {
+  targetFramework: Config['target']
+  addHmr?: boolean
+  hmrStyle?: HmrStyle
+}): Array<CodeSplitCompilerPlugin> | undefined {
+  return getFrameworkCompilerPlugins(opts)
+}
+
 export function getVirtualRouteCompilerPlugins(opts: {
   targetFramework: Config['target']
   addHmr?: boolean
   hmrStyle?: HmrStyle
-}): Array<VirtualRouteCompilerPlugin> | undefined {
-  if (opts.targetFramework !== 'octane' || !opts.addHmr) {
-    return undefined
-  }
-
-  return [
-    createOctaneHmrSplitRouteComponentsPlugin({
-      hmrStyle: opts.hmrStyle ?? 'vite',
-    }),
-  ]
+}): Array<CodeSplitCompilerPlugin> | undefined {
+  const plugins = getFrameworkCompilerPlugins(opts)?.filter(
+    (plugin) =>
+      plugin.onVirtualRouteSplitNode || plugin.onExportSplitRouteProperty,
+  )
+  return plugins?.length ? plugins : undefined
 }

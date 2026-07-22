@@ -3,7 +3,12 @@ import { normalizePath } from 'vite'
 import { dirname, relative } from 'pathe'
 
 import { escapeRegExp, resolveViteId } from '../../utils'
-import { TRANSFORM_ID_REGEX, VITE_ENVIRONMENT_NAMES } from '../../constants'
+import {
+  SERVER_FN_LOOKUP,
+  TRANSFORM_ID_REGEX,
+  VITE_ENVIRONMENT_NAMES,
+} from '../../constants'
+import { hasIdQueryFlag } from '../module-id'
 import {
   ImportGraph,
   buildTrace,
@@ -46,7 +51,6 @@ import { rewriteDeniedImports } from '../../import-protection/rewrite'
 import { ExtensionlessAbsoluteIdResolver } from '../../import-protection/extensionlessAbsoluteIdResolver'
 import {
   IMPORT_PROTECTION_DEBUG,
-  SERVER_FN_LOOKUP_QUERY,
   VITE_BROWSER_VIRTUAL_PREFIX,
 } from '../../import-protection/constants'
 import {
@@ -1013,7 +1017,7 @@ export function importProtectionPlugin(
 
     if (keySet) {
       for (const k of keySet) {
-        if (k.includes(SERVER_FN_LOOKUP_QUERY)) continue
+        if (hasIdQueryFlag(k, SERVER_FN_LOOKUP)) continue
         const imports = env.postTransformImports.get(k)
         if (imports) {
           if (!merged) merged = new Set(imports)
@@ -1051,7 +1055,7 @@ export function importProtectionPlugin(
 
     if (keySet) {
       for (const k of keySet) {
-        if (k.includes(SERVER_FN_LOOKUP_QUERY)) continue
+        if (hasIdQueryFlag(k, SERVER_FN_LOOKUP)) continue
         const imports = env.postTransformImports.get(k)
         if (imports) {
           anyVariantCached = true
@@ -1650,7 +1654,7 @@ export function importProtectionPlugin(
           }
 
           const normalizedImporter = normalizeFilePath(importer)
-          const isDirectLookup = importer.includes(SERVER_FN_LOOKUP_QUERY)
+          const isDirectLookup = hasIdQueryFlag(importer, SERVER_FN_LOOKUP)
           const isBundledClientDev =
             config.command === 'serve' &&
             config.bundledDev &&
@@ -2228,7 +2232,7 @@ export function importProtectionPlugin(
           const cacheKey = normalizePath(id)
 
           const envState = getEnv(envName)
-          const isServerFnLookup = id.includes(SERVER_FN_LOOKUP_QUERY)
+          const isServerFnLookup = hasIdQueryFlag(id, SERVER_FN_LOOKUP)
 
           // Propagate SERVER_FN_LOOKUP status before import-analysis
           if (isServerFnLookup) {

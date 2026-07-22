@@ -1,6 +1,6 @@
 import { generateFromAst, logDiff, parseAst } from '@tanstack/router-utils'
 import { compileCodeSplitReferenceRoute } from './code-splitter/compilers'
-import { getReferenceRouteCompilerPlugins } from './code-splitter/plugins/framework-plugins'
+import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import { createRouteHmrStatement } from './hmr'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
 import { getConfig } from './config'
@@ -51,9 +51,8 @@ export function createRouterHmrPlugin(
         const hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
 
         if (userConfig.target === 'react') {
-          const compilerPlugins = getReferenceRouteCompilerPlugins({
+          const compilerPlugins = getFrameworkHmrCompilerPlugins({
             targetFramework: 'react',
-            addHmr: true,
             hmrStyle,
           })
           const compiled = compileCodeSplitReferenceRoute({

@@ -52,8 +52,13 @@ function capitalizeIdentifier(value: string) {
 export function createOctaneHmrSplitRouteComponentsPlugin(opts: {
   hmrStyle: HmrStyle
 }): VirtualRouteCompilerPlugin {
-  let hmrIdent: t.Identifier | undefined
-  let hmrSymbolIdent: t.Identifier | undefined
+  const identifiersByProgram = new WeakMap<
+    t.Program,
+    {
+      hmrIdent: t.Identifier
+      hmrSymbolIdent: t.Identifier
+    }
+  >()
 
   return {
     name: 'octane-hmr-split-route-components',
@@ -62,9 +67,13 @@ export function createOctaneHmrSplitRouteComponentsPlugin(opts: {
         return
       }
 
-      if (!hmrIdent || !hmrSymbolIdent) {
-        hmrIdent = getUniqueProgramIdentifier(ctx.programPath, 'TSROctaneHmr')
-        hmrSymbolIdent = getUniqueProgramIdentifier(
+      let identifiers = identifiersByProgram.get(ctx.programPath.node)
+      if (!identifiers) {
+        const hmrIdent = getUniqueProgramIdentifier(
+          ctx.programPath,
+          'TSROctaneHmr',
+        )
+        const hmrSymbolIdent = getUniqueProgramIdentifier(
           ctx.programPath,
           'TSROctaneHmrSymbol',
         )
@@ -78,7 +87,12 @@ export function createOctaneHmrSplitRouteComponentsPlugin(opts: {
             t.stringLiteral('octane'),
           ),
         )
+
+        identifiers = { hmrIdent, hmrSymbolIdent }
+        identifiersByProgram.set(ctx.programPath.node, identifiers)
       }
+
+      const { hmrIdent, hmrSymbolIdent } = identifiers
 
       const exportName = ctx.splitNodeMeta.exporterIdent
       const name = capitalizeIdentifier(exportName)

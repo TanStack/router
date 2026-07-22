@@ -9,45 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root.tsrx'
-import { Route as ServerFunctionRouteImport } from './routes/server-function.tsrx'
-import { Route as RedirectRouteImport } from './routes/redirect.tsrx'
-import { Route as PostsRouteImport } from './routes/posts.tsrx'
-import { Route as HydrateRouteImport } from './routes/hydrate.tsrx'
-import { Route as DeferredErrorRouteImport } from './routes/deferred-error.tsrx'
-import { Route as DeferredRouteImport } from './routes/deferred.tsrx'
-import { Route as AboutRouteImport } from './routes/about.tsrx'
 import { Route as IndexRouteImport } from './routes/index.tsrx'
+import { Route as AboutRouteImport } from './routes/about.tsrx'
+import { Route as DeferredRouteImport } from './routes/deferred.tsrx'
+import { Route as DeferredErrorRouteImport } from './routes/deferred-error.tsrx'
+import { Route as HydrateRouteImport } from './routes/hydrate.tsrx'
+import { Route as PostsRouteImport } from './routes/posts.tsrx'
+import { Route as RedirectRouteImport } from './routes/redirect.tsrx'
+import { Route as ServerFunctionRouteImport } from './routes/server-function.tsrx'
 import { Route as PostsIndexRouteImport } from './routes/posts.index.tsrx'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId.tsrx'
 
-const ServerFunctionRoute = ServerFunctionRouteImport.update({
-  id: '/server-function',
-  path: '/server-function',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RedirectRoute = RedirectRouteImport.update({
-  id: '/redirect',
-  path: '/redirect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsRoute = PostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HydrateRoute = HydrateRouteImport.update({
-  id: '/hydrate',
-  path: '/hydrate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeferredErrorRoute = DeferredErrorRouteImport.update({
-  id: '/deferred-error',
-  path: '/deferred-error',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeferredRoute = DeferredRouteImport.update({
-  id: '/deferred',
-  path: '/deferred',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -55,9 +30,34 @@ const AboutRoute = AboutRouteImport.update({
   path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const DeferredRoute = DeferredRouteImport.update({
+  id: '/deferred',
+  path: '/deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeferredErrorRoute = DeferredErrorRouteImport.update({
+  id: '/deferred-error',
+  path: '/deferred-error',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HydrateRoute = HydrateRouteImport.update({
+  id: '/hydrate',
+  path: '/hydrate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectRoute = RedirectRouteImport.update({
+  id: '/redirect',
+  path: '/redirect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ServerFunctionRoute = ServerFunctionRouteImport.update({
+  id: '/server-function',
+  path: '/server-function',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsIndexRoute = PostsIndexRouteImport.update({
@@ -158,46 +158,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/octane-router' {
   interface FileRoutesByPath {
-    '/server-function': {
-      id: '/server-function'
-      path: '/server-function'
-      fullPath: '/server-function'
-      preLoaderRoute: typeof ServerFunctionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/redirect': {
-      id: '/redirect'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hydrate': {
-      id: '/hydrate'
-      path: '/hydrate'
-      fullPath: '/hydrate'
-      preLoaderRoute: typeof HydrateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/deferred-error': {
-      id: '/deferred-error'
-      path: '/deferred-error'
-      fullPath: '/deferred-error'
-      preLoaderRoute: typeof DeferredErrorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/deferred': {
-      id: '/deferred'
-      path: '/deferred'
-      fullPath: '/deferred'
-      preLoaderRoute: typeof DeferredRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -207,11 +172,46 @@ declare module '@tanstack/octane-router' {
       preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deferred-error': {
+      id: '/deferred-error'
+      path: '/deferred-error'
+      fullPath: '/deferred-error'
+      preLoaderRoute: typeof DeferredErrorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hydrate': {
+      id: '/hydrate'
+      path: '/hydrate'
+      fullPath: '/hydrate'
+      preLoaderRoute: typeof HydrateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect': {
+      id: '/redirect'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/server-function': {
+      id: '/server-function'
+      path: '/server-function'
+      fullPath: '/server-function'
+      preLoaderRoute: typeof ServerFunctionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts/': {

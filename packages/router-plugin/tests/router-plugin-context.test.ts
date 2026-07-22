@@ -1,8 +1,9 @@
 import path from 'node:path'
 import * as t from '@babel/types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { parseAst } from '@tanstack/router-utils'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
+import { unpluginRouterComposedFactory } from '../src/core/router-composed-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
@@ -11,21 +12,32 @@ import type { UnpluginOptions, TransformResult } from 'unplugin'
 
 const referencePluginName =
   'tanstack-router:code-splitter:compile-reference-file'
+const virtualPluginName = 'tanstack-router:code-splitter:compile-virtual-file'
 
-function getReferencePlugin(
+function getCodeSplitterPlugin(
   plugins: ReturnType<typeof createRouterCodeSplitterPlugin>,
+  pluginName: string,
 ): UnpluginOptions {
   const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
-  const plugin = pluginArray.find((item) => item.name === referencePluginName)
+  const plugin = pluginArray.find((item) => item.name === pluginName)
   if (!plugin) {
-    throw new Error('Reference code-splitter plugin not found')
+    throw new Error(`Code-splitter plugin "${pluginName}" not found`)
   }
   return plugin
 }
 
+function getReferencePlugin(
+  plugins: ReturnType<typeof createRouterCodeSplitterPlugin>,
+) {
+  return getCodeSplitterPlugin(plugins, referencePluginName)
+}
+
 async function configurePlugin(
   plugin: UnpluginOptions,
-  pluginNames: Array<string> = [referencePluginName],
+  options: {
+    command?: 'serve' | 'build'
+    pluginNames?: Array<string>
+  } = {},
 ) {
   const hook = plugin.vite?.configResolved
   if (!hook) {
@@ -34,7 +46,10 @@ async function configurePlugin(
 
   const config = {
     root: process.cwd(),
-    plugins: pluginNames.map((name) => ({ name })),
+    command: options.command ?? 'serve',
+    plugins: (options.pluginNames ?? [referencePluginName]).map((name) => ({
+      name,
+    })),
   } as never
 
   if (typeof hook === 'function') {
@@ -92,10 +107,14 @@ describe('router plugin context', () => {
       )
 
       await expect(
-        configurePlugin(splitter, [frameworkPluginName, referencePluginName]),
+        configurePlugin(splitter, {
+          pluginNames: [frameworkPluginName, referencePluginName],
+        }),
       ).rejects.toThrow("is placed before '@tanstack/router-plugin'")
       await expect(
-        configurePlugin(splitter, [referencePluginName, frameworkPluginName]),
+        configurePlugin(splitter, {
+          pluginNames: [referencePluginName, frameworkPluginName],
+        }),
       ).resolves.toBeUndefined()
     },
   )
@@ -110,7 +129,9 @@ describe('router plugin context', () => {
       "'octane/compiler/vite' is required for the 'octane' target",
     )
     await expect(
-      configurePlugin(splitter, [referencePluginName, 'octane']),
+      configurePlugin(splitter, {
+        pluginNames: [referencePluginName, 'octane'],
+      }),
     ).rejects.toThrow(
       "'octane/compiler/vite' is placed after '@tanstack/router-plugin'",
     )
@@ -123,7 +144,9 @@ describe('router plugin context', () => {
     )
 
     await expect(
-      configurePlugin(splitter, ['octane', referencePluginName]),
+      configurePlugin(splitter, {
+        pluginNames: ['octane', referencePluginName],
+      }),
     ).resolves.toBeUndefined()
   })
 
@@ -132,17 +155,150 @@ describe('router plugin context', () => {
     const hmrPlugin = createRouterHmrPlugin({ target: 'octane' }, context)
     const hmr = Array.isArray(hmrPlugin) ? hmrPlugin[0]! : hmrPlugin
 
-    await expect(configurePlugin(hmr, ['tanstack-router:hmr'])).rejects.toThrow(
+    await expect(
+      configurePlugin(hmr, { pluginNames: ['tanstack-router:hmr'] }),
+    ).rejects.toThrow(
       "'octane/compiler/vite' is required for the 'octane' target",
     )
     await expect(
-      configurePlugin(hmr, ['tanstack-router:hmr', 'octane']),
+      configurePlugin(hmr, {
+        pluginNames: ['tanstack-router:hmr', 'octane'],
+      }),
     ).rejects.toThrow(
       "'octane/compiler/vite' is placed after '@tanstack/router-plugin'",
     )
     await expect(
-      configurePlugin(hmr, ['octane', 'tanstack-router:hmr']),
+      configurePlugin(hmr, {
+        pluginNames: ['octane', 'tanstack-router:hmr'],
+      }),
     ).resolves.toBeUndefined()
+  })
+
+  it.each([
+    { mode: 'production', production: true },
+    { mode: 'development with addHmr disabled', production: false },
+  ])(
+    'does not run React HMR compiler plugins in $mode',
+    async ({ production }) => {
+      const routeFile = normalizePath(
+        path.join(process.cwd(), 'src/routes/lowercase.tsx'),
+      )
+      const routeCode = `
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/lowercase')({ component })
+
+function component() {
+  return <div>Hello</div>
+}
+`
+
+      const context = createRouterPluginContext()
+      context.routesByFile.set(routeFile, { routeId: '/lowercase' })
+
+      if (production) {
+        vi.stubEnv('NODE_ENV', 'production')
+      }
+
+      try {
+        const plugins = createRouterCodeSplitterPlugin(
+          {
+            target: 'react',
+            autoCodeSplitting: true,
+            codeSplittingOptions: production ? undefined : { addHmr: false },
+          },
+          context,
+        )
+        const referencePlugin = getReferencePlugin(plugins)
+        const virtualPlugin = getCodeSplitterPlugin(plugins, virtualPluginName)
+
+        await configurePlugin(referencePlugin, {
+          command: production ? 'build' : 'serve',
+        })
+
+        const referenceCode = getCode(
+          await transformReferenceRoute(referencePlugin, routeCode, routeFile),
+        )
+        const virtualCode = getCode(
+          await transformReferenceRoute(
+            virtualPlugin,
+            routeCode,
+            `${routeFile}?tsr-split=component`,
+          ),
+        )
+
+        expect(referenceCode).not.toContain('TSRFastRefreshAnchor')
+        expect(virtualCode).toContain('function component()')
+        expect(virtualCode).toContain('export { component }')
+        expect(virtualCode).not.toContain('SplitComponent')
+      } finally {
+        if (production) {
+          vi.unstubAllEnvs()
+        }
+      }
+    },
+  )
+
+  it('keeps Octane compiler metadata in production split modules without HMR', async () => {
+    const routeFile = normalizePath(
+      path.join(process.cwd(), 'src/routes/octane.tsrx'),
+    )
+    const routeCode = `
+import { createFileRoute } from '@tanstack/octane-router'
+
+function Component() {}
+Component.$$singleRoot = true
+
+export const Route = createFileRoute('/octane')({ component: Component })
+`
+
+    const context = createRouterPluginContext()
+    context.routesByFile.set(routeFile, { routeId: '/octane' })
+    const plugins = createRouterCodeSplitterPlugin(
+      { target: 'octane', autoCodeSplitting: true },
+      context,
+    )
+    const referencePlugin = getReferencePlugin(plugins)
+    const virtualPlugin = getCodeSplitterPlugin(plugins, virtualPluginName)
+
+    await configurePlugin(referencePlugin, {
+      command: 'build',
+      pluginNames: ['octane', referencePluginName],
+    })
+
+    const referenceCode = getCode(
+      await transformReferenceRoute(referencePlugin, routeCode, routeFile),
+    )
+    const virtualCode = getCode(
+      await transformReferenceRoute(
+        virtualPlugin,
+        routeCode,
+        `${routeFile}?tsr-split=component`,
+      ),
+    )
+
+    expect(referenceCode).not.toContain('Component.$$singleRoot')
+    expect(virtualCode).toContain('Component.$$singleRoot = true')
+    expect(virtualCode).not.toContain('import.meta.hot')
+    expect(virtualCode).not.toContain('TSROctaneHmr')
+  })
+
+  it('does not install the standalone route HMR plugin in production', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+
+    try {
+      const plugins = unpluginRouterComposedFactory(
+        { target: 'react', autoCodeSplitting: false },
+        { framework: 'vite' },
+      )
+
+      const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
+      expect(
+        pluginArray.some((plugin) => plugin.name === 'tanstack-router:hmr'),
+      ).toBe(false)
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 
   it('keeps multiple code-splitter instances isolated by explicit context', async () => {

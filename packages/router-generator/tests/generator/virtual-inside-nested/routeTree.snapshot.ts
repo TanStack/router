@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as FooBarRouteImport } from './routes/foo/bar'
-import { Route as FooBarDetailsRouteImport } from './routes/foo/bar/details'
 import { Route as FooBarHomeRouteImport } from './routes/foo/bar/home'
+import { Route as FooBarDetailsRouteImport } from './routes/foo/bar/details'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -24,14 +24,14 @@ const FooBarRoute = FooBarRouteImport.update({
   path: '/foo/bar',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FooBarDetailsRoute = FooBarDetailsRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => FooBarRoute,
-} as any)
 const FooBarHomeRoute = FooBarHomeRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => FooBarRoute,
+} as any)
+const FooBarDetailsRoute = FooBarDetailsRouteImport.update({
+  id: '/$id',
+  path: '/$id',
   getParentRoute: () => FooBarRoute,
 } as any)
 
@@ -82,18 +82,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FooBarRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/foo/bar/$id': {
-      id: '/foo/bar/$id'
-      path: '/$id'
-      fullPath: '/foo/bar/$id'
-      preLoaderRoute: typeof FooBarDetailsRouteImport
-      parentRoute: typeof FooBarRoute
-    }
     '/foo/bar/': {
       id: '/foo/bar/'
       path: '/'
       fullPath: '/foo/bar/'
       preLoaderRoute: typeof FooBarHomeRouteImport
+      parentRoute: typeof FooBarRoute
+    }
+    '/foo/bar/$id': {
+      id: '/foo/bar/$id'
+      path: '/$id'
+      fullPath: '/foo/bar/$id'
+      preLoaderRoute: typeof FooBarDetailsRouteImport
       parentRoute: typeof FooBarRoute
     }
   }
