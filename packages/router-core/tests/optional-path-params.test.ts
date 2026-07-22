@@ -5,7 +5,7 @@ import {
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
-  findSingleMatch,
+  findRouteMatch,
   parseSegment,
   processRouteTree,
 } from '../src/new-process-route-tree'
@@ -349,23 +349,27 @@ describe('Optional Path Parameters', () => {
     })
   })
 
-  const { processedTree } = processRouteTree({
-    id: '__root__',
-    isRoot: true,
-    fullPath: '/',
-    path: '/',
-  })
   const matchPathname = (
     from: string,
     options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
   ) => {
-    const match = findSingleMatch(
-      options.to,
+    const { processedTree } = processRouteTree(
+      {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: options.to,
+            fullPath: options.to,
+            path: options.to.slice(1),
+          },
+        ],
+      },
       options.caseSensitive ?? false,
-      options.fuzzy ?? false,
-      from,
-      processedTree,
     )
+    const match = findRouteMatch(from, processedTree, options.fuzzy ?? false)
     const result = match ? match.rawParams : undefined
     if (options.to && !result) return
     return result ?? {}

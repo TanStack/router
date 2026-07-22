@@ -18,7 +18,6 @@ import {
   buildRouteBranch,
   findFlatMatch,
   findRouteMatch,
-  findSingleMatch,
   processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
@@ -739,6 +738,7 @@ export type GetMatchRoutesFn = (pathname: string) => {
   matchedRoutes: ReadonlyArray<AnyRoute>
   /** exhaustive params, still in their string form */
   routeParams: Record<string, string>
+  routeMatchData?: ReadonlyArray<Record<string, string> | undefined>
   foundRoute: AnyRoute | undefined
   parseError?: unknown
 }
@@ -1008,7 +1008,7 @@ export class RouterCore<
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
-  processedTree!: ProcessedTree<TRouteTree, any, any>
+  processedTree!: ProcessedTree<TRouteTree, any>
   resolvePathCache!: LRUCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
@@ -1442,7 +1442,13 @@ export class RouterCore<
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
     const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
-    const { foundRoute, routeParams } = matchedRoutesResult
+    const {
+      foundRoute,
+      routeMatchData,
+      routeParams: rawRouteParams,
+    } = matchedRoutesResult
+    const routeParams: Record<string, unknown> = Object.create(null)
+    const rawParams: Record<string, string> = Object.create(null)
     let { matchedRoutes } = matchedRoutesResult
     let isGlobalNotFound = false
 
@@ -1450,7 +1456,7 @@ export class RouterCore<
     if (
       // If we found a route, and it's not an index route and we have left over path
       foundRoute
-        ? foundRoute.path !== '/' && routeParams['**']
+        ? foundRoute.path !== '/' && rawRouteParams['**']
         : // Or if we didn't find a route and we have left over path
           trimPathRight(next.pathname)
     ) {
@@ -1537,13 +1543,14 @@ export class RouterCore<
 
       const loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) : ''
 
-      const { interpolatedPath, usedParams } = interpolatePath({
+      Object.assign(rawParams, routeMatchData?.[index])
+
+      const { interpolatedPath } = interpolatePath({
         path: route.fullPath,
-        params: routeParams,
+        params: rawParams,
         decoder: this.pathParamsDecoder,
         server: this.isServer,
       })
-
       // Waste not, want not. If we already have a match for this route,
       // reuse it. This is important for layout routes, which might stick
       // around between navigation actions that only change leaf routes.
@@ -1562,7 +1569,9 @@ export class RouterCore<
 
       const previousMatch = previousActiveMatchesByRouteId.get(route.id)
 
-      const strictParams = existingMatch?._strictParams ?? usedParams
+      const strictParams =
+        existingMatch?._strictParams ??
+        Object.assign(Object.create(null), routeParams, routeMatchData?.[index])
 
       let paramsError: unknown = undefined
 
@@ -2978,31 +2987,61 @@ export class RouterCore<
       ? this.latestLocation
       : this.stores.resolvedLocation.get() || this.stores.location.get()
 
-    const match = findSingleMatch(
-      next.pathname,
-      opts?.caseSensitive ?? false,
-      opts?.fuzzy ?? false,
-      baseLocation.pathname,
-      this.processedTree,
-    )
-
-    if (!match) {
+    const destinationPath = trimPathRight(next.pathname)
+    const fuzzy = opts?.fuzzy
+    let routeMatches = pending
+      ? this.stores.pendingMatches.get()
+      : this.stores.matches.get()
+    if (!routeMatches.length && !opts?.pending) {
+      routeMatches = this.stores.matches.get()
+    }
+    if (!routeMatches.length) {
+      routeMatches = this.matchRoutes(baseLocation)
+    }
+    const destinationMatch = fuzzy
+      ? routeMatches.find(
+          (match) => trimPathRight(match.fullPath) === destinationPath,
+        )
+      : last(routeMatches)
+    if (
+      !destinationMatch ||
+      (!fuzzy &&
+        trimPathRight(destinationMatch.fullPath) !== destinationPath) ||
+      destinationMatch.paramsError
+    ) {
       return false
     }
 
-    if (location.params) {
-      if (!deepEqual(match.rawParams, location.params, { partial: true })) {
+    const params = Object.assign(
+      Object.create(null),
+      destinationMatch._strictParams,
+    )
+
+    try {
+      const currentPathname = trimPathRight(baseLocation.pathname)
+      const matchedPathname = trimPathRight(
+        decodeURI(destinationMatch.pathname),
+      )
+      if (opts?.caseSensitive && !currentPathname.startsWith(matchedPathname)) {
         return false
       }
+
+      if (fuzzy) {
+        const remainder = currentPathname.slice(matchedPathname.length)
+        if (remainder) {
+          params['**'] = decodeURIComponent(remainder.replace(/^\/+/, ''))
+        }
+      }
+    } catch {
+      return false
     }
 
-    if (opts?.includeSearch ?? true) {
-      return deepEqual(baseLocation.search, next.search, { partial: true })
-        ? match.rawParams
-        : false
-    }
-
-    return match.rawParams
+    return (!location.params ||
+      deepEqual(params, location.params, { partial: true })) &&
+      (!(opts?.includeSearch ?? true) ||
+        deepEqual(baseLocation.search, next.search, { partial: true }))
+      ? params
+      : false
   }
 
   ssr?: {
@@ -3103,21 +3142,25 @@ export function getMatchedRoutes<TRouteLike extends RouteLike>({
 }: {
   pathname: string
   routesById: Record<string, TRouteLike>
-  processedTree: ProcessedTree<any, any, any>
+  processedTree: ProcessedTree<any, any>
 }) {
   const routeParams: Record<string, string> = Object.create(null)
   const trimmedPath = trimPathRight(pathname)
 
   let foundRoute: TRouteLike | undefined = undefined
+  let routeMatchData:
+    | ReadonlyArray<Record<string, string> | undefined>
+    | undefined
   const match = findRouteMatch<TRouteLike>(trimmedPath, processedTree, true)
   if (match) {
     foundRoute = match.route
     Object.assign(routeParams, match.rawParams) // Copy params, because they're cached
+    routeMatchData = match.routeParams
   }
 
   const matchedRoutes = match?.branch || [routesById[rootRouteId]!]
 
-  return { matchedRoutes, routeParams, foundRoute }
+  return { matchedRoutes, routeMatchData, routeParams, foundRoute }
 }
 
 /**

@@ -1299,7 +1299,7 @@ describe('findRouteMatch', () => {
               options: {
                 params: {
                   parse: (params: Record<string, string>) => {
-                    parsedParams = params
+                    parsedParams = { ...params }
                     return { length: params._splat!.length }
                   },
                 },
