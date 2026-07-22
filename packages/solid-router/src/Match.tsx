@@ -41,11 +41,15 @@ export const Match = (props: { routeId: string }) => {
 
   const route: AnyRoute = router.routesById[props.routeId]
 
-  // Lazy route option mutations become observable with the next match publication.
-  const routeOptions = () => {
-    currentMatch()
-    return route.options
-  }
+  // Lazy route option mutations become observable with the next client match
+  // publication. Server stores are non-reactive and options load before render.
+  const routeOptions =
+    (isServer ?? router.isServer)
+      ? () => route.options
+      : () => {
+          currentMatch()
+          return route.options
+        }
 
   const resolvePendingComponent = () =>
     routeOptions().pendingComponent ?? router.options.defaultPendingComponent
