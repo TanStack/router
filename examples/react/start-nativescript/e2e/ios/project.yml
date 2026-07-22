@@ -1,0 +1,26 @@
+name: NativeScriptRouterUITests
+
+options:
+  deploymentTarget:
+    iOS: '18.0'
+
+targets:
+  NativeScriptRouterUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - Tests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.tanstack.startnativescript.uitests
+        SWIFT_VERSION: '6.0'
+
+schemes:
+  NativeScriptRouterUITests:
+    build:
+      targets:
+        NativeScriptRouterUITests: test
+    test:
+      targets:
+        - NativeScriptRouterUITests

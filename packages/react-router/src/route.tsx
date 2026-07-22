@@ -14,6 +14,7 @@ import { useMatch } from './useMatch'
 import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
 import { Link } from './link'
+import { useRouteLinkComponent } from './routeLink'
 import type {
   AnyContext,
   AnyRoute,
@@ -47,6 +48,13 @@ import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
+
+const RouteLink = React.forwardRef<unknown, Record<string, unknown>>(
+  function RouteLink(props, ref) {
+    const LinkComponent = useRouteLinkComponent() ?? Link
+    return React.createElement(LinkComponent, { ...props, ref })
+  },
+)
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
@@ -159,7 +167,7 @@ export class RouteApi<
     React.forwardRef((props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
       const router = useRouter()
       const fullPath = router.routesById[this.id as string].fullPath
-      return <Link ref={ref} from={fullPath as never} {...props} />
+      return <RouteLink ref={ref} from={fullPath as never} {...props} />
     }) as unknown as LinkComponentRoute<
       RouteTypesById<TRouter, TId>['fullPath']
     >
@@ -304,7 +312,7 @@ export class Route<
 
   Link: LinkComponentRoute<TFullPath> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      return <Link ref={ref} from={this.fullPath as never} {...props} />
+      return <RouteLink ref={ref} from={this.fullPath as never} {...props} />
     },
   ) as unknown as LinkComponentRoute<TFullPath>
 }
@@ -575,7 +583,7 @@ export class RootRoute<
 
   Link: LinkComponentRoute<'/'> = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      return <Link ref={ref} from={this.fullPath} {...props} />
+      return <RouteLink ref={ref} from={this.fullPath} {...props} />
     },
   ) as unknown as LinkComponentRoute<'/'>
 }

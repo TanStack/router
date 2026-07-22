@@ -7,6 +7,7 @@ trustPolicy: 'no-downgrade'
 
 trustPolicyExclude:
   - 'chokidar@4.0.3' # known to be safe, installed by sass, prisma, netlify... no planned releases in v4, packages is on v5 now
+  - 'semver@5.7.2' # installed by @nativescript/vite through less and make-dir; 5.7.2 is the final semver v5 release
   - 'semver@6.3.1' # installed by babel, ecosystem has been on v7 for 7 years now, but babel is horribly out of date, 6.3.1 is the latest v6 and was released 3 years ago
   - 'undici@6.21.2' # installed by cheerio@1.0.0 -> html-link-extractor@1.0.5 -> markdown-link-extractor@4.0.3, is only 1 year old, v6, v7 and v8 are maintained in parallel
   - '@netlify/edge-bundler@14.7.0' # existing Netlify dev transitive flagged by pnpm 11.9 trust downgrade checks
@@ -48,6 +49,11 @@ catalog:
   '@tanstack/vue-query': ^5.99.0
 
 overrides:
+  'tanstack-start-example-nativescript>vite': 7.3.6
+  '@nativescript/vite@2.0.3>vite': 7.3.6
+  'nativescript@9.0.6>axios': 1.18.1
+  'nativescript@9.0.6>simple-git': 3.36.0
+  'wait-on@9.0.10>axios': 1.18.1
   '@types/babel__traverse': '^7.28.0'
   vite-plugin-dts: 4.2.3
   solid-js: 1.9.12
@@ -66,6 +72,7 @@ overrides:
   '@tanstack/history': 'workspace:*'
   '@tanstack/router-core': 'workspace:*'
   '@tanstack/react-router': 'workspace:*'
+  '@tanstack/react-nativescript-router': 'workspace:*'
   '@tanstack/router-cli': 'workspace:*'
   '@tanstack/router-devtools': 'workspace:*'
   '@tanstack/router-devtools-core': 'workspace:^'
@@ -106,6 +113,10 @@ overrides:
 allowBuilds:
   # root dependency
   '@swc/core': true # required for TypeScript compilation
+  '@nativescript/core': true # required by the NativeScript adapter and example
+  nativescript: true # official CLI used by the NativeScript example
+  lmdb: false # optional Vite cache accelerator pulled by @nativescript/vite
+  msgpackr-extract: false # optional native accelerator used by lmdb
   nx: true
   unrs-resolver: false # not directly required for build
   esbuild: true

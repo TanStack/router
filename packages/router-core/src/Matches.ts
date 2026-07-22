@@ -10,6 +10,7 @@ import type {
 } from './routeInfo'
 import type { AnyRouter, RegisteredRouter, SSROption } from './router'
 import type { Constrain, ControlledPromise } from './utils'
+import type { ParsedLocation } from './location'
 
 export type AnyMatchAndValue = { match: any; value: any }
 
@@ -262,6 +263,8 @@ export type MakeRouteMatchUnion<
  * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/MatchRouteOptionsType#matchrouteoptions-type)
  */
 export interface MatchRouteOptions {
+  /** Framework adapters can match against a renderer-owned location snapshot. */
+  _baseLocation?: ParsedLocation
   /**
    * If `true`, will match against pending location instead of the current location.
    *

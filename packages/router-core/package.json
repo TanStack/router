@@ -68,6 +68,16 @@
         "default": "./dist/cjs/ssr/client.cjs"
       }
     },
+    "./native-navigation": {
+      "import": {
+        "types": "./dist/esm/nativeNavigation.d.ts",
+        "default": "./dist/esm/nativeNavigation.js"
+      },
+      "require": {
+        "types": "./dist/cjs/nativeNavigation.d.cts",
+        "default": "./dist/cjs/nativeNavigation.cjs"
+      }
+    },
     "./isServer": {
       "development": {
         "import": {

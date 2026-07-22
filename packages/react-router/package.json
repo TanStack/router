@@ -81,6 +81,16 @@
         "default": "./dist/cjs/ssr/client.cjs"
       }
     },
+    "./native": {
+      "import": {
+        "types": "./dist/esm/native.d.ts",
+        "default": "./dist/esm/native.js"
+      },
+      "require": {
+        "types": "./dist/cjs/native.d.cts",
+        "default": "./dist/cjs/native.cjs"
+      }
+    },
     "./package.json": "./package.json"
   },
   "sideEffects": false,
@@ -95,6 +105,7 @@
     "@tanstack/history": "workspace:*",
     "@tanstack/react-store": "^0.9.3",
     "@tanstack/router-core": "workspace:*",
+    "@tanstack/store": "^0.9.3",
     "isbot": "^5.1.22"
   },
   "devDependencies": {

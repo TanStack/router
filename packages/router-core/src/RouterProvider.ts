@@ -1,7 +1,11 @@
 import type { NavigateOptions, ToOptions } from './link'
 import type { ParsedLocation } from './location'
 import type { RoutePaths } from './routeInfo'
-import type { RegisteredRouter, ViewTransitionOptions } from './router'
+import type {
+  BackOptions,
+  RegisteredRouter,
+  ViewTransitionOptions,
+} from './router'
 
 export interface MatchLocation {
   to?: string | number | null
@@ -30,6 +34,14 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => Promise<void>
+
+export type BackFn = <
+  TRouter extends RegisteredRouter,
+  TTo extends string | undefined = undefined,
+  TFrom extends RoutePaths<TRouter['routeTree']> | string = string,
+>(
+  opts?: BackOptions<TRouter, TFrom, TTo>,
 ) => Promise<void>
 
 export type BuildLocationFn = <

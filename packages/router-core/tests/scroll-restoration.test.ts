@@ -59,6 +59,15 @@ function emitNavigation(
 }
 
 describe('setupScrollRestoration', () => {
+  test('skips browser scroll behavior when viewport scrolling is unavailable', () => {
+    vi.stubGlobal('scrollTo', undefined)
+
+    const router = createRouter()
+
+    expect(router._scroll.restoration).toBeUndefined()
+    expect(router._scroll.reset).toBeUndefined()
+  })
+
   test('sets up scroll restoration when scrollRestoration is true', () => {
     const windowAddEventListener = vi.spyOn(window, 'addEventListener')
     const documentAddEventListener = vi.spyOn(document, 'addEventListener')

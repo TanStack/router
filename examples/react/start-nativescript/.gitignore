@@ -1,0 +1,4 @@
+# NativeScript
+.ns-vite-build/
+hooks/
+platforms/

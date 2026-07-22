@@ -750,6 +750,33 @@ export type LoadFn = (opts?: {
   action?: { type: HistoryAction }
 }) => Promise<void>
 
+type BackCommonOptions = {
+  ifMissing?: 'push' | 'replace' | 'noop'
+  ignoreBlocker?: boolean
+}
+
+export type BackOptions<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TFrom extends string = string,
+  TTo extends string | undefined = undefined,
+> =
+  | (BackCommonOptions & {
+      steps?: number
+      to?: never
+      entryId?: never
+    })
+  | (BackCommonOptions & {
+      to: 'root'
+      steps?: never
+      entryId?: never
+    })
+  | (BackCommonOptions &
+      ToOptions<TRouter, TFrom, TTo> & {
+        to: TTo extends 'root' ? never : TTo
+        entryId?: string
+        steps?: never
+      })
+
 export type CommitLocationFn = ({
   viewTransition,
   ignoreBlocker,
@@ -2974,9 +3001,11 @@ export class RouterCore<
     const pending =
       opts?.pending === undefined ? !this.stores.isLoading.get() : opts.pending
 
-    const baseLocation = pending
-      ? this.latestLocation
-      : this.stores.resolvedLocation.get() || this.stores.location.get()
+    const baseLocation =
+      opts?._baseLocation ??
+      (pending
+        ? this.latestLocation
+        : this.stores.resolvedLocation.get() || this.stores.location.get())
 
     const match = findSingleMatch(
       next.pathname,

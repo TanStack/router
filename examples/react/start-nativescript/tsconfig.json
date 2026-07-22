@@ -1,0 +1,21 @@
+{
+  "include": ["**/*.ts", "**/*.tsx"],
+  "compilerOptions": {
+    "strict": true,
+    "esModuleInterop": true,
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "target": "ES2022",
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "~/*": ["./src/*"],
+      "vite": ["./node_modules/vite"]
+    },
+    "noEmit": true
+  }
+}

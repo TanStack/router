@@ -301,7 +301,12 @@
       "frameworks": [
         {
           "label": "react",
-          "children": []
+          "children": [
+            {
+              "label": "NativeScript",
+              "to": "integrations/nativescript"
+            }
+          ]
         },
         {
           "label": "solid",

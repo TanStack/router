@@ -36,6 +36,7 @@ export default mergeConfig(
         './src/createServerRpc.ts',
         './src/createSsrRpc.ts',
         './src/request-response.ts',
+        './src/virtual-modules.ts',
         './src/fake-start-server-fn-resolver.ts',
         './src/empty-plugin-adapters.ts',
       ],

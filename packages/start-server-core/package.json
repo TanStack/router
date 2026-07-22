@@ -65,6 +65,12 @@
         "default": "./dist/esm/request-response.js"
       }
     },
+    "./virtual-modules": {
+      "import": {
+        "types": "./dist/esm/virtual-modules.d.ts",
+        "default": "./dist/esm/virtual-modules.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {

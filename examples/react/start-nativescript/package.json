@@ -1,0 +1,48 @@
+{
+  "name": "tanstack-start-example-nativescript",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "main": "src/native/index.tsx",
+  "scripts": {
+    "dev": "vite dev --host 0.0.0.0",
+    "build": "vite build && tsc --noEmit",
+    "preview": "vite preview",
+    "native:ios": "concurrently --kill-others-on-fail --names start,ios \"vite dev --host 0.0.0.0\" \"wait-on http-get://127.0.0.1:3000 && cross-env TSS_SERVER_FN_BASE=http://127.0.0.1:3000/_serverFn/ ns debug ios --no-hmr\"",
+    "native:android": "concurrently --kill-others-on-fail --names start,android \"vite dev --host 0.0.0.0\" \"wait-on http-get://127.0.0.1:3000 && cross-env TSS_SERVER_FN_BASE=http://10.0.2.2:3000/_serverFn/ ns debug android --no-hmr\"",
+    "native:build:ios": "ns build ios --release --env.production",
+    "native:build:android": "ns build android --release --env.production",
+    "native:test:ios": "node e2e/run-ios.mjs",
+    "native:test:android": "node e2e/run-android.mjs"
+  },
+  "dependencies": {
+    "@nativescript-community/react": "^19.0.0",
+    "@nativescript/core": "^9.0.20",
+    "@tanstack/react-nativescript-router": "^0.0.1",
+    "@tanstack/react-router": "^1.170.15",
+    "@tanstack/react-start": "^1.168.25",
+    "dominative": "^0.1.3",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-nativescript": "npm:@nativescript-community/react@^19.0.0",
+    "undom-ng": "^1.1.2"
+  },
+  "devDependencies": {
+    "@nativescript/android": "^9.0.5",
+    "@nativescript/ios": "^9.0.3",
+    "@nativescript/types": "^9.0.0",
+    "@nativescript/vite": "2.0.3",
+    "@tanstack/router-cli": "^1.167.17",
+    "@types/node": "^22.5.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@vitejs/plugin-react": "^5.2.0",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "nativescript": "^9.0.6",
+    "nitro": "^3.0.260311-beta",
+    "typescript": "^6.0.2",
+    "vite": "^7.3.6",
+    "wait-on": "^9.0.3"
+  }
+}

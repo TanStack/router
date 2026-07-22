@@ -73,6 +73,10 @@ export function useLinkProps<
     startTransition,
     resetScroll,
     viewTransition,
+    stackBehavior: _stackBehavior,
+    stackMatch: _stackMatch,
+    entryId: _entryId,
+    native: _native,
     // element props
     children,
     target,
