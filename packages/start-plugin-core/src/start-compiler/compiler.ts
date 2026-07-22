@@ -1537,7 +1537,7 @@ export class StartCompiler {
 
     // TODO improve cycle detection? should we throw here instead of returning 'None'?
     // prevent cycles
-    const vKey = `${cleanId(id)}:${ident}`
+    const vKey = `${id}:${ident}`
     if (visited.has(vKey)) {
       return 'None'
     }
@@ -1634,7 +1634,7 @@ export class StartCompiler {
     resolution: ExportResolution,
     visited = new Set<string>(),
   ): Promise<ExportResolution | undefined> {
-    const key = `${cleanId(resolution.moduleInfo.id)}:${resolution.localName}`
+    const key = `${resolution.moduleInfo.id}:${resolution.localName}`
     if (visited.has(key)) {
       return undefined
     }
@@ -1709,7 +1709,7 @@ export class StartCompiler {
         // Match by resolved binding identity, not by export name alone.
         if (
           target &&
-          cleanId(resolved.moduleInfo.id) === cleanId(target.moduleInfo.id) &&
+          resolved.moduleInfo.id === target.moduleInfo.id &&
           resolved.localName === target.localName
         ) {
           return kind
@@ -1764,7 +1764,7 @@ export class StartCompiler {
 
     // Import aliases can form cycles, e.g. A re-exports from B while B
     // re-exports from A. Track the exported binding before following it.
-    const vKey = `${cleanId(found.moduleInfo.id)}:${found.localName}`
+    const vKey = `${found.moduleInfo.id}:${found.localName}`
     if (visited.has(vKey)) {
       return 'None'
     }
