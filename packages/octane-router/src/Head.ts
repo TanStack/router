@@ -10,9 +10,8 @@ export interface HeadProps {
 
 export const Head: ComponentBody<HeadProps> = (props) => {
   const router = useRouter()
-  const server = isServer ?? router.isServer
   const { children, ...attrs } = props
-  if (server) {
+  if (isServer ?? router.isServer) {
     return createElement('head', attrs, children)
   }
   if (typeof document !== 'undefined') {

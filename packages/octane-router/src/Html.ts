@@ -10,9 +10,8 @@ export interface HtmlProps {
 
 export const Html: ComponentBody<HtmlProps> = (props) => {
   const router = useRouter()
-  const server = isServer ?? router.isServer
   const { children, ...attrs } = props
-  if (server) {
+  if (isServer ?? router.isServer) {
     return createElement('html', attrs, children)
   }
   return children

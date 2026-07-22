@@ -4,13 +4,12 @@ import { useRouter } from './context.ts';
 
 export function ScriptOnce(props) @{
 	const router = useRouter();
-	const server = isServer ?? router.isServer;
 	const [hydrating, setHydrating] = useState(true);
 	useEffect(() => {
 		setHydrating(false);
 	}, []);
 
-	@if (server || hydrating) {
+	@if ((isServer ?? router.isServer) || hydrating) {
 		<script
 			nonce={router.options.ssr?.nonce}
 			dangerouslySetInnerHTML={{
