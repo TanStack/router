@@ -239,6 +239,8 @@ export function createNativeScriptHistory(
       blockerSubscribers.clear()
     },
     notify,
+    getEntries: () =>
+      entries.map((href, entryIndex) => parseHref(href, states[entryIndex])),
     getStackSnapshot: () =>
       entries.map((href, entryIndex) => ({
         href,

@@ -1,7 +1,6 @@
 import * as React from 'react'
 import { DefaultGlobalNotFound } from './not-found'
 import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
-import type { NotFoundRouteComponent } from './route'
 
 /**
  * Renders a not found component for a route when no matching route is found.
@@ -15,7 +14,6 @@ export function renderRouteNotFound(
   router: AnyRouter,
   route: AnyRoute,
   data: any,
-  fallbackComponent?: NotFoundRouteComponent,
 ) {
   if (!route.options.notFoundComponent) {
     if (router.options.defaultNotFoundComponent) {
@@ -30,11 +28,7 @@ export function renderRouteNotFound(
       }
     }
 
-    return fallbackComponent ? (
-      React.createElement(fallbackComponent, data)
-    ) : (
-      <DefaultGlobalNotFound />
-    )
+    return <DefaultGlobalNotFound />
   }
 
   return <route.options.notFoundComponent {...data} />

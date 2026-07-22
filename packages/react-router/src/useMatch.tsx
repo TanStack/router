@@ -6,7 +6,6 @@ import { invariant, replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { dummyMatchContext, matchContext } from './matchContext'
 import { useRouter } from './useRouter'
-import { useRouterStateSnapshotStore } from './routerStateSnapshot'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -148,7 +147,6 @@ export function useMatch<
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
   const router = useRouter<TRouter>()
-  const snapshotStore = useRouterStateSnapshotStore(router)
   const nearestMatchId = React.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
@@ -157,20 +155,8 @@ export function useMatch<
     ? router.stores.getRouteMatchStore(opts.from)
     : router.stores.matchStores.get(nearestMatchId!)
 
-  const getSnapshotMatch = () => {
-    if (!snapshotStore) {
-      return undefined
-    }
-
-    return snapshotStore
-      .get()
-      .matches.find((match) =>
-        opts.from ? match.routeId === opts.from : match.id === nearestMatchId,
-      )
-  }
-
   if (isServer ?? router.isServer) {
-    const match = snapshotStore ? getSnapshotMatch() : matchStore?.get()
+    const match = matchStore?.get()
     if (!match) {
       if (opts.shouldThrow ?? true) {
         if (process.env.NODE_ENV !== 'production') {
@@ -193,19 +179,8 @@ export function useMatch<
     useStructuralSharing(opts, router)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const matchSelection = useStore(
-    snapshotStore ?? matchStore ?? dummyStore,
-    (value: any) => {
-      const match = snapshotStore
-        ? value.matches.find((candidate: any) =>
-            opts.from
-              ? candidate.routeId === opts.from
-              : candidate.id === nearestMatchId,
-          )
-        : value
-
-      return match ? selector(match) : dummyStore
-    },
+  const matchSelection = useStore(matchStore ?? dummyStore, (match) =>
+    match ? selector(match as any) : dummyStore,
   )
 
   if (matchSelection !== dummyStore) {

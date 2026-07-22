@@ -134,19 +134,19 @@ export { Router, createRouter } from './router'
 
 export {
   MatchRoute,
-  Matches,
   useChildMatches,
   useMatchRoute,
   useMatches,
   useParentMatches,
 } from './Matches'
 export type { MakeMatchRouteOptions, UseMatchRouteOptions } from './Matches'
+export { Matches } from './nativeMatches'
 export { Match, Outlet } from './Match'
 
 export { Await, useAwaited } from './awaited'
 export type { AwaitOptions } from './awaited'
 export { ClientOnly, useHydrated } from './ClientOnly'
-export { CatchBoundary } from './CatchBoundary'
+export { CatchBoundary } from './nativeCatchBoundary'
 export { CatchNotFound } from './not-found'
 export { lazyRouteComponent } from './lazyRouteComponent'
 
@@ -199,6 +199,7 @@ export type {
 
 export {
   RouterStateSnapshotProvider,
+  createRouterStateSnapshotRouter,
   createRouterStateSnapshotStore,
 } from './routerStateSnapshot'
 export type {

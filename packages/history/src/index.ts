@@ -39,6 +39,8 @@ export interface RouterHistory {
   _ignoreSubscribers?: boolean
   /** Whether navigation methods may settle asynchronously after host transitions. */
   supportsNavigationPromises?: boolean
+  /** Return addressable entries when the host exposes its navigation stack. */
+  getEntries?: () => ReadonlyArray<HistoryLocation>
 }
 
 export interface HistoryLocation extends ParsedPath {
@@ -114,6 +116,7 @@ export function createHistory(opts: {
   onBlocked?: () => void
   getBlockers?: () => Array<NavigationBlocker>
   setBlockers?: (blockers: Array<NavigationBlocker>) => void
+  getEntries?: () => ReadonlyArray<HistoryLocation>
   // Avoid notifying on forward/back/go, used for browser history as we already get notified by the popstate event
   notifyOnIndexChange?: boolean
 }): RouterHistory {
@@ -250,6 +253,7 @@ export function createHistory(opts: {
     flush: () => opts.flush?.(),
     destroy: () => opts.destroy?.(),
     notify,
+    ...(opts.getEntries ? { getEntries: opts.getEntries } : {}),
   }
 }
 
@@ -632,6 +636,8 @@ export function createMemoryHistory(
     createHref: (path) => path,
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
+    getEntries: () =>
+      entries.map((entry, entryIndex) => parseHref(entry, states[entryIndex])),
   })
 }
 

@@ -22,16 +22,6 @@ export function RouteLinkProvider({
   )
 }
 
-export const RouteLink = React.forwardRef<unknown, Record<string, unknown>>(
-  function RouteLink(props, ref) {
-    const LinkComponent = React.useContext(routeLinkContext)
-
-    if (!LinkComponent) {
-      throw new Error(
-        'Route.Link must be rendered inside a TanStack Router provider.',
-      )
-    }
-
-    return React.createElement(LinkComponent, { ...props, ref })
-  },
-)
+export function useRouteLinkComponent() {
+  return React.useContext(routeLinkContext)
+}

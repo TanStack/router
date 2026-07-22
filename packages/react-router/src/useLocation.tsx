@@ -4,7 +4,6 @@ import { useStore } from '@tanstack/react-store'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useStructuralSharing } from './useMatch'
-import { useRouterStateSnapshotStore } from './routerStateSnapshot'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -52,23 +51,18 @@ export function useLocation<
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
 ): UseLocationResult<TRouter, TSelected> {
   const router = useRouter<TRouter>()
-  const snapshotStore = useRouterStateSnapshotStore(router)
 
   if (isServer ?? router.isServer) {
-    const location = snapshotStore
-      ? snapshotStore.get().location
-      : router.stores.location.get()
+    const location = router.stores.location.get()
     return (
       opts?.select ? opts.select(location as any) : location
     ) as UseLocationResult<TRouter, TSelected>
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const select = useStructuralSharing(opts, router)
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(
-    (snapshotStore ?? router.stores.location) as any,
-    (value: any) => select(snapshotStore ? value.location : value),
+    router.stores.location,
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    useStructuralSharing(opts, router),
   ) as UseLocationResult<TRouter, TSelected>
 }

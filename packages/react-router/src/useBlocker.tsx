@@ -1,10 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
-import { Store } from '@tanstack/store'
 import { useRouter } from './useRouter'
-import { useRouterStateSnapshotActiveStore } from './routerStateSnapshot'
 import type {
   BlockerFnArgs,
   HistoryAction,
@@ -86,8 +83,6 @@ type LegacyBlockerOpts = {
   condition?: boolean | any
 }
 
-const activeRouterStateStore = new Store(true)
-
 function _resolveBlockerOpts(
   opts?: UseBlockerOpts | LegacyBlockerOpts | LegacyBlockerFn,
   condition?: boolean | any,
@@ -168,11 +163,6 @@ export function useBlocker(
 
   const router = useRouter()
   const { history } = router
-  const snapshotActiveStore = useRouterStateSnapshotActiveStore(router)
-  const isActive = useStore(
-    snapshotActiveStore ?? activeRouterStateStore,
-    (active) => active,
-  )
 
   const [resolver, setResolver] = React.useState<BlockerResolver>({
     status: 'idle',
@@ -256,7 +246,7 @@ export function useBlocker(
       return canNavigateAsync
     }
 
-    return disabled || !isActive
+    return disabled
       ? undefined
       : history.block({ blockerFn: blockerFnComposed, enableBeforeUnload })
   }, [
@@ -264,7 +254,6 @@ export function useBlocker(
     enableBeforeUnload,
     disabled,
     withResolver,
-    isActive,
     history,
     router,
   ])

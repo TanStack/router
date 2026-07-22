@@ -1,22 +1,14 @@
 'use client'
 
 import * as React from 'react'
+import { hasKeys } from '@tanstack/router-core'
 import { Matches } from './Matches'
-import { Link } from './link'
-import { RouteLinkProvider } from './routeLink'
-import { RouterContextProviderBase } from './routerContextProvider'
-import { RouterRendererProvider } from './routerRenderer'
-import { ErrorComponent } from './CatchBoundary'
-import { DefaultGlobalNotFound } from './not-found'
-import { ScrollRestoration } from './scroll-restoration'
-import type { AnyRouter, RegisteredRouter } from '@tanstack/router-core'
-import type { RouterProps } from './routerContextProvider'
-
-const defaultRouterRenderer = {
-  errorComponent: ErrorComponent,
-  notFoundComponent: DefaultGlobalNotFound,
-  scrollRestorationComponent: ScrollRestoration,
-}
+import { routerContext } from './routerContext'
+import type {
+  AnyRouter,
+  RegisteredRouter,
+  RouterOptions,
+} from '@tanstack/router-core'
 
 /**
  * Low-level provider that places the router into React context and optionally
@@ -32,15 +24,29 @@ export function RouterContextProvider<
 }: RouterProps<TRouter, TDehydrated> & {
   children: React.ReactNode
 }) {
-  return (
-    <RouterRendererProvider renderer={defaultRouterRenderer}>
-      <RouteLinkProvider component={Link}>
-        <RouterContextProviderBase router={router} {...rest}>
-          {children}
-        </RouterContextProviderBase>
-      </RouteLinkProvider>
-    </RouterRendererProvider>
+  if (hasKeys(rest)) {
+    // Allow the router to update options on the router instance
+    router.update({
+      ...router.options,
+      ...rest,
+      context: {
+        ...router.options.context,
+        ...rest.context,
+      },
+    })
+  }
+
+  const provider = (
+    <routerContext.Provider value={router as AnyRouter}>
+      {children}
+    </routerContext.Provider>
   )
+
+  if (router.options.Wrap) {
+    return <router.options.Wrap>{provider}</router.options.Wrap>
+  }
+
+  return provider
 }
 
 /**
@@ -63,4 +69,27 @@ export function RouterProvider<
   )
 }
 
-export type { RouterProps } from './routerContextProvider'
+export type RouterProps<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TDehydrated extends Record<string, any> = Record<string, any>,
+> = Omit<
+  RouterOptions<
+    TRouter['routeTree'],
+    NonNullable<TRouter['options']['trailingSlash']>,
+    NonNullable<TRouter['options']['defaultStructuralSharing']>,
+    TRouter['history'],
+    TDehydrated
+  >,
+  'context'
+> & {
+  router: TRouter
+  context?: Partial<
+    RouterOptions<
+      TRouter['routeTree'],
+      NonNullable<TRouter['options']['trailingSlash']>,
+      NonNullable<TRouter['options']['defaultStructuralSharing']>,
+      TRouter['history'],
+      TDehydrated
+    >['context']
+  >
+}

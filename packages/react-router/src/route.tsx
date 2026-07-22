@@ -13,7 +13,8 @@ import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
 import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
-import { RouteLink } from './routeLink'
+import { Link } from './link'
+import { useRouteLinkComponent } from './routeLink'
 import type {
   AnyContext,
   AnyRoute,
@@ -47,6 +48,13 @@ import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
 import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
+
+const RouteLink = React.forwardRef<unknown, Record<string, unknown>>(
+  function RouteLink(props, ref) {
+    const LinkComponent = useRouteLinkComponent() ?? Link
+    return React.createElement(LinkComponent, { ...props, ref })
+  },
+)
 
 declare module '@tanstack/router-core' {
   export interface UpdatableRouteOptionsExtensions {
