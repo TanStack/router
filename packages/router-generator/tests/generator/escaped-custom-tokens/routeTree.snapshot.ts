@@ -10,8 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as Char91_1nd3xChar93RouteImport } from './routes/[_1nd3x]'
-import { Route as BlogR0ut3RouteImport } from './routes/blog._r0ut3_'
 import { Route as R1nd3xRouteImport } from './routes/_1nd3x'
+import { Route as BlogR0ut3RouteImport } from './routes/blog._r0ut3_'
 import { Route as NestedChar91_1nd3xChar93RouteImport } from './routes/nested.[_1nd3x]'
 import { Route as PostsChar91_r0ut3_Char93RouteImport } from './routes/posts.[_r0ut3_]'
 
@@ -20,14 +20,14 @@ const Char91_1nd3xChar93Route = Char91_1nd3xChar93RouteImport.update({
   path: '/_1nd3x',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BlogR0ut3Route = BlogR0ut3RouteImport.update({
-  id: '/blog',
-  path: '/blog',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const R1nd3xRoute = R1nd3xRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BlogR0ut3Route = BlogR0ut3RouteImport.update({
+  id: '/blog',
+  path: '/blog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NestedChar91_1nd3xChar93Route =
@@ -96,18 +96,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91_1nd3xChar93RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/blog': {
-      id: '/blog'
-      path: '/blog'
-      fullPath: '/blog'
-      preLoaderRoute: typeof BlogR0ut3RouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof R1nd3xRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/blog': {
+      id: '/blog'
+      path: '/blog'
+      fullPath: '/blog'
+      preLoaderRoute: typeof BlogR0ut3RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nested/_1nd3x': {

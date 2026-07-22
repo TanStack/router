@@ -10,30 +10,20 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as TargetIdRouteImport } from './routes/target.$id'
-import { Route as MissingIdRouteImport } from './routes/missing.$id'
-import { Route as HeadersIdRouteImport } from './routes/headers.$id'
-import { Route as FromIdRouteImport } from './routes/from.$id'
 import { Route as BoomIdRouteImport } from './routes/boom.$id'
+import { Route as FromIdRouteImport } from './routes/from.$id'
+import { Route as HeadersIdRouteImport } from './routes/headers.$id'
+import { Route as MissingIdRouteImport } from './routes/missing.$id'
+import { Route as TargetIdRouteImport } from './routes/target.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TargetIdRoute = TargetIdRouteImport.update({
-  id: '/target/$id',
-  path: '/target/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MissingIdRoute = MissingIdRouteImport.update({
-  id: '/missing/$id',
-  path: '/missing/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HeadersIdRoute = HeadersIdRouteImport.update({
-  id: '/headers/$id',
-  path: '/headers/$id',
+const BoomIdRoute = BoomIdRouteImport.update({
+  id: '/boom/$id',
+  path: '/boom/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FromIdRoute = FromIdRouteImport.update({
@@ -41,9 +31,19 @@ const FromIdRoute = FromIdRouteImport.update({
   path: '/from/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BoomIdRoute = BoomIdRouteImport.update({
-  id: '/boom/$id',
-  path: '/boom/$id',
+const HeadersIdRoute = HeadersIdRouteImport.update({
+  id: '/headers/$id',
+  path: '/headers/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MissingIdRoute = MissingIdRouteImport.update({
+  id: '/missing/$id',
+  path: '/missing/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TargetIdRoute = TargetIdRouteImport.update({
+  id: '/target/$id',
+  path: '/target/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -117,25 +117,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/target/$id': {
-      id: '/target/$id'
-      path: '/target/$id'
-      fullPath: '/target/$id'
-      preLoaderRoute: typeof TargetIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/missing/$id': {
-      id: '/missing/$id'
-      path: '/missing/$id'
-      fullPath: '/missing/$id'
-      preLoaderRoute: typeof MissingIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/headers/$id': {
-      id: '/headers/$id'
-      path: '/headers/$id'
-      fullPath: '/headers/$id'
-      preLoaderRoute: typeof HeadersIdRouteImport
+    '/boom/$id': {
+      id: '/boom/$id'
+      path: '/boom/$id'
+      fullPath: '/boom/$id'
+      preLoaderRoute: typeof BoomIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/from/$id': {
@@ -145,11 +131,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FromIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/boom/$id': {
-      id: '/boom/$id'
-      path: '/boom/$id'
-      fullPath: '/boom/$id'
-      preLoaderRoute: typeof BoomIdRouteImport
+    '/headers/$id': {
+      id: '/headers/$id'
+      path: '/headers/$id'
+      fullPath: '/headers/$id'
+      preLoaderRoute: typeof HeadersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/missing/$id': {
+      id: '/missing/$id'
+      path: '/missing/$id'
+      fullPath: '/missing/$id'
+      preLoaderRoute: typeof MissingIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/target/$id': {
+      id: '/target/$id'
+      path: '/target/$id'
+      fullPath: '/target/$id'
+      preLoaderRoute: typeof TargetIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

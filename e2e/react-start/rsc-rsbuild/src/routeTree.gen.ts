@@ -9,17 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RscNodeModuleClientRouteImport } from './routes/rsc-node-module-client'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as RscNodeModuleClientRouteImport } from './routes/rsc-node-module-client'
 
-const RscNodeModuleClientRoute = RscNodeModuleClientRouteImport.update({
-  id: '/rsc-node-module-client',
-  path: '/rsc-node-module-client',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RscNodeModuleClientRoute = RscNodeModuleClientRouteImport.update({
+  id: '/rsc-node-module-client',
+  path: '/rsc-node-module-client',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -51,18 +51,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/rsc-node-module-client': {
-      id: '/rsc-node-module-client'
-      path: '/rsc-node-module-client'
-      fullPath: '/rsc-node-module-client'
-      preLoaderRoute: typeof RscNodeModuleClientRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rsc-node-module-client': {
+      id: '/rsc-node-module-client'
+      path: '/rsc-node-module-client'
+      fullPath: '/rsc-node-module-client'
+      preLoaderRoute: typeof RscNodeModuleClientRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

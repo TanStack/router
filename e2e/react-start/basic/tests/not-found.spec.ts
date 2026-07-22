@@ -12,6 +12,24 @@ test.use({
   ],
 })
 test.describe('not-found', () => {
+  test('direct nested not-found hydrates its already-rendered parent route', async ({
+    page,
+  }) => {
+    test.skip(isSpaMode, 'issue #5106 requires a server-rendered direct visit')
+
+    const response = await page.goto('/posts/i-do-not-exist')
+    await page.waitForLoadState('networkidle')
+
+    const serverHtml = await response?.text()
+    expect(serverHtml).toContain('posts-parent-hydration-counter')
+    expect(serverHtml).toContain('Post not found')
+    await expect(page.getByText('Post not found')).toBeInViewport()
+    const counter = page.getByTestId('posts-parent-hydration-counter')
+    await expect(counter).toHaveText('Parent hydration count: 0')
+    await counter.click()
+    await expect(counter).toHaveText('Parent hydration count: 1')
+  })
+
   test(`global not found`, async ({ page }) => {
     const response = await page.goto(`/this-page-does-not-exist/foo/bar`)
 

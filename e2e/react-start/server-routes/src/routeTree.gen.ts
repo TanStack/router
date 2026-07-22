@@ -9,19 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as MergeMiddlewareContextRouteImport } from './routes/merge-middleware-context'
 import { Route as MethodsRouteRouteImport } from './routes/methods/route'
-import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiGetAndAnyRouteImport } from './routes/api/get-and-any'
+import { Route as ApiHeadFallbackRouteImport } from './routes/api/head-fallback'
+import { Route as ApiHeadRedirectFallbackRouteImport } from './routes/api/head-redirect-fallback'
+import { Route as ApiMiddlewareContextRouteImport } from './routes/api/middleware-context'
+import { Route as ApiOnlyAnyRouteImport } from './routes/api/only-any'
 import { Route as MethodsIndexRouteImport } from './routes/methods/index'
 import { Route as MethodsOnlyAnyRouteImport } from './routes/methods/only-any'
-import { Route as ApiOnlyAnyRouteImport } from './routes/api/only-any'
-import { Route as ApiMiddlewareContextRouteImport } from './routes/api/middleware-context'
-import { Route as ApiHeadRedirectFallbackRouteImport } from './routes/api/head-redirect-fallback'
-import { Route as ApiHeadFallbackRouteImport } from './routes/api/head-fallback'
-import { Route as ApiGetAndAnyRouteImport } from './routes/api/get-and-any'
 import { Route as ApiParamsFooRouteRouteImport } from './routes/api/params/$foo/route'
 import { Route as ApiParamsFooBarRouteImport } from './routes/api/params/$foo/$bar'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const MergeMiddlewareContextRoute = MergeMiddlewareContextRouteImport.update({
   id: '/merge-middleware-context',
   path: '/merge-middleware-context',
@@ -32,9 +37,29 @@ const MethodsRouteRoute = MethodsRouteRouteImport.update({
   path: '/methods',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ApiGetAndAnyRoute = ApiGetAndAnyRouteImport.update({
+  id: '/api/get-and-any',
+  path: '/api/get-and-any',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHeadFallbackRoute = ApiHeadFallbackRouteImport.update({
+  id: '/api/head-fallback',
+  path: '/api/head-fallback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiHeadRedirectFallbackRoute = ApiHeadRedirectFallbackRouteImport.update({
+  id: '/api/head-redirect-fallback',
+  path: '/api/head-redirect-fallback',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMiddlewareContextRoute = ApiMiddlewareContextRouteImport.update({
+  id: '/api/middleware-context',
+  path: '/api/middleware-context',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiOnlyAnyRoute = ApiOnlyAnyRouteImport.update({
+  id: '/api/only-any',
+  path: '/api/only-any',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MethodsIndexRoute = MethodsIndexRouteImport.update({
@@ -46,31 +71,6 @@ const MethodsOnlyAnyRoute = MethodsOnlyAnyRouteImport.update({
   id: '/only-any',
   path: '/only-any',
   getParentRoute: () => MethodsRouteRoute,
-} as any)
-const ApiOnlyAnyRoute = ApiOnlyAnyRouteImport.update({
-  id: '/api/only-any',
-  path: '/api/only-any',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiMiddlewareContextRoute = ApiMiddlewareContextRouteImport.update({
-  id: '/api/middleware-context',
-  path: '/api/middleware-context',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiHeadRedirectFallbackRoute = ApiHeadRedirectFallbackRouteImport.update({
-  id: '/api/head-redirect-fallback',
-  path: '/api/head-redirect-fallback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiHeadFallbackRoute = ApiHeadFallbackRouteImport.update({
-  id: '/api/head-fallback',
-  path: '/api/head-fallback',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiGetAndAnyRoute = ApiGetAndAnyRouteImport.update({
-  id: '/api/get-and-any',
-  path: '/api/get-and-any',
-  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiParamsFooRouteRoute = ApiParamsFooRouteRouteImport.update({
   id: '/api/params/$foo',
@@ -183,6 +183,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/merge-middleware-context': {
       id: '/merge-middleware-context'
       path: '/merge-middleware-context'
@@ -197,11 +204,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MethodsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/api/get-and-any': {
+      id: '/api/get-and-any'
+      path: '/api/get-and-any'
+      fullPath: '/api/get-and-any'
+      preLoaderRoute: typeof ApiGetAndAnyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/head-fallback': {
+      id: '/api/head-fallback'
+      path: '/api/head-fallback'
+      fullPath: '/api/head-fallback'
+      preLoaderRoute: typeof ApiHeadFallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/head-redirect-fallback': {
+      id: '/api/head-redirect-fallback'
+      path: '/api/head-redirect-fallback'
+      fullPath: '/api/head-redirect-fallback'
+      preLoaderRoute: typeof ApiHeadRedirectFallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/middleware-context': {
+      id: '/api/middleware-context'
+      path: '/api/middleware-context'
+      fullPath: '/api/middleware-context'
+      preLoaderRoute: typeof ApiMiddlewareContextRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/only-any': {
+      id: '/api/only-any'
+      path: '/api/only-any'
+      fullPath: '/api/only-any'
+      preLoaderRoute: typeof ApiOnlyAnyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/methods/': {
@@ -217,41 +252,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/methods/only-any'
       preLoaderRoute: typeof MethodsOnlyAnyRouteImport
       parentRoute: typeof MethodsRouteRoute
-    }
-    '/api/only-any': {
-      id: '/api/only-any'
-      path: '/api/only-any'
-      fullPath: '/api/only-any'
-      preLoaderRoute: typeof ApiOnlyAnyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/middleware-context': {
-      id: '/api/middleware-context'
-      path: '/api/middleware-context'
-      fullPath: '/api/middleware-context'
-      preLoaderRoute: typeof ApiMiddlewareContextRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/head-redirect-fallback': {
-      id: '/api/head-redirect-fallback'
-      path: '/api/head-redirect-fallback'
-      fullPath: '/api/head-redirect-fallback'
-      preLoaderRoute: typeof ApiHeadRedirectFallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/head-fallback': {
-      id: '/api/head-fallback'
-      path: '/api/head-fallback'
-      fullPath: '/api/head-fallback'
-      preLoaderRoute: typeof ApiHeadFallbackRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/get-and-any': {
-      id: '/api/get-and-any'
-      path: '/api/get-and-any'
-      fullPath: '/api/get-and-any'
-      preLoaderRoute: typeof ApiGetAndAnyRouteImport
-      parentRoute: typeof rootRouteImport
     }
     '/api/params/$foo': {
       id: '/api/params/$foo'

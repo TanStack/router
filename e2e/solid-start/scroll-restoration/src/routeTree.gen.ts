@@ -10,18 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as testsWithSearchRouteImport } from './routes/(tests)/with-search'
-import { Route as testsWithLoaderRouteImport } from './routes/(tests)/with-loader'
 import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
+import { Route as testsWithLoaderRouteImport } from './routes/(tests)/with-loader'
+import { Route as testsWithSearchRouteImport } from './routes/(tests)/with-search'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const testsWithSearchRoute = testsWithSearchRouteImport.update({
-  id: '/(tests)/with-search',
-  path: '/with-search',
+const testsNormalPageRoute = testsNormalPageRouteImport.update({
+  id: '/(tests)/normal-page',
+  path: '/normal-page',
   getParentRoute: () => rootRouteImport,
 } as any)
 const testsWithLoaderRoute = testsWithLoaderRouteImport.update({
@@ -29,9 +29,9 @@ const testsWithLoaderRoute = testsWithLoaderRouteImport.update({
   path: '/with-loader',
   getParentRoute: () => rootRouteImport,
 } as any)
-const testsNormalPageRoute = testsNormalPageRouteImport.update({
-  id: '/(tests)/normal-page',
-  path: '/normal-page',
+const testsWithSearchRoute = testsWithSearchRouteImport.update({
+  id: '/(tests)/with-search',
+  path: '/with-search',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -83,11 +83,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/with-search': {
-      id: '/(tests)/with-search'
-      path: '/with-search'
-      fullPath: '/with-search'
-      preLoaderRoute: typeof testsWithSearchRouteImport
+    '/(tests)/normal-page': {
+      id: '/(tests)/normal-page'
+      path: '/normal-page'
+      fullPath: '/normal-page'
+      preLoaderRoute: typeof testsNormalPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(tests)/with-loader': {
@@ -97,11 +97,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof testsWithLoaderRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/normal-page': {
-      id: '/(tests)/normal-page'
-      path: '/normal-page'
-      fullPath: '/normal-page'
-      preLoaderRoute: typeof testsNormalPageRouteImport
+    '/(tests)/with-search': {
+      id: '/(tests)/with-search'
+      path: '/with-search'
+      fullPath: '/with-search'
+      preLoaderRoute: typeof testsWithSearchRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
