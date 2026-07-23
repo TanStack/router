@@ -22,7 +22,7 @@
     "@solidjs/web": "2.0.0-beta.25"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^3.0.0-next.15",
+    "vite-plugin-solid": "^3.0.0-next.16",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4"

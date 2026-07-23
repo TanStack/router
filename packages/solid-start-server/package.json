@@ -67,7 +67,7 @@
     "solid-js": "2.0.0-beta.25",
     "typescript": "^6.0.2",
     "vite": "*",
-    "vite-plugin-solid": "^3.0.0-next.15"
+    "vite-plugin-solid": "^3.0.0-next.16"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-0 <3.0.0",

@@ -20,7 +20,7 @@
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4",
-    "vite-plugin-solid": "^3.0.0-next.15"
+    "vite-plugin-solid": "^3.0.0-next.16"
   },
   "keywords": [],
   "author": "",

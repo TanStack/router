@@ -27,6 +27,6 @@
     "@types/express": "^5.0.6",
     "tsx": "^4.20.3",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.15"
+    "vite-plugin-solid": "^3.0.0-next.16"
   }
 }

@@ -34,7 +34,7 @@
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite-plugin-solid": "^3.0.0-next.15",
+    "vite-plugin-solid": "^3.0.0-next.16",
     "vite": "^8.0.14"
   }
 }
