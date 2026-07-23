@@ -32,9 +32,7 @@ export const Route = createRootRoute({
   }),
   validateSearch: z.object({
     root: ssrSchema,
-    issue4614: z.string().optional(),
   }),
-  loaderDeps: ({ search }) => ({ issue4614: search.issue4614 }),
   ssr: ({ search }) => {
     if (typeof window !== 'undefined') {
       const error = `ssr() for ${Route.id} should not be called on the client`
@@ -57,21 +55,23 @@ export const Route = createRootRoute({
       console.error(error)
       throw new Error(error)
     }
-    const root = typeof window === 'undefined' ? 'server' : 'client'
-    const issue4614Context = `${root}:${search.issue4614 ?? 'cached'}`
+    const isClient = typeof window !== 'undefined'
+    const isServer = !isClient
+    const root = isServer ? 'server' : 'client'
     if (typeof window !== 'undefined' && location.pathname === '/issue-4614') {
       const calls = ((globalThis as any).__issue4614RootBeforeLoads ??= [])
       calls.push({
         cause,
         preload,
-        root,
-        issue4614Context,
+        isClient,
+        isServer,
       })
     }
     return {
       root,
       search,
-      issue4614Context,
+      isClient,
+      isServer,
     }
   },
   loader: ({ context }) => {
@@ -120,6 +120,12 @@ export const Route = createRootRoute({
           context:{' '}
           <b data-testid="root-context">{Route.useRouteContext().root}</b>
         </div>
+        <div>
+          issue #4614 context:{' '}
+          <b data-testid="issue-4614-root-context">
+            {`${Route.useRouteContext().isClient}:${Route.useRouteContext().isServer}`}
+          </b>
+        </div>
         <hr />
         <Outlet />
       </div>
@@ -149,21 +155,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Home
           </Link>
-          <Link
-            to="/issue-4614"
-            search={{}}
-            preload="intent"
-            data-testid="issue-4614-cached-link"
-          >
-            Issue 4614 cached parent
-          </Link>
-          <Link
-            to="/issue-4614"
-            search={{ issue4614: 'reload' }}
-            preload="intent"
-            data-testid="issue-4614-reload-link"
-          >
-            Issue 4614 reloaded parent
+          <Link to="/issue-4614" preload="intent" data-testid="issue-4614-link">
+            Issue 4614
           </Link>
         </div>
         <hr />
