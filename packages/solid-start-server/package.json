@@ -63,11 +63,11 @@
     "@tanstack/start-server-core": "workspace:*"
   },
   "devDependencies": {
-    "@solidjs/web": "2.0.0-beta.21",
-    "solid-js": "2.0.0-beta.21",
+    "@solidjs/web": "2.0.0-beta.25",
+    "solid-js": "2.0.0-beta.25",
     "typescript": "^6.0.2",
     "vite": "*",
-    "vite-plugin-solid": "^3.0.0-next.14"
+    "vite-plugin-solid": "^3.0.0-next.15"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-0 <3.0.0",

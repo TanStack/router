@@ -13,11 +13,11 @@
     "@tanstack/router-plugin": "^1.168.19",
     "redaxios": "^0.5.1",
     "zod": "^4.4.3",
-    "solid-js": "2.0.0-beta.21",
-    "@solidjs/web": "2.0.0-beta.21"
+    "solid-js": "2.0.0-beta.25",
+    "@solidjs/web": "2.0.0-beta.25"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^3.0.0-next.14",
+    "vite-plugin-solid": "^3.0.0-next.15",
     "typescript": "^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4"
