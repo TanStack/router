@@ -51,9 +51,9 @@
     "cleanup-empty-packages": "node scripts/cleanup-empty-packages.mjs",
     "test:docs": "node scripts/verify-links.ts",
     "ts:symbol-references": "node scripts/ts-symbol-references.mjs",
-    "vite-ecosystem-ci:build": "nx run-many --targets=build --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start,@tanstack/react-start-client,@tanstack/react-start-server --skipRemoteCache",
+    "vite-ecosystem-ci:build": "nx run-many --targets=build --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start,@tanstack/react-start-client,@tanstack/react-start-server,@tanstack/octane-router,@tanstack/octane-start,@tanstack/octane-start-client,@tanstack/octane-start-server --skipRemoteCache",
     "vite-ecosystem-ci:before-test": "pnpm exec playwright install chromium",
-    "vite-ecosystem-ci:test": "nx run-many --targets=test:unit --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-client --skipRemoteCache && nx run-many --target=test:e2e --projects=tanstack-router-e2e-react-basic-file-based,tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-react-start-e2e-basic,tanstack-vue-start-e2e-basic,tanstack-solid-start-e2e-basic --skipRemoteCache"
+    "vite-ecosystem-ci:test": "nx run-many --targets=test:unit --projects=@tanstack/router-plugin,@tanstack/start-plugin-core,@tanstack/react-start-client,@tanstack/octane-router,@tanstack/octane-start,@tanstack/octane-start-client,@tanstack/octane-start-server --skipRemoteCache && nx run-many --target=test:e2e --projects=tanstack-router-e2e-react-basic-file-based,tanstack-router-e2e-react-basic-file-based-code-splitting,tanstack-react-start-e2e-basic,tanstack-vue-start-e2e-basic,tanstack-solid-start-e2e-basic,tanstack-octane-start-e2e-basic --skipRemoteCache && nx run tanstack-octane-start-e2e-basic:test:platform-builds --skipRemoteCache"
   },
   "nx": {
     "includedScripts": [

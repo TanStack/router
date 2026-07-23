@@ -11,7 +11,7 @@ function resolveModule(opts: ResolveModuleOptions): string | undefined {
   }
   return resolveModulePath(baseName, {
     from: opts.from,
-    extensions: ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx'],
+    extensions: ['.ts', '.js', '.mts', '.mjs', '.tsx', '.jsx', '.tsrx'],
     try: true,
   })
 }

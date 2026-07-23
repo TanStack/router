@@ -44,6 +44,41 @@ export {
   removeBindingsTransitivelyDependingOn,
 } from '@tanstack/router-utils'
 
+function hashRouteHmrSignature(code: string): string {
+  let hash = 0xcbf29ce484222325n
+  for (let index = 0; index < code.length; index++) {
+    hash ^= BigInt(code.charCodeAt(index))
+    hash = BigInt.asUintN(64, hash * 0x100000001b3n)
+  }
+  return hash.toString(16).padStart(16, '0')
+}
+
+function getRouteHmrSignatureSource(ast: t.File, filename: string): string {
+  const signatureAst = t.cloneNode(ast, true)
+  const localBindings = new Set<string>()
+
+  for (const node of signatureAst.program.body) {
+    collectLocalBindingsFromStatement(node, localBindings)
+  }
+
+  const declarationMap = buildDeclarationMap(signatureAst)
+  const dependencyGraph = buildDependencyGraph(declarationMap, localBindings)
+  const keepBindings = new Set(['Route'])
+  expandTransitively(keepBindings, dependencyGraph)
+
+  retainModuleLevelDeclarations(signatureAst, keepBindings)
+  unwrapExportedDeclarations(signatureAst)
+  signatureAst.program.body = signatureAst.program.body.filter(
+    (statement) => !t.isImportDeclaration(statement),
+  )
+
+  return generateFromAst(signatureAst, {
+    sourceMaps: false,
+    sourceFileName: filename,
+    filename,
+  }).code
+}
+
 export function removeBindingsDependingOnRoute(
   bindings: Set<string>,
   dependencyGraph: Map<string, Set<string>>,
@@ -450,14 +485,6 @@ export function compileCodeSplitReferenceRoute(
                   }
                 })
 
-                programPath.pushContainer(
-                  'body',
-                  createRouteHmrStatement(stableRouteOptionKeys, {
-                    hmrStyle: opts.hmrStyle ?? 'vite',
-                    targetFramework: opts.targetFramework,
-                    routeId: opts.hmrRouteId,
-                  }),
-                )
                 modified = true
                 hmrAdded = true
               }
@@ -856,6 +883,18 @@ export function compileCodeSplitReferenceRoute(
     }
   }
 
+  if (hmrAdded) {
+    const signatureSource = getRouteHmrSignatureSource(ast, opts.filename)
+    ast.program.body.push(
+      ...createRouteHmrStatement(stableRouteOptionKeys, {
+        hmrStyle: opts.hmrStyle ?? 'vite',
+        targetFramework: opts.targetFramework,
+        routeId: opts.hmrRouteId,
+        routeSignature: hashRouteHmrSignature(signatureSource),
+      }),
+    )
+  }
+
   const result = generateFromAst(ast, {
     sourceMaps: true,
     sourceFileName: opts.filename,
@@ -1153,6 +1192,17 @@ export function compileCodeSplitVirtualRoute(
             programPath.node.body = programPath.node.body.filter((node) => {
               return node !== splitNode
             })
+          }
+
+          for (const plugin of opts.compilerPlugins ?? []) {
+            const pluginExporterIdent = plugin.onExportSplitRouteProperty?.({
+              programPath,
+              splitNodeMeta: splitMeta,
+              localExporterIdent: splitMeta.localExporterIdent,
+            })
+            if (pluginExporterIdent) {
+              splitMeta.localExporterIdent = pluginExporterIdent.name
+            }
           }
 
           // Export the node

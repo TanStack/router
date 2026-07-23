@@ -1,9 +1,12 @@
 import type * as babel from '@babel/core'
 import type * as t from '@babel/types'
 import type { GeneratorResult } from '@tanstack/router-utils'
+import type { GeneratorPlugin } from '@tanstack/router-generator'
 import type { TanStackStartOutputConfig } from './schema'
 
-export type CompileStartFrameworkOptions = 'react' | 'solid' | 'vue'
+export const startFrameworks = ['react', 'solid', 'vue', 'octane'] as const
+
+export type CompileStartFrameworkOptions = (typeof startFrameworks)[number]
 
 export type ServerFnLookupAccess = { origin: 'client' } | { origin: 'server' }
 
@@ -115,6 +118,7 @@ export interface NormalizedClientChunk {
   css: Array<string>
   routeFilePaths: Array<string>
   hydrationIds: Array<string>
+  hydrationSourcePaths: Array<string>
 }
 
 export interface NormalizedClientBuild {
@@ -137,6 +141,8 @@ export interface TanStackStartCoreOptions {
   serializationAdapters?: Array<SerializationAdapterConfig> | undefined
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
   serverFnProviderModuleDirectives?: ReadonlyArray<string> | undefined
+  /** Framework-owned route source adapters and generator extensions. */
+  routerGeneratorPlugins?: ReadonlyArray<GeneratorPlugin> | undefined
 }
 
 export interface ResolvedStartConfig {

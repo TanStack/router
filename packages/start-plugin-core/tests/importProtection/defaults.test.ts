@@ -13,6 +13,7 @@ describe('getDefaultImportProtectionRules', () => {
         '@tanstack/react-start/server',
         '@tanstack/solid-start/server',
         '@tanstack/vue-start/server',
+        '@tanstack/octane-start/server',
       ]),
     )
 
@@ -59,10 +60,12 @@ describe('getMarkerSpecifiers', () => {
   test('includes all frameworks', () => {
     const markers = getMarkerSpecifiers()
 
-    expect(markers.serverOnly.length).toBe(3)
-    expect(markers.clientOnly.length).toBe(3)
+    expect(markers.serverOnly.length).toBe(4)
+    expect(markers.clientOnly.length).toBe(4)
 
     expect(markers.serverOnly).toContain('@tanstack/solid-start/server-only')
     expect(markers.clientOnly).toContain('@tanstack/vue-start/client-only')
+    expect(markers.serverOnly).toContain('@tanstack/octane-start/server-only')
+    expect(markers.clientOnly).toContain('@tanstack/octane-start/client-only')
   })
 })

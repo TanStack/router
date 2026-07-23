@@ -566,6 +566,7 @@ function getModuleFile(module: RspackModule): string {
 const IMPORT_PROTECTION_PARSEABLE_EXTENSIONS = new Set([
   '.ts',
   '.tsx',
+  '.tsrx',
   '.mts',
   '.cts',
   '.js',

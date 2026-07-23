@@ -9,7 +9,11 @@ export type { Config, BaseConfig } from './config'
 export { Generator } from './generator'
 export type { FileEventType, FileEvent, GeneratorEvent } from './generator'
 
-export type { GeneratorPlugin } from './plugin/types'
+export type {
+  FormatRouteOptions,
+  GeneratorPlugin,
+  TransformRouteSourceOptions,
+} from './plugin/types'
 
 export {
   capitalize,
@@ -45,4 +49,8 @@ export { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getR
 
 export { rootPathId } from './filesystem/physical/rootPathId'
 
-export type { TransformContext, TransformOptions } from './transform/types'
+export type {
+  TransformContext,
+  TransformOptions,
+  TransformResult,
+} from './transform/types'

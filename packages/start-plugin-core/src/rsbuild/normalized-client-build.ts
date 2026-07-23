@@ -1,5 +1,5 @@
 import { tsrSplit } from '@tanstack/router-plugin'
-import { tssHydrate } from '../hydration-constants'
+import { deferredHydrationQueryParams } from '../hydration-constants'
 import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
@@ -35,7 +35,9 @@ function getRouteFilePathsFromModules(
       lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
 
     const queryIndex = resourcePart.indexOf('?')
-    if (queryIndex < 0) continue
+    if (queryIndex < 0) {
+      continue
+    }
 
     const query = resourcePart.slice(queryIndex + 1)
     if (!query.includes(tsrSplit)) continue
@@ -58,11 +60,14 @@ function getRouteFilePathsFromModules(
   return routeFilePaths ?? []
 }
 
-function getHydrationIdsFromModules(
-  modules: Array<RspackModule>,
-): Array<string> {
+function getHydrationMetadataFromModules(modules: Array<RspackModule>): {
+  ids: Array<string>
+  sourcePaths: Array<string>
+} {
   let hydrationIds: Array<string> | undefined
-  let seen: Set<string> | undefined
+  let hydrationSourcePaths: Array<string> | undefined
+  let seenIds: Set<string> | undefined
+  let seenSourcePaths: Set<string> | undefined
 
   for (const mod of modules) {
     const identifier = mod.identifier()
@@ -71,24 +76,56 @@ function getHydrationIdsFromModules(
       lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
 
     const queryIndex = resourcePart.indexOf('?')
-    if (queryIndex < 0) continue
-
-    const query = resourcePart.slice(queryIndex + 1)
-    if (!query.includes(tssHydrate)) continue
-
-    const hydrationId = new URLSearchParams(query).get(tssHydrate)
-    if (!hydrationId || seen?.has(hydrationId)) continue
-
-    if (!hydrationIds || !seen) {
-      hydrationIds = []
-      seen = new Set()
+    if (queryIndex < 0) {
+      continue
     }
 
-    hydrationIds.push(hydrationId)
-    seen.add(hydrationId)
+    const query = resourcePart.slice(queryIndex + 1)
+    const params = new URLSearchParams(query)
+    let isHydrationModule = false
+
+    for (const queryParam of deferredHydrationQueryParams) {
+      const hydrationId = params.get(queryParam)
+      if (!hydrationId) {
+        continue
+      }
+
+      isHydrationModule = true
+
+      if (!seenIds?.has(hydrationId)) {
+        if (!hydrationIds || !seenIds) {
+          hydrationIds = []
+          seenIds = new Set()
+        }
+
+        hydrationIds.push(hydrationId)
+        seenIds.add(hydrationId)
+      }
+    }
+
+    if (!isHydrationModule) {
+      continue
+    }
+
+    const sourcePath =
+      mod.nameForCondition() ?? resourcePart.slice(0, queryIndex)
+    if (!sourcePath || seenSourcePaths?.has(sourcePath)) {
+      continue
+    }
+
+    if (!hydrationSourcePaths || !seenSourcePaths) {
+      hydrationSourcePaths = []
+      seenSourcePaths = new Set()
+    }
+
+    hydrationSourcePaths.push(sourcePath)
+    seenSourcePaths.add(sourcePath)
   }
 
-  return hydrationIds ?? []
+  return {
+    ids: hydrationIds ?? [],
+    sourcePaths: hydrationSourcePaths ?? [],
+  }
 }
 
 /**
@@ -220,7 +257,7 @@ export function normalizeRspackClientBuild(
   for (const chunk of compilation.chunks) {
     const modules = compilation.chunkGraph.getChunkModules(chunk)
     const routeFilePaths = getRouteFilePathsFromModules(modules)
-    const hydrationIds = getHydrationIdsFromModules(modules)
+    const hydrationMetadata = getHydrationMetadataFromModules(modules)
     const cssFiles: Array<string> = []
     const seenCssFiles = new Set<string>()
 
@@ -277,7 +314,8 @@ export function normalizeRspackClientBuild(
         dynamicImports,
         css: [],
         routeFilePaths,
-        hydrationIds,
+        hydrationIds: hydrationMetadata.ids,
+        hydrationSourcePaths: hydrationMetadata.sourcePaths,
       }
 
       chunksByFileName.set(file, normalizedChunk)

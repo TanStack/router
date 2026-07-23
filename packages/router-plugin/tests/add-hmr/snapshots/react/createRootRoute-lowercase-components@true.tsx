@@ -45,10 +45,15 @@ export function TSRFastRefreshAnchor() {
 if (import.meta.hot) {
   const hot = import.meta.hot;
   const hotData = hot.data ??= {};
-  const handleRouteUpdate = function handleRouteUpdate(routeId, newRoute) {
+  const handleRouteUpdate = function handleRouteUpdate(routeId, newRoute, shouldApplyRouteUpdate = true) {
     const router = window.__TSR_ROUTER__;
     const oldRoute = router.routesById[routeId];
     if (!oldRoute) {
+      return;
+    }
+    ;
+    if (!shouldApplyRouteUpdate) {
+      syncHotRouteExport(oldRoute);
       return;
     }
     ;
@@ -175,16 +180,22 @@ if (import.meta.hot) {
       };
     }
   };
+  const routeSignatureKey = Symbol.for('tanstack.router.hmr.route-signature');
+  const routeSignature = "6119b78748944f2f";
+  const previousRouteSignature = hotData['tsr-route-signature'];
+  const shouldInvalidateCurrentRoute = true;
+  Route[routeSignatureKey] = routeSignature;
+  hotData['tsr-route-signature'] = routeSignature;
   const initialRouteId = Route.id ?? hotData['tsr-route-id'];
   if (initialRouteId) {
     hotData['tsr-route-id'] = initialRouteId;
   }
   const existingRoute = typeof window !== 'undefined' && initialRouteId ? window.__TSR_ROUTER__?.routesById?.[initialRouteId] : undefined;
   if (initialRouteId && existingRoute && existingRoute !== Route) {
-    handleRouteUpdate(initialRouteId, Route);
+    handleRouteUpdate(initialRouteId, Route, shouldInvalidateCurrentRoute);
     hotData['tsr-route-update-handled'] = Route;
   }
-  hot.accept(newModule => {
+  import.meta.hot.accept(newModule => {
     if (Route && newModule && newModule.Route) {
       const routeId = hotData['tsr-route-id'] ?? Route.id;
       if (routeId) {
@@ -194,7 +205,9 @@ if (import.meta.hot) {
         delete hotData['tsr-route-update-handled'];
         return;
       }
-      handleRouteUpdate(routeId, newModule.Route);
+      const nextRouteSignature = newModule.Route[routeSignatureKey];
+      const shouldInvalidateNextRoute = true;
+      handleRouteUpdate(routeId, newModule.Route, shouldInvalidateNextRoute);
     }
   });
 }

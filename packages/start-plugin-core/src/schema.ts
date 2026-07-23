@@ -85,6 +85,7 @@ export function parseStartConfig(
       ...getConfig(
         {
           ...options.router,
+          target: corePluginOpts.framework,
           routesDirectory,
           generatedRouteTree,
         },

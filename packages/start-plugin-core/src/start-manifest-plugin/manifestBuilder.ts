@@ -544,6 +544,14 @@ export function buildRouteManifestRoutes(options: {
   >
 }) {
   const routes: Record<string, RouteTreeRoute> = {}
+  const knownRouteFilePaths = new Set<string>()
+
+  for (const route of Object.values(options.routeTreeRoutes)) {
+    if (route.filePath) {
+      knownRouteFilePaths.add(route.filePath)
+    }
+  }
+
   const getChunkCssAssets = createChunkCssAssetCollector({
     chunksByFileName: options.chunksByFileName,
     getStylesheetLink: options.assetResolvers.getStylesheetLink,
@@ -579,6 +587,8 @@ export function buildRouteManifestRoutes(options: {
       if (routeId !== rootRouteId) {
         mergeReachableHydrationChunkData({
           route: targetRoute,
+          routeFilePath: route.filePath,
+          knownRouteFilePaths,
           chunk,
           chunksByFileName: options.chunksByFileName,
           getChunkCssAssets,
@@ -589,14 +599,17 @@ export function buildRouteManifestRoutes(options: {
 
   const rootRoute = (routes[rootRouteId] = routes[rootRouteId] || {})
   const rootRouteTreeRoute = options.routeTreeRoutes[rootRouteId]
-  const rootRouteChunks = rootRouteTreeRoute?.filePath
-    ? options.routeChunksByFilePath.get(rootRouteTreeRoute.filePath)
+  const rootRouteFilePath = rootRouteTreeRoute?.filePath
+  const rootRouteChunks = rootRouteFilePath
+    ? options.routeChunksByFilePath.get(rootRouteFilePath)
     : undefined
 
-  if (rootRouteChunks) {
+  if (rootRouteFilePath && rootRouteChunks) {
     for (const chunk of rootRouteChunks) {
       mergeReachableHydrationChunkData({
         route: rootRoute,
+        routeFilePath: rootRouteFilePath,
+        knownRouteFilePaths,
         chunk,
         chunksByFileName: options.chunksByFileName,
         getChunkCssAssets,
@@ -635,6 +648,8 @@ export function buildRouteManifestRoutes(options: {
 
 function mergeReachableHydrationChunkData(options: {
   route: RouteTreeRoute
+  routeFilePath: string
+  knownRouteFilePaths: ReadonlySet<string>
   chunk: NormalizedClientChunk
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
   getChunkCssAssets: (chunk: NormalizedClientChunk) => Array<ManifestCssLink>
@@ -647,6 +662,16 @@ function mergeReachableHydrationChunkData(options: {
       return
     }
     mergedHydrationChunks.add(chunk.fileName)
+
+    if (
+      !shouldMergeHydrationChunkForRoute(
+        chunk,
+        options.routeFilePath,
+        options.knownRouteFilePaths,
+      )
+    ) {
+      return
+    }
 
     appendRouteStylesheets(options.route, options.getChunkCssAssets(chunk))
 
@@ -680,6 +705,30 @@ function mergeReachableHydrationChunkData(options: {
   }
 
   visitStaticChunk(options.chunk)
+}
+
+function shouldMergeHydrationChunkForRoute(
+  chunk: NormalizedClientChunk,
+  routeFilePath: string,
+  knownRouteFilePaths: ReadonlySet<string>,
+) {
+  let hasRouteOwner = false
+
+  for (const hydrationSourcePath of chunk.hydrationSourcePaths) {
+    if (!knownRouteFilePaths.has(hydrationSourcePath)) {
+      // A bundler may coalesce route-owned and shared Hydrate modules into one
+      // chunk. At chunk granularity we cannot separate their CSS, so preserve
+      // the shared module's styles for every route that reaches the chunk.
+      return true
+    }
+
+    hasRouteOwner = true
+    if (hydrationSourcePath === routeFilePath) {
+      return true
+    }
+  }
+
+  return !hasRouteOwner
 }
 
 function dedupeNestedRouteManifestEntries(

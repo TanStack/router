@@ -15,6 +15,7 @@ export const IMPORT_PROTECTION_DEBUG_FILTER =
 export const KNOWN_SOURCE_EXTENSIONS = new Set([
   '.ts',
   '.tsx',
+  '.tsrx',
   '.mts',
   '.cts',
   '.js',

@@ -3,6 +3,12 @@ import type { Config } from '../config'
 
 export interface TransformOptions {
   source: string
+  /**
+   * An optional, position-preserving version of `source` that can be parsed as
+   * TypeScript/JSX. AST ranges are applied to the original source, so this must
+   * have exactly the same length as `source`.
+   */
+  parseSource?: string
   filename?: string
   ctx: TransformContext
   node: RouteNode

@@ -34,4 +34,17 @@ describe('template', () => {
       `export const Route = createLazyFileRoute(${JSON.stringify('/say-"hi"')})(`,
     )
   })
+
+  it('uses first-class Octane package names and TSRX templates', () => {
+    const template = getTargetTemplate({ target: 'octane' } as never)
+
+    expect(template.fullPkg).toBe('@tanstack/octane-router')
+    expect(template.route.imports.tsrImports()).toContain(
+      "from '@tanstack/octane-router'",
+    )
+    expect(template.route.imports.tsrExportStart(`/say-"hi"`)).toBe(
+      `export const Route = createFileRoute(${JSON.stringify('/say-"hi"')})(`,
+    )
+    expect(template.route.template()).toContain('function RouteComponent() @{')
+  })
 })

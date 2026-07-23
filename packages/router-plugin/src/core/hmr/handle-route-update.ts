@@ -46,6 +46,7 @@ type AnyRouteMatchWithPrivateProps = AnyRouteMatch & {
 function handleRouteUpdate(
   routeId: string,
   newRoute: AnyRouteWithPrivateProps,
+  shouldApplyRouteUpdate = true,
 ) {
   const router = window.__TSR_ROUTER__ as AnyRouterWithPrivateMaps
   const oldRoute = router.routesById[routeId] as
@@ -53,6 +54,11 @@ function handleRouteUpdate(
     | undefined
 
   if (!oldRoute) {
+    return
+  }
+
+  if (!shouldApplyRouteUpdate) {
+    syncHotRouteExport(oldRoute)
     return
   }
 

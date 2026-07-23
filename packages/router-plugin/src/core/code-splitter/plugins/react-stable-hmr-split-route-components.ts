@@ -34,7 +34,7 @@ function hotExpressionAstFor(hmrStyle: HmrStyle): t.Expression {
   )
 }
 
-export function createReactStableHmrSplitRouteComponentsPlugin(opts: {
+export function createStableHmrSplitRouteComponentsPlugin(opts: {
   hmrStyle: HmrStyle
 }): ReferenceRouteCompilerPlugin {
   return {
