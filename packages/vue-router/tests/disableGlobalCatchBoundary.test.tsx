@@ -89,7 +89,9 @@ describe('disableGlobalCatchBoundary option', () => {
       getParentRoute: () => rootRoute,
       path: '/',
       component: () => {
-        if (shouldThrow) throw new Error('Temporary error')
+        if (shouldThrow) {
+          throw new Error('Temporary error')
+        }
         return <div>Recovered</div>
       },
     })

@@ -66,7 +66,7 @@ describe('Transitioner remount', () => {
   it('re-subscribes and loads on remount with the same router', async () => {
     const { history, router } = setup()
     // Spy before the first mount so the subscription captures the spy by
-    // reference — both the first and second mounts subscribe with it.
+    // reference - both the first and second mounts subscribe with it.
     const loadSpy = vi.spyOn(router, 'load')
 
     const first = render(<RouterProvider router={router} />)
