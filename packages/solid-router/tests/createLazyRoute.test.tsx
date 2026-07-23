@@ -2,8 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import {
   Link,
+  Outlet,
   RouterProvider,
   createBrowserHistory,
+  createControlledPromise,
+  createLazyRoute,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -92,4 +95,64 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
     const lazyRoute = router.routesByPath['/heavy']
     expect(lazyRoute.options.component).toBeDefined()
   })
+})
+
+it('renders an eager loader error with a delayed lazy errorComponent', async () => {
+  const loader = createControlledPromise<void>()
+  const loaderErrorHandled = createControlledPromise<void>()
+  const loaderError = new Error('loader failed')
+  const lazyPageOptions = createLazyRoute('/page')({
+    component: () => <h1>Page</h1>,
+    errorComponent: ({ error }) => (
+      <p role="alert">Lazy error: {error.message}</p>
+    ),
+  })
+  const lazyOptions = createControlledPromise<typeof lazyPageOptions>()
+  const rootRoute = createRootRoute({ component: Outlet })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <h1>Index page</h1>,
+  })
+  const pageRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    loader: async () => {
+      await loader
+      throw loaderError
+    },
+    onError: () => loaderErrorHandled.resolve(),
+  }).lazy(() => lazyOptions)
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, pageRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
+    defaultPendingComponent: () => <p role="status">Loading default</p>,
+  })
+  let navigation: Promise<void> | undefined
+
+  try {
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('Index page')).toBeInTheDocument()
+
+    navigation = router.navigate({ to: '/page' })
+    expect(await screen.findByText('Loading default')).toBeInTheDocument()
+
+    loader.resolve()
+    await loaderErrorHandled
+    lazyOptions.resolve(lazyPageOptions)
+    await navigation
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Lazy error: loader failed',
+    )
+  } finally {
+    lazyOptions.resolve(lazyPageOptions)
+    loader.resolve()
+    loaderErrorHandled.resolve()
+    if (navigation) {
+      await Promise.allSettled([navigation])
+    }
+  }
 })
