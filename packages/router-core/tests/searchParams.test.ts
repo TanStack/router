@@ -99,3 +99,29 @@ describe('Search Params serialization and deserialization', () => {
     )
   })
 })
+
+describe('Unsafe integer literals', () => {
+  /*
+   * Integer literals beyond Number.MAX_SAFE_INTEGER cannot survive a trip
+   * through float64 — JSON.parse would silently round them (e.g. an 18-digit
+   * ad id "120247103250460643" becomes 120247103250460640). They are kept as
+   * strings so they round-trip losslessly.
+   */
+  test.each([
+    ['120247103250460643'],
+    ['-120247103250460643'],
+    ['9007199254740993'],
+  ])('unsafe integer literal %s is preserved as a string', (literal) => {
+    const parsed = defaultParseSearch(`?foo=${literal}`)
+    expect(parsed).toEqual({ foo: literal })
+    const restringified = defaultStringifySearch(parsed)
+    expect(defaultParseSearch(restringified)).toEqual({ foo: literal })
+  })
+
+  test('safe integer literals still parse as numbers', () => {
+    expect(defaultParseSearch('?foo=123')).toEqual({ foo: 123 })
+    expect(defaultParseSearch(`?foo=${Number.MAX_SAFE_INTEGER}`)).toEqual({
+      foo: Number.MAX_SAFE_INTEGER,
+    })
+  })
+})
