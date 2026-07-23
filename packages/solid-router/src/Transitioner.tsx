@@ -29,7 +29,7 @@ export function Transitioner() {
   // Subscribe to location changes
   // and try to load the new location
   Solid.onMount(() => {
-    router.history.subscribe(router.load)
+    Solid.onCleanup(router.history.subscribe(router.load))
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,

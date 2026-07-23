@@ -81,7 +81,7 @@ export function Transitioner() {
     const unsub = router.history.subscribe(router.load)
 
     if (mounted?.current) {
-      return process.env.NODE_ENV !== 'production' ? unsub : undefined
+      return unsub
     }
     if (mounted) {
       mounted.current = true
@@ -110,7 +110,7 @@ export function Transitioner() {
         replace: true,
         ignoreBlocker: true,
       })
-      return process.env.NODE_ENV !== 'production' ? unsub : undefined
+      return unsub
     }
 
     const resolvedLocation = router.stores.resolvedLocation.get()
@@ -133,7 +133,7 @@ export function Transitioner() {
       router.load().catch(console.error)
     }
 
-    return process.env.NODE_ENV !== 'production' ? unsub : undefined
+    return unsub
     // `mounted` exists only in development and is a stable ref when present.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, router.history])

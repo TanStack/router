@@ -1,1 +1,1 @@
-export { hydrate } from '../hydrate'
+export { hydrate } from '../load-client'

@@ -3,7 +3,7 @@
 import { isNotFound } from './not-found'
 import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
-import { loadRouteChunk } from './route-chunks'
+import { loadRouteChunk } from './load-client'
 import { waitForReason } from './await-signal'
 import { getLocationChangeInfo, runRouteLifecycle } from './router'
 import type { ParsedLocation } from './location'

@@ -8,7 +8,7 @@ import {
 import { decodePath } from '../utils'
 import { createLRUCache } from '../lru-cache'
 import { rootRouteId } from '../root'
-import { _getRenderedMatches } from '../rendered-matches'
+import { _getRenderedMatches } from '../load-client'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { dehydrateSsrMatchId } from './ssr-match-id'

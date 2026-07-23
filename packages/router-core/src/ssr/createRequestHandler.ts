@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { _getRenderedMatches } from '../rendered-matches'
+import { _getRenderedMatches } from '../load-client'
 import { mergeHeaders } from './headers'
 import {
   attachRouterServerSsrUtils,

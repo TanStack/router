@@ -9,7 +9,7 @@ import {
 import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
 
-test('_getUserHistoryState removes router-owned bookkeeping', () => {
+test('_getUserHistoryState removes volatile router bookkeeping but keeps mask payloads', () => {
   expect(
     _getUserHistoryState({
       key: 'legacy-key',
@@ -20,7 +20,7 @@ test('_getUserHistoryState removes router-owned bookkeeping', () => {
       __tempKey: 'temp-key',
       user: 'state',
     } as any),
-  ).toEqual({ user: 'state' })
+  ).toEqual({ user: 'state', __tempLocation: {}, __tempKey: 'temp-key' })
 })
 
 describe('buildLocation - params function receives parsed params', () => {
