@@ -28,7 +28,8 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@solidjs/testing-library": "^0.8.10",
     "vite-plugin-solid": "^2.11.11",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
   }
 }
