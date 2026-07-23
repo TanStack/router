@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { batch, useStore } from '@tanstack/react-store'
+import { batch, useSelector } from '@tanstack/react-store'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect, usePrevious } from './utils'
 import { useRouter } from './useRouter'
@@ -12,8 +12,8 @@ export function Transitioner() {
 
   const [isTransitioning, setIsTransitioning] = React.useState(false)
   // Track pending state changes
-  const isLoading = useStore(router.stores.isLoading, (value) => value)
-  const hasPending = useStore(router.stores.hasPending, (value) => value)
+  const isLoading = useSelector(router.stores.isLoading)
+  const hasPending = useSelector(router.stores.hasPending)
 
   const previousIsLoading = usePrevious(isLoading)
 

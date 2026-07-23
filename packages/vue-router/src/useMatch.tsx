@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { invariant } from '@tanstack/router-core'
-import { useStore } from '@tanstack/vue-store'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useSelector } from './useSelector'
 import {
   injectDummyPendingMatch,
   injectPendingMatch,
@@ -124,17 +124,14 @@ export function useMatch<
     // routeId case: single subscription via per-routeId computed store.
     // The store reference is stable (cached by routeId).
     const matchStore = router.stores.getRouteMatchStore(opts.from)
-    match = useStore(matchStore, (value) => value)
+    match = useSelector(matchStore)
   } else {
     // matchId case: use routeId from context for stable store lookup.
     // The routeId is provided by the nearest Match component and doesn't
     // change for the component's lifetime, so the store is stable.
     const nearestRouteId = Vue.inject(routeIdContext)
     if (nearestRouteId) {
-      match = useStore(
-        router.stores.getRouteMatchStore(nearestRouteId),
-        (value) => value,
-      )
+      match = useSelector(router.stores.getRouteMatchStore(nearestRouteId))
     } else {
       // No route context — will fall through to error handling below
       match = Vue.ref(undefined) as Readonly<Vue.Ref<undefined>>
@@ -142,12 +139,12 @@ export function useMatch<
   }
 
   const hasPendingRouteMatch = opts.from
-    ? useStore(router.stores.pendingRouteIds, (ids) => ids)
+    ? useSelector(router.stores.pendingRouteIds)
     : undefined
-  const isTransitioning = useStore(
+  const isTransitioning = useSelector(
     router.stores.isTransitioning,
     (value) => value,
-    { equal: Object.is },
+    { compare: Object.is },
   )
 
   const result = Vue.computed(() => {

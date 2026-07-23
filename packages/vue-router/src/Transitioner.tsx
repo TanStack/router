@@ -1,7 +1,8 @@
 import * as Vue from 'vue'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { batch, useStore } from '@tanstack/vue-store'
+import { batch } from '@tanstack/vue-store'
+import { useSelector } from './useSelector'
 import { useRouter } from './useRouter'
 import { usePrevious } from './utils'
 
@@ -26,13 +27,13 @@ export function useTransitionerSetup() {
     return
   }
 
-  const isLoading = useStore(router.stores.isLoading, (value) => value)
+  const isLoading = useSelector(router.stores.isLoading)
 
   // Track if we're in a transition - using a ref to track async transitions
   const isTransitioning = Vue.ref(false)
 
   // Track pending state changes
-  const hasPending = useStore(router.stores.hasPending, (value) => value)
+  const hasPending = useSelector(router.stores.hasPending)
 
   const previousIsLoading = usePrevious(() => isLoading.value)
 

@@ -268,7 +268,7 @@ export const BaseTanStackRouterDevtoolsPanel =
     const styles = useStyles()
     const { className, style, ...otherPanelProps } = panelProps
 
-    // useStore(router.stores.__store)
+    // useSelector(router.stores.__store)
 
     const [currentTab, setCurrentTab] = useLocalStorage<
       'routes' | 'matches' | 'history'

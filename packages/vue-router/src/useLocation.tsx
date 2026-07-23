@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from './useSelector'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -25,7 +25,7 @@ export function useLocation<
   opts?: UseLocationBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseLocationResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return useStore(router.stores.location, (location) =>
+  return useSelector(router.stores.location, (location) =>
     opts?.select ? opts.select(location) : location,
   ) as Vue.Ref<UseLocationResult<TRouter, TSelected>>
 }

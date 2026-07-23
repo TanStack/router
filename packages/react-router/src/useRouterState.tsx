@@ -1,6 +1,6 @@
 'use client'
 
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import { useStructuralSharing } from './useMatch'
@@ -68,7 +68,7 @@ export function useRouterState<
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  return useStore(
+  return useSelector(
     router.stores.__store,
     // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router),

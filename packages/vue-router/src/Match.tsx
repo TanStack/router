@@ -8,7 +8,7 @@ import {
   rootRouteId,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from './useSelector'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
@@ -57,16 +57,13 @@ export const Match = Vue.defineComponent({
     // Single stable store subscription — getRouteMatchStore returns a
     // cached computed store that resolves routeId → current match state
     // through the signal graph. No bridge needed.
-    const activeMatch = useStore(
-      router.stores.getRouteMatchStore(routeId),
-      (value) => value,
-    )
-    const isPendingMatchRef = useStore(
+    const activeMatch = useSelector(router.stores.getRouteMatchStore(routeId))
+    const isPendingMatchRef = useSelector(
       router.stores.pendingRouteIds,
       (pendingRouteIds) => Boolean(pendingRouteIds[routeId]),
-      { equal: Object.is },
+      { compare: Object.is },
     )
-    const loadedAt = useStore(router.stores.loadedAt, (value) => value)
+    const loadedAt = useSelector(router.stores.loadedAt)
 
     const matchData = Vue.computed(() => {
       const match = activeMatch.value
@@ -250,7 +247,7 @@ const OnRendered = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const location = useStore(
+    const location = useSelector(
       router.stores.resolvedLocation,
       (resolvedLocation) => resolvedLocation?.state.__TSR_key,
     )
@@ -294,10 +291,7 @@ export const MatchInner = Vue.defineComponent({
 
     // Use routeId from context (provided by parent Match) — stable string.
     const routeId = Vue.inject(routeIdContext)!
-    const activeMatch = useStore(
-      router.stores.getRouteMatchStore(routeId),
-      (value) => value,
-    )
+    const activeMatch = useSelector(router.stores.getRouteMatchStore(routeId))
 
     // Combined selector for match state AND remount key
     // This ensures both are computed in the same selector call with consistent data
@@ -497,9 +491,8 @@ export const Outlet = Vue.defineComponent({
     }
 
     // Parent state via stable routeId store — single subscription
-    const parentMatch = useStore(
+    const parentMatch = useSelector(
       router.stores.getRouteMatchStore(parentRouteId),
-      (v) => v,
     )
 
     const route = Vue.computed(() =>
@@ -515,10 +508,7 @@ export const Outlet = Vue.defineComponent({
     // Child match lookup: read the child matchId from the shared derived
     // map (one reactive node for the whole tree), then grab match state
     // directly from the pool.
-    const childMatchIdMap = useStore(
-      router.stores.childMatchIdByRouteId,
-      (v) => v,
-    )
+    const childMatchIdMap = useSelector(router.stores.childMatchIdByRouteId)
 
     const childMatchData = Vue.computed(() => {
       const childId = childMatchIdMap.value[parentRouteId]

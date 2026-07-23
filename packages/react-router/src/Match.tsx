@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import {
   createControlledPromise,
   getLocationChangeInfo,
@@ -39,6 +39,13 @@ const outletMatchSelectionEqual = (
   a: OutletMatchSelection,
   b: OutletMatchSelection,
 ) => a[0] === b[0] && a[1] === b[1]
+
+const emptyMatchStore = {
+  get: () => undefined as AnyRouteMatch | undefined,
+  subscribe: (_listener: (value: AnyRouteMatch | undefined) => void) => ({
+    unsubscribe() {},
+  }),
+}
 
 export const Match = React.memo(function MatchImpl({
   matchId,
@@ -93,9 +100,11 @@ export const Match = React.memo(function MatchImpl({
     invariant()
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const resetKey = useStore(router.stores.loadedAt, (loadedAt) => loadedAt)
+  const resetKey = useSelector(router.stores.loadedAt)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value, matchViewFieldsEqual)
+  const match = useSelector(matchStore, (value) => value, {
+    compare: matchViewFieldsEqual,
+  })
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const matchState = React.useMemo(() => {
     const routeId = match.routeId as string
@@ -258,7 +267,7 @@ function OnRendered() {
     ParsedLocation<any> | undefined
   >()
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const renderedLocationKey = useStore(
+  const renderedLocationKey = useSelector(
     router.stores.resolvedLocation,
     (resolvedLocation) => resolvedLocation?.state.__TSR_key,
   )
@@ -401,7 +410,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     invariant()
   }
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value)
+  const match = useSelector(matchStore)
   const routeId = match.routeId as string
   const route = router.routesById[routeId] as AnyRoute
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -550,21 +559,21 @@ export const Outlet = React.memo(function OutletImpl() {
     // Subscribe directly to the match store from the pool instead of
     // the two-level byId → matchStore pattern.
     const parentMatchStore = matchId
-      ? router.stores.matchStores.get(matchId)
-      : undefined
+      ? (router.stores.matchStores.get(matchId) ?? emptyMatchStore)
+      : emptyMatchStore
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    ;[routeId, parentGlobalNotFound] = useStore(
+    ;[routeId, parentGlobalNotFound] = useSelector(
       parentMatchStore,
       (match): OutletMatchSelection => [
         match?.routeId as string | undefined,
         match?.globalNotFound ?? false,
       ],
-      outletMatchSelectionEqual,
+      { compare: outletMatchSelectionEqual },
     )
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    childMatchId = useStore(router.stores.matchesId, (ids) => {
+    childMatchId = useSelector(router.stores.matchesId, (ids) => {
       const index = ids.findIndex((id) => id === matchId)
       return ids[index + 1]
     })
