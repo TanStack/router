@@ -40,17 +40,17 @@ import type {
   AnyFunctionMiddleware,
   AnyRequestMiddleware,
   AnyStartInstanceOptions,
+  Register,
   RouteMethod,
   RouteMethodHandlerFn,
   RouterEntry,
   StartEntry,
 } from '@tanstack/start-client-core'
-import type { RequestHandler } from './request-handler'
+import type { RequestHandler, RequestOptions } from './request-handler'
 import type {
   AnyRoute,
   AnyRouter,
   AnySerializationAdapter,
-  Register,
 } from '@tanstack/router-core'
 import type {
   HandlerCallback,
@@ -374,7 +374,7 @@ function handlerToMiddleware(
  * })
  * ```
  */
-export function createStartHandler<TRegister = Register>(
+export function createStartHandler<TRegister extends Register = Register>(
   cbOrOptions: HandlerCallback<AnyRouter> | CreateStartHandlerOptions,
 ): RequestHandler<TRegister> {
   const handlerOptions: FinalManifestOptions =
@@ -397,8 +397,8 @@ export function createStartHandler<TRegister = Register>(
   }
 
   const startRequestResolver: RequestHandler<Register> = async (
-    request,
-    requestOpts,
+    request: Request,
+    requestOpts?: RequestOptions<Register>,
   ) => {
     let router: AnyRouter | null = null as AnyRouter | null
     let responseOwnsCleanup = false as boolean
@@ -675,7 +675,7 @@ export function createStartHandler<TRegister = Register>(
     }
   }
 
-  return requestHandler(startRequestResolver)
+  return requestHandler(startRequestResolver) as RequestHandler<TRegister>
 }
 
 async function handleRedirectResponse(
