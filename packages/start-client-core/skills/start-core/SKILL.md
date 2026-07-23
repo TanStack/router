@@ -172,7 +172,7 @@ plugins: [tanstackStart(), react()]
 
 ### 2. HIGH: Enabling verbatimModuleSyntax in tsconfig
 
-`verbatimModuleSyntax` causes server bundles to leak into client bundles. Keep it disabled.
+`verbatimModuleSyntax` causes server bundles to leak into client bundles. Keep it disabled. TypeScript's compiler default is still `false`, but `tsc --init` (TypeScript 5.9+ and 6.0) generates `"verbatimModuleSyntax": true` — explicitly set `"verbatimModuleSyntax": false` in `tsconfig.json`.
 
 ### 3. HIGH: Missing Scripts component in root route
 
