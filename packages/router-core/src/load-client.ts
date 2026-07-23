@@ -130,11 +130,20 @@ export function _getAssetMatches(
 
 declare const lanePhase: unique symbol
 
-type Lane<
-  TPhase extends 'matched' | 'contextualized' | 'reduced' | 'projected',
-> = [
+type LanePhase = 'matched' | 'contextualized' | 'reduced' | 'projected'
+
+/**
+ * Lane matches carry their lane's phase so functions can demand evidence of
+ * pipeline position (e.g. `commitMatches` only accepts a projected lane's
+ * matches). The brand is phantom — it never exists at runtime.
+ */
+type LaneMatches<TPhase extends LanePhase> = Array<WorkMatch> & {
+  readonly [lanePhase]?: TPhase
+}
+
+type Lane<TPhase extends LanePhase> = [
   location: ParsedLocation,
-  matches: Array<WorkMatch>,
+  matches: LaneMatches<TPhase>,
   background?: Array<BackgroundLoaderTask>,
   backgroundSettlement?: Promise<IndexedOutcome | undefined>,
 ] & { readonly [lanePhase]?: TPhase }
@@ -170,6 +179,17 @@ type WorkMatch = AnyRouteMatch & {
   _flight?: LoaderFlight
 }
 
+declare const matchPhase: unique symbol
+
+/**
+ * A match whose loader outcome has been applied by `settleInto`, which is the
+ * sole granter of this brand (phantom, zero-runtime). Consumers that require
+ * it — e.g. `cacheLoaderMatch` — can only be reached after settlement, so the
+ * compiler enforces the loader→settle→cache ordering. Sources that arrive
+ * already settled (dehydrated server data) must cast at a named boundary.
+ */
+type SettledMatch = WorkMatch & { readonly [matchPhase]: 'settled' }
+
 export type LaneInputs = [
   routeTree: AnyRoute,
   context: unknown,
@@ -202,9 +222,15 @@ export type LoadTransaction = [
   matches: Array<AnyRouteMatch>,
   startedAt: number,
   done: Promise<void>,
-  refresh?: true,
-  refreshPresentation?: Array<AnyRouteMatch>,
-  refreshHandoff?: NonNullable<AnyRouter['_handoff']>,
+  /**
+   * Dev-only HMR refresh mode. Presence is the mode flag; a refresh always
+   * carries the presentation it started from, while the hydration handoff is
+   * genuinely optional — the tuple makes a half-armed refresh unrepresentable.
+   */
+  refresh?: [
+    presentation: Array<AnyRouteMatch>,
+    handoff: NonNullable<AnyRouter['_handoff']> | undefined,
+  ],
 ]
 
 export type PendingSession = [
@@ -674,7 +700,7 @@ function settleInto(
   match: WorkMatch,
   result: LoaderOutcome,
   preload: boolean,
-): void {
+): asserts match is SettledMatch {
   if (result[0] === SUCCESS) {
     match.loaderData = result[1]
     match.error = undefined
@@ -693,7 +719,7 @@ function settleInto(
 
 export function cacheLoaderMatch(
   router: CoordinatorRouter,
-  match: WorkMatch,
+  match: SettledMatch,
   planned: AnyRouteMatch | undefined,
 ): void {
   const current = router._cache.get(match.id) as WorkMatch | undefined
@@ -1224,6 +1250,9 @@ async function executeClientLane(
     plannedBoundary = boundary
   }
   let end = plannedBoundary < 0 ? matches.length : plannedBoundary + 1
+  // From here on `matched` is contextualized: `contextualize` communicates
+  // through mutation plus a failure return, so the phase brand is asserted at
+  // the two use sites below rather than granted by a (byte-costing) return.
   const failure = await contextualize(router, matched, options, end)
   if (failure) {
     options[5] = true
@@ -1449,7 +1478,7 @@ function discardLane(router: AnyRouter, lane: ProjectedLane): void {
 function commitMatches(
   router: CoordinatorRouter,
   tx: LoadTransaction,
-  matches: Array<AnyRouteMatch>,
+  matches: LaneMatches<'projected'>,
   resolvedPrefix?: number,
 ): void {
   const previous = router._committed
@@ -1518,7 +1547,7 @@ function commitMatches(
 function commitRefreshMatches(
   router: CoordinatorRouter,
   tx: LoadTransaction,
-  matches: Array<AnyRouteMatch>,
+  matches: LaneMatches<'projected'>,
   checkpoint: PublicationCheckpoint,
 ): void {
   const previous = router._committed
@@ -1613,7 +1642,7 @@ async function transitionRefresh(
 ): Promise<boolean | undefined> {
   const checkpoint: PublicationCheckpoint = {
     previousMatches: router._committed,
-    previousPresentation: tx[7] ?? router.stores.matches.get(),
+    previousPresentation: tx[6]?.[0] ?? router.stores.matches.get(),
     previousCache: router._cache,
     commitPromise: router._commitPromise,
     published: false,
@@ -1644,14 +1673,12 @@ async function transitionRefresh(
       router._rollbackRefresh = undefined
     }
     if (checkpoint.published) {
-      const handoff = tx[8]
+      const handoff = tx[6]?.[1]
       if (handoff && router._handoff === handoff) {
         handoff[1]()
       }
       if (router._tx === tx) {
         tx[6] = undefined
-        tx[7] = undefined
-        tx[8] = undefined
       }
     }
     settlePublication(router, checkpoint)
@@ -1725,6 +1752,8 @@ async function runBackground(
     releaseFlight(router, next[task[0]]!)
     next[task[0]] = task[3]
   }
+  // Phase jump: the clones inherit beforeLoad context from the committed
+  // foreground lane, which already ran `contextualize` for these matches.
   const lane = [tx[2], next] as ContextualizedLane
   let reduced: ReducedLane | ControlOutcome
   try {
@@ -2106,9 +2135,8 @@ export async function loadClientRoute(
       }),
   ]
   if (process.env.NODE_ENV !== 'production' && rematerialize) {
-    tx[6] = true
-    tx[7] = refreshPresentation
-    tx[8] = handoff
+    // `refreshPresentation` is always captured when `rematerialize` is set.
+    tx[6] = [refreshPresentation!, handoff]
     router._refreshNextLoad = undefined
   }
   router._tx = tx
@@ -2388,12 +2416,15 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       ) {
         cacheLoaderMatch(
           router,
+          // Phase jump: dehydrated server data is already past the loader
+          // phase — the guard above verified a settled success (or transported
+          // loaderData), so this clone is settled without a client settleInto.
           {
             ...match,
             status: 'success',
             error: undefined,
             preload: true,
-          },
+          } as SettledMatch,
           router._cache.get(match.id),
         )
       }
