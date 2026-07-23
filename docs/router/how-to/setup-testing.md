@@ -224,8 +224,12 @@ export function LoadingComponent() {
   return <div data-testid="loading">Loading...</div>
 }
 
-export function ErrorComponent({ error }: { error: Error }) {
-  return <div data-testid="error">Error: {error.message}</div>
+export function ErrorComponent({ error }: { error: unknown }) {
+  return (
+    <div data-testid="error">
+      Error: {error instanceof Error ? error.message : String(error)}
+    </div>
+  )
 }
 ```
 
@@ -586,8 +590,12 @@ describe('Code-Based Route Data Loading', () => {
       return <div>{user.name}</div>
     }
 
-    function ErrorComponent({ error }: { error: Error }) {
-      return <div data-testid="error">Error: {error.message}</div>
+    function ErrorComponent({ error }: { error: unknown }) {
+      return (
+        <div data-testid="error">
+          Error: {error instanceof Error ? error.message : String(error)}
+        </div>
+      )
     }
 
     const userRoute = createRoute({

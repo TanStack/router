@@ -559,7 +559,7 @@ export const Route = createFileRoute('/posts')({
 
 The `routeOptions.errorComponent` option is a component that is rendered when an error occurs during the route loading or rendering lifecycle. It is rendered with the following props:
 
-- `error` - The error that occurred
+- `error` - The error that occurred, typed as `unknown`. Anything can be thrown, so narrow it before accessing error-specific properties.
 - `reset` - A function to reset the internal `CatchBoundary`
 
 ```tsx
@@ -567,8 +567,8 @@ The `routeOptions.errorComponent` option is a component that is rendered when an
 export const Route = createFileRoute('/posts')({
   loader: () => fetchPosts(),
   errorComponent: ({ error }) => {
-    // Render an error message
-    return <div>{error.message}</div>
+    // `error` is `unknown`, so narrow it before reading `message`
+    return <div>{error instanceof Error ? error.message : String(error)}</div>
   },
 })
 ```
@@ -582,7 +582,7 @@ export const Route = createFileRoute('/posts')({
   errorComponent: ({ error, reset }) => {
     return (
       <div>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
         <button
           onClick={() => {
             // Reset the router error boundary
@@ -608,7 +608,7 @@ export const Route = createFileRoute('/posts')({
 
     return (
       <div>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
         <button
           onClick={() => {
             // Invalidate the route to reload the loader, which will also reset the error boundary
