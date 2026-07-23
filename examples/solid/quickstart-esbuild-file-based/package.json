@@ -9,12 +9,12 @@
     "start": "dev"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.21",
+    "@solidjs/web": "2.0.0-beta.25",
     "@tanstack/router-plugin": "^1.168.19",
     "@tanstack/solid-router": "^2.0.0-beta.26",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.21",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.21",
+    "solid-js": "2.0.0-beta.25",
     "tailwindcss": "^4.2.2",
     "zod": "^4.4.3"
   },
