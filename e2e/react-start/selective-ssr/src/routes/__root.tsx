@@ -30,7 +30,11 @@ export const Route = createRootRoute({
     ],
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
-  validateSearch: z.object({ root: ssrSchema }),
+  validateSearch: z.object({
+    root: ssrSchema,
+    issue4614: z.string().optional(),
+  }),
+  loaderDeps: ({ search }) => ({ issue4614: search.issue4614 }),
   ssr: ({ search }) => {
     if (typeof window !== 'undefined') {
       const error = `ssr() for ${Route.id} should not be called on the client`
@@ -41,7 +45,7 @@ export const Route = createRootRoute({
       return search.value.root?.ssr
     }
   },
-  beforeLoad: ({ search }) => {
+  beforeLoad: ({ search, location, cause, preload }) => {
     console.log(
       `beforeLoad for ${Route.id} called on the ${typeof window !== 'undefined' ? 'client' : 'server'}`,
     )
@@ -53,9 +57,21 @@ export const Route = createRootRoute({
       console.error(error)
       throw new Error(error)
     }
+    const root = typeof window === 'undefined' ? 'server' : 'client'
+    const issue4614Context = `${root}:${search.issue4614 ?? 'cached'}`
+    if (typeof window !== 'undefined' && location.pathname === '/issue-4614') {
+      const calls = ((globalThis as any).__issue4614RootBeforeLoads ??= [])
+      calls.push({
+        cause,
+        preload,
+        root,
+        issue4614Context,
+      })
+    }
     return {
-      root: typeof window === 'undefined' ? 'server' : 'client',
+      root,
       search,
+      issue4614Context,
     }
   },
   loader: ({ context }) => {
@@ -132,6 +148,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             }}
           >
             Home
+          </Link>
+          <Link
+            to="/issue-4614"
+            search={{ issue4614: 'reload' }}
+            preload="intent"
+            data-testid="issue-4614-reload-link"
+          >
+            Issue 4614 reloaded parent
           </Link>
         </div>
         <hr />

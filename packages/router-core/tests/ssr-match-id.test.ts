@@ -21,6 +21,11 @@ describe('ssr match id codec', () => {
   })
 
   it('decodes browser-normalized replacement chars back to slashes', () => {
-    expect(hydrateSsrMatchId('\uFFFDposts\uFFFD1')).toBe('/posts/1')
+    const normalized = dehydrateSsrMatchId('/posts/1').replaceAll(
+      '\0',
+      '\uFFFD',
+    )
+
+    expect(hydrateSsrMatchId(normalized)).toBe('/posts/1')
   })
 })

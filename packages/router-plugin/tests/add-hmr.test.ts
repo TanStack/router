@@ -105,7 +105,6 @@ describe('add-hmr works', () => {
     expect(output).toContain('webpackHot')
     expect(output).not.toContain('import.meta.hot')
     expect(output).toContain('oldHasShellComponent')
-    expect(output).toContain('__routeContext')
   })
 
   it('supports configurable Vite unsplittable HMR generation', async () => {

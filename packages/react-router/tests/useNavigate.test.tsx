@@ -7,6 +7,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react'
 
 import { z } from 'zod'
@@ -2312,9 +2313,11 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
         path: 'param/$param',
         component: function ParamRoute() {
           const navigate = useNavigate()
+          const params = paramRoute.useParams()
           return (
             <>
               <h1>Param Route</h1>
+              <span data-testid="param-value">{params.param}</span>
               <button
                 onClick={() =>
                   navigate({ from: paramRoute.fullPath, to: './a' })
@@ -2415,9 +2418,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-      await router.latestLoadPromise
-
-      expect(window.location.pathname).toBe(`${basepath}/a`)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(`${basepath}/a`)
+      })
     })
 
     test('should navigate to the parent route and keep params', async () => {
@@ -2435,9 +2438,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-      await router.latestLoadPromise
-
-      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+      })
     })
 
     test('should navigate to the parent route and change params', async () => {
@@ -2457,9 +2460,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(parentLink)
-      await router.latestLoadPromise
-
-      expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(`${basepath}/param/bar/a`)
+      })
     })
 
     test('should navigate to a relative link based on render location with basepath', async () => {
@@ -2476,9 +2479,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-      await router.latestLoadPromise
-
-      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+      })
     })
 
     test('should navigate to a parent link based on render location', async () => {
@@ -2497,9 +2500,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-      await router.latestLoadPromise
-
-      expect(window.location.pathname).toBe(`${basepath}/param/foo`)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(`${basepath}/param/foo`)
+      })
     })
 
     test('should navigate to a parent link based on active location', async () => {
@@ -2515,9 +2518,9 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       // Click the link and ensure the new location
       fireEvent.click(relativeLink)
-      await router.latestLoadPromise
-
-      expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a`)
+      })
     })
 
     test('should navigate to same route with different params', async () => {
@@ -2527,15 +2530,18 @@ describe.each([{ basepath: '' }, { basepath: '/basepath' }])(
 
       await act(async () => {
         history.push(`${basepath}/param/foo/a/b`)
-        await router.latestLoadPromise
       })
-      expect(window.location.pathname).toBe(`${basepath}/param/foo/a/b`)
+      await waitFor(() => {
+        expect(window.location.pathname).toBe(`${basepath}/param/foo/a/b`)
+      })
+      expect(await screen.findByTestId('param-value')).toHaveTextContent('foo')
 
-      const btn = screen.getByTestId('btn-param-bar')
+      const btn = await screen.findByTestId('btn-param-bar')
       fireEvent.click(btn)
-      await router.latestLoadPromise
-
-      expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
+      await waitFor(() => {
+        expect(screen.getByTestId('param-value')).toHaveTextContent('bar')
+        expect(window.location.pathname).toBe(`${basepath}/param/bar/a/b`)
+      })
     })
   },
 )

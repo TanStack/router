@@ -4,6 +4,37 @@ import { test } from '@tanstack/router-e2e-utils'
 const testCount = 7
 
 test.describe('selective ssr', () => {
+  test('new loaderDeps match generation propagates fresh parent context to child (control)', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('issue-4614-reload-link').hover()
+
+    await expect
+      .poll(() =>
+        page.evaluate(() => (globalThis as any).__issue4614RootBeforeLoads),
+      )
+      .toEqual([
+        {
+          cause: 'preload',
+          preload: true,
+          root: 'client',
+          issue4614Context: 'client:reload',
+        },
+      ])
+    await expect
+      .poll(() =>
+        page.evaluate(() => (globalThis as any).__issue4614TargetBeforeLoad),
+      )
+      .toEqual({
+        cause: 'preload',
+        preload: true,
+        rootContext: 'client',
+        issue4614Context: 'client:reload',
+        scenario: 'reload',
+      })
+  })
+
   test('testcount matches', async ({ page }) => {
     await page.goto('/')
 

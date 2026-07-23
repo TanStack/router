@@ -117,7 +117,7 @@ describe('renderRouterToStream - sync setup failures', () => {
     }
   })
 
-  test('request abort drops later Vue writes and terminates response stream', async () => {
+  test('request abort drops later Vue writes and terminates the response', async () => {
     let vueWriter: WritableStreamDefaultWriter<Uint8Array> | undefined
     rendererMocks.pipeToWebWritable.mockImplementationOnce(
       (
@@ -150,6 +150,7 @@ describe('renderRouterToStream - sync setup failures', () => {
       await expect(
         vueWriter!.write(new TextEncoder().encode('<div/>')),
       ).resolves.toBeUndefined()
+      expect(response.body).not.toBeNull()
 
       const terminated = await Promise.race([
         drainBody(response),
