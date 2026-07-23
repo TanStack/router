@@ -1,7 +1,11 @@
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('same-destination navigation while one is in flight', () => {
   function setup() {
@@ -69,6 +73,20 @@ describe('same-destination navigation while one is in flight', () => {
     expect(loader).toHaveBeenCalledTimes(1)
 
     await router.invalidate()
+
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('invalidate during an in-flight navigation still reruns the loader', async () => {
+    const { router, loader, gate } = setup()
+    await router.load()
+
+    const first = router.navigate({ to: '/target' })
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
+    const second = router.invalidate()
+
+    gate.resolve('data')
+    await Promise.all([first, second])
 
     expect(loader).toHaveBeenCalledTimes(2)
   })

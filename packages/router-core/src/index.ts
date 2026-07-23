@@ -103,6 +103,7 @@ export {
   resolveManifestCssLink,
 } from './manifest'
 export { isMatch } from './Matches'
+export { _getAssetMatches, _getRenderedMatches } from './load-client'
 export type {
   AnyMatchAndValue,
   FindValueByIndex,
@@ -242,7 +243,6 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-  getMatchedRoutes,
   trailingSlashOptions,
 } from './router'
 
@@ -274,9 +274,7 @@ export type {
   InjectedHtmlEntry,
   EmitFn,
   LoadFn,
-  GetMatchFn,
   SubscribeFn,
-  UpdateMatchFn,
   CommitLocationFn,
   GetMatchRoutesFn,
   MatchRoutesFn,

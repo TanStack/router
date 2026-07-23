@@ -1,4 +1,4 @@
-import { expect, test } from 'vitest'
+import { expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -39,6 +39,49 @@ test.each([false, true])(
     })
   },
 )
+
+test('client preload=false parentMatchPromise exposes the skipped pending parent', async () => {
+  const seen: Array<unknown> = []
+  const parentLoader = vi.fn()
+  const rootRoute = new BaseRootRoute({})
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    preload: false,
+    loader: parentLoader,
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loader: async ({ parentMatchPromise }) => {
+      seen.push(await parentMatchPromise)
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    isServer: false,
+  })
+
+  await router.preloadRoute({ to: '/parent/child' })
+
+  expect(parentLoader).not.toHaveBeenCalled()
+  expect(seen).toHaveLength(1)
+  expect(seen[0]).toMatchObject({
+    routeId: parentRoute.id,
+    status: 'pending',
+    invalid: false,
+    preload: false,
+    isFetching: false,
+  })
+})
 
 test('server parentMatchPromise exposes the error selected by onError', async () => {
   const original = new Error('original')

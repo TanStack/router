@@ -18,12 +18,13 @@ afterEach(() => {
   cleanup()
 })
 
-// https://github.com/TanStack/router/issues/7457
 // A chain of async layout beforeLoad redirects during the very first load
 // (search-stripping self-redirect -> layout redirect -> child redirect) used
 // to leave a match rendering with a nulled loadPromise, crashing
 // MatchInnerImpl with an uncaught `undefined`. Pending UI is enabled for
 // every match (defaultPendingMs: 0) to force pending publication mid-chain.
+// The production auto-code-splitting reproduction for issue #7457 lives in
+// e2e/react-router/issue-7457.
 test('chained layout beforeLoad redirects on first load render the final target without throwing from MatchInner', async () => {
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 

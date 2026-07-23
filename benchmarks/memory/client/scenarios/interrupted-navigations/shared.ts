@@ -35,7 +35,6 @@ type RenderedEvent = {
 }
 
 type InterruptedNavigationRouter = {
-  latestLoadPromise: Promise<void> | undefined
   load: () => Promise<void>
   navigate: (options: {
     to: '/fast/$id' | '/slow/$id'
@@ -104,18 +103,6 @@ function assertSlowNavigationSettlement(settlement: NavigationSettlement) {
   )
 }
 
-async function awaitExpectedLoadSettlement(loadPromise: Promise<void>) {
-  try {
-    await loadPromise
-  } catch (reason) {
-    if (reasonHasAbortShape(reason) || reasonHasCancellationShape(reason)) {
-      return
-    }
-
-    throw reason
-  }
-}
-
 function reasonHasAbortShape(reason: unknown) {
   return reason instanceof DOMException && reason.name === 'AbortError'
 }
@@ -144,7 +131,6 @@ export function createWorkload(
   let navigateFast: (id: string) => Promise<void> = uninitialized
   let startSlowNavigation: (id: string) => Promise<NavigationSettlement> =
     uninitializedSettlement
-  let getLatestLoadPromise: () => Promise<void> | undefined = () => undefined
 
   function assertRenderedPage(page: 'shell' | 'fast', id?: string) {
     const element = container?.querySelector<HTMLElement>('[data-bench-page]')
@@ -203,7 +189,6 @@ export function createWorkload(
     const mounted = mountTestApp(container)
     const router = mounted.router as InterruptedNavigationRouter
     unmount = mounted.unmount
-    getLatestLoadPromise = () => router.latestLoadPromise
 
     unsub = router.subscribe('onRendered', (event) => {
       if (
@@ -265,7 +250,6 @@ export function createWorkload(
     expectedRenderedPath = undefined
     navigateFast = uninitialized
     startSlowNavigation = uninitializedSettlement
-    getLatestLoadPromise = () => undefined
   }
 
   async function interrupt(
@@ -276,12 +260,6 @@ export function createWorkload(
     const slowNavigation = startSlowNavigation(slowId)
 
     await waitForSlowLoader(slowId)
-    const slowLoadPromise = getLatestLoadPromise()
-
-    if (!slowLoadPromise) {
-      throw new Error(`Slow navigation did not start a load for id: ${slowId}`)
-    }
-
     await navigateFast(fastId)
     resolveSlowLoader(slowId)
 
@@ -291,7 +269,6 @@ export function createWorkload(
       assertSlowNavigationSettlement(settlement)
     }
 
-    await awaitExpectedLoadSettlement(slowLoadPromise)
     await drainMicrotasks()
   }
 

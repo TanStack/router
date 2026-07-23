@@ -422,6 +422,46 @@ test('errorComponent receives primitive errors thrown from beforeLoad', async ()
   expect(screen.queryByText('About route content')).not.toBeInTheDocument()
 })
 
+test.each(['beforeLoad', 'loader'] as const)(
+  'a Promise synchronously thrown from %s renders the route error UI',
+  async (hook) => {
+    const thrown = Promise.resolve('not route data')
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad:
+        hook === 'beforeLoad'
+          ? () => {
+              throw thrown
+            }
+          : undefined,
+      loader:
+        hook === 'loader'
+          ? () => {
+              throw thrown
+            }
+          : undefined,
+      errorComponent: ({ error }) => (
+        <div>
+          {error instanceof Error && error.cause === thrown
+            ? 'Promise route error'
+            : 'Wrong route error'}
+        </div>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Promise route error')).toBeInTheDocument()
+    expect(screen.queryByText('Wrong route error')).not.toBeInTheDocument()
+  },
+)
+
 test('SSR errorComponent receives primitive errors thrown from beforeLoad', async () => {
   const rootRoute = createRootRoute({
     component: function Root() {

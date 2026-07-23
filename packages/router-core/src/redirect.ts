@@ -21,7 +21,6 @@ export type Redirect<
      */
     _builtLocation?: ParsedLocation
   }
-  redirectHandled?: boolean
 }
 
 export type RedirectOptions<

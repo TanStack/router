@@ -1,8 +1,11 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
-import { createSsrStreamResponse } from '../src/ssr/handlerCallback'
+import {
+  bindSsrResponseToRequest,
+  createSsrStreamResponse,
+} from '../src/ssr/handlerCallback'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { transformStreamWithRouter } from '../src/ssr/transformStreamWithRouter'
 import { createTestRouter } from './routerTestUtils'
@@ -37,6 +40,10 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
 
 describe('serverSsr.cleanup', () => {
   test('onCleanup listeners run exactly once', () => {
@@ -337,6 +344,225 @@ describe('serverSsr.cleanup', () => {
     expect(cleanupCalls).toBe(1)
     expect(router.serverSsr).toBeUndefined()
   })
+
+  test('request abort settles while the render callback is still pending', async () => {
+    const router = buildRouter()
+    const requestController = new AbortController()
+    const renderStarted = deferred<void>()
+    const renderResult = deferred<ReturnType<typeof createSsrStreamResponse>>()
+    let cleanupCalls = 0
+    let cancelCalls = 0
+    let lateStreamResponse!: ReturnType<typeof createSsrStreamResponse>
+    const handler = createRequestHandler({
+      createRouter: () => router,
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+    })
+
+    const response = handler(({ router: requestRouter }) => {
+      const serverSsr = requestRouter.serverSsr!
+      const cleanup = serverSsr.cleanup
+      serverSsr.cleanup = () => {
+        cleanupCalls++
+        cleanup()
+      }
+      lateStreamResponse = createSsrStreamResponse(
+        requestRouter,
+        new Response(
+          new ReadableStream({
+            cancel() {
+              cancelCalls++
+              return new Promise<void>(() => {})
+            },
+          }),
+        ),
+      )
+      renderStarted.resolve()
+      return renderResult.promise
+    })
+
+    await renderStarted.promise
+    const cancellation = new Error('request disconnected')
+    requestController.abort(cancellation)
+
+    await expect(response).rejects.toBe(cancellation)
+    expect(cleanupCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+
+    renderResult.resolve(lateStreamResponse)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(cleanupCalls).toBe(1)
+    expect(cancelCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+  })
+
+  test('request abort cancels a plain response resolved by the callback later', async () => {
+    const router = buildRouter()
+    const requestController = new AbortController()
+    const callbackStarted = deferred<void>()
+    const callbackResult = deferred<Response>()
+    const cancel = vi.fn((_reason: unknown) => new Promise<void>(() => {}))
+    const handler = createRequestHandler({
+      createRouter: () => router,
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+    })
+
+    const response = handler(() => {
+      callbackStarted.resolve()
+      return callbackResult.promise
+    })
+
+    await callbackStarted.promise
+    const cancellation = new Error('request disconnected')
+    requestController.abort(cancellation)
+
+    await expect(response).rejects.toBe(cancellation)
+    callbackResult.resolve(new Response(new ReadableStream({ cancel })))
+    await vi.waitFor(() => {
+      expect(cancel).toHaveBeenCalledTimes(1)
+      expect(cancel).toHaveBeenCalledWith(cancellation)
+    })
+  })
+
+  test.each(['throw', 'reject'] as const)(
+    'reports a %s from disposal of a late render response',
+    async (failureMode) => {
+      const router = buildRouter()
+      const requestController = new AbortController()
+      const renderStarted = deferred<void>()
+      const renderResult = deferred<any>()
+      const cleanupError = new Error('late stream cleanup failed')
+      const dispose = vi.fn(() => {
+        if (failureMode === 'throw') {
+          throw cleanupError
+        }
+        return Promise.reject(cleanupError)
+      })
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined)
+      const handler = createRequestHandler({
+        createRouter: () => router,
+        request: new Request('http://localhost/', {
+          signal: requestController.signal,
+        }),
+      })
+
+      try {
+        const response = handler(() => {
+          renderStarted.resolve()
+          return renderResult.promise
+        })
+
+        await renderStarted.promise
+        const cancellation = new Error('request disconnected')
+        requestController.abort(cancellation)
+        await expect(response).rejects.toBe(cancellation)
+
+        renderResult.resolve({
+          response: new Response('stream'),
+          serverSsrCleanup: 'stream',
+          dispose,
+        })
+        await vi.waitFor(() => {
+          expect(consoleError).toHaveBeenCalledWith(cleanupError)
+        })
+        expect(dispose).toHaveBeenCalledOnce()
+      } finally {
+        router.serverSsr?.cleanup()
+        consoleError.mockRestore()
+      }
+    },
+  )
+
+  test('request abort disposes a stream after response handoff', async () => {
+    const router = buildRouter()
+    const requestController = new AbortController()
+    let cleanupCalls = 0
+    let cancelCalls = 0
+    const handler = createRequestHandler({
+      createRouter: () => router,
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+    })
+
+    const response = await handler(({ router: requestRouter }) => {
+      const serverSsr = requestRouter.serverSsr!
+      const cleanup = serverSsr.cleanup
+      serverSsr.cleanup = () => {
+        cleanupCalls++
+        cleanup()
+      }
+      return createSsrStreamResponse(
+        requestRouter,
+        new Response(
+          new ReadableStream({
+            cancel() {
+              cancelCalls++
+              return new Promise<void>(() => {})
+            },
+          }),
+        ),
+      )
+    })
+
+    expect(response.body).not.toBeNull()
+    expect(cleanupCalls).toBe(0)
+    requestController.abort(new Error('request disconnected'))
+    await Promise.resolve()
+
+    expect(cleanupCalls).toBe(1)
+    expect(cancelCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+  })
+
+  test.each(['throw', 'reject'] as const)(
+    'reports a custom stream disposal %s after request abort',
+    async (failureMode) => {
+      const router = buildRouter()
+      attachRouterServerSsrUtils({ router, manifest: undefined })
+      let cleanupCalls = 0
+      const cleanup = router.serverSsr!.cleanup
+      router.serverSsr!.cleanup = () => {
+        cleanupCalls++
+        cleanup()
+      }
+      const cleanupError = new Error('custom stream cleanup failed')
+      const dispose = vi.fn(() => {
+        if (failureMode === 'throw') {
+          throw cleanupError
+        }
+        return Promise.reject(cleanupError)
+      })
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined)
+      const requestController = new AbortController()
+
+      bindSsrResponseToRequest(
+        router,
+        {
+          response: new Response('stream'),
+          serverSsrCleanup: 'stream',
+          dispose,
+        },
+        requestController.signal,
+      )
+      requestController.abort(new Error('request disconnected'))
+
+      await vi.waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith(cleanupError)
+      })
+      expect(dispose).toHaveBeenCalledOnce()
+      expect(cleanupCalls).toBe(1)
+      expect(router.serverSsr).toBeUndefined()
+    },
+  )
 
   test('request handler defers cleanup for stream response metadata', async () => {
     const router = buildRouter()

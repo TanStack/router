@@ -7,6 +7,16 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
+/**
+ * Preload adoption edge cases. The happy path (navigation adopts an
+ * in-flight preload's successful loader run) and the control-flow
+ * non-leakage path are pinned in load.test.ts; this file pins the
+ * adoption boundary: a donor must have its loader genuinely in flight. A
+ * preload still in its serial phase can itself be waiting on the navigation
+ * through the borrow protocol, while a stale successful donor can still have
+ * fresh loader work pending behind its cached snapshot.
+ */
+
 describe('preload adoption', () => {
   test('navigation waits for fresh data from an in-flight stale preload revalidation', async () => {
     vi.useFakeTimers()
@@ -86,6 +96,111 @@ describe('preload adoption', () => {
     ).toEqual({ notifications: ['fresh'] })
   })
 
+  test('navigation adopts an identical preload still in its serial phase', async () => {
+    const beforeLoadGate = createControlledPromise<void>()
+    const preloadSerialStarted = createControlledPromise<void>()
+    let beforeLoadCalls = 0
+    const loader = vi.fn(() => 'data')
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      beforeLoad: async () => {
+        beforeLoadCalls++
+        if (beforeLoadCalls === 1) {
+          // Keep the shared lane's serial phase in flight.
+          preloadSerialStarted.resolve()
+          await beforeLoadGate
+        }
+      },
+      loader,
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, fooRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    // Preload is stuck in its serial phase — its loader has NOT started.
+    const preload = router.preloadRoute({ to: '/foo' } as any)
+    await preloadSerialStarted
+    expect(beforeLoadCalls).toBe(1)
+
+    const navigation = router.navigate({ to: '/foo' })
+    await Promise.resolve()
+    expect(loader).not.toHaveBeenCalled()
+
+    beforeLoadGate.resolve()
+    await Promise.all([navigation, preload])
+    expect(beforeLoadCalls).toBe(1)
+    expect(loader).toHaveBeenCalledTimes(1)
+    expect(
+      router.state.matches.find((match) => match.routeId === fooRoute.id)
+        ?.status,
+    ).toBe('success')
+  })
+
+  test("a sibling preload adopts another preload lane's in-flight loader", async () => {
+    const loaderGate = createControlledPromise<string>()
+    const loaderStarted = createControlledPromise<void>()
+    let preloadBeforeLoadCalls = 0
+    const loader = vi.fn(() => {
+      loaderStarted.resolve()
+      return loaderGate
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const fooRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/foo',
+      preloadStaleTime: Infinity,
+      beforeLoad: ({ preload }) => {
+        if (preload) {
+          preloadBeforeLoadCalls++
+        }
+      },
+      loader,
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, fooRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    const first = router.preloadRoute({ to: '/foo' } as any)
+    await loaderStarted
+
+    const second = router.preloadRoute({ to: '/foo' } as any)
+    await Promise.resolve()
+    expect(preloadBeforeLoadCalls).toBe(1)
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    loaderGate.resolve('once')
+    await Promise.all([first, second])
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await router.navigate({ to: '/foo' })
+
+    expect(loader).toHaveBeenCalledTimes(1)
+    expect(
+      router.state.matches.find((match) => match.routeId === fooRoute.id)
+        ?.loaderData,
+    ).toBe('once')
+  })
+
   test('a fulfilled undefined loader result is adopted as success', async () => {
     const loaderGate = createControlledPromise<undefined>()
     const loaderStarted = createControlledPromise<void>()
@@ -129,5 +244,135 @@ describe('preload adoption', () => {
     )
     expect(match?.status).toBe('success')
     expect(match?.loaderData).toBeUndefined()
+  })
+
+  test('navigation retries a failed joined preload without starving sibling work', async () => {
+    const preloadParentStarted = createControlledPromise<void>()
+    const preloadFailureGate = createControlledPromise<void>()
+    const navigationStarted = createControlledPromise<void>()
+    const navigationParentRetryStarted = createControlledPromise<void>()
+    const childStarted = createControlledPromise<void>()
+    const childGate = createControlledPromise<string>()
+    let parentLoads = 0
+    let childLoads = 0
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      beforeLoad: ({ preload }) => {
+        if (!preload) {
+          navigationStarted.resolve()
+        }
+      },
+      loader: async ({ preload }) => {
+        parentLoads++
+        if (preload) {
+          preloadParentStarted.resolve()
+          await preloadFailureGate
+          throw new Error('preload failed')
+        }
+        navigationParentRetryStarted.resolve()
+        return 'navigation data'
+      },
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      loader: async () => {
+        childLoads++
+        childStarted.resolve()
+        return childGate
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        parentRoute.addChildren([childRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    const preload = router.preloadRoute({ to: '/parent/child' } as any)
+    await Promise.all([preloadParentStarted, childStarted])
+    expect(parentLoads).toBe(1)
+    expect(childLoads).toBe(1)
+
+    const navigation = router.navigate({ to: '/parent/child' })
+    await Promise.resolve()
+    expect(preloadFailureGate.status).toBe('pending')
+    expect(parentLoads).toBe(1)
+    expect(childLoads).toBe(1)
+
+    preloadFailureGate.resolve()
+    // An ordinary ancestor failure waits for every started descendant so a
+    // later redirect can still win before navigation retries.
+    childGate.resolve('child data')
+    await navigationStarted
+    await navigationParentRetryStarted
+    expect(parentLoads).toBe(2)
+    expect(childLoads).toBe(1)
+
+    await Promise.all([navigation, preload])
+
+    expect(parentLoads).toBe(2)
+    expect(childLoads).toBe(1)
+    expect(router.state.location.pathname).toBe('/parent/child')
+    expect(
+      router.state.matches.find((match) => match.routeId === parentRoute.id)
+        ?.loaderData,
+    ).toBe('navigation data')
+    expect(
+      router.state.matches.find((match) => match.routeId === childRoute.id)
+        ?.loaderData,
+    ).toBe('child data')
+  })
+
+  test('a route with preload disabled does not discard its preloaded ancestor', async () => {
+    const parentLoader = vi.fn(() => 'parent data')
+    const childLoader = vi.fn(() => 'child data')
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      preloadStaleTime: Infinity,
+      loader: parentLoader,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      preload: false,
+      loader: childLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        parentRoute.addChildren([childRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    await router.preloadRoute({ to: '/parent/child' } as any)
+    await router.navigate({ to: '/parent/child' })
+
+    expect(parentLoader).toHaveBeenCalledTimes(1)
+    expect(childLoader).toHaveBeenCalledTimes(1)
+    expect(
+      router.state.matches.find((match) => match.routeId === parentRoute.id)
+        ?.loaderData,
+    ).toBe('parent data')
+    expect(
+      router.state.matches.find((match) => match.routeId === childRoute.id)
+        ?.loaderData,
+    ).toBe('child data')
   })
 })

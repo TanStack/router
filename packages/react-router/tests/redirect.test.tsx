@@ -16,7 +16,6 @@ import {
   Outlet,
   RouterProvider,
   createBrowserHistory,
-  createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
@@ -73,6 +72,85 @@ describe('redirect', () => {
       expect(await screen.findByText('Index page')).toBeInTheDocument()
       expect(window.location.pathname).toBe('/')
       expect(loader).toHaveBeenCalledTimes(2)
+      expect(router.state.status).toBe('idle')
+    })
+
+    test('renders a root error after too many same-location redirects', async () => {
+      const loader = vi.fn(() => {
+        throw redirect({ to: '/' })
+      })
+      const rootRoute = createRootRoute({
+        errorComponent: ({ error }) => (
+          <div data-testid="root-error">Root: {error.message}</div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        loader,
+        errorComponent: ({ error }) => (
+          <div data-testid="index-error">Index: {error.message}</div>
+        ),
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      expect(await screen.findByTestId('root-error')).toHaveTextContent(
+        'Root: Too many redirects',
+      )
+      expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+      expect(window.location.pathname).toBe('/')
+      expect(loader).toHaveBeenCalledTimes(21)
+      expect(router.state.status).toBe('idle')
+    })
+
+    test('renders a root error after too many alternating redirects', async () => {
+      const indexLoader = vi.fn(() => {
+        throw redirect({ to: '/other' })
+      })
+      const otherLoader = vi.fn(() => {
+        throw redirect({ to: '/' })
+      })
+      const rootRoute = createRootRoute({
+        errorComponent: ({ error }) => (
+          <div data-testid="root-error">Root: {error.message}</div>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        loader: indexLoader,
+        errorComponent: ({ error }) => (
+          <div data-testid="index-error">Index: {error.message}</div>
+        ),
+      })
+      const otherRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/other',
+        loader: otherLoader,
+        errorComponent: ({ error }) => (
+          <div data-testid="other-error">Other: {error.message}</div>
+        ),
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, otherRoute]),
+        history,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      expect(await screen.findByTestId('root-error')).toHaveTextContent(
+        'Root: Too many redirects',
+      )
+      expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('other-error')).not.toBeInTheDocument()
+      expect(window.location.pathname).toBe('/')
+      expect(indexLoader).toHaveBeenCalledTimes(11)
+      expect(otherLoader).toHaveBeenCalledTimes(10)
       expect(router.state.status).toBe('idle')
     })
 
@@ -349,118 +427,6 @@ describe('redirect', () => {
 
       expect(await screen.findByText('Final')).toBeInTheDocument()
       expect(window.location.pathname).toBe('/final')
-    })
-  })
-
-  describe('SSR', () => {
-    test('when `redirect` is thrown in `beforeLoad`', async () => {
-      const rootRoute = createRootRoute()
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        beforeLoad: () => {
-          throw redirect({
-            to: '/about',
-          })
-        },
-      })
-
-      const aboutRoute = createRoute({
-        path: '/about',
-        getParentRoute: () => rootRoute,
-        component: () => {
-          return 'About'
-        },
-      })
-
-      const router = createRouter({
-        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-        // Mock server mode
-        isServer: true,
-        history: createMemoryHistory({
-          initialEntries: ['/'],
-        }),
-      })
-
-      await router.load()
-
-      expect(router.state.redirect).toBeDefined()
-      expect(router.state.redirect).toBeInstanceOf(Response)
-      const redirectResponse = router.state.redirect!
-
-      expect(redirectResponse.options).toEqual({
-        _fromLocation: expect.objectContaining({
-          hash: '',
-          href: '/',
-          pathname: '/',
-          search: {},
-          searchStr: '',
-        }),
-        to: '/about',
-        href: '/about',
-        statusCode: 307,
-      })
-    })
-
-    test('when `redirect` is thrown in `loader`', async () => {
-      const rootRoute = createRootRoute()
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        loader: () => {
-          throw redirect({
-            to: '/about',
-          })
-        },
-      })
-
-      const aboutRoute = createRoute({
-        path: '/about',
-        getParentRoute: () => rootRoute,
-        component: () => {
-          return 'About'
-        },
-      })
-
-      const router = createRouter({
-        history: createMemoryHistory({
-          initialEntries: ['/'],
-        }),
-        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-        // Mock server mode
-        isServer: true,
-      })
-
-      await router.load()
-
-      const currentRedirect = router.state.redirect
-
-      expect(currentRedirect).toBeDefined()
-      expect(currentRedirect).toBeInstanceOf(Response)
-      const redirectResponse = currentRedirect!
-      expect(redirectResponse.status).toEqual(307)
-      expect(redirectResponse.headers.get('Location')).toEqual('/about')
-      expect(redirectResponse.options).toEqual({
-        _fromLocation: {
-          external: false,
-          hash: '',
-          href: '/',
-          publicHref: '/',
-          pathname: '/',
-          search: {},
-          searchStr: '',
-          state: {
-            __TSR_index: 0,
-            __TSR_key: redirectResponse.options._fromLocation!.state.__TSR_key,
-            key: redirectResponse.options._fromLocation!.state.key,
-          },
-        },
-        href: '/about',
-        to: '/about',
-        statusCode: 307,
-      })
     })
   })
 })

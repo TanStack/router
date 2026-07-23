@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, render, waitFor } from '@testing-library/vue'
 import {
   RouterProvider,
+  createControlledPromise,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -37,5 +38,39 @@ describe('Transitioner', () => {
       expect(loader).toHaveBeenCalledTimes(1)
       expect(view.getByText('Index')).toBeInTheDocument()
     })
+  })
+
+  it('reuses a public load already in progress when the provider mounts', async () => {
+    const loaderGate = createControlledPromise<void>()
+    const beforeLoad = vi.fn()
+    const loader = vi.fn(() => loaderGate)
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      beforeLoad,
+      loader,
+      component: () => <div>Index</div>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const load = router.load()
+    try {
+      await waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
+
+      const view = render(<RouterProvider router={router} />)
+      loaderGate.resolve()
+      await load
+
+      expect(await view.findByText('Index')).toBeInTheDocument()
+      expect(beforeLoad).toHaveBeenCalledTimes(1)
+      expect(loader).toHaveBeenCalledTimes(1)
+    } finally {
+      loaderGate.resolve()
+      await Promise.allSettled([load])
+    }
   })
 })

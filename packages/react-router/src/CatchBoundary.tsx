@@ -5,44 +5,25 @@ import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
 
 export function CatchBoundary(props: {
-  getResetKey: () => number | string
+  getResetKey: () => unknown
   children: React.ReactNode
   errorComponent?: ErrorRouteComponent
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }) {
-  const errorComponent = props.errorComponent ?? ErrorComponent
-
-  return (
-    <CatchBoundaryImpl
-      getResetKey={props.getResetKey}
-      onCatch={props.onCatch}
-      children={({ error, reset }) => {
-        if (error) {
-          return React.createElement(errorComponent, {
-            error,
-            reset,
-          })
-        }
-
-        return props.children
-      }}
-    />
-  )
+  return <CatchBoundaryImpl {...props} />
 }
 
 class CatchBoundaryImpl extends React.Component<{
-  getResetKey: () => number | string
-  children: (props: {
-    error: Error | null
-    reset: () => void
-  }) => React.ReactNode
+  getResetKey: () => unknown
+  children: React.ReactNode
+  errorComponent?: ErrorRouteComponent
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: Error | null; resetKey?: string | number }
+  state = { error: null } as { error: Error | null; resetKey?: unknown }
 
   static getDerivedStateFromProps(
-    props: { getResetKey: () => string | number },
-    state: { resetKey?: string | number; error: Error | null },
+    props: { getResetKey: () => unknown },
+    state: { resetKey?: unknown; error: Error | null },
   ) {
     const resetKey = props.getResetKey()
 
@@ -55,21 +36,20 @@ class CatchBoundaryImpl extends React.Component<{
   static getDerivedStateFromError(error: Error) {
     return { error }
   }
-  reset() {
+  reset = () => {
     this.setState({ error: null })
   }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (this.props.onCatch) {
-      this.props.onCatch(error, errorInfo)
-    }
+    this.props.onCatch?.(error, errorInfo)
   }
   render() {
-    return this.props.children({
-      error: this.state.error,
-      reset: () => {
-        this.reset()
-      },
-    })
+    const error = this.state.error
+    return error
+      ? React.createElement(this.props.errorComponent ?? ErrorComponent, {
+          error,
+          reset: this.reset,
+        })
+      : this.props.children
   }
 }
 

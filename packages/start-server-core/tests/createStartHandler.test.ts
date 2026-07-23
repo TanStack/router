@@ -3,7 +3,12 @@
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { createMiddleware } from '@tanstack/start-client-core'
-import { BaseRootRoute, BaseRoute, RouterCore } from '@tanstack/router-core'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  RouterCore,
+  type AnyRouter,
+} from '@tanstack/router-core'
 import {
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
@@ -25,7 +30,7 @@ const startMocks = vi.hoisted(() => {
     previousServerFnBase,
     requestMiddleware: [] as Array<any>,
     serverFnResult: undefined as undefined | Response | object,
-    router: undefined as undefined | ReturnType<typeof makeRouter>,
+    router: undefined as undefined | AnyRouter,
   }
 })
 
@@ -68,6 +73,38 @@ function makeRouter() {
   )
   router.isServer = true
   return router
+}
+
+function makeRouterWithRouteWork(routeWork: {
+  beforeLoad?: (ctx: { abortController: AbortController }) => unknown
+  loader?: (ctx: { abortController: AbortController }) => unknown
+}) {
+  const rootRoute = new BaseRootRoute({})
+  const workRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/work',
+    component: () => null,
+    ...routeWork,
+  })
+  const router = new RouterCore(
+    {
+      history: createMemoryHistory({ initialEntries: ['/work'] }),
+      routeTree: rootRoute.addChildren([workRoute]),
+    },
+    getStoreConfig,
+  )
+  router.isServer = true
+  return router
+}
+
+function waitForAbortOrRelease(signal: AbortSignal) {
+  return new Promise<void>((resolve) => {
+    const release = () => {
+      signal.removeEventListener('abort', release)
+      resolve()
+    }
+    signal.addEventListener('abort', release, { once: true })
+  })
 }
 
 function makeStreamResponse(router: ReturnType<typeof makeRouter>) {
@@ -323,6 +360,630 @@ describe('createStartHandler SSR cleanup ownership', () => {
 
     expect(response).toBe(replacement)
     expect(dispose).toHaveBeenCalledOnce()
+    expect(router.serverSsr).toBeUndefined()
+  })
+})
+
+describe('createStartHandler request cancellation', () => {
+  it.each(['beforeLoad', 'loader'] as const)(
+    'aborts route %s work and does not render HTML',
+    async (hook) => {
+      let routeSignal: AbortSignal | undefined
+      let notifyStarted: (() => void) | undefined
+      const started = new Promise<void>((resolve) => {
+        notifyStarted = resolve
+      })
+      const routeWork = ({
+        abortController,
+      }: {
+        abortController: AbortController
+      }) => {
+        routeSignal = abortController.signal
+        notifyStarted?.()
+        return waitForAbortOrRelease(abortController.signal)
+      }
+      const router = makeRouterWithRouteWork({ [hook]: routeWork })
+      startMocks.router = router
+      const requestController = new AbortController()
+      const render = vi.fn(() => new Response('must not render'))
+      const handler = createStartHandler(render)
+      const response = handler(
+        new Request('http://localhost/work', {
+          signal: requestController.signal,
+        }),
+        {},
+      )
+
+      await started
+      const cancellation = new Error('request disconnected')
+      requestController.abort(cancellation)
+
+      expect((await response).status).toBe(500)
+      expect(routeSignal?.aborted).toBe(true)
+      expect(routeSignal?.reason).toBe(cancellation)
+      expect(render).not.toHaveBeenCalled()
+    },
+  )
+
+  it('settles and cleans up while the render callback is still pending', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    let notifyRenderStarted!: () => void
+    const renderStarted = new Promise<void>((resolve) => {
+      notifyRenderStarted = resolve
+    })
+    let resolveRender!: (
+      value: ReturnType<typeof createSsrStreamResponse>,
+    ) => void
+    const renderResult = new Promise<
+      ReturnType<typeof createSsrStreamResponse>
+    >((resolve) => {
+      resolveRender = resolve
+    })
+    let cleanupCalls = 0
+    let cancelCalls = 0
+    let lateStreamResponse!: ReturnType<typeof createSsrStreamResponse>
+    const handler = createStartHandler(({ router: requestRouter }) => {
+      const serverSsr = requestRouter.serverSsr!
+      const cleanup = serverSsr.cleanup
+      serverSsr.cleanup = () => {
+        cleanupCalls++
+        cleanup()
+      }
+      lateStreamResponse = createSsrStreamResponse(
+        requestRouter,
+        new Response(
+          new ReadableStream({
+            cancel() {
+              cancelCalls++
+              return new Promise<void>(() => {})
+            },
+          }),
+        ),
+      )
+      notifyRenderStarted()
+      return renderResult
+    })
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await renderStarted
+    requestController.abort(new Error('request disconnected'))
+
+    expect((await response).status).toBe(500)
+    expect(cleanupCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+
+    resolveRender(lateStreamResponse)
+    await Promise.resolve()
+    await Promise.resolve()
+    expect(cleanupCalls).toBe(1)
+    expect(cancelCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+  })
+
+  it('cancels a plain response resolved by the render callback later', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    let notifyRenderStarted!: () => void
+    const renderStarted = new Promise<void>((resolve) => {
+      notifyRenderStarted = resolve
+    })
+    let resolveRender!: (value: Response) => void
+    const renderResult = new Promise<Response>((resolve) => {
+      resolveRender = resolve
+    })
+    const cancel = vi.fn((_reason: unknown) => new Promise<void>(() => {}))
+    const handler = createStartHandler(() => {
+      notifyRenderStarted()
+      return renderResult
+    })
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await renderStarted
+    const cancellation = new Error('request disconnected')
+    requestController.abort(cancellation)
+
+    expect((await response).status).toBe(500)
+    resolveRender(new Response(new ReadableStream({ cancel })))
+    await vi.waitFor(() => {
+      expect(cancel).toHaveBeenCalledTimes(1)
+      expect(cancel).toHaveBeenCalledWith(cancellation)
+    })
+  })
+
+  it('cancels a plain response resolved by request middleware later', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    let notifyMiddlewareStarted!: () => void
+    const middlewareStarted = new Promise<void>((resolve) => {
+      notifyMiddlewareStarted = resolve
+    })
+    let resolveMiddleware!: (value: Response) => void
+    const middlewareResult = new Promise<Response>((resolve) => {
+      resolveMiddleware = resolve
+    })
+    const cancel = vi.fn((_reason: unknown) => new Promise<void>(() => {}))
+    startMocks.requestMiddleware = [
+      createMiddleware().server(() => {
+        notifyMiddlewareStarted()
+        return middlewareResult
+      }),
+    ]
+    const handler = createStartHandler(() => new Response('must not render'))
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await middlewareStarted
+    const cancellation = new Error('request disconnected')
+    requestController.abort(cancellation)
+
+    expect((await response).status).toBe(500)
+    resolveMiddleware(new Response(new ReadableStream({ cancel })))
+    await vi.waitFor(() => {
+      expect(cancel).toHaveBeenCalledTimes(1)
+      expect(cancel).toHaveBeenCalledWith(cancellation)
+    })
+  })
+
+  it.each(['throw', 'reject'] as const)(
+    'reports a %s from disposal of a late render response',
+    async (failureMode) => {
+      const router = makeRouter()
+      startMocks.router = router
+      const requestController = new AbortController()
+      const cleanupError = new Error('late stream cleanup failed')
+      const dispose = vi.fn(() => {
+        if (failureMode === 'throw') {
+          throw cleanupError
+        }
+        return Promise.reject(cleanupError)
+      })
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined)
+      let notifyRenderStarted!: () => void
+      const renderStarted = new Promise<void>((resolve) => {
+        notifyRenderStarted = resolve
+      })
+      let resolveRender!: (value: any) => void
+      const renderResult = new Promise<any>((resolve) => {
+        resolveRender = resolve
+      })
+
+      try {
+        const handler = createStartHandler(() => {
+          notifyRenderStarted()
+          return renderResult
+        })
+        const response = handler(
+          new Request('http://localhost/', {
+            signal: requestController.signal,
+          }),
+          {},
+        )
+
+        await renderStarted
+        requestController.abort(new Error('request disconnected'))
+        expect((await response).status).toBe(500)
+
+        resolveRender({
+          response: new Response('stream'),
+          serverSsrCleanup: 'stream',
+          dispose,
+        })
+        await vi.waitFor(() => {
+          expect(consoleError).toHaveBeenCalledWith(cleanupError)
+        })
+        expect(dispose).toHaveBeenCalledOnce()
+      } finally {
+        router.serverSsr?.cleanup()
+        consoleError.mockRestore()
+      }
+    },
+  )
+
+  it.each(['throw', 'reject'] as const)(
+    'reports a stream disposal %s when middleware is aborted',
+    async (failureMode) => {
+      const router = makeRouter()
+      startMocks.router = router
+      const requestController = new AbortController()
+      const cleanupError = new Error('custom stream cleanup failed')
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined)
+      const ssrResponse = makeStreamResponse(router)
+      const dispose = vi.fn(() => {
+        if (failureMode === 'throw') {
+          throw cleanupError
+        }
+        return Promise.reject(cleanupError)
+      })
+      ;(ssrResponse as any).dispose = dispose
+      startMocks.serverFnResult = ssrResponse
+      let notifyMiddlewareStarted!: () => void
+      const middlewareStarted = new Promise<void>((resolve) => {
+        notifyMiddlewareStarted = resolve
+      })
+      startMocks.requestMiddleware = [
+        createMiddleware().server(async ({ next }) => {
+          await next()
+          notifyMiddlewareStarted()
+          return new Promise<Response>(() => {})
+        }),
+      ]
+
+      try {
+        const handler = createStartHandler(() => new Response('unused'))
+        const response = handler(
+          new Request('http://localhost/_serverFn/test', {
+            headers: { 'x-tsr-serverFn': 'true' },
+            signal: requestController.signal,
+          }),
+          {},
+        )
+
+        await middlewareStarted
+        requestController.abort(new Error('request disconnected'))
+
+        expect((await response).status).toBe(500)
+        await vi.waitFor(() => {
+          expect(consoleError).toHaveBeenCalledWith(cleanupError)
+        })
+        expect(dispose).toHaveBeenCalledOnce()
+      } finally {
+        router.serverSsr?.cleanup()
+        consoleError.mockRestore()
+      }
+    },
+  )
+
+  it('disposes a stream when the request aborts after response handoff', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    let cancelCalls = 0
+    const handler = createStartHandler(({ router: requestRouter }) =>
+      createSsrStreamResponse(
+        requestRouter,
+        new Response(
+          new ReadableStream({
+            cancel() {
+              cancelCalls++
+              return new Promise<void>(() => {})
+            },
+          }),
+        ),
+      ),
+    )
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+    expect(response.body).not.toBeNull()
+    expect(router.serverSsr).toBeDefined()
+
+    requestController.abort(new Error('request disconnected'))
+    await Promise.resolve()
+
+    expect(cancelCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+  })
+
+  it('settles when request middleware ignores cancellation', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    let notifyMiddlewareStarted!: () => void
+    const middlewareStarted = new Promise<void>((resolve) => {
+      notifyMiddlewareStarted = resolve
+    })
+    const dispose = vi.fn(() => Promise.resolve())
+    let releaseMiddleware!: (response: any) => void
+    const middlewareResult = new Promise<any>((resolve) => {
+      releaseMiddleware = resolve
+    })
+    startMocks.requestMiddleware = [
+      createMiddleware().server(() => {
+        notifyMiddlewareStarted()
+        return middlewareResult
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await middlewareStarted
+    requestController.abort(new Error('request disconnected'))
+
+    expect((await response).status).toBe(500)
+    expect(render).not.toHaveBeenCalled()
+
+    releaseMiddleware({
+      response: new Response('late'),
+      serverSsrCleanup: 'stream',
+      dispose,
+    })
+    await vi.waitFor(() => expect(dispose).toHaveBeenCalledOnce())
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('unwinds nested middleware when an inner operation ignores cancellation', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    const outerFinally = vi.fn()
+    let notifyInnerStarted!: () => void
+    const innerStarted = new Promise<void>((resolve) => {
+      notifyInnerStarted = resolve
+    })
+    const pending = new Promise<Response>(() => {})
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(async ({ next }) => {
+        try {
+          return await next()
+        } finally {
+          outerFinally()
+        }
+      }),
+      createMiddleware().server(() => {
+        notifyInnerStarted()
+        return pending
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await innerStarted
+    requestController.abort(new Error('request disconnected'))
+
+    expect((await response).status).toBe(500)
+    expect(outerFinally).toHaveBeenCalledOnce()
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('cancels an all-synchronous direct next chain', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    let notifyInnerStarted!: () => void
+    const innerStarted = new Promise<void>((resolve) => {
+      notifyInnerStarted = resolve
+    })
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(() => {
+        notifyInnerStarted()
+        return new Promise<Response>(() => {})
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await innerStarted
+    requestController.abort(new Error('request disconnected'))
+
+    expect((await response).status).toBe(500)
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('preserves the abort reason when direct next rejects during abort', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    const reason = new Error('request disconnected')
+    startMocks.requestMiddleware = [
+      createMiddleware().server(({ next }) => next()),
+      createMiddleware().server(() => {
+        requestController.abort(reason)
+        throw new Response('must not escape', { status: 418 })
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(500)
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('preserves aborts that race with a fulfilled direct next promise', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    const reason = new Error('request disconnected')
+    const observedErrors: Array<unknown> = []
+    const afterNext = vi.fn()
+    const ssrResponse = makeStreamResponse(router)
+    const dispose = vi.spyOn(ssrResponse as any, 'dispose')
+    const cancel = vi.spyOn(ssrResponse.response.body!, 'cancel')
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        try {
+          const result = await next()
+          afterNext()
+          return result
+        } catch (error) {
+          observedErrors.push(error)
+          throw error
+        }
+      }),
+      createMiddleware().server(({ next }) => {
+        const pending = next()
+        void Promise.resolve(pending).then(() =>
+          requestController.abort(reason),
+        )
+        return pending
+      }),
+      createMiddleware().server(() => ssrResponse as any),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(500)
+    await vi.waitFor(() => expect(observedErrors).toEqual([reason]))
+    await vi.waitFor(() => {
+      expect(dispose).toHaveBeenCalledOnce()
+      expect(dispose).toHaveBeenCalledWith(reason)
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(cancel).toHaveBeenCalledWith(reason)
+    })
+    expect(afterNext).not.toHaveBeenCalled()
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('disposes a tagged final response once when abort wins handoff', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    const reason = new Error('request disconnected')
+    const ssrResponse = makeStreamResponse(router)
+    const dispose = vi.spyOn(ssrResponse as any, 'dispose')
+    const cancel = vi.spyOn(ssrResponse.response.body!, 'cancel')
+    startMocks.requestMiddleware = [
+      createMiddleware().server(() => {
+        queueMicrotask(() => {
+          queueMicrotask(() => requestController.abort(reason))
+        })
+        return ssrResponse as any
+      }),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(500)
+    await vi.waitFor(() => {
+      expect(dispose).toHaveBeenCalledOnce()
+      expect(dispose).toHaveBeenCalledWith(reason)
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(cancel).toHaveBeenCalledWith(reason)
+    })
+    expect(router.serverSsr).toBeUndefined()
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('ignores a late same-body alias after catch disposes its owner', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    const reason = new Error('request disconnected')
+    let notifyResponseCaptured!: () => void
+    const responseCaptured = new Promise<void>((resolve) => {
+      notifyResponseCaptured = resolve
+    })
+    let releaseMiddleware!: () => void
+    const middlewareRelease = new Promise<void>((resolve) => {
+      releaseMiddleware = resolve
+    })
+    let notifyLateResultDelivered!: () => void
+    const lateResultDelivered = new Promise<void>((resolve) => {
+      notifyLateResultDelivered = resolve
+    })
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        const wrapped = new Response(result.response.body, result.response)
+        notifyResponseCaptured()
+        await middlewareRelease
+        queueMicrotask(() => {
+          queueMicrotask(notifyLateResultDelivered)
+        })
+        return wrapped
+      }),
+    ]
+    const response = new Response(
+      new ReadableStream({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('stream'))
+        },
+      }),
+    )
+    const cancel = vi.spyOn(response.body!, 'cancel')
+    let ssrResponse!: ReturnType<typeof createSsrStreamResponse>
+    const render = vi.fn(({ router: requestRouter }) => {
+      ssrResponse = createSsrStreamResponse(requestRouter, response)
+      return ssrResponse
+    })
+    const handler = createStartHandler(render)
+    const result = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await responseCaptured
+    const dispose = vi.spyOn(ssrResponse as any, 'dispose')
+    requestController.abort(reason)
+
+    expect((await result).status).toBe(500)
+    releaseMiddleware()
+    await lateResultDelivered
+    await vi.waitFor(() => {
+      expect(dispose).toHaveBeenCalledOnce()
+      expect(dispose).toHaveBeenCalledWith(reason)
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(cancel).toHaveBeenCalledWith(reason)
+    })
     expect(router.serverSsr).toBeUndefined()
   })
 })

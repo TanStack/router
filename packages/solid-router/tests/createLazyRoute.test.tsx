@@ -97,6 +97,71 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
   })
 })
 
+// https://github.com/TanStack/router/issues/4467
+it('replaces default pending UI when delayed lazy options provide pending UI', async () => {
+  const loader = createControlledPromise<void>()
+  const componentPreload = createControlledPromise<void>()
+  const preloadComponent = vi.fn(() => componentPreload)
+  const Page = Object.assign(() => <h1>Page</h1>, {
+    preload: preloadComponent,
+  })
+  const lazyPageOptions = createLazyRoute('/page')({
+    pendingComponent: () => <p role="status">Loading lazy page</p>,
+    component: Page,
+  })
+  const lazyOptions = createControlledPromise<typeof lazyPageOptions>()
+  const rootRoute = createRootRoute({ component: Outlet })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <h1>Index page</h1>,
+  })
+  const pageRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    loader: () => loader,
+  }).lazy(() => lazyOptions)
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, pageRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
+    defaultPendingComponent: () => <p role="status">Loading default</p>,
+  })
+  let navigation: Promise<void> | undefined
+
+  try {
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('Index page')).toBeInTheDocument()
+
+    navigation = router.navigate({ to: '/page' })
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      'Loading default',
+    )
+
+    lazyOptions.resolve(lazyPageOptions)
+    await vi.waitFor(() =>
+      expect(screen.getByRole('status')).toHaveTextContent('Loading lazy page'),
+    )
+    expect(preloadComponent).toHaveBeenCalledOnce()
+    expect(componentPreload.status).toBe('pending')
+    expect(screen.queryByText('Page')).not.toBeInTheDocument()
+
+    componentPreload.resolve()
+    loader.resolve()
+    await navigation
+
+    expect(await screen.findByText('Page')).toBeInTheDocument()
+  } finally {
+    lazyOptions.resolve(lazyPageOptions)
+    componentPreload.resolve()
+    loader.resolve()
+    if (navigation) {
+      await Promise.allSettled([navigation])
+    }
+  }
+})
+
 it('renders an eager loader error with a delayed lazy errorComponent', async () => {
   const loader = createControlledPromise<void>()
   const loaderErrorHandled = createControlledPromise<void>()

@@ -729,20 +729,32 @@ test('does not show pending UI when loaders finish before their pending delays',
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
 
-test('throw abortError from loader upon initial load with basepath', async () => {
-  window.history.replaceState(null, 'root', '/app')
+// https://github.com/TanStack/router/pull/7673
+test('#7673: a spontaneous loader AbortError renders the boundary without executing the route component', async () => {
+  history.replace('/app')
+  history.flush()
   const rootRoute = createRootRoute({})
+  const abortError = new DOMException('Aborted', 'AbortError')
+  const routeComponentRendered = vi.fn()
+  const renderedError = vi.fn()
+  let routeSignal: AbortSignal | undefined
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    loader: async () => {
-      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    loader: async ({ abortController }): Promise<{ value: string }> => {
+      routeSignal = abortController.signal
+      return Promise.reject(abortError)
     },
-    component: () => <div>Index route content</div>,
-    errorComponent: () => (
-      <div data-testid="index-error">indexErrorComponent</div>
-    ),
+    component: () => {
+      routeComponentRendered()
+      const data = indexRoute.useLoaderData()
+      return <div data-testid="index-content">{data.value}</div>
+    },
+    errorComponent: ({ error }) => {
+      renderedError(error)
+      return <div data-testid="index-error">indexErrorComponent</div>
+    },
   })
 
   const routeTree = rootRoute.addChildren([indexRoute])
@@ -750,10 +762,18 @@ test('throw abortError from loader upon initial load with basepath', async () =>
 
   render(<RouterProvider router={router} />)
 
-  const indexElement = await screen.findByText('Index route content')
-  expect(indexElement).toBeInTheDocument()
-  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
-  expect(window.location.pathname.startsWith('/app')).toBe(true)
+  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
+  expect(routeComponentRendered).not.toHaveBeenCalled()
+  expect(renderedError).toHaveBeenCalledWith(abortError)
+  expect(routeSignal?.aborted).toBe(false)
+  expect(
+    router.state.matches.find((match) => match.routeId === indexRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: abortError,
+  })
+  expect(window.location.pathname).toBe('/app')
 })
 
 test('navigating away from a pending route aborts its loader', async () => {

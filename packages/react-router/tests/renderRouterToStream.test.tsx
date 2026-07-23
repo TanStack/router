@@ -52,6 +52,35 @@ function unwrapResponse(
 }
 
 describe('renderRouterToStream - pipeable sync errors', () => {
+  test('request abort cancels readable rendering without consuming the response body', async () => {
+    const cancel = vi.fn()
+    const stream = Object.assign(new ReadableStream<Uint8Array>({ cancel }), {
+      allReady: Promise.resolve(),
+    })
+    reactDomServerMocks.renderToReadableStream = vi.fn(() => stream)
+
+    const router = await buildRouter()
+    const controller = new AbortController()
+    try {
+      const response = unwrapResponse(
+        await renderRouterToStream({
+          request: new Request('http://localhost/', {
+            signal: controller.signal,
+          }),
+          router,
+          responseHeaders: new Headers(),
+          children: null,
+        }),
+      )
+
+      expect(response.body).not.toBeNull()
+      controller.abort(new Error('request-gone'))
+      await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
   test('sync onError before pipeable is assigned still aborts pipeable', async () => {
     const abort = vi.fn()
     reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
