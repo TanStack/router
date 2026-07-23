@@ -3,6 +3,9 @@ export type RoutePathSegmentMetadata = {
   literalTrailingUnderscore?: boolean
 }
 
+/** @internal */
+export type StaticSsrOption = true | false | 'data-only'
+
 export type RouteNode = {
   filePath: string
   fullPath: string
@@ -18,6 +21,10 @@ export type RouteNode = {
   children?: Array<RouteNode>
   parent?: RouteNode
   createFileRouteProps?: Set<string>
+  /** @internal */
+  staticSsr?: StaticSsrOption
+  /** @internal */
+  serverSsr?: StaticSsrOption
   /**
    * For virtual routes: the routePath of the explicit parent from virtual config.
    * Used to prevent auto-nesting siblings based on path prefix matching (#5822, #5431).
@@ -74,7 +81,11 @@ export type HandleNodeAccumulator = {
   routeNodesByPath: Map<string, RouteNode>
 }
 
-export type GetRoutesByFileMapResultValue = { routeId: string }
+export type GetRoutesByFileMapResultValue = {
+  routeId: string
+  /** @internal */
+  serverSsr?: StaticSsrOption
+}
 export type GetRoutesByFileMapResult = Map<
   string,
   GetRoutesByFileMapResultValue

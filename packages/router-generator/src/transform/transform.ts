@@ -4,6 +4,11 @@ import { parseAst } from '@tanstack/router-utils'
 import type { TransformOptions, TransformResult } from './types'
 
 const routeConstructors = ['createFileRoute', 'createLazyFileRoute'] as const
+const routeOptionsConstructors = [
+  ...routeConstructors,
+  'createRootRoute',
+  'createRootRouteWithContext',
+] as const
 
 type RouteConstructorName = (typeof routeConstructors)[number]
 type SupportedRouteId = t.StringLiteral | t.TemplateLiteral
@@ -45,6 +50,17 @@ type RouteCallAnalysis = {
   hasMalformedRouteCall: boolean
 }
 
+/** @internal */
+export function getStaticSsrOption(source: string, filename?: string) {
+  try {
+    const ast = parseAst({ code: source, filename })
+    const exportedRouteNames = getExportedRouteNames(ast.program.body)
+    return findStaticSsrOption(ast.program.body, exportedRouteNames)
+  } catch {
+    return undefined
+  }
+}
+
 export function transform({
   ctx,
   source,
@@ -67,6 +83,8 @@ export function transform({
   if (exportedRouteNames.size === 0) {
     return { result: 'no-route-export' }
   }
+
+  node.staticSsr = findStaticSsrOption(ast.program.body, exportedRouteNames)
 
   const {
     calls: routeCalls,
@@ -248,6 +266,101 @@ function getVariableDeclaration(statement: t.Statement) {
     : statement
 
   return t.isVariableDeclaration(declaration) ? declaration : null
+}
+
+function findStaticSsrOption(
+  body: Array<t.Statement>,
+  exportedRouteNames: Set<string>,
+) {
+  for (const statement of body) {
+    const declaration = getVariableDeclaration(statement)
+    if (!declaration) {
+      continue
+    }
+
+    for (const declarator of declaration.declarations) {
+      if (
+        !t.isIdentifier(declarator.id) ||
+        !exportedRouteNames.has(declarator.id.name)
+      ) {
+        continue
+      }
+
+      const options = getRouteOptions(declarator.init)
+      if (!t.isObjectExpression(options)) {
+        return undefined
+      }
+
+      let staticSsr: true | false | 'data-only' | undefined
+
+      for (const property of options.properties) {
+        if (t.isSpreadElement(property) || property.computed) {
+          staticSsr = undefined
+          continue
+        }
+
+        if (!t.isObjectProperty(property)) {
+          if (getPropertyKeyName(property) === 'ssr') {
+            staticSsr = undefined
+          }
+          continue
+        }
+
+        if (getPropertyKeyName(property) !== 'ssr') {
+          continue
+        }
+
+        if (t.isBooleanLiteral(property.value)) {
+          staticSsr = property.value.value
+        } else if (t.isStringLiteral(property.value, { value: 'data-only' })) {
+          staticSsr = 'data-only'
+        } else {
+          staticSsr = undefined
+        }
+      }
+
+      return staticSsr
+    }
+  }
+
+  return undefined
+}
+
+function getRouteOptions(expression: t.Expression | null | undefined) {
+  if (!expression || !t.isCallExpression(expression)) {
+    return undefined
+  }
+
+  if (
+    t.isIdentifier(expression.callee) &&
+    expression.callee.name === 'createRootRoute'
+  ) {
+    return expression.arguments[0]
+  }
+
+  if (
+    t.isCallExpression(expression.callee) &&
+    t.isIdentifier(expression.callee.callee) &&
+    isRouteOptionsConstructor(expression.callee.callee.name)
+  ) {
+    return expression.arguments[0]
+  }
+
+  return undefined
+}
+
+function isRouteOptionsConstructor(
+  name: string,
+): name is (typeof routeOptionsConstructors)[number] {
+  return routeOptionsConstructors.some((constructor) => constructor === name)
+}
+
+function getPropertyKeyName(property: t.ObjectProperty | t.ObjectMethod) {
+  if (t.isIdentifier(property.key)) {
+    return property.key.name
+  }
+
+  return t.isStringLiteral(property.key) ? property.key.value : undefined
 }
 
 function getExportedName(node: t.Identifier | t.StringLiteral) {

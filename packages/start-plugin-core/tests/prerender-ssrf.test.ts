@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { prerender } from '../src/prerender'
+import { prerender, validateAndNormalizePrerenderPage } from '../src/prerender'
 
 vi.mock('../src/utils', async () => {
   const actual = await vi.importActual<any>('../src/utils')
@@ -39,6 +39,7 @@ const handler = {
 
 function resetFetch() {
   fetchMock.mockClear()
+  globalThis.TSS_PRERENDER_ROUTE_TREE = async () => undefined
 }
 
 function makeStartConfig(pagePath: string) {
@@ -73,6 +74,36 @@ describe('prerender pages validation', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
+  it('throws when route options are not loaded for SSR prerendering', async () => {
+    resetFetch()
+    delete globalThis.TSS_PRERENDER_ROUTE_TREE
+    const startConfig = makeStartConfig('/about')
+
+    await expect(prerender({ startConfig, handler })).rejects.toThrow(
+      'Prerender route options were not loaded',
+    )
+  })
+
+  it('closes the handler and clears route tree state when prerendering fails', async () => {
+    resetFetch()
+    const startConfig = makeStartConfig('https://attacker.test/leak')
+    const close = vi.fn(async () => {})
+    globalThis.TSS_PRERENDER_ROUTE_TREE = async () => undefined
+
+    await expect(
+      prerender({
+        startConfig,
+        handler: {
+          ...handler,
+          close,
+        },
+      }),
+    ).rejects.toThrow(/prerender page path must be relative/i)
+
+    expect(close).toHaveBeenCalledOnce()
+    expect(globalThis.TSS_PRERENDER_ROUTE_TREE).toBeUndefined()
+  })
+
   it('allows relative paths', async () => {
     resetFetch()
     const startConfig = makeStartConfig('/about')
@@ -87,5 +118,18 @@ describe('prerender pages validation', () => {
 
     await expect(prerender({ startConfig, handler })).resolves.not.toThrow()
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('preserves encoded path delimiters while decoding unicode path params', () => {
+    expect(
+      validateAndNormalizePrerenderPage(
+        {
+          path: '/posts/%EB%8C%80%ED%95%9C%EB%AF%BC%EA%B5%AD%2Fdocs%3Fdraft%23intro?tag=router+start',
+        },
+        new URL('http://localhost'),
+      ),
+    ).toEqual({
+      path: '/posts/대한민국%2Fdocs%3Fdraft%23intro?tag=router+start',
+    })
   })
 })

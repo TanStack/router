@@ -7,10 +7,57 @@ vi.mock('@tanstack/start-server-core', () => ({
 }))
 
 vi.mock('../src/build-sitemap', () => ({
-  buildSitemap: vi.fn(),
+  createSitemapWriter: vi.fn(() => ({
+    write: () => {},
+    close: async () => {},
+  })),
 }))
 
 describe('postServerBuild', () => {
+  it('throws when sitemap is enabled without a host', async () => {
+    const prerender = vi.fn(async () => {})
+    const { postBuild } = await import('../src/post-build')
+
+    await expect(
+      postBuild({
+        startConfig: {
+          sitemap: { enabled: true, outputPath: 'sitemap.xml' },
+          pages: [{ path: '/guide/start' }],
+          router: { basepath: '' },
+          serverFns: { base: '' },
+          spa: { enabled: false },
+        } as any,
+        adapter: {
+          getClientOutputDirectory: () => '/client',
+          prerender,
+        },
+      }),
+    ).rejects.toThrow(
+      'Sitemap host is not set and required to build the sitemap.',
+    )
+  })
+
+  it('does not enable prerendering when pages array is empty and prerender config is absent', async () => {
+    const prerender = vi.fn(async () => {})
+    const { postBuild } = await import('../src/post-build')
+
+    await postBuild({
+      startConfig: {
+        pages: [],
+        router: { basepath: '' },
+        serverFns: { base: '' },
+        spa: { enabled: false },
+        sitemap: { enabled: false },
+      } as any,
+      adapter: {
+        getClientOutputDirectory: () => '/client',
+        prerender,
+      },
+    })
+
+    expect(prerender).not.toHaveBeenCalled()
+  })
+
   it('rejects absolute SPA maskPath URLs to avoid external prerendering', async () => {
     const prerender = vi.fn(async () => {})
     const { postBuild } = await import('../src/post-build')
@@ -39,5 +86,87 @@ describe('postServerBuild', () => {
     ).rejects.toThrow(/maskPath/i)
 
     expect(prerender).not.toHaveBeenCalled()
+  })
+
+  it('keeps explicit prerender pages in SPA mode', async () => {
+    const prerender = vi.fn(async () => {})
+    const { postBuild } = await import('../src/post-build')
+
+    const startConfig = {
+      spa: {
+        enabled: true,
+        maskPath: '/',
+        prerender: {},
+      },
+      pages: [{ path: '/about', prerender: { enabled: true } }],
+      router: { basepath: '' },
+      serverFns: { base: '' },
+      sitemap: { enabled: false },
+    } as any
+
+    await postBuild({
+      startConfig,
+      adapter: {
+        getClientOutputDirectory: () => '/client',
+        prerender,
+      },
+    })
+
+    expect(prerender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pages: [
+          expect.objectContaining({
+            path: '/about',
+          }),
+          expect.objectContaining({
+            path: '/',
+          }),
+        ],
+        prerender: expect.objectContaining({
+          enabled: true,
+        }),
+      }),
+      expect.anything(),
+    )
+  })
+
+  it('limits SPA-only prerendering to the shell page', async () => {
+    const prerender = vi.fn(async () => {})
+    const { postBuild } = await import('../src/post-build')
+
+    const startConfig = {
+      spa: {
+        enabled: true,
+        maskPath: '/',
+        prerender: {},
+      },
+      pages: [{ path: '/about' }],
+      router: { basepath: '' },
+      serverFns: { base: '' },
+      sitemap: { enabled: false },
+    } as any
+
+    await postBuild({
+      startConfig,
+      adapter: {
+        getClientOutputDirectory: () => '/client',
+        prerender,
+      },
+    })
+
+    expect(prerender).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pages: [
+          expect.objectContaining({
+            path: '/',
+          }),
+        ],
+        prerender: expect.objectContaining({
+          enabled: true,
+          autoStaticPathsDiscovery: false,
+        }),
+      }),
+      expect.anything(),
+    )
   })
 })

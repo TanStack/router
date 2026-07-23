@@ -48,6 +48,12 @@ export default defineConfig({
     tanstackStart({
       spa: isSpaMode ? spaModeConfiguration : undefined,
       prerender: isPrerender ? prerenderConfiguration : undefined,
+      sitemap: isPrerender
+        ? {
+            enabled: true,
+            host: 'https://example.com',
+          }
+        : undefined,
     }),
     vueJsx(),
   ],

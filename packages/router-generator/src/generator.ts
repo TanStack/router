@@ -42,7 +42,7 @@ import {
   trimPathLeft,
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
-import { transform } from './transform/transform'
+import { getStaticSsrOption, transform } from './transform/transform'
 import { validateRouteParams } from './validate-route-params'
 import type { GeneratorPlugin } from './plugin/types'
 import type { TargetTemplate } from './template'
@@ -54,6 +54,7 @@ import type {
   ImportDeclaration,
   RouteNode,
   RoutePathSegmentMetadata,
+  StaticSsrOption,
 } from './types'
 import type { Config } from './config'
 import type { Logger } from './logger'
@@ -97,6 +98,55 @@ function getRoutePathSegmentMetadataForPath(
   }
 
   return hasMetadata ? result : undefined
+}
+
+/** @internal */
+export function resolveServerSsr(
+  parentSsr: StaticSsrOption | undefined,
+  staticSsr: StaticSsrOption | undefined,
+): StaticSsrOption | undefined {
+  if (parentSsr === false || staticSsr === false) {
+    return false
+  }
+
+  if (parentSsr === 'data-only' || staticSsr === 'data-only') {
+    return 'data-only'
+  }
+
+  if (parentSsr === true && staticSsr === true) {
+    return true
+  }
+
+  return undefined
+}
+
+function assignServerSsr(
+  rootRouteNode: RouteNode,
+  routeFileResult: Array<RouteNode>,
+  acc: HandleNodeAccumulator,
+) {
+  const rootSsr = resolveServerSsr(true, rootRouteNode.staticSsr)
+  rootRouteNode.serverSsr = rootSsr
+
+  const serverSsrByRoutePath = new Map<string, StaticSsrOption | undefined>()
+  if (rootRouteNode.routePath) {
+    serverSsrByRoutePath.set(rootRouteNode.routePath, rootSsr)
+  }
+
+  acc.routeNodes.forEach((node) => {
+    const parentSsr = node.parent ? node.parent.serverSsr : rootSsr
+    const serverSsr = resolveServerSsr(parentSsr, node.staticSsr)
+    node.serverSsr = serverSsr
+    if (node.routePath) {
+      serverSsrByRoutePath.set(node.routePath, serverSsr)
+    }
+  })
+
+  routeFileResult.forEach((node) => {
+    node.serverSsr = node.routePath
+      ? serverSsrByRoutePath.get(node.routePath)
+      : undefined
+  })
 }
 
 const DefaultFileSystem: fs = {
@@ -299,7 +349,10 @@ export class Generator {
     return new Map(
       [...this.routeNodeCache.entries()].map(([filePath, cacheEntry]) => [
         filePath,
-        { routeId: cacheEntry.routeId },
+        {
+          routeId: cacheEntry.routeId,
+          serverSsr: cacheEntry.node.serverSsr,
+        },
       ]),
     )
   }
@@ -484,6 +537,8 @@ export class Generator {
     for (const node of routeFileResult) {
       Generator.handleNode(node, acc, prefixMap, this.config)
     }
+
+    assignServerSsr(rootRouteNode, routeFileResult, acc)
 
     this.crawlingResult = { rootRouteNode, routeFileResult, acc }
 
@@ -1347,6 +1402,17 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       mtimeMs: rootNodeFile.stat.mtimeMs,
       routeId: node.routePath ?? '$$TSR_NO_ROOT_ROUTE_PATH_ASSIGNED$$',
       node,
+    }
+
+    node.staticSsr = getStaticSsrOption(
+      updatedCacheEntry.fileContent,
+      node.fullPath,
+    )
+
+    if (result.status === 'stale') {
+      for (const plugin of this.plugins) {
+        plugin.afterTransform?.({ node, prevNode: result.cacheEntry?.node })
+      }
     }
 
     // scaffold the root route

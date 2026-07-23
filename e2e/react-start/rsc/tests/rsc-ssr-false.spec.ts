@@ -1,6 +1,23 @@
+import { readFileSync, readdirSync, statSync } from 'node:fs'
+import { join } from 'node:path'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 import { waitForHydration } from './hydration'
+
+const distDir = join(process.cwd(), process.env.E2E_DIST_DIR ?? 'dist')
+const clientDistDir = join(distDir, 'client')
+const serverDistDir = join(distDir, 'server')
+
+function outputContains(dir: string, marker: string) {
+  return readdirSync(dir, { recursive: true }).some((relativePath) => {
+    const filePath = join(dir, String(relativePath))
+    return (
+      statSync(filePath).isFile() &&
+      (filePath.endsWith('.js') || filePath.endsWith('.mjs')) &&
+      readFileSync(filePath, 'utf8').includes(marker)
+    )
+  })
+}
 
 type Point = {
   x: number
@@ -16,6 +33,11 @@ test.use({
 })
 
 test.describe('RSC SSR False Tests - Both loader and component on client', () => {
+  test('excludes client-only route code from server output', () => {
+    expect(outputContains(clientDistDir, 'drawing-canvas-data')).toBe(true)
+    expect(outputContains(serverDistDir, 'drawing-canvas-data')).toBe(false)
+  })
+
   // Helper to clear localStorage and get a fresh start
   async function clearDrawingStorage(page: any) {
     await page.evaluate(() => {

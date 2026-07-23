@@ -48,5 +48,11 @@ export function getStartModeConfig() {
           },
         }
       : undefined,
+    sitemap: isPrerender
+      ? {
+          enabled: true,
+          host: 'https://example.com',
+        }
+      : undefined,
   }
 }
