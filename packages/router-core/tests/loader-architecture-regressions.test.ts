@@ -862,7 +862,7 @@ test('a stale shouldReload cannot continue a superseded preload', async () => {
   expect(onError).not.toHaveBeenCalled()
 })
 
-test('an onLeave navigation suppresses stale lifecycle callbacks', async () => {
+test('an onLeave navigation to the in-flight destination joins it and enters once', async () => {
   const firstEnter = vi.fn()
   const firstStay = vi.fn()
   let successor: Promise<void> | undefined
@@ -897,6 +897,8 @@ test('an onLeave navigation suppresses stale lifecycle callbacks', async () => {
 
   expect(router.state.location.pathname).toBe('/first')
   expect(router.state.matches.at(-1)?.routeId).toBe(firstRoute.id)
-  expect(firstEnter).not.toHaveBeenCalled()
-  expect(firstStay).toHaveBeenCalledOnce()
+  // The reentrant same-destination navigation joins the in-flight lane, so
+  // the route is entered exactly once rather than restarted into a stay.
+  expect(firstEnter).toHaveBeenCalledOnce()
+  expect(firstStay).not.toHaveBeenCalled()
 })

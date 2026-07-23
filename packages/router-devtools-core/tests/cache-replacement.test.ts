@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { TanStackRouterDevtoolsPanelCore } from '../src/TanStackRouterDevtoolsPanelCore'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 
@@ -19,6 +19,12 @@ function createCachedMatch(loaderData: string): AnyRouteMatch {
 describe('cached matches', () => {
   let panel: TanStackRouterDevtoolsPanelCore | undefined
 
+  // Warm Vite's lazy transform of the panel chunk outside any test so its
+  // cost never counts against a test's timeout budget on slow CI runners.
+  beforeAll(async () => {
+    await import('../src/BaseTanStackRouterDevtoolsPanel')
+  }, 30_000)
+
   afterEach(() => {
     panel?.unmount()
     panel = undefined
@@ -30,8 +36,6 @@ describe('cached matches', () => {
   })
 
   it('refreshes when an existing cache entry is replaced', async () => {
-    // Keep this cache-polling test independent of Vite's lazy transform time.
-    await import('../src/BaseTanStackRouterDevtoolsPanel')
     vi.useFakeTimers()
 
     const route = {
@@ -96,5 +100,5 @@ describe('cached matches', () => {
 
     expect(container.textContent).toContain('new data')
     expect(container.textContent).not.toContain('old data')
-  })
+  }, 10_000)
 })

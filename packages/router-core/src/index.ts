@@ -103,7 +103,7 @@ export {
   resolveManifestCssLink,
 } from './manifest'
 export { isMatch } from './Matches'
-export { _getAssetMatches, _getRenderedMatches } from './rendered-matches'
+export { _getAssetMatches, _getRenderedMatches } from './load-client'
 export type {
   AnyMatchAndValue,
   FindValueByIndex,

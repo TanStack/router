@@ -17,7 +17,7 @@ export function useTransitionerSetup() {
   router.startTransition = transition
 
   Vue.onMounted(() => {
-    router.history.subscribe(router.load)
+    Vue.onUnmounted(router.history.subscribe(router.load))
 
     const nextLocation = router.buildLocation({
       to: router.latestLocation.pathname,

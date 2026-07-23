@@ -37,11 +37,12 @@ import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
 import {
   loadClientRoute,
+  loadRouteChunk,
   preloadClientRoute,
   refreshClientRoute,
+  replaceRouteChunk,
   transferMatchResources,
 } from './load-client'
-import { loadRouteChunk, replaceRouteChunk } from './route-chunks'
 import {
   composeRewrites,
   executeRewriteInput,
@@ -765,6 +766,7 @@ export type LoadFn = (opts?: {
   sync?: boolean
   action?: { type: HistoryAction }
   _signal?: AbortSignal
+  _dedupe?: boolean
 }) => Promise<void>
 
 export type CommitLocationFn = ({
@@ -919,14 +921,16 @@ export function getLocationChangeInfo(
   }
 }
 
-/** Return only state owned by the application, excluding history bookkeeping. */
+/**
+ * Return only state owned by the application, excluding volatile history
+ * bookkeeping. Mask payloads (`__tempLocation`/`__tempKey`) are kept: they
+ * distinguish otherwise-identical locations.
+ */
 export function _getUserHistoryState({
   key: _key,
   __TSR_key: _tsrKey,
   __TSR_index: _tsrIndex,
   __hashScrollIntoViewOptions: _hashScroll,
-  __tempLocation: _tempLocation,
-  __tempKey: _tempKey,
   ...state
 }: ParsedHistoryState): HistoryState {
   return state
@@ -2165,7 +2169,7 @@ export class RouterCore<
 
     // Don't commit to history if nothing changed
     if (isSameLocation) {
-      this.load()
+      this.load({ _dedupe: true })
     } else {
       let {
         // eslint-disable-next-line prefer-const
@@ -2216,19 +2220,15 @@ export class RouterCore<
         nextHistory.state,
         { ignoreBlocker },
       )
+
+      // Without a subscribed adapter the history commit cannot trigger the
+      // load itself. The same-location branch already loads directly.
+      if (!this.history.subscribers.size) {
+        this.load({ action: { type: historyAction } })
+      }
     }
 
     this._scroll.next = next.resetScroll ?? true
-
-    if (!this.history.subscribers.size) {
-      this.load(
-        historyAction
-          ? {
-              action: { type: historyAction },
-            }
-          : undefined,
-      )
-    }
 
     return this._commitPromise
   }
