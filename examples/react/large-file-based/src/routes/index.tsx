@@ -3,6 +3,12 @@ import * as React from 'react'
 
 export const Route = createFileRoute('/')({
   component: Home,
+  head: ({ matches }) => {
+    if (matches[0].routeId) {
+      // ...
+    }
+    return {}
+  },
 })
 
 function Home() {
