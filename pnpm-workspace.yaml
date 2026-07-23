@@ -58,6 +58,7 @@ overrides:
   '@types/react': 'catalog:'
   '@types/react-dom': 'catalog:'
   eslint: 'catalog:'
+  'tanstack-octane-start-e2e-basic>vite': 8.1.5
   vite: 'catalog:'
   '@types/node': 'catalog:'
   '@playwright/test': 'catalog:'
@@ -108,6 +109,14 @@ overrides:
   '@tanstack/router-utils': 'workspace:*'
   '@tanstack/start-static-server-functions': 'workspace:*'
   '@tanstack/nitro-v2-vite-plugin': 'workspace:*'
+
+peerDependencyRules:
+  allowedVersions:
+    '@cloudflare/vite-plugin>vite': 8.1.5
+    '@netlify/vite-plugin-tanstack-start>vite': 8.1.5
+    '@netlify/vite-plugin>vite': 8.1.5
+    'nitro>vite': 8.1.5
+    'octane>vite': 8.1.5
 
 allowBuilds:
   # root dependency
