@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/solid-router'
 import { CodeSplitStyledBox } from '../components/CodeSplitStyledBox'
 
 export const Route = createFileRoute('/')({
@@ -7,9 +7,9 @@ export const Route = createFileRoute('/')({
 
 function Home() {
   return (
-    <div>
-      <h1 data-testid="home-heading">Dev SSR Styles Test</h1>
+    <main>
+      <h1 data-testid="home-heading">Solid Dev SSR Styles Test</h1>
       <CodeSplitStyledBox />
-    </div>
+    </main>
   )
 }
