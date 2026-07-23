@@ -49,6 +49,7 @@ title: Router API
   - [`useNavigate`](./router/useNavigateHook.md)
   - [`useParentMatches`](./router/useParentMatchesHook.md)
   - [`useParams`](./router/useParamsHook.md)
+  - [`usePendingMatches`](./router/usePendingMatchesHook.md)
   - [`useRouteContext`](./router/useRouteContextHook.md)
   - [`useRouter`](./router/useRouterHook.md)
   - [`useRouterState`](./router/useRouterStateHook.md)

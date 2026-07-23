@@ -19,6 +19,7 @@ import {
   isMatch,
   useMatchRoute,
   useMatches,
+  usePendingMatches,
 } from '../src'
 
 const rootRoute = createRootRoute()
@@ -444,4 +445,64 @@ describe('matching on different param types', () => {
       })
     },
   )
+})
+
+describe('usePendingMatches', () => {
+  afterEach(() => cleanup())
+
+  test('exposes the destination matches while a navigation is loading', async () => {
+    let resolveLoader!: () => void
+    const loaderPromise = new Promise<void>((resolve) => {
+      resolveLoader = resolve
+    })
+
+    const PendingPath = () => {
+      const pendingPath = usePendingMatches({
+        select: (matches) => matches[matches.length - 1]?.pathname ?? '',
+      })
+      return (
+        <>
+          <div data-testid="pending-path">{pendingPath.value}</div>
+          <Outlet />
+        </>
+      )
+    }
+
+    const root = createRootRoute({
+      component: PendingPath,
+    })
+
+    const home = createRoute({
+      getParentRoute: () => root,
+      path: '/',
+      component: () => <Link to="/posts">To Posts</Link>,
+    })
+
+    const posts = createRoute({
+      getParentRoute: () => root,
+      path: 'posts',
+      loader: () => loaderPromise,
+      component: () => <div>Posts</div>,
+    })
+
+    const router = createRouter({
+      routeTree: root.addChildren([home, posts]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    fireEvent.click(await screen.findByText('To Posts'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('pending-path').textContent).toBe('/posts'),
+    )
+
+    resolveLoader()
+
+    await screen.findByText('Posts')
+    await waitFor(() =>
+      expect(screen.getByTestId('pending-path').textContent).toBe(''),
+    )
+  })
 })
