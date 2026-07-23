@@ -1,12 +1,17 @@
 import { runInNewContext } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  _getAssetMatches,
+  createControlledPromise,
+} from '../src'
 import { hydrate } from '../src/ssr/client'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
-import type { AnyRouter, NavigateFn } from '../src'
+import type { AnyRouteMatch, AnyRouter, NavigateFn } from '../src'
 import type { DehydratedRouter, TsrSsrGlobal } from '../src/ssr/types'
 import type { ServerManifest } from '../src/manifest'
 
@@ -111,6 +116,160 @@ describe('hydration asset currentness', () => {
     })
     expect(router.state.resolvedLocation).toBeUndefined()
     expect(childLoader).not.toHaveBeenCalled()
+  })
+
+  test('includes an identity-verified ssr:false boundary in a data-only asset prefix', async () => {
+    const serverChildLoader = vi.fn(() => 'server child data')
+    const serverRootRoute = new BaseRootRoute({})
+    const serverParentRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/parent',
+      ssr: 'data-only',
+    })
+    const serverChildRoute = new BaseRoute({
+      getParentRoute: () => serverParentRoute,
+      path: '/child',
+      ssr: false,
+      loader: serverChildLoader,
+    })
+    const serverTailRoute = new BaseRoute({
+      getParentRoute: () => serverChildRoute,
+      path: '/tail',
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([
+        serverParentRoute.addChildren([
+          serverChildRoute.addChildren([serverTailRoute]),
+        ]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/parent/child/tail'],
+      }),
+      isServer: true,
+    })
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    expect(serverChildLoader).not.toHaveBeenCalled()
+
+    const childContext = vi.fn(() => ({ assetSource: 'child context' }))
+    const childHead = vi.fn(({ match }: { match: AnyRouteMatch }) => ({
+      meta: [
+        {
+          name: 'ssr-false-boundary',
+          content: (match.context as { assetSource?: string }).assetSource,
+        },
+      ],
+    }))
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      ssr: 'data-only',
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      ssr: false,
+      loader: () => 'client child data',
+      context: childContext,
+      head: childHead,
+    })
+    const tailRoute = new BaseRoute({
+      getParentRoute: () => childRoute,
+      path: '/tail',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        parentRoute.addChildren([childRoute.addChildren([tailRoute])]),
+      ]),
+      history: createMemoryHistory({
+        initialEntries: ['/parent/child/tail'],
+      }),
+      isServer: false,
+    })
+
+    await hydrate(router)
+
+    expect(
+      _getAssetMatches(router.state.matches).map((match) => match.routeId),
+    ).toEqual([rootRoute.id, parentRoute.id, childRoute.id])
+    expect(childContext).toHaveBeenCalledOnce()
+    expect(childHead).toHaveBeenCalledOnce()
+    expect(router.state.matches[2]?.meta).toEqual([
+      { name: 'ssr-false-boundary', content: 'child context' },
+    ])
+  })
+
+  test('preserves a verified data-only asset prefix through its client continuation', async () => {
+    const serverRootRoute = new BaseRootRoute({})
+    const serverParentRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/parent',
+      ssr: 'data-only',
+    })
+    const serverChildRoute = new BaseRoute({
+      getParentRoute: () => serverParentRoute,
+      path: '/child',
+      ssr: false,
+      loader: () => 'server child data',
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([
+        serverParentRoute.addChildren([serverChildRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: true,
+    })
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+
+    const childLoaderResult = createControlledPromise<string>()
+    let continuationAssetEnd: number | undefined
+    let router!: AnyRouter
+    const childLoader = vi.fn(() => {
+      continuationAssetEnd = router._tx?.[3][1]?._assetEnd
+      return childLoaderResult
+    })
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      ssr: 'data-only',
+      pendingComponent: () => null,
+      pendingMs: 0,
+      pendingMinMs: 0,
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      ssr: false,
+      loader: childLoader,
+    })
+    router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: false,
+    })
+
+    await hydrate(router)
+    const load = router.load()
+
+    await vi.waitFor(() => {
+      expect(childLoader).toHaveBeenCalledOnce()
+      expect(router.state.status).toBe('pending')
+    })
+    expect(continuationAssetEnd).toBe(3)
+    expect(
+      _getAssetMatches(router.state.matches).map((match) => match.routeId),
+    ).toEqual([rootRoute.id, parentRoute.id, childRoute.id])
+    expect(router.state.matches[1]?._assetEnd).toBe(3)
+
+    childLoaderResult.resolve('client child data')
+    await load
+
+    expect(router.state.matches[1]?._assetEnd).toBeUndefined()
+    expect(router.state.matches[2]).toMatchObject({
+      status: 'success',
+      loaderData: 'client child data',
+    })
   })
 
   test('settles when navigation supersedes a pending custom hydrate hook', async () => {
@@ -269,6 +428,65 @@ describe('hydration asset currentness', () => {
     expect(childLoader).toHaveBeenCalledTimes(1)
   })
 
+  test('failed HMR restores a partial hydration presentation and handoff', async () => {
+    let hydrationController: AbortController | undefined
+    const childLoader = vi.fn(() => 'client child data')
+    const rootRoute = new BaseRootRoute({
+      context: ({ abortController }: { abortController: AbortController }) => {
+        hydrationController ??= abortController
+      },
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      ssr: false,
+      loader: childLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(mockWindow, [
+      {
+        i: dehydrateSsrMatchId(matches[0]!.id),
+        s: 'success',
+        ssr: true,
+        u: Date.now(),
+      },
+    ])
+
+    await hydrate(router)
+    const handoff = router._handoff
+    const startTransition = router.startTransition
+    router.startTransition = async (fn) => {
+      fn()
+      throw new Error('HMR render failed')
+    }
+
+    await router._refreshRoute!()
+
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      childRoute.id,
+    ])
+    expect(router.state.matches[1]).toMatchObject({
+      status: 'pending',
+      ssr: false,
+    })
+    expect(router._handoff).toBe(handoff)
+    expect(hydrationController?.signal.aborted).toBe(false)
+
+    router.startTransition = startTransition
+    await router.load()
+    expect(router.state.matches[1]).toMatchObject({
+      status: 'success',
+      loaderData: 'client child data',
+    })
+    expect(childLoader).toHaveBeenCalledTimes(2)
+  })
+
   test('a synchronous context navigation prevents stale hydration assets from running', async () => {
     const oldHead = vi.fn(() => ({ meta: [{ title: 'Old route' }] }))
     const oldScripts = vi.fn(() => [
@@ -423,6 +641,9 @@ describe('hydration asset currentness', () => {
     expect(parentBeforeLoad).not.toHaveBeenCalled()
     expect(childBeforeLoad).not.toHaveBeenCalled()
     expect(childLoader).not.toHaveBeenCalled()
+    expect(
+      _getAssetMatches(router.state.matches).map((match) => match.routeId),
+    ).toEqual([rootRoute.id, parentRoute.id])
 
     await router.load()
 

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -6,11 +6,14 @@ import {
   screen,
   waitFor,
 } from '@solidjs/testing-library'
+import { hydrate } from '@tanstack/router-core/ssr/client'
+import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 
 import {
   HeadContent,
   Link,
   Outlet,
+  RouterContextProvider,
   RouterProvider,
   createBrowserHistory,
   createMemoryHistory,
@@ -47,6 +50,7 @@ afterEach(() => {
   cleanup()
   browserHistories.splice(0).forEach((history) => history.destroy())
   window.history.replaceState(null, 'root', '/')
+  delete window.$_TSR
 })
 
 describe('ssr scripts', () => {
@@ -507,6 +511,104 @@ describe('ssr scripts', () => {
 })
 
 describe('ssr HeadContent', () => {
+  test('renders descendant assets during a data-only hydration handoff', async () => {
+    const rootRoute = createRootRoute({})
+    const dataOnlyRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/report',
+      ssr: 'data-only',
+      loader: () => 'report',
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => dataOnlyRoute,
+      path: '/details',
+      loader: () => 'details',
+      head: () => ({
+        meta: [{ name: 'solid-data-only-child', content: 'visible' }],
+      }),
+      scripts: () => [
+        {
+          id: 'solid-data-only-body-script',
+          type: 'application/json',
+          children: '{"source":"body"}',
+        },
+      ],
+    })
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/report/details'],
+      }),
+      routeTree: rootRoute.addChildren([
+        dataOnlyRoute.addChildren([childRoute]),
+      ]),
+    })
+    const matches = router.matchRoutes(router.latestLocation)
+    window.$_TSR = {
+      router: {
+        dehydratedData: {},
+        manifest: {
+          routes: {
+            [childRoute.id]: {
+              preloads: ['/solid-data-only-manifest.js'],
+              scripts: [
+                {
+                  attrs: {
+                    id: 'solid-data-only-manifest-script',
+                    type: 'application/json',
+                  },
+                  children: '{"source":"manifest"}',
+                },
+              ],
+            },
+          },
+        },
+        matches: matches.map((match, index) => ({
+          i: dehydrateSsrMatchId(match.id),
+          s: 'success',
+          ssr: index === 1 ? 'data-only' : true,
+          l: index ? (index === 1 ? 'report' : 'details') : undefined,
+          u: Date.now(),
+        })),
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+    }
+
+    await hydrate(router)
+
+    expect(router.state.matches.map((match) => match.status)).toEqual([
+      'success',
+      'pending',
+      'success',
+    ])
+    render(() => (
+      <RouterContextProvider router={router}>
+        {() => (
+          <>
+            <HeadContent />
+            <Scripts />
+          </>
+        )}
+      </RouterContextProvider>
+    ))
+
+    expect(
+      document.querySelector('meta[name="solid-data-only-child"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('link[href="/solid-data-only-manifest.js"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('#solid-data-only-body-script'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('#solid-data-only-manifest-script'),
+    ).not.toBeNull()
+  })
+
   test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {
     const rootRoute = createRootRoute({
       loader: () =>

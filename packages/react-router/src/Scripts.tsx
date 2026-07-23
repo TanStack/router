@@ -1,5 +1,5 @@
 import { useStore } from '@tanstack/react-store'
-import { _getRenderedMatches, deepEqual } from '@tanstack/router-core'
+import { _getAssetMatches, deepEqual } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -18,7 +18,7 @@ export const Scripts = () => {
   const nonce = router.options.ssr?.nonce
 
   const getScripts = (matches: Array<any>) => {
-    matches = _getRenderedMatches(matches)
+    matches = _getAssetMatches(matches)
     const scripts = matches
       .flatMap((match) => match.scripts ?? [])
       .filter(Boolean)

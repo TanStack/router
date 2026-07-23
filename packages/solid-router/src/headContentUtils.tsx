@@ -1,6 +1,6 @@
 import * as Solid from 'solid-js'
 import {
-  _getRenderedMatches,
+  _getAssetMatches,
   appendUniqueUserTags,
   escapeHtml,
   getAssetCrossOrigin,
@@ -21,7 +21,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
   return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
-    const matches = _getRenderedMatches(router.stores.matches.get())
+    const matches = _getAssetMatches(router.stores.matches.get())
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined

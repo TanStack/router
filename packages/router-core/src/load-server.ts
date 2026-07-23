@@ -521,21 +521,22 @@ async function loadNormalChunks(
     try {
       const loading = loadRouteChunk(route)
       if (loading) {
-        chunks.push(
-          loading.then(
-            () => {
-              signal?.throwIfAborted()
-              return undefined
-            },
-            (cause) => {
-              signal?.throwIfAborted()
-              return [
-                index,
-                stampNotFound(match, normalizeError(route, cause)),
-              ] as IndexedOutcome
-            },
-          ),
+        const chunk = loading.then(
+          () => {
+            signal?.throwIfAborted()
+            return undefined
+          },
+          (cause) => {
+            signal?.throwIfAborted()
+            return [
+              index,
+              stampNotFound(match, normalizeError(route, cause)),
+            ] as IndexedOutcome
+          },
         )
+        // Route-order reduction can return before later chunks settle.
+        void chunk.catch(() => {})
+        chunks.push(chunk)
       }
     } catch (cause) {
       signal?.throwIfAborted()

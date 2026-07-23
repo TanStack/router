@@ -50,10 +50,14 @@ export function createTestRouter<
 }
 
 /** Materialize the request-local server result as the HTTP response users see. */
-export function loadServerResponse(router: AnyRouter, path: string) {
+export function loadServerResponse(
+  router: AnyRouter,
+  path: string,
+  signal?: AbortSignal,
+) {
   return createRequestHandler({
     createRouter: () => router,
-    request: new Request(`http://localhost${path}`),
+    request: new Request(`http://localhost${path}`, { signal }),
   })(({ router: loadedRouter, responseHeaders }) => {
     const result = loadedRouter._serverResult
     return new Response(null, {

@@ -626,6 +626,8 @@ export interface MatchRoutesOpts {
   throwOnError?: boolean
   /** @internal */
   _controller?: AbortController
+  /** @internal */
+  _rematerialize?: boolean
 }
 
 function routeNeedsLoad(route: AnyRoute): unknown {
@@ -1629,8 +1631,10 @@ export class RouterCore<
 
       const previousMatch = previousAt(route, index)
       const existingMatch =
-        this._cache.get(matchId) ??
-        (previousMatch?.id === matchId ? previousMatch : undefined)
+        process.env.NODE_ENV !== 'production' && opts?._rematerialize
+          ? undefined
+          : (this._cache.get(matchId) ??
+            (previousMatch?.id === matchId ? previousMatch : undefined))
 
       const strictParams = existingMatch?._strictParams ?? usedParams
 
