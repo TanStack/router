@@ -39,6 +39,7 @@ To use a different example, replace `start-basic` with one of the slugs below.
 #### Examples
 
 - [Basic](https://github.com/TanStack/router/tree/main/examples/react/start-basic) (`start-basic`)
+- [Basic + Rsbuild](https://github.com/TanStack/router/tree/main/examples/react/start-basic-rsbuild) (`start-basic-rsbuild`)
 - [Basic + Auth](https://github.com/TanStack/router/tree/main/examples/react/start-basic-auth) (`start-basic-auth`)
 - [Counter](https://github.com/TanStack/router/tree/main/examples/react/start-counter) (`start-counter`)
 - [Basic + React Query](https://github.com/TanStack/router/tree/main/examples/react/start-basic-react-query) (`start-basic-react-query`)

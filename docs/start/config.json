@@ -59,8 +59,9 @@
       ]
     },
     {
-      "label": "Guides",
+      "label": "Server & Execution",
       "children": [],
+      "collapsible": true,
       "frameworks": [
         {
           "label": "react",
@@ -82,12 +83,20 @@
               "to": "framework/react/guide/import-protection"
             },
             {
+              "label": "Path Aliases",
+              "to": "framework/react/guide/path-aliases"
+            },
+            {
               "label": "Environment Variables",
               "to": "framework/react/guide/environment-variables"
             },
             {
               "label": "Server Functions",
               "to": "framework/react/guide/server-functions"
+            },
+            {
+              "label": "Streaming Data from Server Functions",
+              "to": "framework/react/guide/streaming-data-from-server-functions"
             },
             {
               "label": "Server Components",
@@ -112,7 +121,72 @@
             {
               "label": "Server Routes",
               "to": "framework/react/guide/server-routes"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "Routing",
+              "to": "framework/solid/guide/routing"
             },
+            {
+              "label": "Execution Model",
+              "to": "framework/solid/guide/execution-model"
+            },
+            {
+              "label": "Code Execution Patterns",
+              "to": "framework/solid/guide/code-execution-patterns"
+            },
+            {
+              "label": "Import Protection",
+              "to": "framework/solid/guide/import-protection"
+            },
+            {
+              "label": "Path Aliases",
+              "to": "framework/solid/guide/path-aliases"
+            },
+            {
+              "label": "Environment Variables",
+              "to": "framework/solid/guide/environment-variables"
+            },
+            {
+              "label": "Server Functions",
+              "to": "framework/solid/guide/server-functions"
+            },
+            {
+              "label": "Static Server Functions",
+              "to": "framework/solid/guide/static-server-functions"
+            },
+            {
+              "label": "Environment Functions",
+              "to": "framework/solid/guide/environment-functions"
+            },
+            {
+              "label": "Middleware",
+              "to": "framework/solid/guide/middleware"
+            },
+            {
+              "label": "Error Boundaries",
+              "to": "framework/solid/guide/error-boundaries"
+            },
+            {
+              "label": "Server Routes",
+              "to": "framework/solid/guide/server-routes"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Rendering",
+      "children": [],
+      "collapsible": true,
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
             {
               "label": "Hydration Errors",
               "to": "framework/react/guide/hydration-errors"
@@ -142,114 +216,22 @@
               "to": "framework/react/guide/server-entry-point"
             },
             {
+              "label": "Client Entry Point",
+              "to": "framework/react/guide/client-entry-point"
+            },
+            {
               "label": "Early Hints",
               "to": "framework/react/guide/early-hints"
             },
             {
               "label": "CDN Asset URLs",
               "to": "framework/react/guide/cdn-asset-urls"
-            },
-            {
-              "label": "CSS Styling",
-              "to": "framework/react/guide/css-styling"
-            },
-            {
-              "label": "Client Entry Point",
-              "to": "framework/react/guide/client-entry-point"
-            },
-            {
-              "label": "Hosting",
-              "to": "framework/react/guide/hosting"
-            },
-            {
-              "label": "Authentication Overview",
-              "to": "framework/react/guide/authentication-overview"
-            },
-            {
-              "label": "Authentication Server Primitives",
-              "to": "framework/react/guide/authentication-server-primitives"
-            },
-            {
-              "label": "Authentication",
-              "to": "framework/react/guide/authentication"
-            },
-            {
-              "label": "Databases",
-              "to": "framework/react/guide/databases"
-            },
-            {
-              "label": "Observability",
-              "to": "framework/react/guide/observability"
-            },
-            {
-              "label": "Path Aliases",
-              "to": "framework/react/guide/path-aliases"
-            },
-            {
-              "label": "Tailwind CSS Integration",
-              "to": "framework/react/guide/tailwind-integration"
-            },
-            {
-              "label": "Rendering Markdown",
-              "to": "framework/react/guide/rendering-markdown"
-            },
-            {
-              "label": "SEO",
-              "to": "framework/react/guide/seo"
-            },
-            {
-              "label": "Generative Engine Optimization (GEO)",
-              "to": "framework/react/guide/geo"
             }
           ]
         },
         {
           "label": "solid",
           "children": [
-            {
-              "label": "Routing",
-              "to": "framework/solid/guide/routing"
-            },
-            {
-              "label": "Execution Model",
-              "to": "framework/solid/guide/execution-model"
-            },
-            {
-              "label": "Code Execution Patterns",
-              "to": "framework/solid/guide/code-execution-patterns"
-            },
-            {
-              "label": "Import Protection",
-              "to": "framework/solid/guide/import-protection"
-            },
-            {
-              "label": "Environment Variables",
-              "to": "framework/solid/guide/environment-variables"
-            },
-            {
-              "label": "Server Functions",
-              "to": "framework/solid/guide/server-functions"
-            },
-            {
-              "label": "Static Server Functions",
-              "to": "framework/solid/guide/static-server-functions"
-            },
-            {
-              "label": "Environment Functions",
-              "to": "framework/solid/guide/environment-functions"
-            },
-            {
-              "label": "Middleware",
-              "to": "framework/solid/guide/middleware"
-            },
-            {
-              "label": "Error Boundaries",
-              "to": "framework/solid/guide/error-boundaries"
-            },
-            {
-              "label": "Server Routes",
-              "to": "framework/solid/guide/server-routes"
-            },
             {
               "label": "Hydration Errors",
               "to": "framework/solid/guide/hydration-errors"
@@ -275,21 +257,79 @@
               "to": "framework/solid/guide/server-entry-point"
             },
             {
-              "label": "Early Hints",
-              "to": "framework/solid/guide/early-hints"
-            },
-            {
-              "label": "CSS Styling",
-              "to": "framework/solid/guide/css-styling"
-            },
-            {
               "label": "Client Entry Point",
               "to": "framework/solid/guide/client-entry-point"
             },
             {
+              "label": "Early Hints",
+              "to": "framework/solid/guide/early-hints"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Deployment & Operations",
+      "children": [],
+      "collapsible": true,
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Hosting",
+              "to": "framework/react/guide/hosting"
+            },
+            {
+              "label": "Observability",
+              "to": "framework/react/guide/observability"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
               "label": "Hosting",
               "to": "framework/solid/guide/hosting"
             },
+            {
+              "label": "Observability",
+              "to": "framework/solid/guide/observability"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Authentication & Data",
+      "children": [],
+      "collapsible": true,
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Authentication Overview",
+              "to": "framework/react/guide/authentication-overview"
+            },
+            {
+              "label": "Authentication Server Primitives",
+              "to": "framework/react/guide/authentication-server-primitives"
+            },
+            {
+              "label": "Authentication",
+              "to": "framework/react/guide/authentication"
+            },
+            {
+              "label": "Databases",
+              "to": "framework/react/guide/databases"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
             {
               "label": "Authentication Overview",
               "to": "framework/solid/guide/authentication-overview"
@@ -305,14 +345,47 @@
             {
               "label": "Databases",
               "to": "framework/solid/guide/databases"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "label": "Styling & Metadata",
+      "children": [],
+      "collapsible": true,
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "CSS Styling",
+              "to": "framework/react/guide/css-styling"
             },
             {
-              "label": "Observability",
-              "to": "framework/solid/guide/observability"
+              "label": "Tailwind CSS Integration",
+              "to": "framework/react/guide/tailwind-integration"
             },
             {
-              "label": "Path Aliases",
-              "to": "framework/solid/guide/path-aliases"
+              "label": "Rendering Markdown",
+              "to": "framework/react/guide/rendering-markdown"
+            },
+            {
+              "label": "SEO",
+              "to": "framework/react/guide/seo"
+            },
+            {
+              "label": "Generative Engine Optimization (GEO)",
+              "to": "framework/react/guide/geo"
+            }
+          ]
+        },
+        {
+          "label": "solid",
+          "children": [
+            {
+              "label": "CSS Styling",
+              "to": "framework/solid/guide/css-styling"
             },
             {
               "label": "Tailwind CSS Integration",
