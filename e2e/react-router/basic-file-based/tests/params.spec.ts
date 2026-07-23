@@ -385,7 +385,7 @@ test.describe('Unicode params', () => {
     await fooLink.click()
     await page.waitForURL('/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80')
 
-    expect(page.url()).toBe(
+    await expect(page).toHaveURL(
       `${baseURL}/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80`,
     )
 
@@ -403,7 +403,7 @@ test.describe('Unicode params', () => {
       '/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80/%F0%9F%9A%80%252F%2Fabc%EB%8C%80',
     )
 
-    expect(page.url()).toBe(
+    await expect(page).toHaveURL(
       `${baseURL}/params-ps/named/foo%25%5C%2F%F0%9F%9A%80%EB%8C%80/%F0%9F%9A%80%252F%2Fabc%EB%8C%80`,
     )
 
@@ -441,7 +441,7 @@ test.describe('Unicode params', () => {
 
         const headingRootEl = page.getByTestId('unicode-heading')
 
-        expect(await headingRootEl.innerText()).toBe('Hello "/대한민국"!')
+        await expect(headingRootEl).toHaveText('Hello "/대한민국"!')
 
         const latinLink = page.getByTestId(`l-to-${name}-latin`)
         const unicodeLink = page.getByTestId(`l-to-${name}-unicode`)
@@ -453,7 +453,7 @@ test.describe('Unicode params', () => {
 
         await page.waitForURL(`${encodedChildRoutePath}/${latinParams}`)
 
-        expect(page.url()).toBe(
+        await expect(page).toHaveURL(
           `${baseURL}${encodedChildRoutePath}/${latinParams}`,
         )
 
@@ -463,10 +463,10 @@ test.describe('Unicode params', () => {
         const headingEl = page.getByTestId(`unicode-${name}-heading`)
         const paramsEl = page.getByTestId(`unicode-${name}-params`)
 
-        expect(await headingEl.innerText()).toBe(
+        await expect(headingEl).toHaveText(
           `Unicode ${pascalCaseName} Params`,
         )
-        expect(await paramsEl.innerText()).toBe(latinParams)
+        await expect(paramsEl).toHaveText(latinParams)
 
         await unicodeLink.click()
 
@@ -477,17 +477,17 @@ test.describe('Unicode params', () => {
 
         await page.waitForURL(`${encodedChildRoutePath}/${encodedParams}`)
 
-        expect(page.url()).toBe(
+        await expect(page).toHaveURL(
           `${baseURL}${encodedChildRoutePath}/${encodedParams}`,
         )
 
         await expect(latinLink).not.toContainClass('font-bold')
         await expect(unicodeLink).toContainClass('font-bold')
 
-        expect(await headingEl.innerText()).toBe(
+        await expect(headingEl).toHaveText(
           `Unicode ${pascalCaseName} Params`,
         )
-        expect(await paramsEl.innerText()).toBe(unicodeParams)
+        await expect(paramsEl).toHaveText(unicodeParams)
       })
     })
   })
