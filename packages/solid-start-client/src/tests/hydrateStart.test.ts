@@ -14,11 +14,23 @@ afterEach(() => {
 
 test('signals streaming cleanup after hydration succeeds', async () => {
   const router = {}
-  coreHydrateStart.mockResolvedValue(router)
+  let resolveCoreHydration!: (value: object) => void
+  coreHydrateStart.mockReturnValue(
+    new Promise((resolve) => {
+      resolveCoreHydration = resolve
+    }),
+  )
   const hydrated = vi.fn()
   window.$_TSR = { h: hydrated } as any
 
-  await expect(hydrateStart()).resolves.toBe(router)
+  const hydration = hydrateStart()
+  await Promise.resolve()
+
+  expect(coreHydrateStart).toHaveBeenCalledOnce()
+  expect(hydrated).not.toHaveBeenCalled()
+
+  resolveCoreHydration(router)
+  await expect(hydration).resolves.toBe(router)
   expect(hydrated).toHaveBeenCalledTimes(1)
 })
 
@@ -29,5 +41,7 @@ test('signals streaming cleanup without hiding a hydration failure', async () =>
   window.$_TSR = { h: hydrated } as any
 
   await expect(hydrateStart()).rejects.toBe(error)
+
+  expect(coreHydrateStart).toHaveBeenCalledOnce()
   expect(hydrated).toHaveBeenCalledTimes(1)
 })

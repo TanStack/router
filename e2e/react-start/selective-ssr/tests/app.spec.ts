@@ -20,8 +20,8 @@ test.describe('selective ssr', () => {
       )
       .toEqual([
         {
-          cause: 'enter',
-          preload: false,
+          cause: 'preload',
+          preload: true,
           isClient: true,
           isServer: false,
         },

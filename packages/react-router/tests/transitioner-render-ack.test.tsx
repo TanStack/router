@@ -21,7 +21,7 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-test('same-location invalidation resolves after its refreshed DOM commits', async () => {
+test('same-location invalidation emits onResolved after its refreshed DOM commits', async () => {
   let generation = 0
   const rootRoute = createRootRoute({ component: Outlet })
   const indexRoute = createRoute({
@@ -57,31 +57,103 @@ test('same-location invalidation resolves after its refreshed DOM commits', asyn
   expect(refreshedDomWasVisible).toEqual([true])
 })
 
-test('an immediately completed background refresh cannot replace the acknowledged foreground generation', async () => {
-  let generation = 0
+test('a late background refresh is discarded after foreground navigation commits', async () => {
+  const backgroundRefresh = createControlledPromise<string>()
+  let sourceGeneration = 0
+  const itemLoader = vi.fn((itemId: string) => {
+    if (itemId === 'source') {
+      sourceGeneration++
+      if (sourceGeneration === 1) {
+        return 'initial source data'
+      }
+      return backgroundRefresh
+    }
+    return 'foreground target data'
+  })
   const rootRoute = createRootRoute({ component: Outlet })
-  const indexRoute = createRoute({
+  const itemRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/',
+    path: '/items/$itemId',
     loader: {
       staleReloadMode: 'background',
-      handler: () => ++generation,
+      handler: ({ params }) => itemLoader(params.itemId),
     },
-    component: () => <div>Generation {indexRoute.useLoaderData()}</div>,
+    component: () => (
+      <div>
+        Item {itemRoute.useParams().itemId}: {itemRoute.useLoaderData()}
+      </div>
+    ),
   })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
+    routeTree: rootRoute.addChildren([itemRoute]),
+    history: createMemoryHistory({ initialEntries: ['/items/source'] }),
   })
 
   render(<RouterProvider router={router} />)
-  expect(await screen.findByText('Generation 1')).toBeInTheDocument()
+  expect(
+    await screen.findByText('Item source: initial source data'),
+  ).toBeInTheDocument()
   await waitFor(() => expect(router.state.status).toBe('idle'))
+  const sourceMatchId = router.state.matches.at(-1)!.id
+
+  const eventLog: Array<string> = []
+  const unsubscribers = [
+    router.subscribe('onResolved', (event) => {
+      eventLog.push(`onResolved:${event.toLocation.pathname}`)
+    }),
+    router.subscribe('onRendered', (event) => {
+      eventLog.push(`onRendered:${event.toLocation.pathname}`)
+    }),
+  ]
+  testCleanups.push(...unsubscribers)
 
   await act(() => router.invalidate())
+  expect(itemLoader).toHaveBeenCalledTimes(2)
 
-  expect(await screen.findByText('Generation 2')).toBeInTheDocument()
+  await act(() =>
+    router.navigate({
+      to: '/items/$itemId',
+      params: { itemId: 'target' },
+    }),
+  )
+  expect(
+    screen.getByText('Item target: foreground target data'),
+  ).toBeInTheDocument()
+  expect(eventLog.filter((event) => event.endsWith('/items/target'))).toEqual([
+    'onResolved:/items/target',
+    'onRendered:/items/target',
+  ])
+  expect(router.state.resolvedLocation?.pathname).toBe('/items/target')
+  const eventCountAfterForegroundCommit = eventLog.length
+
+  await act(async () => {
+    backgroundRefresh.resolve('obsolete source data')
+    await Promise.resolve()
+  })
+  await waitFor(() => {
+    expect(router._flights?.has(sourceMatchId) ?? false).toBe(false)
+    const cachedSourceMatch = router._cache.get(sourceMatchId)
+    expect(cachedSourceMatch?.loaderData).toBe('initial source data')
+    expect(cachedSourceMatch?.isFetching).toBe(false)
+  })
+
+  expect(
+    screen.getByText('Item target: foreground target data'),
+  ).toBeInTheDocument()
+  expect(
+    screen.queryByText('Item source: obsolete source data'),
+  ).not.toBeInTheDocument()
+  expect(router.state.location.pathname).toBe('/items/target')
+  expect(router.state.resolvedLocation?.pathname).toBe('/items/target')
+  expect(router.state.matches.at(-1)?.routeId).toBe(itemRoute.id)
+  expect(router.state.matches.at(-1)?.params).toEqual({ itemId: 'target' })
+  expect(router.state.matches.at(-1)?.loaderData).toBe('foreground target data')
   expect(router.state.status).toBe('idle')
+  expect(
+    eventLog
+      .slice(eventCountAfterForegroundCommit)
+      .every((event) => event.endsWith('/items/target')),
+  ).toBe(true)
 })
 
 test('a navigation started by route lifecycle keeps the pending minimum of its own render', async () => {
