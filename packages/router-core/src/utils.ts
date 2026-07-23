@@ -234,29 +234,41 @@ export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
  */
 export function replaceEqualDeep<T>(
   prev: any,
-  _next: T,
+  next: T,
+  _makeObj?: () => any,
+  _depth?: number,
+): T
+export function replaceEqualDeep(
+  prev: any,
+  next: any,
   _makeObj = () => ({}),
   _depth = 0,
-): T {
+): any {
   if (isServer) {
-    return _next
+    return next
   }
-  if (prev === _next) {
-    return prev
+  if (prev === next) {
+    return next
   }
 
-  if (_depth > 500) return _next
-
-  const next = _next as any
+  if (_depth > 500) {
+    return next
+  }
 
   const array = isPlainArray(prev) && isPlainArray(next)
 
-  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) {
+    return next
+  }
 
   const prevItems = array ? prev : getEnumerableOwnKeys(prev)
-  if (!prevItems) return next
+  if (!prevItems) {
+    return next
+  }
   const nextItems = array ? next : getEnumerableOwnKeys(next)
-  if (!nextItems) return next
+  if (!nextItems) {
+    return next
+  }
   const prevSize = prevItems.length
   const nextSize = nextItems.length
   const copy: any = array ? new Array(nextSize) : _makeObj()
@@ -270,23 +282,22 @@ export function replaceEqualDeep<T>(
 
     if (p === n) {
       copy[key] = p
-      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
+      if (array || hasOwn.call(prev, key)) {
+        equalItems++
+      }
       continue
     }
 
-    if (
-      p === null ||
-      n === null ||
-      typeof p !== 'object' ||
-      typeof n !== 'object'
-    ) {
-      copy[key] = n
+    if (p && n && typeof p === 'object' && typeof n === 'object') {
+      const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
+      copy[key] = v
+      if (v === p) {
+        equalItems++
+      }
       continue
     }
 
-    const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
-    copy[key] = v
-    if (v === p) equalItems++
+    copy[key] = n
   }
 
   return prevSize === nextSize && equalItems === prevSize ? prev : copy
@@ -303,19 +314,25 @@ function getEnumerableOwnKeys(o: object) {
 
   // Fast path: check all string property names are enumerable
   for (const name of names) {
-    if (!isEnumerable.call(o, name)) return false
+    if (!isEnumerable.call(o, name)) {
+      return false
+    }
   }
 
   // Only check symbols if the object has any (most plain objects don't)
   const symbols = Object.getOwnPropertySymbols(o)
 
   // Fast path: no symbols, return names directly (avoids array allocation/concat)
-  if (symbols.length === 0) return names
+  if (symbols.length === 0) {
+    return names
+  }
 
   // Slow path: has symbols, need to check and merge
   const keys: Array<string | symbol> = names
   for (const symbol of symbols) {
-    if (!isEnumerable.call(o, symbol)) return false
+    if (!isEnumerable.call(o, symbol)) {
+      return false
+    }
     keys.push(symbol)
   }
   return keys
