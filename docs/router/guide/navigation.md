@@ -11,7 +11,7 @@ TanStack Router keeps this constant concept of relative navigation in mind for e
 - `from` - The origin route path
 - `to` - The destination route path
 
-> ⚠️ If a `from` route path isn't provided the router will assume you are navigating from the root `/` route and only auto-complete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
+> ⚠️ If a `from` route path isn't provided, the router will assume you are navigating from the root `/` route and only autocomplete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
 
 ## Shared Navigation API
 
@@ -143,7 +143,7 @@ Since `LinkOptions` extends `NavigateOptions`, it also supports `mask`.
 With relative navigation and all of the interfaces in mind now, let's talk about the different flavors of navigation API at your disposal:
 
 - The `<Link>` component
-  - Generates an actual `<a>` tag with a valid `href` which can be click or even cmd/ctrl + clicked to open in a new tab
+  - Generates an actual `<a>` tag with a valid `href` which can be clicked or even cmd/ctrl + clicked to open in a new tab.
 - The `useNavigate()` hook
   - When possible, `Link` component should be used for navigation, but sometimes you need to navigate imperatively as a result of a side-effect. `useNavigate` returns a function that can be called to perform an immediate client-side navigation.
 - The `<Navigate>` component
@@ -309,7 +309,7 @@ const link = (
 
 ### Search Param Type Safety
 
-Search params are a highly dynamic state management mechanism, so it's important to ensure that you are passing the correct types to your search params. We'll see in a later section in detail how to validate and ensure search params typesafety, among other great features!
+Search params are a highly dynamic state management mechanism, so it's important to ensure that you are passing the correct types to your search params. We'll see in a later section in detail how to validate and ensure search params type safety, among other great features!
 
 ### Hash Links
 
