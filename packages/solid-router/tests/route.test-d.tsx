@@ -1306,9 +1306,21 @@ test('when creating a child route with context, search, params, loader, loaderDe
       invoicePage: deps.search.page,
     }),
     loader: () => ({ detailLoader: 'detailResult' }) as const,
-    onEnter: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
-    onStay: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
-    onLeave: (match) => expectTypeOf(match).toMatchTypeOf<TExpectedMatch>(),
+    onEnter: (match, ctx) => {
+      expectTypeOf(match).toMatchTypeOf<TExpectedMatch>()
+      expectTypeOf(ctx.location).toEqualTypeOf<ParsedLocation>()
+      expectTypeOf(ctx.location.search).toEqualTypeOf<{}>()
+    },
+    onStay: (match, ctx) => {
+      expectTypeOf(match).toMatchTypeOf<TExpectedMatch>()
+      expectTypeOf(ctx.location).toEqualTypeOf<ParsedLocation>()
+      expectTypeOf(ctx.location.search).toEqualTypeOf<{}>()
+    },
+    onLeave: (match, ctx) => {
+      expectTypeOf(match).toMatchTypeOf<TExpectedMatch>()
+      expectTypeOf(ctx.location).toEqualTypeOf<ParsedLocation>()
+      expectTypeOf(ctx.location.search).toEqualTypeOf<{}>()
+    },
   })
 })
 
