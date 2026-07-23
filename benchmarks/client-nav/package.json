@@ -13,6 +13,9 @@
     "test:perf:react": "NODE_ENV=production vitest bench --config ./vitest.react.config.ts",
     "test:perf:solid": "NODE_ENV=production vitest bench --config ./vitest.solid.config.ts",
     "test:perf:vue": "NODE_ENV=production vitest bench --config ./vitest.vue.config.ts",
+    "test:codspeed:react": "node ../../scripts/nx/run-codspeed-benchmark.mjs client-nav react",
+    "test:codspeed:solid": "node ../../scripts/nx/run-codspeed-benchmark.mjs client-nav solid",
+    "test:codspeed:vue": "node ../../scripts/nx/run-codspeed-benchmark.mjs client-nav vue",
     "test:types": "pnpm run test:types:react && pnpm run test:types:solid && pnpm run test:types:vue",
     "test:types:react": "tsc -p ./react/tsconfig.json --noEmit",
     "test:types:solid": "tsc -p ./solid/tsconfig.json --noEmit",
@@ -45,7 +48,14 @@
   "nx": {
     "targets": {
       "build:react": {
-        "cache": false,
+        "cache": true,
+        "inputs": [
+          "production",
+          "^production"
+        ],
+        "outputs": [
+          "{projectRoot}/react/dist"
+        ],
         "dependsOn": [
           {
             "projects": [
@@ -73,7 +83,14 @@
         ]
       },
       "build:solid": {
-        "cache": false,
+        "cache": true,
+        "inputs": [
+          "production",
+          "^production"
+        ],
+        "outputs": [
+          "{projectRoot}/solid/dist"
+        ],
         "dependsOn": [
           {
             "projects": [
@@ -101,7 +118,14 @@
         ]
       },
       "build:vue": {
-        "cache": false,
+        "cache": true,
+        "inputs": [
+          "production",
+          "^production"
+        ],
+        "outputs": [
+          "{projectRoot}/vue/dist"
+        ],
         "dependsOn": [
           {
             "projects": [
@@ -168,6 +192,54 @@
       },
       "test:perf:vue": {
         "cache": false,
+        "dependsOn": [
+          "build:vue"
+        ]
+      },
+      "test:codspeed:react": {
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "env": "GITHUB_RUN_ID"
+          },
+          {
+            "env": "GITHUB_RUN_ATTEMPT"
+          }
+        ],
+        "dependsOn": [
+          "build:react"
+        ]
+      },
+      "test:codspeed:solid": {
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "env": "GITHUB_RUN_ID"
+          },
+          {
+            "env": "GITHUB_RUN_ATTEMPT"
+          }
+        ],
+        "dependsOn": [
+          "build:solid"
+        ]
+      },
+      "test:codspeed:vue": {
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "env": "GITHUB_RUN_ID"
+          },
+          {
+            "env": "GITHUB_RUN_ATTEMPT"
+          }
+        ],
         "dependsOn": [
           "build:vue"
         ]

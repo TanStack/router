@@ -18,7 +18,12 @@ jobs:
   test:
     name: Test
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     env:
+      CODSPEED_PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+      CODSPEED_PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
       TSR_TMP_DIR: ./tmp
     steps:
       - name: Checkout
@@ -27,7 +32,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Start Nx Agents
-        run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
+        run: |
+          codspeed_env_vars="ACTIONS_ID_TOKEN_REQUEST_TOKEN,ACTIONS_ID_TOKEN_REQUEST_URL,CI,CODSPEED_PR_BASE_SHA,CODSPEED_PR_HEAD_SHA,GITHUB_ACTIONS,GITHUB_ACTOR,GITHUB_ACTOR_ID,GITHUB_API_URL,GITHUB_BASE_REF,GITHUB_EVENT_NAME,GITHUB_HEAD_REF,GITHUB_JOB,GITHUB_REF,GITHUB_REF_NAME,GITHUB_REF_TYPE,GITHUB_REPOSITORY,GITHUB_REPOSITORY_ID,GITHUB_RUN_ATTEMPT,GITHUB_RUN_ID,GITHUB_RUN_NUMBER,GITHUB_SERVER_URL,GITHUB_SHA,GITHUB_WORKFLOW,GITHUB_WORKFLOW_REF,GITHUB_WORKFLOW_SHA,GITHUB_WORKSPACE"
+
+          npx nx-cloud start-ci-run \
+            --distribute-on=".nx/workflows/dynamic-changesets.yaml" \
+            --with-env-vars="$codspeed_env_vars"
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
       - name: Get base and head commits for `nx affected`
@@ -36,6 +46,17 @@ jobs:
           main-branch-name: main
       - name: Run Checks
         run: pnpm run test:pr --parallel=3
+      - name: Run CodeSpeed Benchmarks
+        run: |
+          if [ -z "$CODSPEED_TOKEN" ] && { [ -z "$ACTIONS_ID_TOKEN_REQUEST_TOKEN" ] || [ -z "$ACTIONS_ID_TOKEN_REQUEST_URL" ]; }; then
+            echo "::notice::Skipping CodeSpeed benchmarks because neither CODSPEED_TOKEN nor GitHub OIDC auth is configured for Nx Agent execution."
+            exit 0
+          fi
+
+          pnpm nx run-many \
+            --projects=@benchmarks/client-nav \
+            --targets=test:codspeed:react,test:codspeed:vue \
+            --outputStyle=stream
       - name: Stop Nx Agents
         if: ${{ always() }}
         run: npx nx-cloud stop-all-agents

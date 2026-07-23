@@ -40,7 +40,7 @@
     "targets": {
       "build:react": {
         "executor": "nx:noop",
-        "cache": false,
+        "cache": true,
         "dependsOn": [
           {
             "projects": [
@@ -57,7 +57,7 @@
       },
       "build:solid": {
         "executor": "nx:noop",
-        "cache": false,
+        "cache": true,
         "dependsOn": [
           {
             "projects": [
@@ -74,7 +74,7 @@
       },
       "build:vue": {
         "executor": "nx:noop",
-        "cache": false,
+        "cache": true,
         "dependsOn": [
           {
             "projects": [
@@ -225,6 +225,66 @@
         "options": {
           "command": "NODE_ENV=production vitest bench --config ./vitest.vue.config.ts",
           "cwd": "benchmarks/memory/client"
+        }
+      },
+      "test:codspeed:react": {
+        "executor": "nx:run-commands",
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "env": "GITHUB_RUN_ID"
+          },
+          {
+            "env": "GITHUB_RUN_ATTEMPT"
+          }
+        ],
+        "dependsOn": [
+          "build:react"
+        ],
+        "options": {
+          "command": "node scripts/nx/run-codspeed-benchmark.mjs memory-client react"
+        }
+      },
+      "test:codspeed:solid": {
+        "executor": "nx:run-commands",
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "env": "GITHUB_RUN_ID"
+          },
+          {
+            "env": "GITHUB_RUN_ATTEMPT"
+          }
+        ],
+        "dependsOn": [
+          "build:solid"
+        ],
+        "options": {
+          "command": "node scripts/nx/run-codspeed-benchmark.mjs memory-client solid"
+        }
+      },
+      "test:codspeed:vue": {
+        "executor": "nx:run-commands",
+        "cache": true,
+        "inputs": [
+          "default",
+          "^production",
+          {
+            "env": "GITHUB_RUN_ID"
+          },
+          {
+            "env": "GITHUB_RUN_ATTEMPT"
+          }
+        ],
+        "dependsOn": [
+          "build:vue"
+        ],
+        "options": {
+          "command": "node scripts/nx/run-codspeed-benchmark.mjs memory-client vue"
         }
       },
       "test:types": {
