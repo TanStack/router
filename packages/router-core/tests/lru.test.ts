@@ -21,4 +21,14 @@ describe('LRU Cache', () => {
     expect(cache.get('b')).toBeUndefined()
     expect(cache.get('a')).toBe(1)
   })
+
+  it('respects max=1 across multiple replacements', () => {
+    const cache = createLRUCache<string, number>(1)
+    cache.set('a', 1)
+    cache.set('b', 2) // evicts 'a'
+    cache.set('c', 3) // evicts 'b'
+    expect(cache.get('a')).toBeUndefined()
+    expect(cache.get('b')).toBeUndefined()
+    expect(cache.get('c')).toBe(3)
+  })
 })
