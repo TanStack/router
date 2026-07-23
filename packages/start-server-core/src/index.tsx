@@ -26,6 +26,8 @@ export * from './request-response'
 
 export * from './virtual-modules'
 
+export { defaultDispatchServerFnRequest } from './server-functions-handler'
+
 export { HEADERS } from './constants'
 
 export type { RequestHandler, RequestOptions } from './request-handler'

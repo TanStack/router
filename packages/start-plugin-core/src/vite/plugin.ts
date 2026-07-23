@@ -224,6 +224,7 @@ export function tanStackStartVite(
       serverFnProviderModuleDirectives:
         corePluginOpts.serverFnProviderModuleDirectives,
       providerEnvName: serverFnProviderEnv,
+      serverFnTransport: corePluginOpts.serverFnTransport,
     }),
     importProtectionPlugin({
       getConfig,

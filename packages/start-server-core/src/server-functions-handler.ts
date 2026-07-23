@@ -33,6 +33,32 @@ const FORM_DATA_CONTENT_TYPES = [
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
 
+/**
+ * Default server function dispatch: extracts the function id from the URL
+ * path (as produced by TanStack's split RPC transport) and runs it through
+ * handleServerAction. The `#tanstack-start-server-fn-dispatch` virtual module
+ * re-exports this by default; alternative transports (e.g. the solid
+ * directive transport) substitute their own dispatch implementation.
+ */
+export const defaultDispatchServerFnRequest = async ({
+  request,
+  context,
+  serverFnBase,
+}: {
+  request: Request
+  context: any
+  serverFnBase: string
+}) => {
+  const url = new URL(request.url)
+  const serverFnId = url.pathname.slice(serverFnBase.length).split('/')[0]
+
+  if (!serverFnId) {
+    throw new Error('Invalid server action param for serverFnId')
+  }
+
+  return handleServerAction({ request, context, serverFnId })
+}
+
 export const handleServerAction = async ({
   request,
   context,

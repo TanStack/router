@@ -47,6 +47,45 @@ const ssrRpcManifestTemplate = babel.template.expression(
   `createSsrRpc(%%functionId%%)`,
 )
 
+// ============================================================================
+// Directive transport templates (serverFnTransport: 'directive')
+//
+// The trampoline arrow carries a "use server" directive so a framework-native
+// directive compiler (e.g. vite-plugin-solid's serverFunctions plugins,
+// running after the start compiler in the same enforce:'pre' bucket) performs
+// the client-stub/server-registration split. Function IDs are derived by that
+// compiler from the module path + per-module ordinal, so emitting the
+// trampolines in identical order in the client and server outputs keeps the
+// IDs aligned across environments with no coordination.
+// ============================================================================
+
+// Function identity note: the directive compiler derives its own ids from
+// (module path, per-module ordinal). Those are NOT usable as wire ids here —
+// the router code-splitter fans one route file out into several virtual
+// modules that share the same path, so ordinals collide across split modules
+// and differ between the client and server environments. Instead the start
+// compiler passes its own split-safe function id (same generator as the
+// split transport, honoring serverFns.generateFunctionId) as meta, and the
+// runtime wrappers register/dispatch under that id via the runtime's public
+// registry (registerServerFunction); the directive compiler's internal id is
+// only used to fish the registered trampoline back out at module-eval time.
+
+// Client env: handler body is dropped entirely; the directive arrow's body is
+// erased by the directive compiler's client transform and replaced with a
+// fetch stub, which createDirectiveClientRpc wraps with the TanStack wire
+// protocol.
+const directiveClientTemplate = babel.template.expression(
+  `createDirectiveClientRpc((opts) => { 'use server'; return %%fnVar%%.__executeServer(opts) }, %%meta%%)`,
+)
+
+// Server env: the directive compiler hoists + registers the arrow and leaves
+// an in-process reference behind, which createDirectiveServerRpc wraps.
+// normalizeDirectiveServerOpts converts raw HTTP payload shapes (FormData)
+// into the options object __executeServer expects.
+const directiveServerTemplate = babel.template.expression(
+  `createDirectiveServerRpc((opts) => { 'use server'; return %%fnVar%%.__executeServer(normalizeDirectiveServerOpts(opts)) }, %%meta%%)`,
+)
+
 // TODO remove upon stable
 function warnInputValidatorDeprecation(
   context: CompilationContext,
@@ -66,7 +105,12 @@ function warnInputValidatorDeprecation(
 // Runtime code cache (cached per framework to avoid repeated AST generation)
 // ============================================================================
 
-type RuntimeCodeType = 'provider' | 'client' | 'ssr'
+type RuntimeCodeType =
+  | 'provider'
+  | 'client'
+  | 'ssr'
+  | 'directiveClient'
+  | 'directiveServer'
 type FrameworkRuntimeCache = Record<RuntimeCodeType, t.Statement>
 const RuntimeCodeCache = new Map<
   CompileStartFrameworkOptions,
@@ -90,6 +134,14 @@ function getCachedRuntimeCode(
       ) as t.Statement,
       ssr: babel.template.ast(
         `import { createSsrRpc } from '@tanstack/${framework}-start/ssr-rpc'`,
+        { placeholderPattern: false },
+      ) as t.Statement,
+      directiveClient: babel.template.ast(
+        `import { createDirectiveClientRpc } from '@tanstack/${framework}-start/client-rpc'`,
+        { placeholderPattern: false },
+      ) as t.Statement,
+      directiveServer: babel.template.ast(
+        `import { createDirectiveServerRpc, normalizeDirectiveServerOpts } from '@tanstack/${framework}-start/server-rpc'`,
         { placeholderPattern: false },
       ) as t.Statement,
     }
@@ -213,6 +265,11 @@ export function handleCreateServerFn(
   context: CompilationContext,
 ) {
   if (candidates.length === 0) {
+    return
+  }
+
+  if (context.serverFnTransport === 'directive') {
+    handleCreateServerFnDirective(candidates, context)
     return
   }
 
@@ -480,6 +537,198 @@ export function handleCreateServerFn(
   const runtimeCode = getCachedRuntimeCode(
     context.framework,
     envConfig.runtimeCodeType,
+  )
+  context.ast.program.body.unshift(t.cloneNode(runtimeCode))
+}
+
+/**
+ * Directive-transport variant of handleCreateServerFn.
+ *
+ * No module splitting, no TanStack manifest, no RPC stub injection: each
+ * createServerFn handler is rewritten to a "use server" trampoline that a
+ * framework-native directive compiler (running after this one) splits into a
+ * client fetch stub / server registration. The original handler stays in
+ * place on the server (passed as the second .handler() argument, same shape
+ * the split provider files use today) and is dropped on the client.
+ */
+function handleCreateServerFnDirective(
+  candidates: Array<RewriteCandidate>,
+  context: CompilationContext,
+) {
+  const isClientEnv = context.env === 'client'
+  const isProviderFile = context.id.includes(TSS_SERVERFN_SPLIT_PARAM)
+
+  // Track function names to ensure uniqueness within this module
+  const functionNameSet = new Set<string>()
+  const serverFnVariableNames = new Set<string>()
+  const serverFnsById: Record<string, ServerFn> = {}
+
+  const [baseFilename] = context.id.split('?') as [string]
+  // Function ids are generated against the provider-style module id
+  // (base file + tss-serverfn-split query, ignored by the router code
+  // splitter). One route file fans out into several code-split virtual
+  // modules that each compile a subset of its server functions, in both
+  // environments — keying ids to the base file keeps them identical across
+  // all variants, and importing the provider module evaluates (and thereby
+  // registers) every server function of the file, including ones living in
+  // lazy code-split chunks the SSR render never loads.
+  const extractedFilename = `${baseFilename}?${TSS_SERVERFN_SPLIT_PARAM}`
+  const relativeFilename = path.relative(context.root, baseFilename)
+  const cleanedContextId = cleanId(context.id)
+
+  for (const candidate of candidates) {
+    const { path: candidatePath, methodChain } = candidate
+    const { validator, inputValidator, handler } = methodChain
+
+    const candidateVariableDeclarator = getVariableDeclaratorForExpressionPath(
+      candidatePath as babel.NodePath<t.Expression>,
+    )
+
+    if (!candidateVariableDeclarator) {
+      throw new Error('createServerFn must be assigned to a variable!')
+    }
+
+    const variableDeclarator = candidateVariableDeclarator.node
+    if (!t.isIdentifier(variableDeclarator.id)) {
+      throw codeFrameError(
+        context.code,
+        variableDeclarator.id.loc!,
+        'createServerFn must be assigned to a simple identifier, not a destructuring pattern',
+      )
+    }
+    const existingVariableName = variableDeclarator.id.name
+    serverFnVariableNames.add(existingVariableName)
+
+    // TODO remove upon stable
+    if (inputValidator) {
+      warnInputValidatorDeprecation(context, inputValidator)
+    }
+
+    // Handle validators - remove on client
+    for (const [methodName, methodCall] of [
+      ['validator', validator],
+      // TODO remove upon stable
+      ['inputValidator', inputValidator],
+    ] as const) {
+      if (!methodCall) {
+        continue
+      }
+
+      if (!methodCall.callPath.node.arguments[0]) {
+        throw new Error(
+          `createServerFn().${methodName}() must be called with a validator!`,
+        )
+      }
+
+      if (isClientEnv) {
+        stripMethodCall(methodCall.callPath)
+      }
+    }
+
+    const handlerFnPath = handler?.firstArgPath
+
+    if (!handler || !handlerFnPath?.node) {
+      throw codeFrameError(
+        context.code,
+        candidatePath.node.callee.loc!,
+        `createServerFn must be called with a "handler" property!`,
+      )
+    }
+
+    if (!t.isExpression(handlerFnPath.node)) {
+      throw codeFrameError(
+        context.code,
+        handlerFnPath.node.loc!,
+        `handler() must be called with an expression, not a ${handlerFnPath.node.type}`,
+      )
+    }
+
+    // Generate the split-safe function id: dev ids encode the provider
+    // module specifier (so the dispatcher can lazily import it), build ids
+    // derive from (relative base filename, function name) — identical in
+    // the client and server environments regardless of how the code
+    // splitter laid out the modules.
+    let functionName = `${existingVariableName}_createServerFn_handler`
+    while (functionNameSet.has(functionName)) {
+      functionName = incrementFunctionNameVersion(functionName)
+    }
+    functionNameSet.add(functionName)
+
+    const functionId = context.generateFunctionId({
+      filename: relativeFilename,
+      functionName,
+      extractedFilename,
+    })
+
+    serverFnsById[functionId] = {
+      functionName,
+      functionId,
+      filename: cleanedContextId,
+      extractedFilename,
+      isClientReferenced: true,
+    }
+
+    const fnVar = t.identifier(existingVariableName)
+
+    if (isClientEnv) {
+      // Drop the original handler body entirely; only the directive
+      // trampoline (whose body the directive compiler erases) remains.
+      // Client meta only carries the id (name/filename may expose server
+      // internals).
+      const meta = t.objectExpression([
+        t.objectProperty(t.identifier('id'), t.stringLiteral(functionId)),
+      ])
+      handler.callPath.node.arguments = [
+        directiveClientTemplate({ fnVar, meta }),
+      ]
+    } else {
+      // Keep the original handler as the second argument, mirroring the
+      // (extractedFn, serverFn) signature the runtime expects.
+      const meta = buildServerFnMetaObject(
+        functionId,
+        existingVariableName,
+        relativeFilename,
+      )
+      const serverFnNode = t.cloneNode(handlerFnPath.node, true)
+      handler.callPath.node.arguments = [
+        directiveServerTemplate({ fnVar, meta }),
+        serverFnNode,
+      ]
+    }
+  }
+
+  if (hasKeys(serverFnsById) && context.onServerFnsById) {
+    context.onServerFnsById(serverFnsById)
+  }
+
+  // Provider modules (base file + tss-serverfn-split, imported by the
+  // dispatcher purely for their registration side effects) are pruned like
+  // the split transport's provider files: drop all original exports and
+  // export only the server function variables, so dead code elimination
+  // strips components and other top-level code that may not be safe to
+  // evaluate on the server (e.g. `window` access in ssr:false routes).
+  if (!isClientEnv && isProviderFile) {
+    safeRemoveExports(context.ast)
+
+    if (serverFnVariableNames.size > 0) {
+      context.ast.program.body.push(
+        t.exportNamedDeclaration(
+          undefined,
+          Array.from(serverFnVariableNames).map((name) =>
+            t.exportSpecifier(t.identifier(name), t.identifier(name)),
+          ),
+        ),
+      )
+    }
+
+    if (context.mode === 'dev') {
+      context.ast.program.body.push(...providerHmrAcceptTemplate())
+    }
+  }
+
+  const runtimeCode = getCachedRuntimeCode(
+    context.framework,
+    isClientEnv ? 'directiveClient' : 'directiveServer',
   )
   context.ast.program.body.unshift(t.cloneNode(runtimeCode))
 }

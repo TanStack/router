@@ -13,6 +13,13 @@ export interface CompilationContext extends StartCompilerTransformContext {
   getKnownServerFns: () => Record<string, ServerFn>
   /** Module-level directives to add to extracted server function provider files. */
   serverFnProviderModuleDirectives: ReadonlyArray<string> | undefined
+  /**
+   * When 'directive', createServerFn handlers are compiled to "use server"
+   * directive trampolines instead of being split into provider modules.
+   * A framework-native directive compiler (e.g. vite-plugin-solid's
+   * serverFunctions plugins) is expected to run after the start compiler.
+   */
+  serverFnTransport: 'split' | 'directive'
 
   /**
    * Callback when server functions are discovered.

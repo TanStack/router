@@ -73,6 +73,9 @@
     },
     "#tanstack-start-plugin-adapters": {
       "default": "./dist/esm/empty-plugin-adapters.js"
+    },
+    "#tanstack-start-server-fn-dispatch": {
+      "default": "./dist/esm/default-server-fn-dispatch.js"
     }
   },
   "sideEffects": false,

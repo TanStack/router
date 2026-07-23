@@ -40,8 +40,8 @@ vi.mock('#tanstack-router-entry', () => ({
   getRouter: () => startMocks.router,
 }))
 
-vi.mock('../src/server-functions-handler', () => ({
-  handleServerAction: () => startMocks.serverFnResult,
+vi.mock('#tanstack-start-server-fn-dispatch', () => ({
+  dispatchServerFnRequest: () => startMocks.serverFnResult,
 }))
 
 const getStoreConfig = () => ({

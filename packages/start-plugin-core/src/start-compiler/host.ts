@@ -19,6 +19,7 @@ export interface CreateStartCompilerOptions {
   root: string
   framework: CompileStartFrameworkOptions
   providerEnvName: string
+  serverFnTransport?: 'split' | 'directive'
   mode: 'dev' | 'build'
   generateFunctionId?: GenerateFunctionIdFnOptional
   compilerTransforms?: Array<StartCompilerImportTransform> | undefined
@@ -50,6 +51,7 @@ export function createStartCompiler(
     mode: options.mode,
     framework: options.framework,
     providerEnvName: options.providerEnvName,
+    serverFnTransport: options.serverFnTransport,
     generateFunctionId: options.generateFunctionId,
     onServerFnsById: options.onServerFnsById,
     compilerTransforms: options.compilerTransforms,

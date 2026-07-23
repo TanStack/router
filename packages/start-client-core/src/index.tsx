@@ -129,6 +129,7 @@ export type {
 export type { Register } from '@tanstack/router-core'
 
 export { getRouterInstance } from './getRouterInstance'
+export { getStartOptions } from './getStartOptions'
 export { getDefaultSerovalPlugins } from './getDefaultSerovalPlugins'
 export { getGlobalStartContext } from './getGlobalStartContext'
 export { safeObjectMerge, createNullProtoObject } from './safeObjectMerge'

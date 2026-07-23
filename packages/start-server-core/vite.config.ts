@@ -37,6 +37,7 @@ export default mergeConfig(
         './src/createSsrRpc.ts',
         './src/request-response.ts',
         './src/fake-start-server-fn-resolver.ts',
+        './src/default-server-fn-dispatch.ts',
         './src/empty-plugin-adapters.ts',
       ],
       externalDeps: [

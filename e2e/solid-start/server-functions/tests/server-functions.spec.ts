@@ -14,7 +14,8 @@ test('Server function URLs correctly include constant ids', async ({
     const form = page.locator('form')
     const actionUrl = await form.getAttribute('action')
 
-    expect(actionUrl).toMatch(/^\/_serverFn\/constant_id/)
+    // Directive transport: the function id travels as a query parameter
+    expect(actionUrl).toMatch(/^\/_serverFn\/\?id=constant_id/)
   }
 })
 
@@ -29,7 +30,11 @@ test('invoking a server function with custom response status code', async ({
     page.on('response', (response) => {
       expect(response.status()).toBe(225)
       expect(response.statusText()).toBe('hello')
-      expect(response.headers()['content-type']).toContain('application/json')
+      // Directive transport wire format is a framed codec stream (text/plain
+      // + X-Server-Function-Format), not application/json
+      expect(
+        response.headers()['x-server-function-format'],
+      ).toBeDefined()
       resolve()
     })
   })

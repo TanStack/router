@@ -228,6 +228,11 @@ export interface StartCompilerPluginOptions {
    * The Vite environment name for the server function provider.
    */
   providerEnvName: string
+  /**
+   * Server function compilation/transport strategy.
+   * Defaults to 'split' (TanStack module splitting + RPC).
+   */
+  serverFnTransport?: 'split' | 'directive'
 }
 
 export function startCompilerPlugin(
@@ -334,6 +339,7 @@ export function startCompilerPlugin(
               mode,
               framework: opts.framework,
               providerEnvName: opts.providerEnvName,
+              serverFnTransport: opts.serverFnTransport,
               generateFunctionId: opts.generateFunctionId,
               compilerTransforms,
               compilerPlugins,
@@ -567,6 +573,25 @@ export function startCompilerPlugin(
                 typeof decoded.file === 'string' &&
                 typeof decoded.export === 'string'
               ) {
+                if (this.environment.mode !== 'dev') {
+                  this.error(
+                    `could not validate server function ID ${fnId}: unknown environment mode ${this.environment.mode}`,
+                  )
+                }
+
+                // Directive transport ids encode the provider module
+                // specifier (base file + tss-serverfn-split query).
+                // Transform it directly — the compile registers the file's
+                // function ids in serverFnsById as a side effect (nothing is
+                // evaluated; the dispatcher only imports validated modules).
+                if (opts.serverFnTransport === 'directive') {
+                  await this.environment.transformRequest(decoded.file)
+
+                  if (serverFnsById[fnId]) {
+                    return `export {}`
+                  }
+                }
+
                 // Use the Vite when to decode the module specifier
                 // back to the original source file path.
                 const sourceFile = decodeViteDevServerModuleSpecifier(
@@ -580,12 +605,6 @@ export function startCompilerPlugin(
                   // Trigger transform of the source file in this environment,
                   // which will compile createServerFn calls and populate
                   // serverFnsById as a side effect.
-                  if (this.environment.mode !== 'dev') {
-                    this.error(
-                      `could not validate server function ID ${fnId}: unknown environment mode ${this.environment.mode}`,
-                    )
-                  }
-
                   await this.environment.transformRequest(
                     `${absPath}?${SERVER_FN_LOOKUP}`,
                   )
@@ -614,6 +633,14 @@ export function startCompilerPlugin(
         return appliedResolverEnvironments.has(env.name)
       },
       load() {
+        // With the directive transport there is no TanStack server-fn
+        // manifest — resolution happens inside the framework's native
+        // server-function registry. Satisfy the static import with a
+        // throwing stub.
+        if (opts.serverFnTransport === 'directive') {
+          return `export function getServerFnById(id) { throw new Error('getServerFnById is not available with the directive server function transport (requested id: ' + id + ')') }`
+        }
+
         if (this.environment.name !== opts.providerEnvName) {
           const mod = opts.environments.find(
             (e) => e.name === this.environment.name,
@@ -642,5 +669,95 @@ export function startCompilerPlugin(
         })
       },
     }),
+    // Dispatch module for the server-fn HTTP endpoint. createStartHandler
+    // routes requests under TSS_SERVER_FN_BASE through
+    // `#tanstack-start-server-fn-dispatch`; with the default (split)
+    // transport that specifier resolves through start-server-core's package
+    // imports map to the split dispatch, so the virtual override is only
+    // installed for alternative transports.
+    ...(opts.serverFnTransport === 'directive'
+      ? [
+          createVirtualModule({
+            name: 'tanstack-start-core:server-fn-dispatch',
+            moduleId: VIRTUAL_MODULES.serverFnDispatch,
+            enforce: 'pre',
+            applyToEnvironment: (env) => {
+              return appliedResolverEnvironments.has(env.name)
+            },
+            load() {
+              // Directive transport (currently vite-plugin-solid only): the
+              // request is dispatched through @solidjs/web's server-function
+              // handler, wired with TanStack codec/result semantics.
+              // Functions register (under their TanStack ids) as a
+              // module-eval side effect of their provider modules, so those
+              // must be evaluated before dispatch:
+              // - Build: dynamic imports of every provider module the client
+              //   build discovered server functions in (the server
+              //   environment builds after the client, so serverFnsById is
+              //   populated). This covers functions whose module the SSR
+              //   render never evaluates (lazy code-split chunks, data-only
+              //   routes).
+              // - Dev: TanStack function ids encode the provider module
+              //   specifier; validate the id, then import it on demand.
+              const dispatchBody = [
+                `export async function dispatchServerFnRequest({ request }) {`,
+                `  await ensureServerFnModule(request)`,
+                `  const response = await handleServerFunctionRequest(request, createTanStackDispatchOptions())`,
+                `  return postprocessDirectiveResponse(response)`,
+                `}`,
+              ]
+
+              const runtimeImports = [
+                `import { handleServerFunctionRequest } from 'virtual:solid-server-function-handler'`,
+                `import { createTanStackDispatchOptions, postprocessDirectiveResponse } from '@tanstack/${opts.framework}-start/server-fn-dispatch'`,
+              ]
+
+              if (this.environment.mode !== 'build') {
+                return [
+                  ...runtimeImports,
+                  `const FUNCTION_HEADER = 'X-Server-Function-Id'`,
+                  `async function ensureServerFnModule(request) {`,
+                  `  const url = new URL(request.url)`,
+                  `  const headerId = request.headers.get(FUNCTION_HEADER)`,
+                  `  const id = (headerId ? headerId.split('#')[0] : undefined) || url.searchParams.get('id')`,
+                  `  if (!id) return`,
+                  `  try {`,
+                  `    const validateIdImport = ${JSON.stringify(validateServerFnIdVirtualModule)} + '?id=' + id`,
+                  `    await import(/* @vite-ignore */ '/@id/__x00__' + validateIdImport)`,
+                  `    const decoded = JSON.parse(Buffer.from(id, 'base64url').toString('utf8'))`,
+                  `    await import(/* @vite-ignore */ decoded.file)`,
+                  `  } catch {`,
+                  `    // Unknown/invalid ids fall through; the handler responds 404.`,
+                  `  }`,
+                  `}`,
+                  ...dispatchBody,
+                ].join('\n')
+              }
+
+              const registrationModules = new Set(
+                Object.values(serverFnsById).map((fn) => fn.extractedFilename),
+              )
+
+              // Dynamic imports on first dispatch (not static side-effect
+              // imports): apps commonly declare `"sideEffects": false`,
+              // which would let the bundler tree-shake bare provider-module
+              // imports — dynamic imports always keep their target chunks.
+              return [
+                ...runtimeImports,
+                `let registrationPromise`,
+                `function ensureServerFnModule() {`,
+                `  registrationPromise ??= Promise.all([`,
+                ...Array.from(registrationModules, (id) => {
+                  return `    import(${JSON.stringify(id)}),`
+                }),
+                `  ])`,
+                `  return registrationPromise`,
+                `}`,
+                ...dispatchBody,
+              ].join('\n')
+            },
+          }),
+        ]
+      : []),
   ]
 }

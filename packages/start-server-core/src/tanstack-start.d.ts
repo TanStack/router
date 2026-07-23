@@ -21,3 +21,11 @@ declare module '#tanstack-start-server-fn-resolver' {
     access: ServerFnLookupAccess,
   ): Promise<ServerFn>
 }
+
+declare module '#tanstack-start-server-fn-dispatch' {
+  export function dispatchServerFnRequest(opts: {
+    request: Request
+    context: any
+    serverFnBase: string
+  }): Promise<Response>
+}

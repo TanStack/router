@@ -1,7 +1,9 @@
+import { joinPaths } from '@tanstack/router-core'
 import {
   START_ENVIRONMENT_NAMES,
   tanStackStartVite,
 } from '@tanstack/start-plugin-core/vite'
+import { serverFunctions as solidServerFunctions } from 'vite-plugin-solid'
 import type {
   TanStackStartViteInputConfig,
   TanStackStartVitePluginCoreOptions,
@@ -20,7 +22,24 @@ export function tanstackStart(
     ssrResolverStrategy: {
       type: 'default',
     },
+    // Server functions compile to "use server" directive trampolines and run
+    // through vite-plugin-solid's serverFunctions pipeline + the
+    // @solidjs/web/server-functions runtime (see the serverFunctions plugins
+    // appended below).
+    serverFnTransport: 'directive',
   }
+
+  // Must produce the same path as TSS_SERVER_FN_BASE (createServerFnBasePath):
+  // vite-plugin-solid applies the Vite `base` itself, and the router basepath
+  // defaults to that base — so only an explicitly configured basepath is
+  // included here. Misaligned setups (vite base and router basepath both set,
+  // to different values) are not supported with the directive transport.
+  const serverFnEndpoint = joinPaths([
+    '/',
+    options?.router?.basepath ?? '',
+    options?.serverFns?.base ?? '/_serverFn',
+    '/',
+  ])
 
   return [
     {
@@ -64,7 +83,28 @@ export function tanstackStart(
               : undefined,
         }
       },
+      configResolved(config) {
+        // Our serverFunctions plugins are appended below; if the user ALSO
+        // enabled `serverFunctions` on their own vite-plugin-solid instance,
+        // every "use server" module would be compiled twice.
+        const compilerInstances = config.plugins.filter(
+          (p) => p.name === 'solid:server-functions/compiler',
+        ).length
+        if (compilerInstances > 1) {
+          config.logger.warn(
+            '[tanstack-solid-start] Multiple vite-plugin-solid serverFunctions ' +
+              'compilers detected. TanStack Start already configures server ' +
+              'functions — remove the `serverFunctions` option from your ' +
+              'viteSolid() plugin config.',
+          )
+        }
+      },
     },
     tanStackStartVite(corePluginOpts, options),
+    // The standalone serverFunctions() export (meta-framework mode): performs
+    // the "use server" directive split + manifest, but installs no dev
+    // middleware — TanStack Start dispatches the endpoint itself through
+    // createStartHandler (see #tanstack-start-server-fn-dispatch).
+    ...solidServerFunctions({ endpoint: serverFnEndpoint }),
   ]
 }

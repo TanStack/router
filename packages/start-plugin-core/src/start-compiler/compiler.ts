@@ -546,6 +546,11 @@ export class StartCompiler {
        */
       providerEnvName: string
       /**
+       * Server function compilation/transport strategy.
+       * Defaults to 'split' (TanStack module splitting + RPC).
+       */
+      serverFnTransport?: 'split' | 'directive'
+      /**
        * Custom function ID generator (optional, defaults to hash-based).
        */
       generateFunctionId?: (opts: {
@@ -1360,6 +1365,7 @@ export class StartCompiler {
         root: this.options.root,
         framework: this.options.framework,
         providerEnvName: this.options.providerEnvName,
+        serverFnTransport: this.options.serverFnTransport ?? 'split',
         types: t,
         parseExpression: (expressionCode) =>
           babel.template.expression(expressionCode, {

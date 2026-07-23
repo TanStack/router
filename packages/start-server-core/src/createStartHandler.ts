@@ -27,7 +27,7 @@ import {
 } from '@tanstack/start-storage-context'
 import { requestHandler } from './request-response'
 import { getStartManifest } from './router-manifest'
-import { handleServerAction } from './server-functions-handler'
+import { dispatchServerFnRequest } from '#tanstack-start-server-fn-dispatch'
 import { createEarlyHintsCollector } from './early-hints'
 import {
   createCachedBaseManifestLoader,
@@ -491,14 +491,6 @@ export function createStartHandler<TRegister = Register>(
           warnMissingCsrfMiddlewareOnce()
         }
 
-        const serverFnId = url.pathname
-          .slice(SERVER_FN_BASE.length)
-          .split('/')[0]
-
-        if (!serverFnId) {
-          throw new Error('Invalid server action param for serverFnId')
-        }
-
         const serverFnHandler = async ({ context }: TODO) => {
           return runWithStartContext(
             {
@@ -510,10 +502,10 @@ export function createStartHandler<TRegister = Register>(
               handlerType: 'serverFn',
             },
             () =>
-              handleServerAction({
+              dispatchServerFnRequest({
                 request,
                 context: requestOpts?.context,
-                serverFnId,
+                serverFnBase: SERVER_FN_BASE,
               }),
           )
         }

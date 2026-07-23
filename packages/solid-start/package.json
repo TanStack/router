@@ -68,6 +68,12 @@
         "default": "./dist/esm/ssr-rpc.js"
       }
     },
+    "./server-fn-dispatch": {
+      "import": {
+        "types": "./dist/esm/server-fn-dispatch.d.ts",
+        "default": "./dist/esm/server-fn-dispatch.js"
+      }
+    },
     "./server": {
       "import": {
         "types": "./dist/esm/server.d.ts",
@@ -118,13 +124,16 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
+    "@tanstack/router-core": "workspace:*",
     "@tanstack/solid-router": "workspace:*",
     "@tanstack/solid-start-client": "workspace:*",
     "@tanstack/solid-start-server": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
-    "pathe": "^2.0.3"
+    "pathe": "^2.0.3",
+    "seroval": "^1.5.4",
+    "seroval-plugins": "^1.5.4"
   },
   "devDependencies": {
     "@rsbuild/core": "^2.0.11",
@@ -132,12 +141,14 @@
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
     "solid-js": "2.0.0-beta.25",
-    "vite": "*"
+    "vite": "*",
+    "vite-plugin-solid": "^3.0.0-next.16"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-0 <3.0.0",
     "solid-js": ">=2.0.0-0 <3.0.0",
     "vite": ">=7.0.0",
+    "vite-plugin-solid": "^3.0.0-next.16",
     "@rsbuild/core": "^2.0.0"
   },
   "peerDependenciesMeta": {
@@ -145,6 +156,9 @@
       "optional": true
     },
     "vite": {
+      "optional": true
+    },
+    "vite-plugin-solid": {
       "optional": true
     }
   }
