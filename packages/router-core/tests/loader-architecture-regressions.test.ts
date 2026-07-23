@@ -859,7 +859,11 @@ test('a stale shouldReload cannot continue a superseded preload', async () => {
   expect(router.state.location.pathname).toBe('/winner')
   expect(router.state.matches.at(-1)?.routeId).toBe(winnerRoute.id)
   expect(loader).toHaveBeenCalledOnce()
-  expect(onError).not.toHaveBeenCalled()
+  // Preload lanes run to completion despite the navigation, so the stale
+  // shouldReload's failure surfaces through onError (matching pre-rewrite
+  // behavior for preload errors) — but it cannot restart the loader or
+  // disturb the winning navigation.
+  expect(onError).toHaveBeenCalledOnce()
 })
 
 test('an onLeave navigation to the in-flight destination joins it and enters once', async () => {
