@@ -8,7 +8,7 @@ description: >-
   Await component, deferred data loading with unawaited promises.
 type: sub-skill
 library: tanstack-router
-library_version: '1.166.2'
+library_version: '1.171.15'
 requires:
   - router-core
 sources:
@@ -217,11 +217,26 @@ Route-level context via `beforeLoad`:
 ```tsx
 export const Route = createFileRoute('/posts')({
   beforeLoad: () => ({
-    fetchPosts: () => fetch('/api/posts').then((r) => r.json()),
+    fetchPosts,
   }),
   loader: ({ context: { fetchPosts } }) => fetchPosts(),
 })
 ```
+
+Keep the implementation SSR-safe when the router is used by TanStack Start. A relative `fetch('/api/posts')` works in a browser event handler, but Node and many server runtimes require an absolute URL during SSR. For app-internal data in Start, call a server function from the loader:
+
+```tsx
+import { createServerFn } from '@tanstack/react-start'
+
+const getPosts = createServerFn({ method: 'GET' }).handler(() => {
+  return db.posts.findMany()
+})
+
+export const Route = createFileRoute('/posts')({
+  loader: () => getPosts(),
+})
+```
+Use a server route plus an origin-derived absolute URL only when the HTTP boundary itself is required. Do not hard-code the production origin.
 
 ### Deferred Data Loading
 
@@ -276,19 +291,17 @@ function AddPostButton() {
   const router = useRouter()
 
   const handleAdd = async () => {
-    await fetch('/api/posts', { method: 'POST', body: '...' })
-    router.invalidate()
+    await createPost({ title: 'New post' })
+    await router.invalidate({ sync: true })
   }
 
   return <button onClick={handleAdd}>Add Post</button>
 }
 ```
 
-For synchronous invalidation (wait until loaders finish):
+Use `await router.invalidate({ sync: true })` when the next step requires refreshed loader data.
 
-```tsx
-await router.invalidate({ sync: true })
-```
+Treat the mutation and invalidation as one workflow. The mutation must persist before invalidation starts, and the loader must read from the same authoritative store. Verify create, update, and delete through the rendered route, including a fresh reload; local component state can hide a stale loader or non-persistent write.
 
 ### Error Handling
 
@@ -361,16 +374,13 @@ export const Route = createFileRoute('/posts')({
   },
 })
 
-// CORRECT — loaders run in the browser, use fetch or API calls
+// CORRECT for an SPA — use a client-safe API helper
 export const Route = createFileRoute('/posts')({
-  loader: async () => {
-    const res = await fetch('/api/posts')
-    return res.json()
-  },
+  loader: () => fetchPosts(),
 })
 ```
 
-Do NOT put database queries, filesystem access, or server-only code in loaders unless you are using TanStack Start server functions.
+Do NOT put database queries, filesystem access, or server-only code directly in loaders. In TanStack Start, put that work in a server function and call the function from the loader. Do not use a relative `fetch('/api/...')` in an SSR loader.
 
 ### MEDIUM: Not understanding staleTime default is 0
 

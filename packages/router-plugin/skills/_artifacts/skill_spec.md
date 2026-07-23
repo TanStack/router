@@ -12,13 +12,14 @@ Bundler plugin for route generation and automatic code splitting. Supports Vite,
 
 | Skill         | Type | Domain              | What it covers                                                 | Failure modes |
 | ------------- | ---- | ------------------- | -------------------------------------------------------------- | ------------- |
-| router-plugin | core | bundler-integration | Vite/Webpack/Rspack/esbuild plugins, route gen, code splitting | 2             |
+| router-plugin | core | bundler-integration | Vite/Webpack/Rspack/esbuild plugins, route gen, code splitting | 3             |
 
 ## Failure Mode Inventory
 
-### router-plugin (2 failure modes)
+### router-plugin (3 failure modes)
 
 | #   | Mistake                                              | Priority | Source      |
 | --- | ---------------------------------------------------- | -------- | ----------- |
 | 1   | Using wrong plugin export for bundler                | HIGH     | source/docs |
 | 2   | Misconfiguring routesDirectory or generatedRouteTree | MEDIUM   | source/docs |
+| 3   | Editing routeTree.gen.ts instead of regenerating      | HIGH     | consistency audit |

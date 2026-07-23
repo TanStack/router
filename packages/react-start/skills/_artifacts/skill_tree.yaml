@@ -1,7 +1,7 @@
 # skills/_artifacts/start_skill_tree.yaml
 library:
   name: '@tanstack/react-start'
-  version: '1.166.2'
+  version: '1.168.32'
   repository: 'https://github.com/TanStack/router'
   description: >-
     Full-stack React framework built on TanStack Router and Vite.

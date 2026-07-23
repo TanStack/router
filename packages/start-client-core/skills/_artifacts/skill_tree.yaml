@@ -1,7 +1,7 @@
 # packages/start-client-core/skills/_artifacts/skill_tree.yaml
 library:
   name: '@tanstack/start-client-core'
-  version: '1.166.2'
+  version: '1.170.14'
   repository: 'https://github.com/TanStack/router'
   description: >-
     Framework-agnostic client-side core for TanStack Start.

@@ -7,7 +7,7 @@ description: >-
   fetching pattern changes.
 type: lifecycle
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.168.32'
 requires:
   - start-core
   - react-start

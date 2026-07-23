@@ -8,7 +8,7 @@ description: >-
   helpers, file naming for API routes.
 type: sub-skill
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.170.14'
 requires:
   - start-core
 sources:
@@ -18,6 +18,8 @@ sources:
 # Server Routes
 
 Server routes are API endpoints defined alongside app routes in the `src/routes` directory. They use the `server` property on `createFileRoute` and handle raw HTTP requests.
+
+Use server routes when callers need an HTTP contract. For data used only by the Start application, prefer a server function and call it directly from the loader. A route loader runs during SSR and client navigation, so `fetch('/api/...')` is not a portable loader pattern.
 
 ## Basic Server Route
 
@@ -76,6 +78,39 @@ function HelloComponent() {
   )
 }
 ```
+
+The relative `fetch('/hello')` above is safe because it runs only in a browser click handler.
+
+## Sharing Data with a Start Route
+
+Do not make the SSR loader call its own server route. Put the business operation in a server-only service, then expose it through both boundaries when both are required:
+
+```tsx
+// src/server/issues.server.ts
+export function listIssues() {
+  return db.issues.findMany()
+}
+
+// src/routes/api/issues.ts
+export const Route = createFileRoute('/api/issues')({
+  server: {
+    handlers: {
+      GET: async () => Response.json(await listIssues()),
+    },
+  },
+})
+
+// src/routes/issues.tsx
+const getIssues = createServerFn({ method: 'GET' }).handler(() => {
+  return listIssues()
+})
+
+export const Route = createFileRoute('/issues')({
+  loader: () => getIssues(),
+})
+```
+
+This keeps SSR independent of URL resolution and keeps one source of business logic.
 
 ## File Route Conventions
 
@@ -253,7 +288,11 @@ export const Route = createFileRoute('/api/posts')({
 
 ## Common Mistakes
 
-### 1. MEDIUM: Duplicate route paths
+### 1. CRITICAL: Protecting the page but not the server route
+
+Every handler that reads or writes private data must authenticate and authorize the request through route middleware, handler middleware, or an in-handler check. A router `beforeLoad` redirect does not protect `/api/...`. Test the handler directly without cookies and assert that no private payload is returned.
+
+### 2. MEDIUM: Duplicate route paths
 
 ```text
 # WRONG — both resolve to /users, causes error
@@ -264,7 +303,7 @@ routes/users/index.ts
 routes/users.ts
 ```
 
-### 2. MEDIUM: Forgetting to await request body methods
+### 3. MEDIUM: Forgetting to await request body methods
 
 ```ts
 // WRONG — body is a Promise, not the actual data
@@ -273,6 +312,10 @@ const body = request.json()
 // CORRECT — await the promise
 const body = await request.json()
 ```
+
+### 4. HIGH: Trusting TypeScript as response-schema validation
+
+Validate request input and test the serialized `Response` output. A typed service can still be projected or serialized without a newly added field. For schema changes, assert `await response.json()` at the server-route boundary.
 
 ## Cross-References
 

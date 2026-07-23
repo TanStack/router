@@ -24,6 +24,12 @@ const fakeRouterEntry = fileURLToPath(
 const fakeStartManifest = fileURLToPath(
   new URL('./tests/fixtures/start-manifest.ts', import.meta.url),
 )
+const fakePluginAdapters = fileURLToPath(
+  new URL('./src/empty-plugin-adapters.ts', import.meta.url),
+)
+const fakeServerFnResolver = fileURLToPath(
+  new URL('./src/fake-start-server-fn-resolver.ts', import.meta.url),
+)
 
 export default mergeConfig(
   config,
@@ -53,6 +59,8 @@ export default mergeConfig(
         alias: {
           '#tanstack-start-entry': fakeStartEntry,
           '#tanstack-router-entry': fakeRouterEntry,
+          '#tanstack-start-plugin-adapters': fakePluginAdapters,
+          '#tanstack-start-server-fn-resolver': fakeServerFnResolver,
           'tanstack-start-manifest:v': fakeStartManifest,
         },
       },

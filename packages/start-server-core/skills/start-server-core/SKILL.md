@@ -7,7 +7,7 @@ description: >-
   AsyncLocalStorage context.
 type: core
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.169.17'
 sources:
   - TanStack/router:packages/start-server-core/src
   - TanStack/router:docs/start/framework/react/guide/server-entry-point.md
@@ -20,6 +20,8 @@ Server-side runtime for TanStack Start. Provides the request handler, request/re
 > **CRITICAL**: These utilities are SERVER-ONLY. Import them from `@tanstack/<framework>-start/server`, not from the main entry point. They throw if called outside a server request context.
 >
 > **CRITICAL**: Types are FULLY INFERRED. Never cast, never annotate inferred values.
+>
+> **CRITICAL**: Read cookies, headers, request URLs, and runtime environment values inside the active request. Do not capture them at module scope; edge runtimes may inject them per request, and concurrent requests must never share request-derived state.
 
 ## `createStartHandler`
 
@@ -120,7 +122,8 @@ const serverFn = createServerFn({ method: 'POST' }).handler(async () => {
 
   setCookie('preference', 'dark', {
     httpOnly: true,
-    secure: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 30, // 30 days
     path: '/',
   })
@@ -143,29 +146,56 @@ import {
   clearSession,
 } from '@tanstack/react-start/server'
 
-const sessionConfig = {
-  password: process.env.SESSION_SECRET!,
-  name: 'my-app-session',
-  maxAge: 60 * 60 * 24 * 7, // 7 days
+type SessionData = {
+  userId?: string
+}
+
+function getSessionConfig() {
+  const password = process.env.SESSION_SECRET
+  if (!password || password.length < 32) {
+    throw new Error('SESSION_SECRET must be at least 32 characters')
+  }
+
+  return {
+    password,
+    name: 'my-app-session',
+    maxAge: 60 * 60 * 24 * 7,
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax' as const,
+      path: '/',
+    },
+  }
 }
 
 // Full session manager
 const getUser = createServerFn({ method: 'GET' }).handler(async () => {
-  const session = await useSession<{ userId: string }>(sessionConfig)
-  return session.data
+  const session = await useSession<SessionData>(getSessionConfig())
+  if (!session.data.userId) {
+    return null
+  }
+  return db.users.findById(session.data.userId)
 })
 
 // Update session
 const login = createServerFn({ method: 'POST' })
-  .validator((data: { userId: string }) => data)
+  .validator((data: { email: string; password: string }) => data)
   .handler(async ({ data }) => {
-    await updateSession(sessionConfig, { userId: data.userId })
+    const user = await db.users.findByEmail(data.email)
+    if (!user || !(await verifyPassword(data.password, user.passwordHash))) {
+      throw new Error('Invalid credentials')
+    }
+
+    await updateSession<SessionData>(getSessionConfig(), {
+      userId: user.id,
+    })
     return { success: true }
   })
 
 // Clear session
 const logout = createServerFn({ method: 'POST' }).handler(async () => {
-  await clearSession(sessionConfig)
+  await clearSession(getSessionConfig())
   return { success: true }
 })
 ```
@@ -189,6 +219,14 @@ session.data // Session data (typed)
 await session.update({ userId: '123' }) // Persist session data
 await session.clear() // Clear session data
 ```
+
+### Production Session Rules
+
+- Keep cookie session data small and non-sensitive. Store a stable session or user ID, then load current permissions and account state from the authoritative store on each protected request.
+- Use a server-side session record when you need revocation, device tracking, large data, or immediate role changes. Put only its opaque ID in the cookie.
+- Rotate the session after login, privilege changes, password changes, and logout.
+- Use `HttpOnly`, `SameSite`, `Path=/`, and `Secure` in production. Use a `__Host-` cookie name in production only when `Secure`, no `Domain`, and `Path=/` are all enforced.
+- Use the same cookie name and path when clearing a session. Test login, authenticated refresh, expiry, logout, and a replay of the old cookie.
 
 ## Query Validation
 
@@ -254,6 +292,10 @@ const getAuth = createServerFn({ method: 'GET' }).handler(async () => {
 ### 3. MEDIUM: Using session without HTTPS in production
 
 Session cookies should use `secure: true` in production. The default cookie options may not enforce this.
+
+### 4. CRITICAL: Capturing request or environment state at module scope
+
+Do not create session config from `process.env` at module load or cache `getRequest()`, headers, cookies, or session data in a module variable. Create config and read request state inside the handler or middleware callback. This is required for per-request edge environments and prevents cross-request data leaks.
 
 ## Cross-References
 

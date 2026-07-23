@@ -7,7 +7,7 @@ description: >-
   file naming conventions. Entry point for all router skills.
 type: core
 library: tanstack-router
-library_version: '1.166.2'
+library_version: '1.171.15'
 ---
 
 # TanStack Router Core
@@ -17,6 +17,8 @@ TanStack Router is a type-safe router for React and Solid with built-in SWR cach
 > **CRITICAL**: TanStack Router types are FULLY INFERRED. Never cast, never annotate inferred values. This is the #1 AI agent mistake.
 
 > **CRITICAL**: TanStack Router is CLIENT-FIRST. Loaders run on the client by default, NOT server-only like Remix/Next.js. Do not confuse TanStack Router APIs with Next.js or React Router.
+
+Use this entry skill to choose one primary sub-skill. Do not load the full catalog. Load a second sub-skill only when the task crosses a real boundary, such as an authenticated loader that needs both `auth-and-guards` and `data-loading`.
 
 ## Sub-Skills
 
@@ -65,6 +67,22 @@ Having TypeScript issues or performance problems?
 Need server-side rendering?
   → router-core/ssr
 ```
+
+## Cross-Cutting Completion Checks
+
+For route refactors:
+
+1. Rename or move the route file; do not hand-edit the generated `createFileRoute` path.
+2. Regenerate `routeTree.gen.ts` with the configured Router plugin or CLI.
+3. Update links, redirects, `from` narrowing, params, and tests that reference the old route.
+4. Run type tests and a production build. A typecheck alone does not prove route generation or bundling works.
+
+For response schema changes:
+
+1. Update the source model and shared validation schema.
+2. Update the server function or API serializer so the field exists at runtime.
+3. Update loader and component consumers without casts.
+4. Assert the actual response payload in a unit or integration test. Typechecking cannot catch a serializer that omits the new field.
 
 ## Minimal Working Example
 
@@ -136,4 +154,4 @@ The plugin auto-generates this string. If you rename a route file, the plugin up
 
 ## Version Note
 
-This skill targets `@tanstack/router-core` v1.166.2 and `@tanstack/react-router` v1.166.2. APIs are stable. Splat routes use `$` (not `*`); the `*` compat alias will be removed in v2.
+This skill targets `@tanstack/router-core` v1.171.15. Splat routes use `$` (not `*`); the `*` compat alias will be removed in v2.

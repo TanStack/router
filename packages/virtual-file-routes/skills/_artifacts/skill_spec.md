@@ -12,13 +12,14 @@ Programmatic route tree building as an alternative to filesystem conventions. Pr
 
 | Skill               | Type | Domain               | What it covers                                             | Failure modes |
 | ------------------- | ---- | -------------------- | ---------------------------------------------------------- | ------------- |
-| virtual-file-routes | core | virtual-route-config | rootRoute, index, route, layout, physical, subtree configs | 2             |
+| virtual-file-routes | core | virtual-route-config | rootRoute, index, route, layout, physical, subtree configs | 3             |
 
 ## Failure Mode Inventory
 
-### virtual-file-routes (2 failure modes)
+### virtual-file-routes (3 failure modes)
 
 | #   | Mistake                                 | Priority | Source      |
 | --- | --------------------------------------- | -------- | ----------- |
 | 1   | Forgetting rootRoute wrapper            | HIGH     | source/docs |
 | 2   | Using physical() path outside routesDir | MEDIUM   | source/docs |
+| 3   | Creating duplicate effective paths or mounts | HIGH | consistency audit |

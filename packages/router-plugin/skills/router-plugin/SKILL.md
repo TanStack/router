@@ -7,7 +7,7 @@ description: >-
   and code split groupings.
 type: core
 library: tanstack-router
-library_version: '1.166.2'
+library_version: '1.168.23'
 sources:
   - TanStack/router:packages/router-plugin/src
   - TanStack/router:docs/router/routing/file-based-routing.md
@@ -170,6 +170,18 @@ The composed plugin assembles up to 3 sub-plugins:
 2. **Code Splitter** (when `autoCodeSplitting: true`) — Splits route files into lazy-loaded chunks using virtual modules
 3. **HMR** (dev mode, when code splitter is off) — Hot-reloads route changes without full refresh
 
+## Route Refactor Workflow
+
+When moving, renaming, adding, or deleting file routes:
+
+1. Change the source files under `routesDirectory`. Keep the exported route identifier named `Route`.
+2. Let the bundler plugin regenerate the tree, or run `pnpm exec tsr generate` when the project uses the CLI.
+3. Inspect the generated diff for the expected route IDs, parents, paths, and imports. Never repair `routeTree.gen.ts` by hand.
+4. Update links, redirects, `from` narrowing, params, preload calls, and tests that reference the old route.
+5. Run route-generation tests, type tests, and a production build. A passing editor typecheck does not prove the plugin generated or split the new route correctly.
+
+Commit `routeTree.gen.ts`; it is generated source used by the application at runtime.
+
 ## Individual Plugin Exports
 
 For advanced use, each sub-plugin is exported separately from the Vite entry:
@@ -226,6 +238,10 @@ function AboutPage() {
   return <h1>About</h1>
 }
 ```
+
+### 4. HIGH: Editing the generated route tree
+
+Changes to `routeTree.gen.ts` are overwritten and can leave source routes, generated types, and runtime routing out of sync. Fix route filenames or plugin configuration, regenerate, and verify the generated diff instead.
 
 ## Cross-References
 

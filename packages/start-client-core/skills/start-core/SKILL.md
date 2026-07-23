@@ -7,7 +7,7 @@ description: >-
   tsconfig configuration. Entry point for all Start skills.
 type: core
 library: tanstack-start
-library_version: '1.166.2'
+library_version: '1.170.14'
 sources:
   - TanStack/router:docs/start/framework/react/build-from-scratch.md
   - TanStack/router:docs/start/framework/react/quick-start.md
@@ -21,6 +21,8 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 > **CRITICAL**: All code in TanStack Start is ISOMORPHIC by default — it runs in BOTH server and client environments. Loaders run on both server AND client. To run code exclusively on the server, use `createServerFn`. This is the #1 AI agent mistake.
 > **CRITICAL**: TanStack Start is NOT Next.js. Do not generate `getServerSideProps`, `"use server"` directives, `app/layout.tsx`, or any Next.js/Remix patterns. Use `createServerFn` for server-only code.
 > **CRITICAL**: Types are FULLY INFERRED. Never cast, never annotate inferred values.
+
+Use this entry skill to pick one primary workflow. Do not load every Start sub-skill. Add another only when the implementation crosses that boundary; for example, a protected mutation needs `server-functions` plus `auth-server-primitives`, while a public REST endpoint needs `server-routes` alone.
 
 ## Sub-Skills
 
@@ -54,6 +56,20 @@ Need a REST API endpoint (GET/POST/PUT/DELETE)?
 Need to deploy, configure SSR, or prerender?
   → start-core/deployment
 ```
+
+## Full-Stack Delivery Workflow
+
+For application data loaded by a Start route:
+
+1. Put database, filesystem, secrets, and persistence code behind `createServerFn`.
+2. Call the server function directly from the route loader. Do not self-fetch a relative `/api/...` URL from an SSR loader.
+3. Validate every input and enforce auth in the server function or middleware. `beforeLoad` only protects route UX.
+4. After a mutation resolves, invalidate the router or the external query cache and await the refresh when the UI must be current before continuing.
+5. For schema changes, update storage, validation, handler serialization, loader, and UI. Assert the actual runtime payload; typechecking alone cannot detect an omitted serialized field.
+
+Use a server route when the raw HTTP contract is the product: webhooks, third-party clients, feeds, file responses, or a public REST API. When the Start UI and a server route share data, call one server-side service from both instead of making the SSR loader fetch its own API route.
+
+Before finishing, test the initial SSR request, client navigation, mutation followed by refresh, and a direct anonymous request to every protected endpoint.
 
 ## Project Setup
 
@@ -211,4 +227,4 @@ function RootComponent() {
 
 ## Version Note
 
-This skill targets `@tanstack/react-start` v1.166.2 and `@tanstack/start-client-core` v1.166.2.
+This skill targets `@tanstack/start-client-core` v1.170.14.
