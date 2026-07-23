@@ -952,6 +952,21 @@ declare global {
 }
 
 /**
+ * A visited history entry keyed by its `__TSR_index`, used to resolve navigation
+ * direction (the browser only exposes the current entry).
+ */
+export interface RouterHistoryEntry {
+  /** The entry's `__TSR_index` in the history stack. */
+  index: number
+  /** Parsed (basepath-stripped) pathname, comparable to `buildLocation().pathname`. */
+  pathname: string
+  /** Search string incl. leading `?`, comparable to `buildLocation().searchStr`. */
+  searchStr: string
+  /** Full href (pathname + search + hash), without origin. */
+  href: string
+}
+
+/**
  * Core, framework-agnostic router engine that powers TanStack Router.
  *
  * Provides navigation, matching, loading, preloading, caching and event APIs
@@ -1004,6 +1019,12 @@ export class RouterCore<
   origin?: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   pendingBuiltLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
+  /**
+   * Visited history entries keyed by `__TSR_index` (recorded in
+   * {@link updateLatestLocation}), so the router can resolve the previous entry —
+   * which the browser doesn't expose. Read via {@link getHistoryEntry}.
+   */
+  historyEntries = new Map<number, RouterHistoryEntry>()
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
@@ -1235,7 +1256,26 @@ export class RouterCore<
       this.history.location,
       this.latestLocation,
     )
+
+    // Record the committed entry by index. `replace` overwrites the same index;
+    // truncated forward entries are harmless since the back-decision only reads
+    // `index - 1`. Stored pathname/search compare directly with buildLocation().
+    const index = this.latestLocation.state.__TSR_index ?? 0
+    this.historyEntries.set(index, {
+      index,
+      pathname: this.latestLocation.pathname,
+      searchStr: this.latestLocation.searchStr,
+      href: this.latestLocation.href,
+    })
   }
+
+  /**
+   * Look up a visited history entry by its `__TSR_index`. Returns `undefined` for
+   * entries the router never recorded (e.g. a fresh page load or deep link), so
+   * consumers should degrade gracefully.
+   */
+  getHistoryEntry = (index: number): RouterHistoryEntry | undefined =>
+    this.historyEntries.get(index)
 
   buildRouteTree = () => {
     const result = processRouteTree(
