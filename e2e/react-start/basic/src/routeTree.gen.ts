@@ -29,6 +29,7 @@ import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexpor
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
+import { Route as Issue6221DashboardRouteImport } from './routes/issue-6221.dashboard'
 import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
 import { Route as NotFoundIndexRouteImport } from './routes/not-found/index'
@@ -61,6 +62,7 @@ import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
 import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
 import { Route as ApiUsersIdRouteImport } from './routes/api/users.$id'
+import { Route as Issue6221ArticleIdRouteImport } from './routes/issue-6221.article.$id'
 import { Route as NotFoundDeepIndexRouteImport } from './routes/not-found/deep/index'
 import { Route as NotFoundDeepBRouteRouteImport } from './routes/not-found/deep/b/route'
 import { Route as NotFoundParentBoundaryIndexRouteImport } from './routes/not-found/parent-boundary/index'
@@ -177,6 +179,11 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
 const ApiUsersRoute = ApiUsersRouteImport.update({
   id: '/api/users',
   path: '/api/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Issue6221DashboardRoute = Issue6221DashboardRouteImport.update({
+  id: '/issue-6221/dashboard',
+  path: '/issue-6221/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MultiCookieRedirectIndexRoute =
@@ -346,6 +353,11 @@ const ApiUsersIdRoute = ApiUsersIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => ApiUsersRoute,
 } as any)
+const Issue6221ArticleIdRoute = Issue6221ArticleIdRouteImport.update({
+  id: '/issue-6221/article/$id',
+  path: '/issue-6221/article/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotFoundDeepIndexRoute = NotFoundDeepIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -468,6 +480,7 @@ export interface FileRoutesByFullPath {
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
@@ -498,6 +511,7 @@ export interface FileRoutesByFullPath {
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
+  '/issue-6221/article/$id': typeof Issue6221ArticleIdRoute
   '/not-found/parent-boundary/via-beforeLoad': typeof NotFoundParentBoundaryViaBeforeLoadRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -531,6 +545,7 @@ export interface FileRoutesByTo {
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
@@ -560,6 +575,7 @@ export interface FileRoutesByTo {
   '/layout-a': typeof LayoutLayout2LayoutARoute
   '/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
+  '/issue-6221/article/$id': typeof Issue6221ArticleIdRoute
   '/not-found/parent-boundary/via-beforeLoad': typeof NotFoundParentBoundaryViaBeforeLoadRoute
   '/posts/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -602,6 +618,7 @@ export interface FileRoutesById {
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
@@ -632,6 +649,7 @@ export interface FileRoutesById {
   '/_layout/_layout-2/layout-a': typeof LayoutLayout2LayoutARoute
   '/_layout/_layout-2/layout-b': typeof LayoutLayout2LayoutBRoute
   '/api/users/$id': typeof ApiUsersIdRoute
+  '/issue-6221/article/$id': typeof Issue6221ArticleIdRoute
   '/not-found/parent-boundary/via-beforeLoad': typeof NotFoundParentBoundaryViaBeforeLoadRoute
   '/posts_/$postId/deep': typeof PostsPostIdDeepRoute
   '/redirect/$target/via-beforeLoad': typeof RedirectTargetViaBeforeLoadRoute
@@ -674,6 +692,7 @@ export interface FileRouteTypes {
     | '/not-found/parent-boundary'
     | '/specialChars/malformed'
     | '/api/users'
+    | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
@@ -704,6 +723,7 @@ export interface FileRouteTypes {
     | '/layout-a'
     | '/layout-b'
     | '/api/users/$id'
+    | '/issue-6221/article/$id'
     | '/not-found/parent-boundary/via-beforeLoad'
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
@@ -737,6 +757,7 @@ export interface FileRouteTypes {
     | '/type-only-reexport'
     | '/specialChars/malformed'
     | '/api/users'
+    | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
@@ -766,6 +787,7 @@ export interface FileRouteTypes {
     | '/layout-a'
     | '/layout-b'
     | '/api/users/$id'
+    | '/issue-6221/article/$id'
     | '/not-found/parent-boundary/via-beforeLoad'
     | '/posts/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
@@ -807,6 +829,7 @@ export interface FileRouteTypes {
     | '/specialChars/malformed'
     | '/_layout/_layout-2'
     | '/api/users'
+    | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
     | '/not-found/via-beforeLoad-target-root'
@@ -837,6 +860,7 @@ export interface FileRouteTypes {
     | '/_layout/_layout-2/layout-a'
     | '/_layout/_layout-2/layout-b'
     | '/api/users/$id'
+    | '/issue-6221/article/$id'
     | '/not-found/parent-boundary/via-beforeLoad'
     | '/posts_/$postId/deep'
     | '/redirect/$target/via-beforeLoad'
@@ -876,10 +900,12 @@ export interface RootRouteChildren {
   TypeOnlyReexportRoute: typeof TypeOnlyReexportRoute
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
+  Issue6221DashboardRoute: typeof Issue6221DashboardRoute
   MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   MultiCookieRedirectIndexRoute: typeof MultiCookieRedirectIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
+  Issue6221ArticleIdRoute: typeof Issue6221ArticleIdRoute
   PostsPostIdDeepRoute: typeof PostsPostIdDeepRoute
   FooBarQuxHereRoute: typeof FooBarQuxHereRouteWithChildren
 }
@@ -1024,6 +1050,13 @@ declare module '@tanstack/react-router' {
       path: '/api/users'
       fullPath: '/api/users'
       preLoaderRoute: typeof ApiUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issue-6221/dashboard': {
+      id: '/issue-6221/dashboard'
+      path: '/issue-6221/dashboard'
+      fullPath: '/issue-6221/dashboard'
+      preLoaderRoute: typeof Issue6221DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/multi-cookie-redirect/': {
@@ -1249,6 +1282,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/users/$id'
       preLoaderRoute: typeof ApiUsersIdRouteImport
       parentRoute: typeof ApiUsersRoute
+    }
+    '/issue-6221/article/$id': {
+      id: '/issue-6221/article/$id'
+      path: '/issue-6221/article/$id'
+      fullPath: '/issue-6221/article/$id'
+      preLoaderRoute: typeof Issue6221ArticleIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/not-found/deep/': {
       id: '/not-found/deep/'
@@ -1648,10 +1688,12 @@ const rootRouteChildren: RootRouteChildren = {
   TypeOnlyReexportRoute: TypeOnlyReexportRoute,
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
+  Issue6221DashboardRoute: Issue6221DashboardRoute,
   MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   MultiCookieRedirectIndexRoute: MultiCookieRedirectIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,
+  Issue6221ArticleIdRoute: Issue6221ArticleIdRoute,
   PostsPostIdDeepRoute: PostsPostIdDeepRoute,
   FooBarQuxHereRoute: FooBarQuxHereRouteWithChildren,
 }
