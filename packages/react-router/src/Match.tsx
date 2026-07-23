@@ -338,15 +338,27 @@ export const MatchInner = React.memo(function MatchInnerImpl({
     const out = Comp ? <Comp key={key} /> : <Outlet />
 
     if (match._displayPending) {
-      throw getMatchPromise(match, 'displayPendingPromise')
+      const displayPendingPromise = getMatchPromise(
+        match,
+        'displayPendingPromise',
+      )
+      if (displayPendingPromise) {
+        throw displayPendingPromise
+      }
     }
 
     if (match._forcePending) {
-      throw getMatchPromise(match, 'minPendingPromise')
+      const minPendingPromise = getMatchPromise(match, 'minPendingPromise')
+      if (minPendingPromise) {
+        throw minPendingPromise
+      }
     }
 
     if (match.status === 'pending') {
-      throw getMatchPromise(match, 'loadPromise')
+      const loadPromise = getMatchPromise(match, 'loadPromise')
+      if (loadPromise) {
+        throw loadPromise
+      }
     }
 
     if (match.status === 'notFound') {
@@ -440,11 +452,20 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, route.options.component, router.options.defaultComponent])
 
   if (match._displayPending) {
-    throw getMatchPromise(match, 'displayPendingPromise')
+    const displayPendingPromise = getMatchPromise(
+      match,
+      'displayPendingPromise',
+    )
+    if (displayPendingPromise) {
+      throw displayPendingPromise
+    }
   }
 
   if (match._forcePending) {
-    throw getMatchPromise(match, 'minPendingPromise')
+    const minPendingPromise = getMatchPromise(match, 'minPendingPromise')
+    if (minPendingPromise) {
+      throw minPendingPromise
+    }
   }
 
   // see also hydrate() in packages/router-core/src/ssr/ssr-client.ts
@@ -469,7 +490,10 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         }
       }
     }
-    throw getMatchPromise(match, 'loadPromise')
+    const loadPromise = getMatchPromise(match, 'loadPromise')
+    if (loadPromise) {
+      throw loadPromise
+    }
   }
 
   if (match.status === 'notFound') {
