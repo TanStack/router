@@ -245,6 +245,12 @@ describe('public preload lane contracts', () => {
       navigationMask: { to: '/mask-b' },
       preloadPathname: '/mask-a',
       navigationPathname: '/mask-b',
+      preloadUnmaskOnReload: undefined,
+      navigationUnmaskOnReload: undefined,
+      preloadSearchSource: undefined,
+      navigationSearchSource: undefined,
+      preloadStateSource: undefined,
+      navigationStateSource: undefined,
     },
     {
       difference: 'unmaskOnReload',
@@ -252,6 +258,12 @@ describe('public preload lane contracts', () => {
       navigationMask: { to: '/mask-a', unmaskOnReload: true },
       preloadPathname: '/mask-a',
       navigationPathname: '/mask-a',
+      preloadUnmaskOnReload: undefined,
+      navigationUnmaskOnReload: true,
+      preloadSearchSource: undefined,
+      navigationSearchSource: undefined,
+      preloadStateSource: undefined,
+      navigationStateSource: undefined,
     },
     {
       difference: 'search',
@@ -259,6 +271,12 @@ describe('public preload lane contracts', () => {
       navigationMask: { to: '/mask-a', search: { source: 'navigation' } },
       preloadPathname: '/mask-a',
       navigationPathname: '/mask-a',
+      preloadUnmaskOnReload: undefined,
+      navigationUnmaskOnReload: undefined,
+      preloadSearchSource: 'preload',
+      navigationSearchSource: 'navigation',
+      preloadStateSource: undefined,
+      navigationStateSource: undefined,
     },
     {
       difference: 'state',
@@ -266,6 +284,12 @@ describe('public preload lane contracts', () => {
       navigationMask: { to: '/mask-a', state: { source: 'navigation' } },
       preloadPathname: '/mask-a',
       navigationPathname: '/mask-a',
+      preloadUnmaskOnReload: undefined,
+      navigationUnmaskOnReload: undefined,
+      preloadSearchSource: undefined,
+      navigationSearchSource: undefined,
+      preloadStateSource: 'preload',
+      navigationStateSource: 'navigation',
     },
   ])(
     'navigation reruns beforeLoad for a different explicit mask $difference on the same destination',
@@ -274,20 +298,16 @@ describe('public preload lane contracts', () => {
       navigationMask,
       preloadPathname,
       navigationPathname,
+      preloadUnmaskOnReload,
+      navigationUnmaskOnReload,
+      preloadSearchSource,
+      navigationSearchSource,
+      preloadStateSource,
+      navigationStateSource,
     }) => {
       const beforeLoadGate = createControlledPromise<void>()
       const loaderGate = createControlledPromise<string>()
-      const beforeLoad = vi.fn(
-        async (context: {
-          location: { maskedLocation?: { pathname: string } }
-          preload: boolean
-        }) => {
-          if (context.preload) {
-            await beforeLoadGate
-          }
-          return { source: context.preload ? 'preload' : 'navigation' }
-        },
-      )
+      const beforeLoadCalls = vi.fn()
       const loader = vi.fn(() => loaderGate)
       const rootRoute = new BaseRootRoute({})
       const indexRoute = new BaseRoute({
@@ -297,7 +317,24 @@ describe('public preload lane contracts', () => {
       const targetRoute = new BaseRoute({
         getParentRoute: () => rootRoute,
         path: '/target',
-        beforeLoad,
+        beforeLoad: async (context) => {
+          const maskedLocation = context.location.maskedLocation
+          beforeLoadCalls({
+            preload: context.preload,
+            pathname: maskedLocation?.pathname,
+            unmaskOnReload: maskedLocation?.unmaskOnReload,
+            searchSource: (
+              maskedLocation?.search as { source?: string } | undefined
+            )?.source,
+            stateSource: (
+              maskedLocation?.state as { source?: string } | undefined
+            )?.source,
+          })
+          if (context.preload) {
+            await beforeLoadGate
+          }
+          return { source: context.preload ? 'preload' : 'navigation' }
+        },
         loader,
       })
       const maskARoute = new BaseRoute({
@@ -327,7 +364,7 @@ describe('public preload lane contracts', () => {
           to: '/target',
           mask: preloadMask as any,
         })
-        await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(1))
+        await vi.waitFor(() => expect(beforeLoadCalls).toHaveBeenCalledTimes(1))
 
         beforeLoadGate.resolve()
         await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
@@ -337,14 +374,21 @@ describe('public preload lane contracts', () => {
           mask: navigationMask as any,
         })
         await vi.waitFor(() =>
-          expect(
-            beforeLoad.mock.calls.map(([callContext]) => ({
-              preload: callContext.preload,
-              pathname: callContext.location.maskedLocation?.pathname,
-            })),
-          ).toEqual([
-            { preload: true, pathname: preloadPathname },
-            { preload: false, pathname: navigationPathname },
+          expect(beforeLoadCalls.mock.calls.map(([call]) => call)).toEqual([
+            {
+              preload: true,
+              pathname: preloadPathname,
+              unmaskOnReload: preloadUnmaskOnReload,
+              searchSource: preloadSearchSource,
+              stateSource: preloadStateSource,
+            },
+            {
+              preload: false,
+              pathname: navigationPathname,
+              unmaskOnReload: navigationUnmaskOnReload,
+              searchSource: navigationSearchSource,
+              stateSource: navigationStateSource,
+            },
           ]),
         )
 
@@ -1151,20 +1195,24 @@ describe('public preload lane contracts', () => {
     expect(router.state.matches.at(-1)?.loaderData).toBe('loader data 1')
   })
 
-  test('filtered invalidation reloads every generation of the selected match id', async () => {
+  test('filtered invalidation invalidates active and cached generations of the selected route', async () => {
     const loader = vi.fn(() => `loader data ${loader.mock.calls.length}`)
     const rootRoute = new BaseRootRoute({})
     const targetRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/target',
+      staleTime: Infinity,
+      preloadStaleTime: Infinity,
+      preloadGcTime: Infinity,
+      gcTime: Infinity,
       validateSearch: (search: Record<string, unknown>) => ({
         revision: Number(search.revision ?? 1),
       }),
-      shouldReload: ({ location }) =>
-        (location.search as { revision: number }).revision === 2
-          ? true
-          : undefined,
-      loader,
+      loaderDeps: ({ search }) => ({ revision: search.revision }),
+      loader: {
+        staleReloadMode: 'blocking',
+        handler: loader,
+      },
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([targetRoute]),
@@ -1178,12 +1226,26 @@ describe('public preload lane contracts', () => {
       to: '/target',
       search: { revision: 2 },
     })
+    expect(loader).toHaveBeenCalledTimes(2)
+
     await router.invalidate({
-      filter: (match) => (match.search as { revision?: number }).revision === 1,
+      filter: (match) => match.routeId === targetRoute.id,
     })
 
     expect(loader).toHaveBeenCalledTimes(3)
     expect(router.state.matches.at(-1)?.loaderData).toBe('loader data 3')
+
+    await router.navigate({
+      to: '/target',
+      search: { revision: 2 },
+    })
+
+    expect(loader).toHaveBeenCalledTimes(4)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      invalid: false,
+      loaderData: 'loader data 4',
+      search: { revision: 2 },
+    })
   })
 
   test('a hidden terminal suffix does not evict a newer same-id preload', async () => {

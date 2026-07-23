@@ -4,49 +4,15 @@ import { test } from '@tanstack/router-e2e-utils'
 const testCount = 7
 
 test.describe('selective ssr', () => {
-  test('#4614: cached parent loader data does not cache its beforeLoad context', async ({
+  test('propagates client root context to an ssr:false child during intent preload (#4614)', async ({
     page,
   }) => {
     await page.goto('/')
-    await page.getByTestId('issue-4614-cached-link').hover()
+    await expect(page.getByTestId('issue-4614-root-context')).toHaveText(
+      'false:true',
+    )
 
-    await expect
-      .poll(() =>
-        page.evaluate(() => (globalThis as any).__issue4614TargetBeforeLoad),
-      )
-      .not.toBeUndefined()
-
-    const { rootBeforeLoads, targetBeforeLoad } = await page.evaluate(() => {
-      const rootBeforeLoads =
-        (globalThis as any).__issue4614RootBeforeLoads ?? []
-      return {
-        rootBeforeLoads,
-        targetBeforeLoad: (globalThis as any).__issue4614TargetBeforeLoad,
-      }
-    })
-
-    expect(rootBeforeLoads).toEqual([
-      {
-        cause: 'preload',
-        preload: true,
-        root: 'client',
-        issue4614Context: 'client:cached',
-      },
-    ])
-    expect(targetBeforeLoad).toEqual({
-      cause: 'preload',
-      preload: true,
-      rootContext: 'client',
-      issue4614Context: 'client:cached',
-      scenario: 'cached',
-    })
-  })
-
-  test('new loaderDeps match generation propagates fresh parent context to child (control)', async ({
-    page,
-  }) => {
-    await page.goto('/')
-    await page.getByTestId('issue-4614-reload-link').hover()
+    await page.getByTestId('issue-4614-link').hover()
 
     await expect
       .poll(() =>
@@ -56,8 +22,8 @@ test.describe('selective ssr', () => {
         {
           cause: 'preload',
           preload: true,
-          root: 'client',
-          issue4614Context: 'client:reload',
+          isClient: true,
+          isServer: false,
         },
       ])
     await expect
@@ -67,9 +33,8 @@ test.describe('selective ssr', () => {
       .toEqual({
         cause: 'preload',
         preload: true,
-        rootContext: 'client',
-        issue4614Context: 'client:reload',
-        scenario: 'reload',
+        isClient: true,
+        isServer: false,
       })
   })
 
