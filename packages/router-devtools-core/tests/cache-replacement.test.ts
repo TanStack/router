@@ -30,6 +30,8 @@ describe('cached matches', () => {
   })
 
   it('refreshes when an existing cache entry is replaced', async () => {
+    // Keep this cache-polling test independent of Vite's lazy transform time.
+    await import('../src/BaseTanStackRouterDevtoolsPanel')
     vi.useFakeTimers()
 
     const route = {
