@@ -407,3 +407,55 @@ test('invalidate and an unrelated in-flight preload both settle cleanly', async 
   ).toBe('target data')
   expect(loader).toHaveBeenCalledTimes(1)
 })
+
+// Preload lanes are not cancelled by unrelated navigations: an in-flight
+// async beforeLoad runs to completion, its loader still executes and seeds
+// the cache, and a later navigation to the target reuses that work.
+test('an unrelated navigation does not cancel an in-flight preload beforeLoad', async () => {
+  const beforeLoadGate = createControlledPromise<{ token: string }>()
+  const beforeLoad = vi.fn(() => beforeLoadGate)
+  const loader = vi.fn(() => 'target data')
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    preloadStaleTime: Infinity,
+    staleTime: Infinity,
+    beforeLoad,
+    loader,
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([homeRoute, otherRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const preload = router.preloadRoute({ to: '/target' })
+  await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(1))
+
+  // Unrelated navigation commits while the preload's beforeLoad is pending.
+  await router.navigate({ to: '/other' })
+  expect(router.state.location.pathname).toBe('/other')
+
+  beforeLoadGate.resolve({ token: 'ctx' })
+  await preload
+  // The preload completed its work despite the navigation.
+  expect(loader).toHaveBeenCalledTimes(1)
+
+  // Navigating to the target consumes the seeded cache without a new load.
+  await router.navigate({ to: '/target' })
+  expect(router.state.location.pathname).toBe('/target')
+  expect(
+    router.state.matches.find((match) => match.routeId === targetRoute.id)
+      ?.loaderData,
+  ).toBe('target data')
+  expect(loader).toHaveBeenCalledTimes(1)
+})

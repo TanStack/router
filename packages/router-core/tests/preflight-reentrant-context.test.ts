@@ -50,7 +50,7 @@ test('synchronous navigation from route context stops abandoned descendant conte
   expect(childContext).not.toHaveBeenCalled()
 })
 
-test('synchronous navigation from preloaded route context stops abandoned descendant context work', async () => {
+test('synchronous navigation from preloaded route context lets the preload finish quietly', async () => {
   let redirected = false
   let redirectNavigation: Promise<void> | undefined
   const childContext = vi.fn(() => ({ child: true }))
@@ -94,5 +94,8 @@ test('synchronous navigation from preloaded route context stops abandoned descen
   await redirectNavigation
 
   expect(router.state.location.pathname).toBe('/target')
-  expect(childContext).not.toHaveBeenCalled()
+  // Preload lanes are not cancelled by navigations: the descendant context
+  // still computes (and may seed the cache), while the navigation wins the
+  // presented state. Only navigation lanes stop abandoned descendant work.
+  expect(childContext).toHaveBeenCalledOnce()
 })

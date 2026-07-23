@@ -913,20 +913,21 @@ function createLoaderTask(
       normalizeLaneError(route, cause, options),
     ],
   )
-  const chunkFailure = rawChunkFailure.then(async (failure) => {
-    const result = await outcome
-    if (
-      blocking &&
-      !failure &&
-      result[0] === SUCCESS &&
-      match.status === 'pending' &&
-      options[2]()
-    ) {
-      match.status = 'success'
-      options[8]?.()
-    }
-    return failure
-  })
+  const chunkFailure = rawChunkFailure.then((failure) =>
+    outcome.then((result) => {
+      if (
+        blocking &&
+        !failure &&
+        result[0] === SUCCESS &&
+        match.status === 'pending' &&
+        options[2]()
+      ) {
+        match.status = 'success'
+        options[8]?.()
+      }
+      return failure
+    }),
+  )
   tasks.push([index, outcome, chunkFailure])
   if (!background) {
     return outcome.then((result) => getParentSnapshot(match, result))
@@ -1498,12 +1499,12 @@ function commitMatches(
     // at the next planning pass. Unsettled beyond-boundary matches are not —
     // they must not evict a newer same-id preload.
     if (
+      match.status !== 'success' ||
       matches.some(
         (candidate, index) =>
           candidate.id === match.id &&
           (index < cut || candidate.status === 'success'),
-      ) ||
-      match.status !== 'success'
+      )
     ) {
       continue
     }
@@ -2260,7 +2261,10 @@ export async function preloadClientRoute(
         executeClientLane(router, location, matches!, [
           controller,
           redirects,
-          () => router._tx === owner || router._tx?.[0] === controller,
+          // Preload lanes run to completion even when unrelated navigations
+          // commit: finished work seeds the cache, and adoption safety is
+          // enforced independently by samePreloadLane's base identity check.
+          () => true,
           base,
           true,
         ]),
