@@ -860,6 +860,19 @@ type ParamExtractionState = {
   segment: number
 }
 
+function decodeSplatParam(value: string) {
+  return value
+    .split('/')
+    .map((part) =>
+      decodeURIComponent(
+        // Decode each path segment, but keep encoded slashes inside a segment
+        // distinct from the real slashes that separate splat segments.
+        part.replace(/%2F/gi, (match) => `%25${match.slice(1)}`),
+      ),
+    )
+    .join('/')
+}
+
 /**
  * This function is "resumable":
  * - the `leaf` input can contain `extract` and `rawParams` properties from a previous `extractParams` call
@@ -950,7 +963,7 @@ function extractParams<T extends RouteLike>(
         currentPathIndex + (n.prefix?.length ?? 0),
         path.length - (n.suffix?.length ?? 0),
       )
-      const splat = decodeURIComponent(value)
+      const splat = decodeSplatParam(value)
       // TODO: Deprecate *
       rawParams['*'] = splat
       rawParams._splat = splat
@@ -1313,7 +1326,7 @@ function getNodeMatch<T extends RouteLike>(
     }
     const splat = sliceIndex === path.length ? '/' : path.slice(sliceIndex)
     bestFuzzy.rawParams ??= Object.create(null)
-    bestFuzzy.rawParams!['**'] = decodeURIComponent(splat)
+    bestFuzzy.rawParams!['**'] = decodeSplatParam(splat)
     return bestFuzzy
   }
 
