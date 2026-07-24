@@ -1,5 +1,14 @@
 # @tanstack/solid-router-devtools
 
+## 1.167.1-pre.0
+
+### Patch Changes
+
+- Updated dependencies [[`baa18cd`](https://github.com/TanStack/router/commit/baa18cd913aa9f6e79f493cacb9c286702241da1)]:
+  - @tanstack/router-core@1.171.16-pre.0
+  - @tanstack/solid-router@1.170.19-pre.0
+  - @tanstack/router-devtools-core@1.168.1-pre.0
+
 ## 1.167.0
 
 ### Minor Changes

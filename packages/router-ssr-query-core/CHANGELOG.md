@@ -1,5 +1,12 @@
 # @tanstack/router-ssr-query-core
 
+## 1.169.2-pre.0
+
+### Patch Changes
+
+- Updated dependencies [[`baa18cd`](https://github.com/TanStack/router/commit/baa18cd913aa9f6e79f493cacb9c286702241da1)]:
+  - @tanstack/router-core@1.171.16-pre.0
+
 ## 1.169.1
 
 ### Patch Changes
