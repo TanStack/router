@@ -758,6 +758,39 @@ describe('matchPathname', () => {
           _splat: 'tanner/sean/manuel',
         },
       },
+      {
+        name: 'should preserve encoded slashes inside splat path segments',
+        input: '/parts/make/Ford%2FNew%20Holland',
+        matchingOptions: {
+          to: '/parts/$',
+        },
+        expectedMatchedParams: {
+          '*': 'make/Ford%2FNew Holland',
+          _splat: 'make/Ford%2FNew Holland',
+        },
+      },
+      {
+        name: 'should keep real splat separators distinct from encoded slashes',
+        input: '/parts/make/Ford/New%20Holland',
+        matchingOptions: {
+          to: '/parts/$',
+        },
+        expectedMatchedParams: {
+          '*': 'make/Ford/New Holland',
+          _splat: 'make/Ford/New Holland',
+        },
+      },
+      {
+        name: 'should still decode other reserved characters inside splat path segments',
+        input: '/docs/page%23section/query%3Dvalue',
+        matchingOptions: {
+          to: '/docs/$',
+        },
+        expectedMatchedParams: {
+          '*': 'page#section/query=value',
+          _splat: 'page#section/query=value',
+        },
+      },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
         toNullObj(expectedMatchedParams),
@@ -825,6 +858,21 @@ describe('matchPathname', () => {
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
         toNullObj(expectedMatchedParams),
+      )
+    })
+  })
+
+  describe('fuzzy matching', () => {
+    it('should preserve encoded slashes inside fuzzy catch-all params', () => {
+      expect(
+        matchPathname('/docs/make/Ford%2FNew%20Holland', {
+          to: '/docs',
+          fuzzy: true,
+        }),
+      ).toStrictEqual(
+        toNullObj({
+          '**': 'make/Ford%2FNew Holland',
+        }),
       )
     })
   })
