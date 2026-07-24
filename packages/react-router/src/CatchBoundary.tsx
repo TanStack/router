@@ -53,14 +53,18 @@ class CatchBoundaryImpl extends React.Component<{
     return { resetKey }
   }
   static getDerivedStateFromError(error: Error) {
-    return { error }
+    return { error: error || new Error('A falsy value was thrown') }
   }
   reset() {
     this.setState({ error: null })
   }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    if (error == null && this.state.error) {
+      this.state.error.stack =
+        errorInfo.componentStack ?? this.state.error.stack
+    }
     if (this.props.onCatch) {
-      this.props.onCatch(error, errorInfo)
+      this.props.onCatch(this.state.error ?? error, errorInfo)
     }
   }
   render() {
