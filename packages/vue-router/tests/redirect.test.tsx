@@ -1,11 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import {
   Link,
   Outlet,
   RouterProvider,
+  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -15,8 +16,17 @@ import {
 } from '../src'
 
 import { sleep } from './utils'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   vi.clearAllMocks()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
@@ -74,7 +84,7 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -196,7 +206,7 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -274,7 +284,7 @@ describe('redirect', () => {
         indexRoute,
         finalRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 

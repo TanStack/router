@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
@@ -601,7 +607,7 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('3')
 
     const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('3')
+    await waitFor(() => expect(loaderData).toHaveTextContent('3'))
   }
 
   fireEvent.click(invalidateRouterButton)
@@ -631,11 +637,11 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('5')
 
     const loaderData = await screen.findByTestId('id-loader-data')
-    expect(loaderData).toHaveTextContent('5')
+    await waitFor(() => expect(loaderData).toHaveTextContent('5'))
   }
 })
 
-test('clears pendingTimeout when match resolves', async () => {
+test('does not show pending UI when routes resolve before their thresholds', async () => {
   const defaultPendingComponentOnMountMock = vi.fn()
   const nestedPendingComponentOnMountMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
@@ -703,7 +709,7 @@ test('clears pendingTimeout when match resolves', async () => {
   })
 
   render(<RouterProvider router={router} />)
-  await router.latestLoadPromise
+  await screen.findByText('Index page')
   const linkToFoo = await screen.findByTestId('link-to-foo')
   fireEvent.click(linkToFoo)
   const fooElement = await screen.findByText('Nested Foo page')
@@ -717,7 +723,7 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
 
-test('cancelMatches after pending timeout', async () => {
+test('navigating away from pending UI aborts its loader', async () => {
   function getPendingComponent(onMount: () => void) {
     const PendingComponent = () => {
       onMount()
@@ -769,7 +775,7 @@ test('cancelMatches after pending timeout', async () => {
   const routeTree = rootRoute.addChildren([fooRoute, barRoute])
   const router = createRouter({ routeTree, history })
   render(<RouterProvider router={router} />)
-  await router.latestLoadPromise
+  await screen.findByText('Index page')
   const fooLink = await screen.findByTestId('link-to-foo')
   fireEvent.click(fooLink)
   await sleep(WAIT_TIME * 30)

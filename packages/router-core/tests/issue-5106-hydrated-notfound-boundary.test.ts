@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, isNotFound } from '../src'
 import { hydrate } from '../src/ssr/client'
+import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { Manifest } from '../src/manifest'
@@ -76,20 +77,20 @@ describe('hydrated child-owned notFound boundary coverage', () => {
         // terminal prefix includes the child match.
         matches: [
           {
-            i: matches[0]!.id,
+            i: dehydrateSsrMatchId(matches[0]!.id),
             s: 'success' as const,
             ssr: true,
             u: Date.now(),
           },
           {
-            i: matches[1]!.id,
+            i: dehydrateSsrMatchId(matches[1]!.id),
             s: 'success' as const,
             l: 'posts-data',
             ssr: true,
             u: Date.now(),
           },
           {
-            i: matches[2]!.id,
+            i: dehydrateSsrMatchId(matches[2]!.id),
             s: 'notFound' as const,
             e: { isNotFound: true },
             ssr: true,

@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { renderToStringAsync } from 'solid-js/web'
+import { createRootRoute, createRoute, createRouter } from '../../src'
 import {
-  RouterProvider,
-  createMemoryHistory,
-  createRootRoute,
-  createRoute,
-  createRouter,
-} from '../../src'
+  RouterServer,
+  createRequestHandler,
+  renderRouterToString,
+} from '../../src/ssr/server'
 
 describe('errorComponent (server)', () => {
   it('renders the route error component when a loader throws during SSR', async () => {
@@ -25,21 +23,21 @@ describe('errorComponent (server)', () => {
     })
 
     const routeTree = rootRoute.addChildren([indexRoute])
-    const router = createRouter({
-      routeTree,
-      history: createMemoryHistory({
-        initialEntries: ['/'],
-      }),
-      isServer: true,
+    const handler = createRequestHandler({
+      request: new Request('http://localhost/'),
+      createRouter: () => createRouter({ routeTree, isServer: true }),
     })
 
-    await router.load()
+    const response = await handler(({ router, responseHeaders }) =>
+      renderRouterToString({
+        router,
+        responseHeaders,
+        children: () => <RouterServer router={router} />,
+      }),
+    )
 
-    const html = await renderToStringAsync(() => (
-      <RouterProvider router={router} />
-    ))
-
-    expect(router.state.statusCode).toBe(500)
+    expect(response.status).toBe(500)
+    const html = await response.text()
     expect(html).toContain('data-testid="error-component"')
     expect(html).toContain('loader boom')
     expect(html).not.toContain('Index route')
