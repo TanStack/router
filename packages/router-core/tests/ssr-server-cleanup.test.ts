@@ -190,6 +190,36 @@ describe('serverSsr.cleanup', () => {
     router.serverSsr?.cleanup()
   })
 
+  test('onRenderFinished listener registered after fast path reserve still fires', async () => {
+    // Regression test for #7529: when the fast path is reserved before an
+    // integration (e.g. router-ssr-query) registers its onRenderFinished
+    // listener, the listener must not be dropped - otherwise the query stream
+    // is never closed and the response hangs until the serialization timeout.
+    // The fast path still calls setRenderFinished() at the end of the app
+    // stream, so the listener fires at that point.
+    const router = buildRouter()
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+
+    await router.load()
+    await router.serverSsr!.dehydrate()
+    router.serverSsr!.takeBufferedScripts()
+
+    expect(router.serverSsr!.reserveStreamFastPath()).toBe(true)
+
+    let renderFinishedCalls = 0
+    router.serverSsr!.onRenderFinished(() => {
+      renderFinishedCalls++
+    })
+    // Not invoked at registration time - the fast path defers to the app
+    // stream end, mirrored here by an explicit setRenderFinished().
+    expect(renderFinishedCalls).toBe(0)
+
+    router.serverSsr!.setRenderFinished()
+    expect(renderFinishedCalls).toBe(1)
+
+    router.serverSsr?.cleanup()
+  })
+
   test('stream fast path rejects while SSR work is pending', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
@@ -377,4 +407,63 @@ describe('serverSsr.cleanup', () => {
     expect(cleanupCalls).toBe(1)
     expect(router.serverSsr).toBeUndefined()
   })
+
+  test('request handler defers cleanup for a plain Response wrapping a transformed stream (#7529)', async () => {
+    // Regression test for the production path of #7529: an entry server that
+    // returns `new Response(transformStreamWithRouter(...))` directly — the
+    // contract of v1.169.0's own renderRouterToStream. Without the cleanup
+    // claim, the handler's `finally` tore down SSR state while the body was
+    // still streaming: render-finished + serialization-finished listeners
+    // were wiped, router-ssr-query's close listener never fired, and the
+    // response hung until the serialization timeout.
+    const router = buildRouter()
+    let cleanupCalls = 0
+    let renderFinishedCalls = 0
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const handler = createRequestHandler({
+      createRouter: () => router,
+      request: new Request('http://localhost/'),
+    })
+
+    const response = await handler(({ router: requestRouter }) => {
+      const serverSsr = requestRouter.serverSsr!
+      const cleanup = serverSsr.cleanup
+      serverSsr.cleanup = () => {
+        cleanupCalls++
+        cleanup()
+      }
+      // Simulates router-ssr-query's dehydration-stream close listener,
+      // registered before the transform attaches.
+      serverSsr.onRenderFinished(() => {
+        renderFinishedCalls++
+      })
+      const appStream = new ReadableStream<Uint8Array>({
+        start(c) {
+          controller = c
+        },
+      })
+      const responseStream = transformStreamWithRouter(
+        requestRouter,
+        appStream as any,
+      )
+
+      // Plain Response — NOT wrapped in createSsrStreamResponse.
+      return Promise.resolve(new Response(responseStream as any))
+    })
+
+    // The transform claimed cleanup: nothing may tear down SSR state while
+    // the body is still streaming.
+    expect(cleanupCalls).toBe(0)
+    expect(renderFinishedCalls).toBe(0)
+
+    controller.enqueue(new TextEncoder().encode('<html><body>ok</body></html>'))
+    controller.close()
+    const body = await response.text()
+
+    expect(body).toContain('</html>')
+    expect(renderFinishedCalls).toBe(1)
+    expect(cleanupCalls).toBe(1)
+    expect(router.serverSsr).toBeUndefined()
+  })
+
 })
