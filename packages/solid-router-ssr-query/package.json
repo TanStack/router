@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-router-ssr-query",
-  "version": "1.167.1",
+  "version": "1.167.2-pre.0",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -77,7 +77,7 @@
   "peerDependencies": {
     "@tanstack/query-core": ">=5.90.0",
     "@tanstack/solid-query": ">=5.90.0",
-    "@tanstack/solid-router": ">=1.127.0",
+    "@tanstack/solid-router": ">=1.170.19-pre.0",
     "solid-js": "^1.9.10"
   }
 }
