@@ -2479,12 +2479,10 @@ export class RouterCore<
           const prevLocation = this.stores.resolvedLocation.get()
           const locationChangeInfo = getLocationChangeInfo(next, prevLocation)
 
-          if (!this.stores.redirect.get()) {
-            this.emit({
-              type: 'onBeforeNavigate',
-              ...locationChangeInfo,
-            })
-          }
+          this.emit({
+            type: 'onBeforeNavigate',
+            ...locationChangeInfo,
+          })
 
           this.emit({
             type: 'onBeforeLoad',

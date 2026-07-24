@@ -1,6 +1,6 @@
 import { describe, expect, it, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, redirect } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 describe('callbacks', () => {
@@ -278,6 +278,56 @@ describe('callbacks', () => {
       expect(events).toHaveLength(2)
       expect(events[0]).toMatchObject({ to: '/foo', pathChanged: true })
       expect(events[1]).toMatchObject({ to: '/bar', pathChanged: true })
+    })
+
+    // Regression test for https://github.com/TanStack/router/issues/3920
+    // After a `beforeLoad` throws `redirect(...)`, `stores.redirect` was left
+    // populated forever, so the `!stores.redirect.get()` gate around the
+    // `onBeforeNavigate` emission suppressed the event for every subsequent
+    // navigation. This broke Sentry's TanStack Router tracing integration and
+    // any userland pattern (e.g. form-state persistence) that hooks into
+    // `onBeforeNavigate`.
+    it('fires on subsequent navigations after a redirect in beforeLoad (#3920)', async () => {
+      const rootRoute = new BaseRootRoute({})
+      const fooRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/foo',
+        beforeLoad: () => {
+          throw redirect({ to: '/bar' })
+        },
+      })
+      const barRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/bar',
+      })
+      const bazRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/baz',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([fooRoute, barRoute, bazRoute]),
+        history: createMemoryHistory(),
+      })
+
+      const onBeforeNavigate = vi.fn()
+      router.subscribe('onBeforeNavigate', onBeforeNavigate)
+
+      // First navigation: /foo triggers a redirect to /bar in beforeLoad.
+      await router.navigate({ to: '/foo' })
+      expect(onBeforeNavigate).toHaveBeenCalled()
+      const callsAfterRedirect = onBeforeNavigate.mock.calls.length
+
+      // Second, unrelated navigation must still emit onBeforeNavigate.
+      await router.navigate({ to: '/baz' })
+      expect(onBeforeNavigate.mock.calls.length).toBeGreaterThan(
+        callsAfterRedirect,
+      )
+      expect(onBeforeNavigate).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          type: 'onBeforeNavigate',
+          pathChanged: true,
+        }),
+      )
     })
   })
 })
