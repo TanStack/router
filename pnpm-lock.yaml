@@ -2810,7 +2810,7 @@ importers:
         specifier: ^1.61.0
         version: 1.61.1
       '@rsbuild/core':
-        specifier: ^2.0.8
+        specifier: ^2.0.11
         version: 2.0.14
       '@rsbuild/plugin-react':
         specifier: ^2.0.0
@@ -2837,8 +2837,8 @@ importers:
         specifier: ^0.0.2
         version: 0.0.2(@rspack/core@2.0.8(@swc/helpers@0.5.23))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       typescript:
-        specifier: ^6.0.2
-        version: 6.0.2
+        specifier: npm:@typescript/typescript6@^6.0.2
+        version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
