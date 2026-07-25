@@ -38,7 +38,10 @@ const routeFileEditor = createHmrFileEditor({
           `${MARKERS.separateFile}<`,
         )
       case 'cssModuleStyles':
-        return source.replace(/color: rgb\([^)]*\);/g, `color: ${CSS_BASELINE_COLOR};`)
+        return source.replace(
+          /color: rgb\([^)]*\);/g,
+          `color: ${CSS_BASELINE_COLOR};`,
+        )
       default:
         return source
     }
