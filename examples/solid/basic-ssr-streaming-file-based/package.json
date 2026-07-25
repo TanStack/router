@@ -13,8 +13,8 @@
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.25",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-router": "^2.0.0-beta.26",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.21",
+    "@tanstack/solid-router": "^2.0.0-beta.27",
+    "@tanstack/solid-router-devtools": "^2.0.0-beta.22",
     "compression": "^1.8.0",
     "express": "^5.2.1",
     "get-port": "^7.1.0",
