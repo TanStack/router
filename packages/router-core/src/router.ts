@@ -1924,9 +1924,14 @@ export class RouterCore<
       if (destRoute) {
         destRoutes = this.getRouteBranch(destRoute)
       } else if (nextTo.includes('$')) {
-        // Route templates must match routesByPath exactly. A miss here is a
-        // typed destination mismatch, not a concrete URL to route-match.
-        destRoutes = []
+        // Server-only leaf routes can be absent from the client route tree while
+        // their parent route templates are still present. Use the known parent
+        // branch so parent params.stringify hooks still canonicalize the href.
+        destRoutes = getKnownParentRouteBranch(
+          this.routesByPath,
+          nextTo,
+          (route) => this.getRouteBranch(route),
+        )
       } else {
         const destMatchResult = this.getMatchedRoutes(nextTo)
         destRoutes = destMatchResult.matchedRoutes
@@ -3090,6 +3095,29 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   }
 
   return {}
+}
+
+function getKnownParentRouteBranch(
+  routesByPath: Record<string, AnyRoute | undefined>,
+  path: string,
+  getRouteBranch: (route: AnyRoute) => ReadonlyArray<AnyRoute>,
+): ReadonlyArray<AnyRoute> {
+  let parentPath = trimPathRight(path)
+
+  while (parentPath) {
+    parentPath = parentPath.slice(0, parentPath.lastIndexOf('/')) || '/'
+    const parentRoute = routesByPath[parentPath]
+
+    if (parentRoute) {
+      return getRouteBranch(parentRoute)
+    }
+
+    if (parentPath === '/') {
+      break
+    }
+  }
+
+  return []
 }
 
 /**
