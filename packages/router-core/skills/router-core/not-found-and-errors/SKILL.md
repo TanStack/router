@@ -3,8 +3,7 @@ name: router-core/not-found-and-errors
 description: >-
   notFound() function, notFoundComponent, defaultNotFoundComponent,
   notFoundMode (fuzzy/root), errorComponent, CatchBoundary,
-  CatchNotFound, isNotFound, NotFoundRoute (deprecated), route
-  masking (mask option, createRouteMask, unmaskOnReload).
+  CatchNotFound, isNotFound, NotFoundRoute (deprecated).
 type: sub-skill
 library: tanstack-router
 library_version: '1.166.2'
@@ -12,7 +11,6 @@ requires:
   - router-core
 sources:
   - TanStack/router:docs/router/guide/not-found-errors.md
-  - TanStack/router:docs/router/guide/route-masking.md
 ---
 
 # Not Found and Errors
@@ -253,108 +251,6 @@ notFoundComponent: ({ data }) => {
 },
 ```
 
-## Route Masking
-
-Route masking shows a different URL in the browser bar than the actual route being rendered. Masking data is stored in `location.state` and is lost when the URL is shared or opened in a new tab.
-
-### Imperative Masking on `<Link>`
-
-```tsx
-import { Link } from '@tanstack/react-router'
-
-function PhotoGrid({ photoId }: { photoId: string }) {
-  return (
-    <Link
-      to="/photos/$photoId/modal"
-      params={{ photoId }}
-      mask={{
-        to: '/photos/$photoId',
-        params: { photoId },
-      }}
-    >
-      Open Photo
-    </Link>
-  )
-}
-```
-
-### Imperative Masking with `useNavigate`
-
-```tsx
-import { useNavigate } from '@tanstack/react-router'
-
-function OpenPhotoButton({ photoId }: { photoId: string }) {
-  const navigate = useNavigate()
-
-  return (
-    <button
-      onClick={() =>
-        navigate({
-          to: '/photos/$photoId/modal',
-          params: { photoId },
-          mask: {
-            to: '/photos/$photoId',
-            params: { photoId },
-          },
-        })
-      }
-    >
-      Open Photo
-    </button>
-  )
-}
-```
-
-### Declarative Masking with `createRouteMask`
-
-```tsx
-import { createRouter, createRouteMask } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
-
-const photoModalMask = createRouteMask({
-  routeTree,
-  from: '/photos/$photoId/modal',
-  to: '/photos/$photoId',
-  params: (prev) => ({ photoId: prev.photoId }),
-})
-
-const router = createRouter({
-  routeTree,
-  routeMasks: [photoModalMask],
-})
-```
-
-### Unmasking on Reload
-
-By default, masks survive local page reloads. To unmask on reload:
-
-```tsx
-// Per-mask
-const mask = createRouteMask({
-  routeTree,
-  from: '/photos/$photoId/modal',
-  to: '/photos/$photoId',
-  params: (prev) => ({ photoId: prev.photoId }),
-  unmaskOnReload: true,
-})
-
-// Per-link
-<Link
-  to="/photos/$photoId/modal"
-  params={{ photoId }}
-  mask={{ to: '/photos/$photoId', params: { photoId } }}
-  unmaskOnReload
->
-  Open Photo
-</Link>
-
-// Router-wide default
-const router = createRouter({
-  routeTree,
-  unmaskOnReload: true,
-})
-```
-
 ## Common Mistakes
 
 ### 1. HIGH: Using deprecated `NotFoundRoute`
@@ -402,11 +298,7 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 ```
 
-### 4. MEDIUM: Expecting masked URLs to survive sharing
-
-Masking data lives in `location.state` (browser history). When a masked URL is copied, shared, or opened in a new tab, the masking data is lost. The browser navigates to the visible (masked) URL directly.
-
-### 5. HIGH (cross-skill): Using `reset()` alone instead of `router.invalidate()`
+### 4. HIGH (cross-skill): Using `reset()` alone instead of `router.invalidate()`
 
 ```tsx
 // WRONG — reset() clears the error boundary but does NOT re-run the loader
@@ -433,3 +325,4 @@ function ErrorFallback({ error }: { error: Error; reset: () => void }) {
 
 - **router-core/data-loading** — `notFound()` thrown in loaders interacts with error boundaries and loader data availability. `errorComponent` retry requires `router.invalidate()`.
 - **router-core/type-safety** — `notFoundComponent` data is typed as `unknown`; validate before use.
+- **router-core/route-masking** — Route masking (showing a different URL in the browser bar) is now its own skill. See [route-masking/SKILL.md](../route-masking/SKILL.md).

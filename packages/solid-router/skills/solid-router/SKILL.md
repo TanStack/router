@@ -497,3 +497,4 @@ Must set `target: 'solid'` in the router plugin config. Default is `'react'`.
 ## Cross-References
 
 - [router-core/SKILL.md](../../../router-core/skills/router-core/SKILL.md) — all sub-skills for domain-specific patterns (search params, data loading, navigation, auth, SSR, etc.)
+- [compositions/router-query/SKILL.md](../compositions/router-query/SKILL.md) — integrating TanStack Query as an external data cache with Solid Router

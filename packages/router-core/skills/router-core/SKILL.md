@@ -29,6 +29,7 @@ TanStack Router is a type-safe router for React and Solid with built-in SWR cach
 | Auth guards, RBAC, beforeLoad redirects            | [router-core/auth-and-guards/SKILL.md](./auth-and-guards/SKILL.md)           |
 | Automatic and manual code splitting                | [router-core/code-splitting/SKILL.md](./code-splitting/SKILL.md)             |
 | 404 handling, error boundaries, notFound()         | [router-core/not-found-and-errors/SKILL.md](./not-found-and-errors/SKILL.md) |
+| Show different URL in browser bar, modal patterns  | [router-core/route-masking/SKILL.md](./route-masking/SKILL.md)               |
 | Inference, Register, from narrowing, TS perf       | [router-core/type-safety/SKILL.md](./type-safety/SKILL.md)                   |
 | Streaming/non-streaming SSR, hydration, head mgmt  | [router-core/ssr/SKILL.md](./ssr/SKILL.md)                                   |
 
@@ -58,6 +59,9 @@ Need to reduce bundle size per route?
 
 Need custom 404 or error handling?
   → router-core/not-found-and-errors
+
+Need to show a different URL in the browser bar (modal patterns)?
+  → router-core/route-masking
 
 Having TypeScript issues or performance problems?
   → router-core/type-safety
