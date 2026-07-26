@@ -2295,3 +2295,77 @@ describe('buildLocation - _fromLocation override', () => {
     expect(location.pathname).toBe('/users/456/settings')
   })
 })
+
+describe('buildLocation - _concreteTo treats `to` as a concrete pathname', () => {
+  function setup(initialEntry: string) {
+    const rootRoute = new BaseRootRoute({})
+    const fileRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/files/$filePath',
+      validateSearch: (search: Record<string, unknown>) => ({
+        internal: search.internal,
+      }),
+      search: {
+        middlewares: [stripSearchParams(['internal'])],
+      },
+    })
+    const routeTree = rootRoute.addChildren([fileRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      pathParamsAllowedCharacters: ['$'],
+      history: createMemoryHistory({ initialEntries: [initialEntry] }),
+    })
+
+    return router
+  }
+
+  // Mirrors the canonical-URL check that Transitioner (on mount) and
+  // router.beforeLoad (on the server) perform for the current location.
+  function buildCurrentLocation(router: ReturnType<typeof setup>) {
+    return router.buildLocation({
+      to: router.latestLocation.pathname,
+      search: true,
+      params: true,
+      hash: true,
+      state: true,
+      _includeValidateSearch: true,
+      _concreteTo: true,
+    } as any)
+  }
+
+  test('param value starting with $ survives the reload round-trip', async () => {
+    const router = setup('/files/$EXAMPLE_CODE%2Ffile.abap')
+
+    await router.load()
+
+    const location = buildCurrentLocation(router)
+
+    expect(location.pathname).toBe('/files/$EXAMPLE_CODE%2Ffile.abap')
+    expect(location.publicHref).toBe(router.latestLocation.publicHref)
+  })
+
+  test('search middlewares run for a concrete pathname containing $', async () => {
+    const router = setup('/files/$EXAMPLE_CODE?internal=1')
+
+    await router.load()
+
+    const location = buildCurrentLocation(router)
+
+    expect(location.pathname).toBe('/files/$EXAMPLE_CODE')
+    expect(location.search).toEqual({})
+  })
+
+  test('without _concreteTo, `to` is still treated as a route template', async () => {
+    const router = setup('/files/readme.txt')
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/files/$filePath',
+      params: { filePath: 'other.txt' },
+    })
+
+    expect(location.pathname).toBe('/files/other.txt')
+  })
+})
