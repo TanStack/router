@@ -5,10 +5,11 @@ description: >-
   StartServer, React-specific imports, re-exports from
   @tanstack/react-router, full project setup with React, useServerFn
   hook.
-type: framework
-library: tanstack-start
-library_version: '1.168.32'
-framework: react
+metadata:
+  type: framework
+  library: tanstack-start
+  library_version: '1.168.32'
+  framework: react
 requires:
   - start-core
 sources:

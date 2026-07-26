@@ -1,14 +1,15 @@
 ---
-name: router-core/data-loading
+name: data-loading
 description: >-
   Route loader option, loaderDeps for cache keys, staleTime/gcTime/
   defaultPreloadStaleTime SWR caching, pendingComponent/pendingMs/
   pendingMinMs, errorComponent/onError/onCatch, beforeLoad, router
   context and createRootRouteWithContext DI pattern, router.invalidate,
   Await component, deferred data loading with unawaited promises.
-type: sub-skill
-library: tanstack-router
-library_version: '1.171.15'
+metadata:
+  type: sub-skill
+  library: tanstack-router
+  library_version: '1.171.15'
 requires:
   - router-core
 sources:

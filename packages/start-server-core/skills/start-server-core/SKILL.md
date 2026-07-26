@@ -5,9 +5,10 @@ description: >-
   request/response utilities (getRequest, setResponseHeader,
   setCookie, getCookie, useSession), three-phase request handling,
   AsyncLocalStorage context.
-type: core
-library: tanstack-start
-library_version: '1.169.17'
+metadata:
+  type: core
+  library: tanstack-start
+  library_version: '1.169.17'
 sources:
   - TanStack/router:packages/start-server-core/src
   - TanStack/router:docs/start/framework/react/guide/server-entry-point.md

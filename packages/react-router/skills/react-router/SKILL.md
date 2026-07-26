@@ -8,10 +8,11 @@ description: >-
   Outlet, CatchBoundary, ErrorComponent. React-specific patterns
   for hooks, providers, SSR hydration, and createLink with
   forwardRef.
-type: framework
-library: tanstack-router
-library_version: '1.166.2'
-framework: react
+metadata:
+  type: framework
+  library: tanstack-router
+  library_version: '1.166.2'
+  framework: react
 requires:
   - router-core
 sources:
@@ -23,8 +24,6 @@ sources:
 # React Router (`@tanstack/react-router`)
 
 This skill builds on router-core. Read [router-core](../../../router-core/skills/router-core/SKILL.md) first for foundational concepts.
-
-This skill covers the React-specific bindings, components, hooks, and setup for TanStack Router.
 
 > **CRITICAL**: TanStack Router types are FULLY INFERRED. Never cast, never annotate inferred values.
 > **CRITICAL**: TanStack Router is CLIENT-FIRST. Loaders run on the client by default, not on the server.

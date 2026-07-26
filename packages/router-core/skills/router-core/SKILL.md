@@ -5,9 +5,10 @@ description: >-
   createRouter, createRoute, createRootRoute, createRootRouteWithContext,
   addChildren, Register type declaration, route matching, route sorting,
   file naming conventions. Entry point for all router skills.
-type: core
-library: tanstack-router
-library_version: '1.171.15'
+metadata:
+  type: core
+  library: tanstack-router
+  library_version: '1.171.15'
 ---
 
 # TanStack Router Core

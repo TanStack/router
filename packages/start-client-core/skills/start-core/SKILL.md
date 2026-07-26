@@ -5,9 +5,10 @@ description: >-
   getRouter() factory, root route document shell (HeadContent,
   Scripts, Outlet), client/server entry points, routeTree.gen.ts,
   tsconfig configuration. Entry point for all Start skills.
-type: core
-library: tanstack-start
-library_version: '1.170.14'
+metadata:
+  type: core
+  library: tanstack-start
+  library_version: '1.170.14'
 sources:
   - TanStack/router:docs/start/framework/react/build-from-scratch.md
   - TanStack/router:docs/start/framework/react/quick-start.md

@@ -5,9 +5,10 @@ description: >-
   code splitting. Supports Vite, Webpack, Rspack, and esbuild.
   Configures autoCodeSplitting, routesDirectory, target framework,
   and code split groupings.
-type: core
-library: tanstack-router
-library_version: '1.168.23'
+metadata:
+  type: core
+  library: tanstack-router
+  library_version: '1.168.23'
 sources:
   - TanStack/router:packages/router-plugin/src
   - TanStack/router:docs/router/routing/file-based-routing.md

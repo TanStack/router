@@ -1,5 +1,5 @@
 ---
-name: start-core/auth-server-primitives
+name: auth-server-primitives
 description: >-
   Server-side authentication primitives for TanStack Start: session
   cookies (HttpOnly, Secure, SameSite, __Host- prefix), session
@@ -8,9 +8,10 @@ description: >-
   enumeration defense, CSRF for non-GET RPCs, rate limiting auth
   endpoints, session rotation on privilege change. Pairs with
   router-core/auth-and-guards for the routing side.
-type: sub-skill
-library: tanstack-start
-library_version: '1.170.14'
+metadata:
+  type: sub-skill
+  library: tanstack-start
+  library_version: '1.170.14'
 requires:
   - start-core
   - start-core/server-functions

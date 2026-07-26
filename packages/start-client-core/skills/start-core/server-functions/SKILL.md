@@ -1,14 +1,15 @@
 ---
-name: start-core/server-functions
+name: server-functions
 description: >-
   createServerFn (GET/POST), validator (Zod or function),
   useServerFn hook, server context utilities (getRequest,
   getRequestHeader, setResponseHeader, setResponseStatus), error
   handling (throw errors, redirect, notFound), streaming, FormData
   handling, file organization (.functions.ts, .server.ts).
-type: sub-skill
-library: tanstack-start
-library_version: '1.170.14'
+metadata:
+  type: sub-skill
+  library: tanstack-start
+  library_version: '1.170.14'
 requires:
   - start-core
 sources:

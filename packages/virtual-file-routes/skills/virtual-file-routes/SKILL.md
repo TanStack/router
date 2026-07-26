@@ -5,9 +5,10 @@ description: >-
   conventions: rootRoute, index, route, layout, physical,
   defineVirtualSubtreeConfig. Use with TanStack Router plugin's
   virtualRouteConfig option.
-type: core
-library: tanstack-router
-library_version: '1.162.0'
+metadata:
+  type: core
+  library: tanstack-router
+  library_version: '1.162.0'
 sources:
   - TanStack/router:packages/virtual-file-routes/src
   - TanStack/router:docs/router/routing/virtual-file-routes.md

@@ -1,14 +1,15 @@
 ---
-name: start-core/server-routes
+name: server-routes
 description: >-
   Server-side API endpoints using the server property on
   createFileRoute, HTTP method handlers (GET, POST, PUT, DELETE),
   createHandlers for per-handler middleware, handler context
   (request, params, context), request body parsing, response
   helpers, file naming for API routes.
-type: sub-skill
-library: tanstack-start
-library_version: '1.170.14'
+metadata:
+  type: sub-skill
+  library: tanstack-start
+  library_version: '1.170.14'
 requires:
   - start-core
 sources:

@@ -1,14 +1,15 @@
 ---
-name: router-core/auth-and-guards
+name: auth-and-guards
 description: >-
   Route protection with beforeLoad, redirect()/throw redirect(),
   isRedirect helper, authenticated layout routes (_authenticated),
   non-redirect auth (inline login), RBAC with roles and permissions,
   auth provider integration (Auth0, Clerk, Supabase), router context
   for auth state.
-type: sub-skill
-library: tanstack-router
-library_version: '1.171.15'
+metadata:
+  type: sub-skill
+  library: tanstack-router
+  library_version: '1.171.15'
 requires:
   - router-core
 sources:
@@ -437,8 +438,6 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
   component: Dashboard,
 })
 ```
-
-`beforeLoad` runs before any component rendering and before the loader. It completely prevents the flash.
 
 ### HIGH: Not re-throwing redirects in try/catch
 
