@@ -169,6 +169,15 @@ function getSessionConfig() {
   }
 }
 
+function getDummyPasswordHash() {
+  // Precompute this with the same algorithm and cost as real password hashes.
+  const hash = process.env.DUMMY_PASSWORD_HASH
+  if (!hash) {
+    throw new Error('DUMMY_PASSWORD_HASH is required')
+  }
+  return hash
+}
+
 // Full session manager
 const getUser = createServerFn({ method: 'GET' }).handler(async () => {
   const session = await useSession<SessionData>(getSessionConfig())
@@ -180,10 +189,29 @@ const getUser = createServerFn({ method: 'GET' }).handler(async () => {
 
 // Update session
 const login = createServerFn({ method: 'POST' })
-  .validator((data: { email: string; password: string }) => data)
+  .validator((data: unknown) => {
+    if (
+      typeof data !== 'object' ||
+      data === null ||
+      !('email' in data) ||
+      typeof data.email !== 'string' ||
+      data.email.trim().length === 0 ||
+      !('password' in data) ||
+      typeof data.password !== 'string' ||
+      data.password.length === 0
+    ) {
+      throw new Error('Invalid credentials')
+    }
+    return {
+      email: data.email.trim().toLowerCase(),
+      password: data.password,
+    }
+  })
   .handler(async ({ data }) => {
     const user = await db.users.findByEmail(data.email)
-    if (!user || !(await verifyPassword(data.password, user.passwordHash))) {
+    const passwordHash = user?.passwordHash ?? getDummyPasswordHash()
+    const passwordMatches = await verifyPassword(data.password, passwordHash)
+    if (!user || !passwordMatches) {
       throw new Error('Invalid credentials')
     }
 

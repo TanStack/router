@@ -39,16 +39,16 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 
 ### server-functions (8 failure modes)
 
-| #   | Mistake                                                                     | Priority | Source                      |
-| --- | --------------------------------------------------------------------------- | -------- | --------------------------- |
-| 1   | Putting server-only code in loaders instead of server functions             | CRITICAL | maintainer interview        |
-| 2   | Generating Next.js/Remix server patterns ("use server", getServerSideProps) | CRITICAL | maintainer interview        |
-| 3   | Using dynamic imports for server functions                                  | HIGH     | docs/guide/server-functions |
-| 4   | Not using useServerFn for component calls                                   | MEDIUM   | docs/guide/server-functions |
-| 5   | Relying on a route guard to protect a server function                       | CRITICAL | protocol-v4 evaluation      |
-| 6   | Self-fetching a relative API URL from an SSR loader                         | CRITICAL | protocol-v4 evaluation      |
-| 7   | Mutating without invalidating the loader or query cache                     | HIGH     | protocol-v4 evaluation      |
-| 8   | Treating typecheck as proof of output schema propagation                    | CRITICAL | protocol-v4 evaluation      |
+| #   | Mistake                                                         | Priority | Source                      |
+| --- | --------------------------------------------------------------- | -------- | --------------------------- |
+| 1   | Putting server-only code in loaders instead of server functions | CRITICAL | maintainer interview        |
+| 2   | Using dynamic imports for server functions                      | HIGH     | docs/guide/server-functions |
+| 3   | Not using useServerFn for component calls                       | MEDIUM   | docs/guide/server-functions |
+| 4   | Generating Next.js or Remix server patterns                     | CRITICAL | maintainer interview        |
+| 5   | Relying on a route guard to protect a server function           | CRITICAL | protocol-v4 evaluation      |
+| 6   | Self-fetching a relative API URL from an SSR loader             | CRITICAL | protocol-v4 evaluation      |
+| 7   | Mutating without invalidating cached loader data                | HIGH     | protocol-v4 evaluation      |
+| 8   | Treating typecheck as proof of output schema propagation        | CRITICAL | protocol-v4 evaluation      |
 
 ### middleware (3 failure modes)
 
@@ -66,17 +66,17 @@ TanStack Start is a full-stack React framework built on TanStack Router and Vite
 | 2   | Exposing secrets via module-level process.env     | CRITICAL | docs/guide/execution-model       |
 | 3   | Using VITE\_ prefix for server secrets            | CRITICAL | docs/guide/environment-variables |
 | 4   | Hydration mismatches from env-dependent rendering | HIGH     | docs/guide/execution-model       |
-| 5   | Using relative fetch in an isomorphic loader       | CRITICAL | protocol-v4 evaluation           |
+| 5   | Using a relative URL in an isomorphic loader      | CRITICAL | protocol-v4 evaluation           |
 
 ### server-routes (5 failure modes)
 
-| #   | Mistake                                  | Priority | Source                   |
-| --- | ---------------------------------------- | -------- | ------------------------ |
-| 1   | Duplicate route path resolution          | MEDIUM   | docs/guide/server-routes |
-| 2   | Forgetting to await request body methods | MEDIUM   | docs/guide/server-routes |
-| 3   | Relying on page auth to protect the API   | CRITICAL | protocol-v4 evaluation  |
-| 4   | Self-fetching the API from an SSR loader  | CRITICAL | protocol-v4 evaluation  |
-| 5   | Omitting a field from serialized output   | CRITICAL | protocol-v4 evaluation  |
+| #   | Mistake                                          | Priority | Source                   |
+| --- | ------------------------------------------------ | -------- | ------------------------ |
+| 1   | Duplicate path resolution for server routes      | MEDIUM   | docs/guide/server-routes |
+| 2   | Forgetting to await request body methods         | MEDIUM   | docs/guide/server-routes |
+| 3   | Relying on page auth to protect a server route   | CRITICAL | protocol-v4 evaluation   |
+| 4   | Self-fetching a server route from an SSR loader  | CRITICAL | protocol-v4 evaluation   |
+| 5   | Omitting a field from serialized response output | CRITICAL | protocol-v4 evaluation   |
 
 ### deployment (3 failure modes)
 

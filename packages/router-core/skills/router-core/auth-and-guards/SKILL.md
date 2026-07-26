@@ -376,7 +376,7 @@ export const Route = createFileRoute('/_authenticated')({
 
 ### CRITICAL: Route guards do not protect server functions
 
-A `beforeLoad` redirect protects the **route's UI**, not the **server functions** declared on it. `createServerFn` produces an RPC endpoint reachable by direct POST regardless of which route renders the calling UI. An attacker doesn't have to load `/_authenticated/orders` — they can curl the RPC endpoint directly.
+A `beforeLoad` redirect protects the **route's UI**, not the **server functions** declared on it. `createServerFn` produces an RPC endpoint reachable directly with its declared HTTP method regardless of which route renders the calling UI. An attacker doesn't have to load `/_authenticated/orders` — they can call this GET RPC endpoint directly.
 
 ```tsx
 // WRONG — handler has no auth check; the route guard doesn't help

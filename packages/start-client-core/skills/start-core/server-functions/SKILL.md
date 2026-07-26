@@ -102,7 +102,18 @@ const listIssues = createServerFn({ method: 'GET' }).handler(() => {
 })
 
 const createIssue = createServerFn({ method: 'POST' })
-  .validator((data: { title: string }) => data)
+  .validator((data: unknown) => {
+    if (
+      typeof data !== 'object' ||
+      data === null ||
+      !('title' in data) ||
+      typeof data.title !== 'string' ||
+      data.title.trim().length === 0
+    ) {
+      throw new Error('Title is required')
+    }
+    return { title: data.title.trim() }
+  })
   .handler(async ({ data }) => {
     return db.issues.create({ data })
   })

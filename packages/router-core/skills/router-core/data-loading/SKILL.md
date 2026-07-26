@@ -216,8 +216,8 @@ Route-level context via `beforeLoad`:
 
 ```tsx
 export const Route = createFileRoute('/posts')({
-  beforeLoad: () => ({
-    fetchPosts,
+  beforeLoad: ({ context }) => ({
+    fetchPosts: context.fetchPosts,
   }),
   loader: ({ context: { fetchPosts } }) => fetchPosts(),
 })

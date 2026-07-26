@@ -189,6 +189,15 @@ skills:
         priority: HIGH
         status: active
 
+      - mistake: 'Not using useServerFn for component calls'
+        mechanism: >-
+          Component calls need useServerFn so redirects and not-found
+          responses use the active router instead of falling through as
+          ordinary function results.
+        source: 'docs/start/framework/react/guide/server-functions.md'
+        priority: MEDIUM
+        status: active
+
       - mistake: 'Generating Next.js or Remix server patterns'
         mechanism: >-
           Agents generate getServerSideProps, "use server" directives,
@@ -387,6 +396,15 @@ skills:
         priority: CRITICAL
         status: active
 
+      - mistake: 'Hydration mismatches from env-dependent rendering'
+        mechanism: >-
+          Rendering different output from server-only environment state
+          causes the client hydration pass to disagree with the SSR HTML.
+          Transfer stable data or defer environment-dependent UI.
+        source: 'docs/start/framework/react/guide/execution-model.md'
+        priority: HIGH
+        status: active
+
       - mistake: 'Using a relative URL in an isomorphic loader'
         mechanism: >-
           Browser fetch resolves relative URLs against the document, while an
@@ -424,6 +442,15 @@ skills:
         mechanism: >-
           Each route can only have a single handler file. Having
           both users.ts and users/index.ts causes errors.
+        source: 'docs/start/framework/react/guide/server-routes.md'
+        priority: MEDIUM
+        status: active
+
+      - mistake: 'Forgetting to await request body methods'
+        mechanism: >-
+          Request body readers return promises. Using request.json(),
+          request.text(), or request.formData() without await passes a promise
+          instead of the parsed request body.
         source: 'docs/start/framework/react/guide/server-routes.md'
         priority: MEDIUM
         status: active
