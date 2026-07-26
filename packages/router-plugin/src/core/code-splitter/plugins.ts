@@ -46,6 +46,12 @@ export type VirtualRouteSplitNodeCompilerPluginContext = {
   splitNodeMeta: SplitNodeMeta
 }
 
+export type VirtualRouteCompilerPluginContext = {
+  programPath: babel.NodePath<t.Program>
+  splitNodeMeta: SplitNodeMeta
+  localExporterIdent: string
+}
+
 export type CodeSplitCompilerPlugin = {
   name: string
   getStableRouteOptionKeys?: () => Array<string>
@@ -64,6 +70,10 @@ export type CodeSplitCompilerPlugin = {
   onVirtualRouteSplitNode?: (
     ctx: VirtualRouteSplitNodeCompilerPluginContext,
   ) => void
+  onExportSplitRouteProperty?: (
+    ctx: VirtualRouteCompilerPluginContext,
+  ) => void | t.Identifier
 }
 
 export type ReferenceRouteCompilerPlugin = CodeSplitCompilerPlugin
+export type VirtualRouteCompilerPlugin = CodeSplitCompilerPlugin

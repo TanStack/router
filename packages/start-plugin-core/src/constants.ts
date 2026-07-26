@@ -28,7 +28,7 @@ export const DEV_CLIENT_ENTRY = 'virtual:tanstack-start-dev-client-entry'
 export const SERVER_FN_LOOKUP = 'server-fn-module-lookup'
 
 // matches
-// .ts, .tsx, .cts, .mts, .js, .jsx, .cjs, .mjs
+// .ts, .tsx, .tsrx, .cts, .mts, .js, .jsx, .cjs, .mjs
 // with optional query params after
 // but not .json
-export const TRANSFORM_ID_REGEX = [/\.[cm]?[tj]sx?($|\?)/]
+export const TRANSFORM_ID_REGEX = [/\.[cm]?[tj]sx?($|\?)/, /\.tsrx($|\?)/]

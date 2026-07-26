@@ -1,0 +1,16 @@
+{
+  "include": ["**/*.ts", "**/*.d.ts"],
+  "compilerOptions": {
+    "strict": true,
+    "esModuleInterop": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "DOM.Iterable", "ES2024"],
+    "isolatedModules": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "target": "ES2024",
+    "types": ["node"],
+    "noEmit": true
+  }
+}

@@ -13,7 +13,7 @@ import {
   computeSharedBindings,
   detectCodeSplitGroupingsFromRoute,
 } from './code-splitter/compilers'
-import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
+import { getFrameworkCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
@@ -22,6 +22,7 @@ import {
 } from './constants'
 import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
 import { createRouterPluginContext } from './router-plugin-context'
+import { validateFrameworkPluginOrder } from './framework-plugin-order'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
 import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
@@ -34,49 +35,6 @@ import type {
 
 const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
-
-type TransformationPluginInfo = {
-  pluginNames: Array<string>
-  pkg: string
-  usage: string
-}
-
-/**
- * JSX transformation plugins grouped by framework.
- * These plugins must come AFTER the TanStack Router plugin in the Vite config.
- */
-const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
-  string,
-  Array<TransformationPluginInfo>
-> = {
-  react: [
-    {
-      // Babel-based React plugin
-      pluginNames: ['vite:react-babel', 'vite:react-refresh'],
-      pkg: '@vitejs/plugin-react',
-      usage: 'react()',
-    },
-    {
-      // SWC-based React plugin
-      pluginNames: ['vite:react-swc', 'vite:react-swc:resolve-runtime'],
-      pkg: '@vitejs/plugin-react-swc',
-      usage: 'reactSwc()',
-    },
-    {
-      // OXC-based React plugin (deprecated but should still be handled)
-      pluginNames: ['vite:react-oxc:config', 'vite:react-oxc:refresh-runtime'],
-      pkg: '@vitejs/plugin-react-oxc',
-      usage: 'reactOxc()',
-    },
-  ],
-  solid: [
-    {
-      pluginNames: ['solid'],
-      pkg: 'vite-plugin-solid',
-      usage: 'solid()',
-    },
-  ],
-}
 
 export function createRouterCodeSplitterPlugin(
   options: Partial<Config | (() => Config)> | undefined = {},
@@ -101,16 +59,16 @@ export function createRouterCodeSplitterPlugin(
     addHmr = (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
     hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
     compilerPlugins = [
-      ...(addHmr
-        ? (getFrameworkHmrCompilerPlugins({
-            targetFramework: userConfig.target,
-            hmrStyle,
-          }) ?? [])
-        : []),
+      ...(getFrameworkCompilerPlugins({
+        targetFramework: userConfig.target,
+        addHmr,
+        hmrStyle,
+      }) ?? []),
       ...(userConfig.codeSplittingOptions?.compilerPlugins ?? []),
     ]
     virtualRouteCompilerPlugins = compilerPlugins.filter(
-      (plugin) => plugin.onVirtualRouteSplitNode,
+      (plugin) =>
+        plugin.onVirtualRouteSplitNode || plugin.onExportSplitRouteProperty,
     )
   }
   // Map from normalized route file path → set of shared binding names.
@@ -126,7 +84,6 @@ export function createRouterCodeSplitterPlugin(
   const getShouldSplitFn = () => {
     return userConfig.codeSplittingOptions?.splitBehavior
   }
-
   const handleCompilingReferenceFile = (
     code: string,
     id: string,
@@ -263,7 +220,7 @@ export function createRouterCodeSplitterPlugin(
           id: {
             exclude: [tsrSplit, tsrShared],
             // this is necessary for webpack / rspack to avoid matching .html files
-            include: /\.(m|c)?(j|t)sx?$/,
+            include: [/\.(m|c)?(j|t)sx?$/, /\.tsrx(?:$|\?)/],
           },
           code: {
             include: routeFactoryCallCodeFilter,
@@ -291,37 +248,11 @@ export function createRouterCodeSplitterPlugin(
           ROOT = config.root
           initUserConfig()
 
-          // Validate plugin order - router must come before JSX transformation plugins
-          const routerPluginIndex = config.plugins.findIndex(
-            (p) => p.name === CODE_SPLITTER_PLUGIN_NAME,
-          )
-
-          if (routerPluginIndex === -1) return
-
-          const frameworkPlugins =
-            TRANSFORMATION_PLUGINS_BY_FRAMEWORK[userConfig.target]
-          if (!frameworkPlugins) return
-
-          for (const transformPlugin of frameworkPlugins) {
-            const transformPluginIndex = config.plugins.findIndex((p) =>
-              transformPlugin.pluginNames.includes(p.name),
-            )
-
-            if (
-              transformPluginIndex !== -1 &&
-              transformPluginIndex < routerPluginIndex
-            ) {
-              throw new Error(
-                `Plugin order error: '${transformPlugin.pkg}' is placed before '@tanstack/router-plugin'.\n\n` +
-                  `The TanStack Router plugin must come BEFORE JSX transformation plugins.\n\n` +
-                  `Please update your Vite config:\n\n` +
-                  `  plugins: [\n` +
-                  `    tanstackRouter(),\n` +
-                  `    ${transformPlugin.usage},\n` +
-                  `  ]\n`,
-              )
-            }
-          }
+          validateFrameworkPluginOrder({
+            framework: userConfig.target,
+            plugins: config.plugins,
+            routerPluginName: CODE_SPLITTER_PLUGIN_NAME,
+          })
         },
         applyToEnvironment(environment) {
           if (userConfig.plugin?.vite?.environmentName) {

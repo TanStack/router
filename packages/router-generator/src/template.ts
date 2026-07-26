@@ -7,12 +7,13 @@ export function fillTemplate(
   config: Config,
   template: string,
   values: Record<TemplateTag, string>,
+  formatter?: (source: string) => string | Promise<string>,
 ) {
   const replaced = template.replace(
     /%%(\w+)%%/g,
     (_, key) => values[key as TemplateTag] || '',
   )
-  return format(replaced, config)
+  return formatter ? formatter(replaced) : format(replaced, config)
 }
 
 export type TargetTemplate = {
@@ -212,6 +213,58 @@ export function getTargetTemplate(config: Config): TargetTemplate {
             tsrExportStart: (routePath) =>
               `export const Route = createLazyFileRoute(${serializeRoutePath(routePath)})(`,
 
+            tsrExportEnd: () => ');',
+          },
+        },
+      }
+    case 'octane':
+      return {
+        fullPkg: '@tanstack/octane-router',
+        subPkg: 'octane-router',
+        rootRoute: {
+          template: () =>
+            [
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RootComponent\n }%%tsrExportEnd%%\n\n',
+              'function RootComponent() @{\n <div>Hello "%%tsrPath%%"!<Outlet /></div>\n}\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { Outlet, createRootRoute } from '@tanstack/octane-router';",
+            tsrExportStart: () => 'export const Route = createRootRoute(',
+            tsrExportEnd: () => ');',
+          },
+        },
+        route: {
+          template: () =>
+            [
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+              'function RouteComponent() @{\n <div>Hello "%%tsrPath%%"!</div>\n}\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { createFileRoute } from '@tanstack/octane-router';",
+            tsrExportStart: (routePath) =>
+              `export const Route = createFileRoute(${serializeRoutePath(routePath)})(`,
+            tsrExportEnd: () => ');',
+          },
+        },
+        lazyRoute: {
+          template: () =>
+            [
+              '%%tsrImports%%',
+              '\n\n',
+              '%%tsrExportStart%%{\n component: RouteComponent\n }%%tsrExportEnd%%\n\n',
+              'function RouteComponent() @{\n <div>Hello "%%tsrPath%%"!</div>\n}\n',
+            ].join(''),
+          imports: {
+            tsrImports: () =>
+              "import { createLazyFileRoute } from '@tanstack/octane-router';",
+            tsrExportStart: (routePath) =>
+              `export const Route = createLazyFileRoute(${serializeRoutePath(routePath)})(`,
             tsrExportEnd: () => ');',
           },
         },

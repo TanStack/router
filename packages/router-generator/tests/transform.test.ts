@@ -14,6 +14,60 @@ function makeNode(
 }
 
 describe('transform', () => {
+  it('uses position-preserving framework source for parsing but emits raw source', async () => {
+    const componentBody = '@{ <div>Hello</div> }'
+    const parseableBody = `{${' '.repeat(componentBody.length - 2)}}`
+    const source = [
+      "import { createFileRoute } from '@tanstack/octane-router'",
+      '',
+      "export const Route = createFileRoute('/old')({ component: Component })",
+      '',
+      `function Component() ${componentBody}`,
+    ].join('\n')
+    const parseSource = source.replace(componentBody, parseableBody)
+
+    const result = await transform({
+      source,
+      parseSource,
+      filename: 'route.tsrx',
+      ctx: {
+        target: 'octane',
+        routeId: '/new',
+        lazy: false,
+      },
+      node: makeNode(),
+    })
+
+    expect(result.result).toBe('modified')
+    if (result.result !== 'modified') {
+      throw new Error(`expected modified result, got ${result.result}`)
+    }
+    expect(result.output).toContain("createFileRoute('/new')")
+    expect(result.output).toContain(componentBody)
+  })
+
+  it('rejects framework parse source that changes source positions', async () => {
+    const result = await transform({
+      source: "export const Route = createFileRoute('/old')({})",
+      parseSource: "export const Route = createFileRoute('/old')({}) ",
+      filename: 'route.tsrx',
+      ctx: {
+        target: 'octane',
+        routeId: '/new',
+        lazy: false,
+      },
+      node: makeNode(),
+    })
+
+    expect(result.result).toBe('error')
+    if (result.result !== 'error') {
+      throw new Error(`expected error result, got ${result.result}`)
+    }
+    expect(String(result.error)).toContain(
+      'preserve the original source length',
+    )
+  })
+
   it('does not treat root route exports as missing Route exports', async () => {
     const result = await transform({
       source: [

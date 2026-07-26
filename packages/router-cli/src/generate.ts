@@ -1,12 +1,9 @@
-import { Generator } from '@tanstack/router-generator'
+import { createGenerator } from './create-generator'
 import type { Config } from '@tanstack/router-generator'
 
 export async function generate(config: Config, root: string) {
   try {
-    const generator = new Generator({
-      config,
-      root,
-    })
+    const generator = await createGenerator(config, root)
     await generator.run()
     process.exit(0)
   } catch (err) {

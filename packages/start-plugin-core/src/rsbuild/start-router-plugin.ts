@@ -6,6 +6,7 @@ import {
 } from '@tanstack/router-plugin/rspack'
 import { routesManifestPlugin } from '../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../start-router-plugin/generator-plugins/prerender-routes-plugin'
+import { composeGeneratorPlugins } from '../start-router-plugin/generator-plugins/compose-generator-plugins'
 import { buildRouteTreeFileFooterFromConfig } from '../start-router-plugin/route-tree-footer'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI } from '@rsbuild/core'
@@ -50,12 +51,16 @@ export function registerRouterPlugins(
               corePluginOpts: opts.corePluginOpts,
             })
           },
-          plugins: [
-            routesManifestPlugin(),
-            ...(opts.startPluginOpts.prerender?.enabled === true
-              ? [prerenderRoutesPlugin()]
-              : []),
-          ],
+          plugins: composeGeneratorPlugins({
+            frameworkPlugins: opts.corePluginOpts.routerGeneratorPlugins,
+            userPlugins: routerConfig.plugins,
+            builtInPlugins: [
+              routesManifestPlugin(),
+              ...(opts.startPluginOpts.prerender?.enabled === true
+                ? [prerenderRoutesPlugin()]
+                : []),
+            ],
+          }),
         },
         routerPluginContext,
       )

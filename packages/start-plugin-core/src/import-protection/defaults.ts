@@ -1,3 +1,4 @@
+import { startFrameworks } from '../types'
 import type { ImportProtectionEnvRules } from '../schema'
 import type { Pattern } from './utils'
 
@@ -6,16 +7,14 @@ export interface DefaultImportProtectionRules {
   server: Required<ImportProtectionEnvRules>
 }
 
-const frameworks = ['react', 'solid', 'vue'] as const
-
 /**
  * Returns the default import protection rules.
  *
- * All three framework variants are always included so that, e.g., a React
+ * All framework variants are always included so that, e.g., a React
  * project also denies `@tanstack/solid-start/server` imports.
  */
 export function getDefaultImportProtectionRules(): DefaultImportProtectionRules {
-  const clientSpecifiers: Array<Pattern> = frameworks.map(
+  const clientSpecifiers: Array<Pattern> = startFrameworks.map(
     (fw) => `@tanstack/${fw}-start/server`,
   )
 
@@ -41,7 +40,11 @@ export function getMarkerSpecifiers(): {
   clientOnly: Array<string>
 } {
   return {
-    serverOnly: frameworks.map((fw) => `@tanstack/${fw}-start/server-only`),
-    clientOnly: frameworks.map((fw) => `@tanstack/${fw}-start/client-only`),
+    serverOnly: startFrameworks.map(
+      (fw) => `@tanstack/${fw}-start/server-only`,
+    ),
+    clientOnly: startFrameworks.map(
+      (fw) => `@tanstack/${fw}-start/client-only`,
+    ),
   }
 }

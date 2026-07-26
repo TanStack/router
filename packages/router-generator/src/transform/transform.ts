@@ -48,13 +48,23 @@ type RouteCallAnalysis = {
 export function transform({
   ctx,
   source,
+  parseSource,
   filename,
   node,
 }: TransformOptions): TransformResult {
+  if (parseSource !== undefined && parseSource.length !== source.length) {
+    return {
+      result: 'error',
+      error: new Error(
+        `expected parseSource for ${filename ?? ctx.routeId} to preserve the original source length`,
+      ),
+    }
+  }
+
   let ast: ReturnType<typeof parseAst>
 
   try {
-    ast = parseAst({ code: source, filename })
+    ast = parseAst({ code: parseSource ?? source, filename })
   } catch (error) {
     return {
       result: 'error',

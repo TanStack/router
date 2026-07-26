@@ -13,6 +13,18 @@
 'package: nitro-v2-vite-plugin':
   - changed-files:
       - any-glob-to-any-file: 'packages/nitro-v2-vite-plugin/**/*'
+'package: octane-router':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/octane-router/**/*'
+'package: octane-start':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/octane-start/**/*'
+'package: octane-start-client':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/octane-start-client/**/*'
+'package: octane-start-server':
+  - changed-files:
+      - any-glob-to-any-file: 'packages/octane-start-server/**/*'
 'package: react-router':
   - changed-files:
       - any-glob-to-any-file: 'packages/react-router/**/*'

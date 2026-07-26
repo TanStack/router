@@ -1,0 +1,52 @@
+{
+  "name": "tanstack-octane-start-e2e-basic",
+  "private": true,
+  "sideEffects": false,
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev --port 3000",
+    "dev:e2e": "vite dev",
+    "build": "vite build && tsc --noEmit",
+    "build:cloudflare": "vite build --config vite.config.cloudflare.ts",
+    "build:netlify": "vite build --config vite.config.netlify.ts",
+    "start": "node .output/server/index.mjs",
+    "test:platform-builds": "pnpm run build:cloudflare && pnpm run build:netlify",
+    "test:e2e:local": "pnpm build && playwright test --project=chromium",
+    "test:e2e:hmr:local": "E2E_DEV=true playwright test --project=chromium"
+  },
+  "dependencies": {
+    "@tanstack/octane-router": "workspace:^",
+    "@tanstack/octane-start": "workspace:^",
+    "octane": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.29.0",
+    "@netlify/vite-plugin-tanstack-start": "^1.1.4",
+    "@playwright/test": "^1.61.0",
+    "@tanstack/router-e2e-utils": "workspace:^",
+    "@types/node": "^22.10.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "nitro": "^3.0.260311-beta",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "8.1.5",
+    "wrangler": "^4.74.0"
+  },
+  "nx": {
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "hmr",
+          "env": {
+            "E2E_DEV": "true"
+          }
+        }
+      ]
+    }
+  }
+}

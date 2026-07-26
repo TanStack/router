@@ -2,6 +2,7 @@ import { isAbsolute, join, normalize } from 'node:path'
 import { Generator, resolveConfigPath } from '@tanstack/router-generator'
 import { getConfig } from './config'
 import { createRouterPluginContext } from './router-plugin-context'
+import { validateFrameworkPluginOrder } from './framework-plugin-order'
 
 import type { GeneratorEvent } from '@tanstack/router-generator'
 import type { FSWatcher } from 'chokidar'
@@ -79,6 +80,13 @@ export function createRouterGeneratorPlugin(
     vite: {
       async configResolved(config) {
         initConfigAndGenerator({ root: config.root })
+        if (userConfig.target === 'octane') {
+          validateFrameworkPluginOrder({
+            framework: userConfig.target,
+            plugins: config.plugins,
+            routerPluginName: 'tanstack:router-generator',
+          })
+        }
         await generate()
       },
     },

@@ -1,5 +1,5 @@
 import { tsrSplit } from '@tanstack/router-plugin'
-import { tssHydrate } from '../../hydration-constants'
+import { deferredHydrationQueryParams } from '../../hydration-constants'
 import { getCssAssetSource } from '../../start-manifest-plugin/inlineCss'
 import type { Rollup } from 'vite'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../../types'
@@ -15,6 +15,7 @@ export function normalizeViteClientChunk(
     css: Array.from(chunk.viteMetadata?.importedCss ?? []),
     routeFilePaths: getRouteFilePathsFromModuleIds(chunk.moduleIds),
     hydrationIds: getHydrationIdsFromModuleIds(chunk.moduleIds),
+    hydrationSourcePaths: getHydrationSourcePathsFromModuleIds(chunk.moduleIds),
   }
 }
 
@@ -161,26 +162,66 @@ export function getHydrationIdsFromModuleIds(moduleIds: Array<string>) {
       continue
     }
 
-    const query = moduleId.slice(queryIndex + 1)
+    const params = new URLSearchParams(moduleId.slice(queryIndex + 1))
 
-    if (!query.includes(tssHydrate)) {
-      continue
+    for (const queryParam of deferredHydrationQueryParams) {
+      const hydrationId = params.get(queryParam)
+
+      if (!hydrationId || seen?.has(hydrationId)) {
+        continue
+      }
+
+      if (hydrationIds === undefined || seen === undefined) {
+        hydrationIds = []
+        seen = new Set<string>()
+      }
+
+      hydrationIds.push(hydrationId)
+      seen.add(hydrationId)
     }
-
-    const hydrationId = new URLSearchParams(query).get(tssHydrate)
-
-    if (!hydrationId || seen?.has(hydrationId)) {
-      continue
-    }
-
-    if (hydrationIds === undefined || seen === undefined) {
-      hydrationIds = []
-      seen = new Set<string>()
-    }
-
-    hydrationIds.push(hydrationId)
-    seen.add(hydrationId)
   }
 
   return hydrationIds ?? []
+}
+
+export function getHydrationSourcePathsFromModuleIds(moduleIds: Array<string>) {
+  let hydrationSourcePaths: Array<string> | undefined
+  let seen: Set<string> | undefined
+
+  for (const moduleId of moduleIds) {
+    const queryIndex = moduleId.indexOf('?')
+
+    if (queryIndex < 0) {
+      continue
+    }
+
+    const params = new URLSearchParams(moduleId.slice(queryIndex + 1))
+    let isHydrationModule = false
+
+    for (const queryParam of deferredHydrationQueryParams) {
+      if (params.get(queryParam)) {
+        isHydrationModule = true
+        break
+      }
+    }
+
+    if (!isHydrationModule) {
+      continue
+    }
+
+    const sourcePath = moduleId.slice(0, queryIndex)
+    if (!sourcePath || seen?.has(sourcePath)) {
+      continue
+    }
+
+    if (hydrationSourcePaths === undefined || seen === undefined) {
+      hydrationSourcePaths = []
+      seen = new Set<string>()
+    }
+
+    hydrationSourcePaths.push(sourcePath)
+    seen.add(sourcePath)
+  }
+
+  return hydrationSourcePaths ?? []
 }

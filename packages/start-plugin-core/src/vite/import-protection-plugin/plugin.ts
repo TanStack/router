@@ -3,7 +3,11 @@ import { normalizePath } from 'vite'
 import { dirname, relative } from 'pathe'
 
 import { escapeRegExp, resolveViteId } from '../../utils'
-import { SERVER_FN_LOOKUP, VITE_ENVIRONMENT_NAMES } from '../../constants'
+import {
+  SERVER_FN_LOOKUP,
+  TRANSFORM_ID_REGEX,
+  VITE_ENVIRONMENT_NAMES,
+} from '../../constants'
 import { hasIdQueryFlag } from '../module-id'
 import {
   ImportGraph,
@@ -2149,7 +2153,7 @@ export function importProtectionPlugin(
       transform: {
         filter: {
           id: {
-            include: [/\.[cm]?[tj]sx?($|\?)/],
+            include: [...TRANSFORM_ID_REGEX],
           },
         },
         async handler(code, id) {

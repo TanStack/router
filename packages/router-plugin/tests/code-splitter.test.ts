@@ -166,6 +166,32 @@ describe('code-splitter works', () => {
   })
 })
 
+describe('Octane code splitting', () => {
+  it('uses the official Octane router runtime after TSRX has been lowered', () => {
+    const code = [
+      "import { createFileRoute } from '@tanstack/octane-router'",
+      'function RouteComponent() {}',
+      "export const Route = createFileRoute('/octane')({",
+      '  component: RouteComponent,',
+      '})',
+    ].join('\n')
+
+    const result = compileCodeSplitReferenceRoute({
+      code,
+      filename: 'octane.tsrx',
+      id: 'octane.tsrx',
+      addHmr: false,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+      targetFramework: 'octane',
+    })
+
+    expect(result?.code).toContain(
+      "import { lazyRouteComponent } from '@tanstack/octane-router'",
+    )
+    expect(result?.code).toContain("import('octane.tsrx?tsr-split=component')")
+  })
+})
+
 describe('React Refresh virtual route compiler plugin', () => {
   const splitComponentCases = [
     { splitType: 'component', splitIdentifier: 'SplitComponent' },

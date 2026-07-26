@@ -33,7 +33,8 @@ export interface TokenRegexBundle {
   routeTokenSegmentRegex: RegExp
 }
 
-const disallowedRouteGroupConfiguration = /\(([^)]+)\).(ts|js|tsx|jsx|vue)/
+const disallowedRouteGroupConfiguration =
+  /\(([^)]+)\)\.(ts|js|tsx|jsx|vue|tsrx)$/
 
 const virtualConfigFileRegExp = /__virtual\.[mc]?[jt]s$/
 export function isVirtualConfigFile(fileName: string): boolean {
@@ -170,7 +171,7 @@ export async function getRouteNodes(
 
         if (dirent.isDirectory()) {
           await recurse(relativePath)
-        } else if (fullPath.match(/\.(tsx|ts|jsx|js|vue)$/)) {
+        } else if (fullPath.match(/\.(tsx|ts|jsx|js|vue|tsrx)$/)) {
           const filePath = replaceBackslash(path.join(dir, dirent.name))
           const filePathNoExt = removeExt(filePath)
           const {
@@ -217,10 +218,11 @@ export async function getRouteNodes(
             routeType = 'pathless_layout'
           }
 
-          // Only show deprecation warning for .tsx/.ts files, not .vue files
+          // Only show deprecation warnings for route-module files, not Vue SFCs.
           // Vue files using .component.vue is the Vue-native way
           const isVueFile = filePath.endsWith('.vue')
           if (!isVueFile) {
+            const extension = path.extname(filePath)
             ;(
               [
                 ['component', 'component'],
@@ -232,7 +234,7 @@ export async function getRouteNodes(
             ).forEach(([matcher, type]) => {
               if (routeType === matcher) {
                 logger.warn(
-                  `WARNING: The \`.${type}.tsx\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy.tsx\` suffix instead.`,
+                  `WARNING: The \`.${type}${extension}\` suffix used for the ${filePath} file is deprecated. Use the new \`.lazy${extension}\` suffix instead.`,
                 )
               }
             })
