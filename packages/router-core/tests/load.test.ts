@@ -1119,6 +1119,61 @@ describe('stale loader reload triggers', () => {
       resolveStaleReload,
     )
   })
+
+  test('invalidate() is not dropped by an in-flight background stale reload', async () => {
+    // A background stale reload starts on re-entering a route (staleTime: 0).
+    // If something invalidates the router while that reload is still in flight
+    // -- the shape of every "mutate, then refresh" flow -- the loader must
+    // still re-run: the in-flight load was started *before* the invalidation,
+    // so its result is known-stale by the time it lands.
+    let resolveStaleReload: (() => void) | undefined
+    let callCount = 0
+
+    const loader = vi.fn(() => {
+      callCount += 1
+      if (callCount === 1) return { value: 'first' }
+      if (callCount === 2) {
+        // The background reload, started before the invalidation.
+        return new Promise<{ value: string }>((resolve) => {
+          resolveStaleReload = () => resolve({ value: 'stale' })
+        })
+      }
+      // Anything the invalidation triggers sees post-mutation data.
+      return { value: 'fresh' }
+    })
+
+    const router = setup({ loader, staleTime: 0 })
+
+    await router.navigate({ to: '/foo' })
+    expect(loader).toHaveBeenCalledTimes(1)
+
+    await vi.advanceTimersByTimeAsync(1)
+    await router.navigate({ to: '/bar' })
+    await vi.advanceTimersByTimeAsync(1)
+
+    const revisit = router.navigate({ to: '/foo' })
+    expect(loader).toHaveBeenCalledTimes(2)
+    await revisit
+
+    // Precondition: rendering stale data with a reload still in flight.
+    const backgroundReloadPromise = getMatchById(router, '/foo/foo')
+      ?._nonReactive.loaderPromise
+    expect(backgroundReloadPromise).toBeDefined()
+    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
+      value: 'first',
+    })
+
+    // Invalidate mid-flight, then let the stale reload land.
+    const invalidated = router.invalidate()
+    resolveStaleReload?.()
+    await invalidated
+
+    expect(loader).toHaveBeenCalledTimes(3)
+    expect(getMatchById(router, '/foo/foo')?.loaderData).toEqual({
+      value: 'fresh',
+    })
+  })
+
 })
 
 test('cancelMatches after pending timeout', async () => {

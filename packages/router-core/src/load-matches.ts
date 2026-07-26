@@ -893,9 +893,13 @@ const loadRouteMatch = async (
     if (prevMatch._nonReactive.loaderPromise) {
       // do not block if we already have stale data we can show
       // but only if the ongoing load is not a preload since error handling is different for preloads
-      // and we don't want to swallow errors
+      // and we don't want to swallow errors.
+      // an explicitly invalidated match is excluded: the in-flight load started
+      // before the invalidation, so its result is known-stale and returning here
+      // would drop the invalidation entirely.
       if (
         prevMatch.status === 'success' &&
+        !prevMatch.invalid &&
         !inner.sync &&
         !prevMatch.preload &&
         shouldReloadInBackground
@@ -909,7 +913,10 @@ const loadRouteMatch = async (
         handleRedirectAndNotFound(inner, match, error)
       }
 
-      if (match.status === 'pending') {
+      // `invalid` matters as much as `pending`: the load we just awaited was
+      // started before the invalidation, so it left the match `success` with
+      // pre-invalidation data.
+      if (match.status === 'pending' || match.invalid) {
         await handleLoader(
           preload,
           prevMatch,
