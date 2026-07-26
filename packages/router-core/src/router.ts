@@ -2705,7 +2705,26 @@ export class RouterCore<
         startViewTransitionParams = fn
       }
 
-      document.startViewTransition(startViewTransitionParams)
+      const viewTransition = document.startViewTransition(
+        startViewTransitionParams,
+      )
+      const reportedErrors = new Set<unknown>()
+      const reportErrorOnce = (error: unknown) => {
+        if (reportedErrors.has(error)) {
+          return
+        }
+        reportedErrors.add(error)
+        reportViewTransitionError(error)
+      }
+      const handleLifecycleRejection = (error: unknown) => {
+        if (!isExpectedViewTransitionRejection(error)) {
+          reportErrorOnce(error)
+        }
+      }
+
+      void viewTransition.updateCallbackDone.catch(reportErrorOnce)
+      void viewTransition.ready.catch(handleLifecycleRejection)
+      void viewTransition.finished.catch(handleLifecycleRejection)
     } else {
       fn()
     }
@@ -3025,6 +3044,35 @@ export class SearchParamError extends Error {}
 
 /** Error thrown when path parameter parsing/validation fails. */
 export class PathParamError extends Error {}
+
+function isExpectedViewTransitionRejection(error: unknown) {
+  const name =
+    typeof error === 'object' && error !== null && 'name' in error
+      ? error.name
+      : undefined
+  const message =
+    typeof error === 'object' && error !== null && 'message' in error
+      ? error.message
+      : undefined
+
+  if (
+    name === 'AbortError' ||
+    (name === 'InvalidStateError' &&
+      message === 'Transition was aborted because of invalid state')
+  ) {
+    return true
+  }
+
+  return false
+}
+
+function reportViewTransitionError(error: unknown) {
+  if (typeof globalThis.reportError === 'function') {
+    globalThis.reportError(error)
+  } else {
+    console.error(error)
+  }
+}
 
 const normalize = (str: string) =>
   str.endsWith('/') && str.length > 1 ? str.slice(0, -1) : str
