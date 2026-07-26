@@ -18,8 +18,8 @@ Bundler plugin for route generation and automatic code splitting. Supports Vite,
 
 ### router-plugin (3 failure modes)
 
-| #   | Mistake                                              | Priority | Source      |
-| --- | ---------------------------------------------------- | -------- | ----------- |
-| 1   | Using wrong plugin export for bundler                | HIGH     | source/docs |
-| 2   | Misconfiguring routesDirectory or generatedRouteTree | MEDIUM   | source/docs |
-| 3   | Editing routeTree.gen.ts instead of regenerating      | HIGH     | consistency audit |
+| #   | Mistake                                              | Priority | Source            |
+| --- | ---------------------------------------------------- | -------- | ----------------- |
+| 1   | Using wrong plugin export for bundler                | HIGH     | source/docs       |
+| 2   | Misconfiguring routesDirectory or generatedRouteTree | MEDIUM   | source/docs       |
+| 3   | Editing routeTree.gen.ts instead of regenerating     | HIGH     | consistency audit |

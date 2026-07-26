@@ -236,6 +236,7 @@ export const Route = createFileRoute('/posts')({
   loader: () => getPosts(),
 })
 ```
+
 Use a server route plus an origin-derived absolute URL only when the HTTP boundary itself is required. Do not hard-code the production origin.
 
 ### Deferred Data Loading

@@ -18,8 +18,8 @@ Programmatic route tree building as an alternative to filesystem conventions. Pr
 
 ### virtual-file-routes (3 failure modes)
 
-| #   | Mistake                                 | Priority | Source      |
-| --- | --------------------------------------- | -------- | ----------- |
-| 1   | Forgetting rootRoute wrapper            | HIGH     | source/docs |
-| 2   | Using physical() path outside routesDir | MEDIUM   | source/docs |
-| 3   | Creating duplicate effective paths or mounts | HIGH | consistency audit |
+| #   | Mistake                                      | Priority | Source            |
+| --- | -------------------------------------------- | -------- | ----------------- |
+| 1   | Forgetting rootRoute wrapper                 | HIGH     | source/docs       |
+| 2   | Using physical() path outside routesDir      | MEDIUM   | source/docs       |
+| 3   | Creating duplicate effective paths or mounts | HIGH     | consistency audit |
