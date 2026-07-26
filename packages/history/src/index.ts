@@ -439,7 +439,7 @@ export function createBrowserHistory(opts?: {
           })
           if (isBlocked) {
             ignoreNextPop = true
-            win.history.go(1)
+            win.history.go(-delta)
             history.notify(notify)
             return
           }
