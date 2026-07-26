@@ -488,7 +488,7 @@ const executeBeforeLoad = (
   }
 
   const updateContext = (beforeLoadContext: any) => {
-    if (beforeLoadContext === undefined) {
+    if (beforeLoadContext === undefined || beforeLoadContext === null) {
       inner.router.batch(() => {
         pending()
         resolve()
