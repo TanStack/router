@@ -5424,6 +5424,60 @@ describe('Link', () => {
       await runTest({ expectedPreload: false, testIdToHover: 'link-2' })
     })
   })
+
+  test('edge-case: competing optional segment links', async () => {
+    const rootRoute = createRootRoute({
+      component: () => {
+        return (
+          <>
+            <Link to="/">To index</Link>
+            <Link to="/{-$foo}/bar" params={{ foo: 'foo' }}>
+              To /foo/bar
+            </Link>
+            <Link to="/{-$foo}/bar">To /bar</Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <p>index</p>,
+    })
+    const OptRouteComponent = () => {
+      const params = useParams({ strict: false })
+      return <pre>{JSON.stringify(params)}</pre>
+    }
+    const optRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/{-$foo}/bar',
+      component: OptRouteComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, optRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('index')).toBeInTheDocument()
+
+    const indexLink = await screen.findByRole('link', { name: 'To index' })
+    const fooBarLink = await screen.findByRole('link', { name: 'To /foo/bar' })
+    const barLink = await screen.findByRole('link', { name: 'To /bar' })
+
+    fireEvent.click(fooBarLink)
+    expect(fooBarLink).toHaveAttribute('aria-current', 'page')
+    expect(barLink).not.toHaveAttribute('aria-current', 'page')
+
+    fireEvent.click(indexLink)
+    expect(indexLink).toHaveAttribute('aria-current', 'page')
+
+    fireEvent.click(barLink)
+    expect(fooBarLink).not.toHaveAttribute('aria-current', 'page')
+    expect(barLink).toHaveAttribute('aria-current', 'page')
+  })
 })
 
 describe('createLink', () => {

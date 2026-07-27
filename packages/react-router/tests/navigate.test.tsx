@@ -195,6 +195,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
     expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
+      from: '/p/$projectId/$version/$framework',
       to: '/p/$projectId/$version/$framework',
       params: { projectId: 'query' },
     })
@@ -213,6 +214,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
     expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
+      from: '/p/$projectId/$version/$framework',
       params: { projectId: 'query' },
     } as any)
     await router.invalidate()
@@ -230,6 +232,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
     expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
+      from: '/p/$projectId/$version/$framework',
       to: '/p/$projectId/$version/$framework',
       params: { version: 'v3' },
     })
@@ -248,6 +251,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
     expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
+      from: '/p/$projectId/$version/$framework',
       params: { version: 'v3' },
     } as any)
     await router.invalidate()
@@ -265,6 +269,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
     expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
+      from: '/p/$projectId/$version/$framework',
       to: '/p/$projectId/$version/$framework',
       params: { framework: 'vue' },
     })
@@ -283,6 +288,7 @@ describe('router.navigate navigation using multiple path params - object syntax 
     expect(router.state.location.pathname).toBe('/p/router/v1/react')
 
     await router.navigate({
+      from: '/p/$projectId/$version/$framework',
       params: { framework: 'vue' },
     } as any)
     await router.invalidate()
@@ -778,7 +784,7 @@ describe('router.navigate navigation using optional path parameters - object syn
     expect(router.state.location.pathname).toBe('/p/router/vue')
   })
 
-  it('should carry over optional parameters from current route when using empty params', async () => {
+  it('should carry over optional parameters from current route when params is true', async () => {
     const { router } = createOptionalParamTestRouter(
       createMemoryHistory({ initialEntries: ['/posts/tech'] }),
     )
@@ -798,7 +804,7 @@ describe('router.navigate navigation using optional path parameters - object syn
     // Navigate back to posts - should carry over 'news' from current params
     await router.navigate({
       to: '/posts/{-$category}',
-      params: {},
+      params: true,
     })
     await router.invalidate()
 
@@ -1039,7 +1045,7 @@ describe('router.navigate navigation using optional path parameters - parameter 
     // Navigate to articles without specifying category
     await router.navigate({
       to: '/articles/{-$category}',
-      params: {},
+      params: true,
     })
     await router.invalidate()
 
@@ -1067,7 +1073,7 @@ describe('router.navigate navigation using optional path parameters - parameter 
     // Navigate back to posts without explicit category removal
     await router.navigate({
       to: '/posts/{-$category}',
-      params: {},
+      params: true,
     })
     await router.invalidate()
 
