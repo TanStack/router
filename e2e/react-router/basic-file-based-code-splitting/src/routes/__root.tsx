@@ -51,6 +51,7 @@ function RootComponent() {
         >
           without-loader
         </Link>{' '}
+        <Link to="/preload-disabled">preload-disabled</Link>{' '}
         <Link
           to="/shared-singleton"
           activeProps={{

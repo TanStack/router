@@ -15,10 +15,14 @@ import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
 import {
+  FRAME_HEADER_SIZE,
+  MAX_FRAME_PAYLOAD_SIZE,
+  MAX_FRAMED_STREAMS,
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+  cancelReadableStream,
   createMultiplexedStream,
+  encodeJSONFrame,
 } from './frame-protocol'
-import type { LateStreamRegistration } from './frame-protocol'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
 // Cache serovalPlugins at module level to avoid repeated calls
@@ -32,6 +36,8 @@ const FORM_DATA_CONTENT_TYPES = [
 
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
+
+const MAX_JSON_FRAME_SIZE = FRAME_HEADER_SIZE + MAX_FRAME_PAYLOAD_SIZE
 
 export const handleServerAction = async ({
   request,
@@ -180,87 +186,79 @@ export const handleServerAction = async ({
       return serializeResult(res)
 
       function serializeResult(res: unknown): Response {
-        let nonStreamingBody: any = undefined
+        let nonStreamingBody: any
 
         const alsResponse = getResponse()
         if (res !== undefined) {
           // Collect raw streams encountered during initial synchronous serialization
           const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
 
-          // Track whether we're still in the initial synchronous phase
-          // After initial phase, new RawStreams go to lateStreamWriter
-          let initialPhase = true
-
-          // Late stream registration for RawStreams discovered after initial pass
-          // (e.g., from resolved Promises)
-          let lateStreamWriter:
-            | WritableStreamDefaultWriter<LateStreamRegistration>
+          let registerRaw:
+            | ((id: number, stream: ReadableStream<Uint8Array>) => void)
             | undefined
-          let lateStreamReadable:
-            | ReadableStream<LateStreamRegistration>
-            | undefined = undefined
-          const pendingLateStreams: Array<LateStreamRegistration> = []
 
           const rawStreamPlugin = createRawStreamRPCPlugin(
             (id: number, stream: ReadableStream<Uint8Array>) => {
-              if (initialPhase) {
-                rawStreams.set(id, stream)
+              if (id > MAX_FRAMED_STREAMS) {
+                const error = new Error(
+                  `Too many raw streams in framed response (max ${MAX_FRAMED_STREAMS})`,
+                )
+                cancelReadableStream(stream, error)
+                throw error
+              }
+              if (registerRaw) {
+                registerRaw(id, stream)
                 return
               }
-
-              if (lateStreamWriter) {
-                // Late stream - write to the late stream channel
-                lateStreamWriter.write({ id, stream }).catch(() => {
-                  // Ignore write errors - stream may be closed
-                })
-                return
-              }
-
-              // Discovered after initial phase but before writer exists.
-              pendingLateStreams.push({ id, stream })
+              rawStreams.set(id, stream)
             },
           )
 
           // Build plugins with RawStreamRPCPlugin first (before default SSR plugin)
-          const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+          const plugins = [rawStreamPlugin, ...serovalPlugins!]
 
           // first run without the stream in case `result` does not need streaming
-          let done = false as boolean
-          const callbacks: {
-            onParse: (value: any) => void
-            onDone: () => void
-            onError: (error: any) => void
-          } = {
-            onParse: (value) => {
-              nonStreamingBody = value
-            },
-            onDone: () => {
-              done = true
-            },
-            onError: (error) => {
-              throw error
-            },
+          let done = false
+          let initialError: [unknown] | undefined
+          let onParse = (value: any): void => {
+            nonStreamingBody = value
           }
-          toCrossJSONStream(res, {
-            refs: new Map(),
-            plugins,
-            onParse(value) {
-              callbacks.onParse(value)
-            },
-            onDone() {
-              callbacks.onDone()
-            },
-            onError: (error) => {
-              callbacks.onError(error)
-            },
-          })
-
-          // End of initial synchronous phase - any new RawStreams are "late"
-          initialPhase = false
-
-          // If any RawStreams are discovered after this point but before the
-          // late-stream writer exists, we buffer them and flush once the writer
-          // is ready. This avoids an occasional missed-stream race.
+          let onDone = (): void => {
+            done = true
+          }
+          let onError = (error: unknown): void => {
+            initialError ??= [error]
+          }
+          let destroySerialization: (() => void) | undefined
+          const stopSerialization = (): void => {
+            const destroy = destroySerialization
+            destroySerialization = undefined
+            destroy?.()
+          }
+          try {
+            destroySerialization = toCrossJSONStream(res, {
+              refs: new Map(),
+              plugins,
+              onParse(value) {
+                onParse(value)
+              },
+              onDone() {
+                onDone()
+              },
+              onError(error) {
+                onError(error)
+              },
+            })
+            if (initialError) {
+              throw initialError[0]
+            }
+          } catch (error) {
+            stopSerialization()
+            for (const stream of rawStreams.values()) {
+              cancelReadableStream(stream, error)
+            }
+            throw error
+          }
 
           // If no raw streams and done synchronously, return simple JSON
           if (done && rawStreams.size === 0) {
@@ -277,83 +275,65 @@ export const handleServerAction = async ({
             )
           }
 
-          // Not done synchronously or has raw streams - use framed protocol
-          // This supports late RawStreams from resolved Promises
-          const { readable, writable } =
-            new TransformStream<LateStreamRegistration>()
-          lateStreamReadable = readable
-          lateStreamWriter = writable.getWriter()
-
-          // Flush any late streams that were discovered in the small window
-          // between end of initial serialization and writer setup.
-          for (const registration of pendingLateStreams) {
-            lateStreamWriter.write(registration).catch(() => {
-              // Ignore write errors - stream may be closed
-            })
-          }
-          pendingLateStreams.length = 0
-
-          // Create a stream of JSON chunks
-          const jsonStream = new ReadableStream<string>({
-            start(controller) {
-              callbacks.onParse = (value) => {
-                controller.enqueue(JSON.stringify(value) + '\n')
-              }
-              callbacks.onDone = () => {
-                try {
-                  controller.close()
-                } catch {
-                  // Already closed
-                }
-                // Close late stream writer when JSON serialization is done
-                // Any RawStreams not yet discovered won't be sent
-                lateStreamWriter
-                  ?.close()
-                  .catch(() => {
-                    // Ignore close errors
-                  })
-                  .finally(() => {
-                    lateStreamWriter = undefined
-                  })
-              }
-
-              callbacks.onError = (error) => {
-                controller.error(error)
-                lateStreamWriter
-                  ?.abort(error)
-                  .catch(() => {
-                    // Ignore abort errors
-                  })
-                  .finally(() => {
-                    lateStreamWriter = undefined
-                  })
-              }
-
-              // Emit initial body if we have one
-              if (nonStreamingBody !== undefined) {
-                callbacks.onParse(nonStreamingBody)
-              }
-              // If serialization already completed synchronously, close now
-              // This handles the case where onDone was called during toCrossJSONStream
-              // before we overwrote callbacks.onDone
-              if (done) {
-                callbacks.onDone()
-              }
+          let jsonController!: ReadableStreamDefaultController<Uint8Array>
+          const jsonStream = new ReadableStream<Uint8Array>(
+            {
+              start(controller) {
+                jsonController = controller
+              },
+              cancel() {
+                stopSerialization()
+              },
             },
-            cancel() {
-              lateStreamWriter?.abort().catch(() => {})
-              lateStreamWriter = undefined
+            {
+              highWaterMark: MAX_JSON_FRAME_SIZE,
+              size(frame) {
+                return frame!.byteLength
+              },
             },
-          })
-
-          // Create multiplexed stream with JSON, initial raw streams, and late streams
-          const multiplexedStream = createMultiplexedStream(
-            jsonStream,
-            rawStreams,
-            lateStreamReadable,
           )
 
-          return new Response(multiplexedStream, {
+          const multiplexed = createMultiplexedStream(jsonStream, rawStreams)
+          registerRaw = multiplexed[1]
+
+          const failSerialization = (error: unknown): void => {
+            if (!destroySerialization) {
+              return
+            }
+            stopSerialization()
+            jsonController.error(error)
+          }
+
+          onParse = (value) => {
+            try {
+              const frame = encodeJSONFrame(JSON.stringify(value))
+              if (jsonController.desiredSize! < frame.byteLength) {
+                throw new Error(
+                  `Framed JSON queue exceeded ${MAX_JSON_FRAME_SIZE} bytes`,
+                )
+              }
+              jsonController.enqueue(frame)
+            } catch (error) {
+              failSerialization(error)
+            }
+          }
+          onDone = () => {
+            if (!destroySerialization) {
+              return
+            }
+            destroySerialization = undefined
+            jsonController.close()
+          }
+          onError = failSerialization
+
+          if (nonStreamingBody !== undefined) {
+            onParse(nonStreamingBody)
+          }
+          if (done) {
+            onDone()
+          }
+
+          return new Response(multiplexed[0], {
             status: alsResponse.status,
             statusText: alsResponse.statusText,
             headers: {
@@ -396,12 +376,10 @@ export const handleServerAction = async ({
       console.info()
 
       const serializedError = JSON.stringify(
-        await Promise.resolve(
-          toCrossJSONAsync(error, {
-            refs: new Map(),
-            plugins: serovalPlugins,
-          }),
-        ),
+        await toCrossJSONAsync(error, {
+          refs: new Map(),
+          plugins: serovalPlugins,
+        }),
       )
       const response = getResponse()
       return new Response(serializedError, {

@@ -1,10 +1,13 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, expectTypeOf, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import {
   bindSsrResponseToRequest,
   createSsrStreamResponse,
+  replaceSsrResponse,
+  stripSsrResponseBody,
+  type SsrResponse,
 } from '../src/ssr/handlerCallback'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { transformStreamWithRouter } from '../src/ssr/transformStreamWithRouter'
@@ -391,10 +394,8 @@ describe('serverSsr.cleanup', () => {
     expect(router.serverSsr).toBeUndefined()
 
     renderResult.resolve(lateStreamResponse)
-    await Promise.resolve()
-    await Promise.resolve()
+    await vi.waitFor(() => expect(cancelCalls).toBe(1))
     expect(cleanupCalls).toBe(1)
-    expect(cancelCalls).toBe(1)
     expect(router.serverSsr).toBeUndefined()
   })
 
@@ -479,11 +480,12 @@ describe('serverSsr.cleanup', () => {
     },
   )
 
-  test('request abort disposes a stream after response handoff', async () => {
+  test('request abort cancels a locked tagged stream after response handoff', async () => {
     const router = buildRouter()
     const requestController = new AbortController()
+    const cancellation = new Error('request disconnected')
     let cleanupCalls = 0
-    let cancelCalls = 0
+    const cancel = vi.fn(() => new Promise<void>(() => {}))
     const handler = createRequestHandler({
       createRouter: () => router,
       request: new Request('http://localhost/', {
@@ -502,24 +504,222 @@ describe('serverSsr.cleanup', () => {
         requestRouter,
         new Response(
           new ReadableStream({
-            cancel() {
-              cancelCalls++
-              return new Promise<void>(() => {})
-            },
+            cancel,
           }),
         ),
       )
     })
 
-    expect(response.body).not.toBeNull()
+    const reader = response.body!.getReader()
+    const read = expect(reader.read()).rejects.toBe(cancellation)
     expect(cleanupCalls).toBe(0)
-    requestController.abort(new Error('request disconnected'))
-    await Promise.resolve()
+    requestController.abort(cancellation)
 
-    expect(cleanupCalls).toBe(1)
-    expect(cancelCalls).toBe(1)
-    expect(router.serverSsr).toBeUndefined()
+    try {
+      await vi.waitFor(() => {
+        expect(cancel).toHaveBeenCalledWith(cancellation)
+      })
+      await read
+      expect(cleanupCalls).toBe(1)
+      expect(router.serverSsr).toBeUndefined()
+    } finally {
+      reader.releaseLock()
+    }
   })
+
+  test('request abort cancels a pre-enqueued plain stream after response handoff', async () => {
+    const router = buildRouter()
+    const requestController = new AbortController()
+    const cancellation = new Error('request disconnected')
+    const cancel = vi.fn()
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+    const handler = createRequestHandler({
+      createRouter: () => router,
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+    })
+
+    const response = await handler(() =>
+      Promise.resolve(
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new Uint8Array([1]))
+            },
+            cancel,
+          }),
+        ),
+      ),
+    )
+    const reader = response.body!.getReader()
+    requestController.abort(cancellation)
+
+    try {
+      await vi.waitFor(() => {
+        expect(cancel).toHaveBeenCalledWith(cancellation)
+      })
+      await expect(reader.read()).rejects.toBe(cancellation)
+      expect(consoleError).not.toHaveBeenCalled()
+    } finally {
+      reader.releaseLock()
+      consoleError.mockRestore()
+    }
+  })
+
+  test.each(['replace', 'strip'] as const)(
+    '%s remains Promise-returning without awaiting body cancellation',
+    async (operation) => {
+      const router = buildRouter()
+      attachRouterServerSsrUtils({ router, manifest: undefined })
+      const cancel = vi.fn(() => new Promise<void>(() => {}))
+      const result = createSsrStreamResponse(
+        router,
+        new Response(new ReadableStream({ cancel })),
+      )
+
+      const replacementPromise =
+        operation === 'replace'
+          ? replaceSsrResponse(result, new Response('replacement'), 'replaced')
+          : stripSsrResponseBody(result, 'stripped')
+
+      expectTypeOf(replacementPromise).toEqualTypeOf<Promise<SsrResponse>>()
+      expect(replacementPromise).toBeInstanceOf(Promise)
+      const replacement = await replacementPromise
+      expect(replacement.serverSsrCleanup).toBe('none')
+      expect(router.serverSsr).toBeUndefined()
+      await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
+    },
+  )
+
+  test('stream response disposal remains Promise-returning', async () => {
+    const router = buildRouter()
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+    const result = createSsrStreamResponse(
+      router,
+      new Response(new ReadableStream()),
+    )
+
+    if (result.serverSsrCleanup !== 'stream') {
+      throw new Error('Expected a stream response')
+    }
+
+    const disposal = result.dispose()
+
+    expectTypeOf(disposal).toEqualTypeOf<Promise<void>>()
+    expect(disposal).toBeInstanceOf(Promise)
+    await disposal
+  })
+
+  test('response body cancellation awaits upstream cancellation', async () => {
+    const router = buildRouter()
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+    const cancellation = deferred<void>()
+    const cancel = vi.fn(() => cancellation.promise)
+    const result = createSsrStreamResponse(
+      router,
+      new Response(new ReadableStream({ cancel })),
+    )
+
+    const cancelled = result.response.body!.cancel('consumer cancelled')
+    expect(cancel).toHaveBeenCalledWith('consumer cancelled')
+    let settled = false
+    void cancelled.then(() => {
+      settled = true
+    })
+    await Promise.resolve()
+    expect(settled).toBe(false)
+
+    cancellation.resolve()
+    await cancelled
+  })
+
+  test('an SSR source error propagates and cleans router state', async () => {
+    const router = buildRouter()
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+    const cleanup = router.serverSsr!.cleanup
+    const cleanupSpy = vi.fn(() => cleanup())
+    router.serverSsr!.cleanup = cleanupSpy
+    let source!: ReadableStreamDefaultController<Uint8Array>
+    const failure = new Error('renderer stream failed')
+    const result = createSsrStreamResponse(
+      router,
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            source = controller
+          },
+        }),
+      ),
+    )
+    const reader = result.response.body!.getReader()
+    const read = reader.read()
+
+    source.error(failure)
+
+    try {
+      await expect(read).rejects.toBe(failure)
+      expect(cleanupSpy).toHaveBeenCalledOnce()
+      expect(router.serverSsr).toBeUndefined()
+    } finally {
+      reader.releaseLock()
+    }
+  })
+
+  test.each(['replace', 'strip'] as const)(
+    '%s awaits custom asynchronous disposal',
+    async (operation) => {
+      const disposal = deferred<void>()
+      const result = {
+        response: new Response('stream'),
+        serverSsrCleanup: 'stream' as const,
+        dispose: vi.fn(() => disposal.promise),
+      }
+      const replacementPromise =
+        operation === 'replace'
+          ? replaceSsrResponse(result, new Response('replacement'), 'replaced')
+          : stripSsrResponseBody(result, 'stripped')
+
+      expect(replacementPromise).toBeInstanceOf(Promise)
+      await Promise.resolve()
+      expect(result.dispose).toHaveBeenCalledWith(
+        operation === 'replace' ? 'replaced' : 'stripped',
+      )
+
+      let settled = false
+      void replacementPromise.then(() => {
+        settled = true
+      })
+      await Promise.resolve()
+      expect(settled).toBe(false)
+
+      disposal.resolve()
+      const replacement = await replacementPromise
+      expect(replacement.serverSsrCleanup).toBe('none')
+    },
+  )
+
+  test.each(['replace', 'strip'] as const)(
+    '%s cancels an abandoned plain response body',
+    async (operation) => {
+      const cancel = vi.fn()
+      const result = new Response(new ReadableStream({ cancel }))
+
+      if (operation === 'replace') {
+        await replaceSsrResponse(
+          result,
+          new Response('replacement'),
+          'replaced',
+        )
+      } else {
+        await stripSsrResponseBody(result, 'stripped')
+      }
+
+      expect(cancel).toHaveBeenCalledOnce()
+    },
+  )
 
   test.each(['throw', 'reject'] as const)(
     'reports a custom stream disposal %s after request abort',
@@ -563,6 +763,46 @@ describe('serverSsr.cleanup', () => {
       expect(router.serverSsr).toBeUndefined()
     },
   )
+
+  test('immediately disposes a bodyless custom stream response', async () => {
+    const dispose = vi.fn(() => Promise.resolve())
+    const result = bindSsrResponseToRequest(
+      undefined,
+      {
+        response: new Response(null, { status: 204 }),
+        serverSsrCleanup: 'stream',
+        dispose,
+      },
+      new AbortController().signal,
+    )
+
+    expect(result).toMatchObject({ serverSsrCleanup: 'none' })
+    expect(result.response.status).toBe(204)
+    await vi.waitFor(() => {
+      expect(dispose).toHaveBeenCalledWith(undefined)
+    })
+  })
+
+  test('passes an existing request abort reason to a bodyless custom stream response', async () => {
+    const dispose = vi.fn(() => Promise.resolve())
+    const request = new AbortController()
+    const reason = new Error('request disconnected')
+    request.abort(reason)
+
+    bindSsrResponseToRequest(
+      undefined,
+      {
+        response: new Response(null, { status: 204 }),
+        serverSsrCleanup: 'stream',
+        dispose,
+      },
+      request.signal,
+    )
+
+    await vi.waitFor(() => {
+      expect(dispose).toHaveBeenCalledWith(reason)
+    })
+  })
 
   test('request handler defers cleanup for stream response metadata', async () => {
     const router = buildRouter()

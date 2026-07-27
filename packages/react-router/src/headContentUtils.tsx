@@ -24,25 +24,24 @@ function buildTagsFromMatches(
   assetCrossOrigin?: AssetCrossOriginConfig,
 ): Array<RouterManagedTag> {
   matches = _getAssetMatches(matches)
-  const routeMeta = matches
-    .map((match) => match.meta)
-    .filter((meta) => meta !== undefined)
-
   const resultMeta: Array<RouterManagedTag> = []
   const metaByAttribute: Record<string, true> = {}
   let title: RouterManagedTag | undefined
-  for (let i = routeMeta.length - 1; i >= 0; i--) {
-    const metas = routeMeta[i]!
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const metas = matches[i]!.meta
+    if (!metas) {
+      continue
+    }
     for (let j = metas.length - 1; j >= 0; j--) {
       const m = metas[j]
-      if (!m) continue
+      if (!m) {
+        continue
+      }
 
       if (m.title) {
-        if (!title) {
-          title = {
-            tag: 'title',
-            children: m.title,
-          }
+        title ??= {
+          tag: 'title',
+          children: m.title,
         }
       } else if ('script:ld+json' in m) {
         try {
@@ -62,9 +61,8 @@ function buildTagsFromMatches(
         if (attribute) {
           if (metaByAttribute[attribute]) {
             continue
-          } else {
-            metaByAttribute[attribute] = true
           }
+          metaByAttribute[attribute] = true
         }
 
         resultMeta.push({
@@ -93,23 +91,24 @@ function buildTagsFromMatches(
   }
   resultMeta.reverse()
 
-  const constructedLinks = matches
-    .flatMap((match) => match.links ?? [])
-    .filter((link) => link !== undefined)
-    .map((link) => ({
-      tag: 'link',
-      attrs: {
-        ...link,
-        nonce,
-      },
-    })) satisfies Array<RouterManagedTag>
-
   const manifest = router.ssr?.manifest
+  const constructedLinks: Array<RouterManagedTag> = []
   const manifestCssTags: Array<RouterManagedTag> = []
-  if (manifest) {
-    matches.forEach((match) => {
-      const css = manifest.routes[match.routeId]?.css
-      css?.forEach((link) => {
+  const preloadLinks: Array<RouterManagedTag> = []
+  const styles: Array<RouterManagedTag> = []
+  const headScripts: Array<RouterManagedTag> = []
+  for (const match of matches) {
+    for (const link of match.links ?? []) {
+      if (link) {
+        constructedLinks.push({
+          tag: 'link',
+          attrs: { ...link, nonce },
+        })
+      }
+    }
+    const manifestRoute = manifest?.routes[match.routeId]
+    if (manifestRoute) {
+      for (const link of manifestRoute.css ?? []) {
         const resolvedLink = resolveManifestCssLink(link)
         manifestCssTags.push({
           tag: 'link',
@@ -123,26 +122,8 @@ function buildTagsFromMatches(
             nonce,
           },
         })
-      })
-    })
-
-    if (manifest.inlineStyle) {
-      manifestCssTags.push({
-        tag: 'style',
-        attrs: {
-          ...manifest.inlineStyle.attrs,
-          nonce,
-        },
-        children: manifest.inlineStyle.children,
-        inlineCss: true,
-      })
-    }
-  }
-
-  const preloadLinks: Array<RouterManagedTag> = []
-  if (manifest) {
-    matches.forEach((match) => {
-      manifest.routes[match.routeId]?.preloads?.forEach((preload) => {
+      }
+      for (const preload of manifestRoute.preloads ?? []) {
         preloadLinks.push({
           tag: 'link',
           attrs: {
@@ -150,33 +131,41 @@ function buildTagsFromMatches(
             nonce,
           },
         })
-      })
-    })
+      }
+    }
+    for (const style of match.styles ?? []) {
+      if (style) {
+        const { children, ...attrs } = style
+        styles.push({
+          tag: 'style',
+          attrs: { ...attrs, nonce },
+          children: children as string | undefined,
+        })
+      }
+    }
+    for (const script of match.headScripts ?? []) {
+      if (script) {
+        const { children, ...attrs } = script
+        headScripts.push({
+          tag: 'script',
+          attrs: { ...attrs, nonce },
+          children: children as string | undefined,
+        })
+      }
+    }
   }
 
-  const styles = matches
-    .flatMap((match) => match.styles ?? [])
-    .filter((style) => style !== undefined)
-    .map(({ children, ...attrs }) => ({
+  if (manifest?.inlineStyle) {
+    manifestCssTags.push({
       tag: 'style',
       attrs: {
-        ...attrs,
+        ...manifest.inlineStyle.attrs,
         nonce,
       },
-      children: children as string | undefined,
-    })) satisfies Array<RouterManagedTag>
-
-  const headScripts = matches
-    .flatMap((match) => match.headScripts ?? [])
-    .filter((script) => script !== undefined)
-    .map(({ children, ...script }) => ({
-      tag: 'script',
-      attrs: {
-        ...script,
-        nonce,
-      },
-      children: children as string | undefined,
-    })) satisfies Array<RouterManagedTag>
+      children: manifest.inlineStyle.children,
+      inlineCss: true,
+    })
+  }
 
   const tags: Array<RouterManagedTag> = []
   appendUniqueUserTags(tags, resultMeta)

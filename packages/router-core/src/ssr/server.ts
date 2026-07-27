@@ -10,6 +10,7 @@ export {
   normalizeSsrResponse,
   replaceSsrResponse,
   stripSsrResponseBody,
+  _transferSsrResponse,
 } from './handlerCallback'
 export type {
   HandlerCallback,

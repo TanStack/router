@@ -87,9 +87,19 @@ test('a lazy pending component is offered while the eager loader is still pendin
     component: () => <h1>Index page</h1>,
   })
   const loader = createControlledPromise<void>()
+  const componentPreload = createControlledPromise<void>()
+  const pendingComponentPreload = createControlledPromise<void>()
+  const preloadComponent = vi.fn(() => componentPreload)
+  const preloadPendingComponent = vi.fn(() => pendingComponentPreload)
+  const Page = Object.assign(() => <h1>Page</h1>, {
+    preload: preloadComponent,
+  })
+  const Pending = Object.assign(() => <p role="status">Loading lazy page</p>, {
+    preload: preloadPendingComponent,
+  })
   const lazyPageOptions = createLazyRoute('/page')({
-    pendingComponent: () => <p role="status">Loading lazy page</p>,
-    component: () => <h1>Page</h1>,
+    pendingComponent: Pending,
+    component: Page,
   })
   const lazyOptions = createControlledPromise<typeof lazyPageOptions>()
   const pageRoute = createRoute({
@@ -121,6 +131,18 @@ test('a lazy pending component is offered while the eager loader is still pendin
 
     await act(async () => {
       lazyOptions.resolve(lazyPageOptions)
+      await Promise.resolve()
+    })
+
+    expect(preloadComponent).toHaveBeenCalledOnce()
+    expect(preloadPendingComponent).toHaveBeenCalledOnce()
+    expect(componentPreload.status).toBe('pending')
+    expect(pendingComponentPreload.status).toBe('pending')
+    expect(screen.getByRole('status')).toHaveTextContent('Loading default')
+
+    await act(async () => {
+      pendingComponentPreload.resolve()
+      await Promise.resolve()
     })
 
     expect(await screen.findByRole('status')).toHaveTextContent(
@@ -131,6 +153,7 @@ test('a lazy pending component is offered while the eager loader is still pendin
     ).not.toBeInTheDocument()
 
     await act(async () => {
+      componentPreload.resolve()
       loader.resolve()
       await navigation
     })
@@ -139,6 +162,8 @@ test('a lazy pending component is offered while the eager loader is still pendin
   } finally {
     await act(async () => {
       lazyOptions.resolve(lazyPageOptions)
+      componentPreload.resolve()
+      pendingComponentPreload.resolve()
       loader.resolve()
       await navigation
     })

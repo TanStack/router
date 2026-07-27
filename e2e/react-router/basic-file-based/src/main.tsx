@@ -24,7 +24,11 @@ const router = createRouter({
   defaultStaleTime: 5000,
   scrollRestoration: true,
   routeMasks: [mask],
+  unmaskOnReload: true,
 })
+
+// Test hook for browser-history integration tests in this fixture.
+;(window as any).__TSR_TEST_ROUTER__ = router
 
 // Register things for typesafety
 declare module '@tanstack/react-router' {

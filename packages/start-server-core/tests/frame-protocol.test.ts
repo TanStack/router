@@ -1,14 +1,18 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   FRAME_HEADER_SIZE,
+  MAX_FRAME_PAYLOAD_SIZE,
   FrameType,
   createMultiplexedStream,
-  encodeChunkFrame,
-  encodeEndFrame,
   encodeErrorFrame,
   encodeFrame,
   encodeJSONFrame,
 } from '../src/frame-protocol'
+
+const encodeChunkFrame = (streamId: number, chunk: Uint8Array) =>
+  encodeFrame(FrameType.CHUNK, streamId, chunk)
+const encodeEndFrame = (streamId: number) =>
+  encodeFrame(FrameType.END, streamId, new Uint8Array())
 
 describe('frame-protocol', () => {
   describe('encodeFrame', () => {
@@ -55,32 +59,13 @@ describe('frame-protocol', () => {
       const payload = frame.slice(FRAME_HEADER_SIZE)
       expect(new TextDecoder().decode(payload)).toBe(json)
     })
-  })
 
-  describe('encodeChunkFrame', () => {
-    it('should encode binary chunk with frame type CHUNK', () => {
-      const chunk = new Uint8Array([0xff, 0xfe, 0xfd])
-      const frame = encodeChunkFrame(123, chunk)
+    it('should reject payloads larger than the client decoder limit', () => {
+      const json = 'x'.repeat(MAX_FRAME_PAYLOAD_SIZE + 1)
 
-      const view = new DataView(frame.buffer)
-      expect(view.getUint8(0)).toBe(FrameType.CHUNK)
-      expect(view.getUint32(1, false)).toBe(123)
-      expect(view.getUint32(5, false)).toBe(3)
-
-      expect(frame.slice(FRAME_HEADER_SIZE)).toEqual(chunk)
-    })
-  })
-
-  describe('encodeEndFrame', () => {
-    it('should encode end frame with empty payload', () => {
-      const frame = encodeEndFrame(456)
-
-      expect(frame.length).toBe(FRAME_HEADER_SIZE)
-
-      const view = new DataView(frame.buffer)
-      expect(view.getUint8(0)).toBe(FrameType.END)
-      expect(view.getUint32(1, false)).toBe(456)
-      expect(view.getUint32(5, false)).toBe(0)
+      expect(() => encodeJSONFrame(json)).toThrow(
+        `Frame payload too large: ${json.length} bytes (max ${MAX_FRAME_PAYLOAD_SIZE})`,
+      )
     })
   })
 
@@ -109,19 +94,30 @@ describe('frame-protocol', () => {
       const payload = frame.slice(FRAME_HEADER_SIZE)
       expect(new TextDecoder().decode(payload)).toBe('Unknown error')
     })
+
+    it('should truncate error payloads to the client decoder limit', () => {
+      const frame = encodeErrorFrame(
+        1,
+        new Error('x'.repeat(MAX_FRAME_PAYLOAD_SIZE + 1)),
+      )
+      const view = new DataView(frame.buffer, frame.byteOffset)
+
+      expect(view.getUint32(5, false)).toBe(MAX_FRAME_PAYLOAD_SIZE)
+      expect(frame.length).toBe(FRAME_HEADER_SIZE + MAX_FRAME_PAYLOAD_SIZE)
+    })
   })
 
   describe('createMultiplexedStream', () => {
     it('should multiplex JSON stream only', async () => {
-      const jsonStream = new ReadableStream<string>({
+      const jsonStream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue('{"data":1}')
-          controller.enqueue('{"data":2}')
+          controller.enqueue(encodeJSONFrame('{"data":1}'))
+          controller.enqueue(encodeJSONFrame('{"data":2}'))
           controller.close()
         },
       })
 
-      const multiplexed = createMultiplexedStream(
+      const [multiplexed] = createMultiplexedStream(
         jsonStream,
         new Map(), // no raw streams
       )
@@ -145,9 +141,9 @@ describe('frame-protocol', () => {
     })
 
     it('should multiplex JSON and raw streams', async () => {
-      const jsonStream = new ReadableStream<string>({
+      const jsonStream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue('{"result":"ok"}')
+          controller.enqueue(encodeJSONFrame('{"result":"ok"}'))
           controller.close()
         },
       })
@@ -162,7 +158,7 @@ describe('frame-protocol', () => {
       const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
       rawStreams.set(5, rawStream)
 
-      const multiplexed = createMultiplexedStream(jsonStream, rawStreams)
+      const [multiplexed] = createMultiplexedStream(jsonStream, rawStreams)
 
       const reader = multiplexed.getReader()
       const chunks: Array<Uint8Array> = []
@@ -191,10 +187,10 @@ describe('frame-protocol', () => {
       let jsonCancelled = false
       let rawCancelled = false
 
-      const jsonStream = new ReadableStream<string>({
+      const jsonStream = new ReadableStream<Uint8Array>({
         async start(controller) {
           await new Promise((r) => setTimeout(r, 100))
-          controller.enqueue('{}\n')
+          controller.enqueue(encodeJSONFrame('{}\n'))
           controller.close()
         },
         cancel() {
@@ -216,7 +212,7 @@ describe('frame-protocol', () => {
       const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
       rawStreams.set(1, rawStream)
 
-      const multiplexed = createMultiplexedStream(jsonStream, rawStreams)
+      const [multiplexed] = createMultiplexedStream(jsonStream, rawStreams)
       const reader = multiplexed.getReader()
 
       // Cancel immediately before streams complete
@@ -224,8 +220,186 @@ describe('frame-protocol', () => {
       await reader.cancel()
 
       // Underlying reader.cancel should propagate to sources
-      expect(jsonCancelled).toBe(true)
-      expect(rawCancelled).toBe(true)
+      await vi.waitFor(() => {
+        expect(jsonCancelled).toBe(true)
+        expect(rawCancelled).toBe(true)
+      })
+    })
+
+    it('should cancel a registered raw stream with the output cancellation reason', async () => {
+      let rawCancelReason: unknown
+      const rawStream = new ReadableStream<Uint8Array>({
+        cancel(reason) {
+          rawCancelReason = reason
+        },
+      })
+      const [output, registerRaw] = createMultiplexedStream(
+        new ReadableStream<Uint8Array>(),
+        new Map(),
+      )
+      const reason = new Error('output cancelled')
+
+      registerRaw(1, rawStream)
+      await output.cancel(reason)
+
+      await vi.waitFor(() => {
+        expect(rawCancelReason).toBe(reason)
+      })
+    })
+
+    it('should isolate a reused raw stream failure from healthy frames', async () => {
+      const reusedStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array([1]))
+          controller.close()
+        },
+      })
+      const healthyStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new Uint8Array([3]))
+          controller.close()
+        },
+      })
+      const jsonStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encodeJSONFrame('{}'))
+          controller.close()
+        },
+      })
+      const reader = createMultiplexedStream(
+        jsonStream,
+        new Map([
+          [1, reusedStream],
+          [2, reusedStream],
+          [3, healthyStream],
+        ]),
+      )[0].getReader()
+      const frames: Array<Uint8Array> = []
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        frames.push(value)
+      }
+
+      const frameMetadata = frames.map((frame) => {
+        const view = new DataView(frame.buffer, frame.byteOffset)
+        return {
+          type: view.getUint8(0),
+          streamId: view.getUint32(1, false),
+        }
+      })
+
+      expect(frameMetadata).toContainEqual({
+        type: FrameType.JSON,
+        streamId: 0,
+      })
+      expect(frameMetadata).toContainEqual({
+        type: FrameType.CHUNK,
+        streamId: 1,
+      })
+      expect(frameMetadata).toContainEqual({
+        type: FrameType.END,
+        streamId: 1,
+      })
+      expect(frameMetadata).toContainEqual({
+        type: FrameType.ERROR,
+        streamId: 2,
+      })
+      expect(frameMetadata).toContainEqual({
+        type: FrameType.CHUNK,
+        streamId: 3,
+      })
+      expect(frameMetadata).toContainEqual({
+        type: FrameType.END,
+        streamId: 3,
+      })
+    })
+
+    it('should split oversized raw chunks into client-decodable frames', async () => {
+      const oversizedChunk = new Uint8Array(MAX_FRAME_PAYLOAD_SIZE + 1)
+      oversizedChunk[0] = 1
+      oversizedChunk[MAX_FRAME_PAYLOAD_SIZE] = 2
+      const rawStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(oversizedChunk)
+          controller.close()
+        },
+      })
+      const jsonStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close()
+        },
+      })
+      const reader = createMultiplexedStream(
+        jsonStream,
+        new Map([[1, rawStream]]),
+      )[0].getReader()
+      const frames: Array<Uint8Array> = []
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        frames.push(value)
+      }
+
+      const chunkFrames = frames.filter((frame) => {
+        return frame[0] === FrameType.CHUNK
+      })
+      expect(chunkFrames).toHaveLength(2)
+      expect(
+        chunkFrames.map((frame) => {
+          return new DataView(frame.buffer, frame.byteOffset).getUint32(
+            5,
+            false,
+          )
+        }),
+      ).toEqual([MAX_FRAME_PAYLOAD_SIZE, 1])
+      expect(chunkFrames[0]![FRAME_HEADER_SIZE]).toBe(1)
+      expect(chunkFrames[1]![FRAME_HEADER_SIZE]).toBe(2)
+      expect(frames.at(-1)?.[0]).toBe(FrameType.END)
+    })
+
+    it('should stop pulling inputs while the output is backpressured', async () => {
+      let pulls = 0
+      let rawCancelled = false
+      const rawStream = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          pulls++
+          controller.enqueue(new Uint8Array(1024))
+          if (pulls === 100) {
+            controller.close()
+          }
+        },
+        cancel() {
+          rawCancelled = true
+        },
+      })
+
+      const jsonStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close()
+        },
+      })
+      const [multiplexed] = createMultiplexedStream(
+        jsonStream,
+        new Map([[1, rawStream]]),
+      )
+
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+      // One frame may be queued, one held by the pump, and one prefetched by
+      // the input stream. The remaining chunks must wait for output demand.
+      expect(pulls).toBeLessThanOrEqual(3)
+
+      await multiplexed.cancel()
+      await vi.waitFor(() => {
+        expect(rawCancelled).toBe(true)
+      })
     })
 
     it('should interleave multiple raw streams correctly', async () => {
@@ -235,9 +409,9 @@ describe('frame-protocol', () => {
       const gate1 = new Promise<void>((r) => (resolve1 = r))
       const gate2 = new Promise<void>((r) => (resolve2 = r))
 
-      const jsonStream = new ReadableStream<string>({
+      const jsonStream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue('{"streams":[1,2]}')
+          controller.enqueue(encodeJSONFrame('{"streams":[1,2]}'))
           controller.close()
         },
       })
@@ -264,7 +438,7 @@ describe('frame-protocol', () => {
       rawStreams.set(1, rawStream1)
       rawStreams.set(2, rawStream2)
 
-      const multiplexed = createMultiplexedStream(jsonStream, rawStreams)
+      const [multiplexed] = createMultiplexedStream(jsonStream, rawStreams)
       const reader = multiplexed.getReader()
 
       const chunks: Array<Uint8Array> = []
@@ -301,42 +475,32 @@ describe('frame-protocol', () => {
     })
 
     it('should handle late stream registration', async () => {
-      const jsonStream = new ReadableStream<string>({
+      let jsonController!: ReadableStreamDefaultController<Uint8Array>
+      const jsonStream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue('{"ref":99}')
-          controller.close()
+          jsonController = controller
+          controller.enqueue(encodeJSONFrame('{"ref":99}'))
         },
       })
 
-      // Late stream source that emits a registration after a delay
-      // (ensures framed protocol doesn't miss late-stream messages)
       let resolveGate: () => void
       const gate = new Promise<void>((r) => (resolveGate = r))
-
-      const lateStreamSource = new ReadableStream<{
-        id: number
-        stream: ReadableStream<Uint8Array>
-      }>({
-        async start(controller) {
-          await gate
-          controller.enqueue({
-            id: 99,
-            stream: new ReadableStream<Uint8Array>({
-              start(c) {
-                c.enqueue(new Uint8Array([0xaa, 0xbb]))
-                c.close()
-              },
-            }),
-          })
-          controller.close()
-        },
-      })
-
-      const multiplexed = createMultiplexedStream(
+      const [multiplexed, registerRaw] = createMultiplexedStream(
         jsonStream,
         new Map(),
-        lateStreamSource,
       )
+      const register = gate.then(() => {
+        registerRaw(
+          99,
+          new ReadableStream<Uint8Array>({
+            start(controller) {
+              controller.enqueue(new Uint8Array([0xaa, 0xbb]))
+              controller.close()
+            },
+          }),
+        )
+        jsonController.close()
+      })
 
       const reader = multiplexed.getReader()
       const chunks: Array<Uint8Array> = []
@@ -347,6 +511,7 @@ describe('frame-protocol', () => {
 
       // Release gate to let late stream arrive
       resolveGate!()
+      await register
 
       // Read remaining frames
       while (true) {
@@ -378,37 +543,26 @@ describe('frame-protocol', () => {
       let startJson: () => void
       const jsonGate = new Promise<void>((r) => (startJson = r))
 
-      const jsonStream = new ReadableStream<string>({
+      const jsonStream = new ReadableStream<Uint8Array>({
         async start(controller) {
           await jsonGate
-          controller.enqueue('{"ref":1}')
+          controller.enqueue(encodeJSONFrame('{"ref":1}'))
           controller.close()
         },
       })
 
-      // Late stream registers immediately (before JSON starts)
-      const lateStreamSource = new ReadableStream<{
-        id: number
-        stream: ReadableStream<Uint8Array>
-      }>({
-        start(controller) {
-          controller.enqueue({
-            id: 1,
-            stream: new ReadableStream<Uint8Array>({
-              start(c) {
-                c.enqueue(new Uint8Array([0x01]))
-                c.close()
-              },
-            }),
-          })
-          controller.close()
-        },
-      })
-
-      const multiplexed = createMultiplexedStream(
+      const [multiplexed, registerRaw] = createMultiplexedStream(
         jsonStream,
         new Map(),
-        lateStreamSource,
+      )
+      registerRaw(
+        1,
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array([0x01]))
+            controller.close()
+          },
+        }),
       )
 
       const reader = multiplexed.getReader()
@@ -436,46 +590,37 @@ describe('frame-protocol', () => {
     })
 
     it('should handle multiple late stream registrations', async () => {
-      const jsonStream = new ReadableStream<string>({
+      let jsonController!: ReadableStreamDefaultController<Uint8Array>
+      const jsonStream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue('{}')
-          controller.close()
+          jsonController = controller
+          controller.enqueue(encodeJSONFrame('{}'))
         },
       })
 
-      const lateStreamSource = new ReadableStream<{
-        id: number
-        stream: ReadableStream<Uint8Array>
-      }>({
-        start(controller) {
-          // Register two streams
-          controller.enqueue({
-            id: 10,
-            stream: new ReadableStream<Uint8Array>({
-              start(c) {
-                c.enqueue(new Uint8Array([10]))
-                c.close()
-              },
-            }),
-          })
-          controller.enqueue({
-            id: 20,
-            stream: new ReadableStream<Uint8Array>({
-              start(c) {
-                c.enqueue(new Uint8Array([20]))
-                c.close()
-              },
-            }),
-          })
-          controller.close()
-        },
-      })
-
-      const multiplexed = createMultiplexedStream(
+      const [multiplexed, registerRaw] = createMultiplexedStream(
         jsonStream,
         new Map(),
-        lateStreamSource,
       )
+      registerRaw(
+        10,
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array([10]))
+            controller.close()
+          },
+        }),
+      )
+      registerRaw(
+        20,
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array([20]))
+            controller.close()
+          },
+        }),
+      )
+      jsonController.close()
 
       const reader = multiplexed.getReader()
       const chunks: Array<Uint8Array> = []
@@ -504,11 +649,11 @@ describe('frame-protocol', () => {
       let resolveJson: () => void
       const jsonGate = new Promise<void>((r) => (resolveJson = r))
 
-      const jsonStream = new ReadableStream<string>({
+      const jsonStream = new ReadableStream<Uint8Array>({
         async start(controller) {
-          controller.enqueue('{"first":true}')
+          controller.enqueue(encodeJSONFrame('{"first":true}'))
           await jsonGate
-          controller.enqueue('{"second":true}')
+          controller.enqueue(encodeJSONFrame('{"second":true}'))
           controller.close()
         },
       })
@@ -524,29 +669,18 @@ describe('frame-protocol', () => {
       const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
       rawStreams.set(1, initialRaw)
 
-      // Late stream arrives after first JSON
-      const lateStreamSource = new ReadableStream<{
-        id: number
-        stream: ReadableStream<Uint8Array>
-      }>({
-        start(controller) {
-          controller.enqueue({
-            id: 2,
-            stream: new ReadableStream<Uint8Array>({
-              start(c) {
-                c.enqueue(new Uint8Array([2]))
-                c.close()
-              },
-            }),
-          })
-          controller.close()
-        },
-      })
-
-      const multiplexed = createMultiplexedStream(
+      const [multiplexed, registerRaw] = createMultiplexedStream(
         jsonStream,
         rawStreams,
-        lateStreamSource,
+      )
+      registerRaw(
+        2,
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.enqueue(new Uint8Array([2]))
+            controller.close()
+          },
+        }),
       )
 
       const reader = multiplexed.getReader()
@@ -583,9 +717,9 @@ describe('frame-protocol', () => {
     })
 
     it('should handle raw stream error', async () => {
-      const jsonStream = new ReadableStream<string>({
+      const jsonStream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue('{}')
+          controller.enqueue(encodeJSONFrame('{}'))
           controller.close()
         },
       })
@@ -599,7 +733,7 @@ describe('frame-protocol', () => {
       const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
       rawStreams.set(10, errorStream)
 
-      const multiplexed = createMultiplexedStream(jsonStream, rawStreams)
+      const [multiplexed] = createMultiplexedStream(jsonStream, rawStreams)
 
       const reader = multiplexed.getReader()
       const chunks: Array<Uint8Array> = []
@@ -631,11 +765,11 @@ describe('frame-protocol', () => {
     })
 
     it('should propagate JSON stream error to output (fatal)', async () => {
-      let errorController: ReadableStreamDefaultController<string>
-      const jsonStream = new ReadableStream<string>({
+      let errorController: ReadableStreamDefaultController<Uint8Array>
+      const jsonStream = new ReadableStream<Uint8Array>({
         start(controller) {
           errorController = controller
-          controller.enqueue('{"first":true}')
+          controller.enqueue(encodeJSONFrame('{"first":true}'))
         },
       })
 
@@ -651,7 +785,7 @@ describe('frame-protocol', () => {
       const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
       rawStreams.set(1, rawStream)
 
-      const multiplexed = createMultiplexedStream(jsonStream, rawStreams)
+      const [multiplexed] = createMultiplexedStream(jsonStream, rawStreams)
       const reader = multiplexed.getReader()
 
       // Should be able to read first JSON frame
@@ -669,9 +803,9 @@ describe('frame-protocol', () => {
 
     it('should not hang when raw stream never ends', async () => {
       // This tests the fix for hanging requests
-      const jsonStream = new ReadableStream<string>({
+      const jsonStream = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue('{}')
+          controller.enqueue(encodeJSONFrame('{}'))
           controller.close()
         },
       })
@@ -690,7 +824,7 @@ describe('frame-protocol', () => {
       const rawStreams = new Map<number, ReadableStream<Uint8Array>>()
       rawStreams.set(1, neverEndingStream)
 
-      const multiplexed = createMultiplexedStream(jsonStream, rawStreams)
+      const [multiplexed] = createMultiplexedStream(jsonStream, rawStreams)
       const reader = multiplexed.getReader()
 
       // Read first two frames (JSON and CHUNK)
@@ -704,7 +838,9 @@ describe('frame-protocol', () => {
       await reader.cancel()
 
       // The underlying raw stream should be cancelled
-      expect(rawStreamCancelled).toBe(true)
+      await vi.waitFor(() => {
+        expect(rawStreamCancelled).toBe(true)
+      })
     })
   })
 })

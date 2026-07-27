@@ -2,11 +2,16 @@
  * Client-side frame decoder for multiplexed responses.
  *
  * Decodes binary frame protocol and reconstructs:
- * - JSON stream (NDJSON lines for seroval)
+ * - JSON stream (one complete Seroval value per frame)
  * - Raw streams (binary data as ReadableStream<Uint8Array>)
  */
 
-import { FRAME_HEADER_SIZE, FrameType } from '../constants'
+import {
+  FRAME_HEADER_SIZE,
+  FrameType,
+  MAX_FRAMED_STREAMS,
+  MAX_FRAME_PAYLOAD_SIZE,
+} from '../constants'
 
 /** Cached TextDecoder for frame decoding */
 const textDecoder = new TextDecoder()
@@ -14,11 +19,15 @@ const textDecoder = new TextDecoder()
 /** Shared empty buffer for empty buffer case - avoids allocation */
 const EMPTY_BUFFER = new Uint8Array(0)
 
-/** Hardening limits to prevent memory/CPU DoS */
-const MAX_FRAME_PAYLOAD_SIZE = 16 * 1024 * 1024 // 16MiB
-const MAX_BUFFERED_BYTES = 32 * 1024 * 1024 // 32MiB
-const MAX_STREAMS = 1024
-const MAX_FRAMES = 100_000 // Limit total frames to prevent CPU DoS
+const MAX_QUEUED_BYTES =
+  FRAME_HEADER_SIZE + MAX_FRAME_PAYLOAD_SIZE * 2
+
+type RawStreamState = [
+  stream: ReadableStream<Uint8Array>,
+  controller: ReadableStreamDefaultController<Uint8Array>,
+  terminal: boolean | undefined,
+  queuedBytes: number,
+]
 
 /**
  * Result of frame decoding.
@@ -26,7 +35,7 @@ const MAX_FRAMES = 100_000 // Limit total frames to prevent CPU DoS
 export interface FrameDecoderResult {
   /** Gets or creates a raw stream by ID (for use by deserialize plugin) */
   getOrCreateStream: (id: number) => ReadableStream<Uint8Array>
-  /** Stream of JSON strings (NDJSON lines) */
+  /** Stream of complete JSON strings */
   jsonChunks: ReadableStream<string>
 }
 
@@ -39,167 +48,138 @@ export interface FrameDecoderResult {
 export function createFrameDecoder(
   input: ReadableStream<Uint8Array>,
 ): FrameDecoderResult {
-  const streamControllers = new Map<
-    number,
-    ReadableStreamDefaultController<Uint8Array>
-  >()
-  const streams = new Map<number, ReadableStream<Uint8Array>>()
-  const cancelledStreamIds = new Set<number>()
+  const reader = input.getReader()
+  const streams = new Map<number, RawStreamState>()
 
-  let cancelled = false as boolean
-  let inputReader: ReadableStreamReader<Uint8Array> | null = null
-  let frameCount = 0
+  let stopped: [unknown] | undefined
+  let queuedBytes = 0
 
-  let jsonController!: ReadableStreamDefaultController<string>
-  const jsonChunks = new ReadableStream<string>({
-    start(controller) {
-      jsonController = controller
-    },
-    cancel() {
-      cancelled = true
-      try {
-        inputReader?.cancel()
-      } catch {
-        // Ignore
+  const updateQueuedBytes = <T>(
+    controller: ReadableStreamDefaultController<T>,
+    previous: number,
+  ): number => {
+    const next = MAX_QUEUED_BYTES - controller.desiredSize!
+    queuedBytes += next - previous
+    return next
+  }
+
+  const assertQueueBudget = (): void => {
+    if (queuedBytes > MAX_QUEUED_BYTES) {
+      throw new Error(
+        `Framed response queue exceeded ${MAX_QUEUED_BYTES} bytes`,
+      )
+    }
+  }
+
+  const errorStream = (state: RawStreamState, error: unknown): void => {
+    queuedBytes -= state[3]
+    state[3] = 0
+    state[2] = true
+    state[1].error(error)
+  }
+
+  const errorActiveStreams = (error: unknown): void => {
+    for (const state of streams.values()) {
+      if (!state[2]) {
+        errorStream(state, error)
       }
+    }
+  }
 
-      streamControllers.forEach((ctrl) => {
-        try {
-          ctrl.error(new Error('Framed response cancelled'))
-        } catch {
-          // Ignore
-        }
-      })
-      streamControllers.clear()
-      streams.clear()
-      cancelledStreamIds.clear()
-    },
-  })
-
-  /**
-   * Gets or creates a stream for a given stream ID.
-   * Called by deserialize plugin when it encounters a RawStream reference.
-   */
-  function getOrCreateStream(id: number): ReadableStream<Uint8Array> {
+  function getOrCreateState(id: number): RawStreamState {
     const existing = streams.get(id)
     if (existing) {
       return existing
     }
 
-    // If we already received an END/ERROR for this streamId, returning a fresh stream
-    // would hang consumers. Return an already-closed stream instead.
-    if (cancelledStreamIds.has(id)) {
-      return new ReadableStream<Uint8Array>({
-        start(controller) {
-          controller.close()
-        },
-      })
-    }
-
-    if (streams.size >= MAX_STREAMS) {
+    if (streams.size >= MAX_FRAMED_STREAMS) {
       throw new Error(
-        `Too many raw streams in framed response (max ${MAX_STREAMS})`,
+        `Too many raw streams in framed response (max ${MAX_FRAMED_STREAMS})`,
       )
     }
 
-    const stream = new ReadableStream<Uint8Array>({
-      start(ctrl) {
-        streamControllers.set(id, ctrl)
+    const terminal = stopped
+    // Assigned after stream construction so its callbacks can close over it.
+    // eslint-disable-next-line prefer-const
+    let state!: RawStreamState
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const stream = new ReadableStream<Uint8Array>(
+      {
+        start(ctrl) {
+          controller = ctrl
+          if (terminal) {
+            ctrl.error(terminal[0])
+          }
+        },
+        cancel() {
+          queuedBytes -= state[3]
+          state[3] = 0
+          state[2] = true
+        },
+        pull() {
+          state[3] = updateQueuedBytes(controller, state[3])
+          if (state[2] && !state[3]) {
+            controller.close()
+          }
+        },
       },
-      cancel() {
-        cancelledStreamIds.add(id)
-        streamControllers.delete(id)
-        streams.delete(id)
+      {
+        highWaterMark: MAX_QUEUED_BYTES,
+        size(chunk) {
+          return FRAME_HEADER_SIZE + chunk.byteLength
+        },
       },
-    })
-    streams.set(id, stream)
-    return stream
+    )
+    state = [stream, controller, !!terminal, 0]
+    streams.set(id, state)
+    return state
   }
 
-  /**
-   * Ensures stream exists and returns its controller for enqueuing data.
-   * Used for CHUNK frames where we need to ensure stream is created.
-   */
-  function ensureController(
-    id: number,
-  ): ReadableStreamDefaultController<Uint8Array> | undefined {
-    getOrCreateStream(id)
-    return streamControllers.get(id)
+  function getOrCreateStream(id: number): ReadableStream<Uint8Array> {
+    return getOrCreateState(id)[0]
   }
+
+  let jsonController!: ReadableStreamDefaultController<string>
+  let queuedJSONBytes = 0
+  const jsonChunks = new ReadableStream<string>(
+    {
+      start(controller) {
+        jsonController = controller
+      },
+      cancel(reason) {
+        const error = reason ?? new Error('Framed response cancelled')
+        stopped = [error]
+        errorActiveStreams(error)
+        streams.clear()
+        return reader.cancel(reason).catch(() => {})
+      },
+      pull() {
+        queuedJSONBytes = updateQueuedBytes(jsonController, queuedJSONBytes)
+      },
+    },
+    {
+      highWaterMark: MAX_QUEUED_BYTES,
+      size(value) {
+        return FRAME_HEADER_SIZE + value.length * 2
+      },
+    },
+  )
 
   // Process frames asynchronously
   ;(async () => {
-    const reader = input.getReader()
-    inputReader = reader
-
     const bufferList: Array<Uint8Array> = []
     let totalLength = 0
-
-    /**
-     * Reads header bytes from buffer chunks without flattening.
-     * Returns header data or null if not enough bytes available.
-     */
-    function readHeader(): {
-      type: number
-      streamId: number
-      length: number
-    } | null {
-      if (totalLength < FRAME_HEADER_SIZE) return null
-
-      const first = bufferList[0]!
-
-      // Fast path: header fits entirely in first chunk (common case)
-      if (first.length >= FRAME_HEADER_SIZE) {
-        const type = first[0]!
-        const streamId =
-          ((first[1]! << 24) |
-            (first[2]! << 16) |
-            (first[3]! << 8) |
-            first[4]!) >>>
-          0
-        const length =
-          ((first[5]! << 24) |
-            (first[6]! << 16) |
-            (first[7]! << 8) |
-            first[8]!) >>>
-          0
-        return { type, streamId, length }
-      }
-
-      // Slow path: header spans multiple chunks - flatten header bytes only
-      const headerBytes = new Uint8Array(FRAME_HEADER_SIZE)
-      let offset = 0
-      let remaining = FRAME_HEADER_SIZE
-      for (let i = 0; i < bufferList.length && remaining > 0; i++) {
-        const chunk = bufferList[i]!
-        const toCopy = Math.min(chunk.length, remaining)
-        headerBytes.set(chunk.subarray(0, toCopy), offset)
-        offset += toCopy
-        remaining -= toCopy
-      }
-
-      const type = headerBytes[0]!
-      const streamId =
-        ((headerBytes[1]! << 24) |
-          (headerBytes[2]! << 16) |
-          (headerBytes[3]! << 8) |
-          headerBytes[4]!) >>>
-        0
-      const length =
-        ((headerBytes[5]! << 24) |
-          (headerBytes[6]! << 16) |
-          (headerBytes[7]! << 8) |
-          headerBytes[8]!) >>>
-        0
-
-      return { type, streamId, length }
-    }
+    let pendingType = -1
+    let pendingStreamId = 0
+    let pendingLength = 0
 
     /**
      * Flattens buffer list into single Uint8Array and removes from list.
      */
     function extractFlattened(count: number): Uint8Array {
-      if (count === 0) return EMPTY_BUFFER
+      if (count === 0) {
+        return EMPTY_BUFFER
+      }
 
       // Fast path: the requested bytes are fully contained in the first buffered
       // chunk (the common case — most frames arrive within a single network
@@ -207,8 +187,8 @@ export function createFrameDecoder(
       // copying `count` bytes. The view shares the chunk's backing ArrayBuffer,
       // which is safe because buffered chunks are never mutated in place after
       // being read from the network.
-      const first = bufferList[0]
-      if (first && first.length >= count) {
+      const first = bufferList[0]!
+      if (first.length >= count) {
         const result = first.subarray(0, count)
         if (first.length === count) {
           bufferList.shift()
@@ -224,9 +204,8 @@ export function createFrameDecoder(
       let offset = 0
       let remaining = count
 
-      while (remaining > 0 && bufferList.length > 0) {
-        const chunk = bufferList[0]
-        if (!chunk) break
+      while (remaining > 0) {
+        const chunk = bufferList[0]!
         const toCopy = Math.min(chunk.length, remaining)
         result.set(chunk.subarray(0, toCopy), offset)
 
@@ -248,110 +227,111 @@ export function createFrameDecoder(
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const { done, value } = await reader.read()
-        if (cancelled) break
-        if (done) break
-
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-        if (!value) continue
+        if (stopped) {
+          break
+        }
+        if (done) {
+          break
+        }
 
         // Append incoming chunk to buffer list
-        if (totalLength + value.length > MAX_BUFFERED_BYTES) {
-          throw new Error(
-            `Framed response buffer exceeded ${MAX_BUFFERED_BYTES} bytes`,
-          )
-        }
         bufferList.push(value)
         totalLength += value.length
 
         // Parse complete frames from buffer
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
         while (true) {
-          const header = readHeader()
-          if (!header) break // Not enough bytes for header
-
-          const { type, streamId, length } = header
-
-          if (
-            type !== FrameType.JSON &&
-            type !== FrameType.CHUNK &&
-            type !== FrameType.END &&
-            type !== FrameType.ERROR
-          ) {
-            throw new Error(`Unknown frame type: ${type}`)
-          }
-
-          // Enforce stream id conventions: JSON uses streamId 0, raw streams use non-zero ids
-          if (type === FrameType.JSON) {
-            if (streamId !== 0) {
-              throw new Error('Invalid JSON frame streamId (expected 0)')
+          if (pendingType < 0) {
+            if (totalLength < FRAME_HEADER_SIZE) {
+              break
             }
-          } else {
-            if (streamId === 0) {
-              throw new Error('Invalid raw frame streamId (expected non-zero)')
+
+            const header = extractFlattened(FRAME_HEADER_SIZE)
+            pendingType = header[0]!
+            pendingStreamId =
+              ((header[1]! << 24) |
+                (header[2]! << 16) |
+                (header[3]! << 8) |
+                header[4]!) >>>
+              0
+            pendingLength =
+              ((header[5]! << 24) |
+                (header[6]! << 16) |
+                (header[7]! << 8) |
+                header[8]!) >>>
+              0
+
+            if (pendingType > FrameType.ERROR) {
+              throw new Error(`Unknown frame type: ${pendingType}`)
+            }
+
+            // JSON uses stream ID 0; raw streams use non-zero IDs.
+            if (
+              pendingType === FrameType.JSON
+                ? pendingStreamId !== 0
+                : pendingStreamId === 0
+            ) {
+              throw new Error(
+                pendingType === FrameType.JSON
+                  ? 'Invalid JSON frame streamId (expected 0)'
+                  : 'Invalid raw frame streamId (expected non-zero)',
+              )
+            }
+
+            if (pendingLength > MAX_FRAME_PAYLOAD_SIZE) {
+              throw new Error(
+                `Frame payload too large: ${pendingLength} bytes (max ${MAX_FRAME_PAYLOAD_SIZE})`,
+              )
             }
           }
 
-          if (length > MAX_FRAME_PAYLOAD_SIZE) {
-            throw new Error(
-              `Frame payload too large: ${length} bytes (max ${MAX_FRAME_PAYLOAD_SIZE})`,
-            )
+          if (totalLength < pendingLength) {
+            break
           }
 
-          const frameSize = FRAME_HEADER_SIZE + length
-          if (totalLength < frameSize) break // Wait for more data
-
-          if (++frameCount > MAX_FRAMES) {
-            throw new Error(
-              `Too many frames in framed response (max ${MAX_FRAMES})`,
-            )
-          }
-
-          // Extract and consume header bytes
-          extractFlattened(FRAME_HEADER_SIZE)
-
-          // Extract payload
-          const payload = extractFlattened(length)
+          const type = pendingType
+          const streamId = pendingStreamId
+          pendingType = -1
+          const payload = extractFlattened(pendingLength)
 
           // Process frame by type
           switch (type) {
             case FrameType.JSON: {
-              try {
-                jsonController.enqueue(textDecoder.decode(payload))
-              } catch {
-                // JSON stream may be cancelled/closed
-              }
+              const value = textDecoder.decode(payload)
+              jsonController.enqueue(value)
+              queuedJSONBytes = updateQueuedBytes(
+                jsonController,
+                queuedJSONBytes,
+              )
+              assertQueueBudget()
               break
             }
 
             case FrameType.CHUNK: {
-              const ctrl = ensureController(streamId)
-              if (ctrl) {
-                ctrl.enqueue(payload)
+              const state = getOrCreateState(streamId)
+              if (!state[2]) {
+                state[1].enqueue(payload.slice())
+                state[3] = updateQueuedBytes(state[1], state[3])
+                assertQueueBudget()
               }
               break
             }
 
             case FrameType.END: {
-              const ctrl = ensureController(streamId)
-              cancelledStreamIds.add(streamId)
-              if (ctrl) {
-                try {
-                  ctrl.close()
-                } catch {
-                  // Already closed
+              const state = getOrCreateState(streamId)
+              if (!state[2]) {
+                state[2] = true
+                if (!state[3]) {
+                  state[1].close()
                 }
-                streamControllers.delete(streamId)
               }
               break
             }
 
             case FrameType.ERROR: {
-              const ctrl = ensureController(streamId)
-              cancelledStreamIds.add(streamId)
-              if (ctrl) {
-                const message = textDecoder.decode(payload)
-                ctrl.error(new Error(message))
-                streamControllers.delete(streamId)
+              const state = getOrCreateState(streamId)
+              if (!state[2]) {
+                errorStream(state, new Error(textDecoder.decode(payload)))
               }
               break
             }
@@ -359,48 +339,30 @@ export function createFrameDecoder(
         }
       }
 
-      if (totalLength !== 0) {
+      if (stopped) {
+        return
+      }
+
+      if (pendingType >= 0 || totalLength) {
         throw new Error('Incomplete frame at end of framed response')
       }
 
-      // Close JSON stream when done
-      try {
-        jsonController.close()
-      } catch {
-        // JSON stream may be cancelled/closed
-      }
+      const missingEnd = new Error(
+        'Framed response ended before raw stream END',
+      )
+      stopped = [missingEnd]
+      errorActiveStreams(missingEnd)
 
-      // Close any remaining streams (shouldn't happen in normal operation)
-      streamControllers.forEach((ctrl) => {
-        try {
-          ctrl.close()
-        } catch {
-          // Already closed
-        }
-      })
-      streamControllers.clear()
+      // Close JSON stream when done
+      jsonController.close()
     } catch (error) {
+      stopped = [error]
       // Error reading - propagate to all streams
-      try {
-        jsonController.error(error)
-      } catch {
-        // Already errored/closed
-      }
-      streamControllers.forEach((ctrl) => {
-        try {
-          ctrl.error(error)
-        } catch {
-          // Already errored/closed
-        }
-      })
-      streamControllers.clear()
+      jsonController.error(error)
+      errorActiveStreams(error)
+      void reader.cancel(error).catch(() => {})
     } finally {
-      try {
-        reader.releaseLock()
-      } catch {
-        // Ignore
-      }
-      inputReader = null
+      reader.releaseLock()
     }
   })()
 

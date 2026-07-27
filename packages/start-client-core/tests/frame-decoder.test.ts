@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createFrameDecoder } from '../src/client-rpc/frame-decoder'
-import { FRAME_HEADER_SIZE, FrameType } from '../src/constants'
+import {
+  FRAME_HEADER_SIZE,
+  MAX_FRAME_PAYLOAD_SIZE,
+  MAX_FRAMED_STREAMS,
+  FrameType,
+} from '../src/constants'
 
 /**
  * Helper to encode a frame for testing
@@ -96,7 +101,7 @@ describe('frame-decoder', () => {
       const view = new DataView(headerOnly.buffer)
       view.setUint8(0, FrameType.JSON)
       view.setUint32(1, 0, false)
-      view.setUint32(5, 16 * 1024 * 1024 + 1, false)
+      view.setUint32(5, MAX_FRAME_PAYLOAD_SIZE + 1, false)
 
       const input = new ReadableStream<Uint8Array>({
         start(controller) {
@@ -131,26 +136,150 @@ describe('frame-decoder', () => {
       await expect(reader.read()).rejects.toThrow('Incomplete frame')
     })
 
-    it('should cancel input when jsonChunks cancelled', async () => {
-      let cancelled = false
+    it('should error a raw stream that reaches transport EOF without END', async () => {
+      const chunk = encodeChunkFrame(1, new Uint8Array([1, 2, 3]))
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(chunk)
+          controller.close()
+        },
+      })
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const rawReader = getOrCreateStream(1).getReader()
+
+      await expect(jsonChunks.getReader().read()).resolves.toEqual({
+        done: true,
+        value: undefined,
+      })
+      await expect(rawReader.read()).rejects.toThrow(
+        'ended before raw stream END',
+      )
+    })
+
+    it('should error an unknown raw stream requested after transport EOF', async () => {
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
+        new ReadableStream<Uint8Array>({
+          start(controller) {
+            controller.close()
+          },
+        }),
+      )
+      await jsonChunks.getReader().read()
+
+      const read = getOrCreateStream(1).getReader().read()
+      const result = await Promise.race([
+        read.then(
+          () => undefined,
+          (error: unknown) => error,
+        ),
+        new Promise<'pending'>((resolve) => {
+          setTimeout(() => resolve('pending'), 0)
+        }),
+      ])
+
+      expect(result).toBeInstanceOf(Error)
+      expect((result as Error).message).toContain('ended before raw stream END')
+    })
+
+    it('should deliver a raw chunk to an already waiting reader', async () => {
+      let inputController!: ReadableStreamDefaultController<Uint8Array>
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          inputController = controller
+        },
+      })
+      const { getOrCreateStream } = createFrameDecoder(input)
+      const reader = getOrCreateStream(1).getReader()
+      const firstRead = reader.read()
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      inputController.enqueue(encodeChunkFrame(1, new Uint8Array([1, 2, 3])))
+      inputController.enqueue(encodeEndFrame(1))
+      inputController.close()
+
+      await expect(firstRead).resolves.toEqual({
+        done: false,
+        value: new Uint8Array([1, 2, 3]),
+      })
+      await expect(reader.read()).resolves.toEqual({
+        done: true,
+        value: undefined,
+      })
+    })
+
+    it('should preserve a queued empty raw chunk before END', async () => {
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encodeChunkFrame(1, new Uint8Array()))
+          controller.enqueue(encodeEndFrame(1))
+          controller.close()
+        },
+      })
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+
+      await expect(jsonChunks.getReader().read()).resolves.toEqual({
+        done: true,
+        value: undefined,
+      })
+      const reader = getOrCreateStream(1).getReader()
+      await expect(reader.read()).resolves.toEqual({
+        done: false,
+        value: new Uint8Array(),
+      })
+      await expect(reader.read()).resolves.toEqual({
+        done: true,
+        value: undefined,
+      })
+    })
+
+    it('should forward cancellation and swallow input cleanup failures', async () => {
+      let cancelReason: unknown
       const input = new ReadableStream<Uint8Array>({
         pull() {},
-        cancel() {
-          cancelled = true
+        cancel(reason) {
+          cancelReason = reason
+          return Promise.reject(new Error('input cleanup failed'))
         },
       })
 
       const { jsonChunks } = createFrameDecoder(input)
-      const reader = jsonChunks.getReader()
+      const reason = new Error('consumer cancelled')
 
-      await reader.cancel()
-      expect(cancelled).toBe(true)
+      await expect(jsonChunks.cancel(reason)).resolves.toBeUndefined()
+      expect(cancelReason).toBe(reason)
+    })
+
+    it('should cancel the input after a protocol error', async () => {
+      const badFrame = encodeFrame(99, 0, new Uint8Array(0))
+      let cancelReason: unknown
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(badFrame)
+        },
+        cancel(reason) {
+          cancelReason = reason
+        },
+      })
+      const { jsonChunks } = createFrameDecoder(input)
+
+      const error = await jsonChunks
+        .getReader()
+        .read()
+        .then(
+          () => undefined,
+          (cause: unknown) => cause,
+        )
+
+      expect(error).toBeInstanceOf(Error)
+      await vi.waitFor(() => {
+        expect(cancelReason).toBe(error)
+      })
     })
 
     it('should reject too many raw streams', async () => {
       // END frames create streams via ensureController, even with no CHUNKs.
       const frames: Array<Uint8Array> = []
-      for (let i = 1; i <= 1025; i++) {
+      for (let i = 1; i <= MAX_FRAMED_STREAMS + 1; i++) {
         frames.push(encodeEndFrame(i))
       }
 
@@ -175,21 +304,212 @@ describe('frame-decoder', () => {
       await expect(reader.read()).rejects.toThrow('Too many raw streams')
     })
 
-    it('should reject when buffered bytes exceed limit', async () => {
-      // No valid frame can be parsed from this; we just want to exceed MAX_BUFFERED_BYTES.
-      const tooLarge = new Uint8Array(32 * 1024 * 1024 + 1)
+    it('should count cancelled raw stream IDs toward the response limit', async () => {
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
+        new ReadableStream<Uint8Array>(),
+      )
 
+      for (let id = 1; id <= MAX_FRAMED_STREAMS; id++) {
+        await getOrCreateStream(id).cancel()
+      }
+
+      expect(() => getOrCreateStream(MAX_FRAMED_STREAMS + 1)).toThrow(
+        `Too many raw streams in framed response (max ${MAX_FRAMED_STREAMS})`,
+      )
+      await jsonChunks.cancel()
+    })
+
+    it('should allow a consumed raw stream to exceed 100,000 frames', async () => {
+      const frameCount = 100_001
+      const frame = encodeChunkFrame(1, new Uint8Array([1]))
+      const end = encodeEndFrame(1)
+      const combined = new Uint8Array(frame.length * frameCount + end.length)
+      for (let index = 0; index < frameCount; index++) {
+        combined.set(frame, index * frame.length)
+      }
+      combined.set(end, frame.length * frameCount)
       const input = new ReadableStream<Uint8Array>({
         start(controller) {
-          controller.enqueue(tooLarge)
+          controller.enqueue(combined)
           controller.close()
         },
       })
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
 
+      const received = await new Response(
+        getOrCreateStream(1),
+      ).arrayBuffer()
+      expect(received.byteLength).toBe(frameCount)
+      await expect(jsonChunks.getReader().read()).resolves.toEqual({
+        done: true,
+        value: undefined,
+      })
+    })
+
+    it('should decode valid frames coalesced into one large transport chunk', async () => {
+      const frame = encodeChunkFrame(1, new Uint8Array(MAX_FRAME_PAYLOAD_SIZE))
+      const tail = encodeChunkFrame(
+        1,
+        new Uint8Array(MAX_FRAME_PAYLOAD_SIZE - FRAME_HEADER_SIZE),
+      )
+      const end = encodeEndFrame(1)
+      const combined = new Uint8Array(frame.length + tail.length + end.length)
+      combined.set(frame)
+      combined.set(tail, frame.length)
+      combined.set(end, frame.length + tail.length)
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(combined)
+          controller.close()
+        },
+      })
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const rawReader = getOrCreateStream(1).getReader()
+
+      await expect(jsonChunks.getReader().read()).resolves.toEqual({
+        done: true,
+        value: undefined,
+      })
+      await expect(rawReader.read()).resolves.toMatchObject({
+        done: false,
+        value: { byteLength: MAX_FRAME_PAYLOAD_SIZE },
+      })
+      await expect(rawReader.read()).resolves.toMatchObject({
+        done: false,
+        value: {
+          byteLength: MAX_FRAME_PAYLOAD_SIZE - FRAME_HEADER_SIZE,
+        },
+      })
+      await expect(rawReader.read()).resolves.toEqual({
+        done: true,
+        value: undefined,
+      })
+    })
+
+    it('accepts one maximum-size JSON frame while its consumer is stalled', async () => {
+      const json = 'x'.repeat(MAX_FRAME_PAYLOAD_SIZE)
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encodeJSONFrame(json))
+          controller.close()
+        },
+      })
       const { jsonChunks } = createFrameDecoder(input)
-      const reader = jsonChunks.getReader()
 
-      await expect(reader.read()).rejects.toThrow('buffer exceeded')
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      const result = await jsonChunks.getReader().read()
+      expect(result.done).toBe(false)
+      expect(result.value?.length).toBe(MAX_FRAME_PAYLOAD_SIZE)
+    })
+
+    it('delivers later JSON before an unconsumed large raw stream is read', async () => {
+      const payload = new Uint8Array(MAX_FRAME_PAYLOAD_SIZE)
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(encodeJSONFrame('{"ref":1}'))
+          controller.enqueue(encodeChunkFrame(1, payload))
+          controller.enqueue(encodeChunkFrame(1, new Uint8Array([1])))
+          controller.enqueue(encodeJSONFrame('{"later":true}'))
+          controller.enqueue(encodeEndFrame(1))
+          controller.close()
+        },
+      })
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const rawReader = getOrCreateStream(1).getReader()
+      const jsonReader = jsonChunks.getReader()
+
+      await expect(jsonReader.read()).resolves.toMatchObject({
+        value: '{"ref":1}',
+      })
+      const laterJSON = jsonReader.read()
+      await expect(laterJSON).resolves.toMatchObject({
+        value: '{"later":true}',
+      })
+      await expect(rawReader.read()).resolves.toMatchObject({
+        value: { byteLength: payload.byteLength },
+      })
+      await expect(rawReader.read()).resolves.toMatchObject({
+        value: new Uint8Array([1]),
+      })
+      await expect(rawReader.read()).resolves.toMatchObject({ done: true })
+    })
+
+    it('rejects when unread decoded output queues exceed the byte budget', async () => {
+      const cancel = vi.fn()
+      let frame = 0
+      const input = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (frame++ === 0) {
+            controller.enqueue(encodeJSONFrame('{"ref":1}'))
+          } else if (frame < 4) {
+            controller.enqueue(
+              encodeChunkFrame(1, new Uint8Array(MAX_FRAME_PAYLOAD_SIZE)),
+            )
+          } else {
+            controller.enqueue(encodeEndFrame(1))
+            controller.close()
+          }
+        },
+        cancel,
+      })
+      const { jsonChunks } = createFrameDecoder(input)
+
+      await vi.waitFor(() => {
+        expect(cancel).toHaveBeenCalledOnce()
+      })
+      await expect(jsonChunks.getReader().read()).rejects.toThrow(
+        'Framed response queue exceeded',
+      )
+    })
+
+    it('allows consumed traffic to exceed the cumulative queue budget', async () => {
+      let frame = 0
+      const input = new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (frame++ < 3) {
+            controller.enqueue(
+              encodeChunkFrame(1, new Uint8Array(MAX_FRAME_PAYLOAD_SIZE)),
+            )
+          } else {
+            controller.enqueue(encodeEndFrame(1))
+            controller.close()
+          }
+        },
+      })
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const reader = getOrCreateStream(1).getReader()
+      let received = 0
+
+      while (true) {
+        const chunk = await reader.read()
+        if (chunk.done) {
+          break
+        }
+        received += chunk.value.byteLength
+      }
+
+      expect(received).toBe(MAX_FRAME_PAYLOAD_SIZE * 3)
+      await expect(jsonChunks.getReader().read()).resolves.toMatchObject({
+        done: true,
+      })
+    })
+
+    it('surfaces a transport failure after JSON was queued', async () => {
+      const sourceError = new Error('transport failed')
+      let inputController!: ReadableStreamDefaultController<Uint8Array>
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          inputController = controller
+          controller.enqueue(encodeJSONFrame('{"queued":true}'))
+        },
+      })
+      const { jsonChunks } = createFrameDecoder(input)
+
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      inputController.error(sourceError)
+      await new Promise((resolve) => setTimeout(resolve, 0))
+
+      await expect(jsonChunks.getReader().read()).rejects.toBe(sourceError)
     })
 
     it('should decode JSON frames', async () => {

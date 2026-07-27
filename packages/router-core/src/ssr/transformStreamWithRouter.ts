@@ -796,10 +796,11 @@ function makeMainStream(
     safeError(reason)
     cleanup(reason)
   })
-  if (cleanedUp || isDone())
+  if (cleanedUp || isDone()) {
     return stream
+  }
 
-    // Transform the appStream
+  // Transform the appStream
   ;(async () => {
     try {
       while (true) {

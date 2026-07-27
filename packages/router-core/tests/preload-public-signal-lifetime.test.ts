@@ -4,18 +4,18 @@ import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 // Public contract: the AbortSignal supplied to loader code belongs to the
-// accepted data generation. Adopting preloaded data keeps it alive; accepting
+// accepted data generation. Reusing preloaded data keeps it alive; accepting
 // replacement data aborts it; unloading aborts the replacement generation.
-test('an adopted loader signal lives until public replacement and unload', async () => {
+test('a reused preload loader signal lives until public replacement and unload', async () => {
   const replacementGate = createControlledPromise<{ generation: number }>()
   let generation = 0
-  let adoptedSignal: AbortSignal | undefined
+  let preloadSignal: AbortSignal | undefined
   let replacementSignal: AbortSignal | undefined
   const loader = vi.fn(
     ({ abortController }: { abortController: AbortController }) => {
       generation++
       if (generation === 1) {
-        adoptedSignal = abortController.signal
+        preloadSignal = abortController.signal
         return { generation }
       }
 
@@ -46,7 +46,7 @@ test('an adopted loader signal lives until public replacement and unload', async
 
   await router.load()
   await router.preloadRoute({ to: '/reports' })
-  expect(adoptedSignal?.aborted).toBe(false)
+  expect(preloadSignal?.aborted).toBe(false)
 
   await router.navigate({ to: '/reports' })
   expect(loader).toHaveBeenCalledTimes(1)
@@ -54,15 +54,15 @@ test('an adopted loader signal lives until public replacement and unload', async
     router.state.matches.find((match) => match.routeId === reportsRoute.id)
       ?.loaderData,
   ).toEqual({ generation: 1 })
-  expect(adoptedSignal?.aborted).toBe(false)
+  expect(preloadSignal?.aborted).toBe(false)
 
   const replacement = router.invalidate({ forcePending: true })
   await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(2))
   expect(replacementGate.status).toBe('pending')
 
   // Until replacement data is accepted, the currently rendered data still
-  // owns the adopted signal.
-  expect(adoptedSignal?.aborted).toBe(false)
+  // owns the preload generation's signal.
+  expect(preloadSignal?.aborted).toBe(false)
   expect(replacementSignal?.aborted).toBe(false)
 
   replacementGate.resolve({ generation: 2 })
@@ -71,14 +71,14 @@ test('an adopted loader signal lives until public replacement and unload', async
     router.state.matches.find((match) => match.routeId === reportsRoute.id)
       ?.loaderData,
   ).toEqual({ generation: 2 })
-  expect(adoptedSignal?.aborted).toBe(true)
+  expect(preloadSignal?.aborted).toBe(true)
   expect(replacementSignal?.aborted).toBe(false)
 
   await router.navigate({ to: '/' })
   expect(replacementSignal?.aborted).toBe(true)
 })
 
-test('a superseded preload releases its borrowed loader signal lease', async () => {
+test('a superseded preload releases its lease on a reused loader generation', async () => {
   let parentSignal: AbortSignal | undefined
   let navigation!: Promise<void>
 

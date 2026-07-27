@@ -30,17 +30,12 @@ export function normalizeSsrResponse(
     : { response: result, serverSsrCleanup: 'none' }
 }
 
-export function disposeSsrResponse(
+export async function disposeSsrResponse(
   response: SsrResponse,
   reason?: unknown,
 ): Promise<void> {
-  if (response.serverSsrCleanup !== 'stream') {
-    return Promise.resolve()
-  }
-  try {
-    return Promise.resolve(response.dispose(reason))
-  } catch (error) {
-    return Promise.reject(error)
+  if (response.serverSsrCleanup === 'stream') {
+    await response.dispose(reason)
   }
 }
 
@@ -55,12 +50,78 @@ export function disposeSsrResponseDetached(
     return
   }
 
-  if (ssrResponse.response.body) {
-    try {
-      void ssrResponse.response.body.cancel(reason).catch(onError)
-    } catch (error) {
-      onError(error)
+  const body = ssrResponse.response.body
+  if (body && !body.locked) {
+    void body.cancel(reason).catch(onError)
+  }
+}
+
+function ownResponseBody(
+  response: Response,
+  onTerminal: (reason?: unknown) => void,
+): [Response, (reason?: unknown) => void] {
+  const reader = response.body!.getReader()
+  let controller!: ReadableStreamDefaultController<Uint8Array>
+  let terminal = false
+  const finish = (reason?: unknown) => {
+    terminal = true
+    onTerminal(reason)
+  }
+  const cancel = (reason?: unknown): Promise<void> | undefined => {
+    if (!terminal) {
+      finish(reason)
+      return reader.cancel(reason)
     }
+    return
+  }
+  const body = new ReadableStream<Uint8Array>({
+    start(ctrl) {
+      controller = ctrl
+    },
+    async pull(ctrl) {
+      try {
+        const { done, value } = await reader.read()
+        if (terminal) {
+          return
+        }
+        if (done) {
+          finish()
+          ctrl.close()
+        } else {
+          ctrl.enqueue(value)
+        }
+      } catch (error) {
+        if (!terminal) {
+          finish(error)
+          ctrl.error(error)
+        }
+      }
+    },
+    cancel,
+  })
+  return [
+    new Response(body, response),
+    (reason) => {
+      if (!terminal) {
+        controller.error(reason)
+        finish(reason)
+        void reader.cancel(reason).catch(console.error)
+      }
+    },
+  ]
+}
+
+function ownSsrResponse(
+  response: Response,
+  onTerminal: (reason?: unknown) => void,
+): Extract<SsrResponse, { serverSsrCleanup: 'stream' }> {
+  const [ownedResponse, dispose] = ownResponseBody(response, onTerminal)
+  return {
+    response: ownedResponse,
+    serverSsrCleanup: 'stream',
+    async dispose(reason?: unknown) {
+      dispose(reason)
+    },
   }
 }
 
@@ -72,27 +133,16 @@ export function createSsrStreamResponse<TRouter extends AnyRouter>(
     throw new Error('Invariant failed: SSR stream response requires a body')
   }
 
-  let disposed = false
-  return {
-    response,
-    serverSsrCleanup: 'stream',
-    async dispose(reason?: unknown) {
-      if (disposed) {
-        return
-      }
-      disposed = true
+  return ownSsrResponse(response, () => router.serverSsr?.cleanup())
+}
 
-      // Sever router ownership before asking user/renderer stream machinery to
-      // cancel. A custom stream is allowed to ignore cancellation forever.
-      router.serverSsr?.cleanup()
-
-      try {
-        await response.body!.cancel(reason)
-      } catch {
-        // Cleanup above already released router SSR state.
-      }
-    },
-  }
+export function _transferSsrResponse(
+  owner: Extract<SsrResponse, { serverSsrCleanup: 'stream' }>,
+  response: Response & { body: ReadableStream<Uint8Array> },
+): SsrResponse {
+  return ownSsrResponse(response, (reason) => {
+    disposeSsrResponseDetached(owner, reason)
+  })
 }
 
 export function bindSsrResponseToRequest(
@@ -104,13 +154,27 @@ export function bindSsrResponseToRequest(
   if (ssrResponse.serverSsrCleanup !== 'stream') {
     if (signal.aborted) {
       disposeSsrResponseDetached(result, signal.reason)
+      return ssrResponse
     }
-    return ssrResponse
+    const body = ssrResponse.response.body
+    if (!body) {
+      return ssrResponse
+    }
+    let abort = () => {}
+    const [response, dispose] = ownResponseBody(ssrResponse.response, () => {
+      signal.removeEventListener('abort', abort)
+    })
+    abort = () => dispose(signal.reason)
+    signal.addEventListener('abort', abort, { once: true })
+    return { response, serverSsrCleanup: 'none' }
   }
-
   const failed = (error: unknown) => {
     router?.serverSsr?.cleanup()
     console.error(error)
+  }
+  if (!ssrResponse.response.body) {
+    disposeSsrResponseDetached(ssrResponse, signal.reason, failed)
+    return { response: ssrResponse.response, serverSsrCleanup: 'none' }
   }
   const abort = () => {
     disposeSsrResponseDetached(ssrResponse, signal.reason, failed)
@@ -127,13 +191,25 @@ export function bindSsrResponseToRequest(
   return ssrResponse
 }
 
+async function disposeReplacedSsrResponse(
+  result: HandlerCallbackResult,
+  reason?: unknown,
+): Promise<SsrResponse> {
+  const ssrResponse = normalizeSsrResponse(result)
+  if (ssrResponse.serverSsrCleanup === 'stream') {
+    await ssrResponse.dispose(reason)
+  } else {
+    disposeSsrResponseDetached(ssrResponse, reason)
+  }
+  return ssrResponse
+}
+
 export async function replaceSsrResponse(
   result: HandlerCallbackResult,
   response: Response,
   reason?: unknown,
 ): Promise<SsrResponse> {
-  const ssrResponse = normalizeSsrResponse(result)
-  await disposeSsrResponse(ssrResponse, reason)
+  await disposeReplacedSsrResponse(result, reason)
   return { response, serverSsrCleanup: 'none' }
 }
 
@@ -141,8 +217,7 @@ export async function stripSsrResponseBody(
   result: HandlerCallbackResult,
   reason?: unknown,
 ): Promise<SsrResponse> {
-  const ssrResponse = normalizeSsrResponse(result)
-  await disposeSsrResponse(ssrResponse, reason)
+  const ssrResponse = await disposeReplacedSsrResponse(result, reason)
   return {
     response: new Response(null, ssrResponse.response),
     serverSsrCleanup: 'none',

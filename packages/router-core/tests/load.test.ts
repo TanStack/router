@@ -215,8 +215,7 @@ describe('beforeLoad skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    // An identical navigation may latch onto the still-active whole lane.
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
   test('exec if rejected preload (notFound)', async () => {
@@ -278,9 +277,9 @@ describe('beforeLoad skip or exec', () => {
     await Promise.resolve()
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.location.pathname).toBe('/bar')
+    expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches.at(-1)?.status).toBe('success')
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
   test('exec if rejected preload (error)', async () => {
@@ -458,7 +457,7 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if pending preload returns notFound', async () => {
+  test('shares a pending preload notFound with navigation', async () => {
     const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw notFound()
@@ -471,8 +470,12 @@ describe('loader skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(router.state.matches.at(-1)?.status).toBe('success')
-    expect(loader).toHaveBeenCalledTimes(2)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: '/foo',
+      status: 'notFound',
+      error: { isNotFound: true, routeId: '/foo' },
+    })
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 
   test('exec if rejected preload (redirect)', async () => {
@@ -524,7 +527,7 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if pending preload errors', async () => {
+  test('shares a pending preload error with navigation', async () => {
     const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw new Error('error')
@@ -537,8 +540,8 @@ describe('loader skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(router.state.matches.at(-1)?.status).toBe('success')
-    expect(loader).toHaveBeenCalledTimes(2)
+    expect(router.state.matches.at(-1)?.status).toBe('error')
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 })
 

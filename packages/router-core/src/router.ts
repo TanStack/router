@@ -58,7 +58,6 @@ import type {
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
-  ActivePreload,
   LoadTransaction,
   LoaderFlight,
   PendingSession,
@@ -778,7 +777,6 @@ export type CommitLocationFn = ({
 export type StartTransitionFn = (
   fn: () => void,
   expected: Array<AnyRouteMatch>,
-  urgent?: boolean,
 ) => Promise<boolean>
 
 export interface MatchRoutesFn {
@@ -936,21 +934,41 @@ export function _getUserHistoryState({
   return state
 }
 
+function runCallback<T>(
+  callback: ((arg: T) => void) | undefined,
+  arg: T,
+  throwOnError?: boolean,
+): void {
+  if (throwOnError && process.env.NODE_ENV !== 'production') {
+    callback?.(arg)
+    return
+  }
+  try {
+    callback?.(arg)
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 /** Run route lifecycle callbacks in leave/enter/stay phases. */
 export function runRouteLifecycle(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   matches: Array<AnyRouteMatch>,
   isCurrent?: () => boolean,
+  throwOnError?: boolean,
 ): void {
   for (const match of previous) {
     if (isCurrent?.() === false) {
       return
     }
     if (!matches.some((candidate) => candidate.routeId === match.routeId)) {
-      ;(router.routesById as Record<string, AnyRoute>)[
-        match.routeId
-      ]!.options.onLeave?.(match)
+      runCallback(
+        (router.routesById as Record<string, AnyRoute>)[match.routeId]!.options
+          .onLeave,
+        match,
+        throwOnError,
+      )
     }
   }
   for (const match of matches) {
@@ -960,11 +978,15 @@ export function runRouteLifecycle(
     const route = (router.routesById as Record<string, AnyRoute>)[
       match.routeId
     ]!
-    route.options[
-      previous.some((candidate) => candidate.routeId === match.routeId)
-        ? 'onStay'
-        : 'onEnter'
-    ]?.(match)
+    runCallback(
+      route.options[
+        previous.some((candidate) => candidate.routeId === match.routeId)
+          ? 'onStay'
+          : 'onEnter'
+      ],
+      match,
+      throwOnError,
+    )
   }
 }
 
@@ -1025,10 +1047,10 @@ export interface RouterCore<
   shouldViewTransition?: boolean | ViewTransitionOptions
   /** Current client load transaction and owner of navigation writes. */
   _tx?: LoadTransaction
-  /** Joinable in-flight loader generations keyed by match ID. */
-  _flights?: Map<string, LoaderFlight>
-  /** Whole speculative lanes that an identical navigation may adopt. */
-  _preloads?: Map<string, ActivePreload>
+  /** Joinable loader generations keyed by match ID. */
+  _flights: Map<string, LoaderFlight>
+  /** Active speculative lane matches keyed by their cancellation owner. */
+  _preloads: Map<AbortController, Array<AnyRouteMatch>>
   /** Owns cancellable work before a client transaction publishes. */
   _preflight?: AbortController
   /** Transfers one reconstructed SSR prefix into its initial client load. */
@@ -1037,8 +1059,6 @@ export interface RouterCore<
   _pending?: PendingSession
   /** Result of the latest server load, used to render or redirect. */
   _serverResult?: ServerLoadResult
-  /** Framework callback that acknowledges an exact matches publication. */
-  _rendered?: (matches: Array<AnyRouteMatch>) => void
   /** Development-only HMR reload for a route and its descendants. */
   _refreshRoute: (() => Promise<void>) | undefined
   /** Development-only replacement for a route's lazy chunk owner. */
@@ -1083,9 +1103,12 @@ export class RouterCore<
   subscribers = new Set<RouterListener<RouterEvent>>()
   /** Accepted off-screen loader generations keyed by match ID. */
   _cache = new Map<string, AnyRouteMatch>()
+  /** Joinable loader generations keyed by match ID. */
+  _flights = new Map<string, LoaderFlight>()
+  /** Active speculative lane matches keyed by their cancellation owner. */
+  _preloads = new Map<AbortController, Array<AnyRouteMatch>>()
   /** Accepted semantic lane, excluding temporary pending presentation. */
   _committed: Array<AnyRouteMatch> = []
-
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
   private getStoreConfig!: GetStoreConfig
@@ -1377,11 +1400,7 @@ export class RouterCore<
   emit: EmitFn = (routerEvent) => {
     for (const listener of this.subscribers) {
       if (listener.eventType === routerEvent.type) {
-        try {
-          listener.fn(routerEvent)
-        } catch (e) {
-          console.error(e)
-        }
+        runCallback(listener.fn, routerEvent)
       }
     }
   }
@@ -1463,7 +1482,6 @@ export class RouterCore<
       parsedTempLocation.state.__TSR_key = location.state.__TSR_key
 
       delete parsedTempLocation.state.__tempLocation
-
       return {
         ...parsedTempLocation,
         maskedLocation: location,
@@ -1541,14 +1559,7 @@ export class RouterCore<
 
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
     const committed = this._committed
-    const previousAt = (route: AnyRoute, index: number) => {
-      const match = committed[index]
-      return match?.routeId === route.id
-        ? match
-        : route === this.options.notFoundRoute
-          ? committed.find((candidate) => candidate.routeId === route.id)
-          : undefined
-    }
+    const controller = opts?._controller
 
     for (let index = 0; index < matchedRoutes.length; index++) {
       const route = matchedRoutes[index]!
@@ -1633,7 +1644,13 @@ export class RouterCore<
         // explicit deps
         loaderDepsHash
 
-      const previousMatch = previousAt(route, index)
+      let previousMatch = committed[index]
+      if (previousMatch?.routeId !== route.id) {
+        previousMatch =
+          route === this.options.notFoundRoute
+            ? committed.find((candidate) => candidate.routeId === route.id)
+            : undefined
+      }
       const existingMatch =
         process.env.NODE_ENV !== 'production' && opts?._rematerialize
           ? undefined
@@ -1702,7 +1719,7 @@ export class RouterCore<
           error: undefined,
           paramsError,
           context: {},
-          abortController: opts?._controller ?? new AbortController(),
+          abortController: controller ?? new AbortController(),
           cause,
           loaderDeps: previousMatch
             ? replaceEqualDeep(previousMatch.loaderDeps, loaderDeps)
@@ -1730,8 +1747,13 @@ export class RouterCore<
         match.cause === 'stay'
           ? nullReplaceEqualDeep(match.params, routeParams)
           : routeParams
-      if (opts?._controller) {
+      if (controller) {
         match.context = {}
+        const flight = (match as AnyRouteMatch & { _flight?: LoaderFlight })
+          ._flight
+        if (flight) {
+          flight[2]++
+        }
       }
     }
 
@@ -2469,13 +2491,37 @@ export class RouterCore<
   > = (opts) => {
     const committedMatches = this._committed
     const filter = opts?.filter
-    const invalidIds = filter
-      ? new Set(
-          [...committedMatches, ...this._cache.values()]
-            .filter((match) => filter(match as MakeRouteMatchUnion<this>))
-            .map((match) => match.id),
-        )
-      : undefined
+    let invalidIds: Set<string> | undefined
+    if (filter) {
+      invalidIds = new Set()
+      const collect = (matches: Iterable<AnyRouteMatch>) => {
+        for (const match of matches) {
+          if (filter(match as MakeRouteMatchUnion<this>)) {
+            invalidIds!.add(match.id)
+          }
+        }
+      }
+      collect(committedMatches)
+      collect(this._cache.values())
+      for (const matches of this._preloads.values()) {
+        collect(matches)
+      }
+      if (this._tx) {
+        collect(this._tx[3])
+      }
+    }
+    const discardedPreloads: Array<AnyRouteMatch> = []
+    const preloadControllers: Array<AbortController> = []
+    for (const [controller, matches] of this._preloads) {
+      if (
+        !invalidIds ||
+        matches.some((match) => invalidIds.has(match.id))
+      ) {
+        this._preloads.delete(controller)
+        discardedPreloads.push(...matches)
+        preloadControllers.push(controller)
+      }
+    }
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
       if (!invalidIds || invalidIds.has(d.id)) {
         const route = this.routesById[d.routeId] as AnyRoute
@@ -2498,11 +2544,20 @@ export class RouterCore<
 
     const committed = committedMatches.map(invalidate)
     this._committed = committed
-    const cache = new Map<string, AnyRouteMatch>()
     for (const [id, match] of this._cache) {
-      cache.set(id, invalidate(match))
+      this._cache.set(id, invalidate(match))
     }
-    this._cache = cache
+    if (invalidIds) {
+      for (const id of invalidIds) {
+        this._flights.delete(id)
+      }
+    } else {
+      this._flights.clear()
+    }
+    transferMatchResources(discardedPreloads)
+    for (const controller of preloadControllers) {
+      controller.abort()
+    }
 
     this.shouldViewTransition = false
     return this.load({ sync: opts?.sync })
@@ -2551,36 +2606,33 @@ export class RouterCore<
   }
 
   clearCache: ClearCacheFn<this> = (opts) => {
-    const cached = this._cache
-    const preloads = this._preloads
     const filter = opts?.filter
-    const retained = new Map<string, AnyRouteMatch>()
     const discarded: Array<AnyRouteMatch> = []
-    for (const [id, match] of cached) {
-      if (filter && !filter(match as MakeRouteMatchUnion<this>)) {
-        retained.set(id, match)
-      } else {
+    const cacheIds: Array<string> = []
+    for (const [id, match] of this._cache) {
+      if (!filter || filter(match as MakeRouteMatchUnion<this>)) {
+        cacheIds.push(id)
         discarded.push(match)
       }
     }
-    const retainedPreloads = new Map<string, ActivePreload>()
-    const discardedPreloads: Array<ActivePreload> = []
-    for (const [href, preload] of preloads ?? []) {
-      if (!filter || preload[0].some(filter as any)) {
-        discardedPreloads.push(preload)
-        discarded.push(...preload[0])
-      } else {
-        retainedPreloads.set(href, preload)
+    const preloadControllers: Array<AbortController> = []
+    for (const [controller, matches] of this._preloads) {
+      if (!filter || matches.some(filter as any)) {
+        discarded.push(...matches)
+        preloadControllers.push(controller)
       }
     }
-
-    // Install both replacement authorities before releasing a public loader
-    // signal, whose abort listeners can synchronously reenter the router.
-    this._cache = retained
-    this._preloads = retainedPreloads
-    transferMatchResources(this, discarded)
-    for (const preload of discardedPreloads) {
-      preload[1].abort()
+    // Update both authorities before releasing a public loader signal, whose
+    // abort listeners can synchronously reenter the router.
+    for (const id of cacheIds) {
+      this._cache.delete(id)
+    }
+    for (const controller of preloadControllers) {
+      this._preloads.delete(controller)
+    }
+    transferMatchResources(discarded)
+    for (const controller of preloadControllers) {
+      controller.abort()
     }
   }
 

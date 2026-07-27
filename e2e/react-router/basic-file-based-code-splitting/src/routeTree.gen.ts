@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as PreloadDisabledRouteImport } from './routes/preload-disabled'
 import { Route as SharedSingletonRouteImport } from './routes/shared-singleton'
 import { Route as ViewportTestRouteImport } from './routes/viewport-test'
 import { Route as WithoutLoaderRouteImport } from './routes/without-loader'
@@ -33,6 +34,11 @@ const LayoutRoute = LayoutRouteImport.update({
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreloadDisabledRoute = PreloadDisabledRouteImport.update({
+  id: '/preload-disabled',
+  path: '/preload-disabled',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SharedSingletonRoute = SharedSingletonRouteImport.update({
@@ -78,6 +84,7 @@ const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/posts': typeof PostsRouteWithChildren
+  '/preload-disabled': typeof PreloadDisabledRoute
   '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
@@ -88,6 +95,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/preload-disabled': typeof PreloadDisabledRoute
   '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
@@ -101,6 +109,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_layout': typeof LayoutRouteWithChildren
   '/posts': typeof PostsRouteWithChildren
+  '/preload-disabled': typeof PreloadDisabledRoute
   '/shared-singleton': typeof SharedSingletonRoute
   '/viewport-test': typeof ViewportTestRoute
   '/without-loader': typeof WithoutLoaderRoute
@@ -115,6 +124,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/posts'
+    | '/preload-disabled'
     | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
@@ -125,6 +135,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/preload-disabled'
     | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
@@ -137,6 +148,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_layout'
     | '/posts'
+    | '/preload-disabled'
     | '/shared-singleton'
     | '/viewport-test'
     | '/without-loader'
@@ -151,6 +163,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   LayoutRoute: typeof LayoutRouteWithChildren
   PostsRoute: typeof PostsRouteWithChildren
+  PreloadDisabledRoute: typeof PreloadDisabledRoute
   SharedSingletonRoute: typeof SharedSingletonRoute
   ViewportTestRoute: typeof ViewportTestRoute
   WithoutLoaderRoute: typeof WithoutLoaderRoute
@@ -177,6 +190,13 @@ declare module '@tanstack/react-router' {
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preload-disabled': {
+      id: '/preload-disabled'
+      path: '/preload-disabled'
+      fullPath: '/preload-disabled'
+      preLoaderRoute: typeof PreloadDisabledRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/shared-singleton': {
@@ -279,6 +299,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   LayoutRoute: LayoutRouteWithChildren,
   PostsRoute: PostsRouteWithChildren,
+  PreloadDisabledRoute: PreloadDisabledRoute,
   SharedSingletonRoute: SharedSingletonRoute,
   ViewportTestRoute: ViewportTestRoute,
   WithoutLoaderRoute: WithoutLoaderRoute,

@@ -3,12 +3,18 @@
 '@tanstack/react-router': patch
 '@tanstack/solid-router': patch
 '@tanstack/vue-router': patch
+'@tanstack/router-devtools-core': patch
+'@tanstack/react-router-devtools': patch
+'@tanstack/solid-router-devtools': patch
+'@tanstack/vue-router-devtools': patch
+'@tanstack/router-devtools': patch
 ---
 
 Rewrite match loading around a lane-based scheduler that tracks each navigation, preload, and background reload as an ordered unit of work. This fixes pending/redirect/retry state leaking between overlapping navigations, restores correct SSR status codes for redirects, errors, and not-found responses, and closes hydration gaps where the client re-ran work the server had already completed.
 
 - Route `headers()` now only runs on the server, matching the documented behavior — it is no longer invoked during client-side asset projection.
 - Default `gcTime` and `preloadGcTime` are reduced from 30 minutes (`1_800_000`) to 5 minutes (`300_000`).
+- Devtools packages are released alongside the router packages so they consume the rewritten router store interface.
 
 **Removed / changed public API**
 
@@ -26,4 +32,4 @@ Rewrite match loading around a lane-based scheduler that tracks each navigation,
 - Removed the exported `GetMatchFn` and `UpdateMatchFn` types, along with the methods they typed.
 - Removed the standalone `getMatchedRoutes()` export from `@tanstack/router-core` — use the `router.getMatchedRoutes()` instance method instead.
 - `MatchRoutesOpts.preload` and `MatchRoutesOpts.dest` have been removed.
-- `StartTransitionFn` is now `(fn, expected, urgent?) => Promise<boolean>` (previously `(fn) => void`). This only affects custom framework adapters that implement `startTransition`.
+- `StartTransitionFn` is now `(fn, expected) => Promise<boolean>` (previously `(fn) => void`). This only affects custom framework adapters that implement `startTransition`.

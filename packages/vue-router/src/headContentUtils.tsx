@@ -22,30 +22,6 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     const currentMatches = matches.value
     const tags: Array<RouterManagedTag> = []
     const manifest = router.ssr?.manifest
-    for (const match of currentMatches) {
-      for (const link of manifest?.routes[match.routeId]?.css ?? []) {
-        const resolvedLink = resolveManifestCssLink(link)
-        tags.push({
-          tag: 'link',
-          attrs: {
-            rel: 'stylesheet',
-            ...resolvedLink,
-            crossOrigin:
-              getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
-              resolvedLink.crossOrigin,
-          },
-        })
-      }
-    }
-    if (manifest?.inlineStyle) {
-      tags.push({
-        tag: 'style',
-        attrs: manifest.inlineStyle.attrs,
-        children: manifest.inlineStyle.children,
-        inlineCss: true,
-      })
-    }
-
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
@@ -101,20 +77,35 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       resultMeta.push(title)
     }
     resultMeta.reverse()
-    appendUniqueUserTags(tags, resultMeta)
 
     const preloads: Array<RouterManagedTag> = []
     const links: Array<RouterManagedTag> = []
     const headScripts: Array<RouterManagedTag> = []
     for (const match of currentMatches) {
-      for (const preload of manifest?.routes[match.routeId]?.preloads ?? []) {
-        if (preload) {
-          preloads.push({
+      const manifestRoute = manifest?.routes[match.routeId]
+      if (manifestRoute) {
+        for (const link of manifestRoute.css ?? []) {
+          const resolvedLink = resolveManifestCssLink(link)
+          tags.push({
             tag: 'link',
             attrs: {
-              ...getScriptPreloadAttrs(manifest, preload, assetCrossOrigin),
+              rel: 'stylesheet',
+              ...resolvedLink,
+              crossOrigin:
+                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+                resolvedLink.crossOrigin,
             },
           })
+        }
+        for (const preload of manifestRoute.preloads ?? []) {
+          if (preload) {
+            preloads.push({
+              tag: 'link',
+              attrs: {
+                ...getScriptPreloadAttrs(manifest, preload, assetCrossOrigin),
+              },
+            })
+          }
         }
       }
       for (const link of match.links ?? []) {
@@ -133,6 +124,15 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
         }
       }
     }
+    if (manifest?.inlineStyle) {
+      tags.push({
+        tag: 'style',
+        attrs: manifest.inlineStyle.attrs,
+        children: manifest.inlineStyle.children,
+        inlineCss: true,
+      })
+    }
+    appendUniqueUserTags(tags, resultMeta)
     tags.push(...preloads)
     appendUniqueUserTags(tags, links)
     appendUniqueUserTags(tags, headScripts)

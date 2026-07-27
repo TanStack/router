@@ -40,3 +40,28 @@ test('scrolling into viewport a link with preload=viewport to a route should pre
       : '/assets/viewport-test'
   expect(request.url()).toEqual(expect.stringContaining(expectedString))
 })
+
+test('preload: false skips an auto-code-split component chunk until navigation', async ({
+  page,
+}) => {
+  await page.waitForLoadState('networkidle')
+  const expectedString =
+    process.env.NODE_ENV === 'development'
+      ? 'preload-disabled.tsx?tsr-split'
+      : '/assets/preload-disabled'
+  const matchingRequests: Array<string> = []
+  page.on('request', (request) => {
+    if (request.url().includes(expectedString)) {
+      matchingRequests.push(request.url())
+    }
+  })
+
+  const link = page.getByRole('link', { name: 'preload-disabled' })
+  await link.hover()
+  await page.waitForTimeout(300)
+  expect(matchingRequests).toEqual([])
+
+  await link.click()
+  await expect(page.getByTestId('preload-disabled')).toBeVisible()
+  expect(matchingRequests.length).toBeGreaterThan(0)
+})

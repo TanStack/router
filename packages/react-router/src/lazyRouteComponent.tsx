@@ -22,31 +22,32 @@ export function lazyRouteComponent<
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
-  let loadPromise: Promise<any> | undefined
+  let loadPromise: Promise<void> | undefined
   let comp: T[TKey] | T['default']
   let error: any
 
   const load = () => {
-    if (!loadPromise) {
-      error = undefined
-      loadPromise = importer()
-        .then((res) => {
-          // Keep browser preload behavior unchanged; SSR can reuse the import.
-          if (!(isServer ?? typeof window === 'undefined')) {
-            loadPromise = undefined
-          }
-          comp = res[exportName ?? 'default']
-        })
-        .catch((err) => {
-          loadPromise = undefined
-          // We don't want an error thrown from preload in this case, because
-          // there's nothing we want to do about module not found during preload.
-          // Record the error, the rest is handled during the render path.
-          error = err
-        })
+    if (loadPromise) {
+      return loadPromise
     }
 
-    return loadPromise
+    error = undefined
+    return (loadPromise = importer()
+      .then((res) => {
+        // Keep browser preload behavior unchanged; SSR can reuse the import.
+        if (!(isServer ?? typeof window === 'undefined')) {
+          loadPromise = undefined
+        }
+        comp = res[exportName ?? 'default']
+      })
+      .catch((err) => {
+        loadPromise = undefined
+        error = err
+
+        if (!isModuleNotFoundError(err)) {
+          throw err
+        }
+      }))
   }
 
   const lazyComp = function Lazy(props: any) {

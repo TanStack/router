@@ -9,10 +9,16 @@
  */
 
 // Re-export constants from shared location
-import { FRAME_HEADER_SIZE, FrameType } from '@tanstack/start-client-core'
+import {
+  FRAME_HEADER_SIZE,
+  FrameType,
+  MAX_FRAME_PAYLOAD_SIZE,
+} from '@tanstack/start-client-core'
 
 export {
   FRAME_HEADER_SIZE,
+  MAX_FRAME_PAYLOAD_SIZE,
+  MAX_FRAMED_STREAMS,
   FrameType,
   TSS_CONTENT_TYPE_FRAMED,
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
@@ -21,9 +27,6 @@ export {
 
 /** Cached TextEncoder for frame encoding */
 const textEncoder = new TextEncoder()
-
-/** Shared empty payload for END frames - avoids allocation per call */
-const EMPTY_PAYLOAD = new Uint8Array(0)
 
 /**
  * Encodes a single frame with header and payload.
@@ -37,14 +40,14 @@ export function encodeFrame(
   // Write header bytes directly to avoid DataView allocation per frame
   // Frame format: [type:1][streamId:4 BE][length:4 BE]
   frame[0] = type
-  frame[1] = (streamId >>> 24) & 0xff
-  frame[2] = (streamId >>> 16) & 0xff
-  frame[3] = (streamId >>> 8) & 0xff
-  frame[4] = streamId & 0xff
-  frame[5] = (payload.length >>> 24) & 0xff
-  frame[6] = (payload.length >>> 16) & 0xff
-  frame[7] = (payload.length >>> 8) & 0xff
-  frame[8] = payload.length & 0xff
+  frame[1] = streamId >>> 24
+  frame[2] = streamId >>> 16
+  frame[3] = streamId >>> 8
+  frame[4] = streamId
+  frame[5] = payload.length >>> 24
+  frame[6] = payload.length >>> 16
+  frame[7] = payload.length >>> 8
+  frame[8] = payload.length
   frame.set(payload, FRAME_HEADER_SIZE)
   return frame
 }
@@ -53,24 +56,13 @@ export function encodeFrame(
  * Encodes a JSON frame (type 0, streamId 0).
  */
 export function encodeJSONFrame(json: string): Uint8Array {
-  return encodeFrame(FrameType.JSON, 0, textEncoder.encode(json))
-}
-
-/**
- * Encodes a raw stream chunk frame.
- */
-export function encodeChunkFrame(
-  streamId: number,
-  chunk: Uint8Array,
-): Uint8Array {
-  return encodeFrame(FrameType.CHUNK, streamId, chunk)
-}
-
-/**
- * Encodes a raw stream end frame.
- */
-export function encodeEndFrame(streamId: number): Uint8Array {
-  return encodeFrame(FrameType.END, streamId, EMPTY_PAYLOAD)
+  const payload = textEncoder.encode(json)
+  if (payload.length > MAX_FRAME_PAYLOAD_SIZE) {
+    throw new RangeError(
+      `Frame payload too large: ${payload.length} bytes (max ${MAX_FRAME_PAYLOAD_SIZE})`,
+    )
+  }
+  return encodeFrame(FrameType.JSON, 0, payload)
 }
 
 /**
@@ -79,65 +71,72 @@ export function encodeEndFrame(streamId: number): Uint8Array {
 export function encodeErrorFrame(streamId: number, error: unknown): Uint8Array {
   const message =
     error instanceof Error ? error.message : String(error ?? 'Unknown error')
-  return encodeFrame(FrameType.ERROR, streamId, textEncoder.encode(message))
+  const payload = new Uint8Array(
+    Math.min(MAX_FRAME_PAYLOAD_SIZE, message.length * 3),
+  )
+  const { written } = textEncoder.encodeInto(message, payload)
+  return encodeFrame(FrameType.ERROR, streamId, payload.subarray(0, written))
 }
 
-/**
- * Late stream registration for RawStreams discovered after serialization starts.
- * Used when Promise<RawStream> resolves after the initial synchronous pass.
- */
-export interface LateStreamRegistration {
-  id: number
-  stream: ReadableStream<Uint8Array>
+export function cancelReadableStream(
+  stream: ReadableStream<unknown>,
+  reason?: unknown,
+): void {
+  void stream.cancel(reason).catch(() => {})
 }
 
 /**
  * Creates a multiplexed ReadableStream from JSON stream and raw streams.
  *
- * The JSON stream emits NDJSON lines (from seroval's toCrossJSONStream).
+ * The JSON stream emits pre-encoded JSON frames.
  * Raw streams are pumped concurrently, interleaved with JSON frames.
- *
- * Supports late stream registration for RawStreams discovered after initial
- * serialization (e.g., from resolved Promises).
- *
- * @param jsonStream Stream of JSON strings (each string is one NDJSON line)
- * @param rawStreams Map of stream IDs to raw binary streams (known at start)
- * @param lateStreamSource Optional stream of late registrations for streams discovered later
  */
 export function createMultiplexedStream(
-  jsonStream: ReadableStream<string>,
+  jsonStream: ReadableStream<Uint8Array>,
   rawStreams: Map<number, ReadableStream<Uint8Array>>,
-  lateStreamSource?: ReadableStream<LateStreamRegistration>,
-): ReadableStream<Uint8Array> {
-  // Shared state for the multiplexed stream
-  let controller: ReadableStreamDefaultController<Uint8Array>
-  let cancelled = false
-  const readers: Array<ReadableStreamDefaultReader<any>> = []
+): [
+  stream: ReadableStream<Uint8Array>,
+  registerRaw: (id: number, stream: ReadableStream<Uint8Array>) => void,
+] {
+  const transform = new TransformStream<Uint8Array, Uint8Array>()
+  const writer = transform.writable.getWriter()
+  let terminal = false
+  const readers = new Set<ReadableStreamDefaultReader<Uint8Array>>()
+  let active = 0
 
-  // Helper to enqueue a frame, ignoring errors if stream is closed/cancelled
-  const enqueue = (frame: Uint8Array): boolean => {
-    if (cancelled) return false
-    try {
-      controller.enqueue(frame)
-      return true
-    } catch {
-      return false
+  const stop = (error: unknown): void => {
+    if (terminal) {
+      return
     }
+
+    terminal = true
+    for (const reader of readers) {
+      void reader.cancel(error).catch(() => {})
+    }
+    readers.clear()
+    void writer.abort(error).catch(() => {})
   }
 
-  // Helper to error the output stream (for fatal errors like JSON stream failure)
-  const errorOutput = (error: unknown): void => {
-    if (cancelled) return
-    cancelled = true
-    try {
-      controller.error(error)
-    } catch {
-      // Already errored
-    }
-    // Cancel all readers to stop other pumps
-    for (const reader of readers) {
-      reader.cancel().catch(() => {})
-    }
+  void writer.closed.catch(stop)
+
+  const write = (frame: Uint8Array): Promise<boolean> => {
+    return writer.write(frame).then(
+      () => true,
+      (error) => {
+        stop(error)
+        return false
+      },
+    )
+  }
+
+  const track = (pump: Promise<void>): void => {
+    active++
+    void pump.then(() => {
+      if (!--active && !terminal) {
+        terminal = true
+        void writer.close().catch(() => {})
+      }
+    }, stop)
   }
 
   // Pumps a raw stream, sending CHUNK frames and END/ERROR on completion
@@ -145,22 +144,47 @@ export function createMultiplexedStream(
     streamId: number,
     stream: ReadableStream<Uint8Array>,
   ): Promise<void> {
-    const reader = stream.getReader()
-    readers.push(reader)
+    let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
     try {
-      while (!cancelled) {
+      reader = stream.getReader()
+      readers.add(reader)
+
+      while (!terminal) {
         const { done, value } = await reader.read()
-        if (done) {
-          enqueue(encodeEndFrame(streamId))
+        // Cancellation can happen while the read is pending.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (terminal) {
           return
         }
-        if (!enqueue(encodeChunkFrame(streamId, value))) return
+        if (done) {
+          await write(
+            encodeFrame(FrameType.END, streamId, new Uint8Array()),
+          )
+          return
+        }
+
+        let offset = 0
+        do {
+          const chunk = value.subarray(
+            offset,
+            Math.min(offset + MAX_FRAME_PAYLOAD_SIZE, value.length),
+          )
+          if (!(await write(encodeFrame(FrameType.CHUNK, streamId, chunk)))) {
+            return
+          }
+          offset += MAX_FRAME_PAYLOAD_SIZE
+        } while (offset < value.length)
       }
     } catch (error) {
       // Raw stream error - send ERROR frame, don't fail entire response
-      enqueue(encodeErrorFrame(streamId, error))
+      if (!terminal) {
+        await write(encodeErrorFrame(streamId, error))
+      }
     } finally {
-      reader.releaseLock()
+      if (reader) {
+        readers.delete(reader)
+        reader.releaseLock()
+      }
     }
   }
 
@@ -168,91 +192,43 @@ export function createMultiplexedStream(
   // JSON stream errors are fatal - they error the entire output
   async function pumpJSON(): Promise<void> {
     const reader = jsonStream.getReader()
-    readers.push(reader)
+    readers.add(reader)
     try {
-      while (!cancelled) {
+      while (!terminal) {
         const { done, value } = await reader.read()
-        if (done) return
-        if (!enqueue(encodeJSONFrame(value))) return
+        // Cancellation can happen while the read is pending.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (terminal) {
+          return
+        }
+        if (done) {
+          return
+        }
+
+        if (!(await write(value))) {
+          return
+        }
       }
-    } catch (error) {
-      // JSON stream error is fatal - error the entire output
-      errorOutput(error)
-      throw error // Re-throw to signal failure to Promise.all
     } finally {
+      readers.delete(reader)
       reader.releaseLock()
     }
   }
 
-  // Pumps late stream registrations, spawning raw stream pumps as they arrive
-  async function pumpLateStreams(): Promise<Array<Promise<void>>> {
-    if (!lateStreamSource) return []
-
-    const lateStreamPumps: Array<Promise<void>> = []
-    const reader = lateStreamSource.getReader()
-    readers.push(reader)
-    try {
-      while (!cancelled) {
-        const { done, value } = await reader.read()
-        if (done) break
-        // Start pumping this late stream and track it
-        lateStreamPumps.push(pumpRawStream(value.id, value.stream))
-      }
-    } finally {
-      reader.releaseLock()
-    }
-    return lateStreamPumps
+  const registerRaw = (
+    id: number,
+    stream: ReadableStream<Uint8Array>,
+  ): void => {
+    // Start immediately so output cancellation owns the raw reader. Raw and
+    // JSON frame order is intentionally independent.
+    track(pumpRawStream(id, stream))
   }
 
-  return new ReadableStream<Uint8Array>({
-    async start(ctrl) {
-      controller = ctrl
+  track(pumpJSON())
+  for (const [id, stream] of rawStreams) {
+    track(pumpRawStream(id, stream))
+  }
+  rawStreams.clear()
 
-      // Collect all pump promises
-      const pumps: Array<Promise<void | Array<Promise<void>>>> = [pumpJSON()]
-
-      for (const [streamId, stream] of rawStreams) {
-        pumps.push(pumpRawStream(streamId, stream))
-      }
-
-      // Add late stream pump (returns array of spawned pump promises)
-      if (lateStreamSource) {
-        pumps.push(pumpLateStreams())
-      }
-
-      try {
-        // Wait for initial pumps to complete
-        const results = await Promise.all(pumps)
-
-        // Wait for any late stream pumps that were spawned
-        const latePumps = results.find(Array.isArray) as
-          | Array<Promise<void>>
-          | undefined
-        if (latePumps && latePumps.length > 0) {
-          await Promise.all(latePumps)
-        }
-
-        // All pumps done - close the output stream
-        if (!cancelled) {
-          try {
-            controller.close()
-          } catch {
-            // Already closed
-          }
-        }
-      } catch {
-        // Error already handled by errorOutput in pumpJSON
-        // or was a raw stream error (non-fatal, already sent ERROR frame)
-      }
-    },
-
-    cancel() {
-      cancelled = true
-      // Cancel all readers to stop pumps quickly
-      for (const reader of readers) {
-        reader.cancel().catch(() => {})
-      }
-      readers.length = 0
-    },
-  })
+  return [transform.readable, registerRaw]
 }

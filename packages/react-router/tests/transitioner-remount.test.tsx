@@ -1,5 +1,7 @@
+import { useState } from 'react'
+import { flushSync } from 'react-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import {
   Outlet,
   RouterProvider,
@@ -11,6 +13,7 @@ import {
 
 afterEach(() => {
   cleanup()
+  vi.unstubAllEnvs()
 })
 
 function setup() {
@@ -88,4 +91,51 @@ describe('Transitioner remount', () => {
 
     loadSpy.mockRestore()
   })
+
+  it.each(['development', 'production'] as const)(
+    'settles an outstanding render when the provider unmounts in %s',
+    async (nodeEnv) => {
+      vi.stubEnv('NODE_ENV', nodeEnv)
+
+      const { router } = setup()
+      let setMounted!: (mounted: boolean) => void
+      function Harness() {
+        const [mounted, set] = useState(true)
+        setMounted = set
+        return mounted ? <RouterProvider router={router} /> : null
+      }
+
+      render(<Harness />)
+      expect(await screen.findByText('Index')).toBeInTheDocument()
+      await waitFor(() => expect(router.state.status).toBe('idle'))
+
+      const rendered = vi.fn()
+      const navigationSettled = vi.fn()
+      const unsubscribers = [
+        router.subscribe('onRendered', (event) => {
+          if (event.toLocation.pathname === '/next') {
+            rendered()
+          }
+        }),
+        router.subscribe('onBeforeRouteMount', (event) => {
+          if (event.toLocation.pathname === '/next') {
+            expect(navigationSettled).not.toHaveBeenCalled()
+            flushSync(() => setMounted(false))
+          }
+        }),
+      ]
+
+      void router.navigate({ to: '/next' }).then(navigationSettled)
+      await waitFor(() => expect(navigationSettled).toHaveBeenCalledOnce())
+      expect(rendered).not.toHaveBeenCalled()
+
+      await act(() => setMounted(true))
+      expect(await screen.findByText('Next')).toBeInTheDocument()
+      await waitFor(() => expect(rendered).toHaveBeenCalledOnce())
+
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe()
+      }
+    },
+  )
 })

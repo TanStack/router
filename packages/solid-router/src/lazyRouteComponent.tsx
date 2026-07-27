@@ -13,29 +13,34 @@ export function lazyRouteComponent<
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
-  let loadPromise: Promise<any> | undefined
+  let loadPromise: Promise<void> | undefined
   let comp: T[TKey] | T['default']
   let error: any
 
   const load = () => {
-    if (!loadPromise) {
-      error = undefined
-      loadPromise = importer()
-        .then((res) => {
-          // Keep browser preload behavior unchanged; SSR can reuse the import.
-          if (!(isServer ?? typeof window === 'undefined')) {
-            loadPromise = undefined
-          }
-          comp = res[exportName ?? 'default']
-          return comp
-        })
-        .catch((err) => {
-          loadPromise = undefined
-          error = err
-        })
+    if (loadPromise) {
+      return loadPromise
     }
 
-    return loadPromise
+    error = undefined
+    return (loadPromise = importer()
+      .then((res) => {
+        // Keep browser preload behavior unchanged; SSR can reuse the import.
+        if (
+          !((isServer as boolean | undefined) ?? typeof window === 'undefined')
+        ) {
+          loadPromise = undefined
+        }
+        comp = res[exportName ?? 'default']
+      })
+      .catch((err) => {
+        loadPromise = undefined
+        error = err
+
+        if (!isModuleNotFoundError(err)) {
+          throw err
+        }
+      }))
   }
 
   const lazyComp = function Lazy(props: any) {
@@ -47,30 +52,18 @@ export function lazyRouteComponent<
       // If this happens, the old version in the user's browser would have an outdated
       // URL to the lazy module.
       // In that case, we want to attempt one window refresh to get the latest.
-      if (isModuleNotFoundError(error)) {
-        // We don't want an error thrown from preload in this case, because
-        // there's nothing we want to do about module not found during preload.
-        // Record the error, recover the promise with a null return,
-        // and we will attempt module not found resolution during the render path.
-
-        if (
-          error instanceof Error &&
-          typeof window !== 'undefined' &&
-          typeof sessionStorage !== 'undefined'
-        ) {
-          // Again, we want to reload one time on module not found error and not enter
-          // a reload loop if there is some other issue besides an old deploy.
-          // That's why we store our reload attempt in sessionStorage.
-          // Use error.message as key because it contains the module path that failed.
-          const storageKey = `tanstack_router_reload:${error.message}`
-          if (!sessionStorage.getItem(storageKey)) {
-            sessionStorage.setItem(storageKey, '1')
-            window.location.reload()
-
-            // Return empty component while we wait for window to reload
-            return {
-              default: () => null,
-            }
+      if (
+        isModuleNotFoundError(error) &&
+        error instanceof Error &&
+        !((isServer as boolean | undefined) ?? typeof window === 'undefined') &&
+        typeof sessionStorage !== 'undefined'
+      ) {
+        const storageKey = `tanstack_router_reload:${error.message}`
+        if (!sessionStorage.getItem(storageKey)) {
+          sessionStorage.setItem(storageKey, '1')
+          window.location.reload()
+          return {
+            default: () => null,
           }
         }
       }
@@ -80,7 +73,7 @@ export function lazyRouteComponent<
     }
 
     if (!comp) {
-      const [compResource] = createResource(load, {
+      const [compResource] = createResource(() => load().then(() => comp), {
         initialValue: comp,
         ssrLoadFrom: 'initial',
       })

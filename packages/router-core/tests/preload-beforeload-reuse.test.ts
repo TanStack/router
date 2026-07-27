@@ -90,56 +90,9 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
     })
   })
 
-  test('adopts beforeLoad and loader from an identical active preload', async () => {
-    const loaderGate = createControlledPromise<string>()
-    const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
-      guard: preload ? 'preloaded' : 'loaded',
-    }))
-    const loader = vi.fn(() => loaderGate)
-    const rootRoute = new BaseRootRoute({})
-    const indexRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-    })
-    const guardedRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/guarded',
-      preloadStaleTime: Infinity,
-      beforeLoad,
-      loader,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([indexRoute, guardedRoute]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    await router.load()
-    const preload = router.preloadRoute({ to: '/guarded' })
-    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
-
-    const navigation = router.navigate({ to: '/guarded' })
-    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(1))
-    expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
-      true,
-    ])
-    expect(loader).toHaveBeenCalledTimes(1)
-
-    loaderGate.resolve('shared loader data')
-    await Promise.all([preload, navigation])
-
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.state.matches.at(-1)?.context).toEqual({ guard: 'preloaded' })
-    expect(router.state.matches.at(-1)?.loaderData).toBe('shared loader data')
-  })
-
-  test.each([
-    { age: 50, expected: [false, true, false], guard: 'loaded' },
-    { age: 100, expected: [false, true, false], guard: 'loaded' },
-  ])(
-    'reruns completed beforeLoad while retaining navigation-owned loader data at age $age',
-    async ({ age, expected, guard }) => {
-      vi.useFakeTimers()
-      vi.setSystemTime(1_000)
+  test(
+    'reruns completed beforeLoad while retaining navigation-owned loader data',
+    async () => {
       const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
         guard: preload ? 'preloaded' : 'loaded',
       }))
@@ -152,8 +105,6 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
       const guardedRoute = new BaseRoute({
         getParentRoute: () => rootRoute,
         path: '/guarded',
-        staleTime: Infinity,
-        preloadStaleTime: 100,
         beforeLoad,
         shouldReload: false,
         loader,
@@ -166,18 +117,16 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
       await router.load()
       await router.navigate({ to: '/guarded' })
       await router.navigate({ to: '/' })
-      vi.setSystemTime(5_000)
       await router.preloadRoute({ to: '/guarded' })
-      vi.setSystemTime(5_000 + age)
       await router.navigate({ to: '/guarded' })
 
       expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual(
-        expected,
+        [false, true, false],
       )
       expect(loader.mock.calls.map(([context]) => context.preload)).toEqual([
         false,
       ])
-      expect(router.state.matches.at(-1)?.context).toEqual({ guard })
+      expect(router.state.matches.at(-1)?.context).toEqual({ guard: 'loaded' })
     },
   )
 
@@ -399,14 +348,18 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
     expect(seen).toEqual([true, false])
   })
 
-  test('invalidation prevents adoption of context from an active preload', async () => {
-    const loaderGate = createControlledPromise<string>()
+  test('invalidation prevents joining an active preload loader generation', async () => {
+    const preloadLoaderGate = createControlledPromise<string>()
     let generation = 1
     const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
       generation,
       preload,
     }))
-    const loader = vi.fn(() => loaderGate)
+    const loader = vi.fn(({ context }: { context: { generation: number } }) =>
+      context.generation === 1
+        ? preloadLoaderGate
+        : `generation ${context.generation} data`,
+    )
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -433,19 +386,20 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
     await router.invalidate()
     const navigation = router.navigate({ to: '/guarded' })
     await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
-    loaderGate.resolve('shared loader data')
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(2))
+    preloadLoaderGate.resolve('generation 1 data')
     await Promise.all([preload, navigation])
 
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
       false,
     ])
-    expect(loader).toHaveBeenCalledOnce()
+    expect(loader).toHaveBeenCalledTimes(2)
     expect(router.state.matches.at(-1)?.context).toEqual({
       generation: 2,
       preload: false,
     })
-    expect(router.state.matches.at(-1)?.loaderData).toBe('shared loader data')
+    expect(router.state.matches.at(-1)?.loaderData).toBe('generation 2 data')
   })
 
   test('preload false does not cache beforeLoad context for navigation', async () => {

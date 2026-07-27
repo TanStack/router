@@ -15,7 +15,7 @@ export const TSS_CONTENT_TYPE_FRAMED = 'application/x-tss-framed'
  * Frame types for binary multiplexing protocol.
  */
 export const FrameType = {
-  /** Seroval JSON chunk (NDJSON line) */
+  /** Seroval JSON value */
   JSON: 0,
   /** Raw stream data chunk */
   CHUNK: 1,
@@ -29,6 +29,12 @@ export type FrameType = (typeof FrameType)[keyof typeof FrameType]
 
 /** Header size in bytes: type(1) + streamId(4) + length(4) */
 export const FRAME_HEADER_SIZE = 9
+
+/** Maximum payload size accepted by the framed response decoder (16 MiB). */
+export const MAX_FRAME_PAYLOAD_SIZE = 16 * 1024 * 1024
+
+/** Maximum number of raw streams accepted in one framed response. */
+export const MAX_FRAMED_STREAMS = 1024
 
 /** Current protocol version for framed responses */
 export const TSS_FRAMED_PROTOCOL_VERSION = 1

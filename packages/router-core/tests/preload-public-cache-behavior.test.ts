@@ -9,8 +9,8 @@ afterEach(() => {
 })
 
 // https://github.com/TanStack/router/issues/2980
-// Repeated child preloads must borrow a stale active parent instead of rerunning
-// its loader.
+// Repeated child preloads must reuse data from the accepted active parent
+// generation instead of rerunning its loader.
 test('#2980: repeated child preloads do not rerun a stale active parent loader', async () => {
   vi.useFakeTimers()
   vi.setSystemTime(1_000)
@@ -115,7 +115,7 @@ test('fresh navigation data keeps its gc policy when a preload reuses it', async
 
 // Public contract: clearCache must remain authoritative even if an older
 // preload finishes unrelated asset work after the clear.
-test('clearCache during an in-flight preload cannot resurrect its borrowed data', async () => {
+test('clearCache during an in-flight preload cannot resurrect reused accepted data', async () => {
   const headGate = createControlledPromise<{
     meta: Array<{ title: string }>
   }>()
@@ -321,6 +321,128 @@ test('clearCache detaches every discarded flight before abort listeners reenter'
   expect(router.state.matches.at(-1)?.loaderData).toBe('generation 2')
 })
 
+test('a throwing clearCache filter leaves every preload owned', async () => {
+  const firstGate = createControlledPromise<string>()
+  const secondGate = createControlledPromise<string>()
+  let firstSignal: AbortSignal | undefined
+  let secondSignal: AbortSignal | undefined
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const firstRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/first',
+    loader: ({ abortController }) => {
+      firstSignal = abortController.signal
+      return firstGate
+    },
+  })
+  const secondRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/second',
+    loader: ({ abortController }) => {
+      secondSignal = abortController.signal
+      return secondGate
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([homeRoute, firstRoute, secondRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const firstPreload = router.preloadRoute({ to: '/first' })
+  const secondPreload = router.preloadRoute({ to: '/second' })
+  await vi.waitFor(() => {
+    expect(firstSignal).toBeDefined()
+    expect(secondSignal).toBeDefined()
+  })
+
+  const failure = new Error('filter failed')
+  expect(() =>
+    router.clearCache({
+      filter: (match) => {
+        if (match.routeId === firstRoute.id) {
+          return true
+        }
+        if (match.routeId === secondRoute.id) {
+          throw failure
+        }
+        return false
+      },
+    }),
+  ).toThrow(failure)
+
+  router.clearCache()
+  expect(firstSignal?.aborted).toBe(true)
+  expect(secondSignal?.aborted).toBe(true)
+
+  firstGate.resolve('first')
+  secondGate.resolve('second')
+  await Promise.all([firstPreload, secondPreload])
+})
+
+test('filtered clearCache preserves a parent flight owned by another preload', async () => {
+  const parentGate = createControlledPromise<string>()
+  const parentError = new Error('shared parent failed')
+  const onError = vi.fn()
+  const parentLoader = vi.fn(() => parentGate)
+  const secondLoader = vi.fn(() => 'second')
+  const thirdLoader = vi.fn(() => 'third')
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    loader: parentLoader,
+    onError,
+  })
+  const firstRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/first',
+  })
+  const secondRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/second',
+    loader: secondLoader,
+  })
+  const thirdRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/third',
+    loader: thirdLoader,
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      homeRoute,
+      parentRoute.addChildren([firstRoute, secondRoute, thirdRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const firstPreload = router.preloadRoute({ to: '/parent/first' })
+  await vi.waitFor(() => expect(parentLoader).toHaveBeenCalledOnce())
+  const secondPreload = router.preloadRoute({ to: '/parent/second' })
+  await vi.waitFor(() => expect(secondLoader).toHaveBeenCalledOnce())
+
+  router.clearCache({
+    filter: (match) => match.routeId === firstRoute.id,
+  })
+  const thirdPreload = router.preloadRoute({ to: '/parent/third' })
+  await vi.waitFor(() => expect(thirdLoader).toHaveBeenCalledOnce())
+
+  expect(parentLoader).toHaveBeenCalledOnce()
+
+  parentGate.reject(parentError)
+  await Promise.all([firstPreload, secondPreload, thirdPreload])
+  expect(onError).toHaveBeenCalledExactlyOnceWith(parentError)
+})
+
 test('independent concurrent preloads both populate the cache', async () => {
   const firstGate = createControlledPromise<string>()
   const secondGate = createControlledPromise<string>()
@@ -367,46 +489,64 @@ test('independent concurrent preloads both populate the cache', async () => {
   expect(secondLoader).toHaveBeenCalledOnce()
 })
 
-// Probe, not a required cancellation policy: invalidating the accepted route
-// need not cancel unrelated private preload work, but the public operations
-// must both settle and leave navigation usable.
-test('invalidate and an unrelated in-flight preload both settle cleanly', async () => {
-  const loaderGate = createControlledPromise<string>()
-  const loader = vi.fn(() => loaderGate)
-  const rootRoute = new BaseRootRoute({})
-  const homeRoute = new BaseRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-  })
-  const targetRoute = new BaseRoute({
-    getParentRoute: () => rootRoute,
-    path: '/target',
-    preloadStaleTime: Infinity,
-    staleTime: Infinity,
-    loader,
-  })
-  const router = createTestRouter({
-    routeTree: rootRoute.addChildren([homeRoute, targetRoute]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
+test.each([
+  ['unfiltered', undefined, true],
+  ['filtered affected', 'target', true],
+  ['filtered unaffected', 'home', false],
+] as const)(
+  '%s invalidation handles an active preload according to its filter scope',
+  async (_mode, selected, shouldRetire) => {
+    const oldLoaderGate = createControlledPromise<string>()
+    const signals: Array<AbortSignal> = []
+    const loader = vi.fn(
+      ({ abortController }: { abortController: AbortController }) => {
+        signals.push(abortController.signal)
+        return loader.mock.calls.length === 1
+          ? oldLoaderGate
+          : 'new-generation'
+      },
+    )
+    const rootRoute = new BaseRootRoute({})
+    const homeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      preloadStaleTime: Infinity,
+      staleTime: Infinity,
+      loader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([homeRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
 
-  await router.load()
-  const preload = router.preloadRoute({ to: '/target' })
-  await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
-  expect(loaderGate.status).toBe('pending')
-  await router.invalidate()
-  expect(loaderGate.status).toBe('pending')
-  loaderGate.resolve('target data')
-  await preload
+    await router.load()
+    const preload = router.preloadRoute({ to: '/target' })
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledOnce())
 
-  await router.navigate({ to: '/target' })
-  expect(router.state.location.pathname).toBe('/target')
-  expect(
-    router.state.matches.find((match) => match.routeId === targetRoute.id)
-      ?.loaderData,
-  ).toBe('target data')
-  expect(loader).toHaveBeenCalledTimes(1)
-})
+    await (selected
+      ? router.invalidate({
+          filter: (match) =>
+            match.routeId ===
+            (selected === 'target' ? targetRoute.id : homeRoute.id),
+        })
+      : router.invalidate())
+    const retired = signals[0]!.aborted
+    oldLoaderGate.resolve('old-generation')
+    await preload
+    await router.navigate({ to: '/target' })
+
+    expect(retired).toBe(shouldRetire)
+    expect(loader).toHaveBeenCalledTimes(shouldRetire ? 2 : 1)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      invalid: false,
+      loaderData: shouldRetire ? 'new-generation' : 'old-generation',
+    })
+  },
+)
 
 // Preload lanes are not cancelled by unrelated navigations: an in-flight
 // async beforeLoad runs to completion, its loader still executes and seeds

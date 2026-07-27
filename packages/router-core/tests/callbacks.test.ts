@@ -1,7 +1,7 @@
 import { describe, expect, it, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
-import { createTestRouter } from './routerTestUtils'
+import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 describe('callbacks', () => {
   const setup = ({
@@ -157,6 +157,103 @@ describe('callbacks', () => {
       expect(onLeave).toHaveBeenCalledTimes(0)
       expect(onStay).toHaveBeenCalledTimes(2)
     })
+  })
+
+  test('a throwing lifecycle callback cannot interrupt later callbacks or leave a client commit half-resolved', async () => {
+    const lifecycleError = new Error('root onStay failed')
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const rootOnStay = vi.fn(() => {
+      throw lifecycleError
+    })
+    const targetOnEnter = vi.fn()
+    const sourceOnLeave = vi.fn()
+    const rootRoute = new BaseRootRoute({ onStay: rootOnStay })
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      onLeave: sourceOnLeave,
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      onEnter: targetOnEnter,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      history: createMemoryHistory(),
+    })
+
+    // Establish the source lane through the same public navigation path used
+    // by the lifecycle contract tests above.
+    await router.navigate({ to: '/source' })
+    rootOnStay.mockClear()
+    const onLoad = vi.fn()
+    const onResolved = vi.fn()
+    const unsubscribers = [
+      router.subscribe('onLoad', onLoad),
+      router.subscribe('onResolved', onResolved),
+    ]
+
+    try {
+      await router.navigate({ to: '/target' })
+
+      // Prove the throwing callback was reached before checking the work that
+      // must remain isolated from it.
+      expect(sourceOnLeave).toHaveBeenCalledOnce()
+      expect(rootOnStay).toHaveBeenCalledOnce()
+      expect(targetOnEnter).toHaveBeenCalledOnce()
+      expect(onLoad).toHaveBeenCalledOnce()
+      expect(onResolved).toHaveBeenCalledOnce()
+      expect(router.state).toMatchObject({
+        status: 'idle',
+        location: { pathname: '/target' },
+        resolvedLocation: { pathname: '/target' },
+      })
+      expect(router.state.matches.at(-1)?.routeId).toBe(targetRoute.id)
+      expect(log).toHaveBeenCalledWith(lifecycleError)
+    } finally {
+      for (const unsubscribe of unsubscribers) {
+        unsubscribe()
+      }
+      log.mockRestore()
+    }
+  })
+
+  test('a throwing lifecycle callback cannot reject an otherwise committed server load', async () => {
+    const lifecycleError = new Error('root onEnter failed')
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const childOnEnter = vi.fn()
+    const rootRoute = new BaseRootRoute({
+      onEnter: () => {
+        throw lifecycleError
+      },
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/child',
+      onEnter: childOnEnter,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([childRoute]),
+      history: createMemoryHistory({ initialEntries: ['/child'] }),
+      isServer: true,
+    })
+
+    try {
+      const response = await loadServerResponse(router, '/child')
+
+      expect(response.status).toBe(200)
+      expect(log).toHaveBeenCalledWith(lifecycleError)
+      expect(childOnEnter).toHaveBeenCalledOnce()
+      expect(router.state).toMatchObject({
+        status: 'idle',
+        location: { pathname: '/child' },
+        resolvedLocation: { pathname: '/child' },
+      })
+      expect(router.state.matches.at(-1)?.routeId).toBe(childRoute.id)
+    } finally {
+      log.mockRestore()
+    }
   })
 
   // Regression tests: switching lifecycle hooks to use routeId must NOT break

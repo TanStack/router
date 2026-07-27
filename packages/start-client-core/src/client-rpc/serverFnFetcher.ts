@@ -73,18 +73,6 @@ export function trackPostProcessPromise(promise: Promise<unknown>): void {
 }
 
 /**
- * Helper to await all post-processing promises.
- * Uses Promise.allSettled to ensure all promises complete even if some reject.
- */
-async function awaitPostProcessPromises(
-  promises: Array<Promise<unknown>>,
-): Promise<void> {
-  if (promises.length > 0) {
-    await Promise.allSettled(promises)
-  }
-}
-
-/**
  * Checks if an object has at least one own enumerable property.
  * More efficient than Object.keys(obj).length > 0 as it short-circuits on first property.
  */
@@ -164,7 +152,7 @@ export async function serverFnFetcher(
     body = fetchBody?.body
   }
 
-  return await getResponse(async () =>
+  return getResponse(async () =>
     fetchImpl(url, {
       method: first.method,
       headers,
@@ -197,9 +185,7 @@ async function serializePayload(
 }
 
 async function serialize(data: any) {
-  return JSON.stringify(
-    await Promise.resolve(toJSONAsync(data, { plugins: serovalPlugins! })),
-  )
+  return JSON.stringify(await toJSONAsync(data, { plugins: serovalPlugins! }))
 }
 
 async function getFetchBody(
@@ -268,7 +254,12 @@ async function getResponse(fn: () => Promise<Response>) {
     // If it's a framed response (contains RawStream), use frame decoder
     if (contentType.includes(TSS_CONTENT_TYPE_FRAMED)) {
       // Validate protocol version compatibility
-      validateFramedProtocolVersion(contentType)
+      try {
+        validateFramedProtocolVersion(contentType)
+      } catch (error) {
+        void response.body?.cancel(error).catch(() => {})
+        throw error
+      }
 
       if (!response.body) {
         throw new Error('No response body for framed response')
@@ -281,16 +272,9 @@ async function getResponse(fn: () => Promise<Response>) {
       // Create deserialize plugin that wires up the raw streams
       const rawStreamPlugin =
         createRawStreamDeserializePlugin(getOrCreateStream)
-      const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+      const plugins = [rawStreamPlugin, ...serovalPlugins!]
 
-      const refs = new Map()
-      result = await processFramedResponse({
-        jsonStream: jsonChunks,
-        onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
-        onError(msg, error) {
-          console.error(msg, error)
-        },
-      })
+      result = await processFramedResponse(jsonChunks, plugins)
     }
     // If it's a JSON response, it can be simpler
     else if (contentType.includes('application/json')) {
@@ -304,7 +288,9 @@ async function getResponse(fn: () => Promise<Response>) {
         setPostProcessContext(null)
       }
       // Await any async post-processing before returning
-      await awaitPostProcessPromises(postProcessPromises)
+      if (postProcessPromises.length) {
+        await Promise.allSettled(postProcessPromises)
+      }
     }
 
     if (!result) {
@@ -352,94 +338,77 @@ async function getResponse(fn: () => Promise<Response>) {
  * completes before the next chunk is processed. This prevents issues when
  * streaming values require async post-processing (e.g., RSC decoding).
  */
-async function processFramedResponse({
-  jsonStream,
-  onMessage,
-  onError,
-}: {
-  jsonStream: ReadableStream<string>
-  onMessage: (msg: any) => any
-  onError?: (msg: string, error?: any) => void
-}) {
+async function processFramedResponse(
+  jsonStream: ReadableStream<string>,
+  plugins: Array<SerovalPlugin<any, any>>,
+) {
   const reader = jsonStream.getReader()
+  const refs = new Map<number, unknown>()
+  const transportFailure = new Promise<never>((_, reject) => {
+    void reader.closed.catch(reject)
+  })
+  void transportFailure.catch(() => {})
 
-  // Read first JSON frame - this is the main result
-  const { value: firstValue, done: firstDone } = await reader.read()
-  if (firstDone || !firstValue) {
-    throw new Error('Stream ended before first object')
+  const deserialize = (json: string) => {
+    const postProcessPromises: Array<Promise<unknown>> = []
+    setPostProcessContext(postProcessPromises)
+    let result
+    try {
+      result = fromCrossJSON(JSON.parse(json), { refs, plugins })
+    } finally {
+      setPostProcessContext(null)
+    }
+    return postProcessPromises.length
+      ? Promise.race([
+          Promise.allSettled(postProcessPromises),
+          transportFailure,
+        ]).then(() => result)
+      : result
   }
 
-  // Each frame is a complete JSON string
-  const firstObject = JSON.parse(firstValue)
+  // Read and deserialize the first frame before starting the detached drain so
+  // its refs exist before the drain can observe a terminal transport error.
+  let initial: Promise<any>
+  try {
+    const { value, done } = await reader.read()
+    if (done || !value) {
+      throw new Error('Stream ended before first object')
+    }
+    initial = Promise.resolve(deserialize(value))
+  } catch (error) {
+    reader.cancel(error).catch(() => {})
+    reader.releaseLock()
+    throw error
+  }
 
   // Process remaining frames for streaming refs like RawStream.
   // Keep draining until the server closes the stream.
   // Each chunk gets its own post-processing context to properly scope async work.
-  let drainCancelled = false as boolean
   const drain = (async () => {
     try {
       // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
       while (true) {
         const { value, done } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         if (value) {
-          try {
-            // Set up post-processing context for this chunk
-            const chunkPostProcessPromises: Array<Promise<unknown>> = []
-            setPostProcessContext(chunkPostProcessPromises)
-            try {
-              onMessage(JSON.parse(value))
-            } finally {
-              setPostProcessContext(null)
-            }
-            // Await any async post-processing from this chunk before processing next.
-            // This ensures values requiring async work are ready before their
-            // containing Promise/Stream resolves/emits to consumers.
-            await awaitPostProcessPromises(chunkPostProcessPromises)
-          } catch (e) {
-            onError?.(`Invalid JSON: ${value}`, e)
-          }
+          await deserialize(value)
         }
       }
     } catch (err) {
-      if (!drainCancelled) {
-        onError?.('Stream processing error:', err)
-      }
+      reader.cancel(err).catch(() => {})
+      throw err
+    } finally {
+      reader.releaseLock()
     }
   })()
 
-  // Process first object with its own post-processing context
-  let result: any
-  const initialPostProcessPromises: Array<Promise<unknown>> = []
-  setPostProcessContext(initialPostProcessPromises)
   try {
-    result = onMessage(firstObject)
+    await Promise.race([initial, drain])
+    return await initial
   } catch (err) {
-    setPostProcessContext(null)
-    drainCancelled = true
-    reader.cancel().catch(() => {})
+    reader.cancel(err).catch(() => {})
     throw err
   }
-  setPostProcessContext(null)
-
-  // Await initial post-processing promises before returning result
-  await awaitPostProcessPromises(initialPostProcessPromises)
-
-  // If the initial decode fails async, stop draining to avoid holding
-  // onto the response body and raw stream buffers unnecessarily.
-  Promise.resolve(result).catch(() => {
-    drainCancelled = true
-    reader.cancel().catch(() => {})
-  })
-
-  // Detach reader once draining completes.
-  drain.finally(() => {
-    try {
-      reader.releaseLock()
-    } catch {
-      // Ignore
-    }
-  })
-
-  return result
 }

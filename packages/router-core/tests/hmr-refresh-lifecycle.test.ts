@@ -433,7 +433,7 @@ describe('HMR route refresh', () => {
     expect(router.state.matches.at(-1)?.loaderData).toBe(3)
   })
 
-  test('does not adopt a preload created by HMR preflight hooks', async () => {
+  test('ignores preloads triggered by HMR preflight hooks', async () => {
     let generation = 1
     const rootRoute = new BaseRootRoute({})
     const pageRoute = new BaseRoute({
@@ -458,5 +458,51 @@ describe('HMR route refresh', () => {
     }
 
     expect(router.state.matches.at(-1)?.loaderData).toBe(2)
+  })
+
+  test('ignores a preload reentered from cache cleanup during HMR', async () => {
+    let reentrantPreload: Promise<unknown> | undefined
+    let router!: ReturnType<typeof createTestRouter>
+    const reentrantLoader = vi.fn(() => 'reentrant data')
+    const rootRoute = new BaseRootRoute({})
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+    })
+    const cachedRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/cached',
+      loader: ({ abortController }) => {
+        abortController.signal.addEventListener(
+          'abort',
+          () => {
+            reentrantPreload = router.preloadRoute({ to: '/reentrant' })
+          },
+          { once: true },
+        )
+        return 'cached data'
+      },
+    })
+    const reentrantRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/reentrant',
+      loader: reentrantLoader,
+    })
+    router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        pageRoute,
+        cachedRoute,
+        reentrantRoute,
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+    })
+
+    await router.load()
+    await router.preloadRoute({ to: '/cached' })
+    await router._refreshRoute!()
+    expect(reentrantPreload).toBeDefined()
+    await reentrantPreload
+
+    expect(reentrantLoader).not.toHaveBeenCalled()
   })
 })

@@ -279,37 +279,6 @@ test('invalidation reruns the loader with same-id route context', async () => {
   })
 })
 
-test('a preload cannot abort its controller after navigation adopts its lane', async () => {
-  const suspended = createControlledPromise<void>()
-  let adoptedSignal: AbortSignal | undefined
-  const rootRoute = new BaseRootRoute({})
-  const indexRoute = new BaseRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-  })
-  const guardedRoute = new BaseRoute({
-    getParentRoute: () => rootRoute,
-    path: '/guarded',
-    beforeLoad: ({ abortController }) => {
-      adoptedSignal = abortController.signal
-      throw suspended
-    },
-  })
-  const router = createTestRouter({
-    routeTree: rootRoute.addChildren([indexRoute, guardedRoute]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
-
-  await router.load()
-  const preload = router.preloadRoute({ to: '/guarded' })
-  const navigation = router.navigate({ to: '/guarded' })
-
-  await preload
-  expect(adoptedSignal?.aborted).toBe(false)
-
-  await navigation
-})
-
 test('a fast background candidate remains private when a reentrant navigation wins', async () => {
   let parentLoads = 0
   let childLoads = 0
@@ -387,6 +356,464 @@ test('a fast background candidate remains private when a reentrant navigation wi
   expect(replacementSignal?.aborted).toBe(true)
 })
 
+test('a successor reload does not join a settled background candidate awaiting render acknowledgement', async () => {
+  let generation = 0
+  const signals: Array<AbortSignal> = []
+  const rootRoute = new BaseRootRoute({})
+  const route = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      reload: Number(search.reload ?? 0),
+    }),
+    shouldReload: ({ location }) => {
+      return (location.search as { reload: number }).reload > 0
+    },
+    loader: ({ abortController }) => {
+      signals.push(abortController.signal)
+      return ++generation
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([route]),
+    history: createMemoryHistory({ initialEntries: ['/page?reload=0'] }),
+  })
+
+  await router.load()
+
+  let transitionCount = 0
+  let acknowledgeFirst!: () => void
+  router.startTransition = (commit) => {
+    commit()
+    transitionCount++
+    if (transitionCount === 1) {
+      return new Promise<boolean>((resolve) => {
+        acknowledgeFirst = () => resolve(false)
+      })
+    }
+    return Promise.resolve(true)
+  }
+
+  const first = router.navigate({
+    to: '/page',
+    search: { reload: 1 },
+  })
+  await vi.waitFor(() => {
+    expect(generation).toBe(2)
+    expect(transitionCount).toBe(1)
+  })
+
+  await router.navigate({
+    to: '/page',
+    search: { reload: 2 },
+  })
+
+  await vi.waitFor(() => {
+    expect(generation).toBe(3)
+    expect(router.state.matches.at(-1)?.loaderData).toBe(3)
+  })
+
+  acknowledgeFirst()
+  await first
+
+  expect(signals[1]?.aborted).toBe(true)
+  expect(signals[2]?.aborted).toBe(false)
+})
+
+test('a superseding navigation adopts a pending background loader before async beforeLoad', async () => {
+  const backgroundResult = createControlledPromise<number>()
+  const beforeLoadStarted = createControlledPromise<void>()
+  const beforeLoadGate = createControlledPromise<void>()
+  const signals: Array<AbortSignal> = []
+  let generation = 0
+
+  const rootRoute = new BaseRootRoute({})
+  const route = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      reload: Number(search.reload ?? 0),
+    }),
+    shouldReload: ({ location }) => {
+      return (location.search as { reload: number }).reload === 1
+        ? true
+        : undefined
+    },
+    beforeLoad: async ({ search }) => {
+      if (search.reload === 2) {
+        beforeLoadStarted.resolve()
+        await beforeLoadGate
+      }
+    },
+    loader: {
+      staleReloadMode: 'background',
+      handler: ({ abortController }) => {
+        signals.push(abortController.signal)
+        generation++
+        return generation === 2 ? backgroundResult : generation
+      },
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([route]),
+    history: createMemoryHistory({ initialEntries: ['/page?reload=0'] }),
+  })
+
+  await router.load()
+  await router.navigate({
+    to: '/page',
+    search: { reload: 1 },
+  })
+  await vi.waitFor(() => expect(generation).toBe(2))
+
+  const successor = router.navigate({
+    to: '/page',
+    search: { reload: 2 },
+  })
+  await beforeLoadStarted
+
+  backgroundResult.resolve(2)
+  beforeLoadGate.resolve()
+  await successor
+
+  await vi.waitFor(() => {
+    expect(router.state.matches.at(-1)?.loaderData).toBe(2)
+  })
+  expect(generation).toBe(2)
+  expect(signals[1]?.aborted).toBe(false)
+  expect(router.state.matches.at(-1)?.preload).toBe(false)
+})
+
+test('rejecting a pending background loader preserves the active loader owner', async () => {
+  const backgroundResult = createControlledPromise<number>()
+  const signals: Array<AbortSignal> = []
+  let generation = 0
+
+  const rootRoute = new BaseRootRoute({})
+  const pageRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    validateSearch: (search: Record<string, unknown>) => ({
+      reload: Number(search.reload ?? 0),
+    }),
+    shouldReload: ({ location }) => {
+      return (location.search as { reload: number }).reload === 1
+    },
+    loader: {
+      staleReloadMode: 'background',
+      handler: ({ abortController }) => {
+        signals.push(abortController.signal)
+        generation++
+        return generation === 2 ? backgroundResult : generation
+      },
+    },
+  })
+  const otherRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/other',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([pageRoute, otherRoute]),
+    history: createMemoryHistory({ initialEntries: ['/page?reload=0'] }),
+  })
+
+  await router.load()
+  await router.navigate({ to: '/page', search: { reload: 1 } })
+  await vi.waitFor(() => expect(generation).toBe(2))
+
+  await router.navigate({ to: '/page', search: { reload: 2 } })
+
+  expect(generation).toBe(2)
+  expect(signals[0]?.aborted).toBe(false)
+  expect(signals[1]?.aborted).toBe(true)
+  expect(router.state.matches.at(-1)?.loaderData).toBe(1)
+
+  await router.navigate({ to: '/other' })
+  expect(signals[0]?.aborted).toBe(true)
+})
+
+test('an ancestor beforeLoad failure releases an unconsumed background claim', async () => {
+  const backgroundResult = createControlledPromise<number>()
+  const signals: Array<AbortSignal> = []
+  let generation = 0
+
+  const rootRoute = new BaseRootRoute({})
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    validateSearch: (search: Record<string, unknown>) => ({
+      phase: String(search.phase ?? 'initial'),
+    }),
+    beforeLoad: ({ search }) => {
+      if (search.phase === 'fail') {
+        throw new Error('parent failed')
+      }
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    shouldReload: ({ location }) => {
+      return (location.search as { phase: string }).phase === 'refresh'
+        ? true
+        : undefined
+    },
+    staleTime: Infinity,
+    loader: {
+      staleReloadMode: 'background',
+      handler: ({ abortController }) => {
+        signals.push(abortController.signal)
+        generation++
+        return generation === 2 ? backgroundResult : generation
+      },
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    history: createMemoryHistory({
+      initialEntries: ['/parent/child?phase=initial'],
+    }),
+  })
+
+  await router.load()
+  await router.navigate({
+    to: '/parent/child',
+    search: { phase: 'refresh' },
+  })
+  await vi.waitFor(() => expect(generation).toBe(2))
+
+  await router.navigate({
+    to: '/parent/child',
+    search: { phase: 'fail' },
+  })
+
+  expect(
+    router.state.matches.find((match) => match.routeId === parentRoute.id),
+  ).toMatchObject({ status: 'error' })
+  expect(signals[1]?.aborted).toBe(true)
+
+  backgroundResult.resolve(2)
+  await router.navigate({
+    to: '/parent/child',
+    search: { phase: 'recovered' },
+  })
+
+  expect(generation).toBe(2)
+  expect(router.state.matches.at(-1)?.loaderData).toBe(1)
+})
+
+test('a background redirect beats a slower ancestor failure promoted over a child failure', async () => {
+  const parentFailureGate = createControlledPromise<void>()
+  const middleRedirectGate = createControlledPromise<void>()
+  const middleStarted = createControlledPromise<void>()
+  const childFailureStarted = createControlledPromise<void>()
+
+  const rootRoute = new BaseRootRoute({
+    validateSearch: (search: Record<string, unknown>) => ({
+      revision: Number(search.revision ?? 0),
+    }),
+  })
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    loaderDeps: ({ search }) => ({ revision: search.revision }),
+    loader: async ({ location }) => {
+      if ((location.search as { revision: number }).revision === 1) {
+        await parentFailureGate
+        throw new Error('parent failed')
+      }
+      return 'parent data'
+    },
+  })
+  const middleRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/middle',
+    shouldReload: ({ location }) =>
+      (location.search as { revision: number }).revision === 1,
+    loader: {
+      staleReloadMode: 'background',
+      handler: async ({ location }) => {
+        if ((location.search as { revision: number }).revision === 0) {
+          return 'middle data'
+        }
+        middleStarted.resolve()
+        await middleRedirectGate
+        throw redirect({ to: '/target' })
+      },
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => middleRoute,
+    path: '/child',
+    loaderDeps: ({ search }) => ({ revision: search.revision }),
+    loader: ({ location }) => {
+      if ((location.search as { revision: number }).revision === 1) {
+        childFailureStarted.resolve()
+        throw new Error('child failed')
+      }
+      return 'child data'
+    },
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      parentRoute.addChildren([middleRoute.addChildren([childRoute])]),
+      targetRoute,
+    ]),
+    history: createMemoryHistory({
+      initialEntries: ['/parent/middle/child?revision=0'],
+    }),
+  })
+
+  await router.load()
+  const navigation = router.navigate({
+    to: '/parent/middle/child',
+    search: { revision: 1 },
+  })
+  await Promise.all([middleStarted, childFailureStarted])
+
+  middleRedirectGate.resolve()
+  parentFailureGate.resolve()
+  await navigation
+
+  expect(router.state.location.pathname).toBe('/target')
+})
+
+test('navigation retries a failed preload loader while its error boundary is still loading', async () => {
+  const boundaryGate = createControlledPromise<void>()
+  const failure = new Error('preload failed')
+  const loader = vi.fn(() => {
+    if (loader.mock.calls.length === 1) {
+      throw failure
+    }
+    return 'navigation data'
+  })
+  const errorComponent = Object.assign(() => null, {
+    preload: vi.fn(() => boundaryGate),
+  })
+  const rootRoute = new BaseRootRoute({})
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    loader,
+    errorComponent,
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const preload = router.preloadRoute({ to: '/target' })
+  await vi.waitFor(() => {
+    expect(errorComponent.preload).toHaveBeenCalledOnce()
+  })
+
+  const navigation = router.navigate({ to: '/target' })
+  await vi.waitFor(() => {
+    expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  boundaryGate.resolve()
+  await Promise.all([preload, navigation])
+
+  expect(router.state.matches.at(-1)).toMatchObject({
+    routeId: targetRoute.id,
+    status: 'success',
+    loaderData: 'navigation data',
+  })
+})
+
+test('a preload started from onError retries the rejected loader flight', async () => {
+  const failure = new Error('first preload failed')
+  const loader = vi.fn(() => {
+    if (loader.mock.calls.length === 1) {
+      throw failure
+    }
+    return 'retry data'
+  })
+  let retry: ReturnType<typeof router.preloadRoute> | undefined
+
+  const rootRoute = new BaseRootRoute({})
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    loader,
+    onError: () => {
+      retry ??= router.preloadRoute({ to: '/target' })
+    },
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  await router.preloadRoute({ to: '/target' })
+  const retried = await retry
+
+  expect(loader).toHaveBeenCalledTimes(2)
+  expect(retried?.at(-1)?.loaderData).toBe('retry data')
+})
+
+test('a preload started after a returned terminal result gets a fresh loader flight', async () => {
+  const firstResult = createControlledPromise<ReturnType<typeof notFound>>()
+  const loader = vi.fn(() => {
+    if (loader.mock.calls.length === 1) {
+      return firstResult
+    }
+    return 'retry data'
+  })
+  let retry: ReturnType<typeof router.preloadRoute> | undefined
+
+  const rootRoute = new BaseRootRoute({})
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    loader,
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const preload = router.preloadRoute({ to: '/target' })
+  await vi.waitFor(() => expect(loader).toHaveBeenCalledOnce())
+
+  // A real application can react to the same request promise in a later
+  // microtask, after the router has normalized its result but before a loader
+  // lane waiter resumes.
+  firstResult.then(() => {
+    queueMicrotask(() => {
+      retry = router.preloadRoute({ to: '/target' })
+    })
+  })
+  firstResult.resolve(notFound())
+
+  await preload
+  await vi.waitFor(() => expect(retry).toBeDefined())
+  const retried = await retry
+
+  expect(loader).toHaveBeenCalledTimes(2)
+  expect(retried?.at(-1)?.loaderData).toBe('retry data')
+})
+
 test('reentrant navigation from onError cancels stale serial work', async () => {
   const failure = new Error('stale context failed')
   const parentLoader = vi.fn(() => 'parent data')
@@ -437,7 +864,7 @@ test('reentrant navigation from onError cancels stale serial work', async () => 
   expect(parentLoader).not.toHaveBeenCalled()
 })
 
-test('a joined descendant loader redirect still wins after an ancestor loader fails', async () => {
+test('an unrelated preload redirect does not override a navigation error', async () => {
   const childStarted = createControlledPromise<void>()
   const childRedirect = createControlledPromise<void>()
   const ancestorFailure = new Error('navigation parent failed')
@@ -466,6 +893,7 @@ test('a joined descendant loader redirect still wins after an ancestor loader fa
   const childRoute = new BaseRoute({
     getParentRoute: () => parentRoute,
     path: '/child',
+    loaderDeps: ({ search }) => ({ mode: search.mode }),
     loader: async () => {
       childLoads++
       if (childLoads === 1) {
@@ -503,12 +931,15 @@ test('a joined descendant loader redirect still wins after an ancestor loader fa
   childRedirect.resolve()
   await Promise.all([preload, navigation])
 
-  expect(router.state.location.pathname).toBe('/target')
-  expect(router.state.matches.at(-1)).toMatchObject({
-    routeId: targetRoute.id,
-    status: 'success',
+  expect(router.state.location.pathname).toBe('/parent/child')
+  expect(router.state.location.search).toEqual({ mode: 'navigation' })
+  expect(
+    router.state.matches.find((match) => match.routeId === parentRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: ancestorFailure,
   })
-  expect(childLoads).toBe(1)
+  expect(childLoads).toBe(2)
 })
 
 test('a loaderDeps error is handled by the route error boundary', async () => {
@@ -905,4 +1336,76 @@ test('an onLeave navigation to the in-flight destination joins it and enters onc
   // the route is entered exactly once rather than restarted into a stay.
   expect(firstEnter).toHaveBeenCalledOnce()
   expect(firstStay).not.toHaveBeenCalled()
+})
+
+test('a delayed legacy notFound preload cannot replace committed cache policy at another match index', async () => {
+  const preloadBeforeLoadStarted = createControlledPromise<void>()
+  const releasePreloadBeforeLoad = createControlledPromise<void>()
+  let generation = 0
+  const loader = vi.fn(({ preload }: { preload: boolean }) => ({
+    generation: ++generation,
+    preload,
+  }))
+  const rootRoute = new BaseRootRoute({})
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+  })
+  const legacyNotFoundRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/404',
+    staleTime: Infinity,
+    gcTime: Infinity,
+    preloadStaleTime: 0,
+    preloadGcTime: Infinity,
+    beforeLoad: async ({ preload }) => {
+      if (preload) {
+        preloadBeforeLoadStarted.resolve()
+        await releasePreloadBeforeLoad
+      }
+    },
+    loader,
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([indexRoute, parentRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    notFoundRoute: legacyNotFoundRoute,
+  })
+
+  await router.load()
+
+  const delayedPreload = router.preloadRoute({
+    to: '/parent/missing',
+  } as any)
+  try {
+    await preloadBeforeLoadStarted
+    await router.navigate({ to: '/missing' } as any)
+
+    expect(loader).toHaveBeenCalledOnce()
+    expect(router.state.matches.at(-1)?.loaderData).toEqual({
+      generation: 1,
+      preload: false,
+    })
+
+    releasePreloadBeforeLoad.resolve()
+    await delayedPreload
+
+    expect(loader).toHaveBeenCalledOnce()
+
+    await router.navigate({ to: '/' })
+    await router.navigate({ to: '/missing' } as any)
+
+    expect(loader).toHaveBeenCalledOnce()
+    expect(router.state.matches.at(-1)?.loaderData).toEqual({
+      generation: 1,
+      preload: false,
+    })
+  } finally {
+    releasePreloadBeforeLoad.resolve()
+    await Promise.allSettled([delayedPreload])
+  }
 })

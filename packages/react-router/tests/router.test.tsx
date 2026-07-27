@@ -2701,10 +2701,16 @@ describe('notFound in beforeLoad with pendingComponent', () => {
         }
       } finally {
         try {
+          // Navigation resolves from the final React layout acknowledgement.
+          // Do not await it inside the act callback that first makes that
+          // render possible, or fake timers and the concurrent render deadlock.
+          vi.useRealTimers()
           await act(async () => {
             beforeLoad.resolve()
-            await navigation
+            await Promise.resolve()
           })
+          await act(async () => {})
+          await navigation
         } finally {
           vi.useRealTimers()
         }

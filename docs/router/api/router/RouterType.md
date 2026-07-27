@@ -134,8 +134,8 @@ protocol.
 
 - Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean, sync?: boolean, forcePending?: boolean }) => Promise<void>`
 - This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
-- If `filter` is not supplied, all committed and cached match generations are invalidated.
-- If `filter` is supplied, it is evaluated against committed and cached matches. Selecting one generation invalidates every committed or cached generation with the same match ID.
+- If `filter` is not supplied, all committed and cached match generations are invalidated and all active preloads are canceled.
+- If `filter` is supplied, it is evaluated against the available committed, cached, loading, and preloading matches. Selecting one match invalidates every generation with the same match ID. An active preload is canceled when its lane contains a selected match ID.
 - Invalidation reruns `beforeLoad`; reusable loader data is marked stale and reloads through the normal loading protocol. Route-level `context` remains reusable while the match ID is unchanged.
 - If `sync` is `true`, stale loader work is blocking and the returned promise resolves after it finishes instead of leaving a background refresh detached.
 - If `forcePending` is `true`, selected routes that need loading enter the normal pending protocol even when successful data was already available.
@@ -169,9 +169,8 @@ presentation. Successful loader data can enter the normal in-memory route cache
 and remain reusable according to `preloadStaleTime` and `preloadGcTime`.
 
 Completed preload `beforeLoad` context is not cached. A later navigation reruns
-`beforeLoad` unless it adopts an identical whole-route preload that is still
-active. Adoption also requires unchanged router context, additional context,
-and user-supplied location state.
+`beforeLoad` with navigation semantics. It can still join a pending loader for
+the same match ID or reuse completed cached loader data.
 
 - Type: `(opts: NavigateOptions) => Promise<RouteMatch[] | undefined>`
 - Properties

@@ -1,4 +1,4 @@
-import { arraysEqual, functionalUpdate } from './utils'
+import { functionalUpdate } from './utils'
 
 import type { AnyRoute } from './route'
 import type { RouterState } from './router'
@@ -157,9 +157,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     batch(() => {
       // Publish lane membership first so framework trees reconcile departures
       // before observers of a leaving route receive its tombstone.
-      if (!arraysEqual(previousIds, nextIds)) {
-        ids.set(nextIds)
-      }
+      ids.set(nextIds)
 
       for (const id of previousIds) {
         if (!nextIds.includes(id)) {

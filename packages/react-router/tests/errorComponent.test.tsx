@@ -774,12 +774,25 @@ test('#4684: SSR renders head content when beforeLoad throws', async () => {
 })
 
 describe('notFoundComponent is rendered when an error is thrown in params.parse', () => {
-  test('displays notFoundComponent when error is thrown in params.parse', async () => {
+  test('renders a params.parse notFound without joining a pending intent-preload ancestor loader', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
-    const rootLoader = vi.fn(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 1))
-      return { ok: true }
-    })
+    const preloadGate = createControlledPromise<void>()
+    let preloadController: AbortController | undefined
+    const rootLoader = vi.fn(
+      async ({
+        preload,
+        abortController,
+      }: {
+        preload: boolean
+        abortController: AbortController
+      }) => {
+        if (preload) {
+          preloadController = abortController
+          await preloadGate
+        }
+        return { ok: true, preload }
+      },
+    )
 
     const rootRoute = createRootRoute({
       component: function Root() {
@@ -804,7 +817,7 @@ describe('notFoundComponent is rendered when an error is thrown in params.parse'
       component: function Home() {
         return (
           <div>
-            <Link to="/pizza/rotten" preload="intent">
+            <Link to="/pizza/rotten" preload="intent" preloadDelay={0}>
               link to rotten pizza
             </Link>
           </div>
@@ -859,12 +872,31 @@ describe('notFoundComponent is rendered when an error is thrown in params.parse'
     expect(rootLoader).toHaveBeenCalledTimes(1)
     expect(linkToRottenPizza).toBeInTheDocument()
     await act(() => fireEvent.mouseOver(linkToRottenPizza))
+    await vi.waitFor(() => expect(rootLoader).toHaveBeenCalledTimes(2))
     await act(() => fireEvent.click(linkToRottenPizza))
+    await vi.waitFor(() => expect(router.state.status).toBe('pending'))
+
+    expect(preloadGate.status).toBe('pending')
+    expect(preloadController?.signal.aborted).toBe(false)
+
+    await vi.waitFor(() => expect(rootLoader).toHaveBeenCalledTimes(3))
+    expect(rootLoader.mock.calls.map(([context]) => context.preload)).toEqual([
+      false,
+      true,
+      false,
+    ])
 
     const notFoundComponent = await screen.findByText('No pizza', undefined, {
       timeout: 750,
     })
-    expect(rootLoader).toHaveBeenCalledTimes(2)
+    expect(router.state.status).toBe('idle')
+    expect(preloadGate.status).toBe('pending')
+    expect(preloadController?.signal.aborted).toBe(false)
     expect(notFoundComponent).toBeInTheDocument()
+
+    await act(async () => {
+      preloadGate.resolve()
+      await Promise.resolve()
+    })
   })
 })

@@ -8,7 +8,7 @@ afterEach(() => {
 })
 
 describe('masked location remnants in history state', () => {
-  test('a same-href navigation clears an expired mask from history state', async () => {
+  test('a same-href navigation clears an expired mask payload from history state', async () => {
     const makeRoutes = () => {
       const rootRoute = new BaseRootRoute({})
       const indexRoute = new BaseRoute({

@@ -3,12 +3,11 @@ import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
-// A navigation that adopts an in-flight preload's loader run must reuse that
-// run: it must not abort the preload's loader signal or rerun the loader. This
-// is generic router adoption coverage; issue #4476 is covered separately with
-// the React Query observer-unmount sequence from its reproduction.
-describe('navigation adopting an in-flight preload', () => {
-  test('adopted preload loader runs once and its signal is not aborted', async () => {
+// Navigation owns its beforeLoad context, but a matching pending loader remains
+// shared with speculation. Issue #4476 is covered separately with the React
+// Query observer-unmount sequence from its reproduction.
+describe('navigation joining an in-flight preload loader', () => {
+  test('reruns beforeLoad, reuses the loader, and keeps its signal alive', async () => {
     const loaderGate = createControlledPromise<string>()
     const loaderStarted = createControlledPromise<void>()
     const beforeLoad = vi.fn()
@@ -50,12 +49,13 @@ describe('navigation adopting an in-flight preload', () => {
     expect(preloadSignal).toBeDefined()
     expect(preloadSignal?.aborted).toBe(false)
 
-    // The identical navigation adopts the whole active lane, including its
-    // already-completed beforeLoad context.
+    // The click is a fresh semantic lane even when its speculative loader is
+    // already pending.
     const navigation = router.navigate({ to: '/foo' })
-    await Promise.resolve()
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
+      false,
     ])
     expect(loaderGate.status).toBe('pending')
     expect(loader).toHaveBeenCalledTimes(1)
@@ -65,18 +65,18 @@ describe('navigation adopting an in-flight preload', () => {
     loaderGate.resolve('adopted')
     await Promise.all([navigation, preload])
 
-    // Loader ran exactly once; the adopted run's signal was never aborted.
+    // Loader ran exactly once; the joined run's signal was never aborted.
     expect(loader).toHaveBeenCalledTimes(1)
     expect(preloadSignal?.aborted).toBe(false)
 
-    // Navigation committed with the adopted loaderData.
+    // Navigation committed with the shared loaderData.
     const committed = router.state.matches.find(
       (match) => match.routeId === fooRoute.id,
     )
     expect(committed?.status).toBe('success')
     expect(committed?.loaderData).toBe('adopted')
 
-    // Adoption transfers loader-data lifetime ownership to the active match.
+    // Publication transfers loader-data lifetime ownership to the active match.
     // The shared request remains alive while rendered, then aborts on unload.
     await router.navigate({ to: '/' })
     expect(preloadSignal?.aborted).toBe(true)
@@ -125,12 +125,13 @@ describe('navigation adopting an in-flight preload', () => {
     ])
     expect(loader).toHaveBeenCalledTimes(1)
 
-    loaderGate.resolve('shared')
+    loaderGate.resolve('shared data')
     await Promise.all([preload, navigation])
     expect(router.state.matches.at(-1)?.context).toEqual({
       auth: true,
       authorization: 'true:false',
     })
+    expect(router.state.matches.at(-1)?.loaderData).toBe('shared data')
   })
 
   test('reruns beforeLoad when user location state changes at the same href', async () => {
@@ -176,46 +177,11 @@ describe('navigation adopting an in-flight preload', () => {
     ])
     expect(loader).toHaveBeenCalledTimes(1)
 
-    loaderGate.resolve('shared')
+    loaderGate.resolve('shared data')
     await Promise.all([preload, navigation])
     expect(router.state.matches.at(-1)?.context).toMatchObject({
       authorization: 'new:false',
     })
-  })
-
-  test('reruns beforeLoad when the route tree changes during an active preload', async () => {
-    const loaderGate = createControlledPromise<string>()
-    const beforeLoad = vi.fn()
-    const loader = vi.fn(() => loaderGate)
-    const createRouteTree = () => {
-      const rootRoute = new BaseRootRoute({})
-      const indexRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/',
-      })
-      const guardedRoute = new BaseRoute({
-        getParentRoute: () => rootRoute,
-        path: '/guarded',
-        beforeLoad,
-        loader,
-      })
-      return rootRoute.addChildren([indexRoute, guardedRoute])
-    }
-    const router = createTestRouter({
-      routeTree: createRouteTree(),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-
-    await router.load()
-    const preload = router.preloadRoute({ to: '/guarded' })
-    await vi.waitFor(() => expect(loader).toHaveBeenCalledOnce())
-
-    router.update({ ...router.options, routeTree: createRouteTree() })
-    const navigation = router.navigate({ to: '/guarded' })
-    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
-
-    loaderGate.resolve('shared')
-    await Promise.all([preload, navigation])
-    expect(loader).toHaveBeenCalledOnce()
+    expect(router.state.matches.at(-1)?.loaderData).toBe('shared data')
   })
 })

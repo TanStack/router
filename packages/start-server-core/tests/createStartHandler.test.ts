@@ -7,6 +7,7 @@ import {
   BaseRootRoute,
   BaseRoute,
   RouterCore,
+  redirect,
   type AnyRouter,
 } from '@tanstack/router-core'
 import {
@@ -107,13 +108,17 @@ function waitForAbortOrRelease(signal: AbortSignal) {
   })
 }
 
-function makeStreamResponse(router: ReturnType<typeof makeRouter>) {
+function makeStreamResponse(
+  router: ReturnType<typeof makeRouter>,
+  onCancel?: (reason: unknown) => void,
+) {
   attachRouterServerSsrUtils({ router: router as any, manifest: undefined })
   const stream = new ReadableStream({
     start(controller) {
       controller.enqueue(new TextEncoder().encode('stream'))
     },
-    cancel() {
+    cancel(reason) {
+      onCancel?.(reason)
       router.serverSsr?.cleanup()
     },
   })
@@ -182,9 +187,69 @@ describe('createStartHandler SSR cleanup ownership', () => {
       {},
     )
 
-    expect(response).toBe(replacement)
+    expect(await response.text()).toBe('replacement')
     expect(dispose).toHaveBeenCalledOnce()
     expect(router.serverSsr).toBeUndefined()
+  })
+
+  it('cancels a plain response body replaced by middleware', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const cancel = vi.fn()
+    startMocks.serverFnResult = new Response(
+      new ReadableStream({ cancel }),
+    )
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        await next()
+        return new Response('replacement')
+      }),
+    ]
+
+    const handler = createStartHandler(() => new Response('unused'))
+    const response = await handler(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+
+    expect(await response.text()).toBe('replacement')
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('does not await a replaced stream owner', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const dispose = vi.fn(() => new Promise<void>(() => {}))
+    startMocks.serverFnResult = {
+      response: new Response('stream'),
+      serverSsrCleanup: 'stream',
+      dispose,
+    }
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        await next()
+        return new Response('replacement')
+      }),
+    ]
+
+    const handler = createStartHandler(() => new Response('unused'))
+    const response = handler(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+    const outcome = await Promise.race([
+      Promise.resolve(response).then(() => 'settled'),
+      new Promise<'pending'>((resolve) => {
+        setTimeout(() => resolve('pending'), 20)
+      }),
+    ])
+
+    expect(outcome).toBe('settled')
+    expect(dispose).toHaveBeenCalledOnce()
   })
 
   it('exposes Response to middleware while preserving stream ownership', async () => {
@@ -282,6 +347,227 @@ describe('createStartHandler SSR cleanup ownership', () => {
     expect(router.serverSsr).toBeUndefined()
   })
 
+  it.each(['pipeThrough', 'clone'] as const)(
+    'preserves stream ownership when middleware returns a %s response',
+    async (operation) => {
+      const router = makeRouter()
+      startMocks.router = router
+      let release!: () => void
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      attachRouterServerSsrUtils({ router: router as any, manifest: undefined })
+      const ssrResponse = createSsrStreamResponse(
+        router as any,
+        new Response(
+          new ReadableStream({
+            async pull(controller) {
+              await gate
+              controller.enqueue(new TextEncoder().encode('stream'))
+              controller.close()
+            },
+          }),
+        ),
+      )
+      const dispose = vi.spyOn(ssrResponse as any, 'dispose')
+      startMocks.serverFnResult = ssrResponse
+      startMocks.requestMiddleware = [
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          return operation === 'clone'
+            ? result.response.clone()
+            : new Response(
+                result.response.body!.pipeThrough(new TransformStream()),
+                result.response,
+              )
+        }),
+      ]
+
+      const handler = createStartHandler(() => new Response('unused'))
+      const response = await handler(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+      release()
+
+      expect(dispose).not.toHaveBeenCalled()
+      await expect(response.text()).resolves.toBe('stream')
+      expect(router.serverSsr).toBeUndefined()
+    },
+  )
+
+  it.each(['pipeThrough', 'clone'] as const)(
+    'request abort cancels a locked %s response and its SSR source',
+    async (operation) => {
+      const router = makeRouter()
+      startMocks.router = router
+      attachRouterServerSsrUtils({ router: router as any, manifest: undefined })
+      const cleanup = router.serverSsr!.cleanup
+      const cleanupSpy = vi.fn(() => cleanup())
+      router.serverSsr!.cleanup = cleanupSpy
+      const sourceCancel = vi.fn()
+      startMocks.serverFnResult = createSsrStreamResponse(
+        router as any,
+        new Response(new ReadableStream({ cancel: sourceCancel })),
+      )
+      startMocks.requestMiddleware = [
+        createMiddleware().server(async ({ next }) => {
+          const result = await next()
+          return operation === 'clone'
+            ? result.response.clone()
+            : new Response(
+                result.response.body!.pipeThrough(new TransformStream()),
+                result.response,
+              )
+        }),
+      ]
+      const requestController = new AbortController()
+      const cancellation = new Error('request disconnected')
+      const response = await createStartHandler(() =>
+        new Response('unused'),
+      )(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+          signal: requestController.signal,
+        }),
+        {},
+      )
+      const reader = response.body!.getReader()
+      const read = reader.read()
+
+      expect(response.body!.locked).toBe(true)
+      requestController.abort(cancellation)
+
+      try {
+        await expect(read).rejects.toBe(cancellation)
+        await vi.waitFor(() => expect(sourceCancel).toHaveBeenCalledOnce())
+        expect(cleanupSpy).toHaveBeenCalledOnce()
+        expect(router.serverSsr).toBeUndefined()
+      } finally {
+        reader.releaseLock()
+      }
+    },
+  )
+
+  it('cancels a replacement stream after middleware buffers the SSR response', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    attachRouterServerSsrUtils({ router: router as any, manifest: undefined })
+    startMocks.serverFnResult = createSsrStreamResponse(
+      router as any,
+      new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode('stream'))
+            controller.close()
+          },
+        }),
+      ),
+    )
+    const requestController = new AbortController()
+    const cancellation = new Error('request disconnected')
+    const cancel = vi.fn()
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        await expect(result.response.text()).resolves.toBe('stream')
+        return new Response(new ReadableStream({ cancel }))
+      }),
+    ]
+
+    const response = await createStartHandler(() => new Response('unused'))(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+        signal: requestController.signal,
+      }),
+      {},
+    )
+    try {
+      requestController.abort(cancellation)
+      await vi.waitFor(() => {
+        expect(cancel).toHaveBeenCalledOnce()
+      })
+    } finally {
+      void response.body!.cancel('test cleanup').catch(() => {})
+    }
+  })
+
+  it('does not report a cleanup error for a transformed plain response', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    startMocks.serverFnResult = new Response('plain')
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        return new Response(
+          result.response.body!.pipeThrough(new TransformStream()),
+          result.response,
+        )
+      }),
+    ]
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    try {
+      const response = await createStartHandler(() => new Response('unused'))(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+
+      await expect(response.text()).resolves.toBe('plain')
+      expect(consoleError).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+    }
+  })
+
+  it('retires a locked stream owner replaced by a bodyless response', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const cancel = vi.fn()
+    attachRouterServerSsrUtils({ router: router as any, manifest: undefined })
+    const ssrResponse = createSsrStreamResponse(
+      router as any,
+      new Response(new ReadableStream({ cancel })),
+    )
+    const dispose = vi.spyOn(ssrResponse as any, 'dispose')
+    startMocks.serverFnResult = ssrResponse
+    let lockedReader: ReadableStreamDefaultReader<Uint8Array> | undefined
+    startMocks.requestMiddleware = [
+      createMiddleware().server(async ({ next }) => {
+        const result = await next()
+        lockedReader = result.response.body!.getReader()
+        void lockedReader.closed.catch(() => {})
+        return new Response(null, { status: 204 })
+      }),
+    ]
+
+    try {
+      const response = await createStartHandler(() => new Response('unused'))(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(204)
+      expect(response.body).toBeNull()
+      expect(dispose).toHaveBeenCalledOnce()
+      expect(cancel).toHaveBeenCalledOnce()
+      expect(router.serverSsr).toBeUndefined()
+    } finally {
+      lockedReader?.releaseLock()
+      if (router.serverSsr) {
+        await ssrResponse.dispose('test cleanup')
+      }
+    }
+  })
+
   it('disposes stream response on middleware error after next', async () => {
     const router = makeRouter()
     startMocks.router = router
@@ -330,7 +616,8 @@ describe('createStartHandler SSR cleanup ownership', () => {
       {},
     )
 
-    expect(response).toBe(replacement)
+    expect(response.status).toBe(418)
+    expect(await response.text()).toBe('handled')
     expect(dispose).toHaveBeenCalledOnce()
     expect(router.serverSsr).toBeUndefined()
   })
@@ -358,9 +645,158 @@ describe('createStartHandler SSR cleanup ownership', () => {
       {},
     )
 
-    expect(response).toBe(replacement)
+    expect(await response.text()).toBe('replacement')
     expect(dispose).toHaveBeenCalledOnce()
     expect(router.serverSsr).toBeUndefined()
+  })
+})
+
+describe('createStartHandler HEAD responses', () => {
+  it('strips and cancels an application document body', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const cancel = vi.fn()
+    const render = vi.fn(
+      () =>
+        new Response(new ReadableStream({ cancel }), {
+          headers: { 'x-rendered': 'true' },
+        }),
+    )
+    const handler = createStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/', { method: 'HEAD' }),
+      {},
+    )
+
+    expect(render).toHaveBeenCalledOnce()
+    expect(response.headers.get('x-rendered')).toBe('true')
+    expect(response.body).toBeNull()
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('strips and cancels a body returned by an explicit HEAD handler', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const cancel = vi.fn()
+    const headHandler = vi.fn(
+      () =>
+        new Response(new ReadableStream({ cancel }), {
+          status: 202,
+          headers: { 'x-handler': 'HEAD' },
+        }),
+    )
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      server: { handlers: { HEAD: headHandler } },
+    })
+    const router = new RouterCore(
+      {
+        history: createMemoryHistory({ initialEntries: ['/target'] }),
+        routeTree: rootRoute.addChildren([targetRoute]),
+      },
+      getStoreConfig,
+    )
+    router.isServer = true
+    startMocks.router = router
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/target', { method: 'HEAD' }),
+      {},
+    )
+
+    expect(headHandler).toHaveBeenCalledOnce()
+    expect(render).not.toHaveBeenCalled()
+    expect(response.status).toBe(202)
+    expect(response.headers.get('x-handler')).toBe('HEAD')
+    expect(response.body).toBeNull()
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('resolves a redirect before stripping its HEAD body', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      server: {
+        handlers: {
+          HEAD: () => redirect({ to: '/target' }),
+        },
+      },
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const router = new RouterCore(
+      {
+        history: createMemoryHistory({ initialEntries: ['/source'] }),
+        routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      },
+      getStoreConfig,
+    )
+    router.isServer = true
+    startMocks.router = router
+
+    const response = await createStartHandler(() =>
+      new Response('must not render'),
+    )(new Request('http://localhost/source', { method: 'HEAD' }), {})
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('Location')).toBe('/target')
+    expect(response.body).toBeNull()
+  })
+
+  it('strips and cancels a body returned early by request middleware', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const cancel = vi.fn()
+    startMocks.requestMiddleware = [
+      createMiddleware().server(
+        () =>
+          new Response(new ReadableStream({ cancel }), {
+            status: 202,
+            headers: { 'x-middleware': 'true' },
+          }),
+      ),
+    ]
+    const render = vi.fn(() => new Response('must not render'))
+
+    const response = await createStartHandler(render)(
+      new Request('http://localhost/', { method: 'HEAD' }),
+      {},
+    )
+
+    expect(render).not.toHaveBeenCalled()
+    expect(response.status).toBe(202)
+    expect(response.headers.get('x-middleware')).toBe('true')
+    expect(response.body).toBeNull()
+    expect(cancel).toHaveBeenCalledOnce()
+  })
+
+  it('strips a server-function HEAD error body', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    startMocks.serverFnResult = new Response('method not allowed', {
+      status: 405,
+      headers: { Allow: 'POST' },
+    })
+
+    const response = await createStartHandler(() =>
+      new Response('must not render'),
+    )(
+      new Request('http://localhost/_serverFn/test', {
+        method: 'HEAD',
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(405)
+    expect(response.headers.get('Allow')).toBe('POST')
+    expect(response.body).toBeNull()
   })
 })
 
@@ -460,10 +896,8 @@ describe('createStartHandler request cancellation', () => {
     expect(router.serverSsr).toBeUndefined()
 
     resolveRender(lateStreamResponse)
-    await Promise.resolve()
-    await Promise.resolve()
+    await vi.waitFor(() => expect(cancelCalls).toBe(1))
     expect(cleanupCalls).toBe(1)
-    expect(cancelCalls).toBe(1)
     expect(router.serverSsr).toBeUndefined()
   })
 
@@ -655,20 +1089,18 @@ describe('createStartHandler request cancellation', () => {
     },
   )
 
-  it('disposes a stream when the request aborts after response handoff', async () => {
+  it('cancels a locked tagged stream when the request aborts after handoff', async () => {
     const router = makeRouter()
     startMocks.router = router
     const requestController = new AbortController()
-    let cancelCalls = 0
+    const cancellation = new Error('request disconnected')
+    const cancel = vi.fn(() => new Promise<void>(() => {}))
     const handler = createStartHandler(({ router: requestRouter }) =>
       createSsrStreamResponse(
         requestRouter,
         new Response(
           new ReadableStream({
-            cancel() {
-              cancelCalls++
-              return new Promise<void>(() => {})
-            },
+            cancel,
           }),
         ),
       ),
@@ -680,15 +1112,65 @@ describe('createStartHandler request cancellation', () => {
       }),
       {},
     )
-    expect(response.body).not.toBeNull()
+    const reader = response.body!.getReader()
+    const read = expect(reader.read()).rejects.toBe(cancellation)
     expect(router.serverSsr).toBeDefined()
 
-    requestController.abort(new Error('request disconnected'))
-    await Promise.resolve()
+    requestController.abort(cancellation)
 
-    expect(cancelCalls).toBe(1)
-    expect(router.serverSsr).toBeUndefined()
+    try {
+      await vi.waitFor(() => {
+        expect(cancel).toHaveBeenCalledWith(cancellation)
+      })
+      await read
+      expect(router.serverSsr).toBeUndefined()
+    } finally {
+      reader.releaseLock()
+    }
   })
+
+  it.each(['router', 'serverFn'] as const)(
+    'cancels a locked plain %s response after handoff',
+    async (handlerType) => {
+      const router = makeRouter()
+      startMocks.router = router
+      const requestController = new AbortController()
+      const cancellation = new Error('request disconnected')
+      const cancel = vi.fn()
+      const plainResponse = new Response(new ReadableStream({ cancel }))
+      if (handlerType === 'serverFn') {
+        startMocks.serverFnResult = plainResponse
+      }
+      const handler = createStartHandler(() => plainResponse)
+      const response = await handler(
+        new Request(
+          handlerType === 'serverFn'
+            ? 'http://localhost/_serverFn/test'
+            : 'http://localhost/',
+          {
+            headers:
+              handlerType === 'serverFn'
+                ? { 'x-tsr-serverFn': 'true' }
+                : undefined,
+            signal: requestController.signal,
+          },
+        ),
+        {},
+      )
+      const reader = response.body!.getReader()
+
+      requestController.abort(cancellation)
+
+      try {
+        await vi.waitFor(() => {
+          expect(cancel).toHaveBeenCalledWith(cancellation)
+        })
+        await expect(reader.read()).rejects.toBe(cancellation)
+      } finally {
+        reader.releaseLock()
+      }
+    },
+  )
 
   it('settles when request middleware ignores cancellation', async () => {
     const router = makeRouter()
@@ -839,9 +1321,9 @@ describe('createStartHandler request cancellation', () => {
     const reason = new Error('request disconnected')
     const observedErrors: Array<unknown> = []
     const afterNext = vi.fn()
-    const ssrResponse = makeStreamResponse(router)
+    const cancel = vi.fn()
+    const ssrResponse = makeStreamResponse(router, cancel)
     const dispose = vi.spyOn(ssrResponse as any, 'dispose')
-    const cancel = vi.spyOn(ssrResponse.response.body!, 'cancel')
     startMocks.requestMiddleware = [
       createMiddleware().server(async ({ next }) => {
         try {
@@ -860,9 +1342,8 @@ describe('createStartHandler request cancellation', () => {
         )
         return pending
       }),
-      createMiddleware().server(() => ssrResponse as any),
     ]
-    const render = vi.fn(() => new Response('must not render'))
+    const render = vi.fn(() => ssrResponse)
     const handler = createStartHandler(render)
 
     const response = await handler(
@@ -881,44 +1362,7 @@ describe('createStartHandler request cancellation', () => {
       expect(cancel).toHaveBeenCalledWith(reason)
     })
     expect(afterNext).not.toHaveBeenCalled()
-    expect(render).not.toHaveBeenCalled()
-  })
-
-  it('disposes a tagged final response once when abort wins handoff', async () => {
-    const router = makeRouter()
-    startMocks.router = router
-    const requestController = new AbortController()
-    const reason = new Error('request disconnected')
-    const ssrResponse = makeStreamResponse(router)
-    const dispose = vi.spyOn(ssrResponse as any, 'dispose')
-    const cancel = vi.spyOn(ssrResponse.response.body!, 'cancel')
-    startMocks.requestMiddleware = [
-      createMiddleware().server(() => {
-        queueMicrotask(() => {
-          queueMicrotask(() => requestController.abort(reason))
-        })
-        return ssrResponse as any
-      }),
-    ]
-    const render = vi.fn(() => new Response('must not render'))
-    const handler = createStartHandler(render)
-
-    const response = await handler(
-      new Request('http://localhost/', {
-        signal: requestController.signal,
-      }),
-      {},
-    )
-
-    expect(response.status).toBe(500)
-    await vi.waitFor(() => {
-      expect(dispose).toHaveBeenCalledOnce()
-      expect(dispose).toHaveBeenCalledWith(reason)
-      expect(cancel).toHaveBeenCalledOnce()
-      expect(cancel).toHaveBeenCalledWith(reason)
-    })
-    expect(router.serverSsr).toBeUndefined()
-    expect(render).not.toHaveBeenCalled()
+    expect(render).toHaveBeenCalledOnce()
   })
 
   it('ignores a late same-body alias after catch disposes its owner', async () => {
@@ -950,14 +1394,15 @@ describe('createStartHandler request cancellation', () => {
         return wrapped
       }),
     ]
+    const cancel = vi.fn()
     const response = new Response(
       new ReadableStream({
         start(controller) {
           controller.enqueue(new TextEncoder().encode('stream'))
         },
+        cancel,
       }),
     )
-    const cancel = vi.spyOn(response.body!, 'cancel')
     let ssrResponse!: ReturnType<typeof createSsrStreamResponse>
     const render = vi.fn(({ router: requestRouter }) => {
       ssrResponse = createSsrStreamResponse(requestRouter, response)

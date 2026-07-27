@@ -1,6 +1,6 @@
 import { runInNewContext } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { createMemoryHistory } from '@tanstack/history'
+import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
   BaseRoute,
@@ -11,11 +11,12 @@ import { hydrate } from '../src/ssr/client'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
-import type { AnyRouteMatch, AnyRouter } from '../src'
+import type { AnyRouteMatch, AnyRouter, LocationRewrite } from '../src'
 import type { DehydratedRouter, TsrSsrGlobal } from '../src/ssr/types'
 import type { ServerManifest } from '../src/manifest'
 
 const testManifest: ServerManifest = { routes: {} }
+const browserWindow = window
 
 async function dehydrateToBootstrap(router: AnyRouter): Promise<TsrSsrGlobal> {
   attachRouterServerSsrUtils({ router, manifest: testManifest })
@@ -452,7 +453,7 @@ describe('public hydration contracts', () => {
       childRoute.id,
     ])
     expect(router.state.matches[1]).toMatchObject({
-      status: 'error',
+      status: 'pending',
       error: serverError,
     })
 
@@ -986,6 +987,77 @@ describe('public hydration contracts', () => {
     expect(router.state.matches.at(-1)?.loaderData).toBe('client new')
   })
 
+  test('does not hand transported context to a replaced public URL generation', async () => {
+    vi.spyOn(browserWindow, 'scrollTo').mockImplementation(() => undefined)
+    browserWindow.history.replaceState({}, '', '/public-a')
+    const history = createBrowserHistory({ window: browserWindow })
+    const rewrite: LocationRewrite = {
+      input: ({ url }) => {
+        if (url.pathname === '/public-a' || url.pathname === '/public-b') {
+          url.pathname = '/internal'
+        }
+        return url
+      },
+      output: ({ url }) => url,
+    }
+    const beforeLoad = vi.fn(({ location }: { location: any }) => ({
+      publicHref: location.publicHref,
+    }))
+    const loader = vi.fn(
+      ({ context: routeContext }: { context: { publicHref: string } }) =>
+        routeContext.publicHref,
+    )
+    const rootRoute = new BaseRootRoute({ beforeLoad })
+    const internalRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/internal',
+      ssr: false,
+      loader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([internalRoute]),
+      history,
+      rewrite,
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(mockWindow, [
+      {
+        i: dehydrateSsrMatchId(matches[0]!.id),
+        s: 'success',
+        b: { publicHref: '/public-a' },
+        ssr: true,
+        u: Date.now(),
+      },
+      {
+        i: dehydrateSsrMatchId(matches[1]!.id),
+        s: 'pending',
+        ssr: false,
+        u: Date.now(),
+      },
+    ])
+
+    try {
+      await hydrate(router)
+      browserWindow.history.replaceState(
+        browserWindow.history.state,
+        '',
+        '/public-b',
+      )
+
+      await router.load()
+
+      expect(
+        beforeLoad.mock.calls.map(([options]) => options.location.publicHref),
+      ).toEqual(['/public-b'])
+      expect(loader).toHaveBeenCalledTimes(1)
+      expect(router.state.matches.at(-1)?.loaderData).toBe('/public-b')
+    } finally {
+      history.destroy()
+      browserWindow.history.replaceState({}, '', '/')
+    }
+  })
+
   test('keeps a hydration handoff when a provider initializes an empty context', async () => {
     const rootBeforeLoad = vi.fn(() => ({ source: 'client' }))
     const rootLoader = vi.fn(() => 'client root')
@@ -1042,7 +1114,7 @@ describe('public hydration contracts', () => {
     expect(router.state.matches[1]).toMatchObject({ loaderData: 'server' })
   })
 
-  test('does not hand transported context across a router-context generation change', async () => {
+  test('does not hand transported context across an invalidation', async () => {
     const rootBeforeLoad = vi.fn(({ context }: { context: any }) => ({
       auth: context.auth,
     }))
@@ -1084,7 +1156,7 @@ describe('public hydration contracts', () => {
       ...router.options,
       context: { auth: 'client new' },
     })
-    await router.load()
+    await router.invalidate()
 
     expect(rootBeforeLoad).toHaveBeenCalledTimes(1)
     expect(pageLoader).toHaveBeenCalledTimes(1)
@@ -1178,7 +1250,7 @@ describe('public hydration contracts', () => {
 
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
-      status: 'success',
+      status: 'pending',
       error: undefined,
       loaderData: 'server data',
     })
@@ -1233,7 +1305,7 @@ describe('public hydration contracts', () => {
     expect(router.state.location.pathname).toBe('/source')
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: sourceRoute.id,
-      status: 'success',
+      status: 'pending',
     })
     expect(router.state.resolvedLocation).toBeUndefined()
 
@@ -1316,12 +1388,18 @@ describe('public hydration contracts', () => {
     })
   })
 
-  test('turns a hydrated normal-component chunk failure into a route error without rerunning loader data', async () => {
+  test('turns a hydrated normal-component chunk failure into a route error while retaining verified assets and loader data', async () => {
     const chunkError = new Error('page component failed to load')
     const componentPreload = vi.fn(() => Promise.reject(chunkError))
     const Page = Object.assign(() => 'Page', { preload: componentPreload })
     const loader = vi.fn(() => 'client data')
     const onError = vi.fn()
+    const head = vi.fn(({ loaderData }) => ({
+      meta: [{ title: `Page: ${loaderData}` }],
+    }))
+    const scripts = vi.fn(({ loaderData }) => [
+      { children: `window.pageData = ${JSON.stringify(loaderData)}` },
+    ])
     const rootRoute = new BaseRootRoute({})
     const pageRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -1330,6 +1408,8 @@ describe('public hydration contracts', () => {
       errorComponent: () => 'Page error',
       loader,
       onError,
+      head,
+      scripts,
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([pageRoute]),
@@ -1352,9 +1432,11 @@ describe('public hydration contracts', () => {
 
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
-      status: 'success',
+      status: 'pending',
       error: undefined,
       loaderData: 'server data',
+      meta: [{ title: 'Page: server data' }],
+      scripts: [{ children: 'window.pageData = "server data"' }],
     })
     expect(router.state.resolvedLocation).toBeUndefined()
     expect(onError).not.toHaveBeenCalled()
@@ -1367,10 +1449,61 @@ describe('public hydration contracts', () => {
       status: 'error',
       error: chunkError,
       loaderData: 'server data',
+      meta: [{ title: 'Page: server data' }],
+      scripts: [{ children: 'window.pageData = "server data"' }],
     })
     expect(onError).toHaveBeenCalledTimes(1)
     expect(onError).toHaveBeenCalledWith(chunkError)
     expect(loader).not.toHaveBeenCalled()
+  })
+
+  test('a context failure does not project assets for the failed hydrated route', async () => {
+    const contextError = new Error('root context failed')
+    const rootHead = vi.fn(() => ({
+      meta: [{ title: 'Server-only root title' }],
+    }))
+    const rootScripts = vi.fn(() => [
+      { children: 'window.serverOnlyRoot = true' },
+    ])
+    const rootRoute = new BaseRootRoute({
+      context: () => {
+        throw contextError
+      },
+      head: rootHead,
+      scripts: rootScripts,
+    })
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      component: () => 'Page',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+    const matches = router.matchRoutes(router.stores.location.get())
+    installHydrationPayload(
+      mockWindow,
+      matches.map((match) => ({
+        i: dehydrateSsrMatchId(match.id),
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      })),
+    )
+
+    await hydrate(router)
+
+    expect(rootHead).not.toHaveBeenCalled()
+    expect(rootScripts).not.toHaveBeenCalled()
+    expect(router.state.matches[0]).toMatchObject({
+      routeId: rootRoute.id,
+      status: 'pending',
+    })
+    expect(router.state.matches[0]).not.toHaveProperty('meta')
+    expect(router.state.matches[0]).not.toHaveProperty('scripts')
+    expect(router.state.resolvedLocation).toBeUndefined()
   })
 
   test('retries from the earliest failed hydration chunk regardless of rejection order', async () => {
@@ -1388,10 +1521,9 @@ describe('public hydration contracts', () => {
     const ChildComponent = Object.assign(() => 'Child', {
       preload: childComponentPreload,
     })
-    const rootContext = vi.fn(() => ({}))
     const rootRoute = new BaseRootRoute({
       component: RootComponent,
-      context: rootContext,
+      context: () => ({}),
     })
     const childRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -1422,7 +1554,10 @@ describe('public hydration contracts', () => {
     rootChunkGate.reject(rootChunkError)
     await expect(hydration).resolves.toBeUndefined()
 
-    expect(rootContext).not.toHaveBeenCalled()
+    expect(router.state.matches[0]).toMatchObject({
+      routeId: rootRoute.id,
+      status: 'pending',
+    })
     expect(router.state.resolvedLocation).toBeUndefined()
   })
 
@@ -1439,10 +1574,9 @@ describe('public hydration contracts', () => {
         return childChunkGate
       },
     })
-    const rootContext = vi.fn(() => ({}))
     const rootRoute = new BaseRootRoute({
       component: RootComponent,
-      context: rootContext,
+      context: () => ({}),
     })
     const childRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -1479,7 +1613,10 @@ describe('public hydration contracts', () => {
       await hydration
     }
 
-    expect(rootContext).not.toHaveBeenCalled()
+    expect(router.state.matches[0]).toMatchObject({
+      routeId: rootRoute.id,
+      status: 'pending',
+    })
     expect(router.state.resolvedLocation).toBeUndefined()
   })
 })

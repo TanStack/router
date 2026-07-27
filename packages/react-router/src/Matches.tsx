@@ -8,10 +8,11 @@ import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useStructuralSharing } from './useMatch'
 import { useLayoutEffect } from './utils'
-import { Transitioner } from './Transitioner'
+import { Transitioner, clearOwner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match, renderPending } from './Match'
 import { SafeFragment } from './SafeFragment'
+import type { ReactRenderOwner } from './Transitioner'
 import type {
   StructuralSharingOption,
   ValidateSelected,
@@ -47,6 +48,9 @@ declare module '@tanstack/router-core' {
  */
 export function Matches() {
   const router = useRouter()
+  // Stable render receipt: Transitioner offers a generation and MatchesInner
+  // acknowledges that exact array after it commits.
+  const [owner] = React.useState<ReactRenderOwner>([])
   const rootRoute: AnyRoute = router.routesById[rootRouteId]
 
   const pendingElement = renderPending(router, rootRoute)
@@ -57,9 +61,9 @@ export function Matches() {
 
   const inner = (
     <>
-      {!(isServer ?? router.isServer) && <Transitioner />}
+      {!(isServer ?? router.isServer) && <Transitioner owner={owner} />}
       <ResolvedSuspense fallback={pendingElement}>
-        <MatchesInner />
+        <MatchesInner owner={owner} />
       </ResolvedSuspense>
     </>
   )
@@ -71,19 +75,24 @@ export function Matches() {
   )
 }
 
-function MatchesInner() {
+function MatchesInner({ owner }: { owner: ReactRenderOwner }) {
   const router = useRouter()
-  const matches =
+  const presentation =
     (isServer ?? router.isServer)
       ? router.stores.matches.get()
       : // eslint-disable-next-line react-hooks/rules-of-hooks
-        useStore(router.stores.matches, (value) => value)
-  const match = matches[0]
+        useStore(
+          router.stores.ids,
+          () => owner[0] ?? router.stores.matches.get(),
+        )
+  const match = presentation[0]
   const routeId = match?.routeId
 
   useLayoutEffect(() => {
-    router._rendered!(matches)
-  }, [matches, router])
+    if (owner[0] === presentation) {
+      clearOwner(owner)?.(true)
+    }
+  }, [owner, presentation])
 
   const matchComponent = routeId ? <Match routeId={routeId} /> : null
 

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as AsyncScriptsRouteImport } from './routes/async-scripts'
+import { Route as ClientContextFailureRouteImport } from './routes/client-context-failure'
 import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
@@ -94,6 +95,11 @@ const LayoutRoute = LayoutRouteImport.update({
 const AsyncScriptsRoute = AsyncScriptsRouteImport.update({
   id: '/async-scripts',
   path: '/async-scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClientContextFailureRoute = ClientContextFailureRouteImport.update({
+  id: '/client-context-failure',
+  path: '/client-context-failure',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClientOnlyRoute = ClientOnlyRouteImport.update({
@@ -464,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/search-params': typeof SearchParamsRouteRouteWithChildren
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/async-scripts': typeof AsyncScriptsRoute
+  '/client-context-failure': typeof ClientContextFailureRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -534,6 +541,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/async-scripts': typeof AsyncScriptsRoute
+  '/client-context-failure': typeof ClientContextFailureRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -601,6 +609,7 @@ export interface FileRoutesById {
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/_layout': typeof LayoutRouteWithChildren
   '/async-scripts': typeof AsyncScriptsRoute
+  '/client-context-failure': typeof ClientContextFailureRoute
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
@@ -676,6 +685,7 @@ export interface FileRouteTypes {
     | '/search-params'
     | '/specialChars'
     | '/async-scripts'
+    | '/client-context-failure'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -746,6 +756,7 @@ export interface FileRouteTypes {
     | '/'
     | '/specialChars'
     | '/async-scripts'
+    | '/client-context-failure'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -812,6 +823,7 @@ export interface FileRouteTypes {
     | '/specialChars'
     | '/_layout'
     | '/async-scripts'
+    | '/client-context-failure'
     | '/client-only'
     | '/deferred'
     | '/inline-scripts'
@@ -887,6 +899,7 @@ export interface RootRouteChildren {
   SpecialCharsRouteRoute: typeof SpecialCharsRouteRouteWithChildren
   LayoutRoute: typeof LayoutRouteWithChildren
   AsyncScriptsRoute: typeof AsyncScriptsRoute
+  ClientContextFailureRoute: typeof ClientContextFailureRoute
   ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
@@ -931,6 +944,13 @@ declare module '@tanstack/react-router' {
       path: '/async-scripts'
       fullPath: '/async-scripts'
       preLoaderRoute: typeof AsyncScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/client-context-failure': {
+      id: '/client-context-failure'
+      path: '/client-context-failure'
+      fullPath: '/client-context-failure'
+      preLoaderRoute: typeof ClientContextFailureRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/client-only': {
@@ -1675,6 +1695,7 @@ const rootRouteChildren: RootRouteChildren = {
   SpecialCharsRouteRoute: SpecialCharsRouteRouteWithChildren,
   LayoutRoute: LayoutRouteWithChildren,
   AsyncScriptsRoute: AsyncScriptsRoute,
+  ClientContextFailureRoute: ClientContextFailureRoute,
   ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,

@@ -8,6 +8,25 @@ type CatchBoundaryProps = {
   onCatch?: (error: Error) => void
 }
 
+const ErrorCatcher = Vue.defineComponent({
+  props: {
+    onError: Function,
+    children: null,
+  },
+  setup(props) {
+    Vue.onErrorCaptured((err: Error) => {
+      if (typeof (err as any).then === 'function') {
+        return false
+      }
+
+      props.onError?.(err)
+      return false
+    })
+
+    return () => props.children as Vue.VNode
+  },
+})
+
 const VueErrorBoundary = Vue.defineComponent({
   name: 'VueErrorBoundary',
   props: {
@@ -23,6 +42,13 @@ const VueErrorBoundary = Vue.defineComponent({
       error.value = null
     }
 
+    const onError = (err: Error) => {
+      if (!error.value) {
+        error.value = err
+        props.onError?.(err)
+      }
+    }
+
     Vue.watch(
       () => props.resetKey,
       (newKey, oldKey) => {
@@ -32,30 +58,13 @@ const VueErrorBoundary = Vue.defineComponent({
       },
     )
 
-    Vue.onErrorCaptured((err: Error) => {
-      if (
-        err instanceof Promise ||
-        (err && typeof (err as any).then === 'function')
-      ) {
-        return false
-      }
-
-      error.value = err
-
-      if (props.onError) {
-        props.onError(err)
-      }
-
-      return false
-    })
-
     return () =>
       error.value
         ? Vue.h(props.errorComponent ?? ErrorComponent, {
             error: error.value,
             reset,
           })
-        : (props.children as Vue.VNode)
+        : Vue.h(ErrorCatcher, { onError, children: props.children })
   },
 })
 
