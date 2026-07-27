@@ -15,6 +15,7 @@ export {
   type IsomorphicFnBase,
 } from '@tanstack/start-fn-stubs'
 export { createServerFn } from './createServerFn'
+export { buildServerFnUrl } from './buildServerFnUrl'
 export {
   createMiddleware,
   type IntersectAllValidatorInputs,
@@ -65,6 +66,7 @@ export type {
   FetcherBaseOptions,
   ServerFn,
   ServerFnCtx,
+  ServerFnFetcherTypes,
   ServerFnOptions,
   ServerFnStrict,
   ServerFnStrictInput,

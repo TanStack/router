@@ -54,7 +54,7 @@ export type ServerFnStrictOutput<TStrict extends ServerFnStrict> =
       : true
 
 export type CreateServerFn<TRegister> = <
-  TMethod extends Method,
+  TMethod extends Method = 'GET',
   TStrict extends ServerFnStrict = true,
   TResponse = unknown,
   TMiddlewares = undefined,
@@ -377,10 +377,15 @@ export type CompiledFetcherFnOptions = {
   context?: any
 }
 
-export type Fetcher<TMiddlewares, TInputValidator, TResponse> =
+export type Fetcher<
+  TMiddlewares,
+  TInputValidator,
+  TResponse,
+  TMethod extends Method = Method,
+> =
   undefined extends IntersectAllValidatorInputs<TMiddlewares, TInputValidator>
-    ? OptionalFetcher<TMiddlewares, TInputValidator, TResponse>
-    : RequiredFetcher<TMiddlewares, TInputValidator, TResponse>
+    ? OptionalFetcher<TMiddlewares, TInputValidator, TResponse, TMethod>
+    : RequiredFetcher<TMiddlewares, TInputValidator, TResponse, TMethod>
 
 export interface FetcherBase {
   [TSS_SERVER_FUNCTION]: true
@@ -394,24 +399,41 @@ export interface FetcherBase {
   }) => Promise<unknown>
 }
 
-export interface OptionalFetcher<
+export type OptionalFetcher<
   TMiddlewares,
   TInputValidator,
   TResponse,
-> extends FetcherBase {
-  (
-    options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<Awaited<TResponse>>
-}
+  TMethod extends Method = Method,
+> = FetcherBase &
+  ServerFnFetcherTypes<TMethod, TMiddlewares, TInputValidator> & {
+    (
+      options?: OptionalFetcherDataOptions<TMiddlewares, TInputValidator>,
+    ): Promise<Awaited<TResponse>>
+  }
 
-export interface RequiredFetcher<
+export type RequiredFetcher<
   TMiddlewares,
   TInputValidator,
   TResponse,
-> extends FetcherBase {
-  (
-    opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
-  ): Promise<Awaited<TResponse>>
+  TMethod extends Method = Method,
+> = FetcherBase &
+  ServerFnFetcherTypes<TMethod, TMiddlewares, TInputValidator> & {
+    (
+      opts: RequiredFetcherDataOptions<TMiddlewares, TInputValidator>,
+    ): Promise<Awaited<TResponse>>
+  }
+
+export interface ServerFnFetcherTypes<
+  in out TMethod extends Method,
+  in out TMiddlewares,
+  in out TInputValidator,
+> {
+  '~serverFnTypes': {
+    method: TMethod
+    middlewares: TMiddlewares
+    inputValidator: TInputValidator
+    allInput: IntersectAllValidatorInputs<TMiddlewares, TInputValidator>
+  }
 }
 
 // Ideally, this type should just be `export type CustomFetch = typeof globalThis.fetch`, but that conflicts with the type overrides the `bun-types` package - a dependency of unplugin.
@@ -745,7 +767,7 @@ export interface ServerFnHandler<
       TNewResponse,
       TStrict
     >,
-  ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse>
+  ) => Fetcher<TMiddlewares, TInputValidator, TNewResponse, TMethod>
 }
 
 export interface ServerFnBuilder<

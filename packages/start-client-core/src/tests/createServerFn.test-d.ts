@@ -1,4 +1,5 @@
 import { describe, expectTypeOf, test } from 'vitest'
+import { buildServerFnUrl } from '../buildServerFnUrl'
 import { createMiddleware } from '../createMiddleware'
 import { createServerFn } from '../createServerFn'
 import { TSS_SERVER_FUNCTION } from '../constants'
@@ -32,6 +33,55 @@ test('createServerFn without middleware', () => {
       serverFnMeta: ServerFnMeta
     }>()
   })
+})
+
+test('buildServerFnUrl is typed for default GET server functions', () => {
+  const fn = createServerFn()
+    .inputValidator((input: { page: number }) => input)
+    .handler(({ data }) => data.page)
+
+  expectTypeOf(fn.url).toEqualTypeOf<string>()
+  expectTypeOf(buildServerFnUrl(fn, { page: 1 })).toEqualTypeOf<
+    Promise<string>
+  >()
+
+  // @ts-expect-error input is required
+  buildServerFnUrl(fn)
+  // @ts-expect-error page must be a number
+  buildServerFnUrl(fn, { page: '1' })
+})
+
+test('buildServerFnUrl is typed for explicit GET server functions', () => {
+  const fn = createServerFn({ method: 'GET' })
+    .inputValidator((input: { search: string }) => input)
+    .handler(({ data }) => data.search)
+
+  expectTypeOf(fn.url).toEqualTypeOf<string>()
+  expectTypeOf(buildServerFnUrl(fn, { search: 'tanstack' })).toEqualTypeOf<
+    Promise<string>
+  >()
+})
+
+test('buildServerFnUrl allows optional GET input', () => {
+  const fn = createServerFn()
+    .inputValidator((input: { search: string } | undefined) => input)
+    .handler(({ data }) => data?.search)
+
+  expectTypeOf(fn.url).toEqualTypeOf<string>()
+  expectTypeOf(buildServerFnUrl(fn)).toEqualTypeOf<Promise<string>>()
+  expectTypeOf(buildServerFnUrl(fn, { search: 'tanstack' })).toEqualTypeOf<
+    Promise<string>
+  >()
+})
+
+test('buildServerFnUrl rejects POST server functions', () => {
+  const fn = createServerFn({ method: 'POST' })
+    .inputValidator((input: { page: number }) => input)
+    .handler(({ data }) => data.page)
+
+  expectTypeOf(fn.url).toEqualTypeOf<string>()
+  // @ts-expect-error POST server functions cannot build GET input URLs
+  buildServerFnUrl(fn, { page: 1 })
 })
 
 test('createServerFn with validator function', () => {

@@ -1,12 +1,12 @@
 import {
   createRawStreamDeserializePlugin,
-  encode,
+  hasKeys,
   invariant,
   isNotFound,
   parseRedirect,
 } from '@tanstack/router-core'
-import { fromCrossJSON, toJSONAsync } from 'seroval'
-import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
+import { fromCrossJSON } from 'seroval'
+import { getDefaultSerovalPlugins as getSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
   TSS_CONTENT_TYPE_FRAMED,
   TSS_FORMDATA_CONTEXT,
@@ -14,11 +14,13 @@ import {
   X_TSS_SERIALIZED,
   validateFramedProtocolVersion,
 } from '../constants'
+import {
+  buildServerFnUrlFromBase,
+  serializeServerFnPayload,
+  serializeServerFnPayloadValue,
+} from './serverFnUrl'
 import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
-import type { Plugin as SerovalPlugin } from 'seroval'
-
-let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
 
 /**
  * Current async post-processing context for deserialization.
@@ -84,19 +86,6 @@ async function awaitPostProcessPromises(
   }
 }
 
-/**
- * Checks if an object has at least one own enumerable property.
- * More efficient than Object.keys(obj).length > 0 as it short-circuits on first property.
- */
-const hop = Object.prototype.hasOwnProperty
-function hasOwnProperties(obj: object): boolean {
-  for (const _ in obj) {
-    if (hop.call(obj, _)) {
-      return true
-    }
-  }
-  return false
-}
 // caller =>
 //   serverFnFetcher =>
 //     client =>
@@ -112,9 +101,6 @@ export async function serverFnFetcher(
   args: Array<any>,
   handler: (url: string, requestInit: RequestInit) => Promise<Response>,
 ) {
-  if (!serovalPlugins) {
-    serovalPlugins = getDefaultSerovalPlugins()
-  }
   const _first = args[0]
 
   const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
@@ -139,20 +125,7 @@ export async function serverFnFetcher(
 
   // If the method is GET, we need to move the payload to the query string
   if (first.method === 'GET') {
-    if (type === 'formData') {
-      throw new Error('FormData is not supported with GET requests')
-    }
-    const serializedPayload = await serializePayload(first)
-    if (serializedPayload !== undefined) {
-      const encodedPayload = encode({
-        payload: serializedPayload,
-      })
-      if (url.includes('?')) {
-        url += `&${encodedPayload}`
-      } else {
-        url += `?${encodedPayload}`
-      }
-    }
+    url = await buildServerFnUrlFromBase(url, first)
   }
 
   let body = undefined
@@ -174,49 +147,21 @@ export async function serverFnFetcher(
   )
 }
 
-async function serializePayload(
-  opts: FunctionMiddlewareClientFnOptions<any, any, any>,
-): Promise<string | undefined> {
-  let payloadAvailable = false
-  const payloadToSerialize: any = {}
-  if (opts.data !== undefined) {
-    payloadAvailable = true
-    payloadToSerialize['data'] = opts.data
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-  if (opts.context && hasOwnProperties(opts.context)) {
-    payloadAvailable = true
-    payloadToSerialize['context'] = opts.context
-  }
-
-  if (payloadAvailable) {
-    return serialize(payloadToSerialize)
-  }
-  return undefined
-}
-
-async function serialize(data: any) {
-  return JSON.stringify(
-    await Promise.resolve(toJSONAsync(data, { plugins: serovalPlugins! })),
-  )
-}
-
 async function getFetchBody(
   opts: FunctionMiddlewareClientFnOptions<any, any, any>,
 ): Promise<{ body: FormData | string; contentType?: string } | undefined> {
   if (opts.data instanceof FormData) {
     let serializedContext = undefined
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-    if (opts.context && hasOwnProperties(opts.context)) {
-      serializedContext = await serialize(opts.context)
+    if (opts.context && hasKeys(opts.context)) {
+      serializedContext = await serializeServerFnPayloadValue(opts.context)
     }
     if (serializedContext !== undefined) {
       opts.data.set(TSS_FORMDATA_CONTEXT, serializedContext)
     }
     return { body: opts.data }
   }
-  const serializedBody = await serializePayload(opts)
+  const serializedBody = await serializeServerFnPayload(opts)
   if (serializedBody) {
     return { body: serializedBody, contentType: 'application/json' }
   }
@@ -281,7 +226,7 @@ async function getResponse(fn: () => Promise<Response>) {
       // Create deserialize plugin that wires up the raw streams
       const rawStreamPlugin =
         createRawStreamDeserializePlugin(getOrCreateStream)
-      const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+      const plugins = [rawStreamPlugin, ...getSerovalPlugins()]
 
       const refs = new Map()
       result = await processFramedResponse({
@@ -299,7 +244,7 @@ async function getResponse(fn: () => Promise<Response>) {
       const postProcessPromises: Array<Promise<unknown>> = []
       setPostProcessContext(postProcessPromises)
       try {
-        result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
+        result = fromCrossJSON(jsonPayload, { plugins: getSerovalPlugins() })
       } finally {
         setPostProcessContext(null)
       }
