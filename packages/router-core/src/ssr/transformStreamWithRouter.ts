@@ -311,7 +311,7 @@ function makeFastPathStream(
       console.warn(
         `SSR stream transform exceeded maximum lifetime (${lifetimeMs}ms), forcing cleanup`,
       )
-      safeError(err)
+      safeClose()
       cleanup(err)
     }
   }, lifetimeMs)
@@ -735,7 +735,7 @@ function makeMainStream(
       console.warn(
         `SSR stream transform exceeded maximum lifetime (${lifetimeMs}ms), forcing cleanup`,
       )
-      safeError(err)
+      safeClose()
       cleanup(err)
     }
   }, lifetimeMs)

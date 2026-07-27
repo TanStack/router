@@ -639,37 +639,80 @@ describe('transformStreamWithRouter — cleanup side-effects', () => {
     }
   })
 
-  test('lifetime timeout cancels upstream and runs cleanup once', async () => {
-    vi.useFakeTimers()
-    try {
-      const { router, cleanupCalls } = makeRouter({
-        isSerializationFinished: () => true,
-        takeBufferedHtml: () => undefined,
-      })
-      const upstream = makeManualUpstream()
+  const lifetimeTimeoutCases = [
+    {
+      name: 'fast path with an active reader',
+      reserveStreamFastPath: true,
+      activeReader: true,
+    },
+    {
+      name: 'fast path without an active reader',
+      reserveStreamFastPath: true,
+      activeReader: false,
+    },
+    {
+      name: 'main path with an active reader',
+      reserveStreamFastPath: false,
+      activeReader: true,
+    },
+    {
+      name: 'main path without an active reader',
+      reserveStreamFastPath: false,
+      activeReader: false,
+    },
+  ] as const
 
-      const out = transformStreamWithRouter(
-        router as any,
-        upstream.stream as any,
-        { lifetimeMs: 10 },
-      )
+  test.each(lifetimeTimeoutCases)(
+    'lifetime timeout closes $name and cleans up',
+    async ({ reserveStreamFastPath, activeReader }) => {
+      vi.useFakeTimers()
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      try {
+        const { router, cleanupCalls } = makeRouter({
+          isSerializationFinished: () => true,
+          reserveStreamFastPath: () => reserveStreamFastPath,
+          takeBufferedHtml: () => undefined,
+        })
+        const upstream = makeManualUpstream()
 
-      // Do NOT consume. Advance fake time past lifetimeMs deterministically.
-      await vi.advanceTimersByTimeAsync(15)
+        const out = transformStreamWithRouter(
+          router as any,
+          upstream.stream as any,
+          { lifetimeMs: 10 },
+        )
+        if (activeReader) {
+          const reader = out.getReader()
+          const pendingRead = reader.read()
 
-      expect(upstream.cancelled.value).toBe(true)
-      expect(cleanupCalls.count).toBe(1)
+          await vi.advanceTimersByTimeAsync(15)
 
-      // Drain (read errors silently) so vitest doesn't see an unhandled error.
-      const reader = (
-        out as any
-      ).getReader() as ReadableStreamDefaultReader<Uint8Array>
-      reader.read().catch(() => {})
-      reader.releaseLock()
-    } finally {
-      vi.useRealTimers()
-    }
-  })
+          await expect(pendingRead).resolves.toEqual({
+            done: true,
+            value: undefined,
+          })
+          reader.releaseLock()
+        } else {
+          await vi.advanceTimersByTimeAsync(15)
+
+          const reader = out.getReader()
+          await expect(reader.read()).resolves.toEqual({
+            done: true,
+            value: undefined,
+          })
+          reader.releaseLock()
+        }
+        expect(upstream.cancelled.value).toBe(true)
+        expect(upstream.cancelled.reason).toEqual(
+          new Error('Stream lifetime exceeded'),
+        )
+        expect(cleanupCalls.count).toBe(1)
+        expect(warnSpy).toHaveBeenCalledOnce()
+      } finally {
+        warnSpy.mockRestore()
+        vi.useRealTimers()
+      }
+    },
+  )
 
   test('upstream cancel() that rejects does not produce an unhandled rejection', async () => {
     // Some upstream sources may reject when cancel() is called (e.g. their
