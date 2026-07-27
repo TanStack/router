@@ -84,10 +84,25 @@ export function useMatch<
     return nearestMatch?.match()
   }
 
+  // The returned accessor can be read after the owning scope has been
+  // disposed (e.g. async work started by a route component that resolves
+  // after navigating away). Once disposed, keep returning the last known
+  // value instead of throwing on the now-missing match.
+  let isDisposed = false
+  if (Solid.getOwner()) {
+    Solid.onCleanup(() => {
+      isDisposed = true
+    })
+  }
+
   return Solid.createMemo((prev: TSelected | undefined) => {
     const selectedMatch = match()
 
     if (selectedMatch === undefined) {
+      if (prev !== undefined && isDisposed) {
+        return prev
+      }
+
       const hasPendingMatch = opts.from
         ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
         : (nearestMatch?.hasPending() ?? false)

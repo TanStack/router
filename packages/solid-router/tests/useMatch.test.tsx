@@ -118,4 +118,62 @@ describe('useMatch', () => {
       })
     })
   })
+
+  test('route-scoped useParams should remain readable from async work created by the route during navigation away', async () => {
+    let releaseDelayedRead: () => void = () => {}
+    const delayedReadGate = new Promise<void>((resolve) => {
+      releaseDelayedRead = resolve
+    })
+    let delayedRead!: Promise<void>
+    let delayedError: unknown
+
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/$postId',
+      component: function PostComponent() {
+        const params = postRoute.useParams()
+
+        delayedRead = delayedReadGate.then(() => {
+          try {
+            params()
+          } catch (err) {
+            delayedError = err
+          }
+        })
+
+        return <h1>Post {params().postId}</h1>
+      },
+    })
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+      component: () => <h1>OtherTitle</h1>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postRoute, otherRoute]),
+      history: createMemoryHistory({ initialEntries: ['/posts/one'] }),
+    })
+
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByText('Post one')).toBeInTheDocument()
+
+    await router.navigate({ to: '/other' })
+    expect(await screen.findByText('OtherTitle')).toBeInTheDocument()
+
+    releaseDelayedRead()
+    await delayedRead
+
+    if (delayedError) {
+      throw new Error(
+        `Route-scoped useParams threw after navigation away: ${
+          delayedError instanceof Error
+            ? delayedError.message
+            : String(delayedError)
+        }`,
+      )
+    }
+  })
 })
