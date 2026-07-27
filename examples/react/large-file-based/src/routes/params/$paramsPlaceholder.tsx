@@ -25,6 +25,12 @@ export const Route = createFileRoute('/params/$paramsPlaceholder')({
   component: ParamsComponent,
   loader: (opts) =>
     opts.context.queryClient.ensureQueryData(paramsQueryOptions),
+  head: ({ matches }) => {
+    if (matches[0].routeId) {
+      // ...
+    }
+    return {}
+  }
 })
 
 function ParamsComponent() {

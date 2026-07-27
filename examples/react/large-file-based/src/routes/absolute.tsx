@@ -4,6 +4,12 @@ import { Link } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/absolute')({
   component: AbsoluteComponent,
+  head: ({ matches }) => {
+    if (matches[0].routeId) {
+      // ...
+    }
+    return {}
+  },
 })
 
 function AbsoluteComponent() {

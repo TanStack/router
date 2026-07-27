@@ -4,6 +4,12 @@ import { Link } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/relative')({
   component: RelativeComponent,
+  head: ({ matches }) => {
+    if (matches[0].routeId) {
+      // ...
+    }
+    return {}
+  },
 })
 
 function RelativeComponent() {
