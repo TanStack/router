@@ -9,6 +9,7 @@ describe('createBrowserHistory', () => {
   afterEach(() => {
     history?.destroy()
     history = undefined
+    vi.restoreAllMocks()
   })
 
   function setupEntries(
@@ -65,5 +66,34 @@ describe('createBrowserHistory', () => {
 
     await vi.waitFor(() => expect(blockerFn).toHaveBeenCalledOnce())
     await expectLocation('/three')
+  })
+
+  test('accepts a blocked pop with zero delta instead of reloading', async () => {
+    window.history.replaceState(
+      { __TSR_index: 0, __TSR_key: 'entry-0' },
+      '',
+      '/one',
+    )
+    window.history.pushState(
+      { __TSR_index: 0, __TSR_key: 'entry-1' },
+      '',
+      '/two',
+    )
+    history = createBrowserHistory()
+    const blockerFn = vi.fn(() => true)
+    history.block({ blockerFn })
+    const goSpy = vi.spyOn(window.history, 'go')
+    const subscriber = vi.fn()
+    history.subscribe(subscriber)
+
+    history.back()
+
+    await vi.waitFor(() => expect(blockerFn).toHaveBeenCalledOnce())
+    await expectLocation('/one')
+    expect(goSpy).not.toHaveBeenCalled()
+    expect(subscriber).toHaveBeenLastCalledWith({
+      location: expect.objectContaining({ pathname: '/one' }),
+      action: { type: 'GO', index: 0 },
+    })
   })
 })
