@@ -1323,6 +1323,9 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    ctx: {
+      location: ParsedLocation // Do not supply search schema here so as to demotivate people from trying to shortcut loaderDeps
+    },
   ) => void
   onStay?: (
     match: RouteMatch<
@@ -1339,6 +1342,9 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    ctx: {
+      location: ParsedLocation // Do not supply search schema here so as to demotivate people from trying to shortcut loaderDeps
+    },
   ) => void
   onLeave?: (
     match: RouteMatch<
@@ -1355,6 +1361,9 @@ export interface UpdatableRouteOptions<
       >,
       TLoaderDeps
     >,
+    ctx: {
+      location: ParsedLocation // Do not supply search schema here so as to demotivate people from trying to shortcut loaderDeps
+    },
   ) => void
   headers?: (
     ctx: AssetFnContextOptions<
