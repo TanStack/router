@@ -1,3 +1,4 @@
+import { version as viteVersion } from 'vite'
 import { crawlFrameworkPkgs } from 'vitefu'
 import {
   applyResolvedBaseAndOutput,
@@ -35,6 +36,7 @@ import {
 } from './output-directory'
 import { postServerBuild } from './post-server-build'
 import { serializationAdaptersPlugin } from './serialization-adapters-plugin'
+import { assertSupportedViteVersion } from './vite-version'
 import type {
   TanStackStartVitePluginCoreOptions,
   ViteRscForwardSsrResolverStrategy,
@@ -90,6 +92,8 @@ export function tanStackStartVite(
       name: 'tanstack-start-core:config',
       enforce: 'pre',
       async config(viteConfig, { command }) {
+        assertSupportedViteVersion(viteVersion)
+
         const publicBase = normalizePublicBase(viteConfig.base)
         applyResolvedBaseAndOutput({
           resolvedStartConfig,
