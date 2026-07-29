@@ -1,5 +1,11 @@
 # @tanstack/react-start-rsc
 
+## 0.1.32
+
+### Patch Changes
+
+- [#7900](https://github.com/TanStack/router/pull/7900) [`fc83c03`](https://github.com/TanStack/router/commit/fc83c0383f956c3ca02e5e027666c917d7e8b07a) - Raise the `@vitejs/plugin-rsc` peer range to `>=0.5.30`. Versions in `0.5.20 - 0.5.29` suppress client HMR for a route component co-located with a `createServerFn`, fixed upstream in `@vitejs/plugin-rsc@0.5.30`.
+
 ## 0.1.31
 
 ### Patch Changes
