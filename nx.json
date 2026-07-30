@@ -1,6 +1,5 @@
 {
   "$schema": "./node_modules/nx/schemas/nx-schema.json",
-  "bust": "baseline-30-july-more-runners",
   "defaultBase": "main",
   "nxCloudId": "6442f7de8226a6291646a813",
   "useInferencePlugins": false,
@@ -41,7 +40,7 @@
     },
     "test:eslint": {
       "cache": true,
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "build"],
       "inputs": [
         "default",
         "^production",
@@ -87,7 +86,7 @@
     },
     "test:types": {
       "cache": true,
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "build"],
       "inputs": [
         "default",
         "^production",
@@ -97,7 +96,7 @@
     },
     "test:types:ssr": {
       "cache": true,
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "build"],
       "inputs": [
         "default",
         "^production",
