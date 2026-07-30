@@ -41,26 +41,35 @@ function preloadComponent(
   return (route.options[type] as any)?.preload?.()
 }
 
-function loadComponents(route: AnyRoute): Promise<void> | undefined {
+function loadComponents(
+  route: AnyRoute,
+  onPendingReady?: () => void,
+): Promise<void> | undefined {
   const component = preloadComponent(route, 'component')
   const pending = preloadComponent(route, 'pendingComponent')
-  if (component && pending) {
-    return Promise.all([component, pending]).then(() => {})
+  const pendingReady =
+    onPendingReady && pending ? pending.then(onPendingReady) : pending
+  if (onPendingReady && !pending) {
+    onPendingReady()
   }
-  return component ?? pending
+  if (component && pendingReady) {
+    return Promise.all([component, pendingReady]).then(() => {})
+  }
+  return component ?? pendingReady
 }
 
 export function loadRouteChunk(
   route: AnyRoute,
   // `false` waits only for lazy route options, before a boundary is selected.
   componentType?: 'errorComponent' | 'notFoundComponent' | false,
+  onPendingReady?: () => void,
 ): Promise<void> | undefined {
   const afterLazy = () =>
     componentType === false
       ? undefined
       : componentType
         ? preloadComponent(route, componentType)
-        : loadComponents(route)
+        : loadComponents(route, onPendingReady)
   const current = route._lazy
   if (current) {
     return current === true ? afterLazy() : current.then(afterLazy)
@@ -849,6 +858,8 @@ function createLoaderTask(
   const loaded = reload && (!preload || route.options.preload !== false)
   const blocking =
     loaded && !background && (match.status !== 'success' || !!routeLoader)
+  const onLazyReady =
+    route.lazyFn && route._lazy !== true ? options[8] : undefined
   if (loaded && !routeLoader) {
     match.invalid = false
     match.updatedAt = Date.now()
@@ -902,13 +913,10 @@ function createLoaderTask(
   })
 
   const rawChunkFailure = waitFor(
-    Promise.resolve().then(() => loadRouteChunk(route)),
+    Promise.resolve().then(() => loadRouteChunk(route, undefined, onLazyReady)),
     options[0].signal,
   ).then(
-    () => {
-      options[8]?.()
-      return undefined
-    },
+    () => undefined,
     (cause): IndexedOutcome => [
       index,
       normalizeLaneError(route, cause, options),
@@ -2154,8 +2162,7 @@ export async function preloadClientRoute(
     if (isControl(result)) {
       controller.abort()
       transferMatchResources(router, matches)
-      return result[0] === REDIRECTED &&
-        !result[1].options.reloadDocument
+      return result[0] === REDIRECTED && !result[1].options.reloadDocument
         ? preloadClientRoute(
             router,
             {

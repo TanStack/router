@@ -2608,7 +2608,10 @@ export class RouterCore<
     }
   }
 
-  loadRouteChunk = loadRouteChunk
+  loadRouteChunk: (
+    route: AnyRoute,
+    componentType?: 'errorComponent' | 'notFoundComponent' | false,
+  ) => Promise<void> | undefined = loadRouteChunk
 
   preloadRoute: PreloadRouteFn<
     TRouteTree,

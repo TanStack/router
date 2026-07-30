@@ -101,12 +101,17 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
 it('replaces default pending UI when delayed lazy options provide pending UI', async () => {
   const loader = createControlledPromise<void>()
   const componentPreload = createControlledPromise<void>()
+  const pendingComponentPreload = createControlledPromise<void>()
   const preloadComponent = vi.fn(() => componentPreload)
+  const preloadPendingComponent = vi.fn(() => pendingComponentPreload)
   const Page = Object.assign(() => <h1>Page</h1>, {
     preload: preloadComponent,
   })
+  const Pending = Object.assign(() => <p role="status">Loading lazy page</p>, {
+    preload: preloadPendingComponent,
+  })
   const lazyPageOptions = createLazyRoute('/page')({
-    pendingComponent: () => <p role="status">Loading lazy page</p>,
+    pendingComponent: Pending,
     component: Page,
   })
   const lazyOptions = createControlledPromise<typeof lazyPageOptions>()
@@ -134,6 +139,7 @@ it('replaces default pending UI when delayed lazy options provide pending UI', a
   const navigation = router.navigate({ to: '/page' })
   onTestFinished(async () => {
     lazyOptions.resolve(lazyPageOptions)
+    pendingComponentPreload.resolve()
     componentPreload.resolve()
     loader.resolve()
     await Promise.allSettled([navigation])
@@ -142,10 +148,17 @@ it('replaces default pending UI when delayed lazy options provide pending UI', a
   expect(await screen.findByRole('status')).toHaveTextContent('Loading default')
 
   lazyOptions.resolve(lazyPageOptions)
+  await vi.waitFor(() => {
+    expect(preloadComponent).toHaveBeenCalledOnce()
+    expect(preloadPendingComponent).toHaveBeenCalledOnce()
+  })
+  expect(screen.getByRole('status')).toHaveTextContent('Loading default')
+  expect(pendingComponentPreload.status).toBe('pending')
+
+  pendingComponentPreload.resolve()
   await vi.waitFor(() =>
     expect(screen.getByRole('status')).toHaveTextContent('Loading lazy page'),
   )
-  expect(preloadComponent).toHaveBeenCalledOnce()
   expect(componentPreload.status).toBe('pending')
   expect(screen.queryByText('Page')).not.toBeInTheDocument()
 

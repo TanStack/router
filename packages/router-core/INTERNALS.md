@@ -503,11 +503,11 @@ obsolete import cannot install options afterward.
 Normal component readiness is part of route readiness, not merely an asset
 prefetch side effect. Client loader and normal component work may run in
 parallel, and a blocking match becomes successful only after both are ready.
-Chunk settlement also wakes pending selection, so a `pendingComponent` supplied
-by newly installed lazy options can become visible while the route's loader is
-still running. This does not require retaining a component promise on the
-match: the route's lazy-option owner and the framework/module loader provide the
-necessary work identity.
+When a client lane installs a `pendingComponent` from lazy options, that
+component wakes pending selection once it is itself ready, without waiting for
+the normal component. This does not require retaining a component promise on
+the match: the route's lazy-option owner and the framework/module loader provide
+the necessary work identity.
 
 Client and server not-found boundary searches settle lazy options on each
 candidate route before testing for `notFoundComponent`. A lazy rejection while
@@ -695,10 +695,11 @@ There is one pending session in `router._pending` and one absolute deadline:
 reveal deadline -> exact render acknowledgement -> minimum-visible deadline
 ```
 
-The session also remembers the pending component identity. A normal lazy route
-chunk can install a more specific `pendingComponent` after the default fallback
-has already rendered; chunk settlement re-offers the same lane so the framework
-can replace that fallback without creating another pending session or deadline.
+The session also remembers the pending component identity. An active client
+lane loading a lazy route chunk can install a more specific `pendingComponent`
+after the default fallback has already rendered. Once that pending component is
+ready, core re-offers the same lane so the framework can replace the fallback
+without creating another pending session or deadline.
 
 The reveal deadline is anchored to the transaction's lane-level `startedAt`.
 Discovering lazy pending options later, advancing to another boundary, or
