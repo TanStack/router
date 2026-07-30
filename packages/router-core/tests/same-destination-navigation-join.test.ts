@@ -10,6 +10,7 @@ afterEach(() => {
 describe('same-destination navigation while one is in flight', () => {
   function setup() {
     const gate = createControlledPromise<string>()
+    const beforeLoad = vi.fn()
     const loader = vi.fn(() => gate)
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
@@ -19,17 +20,18 @@ describe('same-destination navigation while one is in flight', () => {
     const targetRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/target',
+      beforeLoad,
       loader,
     })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
       history: createMemoryHistory({ initialEntries: ['/'] }),
     })
-    return { router, loader, gate, targetRoute }
+    return { router, beforeLoad, loader, gate, targetRoute }
   }
 
   test('a second navigation to the same destination joins the in-flight load', async () => {
-    const { router, loader, gate, targetRoute } = setup()
+    const { router, beforeLoad, loader, gate, targetRoute } = setup()
     await router.load()
 
     const first = router.navigate({ to: '/target' })
@@ -39,6 +41,7 @@ describe('same-destination navigation while one is in flight', () => {
     gate.resolve('once')
     await Promise.all([first, second])
 
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
     expect(loader).toHaveBeenCalledTimes(1)
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: targetRoute.id,
@@ -89,6 +92,58 @@ describe('same-destination navigation while one is in flight', () => {
     await Promise.all([first, second])
 
     expect(loader).toHaveBeenCalledTimes(2)
+  })
+
+  test('filtered invalidate does not adopt same-id work from an active preload', async () => {
+    const secondGate = createControlledPromise<string>()
+    const loader = vi.fn(
+      ({ abortController }: { abortController: AbortController }) => {
+        const generation = loader.mock.calls.length
+        return generation === 2
+          ? secondGate
+          : `generation ${generation}:${abortController.signal.aborted}`
+      },
+    )
+    const rootRoute = new BaseRootRoute({})
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      validateSearch: (search: Record<string, unknown>) => ({
+        revision: Number(search.revision ?? 1),
+      }),
+      shouldReload: ({ preload }) => (preload ? true : undefined),
+      loader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([targetRoute]),
+      history: createMemoryHistory({
+        initialEntries: ['/target?revision=1'],
+      }),
+    })
+
+    await router.load()
+    const preload = router.preloadRoute({
+      to: '/target',
+      search: { revision: 2 },
+    })
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(2))
+
+    const invalidation = router.invalidate({
+      filter: (match) =>
+        match.routeId === targetRoute.id &&
+        (match.search as { revision: number }).revision === 1,
+    })
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(3))
+    await invalidation
+
+    expect(router.state.location.search).toEqual({ revision: 1 })
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: targetRoute.id,
+      loaderData: 'generation 3:false',
+    })
+
+    secondGate.resolve('preload data')
+    await preload
   })
 
   test('a repeat navigation after settle reloads instead of joining', async () => {

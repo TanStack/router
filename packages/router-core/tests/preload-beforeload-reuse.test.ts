@@ -90,7 +90,7 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
     })
   })
 
-  test('adopts beforeLoad and loader from an identical active preload', async () => {
+  test('reruns beforeLoad while sharing an identical active preload loader', async () => {
     const loaderGate = createControlledPromise<string>()
     const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
       guard: preload ? 'preloaded' : 'loaded',
@@ -118,9 +118,10 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
     await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
 
     const navigation = router.navigate({ to: '/guarded' })
-    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(1))
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
+      false,
     ])
     expect(loader).toHaveBeenCalledTimes(1)
 
@@ -128,7 +129,7 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
     await Promise.all([preload, navigation])
 
     expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.state.matches.at(-1)?.context).toEqual({ guard: 'preloaded' })
+    expect(router.state.matches.at(-1)?.context).toEqual({ guard: 'loaded' })
     expect(router.state.matches.at(-1)?.loaderData).toBe('shared loader data')
   })
 

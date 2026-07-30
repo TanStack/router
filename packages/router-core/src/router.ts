@@ -58,7 +58,6 @@ import type {
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
 import type {
-  ActivePreload,
   LoadTransaction,
   LoaderFlight,
   PendingSession,
@@ -766,7 +765,6 @@ export type LoadFn = (opts?: {
   sync?: boolean
   action?: { type: HistoryAction }
   _signal?: AbortSignal
-  _dedupe?: boolean
 }) => Promise<void>
 
 export type CommitLocationFn = ({
@@ -778,7 +776,6 @@ export type CommitLocationFn = ({
 export type StartTransitionFn = (
   fn: () => void,
   expected: Array<AnyRouteMatch>,
-  urgent?: boolean,
 ) => Promise<boolean>
 
 export interface MatchRoutesFn {
@@ -1027,8 +1024,8 @@ export interface RouterCore<
   _tx?: LoadTransaction
   /** Joinable in-flight loader generations keyed by match ID. */
   _flights?: Map<string, LoaderFlight>
-  /** Whole speculative lanes that an identical navigation may adopt. */
-  _preloads?: Map<string, ActivePreload>
+  /** Active speculative lanes retained for cancellation and cache clearing. */
+  _preloads?: Map<AbortController, Array<AnyRouteMatch>>
   /** Owns cancellable work before a client transaction publishes. */
   _preflight?: AbortController
   /** Transfers one reconstructed SSR prefix into its initial client load. */
@@ -2169,7 +2166,7 @@ export class RouterCore<
 
     // Don't commit to history if nothing changed
     if (isSameLocation) {
-      this.load({ _dedupe: true })
+      this.load()
     } else {
       let {
         // eslint-disable-next-line prefer-const
@@ -2469,15 +2466,15 @@ export class RouterCore<
   > = (opts) => {
     const committedMatches = this._committed
     const filter = opts?.filter
-    const invalidIds = filter
-      ? new Set(
-          [...committedMatches, ...this._cache.values()]
-            .filter((match) => filter(match as MakeRouteMatchUnion<this>))
-            .map((match) => match.id),
+    const invalidIds = new Set(
+      [...committedMatches, ...this._cache.values(), ...(this._tx?.[3] ?? [])]
+        .filter(
+          (match) => !filter || filter(match as MakeRouteMatchUnion<this>),
         )
-      : undefined
+        .map((match) => match.id),
+    )
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
-      if (!invalidIds || invalidIds.has(d.id)) {
+      if (invalidIds.has(d.id)) {
         const route = this.routesById[d.routeId] as AnyRoute
         const next = {
           ...d,
@@ -2503,6 +2500,11 @@ export class RouterCore<
       cache.set(id, invalidate(match))
     }
     this._cache = cache
+    // The superseding load must not discover any same-ID generation selected
+    // for replacement. Existing owners release it in their normal order.
+    for (const id of invalidIds) {
+      this._flights?.delete(id)
+    }
 
     this.shouldViewTransition = false
     return this.load({ sync: opts?.sync })
@@ -2563,14 +2565,14 @@ export class RouterCore<
         discarded.push(match)
       }
     }
-    const retainedPreloads = new Map<string, ActivePreload>()
-    const discardedPreloads: Array<ActivePreload> = []
-    for (const [href, preload] of preloads ?? []) {
-      if (!filter || preload[0].some(filter as any)) {
-        discardedPreloads.push(preload)
-        discarded.push(...preload[0])
+    const retainedPreloads = new Map<AbortController, Array<AnyRouteMatch>>()
+    const discardedPreloads: Array<AbortController> = []
+    for (const [controller, matches] of preloads ?? []) {
+      if (!filter || matches.some(filter as any)) {
+        discardedPreloads.push(controller)
+        discarded.push(...matches)
       } else {
-        retainedPreloads.set(href, preload)
+        retainedPreloads.set(controller, matches)
       }
     }
 
@@ -2578,9 +2580,28 @@ export class RouterCore<
     // signal, whose abort listeners can synchronously reenter the router.
     this._cache = retained
     this._preloads = retainedPreloads
+    const discardedFlights = new Map<LoaderFlight, [string, number]>()
+    for (const match of discarded as Array<
+      AnyRouteMatch & { _flight?: LoaderFlight }
+    >) {
+      const flight = match._flight
+      if (flight && this._flights?.get(match.id) === flight) {
+        const entry = discardedFlights.get(flight)
+        if (entry) {
+          entry[1]++
+        } else {
+          discardedFlights.set(flight, [match.id, 1])
+        }
+      }
+    }
+    for (const [flight, [id, owners]] of discardedFlights) {
+      if (flight[2] === owners && this._flights?.get(id) === flight) {
+        this._flights.delete(id)
+      }
+    }
     transferMatchResources(this, discarded)
-    for (const preload of discardedPreloads) {
-      preload[1].abort()
+    for (const controller of discardedPreloads) {
+      controller.abort()
     }
   }
 

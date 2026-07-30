@@ -102,6 +102,7 @@ describe('issue #3928: rapid reloads of a reused parent', () => {
     await vi.waitFor(() => {
       expect(rootInvocations.has('ab')).toBe(true)
       expect(indexInvocations.has('ab')).toBe(true)
+      expect(rootInvocations.get('a')!.signal.aborted).toBe(true)
       expect(indexInvocations.get('a')!.signal.aborted).toBe(true)
     })
 
@@ -109,6 +110,7 @@ describe('issue #3928: rapid reloads of a reused parent', () => {
     await vi.waitFor(() => {
       expect(rootInvocations.has('abc')).toBe(true)
       expect(indexInvocations.has('abc')).toBe(true)
+      expect(rootInvocations.get('ab')!.signal.aborted).toBe(true)
       expect(indexInvocations.get('ab')!.signal.aborted).toBe(true)
     })
 

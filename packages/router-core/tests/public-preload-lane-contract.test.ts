@@ -51,14 +51,17 @@ describe('public preload lane contracts', () => {
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
-  test('active preloads share only an identical full lane', async () => {
+  test('every active preload runs beforeLoad even for an identical location', async () => {
     const gates = new Map<
       number,
       ReturnType<typeof createControlledPromise<void>>
     >()
     const beforeLoad = vi.fn(({ search }: { search: { version: number } }) => {
-      const gate = createControlledPromise<void>()
-      gates.set(search.version, gate)
+      let gate = gates.get(search.version)
+      if (!gate) {
+        gate = createControlledPromise<void>()
+        gates.set(search.version, gate)
+      }
       return gate
     })
     const rootRoute = new BaseRootRoute({})
@@ -91,6 +94,7 @@ describe('public preload lane contracts', () => {
       search: { version: 2 },
     })
     await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
+    gates.get(1)!.resolve(undefined)
     gates.get(2)!.resolve(undefined)
     await Promise.all([first, second])
 
@@ -103,13 +107,12 @@ describe('public preload lane contracts', () => {
       to: '/target',
       search: { version: 3 },
     })
-    await Promise.resolve()
-    expect(beforeLoad).toHaveBeenCalledTimes(3)
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(4))
     gates.get(3)!.resolve(undefined)
     await Promise.all([third, identical])
   })
 
-  test('navigation adopts beforeLoad from an identical active preload lane', async () => {
+  test('navigation reruns beforeLoad while sharing an identical preload loader', async () => {
     const beforeLoadGate = createControlledPromise<void>()
     const beforeLoad = vi.fn(async ({ preload }: { preload: boolean }) => {
       await beforeLoadGate
@@ -137,18 +140,18 @@ describe('public preload lane contracts', () => {
     await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(1))
 
     const navigation = router.navigate({ to: '/target' })
-    await Promise.resolve()
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
 
     beforeLoadGate.resolve()
     await Promise.all([preload, navigation])
 
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
+      false,
     ])
     expect(loader).toHaveBeenCalledTimes(1)
     expect(router.state.matches.at(-1)).toMatchObject({
-      context: { source: 'preload' },
+      context: { source: 'navigation' },
       loaderData: 'loader data',
     })
   })
@@ -850,7 +853,7 @@ describe('public preload lane contracts', () => {
     })
   })
 
-  test('navigation retries an adopted preload lane that failed', async () => {
+  test('navigation runs independently when an active preload fails', async () => {
     const preloadGate = createControlledPromise<void>()
     const beforeLoad = vi.fn(async ({ preload }: { preload: boolean }) => {
       if (preload) {

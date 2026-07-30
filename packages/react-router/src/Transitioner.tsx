@@ -35,18 +35,14 @@ export function Transitioner() {
     }
   }
   if (process.env.NODE_ENV === 'production') {
-    router.startTransition = (fn, expected, urgent) =>
+    router.startTransition = (fn, expected) =>
       new Promise((resolve) => {
         acknowledgement.current?.[1](false)
         acknowledgement.current = [expected, resolve]
-        if (urgent) {
-          fn()
-        } else {
-          React.startTransition(fn)
-        }
+        React.startTransition(fn)
       })
   } else {
-    router.startTransition = (fn, expected, urgent) =>
+    router.startTransition = (fn, expected) =>
       new Promise((resolve, reject) => {
         acknowledgement.current?.[1](false)
         const next: NonNullable<typeof acknowledgement.current> = [
@@ -55,11 +51,7 @@ export function Transitioner() {
         ]
         acknowledgement.current = next
         try {
-          if (urgent) {
-            fn()
-          } else {
-            React.startTransition(fn)
-          }
+          React.startTransition(fn)
         } catch (cause) {
           if (acknowledgement.current === next) {
             acknowledgement.current = undefined

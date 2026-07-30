@@ -96,7 +96,7 @@ describe('preload adoption', () => {
     ).toEqual({ notifications: ['fresh'] })
   })
 
-  test('navigation adopts an identical preload still in its serial phase', async () => {
+  test('navigation runs beforeLoad independently of a preload serial phase', async () => {
     const beforeLoadGate = createControlledPromise<void>()
     const preloadSerialStarted = createControlledPromise<void>()
     let beforeLoadCalls = 0
@@ -134,12 +134,12 @@ describe('preload adoption', () => {
     expect(beforeLoadCalls).toBe(1)
 
     const navigation = router.navigate({ to: '/foo' })
-    await Promise.resolve()
-    expect(loader).not.toHaveBeenCalled()
+    await vi.waitFor(() => expect(beforeLoadCalls).toBe(2))
+    expect(loader).toHaveBeenCalledTimes(1)
 
     beforeLoadGate.resolve()
     await Promise.all([navigation, preload])
-    expect(beforeLoadCalls).toBe(1)
+    expect(beforeLoadCalls).toBe(2)
     expect(loader).toHaveBeenCalledTimes(1)
     expect(
       router.state.matches.find((match) => match.routeId === fooRoute.id)
@@ -147,7 +147,7 @@ describe('preload adoption', () => {
     ).toBe('success')
   })
 
-  test("a sibling preload adopts another preload lane's in-flight loader", async () => {
+  test("a sibling preload shares another preload lane's in-flight loader", async () => {
     const loaderGate = createControlledPromise<string>()
     const loaderStarted = createControlledPromise<void>()
     let preloadBeforeLoadCalls = 0
@@ -184,8 +184,7 @@ describe('preload adoption', () => {
     await loaderStarted
 
     const second = router.preloadRoute({ to: '/foo' } as any)
-    await Promise.resolve()
-    expect(preloadBeforeLoadCalls).toBe(1)
+    await vi.waitFor(() => expect(preloadBeforeLoadCalls).toBe(2))
     expect(loader).toHaveBeenCalledTimes(1)
 
     loaderGate.resolve('once')
