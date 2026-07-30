@@ -557,7 +557,7 @@ export function createStartHandler<TRegister = Register>(
           return normalizeSsrResponse(
             Response.json(
               { error: 'Only HTML requests are supported here' },
-              { status: 500 },
+              { status: 406 },
             ),
           )
         }
