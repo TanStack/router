@@ -10,7 +10,7 @@ import {
   QueryClientProvider,
   useQuery,
 } from '@tanstack/react-query'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import {
   Link,
   Outlet,
@@ -97,33 +97,33 @@ test('#4476: pending navigation keeps the query observer mounted and its fetchQu
     },
   })
 
-  try {
-    render(
-      <QueryClientProvider client={queryClient}>
-        <RouterProvider router={router} />
-      </QueryClientProvider>,
-    )
-    expect(await screen.findByText('Page one: 3')).toBeInTheDocument()
-
-    const link = screen.getByRole('link', { name: 'Page two' })
-    fireEvent.mouseOver(link)
-    await waitFor(() => expect(pageTwoBeforeLoad).toHaveBeenCalledWith(true))
-    fireEvent.click(link)
-
-    await waitFor(() => expect(querySignal).toBeDefined())
-    expect(screen.getByTestId('page-one')).toBeInTheDocument()
-    expect(screen.getByTestId('page-two-pending')).toBeInTheDocument()
-    expect(querySignal?.aborted).toBe(false)
-    queryGate.resolve(10)
-
-    expect(await screen.findByText('Page two: 10')).toBeInTheDocument()
-    expect(routeError).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('page-one')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('page-two-pending')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('page-two-error')).not.toBeInTheDocument()
-    expect(router.state.location.pathname).toBe('/page-two')
-  } finally {
+  onTestFinished(() => {
     queryGate.resolve(10)
     queryClient.clear()
-  }
+  })
+
+  render(
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  )
+  expect(await screen.findByText('Page one: 3')).toBeInTheDocument()
+
+  const link = screen.getByRole('link', { name: 'Page two' })
+  fireEvent.mouseOver(link)
+  await waitFor(() => expect(pageTwoBeforeLoad).toHaveBeenCalledWith(true))
+  fireEvent.click(link)
+
+  await waitFor(() => expect(querySignal).toBeDefined())
+  expect(screen.getByTestId('page-one')).toBeInTheDocument()
+  expect(screen.getByTestId('page-two-pending')).toBeInTheDocument()
+  expect(querySignal?.aborted).toBe(false)
+  queryGate.resolve(10)
+
+  expect(await screen.findByText('Page two: 10')).toBeInTheDocument()
+  expect(routeError).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('page-one')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('page-two-pending')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('page-two-error')).not.toBeInTheDocument()
+  expect(router.state.location.pathname).toBe('/page-two')
 })

@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@solidjs/testing-library'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, onTestFinished, test } from 'vitest'
 import {
   Outlet,
   RouterProvider,
@@ -56,26 +56,25 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
       }
     }),
   ]
-
-  try {
-    await router.navigate({ to: '/first' })
-    expect(await screen.findByText('First route')).toBeInTheDocument()
-    expect(screen.queryByText('Index route')).not.toBeInTheDocument()
-    expect(lifecycle).toEqual(['enter:/first', 'throw:/first', 'load:/first'])
-
-    await router.navigate({ to: '/second' })
-    expect(await screen.findByText('Second route')).toBeInTheDocument()
-    expect(screen.queryByText('First route')).not.toBeInTheDocument()
-    expect(lifecycle).toEqual([
-      'enter:/first',
-      'throw:/first',
-      'load:/first',
-      'enter:/second',
-      'load:/second',
-    ])
-  } finally {
+  onTestFinished(() => {
     for (const unsubscribe of unsubscribers) {
       unsubscribe()
     }
-  }
+  })
+
+  await router.navigate({ to: '/first' })
+  expect(await screen.findByText('First route')).toBeInTheDocument()
+  expect(screen.queryByText('Index route')).not.toBeInTheDocument()
+  expect(lifecycle).toEqual(['enter:/first', 'throw:/first', 'load:/first'])
+
+  await router.navigate({ to: '/second' })
+  expect(await screen.findByText('Second route')).toBeInTheDocument()
+  expect(screen.queryByText('First route')).not.toBeInTheDocument()
+  expect(lifecycle).toEqual([
+    'enter:/first',
+    'throw:/first',
+    'load:/first',
+    'enter:/second',
+    'load:/second',
+  ])
 })

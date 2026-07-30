@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import {
   Outlet,
@@ -90,42 +90,42 @@ test('#6371: initial search defaults produce one live canonical loader', async (
     defaultPendingComponent: PendingLocation,
   })
 
-  try {
-    render(<RouterProvider router={router} />)
-
-    await act(async () => {
-      await canonicalLocation
-    })
-
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(loaderLocations).toEqual(['/about?page=1'])
-    expect(loaderSignals).toHaveLength(1)
-    expect(loaderSignals[0]?.aborted).toBe(false)
-
-    expect(
-      await screen.findByText('/about?page=1', {
-        selector: '[data-testid="pending-location"]',
-      }),
-    ).toBeInTheDocument()
-
-    await act(() => {
-      loaderGate.resolve('about data')
-    })
-
-    expect(await screen.findByTestId('about-data')).toHaveTextContent(
-      'about data',
-    )
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(loaderSignals[0]?.aborted).toBe(false)
-    expect(errorComponentRendered).not.toHaveBeenCalled()
-    expect(screen.queryByTestId('about-error')).not.toBeInTheDocument()
-  } finally {
+  onTestFinished(async () => {
     unsubscribeHistory()
     await act(() => {
       canonicalLocation.resolve()
       loaderGate.resolve('about data')
     })
-  }
+  })
+
+  render(<RouterProvider router={router} />)
+
+  await act(async () => {
+    await canonicalLocation
+  })
+
+  expect(loader).toHaveBeenCalledTimes(1)
+  expect(loaderLocations).toEqual(['/about?page=1'])
+  expect(loaderSignals).toHaveLength(1)
+  expect(loaderSignals[0]?.aborted).toBe(false)
+
+  expect(
+    await screen.findByText('/about?page=1', {
+      selector: '[data-testid="pending-location"]',
+    }),
+  ).toBeInTheDocument()
+
+  await act(() => {
+    loaderGate.resolve('about data')
+  })
+
+  expect(await screen.findByTestId('about-data')).toHaveTextContent(
+    'about data',
+  )
+  expect(loader).toHaveBeenCalledTimes(1)
+  expect(loaderSignals[0]?.aborted).toBe(false)
+  expect(errorComponentRendered).not.toHaveBeenCalled()
+  expect(screen.queryByTestId('about-error')).not.toBeInTheDocument()
 })
 
 test('initial canonicalization bypasses existing navigation blockers', async () => {
@@ -155,17 +155,15 @@ test('initial canonicalization bypasses existing navigation blockers', async () 
     history,
   })
 
-  try {
-    render(<RouterProvider router={router} />)
+  onTestFinished(unblock)
 
-    expect(await screen.findByText('/about?page=1')).toBeInTheDocument()
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(history.location.href).toBe('/about?page=1')
-    expect(router.latestLocation.href).toBe('/about?page=1')
-    expect(router.state.location.href).toBe('/about?page=1')
-    expect(router.state.resolvedLocation?.href).toBe('/about?page=1')
-    expect(blockerFn).not.toHaveBeenCalled()
-  } finally {
-    unblock()
-  }
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('/about?page=1')).toBeInTheDocument()
+  expect(loader).toHaveBeenCalledTimes(1)
+  expect(history.location.href).toBe('/about?page=1')
+  expect(router.latestLocation.href).toBe('/about?page=1')
+  expect(router.state.location.href).toBe('/about?page=1')
+  expect(router.state.resolvedLocation?.href).toBe('/about?page=1')
+  expect(blockerFn).not.toHaveBeenCalled()
 })

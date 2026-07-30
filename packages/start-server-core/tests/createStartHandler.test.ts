@@ -1,6 +1,14 @@
 // @vitest-environment node
 
-import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterAll,
+  afterEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { createMiddleware } from '@tanstack/start-client-core'
 import {
@@ -566,36 +574,37 @@ describe('createStartHandler request cancellation', () => {
       const renderResult = new Promise<any>((resolve) => {
         resolveRender = resolve
       })
-
-      try {
-        const handler = createStartHandler(() => {
-          notifyRenderStarted()
-          return renderResult
-        })
-        const response = handler(
-          new Request('http://localhost/', {
-            signal: requestController.signal,
-          }),
-          {},
-        )
-
-        await renderStarted
-        requestController.abort(new Error('request disconnected'))
-        expect((await response).status).toBe(500)
-
-        resolveRender({
-          response: new Response('stream'),
-          serverSsrCleanup: 'stream',
-          dispose,
-        })
-        await vi.waitFor(() => {
-          expect(consoleError).toHaveBeenCalledWith(cleanupError)
-        })
-        expect(dispose).toHaveBeenCalledOnce()
-      } finally {
-        router.serverSsr?.cleanup()
+      onTestFinished(() => {
         consoleError.mockRestore()
-      }
+      })
+      onTestFinished(() => {
+        router.serverSsr?.cleanup()
+      })
+
+      const handler = createStartHandler(() => {
+        notifyRenderStarted()
+        return renderResult
+      })
+      const response = handler(
+        new Request('http://localhost/', {
+          signal: requestController.signal,
+        }),
+        {},
+      )
+
+      await renderStarted
+      requestController.abort(new Error('request disconnected'))
+      expect((await response).status).toBe(500)
+
+      resolveRender({
+        response: new Response('stream'),
+        serverSsrCleanup: 'stream',
+        dispose,
+      })
+      await vi.waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith(cleanupError)
+      })
+      expect(dispose).toHaveBeenCalledOnce()
     },
   )
 
@@ -629,29 +638,30 @@ describe('createStartHandler request cancellation', () => {
           return new Promise<Response>(() => {})
         }),
       ]
-
-      try {
-        const handler = createStartHandler(() => new Response('unused'))
-        const response = handler(
-          new Request('http://localhost/_serverFn/test', {
-            headers: { 'x-tsr-serverFn': 'true' },
-            signal: requestController.signal,
-          }),
-          {},
-        )
-
-        await middlewareStarted
-        requestController.abort(new Error('request disconnected'))
-
-        expect((await response).status).toBe(500)
-        await vi.waitFor(() => {
-          expect(consoleError).toHaveBeenCalledWith(cleanupError)
-        })
-        expect(dispose).toHaveBeenCalledOnce()
-      } finally {
-        router.serverSsr?.cleanup()
+      onTestFinished(() => {
         consoleError.mockRestore()
-      }
+      })
+      onTestFinished(() => {
+        router.serverSsr?.cleanup()
+      })
+
+      const handler = createStartHandler(() => new Response('unused'))
+      const response = handler(
+        new Request('http://localhost/_serverFn/test', {
+          headers: { 'x-tsr-serverFn': 'true' },
+          signal: requestController.signal,
+        }),
+        {},
+      )
+
+      await middlewareStarted
+      requestController.abort(new Error('request disconnected'))
+
+      expect((await response).status).toBe(500)
+      await vi.waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith(cleanupError)
+      })
+      expect(dispose).toHaveBeenCalledOnce()
     },
   )
 

@@ -1,4 +1,4 @@
-import { expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -28,17 +28,16 @@ test('issue #7759: evicting an in-flight preload finishes without an internal er
     history: createMemoryHistory(),
   })
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
-
-  try {
-    const preload = router.preloadRoute({ to: '/target' })
-    await loaderStarted
-
-    router.clearCache()
-    resolveLoader('loaded')
-
-    await preload
-    expect(consoleError).not.toHaveBeenCalled()
-  } finally {
+  onTestFinished(() => {
     consoleError.mockRestore()
-  }
+  })
+
+  const preload = router.preloadRoute({ to: '/target' })
+  await loaderStarted
+
+  router.clearCache()
+  resolveLoader('loaded')
+
+  await preload
+  expect(consoleError).not.toHaveBeenCalled()
 })

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import {
   Link,
@@ -128,38 +128,32 @@ it('replaces default pending UI when delayed lazy options provide pending UI', a
     defaultPendingMinMs: 0,
     defaultPendingComponent: () => <p role="status">Loading default</p>,
   })
-  let navigation: Promise<void> | undefined
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByText('Index page')).toBeInTheDocument()
 
-  try {
-    render(() => <RouterProvider router={router} />)
-    expect(await screen.findByText('Index page')).toBeInTheDocument()
-
-    navigation = router.navigate({ to: '/page' })
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Loading default',
-    )
-
-    lazyOptions.resolve(lazyPageOptions)
-    await vi.waitFor(() =>
-      expect(screen.getByRole('status')).toHaveTextContent('Loading lazy page'),
-    )
-    expect(preloadComponent).toHaveBeenCalledOnce()
-    expect(componentPreload.status).toBe('pending')
-    expect(screen.queryByText('Page')).not.toBeInTheDocument()
-
-    componentPreload.resolve()
-    loader.resolve()
-    await navigation
-
-    expect(await screen.findByText('Page')).toBeInTheDocument()
-  } finally {
+  const navigation = router.navigate({ to: '/page' })
+  onTestFinished(async () => {
     lazyOptions.resolve(lazyPageOptions)
     componentPreload.resolve()
     loader.resolve()
-    if (navigation) {
-      await Promise.allSettled([navigation])
-    }
-  }
+    await Promise.allSettled([navigation])
+  })
+
+  expect(await screen.findByRole('status')).toHaveTextContent('Loading default')
+
+  lazyOptions.resolve(lazyPageOptions)
+  await vi.waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent('Loading lazy page'),
+  )
+  expect(preloadComponent).toHaveBeenCalledOnce()
+  expect(componentPreload.status).toBe('pending')
+  expect(screen.queryByText('Page')).not.toBeInTheDocument()
+
+  componentPreload.resolve()
+  loader.resolve()
+  await navigation
+
+  expect(await screen.findByText('Page')).toBeInTheDocument()
 })
 
 it('renders an eager loader error with a delayed lazy errorComponent', async () => {

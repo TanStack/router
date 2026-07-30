@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { createMemoryHistory, createRootRoute, createRouter } from '../src'
 
@@ -61,24 +61,24 @@ describe('renderRouterToStream - pipeable sync errors', () => {
 
     const router = await buildRouter()
     const controller = new AbortController()
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/', {
-            signal: controller.signal,
-          }),
-          router,
-          responseHeaders: new Headers(),
-          children: null,
-        }),
-      )
-
-      expect(response.body).not.toBeNull()
-      controller.abort(new Error('request-gone'))
-      await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
-    } finally {
+    onTestFinished(() => {
       router.serverSsr?.cleanup()
-    }
+    })
+
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/', {
+          signal: controller.signal,
+        }),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      }),
+    )
+
+    expect(response.body).not.toBeNull()
+    controller.abort(new Error('request-gone'))
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
   })
 
   test('sync onError before pipeable is assigned still aborts pipeable', async () => {

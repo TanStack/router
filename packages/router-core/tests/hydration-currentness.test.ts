@@ -1,5 +1,13 @@
 import { runInNewContext } from 'node:vm'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -305,17 +313,17 @@ describe('hydration asset currentness', () => {
     )
 
     const hydration = hydrate(router)
-    try {
-      await hydrateStarted
-      await router.navigate({ to: '/new' })
-      await expect(hydration).resolves.toBeUndefined()
-
-      expect(router.state.resolvedLocation?.pathname).toBe('/new')
-      expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
-    } finally {
+    onTestFinished(async () => {
       hydrateGate.resolve()
       await hydration
-    }
+    })
+
+    await hydrateStarted
+    await router.navigate({ to: '/new' })
+    await expect(hydration).resolves.toBeUndefined()
+
+    expect(router.state.resolvedLocation?.pathname).toBe('/new')
+    expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
   })
 
   test('does not publish an old hydration lane after a newer navigation commits', async () => {
@@ -354,22 +362,22 @@ describe('hydration asset currentness', () => {
     )
 
     const hydration = hydrate(router)
-    try {
-      await oldChunkStarted
-      await router.navigate({ to: '/new' })
-
-      expect(router.state.resolvedLocation?.pathname).toBe('/new')
-      expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
-
-      await hydration
-
-      expect(router.state.location.pathname).toBe('/new')
-      expect(router.state.resolvedLocation?.pathname).toBe('/new')
-      expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
-    } finally {
+    onTestFinished(async () => {
       oldChunkGate.resolve()
       await hydration
-    }
+    })
+
+    await oldChunkStarted
+    await router.navigate({ to: '/new' })
+
+    expect(router.state.resolvedLocation?.pathname).toBe('/new')
+    expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
+
+    await hydration
+
+    expect(router.state.location.pathname).toBe('/new')
+    expect(router.state.resolvedLocation?.pathname).toBe('/new')
+    expect(router.state.matches.at(-1)?.routeId).toBe(newRoute.id)
   })
 
   test('an aborted hydration handoff falls back to a fresh client continuation', async () => {
@@ -413,11 +421,9 @@ describe('hydration asset currentness', () => {
     const unsubscribe = router.subscribe('onBeforeLoad', () => {
       hydrationController!.abort()
     })
-    try {
-      await router.load()
-    } finally {
-      unsubscribe()
-    }
+    onTestFinished(unsubscribe)
+
+    await router.load()
 
     expect(router.state.resolvedLocation?.pathname).toBe('/child')
     expect(router.state.matches.at(-1)).toMatchObject({

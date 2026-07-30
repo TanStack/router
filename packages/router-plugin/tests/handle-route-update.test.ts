@@ -8,7 +8,7 @@ import {
   createNonReactiveReadonlyStore,
   trimPathRight,
 } from '@tanstack/router-core'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Fragment, act, createElement } from 'react'
 import { createPortal } from 'react-dom'
 import { createRoot } from 'react-dom/client'
@@ -599,62 +599,56 @@ describe('handleRouteUpdate', () => {
     const reactRoot = createRoot(container)
     const previousActEnvironment = (globalThis as any).IS_REACT_ACT_ENVIRONMENT
     ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true
-
-    try {
-      await act(async () => {
-        reactRoot.render(
-          createElement(RouterContextProvider, {
-            router,
-            children: createElement(
-              Fragment,
-              null,
-              createPortal(createElement(HeadContent), document.head),
-              createElement(Scripts),
-            ),
-          }),
-        )
-      })
-
-      expect(document.head.querySelector('title')?.textContent).toBe(
-        'hot title',
-      )
-      expect(
-        document.head.querySelector('script[src="/hot-head.js"]'),
-      ).not.toBeNull()
-      expect(
-        document.head.querySelector('script[src="/hot-body.js"]'),
-      ).not.toBeNull()
-
-      await act(async () => {
-        runHandleRouteUpdate(router, hotRoute.id, new BaseRoute({} as any))
-        await vi.waitFor(() => {
-          expect(router.state.matches[1]!.routeId).toBe(hotRoute.id)
-          expect(router.state.matches[1]!.meta).toBeUndefined()
-          expect(router.state.matches[1]!.headScripts).toBeUndefined()
-          expect(router.state.matches[1]!.scripts).toBeUndefined()
-        })
-      })
-
-      expect(document.head.querySelector('title')).toBeNull()
-      expect(
-        document.head.querySelector('script[src="/hot-head.js"]'),
-      ).toBeNull()
-      expect(
-        document.head.querySelector('script[src="/hot-body.js"]'),
-      ).toBeNull()
-    } finally {
-      try {
-        await act(async () => {
-          reactRoot.unmount()
-        })
-      } finally {
-        container.remove()
-        if (previousActEnvironment === undefined) {
-          delete (globalThis as any).IS_REACT_ACT_ENVIRONMENT
-        } else {
-          ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment
-        }
+    onTestFinished(() => {
+      if (previousActEnvironment === undefined) {
+        delete (globalThis as any).IS_REACT_ACT_ENVIRONMENT
+      } else {
+        ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = previousActEnvironment
       }
-    }
+    })
+    onTestFinished(() => {
+      container.remove()
+    })
+    onTestFinished(async () => {
+      await act(async () => {
+        reactRoot.unmount()
+      })
+    })
+
+    await act(async () => {
+      reactRoot.render(
+        createElement(RouterContextProvider, {
+          router,
+          children: createElement(
+            Fragment,
+            null,
+            createPortal(createElement(HeadContent), document.head),
+            createElement(Scripts),
+          ),
+        }),
+      )
+    })
+
+    expect(document.head.querySelector('title')?.textContent).toBe('hot title')
+    expect(
+      document.head.querySelector('script[src="/hot-head.js"]'),
+    ).not.toBeNull()
+    expect(
+      document.head.querySelector('script[src="/hot-body.js"]'),
+    ).not.toBeNull()
+
+    await act(async () => {
+      runHandleRouteUpdate(router, hotRoute.id, new BaseRoute({} as any))
+      await vi.waitFor(() => {
+        expect(router.state.matches[1]!.routeId).toBe(hotRoute.id)
+        expect(router.state.matches[1]!.meta).toBeUndefined()
+        expect(router.state.matches[1]!.headScripts).toBeUndefined()
+        expect(router.state.matches[1]!.scripts).toBeUndefined()
+      })
+    })
+
+    expect(document.head.querySelector('title')).toBeNull()
+    expect(document.head.querySelector('script[src="/hot-head.js"]')).toBeNull()
+    expect(document.head.querySelector('script[src="/hot-body.js"]')).toBeNull()
   })
 })

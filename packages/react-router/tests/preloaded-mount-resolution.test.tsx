@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest'
 import * as React from 'react'
 import { createRoot } from 'react-dom/client'
 import { createMemoryHistory } from '@tanstack/history'
@@ -81,37 +81,37 @@ test('mounting after a settled load still resolves status and fires onRendered',
   const reactRoot = createRoot(container)
   let renderedTimeout: ReturnType<typeof setTimeout> | undefined
 
-  try {
-    // Load fully settles before the provider mounts — the exact shape of the
-    // memory benchmark's mount/unmount cycle.
-    await router.load()
-    expect(router.state.status).toBe('idle')
-    expect(router.state.resolvedLocation?.pathname).toBe('/')
-    expect(onLoad).toHaveBeenCalledTimes(1)
-    expect(onResolved).toHaveBeenCalledTimes(1)
-    expect(onRendered).not.toHaveBeenCalled()
-
-    reactRoot.render(<RouterProvider router={router} />)
-    await Promise.race([
-      rendered,
-      new Promise<never>((_, reject) => {
-        renderedTimeout = setTimeout(() => {
-          reject(new Error('Timed out waiting for onRendered'))
-        }, 2000)
-      }),
-    ])
-
-    expect(container.querySelector('[data-testid="home"]')).not.toBeNull()
-    expect(onRendered).toHaveBeenCalledTimes(1)
-    expect(lifecycle).toEqual(['layout', 'rendered'])
-    expect(router.state.status).toBe('idle')
-    expect(router.state.resolvedLocation?.pathname).toBe('/')
-  } finally {
+  onTestFinished(() => {
     clearTimeout(renderedTimeout)
     unsubscribe()
     reactRoot.unmount()
     container.remove()
-  }
+  })
+
+  // Load fully settles before the provider mounts — the exact shape of the
+  // memory benchmark's mount/unmount cycle.
+  await router.load()
+  expect(router.state.status).toBe('idle')
+  expect(router.state.resolvedLocation?.pathname).toBe('/')
+  expect(onLoad).toHaveBeenCalledTimes(1)
+  expect(onResolved).toHaveBeenCalledTimes(1)
+  expect(onRendered).not.toHaveBeenCalled()
+
+  reactRoot.render(<RouterProvider router={router} />)
+  await Promise.race([
+    rendered,
+    new Promise<never>((_, reject) => {
+      renderedTimeout = setTimeout(() => {
+        reject(new Error('Timed out waiting for onRendered'))
+      }, 2000)
+    }),
+  ])
+
+  expect(container.querySelector('[data-testid="home"]')).not.toBeNull()
+  expect(onRendered).toHaveBeenCalledTimes(1)
+  expect(lifecycle).toEqual(['layout', 'rendered'])
+  expect(router.state.status).toBe('idle')
+  expect(router.state.resolvedLocation?.pathname).toBe('/')
 })
 
 test('mounting during a load keeps the existing generation', async () => {
@@ -136,19 +136,20 @@ test('mounting during a load keeps the existing generation', async () => {
   const container = document.createElement('div')
   document.body.appendChild(container)
   const reactRoot = createRoot(container)
-  try {
-    reactRoot.render(<RouterProvider router={router} />)
-    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledOnce())
-    gate.resolve()
-    await load
-    await vi.waitFor(() => {
-      expect(container.querySelector('[data-testid="home"]')).not.toBeNull()
-    })
 
-    expect(beforeLoad).toHaveBeenCalledOnce()
-    expect(loader).toHaveBeenCalledOnce()
-  } finally {
+  onTestFinished(() => {
     reactRoot.unmount()
     container.remove()
-  }
+  })
+
+  reactRoot.render(<RouterProvider router={router} />)
+  await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledOnce())
+  gate.resolve()
+  await load
+  await vi.waitFor(() => {
+    expect(container.querySelector('[data-testid="home"]')).not.toBeNull()
+  })
+
+  expect(beforeLoad).toHaveBeenCalledOnce()
+  expect(loader).toHaveBeenCalledOnce()
 })

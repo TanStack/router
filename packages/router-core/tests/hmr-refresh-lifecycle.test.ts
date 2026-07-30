@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -106,12 +114,10 @@ describe('HMR route refresh', () => {
         reentrantLoad = router.load({ sync: true })
       }
     })
-    try {
-      await router._refreshRoute!()
-      await reentrantLoad
-    } finally {
-      unsubscribe()
-    }
+    onTestFinished(unsubscribe)
+
+    await router._refreshRoute!()
+    await reentrantLoad
 
     expect(loader).toHaveBeenCalledTimes(2)
     expect(router.state.matches.at(-1)?.loaderData).toBe(2)
@@ -451,11 +457,9 @@ describe('HMR route refresh', () => {
     const unsubscribe = router.subscribe('onBeforeLoad', () => {
       void router.preloadRoute({ to: '/page' })
     })
-    try {
-      await router._refreshRoute!()
-    } finally {
-      unsubscribe()
-    }
+    onTestFinished(unsubscribe)
+
+    await router._refreshRoute!()
 
     expect(router.state.matches.at(-1)?.loaderData).toBe(2)
   })

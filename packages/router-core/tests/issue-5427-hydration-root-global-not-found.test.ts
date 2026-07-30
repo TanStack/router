@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { dehydrateMatch } from '../src/ssr/ssr-server'
@@ -81,23 +81,22 @@ describe('issue #5427: root-only global not-found hydration', () => {
     }
     const previousBootstrap = window.$_TSR
     window.$_TSR = bootstrap
-
-    try {
-      const { rootRoute, router } = createRouter('/missing', false)
-
-      await hydrate(router)
-      await vi.waitFor(() => {
-        expect(router.state.resolvedLocation?.pathname).toBe('/missing')
-      })
-
-      expect(router.state.matches).toHaveLength(1)
-      expect(router.state.matches[0]).toMatchObject({
-        routeId: rootRoute.id,
-        _notFound: true,
-      })
-    } finally {
+    onTestFinished(() => {
       window.$_TSR = previousBootstrap
-    }
+    })
+
+    const { rootRoute, router } = createRouter('/missing', false)
+
+    await hydrate(router)
+    await vi.waitFor(() => {
+      expect(router.state.resolvedLocation?.pathname).toBe('/missing')
+    })
+
+    expect(router.state.matches).toHaveLength(1)
+    expect(router.state.matches[0]).toMatchObject({
+      routeId: rootRoute.id,
+      _notFound: true,
+    })
   })
 
   test('resolves a fuzzy client URL capped by an ancestor layout boundary', async () => {
@@ -119,23 +118,19 @@ describe('issue #5427: root-only global not-found hydration', () => {
     }
     const previousBootstrap = window.$_TSR
     window.$_TSR = bootstrap
-
-    try {
-      const { layoutRoute, router } = createLayoutRouter(
-        '/agents/missing',
-        false,
-      )
-
-      await hydrate(router)
-
-      expect(router.state.resolvedLocation?.pathname).toBe('/agents/missing')
-      expect(router.state.matches).toHaveLength(3)
-      expect(router.state.matches[1]).toMatchObject({
-        routeId: layoutRoute.id,
-        _notFound: true,
-      })
-    } finally {
+    onTestFinished(() => {
       window.$_TSR = previousBootstrap
-    }
+    })
+
+    const { layoutRoute, router } = createLayoutRouter('/agents/missing', false)
+
+    await hydrate(router)
+
+    expect(router.state.resolvedLocation?.pathname).toBe('/agents/missing')
+    expect(router.state.matches).toHaveLength(3)
+    expect(router.state.matches[1]).toMatchObject({
+      routeId: layoutRoute.id,
+      _notFound: true,
+    })
   })
 })

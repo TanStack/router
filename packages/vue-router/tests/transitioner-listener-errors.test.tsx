@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/vue'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   Outlet,
@@ -55,22 +55,21 @@ test('a throwing load-event listener cannot interrupt later listeners, route hoo
   const unsubscribeLater = router.subscribe('onLoad', (event) => {
     laterOnLoad(event.toLocation.pathname)
   })
-
-  try {
-    await router.navigate({ to: '/first' })
-    expect(await screen.findByText('First route')).toBeTruthy()
-    expect(firstOnEnter).toHaveBeenCalledTimes(1)
-    expect(throwingOnLoad.mock.calls).toEqual([['/first']])
-    expect(laterOnLoad.mock.calls).toEqual([['/first']])
-
-    await router.navigate({ to: '/second' })
-    expect(await screen.findByText('Second route')).toBeTruthy()
-    expect(firstOnEnter).toHaveBeenCalledTimes(1)
-    expect(secondOnEnter).toHaveBeenCalledTimes(1)
-    expect(throwingOnLoad.mock.calls).toEqual([['/first'], ['/second']])
-    expect(laterOnLoad.mock.calls).toEqual([['/first'], ['/second']])
-  } finally {
+  onTestFinished(() => {
     unsubscribeThrowing()
     unsubscribeLater()
-  }
+  })
+
+  await router.navigate({ to: '/first' })
+  expect(await screen.findByText('First route')).toBeTruthy()
+  expect(firstOnEnter).toHaveBeenCalledTimes(1)
+  expect(throwingOnLoad.mock.calls).toEqual([['/first']])
+  expect(laterOnLoad.mock.calls).toEqual([['/first']])
+
+  await router.navigate({ to: '/second' })
+  expect(await screen.findByText('Second route')).toBeTruthy()
+  expect(firstOnEnter).toHaveBeenCalledTimes(1)
+  expect(secondOnEnter).toHaveBeenCalledTimes(1)
+  expect(throwingOnLoad.mock.calls).toEqual([['/first'], ['/second']])
+  expect(laterOnLoad.mock.calls).toEqual([['/first'], ['/second']])
 })

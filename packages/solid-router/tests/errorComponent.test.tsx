@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { createControlledPromise } from '@tanstack/router-core'
 
@@ -236,30 +236,27 @@ test('ancestor route errorComponent resets when a background child generation re
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   vi.spyOn(console, 'error').mockImplementation(() => {})
 
-  let invalidation: Promise<void> | undefined
-  try {
-    render(() => <RouterProvider router={router} />)
-    expect(
-      await screen.findByText('Ancestor error: stale child render failed'),
-    ).toBeInTheDocument()
+  render(() => <RouterProvider router={router} />)
+  expect(
+    await screen.findByText('Ancestor error: stale child render failed'),
+  ).toBeInTheDocument()
 
-    invalidation = router.invalidate({
-      filter: (match) => match.routeId === childRoute.id,
-    })
-    await vi.waitFor(() => expect(loaderCalls).toBe(2))
-    expect(
-      screen.getByText('Ancestor error: stale child render failed'),
-    ).toBeInTheDocument()
+  const invalidation = router.invalidate({
+    filter: (match) => match.routeId === childRoute.id,
+  })
+  onTestFinished(async () => {
     refresh.resolve(2)
-    await invalidation
+    await Promise.allSettled([invalidation])
+  })
 
-    expect(
-      await screen.findByText('Recovered child revision 2'),
-    ).toBeInTheDocument()
-  } finally {
-    refresh.resolve(2)
-    if (invalidation) {
-      await Promise.allSettled([invalidation])
-    }
-  }
+  await vi.waitFor(() => expect(loaderCalls).toBe(2))
+  expect(
+    screen.getByText('Ancestor error: stale child render failed'),
+  ).toBeInTheDocument()
+  refresh.resolve(2)
+  await invalidation
+
+  expect(
+    await screen.findByText('Recovered child revision 2'),
+  ).toBeInTheDocument()
 })
