@@ -120,7 +120,7 @@
     "test:build": {
       "cache": true,
       "dependsOn": ["build"],
-      "inputs": ["production", "dependentTaskOutputs"]
+      "inputs": ["buildProduction", "dependentTaskOutputs"]
     }
   },
   "plugins": [
