@@ -3,6 +3,7 @@ import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
   BaseRoute,
+  createControlledPromise,
   notFound,
   redirect,
   rootRouteId,
@@ -457,21 +458,35 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if pending preload returns notFound', async () => {
+  test('navigation shares a pending preload loader notFound', async () => {
+    const loaderGate = createControlledPromise<void>()
     const loader: Loader = vi.fn(async ({ preload }) => {
-      await sleep(100)
+      await loaderGate
       if (preload) throw notFound()
     })
     const router = setup({
       loader,
     })
-    router.preloadRoute({ to: '/foo' })
+    const preload = router.preloadRoute({ to: '/foo' })
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledOnce())
+
+    const navigation = router.navigate({ to: '/foo' })
     await Promise.resolve()
-    await router.navigate({ to: '/foo' })
+    expect(loader).toHaveBeenCalledOnce()
+
+    loaderGate.resolve()
+    await Promise.all([preload, navigation])
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(router.state.matches.at(-1)?.status).toBe('success')
-    expect(loader).toHaveBeenCalledTimes(2)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: '/foo',
+      status: 'notFound',
+      error: {
+        isNotFound: true,
+        routeId: '/foo',
+      },
+    })
+    expect(loader).toHaveBeenCalledOnce()
   })
 
   test('exec if rejected preload (redirect)', async () => {
@@ -523,21 +538,33 @@ describe('loader skip or exec', () => {
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('exec if pending preload errors', async () => {
+  test('navigation shares a pending preload loader error', async () => {
+    const loaderGate = createControlledPromise<void>()
+    const failure = new Error('preload failed')
     const loader: Loader = vi.fn(async ({ preload }) => {
-      await sleep(100)
-      if (preload) throw new Error('error')
+      await loaderGate
+      if (preload) throw failure
     })
     const router = setup({
       loader,
     })
-    router.preloadRoute({ to: '/foo' })
+    const preload = router.preloadRoute({ to: '/foo' })
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledOnce())
+
+    const navigation = router.navigate({ to: '/foo' })
     await Promise.resolve()
-    await router.navigate({ to: '/foo' })
+    expect(loader).toHaveBeenCalledOnce()
+
+    loaderGate.resolve()
+    await Promise.all([preload, navigation])
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(router.state.matches.at(-1)?.status).toBe('success')
-    expect(loader).toHaveBeenCalledTimes(2)
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: '/foo',
+      status: 'error',
+      error: failure,
+    })
+    expect(loader).toHaveBeenCalledOnce()
   })
 })
 

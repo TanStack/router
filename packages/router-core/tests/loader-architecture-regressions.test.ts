@@ -698,6 +698,100 @@ test('a joined descendant loader redirect still wins after an ancestor loader fa
   expect(childLoads).toBe(1)
 })
 
+test('an unrelated preload redirect does not override a navigation error', async () => {
+  const preloadChildStarted = createControlledPromise<void>()
+  const releasePreloadRedirect = createControlledPromise<void>()
+  const navigationFailure = new Error('navigation parent failed')
+
+  const rootRoute = new BaseRootRoute({})
+  const indexRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const parentRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/parent',
+    validateSearch: (search: Record<string, unknown>) => ({
+      mode: String(search.mode ?? ''),
+    }),
+    loaderDeps: ({ search }) => ({ mode: search.mode }),
+    loader: ({ deps }) => {
+      if (deps.mode === 'navigation') {
+        throw navigationFailure
+      }
+      return 'preload parent data'
+    },
+    errorComponent: () => null,
+  })
+  const childLoader = vi.fn(
+    async ({ deps }: { deps: { mode: string } }) => {
+      if (deps.mode === 'preload') {
+        preloadChildStarted.resolve()
+        await releasePreloadRedirect
+        throw redirect({ to: '/target' })
+      }
+      return 'navigation child data'
+    },
+  )
+  const childRoute = new BaseRoute({
+    getParentRoute: () => parentRoute,
+    path: '/child',
+    loaderDeps: ({ search }) => ({ mode: search.mode }),
+    loader: childLoader,
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      indexRoute,
+      parentRoute.addChildren([childRoute]),
+      targetRoute,
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const preload = router.preloadRoute({
+    to: '/parent/child',
+    search: { mode: 'preload' },
+  })
+  await preloadChildStarted
+
+  await router.navigate({
+    to: '/parent/child',
+    search: { mode: 'navigation' },
+  })
+
+  expect(router.state.location).toMatchObject({
+    pathname: '/parent/child',
+    search: { mode: 'navigation' },
+  })
+  expect(
+    router.state.matches.find((match) => match.routeId === parentRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: navigationFailure,
+  })
+  expect(childLoader).toHaveBeenCalledTimes(2)
+
+  releasePreloadRedirect.resolve()
+  const preloaded = await preload
+
+  expect(preloaded?.at(-1)?.routeId).toBe(targetRoute.id)
+  expect(router.state.location).toMatchObject({
+    pathname: '/parent/child',
+    search: { mode: 'navigation' },
+  })
+  expect(
+    router.state.matches.find((match) => match.routeId === parentRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: navigationFailure,
+  })
+})
+
 test('a loaderDeps error is handled by the route error boundary', async () => {
   const failure = new Error('loader deps failed')
   const rootRoute = new BaseRootRoute({})

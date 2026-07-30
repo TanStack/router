@@ -38,13 +38,15 @@ const createAbortableInvocation = (
 
 // https://github.com/TanStack/router/issues/3928
 describe('issue #3928: rapid reloads of a reused parent', () => {
-  test('an aborted parent execution cannot clear the replacement load', async () => {
+  test('one parent flight can serve rapid successors without clearing the latest child load', async () => {
     const indexAbort = vi.fn()
     const rootInvocations = new Map<string, LoaderInvocation>()
     const indexInvocations = new Map<string, LoaderInvocation>()
 
     const rootRoute = new BaseRootRoute({
       shouldReload: true,
+      // Search is deliberately not part of this loader's key. Its active
+      // same-ID flight may serve successors while the child keys each filter.
       loader: ({ abortController, location }) => {
         const { invocation, promise } =
           createAbortableInvocation(abortController)
@@ -100,31 +102,30 @@ describe('issue #3928: rapid reloads of a reused parent', () => {
 
     const navAB = router.navigate({ to: '/', search: { filter: 'ab' } })
     await vi.waitFor(() => {
-      expect(rootInvocations.has('ab')).toBe(true)
       expect(indexInvocations.has('ab')).toBe(true)
-      expect(rootInvocations.get('a')!.signal.aborted).toBe(true)
       expect(indexInvocations.get('a')!.signal.aborted).toBe(true)
+      expect(rootInvocations.get('a')!.signal.aborted).toBe(false)
     })
 
     const navABC = router.navigate({ to: '/', search: { filter: 'abc' } })
     await vi.waitFor(() => {
-      expect(rootInvocations.has('abc')).toBe(true)
       expect(indexInvocations.has('abc')).toBe(true)
-      expect(rootInvocations.get('ab')!.signal.aborted).toBe(true)
       expect(indexInvocations.get('ab')!.signal.aborted).toBe(true)
+      expect(rootInvocations.get('a')!.signal.aborted).toBe(false)
     })
 
-    rootInvocations.get('abc')!.resolve('root:abc')
+    rootInvocations.get('a')!.resolve('root:a')
     indexInvocations.get('abc')!.resolve('abc')
     await Promise.all([navA, navAB, navABC])
 
     expect(indexAbort).toHaveBeenCalledTimes(2)
-    expect(rootInvocations.get('abc')!.signal.aborted).toBe(false)
+    expect(rootInvocations.size).toBe(2)
+    expect(rootInvocations.get('a')!.signal.aborted).toBe(false)
     expect(indexInvocations.get('abc')!.signal.aborted).toBe(false)
     expect(router.state.location.search).toEqual({ filter: 'abc' })
     expect(router.state.matches[0]).toMatchObject({
       status: 'success',
-      loaderData: 'root:abc',
+      loaderData: 'root:a',
     })
     expect(router.state.matches[1]).toMatchObject({
       status: 'success',

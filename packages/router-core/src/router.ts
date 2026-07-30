@@ -1034,8 +1034,11 @@ export interface RouterCore<
   _pending?: PendingSession
   /** Result of the latest server load, used to render or redirect. */
   _serverResult?: ServerLoadResult
-  /** Framework callback that acknowledges an exact matches publication. */
-  _rendered?: (matches: Array<AnyRouteMatch>) => void
+  /** Framework publication waiting for an exact render acknowledgement. */
+  _rendered?: [
+    offered?: Array<AnyRouteMatch>,
+    settle?: (rendered: boolean) => void,
+  ]
   /** Development-only HMR reload for a route and its descendants. */
   _refreshRoute: (() => Promise<void>) | undefined
   /** Development-only replacement for a route's lazy chunk owner. */

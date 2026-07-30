@@ -95,6 +95,67 @@ describe('public client loading contracts', () => {
     )
   })
 
+  test('a successor does not fall back to older data while a background reload is in flight', async () => {
+    const backgroundResult = createControlledPromise<string>()
+    const successorPlanned = createControlledPromise<void>()
+    let loaderCalls = 0
+    const loader = vi.fn(() => {
+      loaderCalls++
+      if (loaderCalls === 1) {
+        return 'cached data'
+      }
+      if (loaderCalls === 2) {
+        return backgroundResult
+      }
+      return 'updated data'
+    })
+    const rootRoute = new BaseRootRoute({})
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      validateSearch: (search: Record<string, unknown>) => ({
+        phase: String(search.phase ?? 'initial'),
+      }),
+      shouldReload: ({ location }) => {
+        const phase = (location.search as { phase: string }).phase
+        if (phase === 'successor') {
+          successorPlanned.resolve()
+        }
+        return phase === 'reload' ? true : undefined
+      },
+      staleTime: Infinity,
+      loader: {
+        staleReloadMode: 'background',
+        handler: loader,
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([pageRoute]),
+      history: createMemoryHistory({
+        initialEntries: ['/page?phase=initial'],
+      }),
+    })
+
+    await router.load()
+    await router.navigate({
+      to: '/page',
+      search: { phase: 'reload' },
+    })
+    await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(2))
+
+    const successor = router.navigate({
+      to: '/page',
+      search: { phase: 'successor' },
+    })
+    await successorPlanned
+    backgroundResult.resolve('updated data')
+    await successor
+
+    await vi.waitFor(() => {
+      expect(router.state.matches.at(-1)?.loaderData).toBe('updated data')
+    })
+  })
+
   test('a background loader can fulfill after aborting its controller', async () => {
     let loaderCalls = 0
     const loader = vi.fn(({ abortController }) => {

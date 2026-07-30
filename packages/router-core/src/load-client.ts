@@ -343,6 +343,7 @@ async function contextualize(
   lane: MatchedLane,
   options: ExecuteLaneOptions,
   end: number,
+  planSuccessfulLane: () => void,
 ): Promise<IndexedOutcome | undefined> {
   const [location, matches] = lane
   const signal = options[0].signal
@@ -450,6 +451,8 @@ async function contextualize(
     }
   }
 
+  // Let a synchronous lane claim predecessor flights before this frame yields.
+  planSuccessfulLane()
   return
 }
 
@@ -624,13 +627,12 @@ async function loadResource(
   }
 
   let flight = match._flight
-  let joined = !!flight
   setFetching(router, match, 'loader', owner)
   try {
-    for (;;) {
-      if (!flight) {
-        const controller = new AbortController()
-        const outcome = Promise.resolve()
+    if (!flight) {
+      const controller = new AbortController()
+      flight = [
+        Promise.resolve()
           .then(() =>
             loader(
               getLoaderContext(
@@ -649,34 +651,35 @@ async function loadResource(
             (cause) => normalize(cause, true, route.id),
           )
           .then((result): LoaderOutcome => {
-            return result[0] === ERROR && match._flight === flight
+            // The registry controls discovery; leases keep current consumers
+            // sharing the same terminal outcome.
+            if (
+              result[0] !== SUCCESS &&
+              router._flights?.get(match.id) === flight
+            ) {
+              router._flights!.delete(match.id)
+              if (!flight![2]) {
+                controller.abort()
+              }
+            }
+            return result[0] === ERROR && flight![2]
               ? normalizeError(route, result[1])
               : result
-          })
-        flight = [outcome, controller, 1]
-        ;(router._flights ??= new Map()).set(match.id, flight)
-      }
-      match._flight = flight
-      match.abortController = flight[1]
-      try {
-        const outcome = await waitFor(flight[0], signal)
-        if (!joined || outcome[0] === SUCCESS || outcome[0] === REDIRECTED) {
-          return outcome
-        }
-      } catch (cause) {
-        if (cause === signal) {
-          releaseFlight(router, match)
-          return [CANCELED]
-        }
-        throw cause
-      }
-      releaseFlight(router, match)
-      if (signal.aborted) {
-        return [CANCELED]
-      }
-      flight = undefined
-      joined = false
+          }),
+        controller,
+        1,
+      ]
+      ;(router._flights ??= new Map()).set(match.id, flight)
     }
+    match._flight = flight
+    match.abortController = flight[1]
+    return await waitFor(flight[0], signal)
+  } catch (cause) {
+    if (cause !== signal) {
+      throw cause
+    }
+    releaseFlight(router, match)
+    return [CANCELED]
   } finally {
     setFetching(router, match, false, owner)
   }
@@ -824,13 +827,6 @@ function createLoaderTask(
       ? router._flights?.get(match.id)
       : undefined
   if (donor === match._flight || reloadFailure) {
-    donor = undefined
-  } else if (donor && !donor[2] && configured !== undefined) {
-    // A transaction may temporarily reserve its predecessor's generation
-    // while beforeLoad settles. An explicit reload decision starts fresh, so
-    // retire the unowned generation before its registry entry is replaced.
-    router._flights!.delete(match.id)
-    donor[1].abort()
     donor = undefined
   } else if (donor && !reload && !preload && configured === undefined) {
     // Normal cache policy accepts an already-running generation even when this
@@ -1256,42 +1252,51 @@ async function executeClientLane(
     plannedBoundary = boundary
   }
   let end = plannedBoundary < 0 ? matches.length : plannedBoundary + 1
-  // From here on `matched` is contextualized: `contextualize` communicates
-  // through mutation plus a failure return, so the phase brand is asserted at
-  // the two use sites below rather than granted by a (byte-costing) return.
-  const failure = await contextualize(router, matched, options, end)
-  if (failure) {
-    options[5] = true
-  }
   const tasks: Array<LoaderTask> = []
   const start = options[7] ?? 0
   let semanticParent = start
     ? Promise.resolve(matched[1][start - 1]!)
     : undefined
-  end = failure?.[0] ?? end
-  if (failure?.[1][0] === NOT_FOUND) {
-    failure[2] = await getNotFoundBoundary(
-      router,
-      matched[1],
-      failure,
-      options[0].signal,
-    )
-    end = Math.min(end, failure[2] + 1)
-  } else if ((failure?.[1][0] ?? 0) >= REDIRECTED) {
-    end = 0
-  }
-  for (let index = start; index < end; index++) {
-    if (options[0].signal.aborted) {
-      break
+  const planSuccessfulLane = () => {
+    for (let index = start; index < end; index++) {
+      if (options[0].signal.aborted) {
+        break
+      }
+      semanticParent = createLoaderTask(
+        router,
+        matched as ContextualizedLane,
+        index,
+        tasks,
+        semanticParent,
+        options,
+      )
     }
-    semanticParent = createLoaderTask(
-      router,
-      matched as ContextualizedLane,
-      index,
-      tasks,
-      semanticParent,
-      options,
-    )
+  }
+  // From here on `matched` is contextualized: `contextualize` communicates
+  // through mutation plus a failure return, so the phase brand is asserted at
+  // the two use sites below rather than granted by a (byte-costing) return.
+  const failure = await contextualize(
+    router,
+    matched,
+    options,
+    end,
+    planSuccessfulLane,
+  )
+  if (failure) {
+    options[5] = true
+    end = failure[0]
+    if (failure[1][0] === NOT_FOUND) {
+      failure[2] = await getNotFoundBoundary(
+        router,
+        matched[1],
+        failure,
+        options[0].signal,
+      )
+      end = Math.min(end, failure[2] + 1)
+    } else if (failure[1][0] >= REDIRECTED) {
+      end = 0
+    }
+    planSuccessfulLane()
   }
   if (options[2]() && !options[4]) {
     releaseUnownedFlights(router)
@@ -2110,30 +2115,6 @@ export async function refreshClientRoute(
   await loadClientRoute(router, { sync: true })
 }
 
-function followPreloadRedirect(
-  router: CoordinatorRouter,
-  result: ControlOutcome,
-  location: ParsedLocation,
-  owner: LoadTransaction | undefined,
-  redirects: number,
-): Promise<Array<AnyRouteMatch> | undefined> | undefined {
-  if (
-    result[0] === REDIRECTED &&
-    !result[1].options.reloadDocument &&
-    router._tx === owner
-  ) {
-    return preloadClientRoute(
-      router,
-      {
-        ...result[1].options,
-        _fromLocation: location,
-      },
-      redirects + 1,
-    )
-  }
-  return
-}
-
 export async function preloadClientRoute(
   router: CoordinatorRouter,
   opts: any,
@@ -2142,10 +2123,9 @@ export async function preloadClientRoute(
   if (redirects > 20) {
     return
   }
-  const owner = router._tx
   if (
     process.env.NODE_ENV !== 'production' &&
-    (router._refreshNextLoad || owner?.[6])
+    (router._refreshNextLoad || router._tx?.[6])
   ) {
     return
   }
@@ -2174,21 +2154,29 @@ export async function preloadClientRoute(
     if (isControl(result)) {
       controller.abort()
       transferMatchResources(router, matches)
-      return followPreloadRedirect(router, result, location, owner, redirects)
+      return result[0] === REDIRECTED &&
+        !result[1].options.reloadDocument
+        ? preloadClientRoute(
+            router,
+            {
+              ...result[1].options,
+              _fromLocation: location,
+            },
+            redirects + 1,
+          )
+        : undefined
     }
 
     transferMatchResources(router, result[1])
     controller.abort()
     return result[1]
   } catch (cause) {
-    if (!matches || router._preloads?.delete(controller)) {
-      controller.abort()
-      if (matches) {
-        transferMatchResources(router, matches)
-      }
-    }
-    if (router._tx !== owner) {
+    if (matches && !router._preloads?.delete(controller)) {
       return
+    }
+    controller.abort()
+    if (matches) {
+      transferMatchResources(router, matches)
     }
     if (!isNotFound(cause)) {
       console.error(cause)

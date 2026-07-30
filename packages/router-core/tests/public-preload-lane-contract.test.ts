@@ -900,8 +900,9 @@ describe('public preload lane contracts', () => {
     })
   })
 
-  test('a retry reuses successful loader data from the failed preload lane', async () => {
+  test('a later retry reuses successful loader data from the failed preload lane', async () => {
     const childGate = createControlledPromise<void>()
+    const childFailure = new Error('preload child failed')
     const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
       source: preload ? 'preload' : 'navigation',
     }))
@@ -913,7 +914,7 @@ describe('public preload lane contracts', () => {
     const childLoader = vi.fn(async ({ preload }: { preload: boolean }) => {
       if (preload) {
         await childGate
-        throw new Error('preload child failed')
+        throw childFailure
       }
       return 'child data'
     })
@@ -944,10 +945,24 @@ describe('public preload lane contracts', () => {
     await router.load()
     const preload = router.preloadRoute({ to: '/parent/child' })
     await vi.waitFor(() => expect(childLoader).toHaveBeenCalledTimes(1))
-    const navigation = router.navigate({ to: '/parent/child' })
 
     childGate.resolve()
-    await Promise.all([preload, navigation])
+    const terminal = await preload
+
+    expect(
+      terminal?.find((match) => match.routeId === parentRoute.id),
+    ).toMatchObject({
+      status: 'success',
+      loaderData: 'parent data',
+    })
+    expect(
+      terminal?.find((match) => match.routeId === childRoute.id),
+    ).toMatchObject({
+      status: 'error',
+      error: childFailure,
+    })
+
+    await router.navigate({ to: '/parent/child' })
 
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
