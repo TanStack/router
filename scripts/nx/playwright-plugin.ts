@@ -124,7 +124,8 @@ function captureCommandOutput(command: string, outputFile?: string): string {
     )
   }
 
-  return `{ ${command}; } > ${outputFile} 2>&1; status=$?; cat ${outputFile}; exit $status`
+  const escapedCommand = command.replaceAll("'", "'\\''")
+  return `bash -o pipefail -c '{ ${escapedCommand}; } 2>&1 | tee ${outputFile}'`
 }
 
 function getTestOutputs(
