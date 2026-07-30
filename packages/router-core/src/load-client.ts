@@ -2,12 +2,7 @@
 // can rewrite relative imports for both ESM and CJS.
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
-import {
-  _getUserHistoryState,
-  getLocationChangeInfo,
-  runRouteLifecycle,
-} from './router'
-import { deepEqual } from './utils'
+import { getLocationChangeInfo, runRouteLifecycle } from './router'
 import { hydrateSsrMatchId } from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { AnySerializationAdapter } from './ssr/serializer/transformer'
@@ -189,22 +184,6 @@ declare const matchPhase: unique symbol
  * already settled (dehydrated server data) must cast at a named boundary.
  */
 type SettledMatch = WorkMatch & { readonly [matchPhase]: 'settled' }
-
-export type LaneInputs = [
-  routeTree: AnyRoute,
-  context: unknown,
-  additionalContext: unknown,
-  state: object,
-  search: object,
-  maskedLocation:
-    | [
-        href: string,
-        state: object,
-        search: object,
-        unmaskOnReload: boolean | undefined,
-      ]
-    | undefined,
-]
 
 export type LoadTransaction = [
   controller: AbortController,
@@ -506,26 +485,6 @@ function releaseFlight(router: AnyRouter, match: WorkMatch): void {
   match._flight = undefined
   releaseOwnedFlight(router, match, flight)?.abort()
 }
-export function laneInputs(
-  router: AnyRouter,
-  location: ParsedLocation,
-): LaneInputs {
-  const masked = location.maskedLocation
-  return [
-    router.routeTree,
-    router.options.context ?? {},
-    router.options.additionalContext,
-    _getUserHistoryState(location.state),
-    location.search,
-    masked && [
-      masked.href,
-      _getUserHistoryState(masked.state),
-      masked.search,
-      masked.unmaskOnReload,
-    ],
-  ]
-}
-
 /**
  * Not passing in a `next` ownership recipient
  * is equivalent to discarding the match resources
@@ -2301,7 +2260,8 @@ export async function hydrate(router: AnyRouter): Promise<void> {
 
   let location!: AnyRouter['latestLocation']
   let candidates!: Array<AnyRouteMatch>
-  let handoffInputs!: ReturnType<typeof laneInputs>
+  let handoffHistoryHref!: string
+  let handoffHistoryState: unknown
   try {
     await waitFor(
       router.options.hydrate?.(dehydratedRouter!.dehydratedData),
@@ -2310,10 +2270,14 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     if (!isCurrent()) {
       return
     }
+    // Hydration trusts transported context and beforeLoad. The raw history
+    // entry owns the handoff; route structure is verified after rematching.
+    const historyLocation = router.history.location
+    handoffHistoryHref = historyLocation.href
+    handoffHistoryState = historyLocation.state
     router.updateLatestLocation()
     location = router.latestLocation
     router.stores.location.set(location)
-    handoffInputs = laneInputs(router, location)
     candidates = router.matchRoutes(location, {
       _controller: controller,
     })
@@ -2557,16 +2521,18 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     }
   }
 
-  const claim = () =>
-    needsClientLoad &&
-    !router._tx &&
-    router.latestLocation.state === location.state &&
-    deepEqual(handoffInputs, laneInputs(router, router.latestLocation)) &&
-    router._committed === committedMatches &&
-    committedMatches.length &&
-    !controller.signal.aborted
+  const claim = () => {
+    const historyLocation = router.history.location
+    return needsClientLoad &&
+      !router._tx &&
+      historyLocation.href === handoffHistoryHref &&
+      historyLocation.state === handoffHistoryState &&
+      router._committed === committedMatches &&
+      committedMatches.length &&
+      !controller.signal.aborted
       ? controller
       : undefined
+  }
   const handoff: NonNullable<AnyRouter['_handoff']> = [
     claim,
     (matches) => {
