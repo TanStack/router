@@ -2,3 +2,10 @@ distribute-on:
   small-changeset: 4 linux-medium-js
   medium-changeset: 8 linux-medium-js
   large-changeset: 14 linux-medium-js
+
+assignment-rules:
+  - targets:
+      - 'test:codspeed:*'
+    run-on:
+      - agent: linux-medium-js
+        parallelism: 1
