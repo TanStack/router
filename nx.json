@@ -108,7 +108,7 @@
     "build": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
+      "inputs": ["buildProduction", "^buildProduction", "dependentTaskOutputs"],
       "outputs": [
         "{projectRoot}/.netlify",
         "{projectRoot}/.wrangler",

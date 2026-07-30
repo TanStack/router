@@ -90,11 +90,11 @@ function createNodesInternal(
 
 const CI_TARGET_NAME = 'test:e2e'
 const MODE_TARGET_SEPARATOR = '--'
-const TEST_INPUTS: TargetConfiguration['inputs'] = ['default', 'dependentTaskOutputs', '^production']
+const TEST_INPUTS: TargetConfiguration['inputs'] = ['default', 'dependentTaskOutputs', '^buildProduction']
 const BUILD_INPUTS: TargetConfiguration['inputs'] = [
   'buildProduction',
   'dependentTaskOutputs',
-  '^production',
+  '^buildProduction',
 ]
 
 const PLAYWRIGHT_TOOLCHAINS = ['vite', 'rsbuild'] as const
