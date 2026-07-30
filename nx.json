@@ -31,7 +31,8 @@
       "default",
       "!{projectRoot}/tests/**/*",
       "!{projectRoot}/eslint.config.js"
-    ]
+    ],
+    "buildProduction": ["sharedGlobals", "{projectRoot}/**/*"]
   },
   "targetDefaults": {
     "test:docs": {
@@ -51,7 +52,12 @@
     "test:unit": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production", "dependentTaskOutputs"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
       "outputs": ["{projectRoot}/coverage"]
     },
     "test:e2e": {
@@ -82,7 +88,12 @@
     "test:types": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production", "dependentTaskOutputs"]
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ]
     },
     "test:types:ssr": {
       "cache": true,
@@ -97,8 +108,13 @@
     "build": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["production", "^production", "dependentTaskOutputs"],
-      "outputs": ["{projectRoot}/build", "{projectRoot}/dist"]
+      "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
+      "outputs": [
+        "{projectRoot}/.netlify",
+        "{projectRoot}/.wrangler",
+        "{projectRoot}/build",
+        "{projectRoot}/dist"
+      ]
     },
     "test:build": {
       "cache": true,
