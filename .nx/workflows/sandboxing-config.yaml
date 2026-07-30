@@ -1,6 +1,8 @@
 exclude-reads:
   - e2e/.gitignore
   - '**/src/routeTree.gen.ts'
+exclude-writes:
+  - '**/src/routeTree.gen.ts'
 task-exclusions:
   - target: test:build
     exclude-reads:
