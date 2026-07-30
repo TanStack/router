@@ -36,7 +36,7 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: `rm -f webserver-build.log webserver-dev.log violations.build.json violations.dev.json && VITE_SERVER_PORT=${PORT} PORT=${PORT} ${buildCommand} > webserver-build.log 2>&1 && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
+          command: `rm -f webserver-build.log webserver-dev.log violations.build.json violations.dev.json && VITE_SERVER_PORT=${PORT} PORT=${PORT} > webserver-build.log 2>&1 && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           stdout: 'pipe',
