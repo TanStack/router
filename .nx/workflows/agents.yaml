@@ -1,0 +1,48 @@
+common-js-image: &common-js-image 'ubuntu22.04-node20.19-v2'
+
+common-js-init-steps: &common-js-init-steps
+  - name: Checkout
+    uses: 'nrwl/nx-cloud-workflows/v6/workflow-steps/checkout/main.yaml'
+  - name: Install Node
+    uses: 'nrwl/nx-cloud-workflows/v6/workflow-steps/install-node/main.yaml'
+  - name: Install Node Modules
+    uses: 'nrwl/nx-cloud-workflows/v6/workflow-steps/install-node-modules/main.yaml'
+  - name: Install Browsers (if needed)
+    uses: 'nrwl/nx-cloud-workflows/v6/workflow-steps/install-browsers/main.yaml'
+
+launch-templates:
+  tanstack-linux-small-js:
+    # 1 vCPU, 2GB RAM
+    resource-class: 'docker_linux_amd64/small'
+    image: *common-js-image
+    init-steps: *common-js-init-steps
+  # 2 vCPU, 4GB RAM
+  tanstack-linux-medium-js:
+    resource-class: 'docker_linux_amd64/medium'
+    image: *common-js-image
+    init-steps: *common-js-init-steps
+  # 3 vCPU, 6GB RAM
+  tanstack-linux-medium-plus-js:
+    resource-class: 'docker_linux_amd64/medium+'
+    image: *common-js-image
+    init-steps: *common-js-init-steps
+  # 4 vCPU, 8GB RAM
+  tanstack-inux-large-js:
+    resource-class: 'docker_linux_amd64/large'
+    image: *common-js-image
+    init-steps: *common-js-init-steps
+  # 4 vCPU, 10GB RAM
+  tanstack-linux-large-plus-js:
+    resource-class: 'docker_linux_amd64/large+'
+    image: *common-js-image
+    init-steps: *common-js-init-steps
+  # 8 vCPU, 16GB RAM
+  tanstack-linux-extra-large-js:
+    resource-class: 'docker_linux_amd64/extra_large'
+    image: *common-js-image
+    init-steps: *common-js-init-steps
+  # 10 vCPU, 20GB RAM
+  tanstack-linux-extra-large-plus-js:
+    resource-class: 'docker_linux_amd64/extra_large+'
+    image: *common-js-image
+    init-steps: *common-js-init-steps
