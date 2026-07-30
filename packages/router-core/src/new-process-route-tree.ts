@@ -860,6 +860,13 @@ type ParamExtractionState = {
   segment: number
 }
 
+/**
+ * Decodes a splat match while preserving encoded slashes within each segment.
+ *
+ * Splat values can span multiple URL segments. Decoding the whole value at once
+ * would make `%2F` indistinguishable from the literal `/` separators already in
+ * the matched path, so each segment is decoded independently.
+ */
 function decodeSplatParam(value: string) {
   return value
     .split('/')
