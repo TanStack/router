@@ -1,3 +1,5 @@
+exclude-reads:
+  - e2e/.gitignore
 task-exclusions:
   - target: test:build
     exclude-reads:
