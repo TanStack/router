@@ -322,13 +322,14 @@ rules.
 Hydration is not a general `beforeLoad` cache. Its temporary handoff is valid
 only for the initial client load of the same document entry and exact committed
 owner; rejection, invalidation, or any later load returns to normal serial
-execution. The claim also requires the same route tree, root/additional context,
-search, user history state, and exact browser history generation. That initial
-load may transfer the accepted hydration prefix and
-keep its transported context while it completes a selective-SSR suffix. A
-preload never claims this prefix. Frameworks must start the initial client load
-before descendant route code can preload; invoking a preload in the gap after
-raw `hydrate()` and before that load is outside the supported handoff protocol.
+execution. The claim also requires the same raw browser href and history-state
+object. Finish-time match-ID validation proves that rematching still produced
+the accepted prefix; opaque router context and route-tree objects are not
+compared. That initial load may transfer the accepted hydration prefix and keep
+its transported context while it completes a selective-SSR suffix. A preload
+never claims this prefix. Frameworks must start the initial client load before
+descendant route code can preload; invoking a preload in the gap after raw
+`hydrate()` and before that load is outside the supported handoff protocol.
 
 ## Loader data, cache entries, and flights
 
@@ -823,8 +824,9 @@ matches and collects the selected match IDs. Every committed and cached
 generation with one of those IDs is then replaced as invalid, and its loader
 discovery entry is detached. This ID-wide rule prevents a cache-first or
 in-flight same-ID generation from escaping invalidation merely because a
-different generation was the one passed to the filter. Route context needs no
-invalidation marker; every new lane rebuilds it regardless.
+different generation was the one passed to the filter. Route context retains
+same-ID cacheability across this replacement and needs no separate invalidation
+marker.
 
 Invalidated successful data may remain visible until pending or terminal
 publication, depending on reload mode. Error/not-found generations reset through
@@ -1084,14 +1086,14 @@ reconstruction fails, only the accepted prefix is committed as described above;
 the complete branch remains presentation, not semantic reuse authority.
 
 Only the subsequent ordinary client load may transfer the whole hydration
-prefix, and only while the exact committed-prefix owner, structurally shared
-parsed history-state generation, and live hydration controller remain current
-with no active transaction. The payload does not serialize a second URL
-authority: Core captures the reconstructed browser generation only to prevent a
-supported reentrant lifecycle event from handing document work to a successor
-location. The transported prefix must also pass finish-time match-ID validation.
-Core does not coordinate speculative work started between raw `hydrate()` and
-that load; framework adapters own the supported ordering.
+prefix, and only while the exact committed-prefix owner, raw history-state
+object, browser href, and live hydration controller remain current with no
+active transaction. The payload does not serialize a second URL authority: Core
+captures the raw browser generation only to prevent a supported reentrant
+lifecycle event from handing document work to a successor location. The
+transported prefix must also pass finish-time match-ID validation. Core does not
+coordinate speculative work started between raw `hydrate()` and that load;
+framework adapters own the supported ordering.
 
 The two-phase transfer proceeds as follows:
 

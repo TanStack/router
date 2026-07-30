@@ -168,10 +168,9 @@ An active preload is speculative and is not published as the current match
 presentation. Successful loader data can enter the normal in-memory route cache
 and remain reusable according to `preloadStaleTime` and `preloadGcTime`.
 
-Completed preload `beforeLoad` context is not cached. A later navigation reruns
-`beforeLoad` unless it adopts an identical whole-route preload that is still
-active. Adoption also requires unchanged router context, additional context,
-and user-supplied location state.
+Every preload and navigation runs its own `beforeLoad` chain. Preloads can
+donate cached or in-flight loader work, but never `beforeLoad` context or
+control flow.
 
 - Type: `(opts: NavigateOptions) => Promise<RouteMatch[] | undefined>`
 - Properties

@@ -26,9 +26,8 @@ two independent lifetimes:
 - **Unused retention defaults to 5 minutes.** Configure it with
   `defaultPreloadGcTime` or a route's `preloadGcTime`.
 - **The speculative lane is never promoted into router state.** Navigation
-  creates its own presentation and can reuse cached loader data. It reruns
-  `beforeLoad` unless it adopts the same whole lane while that preload is still
-  active.
+  creates its own presentation and runs its own `beforeLoad` chain. It can reuse
+  cached loader data or join a loader that is still in flight.
 
 If you need more control over preloading, caching and/or garbage collection of preloaded data, you should use an external caching library like [TanStack Query](https://tanstack.com/query).
 
@@ -143,11 +142,16 @@ export const Route = createFileRoute('/posts/$postId')({
 })
 ```
 
-Client-side preloading also runs each new route's `beforeLoad` with `preload: true`. A completed preload never caches the context returned by `beforeLoad`; a later navigation calls `beforeLoad` again with `preload: false`, even when it reuses the preload's cached loader data.
+Client-side preloading runs each route's `beforeLoad` with `preload: true`.
+Every later preload or navigation runs its own `beforeLoad` chain, so a
+navigation observes `preload: false` even when an identical preload is still
+active. Preloads can donate cached or in-flight loader work, but not
+`beforeLoad` context, redirects, errors, or not-found results. The
+`shouldReload` option remains loader-only.
 
-There is one exception: if navigation starts while an identical whole-route preload is still running, it can adopt that active work. Compatibility includes the complete ordered route lane, params, search, router context, additional context, user-supplied location state, redirect depth, and any explicit mask's href, search, state, and `unmaskOnReload` value. Router-managed history and temporary-mask keys are ignored. In that case navigation can use the active preload's `beforeLoad` result, or follow its redirect, without calling `beforeLoad` again. A completed, failed, not-found, or canceled preload does not donate `beforeLoad` context to a later navigation. The `shouldReload` option remains loader-only.
-
-If any route in the lane has `preload: false`, navigation does not adopt the active preload. It reruns the `beforeLoad` chain and performs the loader work that speculation skipped.
+If a route has `preload: false`, its speculative lane still runs `beforeLoad`,
+but skips that route's loader. Navigation runs `beforeLoad` again and performs
+the skipped loader work.
 
 ## Preloading with External Libraries
 
