@@ -2,12 +2,7 @@
 // can rewrite relative imports for both ESM and CJS.
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
-import {
-  _getUserHistoryState,
-  getLocationChangeInfo,
-  runRouteLifecycle,
-} from './router'
-import { deepEqual } from './utils'
+import { getLocationChangeInfo, runRouteLifecycle } from './router'
 import { hydrateSsrMatchId } from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { AnySerializationAdapter } from './ssr/serializer/transformer'
@@ -190,31 +185,6 @@ declare const matchPhase: unique symbol
  */
 type SettledMatch = WorkMatch & { readonly [matchPhase]: 'settled' }
 
-export type LaneInputs = [
-  routeTree: AnyRoute,
-  context: unknown,
-  additionalContext: unknown,
-  state: object,
-  search: object,
-  maskedLocation:
-    | [
-        href: string,
-        state: object,
-        search: object,
-        unmaskOnReload: boolean | undefined,
-      ]
-    | undefined,
-]
-
-export type ActivePreload = [
-  matches: Array<AnyRouteMatch>,
-  controller: AbortController,
-  result: Promise<LaneResult>,
-  semanticOwner: Array<AnyRouteMatch>,
-  inputs: LaneInputs,
-  redirects: number,
-]
-
 export type LoadTransaction = [
   controller: AbortController,
   redirects: number,
@@ -244,8 +214,8 @@ export type PendingSession = [
 ]
 
 type CoordinatorRouter = AnyRouter & {
-  /** Whole speculative lanes that a matching navigation may adopt. */
-  _preloads?: Map<string, ActivePreload>
+  /** Active speculative lanes retained for cancellation and cache clearing. */
+  _preloads?: Map<AbortController, Array<AnyRouteMatch>>
   _refreshNextLoad?: boolean
   _rollbackRefresh?: () => void
   _cancelTransition?: () => void
@@ -485,14 +455,27 @@ async function contextualize(
 
 function releaseOwnedFlight(
   router: AnyRouter,
-  id: string,
+  match: WorkMatch,
   flight?: LoaderFlight,
 ): AbortController | undefined {
   if (!flight || --flight[2]) {
     return
   }
-  if (router._flights?.get(id) === flight) {
-    router._flights.delete(id)
+  if (router._flights?.get(match.id) === flight) {
+    const current = router._tx
+    if (
+      current &&
+      !current[0].signal.aborted &&
+      !(process.env.NODE_ENV !== 'production' && current[6]) &&
+      !current[3].includes(match) &&
+      current[3].some((candidate) => candidate.id === match.id) &&
+      current[3].some((candidate) => candidate.isFetching === 'beforeLoad')
+    ) {
+      // Keep work discoverable only while the current lane is still running
+      // beforeLoad. Loader planning performs the matching zero-owner sweep.
+      return
+    }
+    router._flights.delete(match.id)
   }
   return flight[1]
 }
@@ -500,44 +483,8 @@ function releaseOwnedFlight(
 function releaseFlight(router: AnyRouter, match: WorkMatch): void {
   const flight = match._flight
   match._flight = undefined
-  releaseOwnedFlight(router, match.id, flight)?.abort()
+  releaseOwnedFlight(router, match, flight)?.abort()
 }
-export function laneInputs(
-  router: AnyRouter,
-  location: ParsedLocation,
-): LaneInputs {
-  const masked = location.maskedLocation
-  return [
-    router.routeTree,
-    router.options.context ?? {},
-    router.options.additionalContext,
-    _getUserHistoryState(location.state),
-    location.search,
-    masked && [
-      masked.href,
-      _getUserHistoryState(masked.state),
-      masked.search,
-      masked.unmaskOnReload,
-    ],
-  ]
-}
-
-function samePreloadLane(
-  preload: ActivePreload,
-  router: AnyRouter,
-  location: ParsedLocation,
-  redirects: number,
-): boolean {
-  return (
-    preload[3] === router._committed &&
-    preload[5] === redirects &&
-    deepEqual(preload[4], laneInputs(router, location)) &&
-    !preload[0].some(
-      (match) => getRoute(router, match as WorkMatch).options.preload === false,
-    )
-  )
-}
-
 /**
  * Not passing in a `next` ownership recipient
  * is equivalent to discarding the match resources
@@ -552,7 +499,7 @@ export function transferMatchResources(
     if (!next?.includes(match)) {
       const flight = match._flight
       match._flight = undefined
-      const controller = releaseOwnedFlight(router, match.id, flight)
+      const controller = releaseOwnedFlight(router, match, flight)
       if (controller) {
         abort.push(controller)
       }
@@ -563,9 +510,48 @@ export function transferMatchResources(
   }
 }
 
-function discardPreload(router: AnyRouter, preload: ActivePreload): void {
-  preload[1].abort()
-  transferMatchResources(router, preload[0])
+function transferPredecessorResources(
+  router: AnyRouter,
+  previous: Array<AnyRouteMatch>,
+  next: Array<AnyRouteMatch>,
+): void {
+  const abort: Array<AbortController> = []
+  for (const match of previous as Array<WorkMatch>) {
+    if (!next.includes(match)) {
+      const flight = match._flight
+      match._flight = undefined
+      if (
+        flight?.[2] === 1 &&
+        router._flights?.get(match.id) === flight &&
+        !(process.env.NODE_ENV !== 'production' && router._tx?.[6]) &&
+        next.some((candidate) => candidate.id === match.id)
+      ) {
+        // The successor has not made its same-ID reload decision yet.
+        flight[2] = 0
+      } else {
+        const controller = releaseOwnedFlight(router, match, flight)
+        if (controller) {
+          abort.push(controller)
+        }
+      }
+    }
+  }
+  for (const controller of abort) {
+    controller.abort()
+  }
+}
+
+function releaseUnownedFlights(router: AnyRouter): void {
+  const abort: Array<AbortController> = []
+  for (const [id, flight] of router._flights ?? []) {
+    if (!flight[2]) {
+      router._flights!.delete(id)
+      abort.push(flight[1])
+    }
+  }
+  for (const controller of abort) {
+    controller.abort()
+  }
 }
 
 function acquireMatchResources(matches: Array<AnyRouteMatch>): void {
@@ -774,10 +760,10 @@ function createLoaderTask(
   const route = getRoute(router, match)
   const preload = !!options[4]
   const plannedCacheMatch = preload ? router._cache.get(match.id) : undefined
+  let configured
   let reload = false
   let reloadFailure: LoaderOutcome | undefined
   try {
-    let configured
     if (match.status === 'success') {
       configured = route.options.shouldReload
       if (typeof configured === 'function') {
@@ -831,6 +817,28 @@ function createLoaderTask(
   const routeLoader = route.options.loader
   const loader =
     typeof routeLoader === 'function' ? routeLoader : routeLoader?.handler
+  let donor =
+    (!preload || route.options.preload !== false) &&
+    routeLoader &&
+    !(process.env.NODE_ENV !== 'production' && router._tx?.[6])
+      ? router._flights?.get(match.id)
+      : undefined
+  if (donor === match._flight || reloadFailure) {
+    donor = undefined
+  } else if (donor && !donor[2] && configured !== undefined) {
+    // A transaction may temporarily reserve its predecessor's generation
+    // while beforeLoad settles. An explicit reload decision starts fresh, so
+    // retire the unowned generation before its registry entry is replaced.
+    router._flights!.delete(match.id)
+    donor[1].abort()
+    donor = undefined
+  } else if (donor && !reload && !preload && configured === undefined) {
+    // Normal cache policy accepts an already-running generation even when this
+    // lane itself would not have started another loader.
+    reload = true
+  } else if (!reload) {
+    donor = undefined
+  }
   const background = !!(
     routeLoader &&
     reload &&
@@ -849,16 +857,13 @@ function createLoaderTask(
     match.invalid = false
     match.updatedAt = Date.now()
   }
-  let donor = loaded && routeLoader ? router._flights?.get(match.id) : undefined
-  if (donor === match._flight) {
-    donor = undefined
-  } else if (donor) {
+  if (donor) {
     donor[2]++
   }
   if (blocking) {
     const acceptedFlight = match._flight
     match._flight = donor
-    releaseOwnedFlight(router, match.id, acceptedFlight)?.abort()
+    releaseOwnedFlight(router, match, acceptedFlight)?.abort()
     // A successful route without a loader has no blocking work to present. It
     // still gets a task so its chunk and derived assets participate in the
     // lane, but putting it back into pending would hide an already-rendered
@@ -1288,6 +1293,9 @@ async function executeClientLane(
       options,
     )
   }
+  if (options[2]() && !options[4]) {
+    releaseUnownedFlights(router)
+  }
   let reduced: ReducedLane | ControlOutcome
   try {
     const reduction = reduceLane(
@@ -1436,7 +1444,7 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   }))
   offered[boundary]!.status = 'pending'
   const ack = router
-    .startTransition(() => router.stores.setMatches(offered), offered, true)
+    .startTransition(() => router.stores.setMatches(offered), offered)
     .then((rendered) => {
       if (
         rendered &&
@@ -1797,8 +1805,6 @@ async function runClientTransaction(
   onReady?: () => void,
   sync?: boolean,
   resolvedPrefix?: number,
-  adopted?: ActivePreload,
-  retained?: ActivePreload,
 ): Promise<void> {
   const options: ExecuteLaneOptions = [
     tx[0],
@@ -1811,41 +1817,7 @@ async function runClientTransaction(
     resolvedPrefix,
     onReady,
   ]
-  let result: LaneResult
-  try {
-    result = adopted
-      ? await adopted[2]
-      : await executeClientLane(router, tx[2], tx[3], options)
-  } finally {
-    if (retained) {
-      discardPreload(router, retained)
-    }
-  }
-  if (
-    adopted &&
-    router._tx === tx &&
-    ((isControl(result) && result[0] === CANCELED) ||
-      (!isControl(result) &&
-        result[1].some(
-          (match) => match.status !== 'success' || match._notFound,
-        )))
-  ) {
-    // Successful loaders already seeded the cache; retry only the guard lane.
-    const donors = tx[3] as Array<WorkMatch>
-    tx[3] = []
-    transferMatchResources(router, donors)
-    tx[0].abort()
-    if (router._tx !== tx) {
-      return
-    }
-    const controller = new AbortController()
-    tx[0] = options[0] = controller
-    tx[3] = router.matchRoutes(tx[2], {
-      _controller: controller,
-    })
-    acquireMatchResources(tx[3])
-    result = await executeClientLane(router, tx[2], tx[3], options)
-  }
+  const result = await executeClientLane(router, tx[2], tx[3], options)
 
   if (isControl(result)) {
     if (result[0] === REDIRECTED && router._tx === tx) {
@@ -1968,7 +1940,7 @@ async function runClientTransaction(
 
 export async function loadClientRoute(
   router: CoordinatorRouter,
-  opts?: { sync?: boolean; _dedupe?: boolean },
+  opts?: { sync?: boolean },
 ): Promise<void> {
   let rematerialize = false
   if (process.env.NODE_ENV !== 'production') {
@@ -1989,20 +1961,6 @@ export async function loadClientRoute(
     pendingLocation?.href === location.href
       ? (pendingLocation._redirects ?? 0)
       : 0
-  // A same-location navigation joins the transaction already loading it
-  // instead of restarting its work. Reload requests never carry the flag,
-  // and same-location redirects must restart the lane they came from.
-  if (
-    opts?._dedupe &&
-    !redirects &&
-    previousOwner &&
-    !rematerialize &&
-    previousOwner[2].href === location.href &&
-    router.stores.status.get() === 'pending'
-  ) {
-    await awaitCurrent(router)
-    return
-  }
   const handoff = router._handoff
   const hydrationController = rematerialize ? undefined : handoff?.[0]()
   const preflight = new AbortController()
@@ -2028,79 +1986,41 @@ export async function loadClientRoute(
     return
   }
   const sameHref = previousLocation.href === location.href
-  let adopted = router._preloads?.get(location.href)
-  let retained: ActivePreload | undefined
-  if (rematerialize && adopted) {
-    router._preloads!.delete(location.href)
-    discardPreload(router, adopted)
-    adopted = undefined
-    if (preflight.signal.aborted || router._tx !== previousOwner) {
-      preflight.abort()
-      await awaitCurrent(router, previousOwner)
-      return
-    }
-  }
-  if (
-    adopted &&
-    (hydrationController ||
-      !samePreloadLane(
-        adopted,
-        router,
-        pendingLocation?.href === location.href ? pendingLocation : location,
-        redirects,
-      ))
-  ) {
-    router._preloads!.delete(location.href)
-    // Keep incompatible loader flights alive through the real lane's reload
-    // decisions so matching generations can still donate their work.
-    retained = adopted
-    adopted = undefined
-  }
   let matches: Array<AnyRouteMatch>
   let controller = preflight
-  let resolvedPrefix: number | undefined
-  if (adopted) {
-    controller = adopted[1]
-    matches = adopted[0]
-    router._preloads!.delete(location.href)
-  } else {
-    try {
-      matches =
-        process.env.NODE_ENV !== 'production' && rematerialize
-          ? router.matchRoutes(location, {
-              _controller: preflight,
-              _rematerialize: true,
-            })
-          : router.matchRoutes(location, { _controller: preflight })
-      acquireMatchResources(matches)
-    } catch (cause) {
-      preflight.abort()
-      if (retained) {
-        discardPreload(router, retained)
+  try {
+    matches =
+      process.env.NODE_ENV !== 'production' && rematerialize
+        ? router.matchRoutes(location, {
+            _controller: preflight,
+            _rematerialize: true,
+          })
+        : router.matchRoutes(location, { _controller: preflight })
+    acquireMatchResources(matches)
+  } catch (cause) {
+    preflight.abort()
+    if (!isRedirect(cause)) {
+      if (process.env.NODE_ENV !== 'production' && rematerialize) {
+        router._refreshNextLoad = undefined
       }
-      if (!isRedirect(cause)) {
-        if (process.env.NODE_ENV !== 'production' && rematerialize) {
-          router._refreshNextLoad = undefined
-        }
-        await awaitCurrent(router)
-        router._commitPromise?.resolve()
-        router._commitPromise = undefined
-        return
-      }
-      await router.navigate({
-        ...cause.options,
-        replace: true,
-        ignoreBlocker: true,
-      })
-      await awaitCurrent(router, previousOwner)
+      await awaitCurrent(router)
+      router._commitPromise?.resolve()
+      router._commitPromise = undefined
       return
     }
-    resolvedPrefix = hydrationController ? handoff![1](matches) : undefined
-    if (resolvedPrefix) {
-      controller = hydrationController!
-    } else {
-      hydrationController?.abort()
-    }
+    await router.navigate({
+      ...cause.options,
+      replace: true,
+      ignoreBlocker: true,
+    })
+    await awaitCurrent(router, previousOwner)
+    return
+  }
+  const resolvedPrefix = hydrationController ? handoff![1](matches) : undefined
+  if (resolvedPrefix) {
+    controller = hydrationController!
+  } else {
+    hydrationController?.abort()
   }
   if (router._preflight !== preflight || router._tx !== previousOwner) {
     preflight.abort()
@@ -2125,8 +2045,6 @@ export async function loadClientRoute(
           () => offerPending(router, tx),
           opts?.sync,
           resolvedPrefix,
-          adopted,
-          retained,
         ),
       )
       .catch(() => {
@@ -2154,7 +2072,7 @@ export async function loadClientRoute(
       }
     }
     previousOwner[0].abort()
-    transferMatchResources(router, previousOwner[3])
+    transferPredecessorResources(router, previousOwner[3], tx[3])
   }
   if (router._tx !== tx) {
     transferMatchResources(router, tx[3])
@@ -2162,7 +2080,6 @@ export async function loadClientRoute(
     await awaitCurrent(router, tx)
     return
   }
-
   router.batch(() => {
     router.stores.status.set('pending')
     router.stores.location.set(location)
@@ -2236,58 +2153,24 @@ export async function preloadClientRoute(
   const base = router._committed
   const controller = new AbortController()
   let matches: Array<AnyRouteMatch> | undefined
-  let preload: ActivePreload | undefined
-  let replaced: ActivePreload | undefined
   try {
-    const pending = router._preloads?.get(location.href)
-    if (pending) {
-      if (samePreloadLane(pending, router, location, redirects)) {
-        const result = await pending[2]
-        return isControl(result)
-          ? followPreloadRedirect(router, result, location, owner, redirects)
-          : result[1]
-      }
-      router._preloads!.delete(location.href)
-      // Keep the superseded lane alive until this lane has made its reload
-      // decisions. Its active flights are the synchronous donor authority.
-      replaced = pending
-    }
     matches = router.matchRoutes(location, {
       _controller: controller,
     })
     acquireMatchResources(matches)
-    const promise = Promise.resolve()
-      .then(() =>
-        executeClientLane(router, location, matches!, [
-          controller,
-          redirects,
-          // Preload lanes run to completion even when unrelated navigations
-          // commit: finished work seeds the cache, and adoption safety is
-          // enforced independently by samePreloadLane's base identity check.
-          () => true,
-          base,
-          true,
-        ]),
-      )
-      .finally(() => {
-        if (replaced) {
-          discardPreload(router, replaced)
-        }
-      })
-    preload = [
-      matches,
+    ;(router._preloads ??= new Map()).set(controller, matches)
+    const result = await executeClientLane(router, location, matches, [
       controller,
-      promise,
-      base,
-      laneInputs(router, location),
       redirects,
-    ]
-    ;(router._preloads ??= new Map()).set(location.href, preload)
-    const result = await promise
-    if (router._preloads?.get(location.href) !== preload) {
+      // Preload lanes run to completion even when unrelated navigations commit:
+      // finished work seeds the cache.
+      () => true,
+      base,
+      true,
+    ])
+    if (!router._preloads.delete(controller)) {
       return isControl(result) ? undefined : result[1]
     }
-    router._preloads.delete(location.href)
     if (isControl(result)) {
       controller.abort()
       transferMatchResources(router, matches)
@@ -2298,10 +2181,7 @@ export async function preloadClientRoute(
     controller.abort()
     return result[1]
   } catch (cause) {
-    if (!preload || router._preloads?.get(location.href) === preload) {
-      if (preload) {
-        router._preloads!.delete(location.href)
-      }
+    if (!matches || router._preloads?.delete(controller)) {
       controller.abort()
       if (matches) {
         transferMatchResources(router, matches)
@@ -2380,7 +2260,8 @@ export async function hydrate(router: AnyRouter): Promise<void> {
 
   let location!: AnyRouter['latestLocation']
   let candidates!: Array<AnyRouteMatch>
-  let handoffInputs!: ReturnType<typeof laneInputs>
+  let handoffHistoryHref!: string
+  let handoffHistoryState: unknown
   try {
     await waitFor(
       router.options.hydrate?.(dehydratedRouter!.dehydratedData),
@@ -2389,10 +2270,14 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     if (!isCurrent()) {
       return
     }
+    // Hydration trusts transported context and beforeLoad. The raw history
+    // entry owns the handoff; route structure is verified after rematching.
+    const historyLocation = router.history.location
+    handoffHistoryHref = historyLocation.href
+    handoffHistoryState = historyLocation.state
     router.updateLatestLocation()
     location = router.latestLocation
     router.stores.location.set(location)
-    handoffInputs = laneInputs(router, location)
     candidates = router.matchRoutes(location, {
       _controller: controller,
     })
@@ -2636,16 +2521,18 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     }
   }
 
-  const claim = () =>
-    needsClientLoad &&
-    !router._tx &&
-    router.latestLocation.state === location.state &&
-    deepEqual(handoffInputs, laneInputs(router, router.latestLocation)) &&
-    router._committed === committedMatches &&
-    committedMatches.length &&
-    !controller.signal.aborted
+  const claim = () => {
+    const historyLocation = router.history.location
+    return needsClientLoad &&
+      !router._tx &&
+      historyLocation.href === handoffHistoryHref &&
+      historyLocation.state === handoffHistoryState &&
+      router._committed === committedMatches &&
+      committedMatches.length &&
+      !controller.signal.aborted
       ? controller
       : undefined
+  }
   const handoff: NonNullable<AnyRouter['_handoff']> = [
     claim,
     (matches) => {

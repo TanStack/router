@@ -215,8 +215,7 @@ describe('beforeLoad skip or exec', () => {
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    // An identical navigation may latch onto the still-active whole lane.
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
   test('exec if rejected preload (notFound)', async () => {
@@ -278,9 +277,9 @@ describe('beforeLoad skip or exec', () => {
     await Promise.resolve()
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.location.pathname).toBe('/bar')
+    expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches.at(-1)?.status).toBe('success')
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
   test('exec if rejected preload (error)', async () => {

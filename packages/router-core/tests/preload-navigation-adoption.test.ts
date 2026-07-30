@@ -50,12 +50,12 @@ describe('navigation adopting an in-flight preload', () => {
     expect(preloadSignal).toBeDefined()
     expect(preloadSignal?.aborted).toBe(false)
 
-    // The identical navigation adopts the whole active lane, including its
-    // already-completed beforeLoad context.
+    // The navigation runs its own guard but shares the loader generation.
     const navigation = router.navigate({ to: '/foo' })
-    await Promise.resolve()
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
     expect(beforeLoad.mock.calls.map(([context]) => context.preload)).toEqual([
       true,
+      false,
     ])
     expect(loaderGate.status).toBe('pending')
     expect(loader).toHaveBeenCalledTimes(1)

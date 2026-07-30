@@ -34,7 +34,7 @@ The main authorities are:
 | `_committed`                 | The accepted current lane and lifecycle/background CAS base         |
 | `stores.matches`             | The current match presentation exposed to renderers and users       |
 | `router._cache`              | Off-screen loader generations and first same-ID planning seeds      |
-| Active preload entry         | One still-running speculative whole lane                            |
+| Active preload entry         | Cancellation and cache-clearing ownership for one speculative lane  |
 | Loader flight registry entry | The latest same-ID loader generation available to new consumers     |
 | Match flight lease           | Ownership keeping that loader work alive                            |
 | Pending session              | One reveal/minimum-visible deadline and its current owner           |
@@ -186,7 +186,7 @@ Contextualization walks parent to child. For each route it:
 
 1. computes route context from the completed parent context,
 2. handles params/search validation,
-3. runs `beforeLoad` when required, and
+3. runs the route's `beforeLoad`, when defined, and
 4. merges the result before moving to the child.
 
 This serial order guarantees that child route context, child `beforeLoad`, and
@@ -202,8 +202,9 @@ reuse an older merged context or `beforeLoad` contribution.
 
 Server requests have fresh matches and execute route context normally.
 Hydration executes each accepted route context locally, stores its `_ctx`, and
-then merges transported `beforeLoad` output. An active identical preload donates
-the whole lane it is still contextualizing.
+then merges transported `beforeLoad` output. Every ordinary client lane,
+including every preload, performs its own contextualization and `beforeLoad`
+chain.
 
 ### Reduced
 
@@ -282,7 +283,7 @@ Every asynchronous client publication checks `_tx` immediately before the
 write. Background publication additionally checks the exact committed base
 array from which it was derived.
 
-## `beforeLoad`: execution, active adoption, and hydration
+## `beforeLoad`: execution and hydration
 
 `beforeLoad` context is not a cache.
 
@@ -292,59 +293,23 @@ same-ID route-local `_ctx` may remain reusable. A later navigation rebuilds the
 merged context from the current parent and `_ctx`, then reruns `beforeLoad`, even
 when it reuses completed loader data.
 
-There are two deliberate exceptions.
+There is one deliberate exception: hydration.
 
-### Identical active whole-lane adoption
+### Ordinary client lanes
 
-A navigation may latch onto an entry in `router._preloads` that is still running
-only when the whole lane is identical. Admission is decided before rematching
-from the preload's href and redirect depth, route-tree identity, semantic owner,
-parsed search, router root context, additional context, user-supplied location
-state, and any explicit mask's href, search, user state, and
-`unmaskOnReload`. Router-managed history and temporary-mask keys do not
-participate. With deterministic route planning, those inputs imply the same
-ordered routes, params, validated search, and global-path-miss meaning. They may
-be observed by `beforeLoad` even when the route lane is unchanged.
-Adoption inputs are treated as immutable values: replace a context/state object
-to express a generation change; in-place mutation is not detected.
-Adoption is all-or-nothing. There is no prefix donation and no
-completed-preload freshness window for `beforeLoad`. Matching derives
-global-path-miss semantics for every lane, including preloads, so an otherwise
-identical candidate cannot erase that terminal meaning during adoption.
+Every navigation and every preload rematches and runs its own serial
+`beforeLoad` chain. This remains true for identical concurrent preloads and for
+a navigation that targets a still-running preload. A call made with
+`preload: true` is never accepted as the navigation's call with
+`preload: false`; its context, redirect, error, and not-found result stay private
+to that speculative lane.
 
-The active preload also captures the identity of `_committed` from which
-it was planned. Whole-lane adoption requires that semantic owner to remain
-current. Invalidation replaces the committed generation, so an older preload
-may still donate an identical loader flight but cannot donate its pre-invalidation
-`beforeLoad` context.
-
-The adopting navigation takes ownership of the active lane and its controller.
-The original public preload call must then stop releasing that lane. Individual
-successful loader tasks may still publish cache entries through their original
-per-match compare-and-swap; that publication belongs to the transferred lane,
-not to a second whole-lane owner.
-
-If the adopted speculative lane succeeds, the navigation may use the
-`beforeLoad` calls that ran with `preload: true`. A redirect from that same
-active lane is also accepted as navigation control flow. An ordinary failure,
-not-found, or cancellation is not authoritative for navigation: the real
-navigation replans and reruns `beforeLoad` with `preload: false`. Successful
-loader work anywhere in the settled lane remains eligible for reuse, including
-a descendant that completed after an ancestor loader failed. Each successful
-loader generation has already attempted its own cache publication at settlement,
-so retry does not scan the terminal lane or create another cache handoff. It
-discards the failed speculative semantic lane and replans cache-first. The retry
-rebuilds the serial context chain and reruns `beforeLoad`; only independently
-successful loader generations cross that boundary through the normal
-cache/flight rules.
-
-Routes with `preload: false` do not permit active whole-lane adoption. Their
-speculative `beforeLoad` may run with `preload: true`, but navigation reruns the
-serial chain and performs the skipped loader work.
-
-Rejecting whole-lane adoption does not require discarding loader work before
-the real lane reaches its reload decisions. The rejected preload may remain a
-resource-only donor until that lane settles.
+`router._preloads` therefore has no semantic adoption role. It tracks active
+speculative match owners only so cache clearing can cancel selected work and
+release their resources safely. Loader results remain independently reusable:
+a completed preload may seed the match cache, and a still-running preload may
+donate its same-ID loader flight after the receiving lane has run its own
+`beforeLoad` and made its reload decision.
 
 ### Hydration
 
@@ -357,13 +322,14 @@ rules.
 Hydration is not a general `beforeLoad` cache. Its temporary handoff is valid
 only for the initial client load of the same document entry and exact committed
 owner; rejection, invalidation, or any later load returns to normal serial
-execution. The claim also requires the same route tree, root/additional context,
-search, user history state, and exact browser history generation. That initial
-load may transfer the accepted hydration prefix and
-keep its transported context while it completes a selective-SSR suffix. A
-preload never claims this prefix. Frameworks must start the initial client load
-before descendant route code can preload; invoking a preload in the gap after
-raw `hydrate()` and before that load is outside the supported handoff protocol.
+execution. The claim also requires the same raw browser href and history-state
+object. Finish-time match-ID validation proves that rematching still produced
+the accepted prefix; opaque router context and route-tree objects are not
+compared. That initial load may transfer the accepted hydration prefix and keep
+its transported context while it completes a selective-SSR suffix. A preload
+never claims this prefix. Frameworks must start the initial client load before
+descendant route code can preload; invoking a preload in the gap after raw
+`hydrate()` and before that load is outside the supported handoff protocol.
 
 ## Loader data, cache entries, and flights
 
@@ -391,7 +357,7 @@ generations when its error or not-found came from `beforeLoad`, validation, or
 another route. Each preload loader success attempts cache admission immediately,
 before whole-lane reduction. The cache receives a non-terminal copy and an
 additional flight lease; the speculative lane keeps its own lease and terminal
-meaning until it is adopted or discarded. This works even below the eventual
+meaning until it is discarded. This works even below the eventual
 render boundary and does not preserve the speculative parent chain: merged
 context and `beforeLoad` output are cleared. Same-ID `_ctx`, loader identity,
 and successful loader data remain reusable by design.
@@ -431,22 +397,35 @@ Two facts must remain separate:
 - registry membership means new consumers may join the flight;
 - a match lease means an existing consumer keeps the flight alive.
 
-Registry membership itself owns no lease. A settled generation remains
+Registry membership normally owns no lease. A settled generation remains
 discoverable while at least one semantic or cached match owns it. Releasing the
 last lease removes that generation only if it is still the current registry
 entry, then aborts its controller. Every copied semantic match that retains a
 flight must acquire a lease, and every discarded match must release one exactly
-once. Consequently, a flight referenced by a match or discoverable in the
-registry always has a positive lease count. Acquisition code must not recover
-from a referenced zero-lease flight; that would hide an ownership bug.
+once.
+
+There is one short reservation phase. The navigation-supersession handoff may
+leave a predecessor's same-ID registry flight at zero leases while the successor
+contextualizes. An independently owned same-ID flight that loses its last lease
+while that lane visibly runs `beforeLoad` joins the same window. Generic releases
+after contextualization never infer a reservation merely from `_tx` membership.
+After the navigation's loader tasks are planned, they either acquire the flight
+or a single sweep removes and aborts it. Preloads neither create nor sweep this
+navigation handoff state. No match flag, extra counter, or second completion
+promise represents the phase. An explicit `shouldReload` result does not consume
+a zero-owner reservation: it removes and aborts that generation before
+registering fresh work. Active positive-lease work may still be shared by
+another lane that requests a reload. Invalidation removes discovery entries for
+every selected ID before its superseding load, so it always starts the requested
+generation.
 
 Releasing a set of matches is deliberately two-phase. First every outgoing
-match drops its `_flight` lease and every zero-owner generation is removed from
-the discovery registry. Only after the entire outgoing set is detached are the
-collected flight controllers aborted. Do not interleave one flight abort with
-detaching later matches in the same replacement: an abort listener can
-synchronously reenter, and that load must observe every logically removed lease
-and registry entry as already gone.
+match drops its `_flight` lease and every zero-owner generation not reserved by
+the current transaction is removed from the discovery registry. Only after the
+entire outgoing set is detached are the collected flight controllers aborted.
+Do not interleave one flight abort with detaching later matches in the same
+replacement: an abort listener can synchronously reenter, and that load must
+observe every logically removed lease and registry entry as already gone.
 
 A successful accepted match may keep its lease after the loader promise has
 settled. This keeps the loader's public `AbortSignal` alive for that semantic
@@ -469,12 +448,9 @@ the donor; a background reload keeps accepted data visible and gives the donor
 lease to its private candidate. This one lookup covers work started by active
 preloads, navigation, and background refresh without scanning those owners.
 
-When a different lane supersedes an active preload at the same href, the old
-lane stops being adoptable but retains its resources until the successor lane
-settles. Its leased flights therefore remain discoverable for the successor's
-late reload decisions without giving every planned match a second reservation
-lease. The successor then releases the old lane; any borrowed flight remains
-alive through the successor match's ordinary `_flight` lease.
+Active preload flights need no special handoff. Their speculative matches keep
+ordinary positive leases until the preload settles or is canceled, so another
+lane can discover and acquire the flight without adopting the preload lane.
 
 A joining navigation accepts successful shared loader work. A failure,
 not-found, or cancellation produced under another speculative generation is not
@@ -843,25 +819,28 @@ redirects. A losing background lane cannot redirect.
 Invalidation creates a new semantic generation and reloads through the ordinary
 transaction path. It does not turn `stores.matches` into a planning lane.
 
-Filtered invalidation evaluates committed and cached matches and collects the
-selected match IDs. Every committed and cached generation with one of those IDs
-is then replaced as invalid. This ID-wide rule prevents a cache-first same-ID
-generation from escaping invalidation merely because a different generation
-was the one passed to the filter. Route context needs no invalidation marker;
-every new lane rebuilds it regardless.
+Filtered invalidation evaluates committed, cached, and active-transaction
+matches and collects the selected match IDs. Every committed and cached
+generation with one of those IDs is then replaced as invalid, and its loader
+discovery entry is detached. This ID-wide rule prevents a cache-first or
+in-flight same-ID generation from escaping invalidation merely because a
+different generation was the one passed to the filter. Route context retains
+same-ID cacheability across this replacement and needs no separate invalidation
+marker.
 
 Invalidated successful data may remain visible until pending or terminal
 publication, depending on reload mode. Error/not-found generations reset through
 the same loading protocol rather than becoming cache successes.
 
 Cache clearing derives the retained active-preload and cache maps, installs both
-replacement authorities, bulk-detaches removed leases, lets that operation
-abort zero-owner flight controllers, and only then aborts selected preload lane
-controllers. A public loader signal can synchronously reenter from its abort
-listener; that reentrant load must observe the cleared authorities and every
-removed lease as already detached. Unselected concurrent preloads remain
-independent, and every later cache publication must still pass the per-match
-cache-entry identity check captured during planning.
+replacement authorities, and removes a discovery entry only when every positive
+lease belongs to discarded matches. It then bulk-detaches removed leases and
+only afterward aborts selected preload lane controllers. A public loader signal
+can synchronously reenter from its abort listener; that reentrant load must
+observe the cleared authorities and every removed lease as already detached.
+Unselected concurrent preloads keep shared flights discoverable, and every later
+cache publication must still pass the per-match cache-entry identity check
+captured during planning.
 
 Development refresh is deliberately aggressive: it aborts flights, discards
 active preloads and caches, drops the committed semantic lane, and rematches
@@ -877,8 +856,6 @@ navigation, but it never becomes `_tx` and never publishes match presentation.
 
 Its match/cache ownership effects are limited to:
 
-- an active identical whole lane that a navigation may adopt while it is still
-  running;
 - joinable same-id loader flights; and
 - individual successful preload loader generations entering the loader cache as
   they settle.
@@ -887,10 +864,9 @@ A preload can also install durable lazy route options through the separate
 route-chunk owner described above. That is route definition readiness, not
 authority over a completed match lane or `beforeLoad` result.
 
-A completed preload's failure, not-found, redirect, cancellation, and route
-context do not become authority for a later navigation. An adopted still-active
-identical lane is the exception described above, including its redirect control
-flow. Standalone preload redirects may be followed only while the preload
+A preload's failure, not-found, redirect, cancellation, route context, and
+`beforeLoad` result do not become authority for another preload or a later
+navigation. Standalone preload redirects may be followed only while the preload
 remains current and within its bounded redirect policy. A preload never performs
 a document reload.
 
@@ -1110,14 +1086,14 @@ reconstruction fails, only the accepted prefix is committed as described above;
 the complete branch remains presentation, not semantic reuse authority.
 
 Only the subsequent ordinary client load may transfer the whole hydration
-prefix, and only while the exact committed-prefix owner, structurally shared
-parsed history-state generation, and live hydration controller remain current
-with no active transaction. The payload does not serialize a second URL
-authority: Core captures the reconstructed browser generation only to prevent a
-supported reentrant lifecycle event from handing document work to a successor
-location. The transported prefix must also pass finish-time match-ID validation.
-Core does not coordinate speculative work started between raw `hydrate()` and
-that load; framework adapters own the supported ordering.
+prefix, and only while the exact committed-prefix owner, raw history-state
+object, browser href, and live hydration controller remain current with no
+active transaction. The payload does not serialize a second URL authority: Core
+captures the raw browser generation only to prevent a supported reentrant
+lifecycle event from handing document work to a successor location. The
+transported prefix must also pass finish-time match-ID validation. Core does not
+coordinate speculative work started between raw `hydrate()` and that load;
+framework adapters own the supported ordering.
 
 The two-phase transfer proceeds as follows:
 
@@ -1176,13 +1152,10 @@ When changing this architecture, verify all of the following:
 6. Each successful preload loader generation may enter the cache as it settles,
    even if its whole lane later becomes terminal or is canceled. It may retain
    same-ID route-local `_ctx`, but never merged context or `beforeLoad` output.
-7. Active preload adoption is identical-whole-lane only, including router
-   context, additional context, and user-supplied location state. It also
-   requires the semantic committed owner captured during planning to remain
-   current; rejected lanes may donate loader flights, never `beforeLoad`
-   context. Retrying a terminal adopted lane may retain every independently
-   successful loader generation, but rebuilds merged context and reruns the
-   serial `beforeLoad` chain.
+7. Every ordinary client lane runs its own serial `beforeLoad` chain. Active
+   preloads may donate same-ID loader flights and completed preloads may donate
+   cache entries, but neither can donate merged context, control flow, or a
+   `beforeLoad` result.
 8. Hydration is the only completed-work exception for `beforeLoad` reuse. It
    verifies each transported match identity, reconstructs the accepted ordered
    prefix, reruns route context locally, preserves terminal/selective-SSR
@@ -1203,7 +1176,10 @@ When changing this architecture, verify all of the following:
     started by navigation, preload, or background work. Registry joinability
     and lease ownership remain separate; donor selection happens synchronously
     after the reload decision, and accepted signal lifetime may outlive promise
-    settlement.
+    settlement. A zero-lease reservation exists only while the current `_tx`
+    contextualizes a distinct same-ID successor; the explicit supersession
+    handoff creates it, contextualizing lanes may retain it, and navigation task
+    planning consumes or sweeps it.
 12. Child `parentMatchPromise` follows the fresh semantic parent generation.
 13. The first parallel ordinary failure is chronological unless a required
     ancestor failure has no accepted loader data or its required chunk fails;

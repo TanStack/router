@@ -202,6 +202,62 @@ test('clearCache cancels a brand-new in-flight preload before it can populate th
   ).toBe('navigation data')
 })
 
+test('clearCache does not reserve a discarded preload for a navigation in beforeLoad', async () => {
+  const navigationBeforeLoad = createControlledPromise<void>()
+  let preloadSignal: AbortSignal | undefined
+  const beforeLoad = vi.fn(({ preload }: { preload: boolean }) =>
+    preload ? undefined : navigationBeforeLoad,
+  )
+  const loader = vi.fn(
+    ({ abortController }: { abortController: AbortController }) => {
+      const generation = loader.mock.calls.length
+      if (generation !== 1) {
+        return 'fresh navigation data'
+      }
+      preloadSignal = abortController.signal
+      return new Promise<string>((_resolve, reject) => {
+        abortController.signal.addEventListener(
+          'abort',
+          () => reject(abortController.signal.reason),
+          { once: true },
+        )
+      })
+    },
+  )
+  const rootRoute = new BaseRootRoute({})
+  const homeRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+    beforeLoad,
+    loader,
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([homeRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const preload = router.preloadRoute({ to: '/target' })
+  await vi.waitFor(() => expect(loader).toHaveBeenCalledOnce())
+  const navigation = router.navigate({ to: '/target' })
+  await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
+
+  router.clearCache({
+    filter: (match) => match.routeId === targetRoute.id,
+  })
+  await vi.waitFor(() => expect(preloadSignal?.aborted).toBe(true))
+  await preload
+
+  navigationBeforeLoad.resolve()
+  await navigation
+  expect(loader).toHaveBeenCalledTimes(2)
+  expect(router.state.matches.at(-1)?.loaderData).toBe('fresh navigation data')
+})
+
 test('clearCache installs replacement authorities before abort listeners reenter', async () => {
   let reentrantNavigation: Promise<void> | undefined
   let router: ReturnType<typeof createTestRouter>
@@ -319,6 +375,68 @@ test('clearCache detaches every discarded flight before abort listeners reenter'
   expect(secondLoader).toHaveBeenCalledTimes(2)
   expect(router.state.location.pathname).toBe('/second')
   expect(router.state.matches.at(-1)?.loaderData).toBe('generation 2')
+})
+
+test('filtered clearCache keeps shared loader work discoverable through a retained preload', async () => {
+  const layoutGate = createControlledPromise<string>()
+  const layoutLoader = vi.fn(() => layoutGate)
+  const rootRoute = new BaseRootRoute({})
+  const layoutRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/layout',
+    loader: layoutLoader,
+  })
+  const firstBeforeLoad = vi.fn()
+  const firstRoute = new BaseRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/first',
+    beforeLoad: firstBeforeLoad,
+  })
+  const secondBeforeLoad = vi.fn()
+  const secondLoader = vi.fn(() => 'second data')
+  const secondRoute = new BaseRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/second',
+    beforeLoad: secondBeforeLoad,
+    loader: secondLoader,
+  })
+  const thirdBeforeLoad = vi.fn()
+  const thirdLoader = vi.fn(() => 'third data')
+  const thirdRoute = new BaseRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/third',
+    beforeLoad: thirdBeforeLoad,
+    loader: thirdLoader,
+  })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([
+      layoutRoute.addChildren([firstRoute, secondRoute, thirdRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  await router.load()
+  const firstPreload = router.preloadRoute({ to: '/layout/first' })
+  const secondPreload = router.preloadRoute({ to: '/layout/second' })
+  await vi.waitFor(() => {
+    expect(firstBeforeLoad).toHaveBeenCalledOnce()
+    expect(secondBeforeLoad).toHaveBeenCalledOnce()
+    expect(layoutLoader).toHaveBeenCalledOnce()
+    expect(secondLoader).toHaveBeenCalledOnce()
+  })
+
+  router.clearCache({
+    filter: (match) => match.routeId === firstRoute.id,
+  })
+  const thirdPreload = router.preloadRoute({ to: '/layout/third' })
+  await vi.waitFor(() => {
+    expect(thirdBeforeLoad).toHaveBeenCalledOnce()
+    expect(thirdLoader).toHaveBeenCalledOnce()
+  })
+
+  expect(layoutLoader).toHaveBeenCalledOnce()
+  layoutGate.resolve('layout data')
+  await Promise.all([firstPreload, secondPreload, thirdPreload])
 })
 
 test('independent concurrent preloads both populate the cache', async () => {
