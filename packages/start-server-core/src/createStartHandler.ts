@@ -584,7 +584,9 @@ export function createStartHandler<TRegister = Register>(
             getStartContext({ throwIfNotFound: false })?.requestAssets,
         })
 
-        routerInstance.update({ additionalContext: { serverContext } })
+        // `additionalContext` is request-scoped and only read from router.options
+        // during load; avoid a full router.update() and redundant location parse.
+        routerInstance.options.additionalContext = { serverContext }
         await routerInstance.load()
 
         if (routerInstance.state.redirect) {

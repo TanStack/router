@@ -1,5 +1,43 @@
 # @tanstack/router-plugin
 
+## 1.168.23
+
+### Patch Changes
+
+- [#7855](https://github.com/TanStack/router/pull/7855) [`49f6863`](https://github.com/TanStack/router/commit/49f686324574ea65851317cbba084eb386a911c6) - Preserve React component state during HMR when route components are declared with lowercase function names. The development-only React transforms cover split route component groups and unsplit root route component options, including shell, pending, and error components, without changing production output.
+
+## 1.168.22
+
+### Patch Changes
+
+- Updated dependencies [[`78dd1a6`](https://github.com/TanStack/router/commit/78dd1a645dc1a9e9f4f649d9aff12005044d4fcc)]:
+  - @tanstack/router-generator@1.167.21
+
+## 1.168.21
+
+### Patch Changes
+
+- Updated dependencies [[`e56a677`](https://github.com/TanStack/router/commit/e56a67742da9021b009b8db0cdc8bfe99878c25b)]:
+  - @tanstack/router-generator@1.167.20
+
+## 1.168.20
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+  - @tanstack/react-router@1.170.18
+  - @tanstack/router-generator@1.167.19
+
+## 1.168.19
+
+### Patch Changes
+
+- Updated dependencies [[`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b)]:
+  - @tanstack/router-core@1.171.14
+  - @tanstack/react-router@1.170.17
+  - @tanstack/router-generator@1.167.18
+
 ## 1.168.18
 
 ### Patch Changes

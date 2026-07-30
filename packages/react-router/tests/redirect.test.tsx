@@ -1,5 +1,6 @@
 import * as React from 'react'
 import {
+  act,
   cleanup,
   configure,
   fireEvent,
@@ -8,6 +9,7 @@ import {
 } from '@testing-library/react'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { createControlledPromise } from '@tanstack/router-core'
 
 import {
   Link,
@@ -45,6 +47,35 @@ const WAIT_TIME = 100
 describe('redirect', () => {
   describe('SPA', () => {
     configure({ reactStrictMode: true })
+
+    test('allows a same-location redirect to settle after a side effect', async () => {
+      let firstLoad = true
+      const loader = vi.fn(() => {
+        if (firstLoad) {
+          firstLoad = false
+          throw redirect({ to: '/' })
+        }
+      })
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        loader,
+        component: () => <div>Index page</div>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      expect(await screen.findByText('Index page')).toBeInTheDocument()
+      expect(window.location.pathname).toBe('/')
+      expect(loader).toHaveBeenCalledTimes(2)
+      expect(router.state.status).toBe('idle')
+    })
+
     test('when `redirect` is thrown in `beforeLoad`', async () => {
       const nestedLoaderMock = vi.fn()
       const nestedFooLoaderMock = vi.fn()
@@ -115,6 +146,7 @@ describe('redirect', () => {
 
     test('when root `beforeLoad` redirects while root pendingComponent is showing and the target route is lazy', async () => {
       let hasRedirected = false
+      const beforeLoad = createControlledPromise<void>()
       const consoleError = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {})
@@ -124,7 +156,7 @@ describe('redirect', () => {
         pendingMs: 0,
         pendingComponent: () => <div data-testid="pending">loading</div>,
         beforeLoad: async () => {
-          await sleep(WAIT_TIME)
+          await beforeLoad
           if (!hasRedirected) {
             hasRedirected = true
             throw redirect({ to: '/posts' })
@@ -149,6 +181,14 @@ describe('redirect', () => {
       })
 
       render(<RouterProvider router={router} />)
+
+      try {
+        expect(await screen.findByTestId('pending')).toBeInTheDocument()
+      } finally {
+        await act(() => {
+          beforeLoad.resolve()
+        })
+      }
 
       // The lazy target route adds the async boundary that exposes the stale
       // redirected-match render path this regression is guarding.

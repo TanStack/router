@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 
 import {
   Link,
   Outlet,
   RouterProvider,
   createBrowserHistory,
+  createControlledPromise,
   createRootRoute,
   createRoute,
   createRouter,
@@ -25,6 +26,44 @@ afterEach(() => {
   history.destroy()
   window.history.replaceState(null, 'root', '/')
   cleanup()
+})
+
+test('navigating to an actively preloaded missing URL renders the global not-found boundary', async () => {
+  const missingLoaderStarted = createControlledPromise<void>()
+  const missingLoader = createControlledPromise<void>()
+  const rootRoute = createRootRoute({
+    component: Outlet,
+    notFoundComponent: () => <div>Missing URL boundary</div>,
+    loader: ({ location }) => {
+      if (location.pathname === '/missing') {
+        missingLoaderStarted.resolve()
+        return missingLoader
+      }
+      return
+    },
+    shouldReload: true,
+  })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Home</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByText('Home')).toBeInTheDocument()
+
+  const preload = router.preloadRoute({ to: '/missing' } as any)
+  await missingLoaderStarted
+  const navigation = router.navigate({ to: '/missing' } as any)
+  missingLoader.resolve()
+  await act(() => Promise.all([preload, navigation]))
+
+  expect(screen.getByText('Missing URL boundary')).toBeInTheDocument()
+  expect(screen.queryByText('Home')).not.toBeInTheDocument()
 })
 
 test.each([

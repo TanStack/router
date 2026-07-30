@@ -1,5 +1,32 @@
 # @tanstack/router-generator
 
+## 1.167.21
+
+### Patch Changes
+
+- [#7845](https://github.com/TanStack/router/pull/7845) [`78dd1a6`](https://github.com/TanStack/router/commit/78dd1a645dc1a9e9f4f649d9aff12005044d4fcc) - Preserve dots in explicit virtual route paths and pathless layout IDs instead
+  of treating them as flat-file route separators.
+
+## 1.167.20
+
+### Patch Changes
+
+- [#7751](https://github.com/TanStack/router/pull/7751) [`e56a677`](https://github.com/TanStack/router/commit/e56a67742da9021b009b8db0cdc8bfe99878c25b) - Make `buildRouteTree` route ordering deterministic. Its final sort tiebreaker compared whole route-node objects (`(d) => d`), which coerce to `"[object Object]"` and so never order — an inconsistent comparator that left routes tying on segment-count/index-token in an engine- and input-dependent order, producing non-deterministic `routeTree.gen.ts` diffs across machines. The tiebreaker now compares `routePath`, mirroring the pre-sort and giving a stable total order.
+
+## 1.167.19
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+
+## 1.167.18
+
+### Patch Changes
+
+- Updated dependencies [[`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b)]:
+  - @tanstack/router-core@1.171.14
+
 ## 1.167.17
 
 ### Patch Changes

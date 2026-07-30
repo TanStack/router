@@ -523,15 +523,26 @@ export function findLast<T>(
 }
 
 /**
- * Remove control characters that can cause open redirect vulnerabilities.
- * Characters like \r (CR) and \n (LF) can trick URL parsers into interpreting
- * paths like "/\r/evil.com" as "http://evil.com".
+ * Re-encode characters that are unsafe in URL paths.
+ * Includes ASCII control characters (0x00-0x1F, 0x7F) and a subset of the
+ * WHATWG URL "path percent-encode set" (", <, >, `, {, }).
+ *
+ * Space (0x20) is intentionally excluded — decodeURI decodes %20 to space
+ * and the router stores decoded spaces in location.pathname. The existing
+ * encodePathLikeUrl already handles re-encoding spaces for outgoing URLs.
+ *
+ * These characters are decoded by decodeURI but must remain percent-encoded
+ * in paths to match how upstream layers (CDNs, edge middleware, browsers)
+ * interpret the URL, preventing infinite redirect loops and path mismatches.
  */
+// eslint-disable-next-line no-control-regex
+const PATH_UNSAFE_RE = /[\x00-\x1f\x7f"<>`{}]/g
+
 function sanitizePathSegment(segment: string): string {
-  // Remove ASCII control characters (0x00-0x1F) and DEL (0x7F)
-  // These include CR (\r = 0x0D), LF (\n = 0x0A), and other potentially dangerous characters
-  // eslint-disable-next-line no-control-regex
-  return segment.replace(/[\x00-\x1f\x7f]/g, '')
+  return segment.replace(
+    PATH_UNSAFE_RE,
+    (ch) => '%' + ch.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'),
+  )
 }
 
 function decodeSegment(segment: string): string {
@@ -644,8 +655,9 @@ export function decodePath(path: string) {
   result = result + decodeSegment(cursor ? path.slice(cursor) : path)
 
   // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
-  // After sanitizing control characters, paths like "/\r/evil.com" become "//evil.com"
-  // Collapse leading double slashes to a single slash
+  // This is defense-in-depth: since control characters are no longer decoded,
+  // paths like "/%0d/evil.com" can no longer become "//evil.com". But we keep
+  // this check to guard against other edge cases.
   let handledProtocolRelativeURL = false
   if (result.startsWith('//')) {
     handledProtocolRelativeURL = true

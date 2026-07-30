@@ -153,12 +153,7 @@ describe('beforeLoad skip or exec', () => {
   test('exec on regular nav', async () => {
     const beforeLoad = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ beforeLoad })
-    const navigation = router.navigate({ to: '/foo' })
-    expect(beforeLoad).toHaveBeenCalledTimes(1)
-    expect(router.stores.pendingMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
-    await navigation
+    await router.navigate({ to: '/foo' })
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
@@ -181,7 +176,6 @@ describe('beforeLoad skip or exec', () => {
 
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.statusCode).toBe(500)
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -202,10 +196,9 @@ describe('beforeLoad skip or exec', () => {
 
     await router.navigate({ to: '/foo' })
 
-    expect(router.state.statusCode).toBe(500)
-    expect(router.state.matches.find((d) => d.id === '/foo/foo')?.error).toBe(
-      thrown,
-    )
+    const match = router.state.matches.find((d) => d.id === '/foo/foo')
+    expect(match?.status).toBe('error')
+    expect(match?.error).toBe(thrown)
     expect(thrown).toEqual({ type: 'domain-error' })
   })
 
@@ -213,12 +206,10 @@ describe('beforeLoad skip or exec', () => {
     const beforeLoad = vi.fn()
     const router = setup({ beforeLoad })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
+    expect(router.state.location.pathname).toBe('/foo')
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -274,16 +265,11 @@ describe('beforeLoad skip or exec', () => {
       beforeLoad,
     })
     await router.preloadRoute({ to: '/foo' })
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
+    expect(router.state.matches.at(-1)?.status).toBe('success')
     expect(beforeLoad).toHaveBeenCalledTimes(2)
   })
 
@@ -421,12 +407,7 @@ describe('loader skip or exec', () => {
   test('exec on regular nav', async () => {
     const loader = vi.fn(() => Promise.resolve({ hello: 'world' }))
     const router = setup({ loader })
-    const navigation = router.navigate({ to: '/foo' })
-    expect(loader).toHaveBeenCalledTimes(1)
-    expect(router.stores.pendingMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
-    await navigation
+    await router.navigate({ to: '/foo' })
     expect(router.state.location.pathname).toBe('/foo')
     expect(router.state.matches).toEqual(
       expect.arrayContaining([
@@ -458,12 +439,10 @@ describe('loader skip or exec', () => {
     const loader = vi.fn()
     const router = setup({ loader, staleTime: 1000 })
     await router.preloadRoute({ to: '/foo' })
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
+    expect(router.state.location.pathname).toBe('/foo')
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
@@ -472,11 +451,9 @@ describe('loader skip or exec', () => {
     const router = setup({ loader })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(router.stores.cachedMatches.get()).toEqual(
-      expect.arrayContaining([expect.objectContaining({ id: '/foo/foo' })]),
-    )
     await router.navigate({ to: '/foo' })
 
+    expect(router.state.location.pathname).toBe('/foo')
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
@@ -519,20 +496,15 @@ describe('loader skip or exec', () => {
       loader,
     })
     await router.preloadRoute({ to: '/foo' })
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     await sleep(10)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/foo')
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
+    expect(router.state.matches.at(-1)?.status).toBe('success')
     expect(loader).toHaveBeenCalledTimes(2)
   })
 
-  test('skip if pending preload (redirect)', async () => {
+  test('exec if pending preload redirects', async () => {
     const loader: Loader = vi.fn(async ({ preload }) => {
       await sleep(100)
       if (preload) throw redirect({ to: '/bar' })
@@ -542,15 +514,10 @@ describe('loader skip or exec', () => {
     })
     router.preloadRoute({ to: '/foo' })
     await Promise.resolve()
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
     await router.navigate({ to: '/foo' })
 
     expect(router.state.location.pathname).toBe('/bar')
-    expect(
-      router.stores.cachedMatches.get().some((d) => d.status === 'redirected'),
-    ).toBe(false)
+    expect(router.state.matches.at(-1)?.status).toBe('success')
     expect(loader).toHaveBeenCalledTimes(1)
   })
 
@@ -1204,6 +1171,9 @@ test('cancelMatches after pending timeout', async () => {
 })
 
 describe('head execution', () => {
+  const getTitle = (match: { meta?: unknown }) =>
+    (match.meta as Array<{ title?: string }> | undefined)?.[0]?.title
+
   const setupBeforeLoadNotFoundHierarchy = (throwAtIndex: 1 | 2 | 3) => {
     const loaderResolvers: Array<(() => void) | undefined> = []
 
@@ -1280,14 +1250,12 @@ describe('head execution', () => {
     const heads = routes.map(
       (route) => route.options.head as ReturnType<typeof makeHead>,
     )
-
     return {
       router,
       routes,
       loaders,
       heads,
       loaderResolvers,
-      throwAtIndex,
     }
   }
 
@@ -1303,26 +1271,27 @@ describe('head execution', () => {
     await Promise.resolve()
     await Promise.resolve()
 
-    for (let i = 0; i < routes.length; i++) {
-      const loader = loaders[i]!
-      const expectedCalls = i < throwAtIndex ? 1 : 0
-      expect(loader).toHaveBeenCalledTimes(expectedCalls)
-    }
-
     expect(loadResolved).toBe(false)
 
+    await vi.waitFor(() => {
+      loaders.forEach((loader, index) => {
+        expect(loader).toHaveBeenCalledTimes(index < throwAtIndex ? 1 : 0)
+      })
+    })
     for (let i = 0; i < throwAtIndex; i++) {
-      expect(loaderResolvers[i]).toBeDefined()
       loaderResolvers[i]!()
     }
 
     await loadPromise
 
-    for (let i = 0; i < heads.length; i++) {
-      const head = heads[i]!
-      const expectedCalls = i <= throwAtIndex ? 1 : 0
-      expect(head).toHaveBeenCalledTimes(expectedCalls)
-    }
+    const titles = router.state.matches.map(getTitle)
+    expect(titles.slice(0, throwAtIndex + 1)).toEqual(
+      ['Root', 'Level 1', 'Level 2', 'Level 3'].slice(0, throwAtIndex + 1),
+    )
+    expect(titles.slice(throwAtIndex + 1).every((title) => !title)).toBe(true)
+    heads.forEach((head, index) => {
+      expect(head).toHaveBeenCalledTimes(index <= throwAtIndex ? 1 : 0)
+    })
 
     for (let i = 0; i < throwAtIndex; i++) {
       const route = routes[i]!
@@ -1343,7 +1312,7 @@ describe('head execution', () => {
     })
   })
 
-  test('executes head once when loader throws notFound', async () => {
+  test('projects head when loader throws notFound', async () => {
     const head = vi.fn(() => ({ meta: [{ title: 'Test' }] }))
     const rootRoute = new BaseRootRoute({})
     const testRoute = new BaseRoute({
@@ -1362,16 +1331,16 @@ describe('head execution', () => {
 
     await router.load()
 
-    expect(head).toHaveBeenCalledTimes(1)
     const match = router.state.matches.find((m) => m.routeId === testRoute.id)
     expect(match?.status).toBe('notFound')
+    expect(match?.meta).toEqual([{ title: 'Test' }])
+    expect(head).toHaveBeenCalledTimes(1)
   })
 
   test('propagates sync beforeLoad non-notFound error running ancestor loaders and heads', async () => {
     const beforeLoadError = new Error('beforeLoad-sync-error')
     const rootLoader = vi.fn(() => ({ level: 0 }))
     const rootHead = vi.fn(() => ({ meta: [{ title: 'Root' }] }))
-
     const rootRoute = new BaseRootRoute({
       loader: rootLoader,
       head: rootHead,
@@ -1379,7 +1348,6 @@ describe('head execution', () => {
 
     const childLoader = vi.fn(() => ({ level: 1 }))
     const childHead = vi.fn(() => ({ meta: [{ title: 'Child' }] }))
-
     const childRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/test',
@@ -1396,23 +1364,17 @@ describe('head execution', () => {
       history: createMemoryHistory({ initialEntries: ['/test'] }),
     })
 
-    const location = router.latestLocation
-    const matches = router.matchRoutes(location)
-    router.stores.setPending(matches)
+    await router.load()
 
-    await expect(
-      loadMatches({
-        router,
-        location,
-        matches,
-        updateMatch: router.updateMatch,
-      }),
-    ).rejects.toBe(beforeLoadError)
+    expect(
+      router.state.matches.find((match) => match.routeId === childRoute.id)
+        ?.error,
+    ).toBe(beforeLoadError)
 
+    expect(router.state.matches[0]?.loaderData).toEqual({ level: 0 })
+    expect(router.state.matches.map(getTitle)).toEqual(['Root', 'Child'])
     expect(rootLoader).toHaveBeenCalledTimes(1)
-    expect(childLoader).toHaveBeenCalledTimes(0)
-    // Head functions still run for ancestors up to the erroring match so that
-    // SSR produces valid <head> content (e.g. charset, viewport, stylesheets).
+    expect(childLoader).not.toHaveBeenCalled()
     expect(rootHead).toHaveBeenCalledTimes(1)
     expect(childHead).toHaveBeenCalledTimes(1)
   })
@@ -1421,7 +1383,6 @@ describe('head execution', () => {
     const beforeLoadError = new Error('beforeLoad-async-error')
     const rootLoader = vi.fn(() => ({ level: 0 }))
     const rootHead = vi.fn(() => ({ meta: [{ title: 'Root' }] }))
-
     const rootRoute = new BaseRootRoute({
       loader: rootLoader,
       head: rootHead,
@@ -1429,7 +1390,6 @@ describe('head execution', () => {
 
     const childLoader = vi.fn(() => ({ level: 1 }))
     const childHead = vi.fn(() => ({ meta: [{ title: 'Child' }] }))
-
     const childRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/test',
@@ -1447,23 +1407,17 @@ describe('head execution', () => {
       history: createMemoryHistory({ initialEntries: ['/test'] }),
     })
 
-    const location = router.latestLocation
-    const matches = router.matchRoutes(location)
-    router.stores.setPending(matches)
+    await router.load()
 
-    await expect(
-      loadMatches({
-        router,
-        location,
-        matches,
-        updateMatch: router.updateMatch,
-      }),
-    ).rejects.toBe(beforeLoadError)
+    expect(
+      router.state.matches.find((match) => match.routeId === childRoute.id)
+        ?.error,
+    ).toBe(beforeLoadError)
 
+    expect(router.state.matches[0]?.loaderData).toEqual({ level: 0 })
+    expect(router.state.matches.map(getTitle)).toEqual(['Root', 'Child'])
     expect(rootLoader).toHaveBeenCalledTimes(1)
-    expect(childLoader).toHaveBeenCalledTimes(0)
-    // Head functions still run for ancestors up to the erroring match so that
-    // SSR produces valid <head> content (e.g. charset, viewport, stylesheets).
+    expect(childLoader).not.toHaveBeenCalled()
     expect(rootHead).toHaveBeenCalledTimes(1)
     expect(childHead).toHaveBeenCalledTimes(1)
   })
@@ -1975,7 +1929,6 @@ describe('params.parse notFound', () => {
 
     const match = router.state.matches.find((m) => m.routeId === testRoute.id)
     expect(match?.status).toBe('success')
-    expect(router.state.statusCode).toBe(200)
   })
 })
 

@@ -558,5 +558,51 @@ describe('frame-decoder', () => {
       const { done: finalDone } = await reader.read()
       expect(finalDone).toBe(true)
     })
+
+    it('should reassemble a chunk payload that spans many small reads', async () => {
+      // A large binary payload delivered in tiny network reads forces the
+      // multi-chunk (copy) path; the contiguous fast path must not change the
+      // reassembled bytes.
+      const payload = new Uint8Array(300)
+      for (let i = 0; i < payload.length; i++) payload[i] = i % 256
+
+      const jsonFrame = encodeJSONFrame('{"ref":11}')
+      const chunkFrame = encodeChunkFrame(11, payload)
+      const endFrame = encodeEndFrame(11)
+
+      const combined = new Uint8Array(
+        jsonFrame.length + chunkFrame.length + endFrame.length,
+      )
+      combined.set(jsonFrame, 0)
+      combined.set(chunkFrame, jsonFrame.length)
+      combined.set(endFrame, jsonFrame.length + chunkFrame.length)
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          // 7-byte reads: smaller than the 9-byte header and the payload, so
+          // both header and payload span multiple buffered chunks.
+          for (let i = 0; i < combined.length; i += 7) {
+            controller.enqueue(combined.subarray(i, i + 7))
+          }
+          controller.close()
+        },
+      })
+
+      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const stream11 = getOrCreateStream(11)
+
+      const jsonReader = jsonChunks.getReader()
+      const { value: jsonValue } = await jsonReader.read()
+      expect(jsonValue).toBe('{"ref":11}')
+
+      const rawReader = stream11.getReader()
+      const received: Array<number> = []
+      while (true) {
+        const { done, value } = await rawReader.read()
+        if (done) break
+        if (value) received.push(...value)
+      }
+      expect(received).toEqual(Array.from(payload))
+    })
   })
 })

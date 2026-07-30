@@ -11,6 +11,7 @@ import type { Page } from '@playwright/test'
 const whitelistErrors = [
   'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
   'Failed to load resource: the server responded with a status of 504',
+  'root loader error',
 ]
 
 const hmrExpect = expect.configure({ timeout: 20_000 })
@@ -24,6 +25,8 @@ const routeFilePaths = {
   componentHmrInlineSplit: 'routes/component-hmr-inline-split.tsx',
   componentHmrInlineNosplit: 'routes/component-hmr-inline-nosplit.tsx',
   componentHmrNamedSplit: 'routes/component-hmr-named-split.tsx',
+  componentHmrLowercaseNamedSplit:
+    'routes/component-hmr-lowercase-named-split.tsx',
   componentHmrNamedNosplit: 'routes/component-hmr-named-nosplit.tsx',
   componentHmrInlineErrorSplit: 'routes/component-hmr-inline-error-split.tsx',
   componentHmrNamedErrorSplit: 'routes/component-hmr-named-error-split.tsx',
@@ -99,6 +102,11 @@ const routeFileRestoreChecks: Partial<
     testId: 'component-hmr-marker',
     text: 'component-hmr-named-split-baseline',
   },
+  componentHmrLowercaseNamedSplit: {
+    url: '/component-hmr-lowercase-named-split',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-lowercase-named-split-baseline',
+  },
   componentHmrNamedNosplit: {
     url: '/component-hmr-named-nosplit',
     testId: 'component-hmr-marker',
@@ -158,9 +166,39 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
       '  component: RootComponent,',
     )
 
+    next = next.replace(
+      '  shellComponent: shellComponent,\n  component: RootContent,',
+      '  component: RootComponent,',
+    )
+
+    next = next.replace(
+      "  loader: () => {\n    throw new Error('root loader error')\n  },\n  errorComponent: errorComponent,\n  component: RootComponent,",
+      "  loader: () => ({\n    crumb: 'Home',\n  }),\n  component: RootComponent,",
+    )
+
     for (const marker of ['root-shell-baseline', 'root-shell-updated']) {
       next = next.replace(
         `function RootShell({ children }: { children: ReactNode }) {\n  return <RootShellDocument marker="${marker}">{children}</RootShellDocument>\n}\n\nfunction Breadcrumbs() {`,
+        'function Breadcrumbs() {',
+      )
+    }
+
+    for (const marker of [
+      'root-shell-lowercase-baseline',
+      'root-shell-lowercase-updated',
+    ]) {
+      next = next.replace(
+        `function shellComponent({ children }: { children: ReactNode }) {\n  return <RootShellDocument marker="${marker}">{children}</RootShellDocument>\n}\n\nfunction Breadcrumbs() {`,
+        'function Breadcrumbs() {',
+      )
+    }
+
+    for (const marker of [
+      'root-error-lowercase-baseline',
+      'root-error-lowercase-updated',
+    ]) {
+      next = next.replace(
+        `function errorComponent() {\n  return (\n    <RootDocument marker="root-component-baseline">\n      <p data-testid="root-error-marker">${marker}</p>\n    </RootDocument>\n  )\n}\n\nfunction Breadcrumbs() {`,
         'function Breadcrumbs() {',
       )
     }
@@ -213,6 +251,10 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
     componentHmrNamedSplit: [
       'component-hmr-named-split-updated',
       'component-hmr-named-split-baseline',
+    ],
+    componentHmrLowercaseNamedSplit: [
+      'component-hmr-lowercase-named-split-updated',
+      'component-hmr-lowercase-named-split-baseline',
     ],
     componentHmrNamedNosplit: [
       'component-hmr-named-nosplit-updated',
@@ -1032,6 +1074,89 @@ test.describe('react-start hmr', () => {
     )
   })
 
+  test('updates root route shellComponent during HMR when its function name is lowercase', async ({
+    page,
+  }) => {
+    await rewriteRouteFile(
+      page,
+      'root',
+      (source) =>
+        source
+          .replace(
+            '  component: RootComponent,',
+            '  shellComponent: shellComponent,\n  component: RootContent,',
+          )
+          .replace(
+            'function Breadcrumbs() {',
+            'function shellComponent({ children }: { children: ReactNode }) {\n  return <RootShellDocument marker="root-shell-lowercase-baseline">{children}</RootShellDocument>\n}\n\nfunction Breadcrumbs() {',
+          ),
+      async () => {},
+    )
+    await page.waitForTimeout(300)
+
+    await reloadPageAndWaitForText(
+      page,
+      '/',
+      'root-shell-marker',
+      'root-shell-lowercase-baseline',
+    )
+    await page.getByTestId('increment').click()
+    await page.getByTestId('message').fill('index preserved')
+    await page.getByTestId('root-message').fill('root preserved')
+
+    await replaceRouteTextAndWait(
+      page,
+      'root',
+      'root-shell-lowercase-baseline',
+      'root-shell-lowercase-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('root-shell-marker')).toHaveText(
+          'root-shell-lowercase-updated',
+        )
+      },
+    )
+
+    await expectHomeStatePreserved(page)
+  })
+
+  test('updates root route errorComponent during HMR when its function name is lowercase', async ({
+    page,
+  }) => {
+    await seedHomeState(page)
+
+    await rewriteRouteFile(
+      page,
+      'root',
+      (source) =>
+        source
+          .replace(
+            "  loader: () => ({\n    crumb: 'Home',\n  }),\n  component: RootComponent,",
+            "  loader: () => {\n    throw new Error('root loader error')\n  },\n  errorComponent: errorComponent,\n  component: RootComponent,",
+          )
+          .replace(
+            'function Breadcrumbs() {',
+            'function errorComponent() {\n  return (\n    <RootDocument marker="root-component-baseline">\n      <p data-testid="root-error-marker">root-error-lowercase-baseline</p>\n    </RootDocument>\n  )\n}\n\nfunction Breadcrumbs() {',
+          ),
+      async () => {
+        await hmrExpect(page.getByTestId('root-error-marker')).toHaveText(
+          'root-error-lowercase-baseline',
+        )
+      },
+    )
+
+    await replaceRouteTextAndWait(
+      page,
+      'root',
+      'root-error-lowercase-baseline',
+      'root-error-lowercase-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('root-error-marker')).toHaveText(
+          'root-error-lowercase-updated',
+        )
+      },
+    )
+  })
+
   test('updates non-root route component during HMR when component is defined inline and codeSplitGroupings is undefined', async ({
     page,
   }) => {
@@ -1085,6 +1210,26 @@ test.describe('react-start hmr', () => {
       async () => {
         await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-named-split-updated',
+        )
+      },
+    )
+
+    await expectComponentHmrStatePreserved(page)
+  })
+
+  test('updates a code-split route component whose function name is lowercase', async ({
+    page,
+  }) => {
+    await seedComponentHmrState(page, '/component-hmr-lowercase-named-split')
+
+    await replaceRouteTextAndWait(
+      page,
+      'componentHmrLowercaseNamedSplit',
+      'component-hmr-lowercase-named-split-baseline',
+      'component-hmr-lowercase-named-split-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
+          'component-hmr-lowercase-named-split-updated',
         )
       },
     )

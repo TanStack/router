@@ -1,15 +1,19 @@
-import { describe, expect, it, vi } from 'vitest'
-import { render, waitFor } from '@testing-library/vue'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, render, waitFor } from '@testing-library/vue'
 import {
+  RouterProvider,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
 } from '../src'
-import { RouterProvider } from '../src/RouterProvider'
+
+afterEach(() => {
+  cleanup()
+})
 
 describe('Transitioner', () => {
-  it('should call router.load() when Transitioner mounts on the client', async () => {
+  it('loads the initial route when the provider mounts', async () => {
     const loader = vi.fn()
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -27,18 +31,11 @@ describe('Transitioner', () => {
       }),
     })
 
-    // Mock router.load() to verify it gets called
-    const loadSpy = vi.spyOn(router, 'load')
+    const view = render(<RouterProvider router={router} />)
 
-    render(<RouterProvider router={router} />)
-    await router.latestLoadPromise
-
-    // Wait for the createRenderEffect to run and call router.load()
     await waitFor(() => {
-      expect(loadSpy).toHaveBeenCalledTimes(1)
       expect(loader).toHaveBeenCalledTimes(1)
+      expect(view.getByText('Index')).toBeInTheDocument()
     })
-
-    loadSpy.mockRestore()
   })
 })

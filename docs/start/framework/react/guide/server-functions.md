@@ -21,6 +21,9 @@ const time = await getServerTime()
 
 Server functions provide server capabilities (database access, environment variables, file system) while maintaining type safety across the network boundary.
 
+> [!NOTE]
+> Server functions are meant to be called by your TanStack Start application. They are easy to use from your app code, and Start handles serialization across the client/server boundary. If you need an endpoint that can be called from outside your Start app, use [server routes](./server-routes) instead.
+
 ## Same-Origin Requests
 
 Server functions are same-origin RPC endpoints for your application. Browser requests to server functions should come from the same origin, verified with Fetch Metadata (`Sec-Fetch-Site`), `Origin`, or `Referer` headers. Use server routes for public APIs or endpoints that intentionally support cross-origin requests.

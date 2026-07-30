@@ -18,6 +18,7 @@ import {
 import { sleep } from './utils'
 
 afterEach(() => {
+  vi.useRealTimers()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
@@ -617,7 +618,8 @@ test('reproducer #4546', async () => {
   fireEvent.click(indexLink)
 
   {
-    // Wait for navigation to complete before checking values
+    // beforeLoad is fresh for this navigation, while the cached loader data is
+    // allowed to remain visible until its background reload completes.
     await screen.findByText('Index route')
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('3')
@@ -626,7 +628,7 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('3')
 
     const loaderData = await screen.findByTestId('index-loader-data')
-    expect(loaderData).toHaveTextContent('3')
+    await vi.waitFor(() => expect(loaderData).toHaveTextContent('3'))
   }
 
   fireEvent.click(invalidateRouterButton)
@@ -647,7 +649,7 @@ test('reproducer #4546', async () => {
   fireEvent.click(idLink)
 
   {
-    // Wait for navigation to complete before checking values
+    // This loader generation can likewise begin with reusable cached data.
     await screen.findByText('$id route')
     const headerCounter = await screen.findByTestId('header-counter')
     expect(headerCounter).toHaveTextContent('5')
@@ -656,11 +658,11 @@ test('reproducer #4546', async () => {
     expect(routeContext).toHaveTextContent('5')
 
     const loaderData = await screen.findByTestId('id-loader-data')
-    expect(loaderData).toHaveTextContent('5')
+    await vi.waitFor(() => expect(loaderData).toHaveTextContent('5'))
   }
 })
 
-test('clears pendingTimeout when match resolves', async () => {
+test('does not show pending UI when loaders finish before their pending delays', async () => {
   const defaultPendingComponentOnMountMock = vi.fn()
   const nestedPendingComponentOnMountMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
@@ -728,13 +730,16 @@ test('clears pendingTimeout when match resolves', async () => {
   })
 
   render(() => <RouterProvider router={router} />)
-  await router.latestLoadPromise
-  const linkToFoo = await screen.findByTestId('link-to-foo')
-  fireEvent.click(linkToFoo)
-  const fooElement = await screen.findByText('Nested Foo page')
+  await screen.findByTestId('link-to-foo')
+  vi.useFakeTimers()
+  const navigation = router.navigate({ to: '/nested/foo' })
+  await vi.advanceTimersByTimeAsync(WAIT_TIME * 5)
+  await navigation
+  const fooElement = screen.getByText('Nested Foo page')
   expect(fooElement).toBeInTheDocument()
 
   expect(router.state.location.href).toBe('/nested/foo')
+  expect(router.state.status).toBe('idle')
 
   // none of the pending components should have been called
   expect(defaultPendingComponentOnMountMock).not.toHaveBeenCalled()
@@ -787,7 +792,7 @@ test('useLoaderData retains previous data while route match is pending', async (
   expect(screen.getByTestId('combined')).toHaveTextContent('6:0')
 })
 
-test('cancelMatches after pending timeout', async () => {
+test('navigating away from a pending route aborts its loader', async () => {
   function getPendingComponent(onMount: () => void) {
     const PendingComponent = () => {
       onMount()
@@ -797,6 +802,7 @@ test('cancelMatches after pending timeout', async () => {
   }
   const onAbortMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
+  let fooSignal: AbortSignal | undefined
   const history = createMemoryHistory({ initialEntries: ['/'] })
   const rootRoute = createRootRoute({
     component: () => (
@@ -815,17 +821,18 @@ test('cancelMatches after pending timeout', async () => {
   const fooRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/foo',
-    pendingMs: WAIT_TIME * 20,
+    pendingMs: 0,
     loader: async ({ abortController }) => {
+      fooSignal = abortController.signal
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(() => {
-          resolve()
-        }, WAIT_TIME * 40)
-        abortController.signal.addEventListener('abort', () => {
-          onAbortMock()
-          clearTimeout(timer)
-          resolve()
-        })
+        abortController.signal.addEventListener(
+          'abort',
+          () => {
+            onAbortMock()
+            resolve()
+          },
+          { once: true },
+        )
       })
     },
     pendingComponent: getPendingComponent(fooPendingComponentOnMountMock),
@@ -839,16 +846,20 @@ test('cancelMatches after pending timeout', async () => {
   const routeTree = rootRoute.addChildren([fooRoute, barRoute])
   const router = createRouter({ routeTree, history })
   render(() => <RouterProvider router={router} />)
-  await router.latestLoadPromise
   const fooLink = await screen.findByTestId('link-to-foo')
   fireEvent.click(fooLink)
-  await sleep(WAIT_TIME * 30)
   const pendingElement = await screen.findByText('Pending...')
   expect(pendingElement).toBeInTheDocument()
-  const barLink = await screen.findByTestId('link-to-bar')
-  fireEvent.click(barLink)
-  const barElement = await screen.findByText('Bar page')
+  expect(fooSignal?.aborted).toBe(false)
+  await router.navigate({ to: '/bar' })
+  const barElement = screen.getByText('Bar page')
   expect(barElement).toBeInTheDocument()
+
   expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
-  expect(onAbortMock).toHaveBeenCalled()
+  expect(onAbortMock).toHaveBeenCalledTimes(1)
+  expect(fooSignal?.aborted).toBe(true)
+  expect(screen.queryByText('Pending...')).not.toBeInTheDocument()
+  expect(screen.queryByText('Foo page')).not.toBeInTheDocument()
+  expect(router.state.location.href).toBe('/bar')
+  expect(router.state.status).toBe('idle')
 })

@@ -90,3 +90,6 @@ vite.config.ts.timestamp_*
 
 # eslint-plugin-start perf fixtures
 /e2e/eslint-plugin-start/src/perf/generated
+
+# local memory flame profiles
+benchmarks/memory/**/.profiles/

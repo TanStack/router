@@ -23,13 +23,14 @@
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.0.1",
+    "@rsbuild/core": "^2.1.0",
     "@rsbuild/plugin-babel": "^1.1.2",
     "@rsbuild/plugin-solid": "^1.1.1",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "srvx": "^0.11.9",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11"
   },
