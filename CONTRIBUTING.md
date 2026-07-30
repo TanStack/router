@@ -1,30 +1,85 @@
-# Contributing
+# Contributing to TanStack Router
 
-- Clone the repo
-  - `gh repo clone TanStack/router`
-- Ensure `node` is installed
-  - https://nodejs.org/en/
-- Ensure `pnpm` is installed
-  - https://pnpm.io/installation
-  - Why? We use `pnpm` to manage workspace dependencies. It's easily the best monorepo/workspace experience available as of when this was written.
-- Install dependencies
-  - `pnpm install`
-  - This installs dependencies for all of the packages in the monorepo, even examples!
-  - Dependencies inside of the packages and examples are automatically linked together as local/dynamic dependencies.
-- Install test dependencies
-  - `pnpm exec playwright install` (required for e2e tests)
-- Run the build or dev watcher
-  - `pnpm build:all` (build all packages) or
-  - `pnpm build` (cached build with [nx affected](https://nx.dev/nx-api/nx/documents/affected)) or
-  - `pnpm dev`
-- Navigate to an example
-  - `cd examples/react/basic`
-- Run the example
-  - `pnpm dev`
-- Make changes to the code
-  - If you ran `pnpm dev` the dev watcher will automatically rebuild the code that has changed
-- Editing the docs locally and previewing the changes
-  - The documentations for all the TanStack projects are hosted on [tanstack.com](https://tanstack.com), which is a TanStack Start application (https://github.com/TanStack/tanstack.com). You need to run this app locally to preview your changes in the `TanStack/router` docs.
+TanStack Router is a community project. Contributions to both TanStack Router and TanStack Start are welcome.
+
+## Setup
+
+1. Clone the repository:
+
+   ```sh
+   gh repo clone TanStack/router
+   ```
+
+2. Install [Node.js](https://nodejs.org/en/) and [pnpm](https://pnpm.io/installation). This repository requires pnpm `11.x.x` or newer.
+3. Install dependencies:
+
+   ```sh
+   pnpm install
+   ```
+
+   This installs dependencies for the entire monorepo, including examples. Workspace dependencies are linked automatically.
+
+4. Install the Playwright browsers if you will run end-to-end tests:
+
+   ```sh
+   pnpm exec playwright install
+   ```
+
+5. Create a branch for your changes:
+
+   ```sh
+   git checkout -b my-new-branch
+   ```
+
+## Before you start
+
+PRs that require API changes must first be proposed as an issue and receive maintainer sign-off before implementation begins.
+
+## Development
+
+- `pnpm build:all` builds all packages.
+- `pnpm build` runs the cached Nx build for affected packages.
+- `pnpm dev` builds the packages and starts the development watcher.
+
+To run an example application, move into its directory and start its development server. For example:
+
+```sh
+cd examples/react/basic
+pnpm dev
+```
+
+## Testing and linting
+
+Run the checks relevant to your changes while developing:
+
+- `pnpm test:eslint` checks linting for affected packages.
+- `pnpm test:types` checks types for affected packages.
+- `pnpm test:unit` runs unit tests for affected packages.
+- `pnpm test:build` checks builds for affected packages.
+- `pnpm test:e2e` runs end-to-end tests and requires the Playwright browsers.
+
+Before opening a pull request, run at least:
+
+```sh
+pnpm test:eslint
+pnpm test:types
+pnpm test:unit
+```
+
+To run the full CI test suite, use `pnpm test:ci`. For faster feedback, use an Nx target for a specific package or pass a test file or test name after `--`. For example:
+
+```sh
+pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx
+pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx -t "preloading"
+```
+
+Add appropriate unit tests for isolated behavior and end-to-end tests for browser or application workflows. Test relevant example applications when the change affects them.
+
+## Documentation
+
+Update the relevant documentation for user-facing changes. Documentation lives in the `docs/` directory, with separate sections for Router and Start. Use relative links within the `docs/` directory, such as `./guide/data-loading`.
+
+The documentation sites are hosted on [tanstack.com](https://tanstack.com), which is a [TanStack Start application](https://github.com/TanStack/tanstack.com). To preview documentation changes locally, clone both repositories as siblings:
 
 > [!NOTE]
 > The website fetches the doc pages from GitHub in production, and searches for them at `../router/docs` in development. Your local clone of `TanStack/router` needs to be in the same directory as the local clone of `TanStack/tanstack.com`.
@@ -53,7 +108,7 @@ git clone git@github.com:TanStack/tanstack.com.git --depth=1 --single-branch --b
 > [!NOTE]
 > Your `tanstack` directory should look like this:
 >
-> ```
+> ```text
 > tanstack/
 >    |
 >    +-- router/ (<-- this directory cannot be called anything else!)
@@ -75,6 +130,12 @@ pnpm dev
 > [!WARNING]
 > You will need to update the `docs/(router or start)config.json` file (in `TanStack/router`) if you add a new documentation page!
 
-You can see the whole process in the screen capture below:
+## AI-assisted contributions
 
-https://github.com/fulopkovacs/form/assets/43729152/9d35a3c3-8153-4e74-9cb2-af275f7a269b
+AI tools can be useful for exploring the codebase, drafting changes, and writing tests. They do not replace the contributor's responsibility for the result.
+
+1. **Keep the contribution in your own voice**. Review and rewrite generated code comments, issue reports, and pull request descriptions so they reflect what you actually mean.
+2. **Keep ownership of technical decisions**. Understand every change, verify its behavior with the appropriate tests and documentation, and be ready to explain it during review.
+3. **Do not paste LLM output verbatim into the codebase or a contribution**. Treat generated text and code as a draft: check its claims, adapt it to the repository, and remove anything you cannot justify. Issues or pull requests that appear to contain unreviewed LLM output may be closed without further review.
+
+AI-assisted contributions follow the same standards for correctness, testing, documentation, and review as every other contribution.

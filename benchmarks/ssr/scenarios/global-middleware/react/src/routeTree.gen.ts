@@ -10,8 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PageIdRouteImport } from './routes/page.$id'
 import { Route as ApiFnUrlsRouteImport } from './routes/api.fn-urls'
+import { Route as PageIdRouteImport } from './routes/page.$id'
 import { Route as ApiPingIdRouteImport } from './routes/api.ping.$id'
 
 const IndexRoute = IndexRouteImport.update({
@@ -19,14 +19,14 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PageIdRoute = PageIdRouteImport.update({
-  id: '/page/$id',
-  path: '/page/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiFnUrlsRoute = ApiFnUrlsRouteImport.update({
   id: '/api/fn-urls',
   path: '/api/fn-urls',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PageIdRoute = PageIdRouteImport.update({
+  id: '/page/$id',
+  path: '/page/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPingIdRoute = ApiPingIdRouteImport.update({
@@ -78,18 +78,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/page/$id': {
-      id: '/page/$id'
-      path: '/page/$id'
-      fullPath: '/page/$id'
-      preLoaderRoute: typeof PageIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/fn-urls': {
       id: '/api/fn-urls'
       path: '/api/fn-urls'
       fullPath: '/api/fn-urls'
       preLoaderRoute: typeof ApiFnUrlsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/page/$id': {
+      id: '/page/$id'
+      path: '/page/$id'
+      fullPath: '/page/$id'
+      preLoaderRoute: typeof PageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ping/$id': {

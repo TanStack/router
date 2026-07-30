@@ -165,6 +165,12 @@ function RootContent() {
       detail: 'Named component with default splitting',
     },
     {
+      testId: 'component-hmr-lowercase-named-split-link',
+      to: '/component-hmr-lowercase-named-split',
+      label: 'Lowercase Named Split',
+      detail: 'Lowercase named component with default splitting',
+    },
+    {
       testId: 'component-hmr-named-nosplit-link',
       to: '/component-hmr-named-nosplit',
       label: 'Named No Split',

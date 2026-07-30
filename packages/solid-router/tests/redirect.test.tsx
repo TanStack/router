@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { createControlledPromise } from '@tanstack/router-core'
 
 import {
   Link,
@@ -107,6 +108,7 @@ describe('redirect', () => {
 
     test('when root `beforeLoad` redirects while root pendingComponent is showing and the target route is lazy', async () => {
       let hasRedirected = false
+      const beforeLoad = createControlledPromise<void>()
       const consoleError = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {})
@@ -116,7 +118,7 @@ describe('redirect', () => {
         pendingMs: 0,
         pendingComponent: () => <div data-testid="pending">loading</div>,
         beforeLoad: async () => {
-          await sleep(WAIT_TIME)
+          await beforeLoad
           if (!hasRedirected) {
             hasRedirected = true
             throw redirect({ to: '/posts' })
@@ -142,12 +144,20 @@ describe('redirect', () => {
 
       render(() => <RouterProvider router={router} />)
 
+      try {
+        expect(await screen.findByTestId('pending')).toBeInTheDocument()
+        expect(screen.queryByTestId('index-page')).not.toBeInTheDocument()
+      } finally {
+        beforeLoad.resolve()
+      }
+
       // The lazy target route adds the async boundary that exposes the stale
       // redirected-match render path this regression is guarding.
       expect(await screen.findByTestId('lazy-route-page')).toBeInTheDocument()
       expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('index-page')).not.toBeInTheDocument()
       expect(router.state.location.href).toBe('/posts')
-      expect(router.state.status).toBe('idle')
+      await vi.waitFor(() => expect(router.state.status).toBe('idle'))
       expect(consoleError).not.toHaveBeenCalled()
     })
 

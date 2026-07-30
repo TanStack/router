@@ -21,6 +21,7 @@ import {
   createHydrateCompilerPlugin,
 } from '../../hydrate-when-transform'
 import { resolveViteId } from '../../utils'
+import { appendIdQueryFlag, removeIdQueryFlag } from '../module-id'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
   decodeViteDevServerModuleSpecifier,
@@ -351,7 +352,7 @@ export function startCompilerPlugin(
                   {
                     load: (options) => this.load(options),
                     error: (message) => this.error(message),
-                    devId: `${id}?${SERVER_FN_LOOKUP}`,
+                    devId: appendIdQueryFlag(id, SERVER_FN_LOOKUP),
                   },
                 )
                 if (code !== undefined) {
@@ -364,7 +365,10 @@ export function startCompilerPlugin(
 
                 if (r) {
                   if (!r.external) {
-                    return cleanId(r.id)
+                    // Keep the resolved ID intact because it is passed back to
+                    // Vite's load hook. Virtual-module prefixes and queries are
+                    // part of that load identity, not compiler-only metadata.
+                    return r.id
                   }
                 }
 
@@ -496,7 +500,10 @@ export function startCompilerPlugin(
         },
         handler(code, id) {
           const compiler = compilers.get(this.environment.name)
-          compiler?.ingestModule({ code, id: cleanId(id) })
+          compiler?.ingestModule({
+            code,
+            id: removeIdQueryFlag(id, SERVER_FN_LOOKUP),
+          })
         },
       },
     },

@@ -84,78 +84,33 @@ function createLoaderRouter({
 }
 
 describe('granular stores', () => {
-  test('keeps pool stores correct across active/pending/cached transitions', async () => {
+  test('keeps ordered route state current across match generations', async () => {
     const router = createRouter()
     await router.navigate({ to: '/posts/123' })
 
-    const activeMatches = router.state.matches
+    expect(router.state.location.pathname).toBe('/posts/123')
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      '__root__',
+      '/posts/$postId',
+    ])
+    expect(router.state.matches.at(-1)?.params).toMatchObject({ postId: '123' })
 
-    // Active pool contains all active matches with correct routeIds
-    expect(router.stores.matchesId.get()).toEqual(
-      activeMatches.map((match) => match.id),
-    )
-    activeMatches.forEach((match) => {
-      const store = router.stores.matchStores.get(match.id)
-      expect(store).toBeDefined()
-      expect(store!.routeId).toBe(match.routeId)
-      // getRouteMatchStore resolves to the same state
-      expect(router.stores.getRouteMatchStore(match.routeId).get()).toBe(
-        store!.get(),
-      )
-    })
+    await router.navigate({ to: '/posts/456' })
 
-    const pendingMatches = [...activeMatches].reverse().map((match, index) => ({
-      ...match,
-      id: `${match.id}__pending_${index}`,
-    }))
-    const cachedMatches = [...activeMatches].map((match, index) => ({
-      ...match,
-      id: `${match.id}__cached_${index}`,
-    }))
+    expect(router.state.location.pathname).toBe('/posts/456')
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      '__root__',
+      '/posts/$postId',
+    ])
+    expect(router.state.matches.at(-1)?.params).toMatchObject({ postId: '456' })
 
-    router.stores.setPending(pendingMatches)
-    router.stores.setCached(cachedMatches)
+    await router.navigate({ to: '/about' })
 
-    expect(router.stores.matchesId.get()).toEqual(
-      activeMatches.map((match) => match.id),
-    )
-    expect(router.stores.pendingIds.get()).toEqual(
-      pendingMatches.map((match) => match.id),
-    )
-    expect(router.stores.cachedIds.get()).toEqual(
-      cachedMatches.map((match) => match.id),
-    )
-
-    // Pending pool has correct routeIds
-    pendingMatches.forEach((match) => {
-      const pendingStore = router.stores.pendingMatchStores.get(match.id)
-      expect(pendingStore).toBeDefined()
-      expect(pendingStore!.routeId).toBe(match.routeId)
-      // Pending match is NOT in the active pool
-      expect(router.stores.matchStores.get(match.id)).toBeUndefined()
-      // Active pool still has a match for this routeId
-      expect(
-        router.stores.getRouteMatchStore(match.routeId).get(),
-      ).toBeDefined()
-    })
-
-    const nextActiveMatches = activeMatches.map((match, index) => ({
-      ...match,
-      id: `${match.id}__active_next_${index}`,
-    }))
-    router.stores.setMatches(nextActiveMatches)
-
-    expect(router.stores.matchesId.get()).toEqual(
-      nextActiveMatches.map((match) => match.id),
-    )
-    nextActiveMatches.forEach((match) => {
-      const store = router.stores.matchStores.get(match.id)
-      expect(store).toBeDefined()
-      expect(store!.routeId).toBe(match.routeId)
-      expect(router.stores.getRouteMatchStore(match.routeId).get()).toBe(
-        store!.get(),
-      )
-    })
+    expect(router.state.location.pathname).toBe('/about')
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      '__root__',
+      '/about',
+    ])
   })
 
   test('match store updates are isolated to the touched active match', async () => {

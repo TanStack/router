@@ -39,7 +39,7 @@ But to achieve this, we had to make some decisions that deviate from the norms i
 
 ## Why is the Router's configuration done this way?
 
-When you want to leverage the TypeScript's inference features to its fullest, you'll quickly realize that _Generics_ are your best friend. And so, TanStack Router uses Generics everywhere to ensure that the types of your routes are inferred as much as possible.
+When you want to leverage TypeScript's inference features to its fullest, you'll quickly realize that _Generics_ are your best friend. And so, TanStack Router uses Generics everywhere to ensure that the types of your routes are inferred as much as possible.
 
 This means that you have to define your routes in a way that allows TypeScript to infer the types of your routes as much as possible.
 
@@ -219,7 +219,7 @@ TanStack Router's file-based routing is designed to solve all of these issues. I
 The file-based routing approach is powered by the TanStack Router Bundler Plugin. It performs 3 essential tasks that solve the pain points in route configuration when using code-based routing:
 
 1. **Route configuration boilerplate**: It generates the boilerplate for your route configurations.
-2. **Route tree stitching**: It stitches together your route configurations into a single cohesive route-tree. Also in the background, it correctly updates the route configurations to define the `getParentRoute` function match the routes with their parent routes.
+2. **Route tree stitching**: It stitches together your route configurations into a single cohesive route-tree. Also in the background, it correctly updates the route configurations to define the `getParentRoute` function and so matches the routes with their parent routes.
 3. **Code-splitting**: It automatically code-splits your route content components and updates the route configurations with the correct component. Additionally, at runtime, it ensures that the correct component is loaded when the route is visited.
 
 Let's take a look at how the route configuration for the previous example would look like with file-based routing.

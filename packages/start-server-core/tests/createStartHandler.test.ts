@@ -1,3 +1,5 @@
+// @vitest-environment node
+
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { createMiddleware } from '@tanstack/start-client-core'

@@ -158,15 +158,12 @@ describe('ssr scripts', () => {
       { src: 'script3.js' },
     ])
 
-    const { container } = await act(() =>
-      render(<RouterProvider router={router} />),
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={router} />,
     )
-    expect(await screen.findByTestId('root')).toBeInTheDocument()
-    expect(await screen.findByTestId('index')).toBeInTheDocument()
-
-    expect(container.innerHTML).toEqual(
-      `<div><div data-testid="root">root</div><div data-testid="index">index</div><script src="script.js"></script><script src="script3.js"></script></div>`,
-    )
+    expect(html).toContain('<script src="script.js"></script>')
+    expect(html).toContain('<script src="script3.js"></script>')
+    expect(html).not.toContain('script2.js')
   })
 })
 

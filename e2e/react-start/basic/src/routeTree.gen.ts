@@ -9,100 +9,124 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UsersRouteImport } from './routes/users'
-import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexport'
-import { Route as StreamRouteImport } from './routes/stream'
-import { Route as ScriptsRouteImport } from './routes/scripts'
-import { Route as RawStreamRouteImport } from './routes/raw-stream'
-import { Route as PrimitiveBeforeloadErrorRouteImport } from './routes/primitive-beforeload-error'
-import { Route as PostsRouteImport } from './routes/posts'
-import { Route as PlainTsTypeAssertionRouteImport } from './routes/plain-ts-type-assertion'
-import { Route as LinksRouteImport } from './routes/links'
-import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
-import { Route as DeferredRouteImport } from './routes/deferred'
-import { Route as ClientOnlyRouteImport } from './routes/client-only'
-import { Route as AsyncScriptsRouteImport } from './routes/async-scripts'
-import { Route as LayoutRouteImport } from './routes/_layout'
-import { Route as SpecialCharsRouteRouteImport } from './routes/specialChars/route'
-import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
-import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UsersIndexRouteImport } from './routes/users.index'
-import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
-import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
-import { Route as RawStreamIndexRouteImport } from './routes/raw-stream/index'
-import { Route as PostsIndexRouteImport } from './routes/posts.index'
-import { Route as NotFoundIndexRouteImport } from './routes/not-found/index'
-import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
-import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
-import { Route as SpecialCharsChar45824Char54620Char48124Char44397RouteImport } from './routes/specialChars/대한민국'
-import { Route as SpecialCharsSearchRouteImport } from './routes/specialChars/search'
-import { Route as SpecialCharsHashRouteImport } from './routes/specialChars/hash'
-import { Route as SpecialCharsParamRouteImport } from './routes/specialChars/$param'
-import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/search-params/loader-throws-redirect'
-import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
-import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
-import { Route as RawStreamSsrTextHintRouteImport } from './routes/raw-stream/ssr-text-hint'
-import { Route as RawStreamSsrSingleRouteImport } from './routes/raw-stream/ssr-single'
-import { Route as RawStreamSsrMultipleRouteImport } from './routes/raw-stream/ssr-multiple'
-import { Route as RawStreamSsrMixedRouteImport } from './routes/raw-stream/ssr-mixed'
-import { Route as RawStreamSsrBinaryHintRouteImport } from './routes/raw-stream/ssr-binary-hint'
-import { Route as RawStreamClientCallRouteImport } from './routes/raw-stream/client-call'
-import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
-import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
-import { Route as NotFoundViaBeforeLoadTargetRootRouteImport } from './routes/not-found/via-beforeLoad-target-root'
-import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
-import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
-import { Route as ApiUsersRouteImport } from './routes/api.users'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as AsyncScriptsRouteImport } from './routes/async-scripts'
+import { Route as ClientOnlyRouteImport } from './routes/client-only'
+import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
+import { Route as LinksRouteImport } from './routes/links'
+import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
+import { Route as PlainTsTypeAssertionRouteImport } from './routes/plain-ts-type-assertion'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as PrimitiveBeforeloadErrorRouteImport } from './routes/primitive-beforeload-error'
+import { Route as RawStreamRouteImport } from './routes/raw-stream'
+import { Route as ScriptsRouteImport } from './routes/scripts'
+import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
+import { Route as SpecialCharsRouteRouteImport } from './routes/specialChars/route'
+import { Route as StreamRouteImport } from './routes/stream'
+import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexport'
+import { Route as UsersRouteImport } from './routes/users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
-import { Route as SpecialCharsMalformedRouteRouteImport } from './routes/specialChars/malformed/route'
-import { Route as NotFoundParentBoundaryRouteRouteImport } from './routes/not-found/parent-boundary/route'
+import { Route as ApiUsersRouteImport } from './routes/api.users'
+import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
+import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
+import { Route as NotFoundIndexRouteImport } from './routes/not-found/index'
 import { Route as NotFoundDeepRouteRouteImport } from './routes/not-found/deep/route'
-import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
-import { Route as NotFoundParentBoundaryIndexRouteImport } from './routes/not-found/parent-boundary/index'
-import { Route as NotFoundDeepIndexRouteImport } from './routes/not-found/deep/index'
-import { Route as SpecialCharsMalformedSearchRouteImport } from './routes/specialChars/malformed/search'
-import { Route as SpecialCharsMalformedParamRouteImport } from './routes/specialChars/malformed/$param'
-import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
-import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
-import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
-import { Route as NotFoundParentBoundaryViaBeforeLoadRouteImport } from './routes/not-found/parent-boundary/via-beforeLoad'
-import { Route as ApiUsersIdRouteImport } from './routes/api/users.$id'
-import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as NotFoundParentBoundaryRouteRouteImport } from './routes/not-found/parent-boundary/route'
+import { Route as NotFoundViaBeforeLoadRouteImport } from './routes/not-found/via-beforeLoad'
+import { Route as NotFoundViaBeforeLoadTargetRootRouteImport } from './routes/not-found/via-beforeLoad-target-root'
+import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as RawStreamIndexRouteImport } from './routes/raw-stream/index'
+import { Route as RawStreamClientCallRouteImport } from './routes/raw-stream/client-call'
+import { Route as RawStreamSsrBinaryHintRouteImport } from './routes/raw-stream/ssr-binary-hint'
+import { Route as RawStreamSsrMixedRouteImport } from './routes/raw-stream/ssr-mixed'
+import { Route as RawStreamSsrMultipleRouteImport } from './routes/raw-stream/ssr-multiple'
+import { Route as RawStreamSsrSingleRouteImport } from './routes/raw-stream/ssr-single'
+import { Route as RawStreamSsrTextHintRouteImport } from './routes/raw-stream/ssr-text-hint'
+import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
+import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
+import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
+import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
+import { Route as SearchParamsLoaderThrowsRedirectRouteImport } from './routes/search-params/loader-throws-redirect'
+import { Route as SpecialCharsParamRouteImport } from './routes/specialChars/$param'
+import { Route as SpecialCharsHashRouteImport } from './routes/specialChars/hash'
+import { Route as SpecialCharsMalformedRouteRouteImport } from './routes/specialChars/malformed/route'
+import { Route as SpecialCharsSearchRouteImport } from './routes/specialChars/search'
+import { Route as SpecialCharsChar45824Char54620Char48124Char44397RouteImport } from './routes/specialChars/대한민국'
+import { Route as UsersIndexRouteImport } from './routes/users.index'
+import { Route as UsersUserIdRouteImport } from './routes/users.$userId'
 import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as ApiUsersIdRouteImport } from './routes/api/users.$id'
+import { Route as NotFoundDeepIndexRouteImport } from './routes/not-found/deep/index'
 import { Route as NotFoundDeepBRouteRouteImport } from './routes/not-found/deep/b/route'
-import { Route as RedirectTargetServerFnIndexRouteImport } from './routes/redirect/$target/serverFn/index'
-import { Route as RedirectTargetServerFnViaUseServerFnRouteImport } from './routes/redirect/$target/serverFn/via-useServerFn'
-import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/redirect/$target/serverFn/via-loader'
-import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
+import { Route as NotFoundParentBoundaryIndexRouteImport } from './routes/not-found/parent-boundary/index'
+import { Route as NotFoundParentBoundaryViaBeforeLoadRouteImport } from './routes/not-found/parent-boundary/via-beforeLoad'
+import { Route as PostsPostIdDeepRouteImport } from './routes/posts_.$postId.deep'
+import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
+import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
+import { Route as SpecialCharsMalformedParamRouteImport } from './routes/specialChars/malformed/$param'
+import { Route as SpecialCharsMalformedSearchRouteImport } from './routes/specialChars/malformed/search'
 import { Route as FooBarQuxHereRouteImport } from './routes/foo/$bar/$qux/_here'
 import { Route as NotFoundDeepBCRouteRouteImport } from './routes/not-found/deep/b/c/route'
+import { Route as RedirectTargetServerFnIndexRouteImport } from './routes/redirect/$target/serverFn/index'
+import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
+import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/redirect/$target/serverFn/via-loader'
+import { Route as RedirectTargetServerFnViaUseServerFnRouteImport } from './routes/redirect/$target/serverFn/via-useServerFn'
 import { Route as FooBarQuxHereIndexRouteImport } from './routes/foo/$bar/$qux/_here/index'
 import { Route as NotFoundDeepBCDRouteImport } from './routes/not-found/deep/b/c/d'
 
-const UsersRoute = UsersRouteImport.update({
-  id: '/users',
-  path: '/users',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TypeOnlyReexportRoute = TypeOnlyReexportRouteImport.update({
-  id: '/type-only-reexport',
-  path: '/type-only-reexport',
+const LayoutRoute = LayoutRouteImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const StreamRoute = StreamRouteImport.update({
-  id: '/stream',
-  path: '/stream',
+const AsyncScriptsRoute = AsyncScriptsRouteImport.update({
+  id: '/async-scripts',
+  path: '/async-scripts',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScriptsRoute = ScriptsRouteImport.update({
-  id: '/scripts',
-  path: '/scripts',
+const ClientOnlyRoute = ClientOnlyRouteImport.update({
+  id: '/client-only',
+  path: '/client-only',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RawStreamRoute = RawStreamRouteImport.update({
-  id: '/raw-stream',
-  path: '/raw-stream',
+const DeferredRoute = DeferredRouteImport.update({
+  id: '/deferred',
+  path: '/deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InlineScriptsRoute = InlineScriptsRouteImport.update({
+  id: '/inline-scripts',
+  path: '/inline-scripts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinksRoute = LinksRouteImport.update({
+  id: '/links',
+  path: '/links',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotFoundRouteRoute = NotFoundRouteRouteImport.update({
+  id: '/not-found',
+  path: '/not-found',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlainTsTypeAssertionRoute = PlainTsTypeAssertionRouteImport.update({
+  id: '/plain-ts-type-assertion',
+  path: '/plain-ts-type-assertion',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PrimitiveBeforeloadErrorRoute =
@@ -111,48 +135,14 @@ const PrimitiveBeforeloadErrorRoute =
     path: '/primitive-beforeload-error',
     getParentRoute: () => rootRouteImport,
   } as any)
-const PostsRoute = PostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
+const RawStreamRoute = RawStreamRouteImport.update({
+  id: '/raw-stream',
+  path: '/raw-stream',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PlainTsTypeAssertionRoute = PlainTsTypeAssertionRouteImport.update({
-  id: '/plain-ts-type-assertion',
-  path: '/plain-ts-type-assertion',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LinksRoute = LinksRouteImport.update({
-  id: '/links',
-  path: '/links',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const InlineScriptsRoute = InlineScriptsRouteImport.update({
-  id: '/inline-scripts',
-  path: '/inline-scripts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeferredRoute = DeferredRouteImport.update({
-  id: '/deferred',
-  path: '/deferred',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClientOnlyRoute = ClientOnlyRouteImport.update({
-  id: '/client-only',
-  path: '/client-only',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AsyncScriptsRoute = AsyncScriptsRouteImport.update({
-  id: '/async-scripts',
-  path: '/async-scripts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SpecialCharsRouteRoute = SpecialCharsRouteRouteImport.update({
-  id: '/specialChars',
-  path: '/specialChars',
+const ScriptsRoute = ScriptsRouteImport.update({
+  id: '/scripts',
+  path: '/scripts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
@@ -160,45 +150,34 @@ const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
   path: '/search-params',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NotFoundRouteRoute = NotFoundRouteRouteImport.update({
-  id: '/not-found',
-  path: '/not-found',
+const SpecialCharsRouteRoute = SpecialCharsRouteRouteImport.update({
+  id: '/specialChars',
+  path: '/specialChars',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const StreamRoute = StreamRouteImport.update({
+  id: '/stream',
+  path: '/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersIndexRoute = UsersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => UsersRoute,
-} as any)
-const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SearchParamsRouteRoute,
-} as any)
-const RedirectIndexRoute = RedirectIndexRouteImport.update({
-  id: '/redirect/',
-  path: '/redirect/',
+const TypeOnlyReexportRoute = TypeOnlyReexportRouteImport.update({
+  id: '/type-only-reexport',
+  path: '/type-only-reexport',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RawStreamIndexRoute = RawStreamIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => RawStreamRoute,
+const UsersRoute = UsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const PostsIndexRoute = PostsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PostsRoute,
+const LayoutLayout2Route = LayoutLayout2RouteImport.update({
+  id: '/_layout-2',
+  getParentRoute: () => LayoutRoute,
 } as any)
-const NotFoundIndexRoute = NotFoundIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => NotFoundRouteRoute,
+const ApiUsersRoute = ApiUsersRouteImport.update({
+  id: '/api/users',
+  path: '/api/users',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const MultiCookieRedirectIndexRoute =
   MultiCookieRedirectIndexRouteImport.update({
@@ -206,86 +185,31 @@ const MultiCookieRedirectIndexRoute =
     path: '/multi-cookie-redirect/',
     getParentRoute: () => rootRouteImport,
   } as any)
-const UsersUserIdRoute = UsersUserIdRouteImport.update({
-  id: '/$userId',
-  path: '/$userId',
-  getParentRoute: () => UsersRoute,
-} as any)
-const SpecialCharsChar45824Char54620Char48124Char44397Route =
-  SpecialCharsChar45824Char54620Char48124Char44397RouteImport.update({
-    id: '/대한민국',
-    path: '/대한민국',
-    getParentRoute: () => SpecialCharsRouteRoute,
+const MultiCookieRedirectTargetRoute =
+  MultiCookieRedirectTargetRouteImport.update({
+    id: '/multi-cookie-redirect/target',
+    path: '/multi-cookie-redirect/target',
+    getParentRoute: () => rootRouteImport,
   } as any)
-const SpecialCharsSearchRoute = SpecialCharsSearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => SpecialCharsRouteRoute,
+const NotFoundIndexRoute = NotFoundIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotFoundRouteRoute,
 } as any)
-const SpecialCharsHashRoute = SpecialCharsHashRouteImport.update({
-  id: '/hash',
-  path: '/hash',
-  getParentRoute: () => SpecialCharsRouteRoute,
+const NotFoundDeepRouteRoute = NotFoundDeepRouteRouteImport.update({
+  id: '/deep',
+  path: '/deep',
+  getParentRoute: () => NotFoundRouteRoute,
 } as any)
-const SpecialCharsParamRoute = SpecialCharsParamRouteImport.update({
-  id: '/$param',
-  path: '/$param',
-  getParentRoute: () => SpecialCharsRouteRoute,
-} as any)
-const SearchParamsLoaderThrowsRedirectRoute =
-  SearchParamsLoaderThrowsRedirectRouteImport.update({
-    id: '/loader-throws-redirect',
-    path: '/loader-throws-redirect',
-    getParentRoute: () => SearchParamsRouteRoute,
+const NotFoundParentBoundaryRouteRoute =
+  NotFoundParentBoundaryRouteRouteImport.update({
+    id: '/parent-boundary',
+    path: '/parent-boundary',
+    getParentRoute: () => NotFoundRouteRoute,
   } as any)
-const SearchParamsDefaultRoute = SearchParamsDefaultRouteImport.update({
-  id: '/default',
-  path: '/default',
-  getParentRoute: () => SearchParamsRouteRoute,
-} as any)
-const RedirectTargetRoute = RedirectTargetRouteImport.update({
-  id: '/redirect/$target',
-  path: '/redirect/$target',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RawStreamSsrTextHintRoute = RawStreamSsrTextHintRouteImport.update({
-  id: '/ssr-text-hint',
-  path: '/ssr-text-hint',
-  getParentRoute: () => RawStreamRoute,
-} as any)
-const RawStreamSsrSingleRoute = RawStreamSsrSingleRouteImport.update({
-  id: '/ssr-single',
-  path: '/ssr-single',
-  getParentRoute: () => RawStreamRoute,
-} as any)
-const RawStreamSsrMultipleRoute = RawStreamSsrMultipleRouteImport.update({
-  id: '/ssr-multiple',
-  path: '/ssr-multiple',
-  getParentRoute: () => RawStreamRoute,
-} as any)
-const RawStreamSsrMixedRoute = RawStreamSsrMixedRouteImport.update({
-  id: '/ssr-mixed',
-  path: '/ssr-mixed',
-  getParentRoute: () => RawStreamRoute,
-} as any)
-const RawStreamSsrBinaryHintRoute = RawStreamSsrBinaryHintRouteImport.update({
-  id: '/ssr-binary-hint',
-  path: '/ssr-binary-hint',
-  getParentRoute: () => RawStreamRoute,
-} as any)
-const RawStreamClientCallRoute = RawStreamClientCallRouteImport.update({
-  id: '/client-call',
-  path: '/client-call',
-  getParentRoute: () => RawStreamRoute,
-} as any)
-const PostsPostIdRoute = PostsPostIdRouteImport.update({
-  id: '/$postId',
-  path: '/$postId',
-  getParentRoute: () => PostsRoute,
-} as any)
-const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
-  id: '/via-loader',
-  path: '/via-loader',
+const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
+  id: '/via-beforeLoad',
+  path: '/via-beforeLoad',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
 const NotFoundViaBeforeLoadTargetRootRoute =
@@ -294,25 +218,91 @@ const NotFoundViaBeforeLoadTargetRootRoute =
     path: '/via-beforeLoad-target-root',
     getParentRoute: () => NotFoundRouteRoute,
   } as any)
-const NotFoundViaBeforeLoadRoute = NotFoundViaBeforeLoadRouteImport.update({
-  id: '/via-beforeLoad',
-  path: '/via-beforeLoad',
+const NotFoundViaLoaderRoute = NotFoundViaLoaderRouteImport.update({
+  id: '/via-loader',
+  path: '/via-loader',
   getParentRoute: () => NotFoundRouteRoute,
 } as any)
-const MultiCookieRedirectTargetRoute =
-  MultiCookieRedirectTargetRouteImport.update({
-    id: '/multi-cookie-redirect/target',
-    path: '/multi-cookie-redirect/target',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ApiUsersRoute = ApiUsersRouteImport.update({
-  id: '/api/users',
-  path: '/api/users',
+const PostsIndexRoute = PostsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PostsRoute,
+} as any)
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
+  id: '/$postId',
+  path: '/$postId',
+  getParentRoute: () => PostsRoute,
+} as any)
+const RawStreamIndexRoute = RawStreamIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamClientCallRoute = RawStreamClientCallRouteImport.update({
+  id: '/client-call',
+  path: '/client-call',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrBinaryHintRoute = RawStreamSsrBinaryHintRouteImport.update({
+  id: '/ssr-binary-hint',
+  path: '/ssr-binary-hint',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrMixedRoute = RawStreamSsrMixedRouteImport.update({
+  id: '/ssr-mixed',
+  path: '/ssr-mixed',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrMultipleRoute = RawStreamSsrMultipleRouteImport.update({
+  id: '/ssr-multiple',
+  path: '/ssr-multiple',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrSingleRoute = RawStreamSsrSingleRouteImport.update({
+  id: '/ssr-single',
+  path: '/ssr-single',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RawStreamSsrTextHintRoute = RawStreamSsrTextHintRouteImport.update({
+  id: '/ssr-text-hint',
+  path: '/ssr-text-hint',
+  getParentRoute: () => RawStreamRoute,
+} as any)
+const RedirectIndexRoute = RedirectIndexRouteImport.update({
+  id: '/redirect/',
+  path: '/redirect/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LayoutLayout2Route = LayoutLayout2RouteImport.update({
-  id: '/_layout-2',
-  getParentRoute: () => LayoutRoute,
+const RedirectTargetRoute = RedirectTargetRouteImport.update({
+  id: '/redirect/$target',
+  path: '/redirect/$target',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SearchParamsRouteRoute,
+} as any)
+const SearchParamsDefaultRoute = SearchParamsDefaultRouteImport.update({
+  id: '/default',
+  path: '/default',
+  getParentRoute: () => SearchParamsRouteRoute,
+} as any)
+const SearchParamsLoaderThrowsRedirectRoute =
+  SearchParamsLoaderThrowsRedirectRouteImport.update({
+    id: '/loader-throws-redirect',
+    path: '/loader-throws-redirect',
+    getParentRoute: () => SearchParamsRouteRoute,
+  } as any)
+const SpecialCharsParamRoute = SpecialCharsParamRouteImport.update({
+  id: '/$param',
+  path: '/$param',
+  getParentRoute: () => SpecialCharsRouteRoute,
+} as any)
+const SpecialCharsHashRoute = SpecialCharsHashRouteImport.update({
+  id: '/hash',
+  path: '/hash',
+  getParentRoute: () => SpecialCharsRouteRoute,
 } as any)
 const SpecialCharsMalformedRouteRoute =
   SpecialCharsMalformedRouteRouteImport.update({
@@ -320,21 +310,51 @@ const SpecialCharsMalformedRouteRoute =
     path: '/malformed',
     getParentRoute: () => SpecialCharsRouteRoute,
   } as any)
-const NotFoundParentBoundaryRouteRoute =
-  NotFoundParentBoundaryRouteRouteImport.update({
-    id: '/parent-boundary',
-    path: '/parent-boundary',
-    getParentRoute: () => NotFoundRouteRoute,
-  } as any)
-const NotFoundDeepRouteRoute = NotFoundDeepRouteRouteImport.update({
-  id: '/deep',
-  path: '/deep',
-  getParentRoute: () => NotFoundRouteRoute,
+const SpecialCharsSearchRoute = SpecialCharsSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => SpecialCharsRouteRoute,
 } as any)
-const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
+const SpecialCharsChar45824Char54620Char48124Char44397Route =
+  SpecialCharsChar45824Char54620Char48124Char44397RouteImport.update({
+    id: '/대한민국',
+    path: '/대한민국',
+    getParentRoute: () => SpecialCharsRouteRoute,
+  } as any)
+const UsersIndexRoute = UsersIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => RedirectTargetRoute,
+  getParentRoute: () => UsersRoute,
+} as any)
+const UsersUserIdRoute = UsersUserIdRouteImport.update({
+  id: '/$userId',
+  path: '/$userId',
+  getParentRoute: () => UsersRoute,
+} as any)
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
+  id: '/layout-a',
+  path: '/layout-a',
+  getParentRoute: () => LayoutLayout2Route,
+} as any)
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
+  id: '/layout-b',
+  path: '/layout-b',
+  getParentRoute: () => LayoutLayout2Route,
+} as any)
+const ApiUsersIdRoute = ApiUsersIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ApiUsersRoute,
+} as any)
+const NotFoundDeepIndexRoute = NotFoundDeepIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NotFoundDeepRouteRoute,
+} as any)
+const NotFoundDeepBRouteRoute = NotFoundDeepBRouteRouteImport.update({
+  id: '/b',
+  path: '/b',
+  getParentRoute: () => NotFoundDeepRouteRoute,
 } as any)
 const NotFoundParentBoundaryIndexRoute =
   NotFoundParentBoundaryIndexRouteImport.update({
@@ -342,26 +362,20 @@ const NotFoundParentBoundaryIndexRoute =
     path: '/',
     getParentRoute: () => NotFoundParentBoundaryRouteRoute,
   } as any)
-const NotFoundDeepIndexRoute = NotFoundDeepIndexRouteImport.update({
+const NotFoundParentBoundaryViaBeforeLoadRoute =
+  NotFoundParentBoundaryViaBeforeLoadRouteImport.update({
+    id: '/via-beforeLoad',
+    path: '/via-beforeLoad',
+    getParentRoute: () => NotFoundParentBoundaryRouteRoute,
+  } as any)
+const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
+  id: '/posts_/$postId/deep',
+  path: '/posts/$postId/deep',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => NotFoundDeepRouteRoute,
-} as any)
-const SpecialCharsMalformedSearchRoute =
-  SpecialCharsMalformedSearchRouteImport.update({
-    id: '/search',
-    path: '/search',
-    getParentRoute: () => SpecialCharsMalformedRouteRoute,
-  } as any)
-const SpecialCharsMalformedParamRoute =
-  SpecialCharsMalformedParamRouteImport.update({
-    id: '/$param',
-    path: '/$param',
-    getParentRoute: () => SpecialCharsMalformedRouteRoute,
-  } as any)
-const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
-  id: '/via-loader',
-  path: '/via-loader',
   getParentRoute: () => RedirectTargetRoute,
 } as any)
 const RedirectTargetViaBeforeLoadRoute =
@@ -370,60 +384,22 @@ const RedirectTargetViaBeforeLoadRoute =
     path: '/via-beforeLoad',
     getParentRoute: () => RedirectTargetRoute,
   } as any)
-const PostsPostIdDeepRoute = PostsPostIdDeepRouteImport.update({
-  id: '/posts_/$postId/deep',
-  path: '/posts/$postId/deep',
-  getParentRoute: () => rootRouteImport,
+const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
+  id: '/via-loader',
+  path: '/via-loader',
+  getParentRoute: () => RedirectTargetRoute,
 } as any)
-const NotFoundParentBoundaryViaBeforeLoadRoute =
-  NotFoundParentBoundaryViaBeforeLoadRouteImport.update({
-    id: '/via-beforeLoad',
-    path: '/via-beforeLoad',
-    getParentRoute: () => NotFoundParentBoundaryRouteRoute,
+const SpecialCharsMalformedParamRoute =
+  SpecialCharsMalformedParamRouteImport.update({
+    id: '/$param',
+    path: '/$param',
+    getParentRoute: () => SpecialCharsMalformedRouteRoute,
   } as any)
-const ApiUsersIdRoute = ApiUsersIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => ApiUsersRoute,
-} as any)
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
-  id: '/layout-b',
-  path: '/layout-b',
-  getParentRoute: () => LayoutLayout2Route,
-} as any)
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
-  id: '/layout-a',
-  path: '/layout-a',
-  getParentRoute: () => LayoutLayout2Route,
-} as any)
-const NotFoundDeepBRouteRoute = NotFoundDeepBRouteRouteImport.update({
-  id: '/b',
-  path: '/b',
-  getParentRoute: () => NotFoundDeepRouteRoute,
-} as any)
-const RedirectTargetServerFnIndexRoute =
-  RedirectTargetServerFnIndexRouteImport.update({
-    id: '/serverFn/',
-    path: '/serverFn/',
-    getParentRoute: () => RedirectTargetRoute,
-  } as any)
-const RedirectTargetServerFnViaUseServerFnRoute =
-  RedirectTargetServerFnViaUseServerFnRouteImport.update({
-    id: '/serverFn/via-useServerFn',
-    path: '/serverFn/via-useServerFn',
-    getParentRoute: () => RedirectTargetRoute,
-  } as any)
-const RedirectTargetServerFnViaLoaderRoute =
-  RedirectTargetServerFnViaLoaderRouteImport.update({
-    id: '/serverFn/via-loader',
-    path: '/serverFn/via-loader',
-    getParentRoute: () => RedirectTargetRoute,
-  } as any)
-const RedirectTargetServerFnViaBeforeLoadRoute =
-  RedirectTargetServerFnViaBeforeLoadRouteImport.update({
-    id: '/serverFn/via-beforeLoad',
-    path: '/serverFn/via-beforeLoad',
-    getParentRoute: () => RedirectTargetRoute,
+const SpecialCharsMalformedSearchRoute =
+  SpecialCharsMalformedSearchRouteImport.update({
+    id: '/search',
+    path: '/search',
+    getParentRoute: () => SpecialCharsMalformedRouteRoute,
   } as any)
 const FooBarQuxHereRoute = FooBarQuxHereRouteImport.update({
   id: '/foo/$bar/$qux/_here',
@@ -435,6 +411,30 @@ const NotFoundDeepBCRouteRoute = NotFoundDeepBCRouteRouteImport.update({
   path: '/c',
   getParentRoute: () => NotFoundDeepBRouteRoute,
 } as any)
+const RedirectTargetServerFnIndexRoute =
+  RedirectTargetServerFnIndexRouteImport.update({
+    id: '/serverFn/',
+    path: '/serverFn/',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+const RedirectTargetServerFnViaBeforeLoadRoute =
+  RedirectTargetServerFnViaBeforeLoadRouteImport.update({
+    id: '/serverFn/via-beforeLoad',
+    path: '/serverFn/via-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+const RedirectTargetServerFnViaLoaderRoute =
+  RedirectTargetServerFnViaLoaderRouteImport.update({
+    id: '/serverFn/via-loader',
+    path: '/serverFn/via-loader',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+const RedirectTargetServerFnViaUseServerFnRoute =
+  RedirectTargetServerFnViaUseServerFnRouteImport.update({
+    id: '/serverFn/via-useServerFn',
+    path: '/serverFn/via-useServerFn',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
 const FooBarQuxHereIndexRoute = FooBarQuxHereIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -886,95 +886,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/users': {
-      id: '/users'
-      path: '/users'
-      fullPath: '/users'
-      preLoaderRoute: typeof UsersRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/type-only-reexport': {
-      id: '/type-only-reexport'
-      path: '/type-only-reexport'
-      fullPath: '/type-only-reexport'
-      preLoaderRoute: typeof TypeOnlyReexportRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/stream': {
-      id: '/stream'
-      path: '/stream'
-      fullPath: '/stream'
-      preLoaderRoute: typeof StreamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/scripts': {
-      id: '/scripts'
-      path: '/scripts'
-      fullPath: '/scripts'
-      preLoaderRoute: typeof ScriptsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/raw-stream': {
-      id: '/raw-stream'
-      path: '/raw-stream'
-      fullPath: '/raw-stream'
-      preLoaderRoute: typeof RawStreamRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/primitive-beforeload-error': {
-      id: '/primitive-beforeload-error'
-      path: '/primitive-beforeload-error'
-      fullPath: '/primitive-beforeload-error'
-      preLoaderRoute: typeof PrimitiveBeforeloadErrorRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/plain-ts-type-assertion': {
-      id: '/plain-ts-type-assertion'
-      path: '/plain-ts-type-assertion'
-      fullPath: '/plain-ts-type-assertion'
-      preLoaderRoute: typeof PlainTsTypeAssertionRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/links': {
-      id: '/links'
-      path: '/links'
-      fullPath: '/links'
-      preLoaderRoute: typeof LinksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/inline-scripts': {
-      id: '/inline-scripts'
-      path: '/inline-scripts'
-      fullPath: '/inline-scripts'
-      preLoaderRoute: typeof InlineScriptsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/deferred': {
-      id: '/deferred'
-      path: '/deferred'
-      fullPath: '/deferred'
-      preLoaderRoute: typeof DeferredRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/client-only': {
-      id: '/client-only'
-      path: '/client-only'
-      fullPath: '/client-only'
-      preLoaderRoute: typeof ClientOnlyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/async-scripts': {
-      id: '/async-scripts'
-      path: '/async-scripts'
-      fullPath: '/async-scripts'
-      preLoaderRoute: typeof AsyncScriptsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -984,18 +900,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/specialChars': {
-      id: '/specialChars'
-      path: '/specialChars'
-      fullPath: '/specialChars'
-      preLoaderRoute: typeof SpecialCharsRouteRouteImport
+    '/async-scripts': {
+      id: '/async-scripts'
+      path: '/async-scripts'
+      fullPath: '/async-scripts'
+      preLoaderRoute: typeof AsyncScriptsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/search-params': {
-      id: '/search-params'
-      path: '/search-params'
-      fullPath: '/search-params'
-      preLoaderRoute: typeof SearchParamsRouteRouteImport
+    '/client-only': {
+      id: '/client-only'
+      path: '/client-only'
+      fullPath: '/client-only'
+      preLoaderRoute: typeof ClientOnlyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deferred': {
+      id: '/deferred'
+      path: '/deferred'
+      fullPath: '/deferred'
+      preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inline-scripts': {
+      id: '/inline-scripts'
+      path: '/inline-scripts'
+      fullPath: '/inline-scripts'
+      preLoaderRoute: typeof InlineScriptsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/links': {
+      id: '/links'
+      path: '/links'
+      fullPath: '/links'
+      preLoaderRoute: typeof LinksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/not-found': {
@@ -1005,200 +942,74 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotFoundRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/plain-ts-type-assertion': {
+      id: '/plain-ts-type-assertion'
+      path: '/plain-ts-type-assertion'
+      fullPath: '/plain-ts-type-assertion'
+      preLoaderRoute: typeof PlainTsTypeAssertionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/': {
-      id: '/users/'
-      path: '/'
-      fullPath: '/users/'
-      preLoaderRoute: typeof UsersIndexRouteImport
-      parentRoute: typeof UsersRoute
-    }
-    '/search-params/': {
-      id: '/search-params/'
-      path: '/'
-      fullPath: '/search-params/'
-      preLoaderRoute: typeof SearchParamsIndexRouteImport
-      parentRoute: typeof SearchParamsRouteRoute
-    }
-    '/redirect/': {
-      id: '/redirect/'
-      path: '/redirect'
-      fullPath: '/redirect/'
-      preLoaderRoute: typeof RedirectIndexRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/raw-stream/': {
-      id: '/raw-stream/'
-      path: '/'
-      fullPath: '/raw-stream/'
-      preLoaderRoute: typeof RawStreamIndexRouteImport
-      parentRoute: typeof RawStreamRoute
-    }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRoute
-    }
-    '/not-found/': {
-      id: '/not-found/'
-      path: '/'
-      fullPath: '/not-found/'
-      preLoaderRoute: typeof NotFoundIndexRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
-    '/multi-cookie-redirect/': {
-      id: '/multi-cookie-redirect/'
-      path: '/multi-cookie-redirect'
-      fullPath: '/multi-cookie-redirect/'
-      preLoaderRoute: typeof MultiCookieRedirectIndexRouteImport
+    '/primitive-beforeload-error': {
+      id: '/primitive-beforeload-error'
+      path: '/primitive-beforeload-error'
+      fullPath: '/primitive-beforeload-error'
+      preLoaderRoute: typeof PrimitiveBeforeloadErrorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/$userId': {
-      id: '/users/$userId'
-      path: '/$userId'
-      fullPath: '/users/$userId'
-      preLoaderRoute: typeof UsersUserIdRouteImport
-      parentRoute: typeof UsersRoute
-    }
-    '/specialChars/대한민국': {
-      id: '/specialChars/대한민국'
-      path: '/대한민국'
-      fullPath: '/specialChars/대한민국'
-      preLoaderRoute: typeof SpecialCharsChar45824Char54620Char48124Char44397RouteImport
-      parentRoute: typeof SpecialCharsRouteRoute
-    }
-    '/specialChars/search': {
-      id: '/specialChars/search'
-      path: '/search'
-      fullPath: '/specialChars/search'
-      preLoaderRoute: typeof SpecialCharsSearchRouteImport
-      parentRoute: typeof SpecialCharsRouteRoute
-    }
-    '/specialChars/hash': {
-      id: '/specialChars/hash'
-      path: '/hash'
-      fullPath: '/specialChars/hash'
-      preLoaderRoute: typeof SpecialCharsHashRouteImport
-      parentRoute: typeof SpecialCharsRouteRoute
-    }
-    '/specialChars/$param': {
-      id: '/specialChars/$param'
-      path: '/$param'
-      fullPath: '/specialChars/$param'
-      preLoaderRoute: typeof SpecialCharsParamRouteImport
-      parentRoute: typeof SpecialCharsRouteRoute
-    }
-    '/search-params/loader-throws-redirect': {
-      id: '/search-params/loader-throws-redirect'
-      path: '/loader-throws-redirect'
-      fullPath: '/search-params/loader-throws-redirect'
-      preLoaderRoute: typeof SearchParamsLoaderThrowsRedirectRouteImport
-      parentRoute: typeof SearchParamsRouteRoute
-    }
-    '/search-params/default': {
-      id: '/search-params/default'
-      path: '/default'
-      fullPath: '/search-params/default'
-      preLoaderRoute: typeof SearchParamsDefaultRouteImport
-      parentRoute: typeof SearchParamsRouteRoute
-    }
-    '/redirect/$target': {
-      id: '/redirect/$target'
-      path: '/redirect/$target'
-      fullPath: '/redirect/$target'
-      preLoaderRoute: typeof RedirectTargetRouteImport
+    '/raw-stream': {
+      id: '/raw-stream'
+      path: '/raw-stream'
+      fullPath: '/raw-stream'
+      preLoaderRoute: typeof RawStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/raw-stream/ssr-text-hint': {
-      id: '/raw-stream/ssr-text-hint'
-      path: '/ssr-text-hint'
-      fullPath: '/raw-stream/ssr-text-hint'
-      preLoaderRoute: typeof RawStreamSsrTextHintRouteImport
-      parentRoute: typeof RawStreamRoute
-    }
-    '/raw-stream/ssr-single': {
-      id: '/raw-stream/ssr-single'
-      path: '/ssr-single'
-      fullPath: '/raw-stream/ssr-single'
-      preLoaderRoute: typeof RawStreamSsrSingleRouteImport
-      parentRoute: typeof RawStreamRoute
-    }
-    '/raw-stream/ssr-multiple': {
-      id: '/raw-stream/ssr-multiple'
-      path: '/ssr-multiple'
-      fullPath: '/raw-stream/ssr-multiple'
-      preLoaderRoute: typeof RawStreamSsrMultipleRouteImport
-      parentRoute: typeof RawStreamRoute
-    }
-    '/raw-stream/ssr-mixed': {
-      id: '/raw-stream/ssr-mixed'
-      path: '/ssr-mixed'
-      fullPath: '/raw-stream/ssr-mixed'
-      preLoaderRoute: typeof RawStreamSsrMixedRouteImport
-      parentRoute: typeof RawStreamRoute
-    }
-    '/raw-stream/ssr-binary-hint': {
-      id: '/raw-stream/ssr-binary-hint'
-      path: '/ssr-binary-hint'
-      fullPath: '/raw-stream/ssr-binary-hint'
-      preLoaderRoute: typeof RawStreamSsrBinaryHintRouteImport
-      parentRoute: typeof RawStreamRoute
-    }
-    '/raw-stream/client-call': {
-      id: '/raw-stream/client-call'
-      path: '/client-call'
-      fullPath: '/raw-stream/client-call'
-      preLoaderRoute: typeof RawStreamClientCallRouteImport
-      parentRoute: typeof RawStreamRoute
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRoute
-    }
-    '/not-found/via-loader': {
-      id: '/not-found/via-loader'
-      path: '/via-loader'
-      fullPath: '/not-found/via-loader'
-      preLoaderRoute: typeof NotFoundViaLoaderRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
-    '/not-found/via-beforeLoad-target-root': {
-      id: '/not-found/via-beforeLoad-target-root'
-      path: '/via-beforeLoad-target-root'
-      fullPath: '/not-found/via-beforeLoad-target-root'
-      preLoaderRoute: typeof NotFoundViaBeforeLoadTargetRootRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
-    '/not-found/via-beforeLoad': {
-      id: '/not-found/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/not-found/via-beforeLoad'
-      preLoaderRoute: typeof NotFoundViaBeforeLoadRouteImport
-      parentRoute: typeof NotFoundRouteRoute
-    }
-    '/multi-cookie-redirect/target': {
-      id: '/multi-cookie-redirect/target'
-      path: '/multi-cookie-redirect/target'
-      fullPath: '/multi-cookie-redirect/target'
-      preLoaderRoute: typeof MultiCookieRedirectTargetRouteImport
+    '/scripts': {
+      id: '/scripts'
+      path: '/scripts'
+      fullPath: '/scripts'
+      preLoaderRoute: typeof ScriptsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/users': {
-      id: '/api/users'
-      path: '/api/users'
-      fullPath: '/api/users'
-      preLoaderRoute: typeof ApiUsersRouteImport
+    '/search-params': {
+      id: '/search-params'
+      path: '/search-params'
+      fullPath: '/search-params'
+      preLoaderRoute: typeof SearchParamsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/specialChars': {
+      id: '/specialChars'
+      path: '/specialChars'
+      fullPath: '/specialChars'
+      preLoaderRoute: typeof SpecialCharsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/stream': {
+      id: '/stream'
+      path: '/stream'
+      fullPath: '/stream'
+      preLoaderRoute: typeof StreamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/type-only-reexport': {
+      id: '/type-only-reexport'
+      path: '/type-only-reexport'
+      fullPath: '/type-only-reexport'
+      preLoaderRoute: typeof TypeOnlyReexportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/users': {
+      id: '/users'
+      path: '/users'
+      fullPath: '/users'
+      preLoaderRoute: typeof UsersRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout/_layout-2': {
@@ -1208,18 +1019,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutLayout2RouteImport
       parentRoute: typeof LayoutRoute
     }
-    '/specialChars/malformed': {
-      id: '/specialChars/malformed'
-      path: '/malformed'
-      fullPath: '/specialChars/malformed'
-      preLoaderRoute: typeof SpecialCharsMalformedRouteRouteImport
-      parentRoute: typeof SpecialCharsRouteRoute
+    '/api/users': {
+      id: '/api/users'
+      path: '/api/users'
+      fullPath: '/api/users'
+      preLoaderRoute: typeof ApiUsersRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/not-found/parent-boundary': {
-      id: '/not-found/parent-boundary'
-      path: '/parent-boundary'
-      fullPath: '/not-found/parent-boundary'
-      preLoaderRoute: typeof NotFoundParentBoundaryRouteRouteImport
+    '/multi-cookie-redirect/': {
+      id: '/multi-cookie-redirect/'
+      path: '/multi-cookie-redirect'
+      fullPath: '/multi-cookie-redirect/'
+      preLoaderRoute: typeof MultiCookieRedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/multi-cookie-redirect/target': {
+      id: '/multi-cookie-redirect/target'
+      path: '/multi-cookie-redirect/target'
+      fullPath: '/multi-cookie-redirect/target'
+      preLoaderRoute: typeof MultiCookieRedirectTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/not-found/': {
+      id: '/not-found/'
+      path: '/'
+      fullPath: '/not-found/'
+      preLoaderRoute: typeof NotFoundIndexRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
     '/not-found/deep': {
@@ -1229,19 +1054,201 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotFoundDeepRouteRouteImport
       parentRoute: typeof NotFoundRouteRoute
     }
-    '/redirect/$target/': {
-      id: '/redirect/$target/'
-      path: '/'
-      fullPath: '/redirect/$target/'
-      preLoaderRoute: typeof RedirectTargetIndexRouteImport
-      parentRoute: typeof RedirectTargetRoute
+    '/not-found/parent-boundary': {
+      id: '/not-found/parent-boundary'
+      path: '/parent-boundary'
+      fullPath: '/not-found/parent-boundary'
+      preLoaderRoute: typeof NotFoundParentBoundaryRouteRouteImport
+      parentRoute: typeof NotFoundRouteRoute
     }
-    '/not-found/parent-boundary/': {
-      id: '/not-found/parent-boundary/'
+    '/not-found/via-beforeLoad': {
+      id: '/not-found/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/not-found/via-beforeLoad'
+      preLoaderRoute: typeof NotFoundViaBeforeLoadRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
+    '/not-found/via-beforeLoad-target-root': {
+      id: '/not-found/via-beforeLoad-target-root'
+      path: '/via-beforeLoad-target-root'
+      fullPath: '/not-found/via-beforeLoad-target-root'
+      preLoaderRoute: typeof NotFoundViaBeforeLoadTargetRootRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
+    '/not-found/via-loader': {
+      id: '/not-found/via-loader'
+      path: '/via-loader'
+      fullPath: '/not-found/via-loader'
+      preLoaderRoute: typeof NotFoundViaLoaderRouteImport
+      parentRoute: typeof NotFoundRouteRoute
+    }
+    '/posts/': {
+      id: '/posts/'
       path: '/'
-      fullPath: '/not-found/parent-boundary/'
-      preLoaderRoute: typeof NotFoundParentBoundaryIndexRouteImport
-      parentRoute: typeof NotFoundParentBoundaryRouteRoute
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/raw-stream/': {
+      id: '/raw-stream/'
+      path: '/'
+      fullPath: '/raw-stream/'
+      preLoaderRoute: typeof RawStreamIndexRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/client-call': {
+      id: '/raw-stream/client-call'
+      path: '/client-call'
+      fullPath: '/raw-stream/client-call'
+      preLoaderRoute: typeof RawStreamClientCallRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-binary-hint': {
+      id: '/raw-stream/ssr-binary-hint'
+      path: '/ssr-binary-hint'
+      fullPath: '/raw-stream/ssr-binary-hint'
+      preLoaderRoute: typeof RawStreamSsrBinaryHintRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-mixed': {
+      id: '/raw-stream/ssr-mixed'
+      path: '/ssr-mixed'
+      fullPath: '/raw-stream/ssr-mixed'
+      preLoaderRoute: typeof RawStreamSsrMixedRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-multiple': {
+      id: '/raw-stream/ssr-multiple'
+      path: '/ssr-multiple'
+      fullPath: '/raw-stream/ssr-multiple'
+      preLoaderRoute: typeof RawStreamSsrMultipleRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-single': {
+      id: '/raw-stream/ssr-single'
+      path: '/ssr-single'
+      fullPath: '/raw-stream/ssr-single'
+      preLoaderRoute: typeof RawStreamSsrSingleRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/raw-stream/ssr-text-hint': {
+      id: '/raw-stream/ssr-text-hint'
+      path: '/ssr-text-hint'
+      fullPath: '/raw-stream/ssr-text-hint'
+      preLoaderRoute: typeof RawStreamSsrTextHintRouteImport
+      parentRoute: typeof RawStreamRoute
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect/'
+      preLoaderRoute: typeof RedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: typeof RedirectTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search-params/': {
+      id: '/search-params/'
+      path: '/'
+      fullPath: '/search-params/'
+      preLoaderRoute: typeof SearchParamsIndexRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/search-params/default': {
+      id: '/search-params/default'
+      path: '/default'
+      fullPath: '/search-params/default'
+      preLoaderRoute: typeof SearchParamsDefaultRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/search-params/loader-throws-redirect': {
+      id: '/search-params/loader-throws-redirect'
+      path: '/loader-throws-redirect'
+      fullPath: '/search-params/loader-throws-redirect'
+      preLoaderRoute: typeof SearchParamsLoaderThrowsRedirectRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/specialChars/$param': {
+      id: '/specialChars/$param'
+      path: '/$param'
+      fullPath: '/specialChars/$param'
+      preLoaderRoute: typeof SpecialCharsParamRouteImport
+      parentRoute: typeof SpecialCharsRouteRoute
+    }
+    '/specialChars/hash': {
+      id: '/specialChars/hash'
+      path: '/hash'
+      fullPath: '/specialChars/hash'
+      preLoaderRoute: typeof SpecialCharsHashRouteImport
+      parentRoute: typeof SpecialCharsRouteRoute
+    }
+    '/specialChars/malformed': {
+      id: '/specialChars/malformed'
+      path: '/malformed'
+      fullPath: '/specialChars/malformed'
+      preLoaderRoute: typeof SpecialCharsMalformedRouteRouteImport
+      parentRoute: typeof SpecialCharsRouteRoute
+    }
+    '/specialChars/search': {
+      id: '/specialChars/search'
+      path: '/search'
+      fullPath: '/specialChars/search'
+      preLoaderRoute: typeof SpecialCharsSearchRouteImport
+      parentRoute: typeof SpecialCharsRouteRoute
+    }
+    '/specialChars/대한민국': {
+      id: '/specialChars/대한민국'
+      path: '/대한민국'
+      fullPath: '/specialChars/대한민국'
+      preLoaderRoute: typeof SpecialCharsChar45824Char54620Char48124Char44397RouteImport
+      parentRoute: typeof SpecialCharsRouteRoute
+    }
+    '/users/': {
+      id: '/users/'
+      path: '/'
+      fullPath: '/users/'
+      preLoaderRoute: typeof UsersIndexRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/users/$userId': {
+      id: '/users/$userId'
+      path: '/$userId'
+      fullPath: '/users/$userId'
+      preLoaderRoute: typeof UsersUserIdRouteImport
+      parentRoute: typeof UsersRoute
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/api/users/$id': {
+      id: '/api/users/$id'
+      path: '/$id'
+      fullPath: '/api/users/$id'
+      preLoaderRoute: typeof ApiUsersIdRouteImport
+      parentRoute: typeof ApiUsersRoute
     }
     '/not-found/deep/': {
       id: '/not-found/deep/'
@@ -1250,25 +1257,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotFoundDeepIndexRouteImport
       parentRoute: typeof NotFoundDeepRouteRoute
     }
-    '/specialChars/malformed/search': {
-      id: '/specialChars/malformed/search'
-      path: '/search'
-      fullPath: '/specialChars/malformed/search'
-      preLoaderRoute: typeof SpecialCharsMalformedSearchRouteImport
-      parentRoute: typeof SpecialCharsMalformedRouteRoute
+    '/not-found/deep/b': {
+      id: '/not-found/deep/b'
+      path: '/b'
+      fullPath: '/not-found/deep/b'
+      preLoaderRoute: typeof NotFoundDeepBRouteRouteImport
+      parentRoute: typeof NotFoundDeepRouteRoute
     }
-    '/specialChars/malformed/$param': {
-      id: '/specialChars/malformed/$param'
-      path: '/$param'
-      fullPath: '/specialChars/malformed/$param'
-      preLoaderRoute: typeof SpecialCharsMalformedParamRouteImport
-      parentRoute: typeof SpecialCharsMalformedRouteRoute
+    '/not-found/parent-boundary/': {
+      id: '/not-found/parent-boundary/'
+      path: '/'
+      fullPath: '/not-found/parent-boundary/'
+      preLoaderRoute: typeof NotFoundParentBoundaryIndexRouteImport
+      parentRoute: typeof NotFoundParentBoundaryRouteRoute
     }
-    '/redirect/$target/via-loader': {
-      id: '/redirect/$target/via-loader'
-      path: '/via-loader'
-      fullPath: '/redirect/$target/via-loader'
-      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
+    '/not-found/parent-boundary/via-beforeLoad': {
+      id: '/not-found/parent-boundary/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/not-found/parent-boundary/via-beforeLoad'
+      preLoaderRoute: typeof NotFoundParentBoundaryViaBeforeLoadRouteImport
+      parentRoute: typeof NotFoundParentBoundaryRouteRoute
+    }
+    '/posts_/$postId/deep': {
+      id: '/posts_/$postId/deep'
+      path: '/posts/$postId/deep'
+      fullPath: '/posts/$postId/deep'
+      preLoaderRoute: typeof PostsPostIdDeepRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
+      path: '/'
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: typeof RedirectTargetIndexRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
     '/redirect/$target/via-beforeLoad': {
@@ -1278,75 +1299,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
-    '/posts_/$postId/deep': {
-      id: '/posts_/$postId/deep'
-      path: '/posts/$postId/deep'
-      fullPath: '/posts/$postId/deep'
-      preLoaderRoute: typeof PostsPostIdDeepRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/not-found/parent-boundary/via-beforeLoad': {
-      id: '/not-found/parent-boundary/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/not-found/parent-boundary/via-beforeLoad'
-      preLoaderRoute: typeof NotFoundParentBoundaryViaBeforeLoadRouteImport
-      parentRoute: typeof NotFoundParentBoundaryRouteRoute
-    }
-    '/api/users/$id': {
-      id: '/api/users/$id'
-      path: '/$id'
-      fullPath: '/api/users/$id'
-      preLoaderRoute: typeof ApiUsersIdRouteImport
-      parentRoute: typeof ApiUsersRoute
-    }
-    '/_layout/_layout-2/layout-b': {
-      id: '/_layout/_layout-2/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
-      parentRoute: typeof LayoutLayout2Route
-    }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
-      parentRoute: typeof LayoutLayout2Route
-    }
-    '/not-found/deep/b': {
-      id: '/not-found/deep/b'
-      path: '/b'
-      fullPath: '/not-found/deep/b'
-      preLoaderRoute: typeof NotFoundDeepBRouteRouteImport
-      parentRoute: typeof NotFoundDeepRouteRoute
-    }
-    '/redirect/$target/serverFn/': {
-      id: '/redirect/$target/serverFn/'
-      path: '/serverFn'
-      fullPath: '/redirect/$target/serverFn/'
-      preLoaderRoute: typeof RedirectTargetServerFnIndexRouteImport
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
       parentRoute: typeof RedirectTargetRoute
     }
-    '/redirect/$target/serverFn/via-useServerFn': {
-      id: '/redirect/$target/serverFn/via-useServerFn'
-      path: '/serverFn/via-useServerFn'
-      fullPath: '/redirect/$target/serverFn/via-useServerFn'
-      preLoaderRoute: typeof RedirectTargetServerFnViaUseServerFnRouteImport
-      parentRoute: typeof RedirectTargetRoute
+    '/specialChars/malformed/$param': {
+      id: '/specialChars/malformed/$param'
+      path: '/$param'
+      fullPath: '/specialChars/malformed/$param'
+      preLoaderRoute: typeof SpecialCharsMalformedParamRouteImport
+      parentRoute: typeof SpecialCharsMalformedRouteRoute
     }
-    '/redirect/$target/serverFn/via-loader': {
-      id: '/redirect/$target/serverFn/via-loader'
-      path: '/serverFn/via-loader'
-      fullPath: '/redirect/$target/serverFn/via-loader'
-      preLoaderRoute: typeof RedirectTargetServerFnViaLoaderRouteImport
-      parentRoute: typeof RedirectTargetRoute
-    }
-    '/redirect/$target/serverFn/via-beforeLoad': {
-      id: '/redirect/$target/serverFn/via-beforeLoad'
-      path: '/serverFn/via-beforeLoad'
-      fullPath: '/redirect/$target/serverFn/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetServerFnViaBeforeLoadRouteImport
-      parentRoute: typeof RedirectTargetRoute
+    '/specialChars/malformed/search': {
+      id: '/specialChars/malformed/search'
+      path: '/search'
+      fullPath: '/specialChars/malformed/search'
+      preLoaderRoute: typeof SpecialCharsMalformedSearchRouteImport
+      parentRoute: typeof SpecialCharsMalformedRouteRoute
     }
     '/foo/$bar/$qux/_here': {
       id: '/foo/$bar/$qux/_here'
@@ -1361,6 +1333,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/not-found/deep/b/c'
       preLoaderRoute: typeof NotFoundDeepBCRouteRouteImport
       parentRoute: typeof NotFoundDeepBRouteRoute
+    }
+    '/redirect/$target/serverFn/': {
+      id: '/redirect/$target/serverFn/'
+      path: '/serverFn'
+      fullPath: '/redirect/$target/serverFn/'
+      preLoaderRoute: typeof RedirectTargetServerFnIndexRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/serverFn/via-beforeLoad': {
+      id: '/redirect/$target/serverFn/via-beforeLoad'
+      path: '/serverFn/via-beforeLoad'
+      fullPath: '/redirect/$target/serverFn/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetServerFnViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/serverFn/via-loader': {
+      id: '/redirect/$target/serverFn/via-loader'
+      path: '/serverFn/via-loader'
+      fullPath: '/redirect/$target/serverFn/via-loader'
+      preLoaderRoute: typeof RedirectTargetServerFnViaLoaderRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/serverFn/via-useServerFn': {
+      id: '/redirect/$target/serverFn/via-useServerFn'
+      path: '/serverFn/via-useServerFn'
+      fullPath: '/redirect/$target/serverFn/via-useServerFn'
+      preLoaderRoute: typeof RedirectTargetServerFnViaUseServerFnRouteImport
+      parentRoute: typeof RedirectTargetRoute
     }
     '/foo/$bar/$qux/_here/': {
       id: '/foo/$bar/$qux/_here/'

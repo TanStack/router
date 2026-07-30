@@ -197,7 +197,7 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     }
   })
 
-  test('request abort aborts pipeable and errors body', async () => {
+  test('request abort cancels pipeable rendering before the response body is consumed', async () => {
     const abort = vi.fn()
     reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
       (_children, opts) => {
@@ -220,13 +220,14 @@ describe('renderRouterToStream - pipeable sync errors', () => {
         }),
       )
 
+      expect(response.body).not.toBeNull()
       controller.abort(new Error('request-gone'))
+      await vi.waitFor(() => expect(abort).toHaveBeenCalledOnce())
       const terminated = await Promise.race<true | false>([
         expectBodyRejects(response, 'request-gone').then(() => true),
         new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
       ])
       expect(terminated).toBe(true)
-      expect(abort).toHaveBeenCalledOnce()
     } finally {
       router.serverSsr?.cleanup()
     }
