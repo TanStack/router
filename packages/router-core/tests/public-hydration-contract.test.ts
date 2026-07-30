@@ -1122,9 +1122,7 @@ describe('public hydration contracts', () => {
     const pageContext = vi.fn(({ context }: { context: any }) => ({
       value: context.value,
     }))
-    const pageLoader = vi.fn(
-      ({ context }: { context: any }) => context.value,
-    )
+    const pageLoader = vi.fn(({ context }: { context: any }) => context.value)
     const rootRoute = new BaseRootRoute({
       beforeLoad: rootBeforeLoad,
       loader: rootLoader,
