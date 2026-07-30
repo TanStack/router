@@ -66,15 +66,17 @@ test('a known parent error does not offer a descendant pending boundary while it
     Array<{ routeId: string; status: string; error: unknown }>
   > = []
   const startTransition = router.startTransition
-  router.startTransition = (commit, expected) => {
-    transitions.push(
-      expected.map((match) => ({
-        routeId: match.routeId,
-        status: match.status,
-        error: match.error,
-      })),
-    )
-    return startTransition(commit, expected)
+  router.startTransition = (commit) => {
+    return startTransition(() => {
+      commit()
+      transitions.push(
+        router.stores.matches.get().map((match) => ({
+          routeId: match.routeId,
+          status: match.status,
+          error: match.error,
+        })),
+      )
+    })
   }
 
   const navigation = router.navigate({ to: '/parent/child' })

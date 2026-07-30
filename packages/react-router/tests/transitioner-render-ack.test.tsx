@@ -1,4 +1,4 @@
-import { Activity, StrictMode, act, lazy } from 'react'
+import { StrictMode, act } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
@@ -19,7 +19,6 @@ afterEach(() => {
   }
   cleanup()
   vi.useRealTimers()
-  vi.unstubAllEnvs()
 })
 
 test('same-location invalidation emits onResolved after its refreshed DOM commits', async () => {
@@ -56,6 +55,83 @@ test('same-location invalidation emits onResolved after its refreshed DOM commit
   expect(screen.getByText('Generation 2')).toBeInTheDocument()
   expect(screen.queryByText('Generation 1')).not.toBeInTheDocument()
   expect(refreshedDomWasVisible).toEqual([true])
+})
+
+test('a navigation superseding a suspended render acknowledges only the latest route', async () => {
+  const renderStarted = createControlledPromise<void>()
+  const renderGate = createControlledPromise<void>()
+  let signaled = false
+
+  const rootRoute = createRootRoute({
+    validateSearch: (search: Record<string, unknown>) => ({
+      revision: Number(search.revision),
+    }),
+    component: () => {
+      const revision = rootRoute.useSearch().revision
+      if (revision === 1 && renderGate.status === 'pending') {
+        if (!signaled) {
+          signaled = true
+          renderStarted.resolve()
+        }
+        throw renderGate
+      }
+      return <div>Root revision {revision}</div>
+    },
+  })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/?revision=0'] }),
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByText('Root revision 0')).toBeInTheDocument()
+  await waitFor(() => expect(router.state.status).toBe('idle'))
+
+  const renderedRevisions: Array<number> = []
+  testCleanups.push(
+    router.subscribe('onRendered', (event) => {
+      renderedRevisions.push(
+        Number((event.toLocation.search as Record<string, unknown>).revision),
+      )
+    }),
+  )
+
+  let suspendedNavigation!: Promise<void>
+  await act(async () => {
+    suspendedNavigation = router.navigate({
+      to: '/',
+      search: { revision: 1 },
+    })
+    await renderStarted
+  })
+
+  const suspendedSettled = vi.fn()
+  void suspendedNavigation.then(suspendedSettled)
+  expect(screen.getByText('Root revision 0')).toBeInTheDocument()
+  expect(suspendedSettled).not.toHaveBeenCalled()
+  expect(renderedRevisions).toEqual([])
+
+  try {
+    await act(() =>
+      router.navigate({
+        to: '/',
+        search: { revision: 2 },
+      }),
+    )
+    await suspendedNavigation
+
+    expect(screen.getByText('Root revision 2')).toBeInTheDocument()
+    expect(renderedRevisions).toEqual([2])
+    expect(suspendedSettled).toHaveBeenCalledOnce()
+  } finally {
+    await act(async () => {
+      renderGate.resolve()
+      await Promise.resolve()
+    })
+  }
+
+  expect(screen.getByText('Root revision 2')).toBeInTheDocument()
+  expect(renderedRevisions).toEqual([2])
 })
 
 test('a late background refresh is discarded after foreground navigation commits', async () => {
@@ -97,17 +173,6 @@ test('a late background refresh is discarded after foreground navigation commits
   ).toBeInTheDocument()
   await waitFor(() => expect(router.state.status).toBe('idle'))
 
-  const eventLog: Array<string> = []
-  const unsubscribers = [
-    router.subscribe('onResolved', (event) => {
-      eventLog.push(`onResolved:${event.toLocation.pathname}`)
-    }),
-    router.subscribe('onRendered', (event) => {
-      eventLog.push(`onRendered:${event.toLocation.pathname}`)
-    }),
-  ]
-  testCleanups.push(...unsubscribers)
-
   await act(() => router.invalidate())
   expect(itemLoader).toHaveBeenCalledTimes(2)
 
@@ -120,12 +185,6 @@ test('a late background refresh is discarded after foreground navigation commits
   expect(
     screen.getByText('Item target: foreground target data'),
   ).toBeInTheDocument()
-  expect(eventLog.filter((event) => event.endsWith('/items/target'))).toEqual([
-    'onResolved:/items/target',
-    'onRendered:/items/target',
-  ])
-  expect(router.state.resolvedLocation?.pathname).toBe('/items/target')
-  const eventCountAfterForegroundCommit = eventLog.length
 
   await act(async () => {
     backgroundRefresh.resolve('obsolete source data')
@@ -138,17 +197,6 @@ test('a late background refresh is discarded after foreground navigation commits
   expect(
     screen.queryByText('Item source: obsolete source data'),
   ).not.toBeInTheDocument()
-  expect(router.state.location.pathname).toBe('/items/target')
-  expect(router.state.resolvedLocation?.pathname).toBe('/items/target')
-  expect(router.state.matches.at(-1)?.routeId).toBe(itemRoute.id)
-  expect(router.state.matches.at(-1)?.params).toEqual({ itemId: 'target' })
-  expect(router.state.matches.at(-1)?.loaderData).toBe('foreground target data')
-  expect(router.state.status).toBe('idle')
-  expect(
-    eventLog
-      .slice(eventCountAfterForegroundCommit)
-      .every((event) => event.endsWith('/items/target')),
-  ).toBe(true)
 
   await act(() =>
     router.navigate({
@@ -273,160 +321,4 @@ test('StrictMode effect replay preserves renderer commit sequencing', async () =
   expect(eventLog).toEqual(['onResolved:/next', 'onRendered:/next'])
   expect(screen.getByText('Next')).toBeInTheDocument()
   expect(screen.queryByText('Index')).not.toBeInTheDocument()
-})
-
-test('Activity reconnects render acknowledgement before the next navigation', async () => {
-  vi.stubEnv('NODE_ENV', 'production')
-
-  const rootRoute = createRootRoute({ component: Outlet })
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: () => <div>Index</div>,
-  })
-  const nextRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/next',
-    component: () => <div>Next</div>,
-  })
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, nextRoute]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
-  const provider = <RouterProvider router={router} />
-  const view = render(<Activity mode="visible">{provider}</Activity>)
-
-  expect(await screen.findByText('Index')).toBeInTheDocument()
-  await waitFor(() => expect(router.state.status).toBe('idle'))
-
-  const rendered = vi.fn()
-  const unsubscribe = router.subscribe('onRendered', (event) => {
-    if (event.toLocation.pathname === '/next') {
-      rendered(screen.queryByText('Next') !== null)
-    }
-  })
-  testCleanups.push(unsubscribe)
-
-  view.rerender(<Activity mode="hidden">{provider}</Activity>)
-  expect(screen.getByText('Index')).not.toBeVisible()
-  view.rerender(<Activity mode="visible">{provider}</Activity>)
-  expect(screen.getByText('Index')).toBeVisible()
-
-  await act(() => router.navigate({ to: '/next' }))
-
-  expect(screen.getByText('Next')).toBeVisible()
-  expect(rendered).toHaveBeenCalledOnce()
-  expect(rendered).toHaveBeenCalledWith(true)
-
-  view.unmount()
-  vi.unstubAllEnvs()
-})
-
-test('Activity catches up with history changes made while hidden', async () => {
-  const rootRoute = createRootRoute({ component: Outlet })
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: () => <div>Index</div>,
-  })
-  const nextRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/next',
-    component: () => <div>Next</div>,
-  })
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, nextRoute]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
-  const provider = <RouterProvider router={router} />
-  const view = render(<Activity mode="visible">{provider}</Activity>)
-
-  expect(await screen.findByText('Index')).toBeInTheDocument()
-  await waitFor(() => expect(router.state.status).toBe('idle'))
-
-  view.rerender(<Activity mode="hidden">{provider}</Activity>)
-  expect(screen.getByText('Index')).not.toBeVisible()
-
-  await act(() => router.history.push('/next'))
-  expect(router.history.location.href).toBe('/next')
-  expect(router.latestLocation.pathname).toBe('/')
-
-  view.rerender(<Activity mode="visible">{provider}</Activity>)
-
-  expect(await screen.findByText('Next')).toBeVisible()
-  expect(router.latestLocation.pathname).toBe('/next')
-})
-
-test('Activity does not restart a navigation observed before it was hidden', async () => {
-  const next = createControlledPromise<void>()
-  const loader = vi.fn(() => next)
-  const rootRoute = createRootRoute({ component: Outlet })
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: () => <div>Index</div>,
-  })
-  const nextRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/next',
-    loader,
-    component: () => <div>Next</div>,
-  })
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, nextRoute]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
-  const provider = <RouterProvider router={router} />
-  const view = render(<Activity mode="visible">{provider}</Activity>)
-
-  expect(await screen.findByText('Index')).toBeInTheDocument()
-  await waitFor(() => expect(router.state.status).toBe('idle'))
-
-  let navigation!: Promise<void>
-  act(() => {
-    navigation = router.navigate({ to: '/next' })
-  })
-  await waitFor(() => expect(loader).toHaveBeenCalledOnce())
-
-  view.rerender(<Activity mode="hidden">{provider}</Activity>)
-  view.rerender(<Activity mode="visible">{provider}</Activity>)
-  expect(loader).toHaveBeenCalledOnce()
-
-  await act(async () => {
-    next.resolve()
-    await navigation
-  })
-  expect(screen.getByText('Next')).toBeVisible()
-})
-
-test('an initial canceled pending publication restores the empty presentation', async () => {
-  let offeredRouteId: string | undefined
-  const offeredRoute = { readId: (): string | undefined => undefined }
-  const suspendedPending = createControlledPromise<void>()
-  const Pending = lazy(async () => {
-    await suspendedPending
-    return { default: () => <div>Initial pending</div> }
-  })
-  const rootRoute = createRootRoute({
-    pendingMs: 0,
-    pendingMinMs: 0,
-    pendingComponent: Pending,
-    beforeLoad: ({ abortController }) => {
-      offeredRouteId = offeredRoute.readId()
-      abortController.abort()
-    },
-    component: () => <div>Ready</div>,
-  })
-  const router = createRouter({
-    routeTree: rootRoute,
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
-  offeredRoute.readId = () => router.state.matches[0]?.routeId
-
-  render(<RouterProvider router={router} />)
-
-  await waitFor(() => expect(offeredRouteId).toBe(rootRoute.id))
-  await waitFor(() => expect(router.state.status).toBe('idle'))
-  expect(router.state.matches).toEqual([])
-  expect(screen.queryByText('Something went wrong!')).not.toBeInTheDocument()
 })

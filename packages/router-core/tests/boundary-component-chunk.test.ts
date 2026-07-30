@@ -34,10 +34,12 @@ afterEach(async () => {
 })
 
 describe('route boundary component preloads', () => {
-  test('errorComponent preload resolves without waiting for a pending route component preload', async () => {
+  test('an error boundary ignores a late normal component failure', async () => {
     const componentGate = createControlledPromise<void>()
     const errorComponentGate = createControlledPromise<void>()
     const routeError = new Error('loader failed')
+    const componentError = new Error('component chunk failed')
+    const onError = vi.fn()
     let errorComponentPreloadCalls = 0
     pendingGates.push(componentGate, errorComponentGate)
 
@@ -58,6 +60,7 @@ describe('route boundary component preloads', () => {
       loader: () => {
         throw routeError
       },
+      onError,
       component: SlowRouteComponent as any,
       errorComponent: ErrorBoundary as any,
     })
@@ -79,8 +82,16 @@ describe('route boundary component preloads', () => {
     const match = router.state.matches.find((item) => item.routeId === route.id)
     expect(match?.status).toBe('error')
     expect(match?.error).toBe(routeError)
+    expect(onError).toHaveBeenCalledOnce()
 
-    componentGate.resolve()
+    // The committed loader error makes the unused normal component stale even
+    // though this transaction's AbortController remains live after commit.
+    componentGate.reject(componentError)
+    await expect(componentGate).rejects.toBe(componentError)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(onError).toHaveBeenCalledOnce()
+    expect(match?.error).toBe(routeError)
   })
 
   test('global notFound does not wait for component chunks below its boundary', async () => {

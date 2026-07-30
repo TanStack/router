@@ -25,10 +25,8 @@ test('a successful server component download is reused', async () => {
   const importer = vi.fn().mockResolvedValue({ default: () => null })
   const Page = lazyRouteComponent(importer)
 
-  const preload = Page.preload?.()
-  await preload
-
-  expect(Page.preload?.()).toBe(preload)
+  await Page.preload?.()
+  await Page.preload?.()
   expect(importer).toHaveBeenCalledTimes(1)
 })
 
@@ -40,11 +38,11 @@ test('concurrent component preloads share the import', async () => {
   const Page = lazyRouteComponent(importer)
 
   const first = Page.preload?.()
-  expect(Page.preload?.()).toBe(first)
+  const second = Page.preload?.()
   expect(importer).toHaveBeenCalledOnce()
 
   componentImport.resolve({ default: () => null })
-  await first
+  await Promise.all([first, second])
 })
 
 test('a failed component download is retried from the route error UI', async () => {

@@ -871,32 +871,32 @@ describe('notFoundComponent is rendered when an error is thrown in params.parse'
 
     expect(rootLoader).toHaveBeenCalledTimes(1)
     expect(linkToRottenPizza).toBeInTheDocument()
-    await act(() => fireEvent.mouseOver(linkToRottenPizza))
-    await vi.waitFor(() => expect(rootLoader).toHaveBeenCalledTimes(2))
-    await act(() => fireEvent.click(linkToRottenPizza))
-    await vi.waitFor(() => expect(router.state.status).toBe('pending'))
+    try {
+      await act(() => fireEvent.mouseOver(linkToRottenPizza))
+      await vi.waitFor(() => expect(rootLoader).toHaveBeenCalledTimes(2))
+      await act(() => fireEvent.click(linkToRottenPizza))
+      await vi.waitFor(() => expect(router.state.status).toBe('pending'))
 
-    expect(preloadGate.status).toBe('pending')
-    expect(preloadController?.signal.aborted).toBe(false)
+      expect(preloadGate.status).toBe('pending')
+      expect(preloadController?.signal.aborted).toBe(false)
 
-    await vi.waitFor(() => expect(rootLoader).toHaveBeenCalledTimes(3))
-    expect(rootLoader.mock.calls.map(([context]) => context.preload)).toEqual([
-      false,
-      true,
-      false,
-    ])
+      await vi.waitFor(() => expect(rootLoader).toHaveBeenCalledTimes(3))
+      expect(rootLoader.mock.calls.map(([context]) => context.preload)).toEqual(
+        [false, true, false],
+      )
 
-    const notFoundComponent = await screen.findByText('No pizza', undefined, {
-      timeout: 750,
-    })
-    expect(router.state.status).toBe('idle')
-    expect(preloadGate.status).toBe('pending')
-    expect(preloadController?.signal.aborted).toBe(false)
-    expect(notFoundComponent).toBeInTheDocument()
-
-    await act(async () => {
-      preloadGate.resolve()
-      await Promise.resolve()
-    })
+      const notFoundComponent = await screen.findByText('No pizza', undefined, {
+        timeout: 750,
+      })
+      expect(router.state.status).toBe('idle')
+      expect(preloadGate.status).toBe('pending')
+      expect(preloadController?.signal.aborted).toBe(false)
+      expect(notFoundComponent).toBeInTheDocument()
+    } finally {
+      await act(async () => {
+        preloadGate.resolve()
+        await Promise.resolve()
+      })
+    }
   })
 })

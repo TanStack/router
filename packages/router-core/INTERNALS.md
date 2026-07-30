@@ -62,7 +62,7 @@ to publish.
 - `src/ssr/handlerCallback.ts`, `ssr-server.ts`, and
   `transformStreamWithRouter.ts` transfer stream ownership and coordinate
   serialization, injection, abort, and cleanup.
-- Framework `Transitioner` and `Matches` implementations acknowledge exact
+- Framework `Transitioner` and `Matches` implementations acknowledge committed
   publications and render only through the selected boundary. Framework
   `RouterClient` and render-to-stream implementations complete hydration and
   connect request abort to their renderer.
@@ -686,21 +686,17 @@ its previous child DOM while the surrounding `MatchesInner` publication commits
 and acknowledges. Review code that uses `onRendered` for descendant DOM work
 with that distinction in mind.
 
-React cannot await `React.startTransition` directly. Its adapter has one current
-acknowledgement slot, and `Matches` settles that slot from a layout effect. A new
-expected publication first settles the previous slot as `false`, then installs
-itself before the transition callback runs. This ordering matters because
-publication can invoke a route lifecycle callback that synchronously starts and
-publishes a successor navigation. Installing the expectation after the callback
-would let the superseded publication replace the successor's slot.
-The mounted-tree-owned Transitioner precedes the sibling match tree, so its
-layout effect installs these callbacks before the match tree can acknowledge.
+React cannot await `React.startTransition` directly. Its adapter stores one
+resolver on the router. A new publication settles the previous resolver as
+`false`, stores its own resolver, and starts the React transition. `MatchesInner`
+takes and clears the current resolver in its layout effect, then settles it as
+`true`. There is no generation token, match-array comparison, or separate owner.
 
 In development HMR, the transition callback is wrapped by a `try`/`catch` inside
 the function passed to `React.startTransition`. React 19 captures callback
 throws instead of rethrowing them from the outer `React.startTransition` call.
-The development-only wrapper therefore clears only its exact owner and rejects
-the adapter promise so the HMR transaction can restore `_committed`. Ordinary
+The development-only wrapper therefore clears the resolver and rejects the
+adapter promise so the HMR transaction can restore `_committed`. Ordinary
 production lifecycle and router-event callbacks are already isolated, so the
 production adapter calls `React.startTransition` directly.
 
@@ -716,28 +712,12 @@ renderers. Every publication writes its already-created route-ID array, even
 when membership is unchanged. Per-route stores can still replace live match
 objects for `isFetching` without acknowledging another semantic publication.
 
-React keeps the exact offered match-array pointer in a small owner local to the
-mounted `Matches` tree. It captures that pointer during render and compares it
-by identity in a layout effect. An exact render settles the current slot as
-`true`; a mismatched render is ignored. This pointer is neither public match
-state nor semantic authority, and it does not exist in router-core.
-
-Direct core restoration clears an outstanding React offer before publishing
-the restored stores. This matters on a canceled first load: the accepted lane
-is empty, so leaving the offered root armed while tombstoning its route atom
-would make React try to render a route that no longer has a presented match.
-
 Solid awaits its transition, and Vue awaits its render tick. For an
 already-settled Solid mount, history subscription remains before the route tree
 while a post-match notifier emits the initial `onRendered` event after
-descendant mount effects. The architecture supports one committed `Matches`
-owner per router at a time. Unmounting it unsubscribes from history and retires
-any outstanding acknowledgement as `false`; a later mount creates a new owner
-and synchronizes with the router's current presented matches. Development
-defers only that retirement through the StrictMode effect replay turn, while
-production cleanup is synchronous. Effect setup always reactivates the owner:
-React Suspense and Activity can disconnect and reconnect layout effects without
-rendering the preserved child tree again.
+descendant mount effects. The React contract assumes one continuously mounted
+`RouterProvider` per router. Continuing transactions across provider remounts,
+swapping router instances, and mounting the same router twice are unsupported.
 
 Every core publication passed to `startTransition` must publish the route-ID
 generation signal even if route membership is unchanged. Suppressing that
@@ -1207,13 +1187,13 @@ When changing this architecture, verify all of the following:
     is retained across that wait so chronological failure/control selection is
     not recomputed later.
 19. `isFetching` clears for success, failure, cancellation, and supersession.
-20. Transition acknowledgement settlement gates resolved/idle completion; React
-    identifies the exact generation by presentation-array identity and installs
-    it in one superseding slot before running the possibly reentrant transition
-    callback. Only `true` gates `onRendered` and pending minimum timing.
-21. Exactly one mounted `Matches` tree owns a router's React acknowledgement at
-    a time. Final unmount retires it, and a later mount creates a new owner from
-    the router's current presentation.
+20. Transition acknowledgement settlement gates resolved/idle completion. React
+    uses one superseding resolver slot; `MatchesInner` clears and settles it
+    after the route tree commits. Only `true` gates `onRendered` and pending
+    minimum timing.
+21. React assumes one continuously mounted `RouterProvider` per router; provider
+    remount continuation, router swapping, and duplicate providers are outside
+    the transaction contract.
 22. Reentrant callbacks suppress every stale later event or publication.
 23. Canonicalization compares browser-facing `publicHref`; semantic `href` is
     not a symmetric canonical key across input and output rewrites.

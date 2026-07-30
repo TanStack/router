@@ -774,10 +774,7 @@ export type CommitLocationFn = ({
   ...next
 }: ParsedLocation & CommitLocationOptions) => Promise<void>
 
-export type StartTransitionFn = (
-  fn: () => void,
-  expected: Array<AnyRouteMatch>,
-) => Promise<boolean>
+export type StartTransitionFn = (fn: () => void) => Promise<boolean>
 
 export interface MatchRoutesFn {
   (
@@ -934,6 +931,10 @@ export function _getUserHistoryState({
   return state
 }
 
+/**
+ * User callbacks cannot interrupt router control flow. Development HMR lets
+ * lifecycle errors escape so its unacknowledged publication can roll back.
+ */
 function runCallback<T>(
   callback: ((arg: T) => void) | undefined,
   arg: T,
@@ -1059,6 +1060,8 @@ export interface RouterCore<
   _pending?: PendingSession
   /** Result of the latest server load, used to render or redirect. */
   _serverResult?: ServerLoadResult
+  /** Resolves the framework's pending matches publication. */
+  _rendered?: (rendered: boolean) => void
   /** Development-only HMR reload for a route and its descendants. */
   _refreshRoute: (() => Promise<void>) | undefined
   /** Development-only replacement for a route's lazy chunk owner. */
