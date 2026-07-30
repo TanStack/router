@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -183,26 +183,25 @@ describe('server route chunk failure lifecycle', () => {
       unhandled.push(error)
     }
     process.on('unhandledRejection', onUnhandled)
-
-    try {
-      const responsePromise = loadServerResponse(
-        router,
-        '/child',
-        controller.signal,
-      )
-      await Promise.all([rootChunkStarted, childChunkStarted])
-
-      rootChunkGate.reject(rootError)
-      await expect(responsePromise).resolves.toMatchObject({ status: 500 })
-
-      controller.abort(abortError)
-      childChunkGate.resolve()
-      await new Promise<void>((resolve) => setTimeout(resolve, 0))
-
-      expect(unhandled).not.toContain(abortError)
-    } finally {
+    onTestFinished(() => {
       process.off('unhandledRejection', onUnhandled)
-    }
+    })
+
+    const responsePromise = loadServerResponse(
+      router,
+      '/child',
+      controller.signal,
+    )
+    await Promise.all([rootChunkStarted, childChunkStarted])
+
+    rootChunkGate.reject(rootError)
+    await expect(responsePromise).resolves.toMatchObject({ status: 500 })
+
+    controller.abort(abortError)
+    childChunkGate.resolve()
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+    expect(unhandled).not.toContain(abortError)
   })
 
   test('a required ancestor lazy chunk failure wins over a deeper loader notFound', async () => {

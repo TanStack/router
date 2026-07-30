@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import {
@@ -451,31 +451,32 @@ describe('serverSsr.cleanup', () => {
           signal: requestController.signal,
         }),
       })
-
-      try {
-        const response = handler(() => {
-          renderStarted.resolve()
-          return renderResult.promise
-        })
-
-        await renderStarted.promise
-        const cancellation = new Error('request disconnected')
-        requestController.abort(cancellation)
-        await expect(response).rejects.toBe(cancellation)
-
-        renderResult.resolve({
-          response: new Response('stream'),
-          serverSsrCleanup: 'stream',
-          dispose,
-        })
-        await vi.waitFor(() => {
-          expect(consoleError).toHaveBeenCalledWith(cleanupError)
-        })
-        expect(dispose).toHaveBeenCalledOnce()
-      } finally {
-        router.serverSsr?.cleanup()
+      onTestFinished(() => {
         consoleError.mockRestore()
-      }
+      })
+      onTestFinished(() => {
+        router.serverSsr?.cleanup()
+      })
+
+      const response = handler(() => {
+        renderStarted.resolve()
+        return renderResult.promise
+      })
+
+      await renderStarted.promise
+      const cancellation = new Error('request disconnected')
+      requestController.abort(cancellation)
+      await expect(response).rejects.toBe(cancellation)
+
+      renderResult.resolve({
+        response: new Response('stream'),
+        serverSsrCleanup: 'stream',
+        dispose,
+      })
+      await vi.waitFor(() => {
+        expect(consoleError).toHaveBeenCalledWith(cleanupError)
+      })
+      expect(dispose).toHaveBeenCalledOnce()
     },
   )
 

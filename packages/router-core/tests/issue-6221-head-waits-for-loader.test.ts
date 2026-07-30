@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   BaseRootRoute,
   BaseRoute,
@@ -132,31 +132,31 @@ describe('issue #6221: head does not run before loader data is ready', () => {
 
     const getQuoteMatch = () =>
       router.state.matches.find((match) => match.routeId === quoteRoute.id)
-    try {
-      await router.load()
-
-      await router.navigate({ to: '/quote' })
-      expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-1' })
-      expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-1' }])
-
-      await router.navigate({ to: '/' })
-      const revisit = router.navigate({ to: '/quote' })
-      await secondLoaderStarted
-      await revisit
-
-      // The cached generation remains internally consistent while its stale
-      // loader is pending in the background.
-      expect(secondLoaderResponse.status).toBe('pending')
-      expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-1' })
-      expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-1' }])
-
+    onTestFinished(() => {
       secondLoaderResponse.resolve({ author: 'author-2' })
-      await vi.waitFor(() => {
-        expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-2' })
-        expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-2' }])
-      })
-    } finally {
-      secondLoaderResponse.resolve({ author: 'author-2' })
-    }
+    })
+
+    await router.load()
+
+    await router.navigate({ to: '/quote' })
+    expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-1' })
+    expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-1' }])
+
+    await router.navigate({ to: '/' })
+    const revisit = router.navigate({ to: '/quote' })
+    await secondLoaderStarted
+    await revisit
+
+    // The cached generation remains internally consistent while its stale
+    // loader is pending in the background.
+    expect(secondLoaderResponse.status).toBe('pending')
+    expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-1' })
+    expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-1' }])
+
+    secondLoaderResponse.resolve({ author: 'author-2' })
+    await vi.waitFor(() => {
+      expect(getQuoteMatch()?.loaderData).toEqual({ author: 'author-2' })
+      expect(getQuoteMatch()?.meta).toEqual([{ title: 'Quote by author-2' }])
+    })
   })
 })

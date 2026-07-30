@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -202,33 +202,7 @@ describe('public preload lane contracts', () => {
 
     let preload: Promise<unknown> | undefined
     let navigation: Promise<unknown> | undefined
-    try {
-      await router.load()
-      preload = router.preloadRoute({ to: '/shared' })
-      await vi.waitFor(() => expect(sharedBeforeLoad).toHaveBeenCalledOnce())
-
-      navigation = router.navigate({
-        to: '/hop/$hop',
-        params: { hop: '0' },
-      } as any)
-      await vi.waitFor(() => expect(sharedBeforeLoad).toHaveBeenCalledTimes(2))
-
-      redirectGate.resolve()
-      await Promise.all([preload, navigation])
-
-      expect(
-        sharedBeforeLoad.mock.calls.map(([context]) => context.preload),
-      ).toEqual([true, false])
-      expect(router.state.location.pathname).toBe('/shared')
-      expect(
-        router.state.matches.find((match) => match.status !== 'success'),
-      ).toMatchObject({
-        routeId: rootRoute.id,
-        status: 'error',
-        error: expect.objectContaining({ message: 'Too many redirects' }),
-      })
-      expect(router.state.status).toBe('idle')
-    } finally {
+    onTestFinished(async () => {
       redirectGate.resolve()
       const activeWork: Array<Promise<unknown>> = []
       if (preload) {
@@ -238,7 +212,33 @@ describe('public preload lane contracts', () => {
         activeWork.push(navigation)
       }
       await Promise.allSettled(activeWork)
-    }
+    })
+
+    await router.load()
+    preload = router.preloadRoute({ to: '/shared' })
+    await vi.waitFor(() => expect(sharedBeforeLoad).toHaveBeenCalledOnce())
+
+    navigation = router.navigate({
+      to: '/hop/$hop',
+      params: { hop: '0' },
+    } as any)
+    await vi.waitFor(() => expect(sharedBeforeLoad).toHaveBeenCalledTimes(2))
+
+    redirectGate.resolve()
+    await Promise.all([preload, navigation])
+
+    expect(
+      sharedBeforeLoad.mock.calls.map(([context]) => context.preload),
+    ).toEqual([true, false])
+    expect(router.state.location.pathname).toBe('/shared')
+    expect(
+      router.state.matches.find((match) => match.status !== 'success'),
+    ).toMatchObject({
+      routeId: rootRoute.id,
+      status: 'error',
+      error: expect.objectContaining({ message: 'Too many redirects' }),
+    })
+    expect(router.state.status).toBe('idle')
   })
 
   test.each([

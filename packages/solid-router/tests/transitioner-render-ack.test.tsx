@@ -1,5 +1,5 @@
 import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, onTestFinished, test } from 'vitest'
 import {
   Outlet,
   RouterProvider,
@@ -62,38 +62,37 @@ test('onResolved precedes onRendered and both observe the committed destination 
       })
     }),
   ]
-
-  try {
-    const navigation = router.navigate({ to: '/next' })
-
-    expect(screen.queryByText('Next')).toBeNull()
-    expect(screen.getByText('First')).toBeInTheDocument()
-    expect(lifecycle).toEqual([])
-
-    nextLoader.resolve()
-    await navigation
-    await waitFor(() =>
-      expect(lifecycle).toEqual([
-        {
-          event: 'onResolved',
-          pathname: '/next',
-          destination: true,
-          outgoing: false,
-        },
-        {
-          event: 'onRendered',
-          pathname: '/next',
-          destination: true,
-          outgoing: false,
-        },
-      ]),
-    )
-  } finally {
+  onTestFinished(() => {
     nextLoader.resolve()
     for (const unsubscribe of unsubscribers) {
       unsubscribe()
     }
-  }
+  })
+
+  const navigation = router.navigate({ to: '/next' })
+
+  expect(screen.queryByText('Next')).toBeNull()
+  expect(screen.getByText('First')).toBeInTheDocument()
+  expect(lifecycle).toEqual([])
+
+  nextLoader.resolve()
+  await navigation
+  await waitFor(() =>
+    expect(lifecycle).toEqual([
+      {
+        event: 'onResolved',
+        pathname: '/next',
+        destination: true,
+        outgoing: false,
+      },
+      {
+        event: 'onRendered',
+        pathname: '/next',
+        destination: true,
+        outgoing: false,
+      },
+    ]),
+  )
 })
 
 test('onRendered describes each committed navigation from the previously rendered location', async () => {
@@ -153,60 +152,57 @@ test('onRendered describes each committed navigation from the previously rendere
           : undefined,
     })
   })
+  onTestFinished(unsubscribe)
 
-  try {
-    await router.navigate({ to: '/next' })
-    expect(await screen.findByText('Next')).toBeInTheDocument()
-    await waitFor(() =>
-      expect(renderedChanges).toEqual([
-        {
-          fromPathname: '/',
-          toPathname: '/next',
-          fromHref: '/',
-          toHref: '/next',
-          pathChanged: true,
-          hrefChanged: true,
-          fromSameHrefState: false,
-          toSameHrefState: false,
-          renderedRoute: 'Next',
-        },
-      ]),
-    )
+  await router.navigate({ to: '/next' })
+  expect(await screen.findByText('Next')).toBeInTheDocument()
+  await waitFor(() =>
+    expect(renderedChanges).toEqual([
+      {
+        fromPathname: '/',
+        toPathname: '/next',
+        fromHref: '/',
+        toHref: '/next',
+        pathChanged: true,
+        hrefChanged: true,
+        fromSameHrefState: false,
+        toSameHrefState: false,
+        renderedRoute: 'Next',
+      },
+    ]),
+  )
 
-    const sameHrefState: SameHrefTestState = { sameHrefState: true }
-    await router.navigate({
-      to: '/next',
-      state: sameHrefState,
-    })
-    await waitFor(() =>
-      expect(renderedChanges).toEqual([
-        {
-          fromPathname: '/',
-          toPathname: '/next',
-          fromHref: '/',
-          toHref: '/next',
-          pathChanged: true,
-          hrefChanged: true,
-          fromSameHrefState: false,
-          toSameHrefState: false,
-          renderedRoute: 'Next',
-        },
-        {
-          fromPathname: '/next',
-          toPathname: '/next',
-          fromHref: '/next',
-          toHref: '/next',
-          pathChanged: false,
-          hrefChanged: false,
-          fromSameHrefState: false,
-          toSameHrefState: true,
-          renderedRoute: 'Next',
-        },
-      ]),
-    )
-  } finally {
-    unsubscribe()
-  }
+  const sameHrefState: SameHrefTestState = { sameHrefState: true }
+  await router.navigate({
+    to: '/next',
+    state: sameHrefState,
+  })
+  await waitFor(() =>
+    expect(renderedChanges).toEqual([
+      {
+        fromPathname: '/',
+        toPathname: '/next',
+        fromHref: '/',
+        toHref: '/next',
+        pathChanged: true,
+        hrefChanged: true,
+        fromSameHrefState: false,
+        toSameHrefState: false,
+        renderedRoute: 'Next',
+      },
+      {
+        fromPathname: '/next',
+        toPathname: '/next',
+        fromHref: '/next',
+        toHref: '/next',
+        pathChanged: false,
+        hrefChanged: false,
+        fromSameHrefState: false,
+        toSameHrefState: true,
+        renderedRoute: 'Next',
+      },
+    ]),
+  )
 })
 
 test('an older rendered destination cannot resolve a superseding navigation', async () => {
@@ -267,43 +263,42 @@ test('an older rendered destination cannot resolve a superseding navigation', as
       })
     }),
   ]
-
-  try {
-    const firstNavigation = router.navigate({ to: '/first' })
-
-    await waitFor(() => {
-      expect(nextNavigation).toBeDefined()
-    })
-    expect(screen.getByText('First')).toBeInTheDocument()
-    expect(screen.queryByText('Next')).not.toBeInTheDocument()
-    expect(lifecycle).toEqual([])
-
-    nextLoader.resolve()
-    await Promise.all([firstNavigation, nextNavigation!])
-
-    await waitFor(() => {
-      expect(screen.getByText('Next')).toBeInTheDocument()
-    })
-    expect(lifecycle).toEqual([
-      {
-        event: 'onResolved',
-        pathname: '/next',
-        destination: true,
-        superseded: false,
-      },
-      {
-        event: 'onRendered',
-        pathname: '/next',
-        destination: true,
-        superseded: false,
-      },
-    ])
-  } finally {
+  onTestFinished(() => {
     nextLoader.resolve()
     for (const unsubscribe of unsubscribers) {
       unsubscribe()
     }
-  }
+  })
+
+  const firstNavigation = router.navigate({ to: '/first' })
+
+  await waitFor(() => {
+    expect(nextNavigation).toBeDefined()
+  })
+  expect(screen.getByText('First')).toBeInTheDocument()
+  expect(screen.queryByText('Next')).not.toBeInTheDocument()
+  expect(lifecycle).toEqual([])
+
+  nextLoader.resolve()
+  await Promise.all([firstNavigation, nextNavigation!])
+
+  await waitFor(() => {
+    expect(screen.getByText('Next')).toBeInTheDocument()
+  })
+  expect(lifecycle).toEqual([
+    {
+      event: 'onResolved',
+      pathname: '/next',
+      destination: true,
+      superseded: false,
+    },
+    {
+      event: 'onRendered',
+      pathname: '/next',
+      destination: true,
+      superseded: false,
+    },
+  ])
 })
 
 test('same-location invalidation resolves after its refreshed DOM commits', async () => {
@@ -330,12 +325,9 @@ test('same-location invalidation resolves after its refreshed DOM commits', asyn
   const unsubscribe = router.subscribe('onResolved', () => {
     refreshedDomWasVisible.push(screen.queryByText('Generation 2') !== null)
   })
+  onTestFinished(unsubscribe)
 
-  try {
-    await router.invalidate()
-    expect(await screen.findByText('Generation 2')).toBeInTheDocument()
-    expect(refreshedDomWasVisible).toEqual([true])
-  } finally {
-    unsubscribe()
-  }
+  await router.invalidate()
+  expect(await screen.findByText('Generation 2')).toBeInTheDocument()
+  expect(refreshedDomWasVisible).toEqual([true])
 })

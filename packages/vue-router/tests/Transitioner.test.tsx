@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { cleanup, render, waitFor } from '@testing-library/vue'
 import {
   RouterProvider,
@@ -58,19 +58,19 @@ describe('Transitioner', () => {
     })
 
     const load = router.load()
-    try {
-      await waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
-
-      const view = render(<RouterProvider router={router} />)
-      loaderGate.resolve()
-      await load
-
-      expect(await view.findByText('Index')).toBeInTheDocument()
-      expect(beforeLoad).toHaveBeenCalledTimes(1)
-      expect(loader).toHaveBeenCalledTimes(1)
-    } finally {
+    onTestFinished(async () => {
       loaderGate.resolve()
       await Promise.allSettled([load])
-    }
+    })
+
+    await waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
+
+    const view = render(<RouterProvider router={router} />)
+    loaderGate.resolve()
+    await load
+
+    expect(await view.findByText('Index')).toBeInTheDocument()
+    expect(beforeLoad).toHaveBeenCalledTimes(1)
+    expect(loader).toHaveBeenCalledTimes(1)
   })
 })

@@ -1,5 +1,13 @@
 import * as React from 'react'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import {
   RouterProvider,
@@ -59,34 +67,34 @@ describe('issue #4759: pendingMs 0 publishes pending DOM before a macrotask', ()
       }
     })
 
-    try {
-      render(
-        <main>
-          <RouterProvider
-            router={router}
-            defaultPendingMs={0}
-            defaultPendingMinMs={0}
-            defaultPendingComponent={() => (
-              <div data-testid="pending">pending...</div>
-            )}
-          />
-        </main>,
-      )
-
-      // Fake timers keep the first macrotask frozen. An implementation that
-      // publishes pending state with setTimeout cannot satisfy this assertion.
-      await act(async () => {})
-      expect(screen.getByTestId('pending')).toBeInTheDocument()
-
-      // Sanity: the load still completes normally afterwards.
-      resolveLoader('done')
-      await act(() => rendered)
-      expect(screen.getByTestId('loaded')).toBeInTheDocument()
-      expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
-    } finally {
+    onTestFinished(() => {
       unsubscribe()
       resolveLoader('done')
       vi.useRealTimers()
-    }
+    })
+
+    render(
+      <main>
+        <RouterProvider
+          router={router}
+          defaultPendingMs={0}
+          defaultPendingMinMs={0}
+          defaultPendingComponent={() => (
+            <div data-testid="pending">pending...</div>
+          )}
+        />
+      </main>,
+    )
+
+    // Fake timers keep the first macrotask frozen. An implementation that
+    // publishes pending state with setTimeout cannot satisfy this assertion.
+    await act(async () => {})
+    expect(screen.getByTestId('pending')).toBeInTheDocument()
+
+    // Sanity: the load still completes normally afterwards.
+    resolveLoader('done')
+    await act(() => rendered)
+    expect(screen.getByTestId('loaded')).toBeInTheDocument()
+    expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
   })
 })

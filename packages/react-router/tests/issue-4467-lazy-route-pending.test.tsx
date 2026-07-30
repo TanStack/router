@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 
 import {
   Outlet,
@@ -43,40 +43,40 @@ test('default pending component renders while lazy route options load', async ()
   })
   let navigationPromise: Promise<void> | undefined
 
-  try {
-    render(<RouterProvider router={router} />)
-
-    expect(
-      await screen.findByRole('heading', { name: 'Index page' }),
-    ).toBeInTheDocument()
-
-    act(() => {
-      navigationPromise = router.navigate({ to: '/page' })
-    })
-
-    expect(await screen.findByRole('status')).toHaveTextContent('Loading page')
-    expect(
-      screen.queryByRole('heading', { name: 'Page' }),
-    ).not.toBeInTheDocument()
-    expect(lazyOptions.status).toBe('pending')
-    expect(loadLazyOptions).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      lazyOptions.resolve(lazyPageOptions)
-      await navigationPromise
-    })
-
-    expect(screen.getByRole('heading', { name: 'Page' })).toBeInTheDocument()
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-    expect(loadLazyOptions).toHaveBeenCalledTimes(1)
-  } finally {
+  onTestFinished(async () => {
     await act(async () => {
       if (lazyOptions.status === 'pending') {
         lazyOptions.resolve(lazyPageOptions)
       }
       await navigationPromise
     })
-  }
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(
+    await screen.findByRole('heading', { name: 'Index page' }),
+  ).toBeInTheDocument()
+
+  act(() => {
+    navigationPromise = router.navigate({ to: '/page' })
+  })
+
+  expect(await screen.findByRole('status')).toHaveTextContent('Loading page')
+  expect(
+    screen.queryByRole('heading', { name: 'Page' }),
+  ).not.toBeInTheDocument()
+  expect(lazyOptions.status).toBe('pending')
+  expect(loadLazyOptions).toHaveBeenCalledTimes(1)
+
+  await act(async () => {
+    lazyOptions.resolve(lazyPageOptions)
+    await navigationPromise
+  })
+
+  expect(screen.getByRole('heading', { name: 'Page' })).toBeInTheDocument()
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  expect(loadLazyOptions).toHaveBeenCalledTimes(1)
 })
 
 test('a lazy pending component is offered while the eager loader is still pending', async () => {
@@ -106,41 +106,39 @@ test('a lazy pending component is offered while the eager loader is still pendin
   })
   let navigation: Promise<void> | undefined
 
-  try {
-    render(<RouterProvider router={router} />)
-    expect(
-      await screen.findByRole('heading', { name: 'Index page' }),
-    ).toBeInTheDocument()
-
-    act(() => {
-      navigation = router.navigate({ to: '/page' })
-    })
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Loading default',
-    )
-
-    await act(async () => {
-      lazyOptions.resolve(lazyPageOptions)
-    })
-
-    expect(await screen.findByRole('status')).toHaveTextContent(
-      'Loading lazy page',
-    )
-    expect(
-      screen.queryByRole('heading', { name: 'Page' }),
-    ).not.toBeInTheDocument()
-
-    await act(async () => {
-      loader.resolve()
-      await navigation
-    })
-
-    expect(screen.getByRole('heading', { name: 'Page' })).toBeInTheDocument()
-  } finally {
+  onTestFinished(async () => {
     await act(async () => {
       lazyOptions.resolve(lazyPageOptions)
       loader.resolve()
       await navigation
     })
-  }
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(
+    await screen.findByRole('heading', { name: 'Index page' }),
+  ).toBeInTheDocument()
+
+  act(() => {
+    navigation = router.navigate({ to: '/page' })
+  })
+  expect(await screen.findByRole('status')).toHaveTextContent('Loading default')
+
+  await act(async () => {
+    lazyOptions.resolve(lazyPageOptions)
+  })
+
+  expect(await screen.findByRole('status')).toHaveTextContent(
+    'Loading lazy page',
+  )
+  expect(
+    screen.queryByRole('heading', { name: 'Page' }),
+  ).not.toBeInTheDocument()
+
+  await act(async () => {
+    loader.resolve()
+    await navigation
+  })
+
+  expect(screen.getByRole('heading', { name: 'Page' })).toBeInTheDocument()
 })

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -72,12 +72,12 @@ describe('#4078 / #2255 existing Core root-boundary attribution', () => {
     await router.load()
 
     const navigation = router.navigate({ to: '/about' })
-    await loaderStarted
-    try {
-      expect(loaderResponse.status).toBe('pending')
-    } finally {
+    onTestFinished(() => {
       loaderResponse.resolve()
-    }
+    })
+    await loaderStarted
+    expect(loaderResponse.status).toBe('pending')
+    loaderResponse.resolve()
 
     await navigation
 

@@ -1,5 +1,13 @@
 import { runInNewContext } from 'node:vm'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -1036,26 +1044,25 @@ describe('public hydration contracts', () => {
         u: Date.now(),
       },
     ])
-
-    try {
-      await hydrate(router)
-      browserWindow.history.replaceState(
-        browserWindow.history.state,
-        '',
-        '/public-b',
-      )
-
-      await router.load()
-
-      expect(
-        beforeLoad.mock.calls.map(([options]) => options.location.publicHref),
-      ).toEqual(['/public-b'])
-      expect(loader).toHaveBeenCalledTimes(1)
-      expect(router.state.matches.at(-1)?.loaderData).toBe('/public-b')
-    } finally {
+    onTestFinished(() => {
       history.destroy()
       browserWindow.history.replaceState({}, '', '/')
-    }
+    })
+
+    await hydrate(router)
+    browserWindow.history.replaceState(
+      browserWindow.history.state,
+      '',
+      '/public-b',
+    )
+
+    await router.load()
+
+    expect(
+      beforeLoad.mock.calls.map(([options]) => options.location.publicHref),
+    ).toEqual(['/public-b'])
+    expect(loader).toHaveBeenCalledTimes(1)
+    expect(router.state.matches.at(-1)?.loaderData).toBe('/public-b')
   })
 
   test('keeps a hydration handoff when a provider initializes an empty context', async () => {
