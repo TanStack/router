@@ -58,6 +58,7 @@
           "toolchain": "vite",
           "mode": "ssr",
           "env": {
+            "E2E_BUILD_LOG": "webserver-build.vite-ssr.log",
             "E2E_VITE_BUNDLED_DEV": "false"
           }
         },
@@ -66,12 +67,16 @@
           "mode": "ssr",
           "name": "bundled-dev",
           "env": {
+            "E2E_BUILD_LOG": "webserver-build.vite-ssr-bundled-dev.log",
             "E2E_VITE_BUNDLED_DEV": "true"
           }
         },
         {
           "toolchain": "rsbuild",
-          "mode": "ssr"
+          "mode": "ssr",
+          "env": {
+            "E2E_BUILD_LOG": "webserver-build.rsbuild-ssr.log"
+          }
         }
       ]
     }
