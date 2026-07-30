@@ -78,10 +78,7 @@ function MatchesInner() {
     (isServer ?? router.isServer)
       ? router.stores.matches.get()
       : // eslint-disable-next-line react-hooks/rules-of-hooks
-        useStore(
-          router.stores.matches,
-          (value) => acknowledgement[0] ?? value,
-        )
+        useStore(router.stores.matches, (value) => acknowledgement[0] ?? value)
   const match = matches[0]
   const routeId = match?.routeId
 

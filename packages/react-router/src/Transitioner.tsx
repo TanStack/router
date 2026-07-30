@@ -89,17 +89,14 @@ export function Transitioner() {
       resolvedLocation?.href === location.href &&
       resolvedLocation.state.__TSR_key === location.state.__TSR_key
     ) {
-      acknowledgement.push(
-        router.stores.matches.get(),
-        (rendered) => {
-          if (rendered) {
-            router.emit({
-              type: 'onRendered',
-              ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
-            })
-          }
-        },
-      )
+      acknowledgement.push(router.stores.matches.get(), (rendered) => {
+        if (rendered) {
+          router.emit({
+            type: 'onRendered',
+            ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
+          })
+        }
+      })
     } else if (!router._tx) {
       router.load().catch(console.error)
     }

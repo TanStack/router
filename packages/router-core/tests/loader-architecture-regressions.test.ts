@@ -723,16 +723,14 @@ test('an unrelated preload redirect does not override a navigation error', async
     },
     errorComponent: () => null,
   })
-  const childLoader = vi.fn(
-    async ({ deps }: { deps: { mode: string } }) => {
-      if (deps.mode === 'preload') {
-        preloadChildStarted.resolve()
-        await releasePreloadRedirect
-        throw redirect({ to: '/target' })
-      }
-      return 'navigation child data'
-    },
-  )
+  const childLoader = vi.fn(async ({ deps }: { deps: { mode: string } }) => {
+    if (deps.mode === 'preload') {
+      preloadChildStarted.resolve()
+      await releasePreloadRedirect
+      throw redirect({ to: '/target' })
+    }
+    return 'navigation child data'
+  })
   const childRoute = new BaseRoute({
     getParentRoute: () => parentRoute,
     path: '/child',
