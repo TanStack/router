@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.171.25
+
+### Patch Changes
+
+- [#7590](https://github.com/TanStack/router/pull/7590) [`7592555`](https://github.com/TanStack/router/commit/7592555b86c968efbc8c817ac0cf6fdae60aabe0) - Fix Rsbuild SSR asset URLs for `?url` imports by aligning server public asset paths with the client build.
+
 ## 1.171.24
 
 ### Patch Changes
