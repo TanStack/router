@@ -90,9 +90,10 @@ function createNodesInternal(
 
 const CI_TARGET_NAME = 'test:e2e'
 const MODE_TARGET_SEPARATOR = '--'
-const TEST_INPUTS: TargetConfiguration['inputs'] = ['default', '^production']
+const TEST_INPUTS: TargetConfiguration['inputs'] = ['default', 'dependentTaskOutputs', '^production']
 const BUILD_INPUTS: TargetConfiguration['inputs'] = [
-  'production',
+  'buildProduction',
+  'dependentTaskOutputs',
   '^production',
 ]
 

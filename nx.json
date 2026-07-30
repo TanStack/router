@@ -112,6 +112,7 @@
       "outputs": [
         "{projectRoot}/.netlify",
         "{projectRoot}/.wrangler",
+        "{projectRoot}/.output",
         "{projectRoot}/build",
         "{projectRoot}/dist"
       ]
