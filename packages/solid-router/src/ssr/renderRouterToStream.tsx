@@ -126,6 +126,10 @@ export const renderRouterToStream = async ({
       Promise.resolve(stream as unknown),
       request.signal,
     )
+
+    if (request.signal.aborted) {
+      throw request.signal.reason ?? new Error('Request aborted')
+    }
   }
 
   const solidWritable = new WritableStream({
