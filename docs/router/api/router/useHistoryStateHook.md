@@ -47,6 +47,9 @@ The `useHistoryState` hook accepts an optional `options` object.
 - The state object passed during navigation to the specified route, or `TSelected` if a `select` function is provided.
 - Returns `undefined` if no match is found and `shouldThrow` is `false`.
 
+> [!NOTE]
+> `useHistoryState` is currently available for React and Solid. Vue support is planned as a follow-up; `validateState` itself already runs for Vue, but there is no Vue hook to read the result yet.
+
 ## State Validation
 
 You can validate the state object by defining a `validateState` function on your route:
@@ -64,7 +67,42 @@ const route = createRoute({
 })
 ```
 
-This ensures type safety and validation for your route's state.
+When a route (or any of its parents) declares `validateState`, `useHistoryState` returns **only** what those validators produced. Keys present in the raw history state that no validator claimed are not exposed, so the value you receive always matches the validated type. If no route in the chain declares `validateState`, the route's state type is unconstrained and the raw state is passed through unchanged.
+
+Validation also runs when a navigation is committed, so defaults and transforms your validator applies are written into the actual history entry rather than being recomputed on read.
+
+### Direct loads, refreshes, and SSR
+
+History state does not survive a fresh document load. Opening a URL directly, refreshing the page, or rendering on the server all start from an empty state object, so `validateState` receives `{}` in those cases.
+
+This means a schema with **required** fields will fail on a direct load. That failure is surfaced the same way a `validateSearch` failure is: the route renders its `errorComponent` with a `StateParamError`, and on the server the response status becomes `500`. This is deliberate — it prevents a component from ever receiving a value that does not match its validated type.
+
+For any route that can be reached by a direct URL, give the schema defaults or make the fields optional:
+
+```tsx
+const route = createRoute({
+  // ...
+  // `count` is always present, falling back to 0 on a direct load
+  validateState: (input) =>
+    z.object({ count: z.number().default(0) }).parse(input),
+})
+```
+
+If the route only makes sense when state is present, you can redirect instead of erroring — `redirect()` and `notFound()` thrown from `validateState` are passed through rather than wrapped:
+
+```tsx
+const route = createRoute({
+  // ...
+  validateState: (input: { token?: string }) => {
+    if (typeof input.token !== 'string') {
+      throw redirect({ to: '/login' })
+    }
+    return { token: input.token }
+  },
+})
+```
+
+Setting `strict: false` on the hook widens the return type so every field is optional, which is useful when you want to read state without committing to a schema.
 
 ## Examples
 

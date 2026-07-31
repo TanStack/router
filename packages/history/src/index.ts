@@ -97,16 +97,29 @@ const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
 
 /**
- * Filters out internal state keys from a state object.
- * Internal keys are those that start with '__' or equal 'key'.
+ * Internal state keys are those that start with '__' (e.g. `__TSR_index`,
+ * `__TSR_key`, `__tempLocation`) or equal the legacy 'key'.
  */
-export function omitInternalKeys(
-  state: Record<string, unknown>,
-): Record<string, unknown> {
+const isInternalKey = (key: string) => key.startsWith('__') || key === 'key'
+
+/**
+ * Filters out internal state keys from a state object, leaving only the
+ * user-supplied state.
+ */
+export function omitInternalKeys(state: object): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(state).filter(
-      ([key]) => !(key.startsWith('__') || key === 'key'),
-    ),
+    Object.entries(state).filter(([key]) => !isInternalKey(key)),
+  )
+}
+
+/**
+ * Keeps only the internal state keys from a state object. This is the
+ * complement of `omitInternalKeys` and is used when user state has to be
+ * rebuilt without dropping the router's own bookkeeping.
+ */
+export function pickInternalKeys(state: object): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(state).filter(([key]) => isInternalKey(key)),
   )
 }
 

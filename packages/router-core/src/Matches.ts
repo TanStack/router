@@ -184,6 +184,7 @@ export interface PreValidationErrorHandlingRouteMatch<
   TFullPath,
   TAllParams,
   TFullSearchSchema,
+  TFullStateSchema,
 > {
   id: string
   routeId: TRouteId
@@ -195,6 +196,9 @@ export interface PreValidationErrorHandlingRouteMatch<
     | { status: 'error'; error: unknown }
   params:
     | { status: 'success'; value: TAllParams }
+    | { status: 'error'; error: unknown }
+  state:
+    | { status: 'success'; value: TFullStateSchema }
     | { status: 'error'; error: unknown }
   staticData: StaticDataRouteOption
   ssr?: boolean | 'data-only'
@@ -208,7 +212,8 @@ export type MakePreValidationErrorHandlingRouteMatchUnion<
       TRoute['id'],
       TRoute['fullPath'],
       TRoute['types']['allParams'],
-      TRoute['types']['fullSearchSchema']
+      TRoute['types']['fullSearchSchema'],
+      TRoute['types']['fullStateSchema']
     >
   : never
 

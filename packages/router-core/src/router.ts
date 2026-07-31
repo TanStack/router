@@ -2,6 +2,7 @@ import {
   createBrowserHistory,
   omitInternalKeys,
   parseHref,
+  pickInternalKeys,
 } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import {
@@ -1472,6 +1473,11 @@ export class RouterCore<
       : undefined
 
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
+    // Tracks whether any route from the root down to the current one declared
+    // a `validateState`. When none did, there is no schema to project the
+    // history state onto, so `_strictState` carries the raw user state
+    // through instead of an empty object.
+    let hasStateValidator = false
     // Snapshot of active match state keyed by routeId, used to stabilise
     // params/search across navigations.
     const previousActiveMatchesByRouteId = new Map<string, AnyRouteMatch>()
@@ -1531,7 +1537,9 @@ export class RouterCore<
       const [preMatchState, strictMatchState, stateError]: [
         Record<string, any>,
         Record<string, any>,
-        Error | undefined,
+        // `unknown` because a validator may throw a `redirect()`/`notFound()`,
+        // which are control-flow objects rather than `Error` instances.
+        unknown,
       ] = (() => {
         const rawState = parentMatch?.state ?? next.state
         const parentStrictState = parentMatch?._strictState ?? {}
@@ -1539,6 +1547,7 @@ export class RouterCore<
 
         try {
           if (route.options.validateState) {
+            hasStateValidator = true
             const strictState =
               validateState(route.options.validateState, filteredState) || {}
             return [
@@ -1550,9 +1559,23 @@ export class RouterCore<
               undefined,
             ]
           }
-          return [filteredState, {}, undefined]
+          // No validator on this route: inherit whatever the ancestors
+          // validated. If nothing in the chain declared one, the route's
+          // state type is unconstrained, so the raw user state is passed
+          // through unchanged.
+          return [
+            filteredState,
+            hasStateValidator ? { ...parentStrictState } : filteredState,
+            undefined,
+          ]
         } catch (err: any) {
-          const stateValidationError = err
+          // Redirects and not-founds thrown from a validator are intentional
+          // control flow, so they are passed through untouched. Everything
+          // else is normalized so consumers can rely on `StateParamError`.
+          const stateValidationError =
+            isNotFound(err) || isRedirect(err) || err instanceof StateParamError
+              ? err
+              : new StateParamError(err.message, { cause: err })
 
           if (opts?.throwOnError) {
             throw stateValidationError
@@ -2127,23 +2150,35 @@ export class RouterCore<
       }
 
       if (opts._includeValidateState) {
-        let validatedState = {}
+        // The validators only ever see user state, never the router's own
+        // bookkeeping keys (`__TSR_index`, `__tempLocation`, ...), which must
+        // survive untouched so masking and scroll restoration keep working.
+        const userState = omitInternalKeys(nextState)
+        const internalState = pickInternalKeys(nextState)
+
+        let validatedState: Record<string, any> = {}
         destRoutes.forEach((route) => {
+          if (!route.options.validateState) return
           try {
-            if (route.options.validateState) {
-              validatedState = {
+            validatedState = {
+              ...validatedState,
+              ...(validateState(route.options.validateState, {
+                ...userState,
                 ...validatedState,
-                ...(validateState(route.options.validateState, {
-                  ...validatedState,
-                  ...nextState,
-                }) ?? {}),
-              }
+              }) ?? {}),
             }
           } catch {
             // ignore errors here because they are already handled in matchRoutes
           }
         })
-        nextState = validatedState
+
+        // Apply the validated output (defaults, transforms) on top of the
+        // state the caller asked for, keeping keys no validator claimed.
+        nextState = nullReplaceEqualDeep(nextState, {
+          ...internalState,
+          ...userState,
+          ...validatedState,
+        }) as any
       }
 
       return {
@@ -2362,6 +2397,7 @@ export class RouterCore<
     const location = this.buildLocation({
       ...(rest as any),
       _includeValidateSearch: true,
+      _includeValidateState: true,
     })
 
     this.pendingBuiltLocation = location as ParsedLocation<
@@ -2493,6 +2529,7 @@ export class RouterCore<
         hash: true,
         state: true,
         _includeValidateSearch: true,
+        _includeValidateState: true,
       })
 
       // Check if location changed - origin check is unnecessary since buildLocation

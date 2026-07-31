@@ -280,7 +280,7 @@ export type {
 
 export { createRouter, Router } from './router'
 
-export { lazyFn, SearchParamError } from '@tanstack/router-core'
+export { lazyFn, SearchParamError, StateParamError } from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'
@@ -321,7 +321,6 @@ export type {
   ValidateToPath,
   ValidateSearch,
   ValidateParams,
-  ValidateHistoryState,
   InferFrom,
   InferTo,
   InferMaskTo,

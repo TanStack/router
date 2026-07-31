@@ -289,11 +289,12 @@ const isBeforeLoadSsr = (
     existingMatch.ssr = parentOverride(route.options.ssr)
     return
   }
-  const { search, params } = existingMatch
+  const { search, params, state } = existingMatch
 
-  const ssrFnContext: SsrContextOptions<any, any, any> = {
+  const ssrFnContext: SsrContextOptions<any, any, any, any> = {
     search: makeMaybe(search, existingMatch.searchError),
     params: makeMaybe(params, existingMatch.paramsError),
+    state: makeMaybe(state, existingMatch.stateError),
     location: inner.location,
     matches: inner.matches.map((match) => ({
       index: match.index,
@@ -304,6 +305,7 @@ const isBeforeLoadSsr = (
       routeId: match.routeId,
       search: makeMaybe(match.search, match.searchError),
       params: makeMaybe(match.params, match.paramsError),
+      state: makeMaybe(match.state, match.stateError),
       ssr: match.ssr,
     })),
   }
@@ -400,7 +402,7 @@ const executeBeforeLoad = (
     prevLoadPromise = undefined
   })
 
-  const { paramsError, searchError } = match
+  const { paramsError, searchError, stateError } = match
 
   if (paramsError) {
     handleSerialError(inner, index, paramsError)
@@ -408,6 +410,10 @@ const executeBeforeLoad = (
 
   if (searchError) {
     handleSerialError(inner, index, searchError)
+  }
+
+  if (stateError) {
+    handleSerialError(inner, index, stateError)
   }
 
   setupPendingTimeout(inner, matchId, route, match)

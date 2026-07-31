@@ -41,6 +41,7 @@ export function Transitioner() {
       hash: true,
       state: true,
       _includeValidateSearch: true,
+      _includeValidateState: true,
     })
 
     // Check if the current URL matches the canonical form.

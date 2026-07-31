@@ -2295,3 +2295,91 @@ describe('buildLocation - _fromLocation override', () => {
     expect(location.pathname).toBe('/users/456/settings')
   })
 })
+
+describe('buildLocation - _includeValidateState', () => {
+  const makeRouter = () => {
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      validateState: (state: { count?: number }) => ({
+        count: state.count === undefined ? 0 : state.count,
+      }),
+    })
+
+    return createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+  }
+
+  test('applies validator defaults to the committed state', async () => {
+    const router = makeRouter()
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/posts',
+      _includeValidateState: true,
+    } as any)
+
+    expect(location.state).toMatchObject({ count: 0 })
+  })
+
+  test('validator output wins over the supplied state', async () => {
+    const router = makeRouter()
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/posts',
+      state: { count: 7 },
+      _includeValidateState: true,
+    } as any)
+
+    expect(location.state).toMatchObject({ count: 7 })
+  })
+
+  test('preserves user keys no validator claimed', async () => {
+    const router = makeRouter()
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/posts',
+      state: { extra: 'kept' },
+      _includeValidateState: true,
+    } as any)
+
+    expect(location.state).toMatchObject({ extra: 'kept', count: 0 })
+  })
+
+  test('preserves the router internal bookkeeping keys', async () => {
+    const router = makeRouter()
+    await router.load()
+
+    // Carrying the current state forward is the case where internal keys are
+    // actually present; they must survive validation, otherwise route masking
+    // and scroll restoration break.
+    const location = router.buildLocation({
+      to: '/posts',
+      state: true,
+      _includeValidateState: true,
+    } as any)
+
+    expect((location.state as any).__TSR_index).toBe(
+      (router.latestLocation.state as any).__TSR_index,
+    )
+    expect(location.state).toMatchObject({ count: 0 })
+  })
+
+  test('does not validate when the flag is absent', async () => {
+    const router = makeRouter()
+    await router.load()
+
+    const location = router.buildLocation({ to: '/posts' } as any)
+
+    expect((location.state as any).count).toBeUndefined()
+  })
+})

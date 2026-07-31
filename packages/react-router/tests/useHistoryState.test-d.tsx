@@ -5,7 +5,7 @@ import {
   createRouter,
   useHistoryState,
 } from '../src'
-import type { StateSchemaInput } from '../src'
+import type { LinkOptions, StateSchemaInput } from '../src'
 
 describe('useHistoryState', () => {
   test('when there are no state params', () => {
@@ -528,5 +528,54 @@ describe('useHistoryState', () => {
         }),
       ).toEqualTypeOf<{} | undefined>()
     })
+  })
+})
+
+describe('Link state', () => {
+  const rootRoute = createRootRoute({
+    validateState: (input: { theme?: 'light' | 'dark' }) => ({
+      theme: input.theme ?? ('light' as const),
+    }),
+  })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const invoicesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'invoices',
+    validateState: (input: { page?: number }) => ({
+      page: input.page ?? 0,
+    }),
+  })
+  const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
+  const defaultRouter = createRouter({ routeTree })
+  type DefaultRouter = typeof defaultRouter
+
+  type InvoicesState = LinkOptions<DefaultRouter, string, '/invoices'>['state']
+
+  test('narrows to the destination route full state schema', () => {
+    // The target type is the *full* state schema, so the key inherited from
+    // the root route is accepted alongside the route's own.
+    const asValue: InvoicesState = { page: 1, theme: 'dark' }
+    const asUpdater: InvoicesState = () => ({ page: 1, theme: 'dark' })
+
+    expectTypeOf(asValue).not.toBeNever()
+    expectTypeOf(asUpdater).not.toBeNever()
+  })
+
+  test('rejects values that do not match the state schema', () => {
+    // @ts-expect-error `page` is a number
+    const wrongType: InvoicesState = { page: 'nope', theme: 'dark' }
+    // @ts-expect-error `theme` is inherited from the root route validator
+    const wrongEnum: InvoicesState = { page: 1, theme: 'purple' }
+
+    void wrongType
+    void wrongEnum
+  })
+
+  test('still accepts `true` to carry the current state forward', () => {
+    const carried: InvoicesState = true
+    expectTypeOf(carried).not.toBeNever()
   })
 })

@@ -11,6 +11,7 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  StateParamError,
   createRootRoute,
   createRoute,
   createRouter,
@@ -169,6 +170,8 @@ describe('useHistoryState', () => {
       component: () => <h1 data-testid="index-title">IndexTitle</h1>,
     })
 
+    let stateError: Error | undefined
+
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
@@ -180,6 +183,10 @@ describe('useHistoryState', () => {
           })
           .parse(input),
       component: ValidChecker,
+      errorComponent: ({ error }) => {
+        stateError = error
+        return <div data-testid="state-error">{error.message}</div>
+      },
     })
 
     const router = createRouter({
@@ -197,14 +204,18 @@ describe('useHistoryState', () => {
       '{"testKey":"valid-key","color":"red"}',
     )
 
-    // Invalid state transition
+    // Invalid state transition: the validator rejects `color: 'yellow'`, so
+    // the route renders its error boundary instead of handing the component
+    // a value that does not match the validated type.
     const invalidButton = await screen.findByTestId('invalid-state-btn')
     fireEvent.click(invalidButton)
 
-    await waitFor(async () => {
-      const stateElement = await screen.findByTestId('valid-state')
-      expect(stateElement).toHaveTextContent('yellow')
+    await waitFor(() => {
+      expect(screen.getByTestId('state-error')).toBeInTheDocument()
     })
+
+    expect(screen.queryByTestId('valid-state')).not.toBeInTheDocument()
+    expect(stateError).toBeInstanceOf(StateParamError)
   })
 
   test('throws when match not found and shouldThrow=true', async () => {

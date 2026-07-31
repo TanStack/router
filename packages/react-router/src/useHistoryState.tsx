@@ -1,4 +1,3 @@
-import { omitInternalKeys } from '@tanstack/history'
 import { useMatch } from './useMatch'
 import type {
   AnyRouter,
@@ -88,9 +87,11 @@ export function useHistoryState<
     shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
     select: (match: any) => {
-      const matchState = match.state
-      const filteredState = omitInternalKeys(matchState)
-      const typedState = filteredState as unknown as ResolveUseHistoryState<
+      // `_strictState` only ever holds the output of the `validateState`
+      // validators along the route chain, so it is guaranteed to match the
+      // validated type. `match.state` is the loose merge of the raw history
+      // state and would leak unvalidated keys.
+      const typedState = match._strictState as ResolveUseHistoryState<
         TRouter,
         TFrom,
         TStrict

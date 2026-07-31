@@ -439,16 +439,24 @@ export type ToSubOptionsProps<
   hash?: true | Updater<string>
   state?: TTo extends undefined
     ? true | NonNullableUpdater<ParsedHistoryState, HistoryState>
-    : true | ResolveRelativePath<TFrom, TTo> extends infer TPath
-      ? TPath extends string
-        ? TPath extends RoutePaths<TRouter['routeTree']>
-          ? NonNullableUpdater<
-              ParsedHistoryState,
-              RouteById<TRouter['routeTree'], TPath>['types']['stateSchema']
-            >
-          : NonNullableUpdater<ParsedHistoryState, HistoryState>
-        : NonNullableUpdater<ParsedHistoryState, HistoryState>
-      : NonNullableUpdater<ParsedHistoryState, HistoryState>
+    :
+        | true
+        // The parentheses matter: without them `true | X extends infer TPath`
+        // parses as `(true | X) extends infer TPath`, which makes `TPath`
+        // include `true` and so `TPath extends string` never matches.
+        | (ResolveRelativePath<TFrom, TTo> extends infer TPath
+            ? TPath extends string
+              ? TPath extends RoutePaths<TRouter['routeTree']>
+                ? NonNullableUpdater<
+                    ParsedHistoryState,
+                    RouteById<
+                      TRouter['routeTree'],
+                      TPath
+                    >['types']['fullStateSchema']
+                  >
+                : NonNullableUpdater<ParsedHistoryState, HistoryState>
+              : NonNullableUpdater<ParsedHistoryState, HistoryState>
+            : never)
   from?: FromPathOption<TRouter, TFrom> & {}
   unsafeRelative?: 'path'
 }

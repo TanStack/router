@@ -229,7 +229,6 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useHistoryState: UseHistoryStateRoute<TRoute['id']> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useHistoryState({
       select: opts?.select,
       from: this.options.id,

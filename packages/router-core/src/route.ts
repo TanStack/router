@@ -178,12 +178,7 @@ export type ResolveSearchSchema<TSearchValidator> =
           ? ResolveSearchSchemaFn<TSearchValidator['parse']>
           : ResolveSearchSchemaFn<TSearchValidator>
 
-export type ParseSplatParams<TPath extends string> = TPath &
-  `${string}$` extends never
-  ? TPath & `${string}$/${string}` extends never
-    ? never
-    : '_splat'
-  : '_splat'
+
 export type ResolveStateSchemaFn<TStateValidator> = TStateValidator extends (
   ...args: any
 ) => infer TStateSchema
@@ -1106,7 +1101,12 @@ export interface FilebaseRouteOptionsInterface<
     | undefined
     | SSROption
     | ((
-        ctx: SsrContextOptions<TParentRoute, TSearchValidator, TParams>,
+        ctx: SsrContextOptions<
+          TParentRoute,
+          TSearchValidator,
+          TStateValidator,
+          TParams
+        >,
       ) => Awaitable<undefined | SSROption>)
   >
 
@@ -1253,6 +1253,7 @@ export interface RouteContextOptions<
 export interface SsrContextOptions<
   in out TParentRoute extends AnyRoute,
   in out TSearchValidator,
+  in out TStateValidator,
   in out TParams,
 > {
   params:
@@ -1265,6 +1266,12 @@ export interface SsrContextOptions<
     | {
         status: 'success'
         value: Expand<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
+      }
+    | { status: 'error'; error: unknown }
+  state:
+    | {
+        status: 'success'
+        value: Expand<ResolveFullStateSchema<TParentRoute, TStateValidator>>
       }
     | { status: 'error'; error: unknown }
   location: ParsedLocation

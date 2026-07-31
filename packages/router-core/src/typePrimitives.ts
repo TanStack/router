@@ -30,16 +30,6 @@ export type ValidateSearch<
   TFrom extends string = string,
 > = SearchParamOptions<TRouter, TFrom, TTo>
 
-export type ValidateHistoryState<
-  TOptions,
-  TRouter extends AnyRouter = RegisteredRouter,
-> = UseHistoryStateResult<
-  TRouter,
-  InferFrom<TOptions>,
-  InferStrict<TOptions>,
-  InferSelected<TOptions>
->
-
 export type ValidateParams<
   TRouter extends AnyRouter = RegisteredRouter,
   TTo extends string | undefined = undefined,
