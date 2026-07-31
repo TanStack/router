@@ -3,6 +3,7 @@
   "configMigration": true,
   "extends": [
     "config:recommended",
+    "helpers:pinGitHubActionDigests",
     "group:allNonMajor",
     "schedule:weekly",
     ":approveMajorUpdates",

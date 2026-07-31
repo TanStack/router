@@ -20,7 +20,31 @@ By default, TanStack Start does not include path aliases. However, you can easil
 
 In this example, we've defined the path alias `~/*` that maps to the `./src/*` directory. This means that you can now import files from the `src` directory using the `~` prefix.
 
-After updating your `tsconfig.json` file, you'll need to install the `vite-tsconfig-paths` plugin to enable path aliases in your TanStack Start project. You can do this by running the following command:
+After updating your `tsconfig.json` file, configure your build tool so it resolves the same path aliases.
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
+
+## Vite 8
+
+Vite 8+ has [built-in support for path aliases](https://vite.dev/config/shared-options#resolve-tsconfigpaths), which is disabled by default. To enable it, simply add the following configuration to your `vite.config.ts` file:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  resolve: {
+    // This enables built-in support for path aliases defined in tsconfig.json
+    tsconfigPaths: true,
+  },
+})
+```
+
+## Vite 7 and earlier
+
+For Vite 7 and earlier, install the `vite-tsconfig-paths` plugin to enable path aliases in your TanStack Start project. You can do this by running the following command:
 
 ```sh
 npm install -D vite-tsconfig-paths
@@ -34,16 +58,33 @@ import { defineConfig } from 'vite'
 import viteTsConfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  vite: {
-    plugins: [
-      // this is the plugin that enables path aliases
-      viteTsConfigPaths({
-        projects: ['./tsconfig.json'],
-      }),
-    ],
+  plugins: [
+    // this is the plugin that enables path aliases
+    viteTsConfigPaths({
+      projects: ['./tsconfig.json'],
+    }),
+  ],
+})
+```
+
+# Rsbuild
+
+Rsbuild reads the `paths` field from `tsconfig.json` by default. No extra config is needed when your aliases live in the root `tsconfig.json`.
+
+If you use a custom tsconfig file, point Rsbuild at it with `source.tsconfigPath`:
+
+```ts
+// rsbuild.config.ts
+import { defineConfig } from '@rsbuild/core'
+
+export default defineConfig({
+  source: {
+    tsconfigPath: './tsconfig.custom.json',
   },
 })
 ```
+
+<!-- ::end:tabs -->
 
 Once this configuration has completed, you'll now be able to import files using the path alias like so:
 

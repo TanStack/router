@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 
 export interface ClientOnlyProps {
@@ -64,5 +66,7 @@ export function useHydrated(): boolean {
 }
 
 function subscribe() {
-  return () => {}
+  return () => {
+    // noop
+  }
 }

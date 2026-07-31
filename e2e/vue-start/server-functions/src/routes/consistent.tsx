@@ -11,25 +11,25 @@ import { defineComponent, ref } from 'vue'
  */
 
 const cons_getFn1 = createServerFn()
-  .inputValidator((d: { username: string }) => d)
+  .validator((d: { username: string }) => d)
   .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverGetFn1 = createServerFn()
-  .inputValidator((d: { username: string }) => d)
+  .validator((d: { username: string }) => d)
   .handler(async ({ data }) => {
     return cons_getFn1({ data })
   })
 
 const cons_postFn1 = createServerFn({ method: 'POST' })
-  .inputValidator((d: { username: string }) => d)
+  .validator((d: { username: string }) => d)
   .handler(({ data }) => {
     return { payload: data }
   })
 
 const cons_serverPostFn1 = createServerFn({ method: 'POST' })
-  .inputValidator((d: { username: string }) => d)
+  .validator((d: { username: string }) => d)
   .handler(({ data }) => {
     return cons_postFn1({ data })
   })

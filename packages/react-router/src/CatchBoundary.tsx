@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
@@ -36,9 +38,19 @@ class CatchBoundaryImpl extends React.Component<{
   }) => React.ReactNode
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: Error | null; resetKey: string }
-  static getDerivedStateFromProps(props: any) {
-    return { resetKey: props.getResetKey() }
+  state = { error: null } as { error: Error | null; resetKey?: string | number }
+
+  static getDerivedStateFromProps(
+    props: { getResetKey: () => string | number },
+    state: { resetKey?: string | number; error: Error | null },
+  ) {
+    const resetKey = props.getResetKey()
+
+    if (state.error && state.resetKey !== resetKey) {
+      return { resetKey, error: null }
+    }
+
+    return { resetKey }
   }
   static getDerivedStateFromError(error: Error) {
     return { error }
@@ -46,30 +58,14 @@ class CatchBoundaryImpl extends React.Component<{
   reset() {
     this.setState({ error: null })
   }
-  componentDidUpdate(
-    prevProps: Readonly<{
-      getResetKey: () => string
-      children: (props: { error: any; reset: () => void }) => any
-      onCatch?: ((error: any, info: any) => void) | undefined
-    }>,
-    prevState: any,
-  ): void {
-    if (prevState.error && prevState.resetKey !== this.state.resetKey) {
-      this.reset()
-    }
-  }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     if (this.props.onCatch) {
       this.props.onCatch(error, errorInfo)
     }
   }
   render() {
-    // If the resetKey has changed, don't render the error
     return this.props.children({
-      error:
-        this.state.resetKey !== this.props.getResetKey()
-          ? null
-          : this.state.error,
+      error: this.state.error,
       reset: () => {
         this.reset()
       },

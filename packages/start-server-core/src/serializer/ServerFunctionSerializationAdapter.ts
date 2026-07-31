@@ -17,7 +17,7 @@ export const ServerFunctionSerializationAdapter = createSerializationAdapter({
       // When a function ID is received through serialization (e.g., as a parameter
       // to another server function), it originates from the client and must be
       // validated the same way as direct HTTP calls to server functions.
-      const serverFn = await getServerFnById(functionId, { fromClient: true })
+      const serverFn = await getServerFnById(functionId, { origin: 'client' })
       const result = await serverFn(opts ?? {}, signal)
       return result.result
     }

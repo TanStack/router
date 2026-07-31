@@ -1,6 +1,7 @@
+'use client'
+
 export {
   defer,
-  TSR_DEFERRED_PROMISE,
   isMatch,
   joinPaths,
   cleanPath,
@@ -10,7 +11,6 @@ export {
   resolvePath,
   interpolatePath,
   rootRouteId,
-  defaultSerializeError,
   defaultParseSearch,
   defaultStringifySearch,
   parseSearchWith,
@@ -74,6 +74,7 @@ export type {
   ResolveRouteContext,
   SearchSerializer,
   SearchParser,
+  SearchMiddleware,
   TrailingSlashOption,
   Manifest,
   RouterManagedTag,
@@ -131,6 +132,7 @@ export type { AwaitOptions } from './awaited'
 
 export { CatchBoundary, ErrorComponent } from './CatchBoundary'
 export { ClientOnly, useHydrated } from './ClientOnly'
+export { reactUse, useLayoutEffect } from './utils'
 
 export {
   FileRoute,
@@ -239,14 +241,18 @@ export {
 
 export type { UseMatchRouteOptions, MakeMatchRouteOptions } from './Matches'
 
-export { matchContext } from './matchContext'
 export { Match, Outlet } from './Match'
 
 export { useMatch } from './useMatch'
 export { useLoaderDeps } from './useLoaderDeps'
 export { useLoaderData } from './useLoaderData'
 
-export { redirect, isRedirect, createRouterConfig } from '@tanstack/router-core'
+export {
+  redirect,
+  isRedirect,
+  createRouterConfig,
+  DEFAULT_PROTOCOL_ALLOWLIST,
+} from '@tanstack/router-core'
 
 export {
   RouteApi,
@@ -272,13 +278,7 @@ export type {
 
 export { createRouter, Router } from './router'
 
-export {
-  componentTypes,
-  lazyFn,
-  SearchParamError,
-  PathParamError,
-  getInitialRouterState,
-} from '@tanstack/router-core'
+export { lazyFn, SearchParamError } from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'
@@ -297,20 +297,11 @@ export { useParams } from './useParams'
 export { useSearch } from './useSearch'
 export { useHistoryState } from './useHistoryState'
 
-export {
-  getRouterContext, // SSR
-} from './routerContext'
-
 export { useRouteContext } from './useRouteContext'
 export { useRouter } from './useRouter'
 export { useRouterState } from './useRouterState'
 export { useLocation } from './useLocation'
 export { useCanGoBack } from './useCanGoBack'
-
-export {
-  useLayoutEffect, // SSR
-  useStableCallback,
-} from './utils'
 
 export { CatchNotFound, DefaultGlobalNotFound } from './not-found'
 export { notFound, isNotFound } from '@tanstack/router-core'
@@ -344,6 +335,9 @@ export type {
   InferSelected,
   ValidateUseSearchResult,
   ValidateUseParamsResult,
+  SerializerExtensions,
+  RegisteredSerializableInput,
+  Serializable,
 } from '@tanstack/router-core'
 
 export { ScriptOnce } from './ScriptOnce'

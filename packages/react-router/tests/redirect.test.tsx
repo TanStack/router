@@ -1,4 +1,6 @@
+import * as React from 'react'
 import {
+  act,
   cleanup,
   configure,
   fireEvent,
@@ -7,10 +9,11 @@ import {
 } from '@testing-library/react'
 
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { createControlledPromise } from '@tanstack/router-core'
 
-import invariant from 'tiny-invariant'
 import {
   Link,
+  Outlet,
   RouterProvider,
   createBrowserHistory,
   createMemoryHistory,
@@ -44,6 +47,35 @@ const WAIT_TIME = 100
 describe('redirect', () => {
   describe('SPA', () => {
     configure({ reactStrictMode: true })
+
+    test('allows a same-location redirect to settle after a side effect', async () => {
+      let firstLoad = true
+      const loader = vi.fn(() => {
+        if (firstLoad) {
+          firstLoad = false
+          throw redirect({ to: '/' })
+        }
+      })
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        loader,
+        component: () => <div>Index page</div>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      expect(await screen.findByText('Index page')).toBeInTheDocument()
+      expect(window.location.pathname).toBe('/')
+      expect(loader).toHaveBeenCalledTimes(2)
+      expect(router.state.status).toBe('idle')
+    })
+
     test('when `redirect` is thrown in `beforeLoad`', async () => {
       const nestedLoaderMock = vi.fn()
       const nestedFooLoaderMock = vi.fn()
@@ -110,6 +142,61 @@ describe('redirect', () => {
 
       expect(nestedLoaderMock).toHaveBeenCalled()
       expect(nestedFooLoaderMock).toHaveBeenCalled()
+    })
+
+    test('when root `beforeLoad` redirects while root pendingComponent is showing and the target route is lazy', async () => {
+      let hasRedirected = false
+      const beforeLoad = createControlledPromise<void>()
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+
+      const rootRoute = createRootRoute({
+        component: () => <Outlet />,
+        pendingMs: 0,
+        pendingComponent: () => <div data-testid="pending">loading</div>,
+        beforeLoad: async () => {
+          await beforeLoad
+          if (!hasRedirected) {
+            hasRedirected = true
+            throw redirect({ to: '/posts' })
+          }
+        },
+      })
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div data-testid="index-page">Index page</div>,
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+      }).lazy(() => import('./lazy/normal').then((d) => d.Route('/posts')))
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+        history,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      try {
+        expect(await screen.findByTestId('pending')).toBeInTheDocument()
+      } finally {
+        await act(() => {
+          beforeLoad.resolve()
+        })
+      }
+
+      // The lazy target route adds the async boundary that exposes the stale
+      // redirected-match render path this regression is guarding.
+      expect(await screen.findByTestId('lazy-route-page')).toBeInTheDocument()
+      expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+      expect(router.state.location.href).toBe('/posts')
+      expect(router.state.status).toBe('idle')
+      expect(consoleError).not.toHaveBeenCalled()
     })
 
     test('when `redirect` is thrown in `loader`', async () => {
@@ -300,9 +387,9 @@ describe('redirect', () => {
 
       expect(router.state.redirect).toBeDefined()
       expect(router.state.redirect).toBeInstanceOf(Response)
-      invariant(router.state.redirect)
+      const redirectResponse = router.state.redirect!
 
-      expect(router.state.redirect.options).toEqual({
+      expect(redirectResponse.options).toEqual({
         _fromLocation: expect.objectContaining({
           hash: '',
           href: '/',
@@ -352,10 +439,10 @@ describe('redirect', () => {
 
       expect(currentRedirect).toBeDefined()
       expect(currentRedirect).toBeInstanceOf(Response)
-      invariant(currentRedirect)
-      expect(currentRedirect.status).toEqual(307)
-      expect(currentRedirect.headers.get('Location')).toEqual('/about')
-      expect(currentRedirect.options).toEqual({
+      const redirectResponse = currentRedirect!
+      expect(redirectResponse.status).toEqual(307)
+      expect(redirectResponse.headers.get('Location')).toEqual('/about')
+      expect(redirectResponse.options).toEqual({
         _fromLocation: {
           external: false,
           hash: '',
@@ -366,8 +453,8 @@ describe('redirect', () => {
           searchStr: '',
           state: {
             __TSR_index: 0,
-            __TSR_key: currentRedirect.options._fromLocation!.state.__TSR_key,
-            key: currentRedirect.options._fromLocation!.state.key,
+            __TSR_key: redirectResponse.options._fromLocation!.state.__TSR_key,
+            key: redirectResponse.options._fromLocation!.state.key,
           },
         },
         href: '/about',

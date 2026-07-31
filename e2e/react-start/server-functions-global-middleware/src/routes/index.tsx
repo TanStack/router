@@ -26,6 +26,12 @@ function Home() {
             global middleware
           </Link>
         </li>
+        <li>
+          <Link to="/pathname-middleware" data-testid="link-pathname">
+            Pathname test - verify pathname is passed to global request
+            middleware
+          </Link>
+        </li>
       </ul>
     </div>
   )

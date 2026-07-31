@@ -12,7 +12,6 @@ export default defineConfig({
     tanstackRouter({
       target: 'vue',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
       virtualRouteConfig: routes,
     }),
     vue(),

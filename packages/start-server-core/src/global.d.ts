@@ -7,6 +7,7 @@ declare global {
       TSS_SHELL?: 'true' | 'false'
       TSS_PRERENDERING?: 'true' | 'false'
       TSS_DEV_SERVER?: 'true' | 'false'
+      TSS_DISABLE_CSRF_MIDDLEWARE_WARNING?: 'true' | 'false'
     }
   }
 }

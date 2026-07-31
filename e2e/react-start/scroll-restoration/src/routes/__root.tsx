@@ -110,6 +110,7 @@ function Nav({ type }: { type: 'header' | 'footer' }) {
           linkOptions({ to: '/normal-page' }),
           linkOptions({ to: '/with-loader' }),
           linkOptions({ to: '/with-search', search: { where: type } }),
+          linkOptions({ to: '/hash-scroll-repro' }),
         ] as const
       ).map((options, i) => (
         <Link

@@ -25,7 +25,8 @@ export interface ParsedLocation<TSearchObj extends AnySchema = {}> {
    */
   state: ParsedHistoryState
   /**
-   * The hash of the location, including the leading hash character.
+   * The hash of the location, excluding the leading hash character.
+   * (e.g., '123' instead of '#123')
    */
   hash: string
   /**

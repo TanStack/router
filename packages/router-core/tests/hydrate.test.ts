@@ -1,9 +1,66 @@
+import { runInNewContext } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, RouterCore, notFound } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  createSerializationAdapter,
+  notFound,
+} from '../src'
 import { hydrate } from '../src/ssr/client'
+import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
+import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
+import { createTestRouter } from './routerTestUtils'
+import type { AnyRouteMatch, AnyRouter, LocationRewrite } from '../src'
+import type { ServerManifest } from '../src/manifest'
 import type { TsrSsrGlobal } from '../src/ssr/types'
-import type { AnyRouteMatch } from '../src'
+
+const testManifest: ServerManifest = {
+  routes: {},
+}
+
+function createMockBootstrap(
+  router?: NonNullable<TsrSsrGlobal['router']>,
+): TsrSsrGlobal {
+  return {
+    router,
+    h: vi.fn(),
+    e: vi.fn(),
+    c: vi.fn(),
+    p: vi.fn(),
+    buffer: [],
+    initialized: false,
+  }
+}
+
+async function dehydrateToBootstrap(
+  router: AnyRouter,
+  manifest: ServerManifest = testManifest,
+): Promise<TsrSsrGlobal> {
+  attachRouterServerSsrUtils({ router, manifest })
+  try {
+    await router.load()
+    await router.serverSsr!.dehydrate()
+
+    const script = router.serverSsr!.takeBufferedScripts()
+    expect(script?.children).toBeTruthy()
+
+    const context: Record<string, any> = {
+      document: {
+        currentScript: {
+          remove() {},
+        },
+      },
+    }
+    context.self = context
+    runInNewContext(script!.children!, context)
+
+    expect(context.$_TSR).toBeDefined()
+    return context.$_TSR
+  } finally {
+    router.serverSsr?.cleanup()
+  }
+}
 
 describe('hydrate', () => {
   let mockWindow: { $_TSR?: TsrSsrGlobal }
@@ -40,7 +97,7 @@ describe('hydrate', () => {
       indexRoute.addChildren([otherRoute]),
     ])
 
-    mockRouter = new RouterCore({ routeTree, history, isServer: true })
+    mockRouter = createTestRouter({ routeTree, history, isServer: true })
   })
 
   afterEach(() => {
@@ -48,70 +105,90 @@ describe('hydrate', () => {
     delete (global as any).window
   })
 
-  it('should throw error if window.$_TSR is not available', async () => {
-    await expect(hydrate(mockRouter)).rejects.toThrow(
+  it.each([
+    [
+      'window.$_TSR',
+      () => {},
       'Expected to find bootstrap data on window.$_TSR, but we did not. Please file an issue!',
-    )
-  })
-
-  it('should throw error if window.$_TSR.router is not available', async () => {
-    mockWindow.$_TSR = {
-      c: vi.fn(),
-      p: vi.fn(),
-      buffer: [],
-      initialized: false,
-      // router is missing
-    } as any
-
-    await expect(hydrate(mockRouter)).rejects.toThrow(
+    ],
+    [
+      'window.$_TSR.router',
+      () => {
+        mockWindow.$_TSR = createMockBootstrap()
+      },
       'Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
-    )
+    ],
+  ])(
+    'throws a diagnostic when %s is unavailable',
+    async (_, setup, message) => {
+      setup()
+
+      await expect(hydrate(mockRouter)).rejects.toThrow(message)
+    },
+  )
+
+  it('clears hydration preflight when the custom hydrate hook rejects', async () => {
+    const error = new Error('custom hydration failed')
+    mockWindow.$_TSR = createMockBootstrap({
+      manifest: testManifest,
+      dehydratedData: {},
+      matches: [],
+    })
+    mockRouter.options.hydrate = () => Promise.reject(error)
+
+    await expect(hydrate(mockRouter)).rejects.toBe(error)
+
+    expect(mockRouter._preflight).toBeUndefined()
   })
 
-  it('should initialize serialization adapters when provided', async () => {
-    const mockSerializer = {
-      key: 'testAdapter',
-      fromSerializable: vi.fn(),
-      toSerializable: vi.fn(),
-      test: vi.fn().mockReturnValue(true),
-      '~types': {
-        input: {},
-        output: {},
-        extends: {},
-      },
+  it('round-trips adapted loader data through the bootstrap protocol', async () => {
+    class AdaptedValue {
+      constructor(readonly value: string) {}
     }
 
-    mockRouter.options.serializationAdapters = [mockSerializer]
+    const adapter = createSerializationAdapter({
+      key: 'adapted-value',
+      test: (value: unknown): value is AdaptedValue =>
+        value instanceof AdaptedValue,
+      toSerializable: (value: AdaptedValue) => value.value,
+      fromSerializable: (value: string) => new AdaptedValue(value),
+    })
 
-    const mockMatches = [{ id: '/', routeId: '/', index: 0, _nonReactive: {} }]
-    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
-    mockRouter.state.matches = mockMatches
+    const serverRootRoute = new BaseRootRoute({})
+    const serverIndexRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/',
+      loader: () => new AdaptedValue('server loader data'),
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([serverIndexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      isServer: true,
+    })
+    serverRouter.options.serializationAdapters = [adapter]
 
-    const mockBuffer = [vi.fn(), vi.fn()]
-    mockWindow.$_TSR = {
-      router: {
-        manifest: { routes: {} },
-        dehydratedData: {},
-        lastMatchId: '/',
-        matches: [],
-      },
-      h: vi.fn(),
-      e: vi.fn(),
-      c: vi.fn(),
-      p: vi.fn(),
-      buffer: mockBuffer,
-      initialized: false,
-    }
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
 
-    await hydrate(mockRouter)
+    const clientLoader = vi.fn(() => new AdaptedValue('client loader data'))
+    const clientRootRoute = new BaseRootRoute({})
+    const clientIndexRoute = new BaseRoute({
+      getParentRoute: () => clientRootRoute,
+      path: '/',
+      loader: clientLoader,
+    })
+    const clientRouter = createTestRouter({
+      routeTree: clientRootRoute.addChildren([clientIndexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      isServer: false,
+    })
+    clientRouter.options.serializationAdapters = [adapter]
 
-    expect(mockWindow.$_TSR.t).toBeInstanceOf(Map)
-    expect(mockWindow.$_TSR.t?.get('testAdapter')).toBe(
-      mockSerializer.fromSerializable,
-    )
-    expect(mockBuffer[0]).toHaveBeenCalled()
-    expect(mockBuffer[1]).toHaveBeenCalled()
-    expect(mockWindow.$_TSR.initialized).toBe(true)
+    await hydrate(clientRouter)
+
+    const loaderData = clientRouter.state.matches.at(-1)?.loaderData
+    expect(loaderData).toBeInstanceOf(AdaptedValue)
+    expect(loaderData).toEqual(new AdaptedValue('server loader data'))
+    expect(clientLoader).not.toHaveBeenCalled()
   })
 
   it('should handle empty serialization adapters', async () => {
@@ -119,7 +196,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: [],
@@ -138,31 +215,115 @@ describe('hydrate', () => {
     expect(mockWindow.$_TSR.initialized).toBe(true)
   })
 
-  it('should set manifest in router.ssr', async () => {
-    const testManifest = { routes: {} }
-    mockWindow.$_TSR = {
-      router: {
-        manifest: testManifest,
-        dehydratedData: {},
-        lastMatchId: '/',
-        matches: [],
+  it('round-trips the manifest and matches without running client loaders', async () => {
+    const serverRootRoute = new BaseRootRoute({})
+    const serverProductRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/products/$productId',
+      loader: ({ params }) => ({
+        productId: params.productId,
+        source: 'server',
+      }),
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([serverProductRoute]),
+      history: createMemoryHistory({ initialEntries: ['/products/42'] }),
+      isServer: true,
+    })
+    const manifest: ServerManifest = {
+      routes: {
+        [serverRootRoute.id]: { preloads: ['/assets/root.js'] },
+        [serverProductRoute.id]: { preloads: ['/assets/product.js'] },
       },
-      h: vi.fn(),
-      e: vi.fn(),
-      c: vi.fn(),
-      p: vi.fn(),
-      buffer: [],
-      initialized: false,
     }
 
-    await hydrate(mockRouter)
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, manifest)
 
-    expect(mockRouter.ssr).toEqual({
-      manifest: testManifest,
+    const serverMatches = serverRouter.state.matches
+    const clientLoader = vi.fn(() => ({
+      productId: 'client',
+      source: 'client',
+    }))
+    const clientRootRoute = new BaseRootRoute({})
+    const clientProductRoute = new BaseRoute({
+      getParentRoute: () => clientRootRoute,
+      path: '/products/$productId',
+      loader: clientLoader,
     })
+    const clientRouter = createTestRouter({
+      routeTree: clientRootRoute.addChildren([clientProductRoute]),
+      history: createMemoryHistory({ initialEntries: ['/products/42'] }),
+      isServer: false,
+    })
+
+    await hydrate(clientRouter)
+
+    expect(clientRouter.ssr?.manifest).toEqual(manifest)
+    expect(
+      clientRouter.state.matches.map((match) => ({
+        id: match.id,
+        routeId: match.routeId,
+        status: match.status,
+        loaderData: match.loaderData,
+        ssr: match.ssr,
+      })),
+    ).toEqual(
+      serverMatches.map((match) => ({
+        id: match.id,
+        routeId: match.routeId,
+        status: match.status,
+        loaderData: match.loaderData,
+        ssr: match.ssr,
+      })),
+    )
+    expect(clientRouter.state.matches.at(-1)?.loaderData).toEqual({
+      productId: '42',
+      source: 'server',
+    })
+    expect(clientLoader).not.toHaveBeenCalled()
   })
 
-  it('should hydrate matches', async () => {
+  it('restores undefined loader data without serializing it', async () => {
+    const serverRootRoute = new BaseRootRoute({})
+    const serverRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/page',
+      loader: () => undefined,
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([serverRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: true,
+    })
+
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+    expect(mockWindow.$_TSR.router?.matches[1]).not.toHaveProperty('l')
+
+    const clientLoader = vi.fn(() => undefined)
+    const clientRootRoute = new BaseRootRoute({})
+    const clientRoute = new BaseRoute({
+      getParentRoute: () => clientRootRoute,
+      path: '/page',
+      loader: clientLoader,
+    })
+    const clientRouter = createTestRouter({
+      routeTree: clientRootRoute.addChildren([clientRoute]),
+      history: createMemoryHistory({ initialEntries: ['/page'] }),
+      isServer: false,
+    })
+
+    await hydrate(clientRouter)
+
+    expect(clientLoader).not.toHaveBeenCalled()
+    const match = clientRouter.state.matches[1]
+    expect(match).toMatchObject({
+      routeId: clientRoute.id,
+      status: 'success',
+    })
+    expect(match).toHaveProperty('loaderData', undefined)
+  })
+
+  it('should hydrate globalNotFound when dehydrated flag is present', async () => {
     const mockMatches = [
       {
         id: '/',
@@ -171,22 +332,15 @@ describe('hydrate', () => {
         ssr: undefined,
         _nonReactive: {},
       },
-      {
-        id: '/other',
-        routeId: '/other',
-        index: 1,
-        ssr: undefined,
-        _nonReactive: {},
-      },
     ]
 
     const dehydratedMatches = [
       {
         i: '/',
-        l: { indexData: 'server-data' },
         s: 'success' as const,
         ssr: true,
         u: Date.now(),
+        g: true as const,
       },
     ]
 
@@ -195,7 +349,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: dehydratedMatches,
@@ -210,11 +364,218 @@ describe('hydrate', () => {
 
     await hydrate(mockRouter)
 
-    const { id, loaderData, ssr, status } = mockMatches[0] as AnyRouteMatch
-    expect(id).toBe('/')
-    expect(loaderData).toEqual({ indexData: 'server-data' })
-    expect(status).toBe('success')
-    expect(ssr).toBe(true)
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBe(true)
+  })
+
+  it('should leave globalNotFound undefined when dehydrated flag is omitted', async () => {
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+      },
+    ]
+
+    const dehydratedMatches = [
+      {
+        i: '/',
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: testManifest,
+        dehydratedData: {},
+        lastMatchId: '/',
+        matches: dehydratedMatches,
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBeUndefined()
+  })
+
+  it('should preserve existing globalNotFound when dehydrated flag is omitted', async () => {
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+        globalNotFound: true,
+      },
+    ]
+
+    const dehydratedMatches = [
+      {
+        i: '/',
+        s: 'success' as const,
+        ssr: true,
+        u: Date.now(),
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: testManifest,
+        dehydratedData: {},
+        lastMatchId: '/',
+        matches: dehydratedMatches,
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect((mockMatches[0] as AnyRouteMatch).globalNotFound).toBe(true)
+  })
+
+  it('should decode dehydrated match ids before hydration lookup and SPA-mode checks', async () => {
+    const loadSpy = vi.spyOn(mockRouter, 'load')
+
+    const mockMatches = [
+      {
+        id: '/',
+        routeId: '/',
+        index: 0,
+        ssr: undefined,
+        _nonReactive: {},
+      },
+    ]
+
+    mockRouter.matchRoutes = vi.fn().mockReturnValue(mockMatches)
+    mockRouter.state.matches = mockMatches
+
+    mockWindow.$_TSR = {
+      router: {
+        manifest: testManifest,
+        dehydratedData: {},
+        lastMatchId: dehydrateSsrMatchId('/'),
+        matches: [
+          {
+            i: dehydrateSsrMatchId('/'),
+            l: { indexData: 'server-data' },
+            s: 'success',
+            ssr: true,
+            u: Date.now(),
+          },
+        ],
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+
+    await hydrate(mockRouter)
+
+    expect(loadSpy).not.toHaveBeenCalled()
+    expect((mockRouter.state.matches[0] as AnyRouteMatch).id).toBe('/')
+  })
+
+  it('applies round-tripped custom hydration before matching a rewritten location', async () => {
+    const rewrite: LocationRewrite = {
+      input: ({ url }) => {
+        if (url.pathname === '/public') {
+          url.pathname = '/internal'
+        }
+        return url
+      },
+      output: ({ url }) => {
+        if (url.pathname === '/internal') {
+          url.pathname = '/public'
+        }
+        return url
+      },
+    }
+
+    const serverRootRoute = new BaseRootRoute({})
+    const serverInternalRoute = new BaseRoute({
+      getParentRoute: () => serverRootRoute,
+      path: '/internal',
+      loader: () => 'server internal data',
+    })
+    const serverRouter = createTestRouter({
+      routeTree: serverRootRoute.addChildren([serverInternalRoute]),
+      history: createMemoryHistory({ initialEntries: ['/public'] }),
+      rewrite,
+      dehydrate: () => ({ rewrite: true }),
+      isServer: true,
+    })
+
+    mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter)
+
+    const clientLoader = vi.fn(() => 'client internal data')
+    const clientRootRoute = new BaseRootRoute({})
+    const clientInternalRoute = new BaseRoute({
+      getParentRoute: () => clientRootRoute,
+      path: '/internal',
+      loader: clientLoader,
+    })
+    let clientRouter: AnyRouter
+    const customHydrate = vi.fn((dehydrated: { rewrite?: boolean }) => {
+      if (dehydrated.rewrite) {
+        clientRouter.update({ rewrite })
+      }
+    })
+    clientRouter = createTestRouter({
+      routeTree: clientRootRoute.addChildren([clientInternalRoute]),
+      history: createMemoryHistory({ initialEntries: ['/public'] }),
+      hydrate: customHydrate,
+      isServer: false,
+    })
+
+    await hydrate(clientRouter)
+
+    expect(customHydrate).toHaveBeenCalledOnce()
+    expect(customHydrate).toHaveBeenCalledWith({ rewrite: true })
+    expect(clientRouter.state.location.pathname).toBe('/internal')
+    expect(clientRouter.state.location.publicHref).toBe('/public')
+    expect(
+      clientRouter.state.matches.map((match: AnyRouteMatch) => ({
+        routeId: match.routeId,
+        status: match.status,
+        loaderData: match.loaderData,
+      })),
+    ).toEqual([
+      {
+        routeId: clientRootRoute.id,
+        status: 'success',
+        loaderData: undefined,
+      },
+      {
+        routeId: clientInternalRoute.id,
+        status: 'success',
+        loaderData: 'server internal data',
+      },
+    ])
+    expect(clientLoader).not.toHaveBeenCalled()
   })
 
   it('should handle errors during route context hydration', async () => {
@@ -232,7 +593,7 @@ describe('hydrate', () => {
 
     mockWindow.$_TSR = {
       router: {
-        manifest: { routes: {} },
+        manifest: testManifest,
         dehydratedData: {},
         lastMatchId: '/',
         matches: [

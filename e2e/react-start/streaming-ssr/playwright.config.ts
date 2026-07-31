@@ -2,8 +2,15 @@ import { defineConfig, devices } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
 
-const PORT = await getTestServerPort(packageJson.name)
+const isPreview = process.env.MODE === 'preview'
+
+const PORT = await getTestServerPort(
+  `${packageJson.name}${isPreview ? '_preview' : ''}`,
+)
 const baseURL = `http://localhost:${PORT}`
+
+const ssrCommand = `VITE_SERVER_PORT=${PORT} pnpm build && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`
+const previewCommand = `VITE_SERVER_PORT=${PORT} pnpm build && pnpm preview --port ${PORT}`
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -20,7 +27,7 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `VITE_SERVER_PORT=${PORT} pnpm build && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
+    command: isPreview ? previewCommand : ssrCommand,
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     stdout: 'pipe',

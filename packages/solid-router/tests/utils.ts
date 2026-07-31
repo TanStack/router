@@ -27,6 +27,7 @@ export const getIntersectionObserverMock = ({
   return class IO implements IntersectionObserver {
     root: Document | Element | null
     rootMargin: string
+    scrollMargin: string
     thresholds: Array<number>
     constructor(
       _cb: IntersectionObserverCallback,
@@ -34,6 +35,7 @@ export const getIntersectionObserverMock = ({
     ) {
       this.root = options?.root ?? null
       this.rootMargin = options?.rootMargin ?? '0px'
+      this.scrollMargin = options?.scrollMargin ?? '0px'
       this.thresholds = options?.threshold ?? ([0] as any)
     }
 

@@ -148,7 +148,10 @@ export const staticFunctionMiddleware = createMiddleware({ type: 'function' })
   })
   .server(async (ctx) => {
     const response = await ctx.next()
-    if (process.env.NODE_ENV === 'production') {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      process.env.TSS_CLIENT_OUTPUT_DIR
+    ) {
       await addItemToCache({
         functionId: ctx.serverFnMeta.id,
         response: { result: (response as any).result, context: ctx },

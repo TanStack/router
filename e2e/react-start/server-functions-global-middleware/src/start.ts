@@ -49,6 +49,28 @@ export const loggingMiddleware = createMiddleware().server(async ({ next }) => {
   })
 })
 
+// Regression test for #6647: verify that pathname is correctly passed to
+// global request middleware by createStartHandler
+export const pathnameMiddleware = createMiddleware().server(
+  async ({ next, pathname }) => {
+    return next({
+      context: {
+        requestMiddlewarePathname: pathname,
+      },
+    })
+  },
+)
+
+export const trustedUserMiddleware = createMiddleware().server(
+  async ({ next }) => {
+    return next({
+      context: {
+        trustedUser: 'server-user',
+      },
+    })
+  },
+)
+
 // Global function middleware that should be deduped across server functions
 export const globalFunctionMiddleware = createMiddleware({
   type: 'function',
@@ -79,5 +101,9 @@ export const startInstance = createStart(() => ({
   functionMiddleware: [globalFunctionMiddleware, globalFunctionMiddleware2],
   // Request middleware - includes loggingMiddleware (issue #5239 scenario)
   // AND the same loggingMiddleware is also attached to server functions
-  requestMiddleware: [loggingMiddleware],
+  requestMiddleware: [
+    trustedUserMiddleware,
+    loggingMiddleware,
+    pathnameMiddleware,
+  ],
 }))

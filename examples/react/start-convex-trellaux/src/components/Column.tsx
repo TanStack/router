@@ -1,8 +1,8 @@
 import { forwardRef, useCallback, useMemo, useRef, useState } from 'react'
-import invariant from 'tiny-invariant'
 import { twMerge } from 'tailwind-merge'
 
 import { flushSync } from 'react-dom'
+import { invariant } from '../invariant'
 import { CONTENT_TYPES } from '../types'
 import { Icon } from '../icons/icons'
 import {

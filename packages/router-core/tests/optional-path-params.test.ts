@@ -465,7 +465,7 @@ describe('Optional Path Parameters', () => {
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
-        expectedMatchedParams,
+        toNullObj(expectedMatchedParams),
       )
     })
   })
@@ -527,3 +527,8 @@ describe('Optional Path Parameters', () => {
     })
   })
 })
+
+function toNullObj<T>(obj: T): T {
+  if (typeof obj === 'object') return Object.assign(Object.create(null), obj)
+  return obj
+}

@@ -12,10 +12,12 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as testsPageWithSearchRouteImport } from './routes/(tests)/page-with-search'
-import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
-import { Route as testsLazyWithLoaderPageRouteImport } from './routes/(tests)/lazy-with-loader-page'
+import { Route as testsIssue7040SourceRouteImport } from './routes/(tests)/issue-7040-source'
+import { Route as testsIssue7040TargetRouteImport } from './routes/(tests)/issue-7040-target'
 import { Route as testsLazyPageRouteImport } from './routes/(tests)/lazy-page'
+import { Route as testsLazyWithLoaderPageRouteImport } from './routes/(tests)/lazy-with-loader-page'
+import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
+import { Route as testsPageWithSearchRouteImport } from './routes/(tests)/page-with-search'
 
 const testsVirtualPageLazyRouteImport = createFileRoute(
   '/(tests)/virtual-page',
@@ -26,23 +28,23 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const testsVirtualPageLazyRoute = testsVirtualPageLazyRouteImport
+const testsIssue7040SourceRoute = testsIssue7040SourceRouteImport.update({
+  id: '/(tests)/issue-7040-source',
+  path: '/issue-7040-source',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsIssue7040TargetRoute = testsIssue7040TargetRouteImport.update({
+  id: '/(tests)/issue-7040-target',
+  path: '/issue-7040-target',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsLazyPageRoute = testsLazyPageRouteImport
   .update({
-    id: '/(tests)/virtual-page',
-    path: '/virtual-page',
+    id: '/(tests)/lazy-page',
+    path: '/lazy-page',
     getParentRoute: () => rootRouteImport,
   } as any)
-  .lazy(() => import('./routes/(tests)/virtual-page.lazy').then((d) => d.Route))
-const testsPageWithSearchRoute = testsPageWithSearchRouteImport.update({
-  id: '/(tests)/page-with-search',
-  path: '/page-with-search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const testsNormalPageRoute = testsNormalPageRouteImport.update({
-  id: '/(tests)/normal-page',
-  path: '/normal-page',
-  getParentRoute: () => rootRouteImport,
-} as any)
+  .lazy(() => import('./routes/(tests)/lazy-page.lazy').then((d) => d.Route))
 const testsLazyWithLoaderPageRoute = testsLazyWithLoaderPageRouteImport
   .update({
     id: '/(tests)/lazy-with-loader-page',
@@ -52,16 +54,28 @@ const testsLazyWithLoaderPageRoute = testsLazyWithLoaderPageRouteImport
   .lazy(() =>
     import('./routes/(tests)/lazy-with-loader-page.lazy').then((d) => d.Route),
   )
-const testsLazyPageRoute = testsLazyPageRouteImport
+const testsNormalPageRoute = testsNormalPageRouteImport.update({
+  id: '/(tests)/normal-page',
+  path: '/normal-page',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsPageWithSearchRoute = testsPageWithSearchRouteImport.update({
+  id: '/(tests)/page-with-search',
+  path: '/page-with-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsVirtualPageLazyRoute = testsVirtualPageLazyRouteImport
   .update({
-    id: '/(tests)/lazy-page',
-    path: '/lazy-page',
+    id: '/(tests)/virtual-page',
+    path: '/virtual-page',
     getParentRoute: () => rootRouteImport,
   } as any)
-  .lazy(() => import('./routes/(tests)/lazy-page.lazy').then((d) => d.Route))
+  .lazy(() => import('./routes/(tests)/virtual-page.lazy').then((d) => d.Route))
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/issue-7040-source': typeof testsIssue7040SourceRoute
+  '/issue-7040-target': typeof testsIssue7040TargetRoute
   '/lazy-page': typeof testsLazyPageRoute
   '/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
   '/normal-page': typeof testsNormalPageRoute
@@ -70,6 +84,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/issue-7040-source': typeof testsIssue7040SourceRoute
+  '/issue-7040-target': typeof testsIssue7040TargetRoute
   '/lazy-page': typeof testsLazyPageRoute
   '/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
   '/normal-page': typeof testsNormalPageRoute
@@ -79,6 +95,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/(tests)/issue-7040-source': typeof testsIssue7040SourceRoute
+  '/(tests)/issue-7040-target': typeof testsIssue7040TargetRoute
   '/(tests)/lazy-page': typeof testsLazyPageRoute
   '/(tests)/lazy-with-loader-page': typeof testsLazyWithLoaderPageRoute
   '/(tests)/normal-page': typeof testsNormalPageRoute
@@ -89,6 +107,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/issue-7040-source'
+    | '/issue-7040-target'
     | '/lazy-page'
     | '/lazy-with-loader-page'
     | '/normal-page'
@@ -97,6 +117,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/issue-7040-source'
+    | '/issue-7040-target'
     | '/lazy-page'
     | '/lazy-with-loader-page'
     | '/normal-page'
@@ -105,6 +127,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/(tests)/issue-7040-source'
+    | '/(tests)/issue-7040-target'
     | '/(tests)/lazy-page'
     | '/(tests)/lazy-with-loader-page'
     | '/(tests)/normal-page'
@@ -114,6 +138,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  testsIssue7040SourceRoute: typeof testsIssue7040SourceRoute
+  testsIssue7040TargetRoute: typeof testsIssue7040TargetRoute
   testsLazyPageRoute: typeof testsLazyPageRoute
   testsLazyWithLoaderPageRoute: typeof testsLazyWithLoaderPageRoute
   testsNormalPageRoute: typeof testsNormalPageRoute
@@ -130,32 +156,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/virtual-page': {
-      id: '/(tests)/virtual-page'
-      path: '/virtual-page'
-      fullPath: '/virtual-page'
-      preLoaderRoute: typeof testsVirtualPageLazyRouteImport
+    '/(tests)/issue-7040-source': {
+      id: '/(tests)/issue-7040-source'
+      path: '/issue-7040-source'
+      fullPath: '/issue-7040-source'
+      preLoaderRoute: typeof testsIssue7040SourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/page-with-search': {
-      id: '/(tests)/page-with-search'
-      path: '/page-with-search'
-      fullPath: '/page-with-search'
-      preLoaderRoute: typeof testsPageWithSearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(tests)/normal-page': {
-      id: '/(tests)/normal-page'
-      path: '/normal-page'
-      fullPath: '/normal-page'
-      preLoaderRoute: typeof testsNormalPageRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(tests)/lazy-with-loader-page': {
-      id: '/(tests)/lazy-with-loader-page'
-      path: '/lazy-with-loader-page'
-      fullPath: '/lazy-with-loader-page'
-      preLoaderRoute: typeof testsLazyWithLoaderPageRouteImport
+    '/(tests)/issue-7040-target': {
+      id: '/(tests)/issue-7040-target'
+      path: '/issue-7040-target'
+      fullPath: '/issue-7040-target'
+      preLoaderRoute: typeof testsIssue7040TargetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(tests)/lazy-page': {
@@ -165,11 +177,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof testsLazyPageRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(tests)/lazy-with-loader-page': {
+      id: '/(tests)/lazy-with-loader-page'
+      path: '/lazy-with-loader-page'
+      fullPath: '/lazy-with-loader-page'
+      preLoaderRoute: typeof testsLazyWithLoaderPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/normal-page': {
+      id: '/(tests)/normal-page'
+      path: '/normal-page'
+      fullPath: '/normal-page'
+      preLoaderRoute: typeof testsNormalPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/page-with-search': {
+      id: '/(tests)/page-with-search'
+      path: '/page-with-search'
+      fullPath: '/page-with-search'
+      preLoaderRoute: typeof testsPageWithSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/virtual-page': {
+      id: '/(tests)/virtual-page'
+      path: '/virtual-page'
+      fullPath: '/virtual-page'
+      preLoaderRoute: typeof testsVirtualPageLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  testsIssue7040SourceRoute: testsIssue7040SourceRoute,
+  testsIssue7040TargetRoute: testsIssue7040TargetRoute,
   testsLazyPageRoute: testsLazyPageRoute,
   testsLazyWithLoaderPageRoute: testsLazyWithLoaderPageRoute,
   testsNormalPageRoute: testsNormalPageRoute,

@@ -2,7 +2,8 @@ import { Link, createFileRoute } from '@tanstack/solid-router'
 import { z } from 'zod'
 
 const cookieSchema = z
-  .object({ value: z.string() })
+  .object({ value: z.string().default(() => `CLIENT-${Date.now()}`) })
+  .prefault({})
   .catch(() => ({ value: `CLIENT-${Date.now()}` }))
 export const Route = createFileRoute('/cookies/')({
   validateSearch: cookieSchema,

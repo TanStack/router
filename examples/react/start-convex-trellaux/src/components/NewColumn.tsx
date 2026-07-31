@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 
 import { Icon } from '../icons/icons'
 import { useCreateColumnMutation } from '../queries'

@@ -147,7 +147,7 @@ export const createStart = <
       }
       return options
     },
-    createMiddleware: createMiddleware as any,
+    createMiddleware: createMiddleware,
   } as StartInstance<
     TSerializationAdapters,
     TDefaultSsr,

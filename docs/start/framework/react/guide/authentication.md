@@ -36,6 +36,8 @@ Authentication involves many considerations including password security, session
 
 TanStack Start provides the tools for both through server functions, sessions, and route protection.
 
+> Protect the data/API boundary first. Any server function, server route, or other API endpoint that returns or mutates private data must authorize the request itself. `beforeLoad` is useful for route UX: it keeps users out of screens they cannot use and avoids triggering work that would fail anyway. It is not the security boundary for the data. See [Authentication Server Primitives](./authentication-server-primitives.md) for the server-side pattern.
+
 ## Essential Building Blocks
 
 ### 1. Server Functions for Authentication
@@ -48,7 +50,7 @@ import { redirect } from '@tanstack/react-router'
 
 // Login server function
 export const loginFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: { email: string; password: string }) => data)
+  .validator((data: { email: string; password: string }) => data)
   .handler(async ({ data }) => {
     // Verify credentials (replace with your auth logic)
     const user = await authenticateUser(data.email, data.password)
@@ -219,9 +221,7 @@ import { createServerFn } from '@tanstack/react-start'
 
 // User registration
 export const registerFn = createServerFn({ method: 'POST' })
-  .inputValidator(
-    (data: { email: string; password: string; name: string }) => data,
-  )
+  .validator((data: { email: string; password: string; name: string }) => data)
   .handler(async ({ data }) => {
     // Check if user exists
     const existingUser = await getUserByEmail(data.email)
@@ -303,7 +303,7 @@ export const authProviders = {
 }
 
 export const initiateOAuthFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: { provider: 'google' | 'github' }) => data)
+  .validator((data: { provider: 'google' | 'github' }) => data)
   .handler(async ({ data }) => {
     const provider = authProviders[data.provider]
     const state = generateRandomState()
@@ -324,7 +324,7 @@ export const initiateOAuthFn = createServerFn({ method: 'POST' })
 ```tsx
 // Password reset request
 export const requestPasswordResetFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: { email: string }) => data)
+  .validator((data: { email: string }) => data)
   .handler(async ({ data }) => {
     const user = await getUserByEmail(data.email)
     if (!user) {
@@ -343,7 +343,7 @@ export const requestPasswordResetFn = createServerFn({ method: 'POST' })
 
 // Password reset confirmation
 export const resetPasswordFn = createServerFn({ method: 'POST' })
-  .inputValidator((data: { token: string; newPassword: string }) => data)
+  .validator((data: { token: string; newPassword: string }) => data)
   .handler(async ({ data }) => {
     const resetToken = await getPasswordResetToken(data.token)
 
@@ -424,7 +424,7 @@ const loginSchema = z.object({
 })
 
 export const loginFn = createServerFn({ method: 'POST' })
-  .inputValidator((data) => loginSchema.parse(data))
+  .validator((data) => loginSchema.parse(data))
   .handler(async ({ data }) => {
     // data is now validated
   })
@@ -520,7 +520,7 @@ function LoginForm() {
 
 ```tsx
 export const loginFn = createServerFn({ method: 'POST' })
-  .inputValidator(
+  .validator(
     (data: { email: string; password: string; rememberMe?: boolean }) => data,
   )
   .handler(async ({ data }) => {

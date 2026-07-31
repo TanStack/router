@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import combinateImport from 'combinate'
 import { test } from '@tanstack/router-e2e-utils'
-import { isSpaMode } from '../tests/utils/isSpaMode'
+import { isSpaMode } from './utils/isSpaMode'
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
@@ -9,10 +9,27 @@ const combinate = (combinateImport as any).default as typeof combinateImport
 test.use({
   whitelistErrors: [
     'Failed to load resource: the server responded with a status of 404',
-    'NotFound error during hydration for routeId',
   ],
 })
 test.describe('not-found', () => {
+  test('direct nested not-found hydrates its already-rendered parent route', async ({
+    page,
+  }) => {
+    test.skip(isSpaMode, 'issue #5106 requires a server-rendered direct visit')
+
+    const response = await page.goto('/posts/i-do-not-exist')
+    await page.waitForLoadState('networkidle')
+
+    const serverHtml = await response?.text()
+    expect(serverHtml).toContain('posts-parent-hydration-counter')
+    expect(serverHtml).toContain('Post not found')
+    await expect(page.getByText('Post not found')).toBeInViewport()
+    const counter = page.getByTestId('posts-parent-hydration-counter')
+    await expect(counter).toHaveText('Parent hydration count: 0')
+    await counter.click()
+    await expect(counter).toHaveText('Parent hydration count: 1')
+  })
+
   test(`global not found`, async ({ page }) => {
     const response = await page.goto(`/this-page-does-not-exist/foo/bar`)
 
@@ -25,8 +42,7 @@ test.describe('not-found', () => {
 
   test.describe('throw notFound()', () => {
     const navigationTestMatrix = combinate({
-      // TODO beforeLoad!
-      thrower: [/* 'beforeLoad',*/ 'loader'] as const,
+      thrower: ['beforeLoad', 'loader'] as const,
       preload: [false, true] as const,
     })
 
@@ -56,9 +72,7 @@ test.describe('not-found', () => {
       })
     })
     const directVisitTestMatrix = combinate({
-      // TODO beforeLoad!
-
-      thrower: [/* 'beforeLoad',*/ 'loader'] as const,
+      thrower: ['beforeLoad', 'loader'] as const,
     })
 
     directVisitTestMatrix.forEach(({ thrower }) => {
@@ -72,6 +86,98 @@ test.describe('not-found', () => {
           page.getByTestId(`via-${thrower}-route-component`),
         ).not.toBeInViewport()
       })
+    })
+
+    test('direct visit: child beforeLoad notFound with routeId renders parent boundary with parent loader data', async ({
+      page,
+    }) => {
+      await page.goto('/not-found/parent-boundary/via-beforeLoad')
+      await page.waitForLoadState('networkidle')
+
+      await expect(
+        page.getByTestId('parent-boundary-notFound-component'),
+      ).toBeInViewport()
+      await expect(page.getByTestId('parent-loader-data')).toHaveText('ready')
+      await expect(
+        page.getByTestId('parent-boundary-notFound-source'),
+      ).toHaveText('with-routeId')
+      await expect(
+        page.getByTestId('parent-boundary-child-route-component'),
+      ).not.toBeInViewport()
+    })
+
+    test('direct visit: child beforeLoad notFound without routeId still hydrates and renders parent boundary', async ({
+      page,
+    }) => {
+      await page.goto('/not-found/parent-boundary/via-beforeLoad?target=none')
+      await page.waitForLoadState('networkidle')
+
+      await expect(
+        page.getByTestId('parent-boundary-notFound-component'),
+      ).toBeInViewport()
+      await expect(page.getByTestId('parent-loader-data')).toHaveText('ready')
+      await expect(
+        page.getByTestId('parent-boundary-notFound-source'),
+      ).toHaveText('without-routeId')
+      await expect(
+        page.getByTestId('parent-boundary-child-route-component'),
+      ).not.toBeInViewport()
+    })
+
+    test('direct visit: beforeLoad notFound with routeId targets root boundary', async ({
+      page,
+    }) => {
+      await page.goto('/not-found/via-beforeLoad-target-root')
+      await page.waitForLoadState('networkidle')
+
+      await expect(
+        page.getByTestId('default-not-found-component'),
+      ).toBeInViewport()
+      await expect(
+        page.getByTestId('via-beforeLoad-target-root-route-component'),
+      ).not.toBeInViewport()
+    })
+
+    test('direct visit: deep hierarchy d throws in beforeLoad and hydrates route d boundary', async ({
+      page,
+    }) => {
+      await page.goto('/not-found/deep/b/c/d?throwAt=d')
+      await page.waitForLoadState('networkidle')
+
+      await expect(
+        page.getByTestId('deep-d-notFound-component'),
+      ).toBeInViewport()
+      await expect(
+        page.getByTestId('deep-d-route-component'),
+      ).not.toBeInViewport()
+    })
+
+    test('direct visit: deep hierarchy c throws in beforeLoad, d loader does not run, and c boundary hydrates', async ({
+      page,
+    }) => {
+      await page.goto('/not-found/deep/b/c/d?throwAt=c')
+      await page.waitForLoadState('networkidle')
+
+      await expect(
+        page.getByTestId('deep-c-notFound-component'),
+      ).toBeInViewport()
+      await expect(
+        page.getByTestId('deep-d-route-component'),
+      ).not.toBeInViewport()
+    })
+
+    test('direct visit: deep hierarchy b throws in beforeLoad and b boundary hydrates', async ({
+      page,
+    }) => {
+      await page.goto('/not-found/deep/b/c/d?throwAt=b')
+      await page.waitForLoadState('networkidle')
+
+      await expect(
+        page.getByTestId('deep-b-notFound-component'),
+      ).toBeInViewport()
+      await expect(
+        page.getByTestId('deep-d-route-component'),
+      ).not.toBeInViewport()
     })
   })
 })

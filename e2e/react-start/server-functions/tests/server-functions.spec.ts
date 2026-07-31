@@ -4,19 +4,25 @@ import { getTestServerPort, test } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 import type { Page } from '@playwright/test'
 
-const PORT = await getTestServerPort(packageJson.name)
+const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
+const PORT = await getTestServerPort(e2ePortKey)
 
-test('Server function URLs correctly include constant ids', async ({
+test('Server function URLs correctly include explicit ids', async ({
   page,
 }) => {
-  for (const currentPage of ['/submit-post-formdata', '/formdata-redirect']) {
+  const expectedIds: Record<string, string> = {
+    '/submit-post-formdata': 'submit-post-formdata-greetUser',
+    '/formdata-redirect': 'formdata-redirect-greetUser',
+  }
+
+  for (const [currentPage, expectedId] of Object.entries(expectedIds)) {
     await page.goto(currentPage)
     await page.waitForLoadState('networkidle')
 
     const form = page.locator('form')
     const actionUrl = await form.getAttribute('action')
 
-    expect(actionUrl).toMatch(/^\/_serverFn\/constant_id/)
+    expect(actionUrl).toMatch(`/_serverFn/${expectedId}`)
   }
 })
 
@@ -50,6 +56,8 @@ test('Consistent server function returns both on client and server for GET and P
       .getByTestId('expected-consistent-server-fns-result')
       .textContent()) || ''
   expect(expected).not.toBe('')
+
+  await expect(page.getByTestId('consistent-client-hydrated')).toBeAttached()
 
   await page.getByTestId('test-consistent-server-fn-calls-btn').click()
   await page.waitForLoadState('networkidle')
@@ -280,6 +288,32 @@ test('Direct POST submitting FormData to a Server function returns the correct m
 
   const result = await page.innerText('body')
   expect(result).toBe(expected)
+})
+
+test('CSRF middleware rejects cross-site Server function requests', async ({
+  page,
+  request,
+}) => {
+  await page.goto('/submit-post-formdata')
+  await page.waitForLoadState('networkidle')
+
+  const actionUrl = await page
+    .getByTestId('submit-post-formdata-form')
+    .getAttribute('action')
+
+  expect(actionUrl).toBeTruthy()
+
+  const response = await request.post(actionUrl!, {
+    headers: {
+      'Sec-Fetch-Site': 'cross-site',
+    },
+    multipart: {
+      name: 'Sean',
+    },
+  })
+
+  expect(response.status()).toBe(403)
+  await expect(response.text()).resolves.toBe('Forbidden')
 })
 
 test("server function's dead code is preserved if already there", async ({
@@ -738,8 +772,8 @@ test('redirect via server function with middleware does not cause serialization 
 })
 
 test.describe('unhandled exception in middleware (issue #5266)', () => {
-  // Whitelist the expected 500 error since this test verifies error handling
-  test.use({ whitelistErrors: ['500'] })
+  // Whitelist expected browser console errors since this test verifies error handling.
+  test.use({ whitelistErrors: ['500', 'Unhandled middleware exception'] })
 
   test('does not crash server and shows error component', async ({ page }) => {
     // This test verifies that when a middleware throws an unhandled exception,
@@ -1192,4 +1226,46 @@ test('direct fetch overrides global serverFnFetch from createStart', async ({
   expect(result).toContain('x-direct-override-global')
   // Global fetch header should NOT be present (overridden by direct fetch)
   expect(result).not.toContain('x-global-fetch')
+})
+
+test.describe('server function returns 405 when method is not allowed', () => {
+  // Whitelist the expected 405 error since this test verifies method mismatch handling
+  test.use({ whitelistErrors: ['405'] })
+
+  async function runMethodNotAllowedTest(
+    page: Page,
+    methodParam: string,
+    allowedMethod: string,
+  ) {
+    await page.goto(`/method-not-allowed/${methodParam}`)
+    await page.waitForLoadState('networkidle')
+
+    for (const testMethod of ['GET', 'POST', 'PUT', 'OPTIONS']) {
+      const lower = testMethod.toLowerCase()
+      await page.getByTestId(`${lower}-button`).click()
+      await page.waitForLoadState('networkidle')
+
+      if (testMethod === allowedMethod) {
+        await expect(page.getByTestId(`${lower}-fetch-result`)).toContainText(
+          '[200,"Hello, World!"]',
+        )
+      } else {
+        await expect(page.getByTestId(`${lower}-fetch-result`)).toContainText(
+          `[405,"expected ${allowedMethod} method. Got ${testMethod}"]`,
+        )
+      }
+    }
+  }
+
+  test('serverFn defined with GET method', async ({ page }) => {
+    await runMethodNotAllowedTest(page, 'get', 'GET')
+  })
+
+  test('serverFn without explicit method', async ({ page }) => {
+    await runMethodNotAllowedTest(page, 'undefined', 'GET')
+  })
+
+  test('serverFn defined with POST method', async ({ page }) => {
+    await runMethodNotAllowedTest(page, 'post', 'POST')
+  })
 })

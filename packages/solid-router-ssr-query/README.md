@@ -1,4 +1,4 @@
-![TanStack Router Header](https://github.com/tanstack/router/raw/main/media/header_router.png)
+![TanStack Router Header](https://raw.githubusercontent.com/TanStack/router/main/media/header_router.png)
 
 # @tanstack/solid-router-ssr-query
 

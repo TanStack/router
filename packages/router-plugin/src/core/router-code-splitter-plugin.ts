@@ -4,29 +4,34 @@
  */
 
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { logDiff } from '@tanstack/router-utils'
+import { decodeIdentifier, logDiff } from '@tanstack/router-utils'
 import { getConfig, splitGroupingsSchema } from './config'
 import {
   compileCodeSplitReferenceRoute,
+  compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
+  computeSharedBindings,
   detectCodeSplitGroupingsFromRoute,
 } from './code-splitter/compilers'
+import { getFrameworkHmrCompilerPlugins } from './code-splitter/plugins/framework-plugins'
 import {
   defaultCodeSplitGroupings,
   splitRouteIdentNodes,
+  tsrShared,
   tsrSplit,
 } from './constants'
-import { decodeIdentifier } from './code-splitter/path-ids'
-import { debug, normalizePath } from './utils'
+import { debug, normalizePath, routeFactoryCallCodeFilter } from './utils'
+import { createRouterPluginContext } from './router-plugin-context'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from './constants'
 import type { GetRoutesByFileMapResultValue } from '@tanstack/router-generator'
-import type { Config } from './config'
+import type { CodeSplitCompilerPlugin } from './code-splitter/plugins'
+import type { Config, HmrStyle } from './config'
+import type { RouterPluginContext } from './router-plugin-context'
 import type {
   UnpluginFactory,
   TransformResult as UnpluginTransformResult,
 } from 'unplugin'
 
-const PLUGIN_NAME = 'unplugin:router-code-splitter'
 const CODE_SPLITTER_PLUGIN_NAME =
   'tanstack-router:code-splitter:compile-reference-file'
 
@@ -73,11 +78,18 @@ const TRANSFORMATION_PLUGINS_BY_FRAMEWORK: Record<
   ],
 }
 
-export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
-  Partial<Config | (() => Config)> | undefined
-> = (options = {}, { framework: _framework }) => {
+export function createRouterCodeSplitterPlugin(
+  options: Partial<Config | (() => Config)> | undefined = {},
+  routerPluginContext: RouterPluginContext,
+): ReturnType<UnpluginFactory<Partial<Config | (() => Config)> | undefined>> {
   let ROOT: string = process.cwd()
   let userConfig: Config
+  let addHmr: boolean
+  let hmrStyle: HmrStyle
+  let compilerPlugins: Array<CodeSplitCompilerPlugin>
+  let virtualRouteCompilerPlugins: Array<CodeSplitCompilerPlugin>
+
+  let isProduction = process.env.NODE_ENV === 'production'
 
   function initUserConfig() {
     if (typeof options === 'function') {
@@ -85,8 +97,25 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     } else {
       userConfig = getConfig(options, ROOT)
     }
+
+    addHmr = (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction
+    hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
+    compilerPlugins = [
+      ...(addHmr
+        ? (getFrameworkHmrCompilerPlugins({
+            targetFramework: userConfig.target,
+            hmrStyle,
+          }) ?? [])
+        : []),
+      ...(userConfig.codeSplittingOptions?.compilerPlugins ?? []),
+    ]
+    virtualRouteCompilerPlugins = compilerPlugins.filter(
+      (plugin) => plugin.onVirtualRouteSplitNode,
+    )
   }
-  const isProduction = process.env.NODE_ENV === 'production'
+  // Map from normalized route file path → set of shared binding names.
+  // Populated by the reference compiler, consumed by virtual and shared compilers.
+  const sharedBindingsMap = new Map<string, Set<string>>()
 
   const getGlobalCodeSplitGroupings = () => {
     return (
@@ -107,12 +136,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
+      filename: id,
     })
 
-    if (fromCode.groupings) {
+    if (fromCode.groupings !== undefined) {
       const res = splitGroupingsSchema.safeParse(fromCode.groupings)
       if (!res.success) {
-        const message = res.error.errors.map((e) => e.message).join('. ')
+        const message = res.error.issues.map((e) => e.message).join('. ')
         throw new Error(
           `The groupings for the route "${id}" are invalid.\n${message}`,
         )
@@ -122,13 +152,13 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     const userShouldSplitFn = getShouldSplitFn()
 
     const pluginSplitBehavior = userShouldSplitFn?.({
-      routeId: generatorNodeInfo.routePath,
+      routeId: generatorNodeInfo.routeId,
     }) as CodeSplitGroupings | undefined
 
     if (pluginSplitBehavior) {
       const res = splitGroupingsSchema.safeParse(pluginSplitBehavior)
       if (!res.success) {
-        const message = res.error.errors.map((e) => e.message).join('. ')
+        const message = res.error.issues.map((e) => e.message).join('. ')
         throw new Error(
           `The groupings returned when using \`splitBehavior\` for the route "${id}" are invalid.\n${message}`,
         )
@@ -136,7 +166,19 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     }
 
     const splitGroupings: CodeSplitGroupings =
-      fromCode.groupings || pluginSplitBehavior || getGlobalCodeSplitGroupings()
+      fromCode.groupings ?? pluginSplitBehavior ?? getGlobalCodeSplitGroupings()
+
+    // Compute shared bindings before compiling the reference route
+    const sharedBindings = computeSharedBindings({
+      code,
+      filename: id,
+      codeSplitGroupings: splitGroupings,
+    })
+    if (sharedBindings.size > 0) {
+      sharedBindingsMap.set(id, sharedBindings)
+    } else {
+      sharedBindingsMap.delete(id)
+    }
 
     const compiledReferenceRoute = compileCodeSplitReferenceRoute({
       code,
@@ -147,8 +189,11 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       deleteNodes: userConfig.codeSplittingOptions?.deleteNodes
         ? new Set(userConfig.codeSplittingOptions.deleteNodes)
         : undefined,
-      addHmr:
-        (userConfig.codeSplittingOptions?.addHmr ?? true) && !isProduction,
+      addHmr,
+      hmrStyle,
+      hmrRouteId: generatorNodeInfo.routeId,
+      sharedBindings: sharedBindings.size > 0 ? sharedBindings : undefined,
+      compilerPlugins,
     })
 
     if (compiledReferenceRoute === null) {
@@ -189,10 +234,15 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       splitRouteIdentNodes.includes(p as any),
     ) as Array<SplitRouteIdentNodes>
 
+    const baseId = id.split('?')[0]!
+    const resolvedSharedBindings = sharedBindingsMap.get(baseId)
+
     const result = compileCodeSplitVirtualRoute({
       code,
       filename: id,
       splitTargets: grouping,
+      sharedBindings: resolvedSharedBindings,
+      compilerPlugins: virtualRouteCompilerPlugins,
     })
 
     if (debug) {
@@ -203,11 +253,6 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
     return result
   }
 
-  const includedCode = [
-    'createFileRoute(',
-    'createRootRoute(',
-    'createRootRouteWithContext(',
-  ]
   return [
     {
       name: 'tanstack-router:code-splitter:compile-reference-file',
@@ -216,22 +261,19 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       transform: {
         filter: {
           id: {
-            exclude: tsrSplit,
+            exclude: [tsrSplit, tsrShared],
             // this is necessary for webpack / rspack to avoid matching .html files
             include: /\.(m|c)?(j|t)sx?$/,
           },
           code: {
-            include: includedCode,
+            include: routeFactoryCallCodeFilter,
           },
         },
         handler(code, id) {
           const normalizedId = normalizePath(id)
           const generatorFileInfo =
-            globalThis.TSR_ROUTES_BY_ID_MAP?.get(normalizedId)
-          if (
-            generatorFileInfo &&
-            includedCode.some((included) => code.includes(included))
-          ) {
+            routerPluginContext.routesByFile.get(normalizedId)
+          if (generatorFileInfo) {
             return handleCompilingReferenceFile(
               code,
               normalizedId,
@@ -245,6 +287,7 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
 
       vite: {
         configResolved(config) {
+          isProduction = config.command === 'build'
           ROOT = config.root
           initUserConfig()
 
@@ -289,25 +332,15 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
       },
 
       rspack(compiler) {
+        isProduction = compiler.options.mode === 'production'
         ROOT = process.cwd()
         initUserConfig()
-
-        if (compiler.options.mode === 'production') {
-          compiler.hooks.done.tap(PLUGIN_NAME, () => {
-            console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
-          })
-        }
       },
 
       webpack(compiler) {
+        isProduction = compiler.options.mode === 'production'
         ROOT = process.cwd()
         initUserConfig()
-
-        if (compiler.options.mode === 'production') {
-          compiler.hooks.done.tap(PLUGIN_NAME, () => {
-            console.info('✅ ' + PLUGIN_NAME + ': code-splitting done!')
-          })
-        }
       },
     },
     {
@@ -325,6 +358,66 @@ export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
           return handleCompilingVirtualFile(code, normalizedId)
         },
       },
+
+      vite: {
+        applyToEnvironment(environment) {
+          if (userConfig.plugin?.vite?.environmentName) {
+            return userConfig.plugin.vite.environmentName === environment.name
+          }
+          return true
+        },
+      },
+    },
+    {
+      name: 'tanstack-router:code-splitter:compile-shared-file',
+      enforce: 'pre',
+
+      transform: {
+        filter: {
+          id: /tsr-shared/,
+        },
+        handler(code, id) {
+          const url = pathToFileURL(id)
+          url.searchParams.delete('v')
+          const normalizedId = normalizePath(fileURLToPath(url))
+          const [baseId] = normalizedId.split('?')
+
+          if (!baseId) return null
+
+          const sharedBindings = sharedBindingsMap.get(baseId)
+          if (!sharedBindings || sharedBindings.size === 0) return null
+
+          if (debug) console.info('Compiling Shared Module: ', id)
+
+          const result = compileCodeSplitSharedRoute({
+            code,
+            sharedBindings,
+            filename: normalizedId,
+          })
+
+          if (debug) {
+            logDiff(code, result.code)
+            console.log('Output:\n', result.code + '\n\n')
+          }
+
+          return result
+        },
+      },
+
+      vite: {
+        applyToEnvironment(environment) {
+          if (userConfig.plugin?.vite?.environmentName) {
+            return userConfig.plugin.vite.environmentName === environment.name
+          }
+          return true
+        },
+      },
     },
   ]
+}
+
+export const unpluginRouterCodeSplitterFactory: UnpluginFactory<
+  Partial<Config | (() => Config)> | undefined
+> = (options = {}) => {
+  return createRouterCodeSplitterPlugin(options, createRouterPluginContext())
 }

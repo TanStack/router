@@ -24,6 +24,9 @@ function RootComponent() {
           borderBottom: '1px solid #ccc',
         }}
       >
+        <Link to="/" data-testid="link-home">
+          / (home)
+        </Link>
         <Link to="/index" data-testid="link-index">
           /index
         </Link>

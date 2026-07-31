@@ -31,7 +31,6 @@ describe('Transitioner', () => {
     const loadSpy = vi.spyOn(router, 'load')
 
     render(() => <RouterProvider router={router} />)
-    await router.latestLoadPromise
 
     // Wait for the createRenderEffect to run and call router.load()
     await waitFor(() => {

@@ -1,6 +1,6 @@
 import { createPlugin } from 'seroval'
 import { GLOBAL_TSR } from '../constants'
-import type { Plugin, SerovalNode } from 'seroval'
+import type { Plugin, PluginInfo, SerovalNode } from 'seroval'
 import type {
   RegisteredConfigType,
   RegisteredSsr,
@@ -14,6 +14,7 @@ declare const TSR_SERIALIZABLE: unique symbol
 export type TSR_SERIALIZABLE = typeof TSR_SERIALIZABLE
 
 export type TsrSerializable = { [TSR_SERIALIZABLE]: true }
+
 export interface DefaultSerializable {
   number: number
   string: string
@@ -25,6 +26,7 @@ export interface DefaultSerializable {
   Uint8Array: Uint8Array
   RawStream: RawStream
   TsrSerializable: TsrSerializable
+  void: void
 }
 
 export interface SerializableExtensions extends DefaultSerializable {}
@@ -72,13 +74,14 @@ export interface CreateSerializationAdapterOptions<
   fromSerializable: (value: TOutput) => TInput
 }
 
-export type ValidateSerializable<T, TSerializable> =
-  T extends ReadonlyArray<unknown>
-    ? ResolveArrayShape<T, TSerializable, 'input'>
-    : T extends TSerializable
-      ? T
-      : T extends (...args: Array<any>) => any
-        ? 'Function is not serializable'
+export type ValidateSerializable<T, TSerializable> = T extends TSerializable
+  ? T
+  : T extends (...args: Array<any>) => any
+    ? SerializationError<'Function may not be serializable'>
+    : T extends RegisteredReadableStream
+      ? SerializationError<'JSX is not be serializable'>
+      : T extends ReadonlyArray<any>
+        ? ValidateSerializableArray<T, TSerializable>
         : T extends Promise<any>
           ? ValidateSerializablePromise<T, TSerializable>
           : T extends ReadableStream<any>
@@ -89,9 +92,9 @@ export type ValidateSerializable<T, TSerializable> =
                 ? ValidateSerializableMap<T, TSerializable>
                 : T extends AsyncGenerator<any, any>
                   ? ValidateSerializableAsyncGenerator<T, TSerializable>
-                  : {
-                      [K in keyof T]: ValidateSerializable<T[K], TSerializable>
-                    }
+                  : T extends object
+                    ? ValidateSerializableMapped<T, TSerializable>
+                    : SerializationError<'Type may not be serializable'>
 
 export type ValidateSerializableAsyncGenerator<T, TSerializable> =
   T extends AsyncGenerator<infer T, infer TReturn, infer TNext>
@@ -125,16 +128,26 @@ export type ValidateSerializableMap<T, TSerializable> =
       >
     : never
 
-export type RegisteredReadableStream =
-  unknown extends SerializerExtensions['ReadableStream']
-    ? never
-    : SerializerExtensions['ReadableStream']
+export type ValidateSerializableArray<T, TSerializable> = T extends readonly [
+  any,
+  ...Array<any>,
+]
+  ? ValidateSerializableMapped<T, TSerializable>
+  : T extends Array<infer U>
+    ? Array<ValidateSerializable<U, TSerializable>>
+    : T extends ReadonlyArray<infer U>
+      ? ReadonlyArray<ValidateSerializable<U, TSerializable>>
+      : never
 
-export interface DefaultSerializerExtensions {
-  ReadableStream: unknown
+export type ValidateSerializableMapped<T, TSerializable> = {
+  [K in keyof T]: ValidateSerializable<T[K], TSerializable>
 }
 
-export interface SerializerExtensions extends DefaultSerializerExtensions {}
+const SERIALIZATION_ERROR = Symbol.for('TSR_SERIALIZATION_ERROR')
+
+export interface SerializationError<in out TMessage extends string> {
+  [SERIALIZATION_ERROR]: TMessage
+}
 
 export interface SerializationAdapter<
   TInput,
@@ -161,27 +174,34 @@ export interface SerializationAdapterTypes<
 
 export type AnySerializationAdapter = SerializationAdapter<any, any, any>
 
+export interface AdapterNode extends PluginInfo {
+  v: SerovalNode
+}
+
 /** Create a Seroval plugin for server-side serialization only. */
+/* @__NO_SIDE_EFFECTS__ */
 export function makeSsrSerovalPlugin(
   serializationAdapter: AnySerializationAdapter,
   options: { didRun: boolean },
-): Plugin<any, SerovalNode> {
-  return createPlugin<any, SerovalNode>({
+): Plugin<any, AdapterNode> {
+  return /* @__PURE__ */ createPlugin<any, AdapterNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
     test: serializationAdapter.test,
     parse: {
-      stream(value, ctx) {
-        return ctx.parse(serializationAdapter.toSerializable(value))
+      stream(value, ctx, _data) {
+        return {
+          v: ctx.parse(serializationAdapter.toSerializable(value)),
+        }
       },
     },
-    serialize(node, ctx) {
+    serialize(node, ctx, _data) {
       options.didRun = true
       return (
         GLOBAL_TSR +
         '.t.get("' +
         serializationAdapter.key +
         '")(' +
-        ctx.serialize(node) +
+        ctx.serialize(node.v) +
         ')'
       )
     },
@@ -191,27 +211,34 @@ export function makeSsrSerovalPlugin(
 }
 
 /** Create a Seroval plugin for client/server symmetric (de)serialization. */
+/* @__NO_SIDE_EFFECTS__ */
 export function makeSerovalPlugin(
   serializationAdapter: AnySerializationAdapter,
-): Plugin<any, SerovalNode> {
-  return createPlugin<any, SerovalNode>({
+): Plugin<any, AdapterNode> {
+  return /* @__PURE__ */ createPlugin<any, AdapterNode>({
     tag: '$TSR/t/' + serializationAdapter.key,
     test: serializationAdapter.test,
     parse: {
-      sync(value, ctx) {
-        return ctx.parse(serializationAdapter.toSerializable(value))
+      sync(value, ctx, _data) {
+        return {
+          v: ctx.parse(serializationAdapter.toSerializable(value)),
+        }
       },
-      async async(value, ctx) {
-        return await ctx.parse(serializationAdapter.toSerializable(value))
+      async async(value, ctx, _data) {
+        return {
+          v: await ctx.parse(serializationAdapter.toSerializable(value)),
+        }
       },
-      stream(value, ctx) {
-        return ctx.parse(serializationAdapter.toSerializable(value))
+      stream(value, ctx, _data) {
+        return {
+          v: ctx.parse(serializationAdapter.toSerializable(value)),
+        }
       },
     },
     // we don't generate JS code outside of SSR (for now)
     serialize: undefined as never,
-    deserialize(node, ctx) {
-      return serializationAdapter.fromSerializable(ctx.deserialize(node))
+    deserialize(node, ctx, _data) {
+      return serializationAdapter.fromSerializable(ctx.deserialize(node.v))
     },
   })
 }
@@ -233,20 +260,6 @@ export type RegisteredSerializationAdapters<TRegister> = RegisteredConfigType<
   TRegister,
   'serializationAdapters'
 >
-
-export type ValidateSerializableInputResult<TRegister, T> =
-  ValidateSerializableResult<T, RegisteredSerializableInput<TRegister>>
-
-export type ValidateSerializableResult<T, TSerializable> =
-  T extends ReadonlyArray<unknown>
-    ? ResolveArrayShape<T, TSerializable, 'result'>
-    : T extends TSerializable
-      ? T
-      : unknown extends SerializerExtensions['ReadableStream']
-        ? { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
-        : T extends SerializerExtensions['ReadableStream']
-          ? ReadableStream
-          : { [K in keyof T]: ValidateSerializableResult<T[K], TSerializable> }
 
 export type RegisteredSSROption<TRegister> =
   unknown extends RegisteredConfigType<TRegister, 'defaultSsr'>
@@ -282,31 +295,13 @@ export type ValidateSerializableLifecycleResultSSR<
       ? any
       : ValidateSerializableInput<TRegister, LooseReturnType<TFn>>
 
-type ResolveArrayShape<
-  T extends ReadonlyArray<unknown>,
-  TSerializable,
-  TMode extends 'input' | 'result',
-> = number extends T['length']
-  ? T extends Array<infer U>
-    ? Array<ArrayModeResult<TMode, U, TSerializable>>
-    : ReadonlyArray<ArrayModeResult<TMode, T[number], TSerializable>>
-  : ResolveTupleShape<T, TSerializable, TMode>
+export type RegisteredReadableStream =
+  unknown extends SerializerExtensions['ReadableStream']
+    ? never
+    : SerializerExtensions['ReadableStream']
 
-type ResolveTupleShape<
-  T extends ReadonlyArray<unknown>,
-  TSerializable,
-  TMode extends 'input' | 'result',
-> = T extends readonly [infer THead, ...infer TTail]
-  ? readonly [
-      ArrayModeResult<TMode, THead, TSerializable>,
-      ...ResolveTupleShape<Readonly<TTail>, TSerializable, TMode>,
-    ]
-  : T
+export interface DefaultSerializerExtensions {
+  ReadableStream: unknown
+}
 
-type ArrayModeResult<
-  TMode extends 'input' | 'result',
-  TValue,
-  TSerializable,
-> = TMode extends 'input'
-  ? ValidateSerializable<TValue, TSerializable>
-  : ValidateSerializableResult<TValue, TSerializable>
+export interface SerializerExtensions extends DefaultSerializerExtensions {}

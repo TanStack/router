@@ -10,7 +10,6 @@ export default defineConfig({
     tanstackRouter({
       target: 'solid',
       autoCodeSplitting: true,
-      verboseFileRoutes: false,
       virtualRouteConfig: './routes.ts',
     }),
     solid(),

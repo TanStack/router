@@ -1,4 +1,4 @@
-import invariant from 'tiny-invariant'
+import { invariant } from './invariant'
 import { joinPaths, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
 import { redirect } from './redirect'
@@ -79,9 +79,17 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 
 export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 
+export type SearchMiddlewareMeta = {
+  removed?: Map<string, unknown>
+  removedAny?: Set<string>
+  defaulted?: Map<string, unknown>
+  explicit?: unknown
+}
+
 export type SearchMiddlewareContext<TSearchSchema> = {
   search: TSearchSchema
   next: (newSearch: TSearchSchema) => TSearchSchema
+  meta?: SearchMiddlewareMeta
 }
 
 export type SearchMiddleware<TSearchSchema> = (
@@ -214,9 +222,13 @@ export type ResolveParams<
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: Expand<ResolveParams<TPath>>,
-) => TParams extends ResolveParams<TPath, any>
-  ? TParams
-  : ResolveParams<TPath, any>
+) => TParams | false
+
+type ValidateParsedParams<TPath extends string, TParams> = [TParams] extends [
+  ResolveParams<TPath, any>,
+]
+  ? unknown
+  : never
 
 export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
@@ -224,14 +236,22 @@ export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
 
 export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
-    parse?: ParseParamsFn<TPath, TParams>
+    parse?: ParseParamsFn<TPath, TParams> & ValidateParsedParams<TPath, TParams>
+    /**
+     * When multiple route candidates use `params.parse` during matching,
+     * higher priorities are tried first.
+     *
+     * @default 0
+     */
+    priority?: number
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 
   /**
   @deprecated Use params.parse instead
   */
-  parseParams?: ParseParamsFn<TPath, TParams>
+  parseParams?: ParseParamsFn<TPath, TParams> &
+    ValidateParsedParams<TPath, TParams>
 
   /**
   @deprecated Use params.stringify instead
@@ -333,11 +353,44 @@ export type ResolveRouteContext<TRouteContextFn, TBeforeLoadFn> = Assign<
   ContextAsyncReturnType<TBeforeLoadFn>
 >
 
+export type ResolveRouteLoaderFn<TLoaderFn> = TLoaderFn extends {
+  handler: infer THandler
+}
+  ? THandler
+  : TLoaderFn
+
+export type RouteLoaderObject<
+  TRegister,
+  TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
+  TParams = {},
+  TLoaderDeps = {},
+  TRouterContext = {},
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
+> = {
+  handler: RouteLoaderFn<
+    TRegister,
+    TParentRoute,
+    TId,
+    TParams,
+    TLoaderDeps,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TServerMiddlewares,
+    THandlers
+  >
+  staleReloadMode?: LoaderStaleReloadMode
+}
+
 export type ResolveLoaderData<TLoaderFn> = unknown extends TLoaderFn
   ? TLoaderFn
-  : LooseAsyncReturnType<TLoaderFn> extends never
+  : LooseAsyncReturnType<ResolveRouteLoaderFn<TLoaderFn>> extends never
     ? undefined
-    : LooseAsyncReturnType<TLoaderFn>
+    : LooseAsyncReturnType<ResolveRouteLoaderFn<TLoaderFn>>
 
 export type ResolveFullSearchSchema<
   TParentRoute extends AnyRoute,
@@ -1101,8 +1154,7 @@ export interface FilebaseRouteOptionsInterface<
 
   loader?: Constrain<
     TLoaderFn,
-    (
-      ctx: LoaderFnContext<
+    | RouteLoaderFn<
         TRegister,
         TParentRoute,
         TId,
@@ -1113,13 +1165,19 @@ export interface FilebaseRouteOptionsInterface<
         TBeforeLoadFn,
         TServerMiddlewares,
         THandlers
-      >,
-    ) => ValidateSerializableLifecycleResult<
-      TRegister,
-      TParentRoute,
-      TSSR,
-      TLoaderFn
-    >
+      >
+    | RouteLoaderObject<
+        TRegister,
+        TParentRoute,
+        TId,
+        TParams,
+        TLoaderDeps,
+        TRouterContext,
+        TRouteContextFn,
+        TBeforeLoadFn,
+        TServerMiddlewares,
+        THandlers
+      >
   >
 }
 
@@ -1308,37 +1366,6 @@ export interface UpdatableRouteOptions<
 >
   extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
   /**
-   * Options to control route matching behavior with runtime code.
-   *
-   * @experimental 🚧 this feature is subject to change
-   *
-   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType
-   */
-  skipRouteOnParseError?: {
-    /**
-     * If `true`, skip this route during matching if `params.parse` fails.
-     *
-     * Without this option, a `/$param` route could match *any* value for `param`,
-     * and only later during the route lifecycle would `params.parse` run and potentially
-     * show the `errorComponent` if validation failed.
-     *
-     * With this option enabled, the route will only match if `params.parse` succeeds.
-     * If it fails, the router will continue trying to match other routes, potentially
-     * finding a different route that works, or ultimately showing the `notFoundComponent`.
-     *
-     * @default false
-     */
-    params?: boolean
-    /**
-     * In cases where multiple routes would need to run `params.parse` during matching
-     * to determine which route to pick, this priority number can be used as a tie-breaker
-     * for which route to try first. Higher number = higher priority.
-     *
-     * @default 0
-     */
-    priority?: number
-  }
-  /**
    * If true, this route will be matched as case-sensitive
    *
    * @default false
@@ -1359,9 +1386,7 @@ export interface UpdatableRouteOptions<
   preloadGcTime?: number
   search?: {
     middlewares?: Array<
-      SearchMiddleware<
-        ResolveFullSearchSchemaInput<TParentRoute, TSearchValidator>
-      >
+      SearchMiddleware<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
     >
   }
   /**
@@ -1517,6 +1542,45 @@ export type RouteLoaderFn<
     THandlers
   >,
 ) => any
+
+export type LoaderStaleReloadMode = 'background' | 'blocking'
+
+export type RouteLoaderEntry<
+  TRegister,
+  TParentRoute extends AnyRoute = AnyRoute,
+  TId extends string = string,
+  TParams = {},
+  TLoaderDeps = {},
+  TRouterContext = {},
+  TRouteContextFn = AnyContext,
+  TBeforeLoadFn = AnyContext,
+  TServerMiddlewares = unknown,
+  THandlers = undefined,
+> =
+  | RouteLoaderFn<
+      TRegister,
+      TParentRoute,
+      TId,
+      TParams,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TServerMiddlewares,
+      THandlers
+    >
+  | RouteLoaderObject<
+      TRegister,
+      TParentRoute,
+      TId,
+      TParams,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn,
+      TServerMiddlewares,
+      THandlers
+    >
 
 export interface LoaderFnContext<
   in out TRegister = unknown,
@@ -1844,10 +1908,13 @@ export class BaseRoute<
     if (isRoot) {
       this._path = rootRouteId as TPath
     } else if (!this.parentRoute) {
-      invariant(
-        false,
-        `Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
-      )
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Child Route instances must pass a 'getParentRoute: () => ParentRoute' option that returns a Route instance.`,
+        )
+      }
+
+      invariant()
     }
 
     let path: undefined | string = isRoot ? rootRouteId : options?.path
@@ -2061,7 +2128,7 @@ export class BaseRouteApi<TId, TRouter extends AnyRouter = RegisteredRouter> {
   id: TId
 
   constructor({ id }: { id: TId }) {
-    this.id = id as any
+    this.id = id
   }
 
   notFound = (opts?: NotFoundError) => {

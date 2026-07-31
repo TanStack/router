@@ -129,3 +129,60 @@ test.describe('Global middleware deduplication (issue #5239)', () => {
     })
   })
 })
+
+test.describe('Request middleware pathname (issue #6647)', () => {
+  test('pathname should be the page path on SSR', async ({ page }) => {
+    await page.goto('/pathname-middleware')
+    await page.waitForLoadState('networkidle')
+    await expect(page.getByTestId('request-middleware-pathname')).toHaveText(
+      '/pathname-middleware',
+    )
+  })
+
+  test('pathname should be the server function path on client-side navigation', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.waitForLoadState('networkidle')
+    await page.getByTestId('link-pathname').click()
+    await page.waitForLoadState('networkidle')
+    const pathnameText = await page
+      .getByTestId('request-middleware-pathname')
+      .textContent()
+    expect(pathnameText).toBeTruthy()
+    expect(pathnameText!.startsWith('/_serverFn/')).toBe(true)
+  })
+})
+
+test.describe('Client sendContext collisions (TSR-003)', () => {
+  test('trusted server middleware context wins for SSR, GET, and FormData calls', async ({
+    page,
+  }) => {
+    await page.goto('/context-collision')
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByTestId('loader-status')).toHaveText('PASS')
+    await expect(page.getByTestId('loader-trusted-user')).toHaveText(
+      'server-user',
+    )
+    await expect(page.getByTestId('loader-client-nonce')).toHaveText(
+      'client-nonce',
+    )
+
+    await page.getByTestId('invoke-get-collision').click()
+    await expect(page.getByTestId('get-status')).toHaveText('PASS')
+    await expect(page.getByTestId('get-trusted-user')).toHaveText('server-user')
+    await expect(page.getByTestId('get-client-nonce')).toHaveText(
+      'client-nonce',
+    )
+
+    await page.getByTestId('invoke-post-collision').click()
+    await expect(page.getByTestId('post-status')).toHaveText('PASS')
+    await expect(page.getByTestId('post-trusted-user')).toHaveText(
+      'server-user',
+    )
+    await expect(page.getByTestId('post-client-nonce')).toHaveText(
+      'client-nonce',
+    )
+  })
+})

@@ -1,5 +1,5 @@
 import { RouterCore } from '@tanstack/router-core'
-import { createFileRoute, createLazyFileRoute } from './fileRoute'
+import { getStoreFactory } from './routerStores'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -99,14 +99,6 @@ export class Router<
       TDehydrated
     >,
   ) {
-    super(options)
+    super(options, getStoreFactory)
   }
-}
-
-if (typeof globalThis !== 'undefined') {
-  ;(globalThis as any).createFileRoute = createFileRoute
-  ;(globalThis as any).createLazyFileRoute = createLazyFileRoute
-} else if (typeof window !== 'undefined') {
-  ;(window as any).createFileRoute = createFileRoute
-  ;(window as any).createLazyFileRoute = createLazyFileRoute
 }

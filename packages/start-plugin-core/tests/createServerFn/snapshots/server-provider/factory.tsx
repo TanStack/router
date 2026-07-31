@@ -25,7 +25,7 @@ const adminMiddleware = createMiddleware({
 const createAuthServerFn = createServerFn().middleware([authMiddleware]);
 const createAdminServerFn = createAuthServerFn().middleware([adminMiddleware]);
 const myAuthedFn_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJteUF1dGhlZEZuX2NyZWF0ZVNlcnZlckZuX2hhbmRsZXIifQ",
+  id: "3bb88b23926fa224cea3dcfb877026757733d95b42e3b66cf7f06bb89dab06a3",
   name: "myAuthedFn",
   filename: "src/test.ts"
 }, opts => myAuthedFn.__executeServer(opts));
@@ -33,7 +33,7 @@ const myAuthedFn = createAuthServerFn().handler(myAuthedFn_createServerFn_handle
   return 'myAuthedFn';
 });
 const deleteUserFn_createServerFn_handler = createServerRpc({
-  id: "eyJmaWxlIjoiL0BpZC9zcmMvdGVzdC50cz90c3Mtc2VydmVyZm4tc3BsaXQiLCJleHBvcnQiOiJkZWxldGVVc2VyRm5fY3JlYXRlU2VydmVyRm5faGFuZGxlciJ9",
+  id: "44d9483a9412daaacaa5a8aee6b02294333a0e61b5d3b17ba6bcb34fd2bdce31",
   name: "deleteUserFn",
   filename: "src/test.ts"
 }, opts => deleteUserFn.__executeServer(opts));

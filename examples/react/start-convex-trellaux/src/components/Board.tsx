@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef } from 'react'
-import invariant from 'tiny-invariant'
+import { invariant } from '../invariant'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { convexQuery } from '@convex-dev/react-query'
 import { api } from '../../convex/_generated/api.js'

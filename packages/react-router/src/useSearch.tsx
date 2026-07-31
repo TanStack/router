@@ -98,7 +98,7 @@ export function useSearch<
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
     structuralSharing: opts.structuralSharing,
-    select: (match: any) => {
+    select: (match) => {
       return opts.select ? opts.select(match.search) : match.search
     },
   }) as any

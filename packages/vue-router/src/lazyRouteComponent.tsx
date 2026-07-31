@@ -147,7 +147,7 @@ export function lazyRouteComponent<
   })
 
   // Add preload method
-  ;(lazyComp as any).preload = load
+  lazyComp.preload = load
 
   return lazyComp as any
 }
