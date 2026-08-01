@@ -582,10 +582,10 @@ Optional parameters can be combined with wildcards for complex routing patterns:
 
 # React
 
-```tsx title="src/routes/docs/{-$version}/$.tsx"
-// Route: /docs/{-$version}/$
+```tsx title="src/routes/docs/v{-$version}/$.tsx"
+// Route: /docs/v{-$version}/$
 // Matches: /docs/extra/path, /docs/v2/extra/path
-export const Route = createFileRoute('/docs/{-$version}/$')({
+export const Route = createFileRoute('/docs/v{-$version}/$')({
   component: DocsComponent,
 })
 
@@ -595,7 +595,7 @@ function DocsComponent() {
 
   return (
     <div>
-      Version: {version || 'latest'}
+      Version: {version ? `v${version}` : 'latest'}
       Path: {_splat}
     </div>
   )
@@ -604,10 +604,10 @@ function DocsComponent() {
 
 # Solid
 
-```tsx title="src/routes/docs/{-$version}/$.tsx"
-// Route: /docs/{-$version}/$
+```tsx title="src/routes/docs/v{-$version}/$.tsx"
+// Route: /docs/v{-$version}/$
 // Matches: /docs/extra/path, /docs/v2/extra/path
-export const Route = createFileRoute('/docs/{-$version}/$')({
+export const Route = createFileRoute('/docs/v{-$version}/$')({
   component: DocsComponent,
 })
 
@@ -616,7 +616,7 @@ function DocsComponent() {
 
   return (
     <div>
-      Version: {params().version || 'latest'}
+      Version: {params().version ? `v${params().version} : 'latest'}
       Path: {params()._splat}
     </div>
   )
