@@ -12,15 +12,15 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.27",
-    "@tanstack/solid-query": "^6.0.0-beta.5",
+    "@solidjs/web": "2.0.0-beta.29",
+    "@tanstack/solid-query": "^6.0.0-beta.7",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-router-ssr-query": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "js-cookie": "^3.0.5",
     "redaxios": "^0.5.1",
-    "solid-js": "2.0.0-beta.27",
+    "solid-js": "2.0.0-beta.29",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"
   },
@@ -34,7 +34,7 @@
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "typescript": "^6.0.2",
-    "vite-plugin-solid": "^3.0.0-next.17",
+    "vite-plugin-solid": "^3.0.0-next.21",
     "vite": "^8.0.14"
   }
 }

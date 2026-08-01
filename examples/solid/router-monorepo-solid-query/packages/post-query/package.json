@@ -8,12 +8,12 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "dependencies": {
-    "@tanstack/solid-query": "^6.0.0-beta.5",
+    "@tanstack/solid-query": "^6.0.0-beta.7",
     "redaxios": "^0.5.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^3.0.0-next.17",
+    "vite-plugin-solid": "^3.0.0-next.21",
     "typescript": "^6.0.2",
     "vite": "^8.0.14"
   }
