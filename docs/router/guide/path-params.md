@@ -616,7 +616,7 @@ function DocsComponent() {
 
   return (
     <div>
-      Version: {params().version ? `v${params().version} : 'latest'}
+      Version: {params().version ? `v${params().version}` : 'latest'}
       Path: {params()._splat}
     </div>
   )
