@@ -73,9 +73,10 @@ describe('response context headers', () => {
         response.writeHead(401, { 'set-cookie': ['from-upstream=b'] })
         response.end('nope')
       })
-      await new Promise<void>((resolve) =>
-        server.listen(0, '127.0.0.1', resolve),
-      )
+      await new Promise<void>((resolve, reject) => {
+        server.once('error', reject)
+        server.listen(0, '127.0.0.1', resolve)
+      })
       const address = server.address()
       origin = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`
     })
