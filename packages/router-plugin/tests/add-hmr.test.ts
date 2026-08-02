@@ -147,6 +147,22 @@ describe('add-hmr works', () => {
     expect(output).toContain('"object":{"type":"Identifier","name":"hotData"}')
   })
 
+  it('gates the eager live-route patch behind a persisted hot-data flag', async () => {
+    const statement = createRouteHmrStatement([], {
+      hmrStyle: 'vite',
+      targetFramework: 'react',
+      routeId: '/posts',
+    })
+    const output = JSON.stringify(statement)
+
+    // On a first import the module must never patch a route owned by a
+    // different router in the same window (module federation / multiple
+    // routers, see #7921). The eager patch may only run on hot
+    // re-evaluations, detected via `hot.data`, which persists across updates.
+    expect(output).toContain('tsr-route-initialized')
+    expect(output).toContain('"name":"isHotReevaluation"')
+  })
+
   it('normalizes the generated root route id for Vite HMR', async () => {
     const statement = createRouteHmrStatement([], {
       hmrStyle: 'vite',

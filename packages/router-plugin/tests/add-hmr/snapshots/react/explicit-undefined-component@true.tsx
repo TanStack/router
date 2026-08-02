@@ -160,7 +160,9 @@ if (import.meta.hot) {
   if (initialRouteId) {
     hotData['tsr-route-id'] = initialRouteId;
   }
-  const existingRoute = typeof window !== 'undefined' && initialRouteId ? window.__TSR_ROUTER__?.routesById?.[initialRouteId] : undefined;
+  const isHotReevaluation = hotData['tsr-route-initialized'] === true;
+  hotData['tsr-route-initialized'] = true;
+  const existingRoute = isHotReevaluation && typeof window !== 'undefined' && initialRouteId ? window.__TSR_ROUTER__?.routesById?.[initialRouteId] : undefined;
   if (initialRouteId && existingRoute && existingRoute !== Route) {
     handleRouteUpdate(initialRouteId, Route);
     hotData['tsr-route-update-handled'] = Route;
