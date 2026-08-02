@@ -28,17 +28,18 @@ The main authorities are:
 
 | Authority                    | What it owns                                                        |
 | ---------------------------- | ------------------------------------------------------------------- |
-| `_tx`                        | The one client navigation allowed to commit, redirect, and complete |
+| `_tx`                        | The client navigation allowed to commit and publish foreground flow |
 | `_preflight`                 | The current client plan or asynchronous hydration reconstruction    |
 | `_handoff`                   | The temporary right to transfer one reconstructed SSR prefix        |
 | `_committed`                 | The accepted current lane and lifecycle/background CAS base         |
 | `stores.matches`             | The current match presentation exposed to renderers and users       |
 | `router._cache`              | Off-screen loader generations and first same-ID planning seeds      |
-| Active preload entry         | Cancellation and cache-clearing ownership for one speculative lane  |
+| Active preload entry         | Cancellation, cache clearing, and private redirect-chain ownership  |
 | Loader flight registry entry | The latest same-ID loader generation available to new consumers     |
 | Match flight lease           | Ownership keeping that loader work alive                            |
 | Pending session              | One reveal/minimum-visible deadline and its current owner           |
 | React acknowledgement slot   | The one requested publication whose render may settle a transition  |
+| Refresh transaction          | Its starting presentation, handoff, and live rollback capability    |
 | Request signal               | Lifetime of one server request and any accepted SSR stream          |
 | Accepted SSR stream response | Cleanup ownership transferred from the handler to the response body |
 
@@ -279,9 +280,11 @@ signal and can synchronously reenter user code, so an old generation must never
 be released while it still appears to be the accepted owner. The committed lane
 is also removed from the transaction's private ownership before publication.
 
-Every asynchronous client publication checks `_tx` immediately before the
-write. Background publication additionally checks the exact committed base
-array from which it was derived.
+Every asynchronous navigation or presentation publication checks `_tx`
+immediately before the write. Background publication additionally checks the
+exact committed base array from which it was derived. Preload cache admission
+and private redirect continuation use their own compare-and-swap and controller
+authorities instead.
 
 ## `beforeLoad`: execution and hydration
 
@@ -301,15 +304,17 @@ Every navigation and every preload rematches and runs its own serial
 `beforeLoad` chain. This remains true for identical concurrent preloads and for
 a navigation that targets a still-running preload. A call made with
 `preload: true` is never accepted as the navigation's call with
-`preload: false`; its context, redirect, error, and not-found result stay private
-to that speculative lane.
+`preload: false`; that call's context and control or terminal outcome stay
+private to its speculative lane. This does not isolate the normalized outcome of
+a same-ID loader flight that multiple lanes deliberately share.
 
-`router._preloads` therefore has no semantic adoption role. It tracks active
-speculative match owners only so cache clearing can cancel selected work and
-release their resources safely. Loader results remain independently reusable:
-a completed preload may seed the match cache, and a still-running preload may
-donate its same-ID loader flight after the receiving lane has run its own
-`beforeLoad` and made its reload decision.
+`router._preloads` has no semantic adoption role. Its controller entry owns
+cancellation and cache clearing and proves that a standalone preload remained
+active through normal settlement; successful removal authorizes private redirect
+continuation. Loader results remain independently reusable: a completed preload
+may seed the match cache, and a still-running preload may donate its same-ID
+loader flight after the receiving lane has run its own `beforeLoad` and made its
+reload decision.
 
 ### Hydration
 
@@ -340,12 +345,15 @@ provenance.
 
 Successful loader-backed matches can be cached by match id. Staleness,
 invalidation, `shouldReload`, stale reload mode, and GC policy decide whether a
-lane uses that data or runs the loader again.
+lane uses that data or requires a loader generation. A discoverable same-ID
+flight may satisfy that requirement, including when `shouldReload` returns
+`true`.
 
 It is valid for cached loader data to have been produced under context from an
 older `beforeLoad` generation. Loaders are the cache boundary; guards are not.
-When a new loader run is needed, it receives the current lane's freshly built
-context.
+Likewise, a shared in-flight invocation may have started with another lane's
+older context. Only a newly started loader invocation receives the current
+lane's freshly built context.
 
 An invalid successful entry may remain in the cache as stale data and an identity
 carrier, but it can never satisfy freshness and must reload. Failed, canceled,
@@ -397,27 +405,33 @@ Two facts must remain separate:
 - registry membership means new consumers may join the flight;
 - a match lease means an existing consumer keeps the flight alive.
 
-Registry membership normally owns no lease. A settled generation remains
-discoverable while at least one semantic or cached match owns it. Releasing the
-last lease removes that generation only if it is still the current registry
-entry, then aborts its controller. Every copied semantic match that retains a
-flight must acquire a lease, and every discarded match must release one exactly
-once.
+Registry membership normally owns no lease. A successfully settled generation
+may remain discoverable while at least one semantic or cached match owns it. A
+non-success outcome removes the exact current flight from the registry as it
+settles; existing leases keep that outcome alive only for consumers that already
+joined, while later planners start a fresh generation. Releasing the last lease
+removes a successful generation only if it is still the current registry entry,
+then aborts its controller. Every copied semantic match that retains a flight
+must acquire a lease, and every discarded match must release one exactly once.
 
 There is one short reservation phase. The navigation-supersession handoff may
 leave a predecessor's same-ID registry flight at zero leases while the successor
 contextualizes. An independently owned same-ID flight that loses its last lease
 while that lane visibly runs `beforeLoad` joins the same window. Generic releases
 after contextualization never infer a reservation merely from `_tx` membership.
-After the navigation's loader tasks are planned, they either acquire the flight
-or a single sweep removes and aborts it. Preloads neither create nor sweep this
-navigation handoff state. No match flag, extra counter, or second completion
-promise represents the phase. An explicit `shouldReload` result does not consume
-a zero-owner reservation: it removes and aborts that generation before
-registering fresh work. Active positive-lease work may still be shared by
-another lane that requests a reload. Invalidation removes discovery entries for
-every selected ID before its superseding load, so it always starts the requested
-generation.
+Successful contextualization invokes loader planning before its async frame
+returns. A lane without `beforeLoad` therefore claims a donor before the first
+promise yield; a lane with an asynchronous guard remains covered by the visible
+`beforeLoad` phase. After the navigation's loader tasks are planned, they either
+acquire the flight or a single sweep removes and aborts it. Preloads neither
+create nor sweep this navigation handoff state. No match flag, extra counter, or
+second completion promise represents the phase. When a lane needs a loader
+generation, any discoverable same-ID flight may satisfy it regardless of whether
+its lease is positive or temporarily reserved at zero. `shouldReload` does not
+bypass this single-flight rule; an explicit `false` declines the donor and lets
+the sweep retire an unconsumed reservation. Invalidation removes discovery
+entries for every selected ID before its superseding load, so it starts the
+requested generation.
 
 Releasing a set of matches is deliberately two-phase. First every outgoing
 match drops its `_flight` lease and every zero-owner generation not reserved by
@@ -432,12 +446,14 @@ settled. This keeps the loader's public `AbortSignal` alive for that semantic
 generation. The signal aborts when the last active or cached owner is replaced,
 unloaded, expired, or discarded; promise settlement alone does not end it.
 
-Loader error normalization, including route `onError`, runs only while the
-originating match still owns that exact flight. Releasing the match before a
-late rejection makes the generation semantically discarded; abort-triggered
-rejection must not call user error hooks. This is an ownership check, not a
-separate cancellation flag. A loader that aborts its own flight controller while
-its match remains owned can still fulfill or reject normally.
+Loader error normalization, including route `onError`, runs once while the exact
+flight still has a match lease. The terminal flight leaves the discovery
+registry before normalization, so a navigation reentered by `onError` starts a
+fresh generation. Releasing every match before a late rejection makes the
+generation semantically discarded; abort-triggered rejection must not call user
+error hooks. This is an ownership check, not a separate cancellation flag. A
+loader that aborts its own flight controller while its match remains owned can
+still fulfill or reject normally.
 
 A planned match holds only the lease for the accepted generation copied from
 cache or committed state. After `beforeLoad` and `shouldReload` decide that a
@@ -452,10 +468,11 @@ Active preload flights need no special handoff. Their speculative matches keep
 ordinary positive leases until the preload settles or is canceled, so another
 lane can discover and acquire the flight without adopting the preload lane.
 
-A joining navigation accepts successful shared loader work. A failure,
-not-found, or cancellation produced under another speculative generation is not
-allowed to govern it; the navigation releases that flight and registers its own
-generation. Redirect remains control flow and is never cached as loader data.
+Consumers already joined to one loader flight observe its single normalized
+outcome, including error and not-found. Per-lane cancellation can stop only that
+consumer's wait. A non-success flight retires from discovery at settlement, so
+only lanes planned afterward retry. Redirect remains control flow and is never
+cached as loader data.
 
 ### Semantic parent chain
 
@@ -487,11 +504,11 @@ obsolete import cannot install options afterward.
 Normal component readiness is part of route readiness, not merely an asset
 prefetch side effect. Client loader and normal component work may run in
 parallel, and a blocking match becomes successful only after both are ready.
-Chunk settlement also wakes pending selection, so a `pendingComponent` supplied
-by newly installed lazy options can become visible while the route's loader is
-still running. This does not require retaining a component promise on the
-match: the route's lazy-option owner and the framework/module loader provide the
-necessary work identity.
+When a client lane installs a `pendingComponent` from lazy options, that
+component wakes pending selection once it is itself ready, without waiting for
+the normal component. This does not require retaining a component promise on
+the match: the route's lazy-option owner and the framework/module loader provide
+the necessary work identity.
 
 Client and server not-found boundary searches settle lazy options on each
 candidate route before testing for `notFoundComponent`. A lazy rejection while
@@ -679,10 +696,11 @@ There is one pending session in `router._pending` and one absolute deadline:
 reveal deadline -> exact render acknowledgement -> minimum-visible deadline
 ```
 
-The session also remembers the pending component identity. A normal lazy route
-chunk can install a more specific `pendingComponent` after the default fallback
-has already rendered; chunk settlement re-offers the same lane so the framework
-can replace that fallback without creating another pending session or deadline.
+The session also remembers the pending component identity. An active client
+lane loading a lazy route chunk can install a more specific `pendingComponent`
+after the default fallback has already rendered. Once that pending component is
+ready, core re-offers the same lane so the framework can replace the fallback
+without creating another pending session or deadline.
 
 The reveal deadline is anchored to the transaction's lane-level `startedAt`.
 Discovering lazy pending options later, advancing to another boundary, or
@@ -714,39 +732,34 @@ the superseded navigation. Changing the boundary discards the old session.
 - `false` means core must finish without emitting `onRendered` or starting a
   pending minimum based on that publication.
 
-React cannot await `React.startTransition` directly. Its adapter has one current
-acknowledgement slot, and `Matches` settles that slot from a layout effect. A new
-expected publication first settles the previous slot as `false`, then installs
-itself before the transition callback runs. This ordering matters because
-publication can invoke a route lifecycle callback that synchronously starts and
-publishes a successor navigation. Installing the expectation after the callback
-would let the superseded publication replace the successor's slot.
-The lifetime-owned Transitioner installs these callbacks during render, before
-the sibling match tree can register its acknowledgement effect.
+React cannot await `React.startTransition` directly. Its adapter keeps one
+router-owned acknowledgement tuple, and `Matches` settles that tuple from a
+layout effect. A new expected publication first settles the previous receipt as
+`false`, then stores the exact offered array before the transition callback
+runs. This ordering matters because publication can invoke a route lifecycle
+callback that synchronously starts and publishes a successor navigation.
+Installing the expectation after the callback would let the superseded
+publication replace the successor's receipt.
 
 An already-settled router mounted into React uses the same acknowledgement slot
 for its initial `onRendered` event. It therefore emits only after the exact match
 tree and its descendant layout effects have committed, rather than from the
 earlier history-subscription effect.
 
-A generation is its array length plus the ordered sequence of match ID,
-execution-controller identity, and render status. These are existing semantic
-facts rather than a separate generation counter. A new transaction or
-background candidate changes controller identity; pending-to-terminal
-publication changes status. Object reference equality is deliberately not
-required because `isFetching` and per-match store reconciliation can replace
-objects without changing the logical publication. An exact signature settles
-the current slot as `true`. A mismatched render is ignored; only installing a
-successor settles the current slot as `false`.
+While a receipt is pending, the aggregate match subscription selects the exact
+offered array instead of reconstructing an equivalent presentation. The layout
+effect acknowledges only that reference. A suspended older render can therefore
+never satisfy a newer receipt merely because its IDs or statuses look the same.
+No generation counter or structural signature is needed.
 
 Solid awaits its transition, and Vue awaits its render tick. For an
 already-settled Solid mount, history subscription remains before the route tree
 while a post-match notifier emits the initial `onRendered` event after
-descendant mount effects. The architecture assumes exactly one Transitioner is
-mounted per router and remains mounted for the lifetime of the application. Its
-history subscription and acknowledgement machinery are therefore
-lifetime-owned; there is deliberately no second unmount-time completion
-authority.
+descendant mount effects.
+
+React assumes one provider and one router. Keeping the tuple on that router lets
+the render tree and core share the exact same receipt without component-local
+generation state, structural signatures, or router-swap machinery.
 
 Every core write passed to `startTransition` must notify the aggregate matches
 store even if much of the lane is structurally reused. Suppressing the write can
@@ -847,7 +860,10 @@ active preloads and caches, drops the committed semantic lane, and rematches
 from the current route definitions. This prevents same-ID reuse from retaining
 obsolete params, context, loader data, or projected assets. Correct ownership
 and eventual usable state matter more than preserving speculative HMR work.
-Flight discovery entries are removed before their controllers are aborted.
+Flight discovery entries are removed before their controllers are aborted. An
+unacknowledged refresh publication retains its previous presentation and
+resources until it settles. Its rollback capability belongs to that refresh
+transaction, not to a separate router-global owner.
 
 ## Speculative preloading
 
@@ -864,11 +880,14 @@ A preload can also install durable lazy route options through the separate
 route-chunk owner described above. That is route definition readiness, not
 authority over a completed match lane or `beforeLoad` result.
 
-A preload's failure, not-found, redirect, cancellation, route context, and
-`beforeLoad` result do not become authority for another preload or a later
-navigation. Standalone preload redirects may be followed only while the preload
-remains current and within its bounded redirect policy. A preload never performs
-a document reload.
+Preload lane-local matching, route context, validation, cancellation, and
+`beforeLoad` outcomes do not become authority for another preload or a later
+navigation. Consumers that join its same-ID loader flight nevertheless share
+that flight's normalized outcome. After a normal standalone preload redirect,
+the private chain continues only if that lane's controller was still present and
+was successfully removed from `_preloads`; replacing an unrelated `_tx` does not
+suppress it. The chain remains depth-bounded, never follows `reloadDocument`,
+and never publishes presentation or history.
 
 The public `preloadRoute` result describes the speculative lane, not merely its
 cacheable subset. An ordinary error or not-found therefore resolves with the
@@ -985,9 +1004,11 @@ descendants. This permits server and initial client presentation to agree.
 Hydration reconstructs server work; it does not run a competing hydration
 loader. While reconstruction is asynchronous, its controller is `_preflight`.
 No client transaction may exist. Framework entry points prevent navigation or
-preloading during reconstruction. The same controller interrupts asynchronous
-application hydration and chunk work, and every asynchronous phase rechecks
-currentness before mutating or publishing.
+preloading during reconstruction. `_preflight` identity is the sole currentness
+authority; a replacement installs itself before aborting the prior controller.
+The same controller interrupts asynchronous application hydration and chunk
+work, and every asynchronous phase rechecks currentness before mutating or
+publishing.
 
 Once hydration has accepted a semantic prefix and is ready to publish it,
 `_preflight` is no longer the right authority: no planning operation is in
@@ -1136,7 +1157,9 @@ continuation authority.
 
 When changing this architecture, verify all of the following:
 
-1. Only current `_tx` commits, redirects, or completes a client navigation.
+1. Only current `_tx` commits, performs a foreground redirect, or completes a
+   client navigation. Standalone preload redirect continuation is private and
+   authorized by its active-preload controller entry, not `_tx`.
 2. Only current `_preflight` may publish a client plan or asynchronous hydration
    reconstruction; it is installed before supported reentrant lifecycle events
    and route callbacks. After hydration publication, only the exact
@@ -1154,8 +1177,9 @@ When changing this architecture, verify all of the following:
    same-ID route-local `_ctx`, but never merged context or `beforeLoad` output.
 7. Every ordinary client lane runs its own serial `beforeLoad` chain. Active
    preloads may donate same-ID loader flights and completed preloads may donate
-   cache entries, but neither can donate merged context, control flow, or a
-   `beforeLoad` result.
+   cache entries, but neither can donate merged context or a `beforeLoad`
+   result or control flow. Sharing a loader flight shares its normalized loader
+   outcome.
 8. Hydration is the only completed-work exception for `beforeLoad` reuse. It
    verifies each transported match identity, reconstructs the accepted ordered
    prefix, reruns route context locally, preserves terminal/selective-SSR
@@ -1176,10 +1200,13 @@ When changing this architecture, verify all of the following:
     started by navigation, preload, or background work. Registry joinability
     and lease ownership remain separate; donor selection happens synchronously
     after the reload decision, and accepted signal lifetime may outlive promise
-    settlement. A zero-lease reservation exists only while the current `_tx`
-    contextualizes a distinct same-ID successor; the explicit supersession
-    handoff creates it, contextualizing lanes may retain it, and navigation task
-    planning consumes or sweeps it.
+    settlement. Non-success settlement retires the exact current registry entry
+    while existing leases share that outcome; later lanes retry. A zero-lease
+    reservation exists only while the current `_tx` contextualizes a distinct
+    same-ID successor; the explicit supersession handoff creates it,
+    contextualizing lanes may retain it, and navigation task planning consumes
+    or sweeps it. Successful contextualization invokes that planning before
+    returning, so a guard-free lane cannot yield away its claim.
 12. Child `parentMatchPromise` follows the fresh semantic parent generation.
 13. The first parallel ordinary failure is chronological unless a required
     ancestor failure has no accepted loader data or its required chunk fails;
@@ -1202,12 +1229,12 @@ When changing this architecture, verify all of the following:
     not recomputed later.
 19. `isFetching` clears for success, failure, cancellation, and supersession.
 20. Transition acknowledgement settlement gates resolved/idle completion; React
-    identifies the exact generation by length plus ordered ID, controller, and
-    status, and installs it in one superseding slot before running the possibly
-    reentrant transition callback. Only `true` gates `onRendered` and pending
-    minimum timing.
-21. The single Transitioner and its acknowledgement machinery live for the
-    router's entire application lifetime.
+    installs the exact offered array in one superseding owner before running the
+    possibly reentrant transition callback. Only that reference can settle
+    `true`, which gates `onRendered` and pending minimum timing.
+21. React's acknowledgement tuple belongs to the one provider router; no
+    component-local generation counter, structural signature, or router-swap
+    authority duplicates it.
 22. Reentrant callbacks suppress every stale later event or publication.
 23. Canonicalization compares browser-facing `publicHref`; semantic `href` is
     not a symmetric canonical key across input and output rewrites.

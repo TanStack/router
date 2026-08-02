@@ -8,7 +8,7 @@ import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useStructuralSharing } from './useMatch'
 import { useLayoutEffect } from './utils'
-import { Transitioner } from './Transitioner'
+import { Transitioner, settleOwner } from './Transitioner'
 import { matchContext } from './matchContext'
 import { Match, renderPending } from './Match'
 import { SafeFragment } from './SafeFragment'
@@ -73,17 +73,23 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
+  const acknowledgement = router._rendered!
   const matches =
     (isServer ?? router.isServer)
       ? router.stores.matches.get()
       : // eslint-disable-next-line react-hooks/rules-of-hooks
-        useStore(router.stores.matches, (value) => value)
+        useStore(
+          router.stores.matches,
+          (value) => acknowledgement[0 /* offered */] ?? value,
+        )
   const match = matches[0]
   const routeId = match?.routeId
 
   useLayoutEffect(() => {
-    router._rendered!(matches)
-  }, [matches, router])
+    if (acknowledgement[0 /* offered */] === matches) {
+      settleOwner(acknowledgement, true)
+    }
+  }, [acknowledgement, matches])
 
   const matchComponent = routeId ? <Match routeId={routeId} /> : null
 

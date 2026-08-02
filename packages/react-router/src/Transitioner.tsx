@@ -4,68 +4,49 @@ import * as React from 'react'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
-import type { AnyRouteMatch } from '@tanstack/router-core'
+import type { AnyRouter } from '@tanstack/router-core'
+
+export function settleOwner(
+  owner: NonNullable<AnyRouter['_rendered']>,
+  rendered: boolean,
+) {
+  const settle = owner[1 /* settle */]
+  owner.length = 0
+  settle?.(rendered)
+}
 
 export function Transitioner() {
   const router = useRouter()
-  const acknowledgement = React.useRef<
-    [Array<AnyRouteMatch>, (rendered: boolean) => void] | undefined
-  >(undefined)
+  const acknowledgement = (router._rendered ??= [])
   const mounted =
     process.env.NODE_ENV !== 'production'
       ? // eslint-disable-next-line react-hooks/rules-of-hooks
         React.useRef(false)
       : undefined
 
-  // `<Transitioner>` precedes `<MatchesInner>`, so install the render
-  // acknowledgement before the latter can publish a rendered lane.
-  router._rendered = (matches) => {
-    const current = acknowledgement.current
-    if (
-      current?.[0].length === matches.length &&
-      current[0].every(
-        (match, index) =>
-          match.id === matches[index]!.id &&
-          match.abortController === matches[index]!.abortController &&
-          match.status === matches[index]!.status,
-      )
-    ) {
-      acknowledgement.current = undefined
-      current[1](true)
-    }
-  }
-  if (process.env.NODE_ENV === 'production') {
-    router.startTransition = (fn, expected) =>
-      new Promise((resolve) => {
-        acknowledgement.current?.[1](false)
-        acknowledgement.current = [expected, resolve]
+  router.startTransition = (fn, expected) =>
+    new Promise((resolve, reject) => {
+      settleOwner(acknowledgement, false)
+      acknowledgement.push(expected, resolve)
+      if (process.env.NODE_ENV === 'production') {
         React.startTransition(fn)
-      })
-  } else {
-    router.startTransition = (fn, expected) =>
-      new Promise((resolve, reject) => {
-        acknowledgement.current?.[1](false)
-        const next: NonNullable<typeof acknowledgement.current> = [
-          expected,
-          resolve,
-        ]
-        acknowledgement.current = next
-        try {
-          React.startTransition(fn)
-        } catch (cause) {
-          if (acknowledgement.current === next) {
-            acknowledgement.current = undefined
+      } else {
+        React.startTransition(() => {
+          try {
+            fn()
+          } catch (cause) {
+            if (acknowledgement[1 /* settle */] === resolve) {
+              acknowledgement.length = 0
+            }
+            reject(cause)
           }
-          reject(cause)
-        }
-      })
+        })
+      }
+    })
+  if (process.env.NODE_ENV !== 'production') {
     ;(
       router as typeof router & { _cancelTransition?: () => void }
-    )._cancelTransition = () => {
-      const current = acknowledgement.current
-      acknowledgement.current = undefined
-      current?.[1](false)
-    }
+    )._cancelTransition = () => settleOwner(acknowledgement, false)
   }
 
   // Subscribe before canonicalizing so the initial URL has exactly one load.
@@ -110,17 +91,14 @@ export function Transitioner() {
       resolvedLocation?.href === location.href &&
       resolvedLocation.state.__TSR_key === location.state.__TSR_key
     ) {
-      acknowledgement.current = [
-        router.stores.matches.get(),
-        (rendered) => {
-          if (rendered) {
-            router.emit({
-              type: 'onRendered',
-              ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
-            })
-          }
-        },
-      ]
+      acknowledgement.push(router.stores.matches.get(), (rendered) => {
+        if (rendered) {
+          router.emit({
+            type: 'onRendered',
+            ...getLocationChangeInfo(resolvedLocation, resolvedLocation),
+          })
+        }
+      })
     } else if (!router._tx) {
       router.load().catch(console.error)
     }

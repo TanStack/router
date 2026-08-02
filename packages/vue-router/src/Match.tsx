@@ -280,11 +280,11 @@ export const Outlet = Vue.defineComponent({
       }
 
       const nextMatch = Vue.h(Match, {
-        routeId: child[0],
+        routeId: child[0 /* routeId */],
         // Key based on routeId + params only (not loaderDeps)
         // This ensures component recreates when params change,
         // but NOT when only loaderDeps change
-        key: child[1],
+        key: child[1 /* key */],
       })
 
       // Note: We intentionally do NOT wrap in Suspense here.

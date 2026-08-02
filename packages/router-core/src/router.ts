@@ -1034,8 +1034,11 @@ export interface RouterCore<
   _pending?: PendingSession
   /** Result of the latest server load, used to render or redirect. */
   _serverResult?: ServerLoadResult
-  /** Framework callback that acknowledges an exact matches publication. */
-  _rendered?: (matches: Array<AnyRouteMatch>) => void
+  /** Framework publication waiting for an exact render acknowledgement. */
+  _rendered?: [
+    offered?: Array<AnyRouteMatch>,
+    settle?: (rendered: boolean) => void,
+  ]
   /** Development-only HMR reload for a route and its descendants. */
   _refreshRoute: (() => Promise<void>) | undefined
   /** Development-only replacement for a route's lazy chunk owner. */
@@ -1766,8 +1769,8 @@ export class RouterCore<
       : undefined
     const lastStateMatchId = lastStateMatch?.id
     const cached = this.lightweightCache.get(location)
-    if (cached && cached[0] === lastStateMatchId) {
-      return cached[1]
+    if (cached && cached[0 /* lastMatchId */] === lastStateMatchId) {
+      return cached[1 /* result */]
     }
 
     const { matchedRoutes, routeParams } = this.getMatchedRoutes(
@@ -2467,7 +2470,11 @@ export class RouterCore<
     const committedMatches = this._committed
     const filter = opts?.filter
     const invalidIds = new Set(
-      [...committedMatches, ...this._cache.values(), ...(this._tx?.[3] ?? [])]
+      [
+        ...committedMatches,
+        ...this._cache.values(),
+        ...(this._tx?.[3 /* matches */] ?? []),
+      ]
         .filter(
           (match) => !filter || filter(match as MakeRouteMatchUnion<this>),
         )
@@ -2580,7 +2587,10 @@ export class RouterCore<
     // signal, whose abort listeners can synchronously reenter the router.
     this._cache = retained
     this._preloads = retainedPreloads
-    const discardedFlights = new Map<LoaderFlight, [string, number]>()
+    const discardedFlights = new Map<
+      LoaderFlight,
+      [id: string, owners: number]
+    >()
     for (const match of discarded as Array<
       AnyRouteMatch & { _flight?: LoaderFlight }
     >) {
@@ -2588,14 +2598,17 @@ export class RouterCore<
       if (flight && this._flights?.get(match.id) === flight) {
         const entry = discardedFlights.get(flight)
         if (entry) {
-          entry[1]++
+          entry[1 /* owners */]++
         } else {
           discardedFlights.set(flight, [match.id, 1])
         }
       }
     }
     for (const [flight, [id, owners]] of discardedFlights) {
-      if (flight[2] === owners && this._flights?.get(id) === flight) {
+      if (
+        flight[2 /* leases */] === owners &&
+        this._flights?.get(id) === flight
+      ) {
         this._flights.delete(id)
       }
     }
@@ -2605,7 +2618,10 @@ export class RouterCore<
     }
   }
 
-  loadRouteChunk = loadRouteChunk
+  loadRouteChunk: (
+    route: AnyRoute,
+    componentType?: 'errorComponent' | 'notFoundComponent' | false,
+  ) => Promise<void> | undefined = loadRouteChunk
 
   preloadRoute: PreloadRouteFn<
     TRouteTree,

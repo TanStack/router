@@ -245,13 +245,12 @@ describe('preload adoption', () => {
     expect(match?.loaderData).toBeUndefined()
   })
 
-  test('navigation retries a failed joined preload without starving sibling work', async () => {
+  test('navigation shares a failed pending preload without starving sibling work', async () => {
     const preloadParentStarted = createControlledPromise<void>()
     const preloadFailureGate = createControlledPromise<void>()
-    const navigationStarted = createControlledPromise<void>()
-    const navigationParentRetryStarted = createControlledPromise<void>()
     const childStarted = createControlledPromise<void>()
     const childGate = createControlledPromise<string>()
+    const parentFailure = new Error('preload failed')
     let parentLoads = 0
     let childLoads = 0
     const rootRoute = new BaseRootRoute({})
@@ -262,19 +261,13 @@ describe('preload adoption', () => {
     const parentRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/parent',
-      beforeLoad: ({ preload }) => {
-        if (!preload) {
-          navigationStarted.resolve()
-        }
-      },
       loader: async ({ preload }) => {
         parentLoads++
         if (preload) {
           preloadParentStarted.resolve()
           await preloadFailureGate
-          throw new Error('preload failed')
+          throw parentFailure
         }
-        navigationParentRetryStarted.resolve()
         return 'navigation data'
       },
     })
@@ -308,27 +301,24 @@ describe('preload adoption', () => {
     expect(childLoads).toBe(1)
 
     preloadFailureGate.resolve()
-    // An ordinary ancestor failure waits for every started descendant so a
-    // later redirect can still win before navigation retries.
     childGate.resolve('child data')
-    await navigationStarted
-    await navigationParentRetryStarted
-    expect(parentLoads).toBe(2)
-    expect(childLoads).toBe(1)
-
     await Promise.all([navigation, preload])
 
-    expect(parentLoads).toBe(2)
+    expect(parentLoads).toBe(1)
     expect(childLoads).toBe(1)
     expect(router.state.location.pathname).toBe('/parent/child')
     expect(
-      router.state.matches.find((match) => match.routeId === parentRoute.id)
-        ?.loaderData,
-    ).toBe('navigation data')
+      router.state.matches.find((match) => match.routeId === parentRoute.id),
+    ).toMatchObject({
+      status: 'error',
+      error: parentFailure,
+    })
     expect(
-      router.state.matches.find((match) => match.routeId === childRoute.id)
-        ?.loaderData,
-    ).toBe('child data')
+      router.state.matches.find((match) => match.routeId === childRoute.id),
+    ).toMatchObject({
+      status: 'success',
+      loaderData: 'child data',
+    })
   })
 
   test('a route with preload disabled does not discard its preloaded ancestor', async () => {
