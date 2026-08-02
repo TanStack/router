@@ -2303,12 +2303,13 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     )
   }
   router.ssr = { manifest: dehydratedRouter!.manifest }
-  const nonce = (
-    document.querySelector('meta[property="csp-nonce"]') as
-      | HTMLMetaElement
-      | undefined
-  )?.content
-  router.options.ssr = { nonce }
+  router.options.ssr = {
+    nonce: (
+      document.querySelector('meta[property="csp-nonce"]') as
+        | HTMLMetaElement
+        | undefined
+    )?.content,
+  }
 
   const dehydratedMatches = dehydratedRouter!.matches
 
@@ -2444,8 +2445,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       pendingBoundary ??= index
     }
   }
-  let verifiedContextEnd = verifiedAssetEnd
-
   if (
     !isTerminal &&
     committed.length === shared &&
@@ -2495,7 +2494,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     return
   }
   if (chunkFailure < committed.length) {
-    verifiedContextEnd = Math.min(verifiedContextEnd, chunkFailure)
     retryFrom(chunkFailure)
   }
 
@@ -2505,7 +2503,9 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     pendingBoundary === committed.length
       ? committed.length + 1
       : committed.length,
-    verifiedContextEnd,
+    // `chunks.length` keeps the pre-retry committed length, so a smaller
+    // `chunkFailure` is the exclusive bound of the verified context prefix.
+    chunkFailure < chunks.length ? chunkFailure : verifiedAssetEnd,
   )
   for (let index = 0; index < contextEnd; index++) {
     const match = candidates[index]!
