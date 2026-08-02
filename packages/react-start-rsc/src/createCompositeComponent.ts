@@ -1,6 +1,6 @@
 import { createElement } from 'react'
 import { renderToReadableStream } from 'virtual:tanstack-rsc-runtime'
-import { getRequest } from '@tanstack/start-server-core'
+import { getRequest } from '@tanstack/start-server-core/request-response'
 import { getStartContext } from '@tanstack/start-storage-context'
 import { sanitizeSlotArgs } from './slotUsageSanitizer'
 import { ReplayableStream } from './ReplayableStream'

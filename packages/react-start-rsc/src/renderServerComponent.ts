@@ -1,5 +1,5 @@
 import { renderToReadableStream } from 'virtual:tanstack-rsc-runtime'
-import { getRequest } from '@tanstack/start-server-core'
+import { getRequest } from '@tanstack/start-server-core/request-response'
 import { getStartContext } from '@tanstack/start-storage-context'
 import { ReplayableStream } from './ReplayableStream'
 import { RENDERABLE_RSC, SERVER_COMPONENT_STREAM } from './ServerComponentTypes'
