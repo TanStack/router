@@ -129,81 +129,107 @@ describe('hydration route chunks below a server boundary', () => {
     expect(errorComponentPreload).toHaveBeenCalledTimes(1)
   })
 
-  test('hydrates an ancestor notFound boundary without loading an omitted descendant chunk', async () => {
-    const serverRootRoute = new BaseRootRoute({})
-    const serverParentRoute = new BaseRoute({
-      getParentRoute: () => serverRootRoute,
-      path: '/parent',
-      notFoundComponent: () => 'not found',
-    })
-    const serverNotFound = notFound({ routeId: serverParentRoute.id })
-    const serverChildLoader = vi.fn(() => {
-      throw serverNotFound
-    })
-    const serverChildRoute = new BaseRoute({
-      getParentRoute: () => serverParentRoute,
-      path: '/child',
-      loader: serverChildLoader,
-    })
-    const serverRouter = createTestRouter({
-      routeTree: serverRootRoute.addChildren([
-        serverParentRoute.addChildren([serverChildRoute]),
-      ]),
-      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
-      isServer: true,
-    })
+  test.each([
+    { ssr: undefined, hydratedStatus: 'notFound', resolved: true },
+    {
+      ssr: 'data-only' as const,
+      hydratedStatus: 'pending',
+      resolved: false,
+    },
+  ])(
+    'hydrates an ancestor notFound boundary with ssr=$ssr without loading an omitted descendant chunk',
+    async ({ ssr, hydratedStatus, resolved }) => {
+      const serverRootRoute = new BaseRootRoute({})
+      const serverParentRoute = new BaseRoute({
+        getParentRoute: () => serverRootRoute,
+        path: '/parent',
+        ssr,
+        notFoundComponent: () => 'not found',
+      })
+      const serverNotFound = notFound({ routeId: serverParentRoute.id })
+      const serverChildLoader = vi.fn(() => {
+        throw serverNotFound
+      })
+      const serverChildRoute = new BaseRoute({
+        getParentRoute: () => serverParentRoute,
+        path: '/child',
+        loader: serverChildLoader,
+      })
+      const serverRouter = createTestRouter({
+        routeTree: serverRootRoute.addChildren([
+          serverParentRoute.addChildren([serverChildRoute]),
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+        isServer: true,
+      })
 
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+      const bootstrap = await dehydrateToBootstrap(serverRouter)
 
-    expect(serverChildLoader).toHaveBeenCalledTimes(1)
-    expect(serverRouter.state.matches.map((match) => match.routeId)).toEqual([
-      serverRootRoute.id,
-      serverParentRoute.id,
-      serverChildRoute.id,
-    ])
-    expect(serverRouter.state.matches[1]?.status).toBe('notFound')
-    expect(isNotFound(serverRouter.state.matches[1]?.error)).toBe(true)
-    const childChunkError = new Error('omitted child chunk unavailable')
-    const childComponentPreload = vi.fn(() => Promise.reject(childChunkError))
-    const ChildComponent = Object.assign(() => null, {
-      preload: childComponentPreload,
-    })
+      expect(serverChildLoader).toHaveBeenCalledTimes(1)
+      expect(serverRouter.state.matches.map((match) => match.routeId)).toEqual([
+        serverRootRoute.id,
+        serverParentRoute.id,
+        serverChildRoute.id,
+      ])
+      expect(serverRouter.state.matches[1]?.status).toBe('notFound')
+      expect(isNotFound(serverRouter.state.matches[1]?.error)).toBe(true)
+      const childChunkError = new Error('omitted child chunk unavailable')
+      const childComponentPreload = vi.fn(() => Promise.reject(childChunkError))
+      const ChildComponent = Object.assign(() => null, {
+        preload: childComponentPreload,
+      })
 
-    const rootRoute = new BaseRootRoute({})
-    const parentRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/parent',
-      notFoundComponent: () => 'not found',
-    })
-    const childLoader = vi.fn(() => {
-      throw new Error('client child loader should not run')
-    })
-    const childRoute = new BaseRoute({
-      getParentRoute: () => parentRoute,
-      path: '/child',
-      loader: childLoader,
-      component: ChildComponent,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
-      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
-      isServer: false,
-    })
-    mockWindow.$_TSR = bootstrap
+      const rootRoute = new BaseRootRoute({})
+      const parentRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/parent',
+        ssr,
+        notFoundComponent: () => 'not found',
+      })
+      const childLoader = vi.fn(() => {
+        throw new Error('client child loader should not run')
+      })
+      const childRoute = new BaseRoute({
+        getParentRoute: () => parentRoute,
+        path: '/child',
+        loader: childLoader,
+        component: ChildComponent,
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([
+          parentRoute.addChildren([childRoute]),
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+        isServer: false,
+      })
+      mockWindow.$_TSR = bootstrap
 
-    await expect(hydrate(router)).resolves.toBeUndefined()
+      await expect(hydrate(router)).resolves.toBeUndefined()
 
-    expect(router.state.matches.map((match) => match.routeId)).toEqual([
-      rootRoute.id,
-      parentRoute.id,
-      childRoute.id,
-    ])
-    expect(router.state.matches[1]?.status).toBe('notFound')
-    expect(isNotFound(router.state.matches[1]?.error)).toBe(true)
-    expect(router.state.matches[2]?.status).toBe('pending')
-    expect(router.state.location.pathname).toBe('/parent/child')
-    expect(router.state.resolvedLocation?.pathname).toBe('/parent/child')
-    expect(childComponentPreload).not.toHaveBeenCalled()
-    expect(childLoader).not.toHaveBeenCalled()
-  })
+      expect(router.state.matches.map((match) => match.routeId)).toEqual([
+        rootRoute.id,
+        parentRoute.id,
+        childRoute.id,
+      ])
+      expect(router.state.matches[1]?.status).toBe(hydratedStatus)
+      expect(isNotFound(router.state.matches[1]?.error)).toBe(true)
+      expect(router.state.matches[2]?.status).toBe('pending')
+      expect(router.state.location.pathname).toBe('/parent/child')
+      expect(router.state.resolvedLocation?.pathname).toBe(
+        resolved ? '/parent/child' : undefined,
+      )
+      expect(childComponentPreload).not.toHaveBeenCalled()
+      expect(childLoader).not.toHaveBeenCalled()
+
+      if (ssr === 'data-only') {
+        await router.load()
+
+        expect(router.state.resolvedLocation?.pathname).toBe('/parent/child')
+        expect(router.state.matches[1]?.status).toBe('notFound')
+        expect(isNotFound(router.state.matches[1]?.error)).toBe(true)
+        expect(childComponentPreload).not.toHaveBeenCalled()
+        expect(childLoader).not.toHaveBeenCalled()
+      }
+    },
+  )
 })

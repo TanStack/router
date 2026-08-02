@@ -2044,18 +2044,19 @@ export async function loadClientRoute(
     handoff?.[1 /* finish */]()
   }
   previousPreflight?.abort()
-  if (router._preflight !== preflight) {
+  // The preflight controller is not exposed to route hooks. Every replacement
+  // aborts its predecessor, so a live signal is the sole authority here.
+  if (preflight.signal.aborted) {
     await awaitCurrent(router, previousOwner)
     return
   }
 
   const changeInfo = getLocationChangeInfo(location, resolvedLocation)
   router.emit({ type: 'onBeforeNavigate', ...changeInfo })
-  if (router._preflight === preflight) {
+  if (!preflight.signal.aborted) {
     router.emit({ type: 'onBeforeLoad', ...changeInfo })
   }
-  if (router._preflight !== preflight) {
-    preflight.abort()
+  if (preflight.signal.aborted) {
     await awaitCurrent(router, previousOwner)
     return
   }
@@ -2098,8 +2099,7 @@ export async function loadClientRoute(
   } else {
     hydrationController?.abort()
   }
-  if (router._preflight !== preflight) {
-    preflight.abort()
+  if (preflight.signal.aborted) {
     transferMatchResources(router, matches)
     await awaitCurrent(router, previousOwner)
     return
@@ -2135,9 +2135,6 @@ export async function loadClientRoute(
     router._refreshNextLoad = undefined
   }
   router._tx = tx
-  if (!rematerialize && router._handoff === handoff) {
-    router._handoff = undefined
-  }
   if (previousOwner) {
     for (const match of router.stores.matches.get() as Array<WorkMatch>) {
       if (router._tx !== tx) {
@@ -2317,14 +2314,9 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   const previousPreflight = router._preflight
   router._preflight = controller
   previousPreflight?.abort()
-  const retire = (cause?: unknown) => {
-    if (router._preflight === controller) {
-      router._preflight = undefined
-    }
-    controller.abort(cause)
-    return false
-  }
-  const isCurrent = () => router._preflight === controller || retire()
+  // Route context can abort this controller itself. Only a new slot owner
+  // supersedes hydration.
+  const isCurrent = () => router._preflight === controller
 
   let location!: AnyRouter['latestLocation']
   let candidates!: Array<AnyRouteMatch>
@@ -2350,7 +2342,10 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       _controller: controller,
     })
   } catch (cause) {
-    retire(cause)
+    if (isCurrent()) {
+      router._preflight = undefined
+    }
+    controller.abort(cause)
     if (cause !== controller.signal) {
       throw cause
     }
@@ -2487,7 +2482,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       chunkFailure++
     }
   } catch {
-    isCurrent()
     return
   }
   if (!isCurrent()) {
@@ -2571,12 +2565,9 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   let dataOnlyAssetEnd: number | undefined
   if (needsClientLoad && pendingBoundary !== undefined) {
     const boundary = presented[pendingBoundary]!
+    // A verified descendant proves this data-only boundary was nonterminal.
     dataOnlyAssetEnd =
-      boundary.status === 'success' &&
-      boundary.ssr === 'data-only' &&
-      boundary.error === undefined &&
-      !boundary._notFound &&
-      verifiedAssetEnd > pendingBoundary + 1
+      boundary.ssr === 'data-only' && verifiedAssetEnd > pendingBoundary + 1
         ? verifiedAssetEnd
         : undefined
     presented = presented.slice()
@@ -2606,13 +2597,15 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       if (router._handoff !== handoff) {
         return
       }
+      // `finish` is single-use. Consume the slot before validating or moving
+      // resources so reentrant work cannot claim the same handoff.
+      router._handoff = undefined
       const prefix = committedMatches.length
       if (
         !matches ||
         !claim() ||
         committedMatches.some((match, index) => match.id !== matches[index]?.id)
       ) {
-        router._handoff = undefined
         controller.abort()
         return
       }
@@ -2620,8 +2613,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       if (handoffAssetEnd !== undefined) {
         for (let index = prefix; index < handoffAssetEnd; index++) {
           if (candidates[index]?.id !== matches[index]?.id) {
-            handoffAssetEnd =
-              index > (pendingBoundary ?? -1) + 1 ? index : undefined
+            handoffAssetEnd = index > pendingBoundary! + 1 ? index : undefined
             break
           }
         }
