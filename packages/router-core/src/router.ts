@@ -2469,10 +2469,12 @@ export class RouterCore<
   > = (opts) => {
     const committedMatches = this._committed
     const filter = opts?.filter
+    const preloads = this._preloads
     const invalidIds = new Set(
       [
         ...committedMatches,
         ...this._cache.values(),
+        ...[...(preloads?.values() ?? [])].flat(),
         ...(this._tx?.[3 /* matches */] ?? []),
       ]
         .filter(
@@ -2480,6 +2482,20 @@ export class RouterCore<
         )
         .map((match) => match.id),
     )
+    const retainedPreloads = new Map<
+      AbortController,
+      Array<AnyRouteMatch>
+    >()
+    const discardedPreloadMatches: Array<AnyRouteMatch> = []
+    const discardedPreloads: Array<AbortController> = []
+    for (const [controller, matches] of preloads ?? []) {
+      if (matches.some((match) => invalidIds.has(match.id))) {
+        discardedPreloads.push(controller)
+        discardedPreloadMatches.push(...matches)
+      } else {
+        retainedPreloads.set(controller, matches)
+      }
+    }
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
       if (invalidIds.has(d.id)) {
         const route = this.routesById[d.routeId] as AnyRoute
@@ -2507,10 +2523,16 @@ export class RouterCore<
       cache.set(id, invalidate(match))
     }
     this._cache = cache
+    // Retire speculative owners before releasing resources or public signals.
+    this._preloads = retainedPreloads
     // The superseding load must not discover any same-ID generation selected
     // for replacement. Existing owners release it in their normal order.
     for (const id of invalidIds) {
       this._flights?.delete(id)
+    }
+    transferMatchResources(this, discardedPreloadMatches)
+    for (const controller of discardedPreloads) {
+      controller.abort()
     }
 
     this.shouldViewTransition = false
