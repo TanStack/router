@@ -10,7 +10,7 @@ export function settleOwner(
   owner: NonNullable<AnyRouter['_rendered']>,
   rendered: boolean,
 ) {
-  const settle = owner[1]
+  const settle = owner[1 /* settle */]
   owner.length = 0
   settle?.(rendered)
 }
@@ -35,7 +35,7 @@ export function Transitioner() {
           try {
             fn()
           } catch (cause) {
-            if (acknowledgement[1] === resolve) {
+            if (acknowledgement[1 /* settle */] === resolve) {
               acknowledgement.length = 0
             }
             reject(cause)

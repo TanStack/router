@@ -78,12 +78,15 @@ function MatchesInner() {
     (isServer ?? router.isServer)
       ? router.stores.matches.get()
       : // eslint-disable-next-line react-hooks/rules-of-hooks
-        useStore(router.stores.matches, (value) => acknowledgement[0] ?? value)
+        useStore(
+          router.stores.matches,
+          (value) => acknowledgement[0 /* offered */] ?? value,
+        )
   const match = matches[0]
   const routeId = match?.routeId
 
   useLayoutEffect(() => {
-    if (acknowledgement[0] === matches) {
+    if (acknowledgement[0 /* offered */] === matches) {
       settleOwner(acknowledgement, true)
     }
   }, [acknowledgement, matches])
