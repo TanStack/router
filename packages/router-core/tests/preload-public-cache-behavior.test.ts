@@ -497,9 +497,7 @@ test.each([
     const loader = vi.fn(
       ({ abortController }: { abortController: AbortController }) => {
         signals.push(abortController.signal)
-        return loader.mock.calls.length === 1
-          ? oldLoaderGate
-          : 'new-generation'
+        return loader.mock.calls.length === 1 ? oldLoaderGate : 'new-generation'
       },
     )
     const rootRoute = new BaseRootRoute({})

@@ -2482,10 +2482,7 @@ export class RouterCore<
         )
         .map((match) => match.id),
     )
-    const retainedPreloads = new Map<
-      AbortController,
-      Array<AnyRouteMatch>
-    >()
+    const retainedPreloads = new Map<AbortController, Array<AnyRouteMatch>>()
     const discardedPreloadMatches: Array<AnyRouteMatch> = []
     const discardedPreloads: Array<AbortController> = []
     for (const [controller, matches] of preloads ?? []) {
