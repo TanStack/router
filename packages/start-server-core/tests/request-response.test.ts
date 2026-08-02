@@ -1,12 +1,14 @@
 // @vitest-environment node
 
-import { describe, expect, it } from 'vitest'
+import { createServer } from 'node:http'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import {
   getResponseHeaders,
   requestHandler,
   setCookie,
   setResponseStatus,
 } from '../src/request-response'
+import type { Server } from 'node:http'
 
 function run(
   handler: () => Response | Promise<Response>,
@@ -60,6 +62,42 @@ describe('response context headers', () => {
     expect(response.status).toBe(302)
     expect(response.headers.get('location')).toBe('http://localhost/next')
     expect(response.headers.get('x-custom-header')).toBe('true')
+  })
+
+  describe('a fetch response passed through the handler', () => {
+    let server: Server
+    let origin: string
+
+    beforeAll(async () => {
+      server = createServer((_request, response) => {
+        response.writeHead(401, { 'set-cookie': ['from-upstream=b'] })
+        response.end('nope')
+      })
+      await new Promise<void>((resolve) =>
+        server.listen(0, '127.0.0.1', resolve),
+      )
+      const address = server.address()
+      origin = `http://127.0.0.1:${typeof address === 'object' && address ? address.port : 0}`
+    })
+
+    afterAll(async () => {
+      await new Promise<void>((resolve, reject) =>
+        server.close((error) => (error ? reject(error) : resolve())),
+      )
+    })
+
+    it('keeps its own set-cookie header when the rebuild happens', async () => {
+      const response = await run(async () => {
+        setCookie('from-event', 'a')
+        return fetch(origin)
+      })
+
+      expect(response.status).toBe(401)
+      expect(response.headers.getSetCookie()).toEqual([
+        'from-upstream=b',
+        'from-event=a; Path=/',
+      ])
+    })
   })
 
   it('lets the response context override a header set on the response', async () => {
