@@ -229,7 +229,7 @@ function PostComponent() {
 
 <!-- ::end:framework -->
 
-You can even combines prefixes with wildcard routes to create more complex patterns:
+You can even combine prefixes with wildcard routes to create more complex patterns:
 
 <!-- ::start:framework -->
 

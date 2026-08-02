@@ -5,10 +5,11 @@ description: >-
   Vite plugin, StartClient, StartServer, Vue-specific setup,
   re-exports from @tanstack/start-client-core. Full project setup
   with Vue.
-type: framework
-library: tanstack-start
-library_version: '1.166.2'
-framework: vue
+metadata:
+  type: framework
+  library: tanstack-start
+  library_version: '1.166.2'
+  framework: vue
 requires:
   - start-core
 sources:
