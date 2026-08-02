@@ -203,12 +203,14 @@ export type LoadTransaction = [
   done: Promise<void>,
   /**
    * Dev-only HMR refresh mode. Presence is the mode flag; a refresh always
-   * carries the presentation it started from, while the hydration handoff is
-   * genuinely optional — the tuple makes a half-armed refresh unrepresentable.
+   * carries the presentation it started from and its optional hydration
+   * handoff. While a publication awaits acknowledgement, its rollback lives
+   * with the transaction that owns the publication.
    */
   refresh?: [
     presentation: Array<AnyRouteMatch>,
     handoff: NonNullable<AnyRouter['_handoff']> | undefined,
+    rollback?: () => boolean,
   ],
 ]
 
@@ -226,7 +228,6 @@ type CoordinatorRouter = AnyRouter & {
   /** Active speculative lanes retained for cancellation and cache clearing. */
   _preloads?: Map<AbortController, Array<AnyRouteMatch>>
   _refreshNextLoad?: boolean
-  _rollbackRefresh?: () => void
   _cancelTransition?: () => void
 }
 
@@ -1662,16 +1663,17 @@ async function transitionRefresh(
   lane: ProjectedLane,
   changeInfo: ReturnType<typeof getLocationChangeInfo>,
 ): Promise<boolean | undefined> {
+  const refresh = tx[6]!
   const checkpoint: PublicationCheckpoint = {
     previousMatches: router._committed,
-    previousPresentation: tx[6]?.[0] ?? router.stores.matches.get(),
+    previousPresentation: refresh[0],
     previousCache: router._cache,
     commitPromise: router._commitPromise,
     published: false,
   }
   const commit = () => {
     finishPending(router, tx)
-    router._rollbackRefresh = rollback
+    refresh[2] = rollback
     commitRefreshMatches(router, tx, lane[1], checkpoint)
     if (!checkpoint.published || router._tx !== tx) {
       return
@@ -1682,8 +1684,8 @@ async function transitionRefresh(
     }
   }
   const rollback = () => {
-    if (router._rollbackRefresh === rollback) {
-      router._rollbackRefresh = undefined
+    if (refresh[2] === rollback) {
+      refresh[2] = undefined
     }
     const restored = rollbackPublication(router, tx, lane, checkpoint)
     router._cancelTransition?.()
@@ -1691,11 +1693,11 @@ async function transitionRefresh(
   }
   try {
     const rendered = await router.startTransition(commit, lane[1])
-    if (router._rollbackRefresh === rollback) {
-      router._rollbackRefresh = undefined
+    if (refresh[2] === rollback) {
+      refresh[2] = undefined
     }
     if (checkpoint.published) {
-      const handoff = tx[6]?.[1]
+      const handoff = refresh[1]
       if (handoff && router._handoff === handoff) {
         handoff[1]()
       }
@@ -1957,7 +1959,7 @@ export async function loadClientRoute(
 ): Promise<void> {
   let rematerialize = false
   if (process.env.NODE_ENV !== 'production') {
-    router._rollbackRefresh?.()
+    router._tx?.[6]?.[2]?.()
     rematerialize = !!router._refreshNextLoad || !!router._tx?.[6]
   }
   const refreshPresentation = rematerialize
@@ -1983,17 +1985,17 @@ export async function loadClientRoute(
     handoff?.[1]()
   }
   previousPreflight?.abort()
-  if (preflight.signal.aborted || router._tx !== previousOwner) {
+  if (router._preflight !== preflight) {
     await awaitCurrent(router, previousOwner)
     return
   }
 
   const changeInfo = getLocationChangeInfo(location, resolvedLocation)
   router.emit({ type: 'onBeforeNavigate', ...changeInfo })
-  if (!preflight.signal.aborted && router._tx === previousOwner) {
+  if (router._preflight === preflight) {
     router.emit({ type: 'onBeforeLoad', ...changeInfo })
   }
-  if (preflight.signal.aborted || router._tx !== previousOwner) {
+  if (router._preflight !== preflight) {
     preflight.abort()
     await awaitCurrent(router, previousOwner)
     return
@@ -2035,7 +2037,7 @@ export async function loadClientRoute(
   } else {
     hydrationController?.abort()
   }
-  if (router._preflight !== preflight || router._tx !== previousOwner) {
+  if (router._preflight !== preflight) {
     preflight.abort()
     transferMatchResources(router, matches)
     await awaitCurrent(router, previousOwner)
@@ -2108,7 +2110,7 @@ export async function loadClientRoute(
 export async function refreshClientRoute(
   router: CoordinatorRouter,
 ): Promise<void> {
-  router._rollbackRefresh?.()
+  router._tx?.[6]?.[2]?.()
   const pending = router._tx
   if (pending && !pending[6] && router.stores.status.get() === 'pending') {
     await pending[5]
@@ -2140,56 +2142,61 @@ export async function preloadClientRoute(
   const location = opts._builtLocation ?? router.buildLocation(opts)
   const base = router._committed
   const controller = new AbortController()
-  let matches: Array<AnyRouteMatch> | undefined
+  let matches: Array<AnyRouteMatch>
   try {
     matches = router.matchRoutes(location, {
       _controller: controller,
     })
     acquireMatchResources(matches)
-    ;(router._preloads ??= new Map()).set(controller, matches)
-    const result = await executeClientLane(router, location, matches, [
-      controller,
-      redirects,
-      // Preload lanes run to completion even when unrelated navigations commit:
-      // finished work seeds the cache.
-      () => true,
-      base,
-      true,
-    ])
-    if (!router._preloads.delete(controller)) {
-      return isControl(result) ? undefined : result[1]
-    }
-    if (isControl(result)) {
-      controller.abort()
-      transferMatchResources(router, matches)
-      return result[0] === REDIRECTED && !result[1].options.reloadDocument
-        ? preloadClientRoute(
-            router,
-            {
-              ...result[1].options,
-              _fromLocation: location,
-            },
-            redirects + 1,
-          )
-        : undefined
-    }
-
-    transferMatchResources(router, result[1])
-    controller.abort()
-    return result[1]
   } catch (cause) {
-    if (matches && !router._preloads?.delete(controller)) {
-      return
-    }
     controller.abort()
-    if (matches) {
-      transferMatchResources(router, matches)
-    }
     if (!isNotFound(cause)) {
       console.error(cause)
     }
     return
   }
+  ;(router._preloads ??= new Map()).set(controller, matches)
+  let active: boolean
+  try {
+    let result: LaneResult
+    try {
+      result = await executeClientLane(router, location, matches, [
+        controller,
+        redirects,
+        // Preload lanes run to completion even when unrelated navigations commit:
+        // finished work seeds the cache.
+        () => true,
+        base,
+        true,
+      ])
+    } finally {
+      active = router._preloads.delete(controller)
+      transferMatchResources(router, matches)
+      controller.abort()
+    }
+    if (!isControl(result)) {
+      return result[1]
+    }
+    if (
+      active &&
+      result[0] === REDIRECTED &&
+      !result[1].options.reloadDocument
+    ) {
+      return preloadClientRoute(
+        router,
+        {
+          ...result[1].options,
+          _fromLocation: location,
+        },
+        redirects + 1,
+      )
+    }
+  } catch (cause) {
+    if (!isNotFound(cause)) {
+      console.error(cause)
+    }
+  }
+  return
 }
 
 // --- SSR hydration (client entry via @tanstack/router-core/ssr/client) ---
@@ -2247,11 +2254,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     controller.abort(cause)
     return false
   }
-  const isCurrent = () =>
-    (!router._tx &&
-      router._preflight === controller &&
-      !controller.signal.aborted) ||
-    retire()
+  const isCurrent = () => router._preflight === controller || retire()
 
   let location!: AnyRouter['latestLocation']
   let candidates!: Array<AnyRouteMatch>

@@ -39,6 +39,7 @@ The main authorities are:
 | Match flight lease           | Ownership keeping that loader work alive                            |
 | Pending session              | One reveal/minimum-visible deadline and its current owner           |
 | React acknowledgement slot   | The one requested publication whose render may settle a transition  |
+| Refresh transaction          | Its starting presentation, handoff, and live rollback capability    |
 | Request signal               | Lifetime of one server request and any accepted SSR stream          |
 | Accepted SSR stream response | Cleanup ownership transferred from the handler to the response body |
 
@@ -859,7 +860,10 @@ active preloads and caches, drops the committed semantic lane, and rematches
 from the current route definitions. This prevents same-ID reuse from retaining
 obsolete params, context, loader data, or projected assets. Correct ownership
 and eventual usable state matter more than preserving speculative HMR work.
-Flight discovery entries are removed before their controllers are aborted.
+Flight discovery entries are removed before their controllers are aborted. An
+unacknowledged refresh publication retains its previous presentation and
+resources until it settles. Its rollback capability belongs to that refresh
+transaction, not to a separate router-global owner.
 
 ## Speculative preloading
 
@@ -1000,9 +1004,11 @@ descendants. This permits server and initial client presentation to agree.
 Hydration reconstructs server work; it does not run a competing hydration
 loader. While reconstruction is asynchronous, its controller is `_preflight`.
 No client transaction may exist. Framework entry points prevent navigation or
-preloading during reconstruction. The same controller interrupts asynchronous
-application hydration and chunk work, and every asynchronous phase rechecks
-currentness before mutating or publishing.
+preloading during reconstruction. `_preflight` identity is the sole currentness
+authority; a replacement installs itself before aborting the prior controller.
+The same controller interrupts asynchronous application hydration and chunk
+work, and every asynchronous phase rechecks currentness before mutating or
+publishing.
 
 Once hydration has accepted a semantic prefix and is ready to publish it,
 `_preflight` is no longer the right authority: no planning operation is in

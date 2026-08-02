@@ -83,6 +83,61 @@ describe('route boundary component preloads', () => {
     componentGate.resolve()
   })
 
+  test('an error boundary ignores a late normal component failure', async () => {
+    const componentGate = createControlledPromise<void>()
+    const errorComponentGate = createControlledPromise<void>()
+    const routeError = new Error('loader failed')
+    const componentError = new Error('component chunk failed')
+    const onError = vi.fn()
+    let errorComponentPreloadCalls = 0
+    pendingGates.push(errorComponentGate)
+
+    const SlowRouteComponent = Object.assign(() => null, {
+      preload: () => componentGate,
+    })
+    const ErrorBoundary = Object.assign(() => null, {
+      preload: () => {
+        errorComponentPreloadCalls++
+        return errorComponentGate
+      },
+    })
+
+    const rootRoute = new BaseRootRoute({})
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/chunked',
+      loader: () => {
+        throw routeError
+      },
+      onError,
+      component: SlowRouteComponent as any,
+      errorComponent: ErrorBoundary as any,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([route]),
+      history: createMemoryHistory({ initialEntries: ['/chunked'] }),
+    })
+
+    const loadPromise = router.load()
+    pendingLoads.push(loadPromise)
+
+    await vi.waitFor(() => expect(errorComponentPreloadCalls).toBe(1))
+    errorComponentGate.resolve()
+    await loadPromise
+
+    const match = router.state.matches.find((item) => item.routeId === route.id)
+    expect(match?.status).toBe('error')
+    expect(match?.error).toBe(routeError)
+    expect(onError).toHaveBeenCalledOnce()
+
+    componentGate.reject(componentError)
+    await expect(componentGate).rejects.toBe(componentError)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(onError).toHaveBeenCalledOnce()
+    expect(match?.error).toBe(routeError)
+  })
+
   test('global notFound does not wait for component chunks below its boundary', async () => {
     const hiddenComponentGate = createControlledPromise<void>()
     const notFoundPreload = vi.fn(() => Promise.resolve())

@@ -31,14 +31,16 @@ export function Transitioner() {
       if (process.env.NODE_ENV === 'production') {
         React.startTransition(fn)
       } else {
-        try {
-          React.startTransition(fn)
-        } catch (cause) {
-          if (acknowledgement[1] === resolve) {
-            acknowledgement.length = 0
+        React.startTransition(() => {
+          try {
+            fn()
+          } catch (cause) {
+            if (acknowledgement[1] === resolve) {
+              acknowledgement.length = 0
+            }
+            reject(cause)
           }
-          reject(cause)
-        }
+        })
       }
     })
   if (process.env.NODE_ENV !== 'production') {

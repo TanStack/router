@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { createControlledPromise } from '@tanstack/router-core'
 import {
   RouterProvider,
   createMemoryHistory,
@@ -24,11 +25,24 @@ test('a successful server component download is reused', async () => {
   const importer = vi.fn().mockResolvedValue({ default: () => null })
   const Page = lazyRouteComponent(importer)
 
-  const preload = Page.preload?.()
-  await preload
-
-  expect(Page.preload?.()).toBe(preload)
+  await Page.preload?.()
+  await Page.preload?.()
   expect(importer).toHaveBeenCalledTimes(1)
+})
+
+test('concurrent component preloads share the import', async () => {
+  const componentImport = createControlledPromise<{
+    default: () => null
+  }>()
+  const importer = vi.fn(() => componentImport)
+  const Page = lazyRouteComponent(importer)
+
+  const first = Page.preload?.()
+  const second = Page.preload?.()
+  expect(importer).toHaveBeenCalledOnce()
+
+  componentImport.resolve({ default: () => null })
+  await Promise.all([first, second])
 })
 
 test('a failed component download is retried from the route error UI', async () => {
