@@ -28,20 +28,16 @@ export function Transitioner() {
     new Promise((resolve, reject) => {
       settleOwner(acknowledgement, false)
       acknowledgement.push(expected, resolve)
-      if (process.env.NODE_ENV === 'production') {
-        React.startTransition(fn)
-      } else {
-        React.startTransition(() => {
-          try {
-            fn()
-          } catch (cause) {
-            if (acknowledgement[1 /* settle */] === resolve) {
-              acknowledgement.length = 0
-            }
-            reject(cause)
+      React.startTransition(() => {
+        try {
+          fn()
+        } catch (cause) {
+          if (acknowledgement[1 /* settle */] === resolve) {
+            acknowledgement.length = 0
           }
-        })
-      }
+          reject(cause)
+        }
+      })
     })
   if (process.env.NODE_ENV !== 'production') {
     ;(
