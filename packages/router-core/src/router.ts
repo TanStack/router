@@ -2513,8 +2513,8 @@ export class RouterCore<
     this._committed = committedMatches.map(invalidate)
     // Cache entries are settled successes. Retiring matching active preload
     // owners makes an in-place stale mark sufficient while preserving data.
-    for (const match of this._cache.values()) {
-      if (invalidIds.has(match.id)) {
+    for (const [id, match] of this._cache) {
+      if (invalidIds.has(id)) {
         match.invalid = true
         if (opts?.forcePending) {
           match.status = 'pending'
