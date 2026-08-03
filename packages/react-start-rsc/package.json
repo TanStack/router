@@ -103,7 +103,6 @@
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-fn-stubs": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
-    "@tanstack/start-server-core": "workspace:*",
     "@tanstack/start-storage-context": "workspace:*",
     "pathe": "^2.0.3"
   },

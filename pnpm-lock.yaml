@@ -13480,9 +13480,6 @@ importers:
       '@tanstack/start-plugin-core':
         specifier: workspace:*
         version: link:../start-plugin-core
-      '@tanstack/start-server-core':
-        specifier: workspace:*
-        version: link:../start-server-core
       '@tanstack/start-storage-context':
         specifier: workspace:*
         version: link:../start-storage-context
