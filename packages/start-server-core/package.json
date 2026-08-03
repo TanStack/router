@@ -65,6 +65,18 @@
         "default": "./dist/esm/request-response.js"
       }
     },
+    "./constants": {
+      "import": {
+        "types": "./dist/esm/constants.d.ts",
+        "default": "./dist/esm/constants.js"
+      }
+    },
+    "./virtual-modules": {
+      "import": {
+        "types": "./dist/esm/virtual-modules.d.ts",
+        "default": "./dist/esm/virtual-modules.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {
