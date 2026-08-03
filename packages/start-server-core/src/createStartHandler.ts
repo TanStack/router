@@ -514,6 +514,7 @@ export function createStartHandler<TRegister = Register>(
                 request,
                 context: requestOpts?.context,
                 serverFnId,
+                startOptions: requestStartOptions,
               }),
           )
         }

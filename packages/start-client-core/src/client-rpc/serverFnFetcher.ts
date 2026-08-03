@@ -16,6 +16,7 @@ import {
 } from '../constants'
 import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
+import type { AnyStartInstanceOptions } from '../createStart'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
 let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
@@ -110,19 +111,18 @@ function hasOwnProperties(obj: object): boolean {
 export async function serverFnFetcher(
   url: string,
   args: Array<any>,
-  handler: (url: string, requestInit: RequestInit) => Promise<Response>,
+  startOptions: AnyStartInstanceOptions | undefined,
 ) {
-  if (!serovalPlugins) {
-    serovalPlugins = getDefaultSerovalPlugins()
-  }
+  serovalPlugins ||= getDefaultSerovalPlugins(startOptions)
+
   const _first = args[0]
 
   const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
     headers?: HeadersInit
   }
 
-  // Use custom fetch if provided, otherwise fall back to the passed handler (global fetch)
-  const fetchImpl = first.fetch ?? handler
+  // Use custom fetch if provided, otherwise fall back to the Start/global fetch.
+  const fetchImpl = first.fetch ?? startOptions?.serverFns?.fetch ?? fetch
 
   const type = first.data instanceof FormData ? 'formData' : 'payload'
 

@@ -316,6 +316,7 @@ export {
   isPlainArray,
   deepEqual,
   createControlledPromise,
+  isPromise,
   isModuleNotFoundError,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
