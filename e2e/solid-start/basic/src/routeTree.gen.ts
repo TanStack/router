@@ -34,6 +34,7 @@ import { Route as NotFoundViaBeforeLoadTargetRootRouteImport } from './routes/no
 import { Route as NotFoundViaLoaderRouteImport } from './routes/not-found/via-loader'
 import { Route as PostsIndexRouteImport } from './routes/posts.index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as PrerenderParamsSlugRouteImport } from './routes/prerender-params.$slug'
 import { Route as RawStreamIndexRouteImport } from './routes/raw-stream/index'
 import { Route as RawStreamClientCallRouteImport } from './routes/raw-stream/client-call'
 import { Route as RawStreamSsrBinaryHintRouteImport } from './routes/raw-stream/ssr-binary-hint'
@@ -65,6 +66,7 @@ import { Route as SpecialCharsMalformedParamRouteImport } from './routes/special
 import { Route as SpecialCharsMalformedSearchRouteImport } from './routes/specialChars/malformed/search'
 import { Route as TransitionCountCreateResourceRouteImport } from './routes/transition/count/create-resource'
 import { Route as TransitionTypingCreateResourceRouteImport } from './routes/transition/typing/create-resource'
+import { Route as LayoutLayout2PrerenderNestedSlugRouteImport } from './routes/_layout/_layout-2/prerender-nested.$slug'
 import { Route as RedirectTargetServerFnIndexRouteImport } from './routes/redirect/$target/serverFn/index'
 import { Route as RedirectTargetServerFnViaBeforeLoadRouteImport } from './routes/redirect/$target/serverFn/via-beforeLoad'
 import { Route as RedirectTargetServerFnViaLoaderRouteImport } from './routes/redirect/$target/serverFn/via-loader'
@@ -196,6 +198,11 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
   id: '/$postId',
   path: '/$postId',
   getParentRoute: () => PostsRoute,
+} as any)
+const PrerenderParamsSlugRoute = PrerenderParamsSlugRouteImport.update({
+  id: '/prerender-params/$slug',
+  path: '/prerender-params/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const RawStreamIndexRoute = RawStreamIndexRouteImport.update({
   id: '/',
@@ -361,6 +368,12 @@ const TransitionTypingCreateResourceRoute =
     path: '/transition/typing/create-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const LayoutLayout2PrerenderNestedSlugRoute =
+  LayoutLayout2PrerenderNestedSlugRouteImport.update({
+    id: '/prerender-nested/$slug',
+    path: '/prerender-nested/$slug',
+    getParentRoute: () => LayoutLayout2Route,
+  } as any)
 const RedirectTargetServerFnIndexRoute =
   RedirectTargetServerFnIndexRouteImport.update({
     id: '/serverFn/',
@@ -408,6 +421,7 @@ export interface FileRoutesByFullPath {
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/prerender-params/$slug': typeof PrerenderParamsSlugRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
   '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
@@ -441,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/prerender-nested/$slug': typeof LayoutLayout2PrerenderNestedSlugRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
@@ -463,6 +478,7 @@ export interface FileRoutesByTo {
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/prerender-params/$slug': typeof PrerenderParamsSlugRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
   '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
@@ -495,6 +511,7 @@ export interface FileRoutesByTo {
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target': typeof RedirectTargetIndexRoute
+  '/prerender-nested/$slug': typeof LayoutLayout2PrerenderNestedSlugRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
@@ -525,6 +542,7 @@ export interface FileRoutesById {
   '/not-found/via-beforeLoad-target-root': typeof NotFoundViaBeforeLoadTargetRootRoute
   '/not-found/via-loader': typeof NotFoundViaLoaderRoute
   '/posts/$postId': typeof PostsPostIdRoute
+  '/prerender-params/$slug': typeof PrerenderParamsSlugRoute
   '/raw-stream/client-call': typeof RawStreamClientCallRoute
   '/raw-stream/ssr-binary-hint': typeof RawStreamSsrBinaryHintRoute
   '/raw-stream/ssr-mixed': typeof RawStreamSsrMixedRoute
@@ -558,6 +576,7 @@ export interface FileRoutesById {
   '/transition/count/create-resource': typeof TransitionCountCreateResourceRoute
   '/transition/typing/create-resource': typeof TransitionTypingCreateResourceRoute
   '/redirect/$target/': typeof RedirectTargetIndexRoute
+  '/_layout/_layout-2/prerender-nested/$slug': typeof LayoutLayout2PrerenderNestedSlugRoute
   '/redirect/$target/serverFn/via-beforeLoad': typeof RedirectTargetServerFnViaBeforeLoadRoute
   '/redirect/$target/serverFn/via-loader': typeof RedirectTargetServerFnViaLoaderRoute
   '/redirect/$target/serverFn/via-useServerFn': typeof RedirectTargetServerFnViaUseServerFnRoute
@@ -587,6 +606,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/prerender-params/$slug'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
     | '/raw-stream/ssr-mixed'
@@ -620,6 +640,7 @@ export interface FileRouteTypes {
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
     | '/redirect/$target/'
+    | '/prerender-nested/$slug'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
@@ -642,6 +663,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/prerender-params/$slug'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
     | '/raw-stream/ssr-mixed'
@@ -674,6 +696,7 @@ export interface FileRouteTypes {
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
     | '/redirect/$target'
+    | '/prerender-nested/$slug'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
@@ -703,6 +726,7 @@ export interface FileRouteTypes {
     | '/not-found/via-beforeLoad-target-root'
     | '/not-found/via-loader'
     | '/posts/$postId'
+    | '/prerender-params/$slug'
     | '/raw-stream/client-call'
     | '/raw-stream/ssr-binary-hint'
     | '/raw-stream/ssr-mixed'
@@ -736,6 +760,7 @@ export interface FileRouteTypes {
     | '/transition/count/create-resource'
     | '/transition/typing/create-resource'
     | '/redirect/$target/'
+    | '/_layout/_layout-2/prerender-nested/$slug'
     | '/redirect/$target/serverFn/via-beforeLoad'
     | '/redirect/$target/serverFn/via-loader'
     | '/redirect/$target/serverFn/via-useServerFn'
@@ -759,6 +784,7 @@ export interface RootRouteChildren {
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
   MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
+  PrerenderParamsSlugRoute: typeof PrerenderParamsSlugRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
   MultiCookieRedirectIndexRoute: typeof MultiCookieRedirectIndexRoute
   RedirectIndexRoute: typeof RedirectIndexRoute
@@ -943,6 +969,13 @@ declare module '@tanstack/solid-router' {
       fullPath: '/posts/$postId'
       preLoaderRoute: typeof PostsPostIdRouteImport
       parentRoute: typeof PostsRoute
+    }
+    '/prerender-params/$slug': {
+      id: '/prerender-params/$slug'
+      path: '/prerender-params/$slug'
+      fullPath: '/prerender-params/$slug'
+      preLoaderRoute: typeof PrerenderParamsSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/raw-stream/': {
       id: '/raw-stream/'
@@ -1161,6 +1194,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof TransitionTypingCreateResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_layout/_layout-2/prerender-nested/$slug': {
+      id: '/_layout/_layout-2/prerender-nested/$slug'
+      path: '/prerender-nested/$slug'
+      fullPath: '/prerender-nested/$slug'
+      preLoaderRoute: typeof LayoutLayout2PrerenderNestedSlugRouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
     '/redirect/$target/serverFn/': {
       id: '/redirect/$target/serverFn/'
       path: '/serverFn'
@@ -1282,11 +1322,13 @@ const SpecialCharsRouteRouteWithChildren =
 interface LayoutLayout2RouteChildren {
   LayoutLayout2LayoutARoute: typeof LayoutLayout2LayoutARoute
   LayoutLayout2LayoutBRoute: typeof LayoutLayout2LayoutBRoute
+  LayoutLayout2PrerenderNestedSlugRoute: typeof LayoutLayout2PrerenderNestedSlugRoute
 }
 
 const LayoutLayout2RouteChildren: LayoutLayout2RouteChildren = {
   LayoutLayout2LayoutARoute: LayoutLayout2LayoutARoute,
   LayoutLayout2LayoutBRoute: LayoutLayout2LayoutBRoute,
+  LayoutLayout2PrerenderNestedSlugRoute: LayoutLayout2PrerenderNestedSlugRoute,
 }
 
 const LayoutLayout2RouteWithChildren = LayoutLayout2Route._addFileChildren(
@@ -1407,6 +1449,7 @@ const rootRouteChildren: RootRouteChildren = {
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
   MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,
+  PrerenderParamsSlugRoute: PrerenderParamsSlugRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
   MultiCookieRedirectIndexRoute: MultiCookieRedirectIndexRoute,
   RedirectIndexRoute: RedirectIndexRoute,

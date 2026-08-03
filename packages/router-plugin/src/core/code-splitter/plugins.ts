@@ -4,6 +4,8 @@ import type { Config, DeletableNodes, HmrStyle } from '../config'
 import type { CodeSplitGroupings } from '../constants'
 import type { SplitNodeMeta } from './types'
 
+type StaticSsrOption = true | false | 'data-only'
+
 export type CompileCodeSplitReferenceRouteOptions = {
   codeSplitGroupings: CodeSplitGroupings
   deleteNodes?: Set<DeletableNodes>
@@ -14,6 +16,8 @@ export type CompileCodeSplitReferenceRouteOptions = {
   hmrStyle?: HmrStyle
   hmrRouteId?: string
   sharedBindings?: Set<string>
+  /** @internal */
+  serverSsr?: StaticSsrOption
 }
 
 export type ReferenceRouteCompilerPluginContext = {

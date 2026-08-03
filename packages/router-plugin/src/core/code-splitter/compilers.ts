@@ -483,7 +483,7 @@ export function compileCodeSplitReferenceRoute(
                 if (opts.deleteNodes && opts.deleteNodes.size > 0) {
                   routeOptions.properties = routeOptions.properties.filter(
                     (prop) => {
-                      if (t.isObjectProperty(prop)) {
+                      if (t.isObjectProperty(prop) || t.isObjectMethod(prop)) {
                         const key = getObjectPropertyKeyName(prop)
                         if (key && opts.deleteNodes!.has(key as any)) {
                           modified = true

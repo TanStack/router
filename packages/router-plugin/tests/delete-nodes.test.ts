@@ -34,6 +34,87 @@ const testGroups: Array<{
 ]
 
 describe('code-splitter delete nodes', () => {
+  it('should delete route options declared as object methods', () => {
+    const compileResult = compileCodeSplitReferenceRoute({
+      code: `
+import { createFileRoute } from '@tanstack/react-router'
+import crypto from 'node:crypto'
+
+export const Route = createFileRoute('/')({
+  ssr() {
+    return crypto.randomInt(0, 2) === 0
+  },
+  component: () => <div>hello world</div>,
+})
+`,
+      filename: 'ssr-method.tsx',
+      id: 'ssr-method.tsx',
+      addHmr: false,
+      codeSplitGroupings: [],
+      deleteNodes: new Set(['ssr']),
+      targetFramework: 'react',
+    })
+
+    expect(compileResult?.code).not.toContain('ssr()')
+    expect(compileResult?.code).not.toContain('node:crypto')
+  })
+
+  it('should strip prerenderParams and its server-only imports', () => {
+    const compileResult = compileCodeSplitReferenceRoute({
+      code: `
+import { createFileRoute } from '@tanstack/react-router'
+import { readdir } from 'node:fs/promises'
+
+export const Route = createFileRoute('/posts/$slug')({
+  prerenderParams: async () => {
+    const entries = await readdir('content/posts')
+    return entries.map((slug) => ({ params: { slug } }))
+  },
+  component: () => <div>post</div>,
+})
+`,
+      filename: 'posts.$slug.tsx',
+      id: 'posts.$slug.tsx',
+      addHmr: false,
+      codeSplitGroupings: [],
+      deleteNodes: new Set(['prerenderParams', 'sitemap']),
+      targetFramework: 'react',
+    })
+
+    expect(compileResult?.code).not.toContain('prerenderParams')
+    expect(compileResult?.code).not.toContain('readdir')
+    expect(compileResult?.code).not.toContain('node:fs/promises')
+    expect(compileResult?.code).not.toContain('content/posts')
+  })
+
+  it('should strip sitemap and its server-only imports', () => {
+    const compileResult = compileCodeSplitReferenceRoute({
+      code: `
+import { createFileRoute } from '@tanstack/react-router'
+import { computePriority } from './sitemap-priority.server'
+
+export const Route = createFileRoute('/about')({
+  sitemap: {
+    priority: computePriority(),
+    changefreq: 'weekly',
+  },
+  component: () => <div>about</div>,
+})
+`,
+      filename: 'about.tsx',
+      id: 'about.tsx',
+      addHmr: false,
+      codeSplitGroupings: [],
+      deleteNodes: new Set(['prerenderParams', 'sitemap']),
+      targetFramework: 'react',
+    })
+
+    expect(compileResult?.code).not.toContain('sitemap')
+    expect(compileResult?.code).not.toContain('computePriority')
+    expect(compileResult?.code).not.toContain('sitemap-priority.server')
+    expect(compileResult?.code).not.toContain('weekly')
+  })
+
   describe.each(frameworks)('FRAMEWORK=%s', (framework) => {
     describe.each(testGroups)(
       'SPLIT_GROUP=$name',

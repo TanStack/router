@@ -49,6 +49,12 @@ export default defineConfig({
         // Maximum number of redirects to follow during prerendering
         maxRedirects: 5,
 
+        // Maximum time in milliseconds to wait for each prerenderParams callback
+        prerenderParamsTimeout: 30000,
+
+        // Build route options used for prerendering separately from the server bundle
+        separateRouteOptionsBundle: true,
+
         // Fail if an error occurs during prerendering
         failOnError: true,
 
@@ -135,6 +141,8 @@ export default defineConfig({
 
 <!-- ::end:tabs -->
 
+By default, Start builds route options used by `prerenderParams` and `sitemap` separately from the final server bundle so they can be used at build time without being deployed. Set `prerender.separateRouteOptionsBundle` to `false` if your deployment adapter does not support the extra build environment or if you prefer to keep those route options in the server bundle.
+
 ## Automatic Static Route Discovery
 
 All static paths will be automatically discovered and seamlessly merged with the specified `pages` config
@@ -146,6 +154,49 @@ Routes are excluded from automatic discovery in the following cases:
 - Routes without components (e.g., API routes)
 
 Note: Dynamic routes can still be prerendered if they are linked from other pages when `crawlLinks` is enabled.
+
+## Dynamic Route Prerendering
+
+Dynamic routes can declare `prerenderParams` to generate specific parameter values at build time. Each returned entry creates one page from the route path and can override sitemap or prerender options for that page.
+
+```tsx
+// src/routes/posts/$postId.tsx
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/posts/$postId')({
+  validateSearch: (search: Record<string, unknown>): { ref?: string } => ({
+    ...(typeof search.ref === 'string' ? { ref: search.ref } : {}),
+  }),
+  sitemap: {
+    changefreq: 'weekly',
+  },
+  prerenderParams: async () => {
+    const posts = await fetchPosts()
+
+    return posts.map((post) => ({
+      params: { postId: post.id },
+      search: { ref: 'sitemap' },
+      sitemap: {
+        lastmod: post.updatedAt,
+        priority: 0.8,
+      },
+    }))
+  },
+  component: PostComponent,
+})
+
+function PostComponent() {
+  const { postId } = Route.useParams()
+
+  return <div>Post {postId}</div>
+}
+```
+
+`prerenderParams` receives `{ routePath, signal }`. The signal aborts when the build process is interrupted and when `prerender.prerenderParamsTimeout` elapses. Each entry's `params` and optional `search` values are typed from the route and used to create the generated URL. Search params are preserved in generated page paths and sitemap URLs using the router's default search serialization; custom `stringifySearch` router options are not applied during this build-time expansion. The route-level `sitemap` option applies to every generated page, and `entry.sitemap` is merged on top for a specific parameter entry. Use `entry.sitemap.exclude` to generate the HTML page without adding it to the sitemap.
+
+The `sitemap` route option only controls metadata for generated sitemap entries. It does not enable sitemap output by itself; sitemap XML is still controlled by the top-level `sitemap` configuration in your Start plugin config.
+
+Code that is only referenced by `prerenderParams` or `sitemap` is removed from the client route bundle, so these options can import server-only data sources used to discover pages at build time.
 
 ## Crawling Links
 

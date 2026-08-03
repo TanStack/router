@@ -134,6 +134,16 @@ function getEntries() {
   return entriesPromise
 }
 
+if (process.env.TSS_PRERENDERING === 'true') {
+  // The prerenderer imports the server entry before crawling so it can read
+  // server-only route options like prerenderParams from the initialized router.
+  globalThis.TSS_PRERENDER_ROUTE_TREE ??= async () => {
+    const entries = await getEntries()
+    const router = await entries.routerEntry.getRouter()
+    return router.routeTree
+  }
+}
+
 function hasCsrfMiddleware(
   middlewares: Array<AnyRequestMiddleware | AnyFunctionMiddleware>,
 ): boolean {
