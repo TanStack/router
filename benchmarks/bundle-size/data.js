@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1785449271434,
+  "lastUpdate": 1785784002881,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,90 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "122984423+huseeiin@users.noreply.github.com",
-            "name": "huseeiin",
-            "username": "huseeiin"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "6077120efa59125ab79a6aff7cdb54ddae986d25",
-          "message": "fix: vite preview streaming (#6828)\n\n\n\n---------\n\nCo-authored-by: Birk Skyum <birk.skyum@pm.me>",
-          "timestamp": "2026-03-23T14:05:00+01:00",
-          "tree_id": "1a55581ba5ab02b450a24e93c3518d34a666d5a9",
-          "url": "https://github.com/TanStack/router/commit/6077120efa59125ab79a6aff7cdb54ddae986d25"
-        },
-        "date": 1774271243402,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 90269,
-            "unit": "bytes",
-            "extra": "raw=285043; brotli=78395"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93576,
-            "unit": "bytes",
-            "extra": "raw=296298; brotli=81112"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36656,
-            "unit": "bytes",
-            "extra": "raw=110861; brotli=32847"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41181,
-            "unit": "bytes",
-            "extra": "raw=124581; brotli=36879"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 55067,
-            "unit": "bytes",
-            "extra": "raw=158200; brotli=49388"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 60051,
-            "unit": "bytes",
-            "extra": "raw=174048; brotli=53780"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 105017,
-            "unit": "bytes",
-            "extra": "raw=334216; brotli=90764"
-          },
-          {
-            "name": "react-start.full",
-            "value": 108494,
-            "unit": "bytes",
-            "extra": "raw=344774; brotli=93685"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 51064,
-            "unit": "bytes",
-            "extra": "raw=158157; brotli=44987"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56682,
-            "unit": "bytes",
-            "extra": "raw=174638; brotli=49782"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -20851,6 +20767,132 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/8212950807660c88ad49320f6c8d1074abd40944"
         },
         "date": 1785449269556,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89443,
+            "unit": "bytes",
+            "extra": "raw=280269; brotli=77834; initial_gzip=89302"
+          },
+          {
+            "name": "react-router.full",
+            "value": 93248,
+            "unit": "bytes",
+            "extra": "raw=292449; brotli=81092; initial_gzip=93107"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 36378,
+            "unit": "bytes",
+            "extra": "raw=108438; brotli=32709; initial_gzip=36253"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 41556,
+            "unit": "bytes",
+            "extra": "raw=124021; brotli=37386; initial_gzip=41426"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 54271,
+            "unit": "bytes",
+            "extra": "raw=153537; brotli=48769; initial_gzip=54141"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 60351,
+            "unit": "bytes",
+            "extra": "raw=172746; brotli=54031; initial_gzip=60218"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 104433,
+            "unit": "bytes",
+            "extra": "raw=329860; brotli=90343; initial_gzip=104292"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 105187,
+            "unit": "bytes",
+            "extra": "raw=331268; brotli=91009; initial_gzip=104315"
+          },
+          {
+            "name": "react-start.full",
+            "value": 107892,
+            "unit": "bytes",
+            "extra": "raw=340028; brotli=93311; initial_gzip=107751"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102087,
+            "unit": "bytes",
+            "extra": "raw=324176; brotli=87840; initial_gzip=101912"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102497,
+            "unit": "bytes",
+            "extra": "raw=325135; brotli=88183; initial_gzip=102328"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105373,
+            "unit": "bytes",
+            "extra": "raw=334474; brotli=90696; initial_gzip=105198"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 50799,
+            "unit": "bytes",
+            "extra": "raw=155721; brotli=44878; initial_gzip=50665"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 54138,
+            "unit": "bytes",
+            "extra": "raw=163953; brotli=48016; initial_gzip=50722"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 56751,
+            "unit": "bytes",
+            "extra": "raw=173177; brotli=50072; initial_gzip=56619"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 72734,
+            "unit": "bytes",
+            "extra": "raw=212163; brotli=64396; initial_gzip=72601"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 76833,
+            "unit": "bytes",
+            "extra": "raw=225102; brotli=67965; initial_gzip=76702"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "t.zlak@hotmail.com",
+            "name": "Alem Tuzlak",
+            "username": "AlemTuzlak"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "b5e540d74ae22f29bc17daee965cfe65d2782c7c",
+          "message": "docs: use the dynamic README header endpoint (#7940)\n\n* docs: use the dynamic README header endpoint\n\n* docs: add README header banners to the framework adapter packages",
+          "timestamp": "2026-08-03T21:03:29+02:00",
+          "tree_id": "3795c778b984b94e4b78e1921a2e3e798d1872d4",
+          "url": "https://github.com/TanStack/router/commit/b5e540d74ae22f29bc17daee965cfe65d2782c7c"
+        },
+        "date": 1785784001124,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
