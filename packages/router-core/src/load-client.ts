@@ -225,7 +225,7 @@ export type PendingSession = [
 ]
 
 type CoordinatorRouter = AnyRouter & {
-  /** Active speculative lanes retained for cancellation and cache clearing. */
+  /** Active speculative lanes retained for cancellation, invalidation, and cache clearing. */
   _preloads?: Map<AbortController, Array<AnyRouteMatch>>
   _refreshNextLoad?: boolean
   _cancelTransition?: () => void
@@ -507,7 +507,7 @@ function releaseFlight(router: AnyRouter, match: WorkMatch): void {
  * Not passing in a `next` ownership recipient
  * is equivalent to discarding the match resources
  */
-export function transferMatchResources(
+function transferMatchResources(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   next?: Array<AnyRouteMatch>,
@@ -909,7 +909,11 @@ function createLoaderTask(
     if (blocking) {
       settleInto(match, result, preload)
       if (result[0 /* kind */] === SUCCESS) {
-        if (preload && routeLoader) {
+        if (
+          preload &&
+          routeLoader &&
+          !options[0 /* controller */].signal.aborted
+        ) {
           cacheLoaderMatch(router, match, plannedCacheMatch)
         }
         // A route is renderable only after both its data and normal component
