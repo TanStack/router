@@ -18,6 +18,7 @@ import { useRouter } from './useRouter'
 import { useForwardedRef, useIntersectionObserver } from './utils'
 
 import { useHydrated } from './ClientOnly'
+import { resolveIsBackNavigation } from './useIsBackNavigation'
 import type {
   AnyRouter,
   Constrain,
@@ -73,6 +74,7 @@ export function useLinkProps<
     startTransition,
     resetScroll,
     viewTransition,
+    preferBack,
     // element props
     children,
     target,
@@ -403,7 +405,9 @@ export function useLinkProps<
   const currentLocation = useStore(
     router.stores.location,
     (l) => l,
-    (prev, next) => prev.href === next.href,
+    (prev, next) =>
+      prev.href === next.href &&
+      prev.state.__TSR_index === next.state.__TSR_index,
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -411,6 +415,18 @@ export function useLinkProps<
     const opts = { _fromLocation: currentLocation, ..._options }
     return router.buildLocation(opts as any)
   }, [router, currentLocation, _options])
+
+  // History-aware: go back instead of pushing when the target is the previous
+  // entry. `'exact'` also matches search. Reuses `next`, so no extra buildLocation.
+  const isBackNavigation =
+    !!preferBack &&
+    !_reloadDocument &&
+    resolveIsBackNavigation(
+      router,
+      currentLocation,
+      next,
+      preferBack === 'exact' ? 'exact' : 'pathname',
+    )
 
   // Use publicHref - it contains the correct href for display
   // When a rewrite changes the origin, publicHref is the full URL
@@ -625,6 +641,16 @@ export function useLinkProps<
         unsub()
         setIsTransitioning(false)
       })
+
+      // Target is the previous entry — pop instead of pushing to preserve forward
+      // history and native scroll restoration (handled via the router's popstate).
+      if (isBackNavigation) {
+        if (viewTransition !== undefined) {
+          router.shouldViewTransition = viewTransition
+        }
+        router.history.back({ ignoreBlocker })
+        return
+      }
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing

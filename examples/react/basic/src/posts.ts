@@ -13,7 +13,7 @@ export const fetchPosts = async () => {
   await new Promise((r) => setTimeout(r, 500))
   return axios
     .get<Array<PostType>>('https://jsonplaceholder.typicode.com/posts')
-    .then((r) => r.data.slice(0, 10))
+    .then((r) => r.data.slice(0, 50))
 }
 
 export const fetchPost = async (postId: string) => {

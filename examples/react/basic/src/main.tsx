@@ -123,6 +123,14 @@ function PostComponent() {
       <h4 className="text-xl font-bold">{post.title}</h4>
       <hr className="opacity-20" />
       <div className="text-sm">{post.body}</div>
+
+      <Link
+        to="/posts"
+        preferBack
+        className="py-1 px-2 rounded bg-green-600 text-white hover:opacity-90"
+      >
+        ← Back to posts
+      </Link>
     </div>
   )
 }
