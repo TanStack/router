@@ -613,6 +613,52 @@ describe('params.parse route selection', () => {
     })
   })
 
+  describe('match.pathname consistency', () => {
+    it('keeps match.pathname consistent across nested matches when params.parse/stringify remap the value', () => {
+      const rootRoute = new BaseRootRoute({})
+      const postTypeRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '$postType',
+        params: {
+          parse: ({ postType }: { postType: string }) => ({
+            postType: postType === 'articles' ? 'article' : postType,
+          }),
+          stringify: ({ postType }: { postType: string }) => ({
+            postType: postType === 'article' ? 'articles' : postType,
+          }),
+        },
+      })
+      const postTypeIndexRoute = new BaseRoute({
+        getParentRoute: () => postTypeRoute,
+        path: '/',
+      })
+      const routeTree = rootRoute.addChildren([
+        postTypeRoute.addChildren([postTypeIndexRoute]),
+      ])
+      const router = createTestRouter({
+        routeTree,
+        history: createMemoryHistory({ initialEntries: ['/articles'] }),
+      })
+
+      const matches = router.matchRoutes('/articles', {})
+      const layoutMatch = matches.find((m) => m.routeId === postTypeRoute.id)
+      const indexMatch = matches.find(
+        (m) => m.routeId === postTypeIndexRoute.id,
+      )
+
+      // params.parse is applied consistently: both the layout match and the
+      // nested index match see the parsed (singular) value.
+      expect(layoutMatch?.params.postType).toBe('article')
+      expect(indexMatch?.params.postType).toBe('article')
+
+      // match.pathname must reflect the raw (public) URL segment on every
+      // match in the chain -- a route's own params.parse must not leak its
+      // parsed value into the pathname of routes matched afterward.
+      expect(layoutMatch?.pathname).toBe('/articles')
+      expect(indexMatch?.pathname).toBe('/articles/')
+    })
+  })
+
   describe('pathless routes', () => {
     it('pathless layout with params.parse gates children', () => {
       const { processedTree } = processRouteTree(
