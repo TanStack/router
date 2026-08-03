@@ -1,5 +1,14 @@
 # @tanstack/react-start-rsc
 
+## 0.1.34
+
+### Patch Changes
+
+- [#7944](https://github.com/TanStack/router/pull/7944) [`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162) - Read request cancellation from the Start storage context so RSC helpers do not pull the Start server barrel into the RSC module graph.
+
+- Updated dependencies [[`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162)]:
+  - @tanstack/start-plugin-core@1.171.26
+
 ## 0.1.33
 
 ### Patch Changes
