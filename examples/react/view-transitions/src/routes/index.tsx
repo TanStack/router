@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { Link, createFileRoute } from '@tanstack/react-router'
+import { slideByDirection } from '../directionAwareTransition'
 
 export const Route = createFileRoute('/')({
   component: Home,
@@ -12,8 +13,8 @@ function Home() {
       <div className="flex justify-center mt-4">
         <Link
           to={'/how-it-works'}
-          // see styles.css for 'slide-left' transition
-          viewTransition={{ types: ['slide-left'] }}
+          // direction-aware: slides left going forward, right on browser Back
+          viewTransition={slideByDirection}
           className="font-bold"
         >
           Next Page -&gt;

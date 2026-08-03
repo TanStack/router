@@ -200,6 +200,13 @@ const router = createRouter({
 - See [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Document/startViewTransition) for more information on how this function works.
 - See [Google](https://developer.chrome.com/docs/web-platform/view-transitions/same-document#view-transition-types) for more information on viewTransition types
 
+### `replayViewTransitionOnTraversal` property
+
+- Type: `boolean`
+- Optional, defaults to `false`
+- If `true`, replays the view transition a navigation opted into (`<Link viewTransition>` / `navigate({ viewTransition })`) when the user later traverses that entry with the browser Back/Forward buttons. Without it, those per-navigation opt-ins are not replayed on traversal, so Back/Forward fall back to the router's normal behavior (`defaultViewTransition` if set, otherwise no transition). Replay is symmetric: a transition opted into on `A → B` plays on both `B → A` (back) and a later `A → B` (forward).
+- Recorded values are kept in-memory (lost on hard reload, degrading to no transition) so a functional [`ViewTransitionOptions`](./ViewTransitionOptionsType.md) `types` callback survives. Opt-in; does not change `defaultViewTransition` behavior.
+
 ### `defaultHashScrollIntoView` property
 
 - Type: `boolean | ScrollIntoViewOptions`
