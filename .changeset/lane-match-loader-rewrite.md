@@ -7,6 +7,7 @@
 
 Rewrite match loading around a lane-based scheduler that tracks each navigation, preload, and background reload as an ordered unit of work. This fixes pending/redirect/retry state leaking between overlapping navigations, restores correct SSR status codes for redirects, errors, and not-found responses, and closes hydration gaps where the client re-ran work the server had already completed.
 
+- Invalidation now retires matching active preloads so older speculative loader results cannot become fresh cache data after invalidation.
 - Route `headers()` now only runs on the server, matching the documented behavior — it is no longer invoked during client-side asset projection.
 - Default `gcTime` and `preloadGcTime` are reduced from 30 minutes (`1_800_000`) to 5 minutes (`300_000`).
 

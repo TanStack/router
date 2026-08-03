@@ -134,8 +134,8 @@ protocol.
 
 - Type: `(opts?: {filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean, sync?: boolean, forcePending?: boolean }) => Promise<void>`
 - This is useful any time your loader data might be out of date or stale. For example, if you have a route that displays a list of posts, and you have a loader function that fetches the list of posts from an API, you might want to invalidate the route matches for that route any time a new post is created so that the list of posts is always up-to-date.
-- If `filter` is not supplied, all committed and cached match generations are invalidated.
-- If `filter` is supplied, it is evaluated against committed and cached matches. Selecting one generation invalidates every committed or cached generation with the same match ID.
+- If `filter` is not supplied, all committed, cached, and in-flight match generations are invalidated.
+- If `filter` is supplied, it is evaluated against committed, cached, and in-flight matches. Selecting one generation invalidates every committed, cached, or in-flight generation with the same match ID.
 - Invalidation reruns `beforeLoad`; reusable loader data is marked stale and reloads through the normal loading protocol. Route-level `context` remains reusable while the match ID is unchanged.
 - If `sync` is `true`, stale loader work is blocking and the returned promise resolves after it finishes instead of leaving a background refresh detached.
 - If `forcePending` is `true`, selected routes that need loading enter the normal pending protocol even when successful data was already available.

@@ -41,7 +41,6 @@ import {
   preloadClientRoute,
   refreshClientRoute,
   replaceRouteChunk,
-  transferMatchResources,
 } from './load-client'
 import {
   composeRewrites,
@@ -1024,7 +1023,7 @@ export interface RouterCore<
   _tx?: LoadTransaction
   /** Joinable in-flight loader generations keyed by match ID. */
   _flights?: Map<string, LoaderFlight>
-  /** Active speculative lanes retained for cancellation and cache clearing. */
+  /** Active speculative lanes retained for cancellation, invalidation, and cache clearing. */
   _preloads?: Map<AbortController, Array<AnyRouteMatch>>
   /** Owns cancellable work before a client transaction publishes. */
   _preflight?: AbortController
@@ -2451,9 +2450,11 @@ export class RouterCore<
   }
 
   /**
-   * Invalidate the current matches and optionally force them back into a pending state.
+   * Invalidate selected match generations and optionally force current matches
+   * back into a pending state.
    *
-   * - Marks all matches that pass the optional `filter` as `invalid: true`.
+   * - Marks committed and cached matches whose IDs are selected as invalid.
+   * - Retires selected active preloads so older work cannot publish fresh data.
    *
    * The next load decides when to publish pending UI, so invalidation does not
    * mutate the currently rendered status.
@@ -2469,10 +2470,12 @@ export class RouterCore<
   > = (opts) => {
     const committedMatches = this._committed
     const filter = opts?.filter
+    const preloads = this._preloads
     const invalidIds = new Set(
       [
         ...committedMatches,
         ...this._cache.values(),
+        ...[...(preloads?.values() ?? [])].flat(),
         ...(this._tx?.[3 /* matches */] ?? []),
       ]
         .filter(
@@ -2480,6 +2483,13 @@ export class RouterCore<
         )
         .map((match) => match.id),
     )
+    const discardedPreloads: Array<AbortController> = []
+    for (const [controller, matches] of preloads ?? []) {
+      if (matches.some((match) => invalidIds.has(match.id))) {
+        preloads!.delete(controller)
+        discardedPreloads.push(controller)
+      }
+    }
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
       if (invalidIds.has(d.id)) {
         const route = this.routesById[d.routeId] as AnyRoute
@@ -2500,17 +2510,24 @@ export class RouterCore<
       return d
     }
 
-    const committed = committedMatches.map(invalidate)
-    this._committed = committed
-    const cache = new Map<string, AnyRouteMatch>()
+    this._committed = committedMatches.map(invalidate)
+    // Cache entries are settled successes. Retiring matching active preload
+    // owners makes an in-place stale mark sufficient while preserving data.
     for (const [id, match] of this._cache) {
-      cache.set(id, invalidate(match))
+      if (invalidIds.has(id)) {
+        match.invalid = true
+        if (opts?.forcePending) {
+          match.status = 'pending'
+        }
+      }
     }
-    this._cache = cache
     // The superseding load must not discover any same-ID generation selected
     // for replacement. Existing owners release it in their normal order.
     for (const id of invalidIds) {
       this._flights?.delete(id)
+    }
+    for (const controller of discardedPreloads) {
+      controller.abort()
     }
 
     this.shouldViewTransition = false
@@ -2563,57 +2580,46 @@ export class RouterCore<
     const cached = this._cache
     const preloads = this._preloads
     const filter = opts?.filter
-    const retained = new Map<string, AnyRouteMatch>()
     const discarded: Array<AnyRouteMatch> = []
+    const discardedIds: Array<string> = []
     for (const [id, match] of cached) {
-      if (filter && !filter(match as MakeRouteMatchUnion<this>)) {
-        retained.set(id, match)
-      } else {
+      if (!filter || filter(match as MakeRouteMatchUnion<this>)) {
+        discardedIds.push(id)
         discarded.push(match)
       }
     }
-    const retainedPreloads = new Map<AbortController, Array<AnyRouteMatch>>()
-    const discardedPreloads: Array<AbortController> = []
+    const abort: Array<AbortController> = []
     for (const [controller, matches] of preloads ?? []) {
       if (!filter || matches.some(filter as any)) {
-        discardedPreloads.push(controller)
+        abort.push(controller)
         discarded.push(...matches)
-      } else {
-        retainedPreloads.set(controller, matches)
       }
     }
 
-    // Install both replacement authorities before releasing a public loader
+    // Run every public filter before changing authority, then prune both maps
+    // before releasing a public loader
     // signal, whose abort listeners can synchronously reenter the router.
-    this._cache = retained
-    this._preloads = retainedPreloads
-    const discardedFlights = new Map<
-      LoaderFlight,
-      [id: string, owners: number]
-    >()
+    for (const id of discardedIds) {
+      cached.delete(id)
+    }
+    for (const controller of abort) {
+      preloads!.delete(controller)
+    }
+    // clearCache is a force-retirement boundary, so a final discarded lease
+    // must not use the normal zero-owner handoff window.
     for (const match of discarded as Array<
       AnyRouteMatch & { _flight?: LoaderFlight }
     >) {
       const flight = match._flight
-      if (flight && this._flights?.get(match.id) === flight) {
-        const entry = discardedFlights.get(flight)
-        if (entry) {
-          entry[1 /* owners */]++
-        } else {
-          discardedFlights.set(flight, [match.id, 1])
+      match._flight = undefined
+      if (flight && !--flight[2 /* leases */]) {
+        if (this._flights?.get(match.id) === flight) {
+          this._flights.delete(match.id)
         }
+        abort.push(flight[1 /* controller */])
       }
     }
-    for (const [flight, [id, owners]] of discardedFlights) {
-      if (
-        flight[2 /* leases */] === owners &&
-        this._flights?.get(id) === flight
-      ) {
-        this._flights.delete(id)
-      }
-    }
-    transferMatchResources(this, discarded)
-    for (const controller of discardedPreloads) {
+    for (const controller of abort) {
       controller.abort()
     }
   }

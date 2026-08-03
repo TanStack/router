@@ -407,7 +407,9 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
       generation,
       preload,
     }))
-    const loader = vi.fn(() => loaderGate)
+    const loader = vi.fn(() =>
+      loader.mock.calls.length === 1 ? loaderGate : 'new loader data',
+    )
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -441,12 +443,12 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
       true,
       false,
     ])
-    expect(loader).toHaveBeenCalledOnce()
+    expect(loader).toHaveBeenCalledTimes(2)
     expect(router.state.matches.at(-1)?.context).toEqual({
       generation: 2,
       preload: false,
     })
-    expect(router.state.matches.at(-1)?.loaderData).toBe('shared loader data')
+    expect(router.state.matches.at(-1)?.loaderData).toBe('new loader data')
   })
 
   test('preload false does not cache beforeLoad context for navigation', async () => {

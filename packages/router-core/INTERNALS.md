@@ -309,12 +309,14 @@ private to its speculative lane. This does not isolate the normalized outcome of
 a same-ID loader flight that multiple lanes deliberately share.
 
 `router._preloads` has no semantic adoption role. Its controller entry owns
-cancellation and cache clearing and proves that a standalone preload remained
-active through normal settlement; successful removal authorizes private redirect
-continuation. Loader results remain independently reusable: a completed preload
-may seed the match cache, and a still-running preload may donate its same-ID
-loader flight after the receiving lane has run its own `beforeLoad` and made its
-reload decision.
+cancellation, invalidation, and cache clearing and proves that a standalone
+preload remained active through normal settlement; successful removal authorizes
+private redirect continuation. Its live lane signal is also the final authority
+for cache publication, including the microtask window after a loader outcome has
+fulfilled. Loader results remain independently reusable: a completed preload may
+seed the match cache, and a still-running preload may donate its same-ID loader
+flight after the receiving lane has run its own `beforeLoad` and made its reload
+decision.
 
 ### Hydration
 
@@ -832,28 +834,36 @@ redirects. A losing background lane cannot redirect.
 Invalidation creates a new semantic generation and reloads through the ordinary
 transaction path. It does not turn `stores.matches` into a planning lane.
 
-Filtered invalidation evaluates committed, cached, and active-transaction
-matches and collects the selected match IDs. Every committed and cached
-generation with one of those IDs is then replaced as invalid, and its loader
-discovery entry is detached. This ID-wide rule prevents a cache-first or
-in-flight same-ID generation from escaping invalidation merely because a
-different generation was the one passed to the filter. Route context retains
-same-ID cacheability across this replacement and needs no separate invalidation
-marker.
+Filtered invalidation evaluates committed, cached, active-transaction, and
+active-preload matches and collects the selected match IDs. Every committed and
+cached generation with one of those IDs is made invalid. Cached matches are
+already settled successes, so their data owner is marked invalid in place.
+Matching active preload owners are retired first, which prevents older
+speculative work from clearing that stale mark or publishing fresh cache data;
+the lane signal remains the publication fence if its loader outcome already
+fulfilled. The loader discovery entry is also detached before the superseding
+load. Unselected preload lanes remain active. This ID-wide rule prevents a
+cache-first or in-flight same-ID generation from escaping invalidation merely
+because a different generation was the one passed to the filter. Route context
+retains same-ID cacheability across this replacement and needs no separate
+invalidation marker.
 
 Invalidated successful data may remain visible until pending or terminal
 publication, depending on reload mode. Error/not-found generations reset through
 the same loading protocol rather than becoming cache successes.
 
-Cache clearing derives the retained active-preload and cache maps, installs both
-replacement authorities, and removes a discovery entry only when every positive
-lease belongs to discarded matches. It then bulk-detaches removed leases and
-only afterward aborts selected preload lane controllers. A public loader signal
-can synchronously reenter from its abort listener; that reentrant load must
-observe the cleared authorities and every removed lease as already detached.
-Unselected concurrent preloads keep shared flights discoverable, and every later
-cache publication must still pass the per-match cache-entry identity check
-captured during planning.
+Cache clearing first snapshots every selected cache match and active preload so
+a throwing public filter changes no authority. It then prunes both authorities
+and directly releases every discarded match lease.
+When the last lease is discarded, cache clearing removes the discovery entry
+instead of preserving the normal zero-owner navigation handoff. Only after all
+leases and discovery entries are detached does it abort the collected flight and
+preload-lane controllers. A public loader signal can synchronously reenter from
+its abort listener; that reentrant load must observe the cleared authorities and
+every removed lease as already detached. Unselected concurrent preloads keep
+shared flights discoverable, and every later cache publication must still have a
+live preload signal and pass the per-match cache-entry identity check captured
+during planning.
 
 Development refresh is deliberately aggressive: it aborts flights, discards
 active preloads and caches, drops the committed semantic lane, and rematches
@@ -1194,8 +1204,9 @@ When changing this architecture, verify all of the following:
    create unsupported speculative work in the handoff gap.
 9. Match-id cache compatibility and route-id lifecycle identity are not mixed.
 10. Cache publication retains only the generation allowed by its planning CAS;
-    same-ID committed and cached generations invalidate together, and accepted
-    recipients are installed before replaced resources are released.
+    same-ID committed and cached generations invalidate together, affected
+    speculative owners are retired, and accepted recipients are installed before
+    replaced resources are released.
 11. The registry is the sole discovery authority for the latest same-ID flight
     started by navigation, preload, or background work. Registry joinability
     and lease ownership remain separate; donor selection happens synchronously
