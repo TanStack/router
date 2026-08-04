@@ -1615,6 +1615,37 @@ describe('buildLocation - params edge cases', () => {
     expect(currentRouteLocation.pathname).toBe('/pl')
   })
 
+  test('params.stringify should run for the matched parent of a missing route template', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postTypeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/$postType',
+      params: {
+        parse: ({ postType }: { postType: string }) =>
+          postType === 'articles' ? { postType: 'article' as const } : false,
+        stringify: ({ postType }: { postType: 'article' }) => ({
+          postType: postType === 'article' ? 'articles' : postType,
+        }),
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([postTypeRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/articles'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '/$postType/$postId/download',
+      params: { postType: 'article', postId: '1' },
+    })
+
+    expect(location.pathname).toBe('/articles/1/download')
+  })
+
   test('params.stringify should use the exact route template over path matching priority', async () => {
     const rootRoute = new BaseRootRoute({})
     const dollarRoute = new BaseRoute({
