@@ -2,7 +2,11 @@
 title: Data Mutations
 ---
 
-Since TanStack router does not store or cache data, it's role in data mutation is slim to none outside of reacting to potential URL side-effects from external mutation events. That said, we've compiled a list of mutation-related features you might find useful and libraries that implement them.
+TanStack Router caches route loader data, but it does not manage mutation or
+submission state. Its role in mutation workflows is primarily invalidating
+loader data and reacting to potential URL side effects from external mutation
+events. That said, we've compiled a list of mutation-related features you might
+find useful and libraries that implement them.
 
 Look for and use mutation utilities that support:
 
@@ -35,9 +39,14 @@ Similar to data fetching, mutation state isn't a one-size-fits-all solution, so 
 
 ## Invalidating TanStack Router after a mutation
 
-TanStack Router comes with short-term caching built-in. So even though we're not storing any data after a route match is unmounted, there is a high probability that if any mutations are made related to the data stored in the Router, the current route matches' data could become stale.
+TanStack Router comes with short-term caching built in. Loader data can remain
+cached after a route match is unmounted, so a mutation can make both active and
+cached route data stale.
 
-When mutations related to loader data are made, we can use `router.invalidate` to force the router to reload all of the current route matches:
+When mutations related to loader data are made, we can use `router.invalidate`
+to invalidate committed, cached, and in-flight loader generations. Matching
+active preload lanes are retired, and current active matches reload through the
+normal loading protocol:
 
 ```tsx
 const router = useRouter()
@@ -52,7 +61,9 @@ const addTodo = async (todo: Todo) => {
 }
 ```
 
-Invalidating all of the current route matches happens in the background, so existing data will continue to be served until the new data is ready, just as if you were navigating to a new route.
+By default, stale successful loader data revalidates in the background, so
+existing data remains visible until the new data is ready. Cached inactive
+matches remain marked stale and reload when they are reused.
 
 If you want to await the invalidation until all loaders have finished, pass `{sync: true}` into `router.invalidate`:
 

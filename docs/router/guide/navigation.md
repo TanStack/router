@@ -127,7 +127,8 @@ export type LinkOptions<
     includeSearch?: boolean
     explicitUndefined?: boolean
   }
-  // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
+  // Choose the preload strategy for this link. `false` disables preloading,
+  // while `'intent'` preloads after the user shows intent.
   preload?: false | 'intent'
   // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
   preloadDelay?: number

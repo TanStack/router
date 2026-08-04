@@ -115,14 +115,14 @@ type beforeLoad = (
     location: ParsedLocation
     navigate: NavigateFn<AnyRoute> // @deprecated
     buildLocation: BuildLocationFn<AnyRoute>
-    cause: 'enter' | 'stay'
+    cause: 'preload' | 'enter' | 'stay'
   },
 ) => Promise<TRouteContext> | TRouteContext | void
 ```
 
 - Optional
 - [`ParsedLocation`](./ParsedLocationType.md)
-- This async function is called before a route is loaded. If an error is thrown here, the route's loader will not be called and the route will not render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
+- This async function is called before a route is loaded. If it fails, the route's loader and its descendants will not run. During navigation, ordinary errors become the match's error state and are passed to the `onError` function. During a preload, ordinary errors and not-found results are represented in the returned speculative match lane instead of rejecting the `preloadRoute` promise.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TRouteContext` object, that object will be merged into the route's context and be made available in the `loader` and other related route components/methods.
 - It's common to use this function to check if a user is authenticated and redirect them to a login page if they are not. To do this, you can either return or throw a `redirect` object from this function.
@@ -159,9 +159,9 @@ type loader =
 
 - Optional
 - [`ParsedLocation`](./ParsedLocationType.md)
-- This async function is called when a route is matched and passed the route's match object. If an error is thrown here, the route will be put into an error state and the error will be thrown during render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
+- This async function is called when a route is matched and passed the route's match object. During navigation, ordinary errors become the match's error state and are passed to the `onError` function. During a preload, ordinary errors and not-found results are represented in the returned speculative match lane instead of rejecting the `preloadRoute` promise.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
-- If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
+- If this function returns a `TLoaderData` object, that object will be stored on the route match and can remain available in the in-memory cache after the match becomes inactive, according to its `gcTime`. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
 - Deps must be returned by your `loaderDeps` function in order to appear.
 - Use the object form to configure loader-specific behavior like `staleReloadMode`.
 - `staleReloadMode: 'background'` preserves stale-while-revalidate behavior for stale successful matches.
@@ -189,6 +189,13 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Optional
 - Defaults to `routerOptions.defaultStaleTime`, which defaults to `0`
 - The amount of time in milliseconds that a route match's loader data will be considered fresh. If a route match is matched again within this time frame, its loader data will not be reloaded.
+
+### `preload` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `true`
+- If `false`, speculative preloads still run this route's `beforeLoad` function but skip its `loader`. A navigation runs both `beforeLoad` and the skipped `loader` normally.
 
 ### `preloadStaleTime` property
 
@@ -266,7 +273,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `(error: any) => void`
 - Optional
 - A function that will be called when an error is thrown during a navigation or preload event.
-- If this function throws a [`redirect`](./redirectFunction.md), then the router will process and apply the redirect immediately.
+- If this function throws a [`redirect`](./redirectFunction.md) or a not-found result, that value replaces the original error and is handled within the current navigation or speculative preload lane.
 
 ### `onEnter` property
 

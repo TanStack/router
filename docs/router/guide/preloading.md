@@ -157,7 +157,12 @@ the skipped loader work.
 
 When integrating external caching libraries like React Query, which have their own mechanisms for determining stale data, you may want to override the default preloading and stale-while-revalidate logic of TanStack Router. These libraries often use options like staleTime to control the freshness of data.
 
-To customize the preloading behavior in TanStack Router and fully leverage your external library's caching strategy, you can bypass the built-in caching by setting routerOptions.defaultPreloadStaleTime or routeOptions.preloadStaleTime to 0. This ensures that all preloads are marked as stale internally, and loaders are always invoked, allowing your external library, such as React Query, to manage data loading and caching.
+To let an external cache make the freshness decision, set
+`routerOptions.defaultPreloadStaleTime` or `routeOptions.preloadStaleTime` to
+`0`. Settled preload data then becomes immediately stale in the Router, while
+retention still follows `preloadGcTime`. Overlapping preload or navigation
+consumers can still share in-flight loader work, and `shouldReload` can still
+suppress a loader call.
 
 For example:
 
@@ -207,13 +212,17 @@ function Component() {
 
   useEffect(() => {
     async function preload() {
-      try {
-        const matches = await router.preloadRoute({
-          to: postRoute,
-          params: { id: 1 },
-        })
-      } catch (err) {
-        // Failed to preload route
+      const matches = await router.preloadRoute({
+        to: postRoute,
+        params: { id: 1 },
+      })
+
+      const terminalMatch = matches?.find(
+        (match) => match.status === 'error' || match.status === 'notFound',
+      )
+
+      if (terminalMatch) {
+        // Inspect terminalMatch.error
       }
     }
 
@@ -232,13 +241,17 @@ function Component() {
 
   createEffect(() => {
     async function preload() {
-      try {
-        const matches = await router.preloadRoute({
-          to: postRoute,
-          params: { id: 1 },
-        })
-      } catch (err) {
-        // Failed to preload route
+      const matches = await router.preloadRoute({
+        to: postRoute,
+        params: { id: 1 },
+      })
+
+      const terminalMatch = matches?.find(
+        (match) => match.status === 'error' || match.status === 'notFound',
+      )
+
+      if (terminalMatch) {
+        // Inspect terminalMatch.error
       }
     }
 
