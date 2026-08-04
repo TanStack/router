@@ -150,7 +150,7 @@ Using these dependencies as keys, TanStack Router will cache the data returned f
 To control router dependencies and "freshness", TanStack Router provides a plethora of options to control the keying and caching behavior of your route loaders. Let's take a look at them in the order that you are most likely to use them:
 
 - `routeOptions.loaderDeps`
-  - A function that supplies you the search params for a router and returns an object of dependencies for use in your `loader` function. When these deps changed from navigation to navigation, it will cause the route to reload regardless of `staleTime`s. The deps are compared using a deep equality check.
+  - A deterministic, side-effect-free function that supplies you the validated search params for a router and returns a serializable object of dependencies for use in your `loader` function. When these deps change from navigation to navigation, it will cause the route to reload regardless of `staleTime`s. The deps are compared using a deep equality check.
 - `routeOptions.staleTime`
 - `routerOptions.defaultStaleTime`
   - The number of milliseconds that a route's data should be considered fresh when attempting to load.
@@ -170,7 +170,7 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 
 - By default, the `staleTime` is set to `0`, meaning that the route's data is immediately considered stale. Stale matches are reloaded in the background when the route is entered again, when its loader key changes (path params used by the route or `loaderDeps`), or when `router.load()` is called explicitly.
 - By default, a previously preloaded route is considered fresh for **30 seconds**. This means if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
-- By default, the `gcTime` is set to **30 minutes**, meaning that any route data that has not been accessed in 30 minutes will be garbage collected and removed from the cache.
+- By default, `gcTime` and `preloadGcTime` are **5 minutes**, meaning unused loader data is removed from the in-memory cache after 5 minutes. They can be configured independently.
 - By default, `staleReloadMode` is `'background'`, so stale successful matches keep rendering with their existing `loaderData` while the loader revalidates in the background.
 - `router.invalidate()` will force all active routes to reload their loaders immediately and mark every cached route's data as stale.
 
@@ -179,6 +179,11 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 Imagine a `/posts` route supports some pagination via search params `offset` and `limit`. For the cache to uniquely store this data, we need to access these search params via the `loaderDeps` function. By explicitly identifying them, each route match for `/posts` with different `offset` and `limit` won't get mixed up!
 
 Once we have these deps in place, the route will always reload when the deps change.
+
+`loaderDeps` defines a cache key during route planning. For the same validated
+search input it must return the same value without navigating or mutating state.
+The returned value and custom serialization methods such as `toJSON` must also
+be side-effect-free.
 
 ```tsx
 // /routes/posts.tsx
@@ -302,7 +307,11 @@ export const Route = createFileRoute('/posts')({
 
 ### Opting out of caching while still preloading
 
-Even though you may opt-out of short-term caching for your route data, you can still get the benefits of preloading! With the above configuration, preloading will still "just work" with the default `preloadGcTime`. This means that if a route is preloaded, then navigated to, the route's data will be considered fresh and will not be reloaded.
+Even though you may opt out of retaining ordinary route data, you can still get
+the benefits of preloading. Preloaded results use `preloadGcTime` for retention
+and `preloadStaleTime` for freshness, so the default settings keep a recent
+preload in memory and let the first navigation reuse it without another loader
+call.
 
 To opt out of preloading, don't turn it on via the `routerOptions.defaultPreload` or `routeOptions.preload` options.
 

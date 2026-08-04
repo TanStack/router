@@ -131,18 +131,16 @@ export function useLinkProps<
     { equals: (prev, next) => prev.href === next.href },
   )
 
-  const _options = () => options
-
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
     const _fromLocation = currentLocation()
-    const options = { _fromLocation, ..._options() } as any
+    const nextOptions = { _fromLocation, ...options } as any
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(options))
+    return Solid.untrack(() => router.buildLocation(nextOptions))
   })
 
   const hrefOption = Solid.createMemo(() => {
-    if (_options().disabled) return undefined
+    if (options.disabled) return undefined
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
     // Otherwise it's the origin-stripped path
@@ -173,7 +171,7 @@ export function useLinkProps<
       }
       return _href.href
     }
-    const to = _options().to
+    const to = options.to
     const safeInternal = isSafeInternal(to)
     if (safeInternal) return undefined
     if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
@@ -192,7 +190,7 @@ export function useLinkProps<
   })
 
   const preload = Solid.createMemo(() => {
-    if (_options().reloadDocument || externalLink()) {
+    if (options.reloadDocument || externalLink()) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -251,7 +249,7 @@ export function useLinkProps<
 
   const doPreload = () =>
     router
-      .preloadRoute({ ..._options(), _builtLocation: next() } as any)
+      .preloadRoute({ ...options, _builtLocation: next() } as any)
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -288,7 +286,7 @@ export function useLinkProps<
     return Solid.mergeProps(
       propsSafeToSpread,
       {
-        ref: mergeRefs(setRef, _options().ref),
+        ref: mergeRefs(setRef, options.ref),
         href: externalLink(),
       },
       Solid.splitProps(local, [
@@ -336,7 +334,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
-        ..._options(),
+        ...options,
         replace: local.replace,
         resetScroll: local.resetScroll,
         hashScrollIntoView: local.hashScrollIntoView,
@@ -425,7 +423,7 @@ export function useLinkProps<
 
     const base = {
       href: hrefOption()?.href,
-      ref: mergeRefs(setRef, _options().ref),
+      ref: mergeRefs(setRef, options.ref),
       onClick,
       onBlur,
       onFocus,

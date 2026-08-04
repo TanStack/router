@@ -18,10 +18,16 @@ Preloading in TanStack Router is a way to load a route before the user actually 
 
 ## How long does preloaded data stay in memory?
 
-Preloaded route matches are temporarily cached in memory with a few important caveats:
+Successful preloaded loader results can enter the router's in-memory cache with
+two independent lifetimes:
 
-- **Unused preloaded data is removed after 30 seconds by default.** This can be configured by setting the `defaultPreloadMaxAge` option on your router.
-- **Obviously, when a route is loaded, its preloaded version is promoted to the router's normal pending matches state.**
+- **Freshness defaults to 30 seconds.** Configure it with
+  `defaultPreloadStaleTime` or a route's `preloadStaleTime`.
+- **Unused retention defaults to 5 minutes.** Configure it with
+  `defaultPreloadGcTime` or a route's `preloadGcTime`.
+- **The speculative lane is never promoted into router state.** Navigation
+  creates its own presentation and runs its own `beforeLoad` chain. It can reuse
+  cached loader data or join a loader that is still in flight.
 
 If you need more control over preloading, caching and/or garbage collection of preloaded data, you should use an external caching library like [TanStack Query](https://tanstack.com/query).
 
@@ -87,9 +93,15 @@ const router = createRouter({
 
 You can also set the `preloadDelay` prop on individual `<Link>` components to override the default behavior on a per-link basis.
 
-## Built-in Preloading & `preloadStaleTime`
+## Built-in Preloading, Freshness, and Retention
 
-If you're using the built-in loaders, you can control how long preloaded data is considered fresh until another preload is triggered by setting either `routerOptions.defaultPreloadStaleTime` or `routeOptions.preloadStaleTime` to a number of milliseconds. **By default, preloaded data is considered fresh for 30 seconds.**.
+If you're using the built-in loaders, you can control how long preloaded data is considered fresh by setting either `routerOptions.defaultPreloadStaleTime` or `routeOptions.preloadStaleTime` to a number of milliseconds. **By default, preloaded data is considered fresh for 30 seconds.**
+
+Freshness and retention are separate. `preloadStaleTime` controls whether the
+retained loader result can be reused without another loader call.
+`preloadGcTime` (or `defaultPreloadGcTime`) controls how long an unused preload
+result can remain in the in-memory cache. Both preload GC options default to 5
+minutes.
 
 To change this, you can set the `defaultPreloadStaleTime` option on your router:
 
@@ -125,10 +137,21 @@ Or, you can use the `routeOptions.preloadStaleTime` option on individual routes:
 // src/routes/posts.$postId.tsx
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params }) => fetchPost(params.postId),
-  // Preload the route again if the preload cache is older than 10 seconds
+  // Reload preloaded data when it is more than 10 seconds old
   preloadStaleTime: 10_000,
 })
 ```
+
+Client-side preloading runs each route's `beforeLoad` with `preload: true`.
+Every later preload or navigation runs its own `beforeLoad` chain, so a
+navigation observes `preload: false` even when an identical preload is still
+active. Preloads can donate cached or in-flight loader work, but not
+`beforeLoad` context, redirects, errors, or not-found results. The
+`shouldReload` option remains loader-only.
+
+If a route has `preload: false`, its speculative lane still runs `beforeLoad`,
+but skips that route's loader. Navigation runs `beforeLoad` again and performs
+the skipped loader work.
 
 ## Preloading with External Libraries
 
@@ -168,7 +191,11 @@ This would then allow you, for instance, to use an option like React Query's `st
 
 ## Preloading Manually
 
-If you need to manually preload a route, you can use the router's `preloadRoute` method. It accepts a standard TanStack `NavigateOptions` object and returns a promise that resolves when the route is preloaded.
+If you need to manually preload a route, use the router's `preloadRoute` method.
+It accepts a standard TanStack `NavigateOptions` object and returns the
+speculative match lane. An ordinary error or not-found is represented in that
+returned lane; cancellation or control flow that produces no reusable lane can
+return `undefined`.
 
 <!-- ::start:framework -->
 

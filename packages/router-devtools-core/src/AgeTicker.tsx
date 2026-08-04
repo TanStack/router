@@ -1,6 +1,6 @@
 import { clsx as cx } from 'clsx'
 import { useStyles } from './useStyles'
-import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
+import type { AnyRoute, AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 import type { Accessor } from 'solid-js'
 
 function formatTime(ms: number) {
@@ -35,7 +35,9 @@ export function AgeTicker({
     return null
   }
 
-  const route = router().looseRoutesById[match.routeId]!
+  const route = (router().routesById as Record<string, AnyRoute>)[
+    match.routeId
+  ]!
 
   if (!route.options.loader) {
     return null

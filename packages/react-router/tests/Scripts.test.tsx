@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, test, vi } from 'vitest'
 import {
   act,
   cleanup,
@@ -9,11 +9,14 @@ import {
 } from '@testing-library/react'
 import { createPortal } from 'react-dom'
 import ReactDOMServer from 'react-dom/server'
+import { hydrate } from '@tanstack/router-core/ssr/client'
+import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 
 import {
   HeadContent,
   Link,
   Outlet,
+  RouterContextProvider,
   RouterProvider,
   createBrowserHistory,
   createMemoryHistory,
@@ -57,6 +60,7 @@ afterEach(() => {
   cleanup()
   browserHistories.splice(0).forEach((history) => history.destroy())
   window.history.replaceState(null, 'root', '/')
+  delete window.$_TSR
 })
 
 describe('ssr scripts', () => {
@@ -334,6 +338,119 @@ describe('scripts with async/defer attributes', () => {
 })
 
 describe('ssr HeadContent', () => {
+  test('renders descendant assets during a data-only hydration handoff', async () => {
+    const rootRoute = createRootRoute({})
+    const dataOnlyRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/report',
+      ssr: 'data-only',
+      loader: () => 'report',
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => dataOnlyRoute,
+      path: '/details',
+      loader: () => 'details',
+      head: () => ({
+        meta: [{ name: 'data-only-child', content: 'visible' }],
+        links: [{ rel: 'preload', href: '/data-only-head-link.js' }],
+        styles: [
+          {
+            id: 'data-only-route-style',
+            children: '.data-only-child { color: green }',
+          },
+        ],
+        scripts: [
+          {
+            id: 'data-only-head-script',
+            type: 'application/json',
+            children: '{"source":"head"}',
+          },
+        ],
+      }),
+      scripts: () => [
+        {
+          id: 'data-only-body-script',
+          type: 'application/json',
+          children: '{"source":"body"}',
+        },
+      ],
+    })
+    const router = createRouter({
+      history: createMemoryHistory({
+        initialEntries: ['/report/details'],
+      }),
+      routeTree: rootRoute.addChildren([
+        dataOnlyRoute.addChildren([childRoute]),
+      ]),
+    })
+    const matches = router.matchRoutes(router.latestLocation)
+    window.$_TSR = {
+      router: {
+        dehydratedData: {},
+        manifest: {
+          routes: {
+            [childRoute.id]: {
+              css: ['/data-only-manifest.css'],
+              preloads: ['/data-only-manifest.js'],
+              scripts: [
+                {
+                  attrs: {
+                    id: 'data-only-manifest-script',
+                    type: 'application/json',
+                  },
+                  children: '{"source":"manifest"}',
+                },
+              ],
+            },
+          },
+        },
+        matches: matches.map((match, index) => ({
+          i: dehydrateSsrMatchId(match.id),
+          s: 'success',
+          ssr: index === 1 ? 'data-only' : true,
+          l: index ? (index === 1 ? 'report' : 'details') : undefined,
+          u: Date.now(),
+        })),
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+    }
+
+    await hydrate(router)
+
+    expect(router.state.matches.map((match) => match.status)).toEqual([
+      'success',
+      'pending',
+      'success',
+    ])
+    render(
+      <RouterContextProvider router={router}>
+        <HeadContent />
+        <Scripts />
+      </RouterContextProvider>,
+    )
+
+    expect(
+      document.querySelector('meta[name="data-only-child"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('link[href="/data-only-head-link.js"]'),
+    ).not.toBeNull()
+    expect(document.querySelector('#data-only-route-style')).not.toBeNull()
+    expect(document.querySelector('#data-only-head-script')).not.toBeNull()
+    expect(document.querySelector('#data-only-body-script')).not.toBeNull()
+    expect(
+      document.querySelector('link[href="/data-only-manifest.css"]'),
+    ).not.toBeNull()
+    expect(
+      document.querySelector('link[href="/data-only-manifest.js"]'),
+    ).not.toBeNull()
+    expect(document.querySelector('#data-only-manifest-script')).not.toBeNull()
+  })
+
   test('derives title, dedupes meta, and allows non-loader HeadContent', async () => {
     const rootRoute = createRootRoute({
       loader: () =>
@@ -835,6 +952,130 @@ describe('ssr HeadContent', () => {
         (link) => link.getAttribute('href') === stylesheetHref,
       ),
     ).toHaveLength(1)
+  })
+
+  test('does not render retained descendant assets past a terminal parent boundary', async () => {
+    let failParent = false
+    const childHeadScript = '{"source":"child-head"}'
+    const childBodyScript = '{"source":"child-body"}'
+    const childManifestScript = '{"source":"child-manifest"}'
+    const childPreload = '/terminal-child-preload.js'
+    const childHeadLink = '/terminal-child-head-link.js'
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          {createPortal(<HeadContent />, document.head)}
+          <Outlet />
+          <Scripts />
+        </>
+      ),
+    })
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      shouldReload: true,
+      loader: () => {
+        if (failParent) {
+          throw new Error('parent failed')
+        }
+      },
+      component: Outlet,
+      errorComponent: () => <div>Parent error</div>,
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      head: () => ({
+        meta: [{ name: 'terminal-child', content: 'visible' }],
+        links: [{ rel: 'preload', href: childHeadLink }],
+        styles: [{ children: '.terminal-child { color: red }' }],
+        scripts: [{ type: 'application/ld+json', children: childHeadScript }],
+      }),
+      scripts: () => [
+        { type: 'application/ld+json', children: childBodyScript },
+      ],
+      component: () => <div>Child content</div>,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+    })
+    router.ssr = {
+      manifest: {
+        routes: {
+          [childRoute.id]: {
+            preloads: [childPreload],
+            scripts: [
+              {
+                attrs: { type: 'application/ld+json' },
+                children: childManifestScript,
+              },
+            ],
+          },
+        },
+      },
+    }
+
+    await router.load()
+    await act(() => render(<RouterProvider router={router} />))
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('meta[name="terminal-child"]'),
+      ).not.toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childPreload}"]`),
+      ).not.toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childHeadLink}"]`),
+      ).not.toBeNull()
+      expect(document.head.textContent).toContain(
+        '.terminal-child { color: red }',
+      )
+      expect(document.documentElement.textContent).toContain(childHeadScript)
+      expect(document.documentElement.textContent).toContain(childBodyScript)
+      expect(document.documentElement.textContent).toContain(
+        childManifestScript,
+      )
+    })
+
+    failParent = true
+    await act(() => router.invalidate())
+    await screen.findByText('Parent error')
+
+    expect(router.state.matches).toHaveLength(3)
+    expect(router.state.matches[1]).toMatchObject({
+      routeId: parentRoute.id,
+      status: 'error',
+    })
+    expect(router.state.matches[2]).toMatchObject({
+      routeId: childRoute.id,
+      meta: [{ name: 'terminal-child', content: 'visible' }],
+      scripts: [{ type: 'application/ld+json', children: childBodyScript }],
+    })
+    await waitFor(() => {
+      expect(
+        document.head.querySelector('meta[name="terminal-child"]'),
+      ).toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childPreload}"]`),
+      ).toBeNull()
+      expect(
+        document.head.querySelector(`link[href="${childHeadLink}"]`),
+      ).toBeNull()
+      expect(document.head.textContent).not.toContain(
+        '.terminal-child { color: red }',
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childHeadScript,
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childBodyScript,
+      )
+      expect(document.documentElement.textContent).not.toContain(
+        childManifestScript,
+      )
+    })
   })
 })
 
