@@ -1,8 +1,8 @@
 ---
-'@tanstack/router-core': minor
-'@tanstack/react-router': minor
-'@tanstack/solid-router': minor
-'@tanstack/vue-router': minor
+'@tanstack/router-core': patch
+'@tanstack/react-router': patch
+'@tanstack/solid-router': patch
+'@tanstack/vue-router': patch
 '@tanstack/router-devtools-core': patch
 ---
 
@@ -12,7 +12,7 @@ Rewrite match loading around a lane-based scheduler that tracks each navigation,
 - Route `headers()` now only runs on the server, matching the documented behavior — it is no longer invoked during client-side asset projection.
 - The documented default `gcTime` and `preloadGcTime` now match the existing runtime default of 5 minutes (`300_000`).
 
-**Removed / changed public API**
+**Removed / changed exported internals**
 
 - `RouterState` no longer includes `loadedAt`, `isTransitioning`, `statusCode`, or `redirect`. Use `match.updatedAt` in place of `loadedAt`; subscribe to `router.state.status` / `router.state.isLoading` in place of `isTransitioning`; server response status and redirect handling are now internal to the server loader and are no longer exposed on `router.state`.
 - `RouteMatch.fetchCount` has been removed, with no replacement — it was purely informational.
