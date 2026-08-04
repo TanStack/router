@@ -708,7 +708,14 @@ const link = (
 
 ### Link Preloading
 
-The `Link` component supports automatically preloading routes on intent (hovering or touchstart for now). This can be configured as a default in the router options (which we'll talk more about soon) or by passing a `preload='intent'` prop to the `Link` component. Here's an example:
+The `Link` component supports four `preload` values:
+
+- `false` disables automatic preloading.
+- `'intent'` preloads when the link receives focus, is hovered, or is touched.
+- `'viewport'` preloads when the link enters the viewport.
+- `'render'` preloads as soon as the link renders.
+
+This can be configured as a default in the router options (which we'll talk more about soon) or by passing the `preload` prop to the `Link` component. Here's an intent-preloading example:
 
 ```tsx
 const link = (
@@ -724,7 +731,7 @@ What's even better is that by using a cache-first library like `@tanstack/query`
 
 ### Link Preloading Delay
 
-Along with preloading is a configurable delay which determines how long a user must hover over a link to trigger the intent-based preloading. The default delay is 50 milliseconds, but you can change this by passing a `preloadDelay` prop to the `Link` component with the number of milliseconds you'd like to wait:
+For `'intent'` preloading, a configurable delay determines how long a link must remain focused or hovered before preloading begins. If focus or hover ends before the delay, the queued preload is cancelled. Touch intent preloads immediately without waiting for the delay. The default delay is 50 milliseconds, but you can change it by passing a `preloadDelay` prop to the `Link` component:
 
 ```tsx
 const link = (
