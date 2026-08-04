@@ -438,8 +438,16 @@ export function createBrowserHistory(opts?: {
             action,
           })
           if (isBlocked) {
+            // The browser has already traversed. Without a usable delta, the
+            // previous entry cannot be restored without guessing a direction.
+            // Accept the traversal instead of calling go(0), which reloads.
+            if (!Number.isSafeInteger(delta) || delta === 0) {
+              currentLocation = nextLocation
+              history.notify(notify)
+              return
+            }
             ignoreNextPop = true
-            win.history.go(1)
+            win.history.go(-delta)
             history.notify(notify)
             return
           }
