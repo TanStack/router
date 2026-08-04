@@ -91,7 +91,15 @@ export const Match = (props: { matchId: string }) => {
             ? resolvedNoSsr
             : currentMatchState().ssr === 'data-only'
 
-        const ResolvedSuspenseBoundary = () => Solid.Suspense
+        const ResolvedSuspenseBoundary = () =>
+          route().options.wrapInSuspense === false
+            ? SafeFragment
+            : (route().options.wrapInSuspense ??
+                (resolvePendingComponent() ||
+                  (route().options.errorComponent as any)?.preload ||
+                  resolvedNoSsr))
+              ? Solid.Suspense
+              : SafeFragment
 
         const ResolvedCatchBoundary = () =>
           routeErrorComponent() ? CatchBoundary : SafeFragment
