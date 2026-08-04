@@ -35,7 +35,7 @@ describe('cached matches', () => {
     vi.useRealTimers()
   })
 
-  it('refreshes when an existing cache entry is replaced', async () => {
+  it('uses the default gc time and refreshes replaced cache entries', async () => {
     vi.useFakeTimers()
 
     const route = {
@@ -88,6 +88,7 @@ describe('cached matches', () => {
         ),
       ).not.toBeNull()
     })
+    expect(container.textContent).toContain('5min')
 
     const cachedMatch = container.querySelector(
       '[aria-label="Open match details for cached-match"]',

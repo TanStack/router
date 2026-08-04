@@ -47,7 +47,7 @@ export function AgeTicker({
   const staleTime =
     route.options.staleTime ?? router().options.defaultStaleTime ?? 0
   const gcTime =
-    route.options.gcTime ?? router().options.defaultGcTime ?? 30 * 60 * 1000
+    route.options.gcTime ?? router().options.defaultGcTime ?? 300_000
 
   return (
     <div class={cx(styles().ageTicker(age > staleTime))}>
