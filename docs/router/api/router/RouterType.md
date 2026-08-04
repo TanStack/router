@@ -165,12 +165,16 @@ Loads all of the currently matched route matches and resolves when they are all 
 Preloads all of the matches that match the provided `NavigateOptions`.
 
 An active preload is speculative and is not published as the current match
-presentation. Successful loader data can enter the normal in-memory route cache
-and remain reusable according to `preloadStaleTime` and `preloadGcTime`.
+presentation. Successful loader data can enter the normal in-memory route
+cache. Its freshness follows `preloadStaleTime`; once unused and older than
+`preloadGcTime`, it is eligible for pruning during a later cache
+reconciliation.
 
-Every preload and navigation runs its own `beforeLoad` chain. Preloads can
-donate cached or in-flight loader work, but never `beforeLoad` context or
-control flow.
+Every preload and navigation runs its own `beforeLoad` chain. A later lane can
+reuse successful settled loader data or join loader work that is still in
+flight, but it never reuses `beforeLoad` context or an already-settled
+redirect, error, or not-found result. If joined loader work later produces a
+terminal outcome, all current consumers of that flight observe it.
 
 - Type: `(opts: NavigateOptions) => Promise<RouteMatch[] | undefined>`
 - Properties

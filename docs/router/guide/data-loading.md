@@ -81,7 +81,7 @@ Use the object form when you want to configure loader-specific behavior such as 
 
 The `loader` function receives a single object with the following properties:
 
-- `abortController` - The route's abortController. Its signal is cancelled when the route is unloaded or when the Route is no longer relevant and the current invocation of the `loader` function becomes outdated.
+- `abortController` - The controller for this shareable loader invocation. A preload and navigation can share the same in-flight loader work. Its signal is cancelled after the invocation becomes outdated and no consumer still needs it.
 - `cause` - The cause of the current route match. Can be either one of the following:
   - `enter` - When the route is matched and loaded after not being matched in the previous location.
   - `preload` - When the route is being preloaded.
@@ -168,11 +168,11 @@ To control router dependencies and "freshness", TanStack Router provides a pleth
 
 ### ⚠️ Some Important Defaults
 
-- By default, the `staleTime` is set to `0`, meaning that the route's data is immediately considered stale. Stale matches are reloaded in the background when the route is entered again, when its loader key changes (path params used by the route or `loaderDeps`), or when `router.load()` is called explicitly.
-- By default, a previously preloaded route is considered fresh for **30 seconds**. This means if a route is preloaded, then preloaded again within 30 seconds, the second preload will be ignored. This prevents unnecessary preloads from happening too frequently. **When a route is loaded normally, the standard `staleTime` is used.**
-- By default, `gcTime` and `preloadGcTime` are **5 minutes**, meaning unused loader data is removed from the in-memory cache after 5 minutes. They can be configured independently.
+- By default, `staleTime` is set to `0`, so reusable successful data is immediately considered stale. When the same loader key is entered again or `router.load()` is called explicitly, stale data revalidates in the background by default. A different loader key identifies a separate cache entry and must load if it has no reusable data.
+- By default, loader data produced by a preload is considered fresh for **30 seconds**. Every preload and navigation still runs its own `beforeLoad` chain, but a later preload and the first navigation can reuse the preload's loader data or in-flight loader work during that interval. After navigation accepts that loader generation, subsequent freshness checks use the standard `staleTime`.
+- By default, `gcTime` and `preloadGcTime` define **5-minute** retention windows. Once unused data is older than its applicable window, it is eligible for pruning during a later cache reconciliation. The two windows can be configured independently.
 - By default, `staleReloadMode` is `'background'`, so stale successful matches keep rendering with their existing `loaderData` while the loader revalidates in the background.
-- `router.invalidate()` will force all active routes to reload their loaders immediately and mark every cached route's data as stale.
+- `router.invalidate()` selects matching committed, cached, and in-flight loader generations for invalidation and retires matching active preload lanes. Current active routes reload through the normal loading protocol; cached inactive data remains marked stale and reloads when it is reused. By default, stale successful loader data revalidates in the background unless `sync: true` is requested.
 
 ### Using `loaderDeps` to access search params
 
@@ -221,7 +221,13 @@ export const Route = createFileRoute('/posts')({
 
 ### Using `staleTime` to control how long data is considered fresh
 
-By default, `staleTime` for navigations is set to `0`ms (and 30 seconds for preloads) which means that the route's data will always be considered stale. When a stale route is entered again, its loader key changes, or `router.load()` is called explicitly, the route will reload in the background.
+By default, `staleTime` for accepted navigation data is `0`ms, while
+`preloadStaleTime` is 30 seconds. A successful preload can therefore provide
+loader data to the first navigation during that interval. Once navigation
+accepts that loader generation, normal navigation freshness applies. With the
+default `staleTime`, the data is immediately stale for a later use of the same
+loader key and revalidates in the background while cached data remains visible.
+A different loader key identifies a separate cache entry.
 
 **This is a good default for most use cases, but you may find that some route data is more static or potentially expensive to load.** In these cases, you can use the `staleTime` option to control how long the route's data is considered fresh for navigations. Let's take a look at an example:
 
@@ -313,7 +319,10 @@ and `preloadStaleTime` for freshness, so the default settings keep a recent
 preload in memory and let the first navigation reuse it without another loader
 call.
 
-To opt out of preloading, don't turn it on via the `routerOptions.defaultPreload` or `routeOptions.preload` options.
+Use `routerOptions.defaultPreload` to control automatic link preloading. Setting
+`routeOptions.preload` to `false` has a narrower effect: a speculative lane
+still runs that route's `beforeLoad`, but skips its `loader`. Navigation runs
+both normally.
 
 ## Passing all loader events to an external cache
 
@@ -326,7 +335,11 @@ const router = createRouter({
 })
 ```
 
-This will ensure that every preload, load, and reload event will trigger your `loader` functions, which can then be handled and deduped by your external cache.
+This makes settled preload data immediately stale in the Router, allowing your
+external cache to decide whether to fetch. Retention still follows
+`preloadGcTime`, and overlapping preload or navigation consumers can still
+share in-flight loader work. A route's `shouldReload` option can also suppress
+a loader call.
 
 ## Using Router Context
 
@@ -481,7 +494,7 @@ export const Route = createFileRoute('/posts')({
 
 ## Using the Abort Signal
 
-The `abortController` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController). Its signal is cancelled when the route is unloaded or when the `loader` call becomes outdated. This is useful for cancelling network requests when the route is unloaded or when the route's params change. Here is an example using it with a fetch call:
+The `abortController` property of the `loader` function is an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController) for that loader invocation. A preload and navigation can share an in-flight invocation, so its signal remains active while any consumer still needs the work. The signal is cancelled after the invocation becomes outdated and has no remaining consumers. Here is an example using it with a fetch call:
 
 ```tsx
 // src/routes/posts.tsx

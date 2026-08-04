@@ -19,12 +19,13 @@ Preloading in TanStack Router is a way to load a route before the user actually 
 ## How long does preloaded data stay in memory?
 
 Successful preloaded loader results can enter the router's in-memory cache with
-two independent lifetimes:
+two independent policies:
 
 - **Freshness defaults to 30 seconds.** Configure it with
   `defaultPreloadStaleTime` or a route's `preloadStaleTime`.
-- **Unused retention defaults to 5 minutes.** Configure it with
-  `defaultPreloadGcTime` or a route's `preloadGcTime`.
+- **The unused retention window defaults to 5 minutes.** Configure it with
+  `defaultPreloadGcTime` or a route's `preloadGcTime`. Older unused entries
+  are eligible for pruning during a later cache reconciliation.
 - **The speculative lane is never promoted into router state.** Navigation
   creates its own presentation and runs its own `beforeLoad` chain. It can reuse
   cached loader data or join a loader that is still in flight.
@@ -99,9 +100,10 @@ If you're using the built-in loaders, you can control how long preloaded data is
 
 Freshness and retention are separate. `preloadStaleTime` controls whether the
 retained loader result can be reused without another loader call.
-`preloadGcTime` (or `defaultPreloadGcTime`) controls how long an unused preload
-result can remain in the in-memory cache. Both preload GC options default to 5
-minutes.
+`preloadGcTime` (or `defaultPreloadGcTime`) controls when an unused preload
+result becomes eligible for pruning during a later cache reconciliation; it
+does not schedule a timer to evict the result at that exact moment. Both preload
+GC options default to 5 minutes.
 
 To change this, you can set the `defaultPreloadStaleTime` option on your router:
 
@@ -145,9 +147,11 @@ export const Route = createFileRoute('/posts/$postId')({
 Client-side preloading runs each route's `beforeLoad` with `preload: true`.
 Every later preload or navigation runs its own `beforeLoad` chain, so a
 navigation observes `preload: false` even when an identical preload is still
-active. Preloads can donate cached or in-flight loader work, but not
-`beforeLoad` context, redirects, errors, or not-found results. The
-`shouldReload` option remains loader-only.
+active. A later lane can reuse successful settled loader data or join loader
+work that is still in flight, but it never reuses `beforeLoad` context or an
+already-settled redirect, error, or not-found result. If joined loader work
+later produces a terminal outcome, all current consumers of that flight observe
+it. The `shouldReload` option remains loader-only.
 
 If a route has `preload: false`, its speculative lane still runs `beforeLoad`,
 but skips that route's loader. Navigation runs `beforeLoad` again and performs
@@ -157,7 +161,12 @@ the skipped loader work.
 
 When integrating external caching libraries like React Query, which have their own mechanisms for determining stale data, you may want to override the default preloading and stale-while-revalidate logic of TanStack Router. These libraries often use options like staleTime to control the freshness of data.
 
-To customize the preloading behavior in TanStack Router and fully leverage your external library's caching strategy, you can bypass the built-in caching by setting routerOptions.defaultPreloadStaleTime or routeOptions.preloadStaleTime to 0. This ensures that all preloads are marked as stale internally, and loaders are always invoked, allowing your external library, such as React Query, to manage data loading and caching.
+To let an external cache make the freshness decision, set
+`routerOptions.defaultPreloadStaleTime` or `routeOptions.preloadStaleTime` to
+`0`. Settled preload data then becomes immediately stale in the Router, while
+retention still follows `preloadGcTime`. Overlapping preload or navigation
+consumers can still share in-flight loader work, and `shouldReload` can still
+suppress a loader call.
 
 For example:
 
@@ -193,27 +202,36 @@ This would then allow you, for instance, to use an option like React Query's `st
 
 If you need to manually preload a route, use the router's `preloadRoute` method.
 It accepts a standard TanStack `NavigateOptions` object and returns the
-speculative match lane. An ordinary error or not-found is represented in that
-returned lane; cancellation or control flow that produces no reusable lane can
-return `undefined`.
+speculative match lane. An ordinary error or not-found thrown while loading is
+represented in that returned lane; cancellation or control flow that produces
+no reusable lane can return `undefined`.
 
 <!-- ::start:framework -->
 
 # React
 
 ```tsx
+import { isNotFound } from '@tanstack/react-router'
+
 function Component() {
   const router = useRouter()
 
   useEffect(() => {
     async function preload() {
-      try {
-        const matches = await router.preloadRoute({
-          to: postRoute,
-          params: { id: 1 },
-        })
-      } catch (err) {
-        // Failed to preload route
+      const matches = await router.preloadRoute({
+        to: postRoute,
+        params: { id: 1 },
+      })
+
+      const routeFailure = matches?.find(
+        (match) =>
+          match.status === 'error' ||
+          match.status === 'notFound' ||
+          isNotFound(match.error),
+      )
+
+      if (routeFailure) {
+        // Inspect routeFailure.error
       }
     }
 
@@ -227,18 +245,27 @@ function Component() {
 # Solid
 
 ```tsx
+import { isNotFound } from '@tanstack/solid-router'
+
 function Component() {
   const router = useRouter()
 
   createEffect(() => {
     async function preload() {
-      try {
-        const matches = await router.preloadRoute({
-          to: postRoute,
-          params: { id: 1 },
-        })
-      } catch (err) {
-        // Failed to preload route
+      const matches = await router.preloadRoute({
+        to: postRoute,
+        params: { id: 1 },
+      })
+
+      const routeFailure = matches?.find(
+        (match) =>
+          match.status === 'error' ||
+          match.status === 'notFound' ||
+          isNotFound(match.error),
+      )
+
+      if (routeFailure) {
+        // Inspect routeFailure.error
       }
     }
 
