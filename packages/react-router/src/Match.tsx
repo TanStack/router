@@ -378,7 +378,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         ErrorComponent
       return (
         <RouteErrorComponent
-          error={match.error as any}
+          error={match.error}
           reset={undefined as any}
           info={{
             componentStack: '',
@@ -507,7 +507,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         ErrorComponent
       return (
         <RouteErrorComponent
-          error={match.error as any}
+          error={match.error}
           reset={undefined as any}
           info={{
             componentStack: '',

@@ -11,8 +11,21 @@ The `ErrorComponent` component accepts the following props:
 
 ### `props.error` prop
 
-- Type: `TError` (defaults to `Error`)
+- Type: `unknown`
 - The error that was thrown by the component's children
+
+  Anything can be thrown in JavaScript, and route loading and rendering code is
+  no exception — a `loader` may `throw 'oops'` or throw a rich domain object
+  instead of an `Error`. The prop is therefore typed as `unknown`, and error
+  components must narrow the value before accessing error-specific properties:
+
+  ```tsx
+  errorComponent: ({ error }) => {
+    const message = error instanceof Error ? error.message : String(error)
+
+    return <div>{message}</div>
+  }
+  ```
 
 ### `props.info` prop
 
