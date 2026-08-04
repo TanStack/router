@@ -127,10 +127,10 @@ export type LinkOptions<
     includeSearch?: boolean
     explicitUndefined?: boolean
   }
-  // Choose the preload strategy for this link. `false` disables preloading,
-  // while `'intent'` preloads after the user shows intent.
-  preload?: false | 'intent'
-  // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
+  // Choose the preload strategy for this link. `false` disables preloading;
+  // `'intent'`, `'viewport'`, and `'render'` select when it begins.
+  preload?: false | 'intent' | 'viewport' | 'render'
+  // Delay focus/hover intent by this many milliseconds. Touch intent preloads immediately.
   preloadDelay?: number
   // If true, will render the link without the href attribute
   disabled?: boolean

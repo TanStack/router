@@ -45,8 +45,8 @@ cached route data stale.
 
 When mutations related to loader data are made, we can use `router.invalidate`
 to invalidate committed, cached, and in-flight loader generations. Matching
-active preload lanes are retired, and current active matches reload through the
-normal loading protocol:
+active preload lanes are retired, and selected current active matches reload
+through the normal loading protocol:
 
 ```tsx
 const router = useRouter()

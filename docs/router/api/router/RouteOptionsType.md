@@ -161,7 +161,7 @@ type loader =
 - [`ParsedLocation`](./ParsedLocationType.md)
 - This async function is called when a route is matched and passed the route's match object. During navigation, ordinary errors become the match's error state and are passed to the `onError` function. During a preload, ordinary errors and not-found results are represented in the returned speculative match lane instead of rejecting the `preloadRoute` promise.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
-- If this function returns a `TLoaderData` object, that object will be stored on the route match and can remain available in the in-memory cache after the match becomes inactive, according to its `gcTime`. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
+- If this function returns a `TLoaderData` object, that object will be stored on the route match and can remain available in the in-memory cache after the match becomes inactive. Navigation-owned data uses `gcTime` for retention, while preload-owned data uses `preloadGcTime`. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
 - Deps must be returned by your `loaderDeps` function in order to appear.
 - Use the object form to configure loader-specific behavior like `staleReloadMode`.
 - `staleReloadMode: 'background'` preserves stale-while-revalidate behavior for stale successful matches.
@@ -209,7 +209,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `number`
 - Optional
 - Defaults to `routerOptions.defaultGcTime`, which defaults to 5 minutes.
-- The amount of time in milliseconds that loader data from an ordinary load will be kept in memory after it is no longer in use.
+- The retention window in milliseconds for unused loader data from an ordinary load. Once the data is older than this value, it is eligible for pruning during a later cache reconciliation.
 
 ### `shouldReload` property
 
@@ -250,7 +250,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `number`
 - Optional
 - Defaults to `routerOptions.defaultPreloadGcTime`, which defaults to 5 minutes.
-- The amount of time in milliseconds that loader data produced by a preload can remain in memory while it is not in use. This controls retention; use `preloadStaleTime` to control whether retained data is fresh enough to reuse without reloading.
+- The retention window in milliseconds for unused loader data produced by a preload. Once the data is older than this value, it is eligible for pruning during a later cache reconciliation. Use `preloadStaleTime` to control whether retained data is fresh enough to reuse without reloading.
 
 ### `preSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)
 
@@ -273,7 +273,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `(error: any) => void`
 - Optional
 - A function that will be called when an error is thrown during a navigation or preload event.
-- If this function throws a [`redirect`](./redirectFunction.md) or a not-found result, that value replaces the original error and is handled within the current navigation or speculative preload lane.
+- If this function throws a [`redirect`](./redirectFunction.md), the redirect replaces the original error and becomes control flow for the current navigation or preload operation. If it throws a not-found result, that result replaces the original error in the current match lane.
 
 ### `onEnter` property
 
