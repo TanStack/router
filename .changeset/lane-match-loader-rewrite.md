@@ -19,14 +19,14 @@ Rewrite match loading around a lane-based scheduler that tracks each navigation,
 - `RouteMatch.status` no longer includes `'redirected'` (it remains `'pending' | 'success' | 'error' | 'notFound'`) — redirected matches are dropped from the match list instead of being rendered.
 - `RouteMatch.globalNotFound` has been renamed and privatized to the internal `_notFound` field. Use `match.status === 'notFound'` instead.
 - The exported React, Solid, and Vue `Match` components now accept `routeId` instead of `matchId`.
-- The exported `RouterStores` adapter contract now uses route-keyed presentation stores: `matchesId` is replaced by `ids`, `matchStores` by `byRoute`, and `getRouteMatchStore()` by `getMatchStore()`. The separate loaded/loading/transition, status/redirect, pending, and cache stores and setters have been removed, as has `StoreConfig.init`. Read application-facing state from `router.state`; preload and cache coordination are now internal.
+- The exported `RouterStores` adapter contract now uses route-keyed presentation stores: `matchesId` is replaced by `ids`, `matchStores` by `byRoute`, and `getRouteMatchStore()` by `getMatchStore()`. The separate `loadedAt`, `isLoading`, `isTransitioning`, `statusCode`, and `redirect` stores have been removed, along with the pending/cache stores and their setters. `StoreConfig.init` has also been removed. Read application-facing state from `router.state`; preload and cache coordination are now internal.
 - Removed `RouterCore` members `getMatch()`, `updateMatch()`, `cancelMatch()`, and `cancelMatches()` — read matches from `router.state.matches` (e.g. `router.state.matches.find((m) => m.id === id)`); there is no replacement for mutating or cancelling an individual in-flight match from outside the router.
-- Removed `hasNotFoundMatch()` — use `router.state.matches.some((m) => m.status === 'notFound')`.
-- Removed `looseRoutesById` — use `routesById`.
-- Removed `isPrerendering()`, `isViewTransitionTypesSupported`, and `viewTransitionPromise`, with no replacement.
-- Removed `getParsedLocationHref()` and `clearExpiredCache()`, with no replacement — expired cache entries are now reconciled automatically as part of match commit.
-- Removed `latestLoadPromise` and `beforeLoad()`, with no replacement.
-- `commitLocationPromise` and `pendingBuiltLocation` are now private (`_commitPromise`, `_pendingLocation`) and no longer part of the public `RouterCore` surface.
+- Removed `RouterCore.hasNotFoundMatch()` — use `router.state.matches.some((m) => m.status === 'notFound')`.
+- Removed `RouterCore.looseRoutesById` — use `routesById`.
+- Removed `RouterCore.isPrerendering()`, `RouterCore.isViewTransitionTypesSupported`, and `RouterCore.viewTransitionPromise`, with no replacement.
+- Removed `RouterCore.getParsedLocationHref()` and `RouterCore.clearExpiredCache()`, with no replacement — expired cache entries are now reconciled automatically as part of match commit.
+- Removed `RouterCore.latestLoadPromise` and `RouterCore.beforeLoad()`, with no replacement.
+- `RouterCore.commitLocationPromise` and `RouterCore.pendingBuiltLocation` have been replaced by the internal `_commitPromise` and `_pendingLocation` fields.
 - Removed the exported `GetMatchFn` and `UpdateMatchFn` types, along with the methods they typed.
 - Removed the standalone `getMatchedRoutes()` export from `@tanstack/router-core` — use the `router.getMatchedRoutes()` instance method instead.
 - `RouterCore.loadRouteChunk()` no longer accepts an array of component types as its second argument. One-argument usage is unchanged; the optional second argument is now `'errorComponent'`, `'notFoundComponent'`, or `false` for internal boundary loading.
