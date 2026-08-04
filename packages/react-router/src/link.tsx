@@ -33,13 +33,6 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-/**
- * The location-derived slice of a link that the rendered output depends on.
- *
- * Kept to comparable primitives on purpose: it is published through
- * `useStore`, and `compareLinkState` is what stops a navigation re-rendering
- * every link on the page.
- */
 interface LinkState {
   href: string | undefined
   externalLink: string | undefined
@@ -54,10 +47,6 @@ function compareLinkState(a: LinkState, b: LinkState) {
   )
 }
 
-/**
- * Resolves the absolute URL a link points at, or `undefined` when it is
- * internal. Also the gate for dangerous protocols.
- */
 function resolveExternalLink(
   hrefOption: { href: string; external?: boolean } | undefined,
   to: unknown,
@@ -73,8 +62,12 @@ function resolveExternalLink(
     }
     return hrefOption.href
   }
-  if (isSafeInternal(to)) return undefined
-  if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
+  if (isSafeInternal(to)) {
+    return undefined
+  }
+  if (typeof to !== 'string' || to.indexOf(':') === -1) {
+    return undefined
+  }
   try {
     new URL(to as any)
     // Block dangerous protocols like javascript:, blob:, data:
@@ -89,7 +82,6 @@ function resolveExternalLink(
   return undefined
 }
 
-/** Whether `next` is the location currently being viewed. */
 function resolveIsActive(
   location: ParsedLocation,
   next: ParsedLocation,
@@ -98,7 +90,9 @@ function resolveIsActive(
   isHydrated: boolean,
   isExternal: boolean,
 ): boolean {
-  if (isExternal) return false
+  if (isExternal) {
+    return false
+  }
   if (activeOptions?.exact) {
     const testExact = exactPathTest(location.pathname, next.pathname, basepath)
     if (!testExact) {
@@ -509,14 +503,9 @@ export function useLinkProps<
     includeSearch: activeIncludeSearch,
   } = activeOptions ?? {}
 
-  // Everything the rendered output derives from the location is computed inside
-  // the selector, so `compareLinkState` can suppress the re-render when none of
-  // it changed.
-  //
-  // Deriving these *after* subscribing to the whole location meant every Link on
-  // the page re-rendered on every navigation: the comparator could only ask "is
-  // this a different URL?", never "does this link care?". For all but the few
-  // links involved in a navigation, `href` and the active state are unchanged.
+  // Derive inside the selector so `compareLinkState` can bail out. Deriving after
+  // the subscription instead re-renders every link on every navigation, because
+  // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const selectLinkState = React.useCallback(
     (location: ParsedLocation): LinkState => {
@@ -560,9 +549,8 @@ export function useLinkProps<
         ),
       }
     },
-    // `activeOptions` is spread into primitives above rather than listed whole:
-    // callers routinely pass an inline object literal, and depending on its
-    // identity would rebuild this selector on every render.
+    // Spread into primitives: `activeOptions` is routinely an inline object
+    // literal, so depending on it directly rebuilds the selector every render.
     [
       activeExact,
       activeExplicitUndefined,
@@ -624,9 +612,8 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
-    // No `_builtLocation`: the built location is no longer kept in render state,
-    // and `preloadRoute` builds it itself (`opts._builtLocation ?? buildLocation`).
-    // This matches `handleClick`, which has always let `router.navigate` build it.
+    // `preloadRoute` builds the location itself; it is no longer held in render
+    // state. Matches `handleClick`, which lets `router.navigate` build its own.
     router.preloadRoute({ ..._options } as any).catch((err) => {
       console.warn(err)
       console.warn(preloadWarning)
