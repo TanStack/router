@@ -19,9 +19,11 @@ import { useForwardedRef, useIntersectionObserver } from './utils'
 
 import { useHydrated } from './ClientOnly'
 import type {
+  ActiveOptions,
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -30,6 +32,107 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+
+/**
+ * The location-derived slice of a link that the rendered output depends on.
+ *
+ * Kept to comparable primitives on purpose: it is published through
+ * `useStore`, and `compareLinkState` is what stops a navigation re-rendering
+ * every link on the page.
+ */
+interface LinkState {
+  href: string | undefined
+  externalLink: string | undefined
+  isActive: boolean
+}
+
+function compareLinkState(a: LinkState, b: LinkState) {
+  return (
+    a.href === b.href &&
+    a.externalLink === b.externalLink &&
+    a.isActive === b.isActive
+  )
+}
+
+/**
+ * Resolves the absolute URL a link points at, or `undefined` when it is
+ * internal. Also the gate for dangerous protocols.
+ */
+function resolveExternalLink(
+  hrefOption: { href: string; external?: boolean } | undefined,
+  to: unknown,
+  protocolAllowlist: AnyRouter['protocolAllowlist'],
+): string | undefined {
+  if (hrefOption?.external) {
+    // Block dangerous protocols for external links
+    if (isDangerousProtocol(hrefOption.href, protocolAllowlist)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${hrefOption.href}`)
+      }
+      return undefined
+    }
+    return hrefOption.href
+  }
+  if (isSafeInternal(to)) return undefined
+  if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
+  try {
+    new URL(to as any)
+    // Block dangerous protocols like javascript:, blob:, data:
+    if (isDangerousProtocol(to, protocolAllowlist)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${to}`)
+      }
+      return undefined
+    }
+    return to
+  } catch {}
+  return undefined
+}
+
+/** Whether `next` is the location currently being viewed. */
+function resolveIsActive(
+  location: ParsedLocation,
+  next: ParsedLocation,
+  activeOptions: ActiveOptions | undefined,
+  basepath: string,
+  isHydrated: boolean,
+  isExternal: boolean,
+): boolean {
+  if (isExternal) return false
+  if (activeOptions?.exact) {
+    const testExact = exactPathTest(location.pathname, next.pathname, basepath)
+    if (!testExact) {
+      return false
+    }
+  } else {
+    const currentPathSplit = removeTrailingSlash(location.pathname, basepath)
+    const nextPathSplit = removeTrailingSlash(next.pathname, basepath)
+
+    const pathIsFuzzyEqual =
+      currentPathSplit.startsWith(nextPathSplit) &&
+      (currentPathSplit.length === nextPathSplit.length ||
+        currentPathSplit[nextPathSplit.length] === '/')
+
+    if (!pathIsFuzzyEqual) {
+      return false
+    }
+  }
+
+  if (activeOptions?.includeSearch ?? true) {
+    const searchTest = deepEqual(location.search, next.search, {
+      partial: !activeOptions?.exact,
+      ignoreUndefined: !activeOptions?.explicitUndefined,
+    })
+    if (!searchTest) {
+      return false
+    }
+  }
+
+  if (activeOptions?.includeHash) {
+    return isHydrated && location.hash === next.hash
+  }
+  return true
+}
 
 /**
  * Build anchor-like props for declarative navigation and preloading.
@@ -399,128 +502,86 @@ export function useLinkProps<
     ],
   )
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocation = useStore(
-    router.stores.location,
-    (l) => l,
-    (prev, next) => prev.href === next.href,
-  )
+  const {
+    exact: activeExact,
+    explicitUndefined: activeExplicitUndefined,
+    includeHash: activeIncludeHash,
+    includeSearch: activeIncludeSearch,
+  } = activeOptions ?? {}
 
+  // Everything the rendered output derives from the location is computed inside
+  // the selector, so `compareLinkState` can suppress the re-render when none of
+  // it changed.
+  //
+  // Deriving these *after* subscribing to the whole location meant every Link on
+  // the page re-rendered on every navigation: the comparator could only ask "is
+  // this a different URL?", never "does this link care?". For all but the few
+  // links involved in a navigation, `href` and the active state are unchanged.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(() => {
-    const opts = { _fromLocation: currentLocation, ..._options }
-    return router.buildLocation(opts as any)
-  }, [router, currentLocation, _options])
+  const selectLinkState = React.useCallback(
+    (location: ParsedLocation): LinkState => {
+      const next = router.buildLocation({
+        _fromLocation: location,
+        ..._options,
+      } as any)
 
-  // Use publicHref - it contains the correct href for display
-  // When a rewrite changes the origin, publicHref is the full URL
-  // Otherwise it's the origin-stripped path
-  // This avoids constructing URL objects in the hot path
-  const hrefOptionPublicHref = next.maskedLocation
-    ? next.maskedLocation.publicHref
-    : next.publicHref
-  const hrefOptionExternal = next.maskedLocation
-    ? next.maskedLocation.external
-    : next.external
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const hrefOption = React.useMemo(
-    () =>
-      getHrefOption(
-        hrefOptionPublicHref,
-        hrefOptionExternal,
+      // Use publicHref - it contains the correct href for display
+      // When a rewrite changes the origin, publicHref is the full URL
+      // Otherwise it's the origin-stripped path
+      // This avoids constructing URL objects in the hot path
+      const hrefOption = getHrefOption(
+        next.maskedLocation ? next.maskedLocation.publicHref : next.publicHref,
+        next.maskedLocation ? next.maskedLocation.external : next.external,
         router.history,
         disabled,
-      ),
-    [disabled, hrefOptionExternal, hrefOptionPublicHref, router.history],
+      )
+
+      const externalLink = resolveExternalLink(
+        hrefOption,
+        to,
+        router.protocolAllowlist,
+      )
+
+      return {
+        href: hrefOption?.href,
+        externalLink,
+        isActive: resolveIsActive(
+          location,
+          next,
+          {
+            exact: activeExact,
+            explicitUndefined: activeExplicitUndefined,
+            includeHash: activeIncludeHash,
+            includeSearch: activeIncludeSearch,
+          },
+          router.basepath,
+          isHydrated,
+          externalLink !== undefined,
+        ),
+      }
+    },
+    // `activeOptions` is spread into primitives above rather than listed whole:
+    // callers routinely pass an inline object literal, and depending on its
+    // identity would rebuild this selector on every render.
+    [
+      activeExact,
+      activeExplicitUndefined,
+      activeIncludeHash,
+      activeIncludeSearch,
+      disabled,
+      isHydrated,
+      _options,
+      router,
+      to,
+    ],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const externalLink = React.useMemo(() => {
-    if (hrefOption?.external) {
-      // Block dangerous protocols for external links
-      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(
-            `Blocked Link with dangerous protocol: ${hrefOption.href}`,
-          )
-        }
-        return undefined
-      }
-      return hrefOption.href
-    }
-    const safeInternal = isSafeInternal(to)
-    if (safeInternal) return undefined
-    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
-    try {
-      new URL(to as any)
-      // Block dangerous protocols like javascript:, blob:, data:
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${to}`)
-        }
-        return undefined
-      }
-      return to
-    } catch {}
-    return undefined
-  }, [to, hrefOption, router.protocolAllowlist])
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isActive = React.useMemo(() => {
-    if (externalLink) return false
-    if (activeOptions?.exact) {
-      const testExact = exactPathTest(
-        currentLocation.pathname,
-        next.pathname,
-        router.basepath,
-      )
-      if (!testExact) {
-        return false
-      }
-    } else {
-      const currentPathSplit = removeTrailingSlash(
-        currentLocation.pathname,
-        router.basepath,
-      )
-      const nextPathSplit = removeTrailingSlash(next.pathname, router.basepath)
-
-      const pathIsFuzzyEqual =
-        currentPathSplit.startsWith(nextPathSplit) &&
-        (currentPathSplit.length === nextPathSplit.length ||
-          currentPathSplit[nextPathSplit.length] === '/')
-
-      if (!pathIsFuzzyEqual) {
-        return false
-      }
-    }
-
-    if (activeOptions?.includeSearch ?? true) {
-      const searchTest = deepEqual(currentLocation.search, next.search, {
-        partial: !activeOptions?.exact,
-        ignoreUndefined: !activeOptions?.explicitUndefined,
-      })
-      if (!searchTest) {
-        return false
-      }
-    }
-
-    if (activeOptions?.includeHash) {
-      return isHydrated && currentLocation.hash === next.hash
-    }
-    return true
-  }, [
-    activeOptions?.exact,
-    activeOptions?.explicitUndefined,
-    activeOptions?.includeHash,
-    activeOptions?.includeSearch,
-    currentLocation,
-    externalLink,
-    isHydrated,
-    next.hash,
-    next.pathname,
-    next.search,
-    router.basepath,
-  ])
+  const { href, externalLink, isActive } = useStore(
+    router.stores.location,
+    selectLinkState,
+    compareLinkState,
+  )
 
   // Get the active props
   const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
@@ -563,13 +624,14 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
-    router
-      .preloadRoute({ ..._options, _builtLocation: next } as any)
-      .catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
-  }, [router, _options, next])
+    // No `_builtLocation`: the built location is no longer kept in render state,
+    // and `preloadRoute` builds it itself (`opts._builtLocation ?? buildLocation`).
+    // This matches `handleClick`, which has always let `router.navigate` build it.
+    router.preloadRoute({ ..._options } as any).catch((err) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
+  }, [router, _options])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const preloadViewportIoCallback = React.useCallback(
@@ -699,7 +761,7 @@ export function useLinkProps<
     ...propsSafeToSpread,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
-    href: hrefOption?.href,
+    href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onBlur: composeHandlers([onBlur, handleLeave]),
