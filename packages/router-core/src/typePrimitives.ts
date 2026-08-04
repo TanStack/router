@@ -10,6 +10,7 @@ import type { RouteIds } from './routeInfo'
 import type { AnyRouter, RegisteredRouter } from './router'
 import type { UseParamsResult } from './useParams'
 import type { UseSearchResult } from './useSearch'
+import type { UseHistoryStateResult } from './useHistoryState'
 import type { Constrain, ConstrainLiteral } from './utils'
 
 export type ValidateFromPath<
@@ -178,4 +179,13 @@ export type ValidateUseParamsResult<
     InferStrict<TOptions>,
     InferSelected<TOptions>
   >
+>
+export type ValidateUseHistoryStateResult<
+  TOptions,
+  TRouter extends AnyRouter = RegisteredRouter,
+> = UseHistoryStateResult<
+  TRouter,
+  InferFrom<TOptions>,
+  InferStrict<TOptions>,
+  InferSelected<TOptions>
 >

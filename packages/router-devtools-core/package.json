@@ -62,6 +62,7 @@
     "node": ">=20.19"
   },
   "dependencies": {
+    "@tanstack/history": "workspace:*",
     "clsx": "^2.1.1",
     "goober": "^2.1.16"
   },

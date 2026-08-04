@@ -18,11 +18,14 @@ import {
   Outlet,
   RouterProvider,
   SearchParamError,
+  StateParamError,
   createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
+  redirect,
+  useHistoryState,
   useNavigate,
 } from '../src'
 import type { StandardSchemaValidator } from '@tanstack/router-core'
@@ -1894,6 +1897,162 @@ describe('search params in URL', () => {
         expect(errorSpy).toBeInstanceOf(SearchParamError)
         expect(errorSpy?.cause).toBeInstanceOf(TestValidationError)
       })
+    })
+  })
+
+  describe('validates history state', () => {
+    class TestValidationError extends Error {
+      issues: Array<{ message: string }>
+      constructor(issues: Array<{ message: string }>) {
+        super('validation failed')
+        this.name = 'TestValidationError'
+        this.issues = issues
+      }
+    }
+
+    const testCases: [
+      StandardSchemaValidator<Record<string, unknown>, { count: number }>,
+      ValidatorFn<Record<string, unknown>, { count: number }>,
+      ValidatorObj<Record<string, unknown>, { count: number }>,
+    ] = [
+      {
+        ['~standard']: {
+          validate: (input) => {
+            const result = z.object({ count: z.number() }).safeParse(input)
+            if (result.success) {
+              return { value: result.data }
+            }
+            return new TestValidationError(result.error.issues)
+          },
+        },
+      },
+      ({ count }) => {
+        if (typeof count !== 'number') {
+          throw new TestValidationError([{ message: 'count must be a number' }])
+        }
+        return { count }
+      },
+      {
+        parse: ({ count }) => {
+          if (typeof count !== 'number') {
+            throw new TestValidationError([
+              { message: 'count must be a number' },
+            ])
+          }
+          return { count }
+        },
+      },
+    ]
+
+    describe.each(testCases)('state validation', (validateState) => {
+      // History state never survives a fresh document load, so a direct load
+      // always hands the validator an empty object. A schema with required
+      // fields therefore has to fail, which is what keeps `useHistoryState`
+      // from ever handing a component a value that is not of the validated
+      // type.
+      it('errors on a direct load when required state is absent', async () => {
+        let errorSpy: Error | undefined
+        const rootRoute = createRootRoute({
+          validateState,
+          errorComponent: ({ error }) => {
+            errorSpy = error
+            return null
+          },
+        })
+
+        const history = createMemoryHistory({ initialEntries: ['/'] })
+        const router = createRouter({ routeTree: rootRoute, history })
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+
+        expect(errorSpy).toBeInstanceOf(StateParamError)
+        expect(errorSpy?.cause).toBeInstanceOf(TestValidationError)
+      })
+
+      it('does not error when navigating with valid state', async () => {
+        let errorSpy: Error | undefined
+        const rootRoute = createRootRoute()
+        const indexRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/',
+          component: () => <div>index</div>,
+        })
+        const targetRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/target',
+          validateState,
+          component: () => <div>target</div>,
+          errorComponent: ({ error }) => {
+            errorSpy = error
+            return null
+          },
+        })
+
+        const history = createMemoryHistory({ initialEntries: ['/'] })
+        const router = createRouter({
+          routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+          history,
+        })
+        render(<RouterProvider router={router} />)
+        await act(() => router.load())
+        await act(() =>
+          router.navigate({ to: '/target', state: { count: 1 } as any }),
+        )
+
+        expect(errorSpy).toBeUndefined()
+      })
+    })
+
+    it('applies validator defaults on a direct load', async () => {
+      let observedState: unknown
+
+      function StateReader() {
+        observedState = useHistoryState({ from: '__root__' })
+        return null
+      }
+
+      const rootRoute = createRootRoute({
+        validateState: (input: { count?: number }) =>
+          z.object({ count: z.number().default(0) }).parse(input),
+        component: StateReader,
+      })
+
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+      const router = createRouter({ routeTree: rootRoute, history })
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
+      expect(observedState).toEqual({ count: 0 })
+    })
+
+    it('lets a validator redirect instead of erroring', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div>index</div>,
+      })
+      const guardedRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/guarded',
+        validateState: (input: { token?: string }) => {
+          if (typeof input.token !== 'string') {
+            throw redirect({ to: '/' })
+          }
+          return { token: input.token }
+        },
+        component: () => <div>guarded</div>,
+      })
+
+      const history = createMemoryHistory({ initialEntries: ['/guarded'] })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, guardedRoute]),
+        history,
+      })
+      render(<RouterProvider router={router} />)
+      await act(() => router.load())
+
+      expect(router.state.location.pathname).toBe('/')
     })
   })
 })

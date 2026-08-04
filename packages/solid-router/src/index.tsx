@@ -38,6 +38,7 @@ export type {
   ResolveOptionalParams,
   ResolveRequiredParams,
   SearchSchemaInput,
+  StateSchemaInput,
   AnyContext,
   RouteContext,
   PreloadableObj,
@@ -92,6 +93,8 @@ export type {
   ResolveValidatorOutputFn,
   ResolveSearchValidatorInput,
   ResolveSearchValidatorInputFn,
+  ResolveStateValidatorInput,
+  ResolveStateValidatorInputFn,
   Validator,
   ValidatorAdapter,
   ValidatorObj,
@@ -277,7 +280,7 @@ export type {
 
 export { createRouter, Router } from './router'
 
-export { lazyFn, SearchParamError } from '@tanstack/router-core'
+export { lazyFn, SearchParamError, StateParamError } from '@tanstack/router-core'
 
 export { RouterProvider, RouterContextProvider } from './RouterProvider'
 export type { RouterProps } from './RouterProvider'
@@ -294,6 +297,7 @@ export { useNavigate, Navigate } from './useNavigate'
 
 export { useParams } from './useParams'
 export { useSearch } from './useSearch'
+export { useHistoryState } from './useHistoryState'
 
 export { useRouteContext } from './useRouteContext'
 export { useRouter } from './useRouter'

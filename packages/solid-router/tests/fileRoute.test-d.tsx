@@ -9,6 +9,7 @@ declare module '@tanstack/router-core' {
     TId,
     TPath,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TLoaderDeps,
     TLoaderFn,
@@ -33,6 +34,7 @@ declare module '@tanstack/router-core' {
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -161,6 +163,7 @@ test('when creating a file route with middleware options', () => {
 
   type ExtractMiddlewares<TRoute> =
     TRoute extends Route<
+      any,
       any,
       any,
       any,

@@ -13,6 +13,7 @@ import { useNavigate } from './useNavigate'
 import { useMatch } from './useMatch'
 import { useRouteContext } from './useRouteContext'
 import { useRouter } from './useRouter'
+import { useHistoryState } from './useHistoryState'
 import { Link } from './link'
 import type {
   AnyContext,
@@ -45,6 +46,7 @@ import type { UseMatchRoute } from './useMatch'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
 import type { UseParamsRoute } from './useParams'
 import type { UseSearchRoute } from './useSearch'
+import type { UseHistoryStateRoute } from './useHistoryState'
 import type { UseRouteContextRoute } from './useRouteContext'
 import type { LinkComponentRoute } from './link'
 
@@ -74,6 +76,7 @@ declare module '@tanstack/router-core' {
     useParams: UseParamsRoute<TId>
     useLoaderDeps: UseLoaderDepsRoute<TId>
     useLoaderData: UseLoaderDataRoute<TId>
+    useHistoryState: UseHistoryStateRoute<TId>
     useNavigate: () => UseNavigateResult<TFullPath>
     Link: LinkComponentRoute<TFullPath>
   }
@@ -121,6 +124,15 @@ export class RouteApi<
   useSearch: UseSearchRoute<TId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.id,
@@ -180,6 +192,7 @@ export class Route<
     TPath
   >,
   in out TSearchValidator = undefined,
+  in out TStateValidator = undefined,
   in out TParams = ResolveParams<TPath>,
   in out TRouterContext = AnyContext,
   in out TRouteContextFn = AnyContext,
@@ -200,6 +213,7 @@ export class Route<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TRouterContext,
     TRouteContextFn,
@@ -221,6 +235,7 @@ export class Route<
       TCustomId,
       TId,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TRouterContext,
       TRouteContextFn,
@@ -246,6 +261,7 @@ export class Route<
       TFullPath,
       TPath,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TLoaderDeps,
       TLoaderFn,
@@ -275,6 +291,15 @@ export class Route<
   useSearch: UseSearchRoute<TId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<TId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.id,
@@ -335,6 +360,7 @@ export function createRoute<
     TPath
   >,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TParams = ResolveParams<TPath>,
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
@@ -352,6 +378,7 @@ export function createRoute<
     TFullPath,
     TPath,
     TSearchValidator,
+    TStateValidator,
     TParams,
     TLoaderDeps,
     TLoaderFn,
@@ -369,6 +396,7 @@ export function createRoute<
   TCustomId,
   TId,
   TSearchValidator,
+  TStateValidator,
   TParams,
   AnyContext,
   TRouteContextFn,
@@ -387,6 +415,7 @@ export function createRoute<
     TCustomId,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     AnyContext,
     TRouteContextFn,
@@ -431,6 +460,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
     TSearchValidator = undefined,
+    TStateValidator = undefined,
     TLoaderDeps extends Record<string, any> = {},
     TLoaderFn = undefined,
     TSSR = unknown,
@@ -439,6 +469,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     options?: RootRouteOptions<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -451,6 +482,7 @@ export function createRootRouteWithContext<TRouterContext extends {}>() {
     return createRootRoute<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -470,6 +502,7 @@ export const rootRouteWithContext = createRootRouteWithContext
 export class RootRoute<
   in out TRegister = unknown,
   in out TSearchValidator = undefined,
+  in out TStateValidator = undefined,
   in out TRouterContext = {},
   in out TRouteContextFn = AnyContext,
   in out TBeforeLoadFn = AnyContext,
@@ -484,6 +517,7 @@ export class RootRoute<
   extends BaseRootRoute<
     TRegister,
     TSearchValidator,
+    TStateValidator,
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
@@ -499,6 +533,7 @@ export class RootRoute<
     RootRouteCore<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -518,6 +553,7 @@ export class RootRoute<
     options?: RootRouteOptions<
       TRegister,
       TSearchValidator,
+      TStateValidator,
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn,
@@ -546,6 +582,15 @@ export class RootRoute<
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
+      select: opts?.select,
+      structuralSharing: opts?.structuralSharing,
+      from: this.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<RootRouteId> = (opts) => {
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    return useHistoryState({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
       from: this.id,
@@ -593,6 +638,7 @@ export class RootRoute<
 export function createRootRoute<
   TRegister = Register,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TRouterContext = {},
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
@@ -605,6 +651,7 @@ export function createRootRoute<
   options?: RootRouteOptions<
     TRegister,
     TSearchValidator,
+    TStateValidator,
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
@@ -617,6 +664,7 @@ export function createRootRoute<
 ): RootRoute<
   TRegister,
   TSearchValidator,
+  TStateValidator,
   TRouterContext,
   TRouteContextFn,
   TBeforeLoadFn,
@@ -631,6 +679,7 @@ export function createRootRoute<
   return new RootRoute<
     TRegister,
     TSearchValidator,
+    TStateValidator,
     TRouterContext,
     TRouteContextFn,
     TBeforeLoadFn,
@@ -680,6 +729,7 @@ export class NotFoundRoute<
   TRouteContextFn = AnyContext,
   TBeforeLoadFn = AnyContext,
   TSearchValidator = undefined,
+  TStateValidator = undefined,
   TLoaderDeps extends Record<string, any> = {},
   TLoaderFn = undefined,
   TChildren = unknown,
@@ -693,6 +743,7 @@ export class NotFoundRoute<
   '404',
   '404',
   TSearchValidator,
+  TStateValidator,
   {},
   TRouterContext,
   TRouteContextFn,
@@ -713,6 +764,7 @@ export class NotFoundRoute<
         string,
         string,
         TSearchValidator,
+        TStateValidator,
         {},
         TLoaderDeps,
         TLoaderFn,

@@ -1,4 +1,9 @@
-import { createBrowserHistory, parseHref } from '@tanstack/history'
+import {
+  createBrowserHistory,
+  omitInternalKeys,
+  parseHref,
+  pickInternalKeys,
+} from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
@@ -1468,6 +1473,11 @@ export class RouterCore<
       : undefined
 
     const matches = new Array<AnyRouteMatch>(matchedRoutes.length)
+    // Tracks whether any route from the root down to the current one declared
+    // a `validateState`. When none did, there is no schema to project the
+    // history state onto, so `_strictState` carries the raw user state
+    // through instead of an empty object.
+    let hasStateValidator = false
     // Snapshot of active match state keyed by routeId, used to stabilise
     // params/search across navigations.
     const previousActiveMatchesByRouteId = new Map<string, AnyRouteMatch>()
@@ -1524,6 +1534,56 @@ export class RouterCore<
           searchError = searchParamError
         }
       }
+      const [preMatchState, strictMatchState, stateError]: [
+        Record<string, any>,
+        Record<string, any>,
+        // `unknown` because a validator may throw a `redirect()`/`notFound()`,
+        // which are control-flow objects rather than `Error` instances.
+        unknown,
+      ] = (() => {
+        const rawState = parentMatch?.state ?? next.state
+        const parentStrictState = parentMatch?._strictState ?? {}
+        const filteredState = rawState ? omitInternalKeys(rawState) : {}
+
+        try {
+          if (route.options.validateState) {
+            hasStateValidator = true
+            const strictState =
+              validateState(route.options.validateState, filteredState) || {}
+            return [
+              {
+                ...filteredState,
+                ...strictState,
+              },
+              { ...parentStrictState, ...strictState },
+              undefined,
+            ]
+          }
+          // No validator on this route: inherit whatever the ancestors
+          // validated. If nothing in the chain declared one, the route's
+          // state type is unconstrained, so the raw user state is passed
+          // through unchanged.
+          return [
+            filteredState,
+            hasStateValidator ? { ...parentStrictState } : filteredState,
+            undefined,
+          ]
+        } catch (err: any) {
+          // Redirects and not-founds thrown from a validator are intentional
+          // control flow, so they are passed through untouched. Everything
+          // else is normalized so consumers can rely on `StateParamError`.
+          const stateValidationError =
+            isNotFound(err) || isRedirect(err) || err instanceof StateParamError
+              ? err
+              : new StateParamError(err.message, { cause: err })
+
+          if (opts?.throwOnError) {
+            throw stateValidationError
+          }
+
+          return [filteredState, {}, stateValidationError]
+        }
+      })()
 
       // This is where we need to call route.options.loaderDeps() to get any additional
       // deps that the route's loader function might need to run. We need to do this
@@ -1600,6 +1660,10 @@ export class RouterCore<
             ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
             : nullReplaceEqualDeep(existingMatch.search, preMatchSearch),
           _strictSearch: strictMatchSearch,
+          state: previousMatch
+            ? nullReplaceEqualDeep(previousMatch.state, preMatchState)
+            : nullReplaceEqualDeep(existingMatch.state, preMatchState),
+          _strictState: strictMatchState,
         }
       } else {
         const status =
@@ -1625,6 +1689,11 @@ export class RouterCore<
           _strictSearch: strictMatchSearch,
           searchError: undefined,
           status,
+          state: previousMatch
+            ? nullReplaceEqualDeep(previousMatch.state, preMatchState)
+            : preMatchState,
+          _strictState: strictMatchState,
+          stateError: undefined,
           isFetching: false,
           error: undefined,
           paramsError,
@@ -1658,6 +1727,8 @@ export class RouterCore<
 
       // update the searchError if there is one
       match.searchError = searchError
+      // update the stateError if there is one
+      match.stateError = stateError
 
       const parentContext = this.getParentContext(parentMatch)
 
@@ -2078,6 +2149,38 @@ export class RouterCore<
         publicHref = href
       }
 
+      if (opts._includeValidateState) {
+        // The validators only ever see user state, never the router's own
+        // bookkeeping keys (`__TSR_index`, `__tempLocation`, ...), which must
+        // survive untouched so masking and scroll restoration keep working.
+        const userState = omitInternalKeys(nextState)
+        const internalState = pickInternalKeys(nextState)
+
+        let validatedState: Record<string, any> = {}
+        destRoutes.forEach((route) => {
+          if (!route.options.validateState) return
+          try {
+            validatedState = {
+              ...validatedState,
+              ...(validateState(route.options.validateState, {
+                ...userState,
+                ...validatedState,
+              }) ?? {}),
+            }
+          } catch {
+            // ignore errors here because they are already handled in matchRoutes
+          }
+        })
+
+        // Apply the validated output (defaults, transforms) on top of the
+        // state the caller asked for, keeping keys no validator claimed.
+        nextState = nullReplaceEqualDeep(nextState, {
+          ...internalState,
+          ...userState,
+          ...validatedState,
+        }) as any
+      }
+
       return {
         publicHref,
         href,
@@ -2294,6 +2397,7 @@ export class RouterCore<
     const location = this.buildLocation({
       ...(rest as any),
       _includeValidateSearch: true,
+      _includeValidateState: true,
     })
 
     this.pendingBuiltLocation = location as ParsedLocation<
@@ -2425,6 +2529,7 @@ export class RouterCore<
         hash: true,
         state: true,
         _includeValidateSearch: true,
+        _includeValidateState: true,
       })
 
       // Check if location changed - origin check is unnecessary since buildLocation
@@ -3023,6 +3128,8 @@ export class RouterCore<
 /** Error thrown when search parameter validation fails. */
 export class SearchParamError extends Error {}
 
+export class StateParamError extends Error {}
+
 /** Error thrown when path parameter parsing/validation fails. */
 export class PathParamError extends Error {}
 
@@ -3064,32 +3171,44 @@ export function getInitialRouterState(
   }
 }
 
-function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
-  if (validateSearch == null) return {}
+function validateInput<TErrorClass extends Error>(
+  validator: AnyValidator,
+  input: unknown,
+  ErrorClass: new (message?: string, options?: ErrorOptions) => TErrorClass,
+): unknown {
+  if (validator == null) return {}
 
-  if ('~standard' in validateSearch) {
-    const result = validateSearch['~standard'].validate(input)
+  if ('~standard' in validator) {
+    const result = validator['~standard'].validate(input)
 
     if (result instanceof Promise)
-      throw new SearchParamError('Async validation not supported')
+      throw new ErrorClass('Async validation not supported')
 
     if (result.issues)
-      throw new SearchParamError(JSON.stringify(result.issues, undefined, 2), {
+      throw new ErrorClass(JSON.stringify(result.issues, undefined, 2), {
         cause: result,
       })
 
     return result.value
   }
 
-  if ('parse' in validateSearch) {
-    return validateSearch.parse(input)
+  if ('parse' in validator) {
+    return validator.parse(input)
   }
 
-  if (typeof validateSearch === 'function') {
-    return validateSearch(input)
+  if (typeof validator === 'function') {
+    return validator(input)
   }
 
   return {}
+}
+
+function validateState(validateState: AnyValidator, input: unknown): unknown {
+  return validateInput(validateState, input, StateParamError)
+}
+
+function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
+  return validateInput(validateSearch, input, SearchParamError)
 }
 
 /**

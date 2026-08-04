@@ -39,6 +39,7 @@ title: Router API
   - [`useBlocker`](./router/useBlockerHook.md)
   - [`useCanGoBack`](./router/useCanGoBack.md)
   - [`useChildMatches`](./router/useChildMatchesHook.md)
+  - [`useHistoryState`](./router/useHistoryStateHook.md)
   - [`useLinkProps`](./router/useLinkPropsHook.md)
   - [`useLoaderData`](./router/useLoaderDataHook.md)
   - [`useLoaderDeps`](./router/useLoaderDepsHook.md)

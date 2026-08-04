@@ -8,9 +8,11 @@ import { useParams } from './useParams'
 import { useNavigate } from './useNavigate'
 import { useRouter } from './useRouter'
 import { useRouteContext } from './useRouteContext'
+import { useHistoryState } from './useHistoryState'
 import type { UseParamsRoute } from './useParams'
 import type { UseMatchRoute } from './useMatch'
 import type { UseSearchRoute } from './useSearch'
+import type { UseHistoryStateRoute } from './useHistoryState'
 import type {
   AnyContext,
   AnyRoute,
@@ -50,7 +52,7 @@ export function createFileRoute<
   }).createRoute
 }
 
-/** 
+/**
   @deprecated It's no longer recommended to use the `FileRoute` class directly.
   Instead, use `createFileRoute('/path/to/file')(options)` to create a file route.
 */
@@ -74,6 +76,7 @@ export class FileRoute<
   createRoute = <
     TRegister = Register,
     TSearchValidator = undefined,
+    TStateValidator = undefined,
     TParams = ResolveParams<TPath>,
     TRouteContextFn = AnyContext,
     TBeforeLoadFn = AnyContext,
@@ -90,6 +93,7 @@ export class FileRoute<
       TId,
       TPath,
       TSearchValidator,
+      TStateValidator,
       TParams,
       TLoaderDeps,
       TLoaderFn,
@@ -107,6 +111,7 @@ export class FileRoute<
         TFullPath,
         TParams,
         TSearchValidator,
+        TStateValidator,
         TLoaderFn,
         TLoaderDeps,
         AnyContext,
@@ -121,6 +126,7 @@ export class FileRoute<
     TFilePath,
     TId,
     TSearchValidator,
+    TStateValidator,
     TParams,
     AnyContext,
     TRouteContextFn,
@@ -146,7 +152,7 @@ export class FileRoute<
   }
 }
 
-/** 
+/**
   @deprecated It's recommended not to split loaders into separate files.
   Instead, place the loader function in the main route file, inside the
   `createFileRoute('/path/to/file)(options)` options.
@@ -217,6 +223,13 @@ export class LazyRoute<TRoute extends AnyRoute> {
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
     return useSearch({
+      select: opts?.select,
+      from: this.options.id,
+    } as any) as any
+  }
+
+  useHistoryState: UseHistoryStateRoute<TRoute['id']> = (opts) => {
+    return useHistoryState({
       select: opts?.select,
       from: this.options.id,
     } as any) as any
