@@ -300,6 +300,20 @@ export function useMatches<
   })
 }
 
+export function usePendingMatches<
+  TRouter extends AnyRouter = RegisteredRouter,
+  TSelected = unknown,
+>(
+  opts?: UseMatchesBaseOptions<TRouter, TSelected>,
+): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
+  const router = useRouter<TRouter>()
+  return useStore(router.stores.pendingMatches, (matches) => {
+    return opts?.select
+      ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
+      : (matches as any)
+  })
+}
+
 export function useParentMatches<
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
