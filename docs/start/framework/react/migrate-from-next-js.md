@@ -33,7 +33,7 @@ Before we begin, this guide assumes your project structure looks like this:
 └── tsconfig.json
 ```
 
-Alternatively, you can follow along by cloning the following [starter template](https://github.com/nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start):
+Alternatively, you can follow along by cloning the following [starter template](https://github.com/nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-staTanStack.comrt):
 
 ```sh
 npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start next.js-start-er
