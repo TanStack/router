@@ -1511,8 +1511,9 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const [initialMatchedRoutes, rawParams, foundRoute] =
-      this.getMatchedRoutes(next.pathname)
+    const [initialMatchedRoutes, rawParams, foundRoute] = this.getMatchedRoutes(
+      next.pathname,
+    )
     let matchedRoutes = initialMatchedRoutes
     let isGlobalNotFound = false
 
@@ -1642,8 +1643,7 @@ export class RouterCore<
 
       // Carry parsed ancestors forward without mutating the raw route params.
       strictParams =
-        existingMatch?._strictParams ??
-        Object.assign(usedParams, strictParams)
+        existingMatch?._strictParams ?? Object.assign(usedParams, strictParams)
 
       let paramsError: unknown
 
@@ -1772,9 +1772,7 @@ export class RouterCore<
       return cached[1 /* result */]
     }
 
-    const [matchedRoutes, rawParams] = this.getMatchedRoutes(
-      location.pathname,
-    )
+    const [matchedRoutes, rawParams] = this.getMatchedRoutes(location.pathname)
     const lastRoute = last(matchedRoutes)!
 
     // I don't know if we should run the full search middleware chain, or just validateSearch
