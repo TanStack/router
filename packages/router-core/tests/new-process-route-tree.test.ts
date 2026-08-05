@@ -114,6 +114,10 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/a/{-$b}b', '/a/{-$b}'])
         expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{-$b}b')
       })
+      it('prefix+suffix optional wins when declared after plain optional', () => {
+        const tree = makeTree(['/a/{-$b}', '/a/b{-$b}b'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{-$b}b')
+      })
 
       it('prefix+suffix wildcard wins over plain wildcard', () => {
         const tree = makeTree(['/a/b{$}b', '/a/$'])
@@ -126,6 +130,10 @@ describe('findRouteMatch', () => {
       it('suffix wildcard wins over plain wildcard', () => {
         const tree = makeTree(['/a/{$}b', '/a/$'])
         expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{$}b')
+      })
+      it('sorts a third, more specific wildcard declared last', () => {
+        const tree = makeTree(['/a/$', '/a/b{$}', '/a/b{$}b'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{$}b')
       })
     })
 
@@ -1671,5 +1679,30 @@ describe('processRouteMasks', { sequential: true }, () => {
     const res = findFlatMatch('/a/b/file/path.txt', processedTree)
     expect(res?.route.from).toBe('/a/b/{$}.txt')
     expect(res?.rawParams).toEqual({ '*': 'file/path', _splat: 'file/path' })
+  })
+  it('sorts competing route masks declared least-specific first', () => {
+    const localTree = processRouteTree(routeTree).processedTree
+    processRouteMasks(
+      [
+        { from: '/dynamic/$param', routeTree },
+        { from: '/dynamic/prefix{$param}', routeTree },
+        { from: '/optional/{-$param}', routeTree },
+        { from: '/optional/prefix{-$param}', routeTree },
+        { from: '/wildcard/$', routeTree },
+        { from: '/wildcard/prefix{$}', routeTree },
+        { from: '/wildcard/prefix{$}.txt', routeTree },
+      ],
+      localTree,
+    )
+
+    expect(findFlatMatch('/dynamic/prefixvalue', localTree)?.route.from).toBe(
+      '/dynamic/prefix{$param}',
+    )
+    expect(findFlatMatch('/optional/prefixvalue', localTree)?.route.from).toBe(
+      '/optional/prefix{-$param}',
+    )
+    expect(
+      findFlatMatch('/wildcard/prefixvalue.txt', localTree)?.route.from,
+    ).toBe('/wildcard/prefix{$}.txt')
   })
 })
