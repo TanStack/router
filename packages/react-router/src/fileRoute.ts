@@ -1,4 +1,4 @@
-import { createRoute } from './route'
+import { createRoute as createRouteImpl } from './route'
 
 import { useMatch } from './useMatch'
 import { useLoaderDeps } from './useLoaderDeps'
@@ -42,7 +42,7 @@ import type { UseRouteContextRoute } from './useRouteContext'
  * route. The returned function accepts standard route options. In normal usage
  * the `path` string is inserted and maintained by the `tsr` generator.
  *
- * @param path File path literal for the route (usually auto-generated).
+ * @param _path File path literal for the route (usually auto-generated).
  * @returns A function that accepts Route options and returns a Route instance.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/createFileRouteFunction
  */
@@ -54,11 +54,14 @@ export function createFileRoute<
   TFullPath extends RouteConstraints['TFullPath'] =
     FileRoutesByPath[TFilePath]['fullPath'],
 >(
-  path?: TFilePath,
+  _path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-    silent: true,
-  }).createRoute
+  const createRoute = (options?: any) => {
+    const route = createRouteImpl(options)
+    ;(route as any).isRoot = false
+    return route
+  }
+  return createRoute as any
 }
 
 /** 
@@ -151,7 +154,7 @@ export class FileRoute<
         )
       }
     }
-    const route = createRoute(options as any)
+    const route = createRouteImpl(options as any)
     ;(route as any).isRoot = false
     return route as any
   }

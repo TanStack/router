@@ -1,4 +1,4 @@
-import { createRoute } from './route'
+import { createRoute as createRouteImpl } from './route'
 
 import { useMatch } from './useMatch'
 import { useLoaderDeps } from './useLoaderDeps'
@@ -43,11 +43,14 @@ export function createFileRoute<
   TFullPath extends RouteConstraints['TFullPath'] =
     FileRoutesByPath[TFilePath]['fullPath'],
 >(
-  path?: TFilePath,
+  _path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-    silent: true,
-  }).createRoute
+  const createRoute = (options?: any) => {
+    const route = createRouteImpl(options)
+    ;(route as any).isRoot = false
+    return route
+  }
+  return createRoute as any
 }
 
 /** 
@@ -140,7 +143,7 @@ export class FileRoute<
         )
       }
     }
-    const route = createRoute(options as any)
+    const route = createRouteImpl(options as any)
     ;(route as any).isRoot = false
     return route as any
   }
