@@ -31,6 +31,8 @@
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch",
+    "test:perf": "vitest bench",
+    "test:perf:dev": "pnpm run test:perf --watch --hideSkippedTests",
     "build": "vite build"
   },
   "type": "module",
