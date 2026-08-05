@@ -65,7 +65,7 @@ function resolveExternalLink(
     return undefined
   }
   try {
-    new URL(to as any)
+    new URL(to)
     // Block dangerous protocols like javascript:, blob:, data:
     if (isDangerousProtocol(to, protocolAllowlist)) {
       if (process.env.NODE_ENV !== 'production') {

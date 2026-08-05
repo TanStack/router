@@ -7618,16 +7618,29 @@ describe('link re-render bail-out', () => {
 
     await screen.findByTestId('unaffected')
     const before = { ...renderCounts }
+    expect(screen.getByTestId('becomesActive')).not.toHaveAttribute(
+      'data-status',
+    )
 
     fireEvent.click(await screen.findByTestId('go'))
     expect(await screen.findByText('Posts')).toBeInTheDocument()
 
     // `/posts` gains its active state, so it has to re-render.
     expect(renderCounts.becomesActive).toBeGreaterThan(before.becomesActive)
+    expect(screen.getByTestId('becomesActive')).toHaveAttribute(
+      'data-status',
+      'active',
+    )
 
     // `/elsewhere` is neither the origin nor the destination: its href and
     // active state are identical before and after, so the subscription must
-    // bail out rather than publish an equal value.
+    // bail out rather than publish an equal value. Asserting the published
+    // values too, so a selector that returned a constant would still fail.
     expect(renderCounts.unaffected).toBe(before.unaffected)
+    expect(screen.getByTestId('unaffected')).toHaveAttribute(
+      'href',
+      '/elsewhere',
+    )
+    expect(screen.getByTestId('unaffected')).not.toHaveAttribute('data-status')
   })
 })
