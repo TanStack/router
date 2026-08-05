@@ -30,14 +30,20 @@ import type {
 } from './typePrimitives'
 import type { ComponentProps, JSX, ValidComponent } from '@solidjs/web'
 
-function mergeRefs<T>(
-  ...refs: Array<((el: T) => void) | undefined>
-): (el: T) => void {
+function mergeRefs<T>(...refs: Array<unknown>): (el: T) => void {
+  const setRef = (ref: unknown, el: T) => {
+    if (typeof ref === 'function') {
+      ref(el)
+    } else if (Array.isArray(ref)) {
+      for (const nestedRef of ref) {
+        setRef(nestedRef, el)
+      }
+    }
+  }
+
   return (el: T) => {
     for (const ref of refs) {
-      if (typeof ref === 'function') {
-        ref(el)
-      }
+      setRef(ref, el)
     }
   }
 }
@@ -269,7 +275,7 @@ export function useLinkProps<
 
   const doPreload = () =>
     router
-      .preloadRoute({ ..._options(), _builtLocation: next() } as any)
+      .preloadRoute({ ...options, _builtLocation: next() } as any)
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -313,7 +319,7 @@ export function useLinkProps<
     return Solid.merge(
       propsSafeToSpread,
       {
-        // ref: mergeRefs(setRef, _options().ref),
+        ref: mergeRefs(setRef, options.ref),
         href: externalHref,
       },
       splitProps(local, [
@@ -365,7 +371,7 @@ export function useLinkProps<
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
-        ..._options(),
+        ...options,
         replace: local.replace,
         resetScroll: local.resetScroll,
         hashScrollIntoView: local.hashScrollIntoView,

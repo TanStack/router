@@ -15,7 +15,6 @@ export interface DehydratedMatch {
 export interface DehydratedRouter {
   manifest: Manifest | undefined
   dehydratedData?: any
-  lastMatchId?: string
   matches: Array<DehydratedMatch>
 }
 

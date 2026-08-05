@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.29",
-    "@tanstack/router-plugin": "^1.168.19",
+    "@tanstack/router-plugin": "^1.168.24",
     "@tanstack/solid-query": "^6.0.0-beta.7",
     "@tanstack/solid-query-devtools": "^6.0.0-beta.7",
     "@tanstack/solid-router": "^2.0.0-beta.29",
@@ -21,7 +21,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4",
     "vite-plugin-solid": "^3.0.0-next.21"

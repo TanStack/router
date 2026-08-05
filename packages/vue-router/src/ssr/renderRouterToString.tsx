@@ -24,7 +24,10 @@ export const renderRouterToString = async ({
     }
 
     return new Response(`<!DOCTYPE html>${html}`, {
-      status: router.stores.statusCode.get(),
+      status:
+        router._serverResult?.type === 'render'
+          ? router._serverResult.status
+          : 200,
       headers: responseHeaders,
     })
   } catch (error) {

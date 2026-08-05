@@ -266,6 +266,50 @@
 - Updated dependencies [[`a0191af`](https://github.com/TanStack/router/commit/a0191afd21afe0e7571af8b0faab171f62e71db7)]:
   - @tanstack/solid-router@2.0.0-alpha.0
 
+## 1.167.24
+
+### Patch Changes
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+  - @tanstack/solid-router@1.170.19
+  - @tanstack/start-server-core@1.169.19
+
+## 1.167.23
+
+### Patch Changes
+
+- [#7944](https://github.com/TanStack/router/pull/7944) [`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162) - Use focused server entrypoints for shared constants and handler helpers so build tooling and framework renderers do not traverse the full Start server barrel.
+
+- Updated dependencies [[`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162)]:
+  - @tanstack/start-server-core@1.169.18
+
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+  - @tanstack/solid-router@1.170.18
+  - @tanstack/start-server-core@1.169.17
+
+## 1.167.21
+
+### Patch Changes
+
+- Updated dependencies [[`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b)]:
+  - @tanstack/router-core@1.171.14
+  - @tanstack/solid-router@1.170.17
+  - @tanstack/start-server-core@1.169.16
+
+## 1.167.20
+
+### Patch Changes
+
+- Updated dependencies [[`96eca43`](https://github.com/TanStack/router/commit/96eca43ab8ee21917a8075521bef6dcf15fc7a43), [`41e7a24`](https://github.com/TanStack/router/commit/41e7a24f693b0f58c2bef89a2b8c4d084acbd531)]:
+  - @tanstack/start-server-core@1.169.15
+  - @tanstack/solid-router@1.170.16
+
 ## 1.167.19
 
 ### Patch Changes

@@ -8,7 +8,11 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { z } from 'zod'
-import { composeRewrites, notFound } from '@tanstack/router-core'
+import {
+  composeRewrites,
+  createControlledPromise,
+  notFound,
+} from '@tanstack/router-core'
 import {
   Link,
   Outlet,
@@ -2205,22 +2209,26 @@ describe('does not strip search params if search validation fails', () => {
   })
 })
 
-describe('statusCode', () => {
-  it('should reset statusCode to 200 when navigating from 404 to valid route', async () => {
+describe('navigation outcomes', () => {
+  it('should recover from a not-found route when navigating to a valid route', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
 
-    const rootRoute = createRootRoute()
+    const rootRoute = createRootRoute({
+      notFoundComponent: () => (
+        <div data-testid="root-not-found">Not Found</div>
+      ),
+    })
 
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
-      component: () => <div>Home</div>,
+      component: () => <div data-testid="home-page">Home</div>,
     })
 
     const validRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/valid',
-      component: () => <div>Valid Route</div>,
+      component: () => <div data-testid="valid-page">Valid Route</div>,
     })
 
     const routeTree = rootRoute.addChildren([indexRoute, validRoute])
@@ -2228,27 +2236,28 @@ describe('statusCode', () => {
 
     render(<RouterProvider router={router} />)
 
-    expect(router.state.statusCode).toBe(200)
-
     await act(() => router.navigate({ to: '/' }))
-    expect(router.state.statusCode).toBe(200)
+    expect(await screen.findByTestId('home-page')).toBeInTheDocument()
 
     await act(() => router.navigate({ to: '/non-existing' }))
-    expect(router.state.statusCode).toBe(404)
+    expect(await screen.findByTestId('root-not-found')).toBeInTheDocument()
+    expect(screen.queryByTestId('home-page')).not.toBeInTheDocument()
 
     await act(() => router.navigate({ to: '/valid' }))
-    expect(router.state.statusCode).toBe(200)
+    expect(await screen.findByTestId('valid-page')).toBeInTheDocument()
+    expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
 
     await act(() => router.navigate({ to: '/another-non-existing' }))
-    expect(router.state.statusCode).toBe(404)
+    expect(await screen.findByTestId('root-not-found')).toBeInTheDocument()
+    expect(screen.queryByTestId('valid-page')).not.toBeInTheDocument()
   })
 
   describe.each([true, false])(
-    'status code is set when loader/beforeLoad throws (isAsync=%s)',
+    'loader and beforeLoad outcomes are rendered (isAsync=%s)',
     async (isAsync) => {
       const throwingFun = isAsync
         ? (toThrow: () => void) => async () => {
-            await new Promise((resolve) => setTimeout(resolve, 10))
+            await Promise.resolve()
             toThrow()
           }
         : (toThrow: () => void) => toThrow
@@ -2259,15 +2268,19 @@ describe('statusCode', () => {
       const throwError = throwingFun(() => {
         throw new Error('test-error')
       })
-      it('should set statusCode to 404 when a route loader throws a notFound()', async () => {
+      it('should render notFoundComponent when a route loader throws a notFound()', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
-        const rootRoute = createRootRoute()
+        const rootRoute = createRootRoute({
+          notFoundComponent: () => (
+            <div data-testid="root-not-found">Root Not Found</div>
+          ),
+        })
 
         const indexRoute = createRoute({
           getParentRoute: () => rootRoute,
           path: '/',
-          component: () => <div>Home</div>,
+          component: () => <div data-testid="home-page">Home</div>,
         })
 
         const loaderThrowsRoute = createRoute({
@@ -2278,7 +2291,7 @@ describe('statusCode', () => {
             <div data-testid="route-component">loader will throw</div>
           ),
           notFoundComponent: () => (
-            <div data-testid="not-found-component">Not Found</div>
+            <div data-testid="route-not-found">Route Not Found</div>
           ),
         })
 
@@ -2287,29 +2300,27 @@ describe('statusCode', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
+        expect(await screen.findByTestId('home-page')).toBeInTheDocument()
         await act(() => router.navigate({ to: '/loader-throws-not-found' }))
-        expect(router.state.statusCode).toBe(404)
-        expect(
-          await screen.findByTestId('not-found-component'),
-        ).toBeInTheDocument()
+        expect(await screen.findByTestId('route-not-found')).toBeInTheDocument()
+        expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('home-page')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 404 when a route beforeLoad throws a notFound()', async () => {
+      it('should render notFoundComponent when a route beforeLoad throws a notFound()', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute({
           notFoundComponent: () => (
-            <div data-testid="not-found-component">Not Found</div>
+            <div data-testid="root-not-found">Root Not Found</div>
           ),
         })
 
         const indexRoute = createRoute({
           getParentRoute: () => rootRoute,
           path: '/',
-          component: () => <div>Home</div>,
+          component: () => <div data-testid="home-page">Home</div>,
         })
 
         const beforeLoadThrowsRoute = createRoute({
@@ -2320,7 +2331,7 @@ describe('statusCode', () => {
             <div data-testid="route-component">beforeLoad will throw</div>
           ),
           notFoundComponent: () => (
-            <div data-testid="not-found-component">Not Found</div>
+            <div data-testid="route-not-found">Route Not Found</div>
           ),
         })
 
@@ -2332,17 +2343,15 @@ describe('statusCode', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
+        expect(await screen.findByTestId('home-page')).toBeInTheDocument()
         await act(() => router.navigate({ to: '/beforeload-throws-not-found' }))
-        expect(router.state.statusCode).toBe(404)
-        expect(
-          await screen.findByTestId('not-found-component'),
-        ).toBeInTheDocument()
+        expect(await screen.findByTestId('route-not-found')).toBeInTheDocument()
+        expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
+        expect(screen.queryByTestId('home-page')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 500 when a route loader throws an Error', async () => {
+      it('should render errorComponent when a route loader throws an Error', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute()
@@ -2368,15 +2377,12 @@ describe('statusCode', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await act(() => router.navigate({ to: '/loader-throws-error' }))
-        expect(router.state.statusCode).toBe(500)
         expect(await screen.findByTestId('error-component')).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
 
-      it('should set statusCode to 500 when a route beforeLoad throws an Error', async () => {
+      it('should render errorComponent when a route beforeLoad throws an Error', async () => {
         const history = createMemoryHistory({ initialEntries: ['/'] })
 
         const rootRoute = createRootRoute()
@@ -2405,10 +2411,7 @@ describe('statusCode', () => {
 
         render(<RouterProvider router={router} />)
 
-        expect(router.state.statusCode).toBe(200)
-
         await act(() => router.navigate({ to: '/beforeload-throws-error' }))
-        expect(router.state.statusCode).toBe(500)
         expect(await screen.findByTestId('error-component')).toBeInTheDocument()
         expect(screen.queryByTestId('route-component')).not.toBeInTheDocument()
       })
@@ -2417,7 +2420,7 @@ describe('statusCode', () => {
 })
 
 describe('notFound in beforeLoad with pendingComponent', () => {
-  it('should transition router.state.status to idle when child beforeLoad throws notFound and parent has pendingComponent with pendingMs: 0', async () => {
+  it('renders notFound when child beforeLoad throws and parent has an immediate pending component', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
 
     const rootRoute = createRootRoute({
@@ -2472,23 +2475,26 @@ describe('notFound in beforeLoad with pendingComponent', () => {
 
     render(<RouterProvider router={router} />)
 
-    // Wait for initial load
-    await act(() => router.latestLoadPromise)
-    expect(router.state.status).toBe('idle')
-    expect(screen.getByTestId('home-page')).toBeInTheDocument()
+    expect(await screen.findByTestId('home-page')).toBeInTheDocument()
 
-    // Navigate to the child route that throws notFound in beforeLoad
     await act(() => router.navigate({ to: '/parent/child' }))
 
-    // The router status should eventually become idle
-    await waitFor(() => {
-      expect(router.state.status).toBe('idle')
-    })
-
-    expect(router.state.statusCode).toBe(404)
+    expect(await screen.findByTestId('parent-not-found')).toHaveTextContent(
+      'Parent Not Found',
+    )
+    expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('pending-component')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('child-component')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('home-page')).not.toBeInTheDocument()
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      parentRoute.id,
+      childRoute.id,
+    ])
+    expect(router.state.status).toBe('idle')
   })
 
-  it('should transition router.state.status to idle when child beforeLoad throws notFound and parent has NO pendingComponent', async () => {
+  it('renders notFound when child beforeLoad throws without a pending component', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
 
     const rootRoute = createRootRoute({
@@ -2521,19 +2527,20 @@ describe('notFound in beforeLoad with pendingComponent', () => {
 
     render(<RouterProvider router={router} />)
 
-    await act(() => router.latestLoadPromise)
-    expect(router.state.status).toBe('idle')
+    expect(await screen.findByTestId('home-page')).toBeInTheDocument()
 
     await act(() => router.navigate({ to: '/child' }))
 
-    await waitFor(() => {
-      expect(router.state.status).toBe('idle')
-    })
-
-    expect(router.state.statusCode).toBe(404)
+    expect(await screen.findByTestId('child-not-found')).toHaveTextContent(
+      'Child Not Found',
+    )
+    expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('child-component')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('home-page')).not.toBeInTheDocument()
+    expect(router.state.status).toBe('idle')
   })
 
-  it('should transition router.state.status to idle when nested child beforeLoad throws notFound WITHOUT pendingComponent', async () => {
+  it('renders notFound when nested child beforeLoad throws without a pending component', async () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
 
     const rootRoute = createRootRoute({
@@ -2580,89 +2587,145 @@ describe('notFound in beforeLoad with pendingComponent', () => {
 
     render(<RouterProvider router={router} />)
 
-    await act(() => router.latestLoadPromise)
-    expect(router.state.status).toBe('idle')
+    expect(await screen.findByTestId('home-page')).toBeInTheDocument()
 
     await act(() => router.navigate({ to: '/parent/child' }))
 
-    await waitFor(() => {
-      expect(router.state.status).toBe('idle')
-    })
-
-    expect(router.state.statusCode).toBe(404)
-  })
-
-  it('should transition router.state.status to idle when child async beforeLoad throws notFound and parent has pendingComponent with pendingMs: 0', async () => {
-    const history = createMemoryHistory({ initialEntries: ['/'] })
-
-    const rootRoute = createRootRoute({
-      component: () => <Outlet />,
-      notFoundComponent: () => (
-        <div data-testid="root-not-found">Root Not Found</div>
-      ),
-    })
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => (
-        <div data-testid="home-page">
-          <Link to="/parent/child">Go to child</Link>
-        </div>
-      ),
-    })
-
-    const parentRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/parent',
-      pendingMs: 0,
-      pendingComponent: () => (
-        <div data-testid="pending-component">Loading...</div>
-      ),
-      component: () => (
-        <div data-testid="parent-component">
-          Parent
-          <Outlet />
-        </div>
-      ),
-      notFoundComponent: () => (
-        <div data-testid="parent-not-found">Parent Not Found</div>
-      ),
-    })
-
-    const childRoute = createRoute({
-      getParentRoute: () => parentRoute,
-      path: '/child',
-      beforeLoad: async () => {
-        await new Promise((resolve) => setTimeout(resolve, 10))
-        throw notFound()
-      },
-      component: () => <div data-testid="child-component">Child</div>,
-    })
-
-    const routeTree = rootRoute.addChildren([
-      indexRoute,
-      parentRoute.addChildren([childRoute]),
+    expect(await screen.findByTestId('parent-not-found')).toHaveTextContent(
+      'Parent Not Found',
+    )
+    expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('parent-component')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('child-component')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('home-page')).not.toBeInTheDocument()
+    expect(router.state.matches.map((match) => match.routeId)).toEqual([
+      rootRoute.id,
+      parentRoute.id,
+      childRoute.id,
     ])
-    const router = createRouter({ routeTree, history })
-
-    render(<RouterProvider router={router} />)
-
-    // Wait for initial load
-    await act(() => router.latestLoadPromise)
     expect(router.state.status).toBe('idle')
-    expect(screen.getByTestId('home-page')).toBeInTheDocument()
-
-    // Navigate to the child route that throws notFound in beforeLoad
-    await act(() => router.navigate({ to: '/parent/child' }))
-
-    // The router status should eventually become idle
-    await waitFor(() => {
-      expect(router.state.status).toBe('idle')
-    })
-
-    expect(router.state.statusCode).toBe(404)
   })
+
+  it.each(['ancestor', 'child'] as const)(
+    'renders the parent notFound after showing %s pending UI',
+    async (pendingOwner) => {
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+      const beforeLoad = createControlledPromise<void>()
+
+      const rootRoute = createRootRoute({
+        component: () => <Outlet />,
+        notFoundComponent: () => (
+          <div data-testid="root-not-found">Root Not Found</div>
+        ),
+      })
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div data-testid="home-page">Home</div>,
+      })
+
+      const parentRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/parent',
+        ...(pendingOwner === 'ancestor'
+          ? {
+              beforeLoad: () => beforeLoad,
+              pendingMs: 0,
+              pendingComponent: () => (
+                <div data-testid="ancestor-pending">Loading ancestor...</div>
+              ),
+            }
+          : {}),
+        component: () => (
+          <div data-testid="parent-component">
+            Parent
+            <Outlet />
+          </div>
+        ),
+        notFoundComponent: () => (
+          <div data-testid="parent-not-found">Parent Not Found</div>
+        ),
+      })
+
+      const childRoute = createRoute({
+        getParentRoute: () => parentRoute,
+        path: '/child',
+        ...(pendingOwner === 'child'
+          ? {
+              pendingMs: 0,
+              pendingComponent: () => (
+                <div data-testid="child-pending">Loading child...</div>
+              ),
+            }
+          : {}),
+        beforeLoad: async () => {
+          if (pendingOwner === 'child') {
+            await beforeLoad
+          }
+          throw notFound()
+        },
+        component: () => <div data-testid="child-component">Child</div>,
+      })
+
+      const routeTree = rootRoute.addChildren([
+        indexRoute,
+        parentRoute.addChildren([childRoute]),
+      ])
+      const router = createRouter({
+        routeTree,
+        history,
+        defaultPendingMinMs: 0,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      expect(await screen.findByTestId('home-page')).toBeInTheDocument()
+
+      vi.useFakeTimers()
+      let navigation!: Promise<void>
+      const pendingTestId = `${pendingOwner}-pending`
+      try {
+        await act(async () => {
+          navigation = router.navigate({ to: '/parent/child' })
+          await vi.advanceTimersByTimeAsync(0)
+        })
+
+        expect(screen.getByTestId(pendingTestId)).toBeInTheDocument()
+        if (pendingOwner === 'ancestor') {
+          expect(
+            screen.queryByTestId('parent-component'),
+          ).not.toBeInTheDocument()
+        } else {
+          expect(screen.getByTestId('parent-component')).toBeInTheDocument()
+        }
+      } finally {
+        try {
+          await act(async () => {
+            beforeLoad.resolve()
+            await navigation
+          })
+        } finally {
+          vi.useRealTimers()
+        }
+      }
+
+      expect(screen.getByTestId('parent-not-found')).toHaveTextContent(
+        'Parent Not Found',
+      )
+      expect(screen.queryByTestId('root-not-found')).not.toBeInTheDocument()
+      expect(screen.queryByTestId(pendingTestId)).not.toBeInTheDocument()
+      expect(screen.queryByTestId('parent-component')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('child-component')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('home-page')).not.toBeInTheDocument()
+      expect(router.state.matches.map((match) => match.routeId)).toEqual([
+        rootRoute.id,
+        parentRoute.id,
+        childRoute.id,
+      ])
+      expect(router.state.status).toBe('idle')
+    },
+  )
 })
 
 describe('Router rewrite functionality', () => {
@@ -2867,7 +2930,6 @@ describe('Router rewrite functionality', () => {
       },
     })
     render(<RouterProvider router={router} />)
-    await router.latestLoadPromise
     await waitFor(() => {
       expect(screen.getByTestId('component')).toHaveTextContent('test Users')
     })
@@ -3223,8 +3285,6 @@ describe('Router rewrite functionality', () => {
     const navigateBtn = await screen.findByTestId('navigate-btn')
 
     fireEvent.click(navigateBtn)
-    await router.latestLoadPromise
-
     await screen.findByTestId('dashboard')
 
     // Router internal state should show the internal path
@@ -3612,7 +3672,6 @@ describe('basepath', () => {
       })
 
       expect(router.state.location.pathname).toBe('/')
-      expect(router.state.statusCode).toBe(200)
     },
   )
 

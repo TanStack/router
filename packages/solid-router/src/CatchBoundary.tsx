@@ -5,24 +5,47 @@ import type { JSX } from '@solidjs/web'
 
 export function CatchBoundary(
   props: {
-    getResetKey: () => number | string
-    children: JSX.Element
+    getResetKey: () => unknown
+    children?: JSX.Element
+    render?: () => JSX.Element
     errorComponent?: ErrorRouteComponent
     onCatch?: (error: Error) => void
   } & Solid.ParentProps,
 ) {
+  const [retryKey, setRetryKey] = Solid.createSignal<object>({})
+  let resetBoundary: (() => void) | undefined
+  let initialized = false
+
+  Solid.onCleanup(() => {
+    resetBoundary = undefined
+  })
+
+  Solid.createEffect(props.getResetKey, () => {
+    if (!initialized) {
+      initialized = true
+      return
+    }
+
+    const reset = resetBoundary
+    if (reset) {
+      queueMicrotask(() => {
+        if (resetBoundary !== reset) {
+          return
+        }
+        setRetryKey({})
+        reset()
+        Solid.flush()
+      })
+    }
+  })
+
   return (
     <Solid.Errored
       fallback={(error, reset) => {
         const resolvedError = Solid.untrack(() => error() as Error)
 
         props.onCatch?.(resolvedError)
-
-        Solid.createEffect(props.getResetKey, () => {
-          // We trigger reset here. For a fully deferred effect we might need usePrevious,
-          // but calling reset on key change is the main goal.
-          reset()
-        })
+        resetBoundary = reset
 
         return (
           <Dynamic
@@ -33,7 +56,9 @@ export function CatchBoundary(
         )
       }}
     >
-      {props.children}
+      <Solid.Show when={retryKey()} keyed>
+        {(_retryKey) => props.render?.() ?? props.children}
+      </Solid.Show>
     </Solid.Errored>
   )
 }
@@ -46,7 +71,7 @@ export function ErrorComponent({ error }: { error: any }) {
   return (
     <div style={{ padding: '.5rem', 'max-width': '100%' }}>
       <div style={{ display: 'flex', 'align-items': 'center', gap: '.5rem' }}>
-        ∂<strong style={{ 'font-size': '1rem' }}>Something went wrong!</strong>
+        <strong style={{ 'font-size': '1rem' }}>Something went wrong!</strong>
         <button
           style={{
             appearance: 'none',

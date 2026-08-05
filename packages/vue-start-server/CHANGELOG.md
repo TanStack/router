@@ -1,5 +1,32 @@
 # @tanstack/vue-start-server
 
+## 1.167.24
+
+### Patch Changes
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+  - @tanstack/vue-router@1.170.18
+  - @tanstack/start-server-core@1.169.19
+
+## 1.167.23
+
+### Patch Changes
+
+- [#7944](https://github.com/TanStack/router/pull/7944) [`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162) - Use focused server entrypoints for shared constants and handler helpers so build tooling and framework renderers do not traverse the full Start server barrel.
+
+- Updated dependencies [[`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162)]:
+  - @tanstack/start-server-core@1.169.18
+
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+  - @tanstack/start-server-core@1.169.17
+  - @tanstack/vue-router@1.170.17
+
 ## 1.167.21
 
 ### Patch Changes

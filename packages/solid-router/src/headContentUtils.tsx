@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import {
+  _getAssetMatches,
   appendUniqueUserTags,
   escapeHtml,
   getAssetCrossOrigin,
@@ -13,13 +14,15 @@ import type {
 } from '@tanstack/router-core'
 
 /**
- * Build the list of head/link/meta/script tags to render for active matches.
+ * Build the head/link/meta/script tags from the renderable presented prefix.
  * Used internally by `HeadContent`.
  */
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const activeMatches = Solid.createMemo(() => router.stores.matches.get())
+  const activeMatches = Solid.createMemo(() =>
+    _getAssetMatches(router.stores.matches.get()),
+  )
   const routeMeta = Solid.createMemo(() =>
     activeMatches()
       .map((match) => match.meta)
@@ -35,7 +38,9 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       const metas = routeMetasArray[i]!
       for (let j = metas.length - 1; j >= 0; j--) {
         const m = metas[j]
-        if (!m) continue
+        if (!m) {
+          continue
+        }
 
         if (m.title) {
           if (!title) {
@@ -45,8 +50,6 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
             }
           }
         } else if ('script:ld+json' in m) {
-          // Handle JSON-LD structured data
-          // Content is HTML-escaped to prevent XSS when injected via innerHTML
           try {
             const json = JSON.stringify(m['script:ld+json'])
             resultMeta.push({
@@ -57,16 +60,15 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
               children: escapeHtml(json),
             })
           } catch {
-            // Skip invalid JSON-LD objects
+            // Skip invalid JSON-LD objects.
           }
         } else {
           const attribute = m.name ?? m.property
           if (attribute) {
             if (metaByAttribute[attribute]) {
               continue
-            } else {
-              metaByAttribute[attribute] = true
             }
+            metaByAttribute[attribute] = true
           }
 
           resultMeta.push({
@@ -84,23 +86,21 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       resultMeta.push(title)
     }
 
-    if (router.options.ssr?.nonce) {
+    if (nonce) {
       resultMeta.push({
         tag: 'meta',
         attrs: {
           property: 'csp-nonce',
-          content: router.options.ssr.nonce,
+          content: nonce,
         },
       })
     }
     resultMeta.reverse()
-
     return resultMeta
   })
 
   const links = Solid.createMemo(() => {
-    const matches = activeMatches()
-    const constructed = matches
+    return activeMatches()
       .flatMap((match) => match.links ?? [])
       .filter((link) => link !== undefined)
       .map((link) => ({
@@ -110,8 +110,6 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
           nonce,
         },
       })) satisfies Array<RouterManagedTag>
-
-    return constructed
   })
 
   const retainedManifestCssTags = new Map<string, RouterManagedTag>()
@@ -124,7 +122,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     }
 
     for (const match of activeMatches()) {
-      manifest.routes[match.routeId]?.css?.forEach((link) => {
+      for (const link of manifest.routes[match.routeId]?.css ?? []) {
         const resolvedLink = resolveManifestCssLink(link)
         const tag: RouterManagedTag = {
           tag: 'link',
@@ -141,7 +139,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
         if (!retainedManifestCssTags.has(key)) {
           retainedManifestCssTags.set(key, tag)
         }
-      })
+      }
     }
 
     // Lazy modules are cached and do not reinsert their CSS when revisited.
@@ -163,38 +161,33 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   })
 
   const preloadLinks = Solid.createMemo(() => {
-    const matches = activeMatches()
-    const preloadLinks: Array<RouterManagedTag> = []
-
-    matches.forEach((match) =>
-      router.ssr?.manifest?.routes[match.routeId]?.preloads
-        ?.filter(Boolean)
-        .forEach((preload) => {
-          preloadLinks.push({
-            tag: 'link',
-            attrs: {
-              ...getScriptPreloadAttrs(
-                router.ssr?.manifest,
-                preload,
-                assetCrossOrigin,
-              ),
-              nonce,
-            },
-          })
-        }),
-    )
-
-    return preloadLinks
+    const manifest = router.ssr?.manifest
+    const tags: Array<RouterManagedTag> = []
+    for (const match of activeMatches()) {
+      for (const preload of manifest?.routes[match.routeId]?.preloads ?? []) {
+        if (!preload) {
+          continue
+        }
+        tags.push({
+          tag: 'link',
+          attrs: {
+            ...getScriptPreloadAttrs(manifest, preload, assetCrossOrigin),
+            nonce,
+          },
+        })
+      }
+    }
+    return tags
   })
 
   const styles = Solid.createMemo(() => {
     return activeMatches()
       .flatMap((match) => match.styles ?? [])
       .filter((style) => style !== undefined)
-      .map(({ children, ...style }) => ({
+      .map(({ children, ...attrs }) => ({
         tag: 'style',
         attrs: {
-          ...style,
+          ...attrs,
           nonce,
         },
         children: children as string | undefined,
@@ -205,21 +198,17 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     return activeMatches()
       .flatMap((match) => match.headScripts ?? [])
       .filter((script) => script !== undefined)
-      .map(({ children, ...script }) => ({
+      .map(({ children, ...attrs }) => ({
         tag: 'script',
         attrs: {
-          ...script,
+          ...attrs,
           nonce,
         },
         children: children as string | undefined,
       })) satisfies Array<RouterManagedTag>
   })
 
-  // Cache tag objects by key across renders so that unchanged tags keep a
-  // stable object identity. `<For>` keys by reference, so reusing the previous
-  // object for an unchanged tag lets it reconcile the existing DOM node in
-  // place instead of remounting it. Remounting head nodes on navigation
-  // detaches/re-fetches stylesheets (e.g. the app stylesheet), causing a FOUC.
+  // Reuse equal tag objects so Solid's reference-keyed For keeps DOM nodes.
   return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
     const next: Array<RouterManagedTag> = []
     appendUniqueUserTags(next, meta())
@@ -229,10 +218,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     appendUniqueUserTags(next, styles())
     appendUniqueUserTags(next, headScripts())
 
-    if (prev === undefined) {
-      return next
-    }
-    return replaceEqualTags(prev, next)
+    return prev === undefined ? next : replaceEqualTags(prev, next)
   })
 }
 

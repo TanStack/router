@@ -3,7 +3,7 @@ import { replaceEqualDeep, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
-import { Transitioner } from './Transitioner'
+import { Rendered, Transitioner } from './Transitioner'
 import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
@@ -65,6 +65,7 @@ export function Matches() {
       >
         <Transitioner />
         <MatchesInner />
+        <Rendered />
       </ResolvedSuspense>
     </OptionalWrapper>
   )
@@ -72,25 +73,17 @@ export function Matches() {
 
 function MatchesInner() {
   const router = useRouter()
-  const matchId = () => router.stores.firstId.get()
-  const routeId = () => (matchId() ? rootRouteId : undefined)
+  const routeId = () => router.stores.ids.get()[0]
   const match = () =>
-    routeId() ? router.stores.getRouteMatchStore(rootRouteId).get() : undefined
-  const hasPendingMatch = () =>
-    routeId()
-      ? Boolean(router.stores.pendingRouteIds.get()[rootRouteId])
-      : false
-  const resetKey = () => router.stores.loadedAt.get()
+    routeId() ? router.stores.byRoute.get(routeId()!)?.get() : undefined
   const nearestMatch = {
-    matchId,
     routeId,
     match,
-    hasPending: hasPendingMatch,
   }
 
   const matchContent = () => (
-    <Solid.Show when={matchId()}>
-      <Match matchId={matchId()!} />
+    <Solid.Show when={routeId()} keyed>
+      {(currentRouteId) => <Match routeId={currentRouteId} />}
     </Solid.Show>
   )
 
@@ -107,7 +100,8 @@ function MatchesInner() {
   return (
     <NearestMatchContext value={nearestMatch}>
       <CatchBoundary
-        getResetKey={() => resetKey()}
+        getResetKey={() => router.stores.matches.get()}
+        render={matchContent}
         errorComponent={ErrorComponent}
         onCatch={
           process.env.NODE_ENV !== 'production'
@@ -119,9 +113,7 @@ function MatchesInner() {
               }
             : undefined
         }
-      >
-        {matchContent()}
-      </CatchBoundary>
+      />
     </NearestMatchContext>
   )
 }
@@ -154,7 +146,9 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
     return Solid.createMemo(() => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
-      router.stores.matchRouteDeps.get()
+      router.stores.location.get()
+      router.stores.resolvedLocation.get()
+      router.stores.status.get()
       return router.matchRoute(rest as any, {
         pending,
         caseSensitive,
@@ -238,13 +232,13 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextMatchId = Solid.useContext(nearestMatchContext).matchId
+  const contextRouteId = Solid.useContext(nearestMatchContext).routeId
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
         0,
-        matches.findIndex((d) => d.id === contextMatchId()),
+        matches.findIndex((d) => d.routeId === contextRouteId()),
       )
       return opts?.select ? opts.select(matches) : matches
     },
@@ -257,12 +251,12 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextMatchId = Solid.useContext(nearestMatchContext).matchId
+  const contextRouteId = Solid.useContext(nearestMatchContext).routeId
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
       matches = matches.slice(
-        matches.findIndex((d) => d.id === contextMatchId()) + 1,
+        matches.findIndex((d) => d.routeId === contextRouteId()) + 1,
       )
       return opts?.select ? opts.select(matches) : matches
     },

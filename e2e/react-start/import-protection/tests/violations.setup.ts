@@ -5,7 +5,10 @@ import { chromium } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from '../package.json' with { type: 'json' }
 
-import { extractViolationsFromLog } from './violations.utils'
+import {
+  extractViolationsFromLog,
+  getViolationArtifactName,
+} from './violations.utils'
 import type { FullConfig } from '@playwright/test'
 import type { Violation } from './violations.utils'
 
@@ -250,11 +253,11 @@ async function captureDevViolations(cwd: string): Promise<void> {
   )
 
   fs.writeFileSync(
-    path.resolve(cwd, 'violations.dev.json'),
+    path.resolve(cwd, getViolationArtifactName('dev')),
     JSON.stringify(coldViolations, null, 2),
   )
   fs.writeFileSync(
-    path.resolve(cwd, 'violations.dev.cold.json'),
+    path.resolve(cwd, getViolationArtifactName('dev.cold')),
     JSON.stringify(coldViolations, null, 2),
   )
 
@@ -265,7 +268,7 @@ async function captureDevViolations(cwd: string): Promise<void> {
   )
 
   fs.writeFileSync(
-    path.resolve(cwd, 'violations.dev.warm.json'),
+    path.resolve(cwd, getViolationArtifactName('dev.warm')),
     JSON.stringify(warmViolations, null, 2),
   )
 }
@@ -275,19 +278,22 @@ export default async function globalSetup(config: FullConfig) {
   // This file lives in ./tests; fixture root is one directory up.
   const cwd = path.resolve(import.meta.dirname, '..')
 
-  // webServer.command writes build output to this file.
-  const logFile = path.resolve(cwd, 'webserver-build.log')
+  // The Nx build dependency writes build output to this file.
+  const logFile = path.resolve(
+    cwd,
+    process.env.E2E_BUILD_LOG ?? 'webserver-build.log',
+  )
 
   if (!fs.existsSync(logFile)) {
     // If the log doesn't exist, leave an empty violations file.
-    fs.writeFileSync(path.resolve(cwd, 'violations.build.json'), '[]')
+    fs.writeFileSync(path.resolve(cwd, getViolationArtifactName('build')), '[]')
     return
   }
 
   const text = fs.readFileSync(logFile, 'utf-8')
   const violations = extractViolationsFromLog(text)
   fs.writeFileSync(
-    path.resolve(cwd, 'violations.build.json'),
+    path.resolve(cwd, getViolationArtifactName('build')),
     JSON.stringify(violations, null, 2),
   )
 

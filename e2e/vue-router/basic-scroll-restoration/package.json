@@ -20,12 +20,12 @@
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.61.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "vite": "^8.0.14",
-    "vue-tsc": "^3.1.5",
+    "vue-tsc": "^3.3.8",
     "typescript": "~5.9.0"
   }
 }

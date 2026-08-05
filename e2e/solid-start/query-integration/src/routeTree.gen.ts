@@ -9,16 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UseQueryRouteImport } from './routes/useQuery'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as NotFoundReloadIdRouteImport } from './routes/not-found-reload.$id'
+import { Route as UseQueryRouteImport } from './routes/useQuery'
 import { Route as LoaderFetchQueryTypeRouteImport } from './routes/loader-fetchQuery/$type'
 
-const UseQueryRoute = UseQueryRouteImport.update({
-  id: '/useQuery',
-  path: '/useQuery',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -27,6 +22,11 @@ const IndexRoute = IndexRouteImport.update({
 const NotFoundReloadIdRoute = NotFoundReloadIdRouteImport.update({
   id: '/not-found-reload/$id',
   path: '/not-found-reload/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UseQueryRoute = UseQueryRouteImport.update({
+  id: '/useQuery',
+  path: '/useQuery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
@@ -80,13 +80,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/useQuery': {
-      id: '/useQuery'
-      path: '/useQuery'
-      fullPath: '/useQuery'
-      preLoaderRoute: typeof UseQueryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -99,6 +92,13 @@ declare module '@tanstack/solid-router' {
       path: '/not-found-reload/$id'
       fullPath: '/not-found-reload/$id'
       preLoaderRoute: typeof NotFoundReloadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/useQuery': {
+      id: '/useQuery'
+      path: '/useQuery'
+      fullPath: '/useQuery'
+      preLoaderRoute: typeof UseQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/loader-fetchQuery/$type': {

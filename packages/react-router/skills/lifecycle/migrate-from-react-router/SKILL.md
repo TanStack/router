@@ -1,13 +1,14 @@
 ---
-name: lifecycle/migrate-from-react-router
+name: migrate-from-react-router
 description: >-
   Step-by-step migration from React Router v7 to TanStack Router:
   route definition conversion, Link/useNavigate API differences,
   useSearchParams to validateSearch + useSearch, useParams with from,
   Outlet replacement, loader conversion, code splitting differences.
-type: lifecycle
-library: tanstack-router
-library_version: '1.166.2'
+metadata:
+  type: lifecycle
+  library: tanstack-router
+  library_version: '1.166.2'
 requires:
   - router-core
   - react-router

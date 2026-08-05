@@ -8,10 +8,11 @@ description: >-
   Outlet, CatchBoundary, ErrorComponent, Html, Body.
   Vue-specific patterns with Ref<T> returns, defineComponent,
   h() render functions, provide/inject, and computed refs.
-type: framework
-library: tanstack-router
-library_version: '1.166.2'
-framework: vue
+metadata:
+  type: framework
+  library: tanstack-router
+  library_version: '1.166.2'
+  framework: vue
 requires:
   - router-core
 sources:

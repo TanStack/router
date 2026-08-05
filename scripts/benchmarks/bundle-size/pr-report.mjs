@@ -268,10 +268,16 @@ async function main() {
       ? resolveBaselineFromCurrentJson(baselineCurrent)
       : resolveBaselineFromHistory(historyEntries, args.baseSha)
 
+  const metrics = current.metrics || []
   const rows = []
 
-  for (const metric of current.metrics || []) {
+  for (const metric of metrics) {
     const baselineValue = baseline.benchesByName.get(metric.id)
+
+    if (Number.isFinite(baselineValue) && metric.gzipBytes === baselineValue) {
+      continue
+    }
+
     const historySeries = (seriesByScenario.get(metric.id) || []).slice(
       // Reserve one slot for the current metric so the sparkline stays at trendPoints.
       -args.trendPoints + 1,
@@ -290,6 +296,7 @@ async function main() {
       raw: metric.rawBytes,
       brotli: metric.brotliBytes,
       initial: metric.initialGzipBytes,
+      hasBaseline: Number.isFinite(baselineValue),
       deltaCell: formatDelta(metric.gzipBytes, baselineValue),
       trendCell: sparkline(historySeries.slice(-args.trendPoints)),
     })
@@ -299,30 +306,45 @@ async function main() {
   lines.push(args.marker)
   lines.push('## Bundle Size Benchmarks')
   lines.push('')
-  lines.push(`- Commit: \`${formatShortSha(current.sha)}\``)
-  lines.push(
-    `- Measured at: \`${current.measuredAt || current.generatedAt || 'unknown'}\``,
-  )
-  lines.push(`- Baseline source: \`${baseline.source}\``)
-  if (args.dashboardUrl) {
-    lines.push(`- Dashboard: [bundle-size history](${args.dashboardUrl})`)
-  }
-  lines.push('')
-  lines.push(
-    '| Scenario | Current (gzip) | Delta vs baseline | Initial gzip | Raw | Brotli | Trend |',
-  )
-  lines.push('| --- | ---: | ---: | ---: | ---: | ---: | --- |')
 
-  for (const row of rows) {
+  if (metrics.length > 0 && rows.length === 0) {
     lines.push(
-      `| \`${row.id}\` | ${formatBytes(row.current)} | ${row.deltaCell} | ${formatBytes(row.initial)} | ${formatBytes(row.raw)} | ${formatBytes(row.brotli)} | ${row.trendCell} |`,
+      'This pull request does not affect bundle size in any measured scenario.',
+    )
+  } else if (metrics.length === 0) {
+    lines.push('No bundle-size scenarios were measured.')
+  } else {
+    lines.push(`- Commit: \`${formatShortSha(current.sha)}\``)
+    lines.push(
+      `- Measured at: \`${current.measuredAt || current.generatedAt || 'unknown'}\``,
+    )
+    lines.push(`- Baseline source: \`${baseline.source}\``)
+    if (args.dashboardUrl) {
+      lines.push(`- Dashboard: [bundle-size history](${args.dashboardUrl})`)
+    }
+    lines.push('')
+    lines.push(
+      rows.some((row) => !row.hasBaseline)
+        ? 'The following scenarios have bundle-size changes or lack baseline data for comparison:'
+        : 'The following scenarios have bundle-size changes compared with the baseline:',
+    )
+    lines.push('')
+    lines.push(
+      '| Scenario | Current (gzip) | Delta vs baseline | Initial gzip | Raw | Brotli | Trend |',
+    )
+    lines.push('| --- | ---: | ---: | ---: | ---: | ---: | --- |')
+
+    for (const row of rows) {
+      lines.push(
+        `| \`${row.id}\` | ${formatBytes(row.current)} | ${row.deltaCell} | ${formatBytes(row.initial)} | ${formatBytes(row.raw)} | ${formatBytes(row.brotli)} | ${row.trendCell} |`,
+      )
+    }
+
+    lines.push('')
+    lines.push(
+      '_Current gzip tracks all emitted client JS chunks. Initial gzip tracks only the entry/import graph. Trend sparkline is historical current gzip ending with this PR measurement; lower is better._',
     )
   }
-
-  lines.push('')
-  lines.push(
-    '_Current gzip tracks all emitted client JS chunks. Initial gzip tracks only the entry/import graph. Trend sparkline is historical current gzip ending with this PR measurement; lower is better._',
-  )
 
   const markdown = lines.join('\n') + '\n'
   await fsp.mkdir(path.dirname(outputPath), { recursive: true })

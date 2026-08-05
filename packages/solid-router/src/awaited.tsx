@@ -10,7 +10,7 @@ export type AwaitOptions<T> = {
 
 export function useAwaited<T>({
   promise: _promise,
-}: AwaitOptions<T>): [T, DeferredPromise<T>] {
+}: AwaitOptions<T>): [data: T, promise: DeferredPromise<T>] {
   const promise = defer(_promise)
   const data = Solid.createMemo(async () => await promise)
 
@@ -22,12 +22,17 @@ function InnerAwait<T>(props: {
   ready: Solid.Accessor<unknown>
   children: (res: T) => SolidNode
 }) {
-  props.ready()
-  const state = props.deferred[TSR_DEFERRED_PROMISE]
-  if (state.status === 'error') {
-    throw state.error
-  }
-  return props.children(state.data as T) as any
+  return (
+    <Solid.Show when={props.ready()}>
+      {(_) => {
+        const state = props.deferred[TSR_DEFERRED_PROMISE]
+        if (state.status === 'error') {
+          throw state.error
+        }
+        return props.children(state.data as T) as any
+      }}
+    </Solid.Show>
+  )
 }
 
 export function Await<T>(

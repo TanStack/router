@@ -12,7 +12,7 @@
   "dependencies": {
     "@solidjs/web": "2.0.0-beta.29",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/router-plugin": "^1.168.19",
+    "@tanstack/router-plugin": "^1.168.24",
     "@tanstack/solid-router": "^2.0.0-beta.29",
     "solid-js": "2.0.0-beta.29",
     "tailwindcss": "^4.2.2"
@@ -20,7 +20,8 @@
   "devDependencies": {
     "@inlang/paraglide-js": "^2.4.0",
     "@types/node": "^22.18.6",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-solid": "^3.0.0-next.21"
   }

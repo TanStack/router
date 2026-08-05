@@ -401,4 +401,56 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
       '/assets/index.js',
     ])
   })
+
+  test('omits descendant assets past a terminal parent boundary', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const parentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      loader: () => {
+        throw new Error('parent failed')
+      },
+    })
+    const childRoute = new BaseRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
+      isServer: true,
+    })
+    const manifest: ServerManifest = {
+      inlineCss: {
+        styles: {
+          '/assets/root.css': '.root{}',
+          '/assets/parent.css': '.parent{}',
+          '/assets/child.css': '.child{}',
+        },
+      },
+      routes: {
+        [rootRoute.id]: { css: ['/assets/root.css'] },
+        [parentRoute.id]: { css: ['/assets/parent.css'] },
+        [childRoute.id]: {
+          css: ['/assets/child.css'],
+          preloads: ['/assets/child.js'],
+        },
+      },
+    }
+
+    attachRouterServerSsrUtils({ router, manifest })
+    await router.load()
+
+    expect(router.state.matches).toHaveLength(3)
+    expect(router.ssr!.manifest?.inlineStyle?.children).toBe('.root{}.parent{}')
+
+    await router.serverSsr!.dehydrate()
+    const script = router.serverSsr!.takeBufferedScripts()
+    expect(script?.children).toBeTruthy()
+    const dehydratedManifest = parseSerializedRouter(
+      script!.children!,
+    ).manifest!
+
+    expect(dehydratedManifest.routes[childRoute.id]).toBeUndefined()
+  })
 })

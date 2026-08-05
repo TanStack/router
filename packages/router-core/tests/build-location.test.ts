@@ -6,7 +6,22 @@ import {
   retainSearchParams,
   stripSearchParams,
 } from '../src'
+import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
+
+test('_getUserHistoryState removes volatile router bookkeeping but keeps mask payloads', () => {
+  expect(
+    _getUserHistoryState({
+      key: 'legacy-key',
+      __TSR_key: 'key',
+      __TSR_index: 1,
+      __hashScrollIntoViewOptions: true,
+      __tempLocation: {} as any,
+      __tempKey: 'temp-key',
+      user: 'state',
+    } as any),
+  ).toEqual({ user: 'state', __tempLocation: {}, __tempKey: 'temp-key' })
+})
 
 describe('buildLocation - params function receives parsed params', () => {
   test('prev params should contain parsed params from route params.parse', async () => {
