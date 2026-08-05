@@ -4,6 +4,34 @@ import { test } from '@tanstack/router-e2e-utils'
 const testCount = 7
 
 test.describe('selective ssr', () => {
+  test('#7947: beforeLoad redirect on an ssr: false route does not cause a hydration error', async ({
+    page,
+  }) => {
+    const browserErrors: Array<string> = []
+    // React's default onRecoverableError reports through both channels,
+    // depending on whether the development or production build is running.
+    page.on('console', (message) => {
+      if (message.type() === 'error') {
+        browserErrors.push(message.text())
+      }
+    })
+    page.on('pageerror', (error) => {
+      browserErrors.push(error.message)
+    })
+
+    await page.goto('/issue-7947')
+
+    await expect(page).toHaveURL(/\/issue-7947-target$/)
+    await expect(page.getByTestId('issue-7947-target')).toBeVisible()
+
+    const hydrationErrors = browserErrors.filter((error) =>
+      /hydrat|did not match|server rendered HTML|Minified React error #(418|423|425)\b/i.test(
+        error,
+      ),
+    )
+    expect(hydrationErrors).toEqual([])
+  })
+
   test('#4614: cached parent loader data does not cache its beforeLoad context', async ({
     page,
   }) => {
