@@ -492,13 +492,6 @@ export function useLinkProps<
     ],
   )
 
-  const {
-    exact: activeExact,
-    explicitUndefined: activeExplicitUndefined,
-    includeHash: activeIncludeHash,
-    includeSearch: activeIncludeSearch,
-  } = activeOptions ?? {}
-
   // Derive inside the selector so `compareLinkState` can bail out. Deriving after
   // the subscription instead re-renders every link on every navigation, because
   // the comparator only sees the location, not whether this link's output moved.
@@ -533,25 +526,23 @@ export function useLinkProps<
         resolveIsActive(
           location,
           next,
-          {
-            exact: activeExact,
-            explicitUndefined: activeExplicitUndefined,
-            includeHash: activeIncludeHash,
-            includeSearch: activeIncludeSearch,
-          },
+          activeOptions,
           router.basepath,
           isHydrated,
           externalLink !== undefined,
         ),
       ]
     },
-    // Spread into primitives: `activeOptions` is routinely an inline object
-    // literal, so depending on it directly rebuilds the selector every render.
+    // Depend on the four fields rather than `activeOptions` itself: callers
+    // routinely pass an inline object literal, which would rebuild the selector
+    // every render. `resolveIsActive` reads only these four, so the disable is
+    // not hiding a live dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      activeExact,
-      activeExplicitUndefined,
-      activeIncludeHash,
-      activeIncludeSearch,
+      activeOptions?.exact,
+      activeOptions?.explicitUndefined,
+      activeOptions?.includeHash,
+      activeOptions?.includeSearch,
       disabled,
       isHydrated,
       _options,
