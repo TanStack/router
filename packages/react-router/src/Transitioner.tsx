@@ -18,7 +18,7 @@ export function settleOwner(
 export function Transitioner({
   t,
 }: {
-  t: React.Dispatch<React.SetStateAction<AnyRouter|undefined>>
+  t: React.Dispatch<React.SetStateAction<AnyRouter | undefined>>
 }) {
   const router = useRouter()
   const acknowledgement = (router._rendered ??= [])
