@@ -18,7 +18,7 @@ export function settleOwner(
 export function Transitioner({
   t,
 }: {
-  t: React.TransitionStartFunction
+  t: React.Dispatch<React.SetStateAction<AnyRouter|undefined>>
 }) {
   const router = useRouter()
   const acknowledgement = (router._rendered ??= [])
@@ -32,7 +32,8 @@ export function Transitioner({
     new Promise((resolve, reject) => {
       settleOwner(acknowledgement, false)
       acknowledgement.push(expected, resolve)
-      t(() => {
+      t(router)
+      React.startTransition(() => {
         try {
           fn()
         } catch (cause) {

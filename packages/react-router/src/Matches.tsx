@@ -59,11 +59,11 @@ export function Matches() {
     <>
       {!(isServer ?? router.isServer) && (
         <Transitioner
-          // A component-scoped transition schedules the match-tree owner when a
-          // publication starts. This matters on mount, before the match-store
-          // subscription has committed, while leaving the store as the source of truth.
+          // Use the router identity as a one-shot state tag: the first publication
+          // schedules the match-tree owner before the match-store subscription has
+          // committed, while later publications set the same value and bail out.
           // eslint-disable-next-line react-hooks/rules-of-hooks -- server only, condition is static
-          t={React.useTransition()[1]}
+          t={React.useState<AnyRouter>()[1]}
         />
       )}
       <ResolvedSuspense fallback={pendingElement}>
