@@ -1,4 +1,4 @@
-import { onCleanup, onMount } from 'solid-js'
+import { onCleanup, onSettled } from 'solid-js'
 import { createFileRoute } from '@tanstack/solid-router'
 
 const pendingMinMs = 1500
@@ -14,7 +14,7 @@ function recordEvent(type: string) {
 }
 
 function Pending() {
-  onMount(() => {
+  onSettled(() => {
     recordEvent('pending-mounted')
   })
   onCleanup(() => {
@@ -25,7 +25,7 @@ function Pending() {
 }
 
 function Target() {
-  onMount(() => {
+  onSettled(() => {
     recordEvent('target-mounted')
   })
 
