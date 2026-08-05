@@ -1766,12 +1766,12 @@ async function awaitCurrent(
   }
 }
 
-async function followRedirect(
+function followRedirect(
   router: CoordinatorRouter,
   tx: LoadTransaction,
   redirect: AnyRedirect,
 ): Promise<void> {
-  await router.navigate({
+  return router.navigate({
     ...redirect.options,
     replace: true,
     ignoreBlocker: true,
