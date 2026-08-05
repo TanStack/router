@@ -57,7 +57,15 @@ export function Matches() {
 
   const inner = (
     <>
-      {!(isServer ?? router.isServer) && <Transitioner />}
+      {!(isServer ?? router.isServer) && (
+        <Transitioner
+          // A component-scoped transition schedules the match-tree owner when a
+          // publication starts. This matters on mount, before the match-store
+          // subscription has committed, while leaving the store as the source of truth.
+          // eslint-disable-next-line react-hooks/rules-of-hooks -- server only, condition is static
+          t={React.useTransition()[1]}
+        />
+      )}
       <ResolvedSuspense fallback={pendingElement}>
         <MatchesInner />
       </ResolvedSuspense>
