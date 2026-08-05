@@ -992,8 +992,6 @@ type MatchStackFrame<T extends RouteLike> = {
   node: AnySegmentNode<T>
   /** index of the segment of path */
   index: number
-  /** how many nodes between `node` and the root of the segment tree */
-  depth: number
   /**
    * Bitmask of skipped optional segments.
    *
@@ -1043,7 +1041,6 @@ function getNodeMatch<T extends RouteLike>(
       node: segmentTree,
       index: 1,
       skipped: 0,
-      depth: 1,
       statics: 0,
       dynamics: 0,
       optionals: 0,
@@ -1055,7 +1052,7 @@ function getNodeMatch<T extends RouteLike>(
 
   while (stack.length) {
     const frame = stack.pop()!
-    const { node, index, skipped, depth, statics, dynamics, optionals } = frame
+    const { node, index, skipped, statics, dynamics, optionals } = frame
     let { extract, rawParams } = frame
 
     // Wildcard candidates are pushed speculatively as fallbacks in case a
@@ -1112,7 +1109,6 @@ function getNodeMatch<T extends RouteLike>(
         node: node.index,
         index,
         skipped,
-        depth: depth + 1,
         statics,
         dynamics,
         optionals,
@@ -1165,7 +1161,6 @@ function getNodeMatch<T extends RouteLike>(
           node: segment,
           index: partsLength,
           skipped,
-          depth: depth + 1,
           statics,
           dynamics,
           optionals,
@@ -1177,16 +1172,15 @@ function getNodeMatch<T extends RouteLike>(
 
     // 4. Try optional match
     if (node.optional) {
-      const nextSkipped = skipped | (1 << depth)
-      const nextDepth = depth + 1
+      // A skipped optional is keyed by the child node's trie depth.
+      const nextSkipped = skipped | (1 << (node.depth + 1))
       for (let i = node.optional.length - 1; i >= 0; i--) {
         const segment = node.optional[i]!
-        // when skipping, node and depth advance by 1, but index doesn't
+        // when skipping, the node advances by 1, but the index doesn't
         stack.push({
           node: segment,
           index,
           skipped: nextSkipped,
-          depth: nextDepth,
           statics,
           dynamics,
           optionals,
@@ -1209,7 +1203,6 @@ function getNodeMatch<T extends RouteLike>(
             node: segment,
             index: index + 1,
             skipped,
-            depth: nextDepth,
             statics,
             dynamics,
             optionals: optionals + segmentScore(partsLength, index),
@@ -1236,7 +1229,6 @@ function getNodeMatch<T extends RouteLike>(
           node: segment,
           index: index + 1,
           skipped,
-          depth: depth + 1,
           statics,
           dynamics: dynamics + segmentScore(partsLength, index),
           optionals,
@@ -1256,7 +1248,6 @@ function getNodeMatch<T extends RouteLike>(
           node: match,
           index: index + 1,
           skipped,
-          depth: depth + 1,
           statics: statics + segmentScore(partsLength, index),
           dynamics,
           optionals,
@@ -1274,7 +1265,6 @@ function getNodeMatch<T extends RouteLike>(
           node: match,
           index: index + 1,
           skipped,
-          depth: depth + 1,
           statics: statics + segmentScore(partsLength, index),
           dynamics,
           optionals,
@@ -1286,14 +1276,12 @@ function getNodeMatch<T extends RouteLike>(
 
     // 0. Try pathless match
     if (node.pathless) {
-      const nextDepth = depth + 1
       for (let i = node.pathless.length - 1; i >= 0; i--) {
         const segment = node.pathless[i]!
         stack.push({
           node: segment,
           index,
           skipped,
-          depth: nextDepth,
           statics,
           dynamics,
           optionals,
@@ -1380,6 +1368,6 @@ function isFrameMoreSpecific(
                 (prev.node.kind === SEGMENT_TYPE_INDEX) ||
                 ((next.node.kind === SEGMENT_TYPE_INDEX) ===
                   (prev.node.kind === SEGMENT_TYPE_INDEX) &&
-                  next.depth > prev.depth)))))))
+                  next.node.depth > prev.node.depth)))))))
   )
 }
