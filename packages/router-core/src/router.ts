@@ -1512,9 +1512,12 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const matchedRoutesResult = this.getMatchedRoutes(next.pathname)
-    const { foundRoute, routeParams } = matchedRoutesResult
-    let { matchedRoutes } = matchedRoutesResult
+    const {
+      foundRoute,
+      routeParams,
+      matchedRoutes: initialMatchedRoutes,
+    } = this.getMatchedRoutes(next.pathname)
+    let matchedRoutes = initialMatchedRoutes
     let isGlobalNotFound = false
 
     // Check to see if the route needs a 404 entry
@@ -1549,6 +1552,7 @@ export class RouterCore<
           : undefined
     }
 
+    let strictParams: AnyRouteMatch['_strictParams'] | undefined
     for (let index = 0; index < matchedRoutes.length; index++) {
       const route = matchedRoutes[index]!
       // Take each matched route and resolve + validate its search params
@@ -1614,6 +1618,7 @@ export class RouterCore<
         }
         searchError ??= cause
       }
+      // Match identity must only use the raw params captured from the URL.
       const { interpolatedPath, usedParams } = interpolatePath({
         path: route.fullPath,
         params: routeParams,
@@ -1639,7 +1644,10 @@ export class RouterCore<
           : (this._cache.get(matchId) ??
             (previousMatch?.id === matchId ? previousMatch : undefined))
 
-      const strictParams = existingMatch?._strictParams ?? usedParams
+      // Carry parsed ancestors forward without mutating the raw route params.
+      strictParams =
+        existingMatch?._strictParams ??
+        Object.assign(usedParams, strictParams)
 
       let paramsError: unknown
 
@@ -1661,8 +1669,6 @@ export class RouterCore<
         }
       }
 
-      Object.assign(routeParams, strictParams)
-
       const cause = previousMatch ? 'stay' : 'enter'
 
       let match: AnyRouteMatch
@@ -1671,8 +1677,6 @@ export class RouterCore<
         match = {
           ...existingMatch,
           cause,
-          params: previousMatch?.params ?? routeParams,
-          _strictParams: strictParams,
           search: previousMatch
             ? nullReplaceEqualDeep(previousMatch.search, preMatchSearch)
             : nullReplaceEqualDeep(existingMatch.search, preMatchSearch),
@@ -1687,7 +1691,7 @@ export class RouterCore<
           ssr: (isServer ?? this.isServer) ? undefined : route.options.ssr,
           index,
           routeId: route.id,
-          params: previousMatch?.params ?? routeParams,
+          params: previousMatch?.params ?? strictParams,
           _strictParams: strictParams,
           pathname: interpolatedPath,
           updatedAt: Date.now(),
@@ -1727,8 +1731,8 @@ export class RouterCore<
       const match = matches[index]!
       match.params =
         match.cause === 'stay'
-          ? nullReplaceEqualDeep(match.params, routeParams)
-          : routeParams
+          ? nullReplaceEqualDeep(match.params, strictParams)
+          : strictParams!
       if (opts?._controller) {
         match.context = {}
       }
