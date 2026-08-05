@@ -33,18 +33,14 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-interface LinkState {
-  href: string | undefined
-  externalLink: string | undefined
-  isActive: boolean
-}
+type LinkState = [
+  href: string | undefined,
+  externalLink: string | undefined,
+  isActive: boolean,
+]
 
 function compareLinkState(a: LinkState, b: LinkState) {
-  return (
-    a.href === b.href &&
-    a.externalLink === b.externalLink &&
-    a.isActive === b.isActive
-  )
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
 }
 
 function resolveExternalLink(
@@ -531,10 +527,10 @@ export function useLinkProps<
         router.protocolAllowlist,
       )
 
-      return {
-        href: hrefOption?.href,
+      return [
+        hrefOption?.href,
         externalLink,
-        isActive: resolveIsActive(
+        resolveIsActive(
           location,
           next,
           {
@@ -547,7 +543,7 @@ export function useLinkProps<
           isHydrated,
           externalLink !== undefined,
         ),
-      }
+      ]
     },
     // Spread into primitives: `activeOptions` is routinely an inline object
     // literal, so depending on it directly rebuilds the selector every render.
@@ -565,7 +561,7 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { href, externalLink, isActive } = useStore(
+  const [href, externalLink, isActive] = useStore(
     router.stores.location,
     selectLinkState,
     compareLinkState,
