@@ -1,5 +1,6 @@
 import * as Solid from '@solidjs/web'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
+import clientAssetsManifest from './clientAssetsManifest'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSX } from '@solidjs/web'
 
@@ -26,7 +27,10 @@ export const renderRouterToString = ({
     let html = Solid.renderToString(children, {
       nonce: router.options.ssr?.nonce,
       plugins: serovalPlugins,
-      manifest: manifest ?? router.ssr?.manifest,
+      // Prefer the bundler-provided client-assets bridge (module-keyed, the
+      // shape Solid resolves lazy() assets from); the router's route-keyed
+      // manifest is a last resort that cannot answer lazy module lookups.
+      manifest: manifest ?? clientAssetsManifest ?? router.ssr?.manifest,
     } as any)
     router.serverSsr!.setRenderFinished()
 

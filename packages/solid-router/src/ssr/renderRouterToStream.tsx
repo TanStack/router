@@ -5,6 +5,7 @@ import {
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
+import clientAssetsManifest from './clientAssetsManifest'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSX } from '@solidjs/web'
@@ -59,7 +60,10 @@ export const renderRouterToStream = async ({
   const stream = Solid.renderToStream(() => children, {
     nonce: router.options.ssr?.nonce,
     plugins: serovalPlugins,
-    manifest: manifest ?? router.ssr?.manifest,
+    // Prefer the bundler-provided client-assets bridge (module-keyed, the
+    // shape Solid resolves lazy() assets from); the router's route-keyed
+    // manifest is a last resort that cannot answer lazy module lookups.
+    manifest: manifest ?? clientAssetsManifest ?? router.ssr?.manifest,
   } as any)
 
   // Solid's `pipeTo(w)` takes a single arg (no signal overload) and locks
