@@ -502,8 +502,8 @@ importers:
         specifier: ^5.1.5
         version: 5.1.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       seroval:
-        specifier: ^1.5.4
-        version: 1.5.4
+        specifier: ^1.6.2
+        version: 1.6.2
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -13645,11 +13645,11 @@ importers:
         specifier: ^3.0.0
         version: 3.1.1
       seroval:
-        specifier: ^1.5.4
-        version: 1.5.4
+        specifier: ^1.6.2
+        version: 1.6.2
       seroval-plugins:
-        specifier: ^1.5.4
-        version: 1.5.4(seroval@1.5.4)
+        specifier: ^1.6.2
+        version: 1.6.2(seroval@1.6.2)
     devDependencies:
       '@tanstack/store':
         specifier: ^0.9.3
@@ -14069,8 +14069,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       seroval:
-        specifier: ^1.5.4
-        version: 1.5.4
+        specifier: ^1.6.2
+        version: 1.6.2
     devDependencies:
       '@types/node':
         specifier: 25.0.9
@@ -14124,8 +14124,8 @@ importers:
         specifier: ^4.0.3
         version: 4.0.3
       seroval:
-        specifier: ^1.5.4
-        version: 1.5.4
+        specifier: ^1.6.2
+        version: 1.6.2
       source-map:
         specifier: ^0.7.6
         version: 0.7.6
@@ -14188,8 +14188,8 @@ importers:
         specifier: npm:h3@2.0.1-rc.20
         version: h3@2.0.1-rc.20(crossws@0.4.5(srvx@0.11.22))
       seroval:
-        specifier: ^1.5.4
-        version: 1.5.4
+        specifier: ^1.6.2
+        version: 1.6.2
     devDependencies:
       '@standard-schema/spec':
         specifier: ^1.0.0
@@ -14216,8 +14216,8 @@ importers:
         specifier: workspace:*
         version: link:../start-client-core
       seroval:
-        specifier: ^1.5.4
-        version: 1.5.4
+        specifier: ^1.6.2
+        version: 1.6.2
     devDependencies:
       '@types/node':
         specifier: 25.0.9
@@ -26122,8 +26122,18 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
+  seroval-plugins@1.6.2:
+    resolution: {integrity: sha512-TfxuUjlbBESzUOWdTkTKqvSmav0ABym+itetDXLK6mDz8SmrpdI30aF8RTXE8Bvq+tH/1yIDkvy3W0lfQb1ipQ==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      seroval: ^1.0
+
   seroval@1.5.4:
     resolution: {integrity: sha512-46uFvgrXTVxZcUorgSSRZ4y+ieqLLQRMlG4bnCZKW3qI6BZm7Rg4ntMW4p1mILEEBZWrFlcpp0AyIIlM6jD9iw==}
+    engines: {node: '>=10'}
+
+  seroval@1.6.2:
+    resolution: {integrity: sha512-mPT+SD2TrlB6wvte1KkYOYUkubaTbd6pZ/6Kk3C9nxzrHmCZyhxOO7XGAeL7f+yLKZglzGtM9odUVvg/EhO+vQ==}
     engines: {node: '>=10'}
 
   serve-index@1.9.1:
@@ -40905,7 +40915,13 @@ snapshots:
     dependencies:
       seroval: 1.5.4
 
+  seroval-plugins@1.6.2(seroval@1.6.2):
+    dependencies:
+      seroval: 1.6.2
+
   seroval@1.5.4: {}
+
+  seroval@1.6.2: {}
 
   serve-index@1.9.1:
     dependencies:

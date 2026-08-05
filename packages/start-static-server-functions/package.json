@@ -60,7 +60,7 @@
   },
   "dependencies": {
     "@tanstack/start-client-core": "workspace:*",
-    "seroval": "^1.5.4"
+    "seroval": "^1.6.2"
   },
   "devDependencies": {
     "vite": "*",
