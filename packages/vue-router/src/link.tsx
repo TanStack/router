@@ -270,7 +270,7 @@ export function useLinkProps<
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: () => !!options.disabled || !(preload.value === 'viewport') },
+    () => !!options.disabled || preload.value !== 'viewport',
   )
 
   Vue.effect(() => {
