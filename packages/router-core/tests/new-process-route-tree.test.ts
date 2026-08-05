@@ -1346,6 +1346,40 @@ describe('findRouteMatch', () => {
         '/_layout/a/b',
       )
     })
+    it('uses trie depth to break equal-specificity pathless ties', () => {
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        isRoot: true,
+        children: [
+          {
+            id: '/a',
+            fullPath: '/a',
+            path: 'a',
+          },
+          {
+            id: '/_layout',
+            fullPath: '/',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+            children: [
+              {
+                id: '/_layout/a',
+                fullPath: '/a',
+                path: 'a',
+              },
+            ],
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+
+      expect(findRouteMatch('/a', processedTree)?.route.id).toBe('/_layout/a')
+    })
     it('builds segment tree correctly', () => {
       const tree = {
         path: '/',
