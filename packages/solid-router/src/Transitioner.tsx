@@ -1,6 +1,5 @@
 import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
-import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
 function getResolvedLocation(router: ReturnType<typeof useRouter>) {
@@ -17,10 +16,10 @@ function getResolvedLocation(router: ReturnType<typeof useRouter>) {
 export function Transitioner() {
   const router = useRouter()
 
-  if (isServer ?? router.isServer) {
-    return null
-  }
-
+  // No server early-return here: Solid 2 derives hydration keys from the
+  // reactive owner tree, so the server must register the same `onSettled`
+  // slot as the client or every key after this component shifts by one.
+  // The callback itself never runs on the server.
   router.startTransition = async (fn) => {
     const result = Solid.runWithOwner(null, fn)
     try {
