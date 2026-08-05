@@ -43,7 +43,8 @@ export function createFileRoute<
   TFullPath extends RouteConstraints['TFullPath'] =
     FileRoutesByPath[TFilePath]['fullPath'],
 >(
-  _path?: TFilePath,
+  // eslint-disable-next-line unused-imports/no-unused-vars
+  path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
   const createRoute = (options?: any) => {
     const route = createRouteImpl(options)
