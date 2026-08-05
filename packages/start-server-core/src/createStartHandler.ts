@@ -893,10 +893,10 @@ async function handleServerRoutes({
   // this will perform a fuzzy match, however for server routes we need an exact match
   // if the route is not an exact match, executeRouter will handle rendering the app router
   // the match will be cached internally, so no extra work is done during the app router render
-  const { matchedRoutes, foundRoute, routeParams } =
+  const [matchedRoutes, rawParams, foundRoute] =
     router.getMatchedRoutes(pathname)
 
-  const isExactMatch = foundRoute && routeParams['**'] === undefined
+  const isExactMatch = foundRoute && rawParams['**'] === undefined
 
   // Collect and dedupe route middlewares
   const routeMiddlewares: Array<AnyMiddlewareServerFn> = []
@@ -964,7 +964,7 @@ async function handleServerRoutes({
     {
       request,
       context,
-      params: routeParams,
+      params: rawParams,
       pathname,
       handlerType: 'router',
     },

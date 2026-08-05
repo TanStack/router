@@ -750,13 +750,12 @@ export type ParseLocationFn<TRouteTree extends AnyRoute> = (
   previousLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>,
 ) => ParsedLocation<FullSearchSchema<TRouteTree>>
 
-export type GetMatchRoutesFn = (pathname: string) => {
-  matchedRoutes: ReadonlyArray<AnyRoute>
+export type GetMatchRoutesFn = (pathname: string) => [
+  matchedRoutes: ReadonlyArray<AnyRoute>,
   /** exhaustive params, still in their string form */
-  routeParams: Record<string, string>
-  foundRoute: AnyRoute | undefined
-  parseError?: unknown
-}
+  rawParams: Record<string, string>,
+  foundRoute: AnyRoute | undefined,
+]
 
 export type EmitFn = (routerEvent: RouterEvent) => void
 
@@ -1512,11 +1511,8 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const {
-      foundRoute,
-      routeParams,
-      matchedRoutes: initialMatchedRoutes,
-    } = this.getMatchedRoutes(next.pathname)
+    const [initialMatchedRoutes, rawParams, foundRoute] =
+      this.getMatchedRoutes(next.pathname)
     let matchedRoutes = initialMatchedRoutes
     let isGlobalNotFound = false
 
@@ -1524,7 +1520,7 @@ export class RouterCore<
     if (
       // If we found a route, and it's not an index route and we have left over path
       foundRoute
-        ? foundRoute.path !== '/' && routeParams['**']
+        ? foundRoute.path !== '/' && rawParams['**']
         : // Or if we didn't find a route and we have left over path
           trimPathRight(next.pathname)
     ) {
@@ -1621,7 +1617,7 @@ export class RouterCore<
       // Match identity must only use the raw params captured from the URL.
       const { interpolatedPath, usedParams } = interpolatePath({
         path: route.fullPath,
-        params: routeParams,
+        params: rawParams,
         decoder: this.pathParamsDecoder,
         server: this.isServer,
       })
@@ -1742,20 +1738,20 @@ export class RouterCore<
   }
 
   getMatchedRoutes: GetMatchRoutesFn = (pathname) => {
-    const routeParams: Record<string, string> = Object.create(null)
+    const rawParams: Record<string, string> = Object.create(null)
     const match = findRouteMatch(
       trimPathRight(pathname),
       this.processedTree,
       true,
     )
     if (match) {
-      Object.assign(routeParams, match.rawParams)
+      Object.assign(rawParams, match.rawParams)
     }
-    return {
-      matchedRoutes: match?.branch || [this.routesById[rootRouteId]!],
-      routeParams,
-      foundRoute: match?.route,
-    }
+    return [
+      match?.branch || [this.routesById[rootRouteId]!],
+      rawParams,
+      match?.route,
+    ]
   }
 
   /**
@@ -1776,7 +1772,7 @@ export class RouterCore<
       return cached[1 /* result */]
     }
 
-    const { matchedRoutes, routeParams } = this.getMatchedRoutes(
+    const [matchedRoutes, rawParams] = this.getMatchedRoutes(
       location.pathname,
     )
     const lastRoute = last(matchedRoutes)!
@@ -1816,7 +1812,7 @@ export class RouterCore<
       // Parse params through the route chain
       const strictParams: Record<string, unknown> = Object.assign(
         Object.create(null),
-        routeParams,
+        rawParams,
       )
       for (const route of matchedRoutes) {
         try {
@@ -1866,7 +1862,7 @@ export class RouterCore<
         process.env.NODE_ENV !== 'production' &&
         dest._isNavigate
       ) {
-        const allFromMatches = this.getMatchedRoutes(dest.from).matchedRoutes
+        const [allFromMatches] = this.getMatchedRoutes(dest.from)
 
         const matchedFrom = findLast(lightweightResult.matchedRoutes, (d) => {
           return comparePaths(d.fullPath, dest.from!)
@@ -1922,14 +1918,13 @@ export class RouterCore<
         // typed destination mismatch, not a concrete URL to route-match.
         destRoutes = []
       } else {
-        const destMatchResult = this.getMatchedRoutes(nextTo)
-        destRoutes = destMatchResult.matchedRoutes
+        const [matchedRoutes, rawParams, foundRoute] =
+          this.getMatchedRoutes(nextTo)
+        destRoutes = matchedRoutes
 
         if (
           this.options.notFoundRoute &&
-          (!destMatchResult.foundRoute ||
-            (destMatchResult.foundRoute.path !== '/' &&
-              destMatchResult.routeParams['**']))
+          (!foundRoute || (foundRoute.path !== '/' && rawParams['**']))
         ) {
           destRoutes = [...destRoutes, this.options.notFoundRoute]
         }
@@ -1972,10 +1967,10 @@ export class RouterCore<
         !opts.leaveParams
       ) {
         try {
-          const roundTrip = this.getMatchedRoutes(nextPathname)
-          if (roundTrip.foundRoute?.id !== destRoute.id) {
+          const foundRoute = this.getMatchedRoutes(nextPathname)[2]
+          if (foundRoute?.id !== destRoute.id) {
             console.warn(
-              `Generated path "${nextPathname}" for route "${destRoute.id}" matched route "${roundTrip.foundRoute?.id}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.`,
+              `Generated path "${nextPathname}" for route "${destRoute.id}" matched route "${foundRoute?.id}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.`,
             )
           }
         } catch {

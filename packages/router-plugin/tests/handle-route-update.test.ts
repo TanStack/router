@@ -240,7 +240,7 @@ describe('handleRouteUpdate', () => {
     const routeTree = rootRoute.addChildren([asAnyRoute(itemRoute)])
     const router = createTestRouter(routeTree)
 
-    expect(router.getMatchedRoutes('/items/abc').foundRoute?.id).toBeUndefined()
+    expect(router.getMatchedRoutes('/items/abc')[2]?.id).toBeUndefined()
 
     const restoreWindow = withWindowRouter(router)
     try {
@@ -258,9 +258,7 @@ describe('handleRouteUpdate', () => {
       restoreWindow()
     }
 
-    expect(router.getMatchedRoutes('/items/abc').foundRoute?.id).toBe(
-      itemRoute.id,
-    )
+    expect(router.getMatchedRoutes('/items/abc')[2]?.id).toBe(itemRoute.id)
   })
 
   it('hydrates the hot module route export with generated route tree state', () => {
