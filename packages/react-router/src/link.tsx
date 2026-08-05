@@ -39,6 +39,16 @@ type LinkState = [
   isActive: boolean,
 ]
 
+// EXPERIMENT: keep a referentially stable value while the contents are equal,
+// so callers passing inline object literals do not change `_options` identity.
+function useValueStable<T>(value: T): T {
+  const ref = React.useRef(value)
+  if (ref.current !== value && !deepEqual(ref.current, value)) {
+    ref.current = value
+  }
+  return ref.current
+}
+
 function compareLinkState(a: LinkState, b: LinkState) {
   return a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
 }
@@ -475,6 +485,10 @@ export function useLinkProps<
   const isHydrated = useHydrated()
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const stableSearch = useValueStable(options.search)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const stableParams = useValueStable(options.params)
   const _options = React.useMemo(
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -484,8 +498,8 @@ export function useLinkProps<
       options._fromLocation,
       options.hash,
       options.to,
-      options.search,
-      options.params,
+      stableSearch,
+      stableParams,
       options.state,
       options.mask,
       options.unsafeRelative,
