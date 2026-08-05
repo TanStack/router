@@ -57,7 +57,16 @@ export function Matches() {
 
   const inner = (
     <>
-      {!(isServer ?? router.isServer) && <Transitioner />}
+      {!(isServer ?? router.isServer) && (
+        <Transitioner
+          // The initial load publishes matches before MatchesInner's store
+          // subscription is active. Storing the router here forces Matches to render
+          // that first publication before paint. Later publications store the same
+          // router object, so React skips the update.
+          // eslint-disable-next-line react-hooks/rules-of-hooks -- server only, condition is static
+          t={React.useState<AnyRouter>()[1]}
+        />
+      )}
       <ResolvedSuspense fallback={pendingElement}>
         <MatchesInner />
       </ResolvedSuspense>
