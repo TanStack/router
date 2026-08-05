@@ -190,6 +190,7 @@ export function parseSegment(
  * @param route The current route to parse.
  * @param start The starting index for parsing within the route's full path.
  * @param node The current segment node in the trie to populate.
+ * @param sortable Dynamic sibling arrays that need sorting. Each array is recorded once when it reaches length 2.
  * @param onRoute Callback invoked for each route processed.
  */
 function parseSegments<TRouteLike extends RouteLike>(
@@ -199,6 +200,7 @@ function parseSegments<TRouteLike extends RouteLike>(
   start: number,
   node: AnySegmentNode<TRouteLike>,
   depth: number,
+  sortable?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
   onRoute?: (route: TRouteLike) => void,
 ) {
   onRoute?.(route)
@@ -291,6 +293,9 @@ function parseSegments<TRouteLike extends RouteLike>(
             next.parent = node
             node.dynamic ??= []
             node.dynamic.push(next)
+            if (node.dynamic.length === 2) {
+              sortable?.push(node.dynamic)
+            }
           }
           break
         }
@@ -333,6 +338,9 @@ function parseSegments<TRouteLike extends RouteLike>(
             next.depth = depth
             node.optional ??= []
             node.optional.push(next)
+            if (node.optional.length === 2) {
+              sortable?.push(node.optional)
+            }
           }
           break
         }
@@ -363,6 +371,9 @@ function parseSegments<TRouteLike extends RouteLike>(
           next.depth = depth
           node.wildcard ??= []
           node.wildcard.push(next)
+          if (node.wildcard.length === 2) {
+            sortable?.push(node.wildcard)
+          }
         }
       }
       node = nextNode
@@ -420,6 +431,7 @@ function parseSegments<TRouteLike extends RouteLike>(
         cursor,
         node,
         depth,
+        sortable,
         onRoute,
       )
     }
@@ -462,42 +474,6 @@ function sortDynamic(
 
   // Equal specificity preserves route declaration order through stable sort.
   return 0
-}
-
-function sortTreeNodes(node: SegmentNode<RouteLike>) {
-  if (node.pathless) {
-    for (const child of node.pathless) {
-      sortTreeNodes(child)
-    }
-  }
-  if (node.static) {
-    for (const child of node.static.values()) {
-      sortTreeNodes(child)
-    }
-  }
-  if (node.staticInsensitive) {
-    for (const child of node.staticInsensitive.values()) {
-      sortTreeNodes(child)
-    }
-  }
-  if (node.dynamic?.length) {
-    node.dynamic.sort(sortDynamic)
-    for (const child of node.dynamic) {
-      sortTreeNodes(child)
-    }
-  }
-  if (node.optional?.length) {
-    node.optional.sort(sortDynamic)
-    for (const child of node.optional) {
-      sortTreeNodes(child)
-    }
-  }
-  if (node.wildcard?.length) {
-    node.wildcard.sort(sortDynamic)
-    for (const child of node.wildcard) {
-      sortTreeNodes(child)
-    }
-  }
 }
 
 function createStaticNode<T extends RouteLike>(
@@ -663,10 +639,13 @@ export function processRouteMasks<
 ) {
   const segmentTree = createStaticNode<TRouteLike>('/')
   const data = new Uint16Array(6)
+  const sortable: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
   for (const route of routeList) {
-    parseSegments(false, data, route, 1, segmentTree, 0)
+    parseSegments(false, data, route, 1, segmentTree, 0, sortable)
   }
-  sortTreeNodes(segmentTree)
+  for (const nodes of sortable) {
+    nodes.sort(sortDynamic)
+  }
   processedTree.masksTree = segmentTree
   processedTree.flatCache = createLRUCache<
     string,
@@ -791,32 +770,44 @@ export function processRouteTree<
   const data = new Uint16Array(6)
   const routesById = {} as Record<string, TRouteLike>
   const routesByPath = {} as Record<string, TRouteLike>
+  const sortable: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
   let index = 0
-  parseSegments(caseSensitive, data, routeTree, 1, segmentTree, 0, (route) => {
-    initRoute?.(route, index)
+  parseSegments(
+    caseSensitive,
+    data,
+    routeTree,
+    1,
+    segmentTree,
+    0,
+    sortable,
+    (route) => {
+      initRoute?.(route, index)
 
-    if (route.id in routesById) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error(
-          `Invariant failed: Duplicate routes found with id: ${String(route.id)}`,
-        )
+      if (route.id in routesById) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            `Invariant failed: Duplicate routes found with id: ${String(route.id)}`,
+          )
+        }
+
+        invariant()
       }
 
-      invariant()
-    }
+      routesById[route.id] = route
 
-    routesById[route.id] = route
-
-    if (index !== 0 && route.path) {
-      const trimmedFullPath = trimPathRight(route.fullPath)
-      if (!routesByPath[trimmedFullPath] || route.fullPath.endsWith('/')) {
-        routesByPath[trimmedFullPath] = route
+      if (index !== 0 && route.path) {
+        const trimmedFullPath = trimPathRight(route.fullPath)
+        if (!routesByPath[trimmedFullPath] || route.fullPath.endsWith('/')) {
+          routesByPath[trimmedFullPath] = route
+        }
       }
-    }
 
-    index++
-  })
-  sortTreeNodes(segmentTree)
+      index++
+    },
+  )
+  for (const nodes of sortable) {
+    nodes.sort(sortDynamic)
+  }
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
     singleCache: createLRUCache<string, AnySegmentNode<any>>(1000),
