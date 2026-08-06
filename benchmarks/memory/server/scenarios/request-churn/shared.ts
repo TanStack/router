@@ -12,7 +12,9 @@ type Framework = 'react' | 'solid' | 'vue'
 const benchmarkSeed = 0xdecafbad
 const requestChurnIterations = 40
 const itemPageMarker = 'data-bench="request-churn-item"'
-// Module-level so CodSpeed warmups and measurement never replay URLs.
+// Module-level within the isolated process so URLs stay unique throughout the
+// inner loop. Every fresh CodSpeed invocation deliberately replays this same
+// sequence against a fresh handler process.
 const benchmarkRandom = createDeterministicRandom(benchmarkSeed)
 let requestCounter = 0
 

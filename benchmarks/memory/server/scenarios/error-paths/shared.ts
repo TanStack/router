@@ -19,7 +19,8 @@ const unmatchedSeed = 0xdecaf00d
 const redirectStatus = 302
 const notFoundStatus = 404
 const errorStatus = 500
-// Module-level so each error-path bench keeps advancing across runner invocations.
+// Module-level within the isolated process so each error-path inner loop uses
+// unique URLs. Fresh CodSpeed invocations replay the sequence in a fresh handler.
 const redirectRandom = createDeterministicRandom(redirectSeed)
 const notFoundRandom = createDeterministicRandom(notFoundSeed)
 const errorRandom = createDeterministicRandom(errorSeed)

@@ -30,7 +30,6 @@ export default defineConfig({
   test: {
     name: '@benchmarks/memory-client navigation-churn (vue)',
     watch: false,
-    environment: 'jsdom',
-    setupFiles: ['../../../vitest.setup.ts'],
+    environment: 'node',
   },
 })

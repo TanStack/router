@@ -44,9 +44,9 @@ const preloadChurnIterations = 200
 // during a preload-only loop. Interleaving a navigation every few preloads is
 // what makes the flat floor assert "eviction releases preloaded payloads".
 const preloadsPerEvictionNavigation = 10
-// Module-level so ids stay unique across runner invocations on one mount; a
-// per-invocation LCG would replay identical ids, and every preload after the
-// first invocation would dedupe against cachedMatches instead of doing work.
+// Module-level within the isolated process so every id in the inner loop is
+// unique. Every fresh CodSpeed invocation deliberately replays the same seeded
+// sequence in a new router, so no cached match can dedupe work across runs.
 const benchmarkRandom = createDeterministicRandom(0x706c6f61)
 let preloadCounter = 0
 

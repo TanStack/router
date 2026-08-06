@@ -4,10 +4,5 @@
     "allowImportingTsExtensions": true,
     "types": ["node", "vite/client", "vitest/globals"]
   },
-  "include": [
-    "bench-utils.ts",
-    "isolated-benchmark.ts",
-    "lifecycle.ts",
-    "vitest.setup.ts"
-  ]
+  "include": ["*.ts"]
 }

@@ -28,8 +28,9 @@ type NavigationRouter = {
 }
 
 const uniqueLocationChurnIterations = 300
-// Module-level so ids stay unique across runner invocations on one mount; the
-// counter prefix removes any residual LCG birthday-collision risk.
+// Module-level within the isolated process so ids stay unique throughout the
+// inner loop; the counter prefix removes any residual LCG collision risk. A
+// fresh CodSpeed invocation replays the same sequence in a fresh router.
 const benchmarkRandom = createDeterministicRandom(0xdecafbad)
 let locationCounter = 0
 
