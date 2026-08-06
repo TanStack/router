@@ -27,7 +27,7 @@ export const Match = Vue.defineComponent({
 
     const activeMatch = useStore(
       router.stores.getMatchStore(routeId),
-      (value) => value,
+      undefined,
       { equal: Object.is },
     )
     // Provide routeId context (stable string) for children.
