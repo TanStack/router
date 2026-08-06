@@ -1,4 +1,4 @@
-import { createRoute as createRouteImpl } from './route'
+import { createRoute } from './route'
 
 import { useMatch } from './useMatch'
 import { useLoaderDeps } from './useLoaderDeps'
@@ -46,12 +46,11 @@ export function createFileRoute<
   // eslint-disable-next-line unused-imports/no-unused-vars
   path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  const createRoute = (options?: any) => {
-    const route = createRouteImpl(options)
+  return (options) => {
+    const route = createRoute(options as any)
     ;(route as any).isRoot = false
-    return route
+    return route as any
   }
-  return createRoute as any
 }
 
 /** 
@@ -144,7 +143,7 @@ export class FileRoute<
         )
       }
     }
-    const route = createRouteImpl(options as any)
+    const route = createRoute(options as any)
     ;(route as any).isRoot = false
     return route as any
   }
