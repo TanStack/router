@@ -269,7 +269,7 @@ export function useLinkProps<
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    { disabled: !!local.disabled || !(preload() === 'viewport') },
+    !!local.disabled || preload() !== 'viewport',
   )
 
   Solid.createEffect(() => {
