@@ -7644,3 +7644,62 @@ describe('link re-render bail-out', () => {
     expect(screen.getByTestId('unaffected')).not.toHaveAttribute('data-status')
   })
 })
+
+describe('explicit-undefined params are not collapsed into an empty object', () => {
+  // `params: { category: undefined }` clears an inherited optional param while
+  // `params: {}` inherits it, so the two build different locations. The link
+  // options are stabilised by value, and that comparison must not treat them as
+  // equal or the link keeps publishing the stale href.
+  it('updates href when params goes from {} to { category: undefined }', async () => {
+    function CategoryLink({
+      params,
+    }: {
+      params: Record<string, string | undefined>
+    }) {
+      return (
+        <Link to="/posts/{-$category}" params={params} data-testid="lnk">
+          link
+        </Link>
+      )
+    }
+
+    const rootRoute = createRootRoute({ component: () => <Outlet /> })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/{-$category}',
+      component: function Posts() {
+        const [params, setParams] = React.useState<
+          Record<string, string | undefined>
+        >({})
+        return (
+          <>
+            <button
+              data-testid="clear"
+              onClick={() => setParams({ category: undefined })}
+            >
+              clear
+            </button>
+            <CategoryLink params={params} />
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('lnk')).toHaveAttribute('href', '/posts/tech'),
+    )
+
+    fireEvent.click(screen.getByTestId('clear'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('lnk')).toHaveAttribute('href', '/posts'),
+    )
+  })
+})

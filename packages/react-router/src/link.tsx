@@ -43,10 +43,14 @@ type LinkState = [
 // routinely pass inline `params` / `search` object literals, which would
 // otherwise change `_options` identity on every parent render, rebuild the
 // store selector, and discard its memoized selection.
+//
+// `ignoreUndefined: false` is required: an explicit `undefined` clears an
+// inherited param or search key, so `{}` and `{ category: undefined }` build
+// different locations and must not be treated as equal here.
 function useValueStable<T>(value: T): T {
   const ref = React.useRef(value)
   // `deepEqual` short-circuits on reference equality, so this covers both cases.
-  if (!deepEqual(ref.current, value)) {
+  if (!deepEqual(ref.current, value, { ignoreUndefined: false })) {
     ref.current = value
   }
   return ref.current
