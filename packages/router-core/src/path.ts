@@ -264,7 +264,7 @@ export function interpolatePath({
     // Fast path for common templates like `/posts/$id` or `/files/$`.
     // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
     // handled by the general parser below.
-    if (path.indexOf('{') === -1) {
+    if (!path.includes('{')) {
       const length = path.length
       let cursor = 0
       let joined = ''
@@ -279,7 +279,7 @@ export function interpolatePath({
         if (end === -1) end = length
         cursor = end
 
-        const part = path.substring(start, end)
+        const part = path.slice(start, end)
         if (!part) continue
 
         // `$id` or `$` (splat). '$' code is 36
@@ -298,7 +298,7 @@ export function interpolatePath({
             const value = encodeParam('_splat', params, decoder)
             joined += '/' + value
           } else {
-            const key = part.substring(1)
+            const key = part.slice(1)
             if (!isMissingParams && !(key in params)) {
               isMissingParams = true
             }
@@ -334,7 +334,7 @@ export function interpolatePath({
     const kind = segment[0]
 
     if (kind === SEGMENT_TYPE_PATHNAME) {
-      joined += '/' + path.substring(start, end)
+      joined += '/' + path.slice(start, end)
       continue
     }
 
@@ -344,8 +344,8 @@ export function interpolatePath({
       // TODO: Deprecate *
       usedParams['*'] = splat
 
-      const prefix = path.substring(start, segment[1])
-      const suffix = path.substring(segment[4], end)
+      const prefix = path.slice(start, segment[1])
+      const suffix = path.slice(segment[4], end)
 
       // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
       if (!splat) {
@@ -364,21 +364,21 @@ export function interpolatePath({
     }
 
     if (kind === SEGMENT_TYPE_PARAM) {
-      const key = path.substring(segment[2], segment[3])
+      const key = path.slice(segment[2], segment[3])
       if (!isMissingParams && !(key in params)) {
         isMissingParams = true
       }
       usedParams[key] = params[key]
 
-      const prefix = path.substring(start, segment[1])
-      const suffix = path.substring(segment[4], end)
+      const prefix = path.slice(start, segment[1])
+      const suffix = path.slice(segment[4], end)
       const value = encodeParam(key, params, decoder) ?? 'undefined'
       joined += '/' + prefix + value + suffix
       continue
     }
 
     if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-      const key = path.substring(segment[2], segment[3])
+      const key = path.slice(segment[2], segment[3])
       const valueRaw = params[key]
 
       // Check if optional parameter is missing or undefined
@@ -386,8 +386,8 @@ export function interpolatePath({
 
       usedParams[key] = valueRaw
 
-      const prefix = path.substring(start, segment[1])
-      const suffix = path.substring(segment[4], end)
+      const prefix = path.slice(start, segment[1])
+      const suffix = path.slice(segment[4], end)
       const value = encodeParam(key, params, decoder) ?? ''
       joined += '/' + prefix + value + suffix
       continue
