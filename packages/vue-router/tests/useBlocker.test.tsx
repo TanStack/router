@@ -1,11 +1,18 @@
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 
 import * as Vue from 'vue'
 import { z } from 'zod'
 import {
   Block,
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -475,6 +482,299 @@ describe('useBlocker', () => {
     expect(
       block.mock.calls.map(([options]) => options.enableBeforeUnload),
     ).toEqual([true, null])
+  })
+
+  test('useBlocker resolver returns to idle after reset and proceed', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const RootComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
+        const blocker = useBlocker({
+          shouldBlockFn: () => true,
+          withResolver: true,
+        })
+
+        return () => (
+          <>
+            <span data-testid="hook-blocker-status">
+              {blocker.value.status}
+            </span>
+            <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+            {blocker.value.status === 'blocked' && (
+              <>
+                <button onClick={() => blocker.value.reset?.()}>
+                  Reset hook blocker
+                </button>
+                <button onClick={() => blocker.value.proceed?.()}>
+                  Proceed hook blocker
+                </button>
+              </>
+            )}
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const rootRoute = createRootRoute({ component: RootComponent })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>Index</h1>,
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsButton = await screen.findByRole('button', { name: 'Posts' })
+    expect(screen.getByTestId('hook-blocker-status')).toHaveTextContent('idle')
+
+    await fireEvent.click(postsButton)
+    await waitFor(() => {
+      expect(screen.getByTestId('hook-blocker-status')).toHaveTextContent(
+        'blocked',
+      )
+    })
+    expect(history.location.pathname).toBe('/')
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Reset hook blocker' }),
+    )
+    await waitFor(() => {
+      expect(screen.getByTestId('hook-blocker-status')).toHaveTextContent(
+        'idle',
+      )
+    })
+    expect(history.location.pathname).toBe('/')
+    expect(screen.getByRole('heading', { name: 'Index' })).toBeVisible()
+
+    await fireEvent.click(postsButton)
+    await waitFor(() => {
+      expect(screen.getByTestId('hook-blocker-status')).toHaveTextContent(
+        'blocked',
+      )
+    })
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Proceed hook blocker' }),
+    )
+    expect(await screen.findByRole('heading', { name: 'Posts' })).toBeVisible()
+    expect(screen.getByTestId('hook-blocker-status')).toHaveTextContent('idle')
+    expect(history.location.pathname).toBe('/posts')
+  })
+
+  test('<Block /> resolver returns to idle after reset and proceed', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+
+    const RootComponent = Vue.defineComponent({
+      setup() {
+        const navigate = useNavigate()
+
+        return () => (
+          <>
+            <Block shouldBlockFn={() => true} withResolver={true}>
+              {(resolver) => (
+                <>
+                  <span data-testid="component-blocker-status">
+                    {resolver.status}
+                  </span>
+                  {resolver.status === 'blocked' && (
+                    <>
+                      <button onClick={resolver.reset}>
+                        Reset component blocker
+                      </button>
+                      <button onClick={resolver.proceed}>
+                        Proceed component blocker
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            </Block>
+            <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+            <Outlet />
+          </>
+        )
+      },
+    })
+
+    const rootRoute = createRootRoute({ component: RootComponent })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>Index</h1>,
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsButton = await screen.findByRole('button', { name: 'Posts' })
+    expect(screen.getByTestId('component-blocker-status')).toHaveTextContent(
+      'idle',
+    )
+
+    await fireEvent.click(postsButton)
+    await waitFor(() => {
+      expect(screen.getByTestId('component-blocker-status')).toHaveTextContent(
+        'blocked',
+      )
+    })
+    expect(history.location.pathname).toBe('/')
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Reset component blocker' }),
+    )
+    await waitFor(() => {
+      expect(screen.getByTestId('component-blocker-status')).toHaveTextContent(
+        'idle',
+      )
+    })
+    expect(history.location.pathname).toBe('/')
+    expect(screen.getByRole('heading', { name: 'Index' })).toBeVisible()
+
+    await fireEvent.click(postsButton)
+    await waitFor(() => {
+      expect(screen.getByTestId('component-blocker-status')).toHaveTextContent(
+        'blocked',
+      )
+    })
+
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Proceed component blocker' }),
+    )
+    expect(await screen.findByRole('heading', { name: 'Posts' })).toBeVisible()
+    expect(screen.getByTestId('component-blocker-status')).toHaveTextContent(
+      'idle',
+    )
+    expect(history.location.pathname).toBe('/posts')
+  })
+
+  test('<Block /> resubscribes to reactive options and cleans up in order', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const nextHistory = createMemoryHistory({ initialEntries: ['/posts'] })
+    const firstShouldBlock = vi.fn(() => false)
+    const secondShouldBlock = vi.fn(() => false)
+    const shouldBlockFn = Vue.ref(firstShouldBlock)
+    const enableBeforeUnload = Vue.ref<boolean | (() => boolean)>(true)
+    const withResolver = Vue.ref(false)
+    const events: Array<string> = []
+    let nextSubscriptionId = 0
+    const actualBlock = history.block.bind(history)
+    const block = vi.spyOn(history, 'block').mockImplementation((options) => {
+      const subscriptionId = ++nextSubscriptionId
+      events.push(`subscribe:${subscriptionId}`)
+      const unsubscribe = actualBlock(options)
+
+      return () => {
+        events.push(`unsubscribe:${subscriptionId}`)
+        unsubscribe()
+      }
+    })
+
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        return () => (
+          <>
+            <Block
+              shouldBlockFn={shouldBlockFn.value}
+              enableBeforeUnload={enableBeforeUnload.value}
+              withResolver={withResolver.value}
+            />
+            <h1>Index</h1>
+          </>
+        )
+      },
+    })
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    const view = render(<RouterProvider router={router} />)
+
+    expect(await screen.findByRole('heading', { name: 'Index' })).toBeVisible()
+    await waitFor(() => expect(block).toHaveBeenCalledTimes(1))
+
+    await expect(
+      block.mock.calls[0]![0].blockerFn({
+        action: 'PUSH',
+        currentLocation: history.location,
+        nextLocation: nextHistory.location,
+      }),
+    ).resolves.toBe(false)
+    expect(firstShouldBlock).toHaveBeenCalledTimes(1)
+
+    shouldBlockFn.value = secondShouldBlock
+    await waitFor(() => expect(block).toHaveBeenCalledTimes(2))
+    await expect(
+      block.mock.calls[1]![0].blockerFn({
+        action: 'PUSH',
+        currentLocation: history.location,
+        nextLocation: nextHistory.location,
+      }),
+    ).resolves.toBe(false)
+    expect(secondShouldBlock).toHaveBeenCalledTimes(1)
+
+    enableBeforeUnload.value = false
+    await waitFor(() => expect(block).toHaveBeenCalledTimes(3))
+
+    withResolver.value = true
+    await waitFor(() => expect(block).toHaveBeenCalledTimes(4))
+
+    expect(
+      block.mock.calls.map(([options]) => options.enableBeforeUnload),
+    ).toEqual([true, true, false, false])
+    expect(events).toEqual([
+      'subscribe:1',
+      'unsubscribe:1',
+      'subscribe:2',
+      'unsubscribe:2',
+      'subscribe:3',
+      'unsubscribe:3',
+      'subscribe:4',
+    ])
+
+    view.unmount()
+
+    expect(events).toEqual([
+      'subscribe:1',
+      'unsubscribe:1',
+      'subscribe:2',
+      'unsubscribe:2',
+      'subscribe:3',
+      'unsubscribe:3',
+      'subscribe:4',
+      'unsubscribe:4',
+    ])
   })
 
   test('<Block /> disabled property is reactive', async () => {
