@@ -62,6 +62,20 @@ interface ScriptAttrs {
   src?: string
 }
 
+function setScriptAttrs(
+  script: HTMLScriptElement,
+  attrs: ScriptAttrs | undefined,
+) {
+  if (!attrs) {
+    return
+  }
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value !== undefined && value !== false) {
+      script.setAttribute(key, typeof value === 'boolean' ? '' : String(value))
+    }
+  }
+}
+
 function Script({
   attrs,
   children,
@@ -97,15 +111,7 @@ function Script({
       }
 
       const script = document.createElement('script')
-
-      for (const [key, value] of Object.entries(attrs)) {
-        if (value !== undefined && value !== false) {
-          script.setAttribute(
-            key,
-            typeof value === 'boolean' ? '' : String(value),
-          )
-        }
-      }
+      setScriptAttrs(script, attrs)
 
       document.head.appendChild(script)
 
@@ -140,17 +146,7 @@ function Script({
 
       const script = document.createElement('script')
       script.textContent = children
-
-      if (attrs) {
-        for (const [key, value] of Object.entries(attrs)) {
-          if (value !== undefined && value !== false) {
-            script.setAttribute(
-              key,
-              typeof value === 'boolean' ? '' : String(value),
-            )
-          }
-        }
-      }
+      setScriptAttrs(script, attrs)
 
       document.head.appendChild(script)
 

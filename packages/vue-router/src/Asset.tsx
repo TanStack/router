@@ -10,6 +10,20 @@ interface ScriptAttrs {
   src?: string
 }
 
+function setScriptAttrs(
+  script: HTMLScriptElement,
+  attrs: ScriptAttrs | undefined,
+) {
+  if (!attrs) {
+    return
+  }
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value !== undefined && value !== false) {
+      script.setAttribute(key, typeof value === 'boolean' ? '' : String(value))
+    }
+  }
+}
+
 const Title = Vue.defineComponent({
   name: 'Title',
   props: {
@@ -87,15 +101,7 @@ const Script = Vue.defineComponent({
           }
 
           const script = document.createElement('script')
-
-          for (const [key, value] of Object.entries(attrs)) {
-            if (value !== undefined && value !== false) {
-              script.setAttribute(
-                key,
-                typeof value === 'boolean' ? '' : String(value),
-              )
-            }
-          }
+          setScriptAttrs(script, attrs)
 
           document.head.appendChild(script)
         } else if (typeof children === 'string') {
@@ -122,17 +128,7 @@ const Script = Vue.defineComponent({
 
           const script = document.createElement('script')
           script.textContent = children
-
-          if (attrs) {
-            for (const [key, value] of Object.entries(attrs)) {
-              if (value !== undefined && value !== false) {
-                script.setAttribute(
-                  key,
-                  typeof value === 'boolean' ? '' : String(value),
-                )
-              }
-            }
-          }
+          setScriptAttrs(script, attrs)
 
           document.head.appendChild(script)
         }
