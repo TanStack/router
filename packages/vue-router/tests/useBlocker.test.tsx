@@ -532,9 +532,11 @@ describe('useBlocker', () => {
 
           return () => (
             <>
-              <Block shouldBlockFn={() => true} withResolver={true}>
-                {renderResolver}
-              </Block>
+              <Block
+                shouldBlockFn={() => true}
+                withResolver={true}
+                children={renderResolver}
+              />
               {renderNavigation()}
             </>
           )
@@ -627,8 +629,7 @@ describe('useBlocker', () => {
               shouldBlockFn={shouldBlockFn.value}
               enableBeforeUnload={enableBeforeUnload.value}
               withResolver={withResolver.value as true}
-            >
-              {(resolver) => (
+              children={(resolver) => (
                 <>
                   <span data-testid="reactive-blocker-status">
                     {resolver.status}
@@ -645,7 +646,7 @@ describe('useBlocker', () => {
                   )}
                 </>
               )}
-            </Block>
+            />
             <h1>Index</h1>
           </>
         )
