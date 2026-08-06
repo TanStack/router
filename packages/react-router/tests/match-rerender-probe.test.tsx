@@ -201,7 +201,13 @@ describe('Match re-render churn probe', () => {
 
     console.log('PROBE_SIBLING_NAV ' + JSON.stringify(report, null, 2))
 
-    expect(report).toBeTruthy()
+    // Three routes (root, /section, /section/list) persist across this
+    // navigation and render nothing that changed. `Match` is keyed by routeId
+    // on main, so the leaf route's `Match` swaps its store contents in place
+    // rather than mounting a new one -- one render for the leaf, none for the
+    // three that stayed.
+    expect(report.MatchImpl).toBe(1)
+    expect(report.MatchInnerImpl).toBe(1)
   })
 
   test('search-only navigation ?tab=all -> ?tab=mine', async () => {
@@ -231,7 +237,10 @@ describe('Match re-render churn probe', () => {
 
     console.log('PROBE_SEARCH_NAV ' + JSON.stringify(report, null, 2))
 
-    expect(report).toBeTruthy()
+    // No route enters or leaves, and nothing Match/MatchInner render depends
+    // on changes -- search reaches route components through useSearch.
+    expect(report.MatchImpl).toBe(0)
+    expect(report.MatchInnerImpl).toBe(0)
   })
 
   test('same-route re-navigation (no-op href change)', async () => {
@@ -264,7 +273,9 @@ describe('Match re-render churn probe', () => {
 
     console.log('PROBE_TWO_NAVS ' + JSON.stringify(report, null, 2))
 
-    expect(report).toBeTruthy()
+    // One leaf swap per navigation, nothing else.
+    expect(report.MatchImpl).toBe(2)
+    expect(report.MatchInnerImpl).toBe(2)
   })
 })
 
