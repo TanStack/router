@@ -25,9 +25,9 @@ const MAX_FRAMES = 100_000 // Limit total frames to prevent CPU DoS
  */
 export interface FrameDecoderResult {
   /** Gets or creates a raw stream by ID (for use by deserialize plugin) */
-  getOrCreateStream: (id: number) => ReadableStream<Uint8Array>
+  getStream: (id: number) => ReadableStream<Uint8Array>
   /** Stream of JSON strings (NDJSON lines) */
-  jsonChunks: ReadableStream<string>
+  chunks: ReadableStream<string>
 }
 
 /**
@@ -404,5 +404,5 @@ export function createFrameDecoder(
     }
   })()
 
-  return { getOrCreateStream, jsonChunks }
+  return { getStream: getOrCreateStream, chunks: jsonChunks }
 }

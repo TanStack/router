@@ -50,7 +50,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Unknown frame type')
@@ -65,7 +65,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Invalid raw frame streamId')
@@ -84,7 +84,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Invalid JSON frame streamId')
@@ -105,7 +105,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Frame payload too large')
@@ -125,7 +125,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Incomplete frame')
@@ -140,7 +140,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await reader.cancel()
@@ -169,7 +169,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Too many raw streams')
@@ -186,7 +186,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('buffer exceeded')
@@ -207,7 +207,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
 
       const reader = jsonChunks.getReader()
       const chunks: Array<string> = []
@@ -240,7 +240,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks, getOrCreateStream } = createFrameDecoder(input)
+      const { chunks: jsonChunks, getStream: getOrCreateStream } =
+        createFrameDecoder(input)
 
       // Pre-create the stream before consuming
       const stream5 = getOrCreateStream(5)
@@ -276,7 +277,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
 
       const reader = jsonChunks.getReader()
       const chunks: Array<string> = []
@@ -301,7 +302,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
       const { value } = await reader.read()
 
@@ -326,7 +327,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
       const { value } = await reader.read()
 
@@ -353,7 +354,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
       const { value } = await reader.read()
 
@@ -387,7 +388,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
 
       // Pre-create streams before consuming
       const stream1 = getOrCreateStream(1)
@@ -428,7 +430,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
 
       // Pre-create stream 3
       const stream3 = getOrCreateStream(3)
@@ -480,7 +483,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
 
       // First, fully consume JSON stream (this processes all frames)
       const jsonReader = jsonChunks.getReader()
@@ -536,7 +540,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
 
       // Drain JSON (processes all frames)
       const jsonReader = jsonChunks.getReader()
@@ -588,7 +593,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
       const stream11 = getOrCreateStream(11)
 
       const jsonReader = jsonChunks.getReader()
