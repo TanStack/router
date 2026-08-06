@@ -390,6 +390,63 @@ describe('findRouteMatch', () => {
   })
 
   describe('case sensitivity competition', () => {
+    it('reuses an insensitive static node for differently cased siblings', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/Docs/API',
+            fullPath: '/Docs/API',
+            path: 'Docs/API',
+          },
+          {
+            id: '/docs/guide',
+            fullPath: '/docs/guide',
+            path: 'docs/guide',
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const docs = processedTree.segmentTree.staticInsensitive?.get('docs')
+
+      expect(processedTree.segmentTree.staticInsensitive?.size).toBe(1)
+      expect(docs?.staticInsensitive?.size).toBe(2)
+      expect(findRouteMatch('/DOCS/api', processedTree)?.route.id).toBe(
+        '/Docs/API',
+      )
+      expect(findRouteMatch('/Docs/GUIDE', processedTree)?.route.id).toBe(
+        '/docs/guide',
+      )
+    })
+    it('allows a route to override a sensitive tree default', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/Strict',
+            fullPath: '/Strict',
+            path: 'Strict',
+          },
+          {
+            id: '/loose',
+            fullPath: '/loose',
+            path: 'loose',
+            options: { caseSensitive: false },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree, true)
+
+      expect(findRouteMatch('/Strict', processedTree)?.route.id).toBe('/Strict')
+      expect(findRouteMatch('/strict', processedTree)).toBeNull()
+      expect(findRouteMatch('/LOOSE', processedTree)?.route.id).toBe('/loose')
+    })
     it('a case sensitive segment early on should not prevent a case insensitive match', () => {
       const tree = {
         id: '__root__',
@@ -1645,6 +1702,7 @@ describe('processRouteMasks', { sequential: true }, () => {
       { from: '/a/$param/d', routeTree },
       { from: '/a/{-$optional}/d', routeTree },
       { from: '/a/b/{$}.txt', routeTree },
+      { from: '/Admin/Panel', routeTree },
     ]
     processRouteMasks(routeMasks, processedTree)
     const aBranch = processedTree.masksTree?.staticInsensitive?.get('a')
@@ -1656,6 +1714,10 @@ describe('processRouteMasks', { sequential: true }, () => {
   it('can match static routes masks w/ `findFlatMatch`', () => {
     const res = findFlatMatch('/a/b/c', processedTree)
     expect(res?.route.from).toBe('/a/b/c')
+  })
+  it('matches uppercase static route masks case-insensitively', () => {
+    const res = findFlatMatch('/admin/panel', processedTree)
+    expect(res?.route.from).toBe('/Admin/Panel')
   })
   it('can match dynamic route masks w/ `findFlatMatch`', () => {
     const res = findFlatMatch('/a/123/d', processedTree)
