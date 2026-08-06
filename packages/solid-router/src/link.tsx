@@ -174,9 +174,7 @@ export function useLinkProps<
     const to = options.to
     const safeInternal = isSafeInternal(to)
     if (safeInternal) return undefined
-    if (typeof to !== 'string' || !to.includes(':')) {
-      return undefined
-    }
+    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
     try {
       new URL(to as any)
       // Block dangerous protocols like javascript:, blob:, data:

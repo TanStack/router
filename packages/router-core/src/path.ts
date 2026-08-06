@@ -264,7 +264,7 @@ export function interpolatePath({
     // Fast path for common templates like `/posts/$id` or `/files/$`.
     // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
     // handled by the general parser below.
-    if (!path.includes('{')) {
+    if (path.indexOf('{') === -1) {
       const length = path.length
       let cursor = 0
       let joined = ''

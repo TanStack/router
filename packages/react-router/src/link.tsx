@@ -119,7 +119,7 @@ export function useLinkProps<
       typeof to === 'string' &&
       !safeInternal &&
       // Quick checks to avoid `new URL` in common internal-like cases
-      to.includes(':')
+      to.indexOf(':') > -1
     ) {
       try {
         new URL(to)
@@ -189,7 +189,7 @@ export function useLinkProps<
       if (safeInternal) return undefined
 
       // Only attempt URL parsing when it looks like an absolute URL.
-      if (typeof to === 'string' && to.includes(':')) {
+      if (typeof to === 'string' && to.indexOf(':') > -1) {
         try {
           new URL(to)
           if (isDangerousProtocol(to, router.protocolAllowlist)) {
@@ -450,9 +450,7 @@ export function useLinkProps<
     }
     const safeInternal = isSafeInternal(to)
     if (safeInternal) return undefined
-    if (typeof to !== 'string' || !to.includes(':')) {
-      return undefined
-    }
+    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
     try {
       new URL(to as any)
       // Block dangerous protocols like javascript:, blob:, data:
