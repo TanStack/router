@@ -220,10 +220,14 @@ function parseSegments<TRouteLike extends RouteLike>(
       switch (kind) {
         case SEGMENT_TYPE_PATHNAME: {
           const value = path.substring(segment[2], segment[3])
-          const name = caseSensitive ? value : value.toLowerCase()
-          const staticChildren = caseSensitive
-            ? (node.static ??= new Map())
-            : (node.staticInsensitive ??= new Map())
+          let name = value
+          let staticChildren: Map<string, StaticSegmentNode<TRouteLike>>
+          if (caseSensitive) {
+            staticChildren = node.static ??= new Map()
+          } else {
+            name = value.toLowerCase()
+            staticChildren = node.staticInsensitive ??= new Map()
+          }
           const existingNode = staticChildren.get(name)
           if (existingNode) {
             nextNode = existingNode
