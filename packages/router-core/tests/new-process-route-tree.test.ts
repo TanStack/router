@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it } from 'vitest'
 import {
   findFlatMatch,
   findRouteMatch,
@@ -127,6 +127,86 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/a/{$}b', '/a/$'])
         expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{$}b')
       })
+    })
+
+    it('sorts parser priorities after building required, optional, and wildcard siblings', () => {
+      const cases = [
+        ['pre{$value}suf', 'dynamic'],
+        ['pre{-$value}suf', 'optional'],
+        ['pre{$}suf', 'wildcard'],
+      ] as const
+
+      for (const [segment, siblingKind] of cases) {
+        let acceptHigherPriority = true
+        const fullPath = `/a/${segment}`
+        const routeTree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: `low-${siblingKind}`,
+              fullPath,
+              path: fullPath.slice(1),
+              options: {
+                params: {
+                  priority: 1,
+                  parse: (params: Record<string, string>) => params,
+                },
+              },
+            },
+            {
+              id: `high-${siblingKind}`,
+              fullPath,
+              path: fullPath.slice(1),
+              options: {
+                params: {
+                  priority: 2,
+                  parse: (params: Record<string, string>) =>
+                    acceptHigherPriority ? params : false,
+                },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(routeTree)
+        const branch = processedTree.segmentTree.staticInsensitive?.get('a')
+
+        expect(branch?.[siblingKind]).toHaveLength(2)
+        expect(findRouteMatch('/a/prewinsuf', processedTree)?.route.id).toBe(
+          `high-${siblingKind}`,
+        )
+
+        acceptHigherPriority = false
+        expect(
+          findRouteMatch('/a/prefallbacksuf', processedTree)?.route.id,
+        ).toBe(`low-${siblingKind}`)
+      }
+    })
+
+    it('reuses optional nodes with the same shape when they have no parser', () => {
+      const tree = makeTree([
+        '/a/{-$first}/first-child',
+        '/a/{-$second}/second-child',
+      ])
+      const branch = tree.segmentTree.staticInsensitive?.get('a')
+
+      expect(branch?.optional).toHaveLength(1)
+      expect(findRouteMatch('/a/value/first-child', tree)?.route.id).toBe(
+        '/a/{-$first}/first-child',
+      )
+      expect(findRouteMatch('/a/value/second-child', tree)?.route.id).toBe(
+        '/a/{-$second}/second-child',
+      )
+    })
+
+    it('keeps same-shaped wildcard aliases as separate match candidates', () => {
+      const tree = makeTree(['/a/$', '/a/{$}'])
+      const branch = tree.segmentTree.staticInsensitive?.get('a')
+
+      expect(branch?.wildcard).toHaveLength(2)
+      expect(findRouteMatch('/a/value', tree)?.route.id).toBe('/a/$')
     })
 
     describe('prefix / suffix lengths', () => {
@@ -1638,15 +1718,26 @@ describe('processRouteMasks', { sequential: true }, () => {
     fullPath: '/',
   } as AnyRoute
   const { processedTree } = processRouteTree(routeTree)
-  it('processes a route masks list into a segment tree', () => {
-    const routeMasks: Array<RouteMask<AnyRoute>> = [
-      { from: '/a/b/c', routeTree },
-      { from: '/a/b/d', routeTree },
-      { from: '/a/$param/d', routeTree },
-      { from: '/a/{-$optional}/d', routeTree },
-      { from: '/a/b/{$}.txt', routeTree },
-    ]
+  const routeMasks: Array<RouteMask<AnyRoute>> = [
+    { from: '/a/b/c', routeTree },
+    { from: '/a/b/d', routeTree },
+    { from: '/a/$param/d', routeTree },
+    { from: '/a/{-$optional}/d', routeTree },
+    { from: '/a/b/{$}.txt', routeTree },
+    { from: '/a/$', routeTree },
+    { from: '/a/foo{$}', routeTree },
+    { from: '/a/foo{$}bar', routeTree },
+    { from: '/required/$param', routeTree },
+    { from: '/required/foo{$param}bar', routeTree },
+    { from: '/optional/{-$param}', routeTree },
+    { from: '/optional/foo{-$param}bar', routeTree },
+  ]
+
+  beforeAll(() => {
     processRouteMasks(routeMasks, processedTree)
+  })
+
+  it('processes a route masks list into a segment tree', () => {
     const aBranch = processedTree.masksTree?.staticInsensitive?.get('a')
     expect(aBranch).toBeDefined()
     expect(aBranch?.staticInsensitive?.get('b')).toBeDefined()
@@ -1671,5 +1762,20 @@ describe('processRouteMasks', { sequential: true }, () => {
     const res = findFlatMatch('/a/b/file/path.txt', processedTree)
     expect(res?.route.from).toBe('/a/b/{$}.txt')
     expect(res?.rawParams).toEqual({ '*': 'file/path', _splat: 'file/path' })
+  })
+  it('sorts competing wildcard masks by specificity', () => {
+    const res = findFlatMatch('/a/fooxbar', processedTree)
+    expect(res?.route.from).toBe('/a/foo{$}bar')
+    expect(res?.rawParams).toEqual({ '*': 'x', _splat: 'x' })
+  })
+  it('sorts competing required masks by specificity', () => {
+    const res = findFlatMatch('/required/fooxbar', processedTree)
+    expect(res?.route.from).toBe('/required/foo{$param}bar')
+    expect(res?.rawParams).toEqual({ param: 'x' })
+  })
+  it('sorts competing optional masks by specificity', () => {
+    const res = findFlatMatch('/optional/fooxbar', processedTree)
+    expect(res?.route.from).toBe('/optional/foo{-$param}bar')
+    expect(res?.rawParams).toEqual({ param: 'x' })
   })
 })
