@@ -180,7 +180,11 @@ describe('useBlocker', () => {
   test('gives correct arguments to shouldBlockFn', async () => {
     const rootRoute = createRootRoute()
 
-    const shouldBlockFn = vi.fn().mockReturnValue(true)
+    let receiver: unknown = 'not called'
+    const shouldBlockFn = vi.fn(function (this: unknown) {
+      receiver = this
+      return true
+    })
 
     const IndexComponent = () => {
       const navigate = useNavigate()
@@ -231,6 +235,7 @@ describe('useBlocker', () => {
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/')
+    expect(receiver).toBeUndefined()
 
     expect(shouldBlockFn).toHaveBeenCalledWith({
       action: 'REPLACE',
@@ -425,11 +430,63 @@ describe('useBlocker', () => {
     expect(window.location.pathname).toBe('/invoices')
   })
 
+  test('defaults only undefined hook options', async () => {
+    const rootRoute = createRootRoute()
+    const history = createMemoryHistory()
+    const block = vi.spyOn(history, 'block')
+    const results: Array<unknown> = []
+
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        results.push(
+          useBlocker({
+            shouldBlockFn: () => false,
+            enableBeforeUnload: undefined,
+            disabled: undefined,
+            withResolver: undefined,
+          }),
+          useBlocker({
+            shouldBlockFn: () => false,
+            enableBeforeUnload: null,
+            disabled: null,
+            withResolver: null,
+          } as any),
+        )
+
+        return () => <h1>Index</h1>
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByRole('heading', { name: 'Index' })).toBeVisible()
+    expect(results).toEqual([undefined, undefined])
+    expect(
+      block.mock.calls.map(([options]) => options.enableBeforeUnload),
+    ).toEqual([true, null])
+  })
+
   test('<Block /> disabled property is reactive', async () => {
     const rootRoute = createRootRoute()
 
     // Use a shared reactive ref for the disabled state
     const disabled = Vue.ref(false)
+    let receiver: unknown = 'not called'
+    const shouldBlockFn = vi.fn(function (this: unknown) {
+      receiver = this
+      return true
+    })
 
     const IndexComponent = Vue.defineComponent({
       setup() {
@@ -437,7 +494,7 @@ describe('useBlocker', () => {
 
         return () => (
           <>
-            <Block shouldBlockFn={() => true} disabled={disabled.value} />
+            <Block shouldBlockFn={shouldBlockFn} disabled={disabled.value} />
             <h1>Index</h1>
             <button onClick={() => navigate({ to: '/' })}>Index</button>
             <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
@@ -479,6 +536,7 @@ describe('useBlocker', () => {
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/')
+    expect(receiver).toMatchObject({ shouldBlockFn })
 
     // Update the shared ref - Vue's reactivity will propagate the change
     disabled.value = true
