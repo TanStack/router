@@ -369,7 +369,7 @@ export function createBrowserHistory(opts?: {
 
   // This function queues up a call to update the browser history
   const queueHistoryAction = (
-    type: 'push' | 'replace',
+    isPush: boolean,
     destHref: string,
     state: any,
   ) => {
@@ -386,7 +386,7 @@ export function createBrowserHistory(opts?: {
     next = {
       href,
       state,
-      isPush: next?.isPush || type === 'push',
+      isPush: next?.isPush || isPush,
     }
 
     if (!scheduled) {
@@ -489,8 +489,8 @@ export function createBrowserHistory(opts?: {
   const history = createHistory({
     getLocation,
     getLength: () => win.history.length,
-    pushState: (href, state) => queueHistoryAction('push', href, state),
-    replaceState: (href, state) => queueHistoryAction('replace', href, state),
+    pushState: (href, state) => queueHistoryAction(true, href, state),
+    replaceState: (href, state) => queueHistoryAction(false, href, state),
     back: (ignoreBlocker) => {
       if (ignoreBlocker) skipBlockerNextPop = true
       ignoreNextBeforeUnload = true
