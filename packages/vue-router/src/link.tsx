@@ -182,12 +182,12 @@ export function useLinkProps<
     const next = router.buildLocation(options as any)
     const href = getHref(options as AnyLinkPropsOptions, router, next)
 
-    const isActive = getIsActive({
-      loc: router.stores.location.get(),
-      nextLoc: next,
-      activeOptions: options.activeOptions,
+    const isActive = getIsActive(
+      router.stores.location.get(),
+      next,
+      options.activeOptions,
       router,
-    })
+    )
 
     const {
       resolvedActiveProps,
@@ -238,12 +238,12 @@ export function useLinkProps<
   )
 
   const isActive = Vue.computed(() =>
-    getIsActive({
-      activeOptions: options.activeOptions,
-      loc: currentLocation.value,
-      nextLoc: next.value,
+    getIsActive(
+      currentLocation.value,
+      next.value,
+      options.activeOptions,
       router,
-    }),
+    ),
   )
 
   const doPreload = () =>
@@ -637,25 +637,20 @@ const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
   return propsSafeToSpread
 }
 
-function getIsActive({
-  activeOptions,
-  loc,
-  nextLoc,
-  router,
-}: {
-  activeOptions: LinkOptions['activeOptions']
+function getIsActive(
   loc: {
     pathname: string
     search: any
     hash: string
-  }
+  },
   nextLoc: {
     pathname: string
     search: any
     hash: string
-  }
-  router: AnyRouter
-}) {
+  },
+  activeOptions: LinkOptions['activeOptions'],
+  router: AnyRouter,
+) {
   if (activeOptions?.exact) {
     const testExact = exactPathTest(
       loc.pathname,
