@@ -34,7 +34,6 @@ export const usePrevious = (fn: () => boolean) => {
  * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
  * @param options - The options to pass to the hook
  * @param callback - The callback to call when the intersection changes
- * @returns The IntersectionObserver instance
  * @example
  * ```tsx
  * const MyComponent = () => {
@@ -53,10 +52,9 @@ export function useIntersectionObserver<T extends Element>(
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
   options: { disabled?: boolean | (() => boolean) } = {},
-): Vue.Ref<IntersectionObserver | null> {
+): void {
   const isIntersectionObserverAvailable =
     typeof IntersectionObserver === 'function'
-  const observerRef = Vue.ref<IntersectionObserver | null>(null)
 
   // Use watchEffect with cleanup to properly manage the observer lifecycle
   Vue.watchEffect((onCleanup) => {
@@ -74,16 +72,12 @@ export function useIntersectionObserver<T extends Element>(
       callback(entry)
     }, intersectionObserverOptions)
 
-    observerRef.value = observer
     observer.observe(r)
 
     onCleanup(() => {
       observer.disconnect()
-      observerRef.value = null
     })
   })
-
-  return observerRef
 }
 
 export function splitProps<T extends Record<string, any>>(

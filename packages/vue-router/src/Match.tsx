@@ -27,7 +27,7 @@ export const Match = Vue.defineComponent({
 
     const activeMatch = useStore(
       router.stores.getMatchStore(routeId),
-      (value) => value,
+      undefined,
       { equal: Object.is },
     )
     // Provide routeId context (stable string) for children.
@@ -144,9 +144,7 @@ export const MatchInner = Vue.defineComponent({
     const routeId = Vue.inject(routeIdContext)!
     const activeMatch = useStore(router.stores.getMatchStore(routeId))
 
-    // Combined selector for match state AND remount key
-    // This ensures both are computed in the same selector call with consistent data
-    const combinedState = Vue.computed(() => {
+    return (): VNode | null => {
       const match = activeMatch.value
       if (!match) {
         // Route no longer exists - truly navigating away
@@ -154,10 +152,11 @@ export const MatchInner = Vue.defineComponent({
       }
 
       const matchRouteId = match.routeId as string
+      const route = router.routesById[matchRouteId]!
 
       // Compute remount key
       const remountFn =
-        (router.routesById[matchRouteId] as AnyRoute).options.remountDeps ??
+        (route as AnyRoute).options.remountDeps ??
         router.options.defaultRemountDeps
 
       const remountDeps = remountFn
@@ -168,21 +167,7 @@ export const MatchInner = Vue.defineComponent({
             search: match._strictSearch,
           })
         : undefined
-
-      return [
-        match,
-        remountDeps ? JSON.stringify(remountDeps) : undefined,
-      ] as const
-    })
-
-    return (): VNode | null => {
-      // If match doesn't exist, return null (component is being unmounted or not ready)
-      const state = combinedState.value
-      if (!state) {
-        return null
-      }
-      const [match, remountKey] = state
-      const route = router.routesById[match.routeId]!
+      const remountKey = remountDeps ? JSON.stringify(remountDeps) : undefined
 
       // Handle different match statuses
       if (match.status === 'notFound') {
