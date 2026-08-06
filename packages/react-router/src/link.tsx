@@ -604,8 +604,8 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
     // `preloadRoute` builds the location itself; it is no longer held in render
-    // state. Matches `handleClick`, which lets `router.navigate` build its own.
-    router.preloadRoute({ ..._options } as any).catch((err) => {
+    // state. It only reads the options, so `_options` can go through as-is.
+    router.preloadRoute(_options as any).catch((err) => {
       console.warn(err)
       console.warn(preloadWarning)
     })
