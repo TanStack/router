@@ -118,6 +118,13 @@
           "cwd": "benchmarks/ssr"
         }
       },
+      "test:unit": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "vitest run --config ./vitest.unit.config.ts",
+          "cwd": "benchmarks/ssr"
+        }
+      },
       "test:perf:react": {
         "executor": "nx:run-commands",
         "cache": false,
@@ -152,7 +159,11 @@
         }
       },
       "test:types": {
-        "executor": "nx:noop",
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "tsc -p ./tsconfig.json --noEmit",
+          "cwd": "benchmarks/ssr"
+        },
         "dependsOn": [
           {
             "projects": [

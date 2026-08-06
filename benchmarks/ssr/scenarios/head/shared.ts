@@ -7,7 +7,7 @@ export type { StartRequestHandler }
 const benchmarkSeed = 0xdecafbad
 const origin = 'http://localhost'
 const dedupedMetaName = 'head-benchmark-shared'
-const headLoopIterations = 25
+const headLoopTotalRequests = 32
 
 const requestInit = {
   method: 'GET',
@@ -32,7 +32,8 @@ function buildHeadRequest(random: () => number) {
 export function runHeadLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: headLoopIterations,
+    concurrency: 16,
+    totalRequests: headLoopTotalRequests,
     buildRequest: buildHeadRequest,
   })
 }
