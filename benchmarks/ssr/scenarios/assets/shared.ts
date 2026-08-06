@@ -7,8 +7,8 @@ export type { StartRequestHandler }
 const benchmarkSeed = 0xdecafbad
 const origin = 'http://localhost'
 const cdnOrigin = 'https://cdn.example.com'
-const inlineCssLoopIterations = 25
-const linkedCssLoopIterations = 30
+const inlineCssLoopTotalRequests = 32
+const linkedCssLoopTotalRequests = 32
 
 const inlineRequestInit = {
   method: 'GET',
@@ -41,7 +41,8 @@ function buildAssetsRequest(random: () => number, requestInit: RequestInit) {
 export function runAssetsInlineLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: inlineCssLoopIterations,
+    concurrency: 16,
+    totalRequests: inlineCssLoopTotalRequests,
     buildRequest: (random) => buildAssetsRequest(random, inlineRequestInit),
   })
 }
@@ -49,7 +50,8 @@ export function runAssetsInlineLoop(handler: StartRequestHandler) {
 export function runAssetsLinkedControlLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: linkedCssLoopIterations,
+    concurrency: 16,
+    totalRequests: linkedCssLoopTotalRequests,
     buildRequest: (random) => buildAssetsRequest(random, linkedRequestInit),
   })
 }
