@@ -39,8 +39,10 @@ type LinkState = [
   isActive: boolean,
 ]
 
-// EXPERIMENT: keep a referentially stable value while the contents are equal,
-// so callers passing inline object literals do not change `_options` identity.
+// Keep a referentially stable value while the contents are equal. Links
+// routinely pass inline `params` / `search` object literals, which would
+// otherwise change `_options` identity on every parent render, rebuild the
+// store selector, and discard its memoized selection.
 function useValueStable<T>(value: T): T {
   const ref = React.useRef(value)
   if (ref.current !== value && !deepEqual(ref.current, value)) {
