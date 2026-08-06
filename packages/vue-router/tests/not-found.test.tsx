@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, test } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/vue'
 
 import {
@@ -125,6 +125,36 @@ test.each([
     expect(notFoundComponent).toBeInTheDocument()
   },
 )
+
+test('does not recreate not-found subscriptions when the location changes', async () => {
+  const rootRoute = createRootRoute({
+    component: Outlet,
+    notFoundComponent: () => (
+      <span data-testid="root-not-found">Root Not Found</span>
+    ),
+  })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <span>Index</span>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history,
+  })
+  const subscribe = vi.spyOn(router.stores.location, 'subscribe')
+
+  render(<RouterProvider router={router} />)
+  await router.load()
+
+  expect(subscribe).toHaveBeenCalledOnce()
+
+  await router.navigate({ to: '/missing-one' as any })
+  await screen.findByTestId('root-not-found')
+  await router.navigate({ to: '/missing-two' as any })
+
+  expect(subscribe).toHaveBeenCalledOnce()
+})
 
 test('defaultNotFoundComponent and notFoundComponent receives data props via spread operator', async () => {
   const isCustomData = (data: unknown): data is typeof customData => {

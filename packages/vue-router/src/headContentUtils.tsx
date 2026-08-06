@@ -7,7 +7,7 @@ import {
   getScriptPreloadAttrs,
   resolveManifestCssLink,
 } from '@tanstack/router-core'
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from './useSelector'
 import { useRouter } from './useRouter'
 import type {
   AssetCrossOriginConfig,
@@ -16,7 +16,7 @@ import type {
 
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
-  const matches = useStore(router.stores.matches, _getAssetMatches)
+  const matches = useSelector(router.stores.matches, _getAssetMatches)
 
   const tags = Vue.computed<Array<RouterManagedTag>>(() => {
     const currentMatches = matches.value

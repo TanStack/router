@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from './useSelector'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
@@ -79,7 +79,7 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matches = useStore(router.stores.matches)
+    const matches = useSelector(router.stores.matches)
     const routeId = Vue.computed(() => matches.value[0]?.routeId)
 
     return () => {
@@ -126,12 +126,12 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const location = useStore(router.stores.location, (value) => value.href)
-  const resolvedLocation = useStore(
+  const location = useSelector(router.stores.location, (value) => value.href)
+  const resolvedLocation = useSelector(
     router.stores.resolvedLocation,
     (value) => value?.href,
   )
-  const status = useStore(router.stores.status)
+  const status = useSelector(router.stores.status)
 
   return <
     const TFrom extends string = string,
@@ -264,7 +264,7 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return useStore(router.stores.matches, (matches) => {
+  return useSelector(router.stores.matches, (matches) => {
     return opts?.select
       ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
       : (matches as any)
