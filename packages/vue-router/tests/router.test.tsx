@@ -1,3 +1,4 @@
+import * as Vue from 'vue'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -920,6 +921,78 @@ describe('router emits events during rendering', () => {
 
     unsubBeforeRouteMount()
     unsubResolved()
+  })
+})
+
+describe('router rendering stability', () => {
+  it('uses remount deps from the latest match as the component key', async () => {
+    const mounts = vi.fn()
+    const remountDeps = vi.fn((options: { search: { version: string } }) => ({
+      version: options.search.version,
+    }))
+    const rootRoute = createRootRoute({
+      component: () => <Outlet />,
+    })
+    const itemRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/items',
+      validateSearch: z.object({
+        version: z.string(),
+        ignored: z.string().optional(),
+      }),
+      remountDeps,
+      component: Vue.defineComponent({
+        setup() {
+          mounts()
+          return () => <div>Item route</div>
+        },
+      }),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([itemRoute]),
+      history: createMemoryHistory({
+        initialEntries: ['/items?version=one&ignored=first'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Item route')).toBeInTheDocument()
+    expect(mounts).toHaveBeenCalledTimes(1)
+    expect(remountDeps).toHaveBeenLastCalledWith({
+      routeId: '/items',
+      loaderDeps: '',
+      params: {},
+      search: { version: 'one', ignored: 'first' },
+    })
+
+    await router.navigate({
+      to: '/items',
+      search: { version: 'one', ignored: 'second' },
+    })
+
+    await waitFor(() => {
+      expect(remountDeps).toHaveBeenLastCalledWith({
+        routeId: '/items',
+        loaderDeps: '',
+        params: {},
+        search: { version: 'one', ignored: 'second' },
+      })
+    })
+    expect(mounts).toHaveBeenCalledTimes(1)
+
+    await router.navigate({
+      to: '/items',
+      search: { version: 'two', ignored: 'second' },
+    })
+
+    await waitFor(() => expect(mounts).toHaveBeenCalledTimes(2))
+    expect(remountDeps).toHaveBeenLastCalledWith({
+      routeId: '/items',
+      loaderDeps: '',
+      params: {},
+      search: { version: 'two', ignored: 'second' },
+    })
   })
 })
 

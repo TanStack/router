@@ -33,6 +33,7 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { useIntersectionObserver } from '../src/utils'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
@@ -5051,6 +5052,48 @@ describe('Link', () => {
     })
     expect(ioObserveMock).toHaveBeenCalledOnce() // it should not observe again
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
+  })
+
+  test('the viewport observer follows ref, disabled, and unmount transitions', async () => {
+    ioObserveMock.mockClear()
+    ioDisconnectMock.mockClear()
+    const disabled = Vue.ref(false)
+    const element = Vue.shallowRef<Element | null>(
+      document.createElement('div'),
+    )
+    const ObserverComponent = Vue.defineComponent({
+      setup() {
+        useIntersectionObserver(
+          element,
+          () => {},
+          {},
+          {
+            disabled: () => disabled.value,
+          },
+        )
+        return () => null
+      },
+    })
+
+    const { unmount } = render(ObserverComponent)
+
+    await waitFor(() => expect(ioObserveMock).toHaveBeenCalledTimes(1))
+    expect(ioDisconnectMock).not.toHaveBeenCalled()
+
+    element.value = document.createElement('span')
+    await waitFor(() => expect(ioObserveMock).toHaveBeenCalledTimes(2))
+    expect(ioDisconnectMock).toHaveBeenCalledTimes(1)
+
+    disabled.value = true
+    await waitFor(() => expect(ioDisconnectMock).toHaveBeenCalledTimes(2))
+    expect(ioObserveMock).toHaveBeenCalledTimes(2)
+
+    disabled.value = false
+    await waitFor(() => expect(ioObserveMock).toHaveBeenCalledTimes(3))
+    expect(ioDisconnectMock).toHaveBeenCalledTimes(2)
+
+    unmount()
+    expect(ioDisconnectMock).toHaveBeenCalledTimes(3)
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {
