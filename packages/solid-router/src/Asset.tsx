@@ -113,11 +113,7 @@ function Script({
 
       document.head.appendChild(script)
 
-      onCleanup(() => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      })
+      onCleanup(() => script.remove())
     }
 
     if (typeof children === 'string') {
@@ -146,11 +142,7 @@ function Script({
 
       document.head.appendChild(script)
 
-      onCleanup(() => {
-        if (script.parentNode) {
-          script.parentNode.removeChild(script)
-        }
-      })
+      onCleanup(() => script.remove())
     }
   })
 
