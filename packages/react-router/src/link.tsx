@@ -485,10 +485,10 @@ export function useLinkProps<
   const isHydrated = useHydrated()
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const stableSearch = useValueStable(options.search)
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const stableParams = useValueStable(options.params)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -510,71 +510,42 @@ export function useLinkProps<
   // the subscription instead re-renders every link on every navigation, because
   // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const selectLinkState = React.useMemo(
-    () => {
-      // `getHrefOption` and `resolveExternalLink` depend only on the built href,
-      // which a navigation usually leaves untouched. Memoize them on it so they
-      // are skipped on the navigations that do not move this link, which is what
-      // the equivalent `useMemo` chain used to do via its primitive dependencies.
-      // The closure is rebuilt whenever a dependency below changes, so the cache
-      // cannot outlive the inputs it was derived from.
-      let cachedHref: string | undefined
-      let cachedExternal: boolean | undefined
-      let cachedHrefOption: ReturnType<typeof getHrefOption>
-      let cachedExternalLink: string | undefined
-      let hasCache = false
+  const selectLinkState = React.useCallback(
+    (location: ParsedLocation): LinkState => {
+      const next = router.buildLocation({
+        _fromLocation: location,
+        ..._options,
+      } as any)
 
-      return (location: ParsedLocation): LinkState => {
-        const next = router.buildLocation({
-          _fromLocation: location,
-          ..._options,
-        } as any)
+      // Use publicHref - it contains the correct href for display
+      // When a rewrite changes the origin, publicHref is the full URL
+      // Otherwise it's the origin-stripped path
+      // This avoids constructing URL objects in the hot path
+      const hrefOption = getHrefOption(
+        next.maskedLocation ? next.maskedLocation.publicHref : next.publicHref,
+        next.maskedLocation ? next.maskedLocation.external : next.external,
+        router.history,
+        disabled,
+      )
 
-        // Use publicHref - it contains the correct href for display
-        // When a rewrite changes the origin, publicHref is the full URL
-        // Otherwise it's the origin-stripped path
-        // This avoids constructing URL objects in the hot path
-        const publicHref = next.maskedLocation
-          ? next.maskedLocation.publicHref
-          : next.publicHref
-        const external = next.maskedLocation
-          ? next.maskedLocation.external
-          : next.external
+      const externalLink = resolveExternalLink(
+        hrefOption,
+        to,
+        router.protocolAllowlist,
+      )
 
-        if (
-          !hasCache ||
-          publicHref !== cachedHref ||
-          external !== cachedExternal
-        ) {
-          hasCache = true
-          cachedHref = publicHref
-          cachedExternal = external
-          cachedHrefOption = getHrefOption(
-            publicHref,
-            external,
-            router.history,
-            disabled,
-          )
-          cachedExternalLink = resolveExternalLink(
-            cachedHrefOption,
-            to,
-            router.protocolAllowlist,
-          )
-        }
-
-        return [
-          cachedHrefOption?.href,
-          cachedExternalLink,
-          resolveIsActive(
-            location,
-            next,
-            activeOptions,
-            router.basepath,
-            isHydrated,
-            cachedExternalLink !== undefined,
-          ),
-        ]
-      }
+      return [
+        hrefOption?.href,
+        externalLink,
+        resolveIsActive(
+          location,
+          next,
+          activeOptions,
+          router.basepath,
+          isHydrated,
+          externalLink !== undefined,
+        ),
+      ]
     },
     // Depend on the four fields rather than `activeOptions` itself: callers
     // routinely pass an inline object literal, which would rebuild the selector
