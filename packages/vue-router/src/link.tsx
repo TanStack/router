@@ -194,10 +194,7 @@ export function useLinkProps<
       resolvedInactiveProps,
       resolvedClassName,
       resolvedStyle,
-    } = resolveStyleProps({
-      options: options as AnyLinkPropsOptions,
-      isActive,
-    })
+    } = resolveStyleProps(options as AnyLinkPropsOptions, isActive)
 
     const result = combineResultProps({
       href,
@@ -374,10 +371,7 @@ export function useLinkProps<
 
   // Get the active and inactive props
   const resolvedStyleProps = Vue.computed(() =>
-    resolveStyleProps({
-      options: options as AnyLinkPropsOptions,
-      isActive: isActive.value,
-    }),
+    resolveStyleProps(options as AnyLinkPropsOptions, isActive.value),
   )
 
   const href = Vue.computed(() =>
@@ -441,13 +435,7 @@ export function useLinkProps<
   return computedProps as unknown as LinkHTMLAttributes
 }
 
-function resolveStyleProps({
-  options,
-  isActive,
-}: {
-  options: AnyLinkPropsOptions
-  isActive: boolean
-}) {
+function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
   const activeProps = options.activeProps || (() => ({ class: 'active' }))
   const resolvedActiveProps: StyledProps = (isActive
     ? typeof activeProps === 'function'
