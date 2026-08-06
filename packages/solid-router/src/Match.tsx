@@ -34,10 +34,7 @@ export const Match = (props: { routeId: string }) => {
     () => router.stores.byRoute.get(props.routeId)!.get()!,
   )
 
-  const nearestMatch = {
-    routeId: () => props.routeId,
-    match: currentMatch,
-  }
+  const nearestMatch = [() => props.routeId, currentMatch] as const
 
   const route: AnyRoute = router.routesById[props.routeId]
 
@@ -162,8 +159,8 @@ export const Match = (props: { routeId: string }) => {
 export const MatchInner = (): any => {
   const router = useRouter()
   const nearestMatch = Solid.useContext(nearestMatchContext)
-  const match = nearestMatch.match
-  const routeId = nearestMatch.routeId
+  const match = nearestMatch[1 /* match */]
+  const routeId = nearestMatch[0 /* route id */]
   const route = router.routesById[routeId()!]!
   const currentMatch = () => match()!
 
@@ -230,8 +227,8 @@ export const MatchInner = (): any => {
 export const Outlet = () => {
   const router = useRouter()
   const nearestParentMatch = Solid.useContext(nearestMatchContext)
-  const parentMatch = nearestParentMatch.match
-  const routeId = nearestParentMatch.routeId
+  const parentMatch = nearestParentMatch[1 /* match */]
+  const routeId = nearestParentMatch[0 /* route id */]
   const route = router.routesById[routeId()!]!
 
   const childRouteId = () => {
