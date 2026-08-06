@@ -165,7 +165,11 @@ export function removeTrailingSlash(s: string) {
 }
 
 const BRACKET_CONTENT_RE = /\[(.*?)\]/g
-const SPLIT_REGEX = /(?<!\[)\.(?!\])/g
+/**
+ * Dots split route segments, unless escaped as [.] or part of a variadic
+ * param token ({...$name}).
+ */
+const SPLIT_REGEX = /(?<!\[)(?<!\{)(?<!\{\.)(?<!\{\.\.)\.(?!\])/g
 
 /**
  * Characters that cannot be escaped in square brackets.

@@ -260,6 +260,22 @@ describe('determineInitialRoutePath', () => {
     })
   })
 
+  it('keeps the dots of a variadic param token', () => {
+    expect(
+      determineInitialRoutePath('$bucket.{...$folders}.$file'),
+    ).toStrictEqual({
+      routePath: '/$bucket/{...$folders}/$file',
+      originalRoutePath: '/$bucket/{...$folders}/$file',
+    })
+  })
+
+  it('keeps a variadic directory segment intact', () => {
+    expect(determineInitialRoutePath('/{...$folders}/index')).toStrictEqual({
+      routePath: '/{...$folders}/index',
+      originalRoutePath: '/{...$folders}/index',
+    })
+  })
+
   it('errors on disallowed escaped character', () => {
     const consoleSpy = vi.spyOn(console, 'error')
 

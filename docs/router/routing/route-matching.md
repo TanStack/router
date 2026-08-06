@@ -9,6 +9,8 @@ When TanStack Router processes your route tree, all of your routes are automatic
 - Index Route
 - Static Routes (most specific to least specific)
 - Dynamic Routes (longest to shortest)
+- Optional Parameter Routes
+- Variadic Parameter Routes
 - Splat/Wildcard Routes
 
 Consider the following pseudo route tree:

@@ -325,6 +325,58 @@ This route matches `/posts`, `/posts/tech`, and `/posts/tech/hello-world`.
 
 > 🧠 Routes with optional parameters are ranked lower in priority than exact matches, ensuring that more specific routes like `/posts/featured` are matched before `/posts/{-$category}`.
 
+## Variadic Path Parameters
+
+Variadic path parameters match **zero or more** URL segments in the middle of a path and bind them as an `Array<string>`. They use the `{...$paramName}` syntax.
+
+<!-- ::start:framework -->
+
+# React
+
+```tsx title="src/routes/files.{...$path}.preview.tsx"
+// `{...$path}` matches zero or more segments, so this route matches
+// `/files/preview`, `/files/docs/preview` and `/files/a/b/c/preview`
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/files/{...$path}/preview')({
+  component: PreviewComponent,
+})
+
+function PreviewComponent() {
+  const { path } = Route.useParams()
+
+  // `path` is an Array<string>: [] for `/files/preview`,
+  // ['a', 'b', 'c'] for `/files/a/b/c/preview`
+  return <div>Previewing {path.join('/') || 'the root folder'}</div>
+}
+```
+
+# Solid
+
+```tsx title="src/routes/files.{...$path}.preview.tsx"
+// `{...$path}` matches zero or more segments, so this route matches
+// `/files/preview`, `/files/docs/preview` and `/files/a/b/c/preview`
+import { createFileRoute } from '@tanstack/solid-router'
+
+export const Route = createFileRoute('/files/{...$path}/preview')({
+  component: PreviewComponent,
+})
+
+function PreviewComponent() {
+  const { path } = Route.useParams()
+
+  // `path` is an Array<string>: [] for `/files/preview`,
+  // ['a', 'b', 'c'] for `/files/a/b/c/preview`
+  return <div>Previewing {path().join('/') || 'the root folder'}</div>
+}
+```
+
+<!-- ::end:framework -->
+
+A variadic segment consumes as few segments as the rest of the pattern allows, and each matched segment is percent-decoded independently. A route path may contain up to three variadic segments as long as consecutive ones are separated by at least one static segment. Prefixes and suffixes are not supported on variadic segments. See [Path Params](../guide/path-params.md#variadic-path-parameters) for details.
+
+> 🧠 Variadic parameter routes are ranked below dynamic and optional parameter routes and above splat routes: `/docs/$section/end` and `/docs/{-$section}/end` both win over `/docs/{...$rest}/end` for `/docs/guide/end`.
+
 ## Layout Routes
 
 Layout routes are used to wrap child routes with additional components and logic. They are useful for:

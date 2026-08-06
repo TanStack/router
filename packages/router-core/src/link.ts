@@ -34,36 +34,53 @@ export interface ParsePathParamsResult<
   in out TRequired,
   in out TOptional,
   in out TRest,
+  in out TVariadic = never,
 > {
   required: TRequired
   optional: TOptional
   rest: TRest
+  variadic: TVariadic
 }
 
 export type AnyParsePathParamsResult = ParsePathParamsResult<
+  string,
   string,
   string,
   string
 >
 
 export type ParsePathParamsBoundaryStart<T extends string> =
-  T extends `${infer TLeft}{-${infer TRight}`
+  T extends `${infer TLeft}{...${infer TRight}`
     ? ParsePathParamsResult<
         ParsePathParams<TLeft>['required'],
         | ParsePathParams<TLeft>['optional']
-        | ParsePathParams<TRight>['required']
         | ParsePathParams<TRight>['optional'],
-        ParsePathParams<TRight>['rest']
+        ParsePathParams<TRight>['rest'],
+        | ParsePathParams<TLeft>['variadic']
+        | ParsePathParams<TRight>['required']
+        | ParsePathParams<TRight>['variadic']
       >
-    : T extends `${infer TLeft}{${infer TRight}`
+    : T extends `${infer TLeft}{-${infer TRight}`
       ? ParsePathParamsResult<
-          | ParsePathParams<TLeft>['required']
-          | ParsePathParams<TRight>['required'],
+          ParsePathParams<TLeft>['required'],
           | ParsePathParams<TLeft>['optional']
+          | ParsePathParams<TRight>['required']
           | ParsePathParams<TRight>['optional'],
-          ParsePathParams<TRight>['rest']
+          ParsePathParams<TRight>['rest'],
+          | ParsePathParams<TLeft>['variadic']
+          | ParsePathParams<TRight>['variadic']
         >
-      : never
+      : T extends `${infer TLeft}{${infer TRight}`
+        ? ParsePathParamsResult<
+            | ParsePathParams<TLeft>['required']
+            | ParsePathParams<TRight>['required'],
+            | ParsePathParams<TLeft>['optional']
+            | ParsePathParams<TRight>['optional'],
+            ParsePathParams<TRight>['rest'],
+            | ParsePathParams<TLeft>['variadic']
+            | ParsePathParams<TRight>['variadic']
+          >
+        : never
 
 export type ParsePathParamsSymbol<T extends string> =
   T extends `${string}$${infer TRight}`
@@ -73,12 +90,14 @@ export type ParsePathParamsSymbol<T extends string> =
           ? ParsePathParamsResult<
               ParsePathParams<TRest>['required'],
               '_splat' | ParsePathParams<TRest>['optional'],
-              ParsePathParams<TRest>['rest']
+              ParsePathParams<TRest>['rest'],
+              ParsePathParams<TRest>['variadic']
             >
           : ParsePathParamsResult<
               TParam | ParsePathParams<TRest>['required'],
               ParsePathParams<TRest>['optional'],
-              ParsePathParams<TRest>['rest']
+              ParsePathParams<TRest>['rest'],
+              ParsePathParams<TRest>['variadic']
             >
         : never
       : TRight extends ''
@@ -93,7 +112,8 @@ export type ParsePathParamsBoundaryEnd<T extends string> =
         | ParsePathParams<TRight>['required'],
         | ParsePathParams<TLeft>['optional']
         | ParsePathParams<TRight>['optional'],
-        ParsePathParams<TRight>['rest']
+        ParsePathParams<TRight>['rest'],
+        ParsePathParams<TLeft>['variadic'] | ParsePathParams<TRight>['variadic']
       >
     : never
 
@@ -104,7 +124,8 @@ export type ParsePathParamsEscapeStart<T extends string> =
         | ParsePathParams<TRight>['required'],
         | ParsePathParams<TLeft>['optional']
         | ParsePathParams<TRight>['optional'],
-        ParsePathParams<TRight>['rest']
+        ParsePathParams<TRight>['rest'],
+        ParsePathParams<TLeft>['variadic'] | ParsePathParams<TRight>['variadic']
       >
     : never
 

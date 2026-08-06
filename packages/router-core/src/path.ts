@@ -4,6 +4,7 @@ import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_VARIADIC,
   SEGMENT_TYPE_WILDCARD,
   parseSegment,
 } from './new-process-route-tree'
@@ -239,7 +240,7 @@ function encodeParam(
  * Interpolate params and wildcards into a route path template.
  *
  * - Encodes params safely (configurable allowed characters)
- * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
+ * - Supports `{-$optional}` segments, `{...$variadic}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
  */
 export function interpolatePath({
   path,
@@ -374,6 +375,24 @@ export function interpolatePath({
       const suffix = path.substring(segment[4], end)
       const value = encodeParam(key, params, decoder) ?? 'undefined'
       joined += '/' + prefix + value + suffix
+      continue
+    }
+
+    if (kind === SEGMENT_TYPE_VARIADIC) {
+      const key = path.substring(segment[2], segment[3])
+      const valueRaw = params[key]
+
+      // absent or empty variadic omits the segment, but a present param
+      // is still used
+      if (valueRaw == null) continue
+      usedParams[key] = valueRaw
+      const values = Array.isArray(valueRaw) ? valueRaw : [valueRaw]
+      if (values.length === 0) continue
+
+      const value = values
+        .map((entry) => encodePathParam(String(entry), decoder))
+        .join('/')
+      joined += '/' + value
       continue
     }
 

@@ -1,7 +1,7 @@
 import { VALID_PARAM_NAME_REGEX } from './constants'
 
 export interface ExtractedParam {
-  /** The full param string including $ prefix (e.g., "$userId", "-$optional") */
+  /** The full param string including $ prefix (e.g., "$userId", "-$optional", "...$items") */
   fullParam: string
   /** The param name without $ prefix (e.g., "userId", "optional") */
   paramName: string
@@ -51,17 +51,17 @@ export function extractParamsFromSegment(
     return params
   }
 
-  // Pattern 2: Braces pattern {$paramName} or {-$paramName} with optional prefix/suffix
-  // Match patterns like: prefix{$param}suffix, {$param}, {-$param}
-  const bracePattern = /\{(-?\$)([^}]*)\}/g
+  // Pattern 2: Braces pattern {$paramName}, {-$paramName} or {...$paramName}
+  // Match patterns like: prefix{$param}suffix, {$param}, {-$param}, {...$param}
+  const bracePattern = /\{((?:-|\.\.\.)?\$)([^}]*)\}/g
   let match
 
   while ((match = bracePattern.exec(segment)) !== null) {
-    const prefix = match[1] // "$" or "-$"
-    const paramName = match[2] // The param name after $ or -$
+    const prefix = match[1] // "$", "-$", or "...$"
+    const paramName = match[2] // The param name after $, -$, or ...$
 
     if (!paramName) {
-      // This is a wildcard {$} or {-$}, skip
+      // This is a wildcard {$}, {-$}, or {...$}, skip
       continue
     }
 
