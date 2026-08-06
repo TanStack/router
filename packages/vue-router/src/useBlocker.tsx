@@ -227,7 +227,9 @@ function useBlockerImpl(getArgs: () => UseBlockerOpts) {
     })
 
     onCleanup(() => {
-      if (unsubscribe) unsubscribe()
+      if (unsubscribe) {
+        unsubscribe()
+      }
     })
   })
 
