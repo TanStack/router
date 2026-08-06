@@ -224,6 +224,11 @@ describe('Match re-render churn probe', () => {
     })
     await act(() => new Promise((r) => setTimeout(r, 0)))
 
+    // Confirm the search navigation actually landed before asserting that it
+    // caused no re-renders -- otherwise the zero-render assertions would pass
+    // even if the navigation had silently done nothing.
+    expect(screen.getByTestId('href')).toHaveTextContent('tab=mine')
+
     const report = {
       MatchImpl: renderCounts.MatchImpl ?? 0,
       MatchInnerImpl: renderCounts.MatchInnerImpl ?? 0,
