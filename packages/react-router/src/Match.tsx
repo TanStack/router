@@ -12,6 +12,7 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
+import type { ErrorRouteComponent } from './route'
 import type {
   AnyRoute,
   AnyRouteMatch,
@@ -37,6 +38,72 @@ const outletMatchSelectionEqual = (
   b: OutletMatchSelection,
 ) => a[0] === b[0] && a[1] === b[1]
 
+type MatchSelection = [
+  matchId: string | undefined,
+  ssr: boolean | 'data-only' | undefined,
+  status: AnyRouteMatch['status'] | undefined,
+  error: unknown,
+  remountKey: string | undefined,
+  lazy: LazyRouteState,
+]
+
+// `_lazy` is marked `@internal`, so it is stripped from the published
+// declarations router-core's consumers compile against.
+type LazyRouteState = Promise<void> | true | undefined
+
+const matchSelectionEqual = (a: MatchSelection, b: MatchSelection) =>
+  a[0] === b[0] &&
+  a[1] === b[1] &&
+  a[2] === b[2] &&
+  a[3] === b[3] &&
+  a[4] === b[4] &&
+  a[5] === b[5]
+
+const emptyMatchSelection: MatchSelection = [
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+]
+
+// `buildMatches` re-mints every staying match on every navigation (a fresh
+// object with a fresh `_strictSearch`, `context` and `abortController`, and an
+// updated `cause`), so a match store always republishes with a new identity.
+// Selecting only the fields this subtree renders lets a staying route bail out.
+// `loaderDeps`/`_strictParams`/`_strictSearch` reach the output solely through
+// the remount key, so the key is computed here and compared as a string.
+// `route._lazy` is selected too: a lazy route's options are assigned onto the
+// route in place, and a re-offered pending match is the only signal that the
+// components this subtree renders have just been replaced.
+function selectMatchFields(
+  router: ReturnType<typeof useRouter>,
+  routeId: string,
+  match: AnyRouteMatch | undefined,
+): MatchSelection {
+  if (!match) return emptyMatchSelection
+
+  const route = router.routesById[routeId] as AnyRoute
+  const remountFn =
+    route.options.remountDeps ?? router.options.defaultRemountDeps
+  const remountDeps = remountFn?.({
+    routeId,
+    loaderDeps: match.loaderDeps,
+    params: match._strictParams,
+    search: match._strictSearch,
+  })
+
+  return [
+    match.id,
+    match.ssr,
+    match.status,
+    match.error,
+    remountDeps ? JSON.stringify(remountDeps) : undefined,
+    (route as { _lazy?: LazyRouteState })._lazy,
+  ]
+}
+
 export const Match = React.memo(function MatchImpl({
   routeId,
 }: {
@@ -46,23 +113,61 @@ export const Match = React.memo(function MatchImpl({
 
   if (isServer ?? router.isServer) {
     const match = router.stores.byRoute.get(routeId)!.get()!
-    return <MatchView router={router} match={match} />
+    return (
+      <MatchView
+        router={router}
+        routeId={routeId}
+        selection={selectMatchFields(router, routeId, match)}
+      />
+    )
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value)
-  return <MatchView router={router} match={match!} />
+  const selection = useStore(
+    matchStore,
+    (match) => selectMatchFields(router, routeId, match),
+    matchSelectionEqual,
+  )
+  return <MatchView router={router} routeId={routeId} selection={selection} />
 })
+
+// `CatchBoundary` resets its error whenever `getResetKey()` changes, and the
+// match identity is what changes per navigation. Observing it here rather than
+// in `Match` keeps that per-navigation update off every mounted route: only
+// routes that actually have an `errorComponent` pay for it, and because
+// `props.children` is the element `MatchView` already created, the subtree
+// below bails out.
+function ResettableCatchBoundary({
+  routeId,
+  ...props
+}: {
+  routeId: string
+  children: React.ReactNode
+  errorComponent?: ErrorRouteComponent
+  onCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
+}) {
+  const router = useRouter()
+  const resetKey =
+    (isServer ?? router.isServer)
+      ? router.stores.byRoute.get(routeId)!.get()
+      : // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+        useStore(router.stores.getMatchStore(routeId), (match) => match)
+
+  return <CatchBoundary getResetKey={() => resetKey} {...props} />
+}
 
 function MatchView({
   router,
-  match,
+  routeId,
+  selection,
 }: {
   router: ReturnType<typeof useRouter>
-  match: AnyRouteMatch
+  routeId: string
+  selection: MatchSelection
 }) {
-  const route: AnyRoute = router.routesById[match.routeId]
+  const [matchId, ssr, status, error, remountKey] = selection
+  const route: AnyRoute = router.routesById[routeId]
 
   const pendingElement = renderPending(router, route)
 
@@ -77,7 +182,7 @@ function MatchView({
       router.options.notFoundRoute?.options.component)
     : route.options.notFoundComponent
 
-  const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
+  const resolvedNoSsr = ssr === false || ssr === 'data-only'
   const ResolvedSuspenseBoundary =
     (route.options.wrapInSuspense ??
     pendingElement ??
@@ -86,7 +191,7 @@ function MatchView({
       : SafeFragment
 
   const ResolvedCatchBoundary = routeErrorComponent
-    ? CatchBoundary
+    ? ResettableCatchBoundary
     : SafeFragment
 
   const ResolvedNotFoundBoundary = routeNotFoundComponent
@@ -98,28 +203,28 @@ function MatchView({
     : SafeFragment
   return (
     <ShellComponent>
-      <matchContext.Provider value={match.routeId}>
+      <matchContext.Provider value={routeId}>
         <ResolvedSuspenseBoundary fallback={pendingElement}>
           <ResolvedCatchBoundary
-            getResetKey={() => match}
+            routeId={routeId}
             errorComponent={routeErrorComponent as any}
             onCatch={(error, errorInfo) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) {
-                error.routeId ??= match.routeId
+                error.routeId ??= routeId
                 throw error
               }
               if (process.env.NODE_ENV !== 'production') {
-                console.warn(`Warning: Error in route match: ${match.id}`)
+                console.warn(`Warning: Error in route match: ${matchId}`)
               }
               routeOnCatch?.(error, errorInfo)
             }}
           >
             <ResolvedNotFoundBoundary
               fallback={(error) => {
-                error.routeId ??= match.routeId
+                error.routeId ??= routeId
 
-                if (error.routeId !== match.routeId) {
+                if (error.routeId !== routeId) {
                   throw error
                 }
 
@@ -131,10 +236,20 @@ function MatchView({
             >
               {resolvedNoSsr ? (
                 <ClientOnly fallback={pendingElement}>
-                  <MatchInner match={match} />
+                  <MatchInner
+                    routeId={routeId}
+                    status={status}
+                    error={error}
+                    remountKey={remountKey}
+                  />
                 </ClientOnly>
               ) : (
-                <MatchInner match={match} />
+                <MatchInner
+                  routeId={routeId}
+                  status={status}
+                  error={error}
+                  remountKey={remountKey}
+                />
               )}
             </ResolvedNotFoundBoundary>
           </ResolvedCatchBoundary>
@@ -150,48 +265,35 @@ function MatchView({
 }
 
 export const MatchInner = React.memo(function MatchInnerImpl({
-  match,
+  routeId,
+  status,
+  error,
+  remountKey,
 }: {
-  match: AnyRouteMatch
+  routeId: string
+  status: AnyRouteMatch['status'] | undefined
+  error: unknown
+  remountKey: string | undefined
 }): any {
   const router = useRouter()
-  const routeId = match.routeId
   const route = router.routesById[routeId] as AnyRoute
-  const key = React.useMemo(() => {
-    const remountFn =
-      route.options.remountDeps ?? router.options.defaultRemountDeps
-    const remountDeps = remountFn?.({
-      routeId,
-      loaderDeps: match.loaderDeps,
-      params: match._strictParams,
-      search: match._strictSearch,
-    })
-    return remountDeps ? JSON.stringify(remountDeps) : undefined
-  }, [
-    routeId,
-    match.loaderDeps,
-    match._strictParams,
-    match._strictSearch,
-    route.options.remountDeps,
-    router.options.defaultRemountDeps,
-  ])
   const out = React.useMemo(() => {
     const Comp = route.options.component ?? router.options.defaultComponent
-    return Comp ? <Comp key={key} /> : <Outlet />
-  }, [key, route.options.component, router.options.defaultComponent])
+    return Comp ? <Comp key={remountKey} /> : <Outlet />
+  }, [remountKey, route.options.component, router.options.defaultComponent])
 
-  if (match.status === 'pending') {
+  if (status === 'pending') {
     if (router._tx) {
       throw router._tx[5]
     }
     return renderPending(router, route)
   }
 
-  if (match.status === 'notFound') {
-    return renderRouteNotFound(router, route, match.error)
+  if (status === 'notFound') {
+    return renderRouteNotFound(router, route, error)
   }
 
-  if (match.status === 'error') {
+  if (status === 'error') {
     if (isServer ?? router.isServer) {
       const RouteErrorComponent =
         (route.options.errorComponent ??
@@ -199,7 +301,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         ErrorComponent
       return (
         <RouteErrorComponent
-          error={match.error as any}
+          error={error as any}
           reset={undefined as any}
           info={{
             componentStack: '',
@@ -207,7 +309,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         />
       )
     }
-    throw match.error
+    throw error
   }
 
   return out
