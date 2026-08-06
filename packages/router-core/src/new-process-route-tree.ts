@@ -220,35 +220,19 @@ function parseSegments<TRouteLike extends RouteLike>(
       switch (kind) {
         case SEGMENT_TYPE_PATHNAME: {
           const value = path.substring(segment[2], segment[3])
-          if (caseSensitive) {
-            const existingNode = node.static?.get(value)
-            if (existingNode) {
-              nextNode = existingNode
-            } else {
-              node.static ??= new Map()
-              const next = createStaticNode<TRouteLike>(
-                route.fullPath ?? route.from,
-              )
-              next.parent = node
-              next.depth = depth
-              nextNode = next
-              node.static.set(value, next)
-            }
+          const name = caseSensitive ? value : value.toLowerCase()
+          const staticChildren = caseSensitive
+            ? (node.static ??= new Map())
+            : (node.staticInsensitive ??= new Map())
+          const existingNode = staticChildren.get(name)
+          if (existingNode) {
+            nextNode = existingNode
           } else {
-            const name = value.toLowerCase()
-            const existingNode = node.staticInsensitive?.get(name)
-            if (existingNode) {
-              nextNode = existingNode
-            } else {
-              node.staticInsensitive ??= new Map()
-              const next = createStaticNode<TRouteLike>(
-                route.fullPath ?? route.from,
-              )
-              next.parent = node
-              next.depth = depth
-              nextNode = next
-              node.staticInsensitive.set(name, next)
-            }
+            const next = createStaticNode<TRouteLike>(path)
+            next.parent = node
+            next.depth = depth
+            nextNode = next
+            staticChildren.set(name, next)
           }
           break
         }
