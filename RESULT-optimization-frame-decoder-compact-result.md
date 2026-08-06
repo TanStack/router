@@ -47,7 +47,25 @@ Before each matrix, an offline frozen install relinked dependencies to the inten
 
 All eleven Start scenarios improve the primary gzip metric by 4–12 B and raw size by 24 B. The six router-only scenarios are byte-identical. Brotli is mixed and disclosed rather than used to select the candidate.
 
-This is one inseparable producer/consumer contract group. Tests and types do not ship, and the uniform 24 B raw reduction across every consumer provides direct attribution.
+### Per-key attribution
+
+Each producer/consumer key rename was independently applied to an exact-base worktree and measured with the official `react-start.minimal` scenario. Each attribution branch was committed before measurement so its artifact records a clean exact SHA. Before every run, an offline frozen install relinked dependencies and all seven benchmark links plus all nine package-internal `start-client-core` links were verified to resolve inside that run's worktree.
+
+| Isolated change                    | Commit                                     |   Raw | Initial raw | Gzip | Initial gzip | Brotli | Initial Brotli |
+| ---------------------------------- | ------------------------------------------ | ----: | ----------: | ---: | -----------: | -----: | -------------: |
+| `getOrCreateStream` -> `getStream` | `8bf715221eacece8098ef894b16509a2ec8c846c` | -16 B |       -16 B | -6 B |         -4 B |  +80 B |          +82 B |
+| `jsonChunks` -> `chunks`           | `5bf6808e9d7ba792fb3fba51fdc393c8a493424a` |  -8 B |        -8 B | -1 B |         -1 B |  +69 B |          +69 B |
+| Final composition                  | `23171792d50c0dd1312d02e5c8ad4325d4da3781` | -24 B |       -24 B | -8 B |         -7 B | +207 B |         +207 B |
+
+Both independent changes improve raw and primary gzip size, so both production hunks remain. Compressed deltas are not expected to add linearly; the final composition is the source of truth for publication.
+
+Exact targeted artifacts:
+
+- base: `/private/tmp/frame-key-base-react-start-minimal.json`
+- `getStream` only: `/private/tmp/frame-get-stream-only-react-start-minimal.json`
+- `chunks` only: `/private/tmp/frame-chunks-only-react-start-minimal.json`
+- build logs: `/private/tmp/frame-key-base-react-start-minimal-build.log`, `/private/tmp/frame-get-stream-only-react-start-minimal-build.log`, and `/private/tmp/frame-chunks-only-react-start-minimal-build.log`
+- recorded exact diffs: `/private/tmp/frame-get-stream-only.patch` and `/private/tmp/frame-chunks-only.patch`
 
 ## Runtime validation
 
@@ -62,5 +80,14 @@ The nearby numeric-key object variant was rejected before implementation: intege
 - focused frame-decoder unit suite: 19 passed with no Vitest type errors
 - package type matrix: TypeScript 5.6, 5.7, 5.8, 5.9, 6.0, and 7.0 passed
 - ESLint: no errors; 44 pre-existing warnings
+- React Start Vite/SSR raw-stream client-RPC e2e: 6 passed in 10.4 seconds
 - full 17-scenario bundle matrix: passed
 - formatting and `git diff --check`: passed
+
+The raw-stream e2e ran against the final candidate after verifying the React Start and `start-client-core` workspace links resolved inside the candidate worktree:
+
+```sh
+CI=1 NX_DAEMON=false pnpm nx run tanstack-react-start-e2e-basic:test:e2e--vite-ssr --outputStyle=stream --skipRemoteCache --skipNxCache -- tests/raw-stream.spec.ts --grep 'RawStream - Client RPC Tests'
+```
+
+All six client-RPC cases passed, covering single and multiple binary streams, both JSON/raw completion orders, a 3 KiB payload, and mixed Promise/RawStream delivery. The exact log is `/private/tmp/frame-compact-raw-stream-e2e.log` (SHA-256 `087a40354c5a638d6b40b07a6c047a0c2dda503d5bc1610a9d79fc762d3a77d8`).
