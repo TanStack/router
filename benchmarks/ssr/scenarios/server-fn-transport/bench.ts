@@ -67,9 +67,9 @@ const commonHeaders = {
   'sec-fetch-site': 'same-origin',
   accept: acceptHeader,
 } satisfies HeadersInit
-const serverFnMultipartLoopIterations = 125
-const serverFnRawResponseLoopIterations = 175
-const serverFnRawStreamLoopIterations = 100
+const serverFnMultipartLoopTotalRequests = 128
+const serverFnRawResponseLoopTotalRequests = 176
+const serverFnRawStreamLoopTotalRequests = 112
 
 export const serverFnTransportBenchOptions = {
   warmupIterations: 100,
@@ -519,7 +519,8 @@ export function runServerFnMultipartRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnMultipartLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnMultipartLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildMultipartRequest(context.urls, context.multipartPayloads, index),
     validateResponse: validateSerializedResponse,
@@ -532,7 +533,8 @@ export function runServerFnRawResponseRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnRawResponseLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnRawResponseLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildRawResponseRequest(context.urls, context.rawPayloads, index),
     validateResponse: validateRawResponse,
@@ -545,7 +547,8 @@ export function runServerFnRawStreamRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnRawStreamLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnRawStreamLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildRawStreamRequest(context.urls, context.streamPayloads, index),
     validateResponse: validateRawStreamResponse,
