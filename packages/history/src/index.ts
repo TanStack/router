@@ -338,10 +338,6 @@ export function createBrowserHistory(opts?: {
         isPush: boolean,
       ]
 
-  // We need to track the current scheduled update to prevent
-  // multiple updates from being scheduled at the same time.
-  let scheduled: undefined | boolean
-
   // This function flushes the next update to the browser history
   const flush = () => {
     if (!next) {
@@ -361,9 +357,8 @@ export function createBrowserHistory(opts?: {
     // Stop ignoring subscriber updates
     history._ignoreSubscribers = false
 
-    // Reset the nextIsPush flag and clear the scheduled update
+    // Clear the queued action after it reaches browser history.
     next = undefined
-    scheduled = false
     rollbackLocation = undefined
   }
 
@@ -374,8 +369,9 @@ export function createBrowserHistory(opts?: {
     state: any,
   ) => {
     const href = createHref(destHref)
+    const hasPendingAction = !!next
 
-    if (!scheduled) {
+    if (!hasPendingAction) {
       rollbackLocation = currentLocation
     }
 
@@ -385,9 +381,8 @@ export function createBrowserHistory(opts?: {
     // Keep track of the next location we need to flush to the URL
     next = [href, state, next?.[2 /* is push */] || isPush]
 
-    if (!scheduled) {
+    if (!hasPendingAction) {
       // Schedule an update to the browser history
-      scheduled = true
       queueMicrotask(() => flush())
     }
   }
