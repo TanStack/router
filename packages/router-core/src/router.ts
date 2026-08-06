@@ -963,12 +963,12 @@ export function runRouteLifecycle(
   }
 }
 
-type LightweightRouteMatchResult = {
-  matchedRoutes: ReadonlyArray<AnyRoute>
-  fullPath: string
-  search: Record<string, unknown>
-  params: Record<string, unknown>
-}
+type LightweightRouteMatchResult = [
+  matchedRoutes: ReadonlyArray<AnyRoute>,
+  fullPath: string,
+  search: Record<string, unknown>,
+  params: Record<string, unknown>,
+]
 
 type LightweightRouteMatchCacheEntry = [
   lastMatchId: string | undefined,
@@ -1822,12 +1822,12 @@ export class RouterCore<
       params = strictParams
     }
 
-    const result = {
+    const result: LightweightRouteMatchResult = [
       matchedRoutes,
-      fullPath: lastRoute.fullPath,
-      search: accumulatedSearch,
+      lastRoute.fullPath,
+      accumulatedSearch,
       params,
-    }
+    ]
     this.lightweightCache.set(location, [lastStateMatchId, result])
     return result
   }
@@ -1862,12 +1862,15 @@ export class RouterCore<
       ) {
         const [allFromMatches] = this.getMatchedRoutes(dest.from)
 
-        const matchedFrom = findLast(lightweightResult.matchedRoutes, (d) => {
-          return comparePaths(d.fullPath, dest.from!)
-        })
+        const matchedFrom = findLast(
+          lightweightResult[0 /* matchedRoutes */],
+          (d) => {
+            return comparePaths(d.fullPath, dest.from!)
+          },
+        )
 
         const matchedCurrent = findLast(allFromMatches, (d) => {
-          return comparePaths(d.fullPath, lightweightResult.fullPath)
+          return comparePaths(d.fullPath, lightweightResult[1 /* fullPath */])
         })
 
         // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -1880,15 +1883,15 @@ export class RouterCore<
       const defaultedFromPath =
         dest.unsafeRelative === 'path'
           ? currentLocation.pathname
-          : (dest.from ?? lightweightResult.fullPath)
+          : (dest.from ?? lightweightResult[1 /* fullPath */])
       const destTo = dest.to ? `${dest.to}` : undefined
 
       // From search should always use the current location
-      const fromSearch = lightweightResult.search
+      const fromSearch = lightweightResult[2 /* search */]
       // Same with params. It can't hurt to provide as many as possible
       const fromParams = Object.assign(
         Object.create(null),
-        lightweightResult.params,
+        lightweightResult[3 /* params */],
       )
 
       const isAbsoluteTo = destTo?.charCodeAt(0) === 47

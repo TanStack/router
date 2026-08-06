@@ -180,28 +180,21 @@ export function useLinkProps<
   // Avoid store subscriptions, effects and observers on the server.
   if (isServer ?? router.isServer) {
     const next = router.buildLocation(options as any)
-    const href = getHref({
-      options: options as AnyLinkPropsOptions,
-      router,
-      nextLocation: next,
-    })
+    const href = getHref(options as AnyLinkPropsOptions, router, next)
 
-    const isActive = getIsActive({
-      loc: router.stores.location.get(),
-      nextLoc: next,
-      activeOptions: options.activeOptions,
+    const isActive = getIsActive(
+      router.stores.location.get(),
+      next,
+      options.activeOptions,
       router,
-    })
+    )
 
     const {
       resolvedActiveProps,
       resolvedInactiveProps,
       resolvedClassName,
       resolvedStyle,
-    } = resolveStyleProps({
-      options: options as AnyLinkPropsOptions,
-      isActive,
-    })
+    } = resolveStyleProps(options as AnyLinkPropsOptions, isActive)
 
     const result = combineResultProps({
       href,
@@ -242,12 +235,12 @@ export function useLinkProps<
   )
 
   const isActive = Vue.computed(() =>
-    getIsActive({
-      activeOptions: options.activeOptions,
-      loc: currentLocation.value,
-      nextLoc: next.value,
+    getIsActive(
+      currentLocation.value,
+      next.value,
+      options.activeOptions,
       router,
-    }),
+    ),
   )
 
   const doPreload = () =>
@@ -378,18 +371,11 @@ export function useLinkProps<
 
   // Get the active and inactive props
   const resolvedStyleProps = Vue.computed(() =>
-    resolveStyleProps({
-      options: options as AnyLinkPropsOptions,
-      isActive: isActive.value,
-    }),
+    resolveStyleProps(options as AnyLinkPropsOptions, isActive.value),
   )
 
   const href = Vue.computed(() =>
-    getHref({
-      options: options as AnyLinkPropsOptions,
-      router,
-      nextLocation: next.value,
-    }),
+    getHref(options as AnyLinkPropsOptions, router, next.value),
   )
 
   // Create static event handlers that don't change between renders
@@ -449,13 +435,7 @@ export function useLinkProps<
   return computedProps as unknown as LinkHTMLAttributes
 }
 
-function resolveStyleProps({
-  options,
-  isActive,
-}: {
-  options: AnyLinkPropsOptions
-  isActive: boolean
-}) {
+function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
   const activeProps = options.activeProps || (() => ({ class: 'active' }))
   const resolvedActiveProps: StyledProps = (isActive
     ? typeof activeProps === 'function'
@@ -645,25 +625,20 @@ const getPropsSafeToSpread = (options: AnyLinkPropsOptions) => {
   return propsSafeToSpread
 }
 
-function getIsActive({
-  activeOptions,
-  loc,
-  nextLoc,
-  router,
-}: {
-  activeOptions: LinkOptions['activeOptions']
+function getIsActive(
   loc: {
     pathname: string
     search: any
     hash: string
-  }
+  },
   nextLoc: {
     pathname: string
     search: any
     hash: string
-  }
-  router: AnyRouter
-}) {
+  },
+  activeOptions: LinkOptions['activeOptions'],
+  router: AnyRouter,
+) {
   if (activeOptions?.exact) {
     const testExact = exactPathTest(
       loc.pathname,
@@ -702,15 +677,11 @@ function getIsActive({
   return true
 }
 
-function getHref({
-  options,
-  router,
-  nextLocation,
-}: {
-  options: AnyLinkPropsOptions
-  router: AnyRouter
-  nextLocation?: ParsedLocation
-}) {
+function getHref(
+  options: AnyLinkPropsOptions,
+  router: AnyRouter,
+  nextLocation?: ParsedLocation,
+) {
   if (options.disabled) {
     return undefined
   }
