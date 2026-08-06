@@ -45,7 +45,8 @@ type LinkState = [
 // store selector, and discard its memoized selection.
 function useValueStable<T>(value: T): T {
   const ref = React.useRef(value)
-  if (ref.current !== value && !deepEqual(ref.current, value)) {
+  // `deepEqual` short-circuits on reference equality, so this covers both cases.
+  if (!deepEqual(ref.current, value)) {
     ref.current = value
   }
   return ref.current
@@ -491,6 +492,8 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const stableParams = useValueStable(options.params)
   // eslint-disable-next-line react-hooks/rules-of-hooks
+  const stableActiveOptions = useValueStable(activeOptions)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -542,29 +545,14 @@ export function useLinkProps<
         resolveIsActive(
           location,
           next,
-          activeOptions,
+          stableActiveOptions,
           router.basepath,
           isHydrated,
           externalLink !== undefined,
         ),
       ]
     },
-    // Depend on the four fields rather than `activeOptions` itself: callers
-    // routinely pass an inline object literal, which would rebuild the selector
-    // every render. `resolveIsActive` reads only these four, so the disable is
-    // not hiding a live dependency.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [
-      activeOptions?.exact,
-      activeOptions?.explicitUndefined,
-      activeOptions?.includeHash,
-      activeOptions?.includeSearch,
-      disabled,
-      isHydrated,
-      _options,
-      router,
-      to,
-    ],
+    [stableActiveOptions, disabled, isHydrated, _options, router, to],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
