@@ -584,7 +584,7 @@ export function useLinkProps<
     innerRef,
     preloadViewportIoCallback,
     intersectionObserverOptions,
-    { disabled: !!disabled || !(preload === 'viewport') },
+    !!disabled || preload !== 'viewport',
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks

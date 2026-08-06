@@ -6,13 +6,6 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
-type ScriptsRenderState = {
-  scripts: Array<RouterManagedTag>
-  assetScripts: Array<RouterManagedTag>
-  mounted: boolean
-  nonce?: string
-}
-
 export const Scripts = Vue.defineComponent({
   name: 'Scripts',
   setup() {
@@ -53,20 +46,19 @@ export const Scripts = Vue.defineComponent({
     })
 
     return () => {
-      const [userScripts, assetScripts] = scripts.value
-      return renderScripts(router, {
-        scripts: userScripts,
-        assetScripts,
-        mounted: mounted.value,
-        nonce,
-      })
+      return renderScripts(router, scripts.value, mounted.value, nonce)
     }
   },
 })
 
 function renderScripts(
   router: ReturnType<typeof useRouter>,
-  { scripts, assetScripts, mounted, nonce }: ScriptsRenderState,
+  [scripts, assetScripts]: readonly [
+    Array<RouterManagedTag>,
+    Array<RouterManagedTag>,
+  ],
+  mounted: boolean,
+  nonce?: string,
 ) {
   const allScripts: Array<RouterManagedTag> = []
 
