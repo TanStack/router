@@ -1,5 +1,26 @@
 # @tanstack/react-router
 
+## 1.170.21
+
+### Patch Changes
+
+- [#7961](https://github.com/TanStack/router/pull/7961) [`697ebb6`](https://github.com/TanStack/router/commit/697ebb6ddbd433d052b6b4707938a5c595865d58) - Prevent a blank frame before zero-delay initial pending UI by using a
+  component-scoped React transition for match publication. Pending timing,
+  boundary selection, and rendered matches continue to come from the router
+  core.
+
+- [#7970](https://github.com/TanStack/router/pull/7970) [`2435885`](https://github.com/TanStack/router/commit/2435885fa8b5e31c8c4b74d93920919f27316ebf) - createFileRoute does not rely on FileRoute class
+
+- [#7971](https://github.com/TanStack/router/pull/7971) [`86bf510`](https://github.com/TanStack/router/commit/86bf510c2923afb76804223bd04afc2a809b33e7) - clean intersection observer options in link component
+
+- [#7967](https://github.com/TanStack/router/pull/7967) [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c) - Preserve path params in their raw string form while matching routes so structured values returned by `params.parse` produce stable match IDs and do not reuse stale loader data.
+
+  `RouterCore.getMatchedRoutes()` now returns `[matchedRoutes, rawParams, foundRoute]` instead of an object.
+
+- Updated dependencies [[`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
+  - @tanstack/router-core@1.171.18
+  - @tanstack/history@1.162.1
+
 ## 1.170.20
 
 ### Patch Changes
