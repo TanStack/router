@@ -329,14 +329,14 @@ export function createBrowserHistory(opts?: {
 
   let next:
     | undefined
-    | {
-        // This is the latest location that we were attempting to push/replace
-        href: string
-        // This is the latest state that we were attempting to push/replace
-        state: any
-        // This is the latest type that we were attempting to push/replace
-        isPush: boolean
-      }
+    | [
+        // The latest location that we were attempting to push/replace
+        href: string,
+        // The latest state that we were attempting to push/replace
+        state: any,
+        // Whether any queued update needs to push rather than replace
+        isPush: boolean,
+      ]
 
   // We need to track the current scheduled update to prevent
   // multiple updates from being scheduled at the same time.
@@ -352,10 +352,10 @@ export function createBrowserHistory(opts?: {
     history._ignoreSubscribers = true
 
     // Update the browser history
-    ;(next.isPush ? win.history.pushState : win.history.replaceState)(
-      next.state,
+    ;(next[2 /* is push */] ? win.history.pushState : win.history.replaceState)(
+      next[1 /* state */],
       '',
-      next.href,
+      next[0 /* href */],
     )
 
     // Stop ignoring subscriber updates
@@ -383,11 +383,7 @@ export function createBrowserHistory(opts?: {
     currentLocation = parseHref(destHref, state)
 
     // Keep track of the next location we need to flush to the URL
-    next = {
-      href,
-      state,
-      isPush: next?.isPush || isPush,
-    }
+    next = [href, state, next?.[2 /* is push */] || isPush]
 
     if (!scheduled) {
       // Schedule an update to the browser history
