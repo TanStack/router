@@ -180,11 +180,7 @@ export function useLinkProps<
   // Avoid store subscriptions, effects and observers on the server.
   if (isServer ?? router.isServer) {
     const next = router.buildLocation(options as any)
-    const href = getHref({
-      options: options as AnyLinkPropsOptions,
-      router,
-      nextLocation: next,
-    })
+    const href = getHref(options as AnyLinkPropsOptions, router, next)
 
     const isActive = getIsActive({
       loc: router.stores.location.get(),
@@ -385,11 +381,7 @@ export function useLinkProps<
   )
 
   const href = Vue.computed(() =>
-    getHref({
-      options: options as AnyLinkPropsOptions,
-      router,
-      nextLocation: next.value,
-    }),
+    getHref(options as AnyLinkPropsOptions, router, next.value),
   )
 
   // Create static event handlers that don't change between renders
@@ -702,15 +694,11 @@ function getIsActive({
   return true
 }
 
-function getHref({
-  options,
-  router,
-  nextLocation,
-}: {
-  options: AnyLinkPropsOptions
-  router: AnyRouter
-  nextLocation?: ParsedLocation
-}) {
+function getHref(
+  options: AnyLinkPropsOptions,
+  router: AnyRouter,
+  nextLocation?: ParsedLocation,
+) {
   if (options.disabled) {
     return undefined
   }
