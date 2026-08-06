@@ -27,11 +27,11 @@ const textDecoder = new TextDecoder()
 const abortedRequestModes: Record<Framework, AbortedRequestMode> = {
   react: {
     readMode: 'first-chunk',
-    cancelMode: 'plain',
+    cancelMode: 'swallow-abort-error',
   },
   solid: {
     readMode: 'first-chunk',
-    cancelMode: 'plain',
+    cancelMode: 'swallow-abort-error',
   },
   vue: {
     readMode: 'shell-before-deferred',

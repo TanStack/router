@@ -44,6 +44,7 @@ export function lazyRouteComponent<
 
     // Use existing promise or create new one
     if (!loadPromise) {
+      error = undefined
       loadPromise = importer()
         .then((res) => {
           loadPromise = undefined

@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-core",
-  "version": "1.169.18",
+  "version": "1.169.21",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -105,7 +105,7 @@
     "@tanstack/start-storage-context": "workspace:*",
     "fetchdts": "^0.1.6",
     "h3-v2": "npm:h3@2.0.1-rc.20",
-    "seroval": "^1.5.4"
+    "seroval": "^1.6.2"
   },
   "devDependencies": {
     "@standard-schema/spec": "^1.0.0",

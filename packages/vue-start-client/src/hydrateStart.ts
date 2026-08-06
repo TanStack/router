@@ -89,9 +89,15 @@ export function configureHydrationSuppressions(
  * suppression for routes with ssr: false or ssr: 'data-only' before returning
  */
 export async function hydrateStart(): Promise<AnyRouter> {
-  const router = await coreHydrateStart()
-  // Install console suppression before app.mount() is called
-  // This catches the "Hydration completed but contains mismatches" error
-  suppressSsrHydrationMismatches(router)
-  return router
+  try {
+    const router = await coreHydrateStart()
+    // Install console suppression before app.mount() is called
+    // This catches the "Hydration completed but contains mismatches" error
+    suppressSsrHydrationMismatches(router)
+    return router
+  } catch (error) {
+    // A failed router hydration never mounts StartClient, so release the stream here.
+    window.$_TSR?.h()
+    throw error
+  }
 }

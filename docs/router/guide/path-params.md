@@ -137,6 +137,9 @@ When multiple dynamic, optional, or wildcard routes can match the same URL, rout
 
 Higher `params.priority` values are tried first. The default priority is `0`, and if a higher-priority route's `params.parse` returns `false`, matching continues to the next candidate route.
 
+`params.parse` runs during route planning and may be evaluated more than once.
+It must be deterministic and side-effect-free for the same raw params.
+
 ```tsx title="src/routes/posts.$postId.tsx"
 export const Route = createFileRoute('/posts/$postId')({
   params: {

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import {
   Link,
@@ -95,6 +95,78 @@ describe('preload: matched routes', { timeout: 20000 }, () => {
     const lazyRoute = router.routesByPath['/heavy']
     expect(lazyRoute.options.component).toBeDefined()
   })
+})
+
+// https://github.com/TanStack/router/issues/4467
+it('replaces default pending UI when delayed lazy options provide pending UI', async () => {
+  const loader = createControlledPromise<void>()
+  const componentPreload = createControlledPromise<void>()
+  const pendingComponentPreload = createControlledPromise<void>()
+  const preloadComponent = vi.fn(() => componentPreload)
+  const preloadPendingComponent = vi.fn(() => pendingComponentPreload)
+  const Page = Object.assign(() => <h1>Page</h1>, {
+    preload: preloadComponent,
+  })
+  const Pending = Object.assign(() => <p role="status">Loading lazy page</p>, {
+    preload: preloadPendingComponent,
+  })
+  const lazyPageOptions = createLazyRoute('/page')({
+    pendingComponent: Pending,
+    component: Page,
+  })
+  const lazyOptions = createControlledPromise<typeof lazyPageOptions>()
+  const rootRoute = createRootRoute({ component: Outlet })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <h1>Index page</h1>,
+  })
+  const pageRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/page',
+    loader: () => loader,
+  }).lazy(() => lazyOptions)
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, pageRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
+    defaultPendingComponent: () => <p role="status">Loading default</p>,
+  })
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByText('Index page')).toBeInTheDocument()
+
+  const navigation = router.navigate({ to: '/page' })
+  onTestFinished(async () => {
+    lazyOptions.resolve(lazyPageOptions)
+    pendingComponentPreload.resolve()
+    componentPreload.resolve()
+    loader.resolve()
+    await Promise.allSettled([navigation])
+  })
+
+  expect(await screen.findByRole('status')).toHaveTextContent('Loading default')
+
+  lazyOptions.resolve(lazyPageOptions)
+  await vi.waitFor(() => {
+    expect(preloadComponent).toHaveBeenCalledOnce()
+    expect(preloadPendingComponent).toHaveBeenCalledOnce()
+  })
+  expect(screen.getByRole('status')).toHaveTextContent('Loading default')
+  expect(pendingComponentPreload.status).toBe('pending')
+
+  pendingComponentPreload.resolve()
+  await vi.waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent('Loading lazy page'),
+  )
+  expect(componentPreload.status).toBe('pending')
+  expect(screen.queryByText('Page')).not.toBeInTheDocument()
+
+  componentPreload.resolve()
+  loader.resolve()
+  await navigation
+
+  expect(await screen.findByText('Page')).toBeInTheDocument()
 })
 
 it('renders an eager loader error with a delayed lazy errorComponent', async () => {

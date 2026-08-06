@@ -1,6 +1,7 @@
 import { Dynamic } from 'solid-js/web'
 import { createResource } from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import type { AsyncRouteComponent } from './route'
 
 export function lazyRouteComponent<
@@ -18,13 +19,18 @@ export function lazyRouteComponent<
 
   const load = () => {
     if (!loadPromise) {
+      error = undefined
       loadPromise = importer()
         .then((res) => {
-          loadPromise = undefined
+          // Keep browser preload behavior unchanged; SSR can reuse the import.
+          if (!(isServer ?? typeof window === 'undefined')) {
+            loadPromise = undefined
+          }
           comp = res[exportName ?? 'default']
           return comp
         })
         .catch((err) => {
+          loadPromise = undefined
           error = err
         })
     }
