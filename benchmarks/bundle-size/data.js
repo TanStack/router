@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786116824860,
+  "lastUpdate": 1786117344382,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,90 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "tannerlinsley@gmail.com",
-            "name": "Tanner Linsley",
-            "username": "tannerlinsley"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "f7e9c5e323793d1b28c96871819c265fd28ae397",
-          "message": "fix: preserve request context precedence for server functions (#7135)",
-          "timestamp": "2026-04-10T19:51:47+02:00",
-          "tree_id": "c85cd4e7b06581e91d2037b8010fd55b740773c1",
-          "url": "https://github.com/TanStack/router/commit/f7e9c5e323793d1b28c96871819c265fd28ae397"
-        },
-        "date": 1775843646241,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89584,
-            "unit": "bytes",
-            "extra": "raw=282379; brotli=77792"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92954,
-            "unit": "bytes",
-            "extra": "raw=293834; brotli=80847"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36414,
-            "unit": "bytes",
-            "extra": "raw=109832; brotli=32704"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 40989,
-            "unit": "bytes",
-            "extra": "raw=123694; brotli=36801"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54665,
-            "unit": "bytes",
-            "extra": "raw=156744; brotli=49086"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59645,
-            "unit": "bytes",
-            "extra": "raw=172576; brotli=53433"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104456,
-            "unit": "bytes",
-            "extra": "raw=331777; brotli=90330"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107911,
-            "unit": "bytes",
-            "extra": "raw=342374; brotli=93177"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50856,
-            "unit": "bytes",
-            "extra": "raw=157192; brotli=44897"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56498,
-            "unit": "bytes",
-            "extra": "raw=173818; brotli=49717"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -21638,6 +21554,132 @@ window.BENCHMARK_DATA = {
             "value": 105763,
             "unit": "bytes",
             "extra": "raw=333254; brotli=91059; initial_gzip=105588"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 49109,
+            "unit": "bytes",
+            "extra": "raw=144003; brotli=43714; initial_gzip=48975"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 52396,
+            "unit": "bytes",
+            "extra": "raw=151874; brotli=46721; initial_gzip=49037"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 54510,
+            "unit": "bytes",
+            "extra": "raw=160103; brotli=48459; initial_gzip=54381"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 70284,
+            "unit": "bytes",
+            "extra": "raw=198039; brotli=62562; initial_gzip=70151"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 74391,
+            "unit": "bytes",
+            "extra": "raw=210842; brotli=66122; initial_gzip=74257"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "mat@mixcloud.com",
+            "name": "Mat Clayton",
+            "username": "matclayton"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "95dec51018d01483949c6f1fe3094b019ccf3b4f",
+          "message": "perf(react-router): bail out of Link re-renders when href and active state are unchanged (#7952)\n\n* perf(react-router): bail out of Link re-renders when href and active state are unchanged\n\nuseLinkProps subscribes to the location store with an identity selector and an\nhref comparator, then derives href and isActive from the published location in\ndownstream memos. The comparator can only ask \"is this a different URL?\", never\n\"does this link care?\", so every Link on the page re-renders on every navigation.\n\nMove the location-derived values into the selector and compare them, so a link\nwhose resolved href and active state are unaffected by a navigation bails out.\nbuildLocation still runs once per link per location change; what goes away is the\nReact render and the host reconciliation under it.\n\ndoPreload no longer pre-supplies _builtLocation, because the built location is no\nlonger kept in render state. preloadRoute already falls back to building it, which\nis what handleClick has always relied on for router.navigate.\n\nThe isActive and externalLink bodies move to module-level helpers unchanged so the\nselector stays readable; activeOptions is spread into its four primitive fields in\nthe dependency list because callers routinely pass an inline object literal.\n\n* refactor: trim redundant comments and brace single-line bodies\n\nThe comments explained the bail-out rationale twice — once on the LinkState type\nand again above the selector — and two helper docblocks restated their function\nnames. The rationale now appears once, where a reader meets the selector; the\ndetail belongs in the PR description rather than the source.\n\nAlso braces the three single-line if bodies, per the AGENTS.md rule that if/else\nbodies always use curly braces.\n\n* refactor: publish link state as a tuple\n\nThe type is erased either way, but the object literal's property names survive\nminification and a tuple's positions don't — so this drops three property names\nfrom the selector's return plus the three property reads in compareLinkState.\n\nMeasured on the unminified build: -54 bytes in dist/esm/link.js and the same in\ndist/cjs/link.cjs.\n\n* test: assert the published link state, and drop a redundant cast\n\nThe render-count assertions proved the bail-out but not that the selector still\npublishes correct values, so a selector returning a constant could have passed.\nThe test now also asserts that the link gaining active state carries\n`data-status=\"active\"` afterwards (and does not beforehand), and that the\nunaffected link keeps its href and stays inactive.\n\nChecked by sabotaging the selector: returning a constant tuple with a wrong href\nbut a correct active state now fails, where previously it passed.\n\nAlso drops `as any` from `new URL(to)` in resolveExternalLink — the guard above\nalready narrows `to` to string.\n\n* refactor: pass activeOptions through instead of destructuring\n\nDepends on the four fields rather than the object, with an exhaustive-deps\ndisable: callers routinely pass an inline literal, which would otherwise rebuild\nthe selector every render. resolveIsActive reads only those four fields, so the\ndisable is not hiding a live dependency.\n\n-269 bytes on each of dist/esm/link.js and dist/cjs/link.cjs (unminified).\n\n* perf: memoize the href derivation on the built href\n\nThe `useMemo` chain this replaced keyed `getHrefOption` and the external-link\nresolution on the href string, so a navigation that left a link's href alone\nskipped both. Deriving everything in the selector ran them on every location\nnotification instead, which showed up as a ~10% regression on the client-nav\nrewrites benchmark, where rewrite handling makes `getHrefOption` expensive.\n\nCache both on the built href inside the selector closure. Measured on a\nfive-link root layout, per navigation: getHrefOption drops from 5 calls back to\n0, matching the pre-change profile, with buildLocation and the active-state\nderivation unchanged at 5.\n\n* perf: keep _options referentially stable while its contents are equal\n\nLinks commonly pass inline `params` / `search` object literals. Those change\nidentity on every parent render, which rebuilt `_options`, which changed the\nstore selector's identity, which discarded useSyncExternalStoreWithSelector's\nmemoized selection. buildLocation then ran twice per navigation: once in the\nnotification check and once in the render-phase selection.\n\nMeasured on a replica of the client-nav rewrites scenario (six links, root\nsubscribed to the pathname via useLocation), buildLocation per navigation:\nbase 7, before this commit 12, after 7.\n\n* revert: drop the href memoization, it measured no benefit\n\nReverts 409371b. It did cut getHrefOption from 5 calls per navigation to 0,\nmatching the pre-change profile, but that is not where the time went: on the\nrewrites scenario it moved the number by 0.05% (medians 245.33 vs 245.21 hz over\nfour interleaved rounds). Not worth ~15 lines of mutable closure state.\n\nThe rewrites regression is fixed by the _options stabilisation instead.\n\n* docs: explain why useValueStable exists\n\nReplaces a leftover scratch note.\n\n* perf: cut the bundle cost of the link state selector\n\nStabilise `activeOptions` with the same helper used for `search` / `params`,\nso the selector depends on one value instead of four destructured fields. That\nalso makes the dependency array honest, so the exhaustive-deps disable goes.\n\nDrop the reference-equality guard in useValueStable: deepEqual already\nshort-circuits on `a === b`, so the guard only saved a function call that\nreturns immediately.\n\nMeasured with benchmarks/bundle-size against this branch's base, gzip delta\nacross the eight React scenarios moves from +27/-7 to +11/-24, and raw bytes go\nuniformly negative (-37 to -45 on every scenario).\n\n* perf: pass _options to preloadRoute without the shallow clone\n\nThe spread existed to add _builtLocation, which is gone, and nothing on the\npreload path mutates the options object: preloadRoute only reads\nopts._builtLocation, build() only reads dest fields, and the search middleware\nchain only reads dest.search. Search middlewares themselves receive\n{ search, next }, never dest.\n\nSaves an object allocation per hover. Bytes are unchanged on gzip, -5 raw.\n\n* fix: do not collapse explicit-undefined params when stabilising link options\n\nuseValueStable compared with deepEqual's default ignoreUndefined: true, which\nskips undefined-valued keys on both sides, so `{}` and `{ category: undefined }`\ncompared equal. Those build different locations: an explicit undefined clears an\ninherited optional param while an empty object inherits it. A Link whose params\nchanged from one to the other kept publishing the stale href, and click and\npreload used the stale options too.\n\nCompare with ignoreUndefined: false. Adds a regression test covering the\n/posts/tech -> /posts transition, which fails before this commit and passes\nafter, and passes on the pre-PR baseline.\n\n* chore: empty commit to re-trigger CI\n\n* chore: add changeset\n\n---------\n\nCo-authored-by: Flo <me@florianpellet.com>",
+          "timestamp": "2026-08-07T17:37:30+02:00",
+          "tree_id": "195aa72e9238c3dfc0641c0279cd7bf58b02c9ea",
+          "url": "https://github.com/TanStack/router/commit/95dec51018d01483949c6f1fe3094b019ccf3b4f"
+        },
+        "date": 1786117343483,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 89073,
+            "unit": "bytes",
+            "extra": "raw=274183; brotli=77547; initial_gzip=88931"
+          },
+          {
+            "name": "react-router.full",
+            "value": 92934,
+            "unit": "bytes",
+            "extra": "raw=286429; brotli=80897; initial_gzip=92793"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 35479,
+            "unit": "bytes",
+            "extra": "raw=100926; brotli=31984; initial_gzip=35350"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 40661,
+            "unit": "bytes",
+            "extra": "raw=116456; brotli=36634; initial_gzip=40535"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 53122,
+            "unit": "bytes",
+            "extra": "raw=144966; brotli=47855; initial_gzip=52991"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 59181,
+            "unit": "bytes",
+            "extra": "raw=163988; brotli=53196; initial_gzip=59049"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 102786,
+            "unit": "bytes",
+            "extra": "raw=318288; brotli=89292; initial_gzip=102647"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 103537,
+            "unit": "bytes",
+            "extra": "raw=319696; brotli=89940; initial_gzip=102669"
+          },
+          {
+            "name": "react-start.full",
+            "value": 106248,
+            "unit": "bytes",
+            "extra": "raw=328477; brotli=92298; initial_gzip=106106"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102393,
+            "unit": "bytes",
+            "extra": "raw=322895; brotli=88321; initial_gzip=102218"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102813,
+            "unit": "bytes",
+            "extra": "raw=323854; brotli=88556; initial_gzip=102644"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105792,
+            "unit": "bytes",
+            "extra": "raw=333229; brotli=91076; initial_gzip=105617"
           },
           {
             "name": "solid-start.minimal",
