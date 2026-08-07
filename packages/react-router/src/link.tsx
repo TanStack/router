@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import { flushSync } from 'react-dom'
 import {
   deepEqual,
@@ -400,11 +400,9 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocation = useStore(
-    router.stores.location,
-    (l) => l,
-    (prev, next) => prev.href === next.href,
-  )
+  const currentLocation = useSelector(router.stores.location, (l) => l, {
+    compare: (prev, next) => prev.href === next.href,
+  })
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const next = React.useMemo(() => {

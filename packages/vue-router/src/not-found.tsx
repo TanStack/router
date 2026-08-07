@@ -1,54 +1,59 @@
 import * as Vue from 'vue'
 import { isNotFound } from '@tanstack/router-core'
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from './useSelector'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import type { ErrorComponentProps, NotFoundError } from '@tanstack/router-core'
 
-export function CatchNotFound(props: {
+type CatchNotFoundProps = {
   fallback?: (error: NotFoundError) => Vue.VNode
   onCatch?: (error: Error) => void
   children: Vue.VNode
-}) {
-  const router = useRouter()
-  // TODO: Some way for the user to programmatically reset the not-found boundary?
-  const pathname = useStore(
-    router.stores.location,
-    (location) => location.pathname,
-  )
-  const status = useStore(router.stores.status)
+}
 
-  // Create a function that returns a VNode to match the SyncRouteComponent signature
-  const errorComponentFn = (componentProps: ErrorComponentProps) => {
-    const error = componentProps.error
-
-    if (isNotFound(error)) {
-      // If a fallback is provided, use it
-      if (props.fallback) {
-        return props.fallback(error)
-      }
-      // Otherwise return a default not found message
-      return Vue.h('p', null, 'Not Found')
-    } else {
-      // Re-throw non-NotFound errors
-      throw error
-    }
-  }
-
-  return Vue.h(CatchBoundary, {
-    getResetKey: () => `not-found-${pathname.value}-${status.value}`,
-    onCatch: (error: Error) => {
-      if (isNotFound(error)) {
-        if (props.onCatch) {
-          props.onCatch(error)
-        }
-      } else {
-        throw error
-      }
+const CatchNotFoundImpl = Vue.defineComponent({
+  name: 'CatchNotFound',
+  props: {
+    fallback: Function as Vue.PropType<(error: NotFoundError) => Vue.VNode>,
+    onCatch: Function as Vue.PropType<(error: Error) => void>,
+    children: {
+      type: Object as Vue.PropType<Vue.VNode>,
+      required: true,
     },
-    errorComponent: errorComponentFn,
-    children: props.children,
-  })
+  },
+  setup(props) {
+    const router = useRouter()
+    // TODO: Some way for the user to programmatically reset the not-found boundary?
+    const pathname = useSelector(
+      router.stores.location,
+      (location) => location.pathname,
+    )
+    const status = useSelector(router.stores.status)
+
+    return () =>
+      Vue.h(CatchBoundary, {
+        getResetKey: () => `not-found-${pathname.value}-${status.value}`,
+        onCatch: (error: Error) => {
+          if (isNotFound(error)) {
+            props.onCatch?.(error)
+          } else {
+            throw error
+          }
+        },
+        errorComponent: ({ error }: ErrorComponentProps) => {
+          if (isNotFound(error)) {
+            return props.fallback?.(error) ?? Vue.h('p', null, 'Not Found')
+          } else {
+            throw error
+          }
+        },
+        children: props.children,
+      })
+  },
+})
+
+export function CatchNotFound(props: CatchNotFoundProps) {
+  return Vue.h(CatchNotFoundImpl, props)
 }
 
 export const DefaultGlobalNotFound = Vue.defineComponent({

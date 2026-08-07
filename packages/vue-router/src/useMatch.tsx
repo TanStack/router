@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { invariant } from '@tanstack/router-core'
-import { useStore } from '@tanstack/vue-store'
 import { isServer } from '@tanstack/router-core/isServer'
+import { useSelector } from './useSelector'
 import { routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
@@ -117,13 +117,13 @@ export function useMatch<
   if (opts.from) {
     // routeId case: subscribe to the stable per-route presentation atom.
     const matchStore = router.stores.getMatchStore(opts.from)
-    match = useStore(matchStore)
+    match = useSelector(matchStore)
   } else {
     // Nearest-match case: use the routeId from context for stable lookup.
     // The routeId is provided by the nearest Match component and doesn't
     // change for the component's lifetime, so the store is stable.
     if (nearestRouteId) {
-      match = useStore(router.stores.getMatchStore(nearestRouteId))
+      match = useSelector(router.stores.getMatchStore(nearestRouteId))
     } else {
       // No route context — will fall through to error handling below
       match = Vue.ref(undefined) as Readonly<Vue.Ref<undefined>>

@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
@@ -51,7 +51,7 @@ export const Match = React.memo(function MatchImpl({
 
   const matchStore = router.stores.getMatchStore(routeId)
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value)
+  const match = useSelector(matchStore)
   return <MatchView router={router} match={match!} />
 })
 
@@ -238,14 +238,14 @@ export const Outlet = React.memo(function OutletImpl() {
     const parentMatchStore = router.stores.getMatchStore(routeId)
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    ;[parentGlobalNotFound, parentNotFoundError] = useStore(
+    ;[parentGlobalNotFound, parentNotFoundError] = useSelector(
       parentMatchStore,
       (match): OutletMatchSelection => [!!match!._notFound, match!.error],
-      outletMatchSelectionEqual,
+      { compare: outletMatchSelectionEqual },
     )
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    childRouteId = useStore(router.stores.ids, (ids) => {
+    childRouteId = useSelector(router.stores.ids, (ids) => {
       return ids[ids.indexOf(routeId) + 1]
     })
   }

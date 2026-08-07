@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import { rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { CatchBoundary } from './CatchBoundary'
@@ -87,7 +87,7 @@ function MatchesInner() {
     (isServer ?? router.isServer)
       ? router.stores.matches.get()
       : // eslint-disable-next-line react-hooks/rules-of-hooks
-        useStore(
+        useSelector(
           router.stores.matches,
           (value) => acknowledgement[0 /* offered */] ?? value,
         )
@@ -156,11 +156,11 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
 
   if (!(isServer ?? router.isServer)) {
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    useStore(router.stores.location, (location) => location.href)
+    useSelector(router.stores.location, (location) => location.href)
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    useStore(router.stores.resolvedLocation, (location) => location?.href)
+    useSelector(router.stores.resolvedLocation, (location) => location?.href)
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    useStore(router.stores.status, (status) => status)
+    useSelector(router.stores.status)
   }
 
   return React.useCallback(
@@ -264,7 +264,7 @@ export function useMatches<
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  return useStore(
+  return useSelector(
     router.stores.matches,
     // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router),
