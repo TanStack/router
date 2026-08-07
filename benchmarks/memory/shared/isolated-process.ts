@@ -57,10 +57,20 @@ const childModulePath = fileURLToPath(
   new URL('./isolated-process-child.ts', import.meta.url),
 )
 
-// CodSpeed and scenario-specific V8 flags are inherited from the Vitest
-// worker. Only expose gc explicitly for uninstrumented local smoke runs, where
-// the CodSpeed plugin does not add its analysis flags.
-const requiredChildExecArgv = ['--expose-gc']
+// Inherit CodSpeed and scenario-specific V8 flags from the Vitest worker, then
+// add the flags that keep the child heap and compilation lifecycle stable.
+// In particular, disabling optimization prevents a workload from crossing a
+// JIT tier-up threshold inside the measured loop and injecting a one-off
+// compilation allocation into the peak-memory result.
+const deterministicChildExecArgv = [
+  '--expose-gc',
+  '--predictable',
+  '--no-opt',
+  '--no-flush-bytecode',
+  '--initial-old-space-size=64',
+  '--min-semi-space-size=16',
+  '--max-semi-space-size=16',
+]
 
 function createChildExecArgv() {
   const execArgv: Array<string> = []
@@ -93,7 +103,7 @@ function createChildExecArgv() {
     execArgv.push(argument)
   }
 
-  for (const argument of requiredChildExecArgv) {
+  for (const argument of deterministicChildExecArgv) {
     const flagName = argument.split('=')[0]!
     const alreadyPresent = execArgv.some(
       (existing) =>

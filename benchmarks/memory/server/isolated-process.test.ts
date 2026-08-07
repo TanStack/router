@@ -28,7 +28,12 @@ describe('IsolatedMemoryProcess', () => {
   })
 
   function createRunner(
-    workloadNames = ['fixture zero', 'fixture one', 'fixture failure'],
+    workloadNames = [
+      'fixture zero',
+      'fixture one',
+      'fixture failure',
+      'fixture exec argv',
+    ],
   ) {
     runner = new IsolatedMemoryProcess({
       kind: 'server',
@@ -116,6 +121,15 @@ describe('IsolatedMemoryProcess', () => {
 
     await expect(processRunner.run(2)).rejects.toThrow(
       'fixture workload failed',
+    )
+  })
+
+  it('starts the child with deterministic V8 flags', async () => {
+    const processRunner = createRunner()
+    await processRunner.start()
+
+    await expect(processRunner.run(3)).rejects.toThrow(
+      /fixture exec argv:.*--expose-gc.*--predictable.*--no-opt.*--no-flush-bytecode.*--initial-old-space-size=64.*--min-semi-space-size=16.*--max-semi-space-size=16/,
     )
   })
 

@@ -35,6 +35,12 @@ export const workloadGroup = {
         throw new Error('fixture workload failed')
       },
     },
+    {
+      name: 'fixture exec argv',
+      run() {
+        throw new Error(`fixture exec argv: ${process.execArgv.join(' ')}`)
+      },
+    },
   ],
 }
 

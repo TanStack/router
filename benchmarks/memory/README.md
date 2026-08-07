@@ -72,11 +72,14 @@ same workload through the Flame profiler.
   suite hooks and Tinybench options; in any given mode exactly one pair runs.
 - Isolated children inherit the Vitest worker's V8 flags, including CodSpeed's
   memory-analysis configuration and any scenario-specific flags. The controller
-  only adds `--expose-gc` when the parent did not already provide it; it does not
-  impose different heap sizes or optimization settings on the measured child.
-  The forced pre-measurement collections remove only unreachable setup, sanity,
-  and warm-up garbage; reachable caches or leaks survive and remain part of the
-  measured baseline and subsequent accumulation.
+  then supplies deterministic defaults for flags the worker did not already
+  set: `--expose-gc`, `--predictable`, `--no-opt`, `--no-flush-bytecode`, and
+  fixed initial/semi-space sizes. Disabling optimization prevents a workload
+  from crossing a JIT tier-up threshold inside the marker; retaining bytecode
+  and pre-sizing the heap similarly keep compilation and heap-growth bursts out
+  of the measured peak. The forced pre-measurement collections remove only
+  unreachable setup, sanity, and warm-up garbage; reachable caches or leaks
+  survive and remain part of the measured baseline and subsequent accumulation.
 - Server request loops also pin collections between iterations. This removes
   floating response/render garbage whose collection timing otherwise shifts the
   peak, while retained objects still accumulate because collection cannot
