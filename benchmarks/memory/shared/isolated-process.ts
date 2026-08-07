@@ -68,13 +68,16 @@ const childModulePath = fileURLToPath(
 )
 
 // Inherit CodSpeed and scenario-specific V8 flags from the Vitest worker, then
-// add the flags that keep the child heap and compilation lifecycle stable.
-// In particular, disabling optimization prevents a workload from crossing a
-// JIT tier-up threshold inside the measured loop and injecting a one-off
-// compilation allocation into the peak-memory result.
+// add the flags that keep the child heap, garbage collection, and compilation
+// lifecycle stable. Single-threaded GC prevents concurrent and parallel GC
+// workers from interleaving allocator operations differently between runs.
+// Disabling optimization prevents a workload from crossing a JIT tier-up
+// threshold inside the measured loop and injecting a one-off compilation
+// allocation into the peak-memory result.
 const deterministicChildExecArgv = [
   '--expose-gc',
   '--predictable',
+  '--single-threaded-gc',
   '--no-opt',
   '--no-flush-bytecode',
   '--initial-old-space-size=64',
