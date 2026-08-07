@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.19
+
+### Patch Changes
+
+- [#7992](https://github.com/TanStack/router/pull/7992) [`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9) - retain mounted UI during revalidation
+
 ## 1.171.18
 
 ### Patch Changes

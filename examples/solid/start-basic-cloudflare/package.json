@@ -12,9 +12,9 @@
     "postinstall": "WRANGLER_LOG=warn npm run --silent cf-typegen"
   },
   "dependencies": {
-    "@tanstack/solid-router": "^1.170.21",
+    "@tanstack/solid-router": "^1.170.22",
     "@tanstack/solid-router-devtools": "^1.167.1",
-    "@tanstack/solid-start": "^1.168.37",
+    "@tanstack/solid-start": "^1.168.38",
     "solid-js": "^1.9.10"
   },
   "devDependencies": {
