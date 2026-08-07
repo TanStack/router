@@ -273,18 +273,15 @@ async function getResponse(fn: () => Promise<Response>) {
         throw new Error('No response body for framed response')
       }
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
-        response.body,
-      )
+      const { getStream, chunks } = createFrameDecoder(response.body)
 
       // Create deserialize plugin that wires up the raw streams
-      const rawStreamPlugin =
-        createRawStreamDeserializePlugin(getOrCreateStream)
+      const rawStreamPlugin = createRawStreamDeserializePlugin(getStream)
       const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
 
       const refs = new Map()
       result = await processFramedResponse({
-        jsonStream: jsonChunks,
+        jsonStream: chunks,
         onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
         onError(msg, error) {
           console.error(msg, error)
