@@ -12,8 +12,15 @@ import {
 
 afterEach(() => {
   cleanup()
+  vi.useRealTimers()
   vi.restoreAllMocks()
 })
+
+const navigationDelay = 100
+
+function delayNavigation() {
+  return new Promise<void>((resolve) => setTimeout(resolve, navigationDelay))
+}
 
 function deferred() {
   let resolve!: () => void
@@ -23,21 +30,8 @@ function deferred() {
   return { promise, resolve }
 }
 
-function watchForPending() {
-  let sawPending = false
-  const observer = new MutationObserver(() => {
-    sawPending ||= document.querySelector('[data-testid="pending"]') !== null
-  })
-  observer.observe(document.body, { childList: true, subtree: true })
-  return {
-    sawPending: () => sawPending,
-    stop: () => observer.disconnect(),
-  }
-}
-
 function setup() {
   const navigationBeforeLoadStarted = deferred()
-  const navigationBeforeLoad = deferred()
   let beforeLoadCalls = 0
 
   const rootRoute = createRootRoute({ component: Outlet })
@@ -47,7 +41,7 @@ function setup() {
     beforeLoad: async () => {
       if (++beforeLoadCalls > 1) {
         navigationBeforeLoadStarted.resolve()
-        await navigationBeforeLoad.promise
+        await delayNavigation()
       }
       return { user: 'test' }
     },
@@ -82,18 +76,17 @@ function setup() {
   return {
     router,
     navigationBeforeLoadStarted,
-    navigationBeforeLoad,
   }
 }
 
 test('a search-only navigation retains successful UI while beforeLoad reruns', async () => {
-  const { router, navigationBeforeLoadStarted, navigationBeforeLoad } = setup()
+  const { router, navigationBeforeLoadStarted } = setup()
   render(<RouterProvider router={router} />)
   expect(await screen.findByTestId('content')).toHaveTextContent(
     'project=p1 tab=default',
   )
 
-  const pending = watchForPending()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   let navigation!: Promise<void>
   await act(async () => {
     navigation = router.navigate({
@@ -107,27 +100,36 @@ test('a search-only navigation retains successful UI while beforeLoad reruns', a
   const contentWhileLoading = screen.getByTestId('content')
   expect(contentWhileLoading).toBeVisible()
   expect(contentWhileLoading).toHaveTextContent('project=p1 tab=default')
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
 
   await act(async () => {
-    navigationBeforeLoad.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+  })
+  expect(screen.getByTestId('content')).toBeVisible()
+  expect(screen.getByTestId('content')).toHaveTextContent(
+    'project=p1 tab=default',
+  )
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(navigationDelay)
     await navigation
   })
-  pending.stop()
 
-  expect(pending.sawPending()).toBe(false)
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
   expect(screen.getByTestId('content')).toHaveTextContent(
     'project=p1 tab=files',
   )
 })
 
 test('a path-param navigation retains successful UI while beforeLoad reruns', async () => {
-  const { router, navigationBeforeLoadStarted, navigationBeforeLoad } = setup()
+  const { router, navigationBeforeLoadStarted } = setup()
   render(<RouterProvider router={router} />)
   expect(await screen.findByTestId('content')).toHaveTextContent(
     'project=p1 tab=default',
   )
 
-  const pending = watchForPending()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   let navigation!: Promise<void>
   await act(async () => {
     navigation = router.navigate({
@@ -140,14 +142,23 @@ test('a path-param navigation retains successful UI while beforeLoad reruns', as
   const contentWhileLoading = screen.getByTestId('content')
   expect(contentWhileLoading).toBeVisible()
   expect(contentWhileLoading).toHaveTextContent('project=p1 tab=default')
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
 
   await act(async () => {
-    navigationBeforeLoad.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+  })
+  expect(screen.getByTestId('content')).toBeVisible()
+  expect(screen.getByTestId('content')).toHaveTextContent(
+    'project=p1 tab=default',
+  )
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(navigationDelay)
     await navigation
   })
-  pending.stop()
 
-  expect(pending.sawPending()).toBe(false)
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
   expect(screen.getByTestId('content')).toHaveTextContent(
     'project=p2 tab=default',
   )
@@ -155,7 +166,6 @@ test('a path-param navigation retains successful UI while beforeLoad reruns', as
 
 test('a blocking reload retains the exact successful match', async () => {
   const reloadStarted = deferred()
-  const reload = deferred()
   let loaderCalls = 0
 
   const rootRoute = createRootRoute({ component: Outlet })
@@ -172,7 +182,7 @@ test('a blocking reload retains the exact successful match', async () => {
           return 'initial'
         }
         reloadStarted.resolve()
-        return reload.promise.then(() => 'reloaded')
+        return delayNavigation().then(() => 'reloaded')
       },
     },
     component: () => (
@@ -195,7 +205,7 @@ test('a blocking reload retains the exact successful match', async () => {
     'initial tab=default',
   )
 
-  const pending = watchForPending()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
   let navigation!: Promise<void>
   await act(async () => {
     navigation = router.navigate({
@@ -208,14 +218,21 @@ test('a blocking reload retains the exact successful match', async () => {
   const contentWhileLoading = screen.getByTestId('content')
   expect(contentWhileLoading).toBeVisible()
   expect(contentWhileLoading).toHaveTextContent('initial tab=default')
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
 
   await act(async () => {
-    reload.resolve()
+    await vi.advanceTimersByTimeAsync(0)
+  })
+  expect(screen.getByTestId('content')).toBeVisible()
+  expect(screen.getByTestId('content')).toHaveTextContent('initial tab=default')
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(navigationDelay)
     await navigation
   })
-  pending.stop()
 
-  expect(pending.sawPending()).toBe(false)
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
   expect(screen.getByTestId('content')).toHaveTextContent('reloaded tab=files')
 })
 
