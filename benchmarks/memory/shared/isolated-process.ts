@@ -69,15 +69,18 @@ const childModulePath = fileURLToPath(
 
 // Inherit CodSpeed and scenario-specific V8 flags from the Vitest worker, then
 // add the flags that keep the child heap, garbage collection, and compilation
-// lifecycle stable. Single-threaded GC prevents concurrent and parallel GC
-// workers from interleaving allocator operations differently between runs.
-// Disabling optimization prevents a workload from crossing a JIT tier-up
-// threshold inside the measured loop and injecting a one-off compilation
-// allocation into the peak-memory result.
+// lifecycle stable. The pinned full collections deliberately reclaim floating
+// garbage between workload iterations, but V8's optional compaction can
+// transiently double-copy the live set and turn that GC implementation detail
+// into the measured peak. Mark/sweep still reclaims unreachable objects with
+// compaction disabled, while retained caches and leaks remain live and continue
+// to accumulate. Disabling optimization prevents a workload from crossing a
+// JIT tier-up threshold inside the measured loop and injecting a one-off
+// compilation allocation into the peak-memory result.
 const deterministicChildExecArgv = [
   '--expose-gc',
   '--predictable',
-  '--single-threaded-gc',
+  '--no-compact',
   '--no-opt',
   '--no-flush-bytecode',
   '--initial-old-space-size=64',

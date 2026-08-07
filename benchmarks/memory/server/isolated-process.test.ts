@@ -134,7 +134,7 @@ describe('IsolatedMemoryProcess', () => {
     await processRunner.start()
 
     await expect(processRunner.run(3)).rejects.toThrow(
-      /fixture exec argv:.*--expose-gc.*--predictable.*--single-threaded-gc.*--no-opt.*--no-flush-bytecode.*--initial-old-space-size=64.*--min-semi-space-size=16.*--max-semi-space-size=16/,
+      /fixture exec argv:.*--expose-gc.*--predictable.*--no-compact.*--no-opt.*--no-flush-bytecode.*--initial-old-space-size=64.*--min-semi-space-size=16.*--max-semi-space-size=16/,
     )
   })
 
