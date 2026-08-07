@@ -1,5 +1,14 @@
 # @tanstack/react-router
 
+## 1.170.22
+
+### Patch Changes
+
+- [#7992](https://github.com/TanStack/router/pull/7992) [`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9) - retain mounted UI during revalidation
+
+- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
+  - @tanstack/router-core@1.171.19
+
 ## 1.170.21
 
 ### Patch Changes
