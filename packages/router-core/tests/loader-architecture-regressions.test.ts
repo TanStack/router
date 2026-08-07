@@ -154,6 +154,7 @@ test('superseding a load clears fetching state from the still-presented lane', a
   await vi.waitFor(() =>
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
+      status: 'success',
       isFetching: 'beforeLoad',
     }),
   )
