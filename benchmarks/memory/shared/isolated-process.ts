@@ -19,6 +19,11 @@ type ChildCompleteMessage = {
   requestId: number
 }
 
+type ChildPrimedMessage = {
+  type: 'primed'
+  requestId: number
+}
+
 type ChildStoppedMessage = {
   type: 'stopped'
   requestId: number
@@ -33,10 +38,15 @@ type ChildErrorMessage = {
 export type IsolatedMemoryChildMessage =
   | ChildReadyMessage
   | ChildCompleteMessage
+  | ChildPrimedMessage
   | ChildStoppedMessage
   | ChildErrorMessage
 
 export type IsolatedMemoryParentMessage =
+  | {
+      type: 'prime'
+      requestId: number
+    }
   | {
       type: 'run'
       requestId: number
@@ -190,6 +200,25 @@ export class IsolatedMemoryProcess {
       ) {
         throw new Error(
           `Isolated memory workload names did not match: expected ${JSON.stringify(this.#options.workloadNames)}, got ${JSON.stringify(message.workloadNames)}`,
+        )
+      }
+
+      // Exercise both IPC directions and the child's command queue before the
+      // benchmark marker. The child settles and collects after receiving this
+      // first inbound command, so its one-time native allocations cannot
+      // dominate the measured workload's peak.
+      const primed = await this.#sendTo(child, {
+        type: 'prime',
+        requestId: this.#nextRequestId++,
+      })
+
+      if (primed.type === 'error') {
+        throw deserializeError(primed.error)
+      }
+
+      if (primed.type !== 'primed') {
+        throw new Error(
+          `Expected isolated memory process to become primed, got ${primed.type}`,
         )
       }
     } catch (error) {

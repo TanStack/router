@@ -53,10 +53,13 @@ same workload through the Flame profiler.
   small representative warm-up outside the marker. Client warm-ups use a
   disposable app that is torn down before the child creates the measured app;
   server warm-ups use IDs that cannot overlap the measured request sequence.
-  The child then settles pending work and forces two collections before
-  reporting ready. Only then does the parent benchmark function tell the child
-  to execute the real inner loop inside the CodSpeed marker. Teardown and
-  process exit happen after the marker.
+  After the child reports that the workloads are loaded, the parent sends an
+  unmeasured `prime` command over the same IPC channel used for measurement.
+  The child settles pending work and forces two collections before
+  acknowledging it. This primes both IPC directions and the child command
+  queue before the parent benchmark function tells the child to execute the
+  real inner loop inside the CodSpeed marker. Teardown and process exit happen
+  after the marker.
 - The fresh child deliberately replays the same seeded workload on every
   invocation. Module-level counters still make every item within one inner loop
   unique; they no longer carry state from CodSpeed warmups into measurement.

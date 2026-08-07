@@ -68,6 +68,7 @@ describe('IsolatedMemoryProcess', () => {
     expect(await readEvents()).toEqual([
       `sanity:${firstPid}`,
       `warmup:${firstPid}`,
+      `prime:${firstPid}`,
       `run-1-finished:${firstPid}`,
     ])
 
@@ -80,9 +81,11 @@ describe('IsolatedMemoryProcess', () => {
     expect(await readEvents()).toEqual([
       `sanity:${firstPid}`,
       `warmup:${firstPid}`,
+      `prime:${firstPid}`,
       `run-1-finished:${firstPid}`,
       `sanity:${secondPid}`,
       `warmup:${secondPid}`,
+      `prime:${secondPid}`,
       `run-0:${secondPid}`,
     ])
   })
@@ -99,6 +102,7 @@ describe('IsolatedMemoryProcess', () => {
       `client-warmup:${pid}`,
       `client-after:${pid}`,
       `client-before:${pid}`,
+      `prime:${pid}`,
     ])
 
     await processRunner.run(0)
@@ -110,6 +114,7 @@ describe('IsolatedMemoryProcess', () => {
       `client-warmup:${pid}`,
       `client-after:${pid}`,
       `client-before:${pid}`,
+      `prime:${pid}`,
       `client-run:${pid}`,
       `client-after:${pid}`,
     ])

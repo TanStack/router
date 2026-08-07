@@ -1,3 +1,4 @@
+import { appendFileSync } from 'node:fs'
 import { appendFile } from 'node:fs/promises'
 
 function getLogPath() {
@@ -13,6 +14,17 @@ function getLogPath() {
 async function log(event: string) {
   await appendFile(getLogPath(), `${event}:${process.pid}\n`)
 }
+
+process.on('message', (value: unknown) => {
+  if (
+    typeof value === 'object' &&
+    value !== null &&
+    'type' in value &&
+    value.type === 'prime'
+  ) {
+    appendFileSync(getLogPath(), `prime:${process.pid}\n`)
+  }
+})
 
 export const workloadGroup = {
   sanity: () => log('sanity'),

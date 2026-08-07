@@ -47,7 +47,7 @@ function isParentMessage(value: unknown): value is IsolatedMemoryParentMessage {
     return false
   }
 
-  if (value.type === 'stop') {
+  if (value.type === 'prime' || value.type === 'stop') {
     return true
   }
 
@@ -150,7 +150,6 @@ async function loadClientWorkload(setupUrl: string): Promise<LoadedWorkloads> {
     await workload.sanity()
     await warmClientMemoryWorkload(workload)
     await workload.before?.()
-    await prepareForMeasurement()
 
     return {
       workloads: [workload],
@@ -183,7 +182,6 @@ async function loadServerWorkloads(setupUrl: string): Promise<LoadedWorkloads> {
   const workloadGroup = setupModule.workloadGroup
   await workloadGroup.sanity()
   await workloadGroup.warmup?.()
-  await prepareForMeasurement()
 
   return {
     workloads: workloadGroup.workloads,
@@ -213,6 +211,7 @@ async function main() {
       : await loadServerWorkloads(setupUrl)
 
   let commandQueue = Promise.resolve()
+  let primed = false
   let stopping = false
 
   process.on('message', (value: unknown) => {
@@ -224,7 +223,22 @@ async function main() {
 
     commandQueue = commandQueue.then(async () => {
       try {
+        if (message.type === 'prime') {
+          if (primed) {
+            throw new Error('The isolated memory process is already primed')
+          }
+
+          await prepareForMeasurement()
+          primed = true
+          await send({ type: 'primed', requestId: message.requestId })
+          return
+        }
+
         if (message.type === 'run') {
+          if (!primed) {
+            throw new Error('The isolated memory process is not primed')
+          }
+
           const workload = loaded.workloads[message.workloadIndex]
 
           if (!workload) {
