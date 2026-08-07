@@ -1,11 +1,12 @@
 import process from 'node:process'
+import { warmClientMemoryWorkload } from '../client/benchmark.ts'
+import type { ClientMemoryWorkload } from '../client/benchmark.ts'
+import type { ServerMemoryWorkloadGroup } from '../server/benchmark.ts'
 import type {
   IsolatedMemoryBenchmarkKind,
   IsolatedMemoryChildMessage,
   IsolatedMemoryParentMessage,
 } from './isolated-process.ts'
-import type { ClientMemoryWorkload } from '../client/benchmark.ts'
-import type { ServerMemoryWorkloadGroup } from '../server/benchmark.ts'
 
 type RunnableWorkload = {
   name: string
@@ -147,6 +148,7 @@ async function loadClientWorkload(setupUrl: string): Promise<LoadedWorkloads> {
 
     workload = setupModule.workload
     await workload.sanity()
+    await warmClientMemoryWorkload(workload)
     await workload.before?.()
     await prepareForMeasurement()
 
@@ -180,6 +182,7 @@ async function loadServerWorkloads(setupUrl: string): Promise<LoadedWorkloads> {
 
   const workloadGroup = setupModule.workloadGroup
   await workloadGroup.sanity()
+  await workloadGroup.warmup?.()
   await prepareForMeasurement()
 
   return {

@@ -30,20 +30,26 @@ type LoaderDataRouter = {
   ) => () => void
 }
 
-const loaderDataRetentionNavigationCount = 20
-const pageIds = createPageIds()
+const loaderDataRetentionNavigationCount = 40
+const loaderDataRetentionWarmupCount = 4
+const pageIds = createPageIds(loaderDataRetentionNavigationCount, 11, '')
+const warmupPageIds = createPageIds(
+  loaderDataRetentionWarmupCount,
+  0x10ade2,
+  'warmup-',
+)
 
 const uninitialized = () =>
   Promise.reject(
     new Error('loader-data-retention benchmark is not initialized'),
   )
 
-function createPageIds() {
-  const random = createDeterministicRandom(11)
+function createPageIds(count: number, seed: number, prefix: string) {
+  const random = createDeterministicRandom(seed)
 
   return Array.from(
-    { length: loaderDataRetentionNavigationCount },
-    (_, index) => `${index}-${randomSegment(random)}`,
+    { length: count },
+    (_, index) => `${prefix}${index}-${randomSegment(random)}`,
   )
 }
 
@@ -162,15 +168,18 @@ export function createWorkload(
     navigateTo = uninitialized
   }
 
+  async function runPageIds(ids: ReadonlyArray<string>) {
+    for (const id of ids) {
+      await navigateTo(id)
+    }
+  }
+
   return {
     name: `mem client loader-data-retention (${framework})`,
     before,
     navigate: (id: string) => navigateTo(id),
-    async run() {
-      for (const id of pageIds) {
-        await navigateTo(id)
-      }
-    },
+    run: () => runPageIds(pageIds),
+    warmup: () => runPageIds(warmupPageIds),
     async sanity() {
       await before()
 

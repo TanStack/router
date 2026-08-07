@@ -49,14 +49,20 @@ same workload through the Flame profiler.
   numbers come from CodSpeed.
 - Churn benchmarks give every CodSpeed optimization invocation and the measured
   invocation a fresh Node child process. The child imports the same production
-  build used by the Flame runner, executes the scenario sanity path, creates
-  fresh measured state where applicable, settles pending work, and forces two
-  collections before reporting ready. Only then does the parent benchmark
-  function tell the child to execute the real inner loop inside the CodSpeed
-  marker. Teardown and process exit happen after the marker.
+  build used by the Flame runner, executes the scenario sanity path, and runs a
+  small representative warm-up outside the marker. Client warm-ups use a
+  disposable app that is torn down before the child creates the measured app;
+  server warm-ups use IDs that cannot overlap the measured request sequence.
+  The child then settles pending work and forces two collections before
+  reporting ready. Only then does the parent benchmark function tell the child
+  to execute the real inner loop inside the CodSpeed marker. Teardown and
+  process exit happen after the marker.
 - The fresh child deliberately replays the same seeded workload on every
   invocation. Module-level counters still make every item within one inner loop
   unique; they no longer carry state from CodSpeed warmups into measurement.
+- Churn loops use deliberately large measured iteration counts so the regular
+  steady-state shape dominates the timeline and a per-iteration leak is
+  amplified. The warm-up counts stay small and are not part of those totals.
 - Peak-footprint benchmarks remain direct: their existing lifecycle and pinned
   inter-iteration collection points were already stable and do not benefit from
   process isolation.
@@ -64,18 +70,20 @@ same workload through the Flame profiler.
   only honors tinybench's `setup`/`teardown` options; the CodSpeed runner
   does the exact opposite. Isolated benches therefore register **both** the
   suite hooks and Tinybench options; in any given mode exactly one pair runs.
-- Isolated children run with an explicit deterministic V8 configuration
-  (`--predictable`, `--no-opt`, fixed young/initial old-space sizes, and bytecode
-  flushing disabled). The forced pre-measurement collections remove only
-  unreachable setup and sanity garbage; reachable caches or leaks survive and
-  remain part of the measured baseline and subsequent accumulation.
+- Isolated children inherit the Vitest worker's V8 flags, including CodSpeed's
+  memory-analysis configuration and any scenario-specific flags. The controller
+  only adds `--expose-gc` when the parent did not already provide it; it does not
+  impose different heap sizes or optimization settings on the measured child.
+  The forced pre-measurement collections remove only unreachable setup, sanity,
+  and warm-up garbage; reachable caches or leaks survive and remain part of the
+  measured baseline and subsequent accumulation.
 - Server request loops also pin collections between iterations. This removes
   floating response/render garbage whose collection timing otherwise shifts the
   peak, while retained objects still accumulate because collection cannot
   reclaim reachable memory. Peak scenarios additionally verify that the heap
-  returned to its established floor. Because of `--no-opt`, allocation counts
-  overstate production; numbers are for regression tracking, not absolute
-  claims.
+  returned to its established floor. CodSpeed's memory-analysis execution can
+  overstate production allocation counts; numbers are for regression tracking,
+  not absolute claims.
 - Keep each bench under **~1.5M allocations** (instrument overhead grows past
   2M); this is the main constraint when tuning iteration counts.
 
@@ -183,14 +191,14 @@ pnpm nx run @benchmarks/memory-client-navigation-churn-react:test:flame --output
 Flame writes reports under the scenario's ignored `.profiles/<timestamp>/`
 directory, including `heap-profile-*.html` and `heap-profile-*.md`. The
 `memory.flame.ts` entrypoints run the same workload shape as `memory.bench.ts`
-but manually start profiling after sanity/setup work and stop it after the
-measured workload. Treat these profiles as diagnostic heap-sampling attribution;
-they are not CodSpeed memory metrics such as peak memory, allocated bytes, or
-allocation counts. The heap sampler is stopped before profile conversion and
-Flame report generation, so Flame/pprof report-generation work should not appear
-as part of the captured workload. Flame runs do not force GC before profiling;
-doing so would perturb the workload and still would not make heap sampling
-equivalent to CodSpeed memory metrics.
+but manually start profiling after sanity, warm-up, and setup work and stop it
+after the measured workload. Treat these profiles as diagnostic heap-sampling
+attribution; they are not CodSpeed memory metrics such as peak memory, allocated
+bytes, or allocation counts. The heap sampler is stopped before profile
+conversion and Flame report generation, so Flame/pprof report-generation work
+should not appear as part of the captured workload. Flame runs do not force GC
+before profiling; doing so would perturb the workload and still would not make
+heap sampling equivalent to CodSpeed memory metrics.
 
 Clean local Flame profile output with:
 

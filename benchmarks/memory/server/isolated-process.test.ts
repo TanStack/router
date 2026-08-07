@@ -39,6 +39,16 @@ describe('IsolatedMemoryProcess', () => {
     return runner
   }
 
+  function createClientRunner() {
+    runner = new IsolatedMemoryProcess({
+      kind: 'client',
+      setupUrl,
+      workloadNames: ['fixture client'],
+    })
+
+    return runner
+  }
+
   async function readEvents() {
     return (await readFile(logPath, 'utf8')).trim().split('\n')
   }
@@ -52,6 +62,7 @@ describe('IsolatedMemoryProcess', () => {
 
     expect(await readEvents()).toEqual([
       `sanity:${firstPid}`,
+      `warmup:${firstPid}`,
       `run-1-finished:${firstPid}`,
     ])
 
@@ -63,9 +74,39 @@ describe('IsolatedMemoryProcess', () => {
     expect(secondPid).not.toBe(firstPid)
     expect(await readEvents()).toEqual([
       `sanity:${firstPid}`,
+      `warmup:${firstPid}`,
       `run-1-finished:${firstPid}`,
       `sanity:${secondPid}`,
+      `warmup:${secondPid}`,
       `run-0:${secondPid}`,
+    ])
+  })
+
+  it('warms a disposable client app before creating measured state', async () => {
+    const processRunner = createClientRunner()
+
+    await processRunner.start()
+    const pid = processRunner.pid
+
+    expect(await readEvents()).toEqual([
+      `client-sanity:${pid}`,
+      `client-before:${pid}`,
+      `client-warmup:${pid}`,
+      `client-after:${pid}`,
+      `client-before:${pid}`,
+    ])
+
+    await processRunner.run(0)
+    await processRunner.stop()
+
+    expect(await readEvents()).toEqual([
+      `client-sanity:${pid}`,
+      `client-before:${pid}`,
+      `client-warmup:${pid}`,
+      `client-after:${pid}`,
+      `client-before:${pid}`,
+      `client-run:${pid}`,
+      `client-after:${pid}`,
     ])
   })
 

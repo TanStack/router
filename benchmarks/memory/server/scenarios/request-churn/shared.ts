@@ -10,7 +10,8 @@ export type { StartRequestHandler }
 type Framework = 'react' | 'solid' | 'vue'
 
 const benchmarkSeed = 0xdecafbad
-const requestChurnIterations = 40
+const requestChurnIterations = 80
+const requestChurnWarmupIterations = 8
 const itemPageMarker = 'data-bench="request-churn-item"'
 // Module-level within the isolated process so URLs stay unique throughout the
 // inner loop. Every fresh CodSpeed invocation deliberately replays this same
@@ -56,12 +57,15 @@ export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
-  function buildItemRequest(random: () => number) {
-    const counter = (requestCounter++).toString(36)
+  function createItemRequest(random: () => number, counter: string) {
     const id = `${counter}-${randomSegment(random)}`
     const q = `q-${randomSegment(random)}`
 
     return new Request(`http://localhost/items/${id}?q=${q}`, requestInit)
+  }
+
+  function buildItemRequest(random: () => number) {
+    return createItemRequest(random, (requestCounter++).toString(36))
   }
 
   const run = () =>
@@ -73,8 +77,22 @@ export function createWorkloadGroup(
       pinGcBetweenIterations: true,
     })
 
+  const warmup = () => {
+    let counter = 0
+
+    return runSequentialRequestLoop(handler, {
+      seed: 0x5e7a11ce,
+      iterations: requestChurnWarmupIterations,
+      buildRequest: (random) =>
+        createItemRequest(random, `warmup-${(counter++).toString(36)}`),
+      validateResponse: validateItemResponse,
+      pinGcBetweenIterations: true,
+    })
+  }
+
   return {
     sanity: () => assertRequestChurnSanity(handler),
+    warmup,
     workloads: [
       {
         name: `mem server request-churn (${framework})`,

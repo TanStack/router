@@ -16,6 +16,7 @@ async function log(event: string) {
 
 export const workloadGroup = {
   sanity: () => log('sanity'),
+  warmup: () => log('warmup'),
   workloads: [
     {
       name: 'fixture zero',
@@ -35,4 +36,13 @@ export const workloadGroup = {
       },
     },
   ],
+}
+
+export const workload = {
+  name: 'fixture client',
+  sanity: () => log('client-sanity'),
+  before: () => log('client-before'),
+  warmup: () => log('client-warmup'),
+  run: () => log('client-run'),
+  after: () => log('client-after'),
 }

@@ -57,17 +57,10 @@ const childModulePath = fileURLToPath(
   new URL('./isolated-process-child.ts', import.meta.url),
 )
 
-// These flags are explicit instead of relying on how the parent runner was
-// launched, so local Tinybench and CodSpeed prepare identical child heaps.
-const deterministicExecArgv = [
-  '--expose-gc',
-  '--predictable',
-  '--no-opt',
-  '--no-flush-bytecode',
-  '--initial-old-space-size=64',
-  '--min-semi-space-size=16',
-  '--max-semi-space-size=16',
-]
+// CodSpeed and scenario-specific V8 flags are inherited from the Vitest
+// worker. Only expose gc explicitly for uninstrumented local smoke runs, where
+// the CodSpeed plugin does not add its analysis flags.
+const requiredChildExecArgv = ['--expose-gc']
 
 function createChildExecArgv() {
   const execArgv: Array<string> = []
@@ -100,7 +93,7 @@ function createChildExecArgv() {
     execArgv.push(argument)
   }
 
-  for (const argument of deterministicExecArgv) {
+  for (const argument of requiredChildExecArgv) {
     const flagName = argument.split('=')[0]!
     const alreadyPresent = execArgv.some(
       (existing) =>

@@ -15,7 +15,8 @@ type NavigationRouter = {
   subscribe: (event: 'onRendered', listener: () => void) => () => void
 }
 
-const navigationChurnIterations = 300
+const navigationChurnIterations = 600
+const navigationWarmupIterations = 20
 
 const uninitialized = () =>
   Promise.reject(new Error('navigation-churn benchmark is not initialized'))
@@ -104,15 +105,18 @@ export function createWorkload(
     navigateTo = uninitialized
   }
 
+  async function runNavigationLoop(iterations: number) {
+    for (let index = 0; index < iterations; index++) {
+      await navigateTo(index % 2 === 0 ? '/b' : '/a')
+    }
+  }
+
   return {
     name: `mem client navigation-churn (${framework})`,
     before,
     navigate: (target: Target) => navigateTo(target),
-    async run() {
-      for (let index = 0; index < navigationChurnIterations; index++) {
-        await navigateTo(index % 2 === 0 ? '/b' : '/a')
-      }
-    },
+    run: () => runNavigationLoop(navigationChurnIterations),
+    warmup: () => runNavigationLoop(navigationWarmupIterations),
     async sanity() {
       await before()
 

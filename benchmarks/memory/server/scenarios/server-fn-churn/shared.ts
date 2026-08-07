@@ -37,10 +37,12 @@ type SerovalNode =
 
 const benchmarkSeed = 0xdecafbad
 const payloadSeed = 0x51f0cafe
-const fixtureCount = 16
-// Sized to sit just above the 2s measured-run floor on CI (per-iteration
-// cost with the pinned collection is ~0.08-0.11s across frameworks).
-const serverFnChurnIterations = 30
+// Twice the count needed for the original ~2s CI floor (per-iteration cost
+// with the pinned collection is ~0.08-0.11s across frameworks), so the regular
+// loop shape dominates the timeline and an accumulating leak is amplified.
+const serverFnChurnIterations = 60
+const serverFnChurnWarmupIterations = 8
+const fixtureCount = Math.ceil(serverFnChurnIterations / 2)
 const origin = 'http://localhost'
 const tssContentTypeFramed = 'application/x-tss-framed'
 const acceptHeader = `${tssContentTypeFramed}, application/x-ndjson, application/json`
@@ -88,13 +90,21 @@ function serializePayload(id: string) {
   })
 }
 
-function createFixtures(kind: 'get' | 'post') {
-  const random = createDeterministicRandom(payloadSeed ^ kind.length)
+function createFixtures(
+  kind: 'get' | 'post',
+  seed = payloadSeed ^ kind.length,
+  prefix: string = kind,
+  count = fixtureCount,
+) {
+  const random = createDeterministicRandom(seed)
 
-  return Array.from({ length: fixtureCount }, (_, index): PayloadFixture => {
-    const id = [kind, index, randomSegment(random), randomSegment(random)].join(
-      '-',
-    )
+  return Array.from({ length: count }, (_, index): PayloadFixture => {
+    const id = [
+      prefix,
+      index,
+      randomSegment(random),
+      randomSegment(random),
+    ].join('-')
     const body = serializePayload(id)
 
     return {
@@ -107,6 +117,15 @@ function createFixtures(kind: 'get' | 'post') {
 
 const getFixtures = createFixtures('get')
 const postFixtures = createFixtures('post')
+const sanityGetFixture = createFixtures('get', 0x51f0ca01, 'sanity-get', 1)[0]!
+const sanityPostFixture = createFixtures(
+  'post',
+  0x51f0ca02,
+  'sanity-post',
+  1,
+)[0]!
+const warmupGetFixtures = createFixtures('get', 0x51f0ca11, 'warmup-get')
+const warmupPostFixtures = createFixtures('post', 0x51f0ca12, 'warmup-post')
 
 async function discoverUrls(handler: StartRequestHandler) {
   const response = await handler.fetch(new Request(`${origin}/api/fn-urls`))
@@ -182,7 +201,7 @@ async function assertServerFnChurnSanity(
   handler: StartRequestHandler,
   urls: FnUrls,
 ) {
-  const getFixture = getFixtures[0]!
+  const getFixture = sanityGetFixture
   const getRequest = buildGetRequest(urls.get, getFixture)
   const getResponse = await handler.fetch(getRequest)
   const getBody = await getResponse.text()
@@ -190,7 +209,7 @@ async function assertServerFnChurnSanity(
   validateServerFnResponse(getResponse, getRequest)
   validateEchoedBody(getBody, getRequest, getFixture.id)
 
-  const postFixture = postFixtures[0]!
+  const postFixture = sanityPostFixture
   const postRequest = buildPostRequest(urls.post, postFixture)
   const postResponse = await handler.fetch(postRequest)
   const postBody = await postResponse.text()
@@ -199,32 +218,57 @@ async function assertServerFnChurnSanity(
   validateEchoedBody(postBody, postRequest, postFixture.id)
 }
 
+function runServerFnLoop(
+  handler: StartRequestHandler,
+  urls: FnUrls,
+  options: {
+    iterations: number
+    seed: number
+    getFixtures: ReadonlyArray<PayloadFixture>
+    postFixtures: ReadonlyArray<PayloadFixture>
+  },
+) {
+  return runSequentialRequestLoop(handler, {
+    seed: options.seed,
+    iterations: options.iterations,
+    pinGcBetweenIterations: true,
+    buildRequest: (_random, index) => {
+      const fixtureIndex = Math.floor(index / 2) % fixtureCount
+
+      if (index % 2 === 0) {
+        const fixture = options.getFixtures[fixtureIndex]!
+        return buildGetRequest(urls.get, fixture)
+      } else {
+        const fixture = options.postFixtures[fixtureIndex]!
+        return buildPostRequest(urls.post, fixture)
+      }
+    },
+    validateResponse: validateServerFnResponse,
+  })
+}
+
 export async function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
 ) {
   const urls = await discoverUrls(handler)
   const run = () =>
-    runSequentialRequestLoop(handler, {
+    runServerFnLoop(handler, urls, {
       seed: benchmarkSeed,
       iterations: serverFnChurnIterations,
-      pinGcBetweenIterations: true,
-      buildRequest: (_random, index) => {
-        const fixtureIndex = Math.floor(index / 2) % fixtureCount
-
-        if (index % 2 === 0) {
-          const fixture = getFixtures[fixtureIndex]!
-          return buildGetRequest(urls.get, fixture)
-        } else {
-          const fixture = postFixtures[fixtureIndex]!
-          return buildPostRequest(urls.post, fixture)
-        }
-      },
-      validateResponse: validateServerFnResponse,
+      getFixtures,
+      postFixtures,
     })
 
   return {
     sanity: () => assertServerFnChurnSanity(handler, urls),
+    warmup: () =>
+      runServerFnLoop(handler, urls, {
+        seed: 0x5e7f0c11,
+        iterations: serverFnChurnWarmupIterations,
+        getFixtures: warmupGetFixtures,
+        postFixtures: warmupPostFixtures,
+      }),
     workloads: [
       {
         name: `mem server server-fn-churn (${framework})`,

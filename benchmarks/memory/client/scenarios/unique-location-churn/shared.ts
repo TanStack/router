@@ -27,7 +27,8 @@ type NavigationRouter = {
   subscribe: (event: 'onRendered', listener: () => void) => () => void
 }
 
-const uniqueLocationChurnIterations = 300
+const uniqueLocationChurnIterations = 600
+const uniqueLocationChurnWarmupIterations = 20
 // Module-level within the isolated process so ids stay unique throughout the
 // inner loop; the counter prefix removes any residual LCG collision risk. A
 // fresh CodSpeed invocation replays the same sequence in a fresh router.
@@ -123,17 +124,34 @@ export function createWorkload(
     navigateTo = uninitialized
   }
 
+  async function runLocationLoop(
+    iterations: number,
+    createLocation: () => ItemLocation,
+  ) {
+    for (let index = 0; index < iterations; index++) {
+      await navigateTo(createLocation())
+    }
+  }
+
   return {
     name: `mem client unique-location-churn (${framework})`,
     before,
     navigate: (location: ItemLocation) => navigateTo(location),
-    async run() {
-      for (let index = 0; index < uniqueLocationChurnIterations; index++) {
+    run: () =>
+      runLocationLoop(uniqueLocationChurnIterations, () => {
         const id = `${(locationCounter++).toString(36)}-${randomSegment(benchmarkRandom)}`
         const q = `q-${randomSegment(benchmarkRandom)}`
 
-        await navigateTo({ id, q })
-      }
+        return { id, q }
+      }),
+    warmup() {
+      const random = createDeterministicRandom(0x10ca7100)
+      let counter = 0
+
+      return runLocationLoop(uniqueLocationChurnWarmupIterations, () => ({
+        id: `warmup-${(counter++).toString(36)}-${randomSegment(random)}`,
+        q: `q-warmup-${randomSegment(random)}`,
+      }))
     },
     async sanity() {
       await before()
