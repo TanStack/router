@@ -2151,6 +2151,11 @@ export async function loadClientRoute(
     router.stores.status.set('pending')
     router.stores.location.set(location)
   })
+  // Cold loads have no committed UI to retain, but provisional not-found
+  // matches must wait for lazy routes to place the final boundary.
+  if (!resolvedLocation && !matches.some((match) => match._notFound)) {
+    offerPending(router, tx)
+  }
   try {
     await tx[5 /* done */]
   } finally {
