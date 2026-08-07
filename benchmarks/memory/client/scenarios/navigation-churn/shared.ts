@@ -16,7 +16,7 @@ type NavigationRouter = {
 }
 
 const navigationChurnIterations = 600
-const navigationWarmupIterations = 20
+const navigationWarmupIterations = navigationChurnIterations
 
 const uninitialized = () =>
   Promise.reject(new Error('navigation-churn benchmark is not initialized'))

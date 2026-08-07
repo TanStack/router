@@ -31,7 +31,7 @@ type LoaderDataRouter = {
 }
 
 const loaderDataRetentionNavigationCount = 40
-const loaderDataRetentionWarmupCount = 4
+const loaderDataRetentionWarmupCount = loaderDataRetentionNavigationCount
 const pageIds = createPageIds(loaderDataRetentionNavigationCount, 11, '')
 const warmupPageIds = createPageIds(
   loaderDataRetentionWarmupCount,

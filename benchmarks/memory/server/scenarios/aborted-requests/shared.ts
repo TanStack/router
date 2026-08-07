@@ -14,7 +14,7 @@ type AbortedRequestMode = {
 }
 
 const abortedRequestIterations = 80
-const abortedRequestWarmupIterations = 8
+const abortedRequestWarmupIterations = abortedRequestIterations
 let abortedRequestCounter = 0
 const eagerMarker = 'data-bench="aborted-requests-eager"'
 const alphaFallbackMarker = 'data-bench="aborted-requests-alpha-fallback"'

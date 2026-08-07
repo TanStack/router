@@ -49,10 +49,14 @@ same workload through the Flame profiler.
   numbers come from CodSpeed.
 - Churn benchmarks give every CodSpeed optimization invocation and the measured
   invocation a fresh Node child process. The child imports the same production
-  build used by the Flame runner, executes the scenario sanity path, and runs a
-  small representative warm-up outside the marker. Client warm-ups use a
-  disposable app that is torn down before the child creates the measured app;
-  server warm-ups use IDs that cannot overlap the measured request sequence.
+  build used by the Flame runner, executes the scenario sanity path, and runs
+  one full-sized warm-up outside the marker. A full loop is intentional: a
+  fresh process no longer inherits the V8 heap growth and runtime caches that
+  earlier benchmarks used to warm implicitly, and a token warm-up leaves those
+  one-time native allocations inside the measured timeline. Client warm-ups
+  use a disposable app that is torn down before the child creates the measured
+  app; server warm-ups use IDs that cannot overlap the measured request
+  sequence.
   After the child reports that the workloads are loaded, the parent sends an
   unmeasured `prime` command over the same IPC channel used for measurement.
   The child settles pending work and forces two collections before
@@ -76,16 +80,14 @@ same workload through the Flame profiler.
 - Isolated children inherit the Vitest worker's V8 flags, including CodSpeed's
   memory-analysis configuration and any scenario-specific flags. The controller
   then supplies deterministic defaults for flags the worker did not already
-  set: `--expose-gc`, `--predictable`, `--predictable-gc-schedule`, `--no-opt`,
-  `--no-flush-bytecode`, and fixed initial/semi-space sizes. Predictable mode
-  makes GC single-threaded and fixes V8's random seed; the separate predictable
-  GC schedule also fixes heap growth, idle collection, memory reduction, and
-  effective nursery sizing. Disabling optimization prevents a workload from
-  crossing a JIT tier-up threshold inside the marker; retaining bytecode and
-  pre-sizing the heap similarly keep compilation and heap-growth bursts out of
-  the measured peak. The forced pre-measurement collections remove only
-  unreachable setup, sanity, and warm-up garbage; reachable caches or leaks
-  survive and remain part of the measured baseline and subsequent accumulation.
+  set: `--expose-gc`, `--predictable`, `--no-opt`, `--no-flush-bytecode`, and
+  fixed initial/semi-space sizes. Disabling optimization prevents a workload
+  from crossing a JIT tier-up threshold inside the marker; retaining bytecode,
+  pre-sizing the heap, and exercising one full loop before measurement keep
+  compilation and heap-growth bursts out of the measured peak. The forced
+  pre-measurement collections remove only unreachable setup, sanity, and
+  warm-up garbage; reachable caches or leaks survive and remain part of the
+  measured baseline and subsequent accumulation.
 - Server request loops also pin collections between iterations. This removes
   floating response/render garbage whose collection timing otherwise shifts the
   peak, while retained objects still accumulate because collection cannot

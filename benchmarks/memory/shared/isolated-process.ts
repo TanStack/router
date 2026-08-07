@@ -68,19 +68,13 @@ const childModulePath = fileURLToPath(
 )
 
 // Inherit CodSpeed and scenario-specific V8 flags from the Vitest worker, then
-// add the flags that keep the child heap, garbage collection, and compilation
-// lifecycle stable. `--predictable` makes GC single-threaded and fixes V8's
-// random seed, but it deliberately does not enable V8's predictable GC
-// schedule. Enable that separately so heap growth, idle collection, memory
-// reduction, and nursery sizing cannot change when an otherwise identical
-// workload happens to reach an automatic-GC threshold at a different moment.
+// add the flags that keep the child heap and compilation lifecycle stable.
 // Disabling optimization prevents a workload from crossing a JIT tier-up
 // threshold inside the measured loop and injecting a one-off compilation
 // allocation into the peak-memory result.
 const deterministicChildExecArgv = [
   '--expose-gc',
   '--predictable',
-  '--predictable-gc-schedule',
   '--no-opt',
   '--no-flush-bytecode',
   '--initial-old-space-size=64',

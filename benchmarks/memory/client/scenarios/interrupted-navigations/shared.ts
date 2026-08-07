@@ -48,7 +48,7 @@ type InterruptedNavigationRouter = {
 }
 
 const interruptedNavigationIterations = 300
-const interruptedNavigationWarmupIterations = 10
+const interruptedNavigationWarmupIterations = interruptedNavigationIterations
 const interruptedNavigationPairs = createInterruptedNavigationPairs(
   interruptedNavigationIterations,
   13,

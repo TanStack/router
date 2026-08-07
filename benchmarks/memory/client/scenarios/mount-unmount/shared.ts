@@ -13,7 +13,7 @@ type RenderRouter = {
 }
 
 const mountUnmountIterations = 200
-const mountUnmountWarmupIterations = 10
+const mountUnmountWarmupIterations = mountUnmountIterations
 
 function assertEmptyBody() {
   if (document.body.childNodes.length !== 0) {

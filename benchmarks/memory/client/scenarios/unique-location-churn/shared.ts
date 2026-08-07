@@ -28,7 +28,7 @@ type NavigationRouter = {
 }
 
 const uniqueLocationChurnIterations = 600
-const uniqueLocationChurnWarmupIterations = 20
+const uniqueLocationChurnWarmupIterations = uniqueLocationChurnIterations
 // Module-level within the isolated process so ids stay unique throughout the
 // inner loop; the counter prefix removes any residual LCG collision risk. A
 // fresh CodSpeed invocation replays the same sequence in a fresh router.

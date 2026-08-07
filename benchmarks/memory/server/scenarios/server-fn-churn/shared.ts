@@ -41,7 +41,7 @@ const payloadSeed = 0x51f0cafe
 // with the pinned collection is ~0.08-0.11s across frameworks), so the regular
 // loop shape dominates the timeline and an accumulating leak is amplified.
 const serverFnChurnIterations = 60
-const serverFnChurnWarmupIterations = 8
+const serverFnChurnWarmupIterations = serverFnChurnIterations
 const fixtureCount = Math.ceil(serverFnChurnIterations / 2)
 const origin = 'http://localhost'
 const tssContentTypeFramed = 'application/x-tss-framed'

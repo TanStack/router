@@ -39,7 +39,7 @@ type PreloadRouter = {
 // payload is a constant-size steady-state resident, never part of the signal.
 const evictionItemId = 'nav-evict'
 const preloadChurnIterations = 400
-const preloadChurnWarmupIterations = 20
+const preloadChurnWarmupIterations = preloadChurnIterations
 // A navigation commit is what triggers the router's clearExpiredCache --
 // preloaded matches (defaultPreloadGcTime: 0) are only evicted then, never
 // during a preload-only loop. Interleaving a navigation every few preloads is

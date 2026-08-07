@@ -13,7 +13,7 @@ type Framework = 'react' | 'solid' | 'vue'
 // with the pinned collection is ~0.13-0.19s across frameworks), so the regular
 // loop shape dominates the timeline and an accumulating leak is amplified.
 const errorPathsIterations = 36
-const errorPathsWarmupIterations = 4
+const errorPathsWarmupIterations = errorPathsIterations
 const redirectSeed = 0xdecafbad
 const notFoundSeed = 0xdecafb0d
 const errorSeed = 0xdecafbed
