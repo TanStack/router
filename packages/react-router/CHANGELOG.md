@@ -1,5 +1,11 @@
 # @tanstack/react-router
 
+## 1.170.23
+
+### Patch Changes
+
+- [#7952](https://github.com/TanStack/router/pull/7952) [`95dec51`](https://github.com/TanStack/router/commit/95dec51018d01483949c6f1fe3094b019ccf3b4f) - bail out of `Link` re-renders when the resolved href and active state are unchanged
+
 ## 1.170.22
 
 ### Patch Changes

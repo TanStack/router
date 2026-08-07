@@ -1,5 +1,13 @@
 # @tanstack/start-client-core
 
+## 1.170.19
+
+### Patch Changes
+
+- [#7978](https://github.com/TanStack/router/pull/7978) [`2fbc99f`](https://github.com/TanStack/router/commit/2fbc99f2c262b057cb957e6ebba1ee073c655186) - compact private frame decoder result keys
+
+- [#7980](https://github.com/TanStack/router/pull/7980) [`6bede65`](https://github.com/TanStack/router/commit/6bede65d7074dcd83455151b66b4574268bc782c) - compact deferred hydration private state
+
 ## 1.170.18
 
 ### Patch Changes
