@@ -166,9 +166,6 @@ export function useLinkProps<
   const router = useRouter()
   const innerRef = useForwardedRef(forwardedRef)
 
-  // Determine if we're on the server - used for tree-shaking client-only code
-  const _isServer = isServer ?? router.isServer
-
   const {
     // custom props
     activeProps,
@@ -220,7 +217,9 @@ export function useLinkProps<
   //
   // Note: `location.hash` is not available on the server.
   // ==========================================================================
-  if (_isServer) {
+  // The expression must stay inlined in the `if` so bundlers fold the
+  // browser-build constant `isServer = false` and drop this server block.
+  if (isServer ?? router.isServer) {
     const safeInternal = isSafeInternal(to)
 
     // If `to` is obviously an absolute URL, treat as external and avoid
