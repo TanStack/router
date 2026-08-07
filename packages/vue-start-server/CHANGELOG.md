@@ -1,5 +1,12 @@
 # @tanstack/vue-start-server
 
+## 1.167.28
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-server-core@1.169.23
+
 ## 1.167.27
 
 ### Patch Changes
