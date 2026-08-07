@@ -69,7 +69,9 @@ same workload through the Flame profiler.
   unique; they no longer carry state from CodSpeed warmups into measurement.
 - Churn loops use deliberately large measured iteration counts so the regular
   steady-state shape dominates the timeline and a per-iteration leak is
-  amplified. The warm-up counts stay small and are not part of those totals.
+  amplified. Their full-sized warm-up loops are unmeasured and use disjoint
+  inputs, so they establish the same steady state without consuming or hiding
+  the measured leak signal.
 - Peak-footprint benchmarks remain direct: their existing lifecycle and pinned
   inter-iteration collection points were already stable and do not benefit from
   process isolation.
