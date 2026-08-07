@@ -9,6 +9,7 @@ type RegisterIsolatedServerMemoryBenchmarksOptions = {
 }
 
 const kind = 'server' satisfies IsolatedMemoryBenchmarkKind
+const isolatedProcessSetupTimeout = 60_000
 
 export function registerIsolatedServerMemoryBenchmarks(
   options: RegisterIsolatedServerMemoryBenchmarksOptions,
@@ -29,7 +30,7 @@ export function registerIsolatedServerMemoryBenchmarks(
   }
 
   describe('memory', () => {
-    beforeEach(() => isolatedProcess.start())
+    beforeEach(() => isolatedProcess.start(), isolatedProcessSetupTimeout)
     afterEach(() => isolatedProcess.stop())
 
     for (const [workloadIndex, name] of options.names.entries()) {
