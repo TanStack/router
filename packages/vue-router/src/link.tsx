@@ -85,6 +85,12 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): LinkHTMLAttributes {
+  return useLinkPropsImpl(() => options as AnyLinkPropsOptions)
+}
+
+function useLinkPropsImpl(
+  getOptions: () => AnyLinkPropsOptions,
+): LinkHTMLAttributes {
   const router = useRouter()
   const isTransitioning = Vue.ref(false)
   let hasRenderFetched = false
@@ -97,6 +103,7 @@ export function useLinkProps<
 
   // Determine if the link is external or internal
   const type = Vue.computed(() => {
+    const options = getOptions()
     try {
       new URL(`${options.to}`)
       return 'external'
@@ -106,9 +113,11 @@ export function useLinkProps<
   })
 
   const ref = Vue.ref<Element | null>(null)
-  const eventHandlers = getLinkEventHandlers(options as LinkEventOptions)
+  const initialOptions = getOptions()
+  const eventHandlers = getLinkEventHandlers(initialOptions as LinkEventOptions)
 
   if (type.value === 'external') {
+    const options = getOptions()
     // Block dangerous protocols like javascript:, blob:, data:
     if (isDangerousProtocol(options.to as string, router.protocolAllowlist)) {
       if (process.env.NODE_ENV !== 'production') {
@@ -116,7 +125,7 @@ export function useLinkProps<
       }
       // Return props without href to prevent navigation
       const safeProps: Record<string, unknown> = {
-        ...getPropsSafeToSpread(options as AnyLinkPropsOptions),
+        ...getPropsSafeToSpread(options),
         ref,
         // No href attribute - blocks the dangerous protocol
         target: options.target,
@@ -147,7 +156,7 @@ export function useLinkProps<
 
     // External links just have simple props
     const externalProps: Record<string, unknown> = {
-      ...getPropsSafeToSpread(options as AnyLinkPropsOptions),
+      ...getPropsSafeToSpread(options),
       ref,
       href: options.to,
       target: options.target,
@@ -179,8 +188,9 @@ export function useLinkProps<
   // During SSR we render exactly once and do not need reactivity.
   // Avoid store subscriptions, effects and observers on the server.
   if (isServer ?? router.isServer) {
+    const options = getOptions()
     const next = router.buildLocation(options as any)
-    const href = getHref(options as AnyLinkPropsOptions, router, next)
+    const href = getHref(options, router, next)
 
     const isActive = getIsActive(
       router.stores.location.get(),
@@ -194,11 +204,11 @@ export function useLinkProps<
       resolvedInactiveProps,
       resolvedClassName,
       resolvedStyle,
-    } = resolveStyleProps(options as AnyLinkPropsOptions, isActive)
+    } = resolveStyleProps(options, isActive)
 
     const result = combineResultProps({
       href,
-      options: options as AnyLinkPropsOptions,
+      options,
       isActive,
       isTransitioning: false,
       resolvedActiveProps,
@@ -219,11 +229,13 @@ export function useLinkProps<
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
 
+    const options = getOptions()
     const opts = { _fromLocation: currentLocation.value, ...options }
     return router.buildLocation(opts)
   })
 
   const preload = Vue.computed(() => {
+    const options = getOptions()
     if (options.reloadDocument) {
       return false
     }
@@ -231,25 +243,28 @@ export function useLinkProps<
   })
 
   const preloadDelay = Vue.computed(
-    () => options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
+    () => getOptions().preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
   )
 
-  const isActive = Vue.computed(() =>
-    getIsActive(
+  const isActive = Vue.computed(() => {
+    const options = getOptions()
+    return getIsActive(
       currentLocation.value,
       next.value,
       options.activeOptions,
       router,
-    ),
-  )
+    )
+  })
 
-  const doPreload = () =>
-    router
+  const doPreload = () => {
+    const options = getOptions()
+    return router
       .preloadRoute({ ...options, _builtLocation: next.value } as any)
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
       })
+  }
 
   const preloadViewportIoCallback = (
     entry: IntersectionObserverEntry | undefined,
@@ -263,13 +278,14 @@ export function useLinkProps<
     ref,
     preloadViewportIoCallback,
     { rootMargin: '100px' },
-    () => !!options.disabled || preload.value !== 'viewport',
+    () => !!getOptions().disabled || preload.value !== 'viewport',
   )
 
   Vue.effect(() => {
     if (hasRenderFetched) {
       return
     }
+    const options = getOptions()
     if (!options.disabled && preload.value === 'render') {
       doPreload()
       hasRenderFetched = true
@@ -278,6 +294,7 @@ export function useLinkProps<
 
   // The click handler
   const handleClick = (e: PointerEvent): void => {
+    const options = getOptions()
     // Check actual element's target attribute as fallback
     const elementTarget = (
       e.currentTarget as HTMLAnchorElement | SVGAElement
@@ -320,7 +337,10 @@ export function useLinkProps<
   }
 
   const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
-    if (options.disabled || preload.value !== 'intent') return
+    const options = getOptions()
+    if (options.disabled || preload.value !== 'intent') {
+      return
+    }
 
     if (!preloadDelay.value) {
       doPreload()
@@ -329,7 +349,9 @@ export function useLinkProps<
 
     const eventTarget = e.currentTarget || e.target
 
-    if (!eventTarget || timeoutMap.has(eventTarget)) return
+    if (!eventTarget || timeoutMap.has(eventTarget)) {
+      return
+    }
 
     timeoutMap.set(
       eventTarget,
@@ -341,12 +363,17 @@ export function useLinkProps<
   }
 
   const handleTouchStart = (_: TouchEvent) => {
-    if (options.disabled || preload.value !== 'intent') return
+    const options = getOptions()
+    if (options.disabled || preload.value !== 'intent') {
+      return
+    }
     doPreload()
   }
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
-    if (options.disabled) return
+    if (getOptions().disabled) {
+      return
+    }
     const eventTarget = e.currentTarget || e.target
 
     if (eventTarget) {
@@ -370,20 +397,28 @@ export function useLinkProps<
   }
 
   // Get the active and inactive props
-  const resolvedStyleProps = Vue.computed(() =>
-    resolveStyleProps(options as AnyLinkPropsOptions, isActive.value),
-  )
+  const resolvedStyleProps = Vue.computed(() => {
+    const options = getOptions()
+    return resolveStyleProps(options, isActive.value)
+  })
 
-  const href = Vue.computed(() =>
-    getHref(options as AnyLinkPropsOptions, router, next.value),
-  )
+  const href = Vue.computed(() => {
+    const options = getOptions()
+    return getHref(options, router, next.value)
+  })
 
   // Create static event handlers that don't change between renders
   const staticEventHandlers = {
-    onClick: composeEventHandlers<PointerEvent>([options.onClick, handleClick]),
-    onBlur: composeEventHandlers<FocusEvent>([options.onBlur, handleLeave]),
+    onClick: composeEventHandlers<PointerEvent>([
+      initialOptions.onClick,
+      handleClick,
+    ]),
+    onBlur: composeEventHandlers<FocusEvent>([
+      initialOptions.onBlur,
+      handleLeave,
+    ]),
     onFocus: composeEventHandlers<FocusEvent>([
-      options.onFocus,
+      initialOptions.onFocus,
       enqueueIntentPreload,
     ]),
     onMouseenter: composeEventHandlers<MouseEvent>([
@@ -411,6 +446,7 @@ export function useLinkProps<
   // Compute all props synchronously to avoid hydration mismatches
   // Using Vue.computed ensures props are calculated at render time, not after
   const computedProps = Vue.computed<LinkHTMLAttributes>(() => {
+    const options = getOptions()
     const {
       resolvedActiveProps,
       resolvedInactiveProps,
@@ -419,7 +455,7 @@ export function useLinkProps<
     } = resolvedStyleProps.value
     return combineResultProps({
       href: href.value,
-      options: options as AnyLinkPropsOptions,
+      options,
       ref,
       staticEventHandlers,
       isActive: isActive.value,
@@ -859,9 +895,10 @@ const LinkImpl = Vue.defineComponent({
     'target',
   ],
   setup(props, { attrs, slots }) {
-    // Keep declared props reactive when the owning route component is reused.
-    const allProps = Vue.proxyRefs({ ...Vue.toRefs(props), ...attrs })
-    const linkPropsSource = useLinkProps(allProps) as
+    // Cache a plain snapshot until an input prop changes. This keeps Link
+    // reactive without proxy/ref work in every location-driven computation.
+    const allProps = Vue.computed(() => ({ ...props, ...attrs }))
+    const linkPropsSource = useLinkPropsImpl(() => allProps.value) as
       | LinkHTMLAttributes
       | Vue.ComputedRef<LinkHTMLAttributes>
 
