@@ -133,61 +133,111 @@ export function useLinkProps<
 
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
-    const _fromLocation = currentLocation()
-    const nextOptions = { _fromLocation, ...options } as any
+    const nextOptions = { _fromLocation: currentLocation(), ...options } as any
     // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => router.buildLocation(nextOptions))
   })
 
-  const hrefOption = Solid.createMemo(() => {
-    if (options.disabled) return undefined
-    // Use publicHref - it contains the correct href for display
-    // When a rewrite changes the origin, publicHref is the full URL
-    // Otherwise it's the origin-stripped path
-    // This avoids constructing URL objects in the hot path
-    const location = next().maskedLocation ?? next()
-    const publicHref = location.publicHref
-    const external = location.external
+  type LinkState = readonly [
+    href: string | undefined,
+    external: string | undefined,
+    active: boolean,
+  ]
 
-    if (external) {
-      return { href: publicHref, external: true }
-    }
+  const linkState = Solid.createMemo(
+    (previous: LinkState | undefined): LinkState => {
+      const current = currentLocation()
+      const nextLocation = next()
+      const location = nextLocation.maskedLocation ?? nextLocation
+      const publicHref = location.publicHref
+      const href = options.disabled
+        ? undefined
+        : location.external
+          ? publicHref
+          : router.history.createHref(publicHref) || '/'
 
-    return {
-      href: router.history.createHref(publicHref) || '/',
-      external: false,
-    }
-  })
-
-  const externalLink = Solid.createMemo(() => {
-    const _href = hrefOption()
-    if (_href?.external) {
-      // Block dangerous protocols for external links
-      if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
+      let external: string | undefined
+      if (href !== undefined && location.external) {
+        // Block dangerous protocols for external links
+        if (isDangerousProtocol(href, router.protocolAllowlist)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`Blocked Link with dangerous protocol: ${href}`)
+          }
+        } else {
+          external = href
         }
-        return undefined
-      }
-      return _href.href
-    }
-    const to = options.to
-    const safeInternal = isSafeInternal(to)
-    if (safeInternal) return undefined
-    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
-    try {
-      new URL(to as any)
-      // Block dangerous protocols like javascript:, blob:, data:
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${to}`)
+      } else {
+        const to = options.to
+        if (
+          !isSafeInternal(to) &&
+          typeof to === 'string' &&
+          to.indexOf(':') !== -1
+        ) {
+          try {
+            new URL(to)
+            // Block dangerous protocols like javascript:, blob:, data:
+            if (isDangerousProtocol(to, router.protocolAllowlist)) {
+              if (process.env.NODE_ENV !== 'production') {
+                console.warn(`Blocked Link with dangerous protocol: ${to}`)
+              }
+            } else {
+              external = to
+            }
+          } catch {}
         }
-        return undefined
       }
-      return to
-    } catch {}
-    return undefined
-  })
+
+      let active = false
+      if (external === undefined) {
+        const activeOptions = local.activeOptions
+        if (activeOptions?.exact) {
+          active = exactPathTest(
+            current.pathname,
+            nextLocation.pathname,
+            router.basepath,
+          )
+        } else {
+          const currentPath = removeTrailingSlash(
+            current.pathname,
+            router.basepath,
+          )
+          const nextPath = removeTrailingSlash(
+            nextLocation.pathname,
+            router.basepath,
+          )
+          active =
+            currentPath.startsWith(nextPath) &&
+            (currentPath.length === nextPath.length ||
+              currentPath[nextPath.length] === '/')
+        }
+
+        if (active && (activeOptions?.includeSearch ?? true)) {
+          active = deepEqual(current.search, nextLocation.search, {
+            partial: !activeOptions?.exact,
+            ignoreUndefined: !activeOptions?.explicitUndefined,
+          })
+        }
+
+        if (active && activeOptions?.includeHash) {
+          const currentHash =
+            shouldHydrateHash && !hasHydrated() ? '' : current.hash
+          active = currentHash === nextLocation.hash
+        }
+      }
+
+      if (
+        previous &&
+        previous[0] === href &&
+        previous[1] === external &&
+        previous[2] === active
+      ) {
+        return previous
+      }
+      return [href, external, active]
+    },
+  )
+
+  const externalLink = () => linkState()[1]
 
   const preload = Solid.createMemo(() => {
     if (options.reloadDocument || externalLink()) {
@@ -197,55 +247,6 @@ export function useLinkProps<
   })
   const preloadDelay = () =>
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
-
-  const isActive = Solid.createMemo(() => {
-    if (externalLink()) return false
-    const activeOptions = local.activeOptions
-    const current = currentLocation()
-    const nextLocation = next()
-
-    if (activeOptions?.exact) {
-      const testExact = exactPathTest(
-        current.pathname,
-        nextLocation.pathname,
-        router.basepath,
-      )
-      if (!testExact) {
-        return false
-      }
-    } else {
-      const currentPath = removeTrailingSlash(current.pathname, router.basepath)
-      const nextPath = removeTrailingSlash(
-        nextLocation.pathname,
-        router.basepath,
-      )
-
-      const pathIsFuzzyEqual =
-        currentPath.startsWith(nextPath) &&
-        (currentPath.length === nextPath.length ||
-          currentPath[nextPath.length] === '/')
-      if (!pathIsFuzzyEqual) {
-        return false
-      }
-    }
-
-    if (activeOptions?.includeSearch ?? true) {
-      const searchTest = deepEqual(current.search, nextLocation.search, {
-        partial: !activeOptions?.exact,
-        ignoreUndefined: !activeOptions?.explicitUndefined,
-      })
-      if (!searchTest) {
-        return false
-      }
-    }
-
-    if (activeOptions?.includeHash) {
-      const currentHash =
-        shouldHydrateHash && !hasHydrated() ? '' : current.hash
-      return currentHash === nextLocation.hash
-    }
-    return true
-  })
 
   const doPreload = () =>
     router
@@ -419,10 +420,11 @@ export function useLinkProps<
   }
 
   const resolvedProps = Solid.createMemo(() => {
-    const active = isActive()
+    const state = linkState()
+    const active = state[2]
 
     const base = {
-      href: hrefOption()?.href,
+      href: state[0],
       ref: mergeRefs(setRef, options.ref),
       onClick,
       onBlur,
