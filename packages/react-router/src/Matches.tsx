@@ -174,6 +174,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         includeSearch,
       })
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     (isServer ?? router.isServer)
       ? [router]
       : [
