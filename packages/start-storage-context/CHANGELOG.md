@@ -1,5 +1,12 @@
 # @tanstack/start-storage-context
 
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies [[`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a)]:
+  - @tanstack/router-core@1.171.20
+
 ## 1.167.21
 
 ### Patch Changes
