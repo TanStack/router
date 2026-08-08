@@ -59,7 +59,6 @@ export function stringifySearchWith(
   stringify: (search: any) => string,
   parser?: (str: string) => any,
 ) {
-  const hasParser = typeof parser === 'function'
   function stringifyValue(val: any) {
     if (typeof val === 'object' && val !== null) {
       try {
@@ -67,7 +66,20 @@ export function stringifySearchWith(
       } catch (_err) {
         // silent
       }
-    } else if (hasParser && typeof val === 'string') {
+    } else if (parser && typeof val === 'string') {
+      // Skip JSON.parse when the first character cannot begin valid JSON.
+      const first = val.charCodeAt(0)
+      if (
+        parser === JSON.parse &&
+        first > 57 &&
+        first !== 91 &&
+        first !== 102 &&
+        first !== 110 &&
+        first !== 116 &&
+        first !== 123
+      ) {
+        return val
+      }
       try {
         // Check if it's a valid parseable string.
         // If it is, then stringify it again.

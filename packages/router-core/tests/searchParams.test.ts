@@ -1,5 +1,9 @@
 import { describe, expect, test } from 'vitest'
-import { defaultParseSearch, defaultStringifySearch } from '../src'
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+  stringifySearchWith,
+} from '../src'
 
 describe('Search Params serialization and deserialization', () => {
   /*
@@ -45,6 +49,33 @@ describe('Search Params serialization and deserialization', () => {
     const str = defaultStringifySearch({ foo: 'bar', bar: undefined })
     expect(str).toEqual('?foo=bar')
     expect(defaultParseSearch(str)).toEqual({ foo: 'bar' })
+  })
+
+  test.each([
+    'false',
+    '-1',
+    '"quoted"',
+    ' true ',
+    '\tfalse',
+    '\nnull',
+    '\r1',
+    '   ',
+    '雪',
+    '"雪"',
+  ])('preserves JSON-compatible string %j as a string', (value) => {
+    const str = defaultStringifySearch({ value })
+    expect(defaultParseSearch(str)).toEqual({ value })
+  })
+
+  test('uses custom parsers for ordinary strings', () => {
+    const stringify = stringifySearchWith(JSON.stringify, (value) => {
+      if (value === 'word') {
+        return value
+      }
+      throw new Error('not parseable')
+    })
+
+    expect(stringify({ value: 'word' })).toEqual('?value=%22word%22')
   })
 
   test('[edge case] self-reference serializes to "object Object"', () => {
