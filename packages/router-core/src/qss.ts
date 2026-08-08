@@ -24,14 +24,14 @@
  */
 export function encode(
   obj: Record<string, any>,
-  stringify: (value: any) => string = String,
+  stringify: (value: any, key: string) => string = String,
 ): string {
   const result = new URLSearchParams()
 
   for (const key in obj) {
     const val = obj[key]
     if (val !== undefined) {
-      result.set(key, stringify(val))
+      result.set(key, stringify(val, key))
     }
   }
 

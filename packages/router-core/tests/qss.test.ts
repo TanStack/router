@@ -31,6 +31,13 @@ describe('encode function', () => {
     const queryString = encode(obj)
     expect(queryString).toEqual('foo%3Dbar=1')
   })
+
+  it('should pass the key to the stringify callback', () => {
+    const queryString = encode({ a: 'x', b: 'x' }, (value, key) =>
+      key === 'a' ? String(value) : JSON.stringify(value),
+    )
+    expect(queryString).toEqual('a=x&b=%22x%22')
+  })
 })
 
 describe('decode function', () => {

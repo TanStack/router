@@ -20,7 +20,7 @@ It would be serialized and escaped into the following search string:
 ?page=1&sort=asc&filters=%7B%22author%22%3A%22tanner%22%2C%22min_words%22%3A800%7D
 ```
 
-We can implement the default behavior with the following code:
+We can override the behavior for specific parameters using the `key` argument passed to each callback (here keeping `q` as a literal string while everything else uses the default `JSON` behavior):
 
 <!-- ::start:framework -->
 
@@ -35,8 +35,13 @@ import {
 
 const router = createRouter({
   // ...
-  parseSearch: parseSearchWith(JSON.parse),
-  stringifySearch: stringifySearchWith(JSON.stringify),
+  parseSearch: parseSearchWith((value, key) =>
+    key === 'q' ? value : JSON.parse(value),
+  ),
+  stringifySearch: stringifySearchWith(
+    (value, key) => (key === 'q' ? String(value) : JSON.stringify(value)),
+    (value, key) => JSON.parse(value),
+  ),
 })
 ```
 
@@ -51,8 +56,13 @@ import {
 
 const router = createRouter({
   // ...
-  parseSearch: parseSearchWith(JSON.parse),
-  stringifySearch: stringifySearchWith(JSON.stringify),
+  parseSearch: parseSearchWith((value, key) =>
+    key === 'q' ? value : JSON.parse(value),
+  ),
+  stringifySearch: stringifySearchWith(
+    (value, key) => (key === 'q' ? String(value) : JSON.stringify(value)),
+    (value, key) => JSON.parse(value),
+  ),
 })
 ```
 

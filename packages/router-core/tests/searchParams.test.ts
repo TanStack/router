@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { defaultParseSearch, defaultStringifySearch } from '../src'
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+  parseSearchWith,
+  stringifySearchWith,
+} from '../src'
 
 describe('Search Params serialization and deserialization', () => {
   /*
@@ -97,5 +102,21 @@ describe('Search Params serialization and deserialization', () => {
     expect(defaultStringifySearch({ foo: date })).toEqual(
       '?foo=%222024-11-18T00%3A00%3A00.000Z%22',
     )
+  })
+
+  test('serializes a chosen key differently from the rest', () => {
+    // Keep `q` as a literal string while everything else uses JSON.
+    const parse = parseSearchWith((value, key) =>
+      key === 'q' ? value : JSON.parse(value),
+    )
+    const stringify = stringifySearchWith(
+      (value, key) => (key === 'q' ? String(value) : JSON.stringify(value)),
+      (value, key) => JSON.parse(value),
+    )
+
+    const search = { q: '[1,2,3]', filters: { a: 1 } }
+    const str = stringify(search)
+    expect(str).toEqual('?q=%5B1%2C2%2C3%5D&filters=%7B%22a%22%3A1%7D')
+    expect(parse(str)).toEqual(search)
   })
 })
