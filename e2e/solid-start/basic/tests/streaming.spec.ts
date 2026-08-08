@@ -28,6 +28,22 @@ test('Directly visiting the deferred route', async ({ page }) => {
   )
 })
 
+test('deferred route streams boundaries independently', async ({ page }) => {
+  await page.goto('/deferred', { waitUntil: 'commit' })
+
+  await expect(page.getByTestId('regular-person')).toContainText('John Doe')
+  await expect(page.getByText('Loading person...')).toBeVisible()
+  await expect(page.getByText('Loading stuff...')).toBeVisible()
+
+  await expect(page.getByTestId('deferred-person')).toContainText(
+    'Tanner Linsley',
+  )
+  await expect(page.getByText('Loading stuff...')).toBeVisible()
+  await expect(page.getByTestId('deferred-stuff')).toContainText(
+    'Hello deferred!',
+  )
+})
+
 test('streaming loader data', async ({ page }) => {
   await page.goto('/stream')
 
