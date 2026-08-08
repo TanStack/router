@@ -822,6 +822,17 @@ describe('matchPathname', () => {
           _splat: 'bar/baz',
         },
       },
+      {
+        name: 'with overlapping prefix + suffix',
+        input: '/a/abc',
+        matchingOptions: {
+          to: '/a/ab{$}bc',
+        },
+        expectedMatchedParams: {
+          '*': 'b',
+          _splat: 'b',
+        },
+      },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
       expect(matchPathname(input, matchingOptions)).toStrictEqual(
         toNullObj(expectedMatchedParams),
@@ -899,6 +910,46 @@ describe('matchPathname', () => {
         },
         expectedMatchedParams: {
           param: 'foobar',
+        },
+      },
+      {
+        name: 'with overlapping prefix + suffix',
+        input: '/a/abc',
+        matchingOptions: {
+          to: '/a/ab{$id}bc',
+        },
+        expectedMatchedParams: {
+          id: 'b',
+        },
+      },
+      {
+        name: 'optional with overlapping prefix + suffix',
+        input: '/a/abc',
+        matchingOptions: {
+          to: '/a/ab{-$id}bc',
+        },
+        expectedMatchedParams: {
+          id: 'b',
+        },
+      },
+      {
+        name: 'with a suffix whose lowercase form expands',
+        input: '/a/zzzzzİİ',
+        matchingOptions: {
+          to: '/a/{$x}İİ',
+        },
+        expectedMatchedParams: {
+          $: 'zzz',
+        },
+      },
+      {
+        name: 'optional with a suffix whose lowercase form expands',
+        input: '/a/zzzzzİİ',
+        matchingOptions: {
+          to: '/a/{-$x}İİ',
+        },
+        expectedMatchedParams: {
+          $: 'zzz',
         },
       },
     ])('$name', ({ input, matchingOptions, expectedMatchedParams }) => {
