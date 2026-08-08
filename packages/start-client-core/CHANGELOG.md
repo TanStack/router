@@ -1,5 +1,15 @@
 # @tanstack/start-client-core
 
+## 1.170.20
+
+### Patch Changes
+
+- [#8009](https://github.com/TanStack/router/pull/8009) [`c59788c`](https://github.com/TanStack/router/commit/c59788ca20f2d2e7f264a859ebe01b7646ba3154) - perf: drop consumed chunks from the client frame decoder buffer with an O(1) head pointer instead of `Array.prototype.shift()` (O(n)). The previous approach degraded to O(n^2) when a single large frame (e.g. a big `RawStream` payload) was assembled from many small network reads.
+
+- Updated dependencies [[`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a)]:
+  - @tanstack/router-core@1.171.20
+  - @tanstack/start-storage-context@1.167.22
+
 ## 1.170.19
 
 ### Patch Changes
