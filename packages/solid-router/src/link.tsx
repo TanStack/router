@@ -131,23 +131,21 @@ export function useLinkProps<
     { equals: (prev, next) => prev.href === next.href },
   )
 
-  const next = Solid.createMemo(() => {
-    // Rebuild when inherited search/hash or the current route context changes.
-    const nextOptions = { _fromLocation: currentLocation(), ...options } as any
-    // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(nextOptions))
-  })
-
   type LinkState = readonly [
     href: string | undefined,
     external: string | undefined,
     active: boolean,
   ]
 
+  let nextLocation: ReturnType<typeof router.buildLocation>
+
   const linkState = Solid.createMemo(
     (previous: LinkState | undefined): LinkState => {
       const current = currentLocation()
-      const nextLocation = next()
+      // Rebuild when inherited search/hash or the current route context changes.
+      const nextOptions = { _fromLocation: current, ...options } as any
+      // untrack because router-core will also access stores, which are signals in solid
+      nextLocation = Solid.untrack(() => router.buildLocation(nextOptions))
       const location = nextLocation.maskedLocation ?? nextLocation
       const publicHref = location.publicHref
       const href = options.disabled
@@ -248,13 +246,16 @@ export function useLinkProps<
   const preloadDelay = () =>
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  const doPreload = () =>
-    router
-      .preloadRoute({ ...options, _builtLocation: next() } as any)
+  const doPreload = () => {
+    // Refresh the privately held location even when published link state is stable.
+    linkState()
+    return router
+      .preloadRoute({ ...options, _builtLocation: nextLocation } as any)
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
       })
+  }
 
   const preloadViewportIoCallback = (
     entry: IntersectionObserverEntry | undefined,
