@@ -548,8 +548,6 @@ async function buildViteScenario({ root, outDir, sourcemap }) {
     build: {
       outDir,
       emptyOutDir: true,
-      target: 'es2022',
-      minify: 'esbuild',
       sourcemap: sourcemap ? 'hidden' : false,
       reportCompressedSize: false,
       manifest: true,
