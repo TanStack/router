@@ -32,7 +32,15 @@ export function parseSearchWith(parser: (str: string) => any) {
       const value = query[key]
       if (typeof value === 'string') {
         try {
-          query[key] = parser(value)
+          const parsed = parser(value)
+          // Reject numeric parses that do not round-trip back to the original
+          // string (e.g. '662E41' → 6.62e+43, '723421968459640832' → precision
+          // loss). Keep the original string so callers receive what was in the URL.
+          if (typeof parsed === 'number' && String(parsed) !== value) {
+            // silent — keep original string
+          } else {
+            query[key] = parsed
+          }
         } catch (_err) {
           // silent
         }
