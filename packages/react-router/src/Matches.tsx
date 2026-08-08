@@ -154,15 +154,6 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  if (!(isServer ?? router.isServer)) {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useStore(router.stores.location, (location) => location.href)
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useStore(router.stores.resolvedLocation, (location) => location?.href)
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    useStore(router.stores.status, (status) => status)
-  }
-
   return React.useCallback(
     <
       const TFrom extends string = string,
@@ -183,7 +174,20 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         includeSearch,
       })
     },
-    [router],
+    (isServer ?? router.isServer)
+      ? [router]
+      : [
+          router,
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          useStore(router.stores.location, (location) => location.href),
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          useStore(
+            router.stores.resolvedLocation,
+            (location) => location?.href,
+          ),
+          // eslint-disable-next-line react-hooks/rules-of-hooks
+          useStore(router.stores.status, (status) => status),
+        ],
   )
 }
 
