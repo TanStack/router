@@ -487,17 +487,25 @@ export function createControlledPromise<T>(onResolve?: (value: T) => void) {
 
 /**
  * Heuristically detect dynamic import "module not found" errors
- * across major browsers for lazy route component handling.
+ * across major browsers and bundlers for lazy route component handling.
+ *
+ * Covers:
+ * - Chrome: "Failed to fetch dynamically imported module: …"
+ * - Firefox: "error loading dynamically imported module: …"
+ * - Safari: "Importing a module script failed."
+ * - Webpack / Rspack: ChunkLoadError, "Loading chunk … failed.\n(error: …)"
  */
 export function isModuleNotFoundError(error: any): boolean {
-  // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
-  // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
-  // safari: "Importing a module script failed."
+  // Webpack / Rspack throw a typed ChunkLoadError with a distinct name
+  if (error?.name === 'ChunkLoadError') return true
+
   if (typeof error?.message !== 'string') return false
+
   return (
     error.message.startsWith('Failed to fetch dynamically imported module') ||
     error.message.startsWith('error loading dynamically imported module') ||
-    error.message.startsWith('Importing a module script failed')
+    error.message.startsWith('Importing a module script failed') ||
+    error.message.startsWith('Loading chunk')
   )
 }
 
