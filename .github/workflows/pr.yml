@@ -29,7 +29,7 @@ jobs:
       - name: Start Nx Agents
         run: npx nx-cloud start-ci-run --distribute-on=".nx/workflows/dynamic-changesets.yaml"
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a4c6d06ed525a310901e3e9fbed9b2301ebecfd5 # main
       - name: Get base and head commits for `nx affected`
         uses: nrwl/nx-set-shas@afb73a62d26e41464e9254689e1fd6122ee683c1 # v5.0.1
         with:
@@ -52,7 +52,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a4c6d06ed525a310901e3e9fbed9b2301ebecfd5 # main
       - name: Build Packages
         run: pnpm run build:all
       - name: Publish Previews
@@ -69,6 +69,6 @@ jobs:
         with:
           persist-credentials: false
       - name: Setup Tools
-        uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/setup@a4c6d06ed525a310901e3e9fbed9b2301ebecfd5 # main
       - name: Changeset Preview
-        uses: TanStack/config/.github/changeset-preview@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+        uses: TanStack/config/.github/changeset-preview@a4c6d06ed525a310901e3e9fbed9b2301ebecfd5 # main
