@@ -5,6 +5,7 @@ import {
   encodePathLikeUrl,
   escapeHtml,
   isPlainArray,
+  nullReplaceEqualDeep,
   replaceEqualDeep,
 } from '../src/utils'
 
@@ -334,6 +335,53 @@ describe('replaceEqualDeep', () => {
     expect(next).toBe(current)
   })
 
+  it('should not reuse arrays when undefined is appended or removed', () => {
+    const current = [1]
+    const appended = replaceEqualDeep(current, [1, undefined])
+
+    expect(appended).toEqual([1, undefined])
+    expect(appended).not.toBe(current)
+
+    const withUndefined = [1, undefined]
+    const removed = replaceEqualDeep(withUndefined, [1])
+
+    expect(removed).toEqual([1])
+    expect(removed).not.toBe(withUndefined)
+  })
+
+  it('should not reuse objects when an undefined key is removed', () => {
+    const current = { a: 1, b: undefined }
+    const next = replaceEqualDeep(current, { a: 1 })
+
+    expect(next).toEqual({ a: 1 })
+    expect(next).not.toBe(current)
+  })
+
+  it('should track undefined symbol key existence', () => {
+    const key = Symbol('optional')
+    const current = { [key]: undefined }
+    const removed = replaceEqualDeep(current, {})
+
+    expect(removed).toEqual({})
+    expect(removed).not.toBe(current)
+    expect(Object.getOwnPropertySymbols(removed)).toHaveLength(0)
+
+    const added = replaceEqualDeep({}, { [key]: undefined })
+
+    expect(added).not.toBe(current)
+    expect(Object.getOwnPropertySymbols(added)).toEqual([key])
+  })
+
+  it('should reuse equal nested values behind symbol keys', () => {
+    const key = Symbol('nested')
+    const prev = { other: 1, [key]: { deep: 'value' } }
+    const next = { other: 2, [key]: { deep: 'value' } }
+    const result = replaceEqualDeep(prev, next)
+
+    expect(result).not.toBe(prev)
+    expect(result[key]).toBe(prev[key])
+  })
+
   it('works w/ null prototype objects', () => {
     const current = Object.create(null)
     const next = Object.create(null)
@@ -344,6 +392,37 @@ describe('replaceEqualDeep', () => {
 
     next.foo = 'baz'
     expect(replaceEqualDeep(current, next)).toEqual(next)
+  })
+})
+
+describe('nullReplaceEqualDeep', () => {
+  it('should return the previous null-prototype object when equal', () => {
+    const current = Object.create(null)
+    const next = Object.create(null)
+
+    current.foo = 'bar'
+    next.foo = 'bar'
+
+    expect(nullReplaceEqualDeep(current, next)).toBe(current)
+  })
+
+  it('should create null-prototype copies and reuse equal nested values', () => {
+    const current = Object.create(null)
+    current.search = Object.create(null)
+    current.search.q = 'tanstack'
+    current.page = '1'
+
+    const next = Object.create(null)
+    next.search = Object.create(null)
+    next.search.q = 'tanstack'
+    next.page = '2'
+
+    const result = nullReplaceEqualDeep(current, next)
+
+    expect(result).toEqual(next)
+    expect(result).not.toBe(current)
+    expect(Object.getPrototypeOf(result)).toBe(null)
+    expect(result.search).toBe(current.search)
   })
 })
 
