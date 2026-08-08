@@ -45,8 +45,8 @@ export function createLRUCache<TKey, TValue>(
       if (cache.size >= max && oldest) {
         const toDelete = oldest
         cache.delete(toDelete.key)
+        oldest = toDelete.next
         if (toDelete.next) {
-          oldest = toDelete.next
           toDelete.next.prev = undefined
         }
         if (toDelete === newest) {
