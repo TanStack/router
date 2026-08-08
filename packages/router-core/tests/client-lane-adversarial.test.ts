@@ -81,6 +81,35 @@ describe('adversarial client lane ownership', () => {
     expect(secondLoader).toHaveBeenCalledTimes(1)
   })
 
+  test('a queued abort still cancels a synchronous beforeLoad result', async () => {
+    const loader = vi.fn(() => 'target data')
+    const rootRoute = new BaseRootRoute({})
+    const currentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/current',
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      beforeLoad: ({ abortController }) => {
+        queueMicrotask(() => abortController.abort())
+        return { allowed: true }
+      },
+      loader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([currentRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/current'] }),
+    })
+
+    await router.load()
+    await router.navigate({ to: '/target' })
+
+    expect(loader).not.toHaveBeenCalled()
+    expect(router.state.status).toBe('idle')
+    expect(router.state.matches.at(-1)?.routeId).toBe(currentRoute.id)
+  })
+
   test.each(['onBeforeNavigate', 'onBeforeLoad'] as const)(
     'a throwing %s listener cannot interrupt later listeners or navigation finalization',
     async (eventType) => {
