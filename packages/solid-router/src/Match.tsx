@@ -174,7 +174,7 @@ export const MatchInner = (): any => {
       params: current._strictParams,
       search: current._strictSearch,
     })
-    return deps ? JSON.stringify(deps) : current.id
+    return deps ? JSON.stringify(deps) : routeId()
   }
 
   const out = () => {

@@ -859,8 +859,8 @@ const LinkImpl = Vue.defineComponent({
     'target',
   ],
   setup(props, { attrs, slots }) {
-    // Call useLinkProps ONCE during setup with combined props and attrs
-    const allProps = { ...props, ...attrs }
+    // Keep declared props reactive when the owning route component is reused.
+    const allProps = Vue.proxyRefs({ ...Vue.toRefs(props), ...attrs })
     const linkPropsSource = useLinkProps(allProps) as
       | LinkHTMLAttributes
       | Vue.ComputedRef<LinkHTMLAttributes>
