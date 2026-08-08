@@ -9,7 +9,6 @@ import {
   createRouter,
   linkOptions,
   useMatchRoute,
-  useRouterState,
 } from '@tanstack/react-router'
 
 const links = linkOptions([
@@ -18,12 +17,11 @@ const links = linkOptions([
 ])
 
 function useRouteName() {
-  const routerState = useRouterState()
   const matchRoute = useMatchRoute()
 
   return useMemo(
     () => links.find((link) => matchRoute(link))?.label ?? 'Unknown',
-    [routerState, matchRoute],
+    [matchRoute],
   )
 }
 
