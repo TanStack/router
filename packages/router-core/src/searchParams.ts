@@ -1,6 +1,10 @@
 import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
+// JSON can start with whitespace, ", [, {, -, a digit, or fa/nu/tr.
+// False positives safely fall through to JSON.parse.
+const jsonStart = /^(?:\s|["[{\d-]|fa|nu|tr)/
+
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
 export const defaultParseSearch = parseSearchWith(JSON.parse)
 /** Default `stringifySearch` using JSON.stringify for complex values. */
@@ -59,25 +63,17 @@ export function stringifySearchWith(
   stringify: (search: any) => string,
   parser?: (str: string) => any,
 ) {
+  const isJsonParser = parser === JSON.parse
   function stringifyValue(val: any) {
-    if (typeof val === 'object' && val !== null) {
+    if (val && typeof val === 'object') {
       try {
         return stringify(val)
       } catch (_err) {
         // silent
       }
     } else if (parser && typeof val === 'string') {
-      // Skip JSON.parse when the first character cannot begin valid JSON.
-      const first = val.charCodeAt(0)
-      if (
-        parser === JSON.parse &&
-        first > 57 &&
-        first !== 91 &&
-        first !== 102 &&
-        first !== 110 &&
-        first !== 116 &&
-        first !== 123
-      ) {
+      // Skip JSON.parse when the value cannot begin valid JSON.
+      if (isJsonParser && !jsonStart.test(val)) {
         return val
       }
       try {

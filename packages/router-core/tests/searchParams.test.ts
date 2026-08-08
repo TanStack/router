@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   defaultParseSearch,
   defaultStringifySearch,
@@ -56,6 +56,9 @@ describe('Search Params serialization and deserialization', () => {
     '-1',
     '"quoted"',
     ' true ',
+    'true ',
+    'false\t',
+    'null\r\n',
     '\tfalse',
     '\nnull',
     '\r1',
@@ -76,6 +79,34 @@ describe('Search Params serialization and deserialization', () => {
     })
 
     expect(stringify({ value: 'word' })).toEqual('?value=%22word%22')
+  })
+
+  test('skips JSON.parse for strings that cannot be JSON', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+    try {
+      const stringify = stringifySearchWith(JSON.stringify, JSON.parse)
+
+      expect(
+        stringify({
+          empty: '',
+          filter: 'foo',
+          future: 'future',
+          name: 'name',
+          notification: 'new',
+          tab: 'tabular',
+          topic: 'topic',
+          unicode: '雪',
+        }),
+      ).toEqual(
+        '?empty=&filter=foo&future=future&name=name&notification=new&tab=tabular&topic=topic&unicode=%E9%9B%AA',
+      )
+      expect(
+        stringify({ file: '.env', path: '/products', positive: '+1' }),
+      ).toEqual('?file=.env&path=%2Fproducts&positive=%2B1')
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
   })
 
   test('[edge case] self-reference serializes to "object Object"', () => {
