@@ -5,5 +5,6 @@ export interface ServerMemoryWorkload {
 
 export interface ServerMemoryWorkloadGroup {
   sanity: () => Promise<void> | void
+  warmup?: () => Promise<void> | void
   workloads: Array<ServerMemoryWorkload>
 }

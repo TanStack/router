@@ -1,11 +1,6 @@
-import { bench, describe } from 'vitest'
-import { memoryBenchOptions } from '#memory-server/bench-utils'
-import { workloadGroup } from './setup'
+import { registerIsolatedServerMemoryBenchmarks } from '#memory-server/isolated-benchmark'
 
-await workloadGroup.sanity()
-
-describe('memory', () => {
-  for (const workload of workloadGroup.workloads) {
-    bench(workload.name, workload.run, memoryBenchOptions)
-  }
+registerIsolatedServerMemoryBenchmarks({
+  names: ['mem server aborted-requests (solid)'],
+  setupUrl: new URL('./setup.ts', import.meta.url),
 })

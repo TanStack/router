@@ -28,7 +28,6 @@ export default defineConfig({
   test: {
     name: '@benchmarks/memory-client loader-data-retention (solid)',
     watch: false,
-    environment: 'jsdom',
-    setupFiles: ['../../../vitest.setup.ts'],
+    environment: 'node',
   },
 })

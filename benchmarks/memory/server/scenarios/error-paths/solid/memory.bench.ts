@@ -1,11 +1,11 @@
-import { bench, describe } from 'vitest'
-import { memoryBenchOptions } from '#memory-server/bench-utils'
-import { workloadGroup } from './setup'
+import { registerIsolatedServerMemoryBenchmarks } from '#memory-server/isolated-benchmark'
 
-await workloadGroup.sanity()
-
-describe('memory', () => {
-  for (const workload of workloadGroup.workloads) {
-    bench(workload.name, workload.run, memoryBenchOptions)
-  }
+registerIsolatedServerMemoryBenchmarks({
+  names: [
+    'mem server error-paths redirect (solid)',
+    'mem server error-paths not-found (solid)',
+    'mem server error-paths error (solid)',
+    'mem server error-paths unmatched (solid)',
+  ],
+  setupUrl: new URL('./setup.ts', import.meta.url),
 })
