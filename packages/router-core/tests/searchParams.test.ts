@@ -1,5 +1,10 @@
-import { describe, expect, test } from 'vitest'
-import { defaultParseSearch, defaultStringifySearch } from '../src'
+import { describe, expect, test, vi } from 'vitest'
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+  parseSearchWith,
+  stringifySearchWith,
+} from '../src'
 
 describe('Search Params serialization and deserialization', () => {
   /*
@@ -97,5 +102,71 @@ describe('Search Params serialization and deserialization', () => {
     expect(defaultStringifySearch({ foo: date })).toEqual(
       '?foo=%222024-11-18T00%3A00%3A00.000Z%22',
     )
+  })
+
+  test('custom parsers still run for non-json-looking strings', () => {
+    const parser = vi.fn((value: string) => {
+      if (!value.startsWith('~')) {
+        throw new Error('not custom-encoded')
+      }
+
+      return value.slice(1)
+    })
+
+    const parseSearch = parseSearchWith(parser)
+    const stringifySearch = stringifySearchWith((value) => `~${value}`, parser)
+
+    expect(parseSearch('?filter=%7Eauthor')).toEqual({ filter: 'author' })
+    expect(stringifySearch({ filter: '~author' })).toEqual(
+      '?filter=%7E%7Eauthor',
+    )
+    expect(parseSearch(stringifySearch({ filter: '~author' }))).toEqual({
+      filter: '~author',
+    })
+  })
+
+  test('skips JSON.parse work for obviously non-json strings', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+
+    try {
+      const parseSearch = parseSearchWith(JSON.parse)
+      const stringifySearch = stringifySearchWith(JSON.stringify, JSON.parse)
+
+      expect(parseSearch('?plain=value&other=abc123')).toEqual({
+        plain: 'value',
+        other: 'abc123',
+      })
+      expect(stringifySearch({ plain: 'value', other: 'abc123' })).toEqual(
+        '?plain=value&other=abc123',
+      )
+
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
+  })
+
+  test('still parses json-like strings with JSON.parse', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+
+    try {
+      const parseSearch = parseSearchWith(JSON.parse)
+      const stringifySearch = stringifySearchWith(JSON.stringify, JSON.parse)
+
+      expect(
+        parseSearch('?quoted=%22value%22&object=%7B%22ok%22%3Atrue%7D&num=123'),
+      ).toEqual({
+        quoted: 'value',
+        object: { ok: true },
+        num: 123,
+      })
+      expect(
+        stringifySearch({ quoted: '123', object: { ok: true }, num: '42' }),
+      ).toEqual('?quoted=%22123%22&object=%7B%22ok%22%3Atrue%7D&num=%2242%22')
+
+      expect(parseSpy).toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
   })
 })
