@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786175889239,
+  "lastUpdate": 1786209899536,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,90 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "manuel.schiller@caligano.de",
-            "name": "Manuel Schiller",
-            "username": "schiller-manuel"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "70ec1da1ed8aa252fae67716f69fe8520ecf91b0",
-          "message": "fix(react-router): clear stale route errors on navigation (#7136)\n\nCo-authored-by: schiller-manuel <6340397+schiller-manuel@users.noreply.github.com>\nCo-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>",
-          "timestamp": "2026-04-10T22:37:04+02:00",
-          "tree_id": "902e4fdd6db7c21ecf4da4a3177a47657c266da7",
-          "url": "https://github.com/TanStack/router/commit/70ec1da1ed8aa252fae67716f69fe8520ecf91b0"
-        },
-        "date": 1775853552209,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89606,
-            "unit": "bytes",
-            "extra": "raw=282310; brotli=77902"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92947,
-            "unit": "bytes",
-            "extra": "raw=293767; brotli=80843"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36457,
-            "unit": "bytes",
-            "extra": "raw=109935; brotli=32711"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41034,
-            "unit": "bytes",
-            "extra": "raw=123797; brotli=36823"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54747,
-            "unit": "bytes",
-            "extra": "raw=156837; brotli=49154"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59756,
-            "unit": "bytes",
-            "extra": "raw=172670; brotli=53503"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104449,
-            "unit": "bytes",
-            "extra": "raw=331710; brotli=90275"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107930,
-            "unit": "bytes",
-            "extra": "raw=342307; brotli=93217"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50897,
-            "unit": "bytes",
-            "extra": "raw=157295; brotli=44820"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56540,
-            "unit": "bytes",
-            "extra": "raw=173921; brotli=49751"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -21836,6 +21752,132 @@ window.BENCHMARK_DATA = {
             "value": 70947,
             "unit": "bytes",
             "extra": "raw=206068; brotli=63038; initial_gzip=70823"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c59788ca20f2d2e7f264a859ebe01b7646ba3154",
+          "message": "perf(start-client-core): O(1) buffer drain in client frame decoder (#8009)\n\nThe frame decoder dropped consumed chunks from its buffer with\nbufferList.shift(), which is O(n). When a single large frame (e.g. a big\nRawStream payload) is assembled from many small network reads, the\nextract loop calls shift() once per chunk, making reassembly O(n^2).\n\nTrack the first un-consumed chunk with a head pointer and advance it in\nO(1) instead of shifting. Consumed slots are released for GC, and the\nbuffer is compacted when fully drained (O(1) reset) or once the consumed\nprefix grows past a small threshold (amortized O(1) per chunk).\n\nA micro-benchmark draining 1000 small chunks is ~11x faster.\n\nCo-authored-by: Yagiz Nizipli <yagiz@nizipli.com>",
+          "timestamp": "2026-08-08T19:20:41+02:00",
+          "tree_id": "b263f540a82e886f1352cca6cad7696254d35be3",
+          "url": "https://github.com/TanStack/router/commit/c59788ca20f2d2e7f264a859ebe01b7646ba3154"
+        },
+        "date": 1786209897888,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85912,
+            "unit": "bytes",
+            "extra": "raw=268911; brotli=74752; initial_gzip=85776"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89494,
+            "unit": "bytes",
+            "extra": "raw=280912; brotli=77905; initial_gzip=89355"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34007,
+            "unit": "bytes",
+            "extra": "raw=98765; brotli=30696; initial_gzip=33880"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 38954,
+            "unit": "bytes",
+            "extra": "raw=113750; brotli=35074; initial_gzip=38826"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50678,
+            "unit": "bytes",
+            "extra": "raw=141514; brotli=45726; initial_gzip=50551"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56387,
+            "unit": "bytes",
+            "extra": "raw=160123; brotli=50805; initial_gzip=56261"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99028,
+            "unit": "bytes",
+            "extra": "raw=312157; brotli=85707; initial_gzip=98887"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99770,
+            "unit": "bytes",
+            "extra": "raw=313546; brotli=86484; initial_gzip=98908"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102274,
+            "unit": "bytes",
+            "extra": "raw=322097; brotli=88639; initial_gzip=102133"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102443,
+            "unit": "bytes",
+            "extra": "raw=322955; brotli=88325; initial_gzip=102268"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102857,
+            "unit": "bytes",
+            "extra": "raw=323914; brotli=88732; initial_gzip=102688"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105840,
+            "unit": "bytes",
+            "extra": "raw=333289; brotli=91102; initial_gzip=105665"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47085,
+            "unit": "bytes",
+            "extra": "raw=140808; brotli=41912; initial_gzip=46955"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50230,
+            "unit": "bytes",
+            "extra": "raw=148448; brotli=44797; initial_gzip=47019"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52278,
+            "unit": "bytes",
+            "extra": "raw=156565; brotli=46349; initial_gzip=52150"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67094,
+            "unit": "bytes",
+            "extra": "raw=193554; brotli=59655; initial_gzip=66966"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 70986,
+            "unit": "bytes",
+            "extra": "raw=206120; brotli=63043; initial_gzip=70859"
           }
         ]
       }
