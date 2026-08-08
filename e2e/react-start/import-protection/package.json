@@ -11,10 +11,7 @@
     "build": "pnpm build:vite",
     "build:vite": "vite build && tsc --noEmit",
     "build:rsbuild": "rsbuild build && tsc --noEmit",
-    "start": "node server.js",
-    "test:e2e:mockMode": "rm -rf node_modules/.vite; rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:errorMode": "rm -rf node_modules/.vite; rm -rf port*.txt; BEHAVIOR=error playwright test --project=chromium",
-    "test:e2e": "pnpm run test:e2e:mockMode && pnpm run test:e2e:errorMode"
+    "start": "node server.js"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -58,6 +55,7 @@
           "toolchain": "vite",
           "mode": "ssr",
           "env": {
+            "E2E_BUILD_LOG": "webserver-build.vite-ssr.log",
             "E2E_VITE_BUNDLED_DEV": "false"
           }
         },
@@ -66,12 +64,16 @@
           "mode": "ssr",
           "name": "bundled-dev",
           "env": {
+            "E2E_BUILD_LOG": "webserver-build.vite-ssr-bundled-dev.log",
             "E2E_VITE_BUNDLED_DEV": "true"
           }
         },
         {
           "toolchain": "rsbuild",
-          "mode": "ssr"
+          "mode": "ssr",
+          "env": {
+            "E2E_BUILD_LOG": "webserver-build.rsbuild-ssr.log"
+          }
         }
       ]
     }

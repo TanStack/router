@@ -282,6 +282,44 @@ test('throw error from loader upon initial load', async () => {
   expect(errorElement).toBeInTheDocument()
 })
 
+// https://github.com/TanStack/router/pull/7673
+test('#7673: aborted loader does not render the route component with undefined loaderData', async () => {
+  const abortError = new DOMException('Aborted', 'AbortError')
+  const routeComponentRendered = vi.fn()
+  const renderedError = vi.fn()
+  const rootRoute = createRootRoute({})
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    loader: (): Promise<{ value: string }> => Promise.reject(abortError),
+    component: () => {
+      routeComponentRendered()
+      const data = indexRoute.useLoaderData()
+      return <div data-testid="index-content">{data.value.value}</div>
+    },
+    errorComponent: ({ error }) => {
+      renderedError(error)
+      return <div data-testid="index-error">indexErrorComponent</div>
+    },
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
+  expect(routeComponentRendered).not.toHaveBeenCalled()
+  expect(renderedError).toHaveBeenCalledWith(abortError)
+  expect(
+    router.state.matches.find((match) => match.routeId === indexRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: abortError,
+  })
+})
+
 test('throw error from beforeLoad when navigating to route', async () => {
   const rootRoute = createRootRoute({})
 

@@ -19,6 +19,68 @@ afterEach(() => {
   }
   cleanup()
   vi.useRealTimers()
+  vi.unstubAllEnvs()
+})
+
+test('a route lifecycle callback cannot strand a production navigation', async () => {
+  vi.stubEnv('NODE_ENV', 'production')
+  expect(process.env.NODE_ENV).toBe('production')
+  const rootRoute = createRootRoute({ component: Outlet })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Index</div>,
+  })
+  const error = new Error('onEnter failed')
+  const onEnter = vi.fn(() => {
+    throw error
+  })
+  const nextRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/next',
+    onEnter,
+    component: () => <div>Next</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, nextRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByText('Index')).toBeInTheDocument()
+  await waitFor(() => expect(router.state.status).toBe('idle'))
+
+  const globalReport = vi.fn()
+  const preventGlobalReport = (event: ErrorEvent) => {
+    if (event.error === error) {
+      globalReport()
+      event.preventDefault()
+    }
+  }
+  window.addEventListener('error', preventGlobalReport)
+  testCleanups.push(() => {
+    window.removeEventListener('error', preventGlobalReport)
+  })
+
+  let settled = false
+  const navigation = router.navigate({ to: '/next' }).then(
+    () => {
+      settled = true
+    },
+    () => {
+      settled = true
+    },
+  )
+  await waitFor(() => expect(settled).toBe(true))
+  await navigation
+
+  expect(onEnter).toHaveBeenCalledOnce()
+  expect(globalReport).not.toHaveBeenCalled()
+  expect(screen.getByText('Next')).toBeInTheDocument()
+  expect(router.state.status).toBe('idle')
+
+  await router.navigate({ to: '/' })
+  expect(await screen.findByText('Index')).toBeInTheDocument()
 })
 
 test('same-location invalidation resolves after its refreshed DOM commits', async () => {

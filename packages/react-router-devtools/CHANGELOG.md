@@ -1,5 +1,14 @@
 # @tanstack/react-router-devtools
 
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+  - @tanstack/react-router@1.170.19
+  - @tanstack/router-devtools-core@1.168.1
+
 ## 1.167.0
 
 ### Minor Changes

@@ -10,15 +10,15 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-router": "^1.170.18",
-    "@tanstack/solid-router-devtools": "^1.167.0",
+    "@tanstack/solid-router": "^1.170.22",
+    "@tanstack/solid-router-devtools": "^1.167.1",
     "redaxios": "^0.5.1",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.2.2",
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@tanstack/router-plugin": "^1.168.23",
+    "@tanstack/router-plugin": "^1.168.27",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",

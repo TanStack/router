@@ -7,18 +7,23 @@ export type VisibleHydrationOptions = {
   threshold?: number | Array<number>
 }
 
-type VisibleObserverEntry = {
-  key: string
-  observer: IntersectionObserver
-  elements: Map<Element, Set<() => void>>
-}
+type VisibleObserverEntry = [
+  observer: IntersectionObserver,
+  elements: Map<Element, Set<() => void>>,
+]
 
 const observerRegistry = /* @__PURE__ */ new Map<string, VisibleObserverEntry>()
 
-function cleanupVisibleObserverEntry(observerEntry: VisibleObserverEntry) {
-  if (observerEntry.elements.size > 0) return
-  observerEntry.observer.disconnect()
-  observerRegistry.delete(observerEntry.key)
+function cleanupVisibleObserverEntry(
+  key: string,
+  observer: IntersectionObserver,
+  elements: Map<Element, Set<() => void>>,
+) {
+  if (elements.size > 0) {
+    return
+  }
+  observer.disconnect()
+  observerRegistry.delete(key)
 }
 
 /* @__NO_SIDE_EFFECTS__ */
@@ -44,46 +49,48 @@ export function visible(
       let observerEntry = observerRegistry.get(key)
 
       if (!observerEntry) {
-        const entry: VisibleObserverEntry = {
-          key,
-          elements: new Map<Element, Set<() => void>>(),
-          observer: new IntersectionObserver(
-            (entries) => {
-              for (const intersectingEntry of entries) {
-                if (!intersectingEntry.isIntersecting) continue
-
-                const callbacks = entry.elements.get(intersectingEntry.target)
-                if (!callbacks) continue
-
-                callbacks.forEach((callback) => callback())
-                entry.elements.delete(intersectingEntry.target)
-                entry.observer.unobserve(intersectingEntry.target)
-                cleanupVisibleObserverEntry(entry)
+        const elements = new Map<Element, Set<() => void>>()
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const intersectingEntry of entries) {
+              if (!intersectingEntry.isIntersecting) {
+                continue
               }
-            },
-            { rootMargin, threshold },
-          ),
-        }
-        observerRegistry.set(key, entry)
-        observerEntry = entry
+
+              const callbacks = elements.get(intersectingEntry.target)
+              if (!callbacks) {
+                continue
+              }
+
+              callbacks.forEach((callback) => callback())
+              elements.delete(intersectingEntry.target)
+              observer.unobserve(intersectingEntry.target)
+              cleanupVisibleObserverEntry(key, observer, elements)
+            }
+          },
+          { rootMargin, threshold },
+        )
+        observerEntry = [observer, elements]
+        observerRegistry.set(key, observerEntry)
       }
 
-      let callbacks = observerEntry.elements.get(element)
+      const [observer, elements] = observerEntry
+      let callbacks = elements.get(element)
       if (!callbacks) {
         callbacks = new Set()
-        observerEntry.elements.set(element, callbacks)
-        observerEntry.observer.observe(element)
+        elements.set(element, callbacks)
+        observer.observe(element)
       }
       callbacks.add(callback)
 
       return () => {
-        const currentCallbacks = observerEntry.elements.get(element)
+        const currentCallbacks = elements.get(element)
         currentCallbacks?.delete(callback)
         if (currentCallbacks?.size === 0) {
-          observerEntry.elements.delete(element)
-          observerEntry.observer.unobserve(element)
+          elements.delete(element)
+          observer.unobserve(element)
         }
-        cleanupVisibleObserverEntry(observerEntry)
+        cleanupVisibleObserverEntry(key, observer, elements)
       }
     },
   }

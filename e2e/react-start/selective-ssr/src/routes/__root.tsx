@@ -9,10 +9,10 @@ import {
   createRootRoute,
   useRouterState,
 } from '@tanstack/react-router'
+import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 import { z } from 'zod'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -148,6 +148,14 @@ function RootDocument({ children }: { children: React.ReactNode }) {
             }}
           >
             Home
+          </Link>
+          <Link
+            to="/issue-4614"
+            search={{}}
+            preload="intent"
+            data-testid="issue-4614-cached-link"
+          >
+            Issue 4614 cached parent
           </Link>
           <Link
             to="/issue-4614"

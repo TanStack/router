@@ -1,5 +1,6 @@
 'use client'
 import * as React from 'react'
+import { isServer } from '@tanstack/router-core/isServer'
 
 // Safe version of React.use() that will not cause compilation errors against
 // React 18 with Webpack, which statically analyzes imports and fails when it
@@ -27,7 +28,9 @@ export function useStableCallback<T extends (...args: Array<any>) => any>(
 }
 
 export const useLayoutEffect =
-  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+  (isServer ?? typeof window === 'undefined')
+    ? React.useEffect
+    : React.useLayoutEffect
 
 /**
  * Taken from https://www.developerway.com/posts/implementing-advanced-use-previous-hook#part3
@@ -64,7 +67,7 @@ export function usePrevious<T>(value: T): T | null {
  *
  * @param ref - The ref to observe
  * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
- * @param options - The options to pass to the hook
+ * @param disabled - Whether observation is disabled
  * @param callback - The callback to call when the intersection changes
  * @returns The IntersectionObserver instance
  * @example
@@ -75,7 +78,7 @@ export function usePrevious<T>(value: T): T | null {
  *  ref,
  *  (entry) => { doSomething(entry) },
  *  { rootMargin: '10px' },
- *  { disabled: false }
+ *  false
  * )
  * return <div ref={ref} />
  * ```
@@ -84,12 +87,12 @@ export function useIntersectionObserver<T extends Element>(
   ref: React.RefObject<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
-  options: { disabled?: boolean } = {},
+  disabled?: boolean,
 ) {
   React.useEffect(() => {
     if (
       !ref.current ||
-      options.disabled ||
+      disabled ||
       typeof IntersectionObserver !== 'function'
     ) {
       return
@@ -104,7 +107,7 @@ export function useIntersectionObserver<T extends Element>(
     return () => {
       observer.disconnect()
     }
-  }, [callback, intersectionObserverOptions, options.disabled, ref])
+  }, [callback, disabled, intersectionObserverOptions, ref])
 }
 
 /**

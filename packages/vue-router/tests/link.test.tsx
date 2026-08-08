@@ -33,6 +33,7 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { useIntersectionObserver } from '../src/utils'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
@@ -5051,6 +5052,70 @@ describe('Link', () => {
     })
     expect(ioObserveMock).toHaveBeenCalledOnce() // it should not observe again
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
+  })
+
+  test('Link.disabled should disable viewport observation', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/" disabled>
+            Index Link
+          </Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'viewport',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    expect(indexLink).toBeInTheDocument()
+    expect(indexLink).toHaveAttribute('aria-disabled', 'true')
+    expect(ioObserveMock).not.toHaveBeenCalled()
+  })
+
+  test('useIntersectionObserver should react to its disabled getter', async () => {
+    const TestComponent = Vue.defineComponent({
+      name: 'TestComponent',
+      setup() {
+        const element = Vue.ref<HTMLElement | null>(null)
+        const disabled = Vue.ref(true)
+
+        useIntersectionObserver(
+          element,
+          () => {},
+          {},
+          () => disabled.value,
+        )
+
+        return () => (
+          <>
+            <button onClick={() => (disabled.value = !disabled.value)}>
+              Toggle disabled
+            </button>
+            <div ref={element} />
+          </>
+        )
+      },
+    })
+
+    render(<TestComponent />)
+    expect(ioObserveMock).not.toHaveBeenCalled()
+
+    const toggle = screen.getByRole('button', { name: 'Toggle disabled' })
+    await fireEvent.click(toggle)
+    await waitFor(() => expect(ioObserveMock).toHaveBeenCalledOnce())
+
+    await fireEvent.click(toggle)
+    await waitFor(() => expect(ioDisconnectMock).toHaveBeenCalledOnce())
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {
