@@ -1,12 +1,30 @@
 import { decode, encode } from './qss'
 import type { AnySchema } from './validators'
 
+const integerLiteralRegex = /^-?\d+$/
+
+/**
+ * `JSON.parse`, except integer literals beyond `Number.MAX_SAFE_INTEGER` are
+ * rejected (kept as strings by the callers below): parsing them to a float64
+ * silently rounds the value (e.g. "120247103250460643" becomes
+ * 120247103250460640), so any re-serialization corrupts the original — a
+ * common hazard with 18-digit ad/click ids in marketing URLs.
+ */
+function parseJsonPreservingUnsafeIntegers(str: string): any {
+  if (integerLiteralRegex.test(str) && !Number.isSafeInteger(Number(str))) {
+    throw new Error('Integer literal exceeds safe integer range')
+  }
+  return JSON.parse(str)
+}
+
 /** Default `parseSearch` that strips leading '?' and JSON-parses values. */
-export const defaultParseSearch = parseSearchWith(JSON.parse)
+export const defaultParseSearch = parseSearchWith(
+  parseJsonPreservingUnsafeIntegers,
+)
 /** Default `stringifySearch` using JSON.stringify for complex values. */
 export const defaultStringifySearch = stringifySearchWith(
   JSON.stringify,
-  JSON.parse,
+  parseJsonPreservingUnsafeIntegers,
 )
 
 /**
