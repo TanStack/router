@@ -1,4 +1,4 @@
-import { StrictMode, useMemo } from 'react'
+import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   Link,
@@ -19,10 +19,7 @@ const links = linkOptions([
 function useRouteName() {
   const matchRoute = useMatchRoute()
 
-  return useMemo(
-    () => links.find((link) => matchRoute(link))?.label ?? 'Unknown',
-    [matchRoute],
-  )
+  return links.find((link) => matchRoute(link))?.label ?? 'Unknown'
 }
 
 function RootComponent() {
