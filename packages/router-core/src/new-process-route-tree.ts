@@ -80,9 +80,33 @@ export function parseSegment(
 ): ParsedSegment {
   const next = path.indexOf('/', start)
   const end = next === -1 ? path.length : next
-  const part = path.substring(start, end)
+  const firstChar = path.charCodeAt(start)
 
-  if (!part || !part.includes('$')) {
+  if (firstChar === 36) {
+    // $ (wildcard)
+    if (end === start + 1) {
+      const total = path.length
+      output[0] = SEGMENT_TYPE_WILDCARD
+      output[1] = start
+      output[2] = start
+      output[3] = total
+      output[4] = total
+      output[5] = total
+      return output as ParsedSegment
+    }
+
+    // $paramName
+    output[0] = SEGMENT_TYPE_PARAM
+    output[1] = start
+    output[2] = start + 1 // skip '$'
+    output[3] = end
+    output[4] = end
+    output[5] = end
+    return output as ParsedSegment
+  }
+
+  const dollar = path.indexOf('$', start)
+  if (start === end || dollar === -1 || dollar >= end) {
     // early escape for static pathname
     output[0] = SEGMENT_TYPE_PATHNAME
     output[1] = start
@@ -93,29 +117,7 @@ export function parseSegment(
     return output as ParsedSegment
   }
 
-  // $ (wildcard)
-  if (part === '$') {
-    const total = path.length
-    output[0] = SEGMENT_TYPE_WILDCARD
-    output[1] = start
-    output[2] = start
-    output[3] = total
-    output[4] = total
-    output[5] = total
-    return output as ParsedSegment
-  }
-
-  // $paramName
-  if (part.charCodeAt(0) === 36) {
-    output[0] = SEGMENT_TYPE_PARAM
-    output[1] = start
-    output[2] = start + 1 // skip '$'
-    output[3] = end
-    output[4] = end
-    output[5] = end
-    return output as ParsedSegment
-  }
-
+  const part = path.substring(start, end)
   const braces = getOpenAndCloseBraces(part)
   if (braces) {
     const [openBrace, closeBrace] = braces
