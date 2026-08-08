@@ -168,7 +168,7 @@ const postQueryOptions = (postId: string) =>
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context, params }) =>
-    context.queryClient.ensureQueryData(postQueryOptions(params.postId)),
+    context.queryClient.query({ ...postQueryOptions(params.postId), staleTime: `static` }),
 })
 
 function Post() {

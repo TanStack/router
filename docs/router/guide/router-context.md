@@ -278,9 +278,10 @@ Then, in your route:
 export const Route = createFileRoute('/todos')({
   component: Todos,
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData({
+    await context.queryClient.query({
       queryKey: ['todos', { userId: user.id }],
       queryFn: fetchTodos,
+      staleTime: 'static'
     })
   },
 })
