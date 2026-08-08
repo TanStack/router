@@ -82,6 +82,8 @@ If you noticed, there are a few things going on here:
 
 > 🧠 It's common for other tools to assume that search params are always flat and string-based which is why we've chosen to keep things URLSearchParam compliant at the first level. This ultimately means that even though TanStack Router is managing your nested search params as JSON, other tools will still be able to write to the URL and read first-level params normally.
 
+> ⚠️ The default JSON-first parser can cause unexpected behavior. For example, large numbers lose precision (`?p=1000000000000001110` becomes `?p=1000000000000001200`) and numerical strings get quoted (`?p=123` becomes `?p="123"`). To avoid this, set `search.raw: true` on the router to preserve all search param values as plain strings.
+
 ## Validating and Typing Search Params
 
 Despite TanStack Router being able to parse search params into reliable JSON, they ultimately still came from **a user-facing raw-text input**. Similar to other serialization boundaries, this means that before you consume search params, they should be validated into a format that your application can trust and rely on.

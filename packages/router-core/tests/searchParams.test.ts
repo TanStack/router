@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'vitest'
-import { defaultParseSearch, defaultStringifySearch } from '../src'
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+  parseSearchWith,
+  stringifySearchWith,
+} from '../src'
 
 describe('Search Params serialization and deserialization', () => {
   /*
@@ -39,6 +44,82 @@ describe('Search Params serialization and deserialization', () => {
     const str = defaultStringifySearch(input)
     expect(str).toEqual(expected)
     expect(defaultParseSearch(str)).toEqual(input)
+  })
+
+  /*
+   * JSON-compatible objects can be serialized without type inference
+   * and then deserialized back into the original object.
+   */
+  test.each([
+    [{}, ''],
+    [{ foo: '' }, '?foo='],
+    [{ foo: 'bar' }, '?foo=bar'],
+    [{ foo: 'bar baz' }, '?foo=bar+baz'],
+    [{ foo: 123 }, '?foo=123'],
+    [{ foo: '123' }, '?foo=%22123%22'],
+    [{ foo: true }, '?foo=true'],
+    [{ foo: 'true' }, '?foo=%22true%22'],
+    [{ foo: null }, '?foo=null'],
+    [{ foo: 'null' }, '?foo=%22null%22'],
+    [{ foo: 'undefined' }, '?foo=undefined'],
+    [{ foo: {} }, '?foo=%7B%7D'],
+    [{ foo: '{}' }, '?foo=%22%7B%7D%22'],
+    [{ foo: [] }, '?foo=%5B%5D'],
+    [{ foo: '[]' }, '?foo=%22%5B%5D%22'],
+    [{ foo: [1, 2, 3] }, '?foo=%5B1%2C2%2C3%5D'],
+    [{ foo: '1,2,3' }, '?foo=1%2C2%2C3'],
+    [{ foo: { bar: 'baz' } }, '?foo=%7B%22bar%22%3A%22baz%22%7D'],
+    [{ 0: 1 }, '?0=1'],
+    [{ 'foo=bar': 1 }, '?foo%3Dbar=1'],
+    [{ '{}': 1 }, '?%7B%7D=1'],
+    [{ '': 1 }, '?=1'],
+    [{ '=': '=' }, '?%3D=%3D'],
+    [{ '=': '', '': '=' }, '?%3D=&=%3D'],
+    [{ 'foo=2&bar': 3 }, '?foo%3D2%26bar=3'],
+    [{ 'foo?': 1 }, '?foo%3F=1'],
+    [{ foo: 'bar=' }, '?foo=bar%3D'],
+    [{ foo: '2&bar=3' }, '?foo=2%26bar%3D3'],
+  ])('isomorphism (no type infer) %j', (input, expected) => {
+    const str = defaultStringifySearch(input)
+    expect(str).toEqual(expected)
+    const parseSearch = parseSearchWith(undefined, { inferTypes: false })
+    expect(parseSearch(str)).toEqual(input)
+  })
+
+  /*
+   * JSON parsing and type inference can be disabled
+   */
+  test.each([
+    [{}, ''],
+    [{ foo: '' }, '?foo='],
+    [{ foo: 'bar' }, '?foo=bar'],
+    [{ foo: 'bar baz' }, '?foo=bar+baz'],
+    [{ foo: '123' }, '?foo=123'],
+    [{ foo: '123' }, '?foo=123'],
+    [{ foo: 'true' }, '?foo=true'],
+    [{ foo: 'null' }, '?foo=null'],
+    [{ foo: 'undefined' }, '?foo=undefined'],
+    [{ foo: '{}' }, '?foo=%7B%7D'],
+    [{ foo: '[]' }, '?foo=%5B%5D'],
+    [{ foo: '[1, 2, 3]' }, '?foo=%5B1%2C+2%2C+3%5D'],
+    [{ foo: '1,2,3' }, '?foo=1%2C2%2C3'],
+    [{ foo: "{ bar: 'baz' }" }, '?foo=%7B+bar%3A+%27baz%27+%7D'],
+    [{ 0: '1' }, '?0=1'],
+    [{ 'foo=bar': '1' }, '?foo%3Dbar=1'],
+    [{ '{}': '1' }, '?%7B%7D=1'],
+    [{ '': '1' }, '?=1'],
+    [{ '=': '=' }, '?%3D=%3D'],
+    [{ '=': '', '': '=' }, '?%3D=&=%3D'],
+    [{ 'foo=2&bar': '3' }, '?foo%3D2%26bar=3'],
+    [{ 'foo?': '1' }, '?foo%3F=1'],
+    [{ foo: 'bar=' }, '?foo=bar%3D'],
+    [{ foo: '2&bar=3' }, '?foo=2%26bar%3D3'],
+  ])('isomorphism (raw) %j', (input, expected) => {
+    const stringifySearch = stringifySearchWith(null, null)
+    const str = stringifySearch(input)
+    expect(str).toEqual(expected)
+    const parseSearch = parseSearchWith(null, { inferTypes: false })
+    expect(parseSearch(str)).toEqual(input)
   })
 
   test('undefined values are removed during stringification', () => {
