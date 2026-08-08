@@ -305,18 +305,24 @@ function getEnumerableOwnKeys(o: object) {
   // "clone-friendly" -> bail. This replaces an O(n) loop of
   // `propertyIsEnumerable` calls with two native calls.
   const keys = Object.keys(o)
-  if (keys.length !== Object.getOwnPropertyNames(o).length) return false
+  if (keys.length !== Object.getOwnPropertyNames(o).length) {
+    return false
+  }
 
   // Only check symbols if the object has any (most plain objects don't)
   const symbols = Object.getOwnPropertySymbols(o)
 
   // Fast path: no symbols, return enumerable string keys directly
-  if (symbols.length === 0) return keys
+  if (symbols.length === 0) {
+    return keys
+  }
 
   // Slow path: has symbols, include only enumerable ones, bail on any
   // non-enumerable symbol so it round-trips like the string-key check above.
   for (const symbol of symbols) {
-    if (!isEnumerable.call(o, symbol)) return false
+    if (!isEnumerable.call(o, symbol)) {
+      return false
+    }
     ;(keys as Array<string | symbol>).push(symbol)
   }
   return keys
