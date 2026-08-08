@@ -1,5 +1,30 @@
 # @tanstack/solid-router
 
+## 1.170.22
+
+### Patch Changes
+
+- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
+  - @tanstack/router-core@1.171.19
+
+## 1.170.21
+
+### Patch Changes
+
+- [#7970](https://github.com/TanStack/router/pull/7970) [`2435885`](https://github.com/TanStack/router/commit/2435885fa8b5e31c8c4b74d93920919f27316ebf) - createFileRoute does not rely on FileRoute class
+
+- [#7985](https://github.com/TanStack/router/pull/7985) [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b) - perf: compact private bundle boundaries- [#7975](https://github.com/TanStack/router/issues/7975)
+
+- [#7971](https://github.com/TanStack/router/pull/7971) [`86bf510`](https://github.com/TanStack/router/commit/86bf510c2923afb76804223bd04afc2a809b33e7) - clean intersection observer options in link component
+
+- [#7967](https://github.com/TanStack/router/pull/7967) [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c) - Preserve path params in their raw string form while matching routes so structured values returned by `params.parse` produce stable match IDs and do not reuse stale loader data.
+
+  `RouterCore.getMatchedRoutes()` now returns `[matchedRoutes, rawParams, foundRoute]` instead of an object.
+
+- Updated dependencies [[`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
+  - @tanstack/router-core@1.171.18
+  - @tanstack/history@1.162.1
+
 ## 1.170.20
 
 ### Patch Changes

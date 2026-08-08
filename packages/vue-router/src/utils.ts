@@ -32,7 +32,7 @@ export const usePrevious = (fn: () => boolean) => {
  *
  * @param ref - The ref to observe
  * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
- * @param options - The options to pass to the hook
+ * @param disabled - Whether observation is disabled
  * @param callback - The callback to call when the intersection changes
  * @returns The IntersectionObserver instance
  * @example
@@ -43,7 +43,7 @@ export const usePrevious = (fn: () => boolean) => {
  *  ref,
  *  (entry) => { doSomething(entry) },
  *  { rootMargin: '10px' },
- *  { disabled: false }
+ *  () => false
  * )
  * return <div ref={ref} />
  * ```
@@ -52,7 +52,7 @@ export function useIntersectionObserver<T extends Element>(
   ref: Vue.Ref<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
   intersectionObserverOptions: IntersectionObserverInit = {},
-  options: { disabled?: boolean | (() => boolean) } = {},
+  disabled: () => boolean,
 ): Vue.Ref<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =
     typeof IntersectionObserver === 'function'
@@ -61,12 +61,7 @@ export function useIntersectionObserver<T extends Element>(
   // Use watchEffect with cleanup to properly manage the observer lifecycle
   Vue.watchEffect((onCleanup) => {
     const r = ref.value
-    // Support both static boolean and function for disabled check
-    const isDisabled =
-      typeof options.disabled === 'function'
-        ? options.disabled()
-        : options.disabled
-    if (!r || !isIntersectionObserverAvailable || isDisabled) {
+    if (!r || !isIntersectionObserverAvailable || disabled()) {
       return
     }
 

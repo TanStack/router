@@ -8,11 +8,13 @@ on:
     paths:
       - 'packages/**'
       - 'benchmarks/**'
+      - 'scripts/benchmarks/bundle-size/**'
   push:
     branches: [main]
     paths:
       - 'packages/**'
       - 'benchmarks/**'
+      - 'scripts/benchmarks/bundle-size/**'
   workflow_dispatch:
 
 concurrency:

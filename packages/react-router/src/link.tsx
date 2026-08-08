@@ -19,9 +19,11 @@ import { useForwardedRef, useIntersectionObserver } from './utils'
 
 import { useHydrated } from './ClientOnly'
 import type {
+  ActiveOptions,
   AnyRouter,
   Constrain,
   LinkOptions,
+  ParsedLocation,
   RegisteredRouter,
   RoutePaths,
 } from '@tanstack/router-core'
@@ -30,6 +32,114 @@ import type {
   ValidateLinkOptions,
   ValidateLinkOptionsArray,
 } from './typePrimitives'
+
+type LinkState = [
+  href: string | undefined,
+  externalLink: string | undefined,
+  isActive: boolean,
+]
+
+// Keep a referentially stable value while the contents are equal. Links
+// routinely pass inline `params` / `search` object literals, which would
+// otherwise change `_options` identity on every parent render, rebuild the
+// store selector, and discard its memoized selection.
+//
+// `ignoreUndefined: false` is required: an explicit `undefined` clears an
+// inherited param or search key, so `{}` and `{ category: undefined }` build
+// different locations and must not be treated as equal here.
+function useValueStable<T>(value: T): T {
+  const ref = React.useRef(value)
+  // `deepEqual` short-circuits on reference equality, so this covers both cases.
+  if (!deepEqual(ref.current, value, { ignoreUndefined: false })) {
+    ref.current = value
+  }
+  return ref.current
+}
+
+function compareLinkState(a: LinkState, b: LinkState) {
+  return a[0] === b[0] && a[1] === b[1] && a[2] === b[2]
+}
+
+function resolveExternalLink(
+  hrefOption: { href: string; external?: boolean } | undefined,
+  to: unknown,
+  protocolAllowlist: AnyRouter['protocolAllowlist'],
+): string | undefined {
+  if (hrefOption?.external) {
+    // Block dangerous protocols for external links
+    if (isDangerousProtocol(hrefOption.href, protocolAllowlist)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${hrefOption.href}`)
+      }
+      return undefined
+    }
+    return hrefOption.href
+  }
+  if (isSafeInternal(to)) {
+    return undefined
+  }
+  if (typeof to !== 'string' || to.indexOf(':') === -1) {
+    return undefined
+  }
+  try {
+    new URL(to)
+    // Block dangerous protocols like javascript:, blob:, data:
+    if (isDangerousProtocol(to, protocolAllowlist)) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${to}`)
+      }
+      return undefined
+    }
+    return to
+  } catch {}
+  return undefined
+}
+
+function resolveIsActive(
+  location: ParsedLocation,
+  next: ParsedLocation,
+  activeOptions: ActiveOptions | undefined,
+  basepath: string,
+  isHydrated: boolean,
+  isExternal: boolean,
+): boolean {
+  if (isExternal) {
+    return false
+  }
+  if (activeOptions?.exact) {
+    const testExact = exactPathTest(location.pathname, next.pathname, basepath)
+    if (!testExact) {
+      return false
+    }
+  } else {
+    const currentPathSplit = removeTrailingSlash(location.pathname, basepath)
+    const nextPathSplit = removeTrailingSlash(next.pathname, basepath)
+
+    const pathIsFuzzyEqual =
+      currentPathSplit.startsWith(nextPathSplit) &&
+      (currentPathSplit.length === nextPathSplit.length ||
+        currentPathSplit[nextPathSplit.length] === '/')
+
+    if (!pathIsFuzzyEqual) {
+      return false
+    }
+  }
+
+  if (activeOptions?.includeSearch ?? true) {
+    const searchTest = deepEqual(location.search, next.search, {
+      partial: !activeOptions?.exact,
+      ignoreUndefined: !activeOptions?.explicitUndefined,
+    })
+    if (!searchTest) {
+      return false
+    }
+  }
+
+  if (activeOptions?.includeHash) {
+    return isHydrated && location.hash === next.hash
+  }
+  return true
+}
 
 /**
  * Build anchor-like props for declarative navigation and preloading.
@@ -382,6 +492,12 @@ export function useLinkProps<
   const isHydrated = useHydrated()
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
+  const stableSearch = useValueStable(options.search)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const stableParams = useValueStable(options.params)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const stableActiveOptions = useValueStable(activeOptions)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -391,136 +507,64 @@ export function useLinkProps<
       options._fromLocation,
       options.hash,
       options.to,
-      options.search,
-      options.params,
+      stableSearch,
+      stableParams,
       options.state,
       options.mask,
       options.unsafeRelative,
     ],
   )
 
+  // Derive inside the selector so `compareLinkState` can bail out. Deriving after
+  // the subscription instead re-renders every link on every navigation, because
+  // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const currentLocation = useStore(
-    router.stores.location,
-    (l) => l,
-    (prev, next) => prev.href === next.href,
-  )
+  const selectLinkState = React.useCallback(
+    (location: ParsedLocation): LinkState => {
+      const next = router.buildLocation({
+        _fromLocation: location,
+        ..._options,
+      } as any)
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const next = React.useMemo(() => {
-    const opts = { _fromLocation: currentLocation, ..._options }
-    return router.buildLocation(opts as any)
-  }, [router, currentLocation, _options])
-
-  // Use publicHref - it contains the correct href for display
-  // When a rewrite changes the origin, publicHref is the full URL
-  // Otherwise it's the origin-stripped path
-  // This avoids constructing URL objects in the hot path
-  const hrefOptionPublicHref = next.maskedLocation
-    ? next.maskedLocation.publicHref
-    : next.publicHref
-  const hrefOptionExternal = next.maskedLocation
-    ? next.maskedLocation.external
-    : next.external
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const hrefOption = React.useMemo(
-    () =>
-      getHrefOption(
-        hrefOptionPublicHref,
-        hrefOptionExternal,
+      // Use publicHref - it contains the correct href for display
+      // When a rewrite changes the origin, publicHref is the full URL
+      // Otherwise it's the origin-stripped path
+      // This avoids constructing URL objects in the hot path
+      const hrefOption = getHrefOption(
+        next.maskedLocation ? next.maskedLocation.publicHref : next.publicHref,
+        next.maskedLocation ? next.maskedLocation.external : next.external,
         router.history,
         disabled,
-      ),
-    [disabled, hrefOptionExternal, hrefOptionPublicHref, router.history],
+      )
+
+      const externalLink = resolveExternalLink(
+        hrefOption,
+        to,
+        router.protocolAllowlist,
+      )
+
+      return [
+        hrefOption?.href,
+        externalLink,
+        resolveIsActive(
+          location,
+          next,
+          stableActiveOptions,
+          router.basepath,
+          isHydrated,
+          externalLink !== undefined,
+        ),
+      ]
+    },
+    [stableActiveOptions, disabled, isHydrated, _options, router, to],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const externalLink = React.useMemo(() => {
-    if (hrefOption?.external) {
-      // Block dangerous protocols for external links
-      if (isDangerousProtocol(hrefOption.href, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(
-            `Blocked Link with dangerous protocol: ${hrefOption.href}`,
-          )
-        }
-        return undefined
-      }
-      return hrefOption.href
-    }
-    const safeInternal = isSafeInternal(to)
-    if (safeInternal) return undefined
-    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
-    try {
-      new URL(to as any)
-      // Block dangerous protocols like javascript:, blob:, data:
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${to}`)
-        }
-        return undefined
-      }
-      return to
-    } catch {}
-    return undefined
-  }, [to, hrefOption, router.protocolAllowlist])
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isActive = React.useMemo(() => {
-    if (externalLink) return false
-    if (activeOptions?.exact) {
-      const testExact = exactPathTest(
-        currentLocation.pathname,
-        next.pathname,
-        router.basepath,
-      )
-      if (!testExact) {
-        return false
-      }
-    } else {
-      const currentPathSplit = removeTrailingSlash(
-        currentLocation.pathname,
-        router.basepath,
-      )
-      const nextPathSplit = removeTrailingSlash(next.pathname, router.basepath)
-
-      const pathIsFuzzyEqual =
-        currentPathSplit.startsWith(nextPathSplit) &&
-        (currentPathSplit.length === nextPathSplit.length ||
-          currentPathSplit[nextPathSplit.length] === '/')
-
-      if (!pathIsFuzzyEqual) {
-        return false
-      }
-    }
-
-    if (activeOptions?.includeSearch ?? true) {
-      const searchTest = deepEqual(currentLocation.search, next.search, {
-        partial: !activeOptions?.exact,
-        ignoreUndefined: !activeOptions?.explicitUndefined,
-      })
-      if (!searchTest) {
-        return false
-      }
-    }
-
-    if (activeOptions?.includeHash) {
-      return isHydrated && currentLocation.hash === next.hash
-    }
-    return true
-  }, [
-    activeOptions?.exact,
-    activeOptions?.explicitUndefined,
-    activeOptions?.includeHash,
-    activeOptions?.includeSearch,
-    currentLocation,
-    externalLink,
-    isHydrated,
-    next.hash,
-    next.pathname,
-    next.search,
-    router.basepath,
-  ])
+  const [href, externalLink, isActive] = useStore(
+    router.stores.location,
+    selectLinkState,
+    compareLinkState,
+  )
 
   // Get the active props
   const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
@@ -563,13 +607,13 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const doPreload = React.useCallback(() => {
-    router
-      .preloadRoute({ ..._options, _builtLocation: next } as any)
-      .catch((err) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
-  }, [router, _options, next])
+    // `preloadRoute` builds the location itself; it is no longer held in render
+    // state. It only reads the options, so `_options` can go through as-is.
+    router.preloadRoute(_options as any).catch((err) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
+  }, [router, _options])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const preloadViewportIoCallback = React.useCallback(
@@ -586,7 +630,7 @@ export function useLinkProps<
     innerRef,
     preloadViewportIoCallback,
     intersectionObserverOptions,
-    { disabled: !!disabled || !(preload === 'viewport') },
+    !!disabled || preload !== 'viewport',
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -699,7 +743,7 @@ export function useLinkProps<
     ...propsSafeToSpread,
     ...resolvedActiveProps,
     ...resolvedInactiveProps,
-    href: hrefOption?.href,
+    href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onBlur: composeHandlers([onBlur, handleLeave]),

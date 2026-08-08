@@ -722,6 +722,19 @@ executing them.
 
 Pending UI is presentation, not partial semantic commit.
 
+An exact successful match remains successful while `beforeLoad` or a blocking
+loader revalidates it only when the same successful, non-not-found prefix is in
+both the transaction's committed base and its starting presentation.
+`isFetching` exposes that work without replacing its rendered UI. A cache-only
+success, a different match ID, or a success hidden below a terminal boundary has
+no retained presentation and remains eligible for pending UI. Explicit
+force-pending invalidation already changes the committed generation to pending
+and therefore overrides retention.
+
+The initial pending offer for a fuzzy not-found lane waits until lazy route
+options resolve its boundary. This prevents a provisional ancestor boundary
+from replacing the mounted presentation before ownership moves to a lazy child.
+
 The first unresolved boundary is the only pending candidate. Its route or the
 router default must provide a pending component, and its effective `pendingMs`
 must allow presentation. Core does not skip an ineligible ancestor to expose an

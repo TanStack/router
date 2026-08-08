@@ -1,5 +1,31 @@
 # @tanstack/start-client-core
 
+## 1.170.19
+
+### Patch Changes
+
+- [#7978](https://github.com/TanStack/router/pull/7978) [`2fbc99f`](https://github.com/TanStack/router/commit/2fbc99f2c262b057cb957e6ebba1ee073c655186) - compact private frame decoder result keys
+
+- [#7980](https://github.com/TanStack/router/pull/7980) [`6bede65`](https://github.com/TanStack/router/commit/6bede65d7074dcd83455151b66b4574268bc782c) - compact deferred hydration private state
+
+## 1.170.18
+
+### Patch Changes
+
+- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
+  - @tanstack/router-core@1.171.19
+  - @tanstack/start-storage-context@1.167.21
+
+## 1.170.17
+
+### Patch Changes
+
+- [#7985](https://github.com/TanStack/router/pull/7985) [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b) - perf: compact private bundle boundaries- [#7975](https://github.com/TanStack/router/issues/7975)
+
+- Updated dependencies [[`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
+  - @tanstack/router-core@1.171.18
+  - @tanstack/start-storage-context@1.167.20
+
 ## 1.170.16
 
 ### Patch Changes

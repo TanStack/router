@@ -357,6 +357,7 @@ async function contextualize(
   options: ExecuteLaneOptions,
   end: number,
   planSuccessfulLane: () => void,
+  retainedEnd: number,
 ): Promise<IndexedOutcome | undefined> {
   const [location, matches] = lane
   const signal = options[0 /* controller */].signal
@@ -433,7 +434,8 @@ async function contextualize(
     }
 
     const previousStatus = match.status
-    if (previousStatus === 'success') {
+    // Retain only a success that is mounted through the same valid prefix.
+    if (previousStatus === 'success' && index >= retainedEnd) {
       match.status = 'pending'
     }
     options[8 /* onReady */]?.()
@@ -511,40 +513,21 @@ function transferMatchResources(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   next?: Array<AnyRouteMatch>,
+  deferSameIdFlight?: true,
 ): void {
   const abort: Array<AbortController> = []
   for (const match of previous as Array<WorkMatch>) {
     if (!next?.includes(match)) {
       const flight = match._flight
       match._flight = undefined
-      const controller = releaseOwnedFlight(router, match, flight)
-      if (controller) {
-        abort.push(controller)
-      }
-    }
-  }
-  for (const controller of abort) {
-    controller.abort()
-  }
-}
-
-function transferPredecessorResources(
-  router: AnyRouter,
-  previous: Array<AnyRouteMatch>,
-  next: Array<AnyRouteMatch>,
-): void {
-  const abort: Array<AbortController> = []
-  for (const match of previous as Array<WorkMatch>) {
-    if (!next.includes(match)) {
-      const flight = match._flight
-      match._flight = undefined
       if (
+        deferSameIdFlight &&
         flight?.[2 /* leases */] === 1 &&
         router._flights?.get(match.id) === flight &&
         !(
           process.env.NODE_ENV !== 'production' && router._tx?.[6 /* refresh */]
         ) &&
-        next.some((candidate) => candidate.id === match.id)
+        next?.some((candidate) => candidate.id === match.id)
       ) {
         // The successor has not made its same-ID reload decision yet.
         flight[2 /* leases */] = 0
@@ -554,19 +537,6 @@ function transferPredecessorResources(
           abort.push(controller)
         }
       }
-    }
-  }
-  for (const controller of abort) {
-    controller.abort()
-  }
-}
-
-function releaseUnownedFlights(router: AnyRouter): void {
-  const abort: Array<AbortController> = []
-  for (const [id, flight] of router._flights ?? []) {
-    if (!flight[2 /* leases */]) {
-      router._flights!.delete(id)
-      abort.push(flight[1 /* controller */])
     }
   }
   for (const controller of abort) {
@@ -775,6 +745,7 @@ function createLoaderTask(
   tasks: Array<LoaderTask>,
   semanticParent: Promise<WorkMatch> | undefined,
   options: ExecuteLaneOptions,
+  retainedEnd: number,
 ): Promise<WorkMatch> {
   const match = lane[1 /* matches */][index]!
   const route = getRoute(router, match)
@@ -879,11 +850,9 @@ function createLoaderTask(
     const acceptedFlight = match._flight
     match._flight = donor
     releaseOwnedFlight(router, match, acceptedFlight)?.abort()
-    // A successful route without a loader has no blocking work to present. It
-    // still gets a task so its chunk and derived assets participate in the
-    // lane, but putting it back into pending would hide an already-rendered
-    // ancestor while only a descendant is loading.
-    if (match.status === 'success') {
+    // A successful route without a loader has no blocking work to present. A
+    // mounted success likewise remains renderable while its loader revalidates.
+    if (match.status === 'success' && index >= retainedEnd) {
       match.status = 'pending'
     }
     options[8 /* onReady */]?.()
@@ -1173,18 +1142,19 @@ async function reduceLane(
       }
     }
     install()
+    const route = getRoute(router, match)
     try {
       await waitFor<unknown>(
         outcome
           ? Promise.resolve().then(() =>
               loadRouteChunk(
-                getRoute(router, match),
+                route,
                 kind === ERROR ? 'errorComponent' : 'notFoundComponent',
               ),
             )
           : Promise.all([
-              loadRouteChunk(getRoute(router, match)),
-              loadRouteChunk(getRoute(router, match), 'notFoundComponent'),
+              loadRouteChunk(route),
+              loadRouteChunk(route, 'notFoundComponent'),
             ]),
         controller.signal,
       )
@@ -1268,6 +1238,7 @@ async function executeClientLane(
   options: ExecuteLaneOptions,
 ): Promise<LaneResult> {
   const matched = [location, matches as Array<WorkMatch>] as MatchedLane
+  const presented = router.stores.matches.get()
   let plannedBoundary = matches.findIndex((match) => match._notFound)
   if (router.options.notFoundMode !== 'root' && plannedBoundary >= 0) {
     const boundary = await getNotFoundBoundary(
@@ -1284,6 +1255,24 @@ async function executeClientLane(
     plannedBoundary = boundary
   }
   let end = plannedBoundary < 0 ? matches.length : plannedBoundary + 1
+  let retainedEnd = 0
+  while (retainedEnd < end && retainedEnd !== plannedBoundary) {
+    const match = matches[retainedEnd]!
+    const committed = options[3 /* base */][retainedEnd]
+    const visible = presented[retainedEnd]
+    if (
+      committed?.id !== match.id ||
+      committed.status !== 'success' ||
+      committed._notFound ||
+      match.preload ||
+      visible?.id !== match.id ||
+      visible.status !== 'success' ||
+      visible._notFound
+    ) {
+      break
+    }
+    retainedEnd++
+  }
   const tasks: Array<LoaderTask> = []
   const start = options[7 /* resolvedPrefix */] ?? 0
   let semanticParent = start
@@ -1301,6 +1290,7 @@ async function executeClientLane(
         tasks,
         semanticParent,
         options,
+        retainedEnd,
       )
     }
   }
@@ -1313,6 +1303,7 @@ async function executeClientLane(
     options,
     end,
     planSuccessfulLane,
+    retainedEnd,
   )
   if (failure) {
     options[5 /* sync */] = true
@@ -1331,7 +1322,16 @@ async function executeClientLane(
     planSuccessfulLane()
   }
   if (options[2 /* isCurrent */]() && !options[4 /* preload */]) {
-    releaseUnownedFlights(router)
+    const abort: Array<AbortController> = []
+    for (const [id, flight] of router._flights ?? []) {
+      if (!flight[2 /* leases */]) {
+        router._flights!.delete(id)
+        abort.push(flight[1 /* controller */])
+      }
+    }
+    for (const controller of abort) {
+      controller.abort()
+    }
   }
   let reduced: ReducedLane | ControlOutcome
   try {
@@ -1377,49 +1377,6 @@ async function executeClientLane(
 }
 
 /**
- * Finds the first route that should show pending UI and its two timing values.
- * A fallback already on screen remains selected after its route loads, so we
- * do not jump to a child fallback. Matches put back into pending by invalidation
- * skip pendingMs, and a route without a usable fallback blocks pending UI for deeper routes.
- */
-function pendingConfig(
-  router: AnyRouter,
-  matches: Array<AnyRouteMatch>,
-):
-  | [delay: number, boundary: number, min: number, component: unknown]
-  | undefined
-  | void {
-  const presented = router.stores.matches.get()
-  for (let index = 0; index < matches.length; index++) {
-    const match = matches[index]!
-    const success = match.status === 'success'
-    const visible =
-      success &&
-      presented[index]?.id === match.id &&
-      presented[index]?.status === 'pending'
-    if (success && !visible) {
-      continue
-    }
-    const route = getRoute(router, match as WorkMatch)
-    const delay =
-      visible || match.invalid
-        ? 0
-        : (route.options.pendingMs ?? router.options.defaultPendingMs)
-    const component =
-      route.options.pendingComponent ??
-      (router.options as any).defaultPendingComponent
-    return component && typeof delay === 'number' && delay !== Infinity
-      ? [
-          delay,
-          index,
-          route.options.pendingMinMs ?? router.options.defaultPendingMinMs ?? 0,
-          component,
-        ]
-      : undefined
-  }
-}
-
-/**
  * Waits for `pendingMs`, then presents the complete lane. Rendering applies the
  * selected boundary cutoff while retaining every match's structural state.
  * A replacement load for the same match keeps the timer; choosing a different
@@ -1445,12 +1402,41 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
       router._pending = session = undefined
     }
   }
-  const config = pendingConfig(router, tx[3 /* matches */])
-  if (!config) {
+  const matches = tx[3 /* matches */]
+  const presented = router.stores.matches.get()
+  let boundary = -1
+  let delay: number | undefined
+  let min!: number
+  let component: unknown
+  let presentedPending = false
+  for (let index = 0; index < matches.length; index++) {
+    const match = matches[index]!
+    const success = match.status === 'success'
+    presentedPending =
+      presented[index]?.id === match.id &&
+      presented[index]?.status === 'pending'
+    if (success && !presentedPending) {
+      continue
+    }
+    const route = getRoute(router, match as WorkMatch)
+    delay =
+      (success && presentedPending) || match.invalid
+        ? 0
+        : (route.options.pendingMs ?? router.options.defaultPendingMs)
+    component =
+      route.options.pendingComponent ??
+      (router.options as any).defaultPendingComponent
+    if (!component || typeof delay !== 'number' || delay === Infinity) {
+      return
+    }
+    boundary = index
+    min = route.options.pendingMinMs ?? router.options.defaultPendingMinMs ?? 0
+    break
+  }
+  if (boundary < 0) {
     return
   }
-  const [delay, boundary, min, component] = config
-  const matchId = tx[3 /* matches */][boundary]!.id
+  const matchId = matches[boundary]!.id
   if (
     !session ||
     session[1 /* boundary */] !== boundary ||
@@ -1459,14 +1445,12 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     // Hydration and redirects can preserve pending presentation without a session.
     // Do not delay it again; conservatively start pendingMinMs from now.
     clearTimeout(session?.[3 /* timer */])
-    const presented = router.stores.matches.get()[boundary]
-    const visible = presented?.id === matchId && presented.status === 'pending'
     router._pending = session = [
       tx,
       boundary,
-      visible ? Date.now() + min : tx[4 /* startedAt */] + delay,
+      presentedPending ? Date.now() + min : tx[4 /* startedAt */] + delay!,
       undefined,
-      visible ? Promise.resolve(true) : undefined,
+      presentedPending ? Promise.resolve(true) : undefined,
       component,
     ]
   }
@@ -1482,14 +1466,15 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     clearTimeout(session[3 /* timer */])
     const remaining = session[2 /* deadline */] - Date.now()
     if (remaining > 0) {
-      session[3 /* timer */] = setTimeout(() => {
-        offerPending(router, tx)
-      }, remaining)
+      session[3 /* timer */] = setTimeout(
+        () => offerPending(router, tx),
+        remaining,
+      )
       return
     }
     session[2 /* deadline */] = 0
   }
-  const offered = tx[3 /* matches */].map((match) => ({
+  const offered = matches.map((match) => ({
     ...match,
     _flight: undefined,
   }))
@@ -2149,10 +2134,11 @@ export async function loadClientRoute(
       }
     }
     previousOwner[0 /* controller */].abort()
-    transferPredecessorResources(
+    transferMatchResources(
       router,
       previousOwner[3 /* matches */],
       tx[3 /* matches */],
+      true,
     )
   }
   if (router._tx !== tx) {
@@ -2165,7 +2151,11 @@ export async function loadClientRoute(
     router.stores.status.set('pending')
     router.stores.location.set(location)
   })
-  offerPending(router, tx)
+  // Cold loads have no committed UI to retain, but provisional not-found
+  // matches must wait for lazy routes to place the final boundary.
+  if (!resolvedLocation && !matches.some((match) => match._notFound)) {
+    offerPending(router, tx)
+  }
   try {
     await tx[5 /* done */]
   } finally {

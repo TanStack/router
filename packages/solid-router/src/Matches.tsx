@@ -66,10 +66,7 @@ function MatchesInner() {
   const routeId = () => router.stores.ids.get()[0]
   const match = () =>
     routeId() ? router.stores.byRoute.get(routeId()!)?.get() : undefined
-  const nearestMatch = {
-    routeId,
-    match,
-  }
+  const nearestMatch = [routeId, match] as const
 
   const matchComponent = () => {
     return (
@@ -219,7 +216,7 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextRouteId = Solid.useContext(nearestMatchContext).routeId
+  const contextRouteId = Solid.useContext(nearestMatchContext)[0 /* route id */]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
@@ -238,7 +235,7 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextRouteId = Solid.useContext(nearestMatchContext).routeId
+  const contextRouteId = Solid.useContext(nearestMatchContext)[0 /* route id */]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
