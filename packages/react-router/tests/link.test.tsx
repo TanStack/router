@@ -953,6 +953,26 @@ describe('Link', () => {
         expect(relativeFoo).toHaveAttribute('href', '/invoices/foo')
       })
     })
+
+    test('relative links from root keep javascript-like segments rooted', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <Link to="../javascript:alert(1)">Continue</Link>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      render(<RouterProvider router={router} />)
+
+      expect(
+        await screen.findByRole('link', { name: 'Continue' }),
+      ).toHaveAttribute('href', '/javascript:alert(1)')
+    })
   })
 
   test('when the current route is the root with beforeLoad that throws', async () => {
