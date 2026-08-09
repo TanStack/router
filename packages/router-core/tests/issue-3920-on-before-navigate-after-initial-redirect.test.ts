@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { expect, test } from 'vitest'
+import { expect, onTestFinished, test } from 'vitest'
 import { BaseRootRoute, BaseRoute, redirect } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
@@ -30,9 +30,10 @@ test('onBeforeNavigate fires after the initial load redirects', async () => {
   expect(router.state.location.pathname).toBe('/target')
 
   const navigatedPaths: Array<string> = []
-  router.subscribe('onBeforeNavigate', (event) => {
+  const unsub = router.subscribe('onBeforeNavigate', (event) => {
     navigatedPaths.push(event.toLocation.pathname)
   })
+  onTestFinished(unsub)
 
   await router.navigate({ to: '/third' })
 
