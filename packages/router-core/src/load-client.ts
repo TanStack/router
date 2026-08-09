@@ -1665,10 +1665,7 @@ function rollbackPublication(
   }
 
   finishPending(router, tx)
-  router.batch(() => {
-    router.stores.status.set('idle')
-    router.stores.setMatches(checkpoint.previousPresentation)
-  })
+  setIdleMatches(router, checkpoint.previousPresentation)
   tx[0 /* controller */].abort()
   transferMatchResources(router, discarded, restored)
   discardBackground(router, lane)
@@ -1775,10 +1772,7 @@ function restoreCommitted(
   if (router._tx !== tx) {
     return
   }
-  router.batch(() => {
-    router.stores.status.set('idle')
-    router.stores.setMatches(router._committed)
-  })
+  setIdleMatches(router, router._committed)
   if (router._tx === tx) {
     router._commitPromise?.resolve()
     router._commitPromise = undefined
@@ -2631,10 +2625,14 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   router._committed = committedMatches
   router._handoff = handoff
   router._preflight = undefined
+  setIdleMatches(router, presented, !needsClientLoad)
+}
+
+function setIdleMatches(router: AnyRouter, matches: AnyRouteMatch[], skipClientLoad?: boolean) {
   router.batch(() => {
-    router.stores.setMatches(presented)
+    router.stores.setMatches(matches)
     router.stores.status.set('idle')
-    if (!needsClientLoad) {
+    if (skipClientLoad) {
       router.stores.resolvedLocation.set(router.stores.location.get())
     }
   })
