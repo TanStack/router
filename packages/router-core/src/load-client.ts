@@ -2628,7 +2628,11 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   setIdleMatches(router, presented, !needsClientLoad)
 }
 
-function setIdleMatches(router: AnyRouter, matches: AnyRouteMatch[], skipClientLoad?: boolean) {
+function setIdleMatches(
+  router: AnyRouter,
+  matches: AnyRouteMatch[],
+  skipClientLoad?: boolean,
+) {
   router.batch(() => {
     router.stores.setMatches(matches)
     router.stores.status.set('idle')
