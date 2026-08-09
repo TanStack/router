@@ -1300,6 +1300,31 @@ describe('buildLocation - relative paths', () => {
     expect(location.pathname).toBe('/a/d')
   })
 
+  test('over-root traversal stays rooted for javascript-like segments', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '../javascript:alert(1)',
+    })
+
+    expect(location.pathname).toBe('/javascript:alert(1)')
+    expect(location.href).toBe('/javascript:alert(1)')
+    expect(location.publicHref).toBe('/javascript:alert(1)')
+  })
+
   test('. should stay on current route', async () => {
     const rootRoute = new BaseRootRoute({})
     const postsRoute = new BaseRoute({
