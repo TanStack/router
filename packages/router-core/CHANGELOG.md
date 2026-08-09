@@ -1,5 +1,13 @@
 # @tanstack/router-core
 
+## 1.171.20
+
+### Patch Changes
+
+- [#8006](https://github.com/TanStack/router/pull/8006) [`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246) - skip impossible JSON parse attempts
+
+- [#8010](https://github.com/TanStack/router/pull/8010) [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a) - perf: speed up structural sharing (`replaceEqualDeep`) by computing enumerable own keys with `Object.keys` + a length compare instead of `getOwnPropertyNames` followed by a `propertyIsEnumerable` call per key. This runs on every selector result on every state update when `defaultStructuralSharing` is enabled, and is ~1.3-1.5x faster on typical router state objects with identical behavior.
+
 ## 1.171.19
 
 ### Patch Changes
