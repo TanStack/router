@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.21
+
+### Patch Changes
+
+- [#8019](https://github.com/TanStack/router/pull/8019) [`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05) - handle excessive parent relative links
+
 ## 1.171.20
 
 ### Patch Changes
