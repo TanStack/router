@@ -158,6 +158,31 @@ async function flush(n = 5) {
   for (let i = 0; i < n; i++) await Promise.resolve()
 }
 
+// Continuously drain the transform output so mid-stream assertions can
+// observe exactly which bytes have been released before the stream ends.
+function collectOutput(s: ReadableStream<Uint8Array>) {
+  let done = false
+  let received = ''
+  const finished = (async () => {
+    const reader = s.getReader()
+    while (true) {
+      const { done: d, value } = await reader.read()
+      if (d) break
+      received += Buffer.from(
+        value.buffer,
+        value.byteOffset,
+        value.byteLength,
+      ).toString('utf8')
+    }
+    done = true
+  })()
+  return {
+    finished,
+    isDone: () => done,
+    text: () => received,
+  }
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T) => void
   let reject!: (reason?: unknown) => void
@@ -801,27 +826,26 @@ describe('transformStreamWithRouter — cleanup side-effects', () => {
     }
   })
 
-  test('tail overflow errors and runs cleanup', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { router, cleanupCalls, finishSerialization } = makeRouter()
-      const upstream = makeManualUpstream()
+  test('large post-</body> content streams through instead of erroring', async () => {
+    // Previously this input threw 'SSR stream tail exceeded maximum buffer'
+    // (64KB cap on the held tail) and killed the connection mid-response.
+    // Post-</body> bytes now stream through; only the document terminator
+    // is held, so the cap (and the hard failure) no longer exist.
+    const { router, cleanupCalls, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
 
-      const out = transformStreamWithRouter(
-        router as any,
-        upstream.stream as any,
-      )
-      upstream.push(`<html><body>done</body>${'x'.repeat(64 * 1024 + 1)}`)
-      upstream.close()
-      finishSerialization()
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    const big = 'x'.repeat(64 * 1024 + 1)
+    upstream.push(`<html><body>done</body>${big}`)
+    upstream.close()
+    finishSerialization()
 
-      await expect(readAll(out as any)).rejects.toThrow(
-        'SSR stream tail exceeded maximum buffer',
-      )
-      expect(cleanupCalls.count).toBe(1)
-    } finally {
-      errorSpy.mockRestore()
-    }
+    const full = await readAll(out as any)
+    expect(full).toContain('done')
+    expect(full).toContain(big)
+    // No </html> ever arrived, so only </body> was held and emitted last.
+    expect(full.endsWith('</body>')).toBe(true)
+    expect(cleanupCalls.count).toBe(1)
   })
 
   test('router HTML overflow errors and runs cleanup', async () => {
@@ -1130,6 +1154,37 @@ describe('transformStreamWithRouter — injected HTML ordering', () => {
     }
   })
 
+  test('post-body pass-through: injection during a partial fragment waits for a safe boundary', async () => {
+    // While the scanner holds an incomplete trailing tag (leftover), an
+    // injected script must queue rather than write immediately — otherwise
+    // it could interleave into partially-flushed app output.
+    const { router, injectHtml, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    const output = collectOutput(out as any)
+
+    upstream.push('<html><body>app</body></html>')
+    // Fragment split mid-tag: first half has no closing tag boundary.
+    upstream.push('<template id="pl-1">partial')
+    await flush()
+    injectHtml('<script>data()</script>')
+    await flush()
+    expect(output.text()).not.toContain('<script>data()</script>')
+
+    upstream.push('</template><script>$df("pl-1")</script>')
+    await flush()
+    // Boundary reached: fragment flushed first, then the queued script.
+    expect(output.text()).toContain('</template>')
+    expect(output.text()).toContain('<script>data()</script>')
+    expect(output.text().indexOf('<script>data()</script>')).toBeGreaterThan(
+      output.text().indexOf('</template>'),
+    )
+
+    upstream.close()
+    finishSerialization()
+    await output.finished
+  })
+
   test('upstream writable abort surfaces; readable does not hang', async () => {
     const { router, finishSerialization } = makeRouter()
     finishSerialization()
@@ -1163,5 +1218,158 @@ describe('transformStreamWithRouter — injected HTML ordering', () => {
     } finally {
       errorSpy.mockRestore()
     }
+  })
+})
+
+// Out-of-order streaming renderers (Solid's renderToStream, same protocol as
+// Solid 1.x) emit a COMPLETE document (`…</body></html>`) as the shell and
+// then keep streaming boundary fragments (`<template>` + swap `<script>`s)
+// after </body>; browsers reparent trailing content into <body>. The
+// transform previously treated everything after the first </body> as a held
+// tail flushed only when render + serialization finished. Measured on a
+// TanStack Start (Solid) fixture: every fragment — including one whose query
+// settled at 25ms — reached the browser only at stream end, so fallbacks
+// stayed visible ~1.5s while the data was in the client cache at ~92ms; and
+// a boundary rendering ~100KB overflowed the 64KB tail cap, threw, and
+// killed the connection mid-response (ERR_INCOMPLETE_CHUNKED_ENCODING) with
+// a permanently stuck fallback. Only the document terminator
+// (`</body>[ws]</html>`) is held now; later bytes stream through.
+describe('transformStreamWithRouter — out-of-order (post-</body>) streaming', () => {
+  test('fragments after </body> flush immediately, before the stream ends', async () => {
+    const { router, injectHtml, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    const output = collectOutput(out as any)
+
+    // Complete document shell, fallbacks included (Solid shape).
+    upstream.push(
+      '<html><body><main><span>fallback</span></main></body></html>',
+    )
+    await flush()
+    // Body content released; terminator held for last.
+    expect(output.text()).toContain('<span>fallback</span>')
+    expect(output.text()).not.toContain('</body>')
+
+    // First settled boundary streams its fragment after </body>.
+    const fragment1 =
+      '<template id="pl-1">shell content</template><script>$df("pl-1")</script>'
+    upstream.push(fragment1)
+    await flush()
+    expect(output.isDone()).toBe(false)
+    expect(output.text()).toContain(fragment1)
+
+    // Router-injected data script between fragments flushes immediately…
+    injectHtml('<script>resolveQuery(2)</script>')
+    await flush()
+    expect(output.text()).toContain('<script>resolveQuery(2)</script>')
+
+    // …and therefore precedes the next fragment's markup.
+    const fragment2 =
+      '<template id="pl-2">slow content</template><script>$df("pl-2")</script>'
+    upstream.push(fragment2)
+    await flush()
+    expect(output.text()).toContain(fragment2)
+    expect(output.text().indexOf('<script>resolveQuery(2)</script>')).toBeLessThan(
+      output.text().indexOf('<template id="pl-2">'),
+    )
+
+    upstream.close()
+    finishSerialization()
+    await output.finished
+
+    // The document still terminates properly, exactly once, at the very end.
+    const full = output.text()
+    expect(full.endsWith('</body></html>')).toBe(true)
+    expect(full.indexOf('</body>')).toBe(full.lastIndexOf('</body>'))
+    expect(full.indexOf('</body>')).toBeGreaterThan(full.indexOf(fragment2))
+  })
+
+  test('a fragment larger than the old 64KB tail cap streams through and the stream completes', async () => {
+    const { router, cleanupCalls, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    const output = collectOutput(out as any)
+
+    upstream.push('<html><body><p>fallback</p></body></html>')
+    // ~100KB boundary payload (the measured hard-failure case).
+    const bigFragment = `<template id="pl-big">${'<li>row</li>'.repeat(
+      9000,
+    )}</template><script>$df("pl-big")</script>`
+    expect(bigFragment.length).toBeGreaterThan(64 * 1024)
+    upstream.push(bigFragment)
+    await flush()
+    expect(output.isDone()).toBe(false)
+    expect(output.text()).toContain('$df("pl-big")')
+
+    upstream.close()
+    finishSerialization()
+    await expect(output.finished).resolves.toBeUndefined()
+
+    expect(output.text().endsWith('</body></html>')).toBe(true)
+    expect(cleanupCalls.count).toBe(1)
+  })
+
+  test('document terminator split across chunks is still captured and emitted last', async () => {
+    const { router, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+
+    upstream.push('<html><body>app</body>')
+    upstream.push('</ht')
+    upstream.push('ml><template id="pl-1">late</template>')
+    upstream.close()
+    finishSerialization()
+
+    const full = await readAll(out as any)
+    expect(full).toBe(
+      '<html><body>app<template id="pl-1">late</template></body></html>',
+    )
+  })
+
+  test('uppercase terminator with interior whitespace, fragments after', async () => {
+    const { router, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+
+    upstream.push('<html><body>app</BODY>\n</HTML><template id="pl-1">late</template>')
+    upstream.close()
+    finishSerialization()
+
+    const full = await readAll(out as any)
+    expect(full).toBe(
+      '<html><body>app<template id="pl-1">late</template></BODY>\n</HTML>',
+    )
+  })
+
+  test('React shape (body held open until the end) is byte-identical', async () => {
+    // React's renderToPipeableStream keeps <body> open until all boundaries
+    // settle: </body></html> arrives as the final render bytes. Nothing
+    // follows the terminator, so holding it produces today's exact output:
+    // late scripts before </body>, terminator last.
+    const { router, injectHtml, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+
+    upstream.push('<html><body><div>a</div>')
+    await flush()
+    injectHtml('<script>S1</script>')
+    await flush()
+    upstream.push('<div id="B:0">boundary</div>')
+    await flush()
+    upstream.push('</body></html>')
+    upstream.close()
+    await flush()
+    // Serialization finishing after render close (typical): late script must
+    // still land before </body>.
+    injectHtml('<script>S2</script>')
+    finishSerialization()
+
+    const full = await readAll(out as any)
+    // Same bytes the pre-fix transform produced for this sequence: injected
+    // HTML flushes at the next safe boundary, late scripts precede </body>.
+    expect(full).toBe(
+      '<html><body><div>a</div><div id="B:0">boundary</div><script>S1</script>' +
+        '<script>S2</script></body></html>',
+    )
   })
 })
