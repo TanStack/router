@@ -151,20 +151,31 @@ export type UseMatchRouteOptions<
  * @returns A `matchRoute(options)` function that returns `false` or params.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/useMatchRouteHook
  */
-export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
+export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>(): <
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+) => false | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']> {
   const router = useRouter()
+  if (isServer ?? router.isServer) {
+    return (opts) => {
+      const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
+      return router.matchRoute(rest as any, {
+        pending,
+        caseSensitive,
+        fuzzy,
+        includeSearch,
+      })
+    }
+  }
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   return React.useCallback(
-    <
-      const TFrom extends string = string,
-      const TTo extends string | undefined = undefined,
-      const TMaskFrom extends string = TFrom,
-      const TMaskTo extends string = '',
-    >(
-      opts: UseMatchRouteOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
-    ):
-      | false
-      | Expand<ResolveRoute<TRouter, TFrom, TTo>['types']['allParams']> => {
+    (opts) => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
 
       return router.matchRoute(rest as any, {
@@ -174,21 +185,15 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
         includeSearch,
       })
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    (isServer ?? router.isServer)
-      ? [router]
-      : [
-          router,
-          // eslint-disable-next-line react-hooks/rules-of-hooks
-          useStore(router.stores.location, (location) => location.href),
-          // eslint-disable-next-line react-hooks/rules-of-hooks
-          useStore(
-            router.stores.resolvedLocation,
-            (location) => location?.href,
-          ),
-          // eslint-disable-next-line react-hooks/rules-of-hooks
-          useStore(router.stores.status, (status) => status),
-        ],
+    [
+      router,
+      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      useStore(router.stores.location, (location) => location.href),
+      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      useStore(router.stores.resolvedLocation, (location) => location?.href),
+      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      useStore(router.stores.status, (status) => status),
+    ],
   )
 }
 
