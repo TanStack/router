@@ -1,6 +1,7 @@
 import * as React from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -10,6 +11,7 @@ import {
 import {
   Outlet,
   RouterProvider,
+  createControlledPromise,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -19,7 +21,6 @@ import {
 import type { ErrorComponentProps } from '../src'
 
 afterEach(() => {
-  vi.restoreAllMocks()
   cleanup()
 })
 
@@ -30,11 +31,15 @@ afterEach(() => {
 // "Rendered more hooks than during the previous render."
 function setup({ failVia }: { failVia: 'render' | 'loader' }) {
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
+  const parentAction = vi.fn()
+  const secondChildLoad = createControlledPromise<void>()
+  let invalidation: Promise<void> | undefined
 
   const testRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/test',
     component: function TestComponent() {
+      testRoute.useLoaderData()
       const router = useRouter()
       const [isPending, startTransition] = React.useTransition()
       return (
@@ -44,11 +49,15 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
             disabled={isPending}
             onClick={() =>
               startTransition(() => {
-                router.invalidate()
+                invalidation = router.invalidate()
+                return invalidation
               })
             }
           >
-            invalidate
+            {isPending ? 'pending' : 'invalidate'}
+          </button>
+          <button data-testid="parent-action" onClick={parentAction}>
+            parent action
           </button>
           <Outlet />
         </div>
@@ -56,9 +65,14 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
     },
   })
 
-  const childLoader = vi.fn(() => {
+  let childLoaderCalls = 0
+  const childLoader = vi.fn(async () => {
+    childLoaderCalls++
+    if (childLoaderCalls === 2) {
+      await secondChildLoad
+    }
     if (failVia === 'loader') {
-      throw new Error('test error')
+      throw new Error('loader error')
     }
     return 'data'
   })
@@ -69,7 +83,7 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
     loader: childLoader,
     component: function ChildComponent() {
       if (failVia === 'render') {
-        throw new Error('test error')
+        throw new Error('render error')
       }
       return <div>child content</div>
     },
@@ -85,7 +99,14 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
     },
   })
 
-  return { router, childLoader, getErrorRenders: () => errorRenders }
+  return {
+    router,
+    childLoader,
+    parentAction,
+    secondChildLoad,
+    getErrorRenders: () => errorRenders,
+    getInvalidation: () => invalidation,
+  }
 }
 
 test.each(['render', 'loader'] as const)(
@@ -94,37 +115,71 @@ test.each(['render', 'loader'] as const)(
     // Error boundaries log caught errors through console.error, and so does a
     // hooks-order crash. Capture instead of polluting the test output, then
     // inspect the captured calls for the crash signature.
+    const {
+      router,
+      childLoader,
+      parentAction,
+      secondChildLoad,
+      getErrorRenders,
+      getInvalidation,
+    } = setup({ failVia })
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const { router, childLoader, getErrorRenders } = setup({ failVia })
-    render(<RouterProvider router={router} />)
+    try {
+      render(<RouterProvider router={router} />)
 
-    expect(await screen.findByTestId('error-ui')).toBeInTheDocument()
-    const initialErrorRenders = getErrorRenders()
-    const initialLoaderCalls = childLoader.mock.calls.length
+      expect(await screen.findByTestId('error-ui')).toHaveTextContent(
+        `error: ${failVia} error`,
+      )
+      const initialErrorRenders = getErrorRenders()
+      expect(childLoader).toHaveBeenCalledTimes(1)
+      consoleError.mockClear()
 
-    fireEvent.click(screen.getByTestId('invalidate'))
+      fireEvent.click(screen.getByTestId('invalidate'))
 
-    // The invalidated reload must actually complete: the loader re-ran ...
-    await waitFor(() => {
-      expect(childLoader.mock.calls.length).toBeGreaterThan(initialLoaderCalls)
-    })
+      await waitFor(() => {
+        expect(childLoader).toHaveBeenCalledTimes(2)
+        expect(screen.getByTestId('invalidate')).toHaveTextContent('pending')
+        expect(screen.getByTestId('invalidate')).toBeDisabled()
+      })
+      expect(secondChildLoad.status).toBe('pending')
 
-    // ... the error UI is rendered again after the reload ...
-    await waitFor(() => {
-      expect(screen.getByTestId('error-ui')).toBeInTheDocument()
-      expect(getErrorRenders()).toBeGreaterThan(initialErrorRenders)
-    })
+      const invalidation = getInvalidation()
+      if (!invalidation) {
+        throw new Error('invalidate action did not return its promise')
+      }
 
-    // React must not have torn the tree down with a hooks-order violation.
-    const hooksCrash = consoleError.mock.calls.find((call) =>
-      call.some((arg) =>
-        String(arg?.message ?? arg).includes('Rendered more hooks'),
-      ),
-    )
-    expect(hooksCrash).toBeUndefined()
-    // The surrounding route (the issue's "frozen" parent) is still mounted
-    // and interactive.
-    expect(screen.getByTestId('invalidate')).toBeInTheDocument()
+      await act(async () => {
+        secondChildLoad.resolve()
+        await invalidation
+      })
+
+      await waitFor(() => {
+        expect(screen.getByTestId('error-ui')).toHaveTextContent(
+          `error: ${failVia} error`,
+        )
+        expect(getErrorRenders()).toBeGreaterThan(initialErrorRenders)
+        expect(screen.getByTestId('invalidate')).toHaveTextContent('invalidate')
+        expect(screen.getByTestId('invalidate')).toBeEnabled()
+      })
+
+      fireEvent.click(screen.getByTestId('parent-action'))
+      expect(parentAction).toHaveBeenCalledTimes(1)
+
+      const hooksCrash = consoleError.mock.calls.find((call) =>
+        call.some((arg) =>
+          String(arg?.message ?? arg).includes('Rendered more hooks'),
+        ),
+      )
+      expect(hooksCrash).toBeUndefined()
+    } finally {
+      if (secondChildLoad.status === 'pending') {
+        await act(async () => {
+          secondChildLoad.resolve()
+          await getInvalidation()?.catch(() => undefined)
+        })
+      }
+      consoleError.mockRestore()
+    }
   },
 )

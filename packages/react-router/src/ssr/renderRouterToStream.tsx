@@ -71,12 +71,18 @@ export const renderRouterToStream = async ({
     const responseStream = transformReadableStreamWithRouter(
       router,
       stream as unknown as ReadableStream,
-      { onAbort: () => stream.cancel().catch(() => {}) },
+      {
+        signal: request.signal,
+        onAbort: () => stream.cancel().catch(() => {}),
+      },
     )
     return createSsrStreamResponse(
       router,
       new Response(responseStream as any, {
-        status: router.stores.statusCode.get(),
+        status:
+          router._serverResult?.type === 'render'
+            ? router._serverResult.status
+            : 200,
         headers: responseHeaders,
       }),
     )
@@ -177,7 +183,7 @@ export const renderRouterToStream = async ({
     const responseStream = transformPipeableStreamWithRouter(
       router,
       reactAppPassthrough,
-      { onAbort: abortPipeable },
+      { signal: request.signal, onAbort: abortPipeable },
     )
     responseAttached = true
 
@@ -199,7 +205,10 @@ export const renderRouterToStream = async ({
     return createSsrStreamResponse(
       router,
       new Response(responseStream as any, {
-        status: router.stores.statusCode.get(),
+        status:
+          router._serverResult?.type === 'render'
+            ? router._serverResult.status
+            : 200,
         headers: responseHeaders,
       }),
     )

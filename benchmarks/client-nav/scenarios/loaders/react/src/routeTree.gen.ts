@@ -9,29 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DepsRouteImport } from './routes/deps'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as FreshIdRouteImport } from './routes/fresh.$id'
+import { Route as DepsRouteImport } from './routes/deps'
 import { Route as CachedIdRouteImport } from './routes/cached.$id'
+import { Route as FreshIdRouteImport } from './routes/fresh.$id'
 
-const DepsRoute = DepsRouteImport.update({
-  id: '/deps',
-  path: '/deps',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const FreshIdRoute = FreshIdRouteImport.update({
-  id: '/fresh/$id',
-  path: '/fresh/$id',
+const DepsRoute = DepsRouteImport.update({
+  id: '/deps',
+  path: '/deps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CachedIdRoute = CachedIdRouteImport.update({
   id: '/cached/$id',
   path: '/cached/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FreshIdRoute = FreshIdRouteImport.update({
+  id: '/fresh/$id',
+  path: '/fresh/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -71,13 +71,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/deps': {
-      id: '/deps'
-      path: '/deps'
-      fullPath: '/deps'
-      preLoaderRoute: typeof DepsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -85,11 +78,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/fresh/$id': {
-      id: '/fresh/$id'
-      path: '/fresh/$id'
-      fullPath: '/fresh/$id'
-      preLoaderRoute: typeof FreshIdRouteImport
+    '/deps': {
+      id: '/deps'
+      path: '/deps'
+      fullPath: '/deps'
+      preLoaderRoute: typeof DepsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cached/$id': {
@@ -97,6 +90,13 @@ declare module '@tanstack/react-router' {
       path: '/cached/$id'
       fullPath: '/cached/$id'
       preLoaderRoute: typeof CachedIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fresh/$id': {
+      id: '/fresh/$id'
+      path: '/fresh/$id'
+      fullPath: '/fresh/$id'
+      preLoaderRoute: typeof FreshIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

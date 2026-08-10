@@ -34,7 +34,8 @@
     "prisma": "^7.0.0",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
   }
 }

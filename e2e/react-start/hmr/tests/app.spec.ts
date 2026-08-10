@@ -11,6 +11,7 @@ import type { Page } from '@playwright/test'
 const whitelistErrors = [
   'Failed to load resource: net::ERR_NAME_NOT_RESOLVED',
   'Failed to load resource: the server responded with a status of 504',
+  'root loader error',
 ]
 
 const hmrExpect = expect.configure({ timeout: 20_000 })
@@ -24,6 +25,8 @@ const routeFilePaths = {
   componentHmrInlineSplit: 'routes/component-hmr-inline-split.tsx',
   componentHmrInlineNosplit: 'routes/component-hmr-inline-nosplit.tsx',
   componentHmrNamedSplit: 'routes/component-hmr-named-split.tsx',
+  componentHmrLowercaseNamedSplit:
+    'routes/component-hmr-lowercase-named-split.tsx',
   componentHmrNamedNosplit: 'routes/component-hmr-named-nosplit.tsx',
   componentHmrInlineErrorSplit: 'routes/component-hmr-inline-error-split.tsx',
   componentHmrNamedErrorSplit: 'routes/component-hmr-named-error-split.tsx',
@@ -34,6 +37,21 @@ const routeFilePaths = {
 } as const
 
 type RouteFileKey = keyof typeof routeFilePaths
+
+const rootLoaderBlock = "  loader: () => ({\n    crumb: 'Home',\n  }),\n"
+const redirectRootLoaderBlock =
+  "  staleTime: Infinity,\n  loader: () => ({\n    crumb:\n      typeof window === 'undefined'\n        ? 'Home Armed'\n        : (window.sessionStorage.getItem('hmr-root-crumb') ?? 'Home Armed'),\n  }),\n"
+const childBeforeLoadBlock =
+  "  beforeLoad: () => ({\n    greeting: 'Hello',\n  }),\n"
+const childLoaderBlock = "  loader: () => ({\n    crumb: 'Child',\n  }),\n"
+const failingChildOnStayBlock =
+  "  onStay: () => {\n    ;(window as any).__TSR_HMR_FAILURE_RAN__ = true\n    throw new Error('intentional HMR lifecycle failure')\n  },\n"
+const pendingNavigationChildLoaderBlock =
+  "  loader: async () => {\n    if (typeof window !== 'undefined') {\n      const gate = (window as any).__TSR_HMR_PENDING_NAV_GATE__\n      if (gate) {\n        ;(window as any).__TSR_HMR_PENDING_NAV_GATE__ = undefined\n        ;(window as any).__TSR_HMR_PENDING_NAV_EVENTS__.push('loader-start')\n        await gate\n        ;(window as any).__TSR_HMR_PENDING_NAV_EVENTS__.push('loader-end')\n      }\n    }\n    return { crumb: 'Child' }\n  },\n"
+const pendingNavigationChildOnStayBlock =
+  "  onStay: () => {\n    ;(window as any).__TSR_HMR_PENDING_NAV_EVENTS__.push('onStay')\n    throw new Error('intentional HMR failure after pending navigation')\n  },\n"
+const redirectChildBeforeLoadBlock =
+  "  beforeLoad: () => {\n    throw redirect({ to: '/' })\n  },\n"
 
 const routeFiles = Object.fromEntries(
   Object.entries(routeFilePaths).map(([key, relativePath]) => [
@@ -99,6 +117,11 @@ const routeFileRestoreChecks: Partial<
     testId: 'component-hmr-marker',
     text: 'component-hmr-named-split-baseline',
   },
+  componentHmrLowercaseNamedSplit: {
+    url: '/component-hmr-lowercase-named-split',
+    testId: 'component-hmr-marker',
+    text: 'component-hmr-lowercase-named-split-baseline',
+  },
   componentHmrNamedNosplit: {
     url: '/component-hmr-named-nosplit',
     testId: 'component-hmr-marker',
@@ -133,6 +156,8 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
   }
 
   if (routeFileKey === 'root') {
+    next = next.replace(redirectRootLoaderBlock, rootLoaderBlock)
+
     for (const marker of [
       'root-component-inline-baseline',
       'root-component-inline-updated',
@@ -158,9 +183,39 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
       '  component: RootComponent,',
     )
 
+    next = next.replace(
+      '  shellComponent: shellComponent,\n  component: RootContent,',
+      '  component: RootComponent,',
+    )
+
+    next = next.replace(
+      "  loader: () => {\n    throw new Error('root loader error')\n  },\n  errorComponent: errorComponent,\n  component: RootComponent,",
+      "  loader: () => ({\n    crumb: 'Home',\n  }),\n  component: RootComponent,",
+    )
+
     for (const marker of ['root-shell-baseline', 'root-shell-updated']) {
       next = next.replace(
         `function RootShell({ children }: { children: ReactNode }) {\n  return <RootShellDocument marker="${marker}">{children}</RootShellDocument>\n}\n\nfunction Breadcrumbs() {`,
+        'function Breadcrumbs() {',
+      )
+    }
+
+    for (const marker of [
+      'root-shell-lowercase-baseline',
+      'root-shell-lowercase-updated',
+    ]) {
+      next = next.replace(
+        `function shellComponent({ children }: { children: ReactNode }) {\n  return <RootShellDocument marker="${marker}">{children}</RootShellDocument>\n}\n\nfunction Breadcrumbs() {`,
+        'function Breadcrumbs() {',
+      )
+    }
+
+    for (const marker of [
+      'root-error-lowercase-baseline',
+      'root-error-lowercase-updated',
+    ]) {
+      next = next.replace(
+        `function errorComponent() {\n  return (\n    <RootDocument marker="root-component-baseline">\n      <p data-testid="root-error-marker">${marker}</p>\n    </RootDocument>\n  )\n}\n\nfunction Breadcrumbs() {`,
         'function Breadcrumbs() {',
       )
     }
@@ -171,30 +226,36 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
   }
 
   if (routeFileKey === 'child') {
-    const beforeLoadBlock =
-      "  beforeLoad: () => ({\n    greeting: 'Hello',\n  }),\n"
-    const loaderBlock = "  loader: () => ({\n    crumb: 'Child',\n  }),\n"
-
     next = replaceAll(next, "greeting: 'Hi'", "greeting: 'Hello'")
+    next = next.replace(failingChildOnStayBlock, '')
+    next = next.replace(pendingNavigationChildOnStayBlock, '')
+    next = next.replace(pendingNavigationChildLoaderBlock, childLoaderBlock)
+    next = next.replace(redirectChildBeforeLoadBlock, childBeforeLoadBlock)
+    next = next.replace(
+      "import { createFileRoute, redirect } from '@tanstack/react-router'",
+      "import { createFileRoute } from '@tanstack/react-router'",
+    )
+    next = replaceAll(next, "crumb: 'Child Recovered'", "crumb: 'Child'")
+    next = replaceAll(next, "crumb: 'Child Failed'", "crumb: 'Child'")
     next = replaceAll(next, "crumb: 'Child Updated Again'", "crumb: 'Child'")
     next = replaceAll(next, "crumb: 'Child Updated'", "crumb: 'Child'")
 
-    if (!next.includes(beforeLoadBlock)) {
+    if (!next.includes(childBeforeLoadBlock)) {
       next = next.replace(
         '  component: Child,\n',
-        `${beforeLoadBlock}  component: Child,\n`,
+        `${childBeforeLoadBlock}  component: Child,\n`,
       )
     }
-    if (!next.includes(loaderBlock)) {
+    if (!next.includes(childLoaderBlock)) {
       const withLoaderAfterBeforeLoad = next.replace(
-        `${beforeLoadBlock}  component: Child,\n`,
-        `${beforeLoadBlock}${loaderBlock}  component: Child,\n`,
+        `${childBeforeLoadBlock}  component: Child,\n`,
+        `${childBeforeLoadBlock}${childLoaderBlock}  component: Child,\n`,
       )
       next =
         withLoaderAfterBeforeLoad === next
           ? next.replace(
               '  component: Child,\n',
-              `${loaderBlock}  component: Child,\n`,
+              `${childLoaderBlock}  component: Child,\n`,
             )
           : withLoaderAfterBeforeLoad
     }
@@ -213,6 +274,10 @@ function normalizeRouteSource(routeFileKey: RouteFileKey, source: string) {
     componentHmrNamedSplit: [
       'component-hmr-named-split-updated',
       'component-hmr-named-split-baseline',
+    ],
+    componentHmrLowercaseNamedSplit: [
+      'component-hmr-lowercase-named-split-updated',
+      'component-hmr-lowercase-named-split-baseline',
     ],
     componentHmrNamedNosplit: [
       'component-hmr-named-nosplit-updated',
@@ -617,6 +682,178 @@ test.describe('react-start hmr', () => {
       'child preserved',
     )
     await expect(page.getByTestId('child')).toHaveText('child')
+  })
+
+  test('rolls back a failed route refresh and accepts the next HMR update', async ({
+    page,
+  }) => {
+    await page.goto('/child')
+    await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+    await page.getByTestId('root-message').fill('preserved through failure')
+    await expect(page.getByTestId('crumb-/child')).toHaveText('Child')
+
+    await page.evaluate(() => {
+      ;(window as any).__TSR_HMR_FAILURE_RAN__ = false
+    })
+
+    await rewriteRouteFile(
+      page,
+      'child',
+      (source) =>
+        source.replace(
+          childLoaderBlock,
+          `${failingChildOnStayBlock}  loader: () => ({\n    crumb: 'Child Failed',\n  }),\n`,
+        ),
+      async () => {
+        await waitForRouteModuleUpdate(page, '/child', 'Child Failed')
+        await page.waitForFunction(
+          () => (window as any).__TSR_HMR_FAILURE_RAN__ === true,
+        )
+      },
+    )
+
+    await expect(page.getByTestId('crumb-/child')).toHaveText('Child')
+    await expect(page.getByTestId('root-message')).toHaveValue(
+      'preserved through failure',
+    )
+
+    await rewriteRouteFile(
+      page,
+      'child',
+      (source) =>
+        source
+          .replace(failingChildOnStayBlock, '')
+          .replace("crumb: 'Child Failed'", "crumb: 'Child Recovered'"),
+      async () => {
+        await waitForRouteModuleUpdate(page, '/child', 'Child Recovered')
+        await hmrExpect(page.getByTestId('crumb-/child')).toHaveText(
+          'Child Recovered',
+        )
+      },
+    )
+
+    await expect(page.getByTestId('root-message')).toHaveValue(
+      'preserved through failure',
+    )
+  })
+
+  test('rematerializes retained routes when an HMR update redirects', async ({
+    page,
+  }) => {
+    await page.goto('/child')
+    await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+    await page.getByTestId('root-message').fill('preserved through redirect')
+
+    await rewriteRouteFile(
+      page,
+      'root',
+      (source) => source.replace(rootLoaderBlock, redirectRootLoaderBlock),
+      async () => {
+        await waitForRouteModuleUpdate(page, '__root__', 'Home Armed')
+        await hmrExpect(page.getByTestId('crumb-__root__')).toHaveText(
+          'Home Armed',
+        )
+      },
+    )
+
+    await page.evaluate(() => {
+      window.sessionStorage.setItem('hmr-root-crumb', 'Home Redirected')
+    })
+
+    await rewriteRouteFile(
+      page,
+      'child',
+      (source) =>
+        source
+          .replace(
+            "import { createFileRoute } from '@tanstack/react-router'",
+            "import { createFileRoute, redirect } from '@tanstack/react-router'",
+          )
+          .replace(childBeforeLoadBlock, redirectChildBeforeLoadBlock),
+      async () => {
+        await hmrExpect(page).toHaveURL((url) => url.pathname === '/')
+        await hmrExpect(page.getByTestId('crumb-__root__')).toHaveText(
+          'Home Redirected',
+        )
+      },
+    )
+
+    await expect(page.getByTestId('root-message')).toHaveValue(
+      'preserved through redirect',
+    )
+  })
+
+  test('waits for a pending navigation before applying an HMR refresh', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.getByTestId('hydrated').waitFor({ state: 'visible' })
+    await page.getByTestId('root-message').fill('preserved while pending')
+
+    await page.evaluate(() => {
+      let release!: () => void
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      ;(window as any).__TSR_HMR_PENDING_NAV_EVENTS__ = []
+      ;(window as any).__TSR_HMR_PENDING_NAV_GATE__ = gate
+      ;(window as any).__TSR_HMR_RELEASE_PENDING_NAV__ = release
+    })
+
+    await rewriteRouteFile(
+      page,
+      'child',
+      (source) =>
+        source.replace(childLoaderBlock, pendingNavigationChildLoaderBlock),
+      async () => {
+        await page.waitForFunction(() => {
+          const loader = (window as any).__TSR_ROUTER__?.routesById?.['/child']
+            ?.options?.loader
+          return String(loader).includes('__TSR_HMR_PENDING_NAV_GATE__')
+        })
+      },
+    )
+
+    await page.getByTestId('child-link').click()
+    await page.waitForFunction(
+      () =>
+        (window as any).__TSR_HMR_PENDING_NAV_EVENTS__?.[0] === 'loader-start',
+    )
+
+    await rewriteRouteFile(
+      page,
+      'child',
+      (source) =>
+        source.replace(
+          pendingNavigationChildLoaderBlock,
+          `${pendingNavigationChildOnStayBlock}${pendingNavigationChildLoaderBlock}`,
+        ),
+      async () => {
+        await page.waitForFunction(() => {
+          const onStay = (window as any).__TSR_ROUTER__?.routesById?.['/child']
+            ?.options?.onStay
+          return String(onStay).includes(
+            'intentional HMR failure after pending navigation',
+          )
+        })
+      },
+    )
+
+    await page.evaluate(() => {
+      ;(window as any).__TSR_HMR_RELEASE_PENDING_NAV__()
+    })
+
+    await page.waitForFunction(() =>
+      (window as any).__TSR_HMR_PENDING_NAV_EVENTS__?.includes('onStay'),
+    )
+    await hmrExpect(page.getByTestId('child')).toHaveText('child')
+    await hmrExpect(page.getByTestId('crumb-/child')).toHaveText('Child')
+    expect(
+      await page.evaluate(() => (window as any).__TSR_HMR_PENDING_NAV_EVENTS__),
+    ).toEqual(['loader-start', 'loader-end', 'onStay'])
+    await expect(page.getByTestId('root-message')).toHaveValue(
+      'preserved while pending',
+    )
   })
 
   test('adds a createFileRoute property during HMR', async ({ page }) => {
@@ -1032,6 +1269,89 @@ test.describe('react-start hmr', () => {
     )
   })
 
+  test('updates root route shellComponent during HMR when its function name is lowercase', async ({
+    page,
+  }) => {
+    await rewriteRouteFile(
+      page,
+      'root',
+      (source) =>
+        source
+          .replace(
+            '  component: RootComponent,',
+            '  shellComponent: shellComponent,\n  component: RootContent,',
+          )
+          .replace(
+            'function Breadcrumbs() {',
+            'function shellComponent({ children }: { children: ReactNode }) {\n  return <RootShellDocument marker="root-shell-lowercase-baseline">{children}</RootShellDocument>\n}\n\nfunction Breadcrumbs() {',
+          ),
+      async () => {},
+    )
+    await page.waitForTimeout(300)
+
+    await reloadPageAndWaitForText(
+      page,
+      '/',
+      'root-shell-marker',
+      'root-shell-lowercase-baseline',
+    )
+    await page.getByTestId('increment').click()
+    await page.getByTestId('message').fill('index preserved')
+    await page.getByTestId('root-message').fill('root preserved')
+
+    await replaceRouteTextAndWait(
+      page,
+      'root',
+      'root-shell-lowercase-baseline',
+      'root-shell-lowercase-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('root-shell-marker')).toHaveText(
+          'root-shell-lowercase-updated',
+        )
+      },
+    )
+
+    await expectHomeStatePreserved(page)
+  })
+
+  test('updates root route errorComponent during HMR when its function name is lowercase', async ({
+    page,
+  }) => {
+    await seedHomeState(page)
+
+    await rewriteRouteFile(
+      page,
+      'root',
+      (source) =>
+        source
+          .replace(
+            "  loader: () => ({\n    crumb: 'Home',\n  }),\n  component: RootComponent,",
+            "  loader: () => {\n    throw new Error('root loader error')\n  },\n  errorComponent: errorComponent,\n  component: RootComponent,",
+          )
+          .replace(
+            'function Breadcrumbs() {',
+            'function errorComponent() {\n  return (\n    <RootDocument marker="root-component-baseline">\n      <p data-testid="root-error-marker">root-error-lowercase-baseline</p>\n    </RootDocument>\n  )\n}\n\nfunction Breadcrumbs() {',
+          ),
+      async () => {
+        await hmrExpect(page.getByTestId('root-error-marker')).toHaveText(
+          'root-error-lowercase-baseline',
+        )
+      },
+    )
+
+    await replaceRouteTextAndWait(
+      page,
+      'root',
+      'root-error-lowercase-baseline',
+      'root-error-lowercase-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('root-error-marker')).toHaveText(
+          'root-error-lowercase-updated',
+        )
+      },
+    )
+  })
+
   test('updates non-root route component during HMR when component is defined inline and codeSplitGroupings is undefined', async ({
     page,
   }) => {
@@ -1085,6 +1405,26 @@ test.describe('react-start hmr', () => {
       async () => {
         await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
           'component-hmr-named-split-updated',
+        )
+      },
+    )
+
+    await expectComponentHmrStatePreserved(page)
+  })
+
+  test('updates a code-split route component whose function name is lowercase', async ({
+    page,
+  }) => {
+    await seedComponentHmrState(page, '/component-hmr-lowercase-named-split')
+
+    await replaceRouteTextAndWait(
+      page,
+      'componentHmrLowercaseNamedSplit',
+      'component-hmr-lowercase-named-split-baseline',
+      'component-hmr-lowercase-named-split-updated',
+      async () => {
+        await hmrExpect(page.getByTestId('component-hmr-marker')).toHaveText(
+          'component-hmr-lowercase-named-split-updated',
         )
       },
     )

@@ -671,13 +671,15 @@ export interface LinkOptionsProps {
   /**
    * The preloading strategy for this link
    * - `false` - No preloading
-   * - `'intent'` - Preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
+   * - `'intent'` - Preload the linked route when the user focuses, hovers over, or touches the link
    * - `'viewport'` - Preload the linked route when it enters the viewport
+   * - `'render'` - Preload the linked route as soon as it renders
    */
   preload?: false | 'intent' | 'viewport' | 'render'
   /**
-   * When a preload strategy is set, this delays the preload by this many milliseconds.
-   * If the user exits the link before this delay, the preload will be cancelled.
+   * When the intent preload strategy is set, this delays focus and hover
+   * preloading by this many milliseconds. Touch intent preloads immediately.
+   * If focus or hover exits before this delay, the preload will be cancelled.
    */
   preloadDelay?: number
   /**

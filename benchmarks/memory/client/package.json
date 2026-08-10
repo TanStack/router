@@ -31,7 +31,8 @@
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "@types/jsdom": "28.0.0",
     "jsdom": "29.1.1",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11",
     "vitest": "^4.1.4"
