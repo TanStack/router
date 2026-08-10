@@ -40,9 +40,7 @@ describe('Matches global loading boundary (server)', () => {
 
     expect(_resolveMatchesLoadingBoundary(router)).toBe(Loading)
 
-    const html = await renderToString(() => (
-      <RouterProvider router={router} />
-    ))
+    const html = await renderToString(() => <RouterProvider router={router} />)
     expect(html).toContain('Index')
     expect(html).not.toContain('Pending...')
   })
@@ -53,9 +51,7 @@ describe('Matches global loading boundary (server)', () => {
 
     expect(_resolveMatchesLoadingBoundary(router)).toBe(SafeFragment)
 
-    const html = await renderToString(() => (
-      <RouterProvider router={router} />
-    ))
+    const html = await renderToString(() => <RouterProvider router={router} />)
     expect(html).toContain('Index')
   })
 })
