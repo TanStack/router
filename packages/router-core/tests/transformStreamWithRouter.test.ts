@@ -1269,9 +1269,9 @@ describe('transformStreamWithRouter — out-of-order (post-</body>) streaming', 
     upstream.push(fragment2)
     await flush()
     expect(output.text()).toContain(fragment2)
-    expect(output.text().indexOf('<script>resolveQuery(2)</script>')).toBeLessThan(
-      output.text().indexOf('<template id="pl-2">'),
-    )
+    expect(
+      output.text().indexOf('<script>resolveQuery(2)</script>'),
+    ).toBeLessThan(output.text().indexOf('<template id="pl-2">'))
 
     upstream.close()
     finishSerialization()
@@ -1331,7 +1331,9 @@ describe('transformStreamWithRouter — out-of-order (post-</body>) streaming', 
     const upstream = makeManualUpstream()
     const out = transformStreamWithRouter(router as any, upstream.stream as any)
 
-    upstream.push('<html><body>app</BODY>\n</HTML><template id="pl-1">late</template>')
+    upstream.push(
+      '<html><body>app</BODY>\n</HTML><template id="pl-1">late</template>',
+    )
     upstream.close()
     finishSerialization()
 
