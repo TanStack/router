@@ -1,11 +1,7 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
-
-afterEach(() => {
-  vi.useRealTimers()
-})
 
 describe('preloaded loader reuse with fresh beforeLoad context', () => {
   test('reruns nested context for navigation while reusing loader data', async () => {
@@ -140,6 +136,9 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
     'reruns completed beforeLoad while retaining navigation-owned loader data at age $age',
     async ({ age, expected, guard }) => {
       vi.useFakeTimers()
+      onTestFinished(() => {
+        vi.useRealTimers()
+      })
       vi.setSystemTime(1_000)
       const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
         guard: preload ? 'preloaded' : 'loaded',
@@ -286,6 +285,9 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
 
   test('reruns beforeLoad when the completed preload reaches its stale boundary', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => {
+      vi.useRealTimers()
+    })
     vi.setSystemTime(1_000)
     const seen: Array<boolean> = []
     const rootRoute = new BaseRootRoute({})
@@ -321,6 +323,9 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
 
   test('reruns descendant context after an ancestor becomes stale', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => {
+      vi.useRealTimers()
+    })
     vi.setSystemTime(1_000)
     const parentSeen: Array<boolean> = []
     const childSeen: Array<boolean> = []
@@ -534,6 +539,9 @@ describe('preloaded loader reuse with fresh beforeLoad context', () => {
 
   test('shouldReload false does not keep stale beforeLoad context', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => {
+      vi.useRealTimers()
+    })
     vi.setSystemTime(1_000)
     const beforeLoad = vi.fn(({ preload }: { preload: boolean }) => ({
       guard: preload ? 'preloaded' : 'loaded',

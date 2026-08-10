@@ -8,7 +8,15 @@ import {
   screen,
 } from '@testing-library/react'
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 
 import {
@@ -35,8 +43,6 @@ beforeEach(() => {
 
 afterEach(() => {
   history.destroy()
-  vi.clearAllMocks()
-  vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
@@ -228,6 +234,7 @@ describe('redirect', () => {
       const consoleError = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {})
+      onTestFinished(() => consoleError.mockRestore())
 
       const rootRoute = createRootRoute({
         component: () => <Outlet />,

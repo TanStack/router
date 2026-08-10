@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import {
   act,
   cleanup,
@@ -19,10 +19,6 @@ import {
   useRouter,
 } from '../src'
 import type { ErrorComponentProps } from '../src'
-
-afterEach(() => {
-  cleanup()
-})
 
 // https://github.com/TanStack/router/issues/7638
 // router.invalidate() called inside React.startTransition while a nested
@@ -112,6 +108,8 @@ function setup({ failVia }: { failVia: 'render' | 'loader' }) {
 test.each(['render', 'loader'] as const)(
   'invalidate() inside startTransition through a nested %s-error route does not crash',
   async (failVia) => {
+    onTestFinished(cleanup)
+
     // Error boundaries log caught errors through console.error, and so does a
     // hooks-order crash. Capture instead of polluting the test output, then
     // inspect the captured calls for the crash signature.
@@ -125,54 +123,7 @@ test.each(['render', 'loader'] as const)(
     } = setup({ failVia })
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    try {
-      render(<RouterProvider router={router} />)
-
-      expect(await screen.findByTestId('error-ui')).toHaveTextContent(
-        `error: ${failVia} error`,
-      )
-      const initialErrorRenders = getErrorRenders()
-      expect(childLoader).toHaveBeenCalledTimes(1)
-      consoleError.mockClear()
-
-      fireEvent.click(screen.getByTestId('invalidate'))
-
-      await waitFor(() => {
-        expect(childLoader).toHaveBeenCalledTimes(2)
-        expect(screen.getByTestId('invalidate')).toHaveTextContent('pending')
-        expect(screen.getByTestId('invalidate')).toBeDisabled()
-      })
-      expect(secondChildLoad.status).toBe('pending')
-
-      const invalidation = getInvalidation()
-      if (!invalidation) {
-        throw new Error('invalidate action did not return its promise')
-      }
-
-      await act(async () => {
-        secondChildLoad.resolve()
-        await invalidation
-      })
-
-      await waitFor(() => {
-        expect(screen.getByTestId('error-ui')).toHaveTextContent(
-          `error: ${failVia} error`,
-        )
-        expect(getErrorRenders()).toBeGreaterThan(initialErrorRenders)
-        expect(screen.getByTestId('invalidate')).toHaveTextContent('invalidate')
-        expect(screen.getByTestId('invalidate')).toBeEnabled()
-      })
-
-      fireEvent.click(screen.getByTestId('parent-action'))
-      expect(parentAction).toHaveBeenCalledTimes(1)
-
-      const hooksCrash = consoleError.mock.calls.find((call) =>
-        call.some((arg) =>
-          String(arg?.message ?? arg).includes('Rendered more hooks'),
-        ),
-      )
-      expect(hooksCrash).toBeUndefined()
-    } finally {
+    onTestFinished(async () => {
       if (secondChildLoad.status === 'pending') {
         await act(async () => {
           secondChildLoad.resolve()
@@ -180,6 +131,53 @@ test.each(['render', 'loader'] as const)(
         })
       }
       consoleError.mockRestore()
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByTestId('error-ui')).toHaveTextContent(
+      `error: ${failVia} error`,
+    )
+    const initialErrorRenders = getErrorRenders()
+    expect(childLoader).toHaveBeenCalledTimes(1)
+    consoleError.mockClear()
+
+    fireEvent.click(screen.getByTestId('invalidate'))
+
+    await waitFor(() => {
+      expect(childLoader).toHaveBeenCalledTimes(2)
+      expect(screen.getByTestId('invalidate')).toHaveTextContent('pending')
+      expect(screen.getByTestId('invalidate')).toBeDisabled()
+    })
+    expect(secondChildLoad.status).toBe('pending')
+
+    const invalidation = getInvalidation()
+    if (!invalidation) {
+      throw new Error('invalidate action did not return its promise')
     }
+
+    await act(async () => {
+      secondChildLoad.resolve()
+      await invalidation
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('error-ui')).toHaveTextContent(
+        `error: ${failVia} error`,
+      )
+      expect(getErrorRenders()).toBeGreaterThan(initialErrorRenders)
+      expect(screen.getByTestId('invalidate')).toHaveTextContent('invalidate')
+      expect(screen.getByTestId('invalidate')).toBeEnabled()
+    })
+
+    fireEvent.click(screen.getByTestId('parent-action'))
+    expect(parentAction).toHaveBeenCalledTimes(1)
+
+    const hooksCrash = consoleError.mock.calls.find((call) =>
+      call.some((arg) =>
+        String(arg?.message ?? arg).includes('Rendered more hooks'),
+      ),
+    )
+    expect(hooksCrash).toBeUndefined()
   },
 )

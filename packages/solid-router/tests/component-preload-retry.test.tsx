@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import {
   RouterProvider,
@@ -11,14 +11,13 @@ import {
 } from '../src'
 import type { ErrorComponentProps } from '../src'
 
-afterEach(() => {
-  cleanup()
-  vi.restoreAllMocks()
-  vi.unstubAllGlobals()
-})
+afterEach(cleanup)
 
 test('a successful server component download is reused', async () => {
   vi.stubGlobal('window', undefined)
+  onTestFinished(() => {
+    vi.unstubAllGlobals()
+  })
   const importer = vi.fn().mockResolvedValue({ default: () => null })
   const Page = lazyRouteComponent(importer)
 
@@ -42,7 +41,8 @@ test('a component loads when rendered before preload', async () => {
 })
 
 test('a failed component download is retried from the route error UI', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  onTestFinished(() => consoleError.mockRestore())
 
   const PageContent = () => <div>Page content</div>
   const importer = vi

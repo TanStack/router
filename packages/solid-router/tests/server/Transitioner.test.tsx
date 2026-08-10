@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { renderToStringAsync } from 'solid-js/web'
 import {
   createMemoryHistory,
@@ -30,6 +30,7 @@ describe('Transitioner (server)', () => {
 
     // Mock router.load() to verify it gets called
     const loadSpy = vi.spyOn(router, 'load')
+    onTestFinished(() => loadSpy.mockRestore())
 
     await router.load()
 
@@ -37,7 +38,5 @@ describe('Transitioner (server)', () => {
 
     expect(loadSpy).toHaveBeenCalledTimes(1)
     expect(loader).toHaveBeenCalledTimes(1)
-
-    loadSpy.mockRestore()
   })
 })

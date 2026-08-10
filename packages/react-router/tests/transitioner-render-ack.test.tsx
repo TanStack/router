@@ -1,6 +1,6 @@
 import { StrictMode, act } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import {
   Outlet,
   RouterProvider,
@@ -11,19 +11,13 @@ import {
   createRouter,
 } from '../src'
 
-const testCleanups: Array<() => void> = []
-
-afterEach(() => {
-  while (testCleanups.length) {
-    testCleanups.pop()!()
-  }
-  cleanup()
-  vi.useRealTimers()
-  vi.unstubAllEnvs()
-})
+afterEach(cleanup)
 
 test('a route lifecycle callback cannot strand a production navigation', async () => {
   vi.stubEnv('NODE_ENV', 'production')
+  onTestFinished(() => {
+    vi.unstubAllEnvs()
+  })
   expect(process.env.NODE_ENV).toBe('production')
   const rootRoute = createRootRoute({ component: Outlet })
   const indexRoute = createRoute({
@@ -58,7 +52,7 @@ test('a route lifecycle callback cannot strand a production navigation', async (
     }
   }
   window.addEventListener('error', preventGlobalReport)
-  testCleanups.push(() => {
+  onTestFinished(() => {
     window.removeEventListener('error', preventGlobalReport)
   })
 
@@ -111,7 +105,7 @@ test('same-location invalidation resolves after its refreshed DOM commits', asyn
   const unsubscribe = router.subscribe('onResolved', () => {
     refreshedDomWasVisible.push(screen.queryByText('Generation 2') !== null)
   })
-  testCleanups.push(unsubscribe)
+  onTestFinished(unsubscribe)
 
   await act(() => router.invalidate())
   expect(screen.getByText('Generation 2')).toBeInTheDocument()
@@ -181,6 +175,9 @@ test('a navigation started by route lifecycle keeps the pending minimum of its o
   expect(await screen.findByText('Index')).toBeInTheDocument()
   await waitFor(() => expect(router.state.status).toBe('idle'))
   vi.useFakeTimers()
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
 
   let firstNavigation!: Promise<void>
   await act(async () => {
@@ -237,19 +234,20 @@ test('StrictMode effect replay preserves renderer commit sequencing', async () =
   })
 
   const eventLog: Array<string> = []
-  const unsubscribers = [
+  onTestFinished(
     router.subscribe('onResolved', (event) => {
       if (event.toLocation.pathname === '/next') {
         eventLog.push('onResolved:/next')
       }
     }),
+  )
+  onTestFinished(
     router.subscribe('onRendered', (event) => {
       if (event.toLocation.pathname === '/next') {
         eventLog.push('onRendered:/next')
       }
     }),
-  ]
-  testCleanups.push(...unsubscribers)
+  )
 
   await act(() => router.navigate({ to: '/next' }))
   expect(eventLog).toEqual(['onResolved:/next', 'onRendered:/next'])

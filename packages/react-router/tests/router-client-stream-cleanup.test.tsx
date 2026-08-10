@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { Component } from 'react'
 import { createMemoryHistory } from '@tanstack/history'
 import { RouterClient } from '../src/ssr/RouterClient'
@@ -27,11 +27,13 @@ class ErrorBoundary extends Component<
 
 afterEach(() => {
   cleanup()
-  delete window.$_TSR
-  hydrate.mockReset()
 })
 
 test('RouterClient signals streaming cleanup without hiding a hydration failure', async () => {
+  onTestFinished(() => {
+    delete window.$_TSR
+    hydrate.mockReset()
+  })
   const error = new Error('hydration failed')
   hydrate.mockRejectedValue(error)
   const rootRoute = createRootRoute({ component: () => <div>Ready</div> })

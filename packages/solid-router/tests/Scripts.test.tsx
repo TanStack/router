@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -38,17 +38,14 @@ const createTestManifest = (
     },
   }) satisfies Manifest
 
-const browserHistories: Array<ReturnType<typeof createBrowserHistory>> = []
-
 const createTestBrowserHistory = () => {
   const history = createBrowserHistory()
-  browserHistories.push(history)
+  onTestFinished(() => history.destroy())
   return history
 }
 
 afterEach(() => {
   cleanup()
-  browserHistories.splice(0).forEach((history) => history.destroy())
   window.history.replaceState(null, 'root', '/')
   delete window.$_TSR
 })

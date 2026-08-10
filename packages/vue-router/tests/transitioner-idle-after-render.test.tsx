@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/vue'
-import { afterEach, expect, test } from 'vitest'
+import { afterEach, expect, onTestFinished, test } from 'vitest'
 import {
   Outlet,
   RouterProvider,
@@ -37,10 +37,10 @@ test('onResolved fires only after Vue commits the destination DOM', async () => 
   const unsubscribe = router.subscribe('onResolved', () => {
     destinationWasRenderedWhenResolved.push(screen.queryByText('Next') !== null)
   })
+  onTestFinished(unsubscribe)
 
   await router.navigate({ to: '/next' })
   expect(await screen.findByText('Next')).toBeInTheDocument()
 
   expect(destinationWasRenderedWhenResolved).toEqual([true])
-  unsubscribe()
 })

@@ -1,6 +1,14 @@
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 
 import {
@@ -142,13 +150,13 @@ describe('redirect', () => {
       })
 
       render(() => <RouterProvider router={router} />)
-
-      try {
-        expect(await screen.findByTestId('pending')).toBeInTheDocument()
-        expect(screen.queryByTestId('index-page')).not.toBeInTheDocument()
-      } finally {
+      onTestFinished(() => {
         beforeLoad.resolve()
-      }
+      })
+
+      expect(await screen.findByTestId('pending')).toBeInTheDocument()
+      expect(screen.queryByTestId('index-page')).not.toBeInTheDocument()
+      beforeLoad.resolve()
 
       // The lazy target route adds the async boundary that exposes the stale
       // redirected-match render path this regression is guarding.

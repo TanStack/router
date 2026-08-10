@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import React from 'react'
 import ReactDOMServer from 'react-dom/server'
 import { act, cleanup, render, screen } from '@testing-library/react'
@@ -12,7 +12,6 @@ import {
 import { ClientOnly } from '../src/ClientOnly'
 
 afterEach(() => {
-  vi.resetAllMocks()
   cleanup()
 })
 
@@ -70,7 +69,10 @@ describe('ClientOnly', () => {
     await router.load()
 
     // Mock useSyncExternalStore to simulate hydration
-    vi.spyOn(React, 'useSyncExternalStore').mockImplementation(() => true)
+    const useSyncExternalStore = vi
+      .spyOn(React, 'useSyncExternalStore')
+      .mockImplementation(() => true)
+    onTestFinished(() => useSyncExternalStore.mockRestore())
 
     render(<RouterProvider router={router} />)
 
@@ -83,7 +85,10 @@ describe('ClientOnly', () => {
     await router.load()
 
     // Simulate hydration
-    vi.spyOn(React, 'useSyncExternalStore').mockImplementation(() => true)
+    const useSyncExternalStore = vi
+      .spyOn(React, 'useSyncExternalStore')
+      .mockImplementation(() => true)
+    onTestFinished(() => useSyncExternalStore.mockRestore())
 
     // Re-render after hydration
     render(<RouterProvider router={router} />)

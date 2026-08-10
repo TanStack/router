@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -815,11 +823,11 @@ describe('router emits events during rendering', () => {
     })
 
     const unsub = router.subscribe('onResolved', mockFn1)
+    onTestFinished(unsub)
     await router.load()
     render(() => <RouterProvider router={router} />)
 
     await waitFor(() => expect(mockFn1).toBeCalled())
-    unsub()
   })
 
   it('after a navigation, should have emitted the "onResolved" event twice', async () => {
@@ -828,13 +836,13 @@ describe('router emits events during rendering', () => {
     })
 
     const unsub = router.subscribe('onResolved', mockFn1)
+    onTestFinished(unsub)
     await router.load()
     await render(() => <RouterProvider router={router} />)
     await sleep(0)
     await router.navigate({ to: '/$', params: { _splat: 'tanner' } })
 
     await waitFor(() => expect(mockFn1).toBeCalledTimes(2))
-    unsub()
   })
 
   it('should emit the "onRendered" event when a route renders, after navigation, and after param/search updates', async () => {
@@ -845,6 +853,7 @@ describe('router emits events during rendering', () => {
 
     const mockOnRendered = vi.fn()
     const unsub = router.subscribe('onRendered', mockOnRendered)
+    onTestFinished(unsub)
     await router.load()
 
     await waitFor(() => expect(mockOnRendered).toBeCalledTimes(0))
@@ -877,8 +886,6 @@ describe('router emits events during rendering', () => {
     expect(mockOnRendered.mock.calls[3]?.[0]?.toLocation.search.root).toBe(
       'search-change',
     )
-
-    unsub()
   })
 
   it('during initial load, should emit the "onBeforeRouteMount" and "onResolved" events in the correct order', async () => {
@@ -895,6 +902,8 @@ describe('router emits events during rendering', () => {
       mockOnBeforeRouteMount,
     )
     const unsubResolved = router.subscribe('onResolved', mockOnResolved)
+    onTestFinished(unsubBeforeRouteMount)
+    onTestFinished(unsubResolved)
 
     await router.load()
     render(() => <RouterProvider router={router} />)
@@ -915,9 +924,6 @@ describe('router emits events during rendering', () => {
     } else {
       throw new Error('onBeforeRouteMount should be emitted before onResolved.')
     }
-
-    unsubBeforeRouteMount()
-    unsubResolved()
   })
 })
 
@@ -1540,6 +1546,7 @@ describe('history: History gives correct notifcations and state', () => {
     const unsub = router.history.subscribe(({ action }) => {
       results.push(action)
     })
+    onTestFinished(unsub)
 
     const postsButton = await screen.findByRole('button', { name: 'Posts' })
 
@@ -1560,8 +1567,6 @@ describe('history: History gives correct notifcations and state', () => {
     expect(window.location.pathname).toBe('/')
 
     expect(results).toEqual([{ type: 'PUSH' }, { type: 'BACK' }])
-
-    unsub()
   })
 
   it('should work more complex scenario', async () => {
@@ -1578,6 +1583,7 @@ describe('history: History gives correct notifcations and state', () => {
     const unsub = router.history.subscribe(({ action }) => {
       results.push(action)
     })
+    onTestFinished(unsub)
 
     const replaceButton = await screen.findByRole('button', { name: 'Replace' })
 
@@ -1632,8 +1638,6 @@ describe('history: History gives correct notifcations and state', () => {
       { type: 'BACK' },
       { type: 'GO', index: 1 },
     ])
-
-    unsub()
   })
 })
 

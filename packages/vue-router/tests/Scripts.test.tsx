@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -39,17 +39,14 @@ const createTestManifest = (
     },
   }) satisfies Manifest
 
-const browserHistories: Array<ReturnType<typeof createBrowserHistory>> = []
-
 const createTestBrowserHistory = () => {
   const history = createBrowserHistory()
-  browserHistories.push(history)
+  onTestFinished(() => history.destroy())
   return history
 }
 
 afterEach(() => {
   cleanup()
-  browserHistories.splice(0).forEach((history) => history.destroy())
   window.history.replaceState(null, 'root', '/')
   delete window.$_TSR
 })
@@ -314,77 +311,75 @@ describe('ssr HeadContent', () => {
 
     document.head.append(ssrStylesheet, ssrPreload)
 
-    try {
-      const rootRoute = createRootRoute({
-        component: () => (
-          <>
-            <Teleport to="head">
-              <HeadContent />
-            </Teleport>
-            <Outlet />
-          </>
-        ),
-      })
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        component: () => <div>Index</div>,
-      })
-
-      const router = createRouter({
-        history,
-        routeTree: rootRoute.addChildren([indexRoute]),
-      })
-
-      router.ssr = {
-        manifest: createTestManifest(rootRoute.id),
-      }
-
-      await router.load()
-
-      const { unmount } = render(<RouterProvider router={router} />)
-
-      await waitFor(() => {
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="stylesheet"][href="/main.css"]',
-          ),
-        ).toHaveLength(1)
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="modulepreload"][href="/main.js"]',
-          ),
-        ).toHaveLength(1)
-      })
-
-      expect(
-        document.head.querySelector('link[rel="stylesheet"][href="/main.css"]'),
-      ).toBe(ssrStylesheet)
-      expect(
-        document.head.querySelector(
-          'link[rel="modulepreload"][href="/main.js"]',
-        ),
-      ).toBe(ssrPreload)
-
-      unmount()
-
-      await waitFor(() => {
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="stylesheet"][href="/main.css"]',
-          ),
-        ).toHaveLength(1)
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="modulepreload"][href="/main.js"]',
-          ),
-        ).toHaveLength(0)
-      })
-    } finally {
+    onTestFinished(() => {
       ssrStylesheet.remove()
       ssrPreload.remove()
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <Teleport to="head">
+            <HeadContent />
+          </Teleport>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id),
     }
+
+    await router.load()
+
+    const { unmount } = render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="stylesheet"][href="/main.css"]',
+        ),
+      ).toHaveLength(1)
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="modulepreload"][href="/main.js"]',
+        ),
+      ).toHaveLength(1)
+    })
+
+    expect(
+      document.head.querySelector('link[rel="stylesheet"][href="/main.css"]'),
+    ).toBe(ssrStylesheet)
+    expect(
+      document.head.querySelector('link[rel="modulepreload"][href="/main.js"]'),
+    ).toBe(ssrPreload)
+
+    unmount()
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="stylesheet"][href="/main.css"]',
+        ),
+      ).toHaveLength(1)
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="modulepreload"][href="/main.js"]',
+        ),
+      ).toHaveLength(0)
+    })
   })
 
   test('removes preserved SSR-rendered route preload links after navigation', async () => {
@@ -400,90 +395,90 @@ describe('ssr HeadContent', () => {
 
     document.head.append(ssrStylesheet, ssrPreload)
 
-    try {
-      const rootRoute = createRootRoute({
-        component: () => (
-          <>
-            <Teleport to="head">
-              <HeadContent />
-            </Teleport>
-            <Outlet />
-          </>
-        ),
-      })
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        component: () => <Link to="/about">Go to about page</Link>,
-      })
-
-      const aboutRoute = createRoute({
-        path: '/about',
-        getParentRoute: () => rootRoute,
-        component: () => <div>About</div>,
-      })
-
-      const router = createRouter({
-        history,
-        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-      })
-
-      router.ssr = {
-        manifest: {
-          routes: {
-            [indexRoute.id]: {
-              css: ['/index.css'],
-              preloads: ['/index.js'],
-            },
-          },
-        },
-      }
-
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      await waitFor(() => {
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="stylesheet"][href="/index.css"]',
-          ),
-        ).toHaveLength(1)
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="modulepreload"][href="/index.js"]',
-          ),
-        ).toHaveLength(1)
-      })
-
-      await fireEvent.click(
-        screen.getByRole('link', { name: 'Go to about page' }),
-      )
-
-      await waitFor(() => {
-        expect(router.state.location.pathname).toBe('/about')
-      })
-
-      await waitFor(() => {
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="stylesheet"][href="/index.css"]',
-          ),
-        ).toHaveLength(1)
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="modulepreload"][href="/index.js"]',
-          ),
-        ).toHaveLength(0)
-      })
-    } finally {
+    onTestFinished(() => {
       document.head
         .querySelectorAll(
           'link[rel="stylesheet"][href="/index.css"], link[rel="modulepreload"][href="/index.js"]',
         )
         .forEach((element) => element.remove())
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <Teleport to="head">
+            <HeadContent />
+          </Teleport>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <Link to="/about">Go to about page</Link>,
+    })
+
+    const aboutRoute = createRoute({
+      path: '/about',
+      getParentRoute: () => rootRoute,
+      component: () => <div>About</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+    })
+
+    router.ssr = {
+      manifest: {
+        routes: {
+          [indexRoute.id]: {
+            css: ['/index.css'],
+            preloads: ['/index.js'],
+          },
+        },
+      },
     }
+
+    await router.load()
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="stylesheet"][href="/index.css"]',
+        ),
+      ).toHaveLength(1)
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="modulepreload"][href="/index.js"]',
+        ),
+      ).toHaveLength(1)
+    })
+
+    await fireEvent.click(
+      screen.getByRole('link', { name: 'Go to about page' }),
+    )
+
+    await waitFor(() => {
+      expect(router.state.location.pathname).toBe('/about')
+    })
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="stylesheet"][href="/index.css"]',
+        ),
+      ).toHaveLength(1)
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="modulepreload"][href="/index.js"]',
+        ),
+      ).toHaveLength(0)
+    })
   })
 
   test('does not reuse one SSR-rendered head link for multiple managed tags', async () => {
@@ -495,56 +490,56 @@ describe('ssr HeadContent', () => {
 
     document.head.append(ssrStylesheet)
 
-    try {
-      const rootRoute = createRootRoute({
-        head: () => ({
-          links: [{ rel: 'stylesheet', href: '/main.css' }],
-        }),
-        component: () => (
-          <>
-            <Teleport to="head">
-              <HeadContent />
-            </Teleport>
-            <Outlet />
-          </>
-        ),
-      })
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        component: () => <div>Index</div>,
-      })
-
-      const router = createRouter({
-        history,
-        routeTree: rootRoute.addChildren([indexRoute]),
-      })
-
-      router.ssr = {
-        manifest: createTestManifest(rootRoute.id),
-      }
-
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      await waitFor(() => {
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="stylesheet"][href="/main.css"]',
-          ),
-        ).toHaveLength(2)
-      })
-
-      expect(
-        document.head.querySelector('link[rel="stylesheet"][href="/main.css"]'),
-      ).toBe(ssrStylesheet)
-    } finally {
+    onTestFinished(() => {
       document.head
         .querySelectorAll('link[rel="stylesheet"][href="/main.css"]')
         .forEach((element) => element.remove())
+    })
+
+    const rootRoute = createRootRoute({
+      head: () => ({
+        links: [{ rel: 'stylesheet', href: '/main.css' }],
+      }),
+      component: () => (
+        <>
+          <Teleport to="head">
+            <HeadContent />
+          </Teleport>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id),
     }
+
+    await router.load()
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="stylesheet"][href="/main.css"]',
+        ),
+      ).toHaveLength(2)
+    })
+
+    expect(
+      document.head.querySelector('link[rel="stylesheet"][href="/main.css"]'),
+    ).toBe(ssrStylesheet)
   })
 
   test('does not preserve an SSR-rendered head link with stale attrs', async () => {
@@ -557,57 +552,55 @@ describe('ssr HeadContent', () => {
 
     document.head.append(ssrStylesheet)
 
-    try {
-      const rootRoute = createRootRoute({
-        component: () => (
-          <>
-            <Teleport to="head">
-              <HeadContent
-                assetCrossOrigin={{ stylesheet: 'use-credentials' }}
-              />
-            </Teleport>
-            <Outlet />
-          </>
-        ),
-      })
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        component: () => <div>Index</div>,
-      })
-
-      const router = createRouter({
-        history,
-        routeTree: rootRoute.addChildren([indexRoute]),
-      })
-
-      router.ssr = {
-        manifest: createTestManifest(rootRoute.id),
-      }
-
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      await waitFor(() => {
-        expect(
-          document.head.querySelector(
-            'link[rel="stylesheet"][href="/main.css"][crossorigin="use-credentials"]',
-          ),
-        ).toBeTruthy()
-      })
-
-      expect(
-        document.head.querySelector(
-          'link[rel="stylesheet"][href="/main.css"][crossorigin="anonymous"]',
-        ),
-      ).toBe(ssrStylesheet)
-    } finally {
+    onTestFinished(() => {
       document.head
         .querySelectorAll('link[rel="stylesheet"][href="/main.css"]')
         .forEach((element) => element.remove())
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <Teleport to="head">
+            <HeadContent assetCrossOrigin={{ stylesheet: 'use-credentials' }} />
+          </Teleport>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id),
     }
+
+    await router.load()
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelector(
+          'link[rel="stylesheet"][href="/main.css"][crossorigin="use-credentials"]',
+        ),
+      ).toBeTruthy()
+    })
+
+    expect(
+      document.head.querySelector(
+        'link[rel="stylesheet"][href="/main.css"][crossorigin="anonymous"]',
+      ),
+    ).toBe(ssrStylesheet)
   })
 
   test('does not preserve an SSR-rendered head link with extra attrs', async () => {
@@ -620,62 +613,62 @@ describe('ssr HeadContent', () => {
 
     document.head.append(ssrStylesheet)
 
-    try {
-      const rootRoute = createRootRoute({
-        component: () => (
-          <>
-            <Teleport to="head">
-              <HeadContent />
-            </Teleport>
-            <Outlet />
-          </>
-        ),
-      })
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        component: () => <div>Index</div>,
-      })
-
-      const router = createRouter({
-        history,
-        routeTree: rootRoute.addChildren([indexRoute]),
-      })
-
-      router.ssr = {
-        manifest: createTestManifest(rootRoute.id),
-      }
-
-      await router.load()
-
-      render(<RouterProvider router={router} />)
-
-      await waitFor(() => {
-        expect(
-          document.head.querySelectorAll(
-            'link[rel="stylesheet"][href="/main.css"]',
-          ),
-        ).toHaveLength(2)
-      })
-
-      const links = Array.from(
-        document.head.querySelectorAll(
-          'link[rel="stylesheet"][href="/main.css"]',
-        ),
-      )
-      expect(links).toContain(ssrStylesheet)
-      expect(
-        links.some(
-          (element) =>
-            element !== ssrStylesheet && !element.hasAttribute('data-stale'),
-        ),
-      ).toBe(true)
-    } finally {
+    onTestFinished(() => {
       document.head
         .querySelectorAll('link[rel="stylesheet"][href="/main.css"]')
         .forEach((element) => element.remove())
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <Teleport to="head">
+            <HeadContent />
+          </Teleport>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+      component: () => <div>Index</div>,
+    })
+
+    const router = createRouter({
+      history,
+      routeTree: rootRoute.addChildren([indexRoute]),
+    })
+
+    router.ssr = {
+      manifest: createTestManifest(rootRoute.id),
     }
+
+    await router.load()
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() => {
+      expect(
+        document.head.querySelectorAll(
+          'link[rel="stylesheet"][href="/main.css"]',
+        ),
+      ).toHaveLength(2)
+    })
+
+    const links = Array.from(
+      document.head.querySelectorAll(
+        'link[rel="stylesheet"][href="/main.css"]',
+      ),
+    )
+    expect(links).toContain(ssrStylesheet)
+    expect(
+      links.some(
+        (element) =>
+          element !== ssrStylesheet && !element.hasAttribute('data-stale'),
+      ),
+    ).toBe(true)
   })
 
   test('renders runtime manifest inlineStyle', async () => {

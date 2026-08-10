@@ -1,5 +1,5 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/vue'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   Outlet,
@@ -47,18 +47,18 @@ test('onRendered runs after the destination DOM has committed', async () => {
   const unsubscribe = router.subscribe('onRendered', () => {
     destinationWasRendered.push(screen.queryByText('Next') !== null)
   })
+  onTestFinished(unsubscribe)
 
   await router.navigate({ to: '/next' })
   await waitFor(() => expect(destinationWasRendered).toHaveLength(1))
   expect(destinationWasRendered).toEqual([true])
-
-  unsubscribe()
 })
 
 test('onRendered fires for a same-href navigation with a new history key', async () => {
   const { router } = setup()
   const onRendered = vi.fn()
   const unsubscribe = router.subscribe('onRendered', onRendered)
+  onTestFinished(unsubscribe)
   render(<RouterProvider router={router} />)
   expect(await screen.findByText('Index')).toBeTruthy()
   await waitFor(() => expect(onRendered).toHaveBeenCalledTimes(1))
@@ -76,6 +76,4 @@ test('onRendered fires for a same-href navigation with a new history key', async
   expect(event.fromLocation?.href).toBe('/')
   expect(event.toLocation.href).toBe('/')
   expect(event.hrefChanged).toBe(false)
-
-  unsubscribe()
 })

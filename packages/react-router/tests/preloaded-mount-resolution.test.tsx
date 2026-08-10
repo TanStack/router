@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import * as React from 'react'
 import { createRoot } from 'react-dom/client'
 import { createMemoryHistory } from '@tanstack/history'
@@ -27,18 +27,16 @@ import {
  * benchmark (benchmarks/memory/client/scenarios/mount-unmount), which CI runs.
  */
 
-let prevActEnv: unknown
-
-beforeEach(() => {
-  prevActEnv = (globalThis as any).IS_REACT_ACT_ENVIRONMENT
+const disableActEnvironment = () => {
+  const prevActEnv = (globalThis as any).IS_REACT_ACT_ENVIRONMENT
   ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = false
-})
-
-afterEach(() => {
-  ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = prevActEnv
-})
+  onTestFinished(() => {
+    ;(globalThis as any).IS_REACT_ACT_ENVIRONMENT = prevActEnv
+  })
+}
 
 test('mounting after a settled load still resolves status and fires onRendered', async () => {
+  disableActEnvironment()
   const lifecycle: Array<'layout' | 'rendered'> = []
   const Home = () => {
     React.useLayoutEffect(() => {
@@ -70,20 +68,14 @@ test('mounting after a settled load still resolves status and fires onRendered',
   })
   const onResolved = vi.fn()
   const onLoad = vi.fn()
-  const unsubscribers = [
-    router.subscribe('onRendered', onRendered),
-    router.subscribe('onResolved', onResolved),
-    router.subscribe('onLoad', onLoad),
-  ]
-  const unsubscribe = () => unsubscribers.forEach((fn) => fn())
+  onTestFinished(router.subscribe('onRendered', onRendered))
+  onTestFinished(router.subscribe('onResolved', onResolved))
+  onTestFinished(router.subscribe('onLoad', onLoad))
   const container = document.createElement('div')
   document.body.appendChild(container)
   const reactRoot = createRoot(container)
-  let renderedTimeout: ReturnType<typeof setTimeout> | undefined
 
   onTestFinished(() => {
-    clearTimeout(renderedTimeout)
-    unsubscribe()
     reactRoot.unmount()
     container.remove()
   })
@@ -101,9 +93,10 @@ test('mounting after a settled load still resolves status and fires onRendered',
   await Promise.race([
     rendered,
     new Promise<never>((_, reject) => {
-      renderedTimeout = setTimeout(() => {
+      const renderedTimeout = setTimeout(() => {
         reject(new Error('Timed out waiting for onRendered'))
       }, 2000)
+      onTestFinished(() => clearTimeout(renderedTimeout))
     }),
   ])
 
@@ -115,6 +108,7 @@ test('mounting after a settled load still resolves status and fires onRendered',
 })
 
 test('mounting during a load keeps the existing generation', async () => {
+  disableActEnvironment()
   const gate = createControlledPromise<void>()
   const beforeLoad = vi.fn()
   const loader = vi.fn(() => gate)

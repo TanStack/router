@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 import {
@@ -44,11 +44,13 @@ function bootstrap(
 
 afterEach(() => {
   cleanup()
-  delete window.$_TSR
 })
 
 describe('hydration terminal lane', () => {
   test('keeps server data while loading only the missing client suffix', async () => {
+    onTestFinished(() => {
+      delete window.$_TSR
+    })
     const parentLoader = vi.fn(() => 'client-parent')
     const childLoader = vi.fn(() => 'client-child')
     const rootRoute = createRootRoute({ component: Outlet })

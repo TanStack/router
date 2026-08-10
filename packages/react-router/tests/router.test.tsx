@@ -1,5 +1,13 @@
 import { act, useEffect, useRef } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  vi,
+} from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -2683,6 +2691,9 @@ describe('notFound in beforeLoad with pendingComponent', () => {
       expect(await screen.findByTestId('home-page')).toBeInTheDocument()
 
       vi.useFakeTimers()
+      onTestFinished(() => {
+        vi.useRealTimers()
+      })
       let navigation!: Promise<void>
       const pendingTestId = `${pendingOwner}-pending`
       try {
@@ -2700,14 +2711,10 @@ describe('notFound in beforeLoad with pendingComponent', () => {
           expect(screen.getByTestId('parent-component')).toBeInTheDocument()
         }
       } finally {
-        try {
-          await act(async () => {
-            beforeLoad.resolve()
-            await navigation
-          })
-        } finally {
-          vi.useRealTimers()
-        }
+        await act(async () => {
+          beforeLoad.resolve()
+          await navigation
+        })
       }
 
       expect(screen.getByTestId('parent-not-found')).toHaveTextContent(

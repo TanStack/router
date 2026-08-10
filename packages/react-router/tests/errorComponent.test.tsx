@@ -1,4 +1,12 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
@@ -48,7 +56,6 @@ beforeEach(() => {
 
 afterEach(() => {
   history.destroy()
-  vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
@@ -296,8 +303,12 @@ test('global catch boundary resets when a background child generation recovers',
     routeTree: rootRoute.addChildren([childRoute]),
     history,
   })
-  vi.spyOn(console, 'warn').mockImplementation(() => {})
-  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  onTestFinished(() => {
+    consoleWarn.mockRestore()
+    consoleError.mockRestore()
+  })
 
   render(<RouterProvider router={router} />)
   expect(
@@ -345,8 +356,12 @@ test('ancestor route errorComponent resets when a background child generation re
     routeTree: rootRoute.addChildren([childRoute]),
     history,
   })
-  vi.spyOn(console, 'warn').mockImplementation(() => {})
-  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  onTestFinished(() => {
+    consoleWarn.mockRestore()
+    consoleError.mockRestore()
+  })
 
   let invalidation: Promise<void> | undefined
   try {

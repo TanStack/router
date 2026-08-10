@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import {
   decodePath,
   deepEqual,
@@ -485,18 +485,15 @@ describe('deepEqual', () => {
       () => {
         // @ts-expect-error -- typescript is right to complain here, don't do this!
         Object.prototype.x = 'x'
+        onTestFinished(() => {
+          // @ts-expect-error
+          delete Object.prototype.x
+        })
         const a = { a: 1 }
         const b = { a: 1 }
         expect(deepEqual(a, b, { ignoreUndefined: false })).toEqual(true)
       },
     )
-
-    afterEach(() => {
-      // it's probably not necessary to clean this up because vitest isolates tests
-      // but just in case isolation ever gets disabled, we clean the prototype to avoid disturbing other tests
-      // @ts-expect-error
-      delete Object.prototype.x
-    })
   })
 })
 

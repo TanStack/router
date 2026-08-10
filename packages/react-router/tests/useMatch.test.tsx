@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -233,16 +233,13 @@ describe('useMatch', () => {
         })
       }
     })
-    try {
-      fireEvent.click(screen.getByText('Other'))
-      await waitFor(() => expect(returnNavigation).toBeDefined())
-      await returnNavigation
+    onTestFinished(unsubscribe)
+    fireEvent.click(screen.getByText('Other'))
+    await waitFor(() => expect(returnNavigation).toBeDefined())
+    await returnNavigation
 
-      expect(await screen.findByText('Item revision 2')).toBeInTheDocument()
-      expect(screen.queryByText('Other route')).not.toBeInTheDocument()
-    } finally {
-      unsubscribe()
-    }
+    expect(await screen.findByText('Item revision 2')).toBeInTheDocument()
+    expect(screen.queryByText('Other route')).not.toBeInTheDocument()
   })
 
   describe('when match is not found', () => {

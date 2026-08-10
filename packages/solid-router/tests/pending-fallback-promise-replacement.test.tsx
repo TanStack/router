@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@solidjs/testing-library'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
   Outlet,
@@ -10,21 +10,29 @@ import {
   createRouter,
 } from '../src'
 import type { AnyRouter } from '../src'
+import type { ControlledPromise } from '@tanstack/router-core'
 
-const testCleanups: Array<() => void | Promise<void>> = []
-
-afterEach(async () => {
-  const pendingCleanups = testCleanups
-    .splice(0)
-    .reverse()
-    .map((testCleanup) => testCleanup())
-  if (vi.isFakeTimers()) {
-    await vi.runAllTimersAsync()
-  }
-  await Promise.allSettled(pendingCleanups)
-  cleanup()
-  vi.useRealTimers()
-})
+function setupTestCleanup(
+  gates: ReadonlyArray<ControlledPromise<void>>,
+  pendingOperations: ReadonlyArray<Promise<unknown>>,
+) {
+  onTestFinished(async () => {
+    try {
+      for (const gate of gates) {
+        if (gate.status === 'pending') {
+          gate.resolve()
+        }
+      }
+      if (vi.isFakeTimers()) {
+        await vi.runAllTimersAsync()
+      }
+      await Promise.allSettled(pendingOperations)
+    } finally {
+      cleanup()
+      vi.useRealTimers()
+    }
+  })
+}
 
 test.each(['child', 'root'] as const)(
   'a mounted %s pending fallback follows an overlapping load generation',
@@ -32,6 +40,8 @@ test.each(['child', 'root'] as const)(
     const firstReload = createControlledPromise<void>()
     const secondReload = createControlledPromise<void>()
     const reloads = [firstReload, secondReload]
+    const invalidations: Array<Promise<unknown>> = []
+    setupTestCleanup(reloads, invalidations)
     let loaderCall = 0
 
     const routeOptions = {
@@ -76,12 +86,7 @@ test.each(['child', 'root'] as const)(
 
     vi.useFakeTimers()
     const firstInvalidation = router.invalidate({ forcePending: true })
-    const invalidations = [firstInvalidation]
-    testCleanups.push(async () => {
-      firstReload.resolve()
-      secondReload.resolve()
-      await Promise.allSettled(invalidations)
-    })
+    invalidations.push(firstInvalidation)
     await vi.advanceTimersByTimeAsync(0)
     expect(loaderCall).toBe(2)
     expect(screen.getByTestId('pending')).toBeInTheDocument()
@@ -125,6 +130,8 @@ test.each(['child', 'root'] as const)(
 
 test('forcePending honors pendingMinMs when the reload settles before pendingMs', async () => {
   const reload = createControlledPromise<void>()
+  const invalidations: Array<Promise<unknown>> = []
+  setupTestCleanup([reload], invalidations)
   let loaderCall = 0
 
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
@@ -151,10 +158,7 @@ test('forcePending honors pendingMinMs when the reload settles before pendingMs'
 
   vi.useFakeTimers()
   const invalidation = router.invalidate({ forcePending: true })
-  testCleanups.push(async () => {
-    reload.resolve()
-    await Promise.allSettled([invalidation])
-  })
+  invalidations.push(invalidation)
   await vi.advanceTimersByTimeAsync(0)
   expect(screen.getByTestId('fast-pending')).toBeInTheDocument()
 

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -8,10 +8,6 @@ import {
   redirect,
 } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
-
-afterEach(() => {
-  vi.useRealTimers()
-})
 
 function abortAwareGate(signal: AbortSignal): Promise<void> {
   return new Promise((_resolve, reject) => {

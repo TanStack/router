@@ -1,5 +1,14 @@
 import React from 'react'
-import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import {
   act,
   cleanup,
@@ -2511,6 +2520,7 @@ describe('Link', () => {
     const homeLink = await screen.findByTestId('home-link')
 
     const consoleWarnSpy = vi.spyOn(console, 'warn')
+    onTestFinished(() => consoleWarnSpy.mockRestore())
 
     await act(() => fireEvent.click(homeLink))
 
@@ -2519,8 +2529,6 @@ describe('Link', () => {
     expect(homeHeading).toBeInTheDocument()
 
     expect(consoleWarnSpy).not.toHaveBeenCalled()
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts to ../posts/$postId', async () => {
@@ -3071,6 +3079,7 @@ describe('Link', () => {
     expect(post1Heading).toBeInTheDocument()
 
     const consoleWarnSpy = vi.spyOn(console, 'warn')
+    onTestFinished(() => consoleWarnSpy.mockRestore())
 
     const usersLink = await screen.findByTestId('users-link')
     await act(() => fireEvent.click(usersLink))
@@ -3088,8 +3097,6 @@ describe('Link', () => {
     expect(user1Heading).toBeInTheDocument()
 
     expect(consoleWarnSpy).not.toHaveBeenCalled()
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts/$postId to ./info and the current route is /posts/$postId/details', async () => {
@@ -3786,6 +3793,7 @@ describe('Link', () => {
 
   test('when navigating from /invoices to ./invoiceId and the current route is /posts/$postId/details', async () => {
     const consoleWarnSpy = vi.spyOn(console, 'warn')
+    onTestFinished(() => consoleWarnSpy.mockRestore())
 
     const rootRoute = createRootRoute()
 
@@ -3934,8 +3942,6 @@ describe('Link', () => {
     expect(consoleWarnSpy).toHaveBeenCalledWith(
       'Could not find match for from: /invoices',
     )
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating to /posts/$postId/info which is declaratively masked as /posts/$postId', async () => {

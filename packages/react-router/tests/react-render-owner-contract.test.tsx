@@ -1,6 +1,6 @@
 import { act } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import {
   RouterProvider,
   createControlledPromise,
@@ -9,14 +9,7 @@ import {
   createRouter,
 } from '../src'
 
-const testCleanups: Array<() => void> = []
-
-afterEach(() => {
-  while (testCleanups.length) {
-    testCleanups.pop()!()
-  }
-  cleanup()
-})
+afterEach(cleanup)
 
 test('a suspended same-membership publication cannot acknowledge its successor', async () => {
   const firstRenderStarted = createControlledPromise<void>()
@@ -55,7 +48,7 @@ test('a suspended same-membership publication cannot acknowledge its successor',
       Number((event.toLocation.search as Record<string, unknown>).revision),
     )
   })
-  testCleanups.push(unsubscribe)
+  onTestFinished(unsubscribe)
 
   let firstNavigation!: Promise<void>
   await act(async () => {

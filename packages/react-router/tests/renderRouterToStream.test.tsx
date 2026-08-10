@@ -60,10 +60,10 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     reactDomServerMocks.renderToReadableStream = vi.fn(() => stream)
 
     const router = await buildRouter()
-    const controller = new AbortController()
     onTestFinished(() => {
       router.serverSsr?.cleanup()
     })
+    const controller = new AbortController()
 
     const response = unwrapResponse(
       await renderRouterToStream({
@@ -91,23 +91,21 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     )
 
     const router = await buildRouter()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/'),
-          router,
-          responseHeaders: new Headers(),
-          children: null,
-        }),
-      )
-
-      expect(abort).toHaveBeenCalledOnce()
-      await expectBodyRejects(response, 'sync-react-error')
-    } finally {
-      errorSpy.mockRestore()
+    onTestFinished(() => {
       router.serverSsr?.cleanup()
-    }
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      }),
+    )
+
+    expect(abort).toHaveBeenCalledOnce()
+    await expectBodyRejects(response, 'sync-react-error')
   })
 
   test('sync non-Error onError before pipeable assignment still errors body', async () => {
@@ -120,23 +118,21 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     )
 
     const router = await buildRouter()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/'),
-          router,
-          responseHeaders: new Headers(),
-          children: null,
-        }),
-      )
-
-      expect(abort).toHaveBeenCalledOnce()
-      await expectBodyRejects(response, 'string-react-error')
-    } finally {
-      errorSpy.mockRestore()
+    onTestFinished(() => {
       router.serverSsr?.cleanup()
-    }
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      }),
+    )
+
+    expect(abort).toHaveBeenCalledOnce()
+    await expectBodyRejects(response, 'string-react-error')
   })
 
   test('sync undefined onError before pipeable assignment still errors body', async () => {
@@ -149,23 +145,21 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     )
 
     const router = await buildRouter()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/'),
-          router,
-          responseHeaders: new Headers(),
-          children: null,
-        }),
-      )
-
-      expect(abort).toHaveBeenCalledOnce()
-      await expectBodyRejects(response, 'SSR aborted')
-    } finally {
-      errorSpy.mockRestore()
+    onTestFinished(() => {
       router.serverSsr?.cleanup()
-    }
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      }),
+    )
+
+    expect(abort).toHaveBeenCalledOnce()
+    await expectBodyRejects(response, 'SSR aborted')
   })
 
   test('undefined onError after response attach errors body', async () => {
@@ -179,24 +173,22 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     )
 
     const router = await buildRouter()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/'),
-          router,
-          responseHeaders: new Headers(),
-          children: null,
-        }),
-      )
-
-      onError(undefined, { componentStack: '' })
-      expect(abort).toHaveBeenCalledOnce()
-      await expectBodyRejects(response, 'SSR aborted')
-    } finally {
-      errorSpy.mockRestore()
+    onTestFinished(() => {
       router.serverSsr?.cleanup()
-    }
+    })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      }),
+    )
+
+    onError(undefined, { componentStack: '' })
+    expect(abort).toHaveBeenCalledOnce()
+    await expectBodyRejects(response, 'SSR aborted')
   })
 
   test('setup throw rejects instead of returning streamed 200', async () => {
@@ -206,24 +198,22 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     })
 
     const router = await buildRouter()
-    const cleanup = vi.spyOn(router.serverSsr!, 'cleanup')
     const originalServerSsr = router.serverSsr!
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      await expect(
-        renderRouterToStream({
-          request: new Request('http://localhost/'),
-          router,
-          responseHeaders: new Headers(),
-          children: null,
-        }),
-      ).rejects.toThrow('setup-boom')
-
-      expect(cleanup).toHaveBeenCalledOnce()
-    } finally {
-      errorSpy.mockRestore()
+    onTestFinished(() => {
       originalServerSsr.cleanup()
-    }
+    })
+    const cleanup = vi.spyOn(originalServerSsr, 'cleanup')
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(
+      renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      }),
+    ).rejects.toThrow('setup-boom')
+
+    expect(cleanup).toHaveBeenCalledOnce()
   })
 
   test('request abort cancels pipeable rendering before the response body is consumed', async () => {
@@ -236,29 +226,28 @@ describe('renderRouterToStream - pipeable sync errors', () => {
     )
 
     const router = await buildRouter()
-    const controller = new AbortController()
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/', {
-            signal: controller.signal,
-          }),
-          router,
-          responseHeaders: new Headers(),
-          children: null,
-        }),
-      )
-
-      expect(response.body).not.toBeNull()
-      controller.abort(new Error('request-gone'))
-      await vi.waitFor(() => expect(abort).toHaveBeenCalledOnce())
-      const terminated = await Promise.race<true | false>([
-        expectBodyRejects(response, 'request-gone').then(() => true),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
-      ])
-      expect(terminated).toBe(true)
-    } finally {
+    onTestFinished(() => {
       router.serverSsr?.cleanup()
-    }
+    })
+    const controller = new AbortController()
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/', {
+          signal: controller.signal,
+        }),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      }),
+    )
+
+    expect(response.body).not.toBeNull()
+    controller.abort(new Error('request-gone'))
+    await vi.waitFor(() => expect(abort).toHaveBeenCalledOnce())
+    const terminated = await Promise.race<true | false>([
+      expectBodyRejects(response, 'request-gone').then(() => true),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
+    ])
+    expect(terminated).toBe(true)
   })
 })

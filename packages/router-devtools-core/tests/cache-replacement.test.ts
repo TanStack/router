@@ -1,4 +1,4 @@
-import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
+import { beforeAll, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { TanStackRouterDevtoolsPanelCore } from '../src/TanStackRouterDevtoolsPanelCore'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
 
@@ -17,25 +17,21 @@ function createCachedMatch(loaderData: string): AnyRouteMatch {
 }
 
 describe('cached matches', () => {
-  let panel: TanStackRouterDevtoolsPanelCore | undefined
-
   // Warm Vite's lazy transform of the panel chunk outside any test so its
   // cost never counts against a test's timeout budget on slow CI runners.
   beforeAll(async () => {
     await import('../src/BaseTanStackRouterDevtoolsPanel')
   }, 30_000)
 
-  afterEach(() => {
-    panel?.unmount()
-    panel = undefined
-    document.body.innerHTML = ''
-    try {
-      window.localStorage.clear()
-    } catch {}
-    vi.useRealTimers()
-  })
-
   it('uses the default gc time and refreshes replaced cache entries', async () => {
+    onTestFinished(() => {
+      document.body.innerHTML = ''
+      try {
+        window.localStorage.clear()
+      } catch {}
+      vi.useRealTimers()
+    })
+
     vi.useFakeTimers()
 
     const route = {
@@ -78,8 +74,15 @@ describe('cached matches', () => {
     const container = document.createElement('div')
     document.body.append(container)
 
-    panel = new TanStackRouterDevtoolsPanelCore({ router, routerState })
+    const panel = new TanStackRouterDevtoolsPanelCore({ router, routerState })
+    let mounted = false
+    onTestFinished(() => {
+      if (mounted) {
+        panel.unmount()
+      }
+    })
     panel.mount(container)
+    mounted = true
 
     await vi.waitFor(() => {
       expect(

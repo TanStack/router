@@ -194,6 +194,10 @@ test('global catch boundary resets when a background child generation recovers',
   ).toBeInTheDocument()
 
   const invalidation = router.invalidate()
+  onTestFinished(async () => {
+    refresh.resolve(2)
+    await Promise.allSettled([invalidation])
+  })
   await vi.waitFor(() => expect(loaderCalls).toBe(2))
   expect(screen.getByText('stale child render failed')).toBeInTheDocument()
   expect(screen.queryByText(/Recovered child revision/)).not.toBeInTheDocument()

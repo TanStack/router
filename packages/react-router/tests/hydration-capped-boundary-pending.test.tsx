@@ -2,7 +2,7 @@ import * as React from 'react'
 import { act } from '@testing-library/react'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 import { hydrate } from '../src/ssr/client'
@@ -21,17 +21,6 @@ declare global {
     $_TSR?: TsrSsrGlobal
   }
 }
-
-const testCleanups: Array<() => void | Promise<void>> = []
-
-afterEach(async () => {
-  while (testCleanups.length) {
-    await testCleanups.pop()!()
-  }
-  vi.restoreAllMocks()
-  window.$_TSR = undefined
-  document.body.innerHTML = ''
-})
 
 describe('hydrating a server-capped boundary lane', () => {
   test('recovers a /404 payload against a missing browser URL', async () => {
@@ -87,6 +76,9 @@ describe('hydrating a server-capped boundary lane', () => {
       buffer: [],
       initialized: false,
     }
+    onTestFinished(() => {
+      window.$_TSR = undefined
+    })
 
     await hydrate(clientRouter)
 
@@ -98,8 +90,9 @@ describe('hydrating a server-capped boundary lane', () => {
       root = hydrateRoot(container, <RouterProvider router={clientRouter} />, {
         onRecoverableError: () => {},
       })
-      testCleanups.push(async () => {
+      onTestFinished(async () => {
         await act(() => root.unmount())
+        container.remove()
       })
       await Promise.resolve()
     })
@@ -229,6 +222,9 @@ describe('hydrating a server-capped boundary lane', () => {
         buffer: [],
         initialized: false,
       }
+      onTestFinished(() => {
+        window.$_TSR = undefined
+      })
 
       await hydrate(clientRouter)
 
@@ -238,11 +234,13 @@ describe('hydrating a server-capped boundary lane', () => {
       const consoleError = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {})
+      onTestFinished(() => consoleError.mockRestore())
       let root!: ReturnType<typeof hydrateRoot>
       await act(async () => {
         root = hydrateRoot(container, <RouterProvider router={clientRouter} />)
-        testCleanups.push(async () => {
+        onTestFinished(async () => {
           await act(() => root.unmount())
+          container.remove()
         })
         await Promise.resolve()
       })

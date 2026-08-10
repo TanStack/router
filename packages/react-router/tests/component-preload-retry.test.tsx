@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
@@ -15,13 +15,13 @@ import type { ErrorComponentProps } from '../src'
 
 afterEach(() => {
   cleanup()
-  vi.restoreAllMocks()
-  vi.unstubAllGlobals()
-  sessionStorage.clear()
 })
 
 test('a successful server component download is reused', async () => {
   vi.stubGlobal('window', undefined)
+  onTestFinished(() => {
+    vi.unstubAllGlobals()
+  })
   const importer = vi.fn().mockResolvedValue({ default: () => null })
   const Page = lazyRouteComponent(importer)
 
@@ -46,7 +46,8 @@ test('concurrent component preloads share the import', async () => {
 })
 
 test('a failed component download is retried from the route error UI', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  onTestFinished(() => consoleError.mockRestore())
 
   const PageContent = () => <div>Page content</div>
   const importer = vi
@@ -97,6 +98,7 @@ test('a failed component download is retried from the route error UI', async () 
 })
 
 test('renders after retrying a module download that failed during preload', async () => {
+  onTestFinished(() => sessionStorage.clear())
   const PageContent = () => <div>Page content</div>
   const importer = vi
     .fn<() => Promise<{ default: typeof PageContent }>>()

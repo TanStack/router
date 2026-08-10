@@ -1,14 +1,12 @@
 import { join } from 'node:path'
-import { afterAll, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { Generator, getConfig } from '../src'
 
 describe('validateRouteParams via generator', () => {
-  const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  afterAll(() => {
-    warnSpy.mockRestore()
-  })
-
   it('should warn for invalid param names when running the generator', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => warnSpy.mockRestore())
+
     const folderName = 'invalid-param-names'
     const dir = join(process.cwd(), 'tests', 'generator', folderName)
 

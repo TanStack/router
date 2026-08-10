@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -7,10 +7,6 @@ import {
   notFound,
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 /**
  * A settled success stay-match must keep its abortController un-aborted
@@ -211,7 +207,10 @@ describe('stay-match abort scope', () => {
   })
 
   test('decorative background asset failure still transfers loader signal ownership', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    onTestFinished(() => {
+      log.mockRestore()
+    })
     let loaderCalls = 0
     const loaderSignals: Array<AbortSignal> = []
 

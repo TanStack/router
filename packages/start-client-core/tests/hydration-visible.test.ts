@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { visible } from '../src/hydration/visible'
 import type { HydrationPrefetchStrategy } from '../src/hydration/types'
 
@@ -37,7 +37,6 @@ class IntersectionObserverMock implements IntersectionObserver {
 
 describe('visible hydration strategy', () => {
   let observers: Array<IntersectionObserverMock>
-  const cleanups: Array<() => void> = []
 
   beforeEach(() => {
     observers = []
@@ -53,11 +52,9 @@ describe('visible hydration strategy', () => {
         }
       },
     )
-  })
-
-  afterEach(() => {
-    cleanups.splice(0).forEach((cleanup) => cleanup())
-    vi.unstubAllGlobals()
+    onTestFinished(() => {
+      vi.unstubAllGlobals()
+    })
   })
 
   function observe(
@@ -66,10 +63,19 @@ describe('visible hydration strategy', () => {
     callback: () => void,
   ) {
     const cleanup = strategy._s?.({ element, prefetch: callback })
-    if (cleanup) {
-      cleanups.push(cleanup)
+    if (!cleanup) {
+      return cleanup
     }
-    return cleanup
+
+    let finished = false
+    const finish = () => {
+      if (!finished) {
+        finished = true
+        cleanup()
+      }
+    }
+    onTestFinished(finish)
+    return finish
   }
 
   it('shares an observer and tracks multiple callbacks for one element', () => {

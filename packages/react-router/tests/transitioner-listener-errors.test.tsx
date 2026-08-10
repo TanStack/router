@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { act, cleanup, render, screen } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import {
   Outlet,
   RouterProvider,
@@ -10,14 +10,7 @@ import {
   createRouter,
 } from '../src'
 
-const testCleanups: Array<() => void | Promise<void>> = []
-
-afterEach(async () => {
-  while (testCleanups.length) {
-    await testCleanups.pop()!()
-  }
-  cleanup()
-})
+afterEach(cleanup)
 
 test('a throwing load-event listener cannot interrupt route hooks or later navigations', async () => {
   const firstOnEnter = vi.fn()
@@ -57,13 +50,14 @@ test('a throwing load-event listener cannot interrupt route hooks or later navig
       throw listenerError
     }
   })
+  onTestFinished(unsubscribe)
   const unsubscribeLater = router.subscribe('onLoad', (event) => {
     if (event.toLocation.pathname !== '/') {
       loadedPaths.push(event.toLocation.pathname)
       laterOnLoad(event)
     }
   })
-  testCleanups.push(unsubscribe, unsubscribeLater)
+  onTestFinished(unsubscribeLater)
 
   await act(() => router.navigate({ to: '/first' }))
 

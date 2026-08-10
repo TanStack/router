@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -1766,20 +1766,17 @@ describe('buildLocation - params edge cases', () => {
     await router.load()
 
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => warn.mockRestore())
 
-    try {
-      const location = router.buildLocation({
-        to: '/$foo',
-        params: { foo: 'yes' },
-      })
+    const location = router.buildLocation({
+      to: '/$foo',
+      params: { foo: 'yes' },
+    })
 
-      expect(location.pathname).toBe('/no')
-      expect(warn).toHaveBeenCalledWith(
-        'Generated path "/no" for route "/$foo" matched route "/no" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.',
-      )
-    } finally {
-      warn.mockRestore()
-    }
+    expect(location.pathname).toBe('/no')
+    expect(warn).toHaveBeenCalledWith(
+      'Generated path "/no" for route "/$foo" matched route "/no" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.',
+    )
   })
 
   test('buildLocation should warn in development when a generated path matches an optional route template', async () => {
@@ -1803,19 +1800,16 @@ describe('buildLocation - params edge cases', () => {
     await router.load()
 
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => warn.mockRestore())
 
-    try {
-      const location = router.buildLocation({
-        to: '/time',
-      })
+    const location = router.buildLocation({
+      to: '/time',
+    })
 
-      expect(location.pathname).toBe('/time')
-      expect(warn).toHaveBeenCalledWith(
-        'Generated path "/time" for route "/time" matched route "/time/{-$day}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.',
-      )
-    } finally {
-      warn.mockRestore()
-    }
+    expect(location.pathname).toBe('/time')
+    expect(warn).toHaveBeenCalledWith(
+      'Generated path "/time" for route "/time" matched route "/time/{-$day}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.',
+    )
   })
 
   test('params.stringify in nested routes should all be applied', async () => {

@@ -1,6 +1,6 @@
 import { act } from 'react'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   Outlet,
@@ -10,14 +10,7 @@ import {
   createRouter,
 } from '../src'
 
-const testCleanups: Array<() => void> = []
-
-afterEach(() => {
-  while (testCleanups.length) {
-    testCleanups.pop()!()
-  }
-  cleanup()
-})
+afterEach(cleanup)
 
 test('onRendered fires for a same-href navigation with a new history key', async () => {
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
@@ -42,7 +35,7 @@ test('onRendered fires for a same-href navigation with a new history key', async
 
   const onRendered = vi.fn()
   const unsubscribe = router.subscribe('onRendered', onRendered)
-  testCleanups.push(unsubscribe)
+  onTestFinished(unsubscribe)
   await act(() =>
     router.navigate({
       to: '/',

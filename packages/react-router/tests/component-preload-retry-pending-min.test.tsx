@@ -1,6 +1,6 @@
 import * as React from 'react'
 import { act } from 'react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
@@ -14,8 +14,6 @@ import {
 import type { ErrorComponentProps } from '../src'
 
 afterEach(() => {
-  vi.useRealTimers()
-  vi.restoreAllMocks()
   cleanup()
 })
 
@@ -52,7 +50,11 @@ test('delayed component preload reveals pending UI', async () => {
  * ready and pendingMinMs has elapsed.
  */
 test('component preload retry remains pending through pendingMinMs', async () => {
-  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  onTestFinished(() => {
+    vi.useRealTimers()
+    consoleError.mockRestore()
+  })
 
   const retryChunk = createControlledPromise<void>()
   let preloadAttempt = 0

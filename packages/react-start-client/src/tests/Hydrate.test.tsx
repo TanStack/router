@@ -9,7 +9,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { hydrateIdAttribute } from '@tanstack/start-client-core/hydration/constants'
 import { Hydrate } from '../Hydrate'
 import { condition, idle, interaction, load, never } from '../hydration'
@@ -122,6 +122,31 @@ async function renderAsync(ui: React.ReactElement) {
   })
 }
 
+function createRootCleanup(
+  container: Element,
+  getRoot: () => ReturnType<typeof hydrateRoot> | undefined,
+) {
+  let cleanedUp = false
+
+  return async () => {
+    if (cleanedUp) {
+      return
+    }
+    cleanedUp = true
+
+    try {
+      const root = getRoot()
+      if (root) {
+        await act(() => {
+          root.unmount()
+        })
+      }
+    } finally {
+      container.remove()
+    }
+  }
+}
+
 async function hydrateFromServer(ui: React.ReactElement) {
   vi.stubGlobal('window', undefined)
   const html = renderToString(ui)
@@ -131,23 +156,16 @@ async function hydrateFromServer(ui: React.ReactElement) {
   document.body.append(container)
   container.innerHTML = html
 
-  let root!: ReturnType<typeof hydrateRoot>
+  let root: ReturnType<typeof hydrateRoot> | undefined
+  const cleanupRoot = createRootCleanup(container, () => root)
+  onTestFinished(cleanupRoot)
+
   await act(async () => {
     root = hydrateRoot(container, ui)
     await Promise.resolve()
   })
 
-  return { container, html, root }
-}
-
-async function unmountHydratedRoot(
-  root: ReturnType<typeof hydrateRoot>,
-  container: Element,
-) {
-  await act(async () => {
-    root.unmount()
-  })
-  container.remove()
+  return { container, html, cleanupRoot }
 }
 
 afterEach(() => {
@@ -157,7 +175,7 @@ afterEach(() => {
 
 describe('Hydrate', () => {
   it('uses a single custom interaction event instead of the default intent events', async () => {
-    const { container, html, root } = await hydrateFromServer(
+    const { html } = await hydrateFromServer(
       <Hydrate
         when={interaction({ events: 'dblclick' })}
         fallback={<div data-testid="fallback">fallback</div>}
@@ -166,30 +184,26 @@ describe('Hydrate', () => {
       </Hydrate>,
     )
 
-    try {
-      expect(html).toContain('data-testid="child"')
-      expect(html).not.toContain('data-testid="fallback"')
-      expect(screen.queryByTestId('fallback')).toBeNull()
-      await expectNoHydrationAfterDefaultIntentEvents()
+    expect(html).toContain('data-testid="child"')
+    expect(html).not.toContain('data-testid="fallback"')
+    expect(screen.queryByTestId('fallback')).toBeNull()
+    await expectNoHydrationAfterDefaultIntentEvents()
 
-      await fireIntent(() =>
-        getMarker().dispatchEvent(
-          new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
-        ),
-      )
+    await fireIntent(() =>
+      getMarker().dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
+      ),
+    )
 
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+    await waitFor(() =>
+      expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+        'true',
+      ),
+    )
   })
 
   it('uses every event in a custom interaction event list', async () => {
-    const { container, root } = await hydrateFromServer(
+    await hydrateFromServer(
       <Hydrate
         when={interaction({ events: ['contextmenu', 'dblclick'] })}
         fallback={<div data-testid="fallback">fallback</div>}
@@ -198,24 +212,20 @@ describe('Hydrate', () => {
       </Hydrate>,
     )
 
-    try {
-      expect(screen.queryByTestId('fallback')).toBeNull()
-      await expectNoHydrationAfterDefaultIntentEvents()
+    expect(screen.queryByTestId('fallback')).toBeNull()
+    await expectNoHydrationAfterDefaultIntentEvents()
 
-      await fireIntent(() =>
-        getMarker().dispatchEvent(
-          new MouseEvent('contextmenu', { bubbles: true, cancelable: true }),
-        ),
-      )
+    await fireIntent(() =>
+      getMarker().dispatchEvent(
+        new MouseEvent('contextmenu', { bubbles: true, cancelable: true }),
+      ),
+    )
 
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+    await waitFor(() =>
+      expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+        'true',
+      ),
+    )
   })
 
   it('omits never content when mounted after the app is already hydrated', async () => {
@@ -253,7 +263,7 @@ describe('Hydrate', () => {
   })
 
   it('does not use fallback for an initial never boundary', async () => {
-    const { container, html, root } = await hydrateFromServer(
+    const { html } = await hydrateFromServer(
       <Hydrate
         when={never()}
         fallback={<div data-testid="fallback">fallback</div>}
@@ -262,24 +272,20 @@ describe('Hydrate', () => {
       </Hydrate>,
     )
 
-    try {
-      expect(html).toContain('data-testid="child"')
-      expect(html).not.toContain('data-testid="fallback"')
-      expect(screen.queryByTestId('fallback')).toBeNull()
+    expect(html).toContain('data-testid="child"')
+    expect(html).not.toContain('data-testid="fallback"')
+    expect(screen.queryByTestId('fallback')).toBeNull()
 
-      fireEvent.click(screen.getByTestId('child'))
-      await new Promise((resolve) => setTimeout(resolve, 20))
-      expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-        'false',
-      )
-      expect(screen.getByTestId('child').textContent).toBe('0')
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+    fireEvent.click(screen.getByTestId('child'))
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
+    expect(screen.getByTestId('child').textContent).toBe('0')
   })
 
   it('keeps repeated split boundaries independently gated', async () => {
-    const { container, root } = await hydrateFromServer(
+    const { container } = await hydrateFromServer(
       <>
         <InternalHydrate when={interaction()} h="shared-boundary">
           <NamedInteractiveChild id="one" />
@@ -290,37 +296,33 @@ describe('Hydrate', () => {
       </>,
     )
 
-    try {
-      const markers = container.querySelectorAll(hydrateIdSelector)
+    const markers = container.querySelectorAll(hydrateIdSelector)
 
-      expect(markers).toHaveLength(2)
-      expect(markers[0]!.getAttribute(hydrateIdAttribute)).not.toBe(
-        markers[1]!.getAttribute(hydrateIdAttribute),
-      )
+    expect(markers).toHaveLength(2)
+    expect(markers[0]!.getAttribute(hydrateIdAttribute)).not.toBe(
+      markers[1]!.getAttribute(hydrateIdAttribute),
+    )
+    expect(screen.getByTestId('child-one').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
+    expect(screen.getByTestId('child-two').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
+
+    await fireIntent(() =>
+      markers[0]!.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    )
+
+    await waitFor(() =>
       expect(
         screen.getByTestId('child-one').getAttribute('data-hydrated'),
-      ).toBe('false')
-      expect(
-        screen.getByTestId('child-two').getAttribute('data-hydrated'),
-      ).toBe('false')
-
-      await fireIntent(() =>
-        markers[0]!.dispatchEvent(
-          new MouseEvent('click', { bubbles: true, cancelable: true }),
-        ),
-      )
-
-      await waitFor(() =>
-        expect(
-          screen.getByTestId('child-one').getAttribute('data-hydrated'),
-        ).toBe('true'),
-      )
-      expect(
-        screen.getByTestId('child-two').getAttribute('data-hydrated'),
-      ).toBe('false')
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+      ).toBe('true'),
+    )
+    expect(screen.getByTestId('child-two').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
   })
 
   it('fires onHydrated once after the client hydration commit', async () => {
@@ -341,8 +343,11 @@ describe('Hydrate', () => {
     document.body.append(container)
     container.innerHTML = html
 
-    let root!: ReturnType<typeof hydrateRoot>
-    await act(async () => {
+    let root: ReturnType<typeof hydrateRoot> | undefined
+    const cleanupRoot = createRootCleanup(container, () => root)
+    onTestFinished(cleanupRoot)
+
+    await act(() => {
       root = hydrateRoot(container, app)
     })
 
@@ -351,17 +356,12 @@ describe('Hydrate', () => {
     fireEvent.click(screen.getByTestId('child'))
     await new Promise((resolve) => setTimeout(resolve, 20))
     expect(onHydrated).toHaveBeenCalledTimes(1)
-
-    await act(async () => {
-      root.unmount()
-    })
-    container.remove()
   })
 
   it('prefetches split children without hydrating the boundary', async () => {
     const preload = vi.fn(() => Promise.resolve())
 
-    const { container, root } = await hydrateFromServer(
+    await hydrateFromServer(
       <InternalHydrate
         when={interaction()}
         prefetch={idle({ timeout: 1 })}
@@ -371,27 +371,23 @@ describe('Hydrate', () => {
       </InternalHydrate>,
     )
 
-    try {
-      await waitFor(() => expect(preload).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(preload).toHaveBeenCalledTimes(1))
+    expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
+
+    await fireIntent(() =>
+      getMarker().dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    )
+
+    await waitFor(() =>
       expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-        'false',
-      )
-
-      await fireIntent(() =>
-        getMarker().dispatchEvent(
-          new MouseEvent('click', { bubbles: true, cancelable: true }),
-        ),
-      )
-
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
-      expect(preload).toHaveBeenCalledTimes(1)
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+        'true',
+      ),
+    )
+    expect(preload).toHaveBeenCalledTimes(1)
   })
 
   it('does not evaluate dynamic when callbacks on the server', async () => {
@@ -412,35 +408,34 @@ describe('Hydrate', () => {
     document.body.append(container)
     container.innerHTML = html
 
-    let root!: ReturnType<typeof hydrateRoot>
-    try {
-      await act(async () => {
-        root = hydrateRoot(
-          container,
-          <Hydrate when={when}>
-            <InteractiveChild />
-          </Hydrate>,
-        )
-        await Promise.resolve()
-      })
+    let root: ReturnType<typeof hydrateRoot> | undefined
+    const cleanupRoot = createRootCleanup(container, () => root)
+    onTestFinished(cleanupRoot)
 
-      expect(when).toHaveBeenCalled()
-      await expectNoHydrationAfterDefaultIntentEvents()
-
-      await fireIntent(() =>
-        getMarker().dispatchEvent(
-          new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
-        ),
+    await act(async () => {
+      root = hydrateRoot(
+        container,
+        <Hydrate when={when}>
+          <InteractiveChild />
+        </Hydrate>,
       )
+      await Promise.resolve()
+    })
 
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+    expect(when).toHaveBeenCalled()
+    await expectNoHydrationAfterDefaultIntentEvents()
+
+    await fireIntent(() =>
+      getMarker().dispatchEvent(
+        new MouseEvent('dblclick', { bubbles: true, cancelable: true }),
+      ),
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+        'true',
+      ),
+    )
   })
 
   it('replays an interaction captured before the Hydrate component hydrates', async () => {
@@ -458,6 +453,10 @@ describe('Hydrate', () => {
     document.body.append(container)
     container.innerHTML = html
 
+    let root: ReturnType<typeof hydrateRoot> | undefined
+    const cleanupRoot = createRootCleanup(container, () => root)
+    onTestFinished(cleanupRoot)
+
     const button = container.querySelector('[data-testid="child"]')
     if (!button) {
       throw new Error('Expected server-rendered child button')
@@ -467,29 +466,24 @@ describe('Hydrate', () => {
       new MouseEvent('click', { bubbles: true, cancelable: true }),
     )
 
-    let root!: ReturnType<typeof hydrateRoot>
-    try {
-      await act(async () => {
-        root = hydrateRoot(
-          container,
-          <Hydrate when={when}>
-            <InteractiveChild />
-          </Hydrate>,
-        )
-        await Promise.resolve()
-      })
+    await act(async () => {
+      root = hydrateRoot(
+        container,
+        <Hydrate when={when}>
+          <InteractiveChild />
+        </Hydrate>,
+      )
+      await Promise.resolve()
+    })
 
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
-      await waitFor(() =>
-        expect(screen.getByTestId('child').textContent).toBe('1'),
-      )
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+    await waitFor(() =>
+      expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+        'true',
+      ),
+    )
+    await waitFor(() =>
+      expect(screen.getByTestId('child').textContent).toBe('1'),
+    )
   })
 
   it('blocks hydration on awaited procedural prefetch work', async () => {
@@ -504,7 +498,7 @@ describe('Hydrate', () => {
       _s: () => () => {},
     } as HydrationPrefetchStrategy<'idle'>
 
-    const { container, root } = await hydrateFromServer(
+    await hydrateFromServer(
       <InternalHydrate
         when={interaction()}
         prefetch={async ({ waitFor, preload }) => {
@@ -518,33 +512,29 @@ describe('Hydrate', () => {
       </InternalHydrate>,
     )
 
-    try {
-      await fireIntent(() =>
-        getMarker().dispatchEvent(
-          new MouseEvent('click', { bubbles: true, cancelable: true }),
-        ),
-      )
+    await fireIntent(() =>
+      getMarker().dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    )
 
-      await waitFor(() => expect(waitReasons).toEqual(['hydrate']))
-      expect(preload).toHaveBeenCalledTimes(1)
+    await waitFor(() => expect(waitReasons).toEqual(['hydrate']))
+    expect(preload).toHaveBeenCalledTimes(1)
+    expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
+
+    await act(async () => {
+      resolvePrefetch()
+      await prefetchBlocker
+      await Promise.resolve()
+    })
+
+    await waitFor(() =>
       expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-        'false',
-      )
-
-      await act(async () => {
-        resolvePrefetch()
-        await prefetchBlocker
-        await Promise.resolve()
-      })
-
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+        'true',
+      ),
+    )
   })
 
   it('hydrates when a condition strategy changes after the initial render', async () => {
@@ -563,26 +553,22 @@ describe('Hydrate', () => {
       )
     }
 
-    const { container, root } = await hydrateFromServer(<ConditionHarness />)
+    await hydrateFromServer(<ConditionHarness />)
 
-    try {
+    expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ready'))
+      await Promise.resolve()
+    })
+
+    await waitFor(() =>
       expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-        'false',
-      )
-
-      await act(async () => {
-        fireEvent.click(screen.getByTestId('ready'))
-        await Promise.resolve()
-      })
-
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+        'true',
+      ),
+    )
   })
 
   it('does not block hydration on fire-and-forget procedural prefetch work', async () => {
@@ -591,7 +577,7 @@ describe('Hydrate', () => {
       resolvePrefetch = resolve
     })
 
-    const { container, root } = await hydrateFromServer(
+    await hydrateFromServer(
       <InternalHydrate
         when={interaction()}
         prefetch={() => {
@@ -602,32 +588,28 @@ describe('Hydrate', () => {
       </InternalHydrate>,
     )
 
-    try {
-      await fireIntent(() =>
-        getMarker().dispatchEvent(
-          new MouseEvent('click', { bubbles: true, cancelable: true }),
-        ),
-      )
+    await fireIntent(() =>
+      getMarker().dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    )
 
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
+    await waitFor(() =>
+      expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+        'true',
+      ),
+    )
 
-      await act(async () => {
-        resolvePrefetch()
-        await prefetchBlocker
-      })
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+    await act(async () => {
+      resolvePrefetch()
+      await prefetchBlocker
+    })
   })
 
   it('aborts procedural prefetch when the boundary unmounts', async () => {
     const signals: Array<AbortSignal> = []
 
-    const { container, root } = await hydrateFromServer(
+    const { cleanupRoot } = await hydrateFromServer(
       <InternalHydrate
         when={interaction()}
         prefetch={({ signal }) => {
@@ -642,12 +624,12 @@ describe('Hydrate', () => {
     expect(signals).toHaveLength(1)
     expect(signals[0]!.aborted).toBe(false)
 
-    await unmountHydratedRoot(root, container)
+    await cleanupRoot()
     expect(signals[0]!.aborted).toBe(true)
   })
 
   it('delegates nested interaction boundaries at runtime', async () => {
-    const { container, root } = await hydrateFromServer(
+    await hydrateFromServer(
       <Hydrate when={idle({ timeout: 1000 })}>
         <Hydrate when={interaction()}>
           <InteractiveChild />
@@ -655,22 +637,18 @@ describe('Hydrate', () => {
       </Hydrate>,
     )
 
-    try {
+    expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
+
+    await fireIntent(() => {
+      fireEvent.click(screen.getByTestId('child'))
+    })
+
+    await waitFor(() =>
       expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-        'false',
-      )
-
-      await fireIntent(() => {
-        fireEvent.click(screen.getByTestId('child'))
-      })
-
-      await waitFor(() =>
-        expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
-          'true',
-        ),
-      )
-    } finally {
-      await unmountHydratedRoot(root, container)
-    }
+        'true',
+      ),
+    )
   })
 })

@@ -1,8 +1,15 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 
 const originalPlatform = Object.getOwnPropertyDescriptor(process, 'platform')
 
 async function importUtilsWithPlatform(platform: NodeJS.Platform) {
+  onTestFinished(() => {
+    vi.resetModules()
+    if (originalPlatform) {
+      Object.defineProperty(process, 'platform', originalPlatform)
+    }
+  })
+
   vi.resetModules()
   Object.defineProperty(process, 'platform', {
     ...originalPlatform,
@@ -11,13 +18,6 @@ async function importUtilsWithPlatform(platform: NodeJS.Platform) {
 
   return await import('../src/utils')
 }
-
-afterEach(() => {
-  vi.resetModules()
-  if (originalPlatform) {
-    Object.defineProperty(process, 'platform', originalPlatform)
-  }
-})
 
 describe('normalizePath', () => {
   test('normalizes POSIX path segments on POSIX platforms', async () => {

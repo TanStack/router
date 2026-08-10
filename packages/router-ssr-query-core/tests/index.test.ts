@@ -1,5 +1,5 @@
 import { QueryClient } from '@tanstack/query-core'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import { setupCoreRouterSsrQueryIntegration } from '../src'
 
 type TestRouter = {
@@ -116,32 +116,16 @@ function createDehydratedQueryState(data: string) {
   }
 }
 
-// Track QueryClients per-test and clear them in afterEach. Without this,
-// queries created in tests keep their gcTime setTimeout handles open (5min
-// default in jsdom), pinning QueryClient + QueryCache + this test's router
-// alive across the whole suite. cancelQueries() + clear() drops them.
-const trackedQueryClients = new Set<QueryClient>()
 function track<T extends QueryClient>(client: T): T {
-  trackedQueryClients.add(client)
+  onTestFinished(async () => {
+    try {
+      await client.cancelQueries()
+    } finally {
+      client.clear()
+    }
+  })
   return client
 }
-
-afterEach(() => {
-  vi.clearAllMocks()
-  for (const client of trackedQueryClients) {
-    try {
-      client.cancelQueries()
-    } catch {
-      // ignore
-    }
-    try {
-      client.clear()
-    } catch {
-      // ignore
-    }
-  }
-  trackedQueryClients.clear()
-})
 
 describe('setupCoreRouterSsrQueryIntegration', () => {
   it('uses custom dehydrate options for the initial payload and streamed queries', async () => {
@@ -346,23 +330,21 @@ describe.runIf(gcTestsEnabled)('SSR memory: GC reclamation', () => {
 
     const qcRef = new WeakRef(queryClient)
 
+    onTestFinished(() => {
+      qcRef.deref()?.clear()
+    })
+
     // Drop strong refs WITHOUT triggering cleanup.
     queryClient = null
     serverRouter = null
 
-    try {
-      await forceGc()
+    await forceGc()
 
-      // Subscriber closure + gcTime timers keep it alive. This is the bug
-      // we are guarding against; if this ever passes (returns undefined) the
-      // production retention chain has changed and the cleanup-based test
-      // above may also need re-validation.
-      expect(qcRef.deref()).toBeDefined()
-    } finally {
-      // Avoid leaving the retained client + gcTime timers alive for up to
-      // 5 minutes after the test finishes.
-      qcRef.deref()?.clear()
-    }
+    // Subscriber closure + gcTime timers keep it alive. This is the bug
+    // we are guarding against; if this ever passes (returns undefined) the
+    // production retention chain has changed and the cleanup-based test
+    // above may also need re-validation.
+    expect(qcRef.deref()).toBeDefined()
   })
 })
 

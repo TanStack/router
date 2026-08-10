@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -223,16 +223,14 @@ describe('useMatch', () => {
         })
       }
     })
-    try {
-      await fireEvent.click(screen.getByText('Other'))
-      await waitFor(() => expect(returnNavigation).toBeDefined())
-      await returnNavigation
+    onTestFinished(unsubscribe)
 
-      expect(await screen.findByText('Item revision 2')).toBeInTheDocument()
-      expect(screen.queryByText('Other route')).not.toBeInTheDocument()
-    } finally {
-      unsubscribe()
-    }
+    await fireEvent.click(screen.getByText('Other'))
+    await waitFor(() => expect(returnNavigation).toBeDefined())
+    await returnNavigation
+
+    expect(await screen.findByText('Item revision 2')).toBeInTheDocument()
+    expect(screen.queryByText('Other route')).not.toBeInTheDocument()
   })
 
   test('an outgoing component never observes its own match disappear', async () => {

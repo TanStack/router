@@ -2,7 +2,7 @@ import * as React from 'react'
 import { act, cleanup, render, screen } from '@testing-library/react'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
 import { hydrate } from '../src/ssr/client'
 import {
@@ -13,16 +13,7 @@ import {
   createRouter,
 } from '../src'
 
-const testCleanups: Array<() => void | Promise<void>> = []
-
-afterEach(async () => {
-  while (testCleanups.length) {
-    await testCleanups.pop()!()
-  }
-  cleanup()
-  vi.useRealTimers()
-  delete window.$_TSR
-})
+afterEach(cleanup)
 
 test('a post-hydration root reload keeps its fallback through pendingMinMs', async () => {
   const reloadGate = createControlledPromise<void>()
@@ -67,6 +58,9 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
     buffer: [],
     initialized: false,
   }
+  onTestFinished(() => {
+    delete window.$_TSR
+  })
 
   await hydrate(router)
   expect(router.ssr).toBeDefined()
@@ -76,6 +70,9 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
   expect(rootLoader).not.toHaveBeenCalled()
 
   vi.useFakeTimers()
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
 
   let invalidation!: Promise<void>
   await act(async () => {
@@ -141,12 +138,12 @@ test('root route hydration preserves component state across its Suspense boundar
   container.innerHTML = html
   document.body.appendChild(container)
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+  onTestFinished(() => consoleError.mockRestore())
   let root!: ReturnType<typeof hydrateRoot>
   await act(async () => {
     root = hydrateRoot(container, <RouterProvider router={router} />)
-    testCleanups.push(async () => {
+    onTestFinished(async () => {
       await act(() => root.unmount())
-      consoleError.mockRestore()
       container.remove()
     })
     await Promise.resolve()

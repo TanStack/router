@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import {
@@ -40,10 +40,6 @@ function deferred<T>() {
   })
   return { promise, resolve }
 }
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('serverSsr.cleanup', () => {
   test('onCleanup listeners run exactly once', () => {
@@ -117,6 +113,9 @@ describe('serverSsr.cleanup', () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
     attachRouterServerSsrUtils({ router, manifest: undefined })
+    onTestFinished(() => {
+      router.serverSsr?.cleanup()
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -136,14 +135,15 @@ describe('serverSsr.cleanup', () => {
     expect(renderFinishedCalls).toBe(0)
     router.serverSsr!.setRenderFinished()
     expect(renderFinishedCalls).toBe(1)
-
-    router.serverSsr?.cleanup()
   })
 
   test('render-finished listeners can synchronously finish serialization', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
     attachRouterServerSsrUtils({ router, manifest: undefined })
+    onTestFinished(() => {
+      router.serverSsr?.cleanup()
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -160,13 +160,14 @@ describe('serverSsr.cleanup', () => {
     await serializationDone
 
     expect(router.serverSsr!.takeBufferedHtml()).toContain('$_TSR.e()')
-
-    router.serverSsr?.cleanup()
   })
 
   test('late serialization listener runs safely and returns unsubscribe', async () => {
     const router = buildRouter()
     attachRouterServerSsrUtils({ router, manifest: undefined })
+    onTestFinished(() => {
+      router.serverSsr?.cleanup()
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -178,12 +179,14 @@ describe('serverSsr.cleanup', () => {
 
     expect(calls).toBe(1)
     expect(() => unsubscribe()).not.toThrow()
-    router.serverSsr?.cleanup()
   })
 
   test('stream fast path only reserves when no SSR work is pending', async () => {
     const router = buildRouter()
     attachRouterServerSsrUtils({ router, manifest: undefined })
+    onTestFinished(() => {
+      router.serverSsr?.cleanup()
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -193,14 +196,15 @@ describe('serverSsr.cleanup', () => {
     router.serverSsr!.setRenderFinished()
     expect(router.serverSsr!.reserveStreamFastPath()).toBe(true)
     expect(router.serverSsr!.reserveStreamFastPath()).toBe(false)
-
-    router.serverSsr?.cleanup()
   })
 
   test('stream fast path rejects while SSR work is pending', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
     attachRouterServerSsrUtils({ router, manifest: undefined })
+    onTestFinished(() => {
+      router.serverSsr?.cleanup()
+    })
 
     await router.load()
     await router.serverSsr!.dehydrate()
@@ -220,32 +224,31 @@ describe('serverSsr.cleanup', () => {
     router.serverSsr!.setRenderFinished()
     expect(router.serverSsr!.reserveStreamFastPath()).toBe(false)
     expect(router.serverSsr!.takeBufferedHtml()).toContain('<script')
-
-    router.serverSsr?.cleanup()
   })
 
   test('throwing injected listener does not skip later listeners', () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const router = buildRouter()
-    try {
-      attachRouterServerSsrUtils({ router, manifest: undefined })
-
-      const calls: Array<string> = []
-      router.serverSsr!.onInjectedHtml(() => {
-        calls.push('a')
-        throw new Error('boom')
-      })
-      router.serverSsr!.onInjectedHtml(() => {
-        calls.push('b')
-      })
-
-      router.serverSsr!.injectHtml('<script>1</script>')
-
-      expect(calls).toEqual(['a', 'b'])
-    } finally {
-      router.serverSsr?.cleanup()
+    onTestFinished(() => {
       errorSpy.mockRestore()
-    }
+    })
+    const router = buildRouter()
+    attachRouterServerSsrUtils({ router, manifest: undefined })
+    onTestFinished(() => {
+      router.serverSsr?.cleanup()
+    })
+
+    const calls: Array<string> = []
+    router.serverSsr!.onInjectedHtml(() => {
+      calls.push('a')
+      throw new Error('boom')
+    })
+    router.serverSsr!.onInjectedHtml(() => {
+      calls.push('b')
+    })
+
+    router.serverSsr!.injectHtml('<script>1</script>')
+
+    expect(calls).toEqual(['a', 'b'])
   })
 
   test('server SSR attach lifecycle runs listeners at attach time', () => {
@@ -543,6 +546,9 @@ describe('serverSsr.cleanup', () => {
       const consoleError = vi
         .spyOn(console, 'error')
         .mockImplementation(() => undefined)
+      onTestFinished(() => {
+        consoleError.mockRestore()
+      })
       const requestController = new AbortController()
 
       bindSsrResponseToRequest(

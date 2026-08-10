@@ -1,11 +1,7 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('masked location remnants in history state', () => {
   test('a same-href navigation clears an expired mask from history state', async () => {

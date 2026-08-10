@@ -1,22 +1,21 @@
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 describe('background decorative asset failure', () => {
-  beforeEach(() => {
-    vi.useFakeTimers()
-    vi.setSystemTime(0)
-  })
-
-  afterEach(() => {
-    vi.useRealTimers()
-    vi.restoreAllMocks()
-  })
-
   test('commits fresh loader data while preserving the previous projected assets', async () => {
+    vi.useFakeTimers()
+    onTestFinished(() => {
+      vi.useRealTimers()
+    })
+    vi.setSystemTime(0)
+
     const projectionError = new Error('head projection failed')
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+    onTestFinished(() => {
+      log.mockRestore()
+    })
     let resolveStaleReload!: (data: { title: string }) => void
     let loaderCalls = 0
     const loader = () => {
