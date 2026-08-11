@@ -94,6 +94,9 @@ describe('resolvePath', () => {
     ['/', 'a/', '/a'],
     ['/', '/a/b', '/a/b'],
     ['/a', 'b', '/a/b'],
+    ['/a', '', '/'],
+    ['/a', '.well-known', '/a/.well-known'],
+    ['/a', '/absolute', '/absolute'],
     ['/', 'a/b', '/a/b'],
     ['/', './a/b', '/a/b'],
     ['/a/b/c', 'd', '/a/b/c/d'],
@@ -106,6 +109,8 @@ describe('resolvePath', () => {
     ['/a/b/c', '../..', '/a'],
     ['/a/b/c', '../../..', '/'],
     ['/a/b/c/', '../../..', '/'],
+    ['/', '../javascript:alert(1)', '/javascript:alert(1)'],
+    ['/posts', '../../data:text/html,test', '/data:text/html,test'],
   ])('resolves correctly', (a, b, eq) => {
     it(`${a} to ${b} === ${eq}`, () => {
       expect(resolvePath({ base: a, to: b })).toEqual(eq)

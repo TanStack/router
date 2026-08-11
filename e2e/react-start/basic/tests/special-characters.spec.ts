@@ -104,11 +104,16 @@ test.describe('Unicode route rendering', () => {
       const loadedOn = await page
         .getByTestId('special-search-loaded-info')
         .textContent()
+      const beforeLoadOn = await page
+        .getByTestId('special-search-before-load-info')
+        .textContent()
 
       if (isSpaMode) {
         expect(loadedOn).toBe('Loaded on: client')
+        expect(beforeLoadOn).toBe('Before load on: client')
       } else {
         expect(loadedOn).toBe('Loaded on: server')
+        expect(beforeLoadOn).toBe('Before load on: server')
       }
     })
 

@@ -9,22 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RedirectRouteImport } from './routes/redirect'
-import { Route as ParentRouteImport } from './routes/parent'
-import { Route as OtherRouteImport } from './routes/other'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ParentChildRouteImport } from './routes/parent/child'
+import { Route as OtherRouteImport } from './routes/other'
+import { Route as ParentRouteImport } from './routes/parent'
+import { Route as RedirectRouteImport } from './routes/redirect'
 import { Route as OtherNestedRouteImport } from './routes/other/nested'
+import { Route as ParentChildRouteImport } from './routes/parent/child'
 import { Route as ParentChildGrandchildRouteImport } from './routes/parent/child/grandchild'
 
-const RedirectRoute = RedirectRouteImport.update({
-  id: '/redirect',
-  path: '/redirect',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParentRoute = ParentRouteImport.update({
-  id: '/parent',
-  path: '/parent',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OtherRoute = OtherRouteImport.update({
@@ -32,20 +27,25 @@ const OtherRoute = OtherRouteImport.update({
   path: '/other',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const ParentRoute = ParentRouteImport.update({
+  id: '/parent',
+  path: '/parent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ParentChildRoute = ParentChildRouteImport.update({
-  id: '/child',
-  path: '/child',
-  getParentRoute: () => ParentRoute,
+const RedirectRoute = RedirectRouteImport.update({
+  id: '/redirect',
+  path: '/redirect',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const OtherNestedRoute = OtherNestedRouteImport.update({
   id: '/nested',
   path: '/nested',
   getParentRoute: () => OtherRoute,
+} as any)
+const ParentChildRoute = ParentChildRouteImport.update({
+  id: '/child',
+  path: '/child',
+  getParentRoute: () => ParentRoute,
 } as any)
 const ParentChildGrandchildRoute = ParentChildGrandchildRouteImport.update({
   id: '/grandchild',
@@ -120,18 +120,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/redirect': {
-      id: '/redirect'
-      path: '/redirect'
-      fullPath: '/redirect'
-      preLoaderRoute: typeof RedirectRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/parent': {
-      id: '/parent'
-      path: '/parent'
-      fullPath: '/parent'
-      preLoaderRoute: typeof ParentRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/other': {
@@ -141,19 +134,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OtherRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/parent': {
+      id: '/parent'
+      path: '/parent'
+      fullPath: '/parent'
+      preLoaderRoute: typeof ParentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/parent/child': {
-      id: '/parent/child'
-      path: '/child'
-      fullPath: '/parent/child'
-      preLoaderRoute: typeof ParentChildRouteImport
-      parentRoute: typeof ParentRoute
+    '/redirect': {
+      id: '/redirect'
+      path: '/redirect'
+      fullPath: '/redirect'
+      preLoaderRoute: typeof RedirectRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/other/nested': {
       id: '/other/nested'
@@ -161,6 +154,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/other/nested'
       preLoaderRoute: typeof OtherNestedRouteImport
       parentRoute: typeof OtherRoute
+    }
+    '/parent/child': {
+      id: '/parent/child'
+      path: '/child'
+      fullPath: '/parent/child'
+      preLoaderRoute: typeof ParentChildRouteImport
+      parentRoute: typeof ParentRoute
     }
     '/parent/child/grandchild': {
       id: '/parent/child/grandchild'

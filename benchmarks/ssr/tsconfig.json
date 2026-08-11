@@ -3,5 +3,5 @@
   "compilerOptions": {
     "types": ["node", "vite/client", "vitest/globals"]
   },
-  "include": ["bench-utils.ts"]
+  "include": ["bench-utils.ts", "bench-utils.test.ts", "vitest.unit.config.ts"]
 }

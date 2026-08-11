@@ -9,25 +9,25 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as NestedRouteImport } from './routes/nested'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SlowIdRouteImport } from './routes/slow.$id'
-import { Route as NestedIdRouteImport } from './routes/nested.$id'
+import { Route as NestedRouteImport } from './routes/nested'
 import { Route as CtxIdRouteImport } from './routes/ctx.$id'
+import { Route as NestedIdRouteImport } from './routes/nested.$id'
+import { Route as SlowIdRouteImport } from './routes/slow.$id'
 
-const NestedRoute = NestedRouteImport.update({
-  id: '/nested',
-  path: '/nested',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SlowIdRoute = SlowIdRouteImport.update({
-  id: '/slow/$id',
-  path: '/slow/$id',
+const NestedRoute = NestedRouteImport.update({
+  id: '/nested',
+  path: '/nested',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CtxIdRoute = CtxIdRouteImport.update({
+  id: '/ctx/$id',
+  path: '/ctx/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NestedIdRoute = NestedIdRouteImport.update({
@@ -35,9 +35,9 @@ const NestedIdRoute = NestedIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => NestedRoute,
 } as any)
-const CtxIdRoute = CtxIdRouteImport.update({
-  id: '/ctx/$id',
-  path: '/ctx/$id',
+const SlowIdRoute = SlowIdRouteImport.update({
+  id: '/slow/$id',
+  path: '/slow/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -80,13 +80,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/nested': {
-      id: '/nested'
-      path: '/nested'
-      fullPath: '/nested'
-      preLoaderRoute: typeof NestedRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -94,11 +87,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/slow/$id': {
-      id: '/slow/$id'
-      path: '/slow/$id'
-      fullPath: '/slow/$id'
-      preLoaderRoute: typeof SlowIdRouteImport
+    '/nested': {
+      id: '/nested'
+      path: '/nested'
+      fullPath: '/nested'
+      preLoaderRoute: typeof NestedRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ctx/$id': {
+      id: '/ctx/$id'
+      path: '/ctx/$id'
+      fullPath: '/ctx/$id'
+      preLoaderRoute: typeof CtxIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nested/$id': {
@@ -108,11 +108,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NestedIdRouteImport
       parentRoute: typeof NestedRoute
     }
-    '/ctx/$id': {
-      id: '/ctx/$id'
-      path: '/ctx/$id'
-      fullPath: '/ctx/$id'
-      preLoaderRoute: typeof CtxIdRouteImport
+    '/slow/$id': {
+      id: '/slow/$id'
+      path: '/slow/$id'
+      fullPath: '/slow/$id'
+      preLoaderRoute: typeof SlowIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

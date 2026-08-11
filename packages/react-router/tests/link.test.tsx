@@ -31,6 +31,7 @@ import {
   redirect,
   retainSearchParams,
   stripSearchParams,
+  useLinkProps,
   useLoaderData,
   useMatchRoute,
   useParams,
@@ -951,6 +952,26 @@ describe('Link', () => {
       await waitFor(() => {
         expect(relativeFoo).toHaveAttribute('href', '/invoices/foo')
       })
+    })
+
+    test('relative links from root keep javascript-like segments rooted', async () => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <Link to="../javascript:alert(1)">Continue</Link>,
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      render(<RouterProvider router={router} />)
+
+      expect(
+        await screen.findByRole('link', { name: 'Continue' }),
+      ).toHaveAttribute('href', '/javascript:alert(1)')
     })
   })
 
@@ -7537,6 +7558,168 @@ describe('protocolAllowlist', () => {
     )
     expect(consoleWarn).toHaveBeenCalledWith(
       'Blocked Link with dangerous protocol: intent://example.com#Intent;scheme=https;end',
+    )
+  })
+})
+
+describe('link re-render bail-out', () => {
+  // `useLinkProps` subscribes to the location store. Counting renders of a
+  // component that calls it therefore measures exactly what the subscription
+  // publishes: a link whose resolved href and active state are unaffected by a
+  // navigation should not re-render at all.
+  //
+  // The components are memoized so a re-render of the route component that owns
+  // them cannot be mistaken for the subscription firing, and the link options are
+  // module-stable for the same reason.
+  const stableOptions = {
+    unaffected: { to: '/elsewhere' } as const,
+    becomesActive: { to: '/posts' } as const,
+  }
+
+  function setup() {
+    const renderCounts = { unaffected: 0, becomesActive: 0 }
+
+    const CountingLink = React.memo(function CountingLink({
+      name,
+    }: {
+      name: keyof typeof renderCounts
+    }) {
+      renderCounts[name]++
+      const linkProps = useLinkProps(stableOptions[name])
+      return <a {...linkProps} data-testid={name} />
+    })
+
+    const rootRoute = createRootRoute({
+      component: () => (
+        <>
+          <CountingLink name="unaffected" />
+          <CountingLink name="becomesActive" />
+          <Link data-testid="go" to="/posts">
+            Go
+          </Link>
+          <Outlet />
+        </>
+      ),
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>Index</h1>,
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+
+    const elsewhereRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/elsewhere',
+      component: () => <h1>Elsewhere</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postsRoute,
+        elsewhereRoute,
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    return { router, renderCounts }
+  }
+
+  test('does not re-render a link a navigation cannot affect', async () => {
+    const { router, renderCounts } = setup()
+    render(<RouterProvider router={router} />)
+
+    await screen.findByTestId('unaffected')
+    const before = { ...renderCounts }
+    expect(screen.getByTestId('becomesActive')).not.toHaveAttribute(
+      'data-status',
+    )
+
+    fireEvent.click(await screen.findByTestId('go'))
+    expect(await screen.findByText('Posts')).toBeInTheDocument()
+
+    // `/posts` gains its active state, so it has to re-render.
+    expect(renderCounts.becomesActive).toBeGreaterThan(before.becomesActive)
+    expect(screen.getByTestId('becomesActive')).toHaveAttribute(
+      'data-status',
+      'active',
+    )
+
+    // `/elsewhere` is neither the origin nor the destination: its href and
+    // active state are identical before and after, so the subscription must
+    // bail out rather than publish an equal value. Asserting the published
+    // values too, so a selector that returned a constant would still fail.
+    expect(renderCounts.unaffected).toBe(before.unaffected)
+    expect(screen.getByTestId('unaffected')).toHaveAttribute(
+      'href',
+      '/elsewhere',
+    )
+    expect(screen.getByTestId('unaffected')).not.toHaveAttribute('data-status')
+  })
+})
+
+describe('explicit-undefined params are not collapsed into an empty object', () => {
+  // `params: { category: undefined }` clears an inherited optional param while
+  // `params: {}` inherits it, so the two build different locations. The link
+  // options are stabilised by value, and that comparison must not treat them as
+  // equal or the link keeps publishing the stale href.
+  it('updates href when params goes from {} to { category: undefined }', async () => {
+    function CategoryLink({
+      params,
+    }: {
+      params: Record<string, string | undefined>
+    }) {
+      return (
+        <Link to="/posts/{-$category}" params={params} data-testid="lnk">
+          link
+        </Link>
+      )
+    }
+
+    const rootRoute = createRootRoute({ component: () => <Outlet /> })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/{-$category}',
+      component: function Posts() {
+        const [params, setParams] = React.useState<
+          Record<string, string | undefined>
+        >({})
+        return (
+          <>
+            <button
+              data-testid="clear"
+              onClick={() => setParams({ category: undefined })}
+            >
+              clear
+            </button>
+            <CategoryLink params={params} />
+          </>
+        )
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/posts/tech'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('lnk')).toHaveAttribute('href', '/posts/tech'),
+    )
+
+    fireEvent.click(screen.getByTestId('clear'))
+
+    await waitFor(() =>
+      expect(screen.getByTestId('lnk')).toHaveAttribute('href', '/posts'),
     )
   })
 })
