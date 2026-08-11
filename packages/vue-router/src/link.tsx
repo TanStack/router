@@ -255,11 +255,13 @@ export function useLinkProps<
     e: MouseEvent | FocusEvent | IntersectionObserverEntry | undefined,
   ) => {
     if (!e) {
+      clearTimeout(timeoutMap.get(ref))
+      timeoutMap.delete(ref)
       return
     }
 
     const eventTarget =
-      (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
+      (e as { currentTarget?: EventTarget | null }).currentTarget || ref
 
     if (
       !(

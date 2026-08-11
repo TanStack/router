@@ -5246,6 +5246,106 @@ describe('Link', () => {
     expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
   })
 
+  test('Link.preload="viewport" should cancel and use new link options after they change', async () => {
+    const rootRoute = createRootRoute()
+    const RouteComponent = () => {
+      const [to, setTo] = React.useState<'/about' | '/other'>('/about')
+      return (
+        <>
+          <button
+            onClick={() =>
+              setTo((current) => (current === '/about' ? '/other' : '/about'))
+            }
+          >
+            Change destination
+          </button>
+          <Link to={to} preload="viewport" preloadDelay={50}>
+            Viewport Link
+          </Link>
+        </>
+      )
+    }
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: RouteComponent,
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute, otherRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+
+    const viewportLink = await screen.findByRole('link', {
+      name: 'Viewport Link',
+    })
+    const initialIoCallback = ioCallback
+    vi.useFakeTimers()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change destination' }))
+    expect(viewportLink).toHaveAttribute('href', '/other')
+    expect(ioCallback).not.toBe(initialIoCallback)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Change destination' }))
+    expect(viewportLink).toHaveAttribute('href', '/about')
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(1)
+    expect(preloadRouteSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/about' }),
+    )
+  })
+
   test("Router.preload='render', should trigger the route loader on render", async () => {
     const mock = vi.fn()
 

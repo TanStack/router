@@ -75,6 +75,7 @@ export function useIntersectionObserver<T extends Element>(
     onCleanup(() => {
       observer.disconnect()
       observerRef.value = null
+      callback(undefined)
     })
   })
 

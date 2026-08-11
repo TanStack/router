@@ -259,15 +259,18 @@ export function useLinkProps<
         console.warn(preloadWarning)
       })
 
+  const [ref, setRef] = Solid.createSignal<Element | null>(null)
+
   const enqueuePreload = (
     e: MouseEvent | FocusEvent | IntersectionObserverEntry | undefined,
   ) => {
     if (!e) {
+      cancelPreload(ref)
       return
     }
 
     const eventTarget =
-      (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
+      (e as { currentTarget?: EventTarget | null }).currentTarget || ref
 
     if (
       !(
@@ -295,9 +298,7 @@ export function useLinkProps<
     }
   }
 
-  const [ref, setRef] = Solid.createSignal<Element | null>(null)
-
-  useIntersectionObserver(ref, enqueuePreload, preload() !== 'viewport')
+  useIntersectionObserver(ref, enqueuePreload, () => preload() !== 'viewport')
 
   Solid.createEffect(() => {
     if (hasRenderFetched) {

@@ -624,11 +624,12 @@ export function useLinkProps<
         | undefined,
     ) => {
       if (!e) {
+        cancelPreload(innerRef)
         return
       }
 
       const eventTarget =
-        (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
+        (e as { currentTarget?: EventTarget | null }).currentTarget || innerRef
 
       if (
         !(
@@ -657,7 +658,7 @@ export function useLinkProps<
         }, preloadDelay),
       )
     },
-    [doPreload, preload, preloadDelay],
+    [doPreload, innerRef, preload, preloadDelay],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks

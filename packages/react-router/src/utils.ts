@@ -106,6 +106,7 @@ export function useIntersectionObserver<T extends Element>(
 
     return () => {
       observer.disconnect()
+      callback(undefined)
     }
   }, [callback, disabled, ref])
 }
