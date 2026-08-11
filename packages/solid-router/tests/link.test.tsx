@@ -5081,11 +5081,6 @@ describe('Link', () => {
           isIntersecting: true,
           target: viewportLink,
         } as unknown as IntersectionObserverEntry,
-      ],
-      {} as IntersectionObserver,
-    )
-    ioCallback(
-      [
         {
           isIntersecting: false,
           target: viewportLink,
@@ -5096,10 +5091,39 @@ describe('Link', () => {
     await vi.advanceTimersByTimeAsync(50)
     expect(preloadRouteSpy).toHaveBeenCalledOnce()
 
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(49)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+
     fireEvent.mouseEnter(intentLink)
     fireEvent.mouseLeave(intentLink)
     await vi.advanceTimersByTimeAsync(50)
-    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {

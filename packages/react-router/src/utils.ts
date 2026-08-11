@@ -98,8 +98,8 @@ export function useIntersectionObserver<T extends Element>(
       return
     }
 
-    const observer = new IntersectionObserver(([entry]) => {
-      callback(entry)
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(callback)
     }, intersectionObserverOptions)
 
     observer.observe(ref.current)
