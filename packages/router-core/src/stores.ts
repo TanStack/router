@@ -67,6 +67,14 @@ export function createNonReactiveReadonlyStore<TValue>(
 export interface RouterStores<in out TRouteTree extends AnyRoute> {
   status: RouterWritableStore<RouterState<TRouteTree>['status']>
   location: RouterWritableStore<ParsedLocation<FullSearchSchema<TRouteTree>>>
+  /**
+   * The location that produced the match presentation currently exposed to the
+   * application. It travels on the presentation lane, so observers of a leaving
+   * route never see the location of the route being navigated to.
+   */
+  presentedLocation: RouterReadableStore<
+    ParsedLocation<FullSearchSchema<TRouteTree>>
+  >
   resolvedLocation: RouterWritableStore<
     ParsedLocation<FullSearchSchema<TRouteTree>> | undefined
   >
@@ -84,7 +92,10 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
     routeId: string,
   ) => RouterReadableStore<AnyRouteMatch | undefined>
 
-  setMatches: (nextMatches: Array<AnyRouteMatch>) => void
+  setMatches: (
+    nextMatches: Array<AnyRouteMatch>,
+    location: ParsedLocation<FullSearchSchema<TRouteTree>>,
+  ) => void
 }
 
 export function createRouterStores<TRouteTree extends AnyRoute>(
@@ -99,6 +110,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   // atoms
   const status = createMutableStore<RouterState<TRouteTree>['status']>('idle')
   const location = createMutableStore(initialLocation)
+  const presentedLocation = createMutableStore(initialLocation)
   const resolvedLocation =
     createMutableStore<RouterState<TRouteTree>['resolvedLocation']>(undefined)
   const ids = createMutableStore<Array<string>>([])
@@ -130,6 +142,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
     // atoms
     status,
     location,
+    presentedLocation,
     resolvedLocation,
     ids,
 
@@ -150,7 +163,10 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
   }
 
   // setters to update non-reactive utilities in sync with the reactive stores
-  function setMatches(nextMatches: Array<AnyRouteMatch>) {
+  function setMatches(
+    nextMatches: Array<AnyRouteMatch>,
+    nextLocation: RouterState<TRouteTree>['location'],
+  ) {
     const previousIds = ids.get()
     const nextIds = nextMatches.map((match) => match.routeId)
 
@@ -159,6 +175,13 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
       // before observers of a leaving route receive its tombstone.
       if (!arraysEqual(previousIds, nextIds)) {
         ids.set(nextIds)
+      }
+
+      // The presented location rides the same publication as the lane it
+      // describes. A route that is leaving is reconciled away by the lane
+      // change above, so it never re-renders with the destination's location.
+      if (presentedLocation.get() !== nextLocation) {
+        presentedLocation.set(nextLocation)
       }
 
       for (const id of previousIds) {

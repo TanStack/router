@@ -53,7 +53,7 @@ export function useLocation<
   const router = useRouter<TRouter>()
 
   if (isServer ?? router.isServer) {
-    const location = router.stores.location.get()
+    const location = router.stores.presentedLocation.get()
     return (
       opts?.select ? opts.select(location as any) : location
     ) as UseLocationResult<TRouter, TSelected>
@@ -61,7 +61,7 @@ export function useLocation<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   return useStore(
-    router.stores.location,
+    router.stores.presentedLocation,
     // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router),
   ) as UseLocationResult<TRouter, TSelected>

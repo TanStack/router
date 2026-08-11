@@ -234,6 +234,7 @@ type CoordinatorRouter = AnyRouter & {
 type PublicationCheckpoint = {
   previousMatches: Array<AnyRouteMatch>
   previousPresentation: Array<AnyRouteMatch>
+  previousPresentedLocation: ParsedLocation
   previousCache: Map<string, AnyRouteMatch>
   commitPromise: CoordinatorRouter['_commitPromise']
   published: boolean
@@ -1480,7 +1481,10 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   }))
   offered[boundary]!.status = 'pending'
   const ack = router
-    .startTransition(() => router.stores.setMatches(offered), offered)
+    .startTransition(
+      () => router.stores.setMatches(offered, tx[2 /* location */]),
+      offered,
+    )
     .then((rendered) => {
       if (
         rendered &&
@@ -1510,9 +1514,11 @@ function finishPending(router: CoordinatorRouter, tx: LoadTransaction): void {
 function publishMatches(
   router: CoordinatorRouter,
   matches: Array<AnyRouteMatch>,
+  location: ParsedLocation,
 ): void {
   router._committed = matches
-  router.stores.setMatches(matches)
+  router._committedLocation = location
+  router.stores.setMatches(matches, location)
 }
 
 function discardLane(router: AnyRouter, lane: ProjectedLane): void {
@@ -1580,7 +1586,7 @@ function commitMatches(
   // The lane becomes committed before publication can synchronously reenter.
   tx[3 /* matches */] = []
   router._cache = cached
-  publishMatches(router, matches)
+  publishMatches(router, matches, tx[2 /* location */])
   transferMatchResources(
     router,
     [...previousCached.values(), ...previous],
@@ -1608,7 +1614,7 @@ function commitRefreshMatches(
   checkpoint.previousMatches = previous
   checkpoint.previousCache = previousCached
   checkpoint.published = true
-  publishMatches(router, matches)
+  publishMatches(router, matches, tx[2 /* location */])
   if (!checkpoint.published || router._tx !== tx) {
     return
   }
@@ -1652,6 +1658,7 @@ function rollbackPublication(
   ]
   router._cache = checkpoint.previousCache
   router._committed = checkpoint.previousMatches
+  router._committedLocation = checkpoint.previousPresentedLocation
   checkpoint.published = false
 
   for (const match of discarded as Array<WorkMatch>) {
@@ -1667,7 +1674,10 @@ function rollbackPublication(
   finishPending(router, tx)
   router.batch(() => {
     router.stores.status.set('idle')
-    router.stores.setMatches(checkpoint.previousPresentation)
+    router.stores.setMatches(
+      checkpoint.previousPresentation,
+      checkpoint.previousPresentedLocation,
+    )
   })
   tx[0 /* controller */].abort()
   transferMatchResources(router, discarded, restored)
@@ -1689,6 +1699,7 @@ async function transitionRefresh(
   const checkpoint: PublicationCheckpoint = {
     previousMatches: router._committed,
     previousPresentation: refresh[0 /* presentation */],
+    previousPresentedLocation: router.stores.presentedLocation.get(),
     previousCache: router._cache,
     commitPromise: router._commitPromise,
     published: false,
@@ -1777,7 +1788,10 @@ function restoreCommitted(
   }
   router.batch(() => {
     router.stores.status.set('idle')
-    router.stores.setMatches(router._committed)
+    router.stores.setMatches(
+      router._committed,
+      router._committedLocation ?? router.stores.location.get(),
+    )
   })
   if (router._tx === tx) {
     router._commitPromise?.resolve()
@@ -1842,7 +1856,7 @@ async function runBackground(
       releaseFlight(router, cached)
     }
   }
-  publishMatches(router, projected[1 /* matches */])
+  publishMatches(router, projected[1 /* matches */], tx[2 /* location */])
   transferMatchResources(router, base, projected[1 /* matches */])
 }
 
@@ -2629,10 +2643,11 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     },
   ]
   router._committed = committedMatches
+  router._committedLocation = location
   router._handoff = handoff
   router._preflight = undefined
   router.batch(() => {
-    router.stores.setMatches(presented)
+    router.stores.setMatches(presented, location)
     router.stores.status.set('idle')
     if (!needsClientLoad) {
       router.stores.resolvedLocation.set(router.stores.location.get())

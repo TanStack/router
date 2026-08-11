@@ -1083,6 +1083,8 @@ export class RouterCore<
   _cache = new Map<string, AnyRouteMatch>()
   /** Accepted semantic lane, excluding temporary pending presentation. */
   _committed: Array<AnyRouteMatch> = []
+  /** The location that produced `_committed`. */
+  _committedLocation?: ParsedLocation
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
