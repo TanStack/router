@@ -291,7 +291,6 @@ export function useLinkProps<
   useIntersectionObserver(
     ref,
     enqueuePreload,
-    { rootMargin: '100px' },
     () => preload.value !== 'viewport',
   )
 

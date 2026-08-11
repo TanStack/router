@@ -8,9 +8,8 @@ import * as Solid from 'solid-js'
  * When the intersection changes, the callback will be called with the `IntersectionObserverEntry`.
  *
  * @param ref - The ref to observe
- * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
- * @param disabled - Whether observation is disabled
  * @param callback - The callback to call when the intersection changes
+ * @param disabled - Whether observation is disabled
  * @returns The IntersectionObserver instance
  * @example
  * ```tsx
@@ -19,7 +18,6 @@ import * as Solid from 'solid-js'
  * useIntersectionObserver(
  *  ref,
  *  (entry) => { doSomething(entry) },
- *  { rootMargin: '10px' },
  *  false
  * )
  * return <div ref={ref} />
@@ -28,7 +26,6 @@ import * as Solid from 'solid-js'
 export function useIntersectionObserver<T extends Element>(
   ref: Solid.Accessor<T | null>,
   callback: (entry: IntersectionObserverEntry | undefined) => void,
-  intersectionObserverOptions: IntersectionObserverInit = {},
   disabled?: boolean,
 ): Solid.Accessor<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =
@@ -41,9 +38,12 @@ export function useIntersectionObserver<T extends Element>(
       return
     }
 
-    observerRef = new IntersectionObserver((entries) => {
-      callback(entries.pop())
-    }, intersectionObserverOptions)
+    observerRef = new IntersectionObserver(
+      (entries) => {
+        callback(entries.pop())
+      },
+      { rootMargin: '100px' },
+    )
 
     observerRef.observe(r)
 

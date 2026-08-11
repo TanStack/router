@@ -661,12 +661,7 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  useIntersectionObserver(
-    innerRef,
-    enqueuePreload,
-    intersectionObserverOptions,
-    preload !== 'viewport',
-  )
+  useIntersectionObserver(innerRef, enqueuePreload, preload !== 'viewport')
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   React.useEffect(() => {
@@ -779,10 +774,6 @@ const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
 const cancelPreload = (eventTarget: object) => {
   clearTimeout(timeoutMap.get(eventTarget))
   timeoutMap.delete(eventTarget)
-}
-
-const intersectionObserverOptions: IntersectionObserverInit = {
-  rootMargin: '100px',
 }
 
 const composeHandlers =

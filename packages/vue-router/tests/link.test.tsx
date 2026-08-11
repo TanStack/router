@@ -5219,7 +5219,6 @@ describe('Link', () => {
         useIntersectionObserver(
           element,
           () => {},
-          {},
           () => disabled.value,
         )
 

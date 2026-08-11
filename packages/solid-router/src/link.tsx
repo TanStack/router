@@ -297,12 +297,7 @@ export function useLinkProps<
 
   const [ref, setRef] = Solid.createSignal<Element | null>(null)
 
-  useIntersectionObserver(
-    ref,
-    enqueuePreload,
-    { rootMargin: '100px' },
-    preload() !== 'viewport',
-  )
+  useIntersectionObserver(ref, enqueuePreload, preload() !== 'viewport')
 
   Solid.createEffect(() => {
     if (hasRenderFetched) {
