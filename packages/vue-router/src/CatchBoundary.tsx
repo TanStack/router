@@ -1,4 +1,5 @@
 import * as Vue from 'vue'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 
 type CatchBoundaryProps = {
@@ -49,13 +50,25 @@ const VueErrorBoundary = Vue.defineComponent({
       return false
     })
 
-    return () =>
-      error.value
-        ? Vue.h(props.errorComponent ?? ErrorComponent, {
-            error: error.value,
-            reset,
-          })
-        : (props.children as Vue.VNode)
+    return () => {
+      if (!error.value) {
+        return props.children as Vue.VNode
+      }
+
+      const errorComponent = props.errorComponent ?? ErrorComponent
+      const errorProps = {
+        error: error.value,
+        reset,
+      }
+
+      return process.env.NODE_ENV !== 'production'
+        ? renderInNonRouteComponentContext(
+            errorComponent,
+            errorProps,
+            'errorComponent',
+          )
+        : Vue.h(errorComponent, errorProps)
+    }
   },
 })
 
