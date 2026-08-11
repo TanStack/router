@@ -8,6 +8,7 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { createPortal } from 'react-dom'
+import { hydrateRoot } from 'react-dom/client'
 import ReactDOMServer from 'react-dom/server'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
@@ -279,6 +280,82 @@ describe('scripts with async/defer attributes', () => {
     expect(contentIndex).toBeGreaterThan(-1)
     expect(scriptIndex).toBeGreaterThan(contentIndex)
     expect(html).not.toContain('client-entry')
+  })
+
+  test('hydration honors preventScriptHoist for manifest src scripts', async () => {
+    const clientEntryAsset = {
+      attrs: {
+        src: '/hydrate-entry.js',
+        type: 'module',
+        async: true,
+      },
+    } satisfies NonNullable<Manifest['routes'][string]['scripts']>[number]
+
+    const createTestRouter = (isServer: boolean) => {
+      const rootRoute = createRootRoute({
+        component: () => {
+          return (
+            <div>
+              <main data-testid="hydrate-content">content</main>
+              <Outlet />
+              <Scripts />
+            </div>
+          )
+        },
+      })
+
+      const indexRoute = createRoute({
+        path: '/',
+        getParentRoute: () => rootRoute,
+      })
+
+      const router = createRouter({
+        history: createMemoryHistory({
+          initialEntries: ['/'],
+        }),
+        routeTree: rootRoute.addChildren([indexRoute]),
+        isServer,
+      })
+      router.ssr = {
+        manifest: {
+          routes: {
+            [rootRoute.id]: {
+              scripts: [clientEntryAsset],
+            },
+          },
+        },
+      }
+      return router
+    }
+
+    const serverRouter = createTestRouter(true)
+    await serverRouter.load()
+
+    const html = ReactDOMServer.renderToString(
+      <RouterProvider router={serverRouter} />,
+    )
+    expect(html).toContain('src="/hydrate-entry.js"')
+
+    const container = document.createElement('div')
+    container.innerHTML = html
+    document.body.appendChild(container)
+
+    const clientRouter = createTestRouter(false)
+    await clientRouter.load()
+
+    const onRecoverableError = vi.fn()
+    let root: ReturnType<typeof hydrateRoot> | undefined
+    await act(() => {
+      root = hydrateRoot(container, <RouterProvider router={clientRouter} />, {
+        onRecoverableError,
+      })
+    })
+
+    expect(await screen.findByTestId('hydrate-content')).toBeInTheDocument()
+    expect(onRecoverableError).not.toHaveBeenCalled()
+
+    await act(() => root?.unmount())
+    container.remove()
   })
 
   test('client renders scripts with attributes (including async/defer)', async () => {
