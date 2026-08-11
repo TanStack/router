@@ -29,7 +29,7 @@ import type {
 
 type EventHandler<TEvent = Event> = (e: TEvent) => void
 
-const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
+const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
 
 type DataAttributes = {
   [K in `data-${string}`]?: unknown
@@ -224,7 +224,7 @@ export function useLinkProps<
   })
 
   const preload = Vue.computed(() => {
-    if (options.reloadDocument) {
+    if (options.reloadDocument || options.disabled) {
       return false
     }
     return options.preload ?? router.options.defaultPreload
@@ -251,26 +251,50 @@ export function useLinkProps<
         console.warn(preloadWarning)
       })
 
-  const preloadViewportIoCallback = (
-    entry: IntersectionObserverEntry | undefined,
+  const enqueuePreload = (
+    e: MouseEvent | FocusEvent | IntersectionObserverEntry | undefined,
   ) => {
-    if (entry?.isIntersecting) {
+    if (
+      !e ||
+      !(
+        (e as IntersectionObserverEntry).isIntersecting ??
+        preload.value === 'intent'
+      )
+    ) {
+      return
+    }
+
+    if (!preloadDelay.value) {
       doPreload()
+      return
+    }
+
+    const eventTarget =
+      (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
+
+    if (!timeoutMap.has(eventTarget)) {
+      timeoutMap.set(
+        eventTarget,
+        setTimeout(() => {
+          timeoutMap.delete(eventTarget)
+          doPreload()
+        }, preloadDelay.value),
+      )
     }
   }
 
   useIntersectionObserver(
     ref,
-    preloadViewportIoCallback,
+    enqueuePreload,
     { rootMargin: '100px' },
-    () => !!options.disabled || preload.value !== 'viewport',
+    () => preload.value !== 'viewport',
   )
 
   Vue.effect(() => {
     if (hasRenderFetched) {
       return
     }
-    if (!options.disabled && preload.value === 'render') {
+    if (preload.value === 'render') {
       doPreload()
       hasRenderFetched = true
     }
@@ -319,34 +343,12 @@ export function useLinkProps<
     }
   }
 
-  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
-    if (options.disabled || preload.value !== 'intent') return
-
-    if (!preloadDelay.value) {
-      doPreload()
-      return
-    }
-
-    const eventTarget = e.currentTarget || e.target
-
-    if (!eventTarget || timeoutMap.has(eventTarget)) return
-
-    timeoutMap.set(
-      eventTarget,
-      setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay.value),
-    )
-  }
-
-  const handleTouchStart = (_: TouchEvent) => {
-    if (options.disabled || preload.value !== 'intent') return
+  const handleTouchStart = () => {
+    if (preload.value !== 'intent') return
     doPreload()
   }
 
   const handleLeave = (e: MouseEvent | FocusEvent) => {
-    if (options.disabled) return
     const eventTarget = e.currentTarget || e.target
 
     if (eventTarget) {
@@ -384,15 +386,15 @@ export function useLinkProps<
     onBlur: composeEventHandlers<FocusEvent>([options.onBlur, handleLeave]),
     onFocus: composeEventHandlers<FocusEvent>([
       options.onFocus,
-      enqueueIntentPreload,
+      enqueuePreload,
     ]),
     onMouseenter: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseenter,
-      enqueueIntentPreload,
+      enqueuePreload,
     ]),
     onMouseover: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseover,
-      enqueueIntentPreload,
+      enqueuePreload,
     ]),
     onMouseleave: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseleave,
