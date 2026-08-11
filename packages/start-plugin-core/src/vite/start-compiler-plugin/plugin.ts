@@ -1,4 +1,4 @@
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { resolve as resolvePath } from 'pathe'
 import {
   SERVER_FN_LOOKUP,

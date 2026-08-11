@@ -1,11 +1,13 @@
+import type { RouterHistory } from '@tanstack/history'
 import * as Vue from 'vue'
 import { RouterProvider, createRouter } from '@tanstack/vue-router'
 import { routeTree } from './routeTree.gen'
 import { basepath, localeRewrite } from '../../shared'
 
-export function createTestRouter() {
+export function createTestRouter(history: RouterHistory) {
   return createRouter({
     routeTree,
+    history,
     basepath,
     rewrite: localeRewrite,
     scrollRestoration: true,
@@ -23,8 +25,8 @@ declare module '@tanstack/vue-router' {
   }
 }
 
-export function mountTestApp(container: HTMLElement) {
-  const router = createTestRouter()
+export function mountTestApp(container: HTMLElement, history: RouterHistory) {
+  const router = createTestRouter(history)
 
   const component = <RouterProvider router={router} />
   const app = Vue.createApp({

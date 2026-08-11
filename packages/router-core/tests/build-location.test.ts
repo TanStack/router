@@ -6,7 +6,22 @@ import {
   retainSearchParams,
   stripSearchParams,
 } from '../src'
+import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
+
+test('_getUserHistoryState removes volatile router bookkeeping but keeps mask payloads', () => {
+  expect(
+    _getUserHistoryState({
+      key: 'legacy-key',
+      __TSR_key: 'key',
+      __TSR_index: 1,
+      __hashScrollIntoViewOptions: true,
+      __tempLocation: {} as any,
+      __tempKey: 'temp-key',
+      user: 'state',
+    } as any),
+  ).toEqual({ user: 'state', __tempLocation: {}, __tempKey: 'temp-key' })
+})
 
 describe('buildLocation - params function receives parsed params', () => {
   test('prev params should contain parsed params from route params.parse', async () => {
@@ -1283,6 +1298,31 @@ describe('buildLocation - relative paths', () => {
     })
 
     expect(location.pathname).toBe('/a/d')
+  })
+
+  test('over-root traversal stays rooted for javascript-like segments', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '../javascript:alert(1)',
+    })
+
+    expect(location.pathname).toBe('/javascript:alert(1)')
+    expect(location.href).toBe('/javascript:alert(1)')
+    expect(location.publicHref).toBe('/javascript:alert(1)')
   })
 
   test('. should stay on current route', async () => {
