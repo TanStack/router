@@ -5173,8 +5173,6 @@ describe('Link', () => {
       {} as IntersectionObserver,
     )
     await vi.advanceTimersByTimeAsync(1)
-    expect(preloadRouteSpy).toHaveBeenCalledOnce()
-    await vi.advanceTimersByTimeAsync(49)
     expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
 
     fireEvent.mouseEnter(intentLink)

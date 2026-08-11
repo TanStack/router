@@ -66,7 +66,7 @@ export function useIntersectionObserver<T extends Element>(
     }
 
     const observer = new IntersectionObserver((entries) => {
-      entries.forEach(callback)
+      callback(entries.pop())
     }, intersectionObserverOptions)
 
     observerRef.value = observer
