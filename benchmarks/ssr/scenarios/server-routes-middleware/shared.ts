@@ -4,7 +4,7 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
-const loopIterations = 150
+const loopTotalRequests = 160
 
 const apiRequestInit = {
   method: 'GET',
@@ -22,7 +22,8 @@ export const serverRouteMiddlewareBenchOptions = {
 export function runServerRouteMiddlewareLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: loopIterations,
+    concurrency: 16,
+    totalRequests: loopTotalRequests,
     buildRequest: (random) =>
       new Request(
         `http://localhost/api/chain/${randomSegment(random)}`,

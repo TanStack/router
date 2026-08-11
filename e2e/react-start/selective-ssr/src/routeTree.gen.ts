@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as Issue4614RouteImport } from './routes/issue-4614'
+import { Route as Issue7947RouteImport } from './routes/issue-7947'
+import { Route as Issue7947TargetRouteImport } from './routes/issue-7947-target'
 import { Route as PostsRouteImport } from './routes/posts'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
@@ -22,6 +24,16 @@ const IndexRoute = IndexRouteImport.update({
 const Issue4614Route = Issue4614RouteImport.update({
   id: '/issue-4614',
   path: '/issue-4614',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Issue7947Route = Issue7947RouteImport.update({
+  id: '/issue-7947',
+  path: '/issue-7947',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Issue7947TargetRoute = Issue7947TargetRouteImport.update({
+  id: '/issue-7947-target',
+  path: '/issue-7947-target',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PostsRoute = PostsRouteImport.update({
@@ -38,12 +50,16 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/issue-4614': typeof Issue4614Route
+  '/issue-7947': typeof Issue7947Route
+  '/issue-7947-target': typeof Issue7947TargetRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/issue-4614': typeof Issue4614Route
+  '/issue-7947': typeof Issue7947Route
+  '/issue-7947-target': typeof Issue7947TargetRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
@@ -51,20 +67,43 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/issue-4614': typeof Issue4614Route
+  '/issue-7947': typeof Issue7947Route
+  '/issue-7947-target': typeof Issue7947TargetRoute
   '/posts': typeof PostsRouteWithChildren
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/issue-4614' | '/posts' | '/posts/$postId'
+  fullPaths:
+    | '/'
+    | '/issue-4614'
+    | '/issue-7947'
+    | '/issue-7947-target'
+    | '/posts'
+    | '/posts/$postId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/issue-4614' | '/posts' | '/posts/$postId'
-  id: '__root__' | '/' | '/issue-4614' | '/posts' | '/posts/$postId'
+  to:
+    | '/'
+    | '/issue-4614'
+    | '/issue-7947'
+    | '/issue-7947-target'
+    | '/posts'
+    | '/posts/$postId'
+  id:
+    | '__root__'
+    | '/'
+    | '/issue-4614'
+    | '/issue-7947'
+    | '/issue-7947-target'
+    | '/posts'
+    | '/posts/$postId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   Issue4614Route: typeof Issue4614Route
+  Issue7947Route: typeof Issue7947Route
+  Issue7947TargetRoute: typeof Issue7947TargetRoute
   PostsRoute: typeof PostsRouteWithChildren
 }
 
@@ -82,6 +121,20 @@ declare module '@tanstack/react-router' {
       path: '/issue-4614'
       fullPath: '/issue-4614'
       preLoaderRoute: typeof Issue4614RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issue-7947': {
+      id: '/issue-7947'
+      path: '/issue-7947'
+      fullPath: '/issue-7947'
+      preLoaderRoute: typeof Issue7947RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/issue-7947-target': {
+      id: '/issue-7947-target'
+      path: '/issue-7947-target'
+      fullPath: '/issue-7947-target'
+      preLoaderRoute: typeof Issue7947TargetRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/posts': {
@@ -114,6 +167,8 @@ const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   Issue4614Route: Issue4614Route,
+  Issue7947Route: Issue7947Route,
+  Issue7947TargetRoute: Issue7947TargetRoute,
   PostsRoute: PostsRouteWithChildren,
 }
 export const routeTree = rootRouteImport
