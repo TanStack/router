@@ -86,7 +86,6 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): LinkHTMLAttributes {
   const router = useRouter()
-  const isTransitioning = Vue.ref(false)
   let hasRenderFetched = false
 
   // Ensure router is defined before proceeding
@@ -200,7 +199,6 @@ export function useLinkProps<
       href,
       options: options as AnyLinkPropsOptions,
       isActive,
-      isTransitioning: false,
       resolvedActiveProps,
       resolvedInactiveProps,
       resolvedClassName,
@@ -298,13 +296,6 @@ export function useLinkProps<
       }
 
       e.preventDefault()
-
-      isTransitioning.value = true
-
-      const unsub = router.subscribe('onResolved', () => {
-        unsub()
-        isTransitioning.value = false
-      })
 
       // All is well? Navigate!
       router.navigate({
@@ -423,7 +414,6 @@ export function useLinkProps<
       ref,
       staticEventHandlers,
       isActive: isActive.value,
-      isTransitioning: isTransitioning.value,
       resolvedActiveProps,
       resolvedInactiveProps,
       resolvedClassName,
@@ -486,7 +476,6 @@ function combineResultProps({
   href,
   options,
   isActive,
-  isTransitioning,
   resolvedActiveProps,
   resolvedInactiveProps,
   resolvedClassName,
@@ -498,7 +487,6 @@ function combineResultProps({
   href: string | undefined
   options: AnyLinkPropsOptions
   isActive: boolean
-  isTransitioning: boolean
   resolvedActiveProps: StyledProps
   resolvedInactiveProps: StyledProps
   resolvedClassName?: string
@@ -540,10 +528,6 @@ function combineResultProps({
   if (isActive) {
     result['data-status'] = 'active'
     result['aria-current'] = 'page'
-  }
-
-  if (isTransitioning) {
-    result['data-transitioning'] = 'transitioning'
   }
 
   for (const key of Object.keys(resolvedActiveProps)) {
@@ -753,12 +737,7 @@ export type LinkProps<
 
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-  children?:
-    | Vue.VNodeChild
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => Vue.VNodeChild)
+  children?: Vue.VNodeChild | ((state: { isActive: boolean }) => Vue.VNodeChild)
 }
 
 type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap
@@ -871,16 +850,9 @@ const LinkImpl = Vue.defineComponent({
       const linkProps = Vue.unref(linkPropsSource)
 
       const isActive = linkProps['data-status'] === 'active'
-      const isTransitioning =
-        linkProps['data-transitioning'] === 'transitioning'
 
       // Create the slot content or empty array if no default slot
-      const slotContent = slots.default
-        ? slots.default({
-            isActive,
-            isTransitioning,
-          })
-        : []
+      const slotContent = slots.default ? slots.default({ isActive }) : []
 
       // Special handling for SVG links - wrap an <a> inside the SVG
       if (Component === 'svg') {

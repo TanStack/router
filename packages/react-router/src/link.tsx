@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
-import { flushSync } from 'react-dom'
 import {
   deepEqual,
   exactPathTest,
@@ -593,8 +592,6 @@ export function useLinkProps<
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const hasRenderFetched = React.useRef(false)
 
   const preload =
@@ -659,15 +656,6 @@ export function useLinkProps<
       e.button === 0
     ) {
       e.preventDefault()
-
-      flushSync(() => {
-        setIsTransitioning(true)
-      })
-
-      const unsub = router.subscribe('onResolved', () => {
-        unsub()
-        setIsTransitioning(false)
-      })
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
@@ -756,7 +744,6 @@ export function useLinkProps<
     ...(resolvedClassName && { className: resolvedClassName }),
     ...(disabled && STATIC_DISABLED_PROPS),
     ...(isActive && STATIC_ACTIVE_PROPS),
-    ...(isHydrated && isTransitioning && STATIC_TRANSITIONING_PROPS),
   }
 }
 
@@ -764,7 +751,6 @@ const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
 const STATIC_DISABLED_PROPS = { role: 'link', 'aria-disabled': true }
 const STATIC_ACTIVE_PROPS = { 'data-status': 'active', 'aria-current': 'page' }
-const STATIC_TRANSITIONING_PROPS = { 'data-transitioning': 'transitioning' }
 
 const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
 
@@ -865,10 +851,7 @@ export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | React.ReactNode
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => React.ReactNode)
+    | ((state: { isActive: boolean }) => React.ReactNode)
 }
 
 type LinkComponentReactProps<TComp> = Omit<
