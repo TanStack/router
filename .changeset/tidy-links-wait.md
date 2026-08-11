@@ -4,4 +4,4 @@
 '@tanstack/vue-router': patch
 ---
 
-Apply `preloadDelay` to viewport link preloading.
+Apply `preloadDelay` to viewport link preloading and cancel pending preloads when links leave the viewport.

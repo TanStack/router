@@ -5197,6 +5197,27 @@ describe('Link', () => {
     await vi.advanceTimersByTimeAsync(1)
     expect(preloadRouteSpy).toHaveBeenCalledOnce()
 
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
     fireEvent.mouseEnter(intentLink)
     fireEvent.mouseLeave(intentLink)
     await vi.advanceTimersByTimeAsync(50)

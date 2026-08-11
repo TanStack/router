@@ -731,7 +731,7 @@ What's even better is that by using a cache-first library like `@tanstack/query`
 
 ### Link Preloading Delay
 
-For `'intent'` and `'viewport'` preloading, a configurable delay determines how long to wait before preloading begins after focus, hover, or viewport entry. If focus or hover ends before the delay, the queued preload is cancelled. Touch intent preloads immediately without waiting for the delay. The default delay is 50 milliseconds, but you can change it by passing a `preloadDelay` prop to the `Link` component:
+For `'intent'` and `'viewport'` preloading, a configurable delay determines how long to wait before preloading begins after focus, hover, or viewport entry. If focus or hover ends, or the link leaves the viewport before the delay, the queued preload is cancelled. Touch intent preloads immediately without waiting for the delay. The default delay is 50 milliseconds, but you can change it by passing a `preloadDelay` prop to the `Link` component:
 
 ```tsx
 const link = (

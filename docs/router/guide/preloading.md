@@ -64,7 +64,7 @@ This will turn on `intent` preloading by default for all `<Link>` components in 
 
 ## Preload Delay
 
-By default, intent focus/hover and viewport preloading start after **50ms**. Touch intent preloads immediately. You can change this delay by setting the `defaultPreloadDelay` option on your router:
+By default, intent focus/hover and viewport preloading start after **50ms**. Pending preloads are cancelled if focus or hover ends, or the link leaves the viewport. Touch intent preloads immediately. You can change this delay by setting the `defaultPreloadDelay` option on your router:
 
 <!-- ::start:framework -->
 

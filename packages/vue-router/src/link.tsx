@@ -254,13 +254,21 @@ export function useLinkProps<
   const enqueuePreload = (
     e: MouseEvent | FocusEvent | IntersectionObserverEntry | undefined,
   ) => {
+    if (!e) {
+      return
+    }
+
+    const eventTarget =
+      (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
+
     if (
-      !e ||
       !(
         (e as IntersectionObserverEntry).isIntersecting ??
         preload.value === 'intent'
       )
     ) {
+      clearTimeout(timeoutMap.get(eventTarget))
+      timeoutMap.delete(eventTarget)
       return
     }
 
@@ -268,9 +276,6 @@ export function useLinkProps<
       doPreload()
       return
     }
-
-    const eventTarget =
-      (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
 
     if (!timeoutMap.has(eventTarget)) {
       timeoutMap.set(
@@ -352,8 +357,7 @@ export function useLinkProps<
     const eventTarget = e.currentTarget || e.target
 
     if (eventTarget) {
-      const id = timeoutMap.get(eventTarget)
-      clearTimeout(id)
+      clearTimeout(timeoutMap.get(eventTarget))
       timeoutMap.delete(eventTarget)
     }
   }

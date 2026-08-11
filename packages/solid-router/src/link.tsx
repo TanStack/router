@@ -32,6 +32,10 @@ import type {
 } from './typePrimitives'
 
 const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
+const cancelPreload = (eventTarget: object) => {
+  clearTimeout(timeoutMap.get(eventTarget))
+  timeoutMap.delete(eventTarget)
+}
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -258,13 +262,20 @@ export function useLinkProps<
   const enqueuePreload = (
     e: MouseEvent | FocusEvent | IntersectionObserverEntry | undefined,
   ) => {
+    if (!e) {
+      return
+    }
+
+    const eventTarget =
+      (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
+
     if (
-      !e ||
       !(
         (e as IntersectionObserverEntry).isIntersecting ??
         preload() === 'intent'
       )
     ) {
+      cancelPreload(eventTarget)
       return
     }
 
@@ -272,9 +283,6 @@ export function useLinkProps<
       doPreload()
       return
     }
-
-    const eventTarget =
-      (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
 
     if (!timeoutMap.has(eventTarget)) {
       timeoutMap.set(
@@ -378,9 +386,7 @@ export function useLinkProps<
     const eventTarget = e.currentTarget || e.target
 
     if (eventTarget) {
-      const id = timeoutMap.get(eventTarget)
-      clearTimeout(id)
-      timeoutMap.delete(eventTarget)
+      cancelPreload(eventTarget)
     }
   }
 

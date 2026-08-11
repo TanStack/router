@@ -623,13 +623,20 @@ export function useLinkProps<
         | IntersectionObserverEntry
         | undefined,
     ) => {
+      if (!e) {
+        return
+      }
+
+      const eventTarget =
+        (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
+
       if (
-        !e ||
         !(
           (e as IntersectionObserverEntry).isIntersecting ??
           preload === 'intent'
         )
       ) {
+        cancelPreload(eventTarget)
         return
       }
 
@@ -637,9 +644,6 @@ export function useLinkProps<
         doPreload()
         return
       }
-
-      const eventTarget =
-        (e as { currentTarget?: EventTarget | null }).currentTarget || doPreload
 
       if (timeoutMap.has(eventTarget)) {
         return
@@ -740,12 +744,7 @@ export function useLinkProps<
   }
 
   const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
-    const eventTarget = e.currentTarget
-    const id = timeoutMap.get(eventTarget)
-    if (id) {
-      clearTimeout(id)
-      timeoutMap.delete(eventTarget)
-    }
+    cancelPreload(e.currentTarget)
   }
 
   return {
@@ -777,6 +776,10 @@ const STATIC_ACTIVE_PROPS = { 'data-status': 'active', 'aria-current': 'page' }
 const STATIC_TRANSITIONING_PROPS = { 'data-transitioning': 'transitioning' }
 
 const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
+const cancelPreload = (eventTarget: object) => {
+  clearTimeout(timeoutMap.get(eventTarget))
+  timeoutMap.delete(eventTarget)
+}
 
 const intersectionObserverOptions: IntersectionObserverInit = {
   rootMargin: '100px',
