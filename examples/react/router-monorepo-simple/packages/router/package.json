@@ -9,8 +9,8 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/history": "^1.162.1",
-    "@tanstack/react-router": "^1.170.23",
-    "@tanstack/router-plugin": "^1.168.27",
+    "@tanstack/react-router": "^1.170.25",
+    "@tanstack/router-plugin": "^1.168.29",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",
