@@ -5250,6 +5250,9 @@ describe('Link', () => {
     const rootRoute = createRootRoute()
     const RouteComponent = () => {
       const [to, setTo] = React.useState<'/about' | '/other'>('/about')
+      const [preload, setPreload] = React.useState<
+        'viewport' | 'intent' | false
+      >('viewport')
       return (
         <>
           <button
@@ -5259,7 +5262,9 @@ describe('Link', () => {
           >
             Change destination
           </button>
-          <Link to={to} preload="viewport" preloadDelay={50}>
+          <button onClick={() => setPreload('intent')}>Use intent</button>
+          <button onClick={() => setPreload(false)}>Disable preload</button>
+          <Link to={to} preload={preload} preloadDelay={50}>
             Viewport Link
           </Link>
         </>
@@ -5344,6 +5349,14 @@ describe('Link', () => {
     expect(preloadRouteSpy).toHaveBeenCalledWith(
       expect.objectContaining({ to: '/about' }),
     )
+
+    preloadRouteSpy.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Use intent' }))
+    fireEvent.mouseEnter(viewportLink)
+    fireEvent.click(screen.getByRole('button', { name: 'Disable preload' }))
+    fireEvent.mouseLeave(viewportLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {

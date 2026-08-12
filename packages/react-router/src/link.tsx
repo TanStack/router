@@ -616,20 +616,11 @@ export function useLinkProps<
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const enqueuePreload = React.useCallback(
-    (
-      e:
-        | React.MouseEvent
-        | React.FocusEvent
-        | IntersectionObserverEntry
-        | undefined,
-    ) => {
+    (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
       if (!e) {
         cancelPreload(innerRef)
         return
       }
-
-      const eventTarget =
-        (e as { currentTarget?: EventTarget | null }).currentTarget || innerRef
 
       if (
         !(
@@ -637,7 +628,9 @@ export function useLinkProps<
           preload === 'intent'
         )
       ) {
-        cancelPreload(eventTarget)
+        if ((e as IntersectionObserverEntry).isIntersecting === false) {
+          cancelPreload(innerRef)
+        }
         return
       }
 
@@ -646,14 +639,14 @@ export function useLinkProps<
         return
       }
 
-      if (timeoutMap.has(eventTarget)) {
+      if (timeoutMap.has(innerRef)) {
         return
       }
 
       timeoutMap.set(
-        eventTarget,
+        innerRef,
         setTimeout(() => {
-          timeoutMap.delete(eventTarget)
+          timeoutMap.delete(innerRef)
           doPreload()
         }, preloadDelay),
       )
@@ -739,8 +732,10 @@ export function useLinkProps<
     doPreload()
   }
 
-  const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
-    cancelPreload(e.currentTarget)
+  const handleLeave = () => {
+    if (preload === 'intent') {
+      cancelPreload(innerRef)
+    }
   }
 
   return {

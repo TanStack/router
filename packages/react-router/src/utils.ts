@@ -83,7 +83,7 @@ export function usePrevious<T>(value: T): T | null {
  */
 export function useIntersectionObserver<T extends Element>(
   ref: React.RefObject<T | null>,
-  callback: (entry: IntersectionObserverEntry | undefined) => void,
+  callback: (entry?: IntersectionObserverEntry) => void,
   disabled?: boolean,
 ) {
   React.useEffect(() => {
@@ -92,7 +92,7 @@ export function useIntersectionObserver<T extends Element>(
       disabled ||
       typeof IntersectionObserver !== 'function'
     ) {
-      return
+      return () => callback()
     }
 
     const observer = new IntersectionObserver(
@@ -106,7 +106,7 @@ export function useIntersectionObserver<T extends Element>(
 
     return () => {
       observer.disconnect()
-      callback(undefined)
+      callback()
     }
   }, [callback, disabled, ref])
 }

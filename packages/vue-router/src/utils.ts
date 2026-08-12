@@ -48,7 +48,7 @@ export const usePrevious = (fn: () => boolean) => {
  */
 export function useIntersectionObserver<T extends Element>(
   ref: Vue.Ref<T | null>,
-  callback: (entry: IntersectionObserverEntry | undefined) => void,
+  callback: (entry?: IntersectionObserverEntry) => void,
   disabled: () => boolean,
 ): Vue.Ref<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =
@@ -58,7 +58,8 @@ export function useIntersectionObserver<T extends Element>(
   // Use watchEffect with cleanup to properly manage the observer lifecycle
   Vue.watchEffect((onCleanup) => {
     const r = ref.value
-    if (!r || !isIntersectionObserverAvailable || disabled()) {
+    if (disabled() || !r || !isIntersectionObserverAvailable) {
+      onCleanup(() => callback())
       return
     }
 
@@ -75,7 +76,7 @@ export function useIntersectionObserver<T extends Element>(
     onCleanup(() => {
       observer.disconnect()
       observerRef.value = null
-      callback(undefined)
+      callback()
     })
   })
 

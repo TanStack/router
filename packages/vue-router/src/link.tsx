@@ -252,7 +252,7 @@ export function useLinkProps<
       })
 
   const enqueuePreload = (
-    e: MouseEvent | FocusEvent | IntersectionObserverEntry | undefined,
+    e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
     if (!e) {
       clearTimeout(timeoutMap.get(ref))
@@ -260,17 +260,16 @@ export function useLinkProps<
       return
     }
 
-    const eventTarget =
-      (e as { currentTarget?: EventTarget | null }).currentTarget || ref
-
     if (
       !(
         (e as IntersectionObserverEntry).isIntersecting ??
         preload.value === 'intent'
       )
     ) {
-      clearTimeout(timeoutMap.get(eventTarget))
-      timeoutMap.delete(eventTarget)
+      if ((e as IntersectionObserverEntry).isIntersecting === false) {
+        clearTimeout(timeoutMap.get(ref))
+        timeoutMap.delete(ref)
+      }
       return
     }
 
@@ -279,11 +278,11 @@ export function useLinkProps<
       return
     }
 
-    if (!timeoutMap.has(eventTarget)) {
+    if (!timeoutMap.has(ref)) {
       timeoutMap.set(
-        eventTarget,
+        ref,
         setTimeout(() => {
-          timeoutMap.delete(eventTarget)
+          timeoutMap.delete(ref)
           doPreload()
         }, preloadDelay.value),
       )
@@ -354,12 +353,10 @@ export function useLinkProps<
     doPreload()
   }
 
-  const handleLeave = (e: MouseEvent | FocusEvent) => {
-    const eventTarget = e.currentTarget || e.target
-
-    if (eventTarget) {
-      clearTimeout(timeoutMap.get(eventTarget))
-      timeoutMap.delete(eventTarget)
+  const handleLeave = () => {
+    if (preload.value === 'intent') {
+      clearTimeout(timeoutMap.get(ref))
+      timeoutMap.delete(ref)
     }
   }
 

@@ -262,15 +262,12 @@ export function useLinkProps<
   const [ref, setRef] = Solid.createSignal<Element | null>(null)
 
   const enqueuePreload = (
-    e: MouseEvent | FocusEvent | IntersectionObserverEntry | undefined,
+    e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
     if (!e) {
       cancelPreload(ref)
       return
     }
-
-    const eventTarget =
-      (e as { currentTarget?: EventTarget | null }).currentTarget || ref
 
     if (
       !(
@@ -278,7 +275,9 @@ export function useLinkProps<
         preload() === 'intent'
       )
     ) {
-      cancelPreload(eventTarget)
+      if ((e as IntersectionObserverEntry).isIntersecting === false) {
+        cancelPreload(ref)
+      }
       return
     }
 
@@ -287,11 +286,11 @@ export function useLinkProps<
       return
     }
 
-    if (!timeoutMap.has(eventTarget)) {
+    if (!timeoutMap.has(ref)) {
       timeoutMap.set(
-        eventTarget,
+        ref,
         setTimeout(() => {
-          timeoutMap.delete(eventTarget)
+          timeoutMap.delete(ref)
           doPreload()
         }, preloadDelay()),
       )
@@ -378,11 +377,9 @@ export function useLinkProps<
     doPreload()
   }
 
-  const handleLeave = (e: MouseEvent | FocusEvent) => {
-    const eventTarget = e.currentTarget || e.target
-
-    if (eventTarget) {
-      cancelPreload(eventTarget)
+  const handleLeave = () => {
+    if (preload() === 'intent') {
+      cancelPreload(ref)
     }
   }
 
