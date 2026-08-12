@@ -29,7 +29,7 @@ import type {
 
 type EventHandler<TEvent = Event> = (e: TEvent) => void
 
-const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
+const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
 
 type DataAttributes = {
   [K in `data-${string}`]?: unknown
@@ -86,7 +86,6 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): LinkHTMLAttributes {
   const router = useRouter()
-  const isTransitioning = Vue.ref(false)
   let hasRenderFetched = false
 
   // Ensure router is defined before proceeding
@@ -200,7 +199,6 @@ export function useLinkProps<
       href,
       options: options as AnyLinkPropsOptions,
       isActive,
-      isTransitioning: false,
       resolvedActiveProps,
       resolvedInactiveProps,
       resolvedClassName,
@@ -224,7 +222,7 @@ export function useLinkProps<
   })
 
   const preload = Vue.computed(() => {
-    if (options.reloadDocument) {
+    if (options.reloadDocument || options.disabled) {
       return false
     }
     return options.preload ?? router.options.defaultPreload
@@ -251,26 +249,55 @@ export function useLinkProps<
         console.warn(preloadWarning)
       })
 
-  const preloadViewportIoCallback = (
-    entry: IntersectionObserverEntry | undefined,
+  const enqueuePreload = (
+    e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
-    if (entry?.isIntersecting) {
+    if (!e) {
+      clearTimeout(timeoutMap.get(ref))
+      timeoutMap.delete(ref)
+      return
+    }
+
+    if (
+      !(
+        (e as IntersectionObserverEntry).isIntersecting ??
+        preload.value === 'intent'
+      )
+    ) {
+      if ((e as IntersectionObserverEntry).isIntersecting === false) {
+        clearTimeout(timeoutMap.get(ref))
+        timeoutMap.delete(ref)
+      }
+      return
+    }
+
+    if (!preloadDelay.value) {
       doPreload()
+      return
+    }
+
+    if (!timeoutMap.has(ref)) {
+      timeoutMap.set(
+        ref,
+        setTimeout(() => {
+          timeoutMap.delete(ref)
+          doPreload()
+        }, preloadDelay.value),
+      )
     }
   }
 
   useIntersectionObserver(
     ref,
-    preloadViewportIoCallback,
-    { rootMargin: '100px' },
-    () => !!options.disabled || preload.value !== 'viewport',
+    enqueuePreload,
+    () => preload.value !== 'viewport',
   )
 
   Vue.effect(() => {
     if (hasRenderFetched) {
       return
     }
-    if (!options.disabled && preload.value === 'render') {
+    if (preload.value === 'render') {
       doPreload()
       hasRenderFetched = true
     }
@@ -299,13 +326,6 @@ export function useLinkProps<
 
       e.preventDefault()
 
-      isTransitioning.value = true
-
-      const unsub = router.subscribe('onResolved', () => {
-        unsub()
-        isTransitioning.value = false
-      })
-
       // All is well? Navigate!
       router.navigate({
         ...options,
@@ -319,40 +339,15 @@ export function useLinkProps<
     }
   }
 
-  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
-    if (options.disabled || preload.value !== 'intent') return
-
-    if (!preloadDelay.value) {
-      doPreload()
-      return
-    }
-
-    const eventTarget = e.currentTarget || e.target
-
-    if (!eventTarget || timeoutMap.has(eventTarget)) return
-
-    timeoutMap.set(
-      eventTarget,
-      setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay.value),
-    )
-  }
-
-  const handleTouchStart = (_: TouchEvent) => {
-    if (options.disabled || preload.value !== 'intent') return
+  const handleTouchStart = () => {
+    if (preload.value !== 'intent') return
     doPreload()
   }
 
-  const handleLeave = (e: MouseEvent | FocusEvent) => {
-    if (options.disabled) return
-    const eventTarget = e.currentTarget || e.target
-
-    if (eventTarget) {
-      const id = timeoutMap.get(eventTarget)
-      clearTimeout(id)
-      timeoutMap.delete(eventTarget)
+  const handleLeave = () => {
+    if (preload.value === 'intent') {
+      clearTimeout(timeoutMap.get(ref))
+      timeoutMap.delete(ref)
     }
   }
 
@@ -384,15 +379,15 @@ export function useLinkProps<
     onBlur: composeEventHandlers<FocusEvent>([options.onBlur, handleLeave]),
     onFocus: composeEventHandlers<FocusEvent>([
       options.onFocus,
-      enqueueIntentPreload,
+      enqueuePreload,
     ]),
     onMouseenter: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseenter,
-      enqueueIntentPreload,
+      enqueuePreload,
     ]),
     onMouseover: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseover,
-      enqueueIntentPreload,
+      enqueuePreload,
     ]),
     onMouseleave: composeEventHandlers<MouseEvent>([
       eventHandlers.onMouseleave,
@@ -423,7 +418,6 @@ export function useLinkProps<
       ref,
       staticEventHandlers,
       isActive: isActive.value,
-      isTransitioning: isTransitioning.value,
       resolvedActiveProps,
       resolvedInactiveProps,
       resolvedClassName,
@@ -486,7 +480,6 @@ function combineResultProps({
   href,
   options,
   isActive,
-  isTransitioning,
   resolvedActiveProps,
   resolvedInactiveProps,
   resolvedClassName,
@@ -498,7 +491,6 @@ function combineResultProps({
   href: string | undefined
   options: AnyLinkPropsOptions
   isActive: boolean
-  isTransitioning: boolean
   resolvedActiveProps: StyledProps
   resolvedInactiveProps: StyledProps
   resolvedClassName?: string
@@ -540,10 +532,6 @@ function combineResultProps({
   if (isActive) {
     result['data-status'] = 'active'
     result['aria-current'] = 'page'
-  }
-
-  if (isTransitioning) {
-    result['data-transitioning'] = 'transitioning'
   }
 
   for (const key of Object.keys(resolvedActiveProps)) {
@@ -753,12 +741,7 @@ export type LinkProps<
 
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-  children?:
-    | Vue.VNodeChild
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => Vue.VNodeChild)
+  children?: Vue.VNodeChild | ((state: { isActive: boolean }) => Vue.VNodeChild)
 }
 
 type LinkComponentVueProps<TComp> = TComp extends keyof HTMLElementTagNameMap
@@ -871,16 +854,9 @@ const LinkImpl = Vue.defineComponent({
       const linkProps = Vue.unref(linkPropsSource)
 
       const isActive = linkProps['data-status'] === 'active'
-      const isTransitioning =
-        linkProps['data-transitioning'] === 'transitioning'
 
       // Create the slot content or empty array if no default slot
-      const slotContent = slots.default
-        ? slots.default({
-            isActive,
-            isTransitioning,
-          })
-        : []
+      const slotContent = slots.default ? slots.default({ isActive }) : []
 
       // Special handling for SVG links - wrap an <a> inside the SVG
       if (Component === 'svg') {

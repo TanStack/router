@@ -12,6 +12,10 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
+import {
+  nonRouteComponentContext,
+  wrapInNonRouteComponentContext,
+} from './nonRouteComponentContext'
 import type {
   AnyRoute,
   AnyRouteMatch,
@@ -24,7 +28,14 @@ export function renderPending(
 ) {
   const PendingComponent =
     route?.options.pendingComponent ?? router.options.defaultPendingComponent
-  return PendingComponent ? <PendingComponent /> : null
+  if (!PendingComponent) {
+    return null
+  }
+
+  const pendingElement = <PendingComponent />
+  return process.env.NODE_ENV !== 'production'
+    ? wrapInNonRouteComponentContext(pendingElement, 'pendingComponent')
+    : pendingElement
 }
 
 type OutletMatchSelection = [
@@ -123,10 +134,16 @@ function MatchView({
                   throw error
                 }
 
-                return React.createElement(
+                const notFoundElement = React.createElement(
                   routeNotFoundComponent!,
                   error as any,
                 )
+                return process.env.NODE_ENV !== 'production'
+                  ? wrapInNonRouteComponentContext(
+                      notFoundElement,
+                      'notFoundComponent',
+                    )
+                  : notFoundElement
               }}
             >
               {resolvedNoSsr ? (
@@ -197,7 +214,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         (route.options.errorComponent ??
           router.options.defaultErrorComponent) ||
         ErrorComponent
-      return (
+      const errorElement = (
         <RouteErrorComponent
           error={match.error as any}
           reset={undefined as any}
@@ -206,6 +223,9 @@ export const MatchInner = React.memo(function MatchInnerImpl({
           }}
         />
       )
+      return process.env.NODE_ENV !== 'production'
+        ? wrapInNonRouteComponentContext(errorElement, 'errorComponent')
+        : errorElement
     }
     throw match.error
   }
@@ -220,6 +240,16 @@ export const MatchInner = React.memo(function MatchInnerImpl({
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/outletComponent
  */
 export const Outlet = React.memo(function OutletImpl() {
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const nonRouteComponent = React.useContext(nonRouteComponentContext!)
+    if (nonRouteComponent) {
+      console.warn(
+        `Warning: An <Outlet /> was rendered inside a ${nonRouteComponent}. <Outlet /> should only be rendered inside a route component.`,
+      )
+    }
+  }
+
   const router = useRouter()
   const routeId = React.useContext(matchContext)!
 

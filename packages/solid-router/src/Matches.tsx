@@ -7,6 +7,7 @@ import { Rendered, Transitioner } from './Transitioner'
 import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type {
   AnyRoute,
   AnyRouter,
@@ -51,7 +52,19 @@ export function Matches() {
   return (
     <OptionalWrapper>
       <ResolvedSuspense
-        fallback={PendingComponent ? <PendingComponent /> : null}
+        fallback={
+          PendingComponent
+            ? (() => {
+                if (process.env.NODE_ENV !== 'production') {
+                  return renderInNonRouteComponentContext(
+                    () => <PendingComponent />,
+                    'pendingComponent',
+                  )
+                }
+                return <PendingComponent />
+              })()
+            : null
+        }
       >
         <Transitioner />
         <MatchesInner />

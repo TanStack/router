@@ -43,12 +43,16 @@ import type { RouterHistory } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
+let ioCallback: IntersectionObserverCallback
 let history: RouterHistory
 
 beforeEach(() => {
   const io = getIntersectionObserverMock({
     observe: ioObserveMock,
     disconnect: ioDisconnectMock,
+    onCreate: (callback) => {
+      ioCallback = callback
+    },
   })
   vi.stubGlobal('IntersectionObserver', io)
   history = createBrowserHistory()
@@ -56,6 +60,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   history.destroy?.()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
@@ -5054,6 +5059,128 @@ describe('Link', () => {
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
 
+  test('Link.preload="viewport" should respect preloadDelay', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/about" preload="viewport" preloadDelay={50}>
+            Viewport Link
+          </Link>
+          <Link to="/about" preload="intent" preloadDelay={50}>
+            Intent Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+
+    const viewportLink = await screen.findByRole('link', {
+      name: 'Viewport Link',
+    })
+    const intentLink = await screen.findByRole('link', { name: 'Intent Link' })
+    vi.useFakeTimers()
+
+    ioCallback([], {} as IntersectionObserver)
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    fireEvent.mouseLeave(viewportLink)
+
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(49)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+
+    fireEvent.mouseEnter(intentLink)
+    fireEvent.mouseLeave(intentLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+  })
+
   test('Link.disabled should disable viewport observation', async () => {
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
@@ -5092,7 +5219,6 @@ describe('Link', () => {
         useIntersectionObserver(
           element,
           () => {},
-          {},
           () => disabled.value,
         )
 
@@ -5316,79 +5442,6 @@ describe('Link', () => {
     expect(postsElement).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts')
-  })
-
-  test('Link slot receives isTransitioning during pending navigation', async () => {
-    let resolvePostsLoader: (() => void) | undefined
-
-    const postsLoaderPromise = new Promise<void>((resolve) => {
-      resolvePostsLoader = resolve
-    })
-
-    const rootRoute = createRootRoute({
-      component: () =>
-        Vue.h(Vue.Fragment, null, [
-          Vue.h(
-            Link,
-            { to: '/posts', 'data-testid': 'posts-link' },
-            {
-              default: ({ isTransitioning }: { isTransitioning: boolean }) => (
-                <>
-                  <span data-testid="slot-transition-state">
-                    {isTransitioning ? 'transitioning' : 'idle'}
-                  </span>
-                  <span>Posts</span>
-                </>
-              ),
-            },
-          ),
-          Vue.h(Outlet),
-        ]),
-    })
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => <h1>Index page</h1>,
-    })
-
-    const postsRoute = createRoute({
-      ssr: false,
-      getParentRoute: () => rootRoute,
-      path: '/posts',
-      loader: () => postsLoaderPromise,
-      component: () => <h1>Posts page</h1>,
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
-      history,
-    })
-
-    render(<RouterProvider router={router} />)
-
-    await screen.findByRole('heading', { name: 'Index page' })
-
-    const postsLink = await screen.findByTestId('posts-link')
-    const transitionState = await screen.findByTestId('slot-transition-state')
-
-    expect(transitionState).toHaveTextContent('idle')
-    expect(postsLink).not.toHaveAttribute('data-transitioning')
-
-    fireEvent.click(postsLink)
-
-    await waitFor(() => expect(resolvePostsLoader).toBeDefined())
-    await waitFor(() =>
-      expect(transitionState).toHaveTextContent('transitioning'),
-    )
-    expect(postsLink).toHaveAttribute('data-transitioning', 'transitioning')
-
-    resolvePostsLoader?.()
-
-    await screen.findByRole('heading', { name: 'Posts page' })
-
-    await waitFor(() => expect(transitionState).toHaveTextContent('idle'))
-    expect(postsLink).not.toHaveAttribute('data-transitioning')
   })
 
   describe('when preloading a link, `preload` should be', () => {
