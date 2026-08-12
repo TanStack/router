@@ -25,8 +25,8 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
+    "@solidjs/vite-plugin": "^3.0.0-next.27",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.26"
+    "vite": "^8.0.14"
   }
 }

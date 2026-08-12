@@ -20,10 +20,10 @@
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
+    "@solidjs/vite-plugin": "^3.0.0-next.27",
     "@tanstack/router-plugin": "^1.168.24",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.26"
+    "vite": "^8.0.14"
   }
 }

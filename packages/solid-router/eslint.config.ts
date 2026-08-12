@@ -1,4 +1,4 @@
-import solidPlugin from 'vite-plugin-solid'
+import solidPlugin from '@solidjs/vite-plugin'
 import rootConfig from '../../eslint.config.js'
 
 export default [

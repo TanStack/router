@@ -18,11 +18,11 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
+    "@solidjs/vite-plugin": "^3.0.0-next.27",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.26"
+    "vite": "^8.0.14"
   }
 }

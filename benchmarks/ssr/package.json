@@ -17,13 +17,13 @@
   },
   "devDependencies": {
     "@codspeed/vitest-plugin": "^5.5.0",
+    "@solidjs/vite-plugin": "^3.0.0-next.27",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "seroval": "^1.5.4",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.26",
     "vitest": "^4.1.4"
   },
   "nx": {

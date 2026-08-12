@@ -26,16 +26,16 @@
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
+    "@solidjs/vite-plugin": "^3.0.0-next.27",
     "@tanstack/eslint-config": "^0.3.2",
     "@testing-library/dom": "^10.4.1",
     "@types/bun": "^1.2.22",
     "@types/node": "22.10.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.26",
     "vitest": "^4.1.4",
     "web-vitals": "^5.1.0"
   }
