@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1786526332875,
+  "lastUpdate": 1786539392479,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,90 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "manuel.schiller@caligano.de",
-            "name": "Manuel Schiller",
-            "username": "schiller-manuel"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "656a2a040e79df7721d776e3751c8d634666570b",
-          "message": "chore: add vite 8 to peer deps (#7160)\n\nCo-authored-by: schiller-manuel <6340397+schiller-manuel@users.noreply.github.com>\nCo-authored-by: copilot-swe-agent[bot] <198982749+Copilot@users.noreply.github.com>\nCo-authored-by: nx-cloud[bot] <71083854+nx-cloud[bot]@users.noreply.github.com>\nCo-authored-by: autofix-ci[bot] <114827586+autofix-ci[bot]@users.noreply.github.com>",
-          "timestamp": "2026-04-12T02:29:41+02:00",
-          "tree_id": "5194aa53ef83cd9c7a2f830a6202b753a005c537",
-          "url": "https://github.com/TanStack/router/commit/656a2a040e79df7721d776e3751c8d634666570b"
-        },
-        "date": 1775953918672,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89436,
-            "unit": "bytes",
-            "extra": "raw=281229; brotli=77707"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92789,
-            "unit": "bytes",
-            "extra": "raw=292568; brotli=80613"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36382,
-            "unit": "bytes",
-            "extra": "raw=109199; brotli=32727"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 40948,
-            "unit": "bytes",
-            "extra": "raw=123013; brotli=36740"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54591,
-            "unit": "bytes",
-            "extra": "raw=155694; brotli=49057"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59602,
-            "unit": "bytes",
-            "extra": "raw=171485; brotli=53362"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104188,
-            "unit": "bytes",
-            "extra": "raw=330099; brotli=90072"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107714,
-            "unit": "bytes",
-            "extra": "raw=340678; brotli=93047"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50722,
-            "unit": "bytes",
-            "extra": "raw=156107; brotli=44717"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56364,
-            "unit": "bytes",
-            "extra": "raw=172699; brotli=49619"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -22256,6 +22172,132 @@ window.BENCHMARK_DATA = {
             "value": 70960,
             "unit": "bytes",
             "extra": "raw=205961; brotli=63052; initial_gzip=70832"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "38485038c52ff898777cabeeeb2eaaa29c93f789",
+          "message": "Fix default route component remounting (#8002)\n\n* Fix default route component remounting\n\n* Optimize reactive Vue Link props\n\n* fix(vue-router): address reactive Link review feedback",
+          "timestamp": "2026-08-12T14:53:17+02:00",
+          "tree_id": "a3979e2ba7a75cf635f492b0b9c14f72a9eb6a22",
+          "url": "https://github.com/TanStack/router/commit/38485038c52ff898777cabeeeb2eaaa29c93f789"
+        },
+        "date": 1786539390595,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85854,
+            "unit": "bytes",
+            "extra": "raw=268782; brotli=74725; initial_gzip=85712"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89447,
+            "unit": "bytes",
+            "extra": "raw=280772; brotli=77795; initial_gzip=89309"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 33965,
+            "unit": "bytes",
+            "extra": "raw=98582; brotli=30590; initial_gzip=33843"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 38906,
+            "unit": "bytes",
+            "extra": "raw=113566; brotli=34993; initial_gzip=38780"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50773,
+            "unit": "bytes",
+            "extra": "raw=141742; brotli=45823; initial_gzip=50644"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56512,
+            "unit": "bytes",
+            "extra": "raw=160387; brotli=50845; initial_gzip=56388"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 98980,
+            "unit": "bytes",
+            "extra": "raw=312007; brotli=85805; initial_gzip=98839"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99715,
+            "unit": "bytes",
+            "extra": "raw=313396; brotli=86535; initial_gzip=98858"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102230,
+            "unit": "bytes",
+            "extra": "raw=321960; brotli=88603; initial_gzip=102090"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102365,
+            "unit": "bytes",
+            "extra": "raw=322672; brotli=88256; initial_gzip=102190"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102779,
+            "unit": "bytes",
+            "extra": "raw=323631; brotli=88629; initial_gzip=102610"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105765,
+            "unit": "bytes",
+            "extra": "raw=333006; brotli=91115; initial_gzip=105590"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47053,
+            "unit": "bytes",
+            "extra": "raw=140623; brotli=41821; initial_gzip=46925"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50202,
+            "unit": "bytes",
+            "extra": "raw=148261; brotli=44738; initial_gzip=46991"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52256,
+            "unit": "bytes",
+            "extra": "raw=156381; brotli=46328; initial_gzip=52125"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67208,
+            "unit": "bytes",
+            "extra": "raw=193785; brotli=59825; initial_gzip=67080"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71104,
+            "unit": "bytes",
+            "extra": "raw=206384; brotli=63120; initial_gzip=70977"
           }
         ]
       }
