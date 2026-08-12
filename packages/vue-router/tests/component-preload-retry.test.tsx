@@ -14,6 +14,19 @@ import type { ErrorComponentProps } from '../src'
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+test('a successful server component download is reused', async () => {
+  vi.stubGlobal('document', undefined)
+  const importer = vi.fn().mockResolvedValue({ default: () => null })
+  const Page = lazyRouteComponent(importer)
+
+  const preload = Page.preload?.()
+  await preload
+
+  expect(Page.preload?.()).toBe(preload)
+  expect(importer).toHaveBeenCalledTimes(1)
 })
 
 test('a resolved client component preload is reused', async () => {

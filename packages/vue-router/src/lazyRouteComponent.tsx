@@ -47,7 +47,9 @@ export function lazyRouteComponent<
       error = undefined
       loadPromise = importer()
         .then((res) => {
-          loadPromise = undefined
+          if (typeof document !== 'undefined') {
+            loadPromise = undefined
+          }
           comp = res[exportName ?? 'default']
           return comp
         })
