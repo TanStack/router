@@ -10,6 +10,10 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
+import {
+  nonRouteComponentContext,
+  renderInNonRouteComponentContext,
+} from './nonRouteComponentContext'
 import type {
   AnyRoute,
   AnyRouter,
@@ -76,14 +80,23 @@ export const Match = (props: { routeId: string }) => {
   const ResolvedSuspenseBoundary = () =>
     routeOptions().wrapInSuspense === false ? SafeFragment : Solid.Suspense
 
+  const renderPendingComponentFallback = () => {
+    if (routeOptions().wrapInSuspense === false) {
+      return undefined
+    }
+    if (process.env.NODE_ENV !== 'production') {
+      return renderInNonRouteComponentContext(
+        () => <Dynamic component={resolvePendingComponent()} />,
+        'pendingComponent',
+      )
+    }
+    return <Dynamic component={resolvePendingComponent()} />
+  }
+
   const MatchContent = () => (
     <Solid.Show
       when={currentMatch().status !== 'pending'}
-      fallback={
-        routeOptions().wrapInSuspense === false ? undefined : (
-          <Dynamic component={resolvePendingComponent()} />
-        )
-      }
+      fallback={renderPendingComponentFallback()}
     >
       <MatchInner />
     </Solid.Show>
@@ -94,13 +107,14 @@ export const Match = (props: { routeId: string }) => {
       <nearestMatchContext.Provider value={nearestMatch}>
         <Dynamic
           component={ResolvedSuspenseBoundary()}
-          fallback={
+          fallback={(() => {
             // Data-only SSR renders the inner fallback on the server, so
             // avoid adding an extra suspense fallback on the client.
-            shouldSkipSuspenseFallback() ? undefined : (
-              <Dynamic component={resolvePendingComponent()} />
-            )
-          }
+            if (shouldSkipSuspenseFallback()) {
+              return undefined
+            }
+            return renderPendingComponentFallback()
+          })()}
         >
           <Dynamic
             component={routeErrorComponent() ? CatchBoundary : SafeFragment}
@@ -134,7 +148,17 @@ export const Match = (props: { routeId: string }) => {
                   throw notFoundError
                 }
 
-                return (
+                return process.env.NODE_ENV !== 'production' ? (
+                  renderInNonRouteComponentContext(
+                    () => (
+                      <Dynamic
+                        component={routeNotFoundComponent()}
+                        {...notFoundError}
+                      />
+                    ),
+                    'notFoundComponent',
+                  )
+                ) : (
                   <Dynamic
                     component={routeNotFoundComponent()}
                     {...notFoundError}
@@ -145,7 +169,17 @@ export const Match = (props: { routeId: string }) => {
               <Solid.Switch>
                 <Solid.Match when={resolvedNoSsr()}>
                   <ClientOnly
-                    fallback={<Dynamic component={resolvePendingComponent()} />}
+                    fallback={(() => {
+                      if (process.env.NODE_ENV !== 'production') {
+                        return renderInNonRouteComponentContext(
+                          () => (
+                            <Dynamic component={resolvePendingComponent()} />
+                          ),
+                          'pendingComponent',
+                        )
+                      }
+                      return <Dynamic component={resolvePendingComponent()} />
+                    })()}
                   >
                     <MatchContent />
                   </ClientOnly>
@@ -176,13 +210,16 @@ export const MatchInner = (): any => {
     const current = currentMatch()
     const remount =
       route.options.remountDeps ?? router.options.defaultRemountDeps
-    const deps = remount?.({
+    if (!remount) {
+      return routeId()
+    }
+    const deps = remount({
       routeId: routeId()!,
       loaderDeps: current.loaderDeps,
       params: current._strictParams,
       search: current._strictSearch,
     })
-    return deps ? JSON.stringify(deps) : current.id
+    return JSON.stringify(deps) ?? routeId()
   }
 
   const out = () => {
@@ -212,7 +249,19 @@ export const MatchInner = (): any => {
                 router.options.defaultErrorComponent) ||
               ErrorComponent
 
-            return (
+            return process.env.NODE_ENV !== 'production' ? (
+              renderInNonRouteComponentContext(
+                () => (
+                  <RouteErrorComponent
+                    error={currentMatch().error}
+                    info={{
+                      componentStack: '',
+                    }}
+                  />
+                ),
+                'errorComponent',
+              )
+            ) : (
               <RouteErrorComponent
                 error={currentMatch().error}
                 info={{
@@ -233,6 +282,15 @@ export const MatchInner = (): any => {
 }
 
 export const Outlet = () => {
+  if (process.env.NODE_ENV !== 'production') {
+    const nonRouteComponent = Solid.useContext(nonRouteComponentContext!)
+    if (nonRouteComponent) {
+      console.warn(
+        `Warning: An <Outlet /> was rendered inside a ${nonRouteComponent}. <Outlet /> should only be rendered inside a route component.`,
+      )
+    }
+  }
+
   const router = useRouter()
   const nearestParentMatch = Solid.useContext(nearestMatchContext)
   const parentMatch = nearestParentMatch[1 /* match */]
@@ -264,9 +322,21 @@ export const Outlet = () => {
             fallback={<Match routeId={childRouteId()!} />}
           >
             <Solid.Suspense
-              fallback={
-                <Dynamic component={router.options.defaultPendingComponent} />
-              }
+              fallback={(() => {
+                if (process.env.NODE_ENV !== 'production') {
+                  return renderInNonRouteComponentContext(
+                    () => (
+                      <Dynamic
+                        component={router.options.defaultPendingComponent}
+                      />
+                    ),
+                    'pendingComponent',
+                  )
+                }
+                return (
+                  <Dynamic component={router.options.defaultPendingComponent} />
+                )
+              })()}
             >
               <Match routeId={childRouteId()!} />
             </Solid.Suspense>

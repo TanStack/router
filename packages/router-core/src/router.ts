@@ -213,7 +213,8 @@ export interface RouterOptions<
    */
   defaultPreload?: false | 'intent' | 'viewport' | 'render'
   /**
-   * The delay in milliseconds that a route must be hovered over or touched before it is preloaded.
+   * The delay in milliseconds before intent focus/hover and viewport preloading.
+   * Touch intent preloads immediately.
    *
    * @default 50
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloaddelay-property)

@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.22
+
+### Patch Changes
+
+- [#8039](https://github.com/TanStack/router/pull/8039) [`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13) - load-client can cache settles abandonned loader work without preload authority
+
 ## 1.171.21
 
 ### Patch Changes
