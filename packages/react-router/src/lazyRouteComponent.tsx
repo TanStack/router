@@ -48,6 +48,8 @@ export function lazyRouteComponent<
 
     return loadPromise
   }
+  const preload = () =>
+    comp && !(isServer ?? typeof window === 'undefined') ? undefined : load()
 
   const lazyComp = function Lazy(props: any) {
     if (error) {
@@ -81,7 +83,7 @@ export function lazyRouteComponent<
     return React.createElement(comp, props)
   }
 
-  ;(lazyComp as any).preload = load
+  ;(lazyComp as any).preload = preload
 
   return lazyComp as any
 }

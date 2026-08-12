@@ -37,6 +37,8 @@ export function lazyRouteComponent<
 
     return loadPromise
   }
+  const preload = () =>
+    comp && !(isServer ?? typeof window === 'undefined') ? undefined : load()
 
   const lazyComp = function Lazy(props: any) {
     // Now that we're out of preload and into actual render path,
@@ -90,7 +92,7 @@ export function lazyRouteComponent<
     return <Dynamic component={comp} {...props} />
   }
 
-  ;(lazyComp as any).preload = load
+  ;(lazyComp as any).preload = preload
 
   return lazyComp as any
 }

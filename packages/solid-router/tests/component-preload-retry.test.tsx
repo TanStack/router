@@ -41,6 +41,15 @@ test('a component loads when rendered before preload', async () => {
   expect(importer).toHaveBeenCalledTimes(1)
 })
 
+test('a resolved client component preload is reused', async () => {
+  const importer = vi.fn().mockResolvedValue({ default: () => null })
+  const Page = lazyRouteComponent(importer)
+
+  await Page.preload?.()
+  await Page.preload?.()
+  expect(importer).toHaveBeenCalledTimes(1)
+})
+
 test('a failed component download is retried from the route error UI', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 
