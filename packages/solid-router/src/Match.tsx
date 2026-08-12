@@ -207,13 +207,16 @@ export const MatchInner = (): any => {
     const current = currentMatch()
     const remount =
       route.options.remountDeps ?? router.options.defaultRemountDeps
-    const deps = remount?.({
+    if (!remount) {
+      return routeId()
+    }
+    const deps = remount({
       routeId: routeId()!,
       loaderDeps: current.loaderDeps,
       params: current._strictParams,
       search: current._strictSearch,
     })
-    return deps ? JSON.stringify(deps) : current.id
+    return JSON.stringify(deps) ?? routeId()
   }
 
   const out = () => {

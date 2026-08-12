@@ -176,19 +176,18 @@ export const MatchInner = Vue.defineComponent({
         (router.routesById[matchRouteId] as AnyRoute).options.remountDeps ??
         router.options.defaultRemountDeps
 
-      const remountDeps = remountFn
-        ? remountFn({
-            routeId: matchRouteId,
-            loaderDeps: match.loaderDeps,
-            params: match._strictParams,
-            search: match._strictSearch,
-          })
+      const remountKey = remountFn
+        ? JSON.stringify(
+            remountFn({
+              routeId: matchRouteId,
+              loaderDeps: match.loaderDeps,
+              params: match._strictParams,
+              search: match._strictSearch,
+            }),
+          )
         : undefined
 
-      return [
-        match,
-        remountDeps ? JSON.stringify(remountDeps) : undefined,
-      ] as const
+      return [match, remountKey] as const
     })
 
     return (): VNode | null => {
@@ -300,17 +299,11 @@ export const Outlet = Vue.defineComponent({
 
     const route = router.routesById[parentRouteId]!
 
-    const childMatch = useStore(router.stores.matches, (matches) => {
+    const childRouteId = useStore(router.stores.matches, (matches) => {
       const index = matches.findIndex(
         (match) => match.routeId === parentRouteId,
       )
-      const child = matches[index + 1]
-      return child
-        ? ([
-            child.routeId,
-            child.routeId + JSON.stringify(child._strictParams),
-          ] as const)
-        : undefined
+      return matches[index + 1]?.routeId
     })
 
     return (): VNode | null => {
@@ -318,17 +311,14 @@ export const Outlet = Vue.defineComponent({
         return renderRouteNotFound(router, route, parentMatch.value.error)
       }
 
-      const child = childMatch.value
+      const child = childRouteId.value
       if (!child) {
         return null
       }
 
       const nextMatch = Vue.h(Match, {
-        routeId: child[0 /* routeId */],
-        // Key based on routeId + params only (not loaderDeps)
-        // This ensures component recreates when params change,
-        // but NOT when only loaderDeps change
-        key: child[1 /* key */],
+        routeId: child,
+        key: child,
       })
 
       // Note: We intentionally do NOT wrap in Suspense here.

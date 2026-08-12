@@ -58,6 +58,17 @@ type VueStyleLinkEventHandlers = {
   onTouchstart?: EventHandler<TouchEvent>
 }
 
+type LinkEventHandlers = {
+  onClick: EventHandler<PointerEvent>
+  onBlur: EventHandler<FocusEvent>
+  onFocus: EventHandler<FocusEvent>
+  onMouseenter: EventHandler<MouseEvent>
+  onMouseleave: EventHandler<MouseEvent>
+  onMouseover: EventHandler<MouseEvent>
+  onMouseout: EventHandler<MouseEvent>
+  onTouchstart: EventHandler<TouchEvent>
+}
+
 interface StyledProps {
   class?: LinkHTMLAttributes['class']
   style?: LinkHTMLAttributes['style']
@@ -73,7 +84,9 @@ type PropsOfComponent<TComp> =
       ? P
       : Record<string, unknown>
 
-type AnyLinkPropsOptions = UseLinkPropsOptions<any, any, any, any, any>
+type AnyLinkPropsOptions = UseLinkPropsOptions<any, any, any, any, any> & {
+  _asChild?: unknown
+}
 type LinkEventOptions = AnyLinkPropsOptions & Partial<VueStyleLinkEventHandlers>
 
 export function useLinkProps<
@@ -85,8 +98,14 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): LinkHTMLAttributes {
+  return useLinkPropsImpl(() => options as AnyLinkPropsOptions)
+}
+
+function useLinkPropsImpl(
+  getOptions: () => AnyLinkPropsOptions,
+): LinkHTMLAttributes {
   const router = useRouter()
-  let hasRenderFetched = false
+  let renderFetchedHref: string | undefined
 
   // Ensure router is defined before proceeding
   if (!router) {
@@ -96,6 +115,7 @@ export function useLinkProps<
 
   // Determine if the link is external or internal
   const type = Vue.computed(() => {
+    const options = getOptions()
     try {
       new URL(`${options.to}`)
       return 'external'
@@ -105,81 +125,19 @@ export function useLinkProps<
   })
 
   const ref = Vue.ref<Element | null>(null)
-  const eventHandlers = getLinkEventHandlers(options as LinkEventOptions)
-
-  if (type.value === 'external') {
-    // Block dangerous protocols like javascript:, blob:, data:
-    if (isDangerousProtocol(options.to as string, router.protocolAllowlist)) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
-      }
-      // Return props without href to prevent navigation
-      const safeProps: Record<string, unknown> = {
-        ...getPropsSafeToSpread(options as AnyLinkPropsOptions),
-        ref,
-        // No href attribute - blocks the dangerous protocol
-        target: options.target,
-        disabled: options.disabled,
-        style: options.style,
-        class: options.class,
-        onClick: options.onClick,
-        onBlur: options.onBlur,
-        onFocus: options.onFocus,
-        onMouseenter: eventHandlers.onMouseenter,
-        onMouseleave: eventHandlers.onMouseleave,
-        onMouseover: eventHandlers.onMouseover,
-        onMouseout: eventHandlers.onMouseout,
-        onTouchstart: eventHandlers.onTouchstart,
-      }
-
-      // Remove undefined values
-      Object.keys(safeProps).forEach((key) => {
-        if (safeProps[key] === undefined) {
-          delete safeProps[key]
-        }
-      })
-
-      return Vue.computed(
-        () => safeProps as LinkHTMLAttributes,
-      ) as unknown as LinkHTMLAttributes
-    }
-
-    // External links just have simple props
-    const externalProps: Record<string, unknown> = {
-      ...getPropsSafeToSpread(options as AnyLinkPropsOptions),
-      ref,
-      href: options.to,
-      target: options.target,
-      disabled: options.disabled,
-      style: options.style,
-      class: options.class,
-      onClick: options.onClick,
-      onBlur: options.onBlur,
-      onFocus: options.onFocus,
-      onMouseenter: eventHandlers.onMouseenter,
-      onMouseleave: eventHandlers.onMouseleave,
-      onMouseover: eventHandlers.onMouseover,
-      onMouseout: eventHandlers.onMouseout,
-      onTouchstart: eventHandlers.onTouchstart,
-    }
-
-    // Remove undefined values
-    Object.keys(externalProps).forEach((key) => {
-      if (externalProps[key] === undefined) {
-        delete externalProps[key]
-      }
-    })
-
-    return Vue.computed(
-      () => externalProps as LinkHTMLAttributes,
-    ) as unknown as LinkHTMLAttributes
-  }
 
   // During SSR we render exactly once and do not need reactivity.
   // Avoid store subscriptions, effects and observers on the server.
   if (isServer ?? router.isServer) {
+    const options = getOptions()
+    if (type.value === 'external') {
+      return Vue.ref(
+        getExternalLinkProps(options, router, ref),
+      ) as unknown as LinkHTMLAttributes
+    }
+
     const next = router.buildLocation(options as any)
-    const href = getHref(options as AnyLinkPropsOptions, router, next)
+    const href = getHref(options, router, next)
 
     const isActive = getIsActive(
       router.stores.location.get(),
@@ -193,11 +151,11 @@ export function useLinkProps<
       resolvedInactiveProps,
       resolvedClassName,
       resolvedStyle,
-    } = resolveStyleProps(options as AnyLinkPropsOptions, isActive)
+    } = resolveStyleProps(options, isActive)
 
     const result = combineResultProps({
       href,
-      options: options as AnyLinkPropsOptions,
+      options,
       isActive,
       resolvedActiveProps,
       resolvedInactiveProps,
@@ -210,44 +168,78 @@ export function useLinkProps<
     ) as unknown as LinkHTMLAttributes
   }
 
-  const currentLocation = useStore(router.stores.location, (l) => l, {
-    equal: (prev, next) => prev.href === next.href,
-  })
+  const currentLocation: Vue.Ref<
+    ReturnType<typeof router.stores.location.get>
+  > =
+    type.value === 'external'
+      ? Vue.shallowRef(router.stores.location.get())
+      : (useStore(router.stores.location, (l) => l, {
+          equal: (prev, next) => prev.href === next.href,
+        }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
+
+  // Links that start external skip useStore above. Subscribe if they later
+  // become internal so active state follows subsequent location changes.
+  if (type.value === 'external') {
+    Vue.watchEffect((onCleanup) => {
+      if (type.value === 'external') {
+        return
+      }
+
+      const store = router.stores.location
+      const subscription = store.subscribe((location) => {
+        if (currentLocation.value.href !== location.href) {
+          currentLocation.value = location
+        }
+      })
+      onCleanup(() => subscription.unsubscribe())
+    })
+  }
 
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
 
+    const options = getOptions()
     const opts = { _fromLocation: currentLocation.value, ...options }
     return router.buildLocation(opts)
   })
 
   const preload = Vue.computed(() => {
-    if (options.reloadDocument || options.disabled) {
+    const options = getOptions()
+    if (
+      type.value === 'external' ||
+      options.reloadDocument ||
+      options.disabled
+    ) {
       return false
     }
     return options.preload ?? router.options.defaultPreload
   })
 
   const preloadDelay = Vue.computed(
-    () => options.preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
+    () => getOptions().preloadDelay ?? router.options.defaultPreloadDelay ?? 0,
   )
 
-  const isActive = Vue.computed(() =>
-    getIsActive(
+  const isActive = Vue.computed(() => {
+    const options = getOptions()
+    return getIsActive(
       currentLocation.value,
       next.value,
       options.activeOptions,
       router,
-    ),
-  )
+    )
+  })
 
-  const doPreload = () =>
-    router
+  const doPreload = () => {
+    const options = getOptions()
+    return router
       .preloadRoute({ ...options, _builtLocation: next.value } as any)
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
       })
+  }
+
+  let pendingPreload: 'intent' | 'viewport' | undefined
 
   const enqueuePreload = (
     e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
@@ -255,18 +247,17 @@ export function useLinkProps<
     if (!e) {
       clearTimeout(timeoutMap.get(ref))
       timeoutMap.delete(ref)
+      pendingPreload = undefined
       return
     }
 
-    if (
-      !(
-        (e as IntersectionObserverEntry).isIntersecting ??
-        preload.value === 'intent'
-      )
-    ) {
-      if ((e as IntersectionObserverEntry).isIntersecting === false) {
+    const isIntersecting = (e as IntersectionObserverEntry).isIntersecting
+    const preloadMode = isIntersecting === undefined ? 'intent' : 'viewport'
+    if (preload.value !== preloadMode || isIntersecting === false) {
+      if (isIntersecting === false && pendingPreload === 'viewport') {
         clearTimeout(timeoutMap.get(ref))
         timeoutMap.delete(ref)
+        pendingPreload = undefined
       }
       return
     }
@@ -277,11 +268,19 @@ export function useLinkProps<
     }
 
     if (!timeoutMap.has(ref)) {
+      const scheduledHref = next.value.href
+      pendingPreload = preloadMode
       timeoutMap.set(
         ref,
         setTimeout(() => {
           timeoutMap.delete(ref)
-          doPreload()
+          pendingPreload = undefined
+          if (
+            preload.value === preloadMode &&
+            next.value.href === scheduledHref
+          ) {
+            doPreload()
+          }
         }, preloadDelay.value),
       )
     }
@@ -293,18 +292,25 @@ export function useLinkProps<
     () => preload.value !== 'viewport',
   )
 
-  Vue.effect(() => {
-    if (hasRenderFetched) {
+  Vue.watchEffect(() => {
+    if (preload.value !== 'render') {
       return
     }
-    if (preload.value === 'render') {
+
+    const nextHref = next.value.href
+    if (nextHref && renderFetchedHref !== nextHref) {
+      renderFetchedHref = nextHref
       doPreload()
-      hasRenderFetched = true
     }
   })
 
   // The click handler
   const handleClick = (e: PointerEvent): void => {
+    if (type.value === 'external') {
+      return
+    }
+
+    const options = getOptions()
     // Check actual element's target attribute as fallback
     const elementTarget = (
       e.currentTarget as HTMLAnchorElement | SVGAElement
@@ -340,72 +346,75 @@ export function useLinkProps<
   }
 
   const handleTouchStart = () => {
-    if (preload.value !== 'intent') return
-    doPreload()
-  }
-
-  const handleLeave = () => {
     if (preload.value === 'intent') {
-      clearTimeout(timeoutMap.get(ref))
-      timeoutMap.delete(ref)
+      doPreload()
     }
   }
 
-  // Helper to compose event handlers - with explicit return type and better type handling
+  const handleLeave = () => {
+    if (pendingPreload === 'intent') {
+      clearTimeout(timeoutMap.get(ref))
+      timeoutMap.delete(ref)
+      pendingPreload = undefined
+    }
+  }
+
   function composeEventHandlers<T extends Event>(
-    handlers: Array<EventHandler<T> | undefined>,
+    getUserHandler: () => EventHandler<T> | undefined,
+    handler: EventHandler<T>,
   ): (e: T) => void {
     return (event: T) => {
-      for (const handler of handlers) {
-        if (handler) {
-          handler(event)
-        }
-      }
+      getUserHandler()?.(event)
+      handler(event)
     }
   }
 
   // Get the active and inactive props
-  const resolvedStyleProps = Vue.computed(() =>
-    resolveStyleProps(options as AnyLinkPropsOptions, isActive.value),
-  )
+  const resolvedStyleProps = Vue.computed(() => {
+    const options = getOptions()
+    return resolveStyleProps(options, isActive.value)
+  })
 
-  const href = Vue.computed(() =>
-    getHref(options as AnyLinkPropsOptions, router, next.value),
-  )
+  const href = Vue.computed(() => {
+    const options = getOptions()
+    return getHref(options, router, next.value)
+  })
 
   // Create static event handlers that don't change between renders
-  const staticEventHandlers = {
-    onClick: composeEventHandlers<PointerEvent>([options.onClick, handleClick]),
-    onBlur: composeEventHandlers<FocusEvent>([options.onBlur, handleLeave]),
-    onFocus: composeEventHandlers<FocusEvent>([
-      options.onFocus,
+  const staticEventHandlers: LinkEventHandlers = {
+    onClick: composeEventHandlers(() => getOptions().onClick, handleClick),
+    onBlur: composeEventHandlers(() => getOptions().onBlur, handleLeave),
+    onFocus: composeEventHandlers(() => getOptions().onFocus, enqueuePreload),
+    onMouseenter: composeEventHandlers(
+      () => getLinkEventHandlers(getOptions() as LinkEventOptions).onMouseenter,
       enqueuePreload,
-    ]),
-    onMouseenter: composeEventHandlers<MouseEvent>([
-      eventHandlers.onMouseenter,
+    ),
+    onMouseover: composeEventHandlers(
+      () => getLinkEventHandlers(getOptions() as LinkEventOptions).onMouseover,
       enqueuePreload,
-    ]),
-    onMouseover: composeEventHandlers<MouseEvent>([
-      eventHandlers.onMouseover,
-      enqueuePreload,
-    ]),
-    onMouseleave: composeEventHandlers<MouseEvent>([
-      eventHandlers.onMouseleave,
+    ),
+    onMouseleave: composeEventHandlers(
+      () => getLinkEventHandlers(getOptions() as LinkEventOptions).onMouseleave,
       handleLeave,
-    ]),
-    onMouseout: composeEventHandlers<MouseEvent>([
-      eventHandlers.onMouseout,
+    ),
+    onMouseout: composeEventHandlers(
+      () => getLinkEventHandlers(getOptions() as LinkEventOptions).onMouseout,
       handleLeave,
-    ]),
-    onTouchstart: composeEventHandlers<TouchEvent>([
-      eventHandlers.onTouchstart,
+    ),
+    onTouchstart: composeEventHandlers(
+      () => getLinkEventHandlers(getOptions() as LinkEventOptions).onTouchstart,
       handleTouchStart,
-    ]),
+    ),
   }
 
   // Compute all props synchronously to avoid hydration mismatches
   // Using Vue.computed ensures props are calculated at render time, not after
   const computedProps = Vue.computed<LinkHTMLAttributes>(() => {
+    const options = getOptions()
+    if (type.value === 'external') {
+      return getExternalLinkProps(options, router, ref, staticEventHandlers)
+    }
+
     const {
       resolvedActiveProps,
       resolvedInactiveProps,
@@ -414,7 +423,7 @@ export function useLinkProps<
     } = resolvedStyleProps.value
     return combineResultProps({
       href: href.value,
-      options: options as AnyLinkPropsOptions,
+      options,
       ref,
       staticEventHandlers,
       isActive: isActive.value,
@@ -496,23 +505,14 @@ function combineResultProps({
   resolvedClassName?: string
   resolvedStyle?: Record<string, string | number>
   ref?: Vue.VNodeRef | undefined
-  staticEventHandlers?: {
-    onClick: any
-    onBlur: any
-    onFocus: any
-    onMouseenter: any
-    onMouseover: any
-    onMouseleave: any
-    onMouseout: any
-    onTouchstart: any
-  }
+  staticEventHandlers?: LinkEventHandlers
 }) {
   const result: Record<string, unknown> = {
     ...getPropsSafeToSpread(options),
     ref,
     ...staticEventHandlers,
     href,
-    disabled: !!options.disabled,
+    disabled: options._asChild ? !!options.disabled : undefined,
     target: options.target,
   }
 
@@ -546,6 +546,56 @@ function combineResultProps({
     }
   }
   return result
+}
+
+function getExternalLinkProps(
+  options: AnyLinkPropsOptions,
+  router: AnyRouter,
+  ref: Vue.Ref<Element | null>,
+  staticEventHandlers?: LinkEventHandlers,
+): LinkHTMLAttributes {
+  const dangerous = isDangerousProtocol(
+    options.to as string,
+    router.protocolAllowlist,
+  )
+  if (dangerous && process.env.NODE_ENV !== 'production') {
+    console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
+  }
+
+  const eventHandlers = getLinkEventHandlers(options as LinkEventOptions)
+  const result: Record<string, unknown> = {
+    ...getPropsSafeToSpread(options),
+    ref,
+    href: dangerous || options.disabled ? undefined : options.to,
+    target: options.target,
+    disabled: options._asChild ? !!options.disabled : undefined,
+    style: options.style,
+    class: options.class,
+    onClick: staticEventHandlers?.onClick ?? options.onClick,
+    onBlur: staticEventHandlers?.onBlur ?? options.onBlur,
+    onFocus: staticEventHandlers?.onFocus ?? options.onFocus,
+    onMouseenter:
+      staticEventHandlers?.onMouseenter ?? eventHandlers.onMouseenter,
+    onMouseleave:
+      staticEventHandlers?.onMouseleave ?? eventHandlers.onMouseleave,
+    onMouseover: staticEventHandlers?.onMouseover ?? eventHandlers.onMouseover,
+    onMouseout: staticEventHandlers?.onMouseout ?? eventHandlers.onMouseout,
+    onTouchstart:
+      staticEventHandlers?.onTouchstart ?? eventHandlers.onTouchstart,
+  }
+
+  if (options.disabled) {
+    result.role = 'link'
+    result['aria-disabled'] = true
+  }
+
+  for (const key of Object.keys(result)) {
+    if (result[key] === undefined) {
+      delete result[key]
+    }
+  }
+
+  return result as LinkHTMLAttributes
 }
 
 function getLinkEventHandlers(
@@ -842,9 +892,25 @@ const LinkImpl = Vue.defineComponent({
     'target',
   ],
   setup(props, { attrs, slots }) {
-    // Call useLinkProps ONCE during setup with combined props and attrs
-    const allProps = { ...props, ...attrs }
-    const linkPropsSource = useLinkProps(allProps) as
+    const attrsSnapshot = Vue.shallowRef({ ...attrs })
+    Vue.onBeforeUpdate(() => {
+      const keys = Object.keys(attrs)
+      const previous = attrsSnapshot.value
+      if (
+        keys.length !== Object.keys(previous).length ||
+        keys.some((key) => !Object.is(attrs[key], previous[key]))
+      ) {
+        attrsSnapshot.value = { ...attrs }
+      }
+    })
+
+    // Keep a plain cached snapshot so location-only updates do not repeatedly
+    // cross Vue's props and attrs proxies for every link computation.
+    const allProps = Vue.computed(() => ({
+      ...props,
+      ...attrsSnapshot.value,
+    }))
+    const linkPropsSource = useLinkPropsImpl(() => allProps.value) as
       | LinkHTMLAttributes
       | Vue.ComputedRef<LinkHTMLAttributes>
 
