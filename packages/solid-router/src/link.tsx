@@ -43,7 +43,6 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
-  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   const shouldHydrateHash = !isServer && !!router.options.ssr
   const hasHydrated = useHydrated()
 
@@ -324,13 +323,6 @@ export function useLinkProps<
     ) {
       e.preventDefault()
 
-      setIsTransitioning(true)
-
-      const unsub = router.subscribe('onResolved', () => {
-        unsub()
-        setIsTransitioning(false)
-      })
-
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
@@ -435,7 +427,6 @@ export function useLinkProps<
       disabled: !!local.disabled,
       target: local.target,
       ...(local.disabled && STATIC_DISABLED_PROPS),
-      ...(isTransitioning() && STATIC_TRANSITIONING_ATTRIBUTES),
     }
 
     if (simpleStyling()) {
@@ -489,9 +480,6 @@ const STATIC_DISABLED_PROPS = {
 const STATIC_ACTIVE_ATTRIBUTES = {
   'data-status': 'active',
   'aria-current': 'page',
-}
-const STATIC_TRANSITIONING_ATTRIBUTES = {
-  'data-transitioning': 'transitioning',
 }
 
 /** Call a JSX.EventHandlerUnion with the event. */
@@ -569,10 +557,7 @@ export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | Solid.JSX.Element
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => Solid.JSX.Element)
+    | ((state: { isActive: boolean }) => Solid.JSX.Element)
 }
 
 type LinkComponentSolidProps<TComp> = TComp extends Solid.ValidComponent
@@ -654,9 +639,6 @@ export const Link: LinkComponent<'a'> = (props) => {
       return ch({
         get isActive() {
           return (linkProps as any)['data-status'] === 'active'
-        },
-        get isTransitioning() {
-          return (linkProps as any)['data-transitioning'] === 'transitioning'
         },
       })
     }
