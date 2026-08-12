@@ -84,8 +84,8 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
   })
 
   expect(rootLoader).toHaveBeenCalledTimes(1)
-  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
-  expect(screen.getByTestId('root-content')).not.toBeVisible()
+  expect(screen.queryByTestId('root-pending')).not.toBeInTheDocument()
+  expect(screen.getByTestId('root-content')).toHaveTextContent('Generation 1')
 
   await act(async () => {
     reloadGate.resolve()
@@ -95,7 +95,7 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
   await act(async () => {
     await vi.advanceTimersByTimeAsync(99)
   })
-  expect(screen.getByTestId('root-pending')).toBeInTheDocument()
+  expect(screen.queryByTestId('root-pending')).not.toBeInTheDocument()
 
   await act(async () => {
     await vi.advanceTimersByTimeAsync(1)
@@ -105,7 +105,7 @@ test('a post-hydration root reload keeps its fallback through pendingMinMs', asy
   expect(screen.getByTestId('root-content')).toHaveTextContent('Generation 2')
 })
 
-test('root route hydration preserves component state across its Suspense boundary', async () => {
+test('root route hydration without a pending boundary preserves component state', async () => {
   const mounts = vi.fn()
   const unmounts = vi.fn()
   const initializers = vi.fn(() => 'preserved')
@@ -127,14 +127,13 @@ test('root route hydration preserves component state across its Suspense boundar
   })
   await router.load()
 
-  // Model the server render and the client router produced by hydrate(). The
-  // outer root boundary is intentionally absent from both trees, while the
-  // route's own pending boundary is present in both.
+  // Model the server render and the client router produced by hydrate(). A root
+  // without a separate shell stays unwrapped on both sides of hydration.
   router.ssr = { manifest: { routes: {} } }
   router.isServer = true
   const html = renderToString(<RouterProvider router={router} />)
   router.isServer = false
-  expect(html).toContain('<!--$-->')
+  expect(html).not.toContain('<!--$-->')
   expect(html).toContain('preserved')
 
   const container = document.createElement('div')
@@ -153,19 +152,23 @@ test('root route hydration preserves component state across its Suspense boundar
   })
 
   expect(container).toHaveTextContent('preserved')
-  // One initializer belongs to the server render and one to client
-  // hydration. The stable boundary must preserve that hydrated client
-  // instance instead of creating a third one.
+  // One initializer belongs to the server render and one to client hydration.
   expect(initializers).toHaveBeenCalledTimes(2)
   expect(mounts).toHaveBeenCalledTimes(1)
   expect(unmounts).not.toHaveBeenCalled()
   expect(consoleError).not.toHaveBeenCalled()
 })
 
-test('server rendering uses the root pending boundary for route component suspension', async () => {
+test('server rendering uses the root pending boundary inside its document shell', async () => {
   const gate = createControlledPromise<void>()
   const rootRoute = createRootRoute({
     pendingComponent: () => <div>Server root pending</div>,
+    shellComponent: ({ children }) => (
+      <html>
+        <head />
+        <body>{children}</body>
+      </html>
+    ),
     component: () => {
       throw gate
     },
@@ -179,8 +182,7 @@ test('server rendering uses the root pending boundary for route component suspen
 
   const html = renderToString(<RouterProvider router={router} />)
 
-  // renderToString cannot wait for Suspense, but the root route's stable
-  // boundary contains the suspension and emits its fallback. Streaming SSR
-  // can wait for the same boundary instead.
+  // renderToString cannot wait for Suspense, but the boundary inside the root
+  // shell contains the suspension and emits its fallback.
   expect(html).toContain('Server root pending')
 })

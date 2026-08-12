@@ -480,7 +480,7 @@ test('a global not-found destination does not retain the mounted root success', 
   })
 
   expect(await screen.findByTestId('pending')).toBeVisible()
-  expect(screen.getByTestId('content')).not.toBeVisible()
+  expect(screen.queryByTestId('content')).not.toBeInTheDocument()
 
   await act(async () => {
     missingLoader.resolve()

@@ -48,6 +48,15 @@ const outletMatchSelectionEqual = (
   b: OutletMatchSelection,
 ) => a[0] === b[0] && a[1] === b[1]
 
+function canWrapRouteInSuspense(route: AnyRoute, resolvedNoSsr: boolean) {
+  return (
+    !route.isRoot ||
+    !!(route.options as RootRouteOptions).shellComponent ||
+    !!route.options.wrapInSuspense ||
+    resolvedNoSsr
+  )
+}
+
 export const Match = React.memo(function MatchImpl({
   routeId,
 }: {
@@ -89,10 +98,14 @@ function MatchView({
     : route.options.notFoundComponent
 
   const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
+  // A root component may render the document itself. Only place its Suspense
+  // boundary inside an explicit shell, unless the route forcefully opts in.
+  const canWrapInSuspense = canWrapRouteInSuspense(route, resolvedNoSsr)
   const ResolvedSuspenseBoundary =
+    canWrapInSuspense &&
     (route.options.wrapInSuspense ??
-    pendingElement ??
-    ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
+      pendingElement ??
+      ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
       ? React.Suspense
       : SafeFragment
 
@@ -198,6 +211,13 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, route.options.component, router.options.defaultComponent])
 
   if (match.status === 'pending') {
+    const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
+    if (!canWrapRouteInSuspense(route, resolvedNoSsr)) {
+      // Replacing an SSR document root with pending UI would remove <html>.
+      // Hydrated matches retain their prior data, so keep rendering it while
+      // pure CSR roots can safely render the pending element directly.
+      return router.ssr ? out : renderPending(router, route)
+    }
     if (router._tx) {
       throw router._tx[5]
     }
