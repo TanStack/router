@@ -15,14 +15,14 @@
     "@solidjs/web": "2.0.0-beta.32"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^3.0.0-next.23",
-    "@typescript/native": "npm:typescript@^7.0.2",
-    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "@solidjs/vite-plugin": "^3.0.0-next.27",
+    "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.25",
-    "vite": "^8.0.14",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "tailwindcss": "^4.2.2",
-    "vite-plugin-dts": "^4.5.4",
-    "@tailwindcss/vite": "^4.2.2"
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.0.14",
+    "vite-plugin-dts": "^4.5.4"
   },
   "nx": {
     "targets": {

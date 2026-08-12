@@ -21,18 +21,18 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
+    "@solidjs/vite-plugin": "^3.0.0-next.27",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/express": "^5.0.6",
     "@types/node": "^22.10.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "cross-env": "^10.0.0",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.3",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.23",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }
