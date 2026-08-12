@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { wrapInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
 
@@ -44,12 +45,21 @@ class CatchBoundaryImpl extends React.Component<{
   }
   render() {
     const error = this.state.error
-    return error
-      ? React.createElement(this.props.errorComponent ?? ErrorComponent, {
+    if (error) {
+      const element = React.createElement(
+        this.props.errorComponent ?? ErrorComponent,
+        {
           error,
           reset: this.reset,
-        })
-      : this.props.children
+        },
+      )
+
+      return process.env.NODE_ENV !== 'production'
+        ? wrapInNonRouteComponentContext(element, 'errorComponent')
+        : element
+    }
+
+    return this.props.children
   }
 }
 

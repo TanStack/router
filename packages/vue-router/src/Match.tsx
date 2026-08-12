@@ -9,6 +9,10 @@ import { CatchNotFound } from './not-found'
 import { routeIdContext } from './matchContext'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
+import {
+  nonRouteComponentContext,
+  renderInNonRouteComponentContext,
+} from './nonRouteComponentContext'
 import type { VNode } from 'vue'
 import type { AnyRoute, RootRouteOptions } from '@tanstack/router-core'
 
@@ -41,7 +45,13 @@ export const Match = Vue.defineComponent({
         route?.options.pendingComponent ??
         router.options.defaultPendingComponent
       const pendingElement = PendingComponent
-        ? Vue.h(PendingComponent)
+        ? process.env.NODE_ENV !== 'production'
+          ? renderInNonRouteComponentContext(
+              PendingComponent,
+              undefined,
+              'pendingComponent',
+            )
+          : Vue.h(PendingComponent)
         : undefined
       const routeErrorComponent =
         route?.options.errorComponent ?? router.options.defaultErrorComponent
@@ -81,7 +91,13 @@ export const Match = Vue.defineComponent({
                 throw error
               }
 
-              return Vue.h(routeNotFoundComponent, error)
+              return process.env.NODE_ENV !== 'production'
+                ? renderInNonRouteComponentContext(
+                    routeNotFoundComponent,
+                    error,
+                    'notFoundComponent',
+                  )
+                : Vue.h(routeNotFoundComponent, error)
             },
             children: content,
           })
@@ -160,19 +176,18 @@ export const MatchInner = Vue.defineComponent({
         (router.routesById[matchRouteId] as AnyRoute).options.remountDeps ??
         router.options.defaultRemountDeps
 
-      const remountDeps = remountFn
-        ? remountFn({
-            routeId: matchRouteId,
-            loaderDeps: match.loaderDeps,
-            params: match._strictParams,
-            search: match._strictSearch,
-          })
+      const remountKey = remountFn
+        ? JSON.stringify(
+            remountFn({
+              routeId: matchRouteId,
+              loaderDeps: match.loaderDeps,
+              params: match._strictParams,
+              search: match._strictSearch,
+            }),
+          )
         : undefined
 
-      return [
-        match,
-        remountDeps ? JSON.stringify(remountDeps) : undefined,
-      ] as const
+      return [match, remountKey] as const
     })
 
     return (): VNode | null => {
@@ -197,7 +212,7 @@ export const MatchInner = Vue.defineComponent({
         // If this route has an error component, render it directly
         // This is more reliable than relying on Vue's error boundary
         if (RouteErrorComponent) {
-          return Vue.h(RouteErrorComponent, {
+          const errorProps = {
             error: match.error,
             reset: () => {
               router.invalidate()
@@ -205,7 +220,14 @@ export const MatchInner = Vue.defineComponent({
             info: {
               componentStack: '',
             },
-          })
+          }
+          return process.env.NODE_ENV !== 'production'
+            ? renderInNonRouteComponentContext(
+                RouteErrorComponent,
+                errorProps,
+                'errorComponent',
+              )
+            : Vue.h(RouteErrorComponent, errorProps)
         }
 
         // If there's no error component for this route, throw the error
@@ -221,7 +243,13 @@ export const MatchInner = Vue.defineComponent({
           router.options.defaultPendingComponent
 
         if (PendingComponent) {
-          return Vue.h(PendingComponent)
+          return process.env.NODE_ENV !== 'production'
+            ? renderInNonRouteComponentContext(
+                PendingComponent,
+                undefined,
+                'pendingComponent',
+              )
+            : Vue.h(PendingComponent)
         }
 
         // If no pending component, return null while loading
@@ -249,6 +277,21 @@ export const MatchInner = Vue.defineComponent({
 export const Outlet = Vue.defineComponent({
   name: 'Outlet',
   setup() {
+    if (process.env.NODE_ENV !== 'production') {
+      const nonRouteComponent = Vue.inject(nonRouteComponentContext!, undefined)
+      if (nonRouteComponent) {
+        Vue.watch(
+          nonRouteComponent,
+          (component) => {
+            console.warn(
+              `Warning: An <Outlet /> was rendered inside a ${component}. <Outlet /> should only be rendered inside a route component.`,
+            )
+          },
+          { immediate: true },
+        )
+      }
+    }
+
     const router = useRouter()
     const parentRouteId = Vue.inject(routeIdContext)!
 

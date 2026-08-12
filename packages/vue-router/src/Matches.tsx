@@ -6,6 +6,7 @@ import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
 import { routeIdContext } from './matchContext'
 import { Match } from './Match'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type {
   AnyRouter,
   DeepPartial,
@@ -40,7 +41,13 @@ export const Matches = Vue.defineComponent({
 
     return () => {
       const pendingElement = router.options.defaultPendingComponent
-        ? Vue.h(router.options.defaultPendingComponent)
+        ? process.env.NODE_ENV !== 'production'
+          ? renderInNonRouteComponentContext(
+              router.options.defaultPendingComponent,
+              undefined,
+              'pendingComponent',
+            )
+          : Vue.h(router.options.defaultPendingComponent)
         : null
 
       // Do not render a root Suspense during SSR or hydrating from SSR

@@ -731,7 +731,7 @@ What's even better is that by using a cache-first library like `@tanstack/query`
 
 ### Link Preloading Delay
 
-For `'intent'` preloading, a configurable delay determines how long a link must remain focused or hovered before preloading begins. If focus or hover ends before the delay, the queued preload is cancelled. Touch intent preloads immediately without waiting for the delay. The default delay is 50 milliseconds, but you can change it by passing a `preloadDelay` prop to the `Link` component:
+For `'intent'` and `'viewport'` preloading, a configurable delay determines how long to wait before preloading begins after focus, hover, or viewport entry. If focus or hover ends, or the link leaves the viewport before the delay, the queued preload is cancelled. Touch intent preloads immediately without waiting for the delay. The default delay is 50 milliseconds, but you can change it by passing a `preloadDelay` prop to the `Link` component:
 
 ```tsx
 const link = (
@@ -792,7 +792,7 @@ The `router.navigate` method is the same as the `navigate` function returned by 
 
 ## `useMatchRoute` and `<MatchRoute>`
 
-The `useMatchRoute` hook and `<MatchRoute>` component are the same thing, but the hook is a bit more flexible. They both accept the standard navigation `ToOptions` interface either as options or props and return `true/false` if that route is currently matched. It also has a handy `pending` option that will return `true` if the route is currently pending (e.g. a route is currently transitioning to that route). This can be extremely useful for showing optimistic UI around where a user is navigating:
+The `useMatchRoute` hook and `<MatchRoute>` component are the same thing, but the hook is a bit more flexible. They both accept the standard navigation `ToOptions` interface, either as options or props, to determine whether a route is currently matched. The `pending` option checks whether the route is currently pending (e.g. the router is currently transitioning to that route). This can be extremely useful for showing optimistic UI around where a user is navigating:
 
 ```tsx
 function Component() {
@@ -828,7 +828,7 @@ function Component() {
 }
 ```
 
-The hook version `useMatchRoute` returns a function that can be called programmatically to check if a route is matched:
+The hook version `useMatchRoute` returns a function for checking whether a route is matched. It subscribes the component to the router state used for matching, so use it when the result affects rendering or to trigger an effect. This subscription ensures the component updates as the current or pending location changes:
 
 ```tsx
 function Component() {
@@ -838,12 +838,32 @@ function Component() {
     if (matchRoute({ to: '/users', pending: true })) {
       console.info('The /users route is matched and pending')
     }
-  })
+  }, [matchRoute])
 
   return (
     <div>
       <Link to="/users">Users</Link>
     </div>
+  )
+}
+```
+
+The `matchRoute` function returned by `useMatchRoute` changes identity when the relevant router state changes. If you only need to check the route at the time an event occurs, use the stable router instance returned by `useRouter` and call `router.matchRoute` directly. This reads the latest router state without subscribing the component to matching state that it does not use while rendering:
+
+```tsx
+function Component() {
+  const router = useRouter()
+
+  return (
+    <button
+      onClick={() => {
+        if (router.matchRoute({ to: '/users' }, { fuzzy: true })) {
+          console.info('The users route is active')
+        }
+      }}
+    >
+      Check current route
+    </button>
   )
 }
 ```

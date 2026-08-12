@@ -1,5 +1,18 @@
 # @tanstack/vue-router
 
+## 1.170.24
+
+### Patch Changes
+
+- [#8045](https://github.com/TanStack/router/pull/8045) [`f500760`](https://github.com/TanStack/router/commit/f5007607d62e932b8df19de866cdc6bddcff8db3) - Warn when an Outlet is rendered inside a pending, error, or not-found component.
+
+- [#8043](https://github.com/TanStack/router/pull/8043) [`1aafca9`](https://github.com/TanStack/router/commit/1aafca9b45d24f8f0dba78e716fc9582346c6ca1) - remove the undocumented Link `isTransitioning` state and `data-transitioning` attribute
+
+- [#8044](https://github.com/TanStack/router/pull/8044) [`aa10b65`](https://github.com/TanStack/router/commit/aa10b6589eeda215f5a60ea0af95a3101d8c414e) - Apply `preloadDelay` to viewport link preloading and cancel pending preloads when links leave the viewport.
+
+- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13)]:
+  - @tanstack/router-core@1.171.22
+
 ## 1.170.23
 
 ### Patch Changes
