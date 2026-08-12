@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// eslint-disable-next-line typescript/ban-ts-comment
 // @ts-nocheck
 import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'

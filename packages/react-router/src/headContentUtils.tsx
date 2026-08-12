@@ -205,12 +205,12 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     )
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  // eslint-disable-next-line react/rules-of-hooks -- condition is static
   const selectTags = React.useCallback(
     (matches: Array<AnyRouteMatch>) =>
       buildTagsFromMatches(router, nonce, matches, assetCrossOrigin),
     [assetCrossOrigin, nonce, router],
   )
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  // eslint-disable-next-line react/rules-of-hooks -- condition is static
   return useStore(router.stores.matches, selectTags, deepEqual)
 }

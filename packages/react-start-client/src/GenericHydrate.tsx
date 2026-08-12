@@ -65,7 +65,7 @@ function useHydrationGate(props: InternalHydrateProps) {
   )
   if (isDynamicHydrate) {
     dynamicHydrateStrategyRef.current ??=
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined')
         ? dynamicHydrateStrategy
         : when()
@@ -103,14 +103,14 @@ function useHydrationGate(props: InternalHydrateProps) {
   }
 
   shouldPreserveServerHTMLRef.current ??=
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') || !hydrated
   shouldDeferInitialHydrationRef.current ??=
     !hydrated && shouldDeferHydration(hydrateStrategy)
 
   if (!gateRef.current) {
     gateRef.current =
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined')
         ? createResolvedGate(id, hydrateStrategy._t!)
         : getOrCreateGate(id, hydrateStrategy._t!)
@@ -119,7 +119,7 @@ function useHydrationGate(props: InternalHydrateProps) {
   gateRef.current.when = hydrateStrategy._t!
 
   if (
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     !(isServer ?? typeof window === 'undefined') &&
     hydrateStrategy._t !== 'never' &&
     (!shouldDeferInitialHydrationRef.current ||
@@ -157,7 +157,7 @@ function useHydrationGate(props: InternalHydrateProps) {
 
   React.useEffect(() => {
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined') ||
       !latestRef.current.prefetch
     ) {
@@ -325,7 +325,7 @@ function useHydrationGate(props: InternalHydrateProps) {
 
 function HydrationGate(props: { gate: Gate; children: React.ReactNode }) {
   if (
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     isServer ??
     typeof window === 'undefined'
   ) {

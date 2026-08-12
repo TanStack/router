@@ -29,7 +29,7 @@ test('when there is no loaders', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -94,7 +94,7 @@ test('when there is one loader', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -158,7 +158,7 @@ test('when there is one loader that is async', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -224,7 +224,7 @@ test('when there are multiple loaders', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -311,7 +311,7 @@ test('when there are multiple loaders', () => {
     .toHaveProperty('structuralSharing')
     .toEqualTypeOf<false | undefined>()
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const routerWithStructuralSharing = createRouter({
     routeTree,
     defaultStructuralSharing: true,
@@ -381,7 +381,7 @@ test('when there are multiple loaders of objects and primtives', () => {
     postsRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })

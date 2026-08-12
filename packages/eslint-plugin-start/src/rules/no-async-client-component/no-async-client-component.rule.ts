@@ -135,7 +135,7 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
               const usageTsNode = ctx.clientReason.usageNode as ts.Node
               const usageEslintNode =
                 services.tsNodeToESTreeNodeMap.get(usageTsNode)
-              // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Map.get() can return undefined
+              // eslint-disable-next-line typescript/no-unnecessary-condition -- Map.get() can return undefined
               if (usageEslintNode) {
                 reported.add(reportKey)
                 context.report({
@@ -157,7 +157,7 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
           const tsNode = ctx.component.node
           const eslintNode = services.tsNodeToESTreeNodeMap.get(tsNode)
 
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Map.get() can return undefined
+          // eslint-disable-next-line typescript/no-unnecessary-condition -- Map.get() can return undefined
           if (eslintNode) {
             context.report({
               node: eslintNode,
@@ -184,7 +184,7 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
           reported.add(reportKey)
 
           const eslintNode = services.tsNodeToESTreeNodeMap.get(edge.jsxNode)
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Map.get() can return undefined
+          // eslint-disable-next-line typescript/no-unnecessary-condition -- Map.get() can return undefined
           if (eslintNode) {
             context.report({
               node: eslintNode,

@@ -65,7 +65,7 @@ export function VisibleHydrate(
       },
     }
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       isServer ??
       typeof window === 'undefined'
     ) {

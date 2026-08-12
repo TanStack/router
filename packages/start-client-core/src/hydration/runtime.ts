@@ -140,7 +140,7 @@ export function waitForHydrationPrefetchStrategy(
       prefetch: () => finish('prefetch'),
     })
     // A synchronous finish must immediately run the cleanup just returned.
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     if (disposed) {
       runHydrationStrategyCleanup(cleanupStrategy)?.()
     }

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable typescript/no-unnecessary-condition */
 import { clsx as cx } from 'clsx'
 import * as goober from 'goober'
 import { createMemo, createSignal, useContext } from 'solid-js'

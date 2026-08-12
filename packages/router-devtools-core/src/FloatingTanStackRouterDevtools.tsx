@@ -219,7 +219,7 @@ export function FloatingTanStackRouterDevtools({
   const basePanelStyle = createMemo(() => {
     return {
       height: `${resolvedHeight()}px`,
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       ...(panelStyle || {}),
     }
   })

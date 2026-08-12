@@ -25,7 +25,7 @@
   ],
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
-    "test:eslint": "eslint ./src ./tests",
+    "test:lint": "oxlint ./src ./tests",
     "test:unit": "vitest",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",

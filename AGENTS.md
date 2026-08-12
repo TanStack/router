@@ -29,7 +29,7 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
 - Nx provides caching, affected testing, targeting, and parallel execution for efficiency
 - Use `pnpm nx show projects` to list all available packages
 - Target specific packages: `pnpm nx run @tanstack/react-router:test:unit`
-- Target multiple packages: `pnpm nx run-many --target=test:eslint --projects=@tanstack/history,@tanstack/router-core`
+- Target multiple packages: `pnpm nx run-many --target=test:lint --projects=@tanstack/history,@tanstack/router-core`
 - Run affected tests only: `pnpm nx affected --target=test:unit`
 - Exclude patterns: `pnpm nx run-many --target=test:unit --exclude="examples/**,e2e/**"`
 - Navigate to examples and run `pnpm dev` to test changes: `cd examples/react/basic && pnpm dev`
@@ -39,7 +39,7 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
   - Name patterns: `pnpm nx run @tanstack/react-router:test:unit -- -t "navigation"` (all tests with "navigation" in name)
   - Exclude patterns: `pnpm nx run @tanstack/react-router:test:unit -- --exclude="**/*link*" tests/`
   - List tests: `pnpm nx run @tanstack/react-router:test:unit -- list tests/link.test.tsx` (or `-- list` for all)
-- **Available test targets per package:** `test:unit`, `test:types`, `test:eslint`, `test:build`, `test:perf`, `build`
+- **Available test targets per package:** `test:unit`, `test:types`, `test:lint`, `test:build`, `test:perf`, `build`
 - **Testing strategy:** Package level (nx) → File-level args via nx → Test-level args (`-t`) via nx → Pattern-level args (`--exclude`) via nx
 - **Agent execution guardrails (important):**
   - Always prefer `pnpm nx ...` over `npx nx ...`.
@@ -52,7 +52,7 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
 ## Testing instructions
 
 - **Critical**: Always run unit and type tests during development - do not proceed if they fail
-- **Test types:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`, `pnpm test:build`
+- **Test types:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:lint`, `pnpm test:e2e`, `pnpm test:build`
 - **Full CI suite:** `pnpm test:ci`
 - **Fix formatting:** `pnpm format`
 - **Efficient targeted testing workflow:**
@@ -69,7 +69,7 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
 
 ## PR instructions
 
-- Always run `pnpm test:eslint`, `pnpm test:types`, and `pnpm test:unit` before committing
+- Always run `pnpm test:lint`, `pnpm test:types`, and `pnpm test:unit` before committing
 - Test changes in relevant example apps: `cd examples/react/basic && pnpm dev`
 - Update corresponding documentation in `docs/` directory when adding features
 - Add or update tests for any code changes
@@ -168,7 +168,7 @@ TanStack Router is a type-safe router with built-in caching and URL state manage
 2. **Build**: `pnpm build:all` or `pnpm dev` for watch mode
 3. **Test**: Make changes and run relevant tests (use nx for targeted testing)
 4. **Examples**: Navigate to examples and run `pnpm dev` to test changes
-5. **Quality**: Run `pnpm test:eslint`, `pnpm test:types`, `pnpm test:unit` before committing
+5. **Quality**: Run `pnpm test:lint`, `pnpm test:types`, `pnpm test:unit` before committing
 
 ## References
 

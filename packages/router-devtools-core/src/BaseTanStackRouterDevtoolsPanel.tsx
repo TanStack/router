@@ -793,7 +793,7 @@ function CopyButton({ getValue }: { getValue: () => string }) {
   let timeoutId: ReturnType<typeof setTimeout> | null = null
 
   const handleCopy = async () => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
       console.warn('TanStack Router Devtools: Clipboard API unavailable')
       return

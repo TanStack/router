@@ -86,7 +86,7 @@ export class ReplayableStream<T = Uint8Array> {
         while (!this.aborted && !this.released) {
           const { done, value } = await reader.read()
           if (done) break
-          // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+          // eslint-disable-next-line typescript/no-unnecessary-condition
           if (this.aborted || this.released) break
           this.chunks.push(value)
           this.notify()
@@ -216,7 +216,7 @@ export class ReplayableStream<T = Uint8Array> {
 
     return new ReadableStream<T>({
       pull: async (controller) => {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        // eslint-disable-next-line typescript/no-unnecessary-condition
         while (true) {
           if (this.released) {
             controller.close()

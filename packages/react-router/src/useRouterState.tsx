@@ -68,10 +68,10 @@ export function useRouterState<
     >
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  // eslint-disable-next-line react/rules-of-hooks -- condition is static
   return useStore(
     router.stores.__store,
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    // eslint-disable-next-line react/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router),
   ) as UseRouterStateResult<TRouter, TSelected>
 }

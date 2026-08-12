@@ -31,7 +31,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -99,7 +99,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -230,7 +230,7 @@ describe('useSearch', () => {
       .toHaveProperty('structuralSharing')
       .toEqualTypeOf<false | undefined>()
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const routerWithStructuralSharing = createRouter({
       routeTree,
       defaultStructuralSharing: true,
@@ -332,7 +332,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -393,7 +393,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -453,7 +453,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -519,7 +519,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -584,7 +584,7 @@ describe('useSearch', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -634,7 +634,7 @@ describe('useSearch', () => {
     })
 
     const routeTree = rootRoute.addChildren([indexRoute])
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const router = createRouter({ routeTree })
     expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<{
       page: number
@@ -663,7 +663,7 @@ describe('useSearch', () => {
     const routeTree = rootRoute.addChildren([
       indexRoute.addChildren([indexRoute]),
     ])
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const router = createRouter({ routeTree })
     expectTypeOf(useSearch<typeof router, '/'>).returns.toEqualTypeOf<
       { status: 'in'; detail: string } | { status: 'out'; detail: string }
@@ -686,7 +686,7 @@ describe('useSearch', () => {
 
     const routeTree = rootRoute.addChildren([invoicesRoute, indexRoute])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const router = createRouter({ routeTree })
 
     const from = '/invoices'

@@ -25,7 +25,7 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -90,7 +90,7 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -172,7 +172,7 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const defaultRouter = createRouter({
       routeTree,
     })
@@ -270,7 +270,7 @@ describe('useParams', () => {
       .toHaveProperty('structuralSharing')
       .toEqualTypeOf<false | undefined>()
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const routerWithStructuralSharing = createRouter({
       routeTree,
       defaultStructuralSharing: true,
@@ -335,7 +335,7 @@ describe('useParams', () => {
       indexRoute,
     ])
 
-    // eslint-disable-next-line unused-imports/no-unused-vars
+    // eslint-disable-next-line no-unused-vars
     const router = createRouter({ routeTree })
 
     const from = '/invoices/$id'

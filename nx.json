@@ -29,7 +29,7 @@
     "production": [
       "default",
       "!{projectRoot}/tests/**/*",
-      "!{projectRoot}/eslint.config.js"
+      "!{projectRoot}/.oxlintrc.json"
     ],
     "buildProduction": ["sharedGlobals", "{projectRoot}/**/*"]
   },
@@ -38,13 +38,13 @@
       "cache": true,
       "inputs": ["{workspaceRoot}/docs/**/*"]
     },
-    "test:eslint": {
+    "test:lint": {
       "cache": true,
       "dependsOn": ["^build", "build"],
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/eslint.config.js",
+        "{workspaceRoot}/.oxlintrc.json",
         "dependentTaskOutputs"
       ]
     },
@@ -54,7 +54,7 @@
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/eslint.config.js",
+        "{workspaceRoot}/.oxlintrc.json",
         "dependentTaskOutputs"
       ],
       "outputs": ["{projectRoot}/coverage"]
@@ -90,7 +90,7 @@
       "inputs": [
         "default",
         "^production",
-        "{workspaceRoot}/eslint.config.js",
+        "{workspaceRoot}/.oxlintrc.json",
         "dependentTaskOutputs"
       ]
     },

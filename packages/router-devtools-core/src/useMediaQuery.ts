@@ -7,7 +7,7 @@ export default function useMediaQuery(
   // Keep track of the preference in state, start with the current match
   const [isMatch, setIsMatch] = createSignal(() => {
     if (typeof window !== 'undefined') {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       return window.matchMedia && window.matchMedia(query).matches
     }
     return
@@ -16,7 +16,7 @@ export default function useMediaQuery(
   // Watch for changes
   createEffect(() => {
     if (typeof window !== 'undefined') {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       if (!window.matchMedia) {
         return
       }

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/prefer-for-of */
+/* eslint-disable typescript/prefer-for-of */
 import * as fsp from 'node:fs/promises'
 import path from 'node:path'
 import * as prettier from 'prettier'
@@ -662,7 +662,7 @@ export function createTokenRegex(
 ): RegExp {
   // Defensive check: if token is undefined/null, throw a clear error
   // (runtime safety for config loading edge cases)
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line typescript/no-unnecessary-condition
   if (token === undefined || token === null) {
     throw new Error(
       `createTokenRegex: token is ${token}. This usually means the config was not properly parsed with defaults.`,

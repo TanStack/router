@@ -4,7 +4,7 @@
   "scripts": {
     "clean": "rimraf ./dist && rimraf ./coverage",
     "build": "vite build",
-    "test:eslint": "eslint ./src",
+    "test:lint": "oxlint ./src",
     "test:unit": "exit 0; vitest --typecheck"
   },
   "type": "module",

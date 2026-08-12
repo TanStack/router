@@ -1308,7 +1308,7 @@ export class StartCompiler {
         let currentNode: t.CallExpression = node
         let currentPath: babel.NodePath<t.CallExpression> = path
 
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        // eslint-disable-next-line typescript/no-unnecessary-condition
         while (true) {
           const callee = currentNode.callee
           if (!t.isMemberExpression(callee)) {
