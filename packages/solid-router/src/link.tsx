@@ -31,7 +31,11 @@ import type {
   ValidateLinkOptionsArray,
 } from './typePrimitives'
 
-const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
+const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
+const cancelPreload = (eventTarget: object) => {
+  clearTimeout(timeoutMap.get(eventTarget))
+  timeoutMap.delete(eventTarget)
+}
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -189,7 +193,7 @@ export function useLinkProps<
   })
 
   const preload = Solid.createMemo(() => {
-    if (options.reloadDocument || externalLink()) {
+    if (options.reloadDocument || externalLink() || local.disabled) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -254,28 +258,51 @@ export function useLinkProps<
         console.warn(preloadWarning)
       })
 
-  const preloadViewportIoCallback = (
-    entry: IntersectionObserverEntry | undefined,
+  const [ref, setRef] = Solid.createSignal<Element | null>(null)
+
+  const enqueuePreload = (
+    e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
-    if (entry?.isIntersecting) {
+    if (!e) {
+      cancelPreload(ref)
+      return
+    }
+
+    if (
+      !(
+        (e as IntersectionObserverEntry).isIntersecting ??
+        preload() === 'intent'
+      )
+    ) {
+      if ((e as IntersectionObserverEntry).isIntersecting === false) {
+        cancelPreload(ref)
+      }
+      return
+    }
+
+    if (!preloadDelay()) {
       doPreload()
+      return
+    }
+
+    if (!timeoutMap.has(ref)) {
+      timeoutMap.set(
+        ref,
+        setTimeout(() => {
+          timeoutMap.delete(ref)
+          doPreload()
+        }, preloadDelay()),
+      )
     }
   }
 
-  const [ref, setRef] = Solid.createSignal<Element | null>(null)
-
-  useIntersectionObserver(
-    ref,
-    preloadViewportIoCallback,
-    { rootMargin: '100px' },
-    !!local.disabled || preload() !== 'viewport',
-  )
+  useIntersectionObserver(ref, enqueuePreload, () => preload() !== 'viewport')
 
   Solid.createEffect(() => {
     if (hasRenderFetched) {
       return
     }
-    if (!local.disabled && preload() === 'render') {
+    if (preload() === 'render') {
       doPreload()
       hasRenderFetched = true
     }
@@ -337,40 +364,14 @@ export function useLinkProps<
     }
   }
 
-  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
-    if (local.disabled || preload() !== 'intent') return
-
-    if (!preloadDelay()) {
-      doPreload()
-      return
-    }
-
-    const eventTarget = e.currentTarget || e.target
-
-    if (!eventTarget || timeoutMap.has(eventTarget)) return
-
-    timeoutMap.set(
-      eventTarget,
-      setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay()),
-    )
-  }
-
-  const handleTouchStart = (_: TouchEvent) => {
-    if (local.disabled || preload() !== 'intent') return
+  const handleTouchStart = () => {
+    if (preload() !== 'intent') return
     doPreload()
   }
 
-  const handleLeave = (e: MouseEvent | FocusEvent) => {
-    if (local.disabled) return
-    const eventTarget = e.currentTarget || e.target
-
-    if (eventTarget) {
-      const id = timeoutMap.get(eventTarget)
-      clearTimeout(id)
-      timeoutMap.delete(eventTarget)
+  const handleLeave = () => {
+    if (preload() === 'intent') {
+      cancelPreload(ref)
     }
   }
 
@@ -384,17 +385,14 @@ export function useLinkProps<
 
   const onClick = createComposedHandler(() => local.onClick, handleClick)
   const onBlur = createComposedHandler(() => local.onBlur, handleLeave)
-  const onFocus = createComposedHandler(
-    () => local.onFocus,
-    enqueueIntentPreload,
-  )
+  const onFocus = createComposedHandler(() => local.onFocus, enqueuePreload)
   const onMouseEnter = createComposedHandler(
     () => local.onMouseEnter,
-    enqueueIntentPreload,
+    enqueuePreload,
   )
   const onMouseOver = createComposedHandler(
     () => local.onMouseOver,
-    enqueueIntentPreload,
+    enqueuePreload,
   )
   const onMouseLeave = createComposedHandler(
     () => local.onMouseLeave,
