@@ -8,7 +8,7 @@
     "dev:e2e": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "vite preview --host 127.0.0.1 --port $PORT",
+    "start": "vite preview --host 127.0.0.1 --port $PORT --strictPort",
     "prisma-generate": "prisma generate",
     "test:e2e": "rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
   },
