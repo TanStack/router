@@ -48,14 +48,11 @@ const outletMatchSelectionEqual = (
   b: OutletMatchSelection,
 ) => a[0] === b[0] && a[1] === b[1]
 
-function canWrapRouteInSuspense(route: AnyRoute, resolvedNoSsr: boolean) {
-  return (
-    !route.isRoot ||
-    !!(route.options as RootRouteOptions).shellComponent ||
-    !!route.options.wrapInSuspense ||
-    resolvedNoSsr
-  )
-}
+const canWrapRouteInSuspense = (route: AnyRoute, resolvedNoSsr: boolean) =>
+  !route.isRoot ||
+  (route.options as RootRouteOptions).shellComponent ||
+  route.options.wrapInSuspense ||
+  resolvedNoSsr
 
 export const Match = React.memo(function MatchImpl({
   routeId,
@@ -100,9 +97,8 @@ function MatchView({
   const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
   // A root component may render the document itself. Only place its Suspense
   // boundary inside an explicit shell, unless the route forcefully opts in.
-  const canWrapInSuspense = canWrapRouteInSuspense(route, resolvedNoSsr)
   const ResolvedSuspenseBoundary =
-    canWrapInSuspense &&
+    canWrapRouteInSuspense(route, resolvedNoSsr) &&
     (route.options.wrapInSuspense ??
       pendingElement ??
       ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
