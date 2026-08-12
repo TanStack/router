@@ -12,7 +12,7 @@
     "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/vue-query": "^5.90.9",
+    "@tanstack/vue-query": "catalog:",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-router-ssr-query": "workspace:^",
@@ -29,12 +29,12 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/js-cookie": "^3.0.6",
     "@types/node": "^22.10.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "combinate": "^1.1.11",
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
-    "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
   }

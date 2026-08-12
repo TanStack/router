@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 
 // Anchor the project root to the package directory so this config resolves

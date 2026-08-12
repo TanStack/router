@@ -51,10 +51,10 @@ catalog:
   vite: ^8.0.14
   '@types/node': 25.0.9
   '@playwright/test': ^1.61.0
-  '@tanstack/query-core': ^5.99.0
-  '@tanstack/react-query': ^5.99.0
-  '@tanstack/solid-query': ^6.0.0-beta.7
-  '@tanstack/vue-query': ^5.99.0
+  '@tanstack/query-core': ^5.101.4
+  '@tanstack/react-query': ^5.101.4
+  '@tanstack/solid-query': ^6.0.0-rc.0
+  '@tanstack/vue-query': ^5.101.4
 
 overrides:
   '@types/babel__traverse': '^7.28.0'

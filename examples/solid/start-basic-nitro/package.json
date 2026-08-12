@@ -9,13 +9,14 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.32",
+    "@solidjs/web": "^2.0.0-rc.0",
     "@tanstack/solid-router": "^2.0.0-beta.30",
     "@tanstack/solid-router-devtools": "^2.0.0-beta.25",
     "@tanstack/solid-start": "^2.0.0-beta.31",
-    "solid-js": "2.0.0-beta.32"
+    "solid-js": "^2.0.0-rc.0"
   },
   "devDependencies": {
+    "@solidjs/vite-plugin": "^3.0.0-next.28",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "nitro": "^3.0.260311-beta",
@@ -23,7 +24,6 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.23",
     "vite-tsconfig-paths": "^5.1.4"
   }
 }

@@ -69,7 +69,7 @@ Install the build tool and Solid integration you want to use:
 # Vite
 
 ```shell
-npm i -D vite vite-plugin-solid
+npm i -D vite @solidjs/vite-plugin
 ```
 
 # Rsbuild
@@ -129,7 +129,7 @@ Then configure TanStack Start's build tool plugin:
 ```ts title="vite.config.ts"
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import viteSolid from 'vite-plugin-solid'
+import viteSolid from '@solidjs/vite-plugin'
 
 export default defineConfig({
   server: {

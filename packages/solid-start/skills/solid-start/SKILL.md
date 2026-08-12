@@ -45,7 +45,7 @@ Server utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, `setCoo
 
 ```bash
 npm i @tanstack/solid-start @tanstack/solid-router solid-js
-npm i -D vite vite-plugin-solid typescript
+npm i -D vite @solidjs/vite-plugin typescript
 ```
 
 ### 2. package.json
@@ -82,7 +82,7 @@ npm i -D vite vite-plugin-solid typescript
 ```ts
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import solidPlugin from 'vite-plugin-solid'
+import solidPlugin from '@solidjs/vite-plugin'
 
 export default defineConfig({
   plugins: [
