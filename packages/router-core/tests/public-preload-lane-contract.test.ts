@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -8,10 +8,6 @@ import {
   redirect,
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-afterEach(() => {
-  vi.useRealTimers()
-})
 
 describe('public preload lane contracts', () => {
   test('completed preload matches retain context without caching beforeLoad context', async () => {
@@ -324,42 +320,7 @@ describe('public preload lane contracts', () => {
 
       let preload: Promise<unknown> | undefined
       let navigation: Promise<unknown> | undefined
-      try {
-        await router.load()
-        preload = router.preloadRoute({
-          to: '/target',
-          mask: preloadMask as any,
-        })
-        await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(1))
-
-        beforeLoadGate.resolve()
-        await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
-
-        navigation = router.navigate({
-          to: '/target',
-          mask: navigationMask as any,
-        })
-        await vi.waitFor(() =>
-          expect(
-            beforeLoad.mock.calls.map(([callContext]) => ({
-              preload: callContext.preload,
-              pathname: callContext.location.maskedLocation?.pathname,
-            })),
-          ).toEqual([
-            { preload: true, pathname: preloadPathname },
-            { preload: false, pathname: navigationPathname },
-          ]),
-        )
-
-        loaderGate.resolve('shared loader data')
-        await Promise.all([preload, navigation])
-
-        expect(router.state.matches.at(-1)?.context).toEqual({
-          source: 'navigation',
-        })
-        expect(router.history.location.pathname).toBe(navigationPathname)
-        expect(loader).toHaveBeenCalledTimes(1)
-      } finally {
+      onTestFinished(async () => {
         beforeLoadGate.resolve()
         loaderGate.resolve('shared loader data')
         const activeWork: Array<Promise<unknown>> = []
@@ -370,7 +331,42 @@ describe('public preload lane contracts', () => {
           activeWork.push(navigation)
         }
         await Promise.allSettled(activeWork)
-      }
+      })
+
+      await router.load()
+      preload = router.preloadRoute({
+        to: '/target',
+        mask: preloadMask as any,
+      })
+      await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(1))
+
+      beforeLoadGate.resolve()
+      await vi.waitFor(() => expect(loader).toHaveBeenCalledTimes(1))
+
+      navigation = router.navigate({
+        to: '/target',
+        mask: navigationMask as any,
+      })
+      await vi.waitFor(() =>
+        expect(
+          beforeLoad.mock.calls.map(([callContext]) => ({
+            preload: callContext.preload,
+            pathname: callContext.location.maskedLocation?.pathname,
+          })),
+        ).toEqual([
+          { preload: true, pathname: preloadPathname },
+          { preload: false, pathname: navigationPathname },
+        ]),
+      )
+
+      loaderGate.resolve('shared loader data')
+      await Promise.all([preload, navigation])
+
+      expect(router.state.matches.at(-1)?.context).toEqual({
+        source: 'navigation',
+      })
+      expect(router.history.location.pathname).toBe(navigationPathname)
+      expect(loader).toHaveBeenCalledTimes(1)
     },
   )
 

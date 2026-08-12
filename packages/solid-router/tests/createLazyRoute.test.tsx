@@ -202,29 +202,24 @@ it('renders an eager loader error with a delayed lazy errorComponent', async () 
     defaultPendingMinMs: 0,
     defaultPendingComponent: () => <p role="status">Loading default</p>,
   })
-  let navigation: Promise<void> | undefined
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByText('Index page')).toBeInTheDocument()
 
-  try {
-    render(() => <RouterProvider router={router} />)
-    expect(await screen.findByText('Index page')).toBeInTheDocument()
-
-    navigation = router.navigate({ to: '/page' })
-    expect(await screen.findByText('Loading default')).toBeInTheDocument()
-
-    loader.resolve()
-    await loaderErrorHandled
-    lazyOptions.resolve(lazyPageOptions)
-    await navigation
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Lazy error: loader failed',
-    )
-  } finally {
+  const navigation = router.navigate({ to: '/page' })
+  onTestFinished(async () => {
     lazyOptions.resolve(lazyPageOptions)
     loader.resolve()
     loaderErrorHandled.resolve()
-    if (navigation) {
-      await Promise.allSettled([navigation])
-    }
-  }
+    await Promise.allSettled([navigation])
+  })
+  expect(await screen.findByText('Loading default')).toBeInTheDocument()
+
+  loader.resolve()
+  await loaderErrorHandled
+  lazyOptions.resolve(lazyPageOptions)
+  await navigation
+
+  expect(await screen.findByRole('alert')).toHaveTextContent(
+    'Lazy error: loader failed',
+  )
 })

@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { renderToString } from 'vue/server-renderer'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { hydrate as hydrateRouter } from '@tanstack/router-core/ssr/client'
 import {
   Outlet,
@@ -19,17 +19,6 @@ declare global {
     $_TSR?: TsrSsrGlobal
   }
 }
-
-const testCleanups: Array<() => void | Promise<void>> = []
-
-afterEach(async () => {
-  while (testCleanups.length) {
-    await testCleanups.pop()!()
-  }
-  vi.restoreAllMocks()
-  window.$_TSR = undefined
-  document.body.innerHTML = ''
-})
 
 describe('hydrating a server-capped boundary lane', () => {
   test.each([
@@ -84,8 +73,11 @@ describe('hydrating a server-capped boundary lane', () => {
         }),
       })
       serverRouter.isServer = true
-      testCleanups.push(() => serverRouter.serverSsr?.cleanup())
+      onTestFinished(() => serverRouter.serverSsr?.cleanup())
       window.$_TSR = await dehydrateToBootstrap(serverRouter)
+      onTestFinished(() => {
+        window.$_TSR = undefined
+      })
 
       const serverMatches = serverRouter.stores.matches.get()
       expect(serverMatches).toHaveLength(3)
@@ -125,13 +117,17 @@ describe('hydrating a server-capped boundary lane', () => {
         .spyOn(console, 'error')
         .mockImplementation(() => {})
       const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      onTestFinished(() => {
+        consoleError.mockRestore()
+        consoleWarn.mockRestore()
+      })
       const clientApp = Vue.createSSRApp(
         Vue.defineComponent({
           setup: () => () => <RouterProvider router={clientRouter} />,
         }),
       )
       let clientAppMounted = false
-      testCleanups.push(() => {
+      onTestFinished(() => {
         if (clientAppMounted) {
           clientApp.unmount()
         }

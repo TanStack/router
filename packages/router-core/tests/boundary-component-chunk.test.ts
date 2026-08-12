@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -19,27 +19,12 @@ import { createTestRouter } from './routerTestUtils'
  * error state to be committed without waiting for the normal component chunk.
  */
 
-const pendingGates: Array<ReturnType<typeof createControlledPromise<void>>> = []
-const pendingLoads: Array<Promise<unknown>> = []
-
-afterEach(async () => {
-  for (const gate of pendingGates) {
-    gate.resolve()
-  }
-
-  await Promise.allSettled(pendingLoads)
-
-  pendingGates.length = 0
-  pendingLoads.length = 0
-})
-
 describe('route boundary component preloads', () => {
   test('errorComponent preload resolves without waiting for a pending route component preload', async () => {
     const componentGate = createControlledPromise<void>()
     const errorComponentGate = createControlledPromise<void>()
     const routeError = new Error('loader failed')
     let errorComponentPreloadCalls = 0
-    pendingGates.push(componentGate, errorComponentGate)
 
     const SlowRouteComponent = Object.assign(() => null, {
       preload: () => componentGate,
@@ -67,7 +52,11 @@ describe('route boundary component preloads', () => {
     })
 
     const loadPromise = router.load()
-    pendingLoads.push(loadPromise)
+    onTestFinished(async () => {
+      componentGate.resolve()
+      errorComponentGate.resolve()
+      await Promise.allSettled([loadPromise])
+    })
 
     await vi.waitFor(() => expect(errorComponentPreloadCalls).toBe(1))
     errorComponentGate.resolve()
@@ -90,7 +79,6 @@ describe('route boundary component preloads', () => {
     const componentError = new Error('component chunk failed')
     const onError = vi.fn()
     let errorComponentPreloadCalls = 0
-    pendingGates.push(errorComponentGate)
 
     const SlowRouteComponent = Object.assign(() => null, {
       preload: () => componentGate,
@@ -119,7 +107,10 @@ describe('route boundary component preloads', () => {
     })
 
     const loadPromise = router.load()
-    pendingLoads.push(loadPromise)
+    onTestFinished(async () => {
+      errorComponentGate.resolve()
+      await Promise.allSettled([loadPromise])
+    })
 
     await vi.waitFor(() => expect(errorComponentPreloadCalls).toBe(1))
     errorComponentGate.resolve()
@@ -141,7 +132,6 @@ describe('route boundary component preloads', () => {
   test('global notFound does not wait for component chunks below its boundary', async () => {
     const hiddenComponentGate = createControlledPromise<void>()
     const notFoundPreload = vi.fn(() => Promise.resolve())
-    pendingGates.push(hiddenComponentGate)
 
     const NotFoundBoundary = Object.assign(() => null, {
       preload: notFoundPreload,
@@ -170,7 +160,10 @@ describe('route boundary component preloads', () => {
     })
 
     const loading = router.load()
-    pendingLoads.push(loading)
+    onTestFinished(async () => {
+      hiddenComponentGate.resolve()
+      await Promise.allSettled([loading])
+    })
     await loading
 
     expect(hiddenComponentGate.status).toBe('pending')
@@ -184,7 +177,6 @@ describe('route boundary component preloads', () => {
     const componentGate = createControlledPromise<void>()
     const notFoundGate = createControlledPromise<void>()
     const notFoundPreload = vi.fn(() => notFoundGate)
-    pendingGates.push(componentGate, notFoundGate)
 
     const ParentComponent = Object.assign(() => null, {
       preload: () => componentGate,
@@ -214,7 +206,11 @@ describe('route boundary component preloads', () => {
     })
 
     const loading = router.load()
-    pendingLoads.push(loading)
+    onTestFinished(async () => {
+      componentGate.resolve()
+      notFoundGate.resolve()
+      await Promise.allSettled([loading])
+    })
     await vi.waitFor(() => expect(notFoundPreload).toHaveBeenCalledOnce())
 
     componentGate.resolve()

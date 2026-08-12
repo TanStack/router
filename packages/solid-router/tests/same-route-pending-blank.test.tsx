@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@solidjs/testing-library'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
   Outlet,
@@ -20,25 +20,27 @@ import {
  * elapses, the previously committed page 1 content should remain visible.
  */
 
-let resolvePendingPage2: (() => void) | undefined
-let pendingNavigation: Promise<unknown> | undefined
-
-afterEach(async () => {
-  resolvePendingPage2?.()
-  if (pendingNavigation) {
-    await Promise.allSettled([pendingNavigation])
-  }
-  resolvePendingPage2 = undefined
-  pendingNavigation = undefined
-  cleanup()
-  vi.useRealTimers()
-})
-
 test('same-route pending replacement without fallback keeps stale content until pendingMs', async () => {
   const pendingMs = 100
   const page2Gate = createControlledPromise<void>()
   const page2Started = createControlledPromise<void>()
-  resolvePendingPage2 = page2Gate.resolve
+  let pendingNavigation: Promise<unknown> | undefined
+  onTestFinished(async () => {
+    try {
+      if (page2Gate.status === 'pending') {
+        page2Gate.resolve()
+      }
+      if (vi.isFakeTimers()) {
+        await vi.runAllTimersAsync()
+      }
+      if (pendingNavigation) {
+        await Promise.allSettled([pendingNavigation])
+      }
+    } finally {
+      cleanup()
+      vi.useRealTimers()
+    }
+  })
   const history = createMemoryHistory({ initialEntries: ['/posts?page=1'] })
   const root = createRootRoute({
     component: () => <Outlet />,

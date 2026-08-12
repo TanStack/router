@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import {
   Outlet,
@@ -39,6 +39,7 @@ describe('Transitioner remount', () => {
   it('does not load after the provider unmounts', async () => {
     const { history, router } = setup()
     const loadSpy = vi.spyOn(router, 'load')
+    onTestFinished(() => loadSpy.mockRestore())
 
     const first = render(<RouterProvider router={router} />)
     expect(await screen.findByText('Index')).toBeInTheDocument()
@@ -56,8 +57,6 @@ describe('Transitioner remount', () => {
     expect(router.history.location.pathname).toBe('/next')
     // ...but the router never processed it, so its committed state stayed put.
     expect(router.state.location.pathname).toBe('/')
-
-    loadSpy.mockRestore()
   })
 
   // Remounting the same router instance must re-establish the subscription so
@@ -67,6 +66,7 @@ describe('Transitioner remount', () => {
     // Spy before the first mount so the subscription captures the spy by
     // reference - both the first and second mounts subscribe with it.
     const loadSpy = vi.spyOn(router, 'load')
+    onTestFinished(() => loadSpy.mockRestore())
 
     const first = render(<RouterProvider router={router} />)
     expect(await screen.findByText('Index')).toBeInTheDocument()
@@ -85,7 +85,5 @@ describe('Transitioner remount', () => {
     expect(await screen.findByText('Next')).toBeInTheDocument()
     expect(router.state.location.pathname).toBe('/next')
     await waitFor(() => expect(loadSpy).toHaveBeenCalledTimes(1))
-
-    loadSpy.mockRestore()
   })
 })

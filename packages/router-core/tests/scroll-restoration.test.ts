@@ -1,5 +1,5 @@
 import { createMemoryHistory } from '@tanstack/history'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 import type { ParsedLocation } from '../src'
@@ -63,6 +63,9 @@ describe('setupScrollRestoration', () => {
     const windowAddEventListener = vi.spyOn(window, 'addEventListener')
     const documentAddEventListener = vi.spyOn(document, 'addEventListener')
     const previousScrollRestoration = window.history.scrollRestoration
+    onTestFinished(() => {
+      window.history.scrollRestoration = previousScrollRestoration
+    })
 
     window.history.scrollRestoration = 'auto'
 
@@ -79,8 +82,6 @@ describe('setupScrollRestoration', () => {
         ([event, _listener, options]) => event === 'scroll' && options === true,
       ),
     ).toBe(true)
-
-    window.history.scrollRestoration = previousScrollRestoration
   })
 
   test('snapshots the live position when it changed after the latest scroll event', () => {
@@ -149,6 +150,9 @@ describe('setupScrollRestoration', () => {
       const windowAddEventListener = vi.spyOn(window, 'addEventListener')
       const documentAddEventListener = vi.spyOn(document, 'addEventListener')
       const previousScrollRestoration = window.history.scrollRestoration
+      onTestFinished(() => {
+        window.history.scrollRestoration = previousScrollRestoration
+      })
 
       window.history.scrollRestoration = 'auto'
 
@@ -171,8 +175,6 @@ describe('setupScrollRestoration', () => {
             event === 'scroll' && options === true,
         ),
       ).toBe(false)
-
-      window.history.scrollRestoration = previousScrollRestoration
     },
   )
 

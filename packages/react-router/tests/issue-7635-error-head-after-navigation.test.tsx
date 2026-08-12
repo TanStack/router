@@ -6,7 +6,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest'
 import {
   HeadContent,
   Link,
@@ -20,11 +20,13 @@ import {
 
 afterEach(() => {
   cleanup()
-  document.head.innerHTML = ''
 })
 
 // https://github.com/TanStack/router/issues/7635
 test('#7635: a parent beforeLoad error replaces the previous child title', async () => {
+  onTestFinished(() => {
+    document.head.innerHTML = ''
+  })
   const appError = new Error('App beforeLoad failed')
   const appErrorRendered = vi.fn()
   const childHead = vi.fn(() => ({

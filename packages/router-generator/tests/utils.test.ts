@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   RoutePrefixMap,
   cleanPath,
@@ -262,6 +262,7 @@ describe('determineInitialRoutePath', () => {
 
   it('errors on disallowed escaped character', () => {
     const consoleSpy = vi.spyOn(console, 'error')
+    onTestFinished(() => consoleSpy.mockRestore())
 
     expect(() => determineInitialRoutePath('/a[/]')).toThrowError()
 
@@ -270,8 +271,6 @@ describe('determineInitialRoutePath', () => {
         'You cannot use any of the following characters in square brackets: /, \\, ?, #, :, *, <, >, |, !, $, %\n' +
         'Please remove and/or replace them.',
     )
-
-    consoleSpy.mockRestore()
   })
 
   it('escapes characters correctly', () => {

@@ -1,4 +1,4 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { hydrateStart } from './hydrateStart'
 
 const coreHydrateStart = vi.hoisted(() => vi.fn())
@@ -7,12 +7,14 @@ vi.mock('@tanstack/start-client-core/client', () => ({
   hydrateStart: coreHydrateStart,
 }))
 
-afterEach(() => {
+const cleanup = () => {
   delete window.$_TSR
   coreHydrateStart.mockReset()
-})
+}
 
 test('signals streaming cleanup without hiding a hydration failure', async () => {
+  onTestFinished(cleanup)
+
   const error = new Error('hydration failed')
   coreHydrateStart.mockRejectedValue(error)
   const hydrated = vi.fn()

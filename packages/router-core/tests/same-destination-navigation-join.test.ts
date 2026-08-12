@@ -1,11 +1,7 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-afterEach(() => {
-  vi.restoreAllMocks()
-})
 
 describe('same-destination navigation while one is in flight', () => {
   function setup() {

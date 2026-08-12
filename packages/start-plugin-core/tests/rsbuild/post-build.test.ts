@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'pathe'
@@ -12,6 +12,25 @@ vi.mock('@tanstack/start-server-core/constants', () => ({
 describe('postBuildWithRsbuild', () => {
   it('imports server/index.js and accepts object fetch handlers', async () => {
     const serverOutputDirectory = await mkdtemp(join(tmpdir(), 'tss-rsbuild-'))
+    onTestFinished(async () => {
+      await rm(serverOutputDirectory, { recursive: true, force: true })
+    })
+
+    const originalPrerendering = process.env.TSS_PRERENDERING
+    const originalClientOutputDirectory = process.env.TSS_CLIENT_OUTPUT_DIR
+    onTestFinished(() => {
+      if (originalPrerendering === undefined) {
+        delete process.env.TSS_PRERENDERING
+      } else {
+        process.env.TSS_PRERENDERING = originalPrerendering
+      }
+      if (originalClientOutputDirectory === undefined) {
+        delete process.env.TSS_CLIENT_OUTPUT_DIR
+      } else {
+        process.env.TSS_CLIENT_OUTPUT_DIR = originalClientOutputDirectory
+      }
+    })
+
     const prerenderSpy = vi.fn(async ({ handler }: any) => {
       const response = await handler.request('/posts')
       expect(await response.text()).toBe('ok')
@@ -39,22 +58,18 @@ describe('postBuildWithRsbuild', () => {
     const { postBuildWithRsbuild } =
       await import('../../src/rsbuild/post-build')
 
-    try {
-      await postBuildWithRsbuild({
-        startConfig: {
-          prerender: { enabled: true, autoStaticPathsDiscovery: false },
-          pages: [{ path: '/posts' }],
-          router: { basepath: '' },
-          spa: { enabled: false, prerender: { outputPath: '/_shell' } },
-          sitemap: { enabled: false },
-        } as any,
-        clientOutputDirectory: '/client',
-        serverOutputDirectory,
-      })
+    await postBuildWithRsbuild({
+      startConfig: {
+        prerender: { enabled: true, autoStaticPathsDiscovery: false },
+        pages: [{ path: '/posts' }],
+        router: { basepath: '' },
+        spa: { enabled: false, prerender: { outputPath: '/_shell' } },
+        sitemap: { enabled: false },
+      } as any,
+      clientOutputDirectory: '/client',
+      serverOutputDirectory,
+    })
 
-      expect(prerenderSpy).toHaveBeenCalledOnce()
-    } finally {
-      await rm(serverOutputDirectory, { recursive: true, force: true })
-    }
+    expect(prerenderSpy).toHaveBeenCalledOnce()
   })
 })

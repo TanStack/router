@@ -1,5 +1,5 @@
 import { runInNewContext } from 'node:vm'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { hydrate } from '../src/ssr/client'
@@ -32,11 +32,6 @@ async function dehydrateToBootstrap(router: AnyRouter): Promise<TsrSsrGlobal> {
     router.serverSsr?.cleanup()
   }
 }
-
-afterEach(() => {
-  vi.restoreAllMocks()
-  vi.unstubAllGlobals()
-})
 
 test('hydration reconstructs every match context before ancestor head reads the lane', async () => {
   const serverBeforeLoad = vi.fn(() => ({
@@ -81,6 +76,9 @@ test('hydration reconstructs every match context before ancestor head reads the 
   })
 
   vi.stubGlobal('window', { $_TSR: bootstrap })
+  onTestFinished(() => {
+    vi.unstubAllGlobals()
+  })
 
   await hydrate(router)
 

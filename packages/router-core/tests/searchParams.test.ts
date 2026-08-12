@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   defaultParseSearch,
   defaultStringifySearch,
@@ -83,30 +83,27 @@ describe('Search Params serialization and deserialization', () => {
 
   test('skips JSON.parse for strings that cannot be JSON', () => {
     const parseSpy = vi.spyOn(JSON, 'parse')
-    try {
-      const stringify = stringifySearchWith(JSON.stringify, JSON.parse)
+    onTestFinished(() => parseSpy.mockRestore())
+    const stringify = stringifySearchWith(JSON.stringify, JSON.parse)
 
-      expect(
-        stringify({
-          empty: '',
-          filter: 'foo',
-          future: 'future',
-          name: 'name',
-          notification: 'new',
-          tab: 'tabular',
-          topic: 'topic',
-          unicode: '雪',
-        }),
-      ).toEqual(
-        '?empty=&filter=foo&future=future&name=name&notification=new&tab=tabular&topic=topic&unicode=%E9%9B%AA',
-      )
-      expect(
-        stringify({ file: '.env', path: '/products', positive: '+1' }),
-      ).toEqual('?file=.env&path=%2Fproducts&positive=%2B1')
-      expect(parseSpy).not.toHaveBeenCalled()
-    } finally {
-      parseSpy.mockRestore()
-    }
+    expect(
+      stringify({
+        empty: '',
+        filter: 'foo',
+        future: 'future',
+        name: 'name',
+        notification: 'new',
+        tab: 'tabular',
+        topic: 'topic',
+        unicode: '雪',
+      }),
+    ).toEqual(
+      '?empty=&filter=foo&future=future&name=name&notification=new&tab=tabular&topic=topic&unicode=%E9%9B%AA',
+    )
+    expect(
+      stringify({ file: '.env', path: '/products', positive: '+1' }),
+    ).toEqual('?file=.env&path=%2Fproducts&positive=%2B1')
+    expect(parseSpy).not.toHaveBeenCalled()
   })
 
   test('[edge case] self-reference serializes to "object Object"', () => {

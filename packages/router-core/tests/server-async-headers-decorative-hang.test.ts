@@ -1,15 +1,14 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
-afterEach(() => {
-  vi.restoreAllMocks()
-})
-
 test('a rejected projection hook is logged without failing the response', async () => {
   const projectionError = new Error('scripts failed')
   const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+  onTestFinished(() => {
+    log.mockRestore()
+  })
   const headGate = createControlledPromise<{
     meta: Array<{ title: string }>
   }>()

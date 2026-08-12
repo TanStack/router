@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, onTestFinished, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
@@ -43,33 +43,39 @@ describe('blocked navigation does not cancel the current load', () => {
     // loads. A blocked commit never reaches this subscriber.
     const unsubscribe = router.history.subscribe(router.load)
     let unblock: (() => void) | undefined
-
-    try {
-      const navigation = router.navigate({ to: '/slow' })
-
-      // Discard every later navigation commit. The blocker is async, so the
-      // discarded commit still sets _pendingLocation for one microtask.
-      unblock = router.history.block({ blockerFn: async () => true })
-
-      // Same tick: settle the loader, then issue a navigation the blocker
-      // discards. The loader continuation resumes inside the window where
-      // _pendingLocation still points at /other.
+    let navigation: Promise<void> | undefined
+    let blockedNavigation: Promise<void> | undefined
+    onTestFinished(async () => {
       loaderGate.resolve('slow data')
-      const blockedNavigation = router.navigate({ to: '/other' })
-
-      await Promise.all([navigation, blockedNavigation])
-
-      expect(router.state.location.pathname).toBe('/slow')
-      expect(router.history.location.pathname).toBe('/slow')
-      expect(
-        router.state.matches.find((m) => m.routeId === slowRoute.id),
-      ).toMatchObject({
-        status: 'success',
-        loaderData: 'slow data',
-      })
-    } finally {
       unblock?.()
+      await Promise.all([
+        navigation?.catch(() => undefined),
+        blockedNavigation?.catch(() => undefined),
+      ])
       unsubscribe()
-    }
+    })
+
+    navigation = router.navigate({ to: '/slow' })
+
+    // Discard every later navigation commit. The blocker is async, so the
+    // discarded commit still sets _pendingLocation for one microtask.
+    unblock = router.history.block({ blockerFn: async () => true })
+
+    // Same tick: settle the loader, then issue a navigation the blocker
+    // discards. The loader continuation resumes inside the window where
+    // _pendingLocation still points at /other.
+    loaderGate.resolve('slow data')
+    blockedNavigation = router.navigate({ to: '/other' })
+
+    await Promise.all([navigation, blockedNavigation])
+
+    expect(router.state.location.pathname).toBe('/slow')
+    expect(router.history.location.pathname).toBe('/slow')
+    expect(
+      router.state.matches.find((m) => m.routeId === slowRoute.id),
+    ).toMatchObject({
+      status: 'success',
+      loaderData: 'slow data',
+    })
   })
 })

@@ -1,5 +1,5 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/vue'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 import { nextTick } from 'vue'
 import {
@@ -13,43 +13,46 @@ import {
 } from '../src'
 import type { ControlledPromise } from '@tanstack/router-core'
 
-const controlledPromises = new Set<ControlledPromise<void>>()
-const pendingOperations = new Set<Promise<unknown>>()
+function createTestHarness() {
+  const controlledPromises = new Set<ControlledPromise<void>>()
+  const pendingOperations = new Set<Promise<unknown>>()
 
-afterEach(async () => {
-  try {
-    for (const promise of controlledPromises) {
-      if (promise.status === 'pending') {
-        promise.resolve()
+  onTestFinished(async () => {
+    try {
+      for (const promise of controlledPromises) {
+        if (promise.status === 'pending') {
+          promise.resolve()
+        }
       }
+      if (vi.isFakeTimers()) {
+        await vi.runAllTimersAsync()
+      }
+      await Promise.allSettled(pendingOperations)
+    } finally {
+      cleanup()
+      vi.useRealTimers()
+      vi.restoreAllMocks()
     }
-    if (vi.isFakeTimers()) {
-      await vi.runAllTimersAsync()
-    }
-    await Promise.allSettled(pendingOperations)
-  } finally {
-    controlledPromises.clear()
-    pendingOperations.clear()
-    cleanup()
-    vi.useRealTimers()
-    vi.restoreAllMocks()
+  })
+
+  function controlled() {
+    const promise = createControlledPromise<void>()
+    controlledPromises.add(promise)
+    return promise
   }
-})
+
+  function track<T>(operation: Promise<T>) {
+    pendingOperations.add(operation)
+    return operation
+  }
+
+  return { controlled, track }
+}
 
 const navigationDelay = 100
 
-function controlled() {
-  const promise = createControlledPromise<void>()
-  controlledPromises.add(promise)
-  return promise
-}
-
-function track<T>(operation: Promise<T>) {
-  pendingOperations.add(operation)
-  return operation
-}
-
 function setup() {
+  const { controlled, track } = createTestHarness()
   const navigationBeforeLoadStarted = controlled()
   let beforeLoadCalls = 0
 
@@ -94,11 +97,11 @@ function setup() {
     defaultPendingMinMs: 1,
   })
 
-  return { router, navigationBeforeLoadStarted }
+  return { router, navigationBeforeLoadStarted, track }
 }
 
 test('a search-only navigation retains successful UI while beforeLoad reruns', async () => {
-  const { router, navigationBeforeLoadStarted } = setup()
+  const { router, navigationBeforeLoadStarted, track } = setup()
   render(<RouterProvider router={router} />)
   expect(await screen.findByTestId('content')).toHaveTextContent(
     'project=p1 tab=default',
@@ -139,7 +142,7 @@ test('a search-only navigation retains successful UI while beforeLoad reruns', a
 })
 
 test('a path-param navigation retains successful UI while beforeLoad reruns', async () => {
-  const { router, navigationBeforeLoadStarted } = setup()
+  const { router, navigationBeforeLoadStarted, track } = setup()
   render(<RouterProvider router={router} />)
   expect(await screen.findByTestId('content')).toHaveTextContent(
     'project=p1 tab=default',
@@ -179,6 +182,7 @@ test('a path-param navigation retains successful UI while beforeLoad reruns', as
 })
 
 test('a blocking reload retains the exact successful match', async () => {
+  const { controlled, track } = createTestHarness()
   const reloadStarted = controlled()
   let loaderCalls = 0
 
@@ -252,6 +256,7 @@ test('a blocking reload retains the exact successful match', async () => {
 })
 
 test('a cached success retries through pending UI when an error is mounted', async () => {
+  const { controlled, track } = createTestHarness()
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   const retryStarted = controlled()
@@ -315,6 +320,7 @@ test('a cached success retries through pending UI when an error is mounted', asy
 })
 
 test('a cache-only success retries through pending UI over mounted success', async () => {
+  const { controlled, track } = createTestHarness()
   const retryStarted = controlled()
   const retry = controlled()
   let loaderCalls = 0
@@ -371,6 +377,7 @@ test('a cache-only success retries through pending UI over mounted success', asy
 })
 
 test('a success hidden below an error boundary retries through pending UI', async () => {
+  const { controlled, track } = createTestHarness()
   vi.spyOn(console, 'error').mockImplementation(() => {})
   vi.spyOn(console, 'warn').mockImplementation(() => {})
   const childReloadStarted = controlled()
@@ -448,6 +455,7 @@ test('a success hidden below an error boundary retries through pending UI', asyn
 })
 
 test('a global not-found destination does not retain the mounted root success', async () => {
+  const { controlled, track } = createTestHarness()
   const missingStarted = controlled()
   const missingLoader = controlled()
   let loaderCalls = 0
@@ -499,6 +507,7 @@ test('a global not-found destination does not retain the mounted root success', 
 })
 
 test('lazy fuzzy-boundary relocation retains the mounted parent', async () => {
+  const { controlled, track } = createTestHarness()
   const lazyStarted = controlled()
   const lazyRoute = controlled()
   const parentReloadStarted = controlled()
@@ -586,6 +595,7 @@ test('lazy fuzzy-boundary relocation retains the mounted parent', async () => {
 })
 
 test('a superseding navigation replaces an unrelated pending presentation', async () => {
+  const { controlled, track } = createTestHarness()
   const otherStarted = controlled()
   const otherLoader = controlled()
   const pageReloadStarted = controlled()

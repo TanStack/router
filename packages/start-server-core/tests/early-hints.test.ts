@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import {
   collectDynamicHintsFromMatches,
   collectStaticHintsFromManifest,
@@ -15,10 +15,6 @@ import type {
 } from '@tanstack/router-core'
 
 describe('early hints', () => {
-  afterEach(() => {
-    vi.unstubAllEnvs()
-  })
-
   it('formats Link header values', () => {
     const hints = [
       {
@@ -406,6 +402,9 @@ describe('early hints', () => {
 
   it('does not create a collector in the dev server', () => {
     vi.stubEnv('TSS_DEV_SERVER', 'true')
+    onTestFinished(() => {
+      vi.unstubAllEnvs()
+    })
 
     expect(
       createEarlyHintsCollector({

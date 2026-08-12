@@ -1,5 +1,14 @@
 import * as Solid from 'solid-js'
-import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import {
   cleanup,
   fireEvent,
@@ -2426,6 +2435,7 @@ describe('Link', () => {
     const homeLink = await screen.findByTestId('home-link')
 
     const consoleWarnSpy = vi.spyOn(console, 'warn')
+    onTestFinished(() => consoleWarnSpy.mockRestore())
 
     fireEvent.click(homeLink)
 
@@ -2435,8 +2445,6 @@ describe('Link', () => {
     expect(homeHeading).toBeInTheDocument()
 
     expect(consoleWarnSpy).not.toHaveBeenCalled()
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts to ../posts/$postId', async () => {
@@ -2984,6 +2992,7 @@ describe('Link', () => {
     expect(post1Heading).toBeInTheDocument()
 
     const consoleWarnSpy = vi.spyOn(console, 'warn')
+    onTestFinished(() => consoleWarnSpy.mockRestore())
 
     const usersLink = await screen.findByTestId('users-link')
     fireEvent.click(usersLink)
@@ -3001,8 +3010,6 @@ describe('Link', () => {
     expect(user1Heading).toBeInTheDocument()
 
     expect(consoleWarnSpy).not.toHaveBeenCalled()
-
-    consoleWarnSpy.mockRestore()
   })
 
   test('when navigating from /posts/$postId to ./info and the current route is /posts/$postId/details', async () => {
@@ -5514,6 +5521,9 @@ describe('createLink', () => {
     const originalOpen = window.open
     const openMock = vi.fn()
     window.open = openMock
+    onTestFinished(() => {
+      window.open = originalOpen
+    })
 
     render(() => <RouterProvider router={router} />)
 
@@ -5531,8 +5541,6 @@ describe('createLink', () => {
     })
 
     await expect(screen.findByTestId('posts-heading')).rejects.toThrow()
-
-    window.open = originalOpen
   })
 
   it('should allow override of target prop even when custom component sets it', async () => {

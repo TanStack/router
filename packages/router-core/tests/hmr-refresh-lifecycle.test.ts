@@ -48,9 +48,11 @@ describe('HMR route refresh', () => {
 
     await router.load()
     const unsubLoad = router.subscribe('onLoad', () => order.push('onLoad'))
+    onTestFinished(unsubLoad)
     const unsubMount = router.subscribe('onBeforeRouteMount', () =>
       order.push('onBeforeRouteMount'),
     )
+    onTestFinished(unsubMount)
     generation = 2
     await router._refreshRoute!()
 
@@ -60,8 +62,6 @@ describe('HMR route refresh', () => {
     expect(onLeave).not.toHaveBeenCalled()
     expect(onStay).toHaveBeenCalledTimes(1)
     expect(order).toEqual(['onStay', 'onLoad', 'onBeforeRouteMount'])
-    unsubLoad()
-    unsubMount()
   })
 
   test('retires refresh mode after an acknowledged publication', async () => {

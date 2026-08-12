@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
   BaseRootRoute,
@@ -7,11 +7,6 @@ import {
   redirect,
 } from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-afterEach(() => {
-  vi.useRealTimers()
-  vi.restoreAllMocks()
-})
 
 describe('public client loading contracts', () => {
   test('blocking loading is observable through match isFetching', async () => {

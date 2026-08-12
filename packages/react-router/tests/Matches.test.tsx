@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test } from 'vitest'
 import {
   act,
   cleanup,
@@ -267,6 +267,7 @@ test('legacy notFoundRoute drops a stale parent layout after navigation', async 
   })
 
   const rendered = render(<RouterProvider router={router} />)
+  onTestFinished(() => rendered.unmount())
   expect(await rendered.findByText('Parent layout')).toBeInTheDocument()
   expect(await rendered.findByText('Legacy not found')).toBeInTheDocument()
   expect(legacyLoads).toBe(1)
@@ -278,7 +279,6 @@ test('legacy notFoundRoute drops a stale parent layout after navigation', async 
   expect(rendered.queryByText('Parent layout')).not.toBeInTheDocument()
   expect(await rendered.findByText('Legacy not found')).toBeInTheDocument()
   expect(legacyLoads).toBe(1)
-  rendered.unmount()
 })
 
 describe('matching on different param types', () => {

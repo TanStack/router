@@ -1,6 +1,14 @@
 import React, { act } from 'react'
 import '@testing-library/jest-dom/vitest'
-import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  onTestFinished,
+  test,
+  vi,
+} from 'vitest'
 import {
   cleanup,
   configure,
@@ -38,8 +46,6 @@ beforeEach(() => {
 afterEach(() => {
   history.destroy()
   window.history.replaceState(null, 'root', '/')
-  vi.clearAllMocks()
-  vi.resetAllMocks()
   cleanup()
 })
 
@@ -1054,6 +1060,7 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
   })
 
   const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+  onTestFinished(() => consoleWarn.mockRestore())
 
   render(<RouterProvider router={router} />)
 
@@ -1072,8 +1079,6 @@ test('when navigating from /invoices to ./invoiceId and the current route is /po
   expect(consoleWarn).toHaveBeenCalledWith(
     'Could not find match for from: /invoices',
   )
-
-  consoleWarn.mockRestore()
 })
 
 test('when navigating to /posts/$postId/info which is masked as /posts/$postId', async () => {
@@ -1362,6 +1367,7 @@ test('<Navigate> navigates only once in <StrictMode>', async () => {
   })
 
   const navigateSpy = vi.spyOn(router, 'navigate')
+  onTestFinished(() => navigateSpy.mockRestore())
 
   render(<RouterProvider router={router} />)
 

@@ -1,5 +1,5 @@
 import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
   Outlet,
@@ -221,24 +221,21 @@ describe('public presentation lane contracts', () => {
         successor = router.navigate({ to: '/second' })
       }
     })
+    onTestFinished(unsubscribeResolved)
     const unsubscribeRendered = router.subscribe('onRendered', (event) => {
       if (event.toLocation.pathname !== '/') {
         renderedPaths.push(event.toLocation.pathname)
       }
     })
+    onTestFinished(unsubscribeRendered)
 
-    try {
-      await act(() => router.navigate({ to: '/first' }))
-      await act(async () => {
-        await successor
-      })
+    await act(() => router.navigate({ to: '/first' }))
+    await act(async () => {
+      await successor
+    })
 
-      expect(screen.getByText('Second')).toBeInTheDocument()
-      expect(screen.queryByText('First')).not.toBeInTheDocument()
-      expect(renderedPaths).toEqual(['/second'])
-    } finally {
-      unsubscribeResolved()
-      unsubscribeRendered()
-    }
+    expect(screen.getByText('Second')).toBeInTheDocument()
+    expect(screen.queryByText('First')).not.toBeInTheDocument()
+    expect(renderedPaths).toEqual(['/second'])
   })
 })

@@ -1,11 +1,7 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-afterEach(() => {
-  vi.useRealTimers()
-})
 
 /**
  * Preload adoption edge cases. The happy path (navigation adopts an
@@ -20,6 +16,9 @@ afterEach(() => {
 describe('preload adoption', () => {
   test('navigation waits for fresh data from an in-flight stale preload revalidation', async () => {
     vi.useFakeTimers()
+    onTestFinished(() => {
+      vi.useRealTimers()
+    })
     vi.setSystemTime(0)
 
     const revalidationGate = createControlledPromise<{

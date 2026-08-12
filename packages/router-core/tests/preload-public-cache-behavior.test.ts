@@ -1,18 +1,16 @@
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
 import { createTestRouter } from './routerTestUtils'
-
-afterEach(() => {
-  vi.restoreAllMocks()
-  vi.useRealTimers()
-})
 
 // https://github.com/TanStack/router/issues/2980
 // Repeated child preloads must borrow a stale active parent instead of rerunning
 // its loader.
 test('#2980: repeated child preloads do not rerun a stale active parent loader', async () => {
   vi.useFakeTimers()
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
   vi.setSystemTime(1_000)
 
   const layoutLoader = vi.fn(() => 'layout data')
@@ -60,6 +58,9 @@ test('#2980: repeated child preloads do not rerun a stale active parent loader',
 // cache entry's lifetime.
 test('fresh navigation data keeps its gc policy when a preload reuses it', async () => {
   vi.useFakeTimers()
+  onTestFinished(() => {
+    vi.useRealTimers()
+  })
   vi.setSystemTime(1_000)
 
   let revision = 0

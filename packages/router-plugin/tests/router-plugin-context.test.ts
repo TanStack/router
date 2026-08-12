@@ -1,6 +1,6 @@
 import path from 'node:path'
 import * as t from '@babel/types'
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { parseAst } from '@tanstack/router-utils'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { unpluginRouterComposedFactory } from '../src/core/router-composed-plugin'
@@ -114,61 +114,57 @@ function component() {
 
       if (production) {
         vi.stubEnv('NODE_ENV', 'production')
-      }
-
-      try {
-        const plugins = createRouterCodeSplitterPlugin(
-          {
-            target: 'react',
-            autoCodeSplitting: true,
-            codeSplittingOptions: production ? undefined : { addHmr: false },
-          },
-          context,
-        )
-        const referencePlugin = getReferencePlugin(plugins)
-        const virtualPlugin = getCodeSplitterPlugin(plugins, virtualPluginName)
-
-        await configurePlugin(referencePlugin, production ? 'build' : 'serve')
-
-        const referenceCode = getCode(
-          await transformReferenceRoute(referencePlugin, routeCode, routeFile),
-        )
-        const virtualCode = getCode(
-          await transformReferenceRoute(
-            virtualPlugin,
-            routeCode,
-            `${routeFile}?tsr-split=component`,
-          ),
-        )
-
-        expect(referenceCode).not.toContain('TSRFastRefreshAnchor')
-        expect(virtualCode).toContain('function component()')
-        expect(virtualCode).toContain('export { component }')
-        expect(virtualCode).not.toContain('SplitComponent')
-      } finally {
-        if (production) {
+        onTestFinished(() => {
           vi.unstubAllEnvs()
-        }
+        })
       }
+
+      const plugins = createRouterCodeSplitterPlugin(
+        {
+          target: 'react',
+          autoCodeSplitting: true,
+          codeSplittingOptions: production ? undefined : { addHmr: false },
+        },
+        context,
+      )
+      const referencePlugin = getReferencePlugin(plugins)
+      const virtualPlugin = getCodeSplitterPlugin(plugins, virtualPluginName)
+
+      await configurePlugin(referencePlugin, production ? 'build' : 'serve')
+
+      const referenceCode = getCode(
+        await transformReferenceRoute(referencePlugin, routeCode, routeFile),
+      )
+      const virtualCode = getCode(
+        await transformReferenceRoute(
+          virtualPlugin,
+          routeCode,
+          `${routeFile}?tsr-split=component`,
+        ),
+      )
+
+      expect(referenceCode).not.toContain('TSRFastRefreshAnchor')
+      expect(virtualCode).toContain('function component()')
+      expect(virtualCode).toContain('export { component }')
+      expect(virtualCode).not.toContain('SplitComponent')
     },
   )
 
   it('does not install the standalone route HMR plugin in production', () => {
     vi.stubEnv('NODE_ENV', 'production')
-
-    try {
-      const plugins = unpluginRouterComposedFactory(
-        { target: 'react', autoCodeSplitting: false },
-        { framework: 'vite' },
-      )
-
-      const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
-      expect(
-        pluginArray.some((plugin) => plugin.name === 'tanstack-router:hmr'),
-      ).toBe(false)
-    } finally {
+    onTestFinished(() => {
       vi.unstubAllEnvs()
-    }
+    })
+
+    const plugins = unpluginRouterComposedFactory(
+      { target: 'react', autoCodeSplitting: false },
+      { framework: 'vite' },
+    )
+
+    const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
+    expect(
+      pluginArray.some((plugin) => plugin.name === 'tanstack-router:hmr'),
+    ).toBe(false)
   })
 
   it('keeps multiple code-splitter instances isolated by explicit context', async () => {

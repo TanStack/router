@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 
 import { z } from 'zod'
 import {
@@ -350,12 +350,19 @@ test('#7673: a spontaneous loader AbortError renders the boundary without execut
 
   const routeTree = rootRoute.addChildren([indexRoute])
   const router = createRouter({ routeTree, basepath: '/app' })
+  let unsubscribe: (() => void) | undefined
+  const unsubscribeOnce = () => {
+    const dispose = unsubscribe
+    unsubscribe = undefined
+    dispose?.()
+  }
   const rendered = new Promise<void>((resolve) => {
-    const unsubscribe = router.subscribe('onRendered', () => {
-      unsubscribe()
+    unsubscribe = router.subscribe('onRendered', () => {
+      unsubscribeOnce()
       resolve()
     })
   })
+  onTestFinished(unsubscribeOnce)
 
   render(() => <RouterProvider router={router} />)
 

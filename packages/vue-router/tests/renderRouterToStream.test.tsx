@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   attachRouterServerSsrUtils,
   normalizeSsrResponse,
@@ -95,26 +95,26 @@ describe('renderRouterToStream - sync setup failures', () => {
     const router = await buildRouter()
 
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/'),
-          router,
-          responseHeaders: new Headers(),
-          App: { template: '<div/>' } as any,
-        }),
-      )
-
-      const terminated = await Promise.race([
-        drainBody(response),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
-      ])
-
-      expect(terminated).toBe(true)
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
       router.serverSsr?.cleanup()
-    }
+    })
+
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        App: { template: '<div/>' } as any,
+      }),
+    )
+
+    const terminated = await Promise.race([
+      drainBody(response),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
+    ])
+
+    expect(terminated).toBe(true)
   })
 
   test('request abort drops later Vue writes and terminates the response', async () => {
@@ -132,35 +132,35 @@ describe('renderRouterToStream - sync setup failures', () => {
     const router = await buildRouter()
     const abortController = new AbortController()
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/', {
-            signal: abortController.signal,
-          }),
-          router,
-          responseHeaders: new Headers(),
-          App: { template: '<div/>' } as any,
-        }),
-      )
-
-      expect(vueWriter).toBeDefined()
-      abortController.abort(new Error('client-gone'))
-
-      await expect(
-        vueWriter!.write(new TextEncoder().encode('<div/>')),
-      ).resolves.toBeUndefined()
-      expect(response.body).not.toBeNull()
-
-      const terminated = await Promise.race([
-        drainBody(response),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
-      ])
-
-      expect(terminated).toBe(true)
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
       router.serverSsr?.cleanup()
-    }
+    })
+
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/', {
+          signal: abortController.signal,
+        }),
+        router,
+        responseHeaders: new Headers(),
+        App: { template: '<div/>' } as any,
+      }),
+    )
+
+    expect(vueWriter).toBeDefined()
+    abortController.abort(new Error('client-gone'))
+
+    await expect(
+      vueWriter!.write(new TextEncoder().encode('<div/>')),
+    ).resolves.toBeUndefined()
+    expect(response.body).not.toBeNull()
+
+    const terminated = await Promise.race([
+      drainBody(response),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
+    ])
+
+    expect(terminated).toBe(true)
   })
 })

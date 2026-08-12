@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { createMemoryHistory, createRootRoute, createRouter } from '../src'
 import type * as SolidWeb from 'solid-js/web'
@@ -77,40 +77,40 @@ describe('renderRouterToStream - bot abort', () => {
     const router = await buildRouter()
     const abortController = new AbortController()
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const responsePromise = renderRouterToStream({
-        request: new Request('http://localhost/', {
-          headers: { 'User-Agent': 'Googlebot' },
-          signal: abortController.signal,
-        }),
-        router,
-        responseHeaders: new Headers(),
-        children: () => null,
-      })
-
-      await Promise.resolve()
-      abortController.abort(new Error('client-gone'))
-
-      const result = await Promise.race([
-        responsePromise,
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
-      ])
-
-      expect(result).not.toBe(false)
-      expect(solidMocks.pipeTo).not.toHaveBeenCalled()
-      const response = unwrapResponse(result as Exclude<typeof result, false>)
-      expect(response.body).not.toBeNull()
-
-      const terminated = await Promise.race([
-        drainBody(response),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
-      ])
-
-      expect(terminated).toBe(true)
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
       router.serverSsr?.cleanup()
-    }
+    })
+
+    const responsePromise = renderRouterToStream({
+      request: new Request('http://localhost/', {
+        headers: { 'User-Agent': 'Googlebot' },
+        signal: abortController.signal,
+      }),
+      router,
+      responseHeaders: new Headers(),
+      children: () => null,
+    })
+
+    await Promise.resolve()
+    abortController.abort(new Error('client-gone'))
+
+    const result = await Promise.race([
+      responsePromise,
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
+    ])
+
+    expect(result).not.toBe(false)
+    expect(solidMocks.pipeTo).not.toHaveBeenCalled()
+    const response = unwrapResponse(result as Exclude<typeof result, false>)
+    expect(response.body).not.toBeNull()
+
+    const terminated = await Promise.race([
+      drainBody(response),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
+    ])
+
+    expect(terminated).toBe(true)
   })
 
   test('pipeTo rejection aborts writer and terminates response stream', async () => {
@@ -123,26 +123,26 @@ describe('renderRouterToStream - bot abort', () => {
 
     const router = await buildRouter()
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const response = unwrapResponse(
-        await renderRouterToStream({
-          request: new Request('http://localhost/'),
-          router,
-          responseHeaders: new Headers(),
-          children: () => null,
-        }),
-      )
-
-      const terminated = await Promise.race([
-        drainBody(response),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
-      ])
-
-      expect(terminated).toBe(true)
-      expect(errorSpy).toHaveBeenCalled()
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
       router.serverSsr?.cleanup()
-    }
+    })
+
+    const response = unwrapResponse(
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: () => null,
+      }),
+    )
+
+    const terminated = await Promise.race([
+      drainBody(response),
+      new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
+    ])
+
+    expect(terminated).toBe(true)
+    expect(errorSpy).toHaveBeenCalled()
   })
 })

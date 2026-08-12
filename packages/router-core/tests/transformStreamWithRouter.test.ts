@@ -6,7 +6,7 @@
 // assertions live in transformStreamBackpressure.perf.test.ts.
 import { ReadableStream } from 'node:stream/web'
 import { PassThrough } from 'node:stream'
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from '../src/ssr/constants'
@@ -649,58 +649,53 @@ describe('transformStreamWithRouter — cleanup side-effects', () => {
 
   test('SSR fast path errors on unexpected late injection', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { router, injectHtml, cleanupCalls } = makeRouter({
-        isSerializationFinished: () => true,
-        reserveStreamFastPath: () => true,
-      })
-      const upstream = makeManualUpstream()
-
-      const out = transformStreamWithRouter(
-        router as any,
-        upstream.stream as any,
-      )
-      injectHtml('<script>late()</script>')
-
-      await expect(readAll(out as any)).rejects.toThrow(
-        'SSR router HTML injected during fast path',
-      )
-      expect(cleanupCalls.count).toBe(1)
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
-    }
+    })
+    const { router, injectHtml, cleanupCalls } = makeRouter({
+      isSerializationFinished: () => true,
+      reserveStreamFastPath: () => true,
+    })
+    const upstream = makeManualUpstream()
+
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    injectHtml('<script>late()</script>')
+
+    await expect(readAll(out as any)).rejects.toThrow(
+      'SSR router HTML injected during fast path',
+    )
+    expect(cleanupCalls.count).toBe(1)
   })
 
   test('lifetime timeout cancels upstream and runs cleanup once', async () => {
     vi.useFakeTimers()
-    try {
-      const { router, cleanupCalls } = makeRouter({
-        isSerializationFinished: () => true,
-        takeBufferedHtml: () => undefined,
-      })
-      const upstream = makeManualUpstream()
-
-      const out = transformStreamWithRouter(
-        router as any,
-        upstream.stream as any,
-        { lifetimeMs: 10 },
-      )
-
-      // Do NOT consume. Advance fake time past lifetimeMs deterministically.
-      await vi.advanceTimersByTimeAsync(15)
-
-      expect(upstream.cancelled.value).toBe(true)
-      expect(cleanupCalls.count).toBe(1)
-
-      // Drain (read errors silently) so vitest doesn't see an unhandled error.
-      const reader = (
-        out as any
-      ).getReader() as ReadableStreamDefaultReader<Uint8Array>
-      reader.read().catch(() => {})
-      reader.releaseLock()
-    } finally {
+    onTestFinished(() => {
       vi.useRealTimers()
-    }
+    })
+    const { router, cleanupCalls } = makeRouter({
+      isSerializationFinished: () => true,
+      takeBufferedHtml: () => undefined,
+    })
+    const upstream = makeManualUpstream()
+
+    const out = transformStreamWithRouter(
+      router as any,
+      upstream.stream as any,
+      { lifetimeMs: 10 },
+    )
+
+    // Do NOT consume. Advance fake time past lifetimeMs deterministically.
+    await vi.advanceTimersByTimeAsync(15)
+
+    expect(upstream.cancelled.value).toBe(true)
+    expect(cleanupCalls.count).toBe(1)
+
+    // Drain (read errors silently) so vitest doesn't see an unhandled error.
+    const reader = (
+      out as any
+    ).getReader() as ReadableStreamDefaultReader<Uint8Array>
+    reader.read().catch(() => {})
+    reader.releaseLock()
   })
 
   test('upstream cancel() that rejects does not produce an unhandled rejection', async () => {
@@ -711,117 +706,104 @@ describe('transformStreamWithRouter — cleanup side-effects', () => {
       unhandled.push(e?.reason ?? e)
     }
     process.on('unhandledRejection', onUnhandled)
-    try {
-      const { router, cleanupCalls } = makeRouter({
-        isSerializationFinished: () => true,
-        takeBufferedHtml: () => undefined,
-      })
-
-      const stream = new ReadableStream<Uint8Array>({
-        start() {},
-        cancel() {
-          // Simulate a misbehaving upstream whose cancel rejects.
-          throw new Error('boom-cancel')
-        },
-      })
-
-      const out = transformStreamWithRouter(router as any, stream as any)
-      const reader = (
-        out as any
-      ).getReader() as ReadableStreamDefaultReader<Uint8Array>
-
-      // Consumer goes away → triggers cancelUpstream → upstream cancel throws.
-      await reader.cancel('consumer-gone').catch(() => {})
-      // Allow microtasks for any rejection to surface.
-      await flush(10)
-
-      expect(cleanupCalls.count).toBe(1)
-      expect(
-        unhandled.find(
-          (e: any) => e && String(e.message || e).includes('boom-cancel'),
-        ),
-      ).toBeUndefined()
-    } finally {
+    onTestFinished(() => {
       process.off('unhandledRejection', onUnhandled)
-    }
+    })
+    const { router, cleanupCalls } = makeRouter({
+      isSerializationFinished: () => true,
+      takeBufferedHtml: () => undefined,
+    })
+
+    const stream = new ReadableStream<Uint8Array>({
+      start() {},
+      cancel() {
+        // Simulate a misbehaving upstream whose cancel rejects.
+        throw new Error('boom-cancel')
+      },
+    })
+
+    const out = transformStreamWithRouter(router as any, stream as any)
+    const reader = (
+      out as any
+    ).getReader() as ReadableStreamDefaultReader<Uint8Array>
+
+    // Consumer goes away → triggers cancelUpstream → upstream cancel throws.
+    await reader.cancel('consumer-gone').catch(() => {})
+    // Allow microtasks for any rejection to surface.
+    await flush(10)
+
+    expect(cleanupCalls.count).toBe(1)
+    expect(
+      unhandled.find(
+        (e: any) => e && String(e.message || e).includes('boom-cancel'),
+      ),
+    ).toBeUndefined()
   })
 
   test('server cleanup throwing does not prevent terminal stream cleanup', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { router, finishSerialization } = makeRouter({
-        cleanup: () => {
-          throw new Error('cleanup-boom')
-        },
-      })
-      const upstream = makeManualUpstream()
-
-      const out = transformStreamWithRouter(
-        router as any,
-        upstream.stream as any,
-      )
-      upstream.push('<html><body>done</body></html>')
-      upstream.close()
-      finishSerialization()
-
-      await expect(readAll(out as any)).resolves.toContain('done')
-      expect(errorSpy).toHaveBeenCalled()
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
-    }
+    })
+    const { router, finishSerialization } = makeRouter({
+      cleanup: () => {
+        throw new Error('cleanup-boom')
+      },
+    })
+    const upstream = makeManualUpstream()
+
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    upstream.push('<html><body>done</body></html>')
+    upstream.close()
+    finishSerialization()
+
+    await expect(readAll(out as any)).resolves.toContain('done')
+    expect(errorSpy).toHaveBeenCalled()
   })
 
   test('throwing injected listener does not skip transform drain', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { router, injectHtml, finishSerialization } = makeRouter()
-      router.serverSsr!.onInjectedHtml(() => {
-        throw new Error('external-listener-boom')
-      })
-      const upstream = makeManualUpstream()
-
-      const out = transformStreamWithRouter(
-        router as any,
-        upstream.stream as any,
-      )
-
-      upstream.push('<html><body><main>app</main>')
-      injectHtml('<script>drained()</script>')
-      upstream.push('</body></html>')
-      upstream.close()
-      finishSerialization()
-
-      const text = await readAll(out as any)
-      expect(text).toContain('<script>drained()</script>')
-      expect(text.indexOf('<script>drained()</script>')).toBeLessThan(
-        text.indexOf('</body>'),
-      )
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
-    }
+    })
+    const { router, injectHtml, finishSerialization } = makeRouter()
+    router.serverSsr!.onInjectedHtml(() => {
+      throw new Error('external-listener-boom')
+    })
+    const upstream = makeManualUpstream()
+
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+
+    upstream.push('<html><body><main>app</main>')
+    injectHtml('<script>drained()</script>')
+    upstream.push('</body></html>')
+    upstream.close()
+    finishSerialization()
+
+    const text = await readAll(out as any)
+    expect(text).toContain('<script>drained()</script>')
+    expect(text.indexOf('<script>drained()</script>')).toBeLessThan(
+      text.indexOf('</body>'),
+    )
   })
 
   test('tail overflow errors and runs cleanup', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { router, cleanupCalls, finishSerialization } = makeRouter()
-      const upstream = makeManualUpstream()
-
-      const out = transformStreamWithRouter(
-        router as any,
-        upstream.stream as any,
-      )
-      upstream.push(`<html><body>done</body>${'x'.repeat(64 * 1024 + 1)}`)
-      upstream.close()
-      finishSerialization()
-
-      await expect(readAll(out as any)).rejects.toThrow(
-        'SSR stream tail exceeded maximum buffer',
-      )
-      expect(cleanupCalls.count).toBe(1)
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
-    }
+    })
+    const { router, cleanupCalls, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    upstream.push(`<html><body>done</body>${'x'.repeat(64 * 1024 + 1)}`)
+    upstream.close()
+    finishSerialization()
+
+    await expect(readAll(out as any)).rejects.toThrow(
+      'SSR stream tail exceeded maximum buffer',
+    )
+    expect(cleanupCalls.count).toBe(1)
   })
 
   test('router HTML overflow errors and runs cleanup', async () => {
@@ -839,25 +821,21 @@ describe('transformStreamWithRouter — cleanup side-effects', () => {
 
   test('pending output overflow errors and runs cleanup', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      const { router, cleanupCalls, finishSerialization } = makeRouter()
-      const upstream = makeManualUpstream()
-
-      const out = transformStreamWithRouter(
-        router as any,
-        upstream.stream as any,
-      )
-      upstream.push(`${'x'.repeat(16 * 1024 * 1024 + 1)}</div>`)
-      upstream.close()
-      finishSerialization()
-
-      await expect(readAll(out as any)).rejects.toThrow(
-        'SSR stream pending output exceeded maximum buffer',
-      )
-      expect(cleanupCalls.count).toBe(1)
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
-    }
+    })
+    const { router, cleanupCalls, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+
+    const out = transformStreamWithRouter(router as any, upstream.stream as any)
+    upstream.push(`${'x'.repeat(16 * 1024 * 1024 + 1)}</div>`)
+    upstream.close()
+    finishSerialization()
+
+    await expect(readAll(out as any)).rejects.toThrow(
+      'SSR stream pending output exceeded maximum buffer',
+    )
+    expect(cleanupCalls.count).toBe(1)
   })
 
   test('long text without closing tags partially flushes and keeps bounded leftover', async () => {
@@ -1032,6 +1010,11 @@ describe('transformStreamWithRouter — injected HTML ordering', () => {
     finishSerialization()
 
     const pass = new PassThrough()
+    onTestFinished(() => {
+      if (!pass.destroyed) {
+        pass.destroy()
+      }
+    })
     let aborts = 0
     const out = transformPipeableStreamWithRouter(router as any, pass, {
       onAbort: () => aborts++,
@@ -1051,83 +1034,86 @@ describe('transformStreamWithRouter — injected HTML ordering', () => {
     await Promise.resolve()
 
     expect(aborts).toBe(1)
-
-    // Cleanup: destroy upstream so we don't leak.
-    if (!pass.destroyed) pass.destroy()
   })
 
   test('onAbort: lifetime timeout triggers abort exactly once', async () => {
     vi.useFakeTimers()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      const { router, finishSerialization } = makeRouter()
-      finishSerialization()
-
-      // Upstream that never produces or closes.
-      const upstream = new ReadableStream<Uint8Array>({
-        pull() {
-          // never enqueue, never close
-        },
-      })
-
-      let aborts = 0
-
-      const out = transformReadableStreamWithRouter(
-        router as any,
-        upstream as any,
-        { onAbort: () => aborts++, lifetimeMs: 1000 },
-      )
-
-      // Start reading (which may reject when stream is errored)
-      const reader = (out as any).getReader()
-      const readP = reader.read().catch(() => undefined)
-
-      await vi.advanceTimersByTimeAsync(1500)
-      await readP
-
-      expect(aborts).toBe(1)
-    } finally {
-      errorSpy.mockRestore()
-      warnSpy.mockRestore()
+    onTestFinished(() => {
       vi.useRealTimers()
-    }
+    })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => {
+      warnSpy.mockRestore()
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    onTestFinished(() => {
+      errorSpy.mockRestore()
+    })
+    const { router, finishSerialization } = makeRouter()
+    finishSerialization()
+
+    // Upstream that never produces or closes.
+    const upstream = new ReadableStream<Uint8Array>({
+      pull() {
+        // never enqueue, never close
+      },
+    })
+
+    let aborts = 0
+
+    const out = transformReadableStreamWithRouter(
+      router as any,
+      upstream as any,
+      { onAbort: () => aborts++, lifetimeMs: 1000 },
+    )
+
+    // Start reading (which may reject when stream is errored)
+    const reader = (out as any).getReader()
+    const readP = reader.read().catch(() => undefined)
+
+    await vi.advanceTimersByTimeAsync(1500)
+    await readP
+
+    expect(aborts).toBe(1)
   })
 
   test('default lifetime is derived from timeoutMs', async () => {
     vi.useFakeTimers()
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    try {
-      const { router, finishSerialization } = makeRouter()
-      finishSerialization()
-      const upstream = new ReadableStream<Uint8Array>({
-        pull() {
-          // never enqueue, never close
-        },
-      })
-
-      let aborts = 0
-      const out = transformReadableStreamWithRouter(
-        router as any,
-        upstream as any,
-        { onAbort: () => aborts++, timeoutMs: 10 },
-      )
-
-      const reader = (out as any).getReader()
-      const readP = reader.read().catch(() => undefined)
-
-      await vi.advanceTimersByTimeAsync(15)
-      expect(aborts).toBe(0)
-
-      await vi.advanceTimersByTimeAsync(6)
-      await readP
-      expect(aborts).toBe(1)
-    } finally {
-      errorSpy.mockRestore()
-      warnSpy.mockRestore()
+    onTestFinished(() => {
       vi.useRealTimers()
-    }
+    })
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    onTestFinished(() => {
+      warnSpy.mockRestore()
+    })
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    onTestFinished(() => {
+      errorSpy.mockRestore()
+    })
+    const { router, finishSerialization } = makeRouter()
+    finishSerialization()
+    const upstream = new ReadableStream<Uint8Array>({
+      pull() {
+        // never enqueue, never close
+      },
+    })
+
+    let aborts = 0
+    const out = transformReadableStreamWithRouter(
+      router as any,
+      upstream as any,
+      { onAbort: () => aborts++, timeoutMs: 10 },
+    )
+
+    const reader = (out as any).getReader()
+    const readP = reader.read().catch(() => undefined)
+
+    await vi.advanceTimersByTimeAsync(15)
+    expect(aborts).toBe(0)
+
+    await vi.advanceTimersByTimeAsync(6)
+    await readP
+    expect(aborts).toBe(1)
   })
 
   test('upstream writable abort surfaces; readable does not hang', async () => {
@@ -1140,28 +1126,27 @@ describe('transformStreamWithRouter — injected HTML ordering', () => {
     // resolve (with done or an error) rather than wait for lifetimeMs.
     const ts = new TransformStream()
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
-    try {
-      let aborts = 0
-      const out = transformReadableStreamWithRouter(
-        router as any,
-        ts.readable as any,
-        { onAbort: () => aborts++ },
-      )
-
-      void ts.writable.abort(new Error('setup-throw')).catch(() => {})
-
-      const reader = (out as any).getReader()
-      // Either the read resolves with done, or it rejects with the abort
-      // reason. Both prove non-hang behavior; we just require it terminates.
-      const terminated = await reader
-        .read()
-        .then(() => true)
-        .catch(() => true)
-
-      expect(terminated).toBe(true)
-      expect(aborts).toBe(1)
-    } finally {
+    onTestFinished(() => {
       errorSpy.mockRestore()
-    }
+    })
+    let aborts = 0
+    const out = transformReadableStreamWithRouter(
+      router as any,
+      ts.readable as any,
+      { onAbort: () => aborts++ },
+    )
+
+    void ts.writable.abort(new Error('setup-throw')).catch(() => {})
+
+    const reader = (out as any).getReader()
+    // Either the read resolves with done, or it rejects with the abort
+    // reason. Both prove non-hang behavior; we just require it terminates.
+    const terminated = await reader
+      .read()
+      .then(() => true)
+      .catch(() => true)
+
+    expect(terminated).toBe(true)
+    expect(aborts).toBe(1)
   })
 })

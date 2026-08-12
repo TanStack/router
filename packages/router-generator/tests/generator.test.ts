@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs'
 import fs from 'node:fs/promises'
 import path, { dirname, join, relative } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 
 import {
   index,
@@ -413,7 +413,10 @@ describe('generator works', async () => {
     async () => {
       const folderName = 'only-root'
       const folderRoot = makeFolderDir(folderName)
-      let pathCreated = false
+      const generatedRouteTreeDirectory = join(folderRoot, 'generated')
+      onTestFinished(() =>
+        fs.rm(generatedRouteTreeDirectory, { recursive: true, force: true }),
+      )
 
       const config = await setupConfig(folderName)
 
@@ -421,8 +424,7 @@ describe('generator works', async () => {
 
       await preprocess(folderName)
       config.generatedRouteTree = join(
-        folderRoot,
-        'generated',
+        generatedRouteTreeDirectory,
         `/routeTree.gen.ts`,
       )
       const generator = new Generator({ config, root: folderRoot })
@@ -448,19 +450,12 @@ describe('generator works', async () => {
           ),
         )
 
-        pathCreated = await fs.access(dirname(config.generatedRouteTree)).then(
-          () => true,
-          () => false,
-        )
-
-        await expect(pathCreated).toBe(true)
+        await expect(
+          fs.access(dirname(config.generatedRouteTree)),
+        ).resolves.toBeUndefined()
       }
 
       await postprocess(folderName)
-
-      if (pathCreated) {
-        await fs.rm(dirname(config.generatedRouteTree), { recursive: true })
-      }
     },
   )
 })

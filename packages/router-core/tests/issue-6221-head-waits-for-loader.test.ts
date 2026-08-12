@@ -54,46 +54,45 @@ describe('issue #6221: head does not run before loader data is ready', () => {
     const backLoadFinished = createControlledPromise<void>()
     let backLoadStarted = false
     let unsubscribe: (() => void) | undefined
-
-    try {
-      await router.load()
-      const notFoundMatch = router.state.matches.find(
-        (match) => match.routeId === articleRoute.id,
-      )
-      expect(notFoundMatch?.status).toBe('notFound')
-      expect(notFoundMatch?.meta).toEqual([{ title: 'Generic title' }])
-
-      // Model the reported auth redirect and browser Back without relying on a
-      // wall-clock loader delay.
-      authed = true
-      await router.navigate({ to: '/dashboard' })
-      unsubscribe = router.history.subscribe(() => {
-        backLoadStarted = true
-        void router.load().then(
-          () => backLoadFinished.resolve(),
-          (error) => backLoadFinished.reject(error),
-        )
-      })
-      router.history.back()
-      await successfulLoadStarted
-      expect(articleResponse.status).toBe('pending')
-
-      articleResponse.resolve({ title: 'Article 123' })
-      await backLoadFinished
-
-      const articleMatch = router.state.matches.find(
-        (match) => match.routeId === articleRoute.id,
-      )
-      expect(articleMatch?.status).toBe('success')
-      expect(articleMatch?.loaderData).toEqual({ title: 'Article 123' })
-      expect(articleMatch?.meta).toEqual([{ title: 'Article 123' }])
-    } finally {
+    onTestFinished(async () => {
       articleResponse.resolve({ title: 'Article 123' })
       if (backLoadStarted) {
         await backLoadFinished.catch(() => undefined)
       }
       unsubscribe?.()
-    }
+    })
+
+    await router.load()
+    const notFoundMatch = router.state.matches.find(
+      (match) => match.routeId === articleRoute.id,
+    )
+    expect(notFoundMatch?.status).toBe('notFound')
+    expect(notFoundMatch?.meta).toEqual([{ title: 'Generic title' }])
+
+    // Model the reported auth redirect and browser Back without relying on a
+    // wall-clock loader delay.
+    authed = true
+    await router.navigate({ to: '/dashboard' })
+    unsubscribe = router.history.subscribe(() => {
+      backLoadStarted = true
+      void router.load().then(
+        () => backLoadFinished.resolve(),
+        (error) => backLoadFinished.reject(error),
+      )
+    })
+    router.history.back()
+    await successfulLoadStarted
+    expect(articleResponse.status).toBe('pending')
+
+    articleResponse.resolve({ title: 'Article 123' })
+    await backLoadFinished
+
+    const articleMatch = router.state.matches.find(
+      (match) => match.routeId === articleRoute.id,
+    )
+    expect(articleMatch?.status).toBe('success')
+    expect(articleMatch?.loaderData).toEqual({ title: 'Article 123' })
+    expect(articleMatch?.meta).toEqual([{ title: 'Article 123' }])
   })
 
   test('head title does not lag one loaderData run behind on revisits', async () => {

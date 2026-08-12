@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/vue'
-import { afterEach, expect, test, vi } from 'vitest'
+import { expect, onTestFinished, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
 import {
   RouterProvider,
@@ -8,20 +8,24 @@ import {
   createRouter,
 } from '../src'
 
-const testCleanups: Array<() => void | Promise<void>> = []
-
-afterEach(async () => {
-  vi.useRealTimers()
-  while (testCleanups.length) {
-    await testCleanups.pop()!()
-  }
-  cleanup()
-})
-
 test('a continuously visible fallback keeps its deadline across replacement loads', async () => {
   const firstReload = createControlledPromise<void>()
   const secondReload = createControlledPromise<void>()
   const reloads = [firstReload, secondReload]
+  const invalidations: Array<Promise<void>> = []
+  onTestFinished(async () => {
+    try {
+      firstReload.resolve()
+      secondReload.resolve()
+      if (vi.isFakeTimers()) {
+        await vi.runAllTimersAsync()
+      }
+      await Promise.allSettled(invalidations)
+    } finally {
+      cleanup()
+      vi.useRealTimers()
+    }
+  })
   let loaderCall = 0
 
   const rootRoute = createRootRoute({
@@ -45,12 +49,7 @@ test('a continuously visible fallback keeps its deadline across replacement load
 
   vi.useFakeTimers()
   const firstInvalidation = router.invalidate({ forcePending: true })
-  const invalidations = [firstInvalidation]
-  testCleanups.push(async () => {
-    firstReload.resolve()
-    secondReload.resolve()
-    await Promise.allSettled(invalidations)
-  })
+  invalidations.push(firstInvalidation)
   await vi.advanceTimersByTimeAsync(0)
   expect(screen.getByTestId('pending')).toBeInTheDocument()
 
