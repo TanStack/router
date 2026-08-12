@@ -1,5 +1,11 @@
 # @tanstack/react-router
 
+## 1.170.27
+
+### Patch Changes
+
+- [#8047](https://github.com/TanStack/router/pull/8047) [`b0817f5`](https://github.com/TanStack/router/commit/b0817f50cc639ae50b6c30cd11c5adbf7eed028c) - useMatchRoute w/ React Compiler
+
 ## 1.170.26
 
 ### Patch Changes
