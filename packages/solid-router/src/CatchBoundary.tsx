@@ -1,5 +1,6 @@
 import * as Solid from 'solid-js'
 import { Dynamic } from 'solid-js/web'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 
 export function CatchBoundary(
@@ -19,7 +20,18 @@ export function CatchBoundary(
           Solid.on(props.getResetKey, () => reset(), { defer: true }),
         )
 
-        return (
+        return process.env.NODE_ENV !== 'production' ? (
+          renderInNonRouteComponentContext(
+            () => (
+              <Dynamic
+                component={props.errorComponent ?? ErrorComponent}
+                error={error}
+                reset={reset}
+              />
+            ),
+            'errorComponent',
+          )
+        ) : (
           <Dynamic
             component={props.errorComponent ?? ErrorComponent}
             error={error}
