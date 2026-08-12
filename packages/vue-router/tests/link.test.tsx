@@ -463,15 +463,20 @@ describe('Link', () => {
     disabled.value = true
     await Vue.nextTick()
 
-    expect(link).toHaveAttribute('href', 'https://example.com/one')
+    expect(link).not.toHaveAttribute('href')
     expect(link).toHaveAttribute('target', '_blank')
     expect(link).toHaveAttribute('aria-label', 'Updated link')
     expect(link).toHaveClass('decorated')
-    expect(link).toHaveAttribute('disabled')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(link).not.toHaveAttribute('disabled')
 
+    disabled.value = false
     to.value = 'https://example.com/two'
     await Vue.nextTick()
     expect(link).toHaveAttribute('href', 'https://example.com/two')
+    expect(link).not.toHaveAttribute('aria-disabled')
+    expect(link).not.toHaveAttribute('disabled')
 
     to.value = 'javascript:alert(1)'
     await Vue.nextTick()
@@ -491,7 +496,8 @@ describe('Link', () => {
     expect(link).not.toHaveAttribute('target')
     expect(link).not.toHaveAttribute('aria-label')
     expect(link).not.toHaveClass('decorated')
-    expect(link).toHaveAttribute('disabled', 'false')
+    expect(link).not.toHaveAttribute('aria-disabled')
+    expect(link).not.toHaveAttribute('disabled')
 
     decorated.value = true
     await Vue.nextTick()
@@ -539,8 +545,10 @@ describe('Link', () => {
     expect(link).toHaveAttribute('href', '/posts')
 
     await fireEvent.click(link)
-    await waitFor(() => expect(window.location.pathname).toBe('/posts'))
-    expect(link).toHaveAttribute('data-status', 'active')
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/posts')
+      expect(link).toHaveAttribute('data-status', 'active')
+    })
   })
 
   test('uses current event handlers after link props change', async () => {
@@ -602,6 +610,13 @@ describe('Link', () => {
 
     clickHandler.value = undefined
     mouseEnterHandler.value = undefined
+    await Vue.nextTick()
+    await fireEvent.click(link)
+    await fireEvent.mouseEnter(link)
+
+    expect(secondClick).toHaveBeenCalledOnce()
+    expect(secondMouseEnter).toHaveBeenCalledOnce()
+
     disabled.value = true
     await Vue.nextTick()
     await fireEvent.click(link)
@@ -5581,6 +5596,12 @@ describe('Link', () => {
     await Vue.nextTick()
     await vi.advanceTimersByTimeAsync(50)
     expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    to.value = '/about'
+    await Vue.nextTick()
+    await fireEvent.mouseEnter(link)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
   })
 
   test.each([undefined, false, 'render', 'viewport'] as const)(

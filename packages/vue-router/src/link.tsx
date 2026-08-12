@@ -84,7 +84,9 @@ type PropsOfComponent<TComp> =
       ? P
       : Record<string, unknown>
 
-type AnyLinkPropsOptions = UseLinkPropsOptions<any, any, any, any, any>
+type AnyLinkPropsOptions = UseLinkPropsOptions<any, any, any, any, any> & {
+  _asChild?: unknown
+}
 type LinkEventOptions = AnyLinkPropsOptions & Partial<VueStyleLinkEventHandlers>
 
 export function useLinkProps<
@@ -175,6 +177,8 @@ function useLinkPropsImpl(
           equal: (prev, next) => prev.href === next.href,
         }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
 
+  // Links that start external skip useStore above. Subscribe if they later
+  // become internal so active state follows subsequent location changes.
   if (type.value === 'external') {
     Vue.watchEffect((onCleanup) => {
       if (type.value === 'external') {
@@ -235,6 +239,8 @@ function useLinkPropsImpl(
       })
   }
 
+  let pendingPreload: 'intent' | 'viewport' | undefined
+
   const enqueuePreload = (
     e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
   ) => {
@@ -280,15 +286,13 @@ function useLinkPropsImpl(
     }
   }
 
-  let pendingPreload: 'intent' | 'viewport' | undefined
-
   useIntersectionObserver(
     ref,
     enqueuePreload,
     () => preload.value !== 'viewport',
   )
 
-  Vue.effect(() => {
+  Vue.watchEffect(() => {
     if (preload.value !== 'render') {
       return
     }
@@ -508,7 +512,7 @@ function combineResultProps({
     ref,
     ...staticEventHandlers,
     href,
-    disabled: !!options.disabled,
+    disabled: options._asChild ? !!options.disabled : undefined,
     target: options.target,
   }
 
@@ -562,10 +566,9 @@ function getExternalLinkProps(
   const result: Record<string, unknown> = {
     ...getPropsSafeToSpread(options),
     ref,
-    ...staticEventHandlers,
-    href: dangerous ? undefined : options.to,
+    href: dangerous || options.disabled ? undefined : options.to,
     target: options.target,
-    disabled: options.disabled,
+    disabled: options._asChild ? !!options.disabled : undefined,
     style: options.style,
     class: options.class,
     onClick: staticEventHandlers?.onClick ?? options.onClick,
@@ -579,6 +582,11 @@ function getExternalLinkProps(
     onMouseout: staticEventHandlers?.onMouseout ?? eventHandlers.onMouseout,
     onTouchstart:
       staticEventHandlers?.onTouchstart ?? eventHandlers.onTouchstart,
+  }
+
+  if (options.disabled) {
+    result.role = 'link'
+    result['aria-disabled'] = true
   }
 
   for (const key of Object.keys(result)) {
