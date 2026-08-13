@@ -1,5 +1,54 @@
 # @tanstack/router-core
 
+## 1.171.22
+
+### Patch Changes
+
+- [#8039](https://github.com/TanStack/router/pull/8039) [`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13) - load-client can cache settles abandonned loader work without preload authority
+
+## 1.171.21
+
+### Patch Changes
+
+- [#8019](https://github.com/TanStack/router/pull/8019) [`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05) - handle excessive parent relative links
+
+## 1.171.20
+
+### Patch Changes
+
+- [#8006](https://github.com/TanStack/router/pull/8006) [`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246) - skip impossible JSON parse attempts
+
+- [#8010](https://github.com/TanStack/router/pull/8010) [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a) - perf: speed up structural sharing (`replaceEqualDeep`) by computing enumerable own keys with `Object.keys` + a length compare instead of `getOwnPropertyNames` followed by a `propertyIsEnumerable` call per key. This runs on every selector result on every state update when `defaultStructuralSharing` is enabled, and is ~1.3-1.5x faster on typical router state objects with identical behavior.
+
+## 1.171.19
+
+### Patch Changes
+
+- [#7992](https://github.com/TanStack/router/pull/7992) [`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9) - retain mounted UI during revalidation
+
+## 1.171.18
+
+### Patch Changes
+
+- [#7984](https://github.com/TanStack/router/pull/7984) [`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7) - Improve route-tree construction and matching performance by fusing static and
+  dynamic node creation, sorting only dynamic sibling lists that need it, and
+  deriving matcher depth from trie nodes.
+
+- [#7985](https://github.com/TanStack/router/pull/7985) [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b) - perf: compact private bundle boundaries- [#7975](https://github.com/TanStack/router/issues/7975)
+
+- [#7967](https://github.com/TanStack/router/pull/7967) [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c) - Preserve path params in their raw string form while matching routes so structured values returned by `params.parse` produce stable match IDs and do not reuse stale loader data.
+
+  `RouterCore.getMatchedRoutes()` now returns `[matchedRoutes, rawParams, foundRoute]` instead of an object.
+
+- Updated dependencies [[`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b)]:
+  - @tanstack/history@1.162.1
+
+## 1.171.17
+
+### Patch Changes
+
+- [#7962](https://github.com/TanStack/router/pull/7962) [`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5) - Update Seroval dependencies to version 1.6.2.
+
 ## 1.171.16
 
 ### Patch Changes

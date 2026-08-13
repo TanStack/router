@@ -12,7 +12,7 @@
   "dependencies": {
     "@solidjs/web": "^2.0.0-rc.0",
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/router-plugin": "^1.168.24",
+    "@tanstack/router-plugin": "^1.168.30",
     "@tanstack/solid-router": "^2.0.0-rc.0",
     "solid-js": "^2.0.0-rc.0",
     "tailwindcss": "^4.2.2"

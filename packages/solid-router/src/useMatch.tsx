@@ -78,7 +78,7 @@ export function useMatch<
       return router.stores.getMatchStore(opts.from).get()
     }
 
-    return nearestMatch?.match()
+    return nearestMatch?.[1 /* match */]()
   }
 
   Solid.createEffect(match, (selectedMatch) => {

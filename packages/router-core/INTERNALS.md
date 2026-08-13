@@ -45,6 +45,10 @@ match a private lane
   -> publish only if the navigation still owns the result
 ```
 
+An ordinary foreground or preload loader success can gain an independent cache
+owner while its lane is still private. This is per-match data reuse, not lane
+publication; unresolved loader work remains owned only by its consumers.
+
 Preloads run the same work without publishing a lane. Server loading uses a
 request signal instead of a client navigation owner. Hydration reconstructs the
 accepted server prefix, then hands any remaining client work to the initial
@@ -251,7 +255,10 @@ chain.
 On the client, eligible loaders and normal component chunks start concurrently.
 On the server, loaders reduce before normal render chunks are consumed.
 Reduction turns their outcomes into one terminal semantic lane and one cutoff.
-No task publishes while reduction is in progress.
+No task publishes semantic or presentation state while reduction is in
+progress. An eligible successful client loader may independently enter the
+off-screen cache at settlement; that admission neither accepts the lane nor
+selects its terminal outcome.
 
 ### Projected
 
@@ -321,9 +328,12 @@ is also removed from the transaction's private ownership before publication.
 
 Every asynchronous navigation or presentation publication checks `_tx`
 immediately before the write. Background publication additionally checks the
-exact committed base array from which it was derived. Preload cache admission
-and private redirect continuation use their own identity and controller checks
-instead.
+exact committed base array from which it was derived. Per-match cache admission
+is not lane publication: it requires the producing lane's controller to remain
+live and the cache entry captured during planning to remain the exact current
+entry. Navigation lanes use their transaction controller, while preloads use
+their independently owned controller. Private preload redirect continuation
+uses the active preload entry as its additional authority.
 
 ## `beforeLoad`: execution and hydration
 
@@ -390,6 +400,23 @@ lane uses that data or requires a loader generation. A discoverable same-ID
 flight may satisfy that requirement, including when `shouldReload` returns
 `true`.
 
+Every eligible successful blocking loader task from an ordinary foreground
+navigation or preload attempts cache admission immediately after loader
+settlement. It does not wait for component readiness, whole-lane reduction,
+projection, commit, or render acknowledgement. The cache receives a
+non-terminal copy with merged context removed and an additional flight lease;
+the private lane keeps its own match and lease until it commits or is discarded.
+If a navigation is superseded, a settled cached generation therefore survives
+the lane's lease release, while an unresolved loader has no cache owner and is
+aborted when its last consumer releases it. Navigation-produced entries retain
+normal navigation staleness and GC semantics rather than becoming synthetic
+preloads.
+
+Background loader candidates remain private until their exact transaction and
+committed base authorize background publication. Development refresh foreground
+generations also skip early cache admission because their candidate publication
+may roll back.
+
 It is valid for cached loader data to have been produced under context from an
 older `beforeLoad` generation. Loaders are the cache boundary; guards are not.
 Likewise, a shared in-flight invocation may have started with another lane's
@@ -401,15 +428,13 @@ its generation identity, but it can never satisfy freshness and must reload.
 Failed, canceled, loaderless, and expired generations do not become reusable
 loader-cache entries.
 
-A terminal preload lane can still contain independently successful loader
-generations when its error or not-found came from `beforeLoad`, validation, or
-another route. Each preload loader success attempts cache admission immediately,
-before whole-lane reduction. The cache receives a non-terminal copy and an
-additional flight lease; the speculative lane keeps its own lease and terminal
-meaning until it is discarded. This works even below the eventual render
-boundary and does not preserve the speculative parent chain: merged
-context and `beforeLoad` output are cleared. Same-ID `_ctx`, loader identity,
-and successful loader data remain reusable by design.
+A private client lane can contain independently successful loader generations
+when its eventual terminal outcome comes from `beforeLoad`, validation, another
+route, or when a descendant is still loading as the navigation is superseded.
+Settlement-time cache admission works even below the eventual render boundary
+and does not preserve the private parent chain: merged context and `beforeLoad`
+output are cleared. Same-ID `_ctx`, loader identity, and successful loader data
+remain reusable by design.
 
 Hydration retry is the transported-work exception because it did not run those
 client loader tasks. There, `loaderData` membership together with
@@ -424,12 +449,13 @@ transport. Reconstruction preserves the absence and does not treat an omitted
 value as reusable loader success during hydration retry.
 
 The cache may deliberately contain a successful generation with the same match
-ID as a committed match. For example, a speculative lane can produce reusable
-ancestor loader data before failing below it while the older committed
-generation remains visible. Cache-first matching lets the next lane use that
-newer loader generation. Its merged context and `beforeLoad` contribution have
-been removed; the merged chain is rebuilt from current parents and same-ID
-route-local context before `beforeLoad` reruns.
+ID as a committed match. For example, a navigation can finish an ancestor
+loader and then be superseded while a descendant is still pending, or a private
+lane can produce reusable ancestor data before failing below it while an older
+committed generation remains visible. Cache-first matching lets the next lane
+use that newer loader generation. Its merged context and `beforeLoad`
+contribution have been removed; the merged chain is rebuilt from current parents
+and same-ID route-local context before `beforeLoad` reruns.
 
 Commit removes a cache entry when the accepted render prefix contains that ID,
 or when a successful match anywhere in the committed lane contains it. A
@@ -722,6 +748,19 @@ executing them.
 
 Pending UI is presentation, not partial semantic commit.
 
+An exact successful match remains successful while `beforeLoad` or a blocking
+loader revalidates it only when the same successful, non-not-found prefix is in
+both the transaction's committed base and its starting presentation.
+`isFetching` exposes that work without replacing its rendered UI. A cache-only
+success, a different match ID, or a success hidden below a terminal boundary has
+no retained presentation and remains eligible for pending UI. Explicit
+force-pending invalidation already changes the committed generation to pending
+and therefore overrides retention.
+
+The initial pending offer for a fuzzy not-found lane waits until lazy route
+options resolve its boundary. This prevents a provisional ancestor boundary
+from replacing the mounted presentation before ownership moves to a lazy child.
+
 The first unresolved boundary is the only pending candidate. Its route or the
 router default must provide a pending component, and its effective `pendingMs`
 must allow presentation. Core does not skip an ineligible ancestor to expose an
@@ -909,15 +948,24 @@ leases and discovery entries are detached does it abort the collected flight and
 preload-lane controllers. A public loader signal can synchronously reenter from
 its abort listener; that reentrant load must observe the cleared authorities and
 every removed lease as already detached. Unselected concurrent preloads keep
-shared flights discoverable, and every later cache publication must still have a
-live preload signal and pass the per-match cache-entry identity check captured
-during planning.
+shared flights discoverable, and every later cache admission must still have a
+live producing-lane signal and pass the per-match cache-entry identity check
+captured during planning. Cache clearing does not cancel the current transaction,
+so an active navigation loader that settles afterward may establish a new cache
+generation. Invalidation is the API that replaces active semantic generations.
 
 Development refresh is deliberately aggressive about reuse. It removes all
 loader flights from discovery, discards active preloads and cache entries, and
 rematches with committed/cache reuse disabled so obsolete params, context,
 loader data, or projected assets cannot seed the refreshed lane. Selected cache
 and preload resources are detached before their controllers are aborted.
+
+Unlike an ordinary foreground navigation, a development refresh does not admit
+its loader successes to the cache while its candidate lane is private. The
+refresh publication checkpoint is created only after lane execution; admitting
+the new generation earlier would capture it as rollback cache and allow a failed
+or superseded refresh to remain reusable. Acknowledged refresh data becomes
+committed normally and may be cached later when displaced.
 
 Refresh does not immediately discard the accepted committed lane or abort the
 loader signals it still owns. The previous semantic lane, presentation, and
@@ -956,13 +1004,13 @@ match array while any eligible successful loader generations can still enter
 the cache. Cancellation or control flow that does not yield a reusable lane can
 resolve `undefined`.
 
-Each preload loader task compares the current cache entry for its match ID with
-the entry captured when that task was planned. It cannot overwrite a cache
-generation installed since that plan. Admission happens at loader settlement,
-without waiting for whole-lane success. A distinct successful generation may
-coexist with an older committed same-ID generation; this changes future
-planning precedence, not current presentation. A duplicate sharing the already
-accepted flight is discarded.
+Each preload loader task uses the shared settlement-time cache admission rule:
+it compares the current cache entry for its match ID with the entry captured when
+that task was planned. It cannot overwrite a cache generation installed since
+that plan. Admission does not wait for whole-lane success. A distinct successful
+generation may coexist with an older committed same-ID generation; this changes
+future planning precedence, not current presentation. A duplicate sharing the
+already accepted flight is discarded.
 
 `preloadRoute` also works on a server router. It runs the same speculative
 protocol with `preload: true`, can return matches and populate that router's

@@ -61,7 +61,11 @@ function splitProps<T extends Record<string, any>, TKey extends keyof T>(
   // Note: Solid.omit uses rest params (...keys), so we must spread the array.
   return [props as any, Solid.omit(props, ...(keys as any)) as any]
 }
-const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
+const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
+const cancelPreload = (eventTarget: object) => {
+  clearTimeout(timeoutMap.get(eventTarget))
+  timeoutMap.delete(eventTarget)
+}
 
 export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
@@ -73,7 +77,6 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): ComponentProps<'a'> {
   const router = useRouter()
-  const [isTransitioning, setIsTransitioning] = Solid.createSignal(false)
   const shouldHydrateHash = !isServer && !!router.options.ssr
   const hasHydrated = useHydrated()
 
@@ -208,7 +211,7 @@ export function useLinkProps<
 
   const preload = Solid.createMemo(
     () => {
-      if (_options().reloadDocument || externalLink()) {
+      if (_options().reloadDocument || externalLink() || local.disabled) {
         return false
       }
       return local.preload ?? router.options.defaultPreload
@@ -281,14 +284,6 @@ export function useLinkProps<
         console.warn(preloadWarning)
       })
 
-  const preloadViewportIoCallback = (
-    entry: IntersectionObserverEntry | undefined,
-  ) => {
-    if (entry?.isIntersecting) {
-      doPreload()
-    }
-  }
-
   const [ref, setRefSignal] = Solid.createSignal<Element | null>(null)
 
   const setRef = (el: Element | null) => {
@@ -297,18 +292,49 @@ export function useLinkProps<
     })
   }
 
-  useIntersectionObserver(
-    ref,
-    preloadViewportIoCallback,
-    { rootMargin: '100px' },
-    { disabled: !!local.disabled || !(Solid.untrack(preload) === 'viewport') },
-  )
+  const enqueuePreload = (
+    e?: MouseEvent | FocusEvent | IntersectionObserverEntry,
+  ) => {
+    if (!e) {
+      cancelPreload(ref)
+      return
+    }
+
+    if (
+      !(
+        (e as IntersectionObserverEntry).isIntersecting ??
+        preload() === 'intent'
+      )
+    ) {
+      if ((e as IntersectionObserverEntry).isIntersecting === false) {
+        cancelPreload(ref)
+      }
+      return
+    }
+
+    if (!preloadDelay()) {
+      doPreload()
+      return
+    }
+
+    if (!timeoutMap.has(ref)) {
+      timeoutMap.set(
+        ref,
+        setTimeout(() => {
+          timeoutMap.delete(ref)
+          doPreload()
+        }, preloadDelay()),
+      )
+    }
+  }
+
+  useIntersectionObserver(ref, enqueuePreload, () => preload() !== 'viewport')
 
   Solid.createEffect(preload, (preloadValue) => {
     if (hasRenderFetched) {
       return
     }
-    if (!local.disabled && preloadValue === 'render') {
+    if (preloadValue === 'render') {
       Solid.untrack(() => doPreload())
       hasRenderFetched = true
     }
@@ -357,17 +383,6 @@ export function useLinkProps<
     ) {
       e.preventDefault()
 
-      Solid.runWithOwner(null, () => {
-        setIsTransitioning(true)
-      })
-
-      const unsub = router.subscribe('onResolved', () => {
-        unsub()
-        Solid.runWithOwner(null, () => {
-          setIsTransitioning(false)
-        })
-      })
-
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
       router.navigate({
@@ -382,40 +397,14 @@ export function useLinkProps<
     }
   }
 
-  const enqueueIntentPreload = (e: MouseEvent | FocusEvent) => {
-    if (local.disabled || preload() !== 'intent') return
-
-    if (!preloadDelay()) {
-      doPreload()
-      return
-    }
-
-    const eventTarget = e.currentTarget || e.target
-
-    if (!eventTarget || timeoutMap.has(eventTarget)) return
-
-    timeoutMap.set(
-      eventTarget,
-      setTimeout(() => {
-        timeoutMap.delete(eventTarget)
-        doPreload()
-      }, preloadDelay()),
-    )
-  }
-
-  const handleTouchStart = (_: TouchEvent) => {
-    if (local.disabled || preload() !== 'intent') return
+  const handleTouchStart = () => {
+    if (preload() !== 'intent') return
     doPreload()
   }
 
-  const handleLeave = (e: MouseEvent | FocusEvent) => {
-    if (local.disabled) return
-    const eventTarget = e.currentTarget || e.target
-
-    if (eventTarget) {
-      const id = timeoutMap.get(eventTarget)
-      clearTimeout(id)
-      timeoutMap.delete(eventTarget)
+  const handleLeave = () => {
+    if (preload() === 'intent') {
+      cancelPreload(ref)
     }
   }
 
@@ -430,17 +419,14 @@ export function useLinkProps<
 
   const onClick = createComposedHandler(() => local.onClick, handleClick)
   const onBlur = createComposedHandler(() => local.onBlur, handleLeave)
-  const onFocus = createComposedHandler(
-    () => local.onFocus,
-    enqueueIntentPreload,
-  )
+  const onFocus = createComposedHandler(() => local.onFocus, enqueuePreload)
   const onMouseEnter = createComposedHandler(
     () => local.onMouseEnter,
-    enqueueIntentPreload,
+    enqueuePreload,
   )
   const onMouseOver = createComposedHandler(
     () => local.onMouseOver,
-    enqueueIntentPreload,
+    enqueuePreload,
   )
   const onMouseLeave = createComposedHandler(
     () => local.onMouseLeave,
@@ -552,8 +538,6 @@ export function useLinkProps<
     'aria-disabled': () => (local.disabled ? 'true' : undefined),
     'data-status': () => (isActive() ? 'active' : undefined),
     'aria-current': () => (isActive() ? 'page' : undefined),
-    'data-transitioning': () =>
-      isTransitioning() ? 'transitioning' : undefined,
     class: resolvedClass,
     style: resolvedStyle,
   })
@@ -639,9 +623,7 @@ export type LinkProps<
 
 export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
-  children?:
-    | JSX.Element
-    | ((state: { isActive: boolean; isTransitioning: boolean }) => JSX.Element)
+  children?: JSX.Element | ((state: { isActive: boolean }) => JSX.Element)
 }
 
 type LinkComponentSolidProps<TComp> = TComp extends ValidComponent
@@ -725,9 +707,6 @@ export const Link: LinkComponent<'a'> = (props) => {
       return (ch as Function)({
         get isActive() {
           return (linkProps as any)['data-status'] === 'active'
-        },
-        get isTransitioning() {
-          return (linkProps as any)['data-transitioning'] === 'transitioning'
         },
       })
     }

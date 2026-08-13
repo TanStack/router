@@ -8,9 +8,8 @@ import * as Solid from 'solid-js'
  * When the intersection changes, the callback will be called with the `IntersectionObserverEntry`.
  *
  * @param ref - The ref to observe
- * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
- * @param options - The options to pass to the hook
  * @param callback - The callback to call when the intersection changes
+ * @param disabled - Whether observation is disabled
  * @returns The IntersectionObserver instance
  * @example
  * ```tsx
@@ -19,37 +18,42 @@ import * as Solid from 'solid-js'
  * useIntersectionObserver(
  *  ref,
  *  (entry) => { doSomething(entry) },
- *  { rootMargin: '10px' },
- *  { disabled: false }
+ *  false
  * )
  * return <div ref={ref} />
  * ```
  */
 export function useIntersectionObserver<T extends Element>(
   ref: Solid.Accessor<T | null>,
-  callback: (entry: IntersectionObserverEntry | undefined) => void,
-  intersectionObserverOptions: IntersectionObserverInit = {},
-  options: { disabled?: boolean } = {},
+  callback: (entry?: IntersectionObserverEntry) => void,
+  disabled: Solid.Accessor<boolean>,
 ): Solid.Accessor<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =
     typeof IntersectionObserver === 'function'
   let observerRef: IntersectionObserver | null = null
 
-  Solid.createEffect(ref, (r) => {
-    if (!r || !isIntersectionObserverAvailable || options.disabled) {
-      return
-    }
+  Solid.createEffect(
+    () => [ref(), disabled()] as const,
+    ([r, isDisabled]) => {
+      if (isDisabled || !r || !isIntersectionObserverAvailable) {
+        return () => callback()
+      }
 
-    observerRef = new IntersectionObserver(([entry]) => {
-      callback(entry)
-    }, intersectionObserverOptions)
+      observerRef = new IntersectionObserver(
+        (entries) => {
+          callback(entries.pop())
+        },
+        { rootMargin: '100px' },
+      )
 
-    observerRef.observe(r)
+      observerRef.observe(r)
 
-    return () => {
-      observerRef?.disconnect()
-    }
-  })
+      return () => {
+        observerRef?.disconnect()
+        callback()
+      }
+    },
+  )
 
   return () => observerRef
 }

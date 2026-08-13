@@ -6,6 +6,7 @@ import { Rendered, Transitioner } from './Transitioner'
 import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type {
   AnyRoute,
   AnyRouter,
@@ -103,7 +104,19 @@ export function Matches() {
   return (
     <OptionalWrapper>
       <ResolvedSuspense
-        fallback={PendingComponent ? <PendingComponent /> : null}
+        fallback={
+          PendingComponent
+            ? (() => {
+                if (process.env.NODE_ENV !== 'production') {
+                  return renderInNonRouteComponentContext(
+                    () => <PendingComponent />,
+                    'pendingComponent',
+                  )
+                }
+                return <PendingComponent />
+              })()
+            : null
+        }
       >
         <Transitioner />
         <MatchesInner />
@@ -118,10 +131,7 @@ function MatchesInner() {
   const routeId = () => router.stores.ids.get()[0]
   const match = () =>
     routeId() ? router.stores.byRoute.get(routeId()!)?.get() : undefined
-  const nearestMatch = {
-    routeId,
-    match,
-  }
+  const nearestMatch = [routeId, match] as const
 
   const matchContent = () => (
     <Solid.Show when={routeId()} keyed>
@@ -274,7 +284,7 @@ export function useParentMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextRouteId = Solid.useContext(nearestMatchContext).routeId
+  const contextRouteId = Solid.useContext(nearestMatchContext)[0 /* route id */]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {
@@ -293,7 +303,7 @@ export function useChildMatches<
 >(
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Solid.Accessor<UseMatchesResult<TRouter, TSelected>> {
-  const contextRouteId = Solid.useContext(nearestMatchContext).routeId
+  const contextRouteId = Solid.useContext(nearestMatchContext)[0 /* route id */]
 
   return useMatches({
     select: (matches: Array<MakeRouteMatchUnion<TRouter>>) => {

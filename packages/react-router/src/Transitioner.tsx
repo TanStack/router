@@ -15,7 +15,11 @@ export function settleOwner(
   settle?.(rendered)
 }
 
-export function Transitioner() {
+export function Transitioner({
+  t,
+}: {
+  t: React.Dispatch<React.SetStateAction<AnyRouter | undefined>>
+}) {
   const router = useRouter()
   const acknowledgement = (router._rendered ??= [])
   const mounted =
@@ -28,6 +32,7 @@ export function Transitioner() {
     new Promise((resolve, reject) => {
       settleOwner(acknowledgement, false)
       acknowledgement.push(expected, resolve)
+      t(router)
       React.startTransition(() => {
         try {
           fn()

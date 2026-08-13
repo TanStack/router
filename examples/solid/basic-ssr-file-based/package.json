@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@solidjs/web": "^2.0.0-rc.0",
-    "@tanstack/router-plugin": "^1.168.24",
+    "@tanstack/router-plugin": "^1.168.30",
     "@tanstack/solid-router": "^2.0.0-rc.0",
     "compression": "^1.8.0",
     "express": "^5.2.1",
