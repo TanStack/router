@@ -79,14 +79,17 @@ export function Navigate<
   const href = router.buildLocation(props as any).href
 
   const previousHrefRef = React.useRef<string | null>(null)
-  const propsRef = React.useRef(props)
-  propsRef.current = props
 
   useLayoutEffect(() => {
     if (previousHrefRef.current !== href) {
       previousHrefRef.current = href
-      navigate(propsRef.current)
+      navigate(props)
     }
+    // `props` is intentionally omitted: it is a fresh object on every render,
+    // and `href` is what determines whether the destination actually changed.
+    // Closing over `props` from the committed render keeps the options that are
+    // not part of the href, such as `replace`, consistent with that href.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [href, navigate])
   return null
 }
