@@ -42,7 +42,7 @@ npm install -D @tanstack/router-plugin @tanstack/solid-router-devtools
 ```ts
 // vite.config.ts
 import { defineConfig } from 'vite'
-import solidPlugin from 'vite-plugin-solid'
+import solidPlugin from '@solidjs/vite-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
 
 export default defineConfig({

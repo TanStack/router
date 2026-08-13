@@ -13,19 +13,20 @@
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.32",
+    "@solidjs/web": "^2.0.0-rc.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "^1.168.24",
     "@tanstack/solid-devtools": "^0.7.0",
-    "@tanstack/solid-router": "^2.0.0-beta.30",
-    "@tanstack/solid-router-devtools": "^2.0.0-beta.25",
-    "@tanstack/solid-router-ssr-query": "^2.0.0-beta.31",
-    "@tanstack/solid-start": "^2.0.0-beta.31",
-    "solid-js": "2.0.0-beta.32",
+    "@tanstack/solid-router": "^2.0.0-rc.0",
+    "@tanstack/solid-router-devtools": "^2.0.0-rc.0",
+    "@tanstack/solid-router-ssr-query": "^2.0.0-rc.0",
+    "@tanstack/solid-start": "^2.0.0-rc.0",
+    "solid-js": "^2.0.0-rc.0",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
+    "@solidjs/vite-plugin": "^3.0.0-next.28",
     "@tanstack/eslint-config": "^0.3.2",
     "@testing-library/dom": "^10.4.1",
     "@types/bun": "^1.2.22",
@@ -35,7 +36,6 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "vite-plugin-solid": "^3.0.0-next.23",
     "vitest": "^4.1.4",
     "web-vitals": "^5.1.0"
   }

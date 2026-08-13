@@ -9,7 +9,7 @@ import type {
 } from '@tanstack/start-plugin-core/vite'
 import type { PluginOption } from 'vite'
 
-// vite-plugin-solid's client-assets manifest: resolves the module keys its
+// @solidjs/vite-plugin's client-assets manifest: resolves the module keys its
 // compiler bakes into lazy() calls to client JS/CSS assets — a live resolver
 // over the dev module graph in dev, the client build's `.vite/manifest.json`
 // in builds. Solid's server renderer consumes either shape natively.
@@ -95,7 +95,7 @@ export function tanstackStart(
           return undefined
         }
 
-        // Only swap when the installed vite-plugin-solid actually registers
+        // Only swap when the installed @solidjs/vite-plugin actually registers
         // the virtual module (older versions don't) — otherwise keep the
         // inert stub.
         const resolved = await this.resolve(SOLID_MANIFEST_ID, id)

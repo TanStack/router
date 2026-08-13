@@ -8,7 +8,7 @@
  *
  * This module is a stub on purpose: bundler integrations that can answer
  * those lookups (e.g. TanStack Start's vite plugin, which swaps this module
- * for vite-plugin-solid's `virtual:solid-manifest`) replace it at build
+ * for @solidjs/vite-plugin's `virtual:solid-manifest`) replace it at build
  * time. Everywhere else — plain SSR setups, bundlers without an
  * integration — it stays `undefined` and rendering falls back to the
  * router's own route manifest.
