@@ -396,6 +396,12 @@ export function startCompilerPlugin(
       },
 
       hotUpdate(ctx) {
+        // With `experimental.bundledDev`, Vite passes this hook to Rolldown's
+        // dev engine, which invokes it without an environment on the context.
+        // Compiler invalidation happens via `watchChange` on that path, so
+        // there is nothing to do here.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!this.environment) return
         const compiler = compilers.get(this.environment.name)
         const idsToInvalidate = new Set<string>()
         const transitiveCompilerImportersToInvalidate = new Set<string>()
