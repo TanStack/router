@@ -156,9 +156,7 @@ export const Match = (props: { routeId: string }) => {
                   fallback={(() => {
                     if (process.env.NODE_ENV !== 'production') {
                       return renderInNonRouteComponentContext(
-                        () => (
-                          <Dynamic component={resolvePendingComponent()} />
-                        ),
+                        () => <Dynamic component={resolvePendingComponent()} />,
                         'pendingComponent',
                       )
                     }
