@@ -16,15 +16,20 @@ import {
  * render, so an identity check never holds and the navigation is re-issued on
  * every render.
  *
- * That is only observable when the component rendering `<Navigate>` re-renders
- * while the navigation is still pending. Then each re-render supersedes the
- * in-flight navigation before its `beforeLoad` can settle, the navigation never
- * commits, and the component keeps re-rendering: the app is stuck on a loading
- * state while requests pile up.
+ * That is only observable when the component rendering `<Navigate>` re-renders,
+ * which the three routes below are the realistic ways of causing.
  *
- * The two routes below are the realistic ways a component gets re-rendered
- * during a pending navigation. `MAX_RENDERS` bounds the loop so a regressed
- * build fails the assertions instead of exhausting the browser tab.
+ * Subscribing to router state is enough on its own: issuing the navigation
+ * changes router state, which re-renders the component, which re-issues the
+ * navigation. No external input and no async destination are needed.
+ *
+ * An async destination makes it worse rather than being a precondition. It
+ * stays pending across the re-renders, so each re-issue supersedes the previous
+ * one and restarts its `beforeLoad`, turning the render loop into unbounded
+ * requests.
+ *
+ * `MAX_RENDERS` bounds the loop so a regressed build fails the assertions
+ * instead of exhausting the browser tab.
  */
 
 const MAX_RENDERS = 25
@@ -107,7 +112,7 @@ function RedirectViaExternalStore() {
     return <div data-testid="loop-detected">loop detected</div>
   }
 
-  return <Navigate to="/target" replace />
+  return <Navigate to="/async-target" replace />
 }
 
 /** Re-renders like the above, but passes `search` as an updater function. */
@@ -142,13 +147,20 @@ const externalStoreRedirectRoute = createRoute({
 const targetRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/target',
-  // Any destination that does not resolve synchronously keeps the redirect
-  // component mounted long enough for the re-render to matter.
+  component: () => <div data-testid="target-content">Target</div>,
+})
+
+// A destination that does not resolve synchronously stays pending across the
+// re-renders, so each re-issue supersedes the previous one and restarts this
+// guard. That is what turns the loop into unbounded requests.
+const asyncTargetRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: '/async-target',
   beforeLoad: async () => {
     stats.targetBeforeLoads++
     await new Promise((resolve) => setTimeout(resolve, 150))
   },
-  component: () => <div data-testid="target-content">Target</div>,
+  component: () => <div data-testid="target-content">Async target</div>,
 })
 
 const routeTree = rootRoute.addChildren([
@@ -156,6 +168,7 @@ const routeTree = rootRoute.addChildren([
   externalStoreRedirectRoute,
   functionSearchRedirectRoute,
   targetRoute,
+  asyncTargetRoute,
 ])
 
 const router = createRouter({ routeTree })
