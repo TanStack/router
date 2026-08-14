@@ -159,6 +159,31 @@ test('root route hydration without a pending boundary preserves component state'
   expect(consoleError).not.toHaveBeenCalled()
 })
 
+test('an unresolved functional ssr option does not enable a root pending boundary', async () => {
+  const rootRoute = createRootRoute({
+    ssr: () => true,
+    pendingComponent: () => <div>Root pending</div>,
+    component: () => <div>Root content</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+
+  const match = router.stores.matches.get()[0]!
+  expect(typeof match.ssr).toBe('function')
+
+  // Client match construction can expose the unresolved route option before
+  // hydration replaces it with its transported value.
+  router.ssr = { manifest: { routes: {} } }
+  router.isServer = true
+  const html = renderToString(<RouterProvider router={router} />)
+
+  expect(html).not.toContain('<!--$-->')
+  expect(html).toContain('Root content')
+})
+
 test('server rendering uses the root pending boundary inside its document shell', async () => {
   const gate = createControlledPromise<void>()
   const rootRoute = createRootRoute({

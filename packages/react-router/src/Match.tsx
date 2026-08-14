@@ -56,7 +56,8 @@ const canWrapInSuspense = (
   !route.isRoot ||
   (route.options as RootRouteOptions).shellComponent ||
   route.options.wrapInSuspense ||
-  (ssr != null && ssr !== true) ||
+  ssr === false ||
+  ssr === 'data-only' ||
   !((isServer ?? router.isServer) || router.ssr)
 
 export const Match = React.memo(function MatchImpl({
