@@ -2082,18 +2082,14 @@ export class RouterCore<
       }
     }
 
-    let maskedDest: BuildNextOptions | undefined
+    const next = build(opts)
+
     if (opts.mask) {
-      maskedDest = {
+      next.maskedLocation = build({
         from: opts.from,
         ...opts.mask,
-      }
-    }
-
-    const next = build(opts)
-    let maskedNext = maskedDest ? build(maskedDest) : undefined
-
-    if (!maskedNext && this.options.routeMasks) {
+      })
+    } else if (this.options.routeMasks) {
       const match = findFlatMatch<RouteMask<TRouteTree>>(
         next.pathname,
         this.processedTree,
@@ -2106,17 +2102,12 @@ export class RouterCore<
         // Otherwise, use the matched params or the provided params value
         const nextParams = resolveNextParams(maskParams, params)
 
-        maskedDest = {
+        next.maskedLocation = build({
           from: opts.from,
           ...maskProps,
           params: nextParams,
-        }
-        maskedNext = build(maskedDest)
+        })
       }
-    }
-
-    if (maskedNext) {
-      next.maskedLocation = maskedNext
     }
 
     return next
