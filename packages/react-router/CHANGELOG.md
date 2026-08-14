@@ -1,5 +1,16 @@
 # @tanstack/react-router
 
+## 1.170.28
+
+### Patch Changes
+
+- [#8055](https://github.com/TanStack/router/pull/8055) [`0c25a7b`](https://github.com/TanStack/router/commit/0c25a7b43b5331ee6ebf94d50e9793002783adab) - Avoid wrapping root components that may render the HTML document in a Suspense boundary during SSR and hydration.
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
+- Updated dependencies [[`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90)]:
+  - @tanstack/router-core@1.171.23
+
 ## 1.170.27
 
 ### Patch Changes
