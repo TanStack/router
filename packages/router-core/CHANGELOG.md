@@ -1,5 +1,15 @@
 # @tanstack/router-core
 
+## 1.171.24
+
+### Patch Changes
+
+- [#8071](https://github.com/TanStack/router/pull/8071) [`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2) - inline getOpenAndCloseBraces in parseSegment for byte shaving
+
+- [#8069](https://github.com/TanStack/router/pull/8069) [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e) - inline isFunction utility fn for byte shaving
+
+- [#8070](https://github.com/TanStack/router/pull/8070) [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff) - inline buildWithMatches inside buildLocation for byte shaving
+
 ## 1.171.23
 
 ### Patch Changes
