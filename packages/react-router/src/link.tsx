@@ -675,7 +675,7 @@ export function useLinkProps<
 
     if (
       !disabled &&
-      !isCtrlEvent(e) &&
+      !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
@@ -968,10 +968,6 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     return React.createElement(_asChild, linkProps, children)
   },
 ) as any
-
-function isCtrlEvent(e: React.MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
 
 export type LinkOptionsFnOptions<
   TOptions,
