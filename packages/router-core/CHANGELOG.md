@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.23
+
+### Patch Changes
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
 ## 1.171.22
 
 ### Patch Changes

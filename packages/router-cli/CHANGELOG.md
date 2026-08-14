@@ -1,5 +1,12 @@
 # @tanstack/router-cli
 
+## 1.167.29
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-generator@1.167.29
+
 ## 1.167.28
 
 ### Patch Changes

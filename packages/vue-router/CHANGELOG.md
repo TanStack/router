@@ -1,5 +1,16 @@
 # @tanstack/vue-router
 
+## 1.170.25
+
+### Patch Changes
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
+- [#8002](https://github.com/TanStack/router/pull/8002) [`3848503`](https://github.com/TanStack/router/commit/38485038c52ff898777cabeeeb2eaaa29c93f789) - Keep active route components mounted by default when route params change.
+
+- Updated dependencies [[`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90)]:
+  - @tanstack/router-core@1.171.23
+
 ## 1.170.24
 
 ### Patch Changes
