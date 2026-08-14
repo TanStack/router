@@ -362,6 +362,12 @@ async function contextualize(
   const [location, matches] = lane
   const signal = options[0 /* controller */].signal
   const preload = !!options[4 /* preload */]
+  for (let index = 0; index < retainedEnd; index++) {
+    const retained = options[3 /* base */][index]?.context
+    if (retained) {
+      matches[index]!.context = retained
+    }
+  }
   for (let index = options[7 /* resolvedPrefix */] ?? 0; index < end; index++) {
     const match = matches[index]!
     const route = getRoute(router, match)
@@ -397,8 +403,13 @@ async function contextualize(
         ...parentContext,
         ...routeContext,
       }
-      match.context = context
+      const retained =
+        index < retainedEnd && route.options.beforeLoad
+          ? options[3 /* base */][index]?.context
+          : undefined
+      match.context = retained ?? context
     } catch (cause) {
+      match.context = context
       releaseFlight(router, match)
       return [index, normalizeLaneError(route, cause, options)]
     }
@@ -408,6 +419,7 @@ async function contextualize(
     }
     const validationError = match.paramsError ?? match.searchError
     if (validationError !== undefined) {
+      match.context = context
       releaseFlight(router, match)
       return [index, normalizeLaneError(route, validationError, options)]
     }
@@ -448,6 +460,7 @@ async function contextualize(
       }
       const outcome = normalize(result, false, route.id)
       if (outcome[0 /* kind */] !== SUCCESS) {
+        match.context = context
         releaseFlight(router, match)
         return [index, outcome]
       }
@@ -456,6 +469,7 @@ async function contextualize(
         ...result,
       }
     } catch (cause) {
+      match.context = context
       releaseFlight(router, match)
       return [index, normalizeLaneError(route, cause, options)]
     } finally {
