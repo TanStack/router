@@ -1517,6 +1517,101 @@ test('<Navigate> does not re-issue navigation for cyclic state', async () => {
   expect(navigateSpy).toHaveBeenCalledTimes(1)
 })
 
+test('<Navigate> re-issues navigation when href changes', async () => {
+  const rootRoute = createRootRoute({
+    component: function RootComponent() {
+      const [href, setHref] = React.useState('/posts')
+
+      return (
+        <>
+          <button onClick={() => setHref('/about')}>About</button>
+          <Navigate href={href} />
+          <Outlet />
+        </>
+      )
+    },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => null,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts',
+    component: () => <h1 data-testid="posts-title">Posts</h1>,
+  })
+
+  const aboutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/about',
+    component: () => <h1 data-testid="about-title">About</h1>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute, aboutRoute]),
+    history,
+  })
+
+  const navigateSpy = vi.spyOn(router, 'navigate')
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('posts-title')).toBeInTheDocument()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'About' }))
+
+  expect(await screen.findByTestId('about-title')).toBeInTheDocument()
+  expect(navigateSpy).toHaveBeenCalledTimes(2)
+})
+
+test('<Navigate> re-issues navigation when replace changes', async () => {
+  const rootRoute = createRootRoute({
+    component: function RootComponent() {
+      const [replace, setReplace] = React.useState(false)
+
+      return (
+        <>
+          <button onClick={() => setReplace(true)}>Replace</button>
+          <Navigate to="/posts" replace={replace} />
+          <Outlet />
+        </>
+      )
+    },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => null,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts',
+    component: () => <h1 data-testid="posts-title">Posts</h1>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history,
+  })
+
+  const navigateSpy = vi.spyOn(router, 'navigate')
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('posts-title')).toBeInTheDocument()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Replace' }))
+
+  await waitFor(() => {
+    expect(navigateSpy).toHaveBeenCalledTimes(2)
+  })
+})
+
 test.each([true, false])(
   'should navigate to current route with search params when using "." in nested route structure from Index Route',
   async (trailingSlash: boolean) => {

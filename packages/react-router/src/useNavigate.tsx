@@ -15,6 +15,7 @@ import type { HistoryState, ParsedHistoryState } from '@tanstack/history'
 
 type NavigateLocationKey = {
   href: string
+  replace: boolean
   state: HistoryState
 }
 
@@ -217,10 +218,10 @@ function getNavigateLocationKey<
 ): NavigateLocationKey {
   const {
     hashScrollIntoView: _hashScrollIntoView,
-    href: _href,
+    href,
     ignoreBlocker: _ignoreBlocker,
     reloadDocument: _reloadDocument,
-    replace: _replace,
+    replace,
     resetScroll: _resetScroll,
     startTransition: _startTransition,
     viewTransition: _viewTransition,
@@ -233,7 +234,8 @@ function getNavigateLocationKey<
   } as Parameters<typeof router.buildLocation>[0])
 
   return {
-    href: trimPathRight(next.href),
+    href: trimPathRight(href || next.href),
+    replace: replace ?? false,
     state: getUserHistoryState(next.state),
   }
 }
@@ -242,7 +244,11 @@ function isSameNavigateLocationKey(
   a: NavigateLocationKey,
   b: NavigateLocationKey,
 ) {
-  return a.href === b.href && isEqualHistoryState(a.state, b.state)
+  return (
+    a.href === b.href &&
+    a.replace === b.replace &&
+    isEqualHistoryState(a.state, b.state)
+  )
 }
 
 /**
