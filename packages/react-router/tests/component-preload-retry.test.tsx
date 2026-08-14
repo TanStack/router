@@ -52,7 +52,7 @@ test('a resolved client component preload is reused', async () => {
   const Page = lazyRouteComponent(importer)
 
   await Page.preload?.()
-  await Page.preload?.()
+  expect(Page.preload).toBeUndefined()
   expect(importer).toHaveBeenCalledTimes(1)
 })
 
@@ -68,6 +68,9 @@ test('revisiting a resolved lazy component skips pending UI', async () => {
     .mockImplementationOnce(() => componentImport)
     .mockImplementationOnce(() => repeatedImport)
   const Page = lazyRouteComponent(importer)
+  const PendingComponent = vi.fn(() => (
+    <div data-testid="pending-component">Loading page</div>
+  ))
   const rootRoute = createRootRoute({
     component: () => (
       <>
@@ -92,14 +95,16 @@ test('revisiting a resolved lazy component skips pending UI', async () => {
     history: createMemoryHistory({ initialEntries: ['/'] }),
     defaultPendingMs: 0,
     defaultPendingMinMs: 0,
-    defaultPendingComponent: () => <div role="status">Loading page</div>,
+    defaultPendingComponent: PendingComponent,
   })
 
   render(<RouterProvider router={router} />)
   expect(await screen.findByText('Home content')).toBeInTheDocument()
 
   fireEvent.click(screen.getByRole('link', { name: 'Page link' }))
-  expect(await screen.findByRole('status')).toHaveTextContent('Loading page')
+  expect(await screen.findByTestId('pending-component')).toHaveTextContent(
+    'Loading page',
+  )
   await act(() => {
     componentImport.resolve({ default: () => <div>Page content</div> })
   })
@@ -107,17 +112,16 @@ test('revisiting a resolved lazy component skips pending UI', async () => {
 
   fireEvent.click(screen.getByRole('link', { name: 'Home link' }))
   expect(await screen.findByText('Home content')).toBeInTheDocument()
+  PendingComponent.mockClear()
   fireEvent.click(screen.getByRole('link', { name: 'Page link' }))
   await act(() => new Promise((resolve) => setTimeout(resolve, 10)))
 
   const revisitedContent = screen.queryByText('Page content')
-  const revisitedPending = screen.queryByRole('status')
-  await act(() => {
-    repeatedImport.resolve({ default: () => <div>Page content</div> })
-  })
+  const revisitedPending = screen.queryByTestId('pending-component')
 
   expect(revisitedContent).toBeInTheDocument()
   expect(revisitedPending).not.toBeInTheDocument()
+  expect(PendingComponent).not.toHaveBeenCalled()
   expect(importer).toHaveBeenCalledOnce()
 })
 

@@ -49,6 +49,7 @@ export function lazyRouteComponent<
         .then((res) => {
           if (typeof document !== 'undefined') {
             loadPromise = undefined
+            ;(lazyComp as any).preload = undefined
           }
           comp = res[exportName ?? 'default']
           return comp
@@ -68,9 +69,6 @@ export function lazyRouteComponent<
 
     return loadPromise
   }
-  const preload = () =>
-    comp && typeof document !== 'undefined' ? undefined : load()
-
   // Create a lazy component wrapper using defineComponent so it works in Vue SFC templates
   const lazyComp = Vue.defineComponent({
     name: 'LazyRouteComponent',
@@ -152,7 +150,7 @@ export function lazyRouteComponent<
   })
 
   // Add preload method
-  lazyComp.preload = preload
+  lazyComp.preload = load
 
   return lazyComp as any
 }
