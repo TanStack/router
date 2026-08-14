@@ -25,8 +25,9 @@ import {
   getRouteApi,
   useNavigate,
   useParams,
+  useRouterState,
 } from '../src'
-import type { RouterHistory } from '../src'
+import type { RouterHistory, RouterState } from '../src'
 
 let history: RouterHistory
 
@@ -1367,6 +1368,53 @@ test('<Navigate> navigates only once in <StrictMode>', async () => {
 
   expect(await screen.findByTestId('posts-title')).toBeInTheDocument()
   expect(navigateSpy.mock.calls.length).toBe(1)
+})
+
+test('<Navigate> does not re-issue navigation when its component re-renders', async () => {
+  let rootRenderCount = 0
+
+  const rootRoute = createRootRoute({
+    component: function RootComponent() {
+      useRouterState({ select: (state: RouterState) => state.location.href })
+      rootRenderCount++
+
+      return (
+        <>
+          <Navigate to="/posts" />
+          <Outlet />
+        </>
+      )
+    },
+  })
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => null,
+  })
+
+  const postsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/posts',
+    component: () => <h1 data-testid="posts-title">Posts</h1>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    history,
+  })
+
+  const navigateSpy = vi.spyOn(router, 'navigate')
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByTestId('posts-title')).toBeInTheDocument()
+
+  await waitFor(() => {
+    expect(rootRenderCount).toBeGreaterThan(1)
+  })
+
+  expect(navigateSpy).toHaveBeenCalledTimes(1)
 })
 
 test.each([true, false])(

@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import { deepEqual, trimPathRight } from '@tanstack/router-core'
 import { useLayoutEffect } from './utils'
 import { useRouter } from './useRouter'
 import type {
@@ -10,6 +11,50 @@ import type {
   RegisteredRouter,
   UseNavigateResult,
 } from '@tanstack/router-core'
+import type { HistoryState, ParsedHistoryState } from '@tanstack/history'
+
+type NavigateLocationKey = {
+  href: string
+  state: HistoryState
+}
+
+function getUserHistoryState({
+  key: _key,
+  __TSR_key: _tsrKey,
+  __TSR_index: _tsrIndex,
+  __hashScrollIntoViewOptions: _hashScroll,
+  ...state
+}: ParsedHistoryState): HistoryState {
+  return state
+}
+
+function getNavigateLocationKey<
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  router: TRouter,
+  props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+): NavigateLocationKey {
+  const next = router.buildLocation({
+    ...(props as any),
+    _includeValidateSearch: true,
+  })
+
+  return {
+    href: trimPathRight(next.href),
+    state: getUserHistoryState(next.state),
+  }
+}
+
+function isSameNavigateLocationKey(
+  a: NavigateLocationKey,
+  b: NavigateLocationKey,
+) {
+  return a.href === b.href && deepEqual(a.state, b.state)
+}
 
 /**
  * Imperative navigation hook.
@@ -60,20 +105,22 @@ export function Navigate<
   const TMaskFrom extends string = TFrom,
   const TMaskTo extends string = '',
 >(props: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>): null {
-  const router = useRouter()
-  const navigate = useNavigate()
+  const router = useRouter<TRouter>()
+  const navigate = useNavigate<TRouter>()
 
-  const previousPropsRef = React.useRef<NavigateOptions<
-    TRouter,
-    TFrom,
-    TTo,
-    TMaskFrom,
-    TMaskTo
-  > | null>(null)
+  const previousLocationKeyRef = React.useRef<NavigateLocationKey | null>(null)
   useLayoutEffect(() => {
-    if (previousPropsRef.current !== props) {
+    const nextLocationKey = getNavigateLocationKey(router, props)
+
+    if (
+      previousLocationKeyRef.current === null ||
+      !isSameNavigateLocationKey(
+        previousLocationKeyRef.current,
+        nextLocationKey,
+      )
+    ) {
+      previousLocationKeyRef.current = nextLocationKey
       navigate(props)
-      previousPropsRef.current = props
     }
   }, [router, props, navigate])
   return null
