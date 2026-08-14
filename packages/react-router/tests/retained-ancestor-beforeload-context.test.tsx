@@ -81,12 +81,14 @@ test('retained ancestor keeps its beforeLoad context while an ancestor above it 
   const childLoader = createControlledPromise<void>()
   const rootBeforeLoad = createControlledPromise<void>()
   let rootResolved = false
+  let rootBeforeLoadStarted = false
   const renderErrors: Array<string> = []
 
   const rootRoute = createRootRoute({
     beforeLoad: async () => {
       // Only the navigation blocks; the initial load must settle normally.
       if (rootResolved) {
+        rootBeforeLoadStarted = true
         await rootBeforeLoad
       }
       rootResolved = true
@@ -141,6 +143,7 @@ test('retained ancestor keeps its beforeLoad context while an ancestor above it 
   const navigation = router.navigate({ to: '/dash/detail' })
   await screen.findByText('Pending')
 
+  expect(rootBeforeLoadStarted).toBe(true)
   expect(renderErrors).toEqual([])
   expect(screen.getByText('user:ada')).toBeInTheDocument()
 
