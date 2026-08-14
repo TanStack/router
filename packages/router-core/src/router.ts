@@ -2082,59 +2082,44 @@ export class RouterCore<
       }
     }
 
-    const buildWithMatches = (
-      dest: BuildNextOptions = {},
-      maskedDest?: BuildNextOptions,
-    ) => {
-      const next = build(dest)
-
-      let maskedNext = maskedDest ? build(maskedDest) : undefined
-
-      if (!maskedNext) {
-        const params = Object.create(null)
-
-        if (this.options.routeMasks) {
-          const match = findFlatMatch<RouteMask<TRouteTree>>(
-            next.pathname,
-            this.processedTree,
-          )
-          if (match) {
-            Object.assign(params, match.rawParams) // Copy params, because they're cached
-            const {
-              from: _from,
-              params: maskParams,
-              ...maskProps
-            } = match.route
-
-            // If mask has a params function, call it with the matched params as context
-            // Otherwise, use the matched params or the provided params value
-            const nextParams = resolveNextParams(maskParams, params)
-
-            maskedDest = {
-              from: opts.from,
-              ...maskProps,
-              params: nextParams,
-            }
-            maskedNext = build(maskedDest)
-          }
-        }
-      }
-
-      if (maskedNext) {
-        next.maskedLocation = maskedNext
-      }
-
-      return next
-    }
-
+    let maskedDest: BuildNextOptions | undefined
     if (opts.mask) {
-      return buildWithMatches(opts, {
+      maskedDest = {
         from: opts.from,
         ...opts.mask,
-      })
+      }
     }
 
-    return buildWithMatches(opts)
+    const next = build(opts)
+    let maskedNext = maskedDest ? build(maskedDest) : undefined
+
+    if (!maskedNext && this.options.routeMasks) {
+      const match = findFlatMatch<RouteMask<TRouteTree>>(
+        next.pathname,
+        this.processedTree,
+      )
+      if (match) {
+        const params = Object.assign(Object.create(null), match.rawParams)
+        const { from: _from, params: maskParams, ...maskProps } = match.route
+
+        // If mask has a params function, call it with the matched params as context
+        // Otherwise, use the matched params or the provided params value
+        const nextParams = resolveNextParams(maskParams, params)
+
+        maskedDest = {
+          from: opts.from,
+          ...maskProps,
+          params: nextParams,
+        }
+        maskedNext = build(maskedDest)
+      }
+    }
+
+    if (maskedNext) {
+      next.maskedLocation = maskedNext
+    }
+
+    return next
   }
 
   _commitPromise: (Promise<void> & { resolve: () => void }) | undefined
