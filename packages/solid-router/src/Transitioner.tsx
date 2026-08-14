@@ -2,6 +2,7 @@ import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import type { AnyRouteMatch } from '@tanstack/router-core'
 
 function getResolvedLocation(router: ReturnType<typeof useRouter>) {
   const resolvedLocation = router.stores.resolvedLocation.get()
@@ -21,9 +22,11 @@ export function Transitioner() {
     return null
   }
 
-  router.startTransition = async (fn) => {
+  let transitionOwner: Array<AnyRouteMatch> | undefined
+  router.startTransition = async (fn, expected) => {
+    transitionOwner = expected
     await Solid.startTransition(fn)
-    return true
+    return transitionOwner === expected
   }
 
   // Subscribe to location changes
