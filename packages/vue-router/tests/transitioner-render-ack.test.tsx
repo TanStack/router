@@ -200,10 +200,7 @@ test('a rendered generation superseded before core continuation does not emit on
 
     expect(await screen.findByText('First')).toBeInTheDocument()
     await waitFor(() =>
-      expect(lifecycle).toEqual([
-        'mounted:/first',
-        'navigate:/second',
-      ]),
+      expect(lifecycle).toEqual(['mounted:/first', 'navigate:/second']),
     )
     expect(secondNavigation).toBeDefined()
     expect(lifecycle).not.toContain('onResolved:/first')
