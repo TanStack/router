@@ -59,6 +59,7 @@ export interface BunCompilerHosts {
   invalidate: (ids: Iterable<string>) => void
 }
 
+/** Whether a module id should run through the Start compiler. */
 function shouldTransformId(
   id: string,
   opts: { forceJsx?: boolean },
@@ -81,6 +82,7 @@ function shouldTransformId(
   return TRANSFORM_ID_REGEX.some((re) => re.test(id))
 }
 
+/** Create client/server StartCompiler hosts for Bun plugins. */
 export function createBunCompilerHosts(
   opts: BunCompilerHostOptions,
 ): BunCompilerHosts {

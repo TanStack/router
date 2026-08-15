@@ -81,12 +81,56 @@ export GREETING="hello\\nworld"
 NAME=world # trailing comment
 FULL=$GREETING-$NAME
 NESTED=\${NAME}_ok
+LITERAL=\\$UNSET_LITERAL
 `)
     expect(parsed.GREETING).toBe('hello\nworld')
     expect(parsed.NAME).toBe('world')
     expandEnvVariables(parsed)
     expect(parsed.FULL).toBe('hello\nworld-world')
     expect(parsed.NESTED).toBe('world_ok')
+    expect(parsed.LITERAL).toBe('$UNSET_LITERAL')
+  })
+
+  it('expands after applying process.env overrides', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'bun-env-expand-'))
+    try {
+      await writeFile(
+        join(root, '.env'),
+        'VITE_ORIGIN=file\nVITE_API=$VITE_ORIGIN/api\n',
+        'utf8',
+      )
+      const prev = process.env.VITE_ORIGIN
+      process.env.VITE_ORIGIN = 'process'
+      const loaded = loadBunEnvFiles({ root, mode: 'development' })
+      expect(loaded.VITE_ORIGIN).toBe('process')
+      expect(loaded.VITE_API).toBe('process/api')
+      expect(process.env.VITE_API).toBeUndefined()
+      if (prev === undefined) {
+        delete process.env.VITE_ORIGIN
+      } else {
+        process.env.VITE_ORIGIN = prev
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
+  })
+
+  it('does not mutate process.env across sequential roots', async () => {
+    const rootA = await mkdtemp(join(tmpdir(), 'bun-env-a-'))
+    const rootB = await mkdtemp(join(tmpdir(), 'bun-env-b-'))
+    try {
+      await writeFile(join(rootA, '.env'), 'SECRET_A=a\n', 'utf8')
+      await writeFile(join(rootB, '.env'), 'SECRET_B=b\n', 'utf8')
+      const beforeA = process.env.SECRET_A
+      const beforeB = process.env.SECRET_B
+      loadBunEnvFiles({ root: rootA, mode: 'development' })
+      loadBunEnvFiles({ root: rootB, mode: 'development' })
+      expect(process.env.SECRET_A).toBe(beforeA)
+      expect(process.env.SECRET_B).toBe(beforeB)
+    } finally {
+      await rm(rootA, { recursive: true, force: true })
+      await rm(rootB, { recursive: true, force: true })
+    }
   })
 
   it('creates define entries for env keys', () => {
@@ -127,12 +171,15 @@ NESTED=\${NAME}_ok
       )
       const prevVite = process.env.VITE_APP
       const prevOnly = process.env.VITE_ONLY_PROCESS
+      const prevSecret = process.env.SECRET
       process.env.VITE_APP = 'from-process'
       process.env.VITE_ONLY_PROCESS = 'only-process'
       const loaded = loadBunEnvFiles({ root, mode: 'development' })
       expect(loaded.VITE_APP).toBe('from-process')
       expect(loaded.SECRET).toBe('file')
       expect(loaded.VITE_ONLY_PROCESS).toBe('only-process')
+      // Must not leak file values into the process environment.
+      expect(process.env.SECRET).toBe(prevSecret)
       if (prevVite === undefined) {
         delete process.env.VITE_APP
       } else {

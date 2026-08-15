@@ -51,10 +51,12 @@ export type BunCodeSplitterRuntime = {
   transformVirtual: (code: string, id: string) => string
 }
 
+/** Detect route factory calls that need code-splitting. */
 function matchesRouteFactory(code: string): boolean {
   return routeFactoryCallCodeFilter.some((re) => re.test(code))
 }
 
+/** Pick a Bun loader from a file path extension. */
 function loaderForPath(filePath: string): 'tsx' | 'ts' | 'jsx' | 'js' {
   if (filePath.endsWith('.tsx')) {
     return 'tsx'
@@ -68,6 +70,7 @@ function loaderForPath(filePath: string): 'tsx' | 'ts' | 'jsx' | 'js' {
   return 'js'
 }
 
+/** Remove the `?…` query suffix from a module id. */
 function stripQuery(id: string): string {
   const q = id.indexOf('?')
   return q >= 0 ? id.slice(0, q) : id

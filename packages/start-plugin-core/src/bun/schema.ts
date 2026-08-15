@@ -63,6 +63,7 @@ export const tanstackStartBunOptionsSchema = tanstackStartOptionsObjectSchema
   .optional()
   .prefault({})
 
+/** Parse and validate TanStack Start Bun input config. */
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartBunOptionsSchema>,
   corePluginOpts: { framework: CompileStartFrameworkOptions },

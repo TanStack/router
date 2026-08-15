@@ -43,6 +43,7 @@ import type {
 import type { TanStackStartBunInputConfig } from './schema'
 import type { TanStackStartBunAdapter } from './types'
 
+/** Merge `bun` options field-wise (primary overrides fallback). */
 function mergeBunCoreOptions(
   primary?: BunCoreOptions,
   fallback?: BunCoreOptions,
@@ -67,6 +68,7 @@ function mergeBunCoreOptions(
   }
 }
 
+/** Create the experimental TanStack Start Bun bundler adapter. */
 export function tanStackStartBun(
   corePluginOpts: TanStackStartBunPluginCoreOptions,
   startPluginOpts: TanStackStartBunInputConfig = {},

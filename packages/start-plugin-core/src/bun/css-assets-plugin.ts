@@ -24,6 +24,7 @@ export interface CssAssetsPluginOptions {
   onCssEmitted?: (opts: { filePath: string; css: string; url: string }) => void
 }
 
+/** Normalize a public base path to always end with `/` when non-root. */
 function normalizePublicBase(base: string): string {
   if (!base || base === '/') {
     return '/'
@@ -31,11 +32,13 @@ function normalizePublicBase(base: string): string {
   return base.endsWith('/') ? base : `${base}/`
 }
 
+/** Remove the `?…` query suffix from a module id. */
 function stripQuery(id: string): string {
   const q = id.indexOf('?')
   return q >= 0 ? id.slice(0, q) : id
 }
 
+/** Return true when CSS appears to reference Tailwind. */
 function looksLikeTailwind(css: string): boolean {
   return (
     /@import\s+["']tailwindcss["']/.test(css) ||
@@ -44,6 +47,7 @@ function looksLikeTailwind(css: string): boolean {
   )
 }
 
+/** Collect class-name candidates for Tailwind content scanning. */
 async function collectTailwindCandidates(
   root: string,
   srcDirectory: string,
@@ -84,6 +88,7 @@ async function collectTailwindCandidates(
   return [...candidates]
 }
 
+/** Run optional PostCSS plugins over CSS. */
 async function applyPostcss(
   css: string,
   opts: { id: string; root: string; plugins?: Array<unknown> },
@@ -126,6 +131,7 @@ async function applyPostcss(
   }
 }
 
+/** Compile Tailwind CSS via `@tailwindcss/node` when available. */
 async function applyTailwind(
   css: string,
   opts: {
@@ -179,6 +185,7 @@ async function applyTailwind(
   }
 }
 
+/** Bun plugin that emits hashed CSS assets and CSS Modules. */
 export function createCssAssetsPlugin(
   opts: CssAssetsPluginOptions,
 ): BunPlugin {

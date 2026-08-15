@@ -80,6 +80,7 @@ export function classifyBunChange(
   return 'unknown'
 }
 
+/** Map a filesystem change kind to a rebuild scope. */
 export function rebuildScopeForChange(kind: BunChangeKind): BunRebuildScope {
   switch (kind) {
     case 'server-only':
@@ -95,6 +96,7 @@ export function rebuildScopeForChange(kind: BunChangeKind): BunRebuildScope {
   }
 }
 
+/** Map a rebuild scope to an HMR SSE event type. */
 export function hmrEventForScope(scope: BunRebuildScope): BunHmrEventType {
   switch (scope) {
     case 'server':

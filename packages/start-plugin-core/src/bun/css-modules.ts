@@ -48,10 +48,12 @@ export function transformCssModules(opts: {
   return { css, exports }
 }
 
+/** Escape a string for safe use inside a RegExp. */
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
+/** Return true for `*.module.css` (and similar) paths. */
 export function isCssModulesFile(filePath: string): boolean {
   return /\.module\.(css|scss|sass|less)$/i.test(filePath.split('?')[0] ?? '')
 }

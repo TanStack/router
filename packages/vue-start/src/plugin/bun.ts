@@ -12,6 +12,7 @@ import type {
   TanStackStartBunAdapter,
 } from '@tanstack/start-plugin-core/bun'
 
+/** Resolve default Start entry file paths for the app root. */
 function resolveDefaultEntryPaths() {
   if (existsSync(vueStartDefaultEntryPaths.client)) {
     return vueStartDefaultEntryPaths

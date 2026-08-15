@@ -46,6 +46,7 @@ export type BunBuildContext = {
   framework: CompileStartFrameworkOptions
 }
 
+/** Build the browser client bundle with Bun.build. */
 export async function buildBunClient(ctx: BunBuildContext) {
   await mkdir(ctx.outDirs.client, { recursive: true })
   ctx.setPluginAdapters('client')
@@ -149,6 +150,7 @@ export async function buildBunClient(ctx: BunBuildContext) {
   return { result, clientBuild }
 }
 
+/** Build the Bun SSR server bundle. */
 export async function buildBunServer(ctx: BunBuildContext) {
   await mkdir(ctx.outDirs.server, { recursive: true })
   ctx.setPluginAdapters('server')
@@ -218,6 +220,7 @@ export async function buildBunServer(ctx: BunBuildContext) {
   return result
 }
 
+/** Write dist/server/host.js for production static+SSR hosting. */
 export async function writeBunHostEntry(serverOutDir: string) {
   const { generateHostEntrySource } = await import('./static-host')
   await writeFile(
@@ -227,6 +230,7 @@ export async function writeBunHostEntry(serverOutDir: string) {
   )
 }
 
+/** Copy the app public/ directory into the client output. */
 export async function copyBunPublicAssets(opts: {
   root: string
   clientOutDir: string

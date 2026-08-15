@@ -8,6 +8,7 @@ const require = createRequire(import.meta.url)
 
 let cachedBrowserRefreshEntry: string | null = null
 
+/** Fallback no-op React Refresh runtime for the browser. */
 function getMinimalReactRefreshShim(): string {
   return `export function injectIntoGlobalHook(_global) {}
 export function performReactRefresh() {}
@@ -59,6 +60,7 @@ export async function getReactRefreshBrowserEntry(): Promise<string> {
   }
 }
 
+/** Wrap a bundled react-refresh/runtime for browser globals. */
 function wrapBundledRefreshRuntime(bundledEsm: string): string {
   // Bun CJS→ESM typically ends with `export default require_xxx();`
   const rewritten = bundledEsm.replace(
@@ -87,6 +89,7 @@ export const performReactRefresh = (...args) =>
 `
 }
 
+/** HTML preamble that installs React Refresh globals. */
 export function getReactRefreshPreambleHtml(
   refreshModulePath: string,
 ): string {

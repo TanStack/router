@@ -27,6 +27,7 @@ export interface BunVirtualModuleStore {
   }) => void
 }
 
+/** In-memory store for Start virtual modules (manifest, etc.). */
 export function createBunVirtualModuleStore(): BunVirtualModuleStore {
   const modules = new Map<string, string>()
 

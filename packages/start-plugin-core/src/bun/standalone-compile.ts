@@ -7,6 +7,7 @@ export interface BunStandaloneCompileResult {
   outfile: string
 }
 
+/** Default standalone executable path under server out dir. */
 function defaultOutfile(serverOutDir: string): string {
   const base = join(serverOutDir, 'start')
   if (process.platform === 'win32') {
@@ -15,6 +16,7 @@ function defaultOutfile(serverOutDir: string): string {
   return base
 }
 
+/** Resolve the standalone compile output path (incl. `.exe`). */
 function resolveOutfile(
   root: string,
   serverOutDir: string,
@@ -39,6 +41,7 @@ function resolveOutfile(
   return abs
 }
 
+/** Relative import specifier from the standalone entry to an asset. */
 function toImportSpecifier(fromFile: string, assetAbs: string): string {
   let rel = relative(dirname(fromFile), assetAbs)
   if (!rel.startsWith('.')) {
@@ -48,6 +51,7 @@ function toImportSpecifier(fromFile: string, assetAbs: string): string {
   return rel.replace(/\\/g, '/')
 }
 
+/** Public URL path for an embedded client asset (honors publicBase). */
 function publicUrlPath(
   clientOutDir: string,
   assetAbs: string,

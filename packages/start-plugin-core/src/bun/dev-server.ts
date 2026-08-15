@@ -112,6 +112,7 @@ export function resolveFsAllowList(root: string): Array<string> {
   return [...roots]
 }
 
+/** Detect npm/Yarn/Bun `package.json` workspaces at a directory. */
 function hasPackageJsonWorkspaces(dir: string): boolean {
   try {
     const raw = readFileSync(join(dir, 'package.json'), 'utf8')
@@ -130,6 +131,7 @@ function hasPackageJsonWorkspaces(dir: string): boolean {
   }
 }
 
+/** Return true when `absPath` is under one of the allow-list roots. */
 export function isPathInsideAllowList(
   absPath: string,
   allowList: ReadonlyArray<string>,
@@ -167,6 +169,7 @@ export function resolvePublicAssetPath(
   return candidate
 }
 
+/** Inject HMR / React Refresh / ESM-dev entry scripts into HTML. */
 function injectDevScripts(
   html: string,
   opts: { framework: CompileStartFrameworkOptions; esmDev: boolean },
@@ -231,6 +234,7 @@ function injectDevScripts(
   return next
 }
 
+/** Encode an HMR event as an SSE `data:` payload. */
 function encodeSse(
   event: BunHmrEventType,
   modules?: Array<string>,

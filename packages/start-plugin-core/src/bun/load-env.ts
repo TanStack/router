@@ -4,7 +4,7 @@ import { join } from 'pathe'
 /**
  * Vite-aligned `.env` loading (mode-aware).
  * Later files override earlier ones. Existing `process.env` wins over file values
- * in the returned map (and is never overwritten).
+ * in the returned map. Does not mutate `process.env`.
  */
 export function loadBunEnvFiles(opts: {
   root: string
@@ -28,16 +28,7 @@ export function loadBunEnvFiles(opts: {
     Object.assign(fromFiles, parseEnvFile(text))
   }
 
-  expandEnvVariables(fromFiles)
-
-  for (const [key, value] of Object.entries(fromFiles)) {
-    if (process.env[key] === undefined) {
-      process.env[key] = value
-    }
-  }
-
-  // Effective map for defines: process.env wins; include public keys that exist
-  // only in the process environment (never written from a file).
+  // Effective map first: process.env overrides file values, then expand once.
   const effective: Record<string, string> = { ...fromFiles }
   for (const key of Object.keys(fromFiles)) {
     const processValue = process.env[key]
@@ -54,7 +45,7 @@ export function loadBunEnvFiles(opts: {
     }
   }
 
-  return effective
+  return expandEnvVariables(effective)
 }
 
 /**
@@ -144,6 +135,7 @@ export function parseEnvFile(text: string): Record<string, string> {
   return out
 }
 
+/** Strip unquoted `#` comments that begin after whitespace. */
 function stripInlineComment(value: string): string {
   let inSingle = false
   let inDouble = false
@@ -167,6 +159,7 @@ function stripInlineComment(value: string): string {
   return value
 }
 
+/** Unescape common double-quoted `.env` sequences. */
 function unescapeDoubleQuoted(value: string): string {
   return value
     .replace(/\\n/g, '\n')
@@ -176,7 +169,10 @@ function unescapeDoubleQuoted(value: string): string {
     .replace(/\\\\/g, '\\')
 }
 
-/** Expand `$VAR` / `${VAR}` using values already in the map, then `process.env`. */
+/**
+ * Expand `$VAR` / `${VAR}` using values already in the map, then `process.env`.
+ * Escaped dollars (`\$VAR`, `\${VAR}`) are preserved as literals.
+ */
 export function expandEnvVariables(
   env: Record<string, string>,
 ): Record<string, string> {
@@ -188,11 +184,40 @@ export function expandEnvVariables(
   }
 
   for (const [key, raw] of Object.entries(env)) {
-    env[key] = raw.replace(
-      /\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
-      (_m, braced: string | undefined, bare: string | undefined) =>
-        lookup(braced ?? bare ?? ''),
-    )
+    let out = ''
+    for (let i = 0; i < raw.length; i++) {
+      const ch = raw[i]!
+      if (ch === '\\' && raw[i + 1] === '$') {
+        out += '$'
+        i += 1
+        continue
+      }
+      if (ch !== '$') {
+        out += ch
+        continue
+      }
+      if (raw[i + 1] === '{') {
+        const end = raw.indexOf('}', i + 2)
+        if (end > i) {
+          const name = raw.slice(i + 2, end)
+          if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+            out += lookup(name)
+            i = end
+            continue
+          }
+        }
+        out += ch
+        continue
+      }
+      const match = raw.slice(i + 1).match(/^([A-Za-z_][A-Za-z0-9_]*)/)
+      if (match) {
+        out += lookup(match[1]!)
+        i += match[1]!.length
+        continue
+      }
+      out += ch
+    }
+    env[key] = out
   }
   return env
 }

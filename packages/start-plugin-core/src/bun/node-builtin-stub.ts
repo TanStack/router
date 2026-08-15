@@ -37,6 +37,7 @@ export function isNodeBuiltinFsPath(absPath: string): boolean {
   return isNodeBuiltinSpecifier(spec)
 }
 
+/** Return browser stub source for a `node:*` builtin. */
 export function getNodeBuiltinStubSource(spec: string): string {
   const normalized = spec.startsWith('/') ? spec.slice(1) : spec
   const name = normalized.startsWith('node:')

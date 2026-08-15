@@ -57,6 +57,7 @@ const RESOLVE_EXTS = [
   '/index.mjs',
 ] as const
 
+/** Map a file extension to a Bun.Transpiler loader. */
 function guessLoader(filePath: string): 'tsx' | 'ts' | 'jsx' | 'js' {
   const ext = extname(filePath)
   if (ext === '.tsx') return 'tsx'
@@ -105,6 +106,7 @@ function injectBunJsxRuntimeImports(code: string): string {
   return `${lines.join('\n')}\n${code}`
 }
 
+/** Convert an absolute filesystem path to a `/@fs…` URL. */
 function toFsUrl(absPath: string): string {
   return `/@fs${absPath.startsWith('/') ? absPath : `/${absPath}`}`
 }
@@ -155,6 +157,7 @@ export function resolveFsCandidate(absPath: string): string | null {
   return null
 }
 
+/** Resolve a relative/bare import specifier to an absolute path. */
 function resolveRelativeSpecifier(spec: string, filePath: string): string {
   const base = dirname(filePath)
   try {
@@ -179,6 +182,7 @@ function resolveRelativeSpecifier(spec: string, filePath: string): string {
 const IMPORT_SPEC_RE =
   /(\bfrom\s+|\bimport\s*\(\s*)(['"])([^'"]+)\2|(\bimport\s+)(['"])([^'"]+)\5/y
 
+/** Heuristic: whether a string looks like an import specifier. */
 function isPlausibleModuleSpecifier(spec: string): boolean {
   if (!spec || /[\s+]/.test(spec)) return false
   return /^(?:\.{1,2}\/|\/|file:|node:|data:|blob:|[A-Za-z@#])/.test(spec)
@@ -305,6 +309,7 @@ export function rewriteImportsForDevMiddleware(
   return out
 }
 
+/** Rewrite a single import specifier for ESM-dev middleware. */
 function rewriteOneSpecifier(
   spec: string,
   filePath: string,
@@ -357,6 +362,7 @@ function rewriteOneSpecifier(
   }
 }
 
+/** Resolve a bare package specifier using Bun.resolveSync. */
 export async function resolveBareSpecifier(
   spec: string,
   importer: string,
@@ -394,6 +400,7 @@ export function applyDefineReplacements(
   return next
 }
 
+/** Detect CommonJS source that needs browser ESM bundling. */
 function looksLikeCjs(code: string): boolean {
   return (
     /\bmodule\.exports\b/.test(code) ||
@@ -415,6 +422,7 @@ const CJS_BROWSER_EXTERNALS = [
   'scheduler',
 ] as const
 
+/** Attempt to bundle a CJS file to ESM for the browser. */
 async function tryBundleCjs(absPath: string): Promise<string | null> {
   // Externalize only React singletons. A catch-all "externalize every bare
   // import" makes Bun emit `__require("…")` stubs (e.g. with-selector →
@@ -469,6 +477,7 @@ function isIdentifierReassigned(code: string, name: string): boolean {
   return false
 }
 
+/** Bundle CJS → ESM and add named re-exports when possible. */
 async function bundleCjsToEsm(absPath: string): Promise<string | null> {
   const cached = cjsEsmCache.get(absPath)
   if (cached) return cached
@@ -500,6 +509,7 @@ function collectCjsExportNames(bundledEsm: string): Array<string> {
   return [...names]
 }
 
+/** Append named ESM re-exports for a CJS-to-ESM bundle. */
 function addCjsNamedReexports(bundledEsm: string): string {
   if (!/export\s+default\s+/.test(bundledEsm)) return bundledEsm
 
@@ -527,6 +537,7 @@ ${namedBlock}
   return replaced === bundledEsm ? bundledEsm : replaced
 }
 
+/** On-demand transform a module for Bun ESM-dev middleware. */
 export async function transformDevModule(
   opts: DevTransformOptions,
   absPath: string,
@@ -647,6 +658,7 @@ export default css;
   }
 }
 
+/** Whether an absolute path is under the app root for transforms. */
 function shouldTransformApp(filePath: string, root: string): boolean {
   const n = filePath.replace(/\\/g, '/')
   const r = root.replace(/\\/g, '/')
@@ -669,6 +681,7 @@ function shouldTransformApp(filePath: string, root: string): boolean {
   return false
 }
 
+/** Async existence check for a filesystem path. */
 export async function fileExists(path: string): Promise<boolean> {
   try {
     await stat(path)
@@ -678,6 +691,7 @@ export async function fileExists(path: string): Promise<boolean> {
   }
 }
 
+/** Whether a URL pathname should go through ESM-dev transform. */
 export function isTransformablePath(pathname: string): boolean {
   return (
     pathname.startsWith('/@fs/') ||

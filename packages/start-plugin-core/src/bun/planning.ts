@@ -13,6 +13,7 @@ export interface BunResolvedEntryAliases {
   alias: Record<(typeof ENTRY_POINTS)[keyof typeof ENTRY_POINTS], string>
 }
 
+/** Normalize an entry path to absolute (or preserve `file:` URLs). */
 function normalizeEntryPath(filePath: string): string {
   if (filePath.startsWith('file:') || isAbsolute(filePath)) {
     return filePath
@@ -20,6 +21,7 @@ function normalizeEntryPath(filePath: string): string {
   return join(process.cwd(), filePath)
 }
 
+/** Build `#tanstack-*` entry aliases for Bun builds. */
 export function createBunResolvedEntryAliases(opts: {
   entryPaths: ResolvedStartEntryPlan['entryPaths']
 }): BunResolvedEntryAliases {
@@ -42,6 +44,7 @@ export function createBunResolvedEntryAliases(opts: {
   }
 }
 
+/** Create process.env + import.meta.env define pairs for one key. */
 function defineReplaceEnv(
   key: string,
   value: string,
@@ -52,6 +55,7 @@ function defineReplaceEnv(
   }
 }
 
+/** Build the shared Bun define map for Start runtime flags. */
 export function createBunDefine(opts: {
   serverFnBase: string
   routerBasepath: string
@@ -89,6 +93,7 @@ export function createBunDefine(opts: {
   }
 }
 
+/** Resolve absolute client/server output directories. */
 export function resolveBunOutputDirectories(opts: {
   root: string
   clientOutDir?: string

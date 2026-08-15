@@ -6,6 +6,7 @@ import type { CompileStartFrameworkOptions } from '../types'
 
 const require = createRequire(import.meta.url)
 
+/** Transform JSX for React/Solid/Vue in the Bun pipeline. */
 export async function transformFrameworkJsx(opts: {
   code: string
   id: string
@@ -79,6 +80,7 @@ export function createFrameworkJsxPlugin(opts: {
   }
 }
 
+/** Resolve a package from the app root or this package. */
 async function resolveFromAppOrPackage(
   root: string,
   specifiers: Array<string>,
@@ -102,6 +104,7 @@ async function resolveFromAppOrPackage(
   return null
 }
 
+/** Compile Solid JSX with babel-preset-solid. */
 async function transformSolidJsx(
   code: string,
   filename: string,
@@ -155,6 +158,7 @@ async function transformSolidJsx(
   return result?.code ?? null
 }
 
+/** Compile Vue JSX with @vue/babel-plugin-jsx. */
 async function transformVueJsx(
   code: string,
   filename: string,

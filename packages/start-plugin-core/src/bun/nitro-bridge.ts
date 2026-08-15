@@ -12,6 +12,7 @@ export interface BunNitroBuildResult {
   outputDir: string
 }
 
+/** Dynamically import Nitro builder APIs from the app root. */
 async function importNitroBuilder(root: string): Promise<
   typeof import('nitro/builder')
 > {

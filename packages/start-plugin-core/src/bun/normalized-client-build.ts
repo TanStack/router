@@ -187,6 +187,7 @@ export async function enrichBunClientBuildFromSourcemaps(opts: {
   }
 }
 
+/** Relativize an absolute output path to the client out dir. */
 export function toClientRelativeFileName(
   absolutePath: string,
   clientOutDir: string,
@@ -195,6 +196,7 @@ export function toClientRelativeFileName(
   return rel.replace(/\\/g, '/')
 }
 
+/** Collect route file paths from Bun build inputs / sourcemaps. */
 export function getRouteFilePathsFromInputs(
   inputs: Array<{ path: string }> | undefined,
 ): Array<string> {
@@ -217,6 +219,7 @@ export function getRouteFilePathsFromInputs(
   return paths
 }
 
+/** Extract a route path from a `?tsr-split=` source id. */
 function extractRouteFilePathFromSource(id: string): string | undefined {
   // Bun sourcemaps often prefix virtual namespaces: tsr-split:/abs/path?tsr-split=...
   let normalized = id
@@ -247,6 +250,7 @@ function extractRouteFilePathFromSource(id: string): string | undefined {
   return normalized.slice(0, queryIndex)
 }
 
+/** Read the `sources` array from a linked `.js.map` file. */
 async function readSourcemapSources(mapPath: string): Promise<Array<string>> {
   try {
     const raw = await readFile(mapPath, 'utf8')
