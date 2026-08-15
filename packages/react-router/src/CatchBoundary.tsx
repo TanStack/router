@@ -5,16 +5,7 @@ import { wrapInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
 
-export function CatchBoundary(props: {
-  getResetKey: () => unknown
-  children: React.ReactNode
-  errorComponent?: ErrorRouteComponent
-  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
-}) {
-  return <CatchBoundaryImpl {...props} />
-}
-
-class CatchBoundaryImpl extends React.Component<{
+export class CatchBoundary extends React.Component<{
   getResetKey: () => unknown
   children: React.ReactNode
   errorComponent?: ErrorRouteComponent
