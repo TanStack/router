@@ -1,7 +1,8 @@
-import { For } from 'solid-js'
-import { HydrationScript } from '@solidjs/web'
-import { Asset } from './Asset'
-import { useTags } from './headContentUtils'
+import { createEffect, createMemo } from 'solid-js'
+import { HydrationScript, useHead } from '@solidjs/web'
+import { DEV_STYLES_ATTR } from '@tanstack/router-core'
+import { useHydrated } from './ClientOnly'
+import { toHeadTags, useTags } from './headContentUtils'
 import type { AssetCrossOriginConfig } from '@tanstack/router-core'
 
 export interface HeadContentProps {
@@ -9,21 +10,42 @@ export interface HeadContentProps {
 }
 
 /**
- * @description The `HeadContent` component is used to render meta tags, links, and scripts for the current route.
- * Place this component inside the `<head>` of your document so the rendered tags end up in the right place.
+ * @description The `HeadContent` component registers the current route's meta
+ * tags, links, and scripts with Solid's head registry, which owns emission
+ * into `<head>` (SSR splicing/streaming and client-side patching alike). It
+ * can be rendered anywhere in the tree, though placing it inside the `<head>`
+ * of your document keeps the hydration script in the right place.
  */
 export function HeadContent(props: HeadContentProps) {
   const tags = useTags(props.assetCrossOrigin)
+  const hydrated = useHydrated()
 
-  return (
-    <>
-      <HydrationScript />
-      <For each={tags()}>
-        {(tag) => {
-          const t = tag as any
-          return <Asset tag={t.tag} attrs={t.attrs} children={t.children} />
-        }}
-      </For>
-    </>
+  // Dev-styles handling (no-op in production builds, where no
+  // DEV_STYLES_ATTR links exist): the dev server SSRs route CSS as marked
+  // links to avoid FOUC, and Vite's own style injection takes over after
+  // hydration. Drop them from the registered tags once hydrated, and sweep
+  // any orphans left behind by hydration mismatches.
+  createEffect(
+    () => [hydrated()] as const,
+    ([hydrated]) => {
+      if (hydrated) {
+        document
+          .querySelectorAll(`link[${DEV_STYLES_ATTR}]`)
+          .forEach((el) => el.remove())
+      }
+    },
   )
+
+  const filteredTags = createMemo(() => {
+    if (hydrated()) {
+      return tags().filter(
+        (tag) => tag.tag !== 'link' || tag.attrs?.[DEV_STYLES_ATTR] !== true,
+      )
+    }
+    return tags()
+  })
+
+  useHead(() => toHeadTags(filteredTags()))
+
+  return <HydrationScript />
 }

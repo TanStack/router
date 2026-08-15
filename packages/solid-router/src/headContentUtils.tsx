@@ -7,7 +7,9 @@ import {
   getScriptPreloadAttrs,
   resolveManifestCssLink,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import type { HeadTag } from '@solidjs/web'
 import type {
   AssetCrossOriginConfig,
   RouterManagedTag,
@@ -220,6 +222,54 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
 
     return prev === undefined ? next : replaceEqualTags(prev, next)
   })
+}
+
+const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
+
+/**
+ * Convert the router-managed tags into head registry descriptors for
+ * `useHead`. Pure data mapping — it is evaluated inside the registry's own
+ * flush boundary (server) / effect (client), so it must not allocate
+ * reactive owners.
+ */
+export function toHeadTags(tags: Array<RouterManagedTag>): Array<HeadTag> {
+  return tags.map(toHeadTag)
+}
+
+function toHeadTag(t: RouterManagedTag): HeadTag {
+  const props: Record<string, any> = { ...t.attrs }
+  let children = t.children as string | undefined
+
+  if (
+    t.tag === 'style' &&
+    t.inlineCss &&
+    (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+      (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
+  ) {
+    // Mark the inline-CSS style so the client can find it again: the
+    // serialized manifest omits the CSS text, so on the client the tag
+    // arrives with `children === undefined` and the text is recovered from
+    // the server-rendered element.
+    props[INLINE_CSS_HYDRATION_ATTR] = ''
+  }
+
+  if (
+    t.tag === 'style' &&
+    t.inlineCss &&
+    children === undefined &&
+    typeof document !== 'undefined'
+  ) {
+    children =
+      document.querySelector<HTMLStyleElement>(
+        `style[${INLINE_CSS_HYDRATION_ATTR}]`,
+      )?.textContent ?? ''
+  }
+
+  if (children !== undefined) {
+    props.children = children
+  }
+
+  return { tag: t.tag, props }
 }
 
 function replaceEqualTags(

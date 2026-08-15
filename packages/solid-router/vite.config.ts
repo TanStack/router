@@ -69,7 +69,6 @@ export default defineConfig((env) =>
       tsconfigPath: './tsconfig.build.json',
       entry: [
         './src/index.tsx',
-        './src/index.dev.tsx',
         './src/ssr/client.ts',
         './src/ssr/server.ts',
       ],
