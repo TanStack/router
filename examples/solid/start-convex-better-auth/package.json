@@ -20,7 +20,7 @@
     "clsx": "^2.1.1",
     "convex": "^1.28.2",
     "convex-solidjs": "^0.0.3",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4.2.2",

@@ -14,7 +14,7 @@
     "@tanstack/react-router-devtools": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "redaxios": "^0.5.1"
+    "redaxios": "catalog:"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",

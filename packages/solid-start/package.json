@@ -130,7 +130,15 @@
     "@rsbuild/core": "^2.1.0",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
-    "vite": "*"
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0",

@@ -118,7 +118,13 @@
     "solid-js": "^1.9.10",
     "vite": "*",
     "vite-plugin-solid": "^2.11.10",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "solid-js": "^1.9.10"

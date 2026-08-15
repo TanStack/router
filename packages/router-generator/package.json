@@ -77,6 +77,13 @@
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",
     "@types/node": ">=20",
-    "vite": "*"
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "vite": "catalog:",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   }
 }

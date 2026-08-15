@@ -73,6 +73,11 @@
   "devDependencies": {
     "@types/node": ">=20",
     "@types/yargs": "^17.0.33",
-    "vite": "*"
+    "vite": "catalog:",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   }
 }

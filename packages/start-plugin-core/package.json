@@ -112,7 +112,12 @@
     "@types/babel__core": "^7.20.5",
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
-    "vite": "*"
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0",
