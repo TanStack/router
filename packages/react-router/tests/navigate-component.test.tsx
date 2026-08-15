@@ -1,4 +1,6 @@
-import { describe, expect, test } from 'vitest'
+import * as React from 'react'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { cleanup, render, waitFor } from '@testing-library/react'
 import ReactDOMServer from 'react-dom/server'
 import {
   Navigate,
@@ -61,4 +63,32 @@ describe('Navigate', () => {
       ).not.toThrow()
     },
   )
+})
+
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
+
+describe('Navigate in StrictMode', () => {
+  // #3465 made `Navigate` issue a single navigation under StrictMode, by
+  // comparing the props object by identity. That holds there only because
+  // React hands both passes of the double-invoked effect the same props
+  // object; it cannot hold across a real re-render, where React allocates a
+  // new one. Guarding on the resolved destination has to keep #3465 working.
+  test('issues a single navigation', async () => {
+    const router = createTestRouter('/')
+    const navigateSpy = vi.spyOn(router, 'navigate')
+
+    render(
+      <React.StrictMode>
+        <RouterProvider router={router} />
+      </React.StrictMode>,
+    )
+
+    await waitFor(() => expect(router.state.location.pathname).toBe('/target'))
+    await new Promise((resolve) => setTimeout(resolve, 100))
+
+    expect(navigateSpy.mock.calls.length).toBe(1)
+  })
 })
