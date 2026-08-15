@@ -30,6 +30,7 @@ const build = spawn('bun', ['run', './scripts/build-nitro.ts'], {
   stdio: 'inherit',
 })
 await new Promise<void>((resolve, reject) => {
+  build.on('error', reject)
   build.on('exit', (code) =>
     code === 0 ? resolve() : reject(new Error(`build-nitro exited ${code}`)),
   )
@@ -56,7 +57,11 @@ const server = spawn('node', [serverEntry], {
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 
+let stdout = ''
 let stderr = ''
+server.stdout?.on('data', (chunk) => {
+  stdout += String(chunk)
+})
 server.stderr?.on('data', (chunk) => {
   stderr += String(chunk)
 })
@@ -86,6 +91,9 @@ try {
 
   console.info('[smoke-nitro] ok')
 } catch (err) {
+  if (stdout) {
+    console.error('[smoke-nitro] server stdout:\n', stdout)
+  }
   if (stderr) {
     console.error('[smoke-nitro] server stderr:\n', stderr)
   }

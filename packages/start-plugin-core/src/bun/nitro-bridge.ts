@@ -63,7 +63,11 @@ export async function runBunNitroBuild(opts: {
     ? (userConfig.publicAssets as Array<Record<string, unknown>>)
     : []
 
-  const userServerEntry = userConfig.serverEntry
+  if (userConfig.serverEntry !== undefined) {
+    console.warn(
+      '[tanstack-start-bun] bun.nitro.config.serverEntry is ignored; Start always injects dist/server/server.js as the web handler.',
+    )
+  }
 
   const nitro = await createNitro({
     rootDir: opts.root,
@@ -82,14 +86,11 @@ export async function runBunNitroBuild(opts: {
       userConfig.scanDirs !== undefined
         ? (userConfig.scanDirs as string[])
         : [],
-    // Disable auto-detect of root `server.ts` (app host entry ≠ SSR fetch handler).
-    serverEntry:
-      userServerEntry !== undefined
-        ? userServerEntry
-        : {
-            handler: opts.serverEntry,
-            format: 'web',
-          },
+    // Start-owned SSR handler — never allow user config to replace it.
+    serverEntry: {
+      handler: opts.serverEntry,
+      format: 'web',
+    },
     publicAssets: [
       {
         dir: opts.clientOutDir,

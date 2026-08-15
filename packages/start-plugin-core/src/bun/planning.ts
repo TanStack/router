@@ -1,4 +1,4 @@
-import { join } from 'pathe'
+import { join, isAbsolute } from 'pathe'
 import { ENTRY_POINTS } from '../constants'
 import type { ResolvedStartEntryPlan } from '../planning'
 import { BUN_ENVIRONMENT_NAMES } from './types'
@@ -14,11 +14,10 @@ export interface BunResolvedEntryAliases {
 }
 
 function normalizeEntryPath(filePath: string): string {
-  return filePath.startsWith('file:')
-    ? filePath
-    : filePath.startsWith('/')
-      ? filePath
-      : join(process.cwd(), filePath)
+  if (filePath.startsWith('file:') || isAbsolute(filePath)) {
+    return filePath
+  }
+  return join(process.cwd(), filePath)
 }
 
 export function createBunResolvedEntryAliases(opts: {

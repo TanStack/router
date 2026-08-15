@@ -24,7 +24,10 @@ export type BunBuildContext = {
   startConfig: TanStackStartOutputConfig
   resolvedStartConfig: ResolvedStartConfig
   entryAliases: BunResolvedEntryAliases
+  /** Server / SSR define (includes all loaded env keys). */
   define: Record<string, string>
+  /** Browser define (public env prefixes only). */
+  clientDefine: Record<string, string>
   virtualModules: ReturnType<typeof createBunVirtualModuleStore>
   compilers: ReturnType<typeof createBunCompilerHosts>
   routerSession: ReturnType<typeof createBunRouterSession>
@@ -35,6 +38,11 @@ export type BunBuildContext = {
   mode: 'dev' | 'build'
   bunOpts?: BunCoreOptions
   emittedCss?: Map<string, string>
+  emittedCssAssets?: Array<{
+    sourcePath: string
+    fileName: string
+    css: string
+  }>
   framework: CompileStartFrameworkOptions
 }
 
@@ -46,6 +54,8 @@ export async function buildBunClient(ctx: BunBuildContext) {
   const minify =
     bunOpts?.minify ?? (ctx.mode === 'build')
   const emittedCss = ctx.emittedCss ?? new Map<string, string>()
+  const emittedCssAssets = ctx.emittedCssAssets ?? []
+  emittedCssAssets.length = 0
 
   const cssPlugin = createCssAssetsPlugin({
     root: ctx.resolvedStartConfig.root,
@@ -53,8 +63,14 @@ export async function buildBunClient(ctx: BunBuildContext) {
     publicBase: ctx.publicBase,
     css: bunOpts?.css,
     srcDirectory: ctx.resolvedStartConfig.srcDirectory,
-    onCssEmitted: ({ filePath, css }) => {
+    onCssEmitted: ({ filePath, css, url }) => {
       emittedCss.set(filePath, css)
+      const withoutBase =
+        ctx.publicBase !== '/' && url.startsWith(ctx.publicBase.replace(/\/$/, ''))
+          ? url.slice(ctx.publicBase.replace(/\/$/, '').length)
+          : url
+      const fileName = withoutBase.replace(/^\//, '')
+      emittedCssAssets.push({ sourcePath: filePath, fileName, css })
     },
   })
   const extraPlugins = [
@@ -76,7 +92,7 @@ export async function buildBunClient(ctx: BunBuildContext) {
       chunk: 'assets/[name]-[hash].js',
       asset: 'assets/[name]-[hash].[ext]',
     },
-    define: ctx.define,
+    define: ctx.clientDefine,
     plugins: [
       ...extraPlugins,
       cssPlugin,
@@ -112,6 +128,7 @@ export async function buildBunClient(ctx: BunBuildContext) {
   let clientBuild = normalizeBunClientBuild({
     outputs,
     clientOutDir: ctx.outDirs.client,
+    emittedCssAssets,
   })
   clientBuild = await enrichBunClientBuildFromSourcemaps({
     clientBuild,

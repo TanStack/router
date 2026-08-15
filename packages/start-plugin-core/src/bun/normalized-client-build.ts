@@ -23,6 +23,15 @@ export interface BunClientOutputLike {
 export function normalizeBunClientBuild(opts: {
   outputs: Array<BunClientOutputLike>
   clientOutDir: string
+  /**
+   * CSS assets emitted by `createCssAssetsPlugin` (source path + hashed file + content).
+   * Wired into the Start manifest for route stylesheets / inlineCss.
+   */
+  emittedCssAssets?: Array<{
+    sourcePath: string
+    fileName: string
+    css: string
+  }>
 }): NormalizedClientBuild {
   const chunksByFileName = new Map<string, NormalizedClientChunk>()
   const chunkFileNamesByRouteFilePath = new Map<string, Array<string>>()
@@ -82,6 +91,32 @@ export function normalizeBunClientBuild(opts: {
     throw new Error(
       '[tanstack-start-bun] Could not determine client entry chunk from Bun.build outputs',
     )
+  }
+
+  const cssFileNames: Array<string> = []
+  for (const asset of opts.emittedCssAssets ?? []) {
+    const fileName = asset.fileName.replace(/^\.\//, '')
+    if (!fileName.endsWith('.css')) {
+      continue
+    }
+    cssContentByFileName.set(fileName, asset.css)
+    if (!cssFileNames.includes(fileName)) {
+      cssFileNames.push(fileName)
+    }
+    const existing = cssFilesBySourcePath.get(asset.sourcePath) ?? []
+    if (!existing.includes(fileName)) {
+      existing.push(fileName)
+    }
+    cssFilesBySourcePath.set(asset.sourcePath, existing)
+  }
+
+  // Bun BuildArtifact has no Rollup module graph — attach emitted CSS to the entry
+  // chunk so Start SSR still injects stylesheet links / inlineCss content.
+  if (cssFileNames.length > 0) {
+    const entry = chunksByFileName.get(entryChunkFileName)
+    if (entry) {
+      entry.css = [...new Set([...entry.css, ...cssFileNames])]
+    }
   }
 
   return {

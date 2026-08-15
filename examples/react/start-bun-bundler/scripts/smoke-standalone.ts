@@ -31,6 +31,7 @@ const build = spawn('bun', ['run', './scripts/build-standalone.ts'], {
   stdio: 'inherit',
 })
 await new Promise<void>((resolve, reject) => {
+  build.on('error', reject)
   build.on('exit', (code) =>
     code === 0
       ? resolve()
@@ -49,7 +50,11 @@ const server = spawn(exe, [], {
   stdio: ['ignore', 'pipe', 'pipe'],
 })
 
+let stdout = ''
 let stderr = ''
+server.stdout?.on('data', (chunk) => {
+  stdout += String(chunk)
+})
 server.stderr?.on('data', (chunk) => {
   stderr += String(chunk)
 })
@@ -79,6 +84,9 @@ try {
 
   console.info('[smoke-standalone] ok')
 } catch (err) {
+  if (stdout) {
+    console.error('[smoke-standalone] server stdout:\n', stdout)
+  }
   if (stderr) {
     console.error('[smoke-standalone] server stderr:\n', stderr)
   }

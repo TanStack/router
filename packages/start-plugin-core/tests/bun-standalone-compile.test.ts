@@ -16,4 +16,14 @@ describe('buildStandaloneEntrySource', () => {
     expect(source).toContain('Bun.serve')
     expect(source).toContain('./server.js')
   })
+
+  it('prefixes asset keys with publicBase', () => {
+    const source = buildStandaloneEntrySource({
+      entryPath: '/app/dist/server/.standalone-entry.js',
+      clientOutDir: '/app/dist/client',
+      publicBase: '/app/',
+      assetFiles: ['/app/dist/client/assets/app.js'],
+    })
+    expect(source).toContain('/app/assets/app.js')
+  })
 })

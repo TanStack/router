@@ -72,8 +72,11 @@ function wrapBundledRefreshRuntime(bundledEsm: string): string {
 if (typeof __RefreshRuntime?.injectIntoGlobalHook === 'function') {
   __RefreshRuntime.injectIntoGlobalHook(window);
 }
-window.$RefreshReg$ = () => {};
-window.$RefreshSig$ = () => (type) => type;
+window.$RefreshReg$ = (type, id) => {
+  __RefreshRuntime.register(type, id);
+};
+window.$RefreshSig$ = () =>
+  __RefreshRuntime.createSignatureFunctionForTransform();
 window.__vite_plugin_react_preamble_installed__ = true;
 window.__tanstack_refresh_runtime__ = __RefreshRuntime;
 export default __RefreshRuntime;
@@ -88,10 +91,13 @@ export function getReactRefreshPreambleHtml(
   refreshModulePath: string,
 ): string {
   return `<script type="module">
-import { injectIntoGlobalHook } from ${JSON.stringify(refreshModulePath)};
-injectIntoGlobalHook(window);
-window.$RefreshReg$ = () => {};
-window.$RefreshSig$ = () => (type) => type;
+import RefreshRuntime from ${JSON.stringify(refreshModulePath)};
+RefreshRuntime.injectIntoGlobalHook(window);
+window.$RefreshReg$ = (type, id) => {
+  RefreshRuntime.register(type, id);
+};
+window.$RefreshSig$ = () =>
+  RefreshRuntime.createSignatureFunctionForTransform();
 window.__vite_plugin_react_preamble_installed__ = true;
 </script>`
 }

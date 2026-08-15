@@ -1,11 +1,16 @@
 import { createHash } from 'node:crypto'
 
+/**
+ * Match local class selectors, including compound forms (`.a.b`, `.a .b`, `.a[data-x]`).
+ * Lookahead avoids false positives like `url(file.png)`.
+ */
 const CLASS_RE =
-  /(?<![@\w-])\.(-?[_a-zA-Z]+[_a-zA-Z0-9-]*)(?=\s*[{:,])/g
+  /\.(-?[_a-zA-Z]+[_a-zA-Z0-9-]*)(?=[.#\s:\[{,~+>]|$)/g
 
 /**
  * Minimal CSS Modules transform: hash local class names and emit an export map.
- * Does not implement `:global`/`composes` fully — good enough for common cases.
+ * Supports compound selectors (`.a.b`, `.a .b`). Does not implement `:global` /
+ * `composes` fully — good enough for common cases.
  */
 export function transformCssModules(opts: {
   css: string
@@ -34,7 +39,7 @@ export function transformCssModules(opts: {
   let css = opts.css
   for (const [local, scoped] of renamed) {
     const re = new RegExp(
-      `(?<![@\\w-])\\.${escapeRegExp(local)}(?=\\s*[{:,])`,
+      `\\.${escapeRegExp(local)}(?=[.#\\s:\\[{,~+>]|$)`,
       'g',
     )
     css = css.replace(re, `.${scoped}`)

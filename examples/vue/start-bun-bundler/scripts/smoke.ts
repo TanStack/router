@@ -29,6 +29,7 @@ const build = spawn('bun', ['run', './scripts/build.ts'], {
   stdio: 'inherit',
 })
 await new Promise<void>((resolve, reject) => {
+  build.on('error', reject)
   build.on('exit', (code) =>
     code === 0 ? resolve() : reject(new Error(`build exited ${code}`)),
   )
@@ -40,6 +41,13 @@ const server = spawn('bun', ['run', './dist/server/host.js'], {
   env: { ...process.env, PORT: String(port) },
   stdio: ['ignore', 'pipe', 'pipe'],
 })
+
+const serverLogs: Array<string> = []
+const capture = (chunk: Buffer | string) => {
+  serverLogs.push(String(chunk))
+}
+server.stdout?.on('data', capture)
+server.stderr?.on('data', capture)
 
 try {
   await waitForServer(`http://${host}:${port}/`)
@@ -87,6 +95,11 @@ try {
   }
 
   console.info('[smoke] ok')
+} catch (err) {
+  if (serverLogs.length > 0) {
+    console.error('[smoke] server output:\n', serverLogs.join(''))
+  }
+  throw err
 } finally {
   server.kill('SIGTERM')
 }

@@ -33,11 +33,15 @@ export function isNodeBuiltinSpecifier(spec: string): boolean {
 
 /** True when `/@fs` stripped path is still a node builtin (e.g. `node:async_hooks`). */
 export function isNodeBuiltinFsPath(absPath: string): boolean {
-  return isNodeBuiltinSpecifier(absPath) || absPath.startsWith('node:')
+  const spec = absPath.startsWith('/') ? absPath.slice(1) : absPath
+  return isNodeBuiltinSpecifier(spec)
 }
 
 export function getNodeBuiltinStubSource(spec: string): string {
-  const name = spec.startsWith('node:') ? spec.slice('node:'.length) : spec
+  const normalized = spec.startsWith('/') ? spec.slice(1) : spec
+  const name = normalized.startsWith('node:')
+    ? normalized.slice('node:'.length)
+    : normalized
 
   if (name === 'async_hooks') {
     return `export class AsyncLocalStorage {

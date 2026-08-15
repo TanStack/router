@@ -56,9 +56,15 @@ function matchesRouteFactory(code: string): boolean {
 }
 
 function loaderForPath(filePath: string): 'tsx' | 'ts' | 'jsx' | 'js' {
-  if (filePath.endsWith('.tsx')) return 'tsx'
-  if (filePath.endsWith('.jsx')) return 'jsx'
-  if (filePath.endsWith('.ts')) return 'ts'
+  if (filePath.endsWith('.tsx')) {
+    return 'tsx'
+  }
+  if (filePath.endsWith('.jsx')) {
+    return 'jsx'
+  }
+  if (filePath.endsWith('.ts')) {
+    return 'ts'
+  }
   return 'js'
 }
 
@@ -127,7 +133,9 @@ export function createBunRouterCodeSplitterRuntime(
     id: string,
     generatorNodeInfo: GetRoutesByFileMapResultValue,
   ): { code: string } | null => {
-    if (debug) console.info('[bun code-splitter] Compiling Route: ', id)
+    if (debug) {
+      console.info('[bun code-splitter] Compiling Route: ', id)
+    }
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
@@ -199,7 +207,9 @@ export function createBunRouterCodeSplitterRuntime(
   }
 
   const handleCompilingVirtualFile = (code: string, id: string) => {
-    if (debug) console.info('[bun code-splitter] Splitting Route: ', id)
+    if (debug) {
+      console.info('[bun code-splitter] Splitting Route: ', id)
+    }
 
     const [_, ...pathnameParts] = id.split('?')
     const searchParams = new URLSearchParams(pathnameParts.join('?'))
@@ -238,12 +248,18 @@ export function createBunRouterCodeSplitterRuntime(
     url.searchParams.delete('v')
     const normalizedId = normalizePath(fileURLToPath(url))
     const [baseId] = normalizedId.split('?')
-    if (!baseId) return null
+    if (!baseId) {
+      return null
+    }
 
     const sharedBindings = sharedBindingsMap.get(baseId)
-    if (!sharedBindings || sharedBindings.size === 0) return null
+    if (!sharedBindings || sharedBindings.size === 0) {
+      return null
+    }
 
-    if (debug) console.info('[bun code-splitter] Shared Module: ', id)
+    if (debug) {
+      console.info('[bun code-splitter] Shared Module: ', id)
+    }
 
     const result = compileCodeSplitSharedRoute({
       code,

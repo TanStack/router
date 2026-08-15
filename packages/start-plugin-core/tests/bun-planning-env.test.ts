@@ -79,6 +79,24 @@ SINGLE='x'
       JSON.stringify('https://example.test'),
     )
   })
+
+  it('filters to public prefixes when publicOnly', () => {
+    const define = createEnvDefine(
+      {
+        SECRET_KEY: 'nope',
+        VITE_APP: 'yes',
+        PUBLIC_FLAG: '1',
+        TSS_PUBLIC_TOKEN: 'tok',
+      },
+      { publicOnly: true },
+    )
+    expect(define['process.env.SECRET_KEY']).toBeUndefined()
+    expect(define['process.env.VITE_APP']).toBe(JSON.stringify('yes'))
+    expect(define['process.env.PUBLIC_FLAG']).toBe(JSON.stringify('1'))
+    expect(define['process.env.TSS_PUBLIC_TOKEN']).toBe(
+      JSON.stringify('tok'),
+    )
+  })
 })
 
 describe('css modules', () => {
@@ -96,6 +114,15 @@ describe('css modules', () => {
     expect(result.exports.row).toMatch(/^row_/)
     expect(result.css).toContain(`.${result.exports.title}`)
     expect(result.css).not.toMatch(/(?<![\w-])\.title\s*\{/)
+  })
+
+  it('rewrites compound selectors', () => {
+    const result = transformCssModules({
+      css: `.a.b { color: red; }\n.a .c { color: blue; }`,
+      filePath: '/app/src/Compound.module.css',
+    })
+    expect(result.css).toContain(`.${result.exports.a}.${result.exports.b}`)
+    expect(result.css).toContain(`.${result.exports.a} .${result.exports.c}`)
   })
 })
 

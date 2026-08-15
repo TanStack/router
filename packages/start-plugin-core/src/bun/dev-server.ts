@@ -1,5 +1,5 @@
-import { watch } from 'node:fs'
-import { extname, join, normalize } from 'pathe'
+import { watch, existsSync } from 'node:fs'
+import { dirname, extname, join, normalize, relative, isAbsolute } from 'pathe'
 import { tryServeClientAsset } from './static-host'
 import {
   classifyBunChange,
@@ -85,6 +85,45 @@ const ESM_DEV_MANIFEST_SCRUB_SCRIPT = `<script>
   document.currentScript && document.currentScript.remove();
 })();
 </script>`
+
+/**
+ * Vite-style `server.fs.allow` defaults: project root + nearest workspace root.
+ * Prevents `/@fs` from serving arbitrary filesystem paths when hostname is `0.0.0.0`.
+ */
+export function resolveFsAllowList(root: string): Array<string> {
+  const roots = new Set<string>([normalize(root)])
+  let dir = normalize(root)
+  for (let i = 0; i < 12; i++) {
+    if (
+      existsSync(join(dir, 'pnpm-workspace.yaml')) ||
+      existsSync(join(dir, 'lerna.json')) ||
+      existsSync(join(dir, 'nx.json'))
+    ) {
+      roots.add(dir)
+      break
+    }
+    const parent = dirname(dir)
+    if (parent === dir) {
+      break
+    }
+    dir = parent
+  }
+  return [...roots]
+}
+
+export function isPathInsideAllowList(
+  absPath: string,
+  allowList: ReadonlyArray<string>,
+): boolean {
+  const normalized = normalize(absPath)
+  for (const root of allowList) {
+    const rel = relative(normalize(root), normalized)
+    if (rel === '' || (!rel.startsWith('..') && !isAbsolute(rel))) {
+      return true
+    }
+  }
+  return false
+}
 
 function injectDevScripts(
   html: string,
@@ -294,6 +333,8 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
         : undefined,
   }
 
+  const fsAllowList = resolveFsAllowList(opts.root)
+
   async function serveEsmPath(url: URL): Promise<Response | null> {
     if (!esmDev) {
       return null
@@ -385,6 +426,12 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
       const resolvedFs = resolveFsCandidate(abs)
       if (!resolvedFs) {
         return new Response(`Not found: ${abs}`, { status: 404 })
+      }
+      if (!isPathInsideAllowList(resolvedFs, fsAllowList)) {
+        return new Response(
+          `Forbidden: path outside server.fs.allow (${resolvedFs})`,
+          { status: 403 },
+        )
       }
       // Extensionless URL → redirect to canonical path (stable module graph)
       if (resolvedFs !== abs && !extname(abs)) {

@@ -62,12 +62,25 @@ export function parseEnvFile(text: string): Record<string, string> {
   return out
 }
 
+/** Keys safe to inline into the browser bundle (Vite-aligned public prefixes). */
+export function isPublicEnvKey(key: string): boolean {
+  return (
+    key.startsWith('VITE_') ||
+    key.startsWith('PUBLIC_') ||
+    key.startsWith('TSS_PUBLIC_')
+  )
+}
+
 /** Build Bun/Vite-style define entries from loaded env (both process.env + import.meta.env). */
 export function createEnvDefine(
   env: Record<string, string>,
+  opts?: { publicOnly?: boolean },
 ): Record<string, string> {
   const define: Record<string, string> = {}
   for (const [key, value] of Object.entries(env)) {
+    if (opts?.publicOnly && !isPublicEnvKey(key)) {
+      continue
+    }
     // Skip keys that would break JS identifiers in import.meta.env access patterns
     // still define process.env.* always; import.meta.env.* for alphanumeric keys.
     define[`process.env.${key}`] = JSON.stringify(value)

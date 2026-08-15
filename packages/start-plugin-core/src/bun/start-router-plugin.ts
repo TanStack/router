@@ -82,9 +82,19 @@ export function createBunRouterSession(opts: {
             codeSplittingOptions: {
               ...opts.routerConfig?.codeSplittingOptions,
               deleteNodes: isClient
-                ? ['ssr', 'server', 'headers']
+                ? [
+                    ...new Set([
+                      ...(opts.routerConfig?.codeSplittingOptions
+                        ?.deleteNodes ?? []),
+                      'ssr',
+                      'server',
+                      'headers',
+                    ]),
+                  ]
                 : opts.routerConfig?.codeSplittingOptions?.deleteNodes,
-              addHmr: isClient && !opts.isProduction,
+              addHmr:
+                opts.routerConfig?.codeSplittingOptions?.addHmr ??
+                (isClient && !opts.isProduction),
             },
             plugin: {
               ...opts.routerConfig?.plugin,

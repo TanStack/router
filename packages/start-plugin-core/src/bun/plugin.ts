@@ -36,9 +36,36 @@ import { createBunProdServer } from './static-host'
 import { createEnvDefine, loadBunEnvFiles } from './load-env'
 import { transformFrameworkJsx } from './framework-jsx-plugin'
 import type { ServerFn } from '../start-compiler/types'
-import type { TanStackStartBunPluginCoreOptions } from './types'
+import type {
+  BunCoreOptions,
+  TanStackStartBunPluginCoreOptions,
+} from './types'
 import type { TanStackStartBunInputConfig } from './schema'
 import type { TanStackStartBunAdapter } from './types'
+
+function mergeBunCoreOptions(
+  primary?: BunCoreOptions,
+  fallback?: BunCoreOptions,
+): BunCoreOptions | undefined {
+  if (!primary && !fallback) {
+    return undefined
+  }
+  return {
+    clientOutDir: primary?.clientOutDir ?? fallback?.clientOutDir,
+    serverOutDir: primary?.serverOutDir ?? fallback?.serverOutDir,
+    publicBase: primary?.publicBase ?? fallback?.publicBase,
+    publicDir: primary?.publicDir ?? fallback?.publicDir,
+    port: primary?.port ?? fallback?.port,
+    hostname: primary?.hostname ?? fallback?.hostname,
+    minify: primary?.minify ?? fallback?.minify,
+    plugins: primary?.plugins ?? fallback?.plugins,
+    clientPlugins: primary?.clientPlugins ?? fallback?.clientPlugins,
+    serverPlugins: primary?.serverPlugins ?? fallback?.serverPlugins,
+    css: primary?.css ?? fallback?.css,
+    nitro: primary?.nitro ?? fallback?.nitro,
+    standalone: primary?.standalone ?? fallback?.standalone,
+  }
+}
 
 export function tanStackStartBun(
   corePluginOpts: TanStackStartBunPluginCoreOptions,
@@ -53,19 +80,19 @@ export function tanStackStartBun(
   async function prepare(root: string, mode: 'dev' | 'build') {
     const envMode = mode === 'dev' ? 'development' : 'production'
     const loadedEnv = loadBunEnvFiles({ root, mode: envMode })
-    const envDefine = createEnvDefine(loadedEnv)
+    const serverEnvDefine = createEnvDefine(loadedEnv)
+    const clientEnvDefine = createEnvDefine(loadedEnv, { publicOnly: true })
 
-    const publicBase = normalizePublicBase(
-      startPluginOpts.bun?.publicBase ??
-        corePluginOpts.bun?.publicBase ??
-        '/',
+    const bunOpts = mergeBunCoreOptions(
+      startPluginOpts.bun,
+      corePluginOpts.bun,
     )
+
+    const publicBase = normalizePublicBase(bunOpts?.publicBase ?? '/')
     const outDirs = resolveBunOutputDirectories({
       root,
-      clientOutDir:
-        startPluginOpts.bun?.clientOutDir ?? corePluginOpts.bun?.clientOutDir,
-      serverOutDir:
-        startPluginOpts.bun?.serverOutDir ?? corePluginOpts.bun?.serverOutDir,
+      clientOutDir: bunOpts?.clientOutDir,
+      serverOutDir: bunOpts?.serverOutDir,
     })
 
     applyResolvedBaseAndOutput({
@@ -95,7 +122,7 @@ export function tanStackStartBun(
     const inlineCssEnabled =
       mode === 'build' && startConfig.server.build.inlineCss.enabled
 
-    const define = createBunDefine({
+    const defineOpts = {
       serverFnBase,
       routerBasepath,
       publicBase: resolvedStartConfig.basePaths.publicBase,
@@ -104,12 +131,25 @@ export function tanStackStartBun(
       spaEnabled: startConfig.spa?.enabled === true,
       disableCsrfMiddlewareWarning:
         startConfig.serverFns.disableCsrfMiddlewareWarning === true,
-      extraDefine: envDefine,
+    }
+
+    const define = createBunDefine({
+      ...defineOpts,
+      extraDefine: serverEnvDefine,
+    })
+    const clientDefine = createBunDefine({
+      ...defineOpts,
+      extraDefine: clientEnvDefine,
     })
 
     const serverFnsById: Record<string, ServerFn> = {}
     const virtualModules = createBunVirtualModuleStore()
     const emittedCss = new Map<string, string>()
+    const emittedCssAssets: Array<{
+      sourcePath: string
+      fileName: string
+      css: string
+    }> = []
 
     const setPluginAdapters = (runtime: 'client' | 'server') => {
       virtualModules.set(
@@ -161,13 +201,12 @@ export function tanStackStartBun(
         routerSession.getCodeSplitterRuntime(env).transformReference(code, id),
     })
 
-    const bunOpts = startPluginOpts.bun ?? corePluginOpts.bun
-
     const ctx: BunBuildContext = {
       startConfig,
       resolvedStartConfig,
       entryAliases,
       define,
+      clientDefine,
       virtualModules,
       compilers,
       routerSession,
@@ -178,6 +217,7 @@ export function tanStackStartBun(
       mode,
       bunOpts,
       emittedCss,
+      emittedCssAssets,
       framework: corePluginOpts.framework,
     }
 
@@ -229,6 +269,7 @@ export function tanStackStartBun(
           clientOutDir: ctx.outDirs.client,
           serverOutDir: ctx.outDirs.server,
           standalone: standaloneOpt,
+          publicBase: ctx.publicBase,
         })
         console.info(
           `[tanstack-start-bun] standalone executable → ${result.outfile}`,
@@ -250,16 +291,16 @@ export function tanStackStartBun(
 
       return createBunDevServer({
         root,
-        port: opts?.port ?? startPluginOpts.bun?.port ?? 3000,
+        port: opts?.port ?? ctx.bunOpts?.port ?? 3000,
         hostname:
-          opts?.hostname ?? startPluginOpts.bun?.hostname ?? '0.0.0.0',
+          opts?.hostname ?? ctx.bunOpts?.hostname ?? '0.0.0.0',
         clientOutDir: ctx.outDirs.client,
         serverOutDir: ctx.outDirs.server,
         publicBase: ctx.publicBase,
         framework: corePluginOpts.framework,
         clientEntryPath: ctx.entryAliases.client,
         aliases: ctx.entryAliases.alias,
-        define: ctx.define,
+        define: ctx.clientDefine,
         esmDev: true,
         emittedCss: ctx.emittedCss,
         transformAppModule: async (code, absPath) => {
@@ -337,19 +378,20 @@ export function tanStackStartBun(
 
     async serve(opts) {
       const root = opts?.root ?? process.cwd()
+      const bunOpts = mergeBunCoreOptions(
+        startPluginOpts.bun,
+        corePluginOpts.bun,
+      )
       const outDirs = resolveBunOutputDirectories({
         root,
-        clientOutDir:
-          startPluginOpts.bun?.clientOutDir ?? corePluginOpts.bun?.clientOutDir,
-        serverOutDir:
-          startPluginOpts.bun?.serverOutDir ?? corePluginOpts.bun?.serverOutDir,
+        clientOutDir: bunOpts?.clientOutDir,
+        serverOutDir: bunOpts?.serverOutDir,
       })
       return createBunProdServer({
         clientOutDir: outDirs.client,
         serverOutDir: outDirs.server,
-        port: opts?.port ?? startPluginOpts.bun?.port ?? 3000,
-        hostname:
-          opts?.hostname ?? startPluginOpts.bun?.hostname ?? '0.0.0.0',
+        port: opts?.port ?? bunOpts?.port ?? 3000,
+        hostname: opts?.hostname ?? bunOpts?.hostname ?? '0.0.0.0',
       })
     },
   }

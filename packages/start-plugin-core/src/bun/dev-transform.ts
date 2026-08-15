@@ -65,32 +65,38 @@ function guessLoader(filePath: string): 'tsx' | 'ts' | 'jsx' | 'js' {
 }
 
 /**
- * Bun.Transpiler emits `jsxDEV_7x81h0kn(...)` without an import (runtime
- * injects it when executing under Bun). Browsers need an explicit ESM import.
- * The suffix is stable on Bun 1.3.x.
+ * Bun.Transpiler emits mangled automatic-runtime helpers (`jsxDEV_<suffix>`)
+ * without imports (Bun injects them at runtime). Browsers need ESM imports.
+ * Suffix is Bun-build-specific — detect it from the emitted code.
+ * React-only: Solid/Vue use their own JSX pipelines.
  */
 function injectBunJsxRuntimeImports(code: string): string {
-  const needsDev = /\bjsxDEV_7x81h0kn\b/.test(code)
-  const needsJsx =
-    /\bjsx_7x81h0kn\b/.test(code) || /\bjsxs_7x81h0kn\b/.test(code)
-  if (!needsDev && !needsJsx) return code
+  const devSuffix = code.match(/\bjsxDEV_([A-Za-z0-9]+)\b/)?.[1]
+  const jsxSuffix =
+    code.match(/\bjsx_([A-Za-z0-9]+)\b/)?.[1] ??
+    code.match(/\bjsxs_([A-Za-z0-9]+)\b/)?.[1]
+  if (!devSuffix && !jsxSuffix) {
+    return code
+  }
 
   const lines: Array<string> = []
-  if (needsDev && !code.includes('jsxDEV as jsxDEV_7x81h0kn')) {
+  if (devSuffix && !code.includes(`jsxDEV as jsxDEV_${devSuffix}`)) {
     lines.push(
-      `import { jsxDEV as jsxDEV_7x81h0kn } from "react/jsx-dev-runtime";`,
+      `import { jsxDEV as jsxDEV_${devSuffix} } from "react/jsx-dev-runtime";`,
     )
   }
   if (
-    needsJsx &&
-    !code.includes('jsx as jsx_7x81h0kn') &&
-    !code.includes('jsxs as jsxs_7x81h0kn')
+    jsxSuffix &&
+    !code.includes(`jsx as jsx_${jsxSuffix}`) &&
+    !code.includes(`jsxs as jsxs_${jsxSuffix}`)
   ) {
     lines.push(
-      `import { jsx as jsx_7x81h0kn, jsxs as jsxs_7x81h0kn } from "react/jsx-runtime";`,
+      `import { jsx as jsx_${jsxSuffix}, jsxs as jsxs_${jsxSuffix} } from "react/jsx-runtime";`,
     )
   }
-  if (lines.length === 0) return code
+  if (lines.length === 0) {
+    return code
+  }
   return `${lines.join('\n')}\n${code}`
 }
 
@@ -589,7 +595,9 @@ export default css;
     const loader = guessLoader(filePath)
     const transpiler = new Bun.Transpiler({ loader })
     next = transpiler.transformSync(next, loader)
-    next = injectBunJsxRuntimeImports(next)
+    if (opts.framework === 'react') {
+      next = injectBunJsxRuntimeImports(next)
+    }
   }
 
   if (opts.applyReactRefresh && opts.framework === 'react') {

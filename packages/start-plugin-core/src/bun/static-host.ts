@@ -10,7 +10,12 @@ export function resolveClientAssetPath(
   clientOutDir: string,
   pathname: string,
 ): string | null {
-  const decoded = decodeURIComponent(pathname)
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(pathname)
+  } catch {
+    return null
+  }
   if (!decoded.startsWith('/assets/') && !/\.\w+$/.test(decoded)) {
     return null
   }
@@ -79,13 +84,20 @@ export async function createBunProdServer(opts: BunProdServeOptions): Promise<{
   port: number
   hostname: string
 }> {
+  const { pathToFileURL } = await import('node:url')
   const serverEntry = join(opts.serverOutDir, 'server.js')
-  const handlerModule = (await import(`${serverEntry}?t=${Date.now()}`)) as {
-    default: { fetch: BunFetchHandler }
+  const handlerModule = (await import(pathToFileURL(serverEntry).href)) as {
+    default?: { fetch?: BunFetchHandler }
+  }
+  const handlerFetch = handlerModule.default?.fetch
+  if (!handlerFetch) {
+    throw new Error(
+      `[tanstack-start-bun] Server entry ${serverEntry} missing default.fetch`,
+    )
   }
   const fetch = createStaticThenFetch({
     clientOutDir: opts.clientOutDir,
-    fetch: (req) => handlerModule.default.fetch(req),
+    fetch: (req) => handlerFetch(req),
   })
 
   const hostname = opts.hostname ?? '0.0.0.0'
@@ -125,7 +137,12 @@ const clientOutDir = join(__dirname, '../client')
 const handler = await import('./server.js')
 
 function resolveClientAssetPath(pathname) {
-  const decoded = decodeURIComponent(pathname)
+  let decoded
+  try {
+    decoded = decodeURIComponent(pathname)
+  } catch {
+    return null
+  }
   if (!decoded.startsWith('/assets/') && !/\\.\\w+$/.test(decoded)) {
     return null
   }

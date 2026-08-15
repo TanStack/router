@@ -48,9 +48,17 @@ function toImportSpecifier(fromFile: string, assetAbs: string): string {
   return rel.replace(/\\/g, '/')
 }
 
-function publicUrlPath(clientOutDir: string, assetAbs: string): string {
+function publicUrlPath(
+  clientOutDir: string,
+  assetAbs: string,
+  publicBase: string,
+): string {
   const rel = relative(clientOutDir, assetAbs).replace(/\\/g, '/')
-  return `/${rel}`
+  const base =
+    !publicBase || publicBase === '/'
+      ? ''
+      : publicBase.replace(/\/$/, '')
+  return `${base}/${rel}`
 }
 
 /** @internal exported for unit tests */
@@ -58,7 +66,9 @@ export function buildStandaloneEntrySource(opts: {
   assetFiles: Array<string>
   clientOutDir: string
   entryPath: string
+  publicBase?: string
 }): string {
+  const publicBase = opts.publicBase ?? '/'
   const importLines: Array<string> = [
     `import * as handler from ${JSON.stringify('./server.js')}`,
   ]
@@ -71,7 +81,7 @@ export function buildStandaloneEntrySource(opts: {
     importLines.push(
       `import ${id} from ${JSON.stringify(spec)} with { type: "file" }`,
     )
-    const urlPath = publicUrlPath(opts.clientOutDir, abs)
+    const urlPath = publicUrlPath(opts.clientOutDir, abs, publicBase)
     mapEntries.push(`  [${JSON.stringify(urlPath)}, ${id}]`)
   }
 
@@ -144,6 +154,7 @@ export async function runBunStandaloneCompile(opts: {
   clientOutDir: string
   serverOutDir: string
   standalone: BunStandaloneOptions
+  publicBase?: string
 }): Promise<BunStandaloneCompileResult> {
   const outfile = resolveOutfile(
     opts.root,
@@ -166,6 +177,7 @@ export async function runBunStandaloneCompile(opts: {
     assetFiles,
     clientOutDir: opts.clientOutDir,
     entryPath,
+    publicBase: opts.publicBase,
   })
 
   await writeFile(entryPath, entrySource, 'utf8')

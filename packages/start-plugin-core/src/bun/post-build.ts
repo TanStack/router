@@ -19,36 +19,52 @@ export async function postBuildWithBun(opts: {
 }): Promise<void> {
   const serverEntry = join(opts.serverOutDir, 'server.js')
 
-  process.env.TSS_PRERENDERING = 'true'
-  process.env.TSS_CLIENT_OUTPUT_DIR = opts.clientOutDir
-
   await postBuild({
     startConfig: opts.startConfig,
     adapter: {
       getClientOutputDirectory: () => opts.clientOutDir,
       prerender: async (startConfig) => {
-        const mod = (await import(pathToFileURL(serverEntry).href)) as {
-          default?: { fetch?: (req: Request) => Response | Promise<Response> }
-        }
-        const fetchHandler = mod.default?.fetch
-        if (!fetchHandler) {
-          throw new Error(
-            `[tanstack-start-bun] Server entry ${serverEntry} missing default.fetch`,
-          )
-        }
+        const prevPrerendering = process.env.TSS_PRERENDERING
+        const prevClientOut = process.env.TSS_CLIENT_OUTPUT_DIR
+        process.env.TSS_PRERENDERING = 'true'
+        process.env.TSS_CLIENT_OUTPUT_DIR = opts.clientOutDir
+        try {
+          const mod = (await import(pathToFileURL(serverEntry).href)) as {
+            default?: {
+              fetch?: (req: Request) => Response | Promise<Response>
+            }
+          }
+          const fetchHandler = mod.default?.fetch
+          if (!fetchHandler) {
+            throw new Error(
+              `[tanstack-start-bun] Server entry ${serverEntry} missing default.fetch`,
+            )
+          }
 
-        await prerender({
-          startConfig,
-          handler: {
-            getClientOutputDirectory: () => opts.clientOutDir,
-            request: async (path, init) => {
-              const url = path.startsWith('http')
-                ? path
-                : `http://localhost${path.startsWith('/') ? path : `/${path}`}`
-              return fetchHandler(new Request(url, init))
+          await prerender({
+            startConfig,
+            handler: {
+              getClientOutputDirectory: () => opts.clientOutDir,
+              request: async (path, init) => {
+                const url = path.startsWith('http')
+                  ? path
+                  : `http://localhost${path.startsWith('/') ? path : `/${path}`}`
+                return fetchHandler(new Request(url, init))
+              },
             },
-          },
-        })
+          })
+        } finally {
+          if (prevPrerendering === undefined) {
+            delete process.env.TSS_PRERENDERING
+          } else {
+            process.env.TSS_PRERENDERING = prevPrerendering
+          }
+          if (prevClientOut === undefined) {
+            delete process.env.TSS_CLIENT_OUTPUT_DIR
+          } else {
+            process.env.TSS_CLIENT_OUTPUT_DIR = prevClientOut
+          }
+        }
       },
     },
   })

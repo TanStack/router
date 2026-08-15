@@ -102,4 +102,34 @@ describe('normalizeBunClientBuild', () => {
       build.chunkFileNamesByRouteFilePath.get('/app/src/routes/about.tsx'),
     ).toEqual(['about.js'])
   })
+
+  it('wires emitted CSS into entry chunk and content map', () => {
+    const build = normalizeBunClientBuild({
+      clientOutDir: '/app/dist/client',
+      outputs: [
+        {
+          path: '/app/dist/client/assets/main-abc.js',
+          fileName: 'assets/main-abc.js',
+          kind: 'entry-point',
+        },
+      ],
+      emittedCssAssets: [
+        {
+          sourcePath: '/app/src/app.css',
+          fileName: 'assets/app-deadbeef.css',
+          css: 'body{color:red}',
+        },
+      ],
+    })
+
+    expect(build.cssContentByFileName.get('assets/app-deadbeef.css')).toBe(
+      'body{color:red}',
+    )
+    expect(build.cssFilesBySourcePath.get('/app/src/app.css')).toEqual([
+      'assets/app-deadbeef.css',
+    ])
+    expect(build.chunksByFileName.get('assets/main-abc.js')?.css).toEqual([
+      'assets/app-deadbeef.css',
+    ])
+  })
 })
