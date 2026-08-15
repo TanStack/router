@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = join(import.meta.dir, '..')
-const port = 3459
+const port = Number(process.env.SMOKE_PORT ?? 3461)
 const host = '127.0.0.1'
 const exe = join(root, 'dist/server/start')
 

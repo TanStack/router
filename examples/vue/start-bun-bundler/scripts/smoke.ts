@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 
 const root = join(import.meta.dir, '..')
-const port = 3459
+const port = Number(process.env.SMOKE_PORT ?? 3463)
 const host = '127.0.0.1'
 
 async function waitForServer(url: string, attempts = 40) {

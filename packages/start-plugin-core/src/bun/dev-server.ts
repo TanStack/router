@@ -1,4 +1,4 @@
-import { watch, existsSync } from 'node:fs'
+import { watch, existsSync, readFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, relative, isAbsolute } from 'pathe'
 import { tryServeClientAsset } from './static-host'
 import {
@@ -97,7 +97,8 @@ export function resolveFsAllowList(root: string): Array<string> {
     if (
       existsSync(join(dir, 'pnpm-workspace.yaml')) ||
       existsSync(join(dir, 'lerna.json')) ||
-      existsSync(join(dir, 'nx.json'))
+      existsSync(join(dir, 'nx.json')) ||
+      hasPackageJsonWorkspaces(dir)
     ) {
       roots.add(dir)
       break
@@ -109,6 +110,24 @@ export function resolveFsAllowList(root: string): Array<string> {
     dir = parent
   }
   return [...roots]
+}
+
+function hasPackageJsonWorkspaces(dir: string): boolean {
+  try {
+    const raw = readFileSync(join(dir, 'package.json'), 'utf8')
+    const pkg = JSON.parse(raw) as {
+      workspaces?: Array<string> | { packages?: Array<string> }
+    }
+    if (Array.isArray(pkg.workspaces)) {
+      return pkg.workspaces.length > 0
+    }
+    if (pkg.workspaces && Array.isArray(pkg.workspaces.packages)) {
+      return pkg.workspaces.packages.length > 0
+    }
+    return false
+  } catch {
+    return false
+  }
 }
 
 export function isPathInsideAllowList(
@@ -123,6 +142,29 @@ export function isPathInsideAllowList(
     }
   }
   return false
+}
+
+/** Resolve a request pathname under `public/`, rejecting path traversal. */
+export function resolvePublicAssetPath(
+  root: string,
+  pathname: string,
+): string | null {
+  let decoded: string
+  try {
+    decoded = decodeURIComponent(pathname)
+  } catch {
+    return null
+  }
+  if (decoded.includes('\0') || decoded.includes('..')) {
+    return null
+  }
+  const publicDir = normalize(join(root, 'public'))
+  const relativePath = decoded.replace(/^\//, '')
+  const candidate = normalize(join(publicDir, relativePath))
+  if (!isPathInsideAllowList(candidate, [publicDir])) {
+    return null
+  }
+  return candidate
 }
 
 function injectDevScripts(
@@ -143,8 +185,12 @@ function injectDevScripts(
     // Built /assets/*.js must not load alongside ESM-dev — a second StartClient
     // would hydrate after $_TSR.h() tears down bootstrap data.
     next = next.replace(/<link\b[^>]*>/gi, (tag) => {
-      if (!/\/assets\//.test(tag)) return tag
-      if (/\.css\b/i.test(tag)) return tag
+      if (!/\/assets\//.test(tag)) {
+        return tag
+      }
+      if (/\.css\b/i.test(tag)) {
+        return tag
+      }
       return ''
     })
   }
@@ -309,17 +355,24 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
     }, debounceMs)
   }
 
-  const watcher = watch(
-    join(opts.root, 'src'),
-    { recursive: true },
-    (_event, filename) => {
-      if (!filename) {
-        return
-      }
-      if (filename.includes('routeTree.gen.')) return
-      scheduleRebuild(join(opts.root, 'src', filename))
-    },
-  )
+  const srcDir = join(opts.root, 'src')
+  const watcher = existsSync(srcDir)
+    ? watch(srcDir, { recursive: true }, (_event, filename) => {
+        if (!filename) {
+          return
+        }
+        if (filename.includes('routeTree.gen.')) {
+          return
+        }
+        scheduleRebuild(join(srcDir, filename))
+      })
+    : null
+
+  if (!watcher) {
+    console.warn(
+      `[tanstack-start-bun] No src/ directory at ${srcDir}; file watching disabled`,
+    )
+  }
 
   const transformOpts: DevTransformOptions = {
     root: opts.root,
@@ -537,17 +590,24 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
 
         if (emitted && emitted.size > 0) {
           if (ids.length > 0 && routesManifest) {
+            const seen = new Set<string>()
             for (const routeId of ids) {
               const filePath = routesManifest[routeId]?.filePath
               if (!filePath) {
                 continue
               }
+              const normalizedRoute = filePath.replace(/\\/g, '/')
               for (const [cssPath, css] of emitted) {
+                if (seen.has(cssPath)) {
+                  continue
+                }
+                const normalizedCss = cssPath.replace(/\\/g, '/')
                 if (
-                  cssPath.includes(filePath) ||
-                  filePath.includes(cssPath) ||
-                  cssPath.replace(/\\/g, '/').includes('/src/')
+                  normalizedCss === normalizedRoute ||
+                  normalizedCss.startsWith(`${normalizedRoute}.`) ||
+                  normalizedCss.includes(normalizedRoute)
                 ) {
+                  seen.add(cssPath)
                   chunks.push(`/* ${cssPath} */\n${css}`)
                 }
               }
@@ -583,9 +643,12 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
 
       // Also serve files from public/ during dev (before first rebuild copy)
       try {
-        const publicFile = Bun.file(join(opts.root, 'public', url.pathname))
-        if (await publicFile.exists()) {
-          return new Response(publicFile)
+        const publicPath = resolvePublicAssetPath(opts.root, url.pathname)
+        if (publicPath) {
+          const publicFile = Bun.file(publicPath)
+          if (await publicFile.exists()) {
+            return new Response(publicFile)
+          }
         }
       } catch {
         // ignore
@@ -594,7 +657,9 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
       const response = await handlerModule.default.fetch(req)
       const contentType = response.headers.get('content-type') ?? ''
       if (contentType.includes('text/html')) {
-        let html = await response.text()
+        const html = await response.text()
+        const headers = new Headers(response.headers)
+        headers.set('Content-Type', 'text/html; charset=utf-8')
         return new Response(
           injectDevScripts(html, {
             framework: opts.framework,
@@ -602,9 +667,8 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
           }),
           {
             status: response.status,
-            headers: {
-              'Content-Type': 'text/html; charset=utf-8',
-            },
+            statusText: response.statusText,
+            headers,
           },
         )
       }
@@ -624,7 +688,7 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
       if (rebuildTimer) {
         clearTimeout(rebuildTimer)
       }
-      watcher.close()
+      watcher?.close()
       for (const controller of reloadClients) {
         try {
           controller.close()

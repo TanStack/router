@@ -6,7 +6,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 
 const root = join(import.meta.dir, '..')
-const port = 3458
+const port = Number(process.env.SMOKE_PORT ?? 3460)
 const host = '127.0.0.1'
 
 async function waitForServer(url: string, attempts = 60) {

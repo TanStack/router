@@ -7,6 +7,7 @@ import { readFile, stat } from 'node:fs/promises'
 import { dirname, extname, isAbsolute, join, normalize } from 'pathe'
 import { rewriteImportMetaHot } from './hmr-runtime'
 import { isNodeBuiltinSpecifier } from './node-builtin-stub'
+import { isCssModulesFile, transformCssModules } from './css-modules'
 import type { CompileStartFrameworkOptions } from '../types'
 
 export interface DevTransformOptions {
@@ -72,10 +73,9 @@ function guessLoader(filePath: string): 'tsx' | 'ts' | 'jsx' | 'js' {
  */
 function injectBunJsxRuntimeImports(code: string): string {
   const devSuffix = code.match(/\bjsxDEV_([A-Za-z0-9]+)\b/)?.[1]
-  const jsxSuffix =
-    code.match(/\bjsx_([A-Za-z0-9]+)\b/)?.[1] ??
-    code.match(/\bjsxs_([A-Za-z0-9]+)\b/)?.[1]
-  if (!devSuffix && !jsxSuffix) {
+  const jsxSuffix = code.match(/\bjsx_([A-Za-z0-9]+)\b/)?.[1]
+  const jsxsSuffix = code.match(/\bjsxs_([A-Za-z0-9]+)\b/)?.[1]
+  if (!devSuffix && !jsxSuffix && !jsxsSuffix) {
     return code
   }
 
@@ -85,15 +85,20 @@ function injectBunJsxRuntimeImports(code: string): string {
       `import { jsxDEV as jsxDEV_${devSuffix} } from "react/jsx-dev-runtime";`,
     )
   }
-  if (
-    jsxSuffix &&
-    !code.includes(`jsx as jsx_${jsxSuffix}`) &&
-    !code.includes(`jsxs as jsxs_${jsxSuffix}`)
-  ) {
-    lines.push(
-      `import { jsx as jsx_${jsxSuffix}, jsxs as jsxs_${jsxSuffix} } from "react/jsx-runtime";`,
-    )
+
+  if (jsxSuffix || jsxsSuffix) {
+    const parts: Array<string> = []
+    if (jsxSuffix && !code.includes(`jsx as jsx_${jsxSuffix}`)) {
+      parts.push(`jsx as jsx_${jsxSuffix}`)
+    }
+    if (jsxsSuffix && !code.includes(`jsxs as jsxs_${jsxsSuffix}`)) {
+      parts.push(`jsxs as jsxs_${jsxsSuffix}`)
+    }
+    if (parts.length > 0) {
+      lines.push(`import { ${parts.join(', ')} } from "react/jsx-runtime";`)
+    }
   }
+
   if (lines.length === 0) {
     return code
   }
@@ -544,6 +549,29 @@ export async function transformDevModule(
         contentType: 'text/javascript; charset=utf-8',
       }
     }
+
+    if (isCssModulesFile(filePath)) {
+      const modular = transformCssModules({ css: code, filePath })
+      const escaped = JSON.stringify(modular.css)
+      const exportEntries = Object.entries(modular.exports)
+        .map(([k, v]) => `${JSON.stringify(k)}: ${JSON.stringify(v)}`)
+        .join(', ')
+      return {
+        code: `const css = ${escaped};
+if (typeof document !== 'undefined') {
+  const el = document.createElement('style');
+  el.setAttribute('data-tanstack-dev-css', ${JSON.stringify(filePath)});
+  el.textContent = css;
+  document.head.appendChild(el);
+}
+const styles = { ${exportEntries} };
+export default styles;
+export const __cssUrl = ${JSON.stringify('/@tanstack-start/styles.css')};
+`,
+        contentType: 'text/javascript; charset=utf-8',
+      }
+    }
+
     const escaped = JSON.stringify(code)
     return {
       code: `const css = ${escaped};

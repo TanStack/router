@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { createBunDefine } from '../src/bun/planning'
-import { parseEnvFile, createEnvDefine } from '../src/bun/load-env'
+import {
+  parseEnvFile,
+  createEnvDefine,
+  expandEnvVariables,
+  loadBunEnvFiles,
+} from '../src/bun/load-env'
 import { transformCssModules, isCssModulesFile } from '../src/bun/css-modules'
 import { copyPublicDirToClient } from '../src/bun/copy-public-dir'
 import { generateSerializationAdaptersModule } from '../src/serialization-adapters-module'
@@ -70,6 +75,20 @@ SINGLE='x'
     expect(parsed.SINGLE).toBe('x')
   })
 
+  it('supports export prefix, inline comments, escapes, and expansion', () => {
+    const parsed = parseEnvFile(`
+export GREETING="hello\\nworld"
+NAME=world # trailing comment
+FULL=$GREETING-$NAME
+NESTED=\${NAME}_ok
+`)
+    expect(parsed.GREETING).toBe('hello\nworld')
+    expect(parsed.NAME).toBe('world')
+    expandEnvVariables(parsed)
+    expect(parsed.FULL).toBe('hello\nworld-world')
+    expect(parsed.NESTED).toBe('world_ok')
+  })
+
   it('creates define entries for env keys', () => {
     const define = createEnvDefine({ API_URL: 'https://example.test' })
     expect(define['process.env.API_URL']).toBe(
@@ -96,6 +115,37 @@ SINGLE='x'
     expect(define['process.env.TSS_PUBLIC_TOKEN']).toBe(
       JSON.stringify('tok'),
     )
+  })
+
+  it('lets process.env win over .env files in the effective map', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'bun-env-'))
+    try {
+      await writeFile(
+        join(root, '.env'),
+        'VITE_APP=from-file\nSECRET=file\n',
+        'utf8',
+      )
+      const prevVite = process.env.VITE_APP
+      const prevOnly = process.env.VITE_ONLY_PROCESS
+      process.env.VITE_APP = 'from-process'
+      process.env.VITE_ONLY_PROCESS = 'only-process'
+      const loaded = loadBunEnvFiles({ root, mode: 'development' })
+      expect(loaded.VITE_APP).toBe('from-process')
+      expect(loaded.SECRET).toBe('file')
+      expect(loaded.VITE_ONLY_PROCESS).toBe('only-process')
+      if (prevVite === undefined) {
+        delete process.env.VITE_APP
+      } else {
+        process.env.VITE_APP = prevVite
+      }
+      if (prevOnly === undefined) {
+        delete process.env.VITE_ONLY_PROCESS
+      } else {
+        process.env.VITE_ONLY_PROCESS = prevOnly
+      }
+    } finally {
+      await rm(root, { recursive: true, force: true })
+    }
   })
 })
 

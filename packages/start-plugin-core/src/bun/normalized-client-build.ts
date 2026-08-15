@@ -198,14 +198,18 @@ export function toClientRelativeFileName(
 export function getRouteFilePathsFromInputs(
   inputs: Array<{ path: string }> | undefined,
 ): Array<string> {
-  if (!inputs?.length) return []
+  if (!inputs?.length) {
+    return []
+  }
 
   const paths: Array<string> = []
   const seen = new Set<string>()
 
   for (const input of inputs) {
     const routeFilePath = extractRouteFilePathFromSource(input.path)
-    if (!routeFilePath || seen.has(routeFilePath)) continue
+    if (!routeFilePath || seen.has(routeFilePath)) {
+      continue
+    }
     seen.add(routeFilePath)
     paths.push(routeFilePath)
   }
