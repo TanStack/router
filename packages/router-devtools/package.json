@@ -68,7 +68,7 @@
     "@vitejs/plugin-react": "^4.3.4",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "@eslint-react/eslint-plugin": "catalog:",

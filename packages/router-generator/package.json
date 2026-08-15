@@ -79,7 +79,7 @@
     "@types/node": ">=20",
     "@types/react": "catalog:",
     "react": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",

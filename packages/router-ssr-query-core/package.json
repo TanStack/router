@@ -66,7 +66,7 @@
   "devDependencies": {
     "@tanstack/router-core": ">=1.171.7",
     "@tanstack/query-core": ">=5.90.0",
-    "vite": "*",
+    "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",
