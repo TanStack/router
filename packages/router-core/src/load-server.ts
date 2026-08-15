@@ -836,12 +836,13 @@ export async function loadServerRoute(
     router.stores.location.set(next)
     router.stores.status.set('idle')
     if (result.type === 'render') {
-      router.stores.setMatches(result.matches)
+      router.stores.setMatches(result.matches, next)
       router.stores.resolvedLocation.set(next)
     }
   })
   if (result.type === 'render') {
     router._committed = result.matches
+    router._committedLocation = next
     runRouteLifecycle(router, previous, result.matches)
   }
   router._commitPromise?.resolve()
