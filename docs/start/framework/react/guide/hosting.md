@@ -445,7 +445,70 @@ bun run server.ts
 🚀 Server running at http://localhost:3000
 ```
 
-For a complete working example, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+For a complete working example of **Vite build + Bun HTTP host**, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+
+### Bun as the bundler (experimental)
+
+There is also an experimental path that uses **Bun as the bundler** (no Vite), via `@tanstack/react-start/plugin/bun`:
+
+```ts
+import { tanstackStart } from '@tanstack/react-start/plugin/bun'
+
+const start = tanstackStart({ bun: { port: 3000 } })
+await start.build()
+// or: await start.dev()
+```
+
+Default production output matches the **Rsbuild-style** host: `dist/client` + `dist/server/server.js` + `dist/server/host.js` (static assets then `fetch`). See the [`start-bun-bundler`](https://github.com/TanStack/router/tree/main/examples/react/start-bun-bundler) example. Solid/Vue mirrors: `@tanstack/solid-start/plugin/bun`, `@tanstack/vue-start/plugin/bun`.
+
+#### Optional Nitro bridge (production only)
+
+Unlike Vite Start (app composes `nitro()` from `nitro/vite`), the Bun bundler adapter **cannot** reuse `nitro/vite` (it depends on Vite Environments). Instead you can enable an optional post-build Nitro 3 bridge after dual `Bun.build`:
+
+```bash
+npm install nitro
+```
+
+```ts
+const start = tanstackStart({
+  bun: {
+    nitro: {
+      preset: 'node-server', // or 'bun', 'vercel', …
+      // config: { /* NitroConfig subset */ },
+    },
+  },
+})
+await start.build()
+// → also writes .output/ (public + server); prerender uses .output/public
+```
+
+| Path | Role |
+|------|------|
+| Vite + `nitro/vite` | Bun/Node/… as **runtime** after Vite build |
+| Bun bundler + `host.js` | Bun as **bundler**; deploy `dist/` with Bun (default) |
+| Bun bundler + `bun.nitro` | Bun as **bundler**, then programmatic Nitro 3 → `.output` |
+| Bun bundler + `bun.standalone` | Bun as **bundler**, then `Bun.build({ compile })` → single OS/arch executable (embeds `dist/client`) |
+
+#### Optional Bun standalone executable (production only)
+
+```ts
+const start = tanstackStart({
+  bun: {
+    standalone: {
+      outfile: 'dist/server/start', // default
+      // target: 'linux-x64', // optional cross-compile
+    },
+  },
+})
+await start.build()
+// → dist/server/start (large binary; run directly, set PORT/HOST)
+```
+
+Always compiles from **`dist/`** (not Nitro `.output`). Binary size includes the Bun runtime and is platform-specific. Experimental — see [Bun executables](https://bun.com/docs/bundler/executables).
+
+Dev still uses the Bun host (`createBunDevServer`); Nitro and standalone compile are production-build only.
+
+> Module-level HMR and RSC are not part of this adapter yet.
 
 ### Appwrite Sites
 

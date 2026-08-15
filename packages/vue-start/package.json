@@ -80,6 +80,14 @@
         "default": "./dist/esm/plugin/rsbuild.js"
       }
     },
+    "./plugin/bun": {
+      "bun": "./src/plugin/bun.ts",
+      "import": {
+        "types": "./dist/esm/plugin/bun.d.ts",
+        "default": "./dist/esm/plugin/bun.js"
+      },
+      "default": "./src/plugin/bun.ts"
+    },
     "./server-entry": {
       "import": {
         "types": "./dist/default-entry/esm/server.d.ts",

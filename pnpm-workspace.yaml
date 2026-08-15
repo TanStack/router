@@ -143,3 +143,4 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+  bun: set this to true or false
