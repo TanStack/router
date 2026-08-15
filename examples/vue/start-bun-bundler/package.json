@@ -1,0 +1,25 @@
+{
+  "name": "tanstack-vue-start-bun-bundler",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run ./scripts/dev.ts",
+    "build": "bun run ./scripts/build.ts",
+    "start": "bun run ./dist/server/host.js",
+    "smoke": "bun run ./scripts/smoke.ts",
+    "test:e2e": "bun run smoke"
+  },
+  "dependencies": {
+    "@tanstack/router-plugin": "workspace:*",
+    "@tanstack/vue-router": "workspace:*",
+    "@tanstack/vue-start": "workspace:*",
+    "@vue/babel-plugin-jsx": "^1.4.0",
+    "vue": "^3.5.16"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.28.5",
+    "@babel/preset-typescript": "^7.28.5",
+    "@types/bun": "^1.2.22",
+    "typescript": "^5.9.0"
+  }
+}
