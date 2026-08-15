@@ -38,6 +38,8 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "@types/jsdom": "28.0.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "@typescript/native": "npm:typescript@^7.0.2",
     "jsdom": "^29.1.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",

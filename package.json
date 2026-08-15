@@ -5,9 +5,9 @@
     "type": "git",
     "url": "git+https://github.com/TanStack/router.git"
   },
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@11.21.0",
   "engines": {
-    "pnpm": ">=11.9.0"
+    "pnpm": ">=11.21.0"
   },
   "type": "module",
   "scripts": {
