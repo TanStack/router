@@ -38,7 +38,7 @@ export interface DevTransformResult {
 }
 
 const APP_EXT = /\.(m|c)?[jt]sx?$/
-const TEXT_EXT = /\.(css|json|svg)$/
+const TEXT_EXT = /\.(css|json)$/
 const RESOLVE_EXTS = [
   '',
   '.ts',
@@ -605,8 +605,20 @@ export default css;
     }
   }
 
-  // CJS packages (react/jsx-runtime, etc.) → ESM bundle for the browser
-  if (looksLikeCjs(code)) {
+  if (filePath.endsWith('.svg')) {
+    // ESM imports of SVG must not feed the SVG source into the JS graph.
+    // Export a data URL so `/@fs/...svg` never re-enters transform as text/js.
+    const dataUrl = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(code)}`
+    return {
+      code: `export default ${JSON.stringify(dataUrl)}`,
+      contentType: 'text/javascript; charset=utf-8',
+    }
+  }
+
+  // CJS packages (react/jsx-runtime, etc.) → ESM bundle for the browser.
+  // Never take this path for app modules — a string/comment containing
+  // `module.exports` would otherwise skip the code-splitter / Start compiler.
+  if (looksLikeCjs(code) && !shouldTransformApp(filePath, opts.root)) {
     const bundled = await bundleCjsToEsm(filePath)
     if (bundled) {
       return {

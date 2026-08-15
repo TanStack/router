@@ -63,4 +63,25 @@ describe('transformDevModule css ?url', () => {
       await rm(dir, { recursive: true, force: true })
     }
   })
+
+  it('exports SVG imports as data URLs instead of raw SVG source', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'bun-dev-svg-'))
+    const svgPath = join(dir, 'icon.svg')
+    try {
+      await writeFile(
+        svgPath,
+        '<svg xmlns="http://www.w3.org/2000/svg"><circle r="1"/></svg>',
+        'utf8',
+      )
+      const result = await transformDevModule(
+        { root: dir, framework: 'react' },
+        svgPath,
+      )
+      expect(result.contentType).toContain('javascript')
+      expect(result.code).toContain('data:image/svg+xml')
+      expect(result.code).not.toMatch(/^<svg/m)
+    } finally {
+      await rm(dir, { recursive: true, force: true })
+    }
+  })
 })

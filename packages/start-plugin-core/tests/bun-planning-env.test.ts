@@ -215,11 +215,34 @@ describe('css modules', () => {
 
   it('rewrites compound selectors', () => {
     const result = transformCssModules({
-      css: `.a.b { color: red; }\n.a .c { color: blue; }`,
+      css: `.a.b { color: red; }\n.a .c { color: blue; }\n.a[data-x] { color: green; }`,
       filePath: '/app/src/Compound.module.css',
     })
     expect(result.css).toContain(`.${result.exports.a}.${result.exports.b}`)
     expect(result.css).toContain(`.${result.exports.a} .${result.exports.c}`)
+    expect(result.css).toContain(`.${result.exports.a}[data-x]`)
+    expect(result.exports).toHaveProperty('a')
+    expect(result.exports).toHaveProperty('b')
+    expect(result.exports).toHaveProperty('c')
+  })
+
+  it('does not rewrite classes inside imports, urls, or strings', () => {
+    const result = transformCssModules({
+      css: `
+@import "./theme.module.css";
+.card { background: url(a.b.png); content: ".title"; }
+.title { color: red; }
+`,
+      filePath: '/app/src/Safe.module.css',
+    })
+    expect(result.css).toContain('@import "./theme.module.css";')
+    expect(result.css).toContain('url(a.b.png)')
+    expect(result.css).toContain('content: ".title"')
+    expect(result.exports).not.toHaveProperty('module')
+    expect(result.exports).not.toHaveProperty('png')
+    expect(result.exports.title).toMatch(/^title_/)
+    expect(result.css).toContain(`.${result.exports.title}`)
+    expect(result.css).toContain(`.${result.exports.card}`)
   })
 })
 

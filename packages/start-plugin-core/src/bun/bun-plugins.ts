@@ -19,7 +19,7 @@ const ALIAS_FILTER = new RegExp(
     VIRTUAL_MODULES.pluginAdapters,
   ]
     .map((id) => id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('|')}|virtual:tanstack-|tanstack-start-)`,
+    .join('|')}|virtual:tanstack-)`,
 )
 
 /** Resolve entry aliases and virtual modules before filesystem lookup. */

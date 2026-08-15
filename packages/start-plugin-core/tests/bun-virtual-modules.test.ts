@@ -1,10 +1,26 @@
 import { describe, expect, it } from 'vitest'
 import {
   createBunVirtualModuleStore,
+  isBunVirtualModuleId,
   VIRTUAL_MODULES,
 } from '../src/bun/virtual-modules'
 import type { NormalizedClientBuild } from '../src/types'
 import type { ServerFn } from '../src/start-compiler/types'
+
+describe('isBunVirtualModuleId', () => {
+  it('matches reserved virtual ids only', () => {
+    expect(isBunVirtualModuleId(VIRTUAL_MODULES.startManifest)).toBe(true)
+    expect(isBunVirtualModuleId(VIRTUAL_MODULES.serverFnResolver)).toBe(true)
+    expect(isBunVirtualModuleId('virtual:tanstack-start-client-entry')).toBe(
+      true,
+    )
+    expect(isBunVirtualModuleId('#tanstack-router-entry')).toBe(true)
+    expect(
+      isBunVirtualModuleId('tanstack-start-import-protection:mock'),
+    ).toBe(false)
+    expect(isBunVirtualModuleId('tanstack-start-example-basic')).toBe(false)
+  })
+})
 
 describe('createBunVirtualModuleStore', () => {
   it('writes serverFn resolver module from registry', () => {

@@ -59,6 +59,12 @@ export interface BunCompilerHosts {
   invalidate: (ids: Iterable<string>) => void
 }
 
+/** Strip `?query` from a module id for stable path comparison. */
+function stripModulePath(id: string): string {
+  const queryIndex = id.indexOf('?')
+  return queryIndex >= 0 ? id.slice(0, queryIndex) : id
+}
+
 /** Whether a module id should run through the Start compiler. */
 function shouldTransformId(
   id: string,
@@ -376,7 +382,11 @@ export function createBunCompilerHosts(
           })
         }
         for (const [fnId, fn] of Object.entries(opts.serverFnsById)) {
-          if (fn.filename === id || fn.extractedFilename.startsWith(id)) {
+          const idPath = stripModulePath(id)
+          if (
+            stripModulePath(fn.filename) === idPath ||
+            stripModulePath(fn.extractedFilename) === idPath
+          ) {
             delete opts.serverFnsById[fnId]
           }
         }

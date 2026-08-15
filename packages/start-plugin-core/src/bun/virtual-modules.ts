@@ -85,7 +85,6 @@ export function isBunVirtualModuleId(id: string): boolean {
     id === VIRTUAL_MODULES.startManifest ||
     id === VIRTUAL_MODULES.pluginAdapters ||
     id.startsWith('virtual:tanstack-') ||
-    id.startsWith('#tanstack-') ||
-    id.startsWith('tanstack-start-')
+    id.startsWith('#tanstack-')
   )
 }
