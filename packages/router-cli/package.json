@@ -75,6 +75,9 @@
     "@types/yargs": "^17.0.33",
     "vite": "*",
     "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   }
 }

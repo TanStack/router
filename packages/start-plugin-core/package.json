@@ -114,7 +114,10 @@
     "@types/picomatch": "^4.0.2",
     "vite": "*",
     "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0",

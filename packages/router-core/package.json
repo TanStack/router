@@ -194,6 +194,9 @@
     "vite": "*",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
-    "jsdom": "catalog:"
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   }
 }

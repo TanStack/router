@@ -88,7 +88,10 @@
     "react": "catalog:",
     "react-dom": "catalog:",
     "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
+    "@types/react-dom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

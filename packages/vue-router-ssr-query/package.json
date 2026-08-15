@@ -67,7 +67,10 @@
     "vite": "*",
     "vue": "^3.5.25",
     "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.90.0",

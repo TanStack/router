@@ -61,7 +61,6 @@
     ]
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.4",
     "@changesets/changelog-github": "^0.7.0",
     "@changesets/cli": "^2.30.0",
     "@nx/devkit": "22.7.5",
@@ -74,8 +73,6 @@
     "markdown-link-extractor": "^4.0.3",
     "nx": "22.7.5",
     "prettier": "^3.8.0",
-    "publint": "^0.3.16",
-    "rimraf": "^6.1.2",
     "tinyglobby": "^0.2.15",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "catalog:",

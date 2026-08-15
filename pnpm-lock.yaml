@@ -64,9 +64,6 @@ importers:
 
   .:
     devDependencies:
-      '@arethetypeswrong/cli':
-        specifier: ^0.18.4
-        version: 0.18.4
       '@changesets/changelog-github':
         specifier: ^0.7.0
         version: 0.7.0
@@ -106,12 +103,6 @@ importers:
       prettier:
         specifier: ^3.8.0
         version: 3.8.1
-      publint:
-        specifier: ^0.3.16
-        version: 0.3.17
-      rimraf:
-        specifier: ^6.1.2
-        version: 6.1.2
       tinyglobby:
         specifier: ^0.2.15
         version: 0.2.15
@@ -477,6 +468,9 @@ importers:
       get-port-please:
         specifier: ^3.2.0
         version: 3.2.0
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -1931,6 +1925,9 @@ importers:
       '@typescript/native':
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       srvx:
         specifier: ^0.11.9
         version: 0.11.12
@@ -4960,6 +4957,9 @@ importers:
       '@typescript/native':
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       srvx:
         specifier: ^0.11.9
         version: 0.11.12
@@ -6850,6 +6850,9 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
         version: 5.1.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       srvx:
         specifier: ^0.11.9
         version: 0.11.12
@@ -13383,6 +13386,9 @@ importers:
 
   packages/arktype-adapter:
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -13407,12 +13413,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13426,6 +13438,9 @@ importers:
         specifier: ^8.23.0
         version: 8.23.0(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -13438,6 +13453,12 @@ importers:
       eslint:
         specifier: ^9.22.0
         version: 9.22.0(jiti@2.7.0)
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13454,6 +13475,9 @@ importers:
         specifier: ^16.2.0
         version: 16.4.0
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -13463,6 +13487,12 @@ importers:
       eslint:
         specifier: ^9.22.0
         version: 9.22.0(jiti@2.7.0)
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       typescript:
         specifier: ^5.8.2
         version: 5.9.2
@@ -13472,12 +13502,21 @@ importers:
 
   packages/history:
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13497,9 +13536,18 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -13519,6 +13567,9 @@ importers:
         specifier: ^5.1.22
         version: 5.1.28
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -13555,12 +13606,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13583,6 +13640,9 @@ importers:
         specifier: workspace:^
         version: link:../router-devtools-core
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -13607,12 +13667,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13629,6 +13695,9 @@ importers:
         specifier: workspace:*
         version: link:../router-ssr-query-core
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -13656,12 +13725,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13702,6 +13777,9 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -13726,12 +13804,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -13748,6 +13832,9 @@ importers:
         specifier: workspace:*
         version: link:../start-client-core
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -13775,12 +13862,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13815,6 +13908,9 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -13845,6 +13941,9 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -13854,6 +13953,9 @@ importers:
       react-server-dom-rspack:
         specifier: ^0.0.2
         version: 0.0.2(@rspack/core@2.0.0(@swc/helpers@0.5.23))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -13870,6 +13972,9 @@ importers:
         specifier: workspace:*
         version: link:../start-server-core
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -13894,12 +13999,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -13922,6 +14033,9 @@ importers:
         specifier: ^17.7.2
         version: 17.7.2
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -13931,6 +14045,12 @@ importers:
       '@types/yargs':
         specifier: ^17.0.33
         version: 17.0.33
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13953,6 +14073,9 @@ importers:
         specifier: ^1.6.2
         version: 1.6.2(seroval@1.6.2)
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/store':
         specifier: ^0.9.3
         version: 0.9.3
@@ -13968,6 +14091,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -13987,6 +14116,9 @@ importers:
         specifier: ^3.0.10
         version: 3.2.3
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -14005,12 +14137,18 @@ importers:
       eslint-plugin-react-hooks:
         specifier: 'catalog:'
         version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14033,6 +14171,9 @@ importers:
         specifier: ^2.1.16
         version: 2.1.16(csstype@3.2.3)
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14042,6 +14183,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -14082,6 +14229,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -14094,9 +14244,15 @@ importers:
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.9
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14146,6 +14302,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@rsbuild/core':
         specifier: ^2.1.0
         version: 2.1.1
@@ -14170,18 +14329,27 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-ssr-query-core:
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/query-core':
         specifier: ^5.99.0
         version: 5.99.0
@@ -14194,6 +14362,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14228,6 +14402,9 @@ importers:
         specifier: ^0.2.15
         version: 0.2.15
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14237,6 +14414,12 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14250,9 +14433,18 @@ importers:
         specifier: workspace:*
         version: link:../router-plugin
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14278,6 +14470,9 @@ importers:
         specifier: ^5.1.22
         version: 5.1.28
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.12)
@@ -14296,6 +14491,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -14324,12 +14525,21 @@ importers:
         specifier: workspace:^
         version: link:../solid-router
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -14352,6 +14562,9 @@ importers:
         specifier: workspace:*
         version: link:../router-ssr-query-core
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/solid-query':
         specifier: ^5.99.0
         version: 5.99.0(solid-js@1.9.12)
@@ -14367,6 +14580,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -14407,6 +14626,9 @@ importers:
         specifier: 1.9.12
         version: 1.9.12
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@eslint-react/eslint-plugin':
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
@@ -14428,6 +14650,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14450,6 +14678,9 @@ importers:
         specifier: 1.9.12
         version: 1.9.12
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14459,6 +14690,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14481,6 +14718,9 @@ importers:
         specifier: workspace:*
         version: link:../start-server-core
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14490,6 +14730,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -14521,6 +14767,9 @@ importers:
         specifier: ^1.6.2
         version: 1.6.2
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14530,6 +14779,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14539,9 +14794,18 @@ importers:
 
   packages/start-fn-stubs:
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14612,6 +14876,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@rsbuild/core':
         specifier: ^2.1.0
         version: 2.1.1
@@ -14630,6 +14897,12 @@ importers:
       '@types/picomatch':
         specifier: ^4.0.2
         version: 4.0.2
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14661,6 +14934,9 @@ importers:
         specifier: ^1.6.2
         version: 1.6.2
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@standard-schema/spec':
         specifier: ^1.0.0
         version: 1.0.0
@@ -14676,6 +14952,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14698,6 +14980,9 @@ importers:
         specifier: ^1.6.2
         version: 1.6.2
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14707,6 +14992,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14720,6 +15011,9 @@ importers:
         specifier: workspace:*
         version: link:../router-core
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14729,6 +15023,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14738,6 +15038,9 @@ importers:
 
   packages/valibot-adapter:
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -14759,12 +15062,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       valibot:
         specifier: 1.0.0-beta.15
         version: 1.0.0-beta.15(typescript@7.0.2)
@@ -14777,12 +15086,21 @@ importers:
 
   packages/virtual-file-routes:
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14808,6 +15126,9 @@ importers:
         specifier: ^5.1.22
         version: 5.1.28
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14832,6 +15153,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14860,6 +15187,9 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14869,6 +15199,12 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14888,6 +15224,9 @@ importers:
         specifier: ^5.99.0
         version: 5.99.0(vue@3.5.25(typescript@7.0.2))
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14897,6 +15236,12 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14931,6 +15276,9 @@ importers:
         specifier: ^2.0.3
         version: 2.0.3
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@rsbuild/core':
         specifier: ^2.1.0
         version: 2.1.1
@@ -14949,6 +15297,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -14971,6 +15325,9 @@ importers:
         specifier: workspace:*
         version: link:../vue-router
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -14980,6 +15337,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -15002,6 +15365,9 @@ importers:
         specifier: workspace:*
         version: link:../vue-router
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/vite-config':
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -15014,6 +15380,12 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -15029,6 +15401,9 @@ importers:
 
   packages/zod-adapter:
     devDependencies:
+      '@arethetypeswrong/cli':
+        specifier: 'catalog:'
+        version: 0.18.4
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
@@ -15050,12 +15425,18 @@ importers:
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1
+      publint:
+        specifier: 'catalog:'
+        version: 0.3.17
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
+      rimraf:
+        specifier: 'catalog:'
+        version: 6.1.2
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)

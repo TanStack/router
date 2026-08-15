@@ -60,7 +60,10 @@
     "eslint": "^9.22.0",
     "typescript": "^5.8.2",
     "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",

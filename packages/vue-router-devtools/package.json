@@ -65,7 +65,10 @@
     "vue": "^3.5.13",
     "@types/node": ">=20",
     "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/vue-router": "workspace:^",

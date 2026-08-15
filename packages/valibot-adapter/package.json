@@ -75,7 +75,10 @@
     "vitest": "catalog:",
     "jsdom": "catalog:",
     "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
+    "@types/react-dom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "valibot": "^1.0.0 || ^1.0.0-beta.5 || ^1.0.0-rc",

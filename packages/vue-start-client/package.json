@@ -69,7 +69,10 @@
     "vue": "^3.5.25",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
-    "jsdom": "catalog:"
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "vue": "^3.3.0"

@@ -75,7 +75,10 @@
     "vitest": "catalog:",
     "jsdom": "catalog:",
     "@types/react": "catalog:",
-    "@types/react-dom": "catalog:"
+    "@types/react-dom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "arktype": ">=2.0.0-rc <3",

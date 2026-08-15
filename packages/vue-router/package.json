@@ -91,7 +91,10 @@
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",
-    "@vitest/ui": "catalog:"
+    "@vitest/ui": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "vue": "^3.3.0"

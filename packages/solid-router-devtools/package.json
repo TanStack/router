@@ -74,7 +74,10 @@
     "vite-plugin-solid": "^2.11.10",
     "@types/node": ">=20",
     "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/router-core": "workspace:^",
