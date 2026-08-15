@@ -1,92 +1,113 @@
 # Synchronous client-lane optimization
 
-## Before
+## Reproducible revisions
 
-Production implementation: `4fa1df75402c09f350056a68c261d35177984b00`
-Tests and benchmark: `443dfc883d`
+- Baseline production tree: `f97188fdb4c3964bd47b556a904cd85e3142d06e`
+- Candidate production tree: `1ca28da921c42155c14f75773b10bcfa42fdb7af`
+- Benchmark and focused-test source: `771eceb54276342aac3b7d7134cb83da73230cbb`
 
-### Correctness
+The baseline ran in a detached worktree at the merge base. The benchmark and
+focused-test commit was applied there without the production implementation,
+so both revisions used the same benchmark code.
 
-- The focused unit run had 25 passing tests and the new architectural
-  assertion failed as expected: baseline `waitFor` wraps a synchronous value
-  in a Promise and subscribes it to cancellation.
-- The queued-abort and pending-Promise cleanup regressions passed.
+Measurements below were collected on the same host with Node 26 and Vitest
+4.1.4. Focused cases ran separately with `NODE_ENV=production` to avoid one
+case perturbing another:
 
-### Focused runtime benchmark
+```sh
+pnpm exec vitest bench tests/client-load-sync.bench.ts --run \
+  -t "<case>" --outputJson "<output>"
+```
 
-| Case                                                              |      Mean |       p75 |       p99 |   RME | Samples |
-| ----------------------------------------------------------------- | --------: | --------: | --------: | ----: | ------: |
-| 80 waits for synchronous values                                   | 0.0222 ms | 0.0231 ms | 0.0343 ms | 0.13% | 134,865 |
-| 10 eager loaderless navigations                                   | 0.5901 ms | 0.5973 ms | 1.1069 ms | 0.41% |   5,084 |
-| 10 retained loaderless navigations                                | 0.5191 ms | 0.5243 ms | 1.0596 ms | 0.42% |   5,779 |
-| 10 navigations through 8 synchronous `beforeLoad` routes          | 0.6411 ms | 0.6452 ms | 1.1410 ms | 0.40% |   4,680 |
-| 10 navigations through alternating sync/async `beforeLoad` routes | 0.6363 ms | 0.6396 ms | 1.1109 ms | 0.38% |   4,715 |
-| 10 navigations through 8 resolved async `beforeLoad` routes       | 0.6445 ms | 0.6421 ms | 1.3004 ms | 0.64% |   4,655 |
-| 10 navigations through 8 synchronous loader routes                | 1.0535 ms | 1.0021 ms | 3.1143 ms | 4.80% |   2,848 |
+## Focused runtime benchmark
 
-The synchronous-loader case is smoke coverage only because of its high
-variance and long-tail outliers.
+Times are milliseconds. Direct waits are averages of two alternating B/A and
+A/B pairs. The synchronous `beforeLoad` case is the average of three pairs;
+the remaining cases are one B/A smoke pair each.
 
-### Bundle
+| Case                                                              | Baseline mean | Candidate mean | Change | Baseline p75 | Candidate p75 | Baseline p99 | Candidate p99 |
+| ----------------------------------------------------------------- | ------------: | -------------: | -----: | -----------: | ------------: | -----------: | ------------: |
+| 80 waits for synchronous values                                   |        0.0279 |         0.0041 | -85.3% |       0.0275 |        0.0040 |       0.0526 |        0.0069 |
+| 10 eager loaderless navigations                                   |        0.8379 |         0.8413 |  +0.4% |       0.9169 |        0.9283 |       1.6547 |        1.6749 |
+| 10 retained loaderless navigations                                |        0.7642 |         0.7503 |  -1.8% |       0.8428 |        0.8184 |       1.4911 |        1.5279 |
+| 10 navigations through 8 synchronous `beforeLoad` routes          |        1.0213 |         0.9277 |  -9.2% |       1.2095 |        0.9948 |       2.0927 |        2.0860 |
+| 10 navigations through alternating sync/async `beforeLoad` routes |        0.9272 |         0.9119 |  -1.7% |       0.8982 |        0.8990 |       2.1566 |        1.9843 |
+| 10 navigations through 8 resolved async `beforeLoad` routes       |        0.9174 |         0.9206 |  +0.3% |       0.8646 |        0.8775 |       2.0854 |        2.2611 |
+| 10 navigations through 8 synchronous loader routes                |        1.3521 |         1.3677 |  +1.2% |       1.3683 |        1.3823 |       2.8341 |        2.8480 |
 
-`react-router.minimal`: gzip 85,919 B; initial gzip 85,778 B; raw 268,915 B;
-Brotli 74,684 B.
+The direct bridge improvement repeated at -85.35% and -85.28% (about 6.8x).
+The three synchronous-`beforeLoad` pairs all favored the candidate, at -7.54%,
+-15.84%, and -4.00%. Its aggregate p99 was effectively unchanged, so the
+result supports a central-path improvement rather than a long-tail claim.
+Loaderless, fully asynchronous, and synchronous-loader cases remained close
+enough to treat as smoke evidence only.
 
-## After
+## Existing client-navigation scenario
 
-### Correctness
+The React `nested-params` scenario was rebuilt independently for each
+production revision and run in B/A, A/B, B/A, A/B, and B/A order. It exercises
+eight synchronous `beforeLoad` hooks together with parameter transforms,
+context subscribers, and React rendering.
 
-- The same focused unit run passes all 26 tests, including the baseline-failing
-  synchronous bridge assertion.
+```sh
+CI=1 NX_DAEMON=false pnpm nx run \
+  @benchmarks/client-nav-nested-params-react:build:client \
+  --outputStyle=stream --skipRemoteCache
+NODE_ENV=production pnpm exec vitest bench \
+  scenarios/nested-params/react/speed.bench.ts \
+  --config scenarios/nested-params/react/vite.config.ts --run
+```
 
-### Focused runtime benchmark
+| Pair | Baseline mean | Candidate mean | Change |
+| ---: | ------------: | -------------: | -----: |
+|    1 |        9.0056 |         9.1627 |  +1.7% |
+|    2 |        7.3467 |         8.4679 | +15.3% |
+|    3 |        7.4369 |         7.3747 |  -0.8% |
+|    4 |        7.1931 |         7.5996 |  +5.7% |
+|    5 |        7.1991 |         8.0636 | +12.0% |
 
-| Case                                                              |      Mean | Change |       p75 |       p99 |   RME | Samples |
-| ----------------------------------------------------------------- | --------: | -----: | --------: | --------: | ----: | ------: |
-| 80 waits for synchronous values                                   | 0.0035 ms | -84.2% | 0.0034 ms | 0.0073 ms | 0.10% | 861,211 |
-| 10 eager loaderless navigations                                   | 0.6033 ms |  +2.2% | 0.6062 ms | 1.3068 ms | 0.73% |   4,973 |
-| 10 retained loaderless navigations                                | 0.5201 ms |  +0.2% | 0.5256 ms | 1.1503 ms | 0.45% |   5,768 |
-| 10 navigations through 8 synchronous `beforeLoad` routes          | 0.6223 ms |  -2.9% | 0.6230 ms | 1.2910 ms | 0.47% |   4,821 |
-| 10 navigations through alternating sync/async `beforeLoad` routes | 0.6285 ms |  -1.2% | 0.6291 ms | 1.2953 ms | 0.45% |   4,774 |
-| 10 navigations through 8 resolved async `beforeLoad` routes       | 0.6422 ms |  -0.4% | 0.6434 ms | 1.3423 ms | 0.48% |   4,672 |
-| 10 navigations through 8 synchronous loader routes                | 1.0559 ms |  +0.2% | 1.0163 ms | 2.9400 ms | 3.83% |   2,842 |
+The aggregate mean was 7.6363 ms for the baseline and 8.1337 ms for the
+candidate (+6.5%); aggregate p75 and p99 moved +9.6% and +14.1%. Between-run
+variation was much larger than each run's 0.27-0.70% RME, with paired changes
+ranging from -0.8% to +15.3%. Four pairs favored the baseline, so this rerun
+does not reproduce the previous broad end-to-end improvement. The inconsistent
+magnitude prevents treating +6.5% as an exact regression, but the result is a
+negative smoke signal that should remain visible alongside the focused win.
 
-The direct bridge result is high confidence. Navigation results are directional:
-the synchronous `beforeLoad` case improved while the loaderless case moved in
-the opposite direction, so broader alternating runs are used as smoke evidence
-rather than an exact percentage claim.
+## Bundle size
 
-### Bundle
+Both revisions ran the complete bundle-size matrix with caches disabled:
 
-`react-router.minimal`: gzip 85,922 B (+3 B); initial gzip 85,781 B (+3 B);
-raw 268,955 B (+40 B); Brotli 74,706 B (+22 B).
+```sh
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build \
+  --outputStyle=stream --skipRemoteCache --skipNxCache
+```
 
-### Existing client-nav scenario
+| Scenario                           | Gzip change | Initial gzip change |
+| ---------------------------------- | ----------: | ------------------: |
+| `react-router.minimal`             |        +4 B |                +2 B |
+| `react-router.full`                |        -2 B |                 0 B |
+| `solid-router.minimal`             |       +10 B |                +7 B |
+| `solid-router.full`                |        +3 B |                +1 B |
+| `vue-router.minimal`               |        +4 B |                +5 B |
+| `vue-router.full`                  |        +4 B |                +2 B |
+| `react-start.minimal`              |        +8 B |                +7 B |
+| `react-start.deferred-hydration`   |         0 B |                +2 B |
+| `react-start.full`                 |        +2 B |                +3 B |
+| `react-start.rsbuild.minimal`      |        +6 B |                +6 B |
+| `react-start.rsbuild.minimal-iife` |        +8 B |                +8 B |
+| `react-start.rsbuild.full`         |        +2 B |                +2 B |
+| `solid-start.minimal`              |        +7 B |                +4 B |
+| `solid-start.deferred-hydration`   |        +5 B |                +3 B |
+| `solid-start.full`                 |        +4 B |                +5 B |
+| `vue-start.minimal`                |        +5 B |                +6 B |
+| `vue-start.full`                   |        +2 B |                +3 B |
 
-The exact baseline and H1-only production bundles were alternated through the
-React `nested-params` scenario in B→A, A→B, and B→A order.
+Every emitted scenario grew by 40 raw bytes. Total gzip changes ranged from
+-2 B to +10 B; Brotli changes ranged from -89 B to +193 B.
 
-| Metric | Baseline average | After average | Change |
-| ------ | ---------------: | ------------: | -----: |
-| Mean   |        5.7912 ms |     5.7436 ms | -0.82% |
-| p75    |        5.9354 ms |     5.8879 ms | -0.80% |
-| p99    |        6.8612 ms |     6.7377 ms | -1.80% |
+## Correctness validation
 
-All three mean pairs favored the candidate (+0.19%, +1.86%, and +0.41%). Each
-individual run had 1,711–1,743 samples and 0.25–0.26% RME, so this supports a
-small end-to-end improvement without treating 0.82% as a guaranteed effect.
-
-### Full bundle suite
-
-All affected scenarios stayed within +1 to +8 gzip bytes. The largest deltas
-were `react-start.deferred-hydration` and `react-start.minimal` at +8 B;
-`react-router.full` and `vue-start.full` were +7 B. Every emitted scenario grew
-by the same 40 raw bytes, with Brotli deltas ranging from -207 B to +162 B.
-
-### Final validation
-
-- Router-core unit suite: 105 files, 1,539 passed, 3 expected failures.
-- Router-core type suite: TypeScript 5.6, 5.7, 5.8, 5.9, 6.0, and 7.0 passed.
-- Router-core ESLint target: passed with 26 pre-existing warnings and no errors.
-- React basic-file-based redirect E2E: 33 Chromium cases passed, including
-  navigation, preloading, direct visits, and `beforeLoad` redirects.
+- Focused router-core cancellation/adversarial tests: 26 passed.
+- Router-core type tests: TypeScript 5.6, 5.7, 5.8, 5.9, 6.0, and 7.0 passed.
+- Full bundle-size matrix completed successfully for both revisions.
