@@ -1,7 +1,6 @@
 import * as Solid from 'solid-js'
 
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
-import { flushSync } from 'react-dom'
 import { auth } from './firebase/config'
 import type { AuthProvider, User } from 'firebase/auth'
 
@@ -22,7 +21,7 @@ export function AuthContextProvider(props: { children: Solid.JSX.Element }) {
 
   Solid.createEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      flushSync(() => {
+      Solid.batch(() => {
         setUser(user)
         setIsInitialLoading(false)
       })
@@ -39,7 +38,7 @@ export function AuthContextProvider(props: { children: Solid.JSX.Element }) {
 
   const login = async (provider: AuthProvider) => {
     const result = await signInWithPopup(auth, provider)
-    flushSync(() => {
+    Solid.batch(() => {
       setUser(result.user)
       setIsInitialLoading(false)
     })

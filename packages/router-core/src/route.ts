@@ -55,7 +55,7 @@ export type AnyContext = {}
 
 export interface RouteContext {}
 
-export type PreloadableObj = { preload?: () => Promise<void> }
+export type PreloadableObj = { preload?: () => Promise<void> | undefined }
 
 export type RoutePathOptions<TCustomId, TPath> =
   | {

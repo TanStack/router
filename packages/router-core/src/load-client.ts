@@ -762,7 +762,7 @@ function createLoaderTask(
   const match = lane[1 /* matches */][index]!
   const route = getRoute(router, match)
   const preload = !!options[4 /* preload */]
-  const plannedCacheMatch = preload ? router._cache.get(match.id) : undefined
+  const plannedCacheMatch = router._cache.get(match.id)
   let configured
   let reload = false
   let reloadFailure: LoaderOutcome | undefined
@@ -890,10 +890,16 @@ function createLoaderTask(
     if (blocking) {
       settleInto(match, result, preload)
       if (result[0 /* kind */] === SUCCESS) {
+        // A settled generation can outlive its lane without keeping unresolved
+        // navigation work alive. Refresh generations remain private for rollback.
         if (
-          preload &&
           routeLoader &&
-          !options[0 /* controller */].signal.aborted
+          !options[0 /* controller */].signal.aborted &&
+          !(
+            process.env.NODE_ENV !== 'production' &&
+            !preload &&
+            router._tx?.[6 /* refresh */]
+          )
         ) {
           cacheLoaderMatch(router, match, plannedCacheMatch)
         }

@@ -1,5 +1,41 @@
 # @tanstack/router-core
 
+## 1.171.24
+
+### Patch Changes
+
+- [#8071](https://github.com/TanStack/router/pull/8071) [`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2) - inline getOpenAndCloseBraces in parseSegment for byte shaving
+
+- [#8069](https://github.com/TanStack/router/pull/8069) [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e) - inline isFunction utility fn for byte shaving
+
+- [#8070](https://github.com/TanStack/router/pull/8070) [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff) - inline buildWithMatches inside buildLocation for byte shaving
+
+## 1.171.23
+
+### Patch Changes
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
+## 1.171.22
+
+### Patch Changes
+
+- [#8039](https://github.com/TanStack/router/pull/8039) [`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13) - load-client can cache settles abandonned loader work without preload authority
+
+## 1.171.21
+
+### Patch Changes
+
+- [#8019](https://github.com/TanStack/router/pull/8019) [`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05) - handle excessive parent relative links
+
+## 1.171.20
+
+### Patch Changes
+
+- [#8006](https://github.com/TanStack/router/pull/8006) [`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246) - skip impossible JSON parse attempts
+
+- [#8010](https://github.com/TanStack/router/pull/8010) [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a) - perf: speed up structural sharing (`replaceEqualDeep`) by computing enumerable own keys with `Object.keys` + a length compare instead of `getOwnPropertyNames` followed by a `propertyIsEnumerable` call per key. This runs on every selector result on every state update when `defaultStructuralSharing` is enabled, and is ~1.3-1.5x faster on typical router state objects with identical behavior.
+
 ## 1.171.19
 
 ### Patch Changes

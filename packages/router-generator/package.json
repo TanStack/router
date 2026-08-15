@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-generator",
-  "version": "1.167.25",
+  "version": "1.167.30",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -77,6 +77,13 @@
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",
     "@types/node": ">=20",
-    "vite": "*"
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "vite": "catalog:",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   }
 }
