@@ -18,7 +18,7 @@
     "@tanstack/solid-router-devtools": "^1.167.1",
     "@tanstack/solid-start": "^1.168.43",
     "solid-js": "^1.9.9",
-    "redaxios": "^0.5.1"
+    "redaxios": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",

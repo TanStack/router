@@ -111,6 +111,9 @@
     "@standard-schema/spec": "^1.0.0",
     "cookie-es": "^3.0.0",
     "vite": "*",
-    "@types/node": ">=20"
+    "@types/node": ">=20",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:"
   }
 }

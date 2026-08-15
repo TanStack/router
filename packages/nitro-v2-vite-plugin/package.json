@@ -65,5 +65,9 @@
   },
   "peerDependencies": {
     "vite": ">=7.0.0"
+  },
+  "devDependencies": {
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:"
   }
 }

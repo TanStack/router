@@ -73,69 +73,30 @@ importers:
       '@changesets/cli':
         specifier: ^2.30.0
         version: 2.30.0(@types/node@25.0.9)
-      '@eslint-react/eslint-plugin':
-        specifier: ^1.26.2
-        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@nx/devkit':
         specifier: 22.7.5
         version: 22.7.5(nx@22.7.5(@swc-node/register@1.11.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@swc/core@1.15.33(@swc/helpers@0.5.23))(@swc/types@0.1.26)(@typescript/typescript6@6.0.2))(@swc/core@1.15.33(@swc/helpers@0.5.23))(debug@4.4.3))
       '@playwright/test':
         specifier: ^1.61.0
         version: 1.61.1
-      '@swc-node/core':
-        specifier: ^1.14.1
-        version: 1.14.1(@swc/core@1.15.33(@swc/helpers@0.5.23))(@swc/types@0.1.26)
       '@swc-node/register':
         specifier: ^1.11.1
         version: 1.11.1(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@swc/core@1.15.33(@swc/helpers@0.5.23))(@swc/types@0.1.26)(@typescript/typescript6@6.0.2)
       '@tanstack/eslint-config':
         specifier: 0.4.0
         version: 0.4.0(@typescript-eslint/utils@8.57.1(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)))(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))
-      '@tanstack/query-core':
-        specifier: ^5.99.0
-        version: 5.99.0
-      '@tanstack/react-query':
-        specifier: ^5.99.0
-        version: 5.99.0(react@19.2.3)
-      '@tanstack/solid-query':
-        specifier: ^5.99.0
-        version: 5.99.0(solid-js@1.9.12)
-      '@tanstack/vite-config':
-        specifier: 0.5.2
-        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
-      '@tanstack/vue-query':
-        specifier: ^5.99.0
-        version: 5.99.0(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
-      '@types/react':
-        specifier: ^19.2.8
-        version: 19.2.9
-      '@types/react-dom':
-        specifier: ^19.2.3
-        version: 19.2.3(@types/react@19.2.9)
       '@typescript/native':
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
-      '@vitest/browser':
-        specifier: ^4.1.4
-        version: 4.1.4(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vitest@4.1.4)
-      '@vitest/ui':
-        specifier: ^4.1.4
-        version: 4.1.4(vitest@4.1.4)
       eslint:
         specifier: ^9.22.0
         version: 9.22.0(jiti@2.7.0)
-      eslint-plugin-react-hooks:
-        specifier: ^5.1.0
-        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
       eslint-plugin-unused-imports:
         specifier: ^4.1.4
         version: 4.1.4(@typescript-eslint/eslint-plugin@8.57.1(@typescript-eslint/parser@8.57.1(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)))(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)))(eslint@9.22.0(jiti@2.7.0))
-      jsdom:
-        specifier: ^25.0.1
-        version: 25.0.1
       markdown-link-extractor:
         specifier: ^4.0.3
         version: 4.0.3
@@ -148,15 +109,6 @@ importers:
       publint:
         specifier: ^0.3.16
         version: 0.3.17
-      react:
-        specifier: ^19.2.3
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.2.3
-        version: 19.2.3(react@19.2.3)
-      redaxios:
-        specifier: ^0.5.1
-        version: 0.5.1
       rimraf:
         specifier: ^6.1.2
         version: 6.1.2
@@ -181,9 +133,6 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
-      vitest:
-        specifier: ^4.1.4
-        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   benchmarks/bundle-size:
     dependencies:
@@ -325,8 +274,8 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
-        specifier: ^4.1.4
-        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   benchmarks/memory/client:
     dependencies:
@@ -395,8 +344,8 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
-        specifier: ^4.1.4
-        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   benchmarks/memory/server:
     dependencies:
@@ -459,8 +408,8 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
-        specifier: ^4.1.4
-        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   benchmarks/ssr:
     dependencies:
@@ -520,8 +469,8 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
-        specifier: ^4.1.4
-        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   e2e/e2e-utils:
     devDependencies:
@@ -565,8 +514,8 @@ importers:
         specifier: ^5.7.2
         version: 5.9.2
       vitest:
-        specifier: ^4.1.4
-        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   e2e/react-router/basepath-file-based:
     dependencies:
@@ -623,7 +572,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -666,7 +615,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -709,7 +658,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -810,7 +759,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -862,7 +811,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -911,7 +860,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -963,7 +912,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -1015,7 +964,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -1098,7 +1047,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -1295,7 +1244,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -1406,7 +1355,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
     devDependencies:
       '@playwright/test':
@@ -1461,7 +1410,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
     devDependencies:
       '@playwright/test':
@@ -1525,7 +1474,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -1580,7 +1529,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -1626,7 +1575,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -1687,7 +1636,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -1775,7 +1724,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -1906,7 +1855,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -2013,7 +1962,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -2230,7 +2179,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
     devDependencies:
       '@playwright/test':
@@ -3181,7 +3130,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -3367,7 +3316,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -3507,7 +3456,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -3920,7 +3869,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -3987,7 +3936,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -4073,7 +4022,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4107,7 +4056,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4144,7 +4093,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4224,7 +4173,7 @@ importers:
         specifier: ^3.13.0
         version: 3.13.12(solid-js@1.9.12)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4267,7 +4216,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4310,7 +4259,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4353,7 +4302,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4396,7 +4345,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4436,7 +4385,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4470,7 +4419,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4504,7 +4453,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4553,7 +4502,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4611,7 +4560,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4657,7 +4606,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4694,7 +4643,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4746,7 +4695,7 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4828,7 +4777,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -4944,7 +4893,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -5116,7 +5065,7 @@ importers:
         specifier: ^5.2.1
         version: 5.2.1
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -5275,7 +5224,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -5428,7 +5377,7 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -5498,7 +5447,7 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -5676,7 +5625,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -5734,7 +5683,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -5798,7 +5747,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -5841,7 +5790,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -5884,7 +5833,7 @@ importers:
         specifier: ^8.5.1
         version: 8.5.6
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       vue:
         specifier: ^3.5.16
@@ -5945,7 +5894,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6009,7 +5958,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6058,7 +6007,7 @@ importers:
         specifier: ^3.13.0
         version: 3.13.13(vue@3.5.25(typescript@5.9.3))
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6113,7 +6062,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6168,7 +6117,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6217,7 +6166,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6269,7 +6218,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6318,7 +6267,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6370,7 +6319,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6404,7 +6353,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       vue:
         specifier: ^3.5.16
@@ -6462,7 +6411,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       vue:
         specifier: ^3.5.16
@@ -6526,7 +6475,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6581,7 +6530,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6630,7 +6579,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -6682,7 +6631,7 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -6770,7 +6719,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -6932,7 +6881,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -7033,7 +6982,7 @@ importers:
         specifier: ^5.2.1
         version: 5.2.1
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       vue:
         specifier: ^3.5.25
@@ -7155,7 +7104,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -7320,7 +7269,7 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -7393,7 +7342,7 @@ importers:
         specifier: ^3.0.5
         version: 3.0.5
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -7540,7 +7489,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -7601,7 +7550,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -7668,7 +7617,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7720,7 +7669,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       simple-icons:
         specifier: ^14.9.0
@@ -7769,7 +7718,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7815,7 +7764,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7864,7 +7813,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7910,7 +7859,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7956,7 +7905,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8005,7 +7954,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8057,7 +8006,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8213,7 +8162,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8265,7 +8214,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8311,7 +8260,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8406,7 +8355,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8458,7 +8407,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8513,7 +8462,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8571,7 +8520,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8623,7 +8572,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8675,7 +8624,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8721,7 +8670,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8804,7 +8753,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -8841,7 +8790,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8991,7 +8940,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
     devDependencies:
       '@types/node':
@@ -9114,7 +9063,7 @@ importers:
         specifier: ^5.99.0
         version: 5.99.0(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -9157,7 +9106,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -9203,7 +9152,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
     devDependencies:
       '@types/node':
@@ -9249,7 +9198,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
     devDependencies:
       '@types/node':
@@ -9378,7 +9327,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -9504,7 +9453,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -9770,7 +9719,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -9944,7 +9893,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10057,7 +10006,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10161,8 +10110,8 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vitest:
-        specifier: ^4.1.4
-        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(postcss@8.5.15))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@27.0.0(postcss@8.5.15))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -10191,7 +10140,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       srvx:
         specifier: ^0.11.9
@@ -10270,7 +10219,7 @@ importers:
         specifier: ^2.5.1
         version: 2.5.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10420,7 +10369,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10643,7 +10592,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
     devDependencies:
       '@tailwindcss/vite':
@@ -10759,7 +10708,7 @@ importers:
         specifier: ^2.5.1
         version: 2.5.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10860,7 +10809,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -10909,7 +10858,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -10967,7 +10916,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -11034,7 +10983,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -11077,7 +11026,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11120,7 +11069,7 @@ importers:
         specifier: ^11.4.0
         version: 11.4.0
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       simple-icons:
         specifier: ^14.9.0
@@ -11160,7 +11109,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11203,7 +11152,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11240,7 +11189,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11274,7 +11223,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11314,7 +11263,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11360,7 +11309,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11403,7 +11352,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11498,7 +11447,7 @@ importers:
         specifier: ^3.3.2
         version: 3.3.2
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11547,7 +11496,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11590,7 +11539,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11627,7 +11576,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11704,7 +11653,7 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11744,7 +11693,7 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11793,7 +11742,7 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11842,7 +11791,7 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11885,7 +11834,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11925,7 +11874,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11962,7 +11911,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12027,7 +11976,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12058,7 +12007,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12199,7 +12148,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12236,7 +12185,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12279,7 +12228,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12411,7 +12360,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12466,7 +12415,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12693,7 +12642,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12739,7 +12688,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/start-static-server-functions
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12834,8 +12783,8 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
-        specifier: ^4.1.4
-        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(postcss@8.5.15))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@27.0.0(postcss@8.5.15))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       web-vitals:
         specifier: ^5.1.0
         version: 5.1.0
@@ -12870,7 +12819,7 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(solid-js@1.9.12)
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12916,7 +12865,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13005,7 +12954,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13091,7 +13040,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13177,7 +13126,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13214,7 +13163,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13266,7 +13215,7 @@ importers:
         specifier: ^5.2.1
         version: 5.2.1
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13300,7 +13249,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: 4.1.18
@@ -13346,7 +13295,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -13404,7 +13353,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: ^0.5.1
+        specifier: 'catalog:'
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -13437,15 +13386,27 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
       arktype:
         specifier: ^2.1.7
         version: 2.1.7
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -13455,6 +13416,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/eslint-plugin-router:
     dependencies:
@@ -13462,6 +13426,9 @@ importers:
         specifier: ^8.23.0
         version: 8.23.0(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@typescript-eslint/rule-tester':
         specifier: ^8.23.0
         version: 8.23.0(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))
@@ -13474,6 +13441,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/eslint-plugin-start:
     dependencies:
@@ -13484,6 +13454,9 @@ importers:
         specifier: ^16.2.0
         version: 16.4.0
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@typescript-eslint/rule-tester':
         specifier: ^8.44.1
         version: 8.53.0(eslint@9.22.0(jiti@2.7.0))(typescript@5.9.2)
@@ -13493,12 +13466,24 @@ importers:
       typescript:
         specifier: ^5.8.2
         version: 5.9.2
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/history:
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/nitro-v2-vite-plugin:
     dependencies:
@@ -13511,6 +13496,13 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+    devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/react-router:
     dependencies:
@@ -13527,9 +13519,15 @@ importers:
         specifier: ^5.1.22
         version: 5.1.28
     devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@tanstack/react-query':
         specifier: ^5.99.0
         version: 5.99.0(react@19.2.3)
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -13539,12 +13537,24 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -13554,6 +13564,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -13570,12 +13583,30 @@ importers:
         specifier: workspace:^
         version: link:../router-devtools-core
     devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -13585,6 +13616,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/react-router-ssr-query:
     dependencies:
@@ -13595,15 +13629,33 @@ importers:
         specifier: workspace:*
         version: link:../router-ssr-query-core
     devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@tanstack/react-query':
         specifier: ^5.99.0
         version: 5.99.0(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.6.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -13613,6 +13665,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/react-start:
     dependencies:
@@ -13643,22 +13698,43 @@ importers:
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
+      vite:
+        specifier: ^8.0.14
+        version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+    devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
+      '@rsbuild/core':
+        specifier: ^2.1.0
+        version: 2.1.1
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      '@types/node':
+        specifier: 25.0.9
+        version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
       react-dom:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
-      vite:
-        specifier: ^8.0.14
-        version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
-    devDependencies:
-      '@rsbuild/core':
-        specifier: ^2.1.0
-        version: 2.1.1
-      '@types/node':
-        specifier: 25.0.9
-        version: 25.0.9
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/react-start-client:
     dependencies:
@@ -13671,25 +13747,46 @@ importers:
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
-      react:
-        specifier: ^19.2.3
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.2.3
-        version: 19.2.3(react@19.2.3)
     devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.3(react@19.2.3)
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/react-start-rsc:
     dependencies:
@@ -13717,28 +13814,49 @@ importers:
       pathe:
         specifier: ^2.0.3
         version: 2.0.3
-      react:
-        specifier: ^19.2.3
-        version: 19.2.3
-      react-dom:
-        specifier: ^19.2.3
-        version: 19.2.3(react@19.2.3)
     devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@rspack/core':
         specifier: 2.0.0
         version: 2.0.0(@swc/helpers@0.5.23)
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.7.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@vitejs/plugin-rsc':
         specifier: ^0.5.30
         version: 0.5.30(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.3(react@19.2.3)
       react-server-dom-rspack:
         specifier: ^0.0.2
         version: 0.0.2(@rspack/core@2.0.0(@swc/helpers@0.5.23))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/react-start-server:
     dependencies:
@@ -13752,12 +13870,30 @@ importers:
         specifier: workspace:*
         version: link:../start-server-core
     devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
       '@typescript/native':
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -13770,6 +13906,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-cli:
     dependencies:
@@ -13783,6 +13922,9 @@ importers:
         specifier: ^17.7.2
         version: 17.7.2
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -13792,6 +13934,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-core:
     dependencies:
@@ -13811,15 +13956,24 @@ importers:
       '@tanstack/store':
         specifier: ^0.9.3
         version: 0.9.3
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
       esbuild:
         specifier: ^0.27.4
         version: 0.27.4
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-devtools:
     dependencies:
@@ -13833,9 +13987,24 @@ importers:
         specifier: ^3.0.10
         version: 3.2.3
     devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
         version: 4.3.4(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -13845,6 +14014,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-devtools-core:
     dependencies:
@@ -13861,9 +14033,15 @@ importers:
         specifier: ^2.1.16
         version: 2.1.16(csstype@3.2.3)
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -13873,6 +14051,9 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-generator:
     dependencies:
@@ -13904,12 +14085,24 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-plugin:
     dependencies:
@@ -13956,6 +14149,9 @@ importers:
       '@rsbuild/core':
         specifier: ^2.1.0
         version: 2.1.1
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/babel__core':
         specifier: ^7.20.5
         version: 7.20.5
@@ -13965,6 +14161,24 @@ importers:
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
+      react:
+        specifier: ^19.2.3
+        version: 19.2.3
+      react-dom:
+        specifier: ^19.2.3
+        version: 19.2.3(react@19.2.3)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-ssr-query-core:
     devDependencies:
@@ -13974,9 +14188,18 @@ importers:
       '@tanstack/router-core':
         specifier: workspace:*
         version: link:../router-core
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-utils:
     dependencies:
@@ -14005,6 +14228,9 @@ importers:
         specifier: ^0.2.15
         version: 0.2.15
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/babel__generator':
         specifier: ^7.27.0
         version: 7.27.0
@@ -14014,6 +14240,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/router-vite-plugin:
     dependencies:
@@ -14021,9 +14250,15 @@ importers:
         specifier: workspace:*
         version: link:../router-plugin
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/solid-router:
     dependencies:
@@ -14046,6 +14281,9 @@ importers:
       '@solidjs/testing-library':
         specifier: ^0.8.10
         version: 0.8.10(solid-js@1.9.12)
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -14055,6 +14293,9 @@ importers:
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -14064,6 +14305,9 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: ^4.4.3
         version: 4.4.3
@@ -14080,6 +14324,9 @@ importers:
         specifier: workspace:^
         version: link:../solid-router
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -14092,6 +14339,9 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/solid-router-ssr-query:
     dependencies:
@@ -14108,9 +14358,15 @@ importers:
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       eslint-plugin-solid:
         specifier: ^0.14.5
         version: 0.14.5(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -14120,6 +14376,9 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/solid-start:
     dependencies:
@@ -14148,18 +14407,33 @@ importers:
         specifier: 1.9.12
         version: 1.9.12
     devDependencies:
+      '@eslint-react/eslint-plugin':
+        specifier: 'catalog:'
+        version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0))(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@rsbuild/core':
         specifier: ^2.1.0
         version: 2.1.1
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      eslint-plugin-react-hooks:
+        specifier: 'catalog:'
+        version: 5.1.0(eslint@9.22.0(jiti@2.7.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/solid-start-client:
     dependencies:
@@ -14176,15 +14450,24 @@ importers:
         specifier: 1.9.12
         version: 1.9.12
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/solid-start-server:
     dependencies:
@@ -14198,9 +14481,15 @@ importers:
         specifier: workspace:*
         version: link:../start-server-core
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@typescript/native':
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       solid-js:
         specifier: 1.9.12
         version: 1.9.12
@@ -14213,6 +14502,9 @@ importers:
       vite-plugin-solid:
         specifier: ^2.11.10
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/start-client-core:
     dependencies:
@@ -14229,18 +14521,33 @@ importers:
         specifier: ^1.6.2
         version: 1.6.2
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/start-fn-stubs:
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/start-plugin-core:
     dependencies:
@@ -14308,6 +14615,9 @@ importers:
       '@rsbuild/core':
         specifier: ^2.1.0
         version: 2.1.1
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/babel__code-frame':
         specifier: ^7.0.6
         version: 7.0.6
@@ -14323,6 +14633,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/start-server-core:
     dependencies:
@@ -14351,15 +14664,24 @@ importers:
       '@standard-schema/spec':
         specifier: ^1.0.0
         version: 1.0.0
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
       cookie-es:
         specifier: ^3.0.0
         version: 3.1.1
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/start-static-server-functions:
     dependencies:
@@ -14376,12 +14698,21 @@ importers:
         specifier: ^1.6.2
         version: 1.6.2
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/start-storage-context:
     dependencies:
@@ -14389,24 +14720,45 @@ importers:
         specifier: workspace:*
         version: link:../router-core
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/valibot-adapter:
     devDependencies:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -14419,12 +14771,24 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/virtual-file-routes:
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   packages/vue-router:
     dependencies:
@@ -14444,6 +14808,9 @@ importers:
         specifier: ^5.1.22
         version: 5.1.28
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
@@ -14456,12 +14823,21 @@ importers:
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+      '@vitest/ui':
+        specifier: 'catalog:'
+        version: 4.1.4(vitest@4.1.4)
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
         specifier: ^3.5.25
         version: 3.5.25(typescript@7.0.2)
@@ -14484,12 +14860,18 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
         specifier: ^3.5.13
         version: 3.5.25(typescript@7.0.2)
@@ -14506,6 +14888,9 @@ importers:
         specifier: ^5.99.0
         version: 5.99.0(vue@3.5.25(typescript@7.0.2))
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/vue-router':
         specifier: workspace:*
         version: link:../vue-router
@@ -14515,6 +14900,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
         specifier: ^3.5.25
         version: 3.5.25(typescript@7.0.2)
@@ -14549,15 +14937,24 @@ importers:
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
         specifier: ^3.5.25
         version: 3.5.25(typescript@7.0.2)
@@ -14574,12 +14971,21 @@ importers:
         specifier: workspace:*
         version: link:../vue-router
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
         specifier: ^3.5.25
         version: 3.5.25(typescript@7.0.2)
@@ -14596,18 +15002,27 @@ importers:
         specifier: workspace:*
         version: link:../vue-router
     devDependencies:
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@typescript/native':
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       '@vitejs/plugin-vue-jsx':
         specifier: ^4.1.2
         version: 4.2.0(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
         specifier: ^3.5.25
         version: 3.5.25(@typescript/typescript6@6.0.2)
@@ -14617,12 +15032,24 @@ importers:
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../react-router
+      '@tanstack/vite-config':
+        specifier: 'catalog:'
+        version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
         specifier: ^6.6.3
         version: 6.6.3
       '@testing-library/react':
         specifier: ^16.2.0
         version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      '@types/react':
+        specifier: ^19.2.8
+        version: 19.2.9
+      '@types/react-dom':
+        specifier: ^19.2.3
+        version: 19.2.3(@types/react@19.2.9)
+      jsdom:
+        specifier: 'catalog:'
+        version: 25.0.1
       react:
         specifier: ^19.2.3
         version: 19.2.3
@@ -14632,6 +15059,9 @@ importers:
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: ^3.24.2
         version: 3.25.57
@@ -21202,11 +21632,6 @@ packages:
     peerDependencies:
       vite: ^8.0.14
       vue: ^3.2.25
-
-  '@vitest/browser@4.1.4':
-    resolution: {integrity: sha512-TrNaY/yVOwxtrxNsDUC/wQ56xSwplpytTeRAqF/197xV/ZddxxulBsxR6TrhVMyniJmp9in8d5u0AcDaNRY30w==}
-    peerDependencies:
-      vitest: 4.1.4
 
   '@vitest/expect@4.1.4':
     resolution: {integrity: sha512-iPBpra+VDuXmBFI3FMKHSFXp3Gx5HfmSCE8X67Dn+bwephCnQCaB7qWK2ldHa+8ncN8hJU8VTMcxjPpyMkUjww==}
@@ -29045,7 +29470,7 @@ snapshots:
       '@codspeed/core': 5.5.0(debug@4.4.3)
       tinybench: 2.9.0
       vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
-      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest: 4.1.4(@types/node@25.0.9)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
     transitivePeerDependencies:
       - debug
       - supports-color
@@ -35091,23 +35516,6 @@ snapshots:
       vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vue: 3.5.25(typescript@7.0.2)
 
-  '@vitest/browser@4.1.4(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vitest@4.1.4)':
-    dependencies:
-      '@blazediff/core': 1.9.1
-      '@vitest/mocker': 4.1.4(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
-      '@vitest/utils': 4.1.4
-      magic-string: 0.30.21
-      pngjs: 7.0.0
-      sirv: 3.0.2
-      tinyrainbow: 3.1.0
-      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
-      ws: 8.20.0
-    transitivePeerDependencies:
-      - bufferutil
-      - msw
-      - utf-8-validate
-      - vite
-
   '@vitest/expect@4.1.4':
     dependencies:
       '@standard-schema/spec': 1.1.0
@@ -35932,7 +36340,7 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
       solid-js: 1.9.12
-      vitest: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      vitest: 4.1.4(@types/node@25.0.9)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue: 3.5.25(@typescript/typescript6@6.0.2)
     transitivePeerDependencies:
       - '@cloudflare/workers-types'
@@ -42325,7 +42733,7 @@ snapshots:
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(postcss@8.5.15))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
+  vitest@4.1.4(@types/node@25.0.9)(jsdom@25.0.1)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.4
       '@vitest/mocker': 4.1.4(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -42349,12 +42757,39 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.0.9
-      '@vitest/ui': 4.1.4(vitest@4.1.4)
+      jsdom: 25.0.1
+    transitivePeerDependencies:
+      - msw
+
+  vitest@4.1.4(@types/node@25.0.9)(jsdom@27.0.0(postcss@8.5.15))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
+    dependencies:
+      '@vitest/expect': 4.1.4
+      '@vitest/mocker': 4.1.4(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.4
+      '@vitest/runner': 4.1.4
+      '@vitest/snapshot': 4.1.4
+      '@vitest/spy': 4.1.4
+      '@vitest/utils': 4.1.4
+      es-module-lexer: 2.0.0
+      expect-type: 1.3.0
+      magic-string: 0.30.21
+      obug: 2.1.1
+      pathe: 2.0.3
+      picomatch: 4.0.3
+      std-env: 4.1.0
+      tinybench: 2.9.0
+      tinyexec: 1.0.2
+      tinyglobby: 0.2.15
+      tinyrainbow: 3.1.0
+      vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 25.0.9
       jsdom: 27.0.0(postcss@8.5.15)
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
+  vitest@4.1.4(@types/node@25.0.9)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.4
       '@vitest/mocker': 4.1.4(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -42378,12 +42813,38 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.0.9
-      '@vitest/ui': 4.1.4(vitest@4.1.4)
       jsdom: 29.1.1(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - msw
 
-  vitest@4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
+  vitest@4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
+    dependencies:
+      '@vitest/expect': 4.1.4
+      '@vitest/mocker': 4.1.4(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+      '@vitest/pretty-format': 4.1.4
+      '@vitest/runner': 4.1.4
+      '@vitest/snapshot': 4.1.4
+      '@vitest/spy': 4.1.4
+      '@vitest/utils': 4.1.4
+      es-module-lexer: 2.0.0
+      expect-type: 1.3.0
+      magic-string: 0.30.21
+      obug: 2.1.1
+      pathe: 2.0.3
+      picomatch: 4.0.3
+      std-env: 4.1.0
+      tinybench: 2.9.0
+      tinyexec: 1.0.2
+      tinyglobby: 0.2.15
+      tinyrainbow: 3.1.0
+      vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      why-is-node-running: 2.3.0
+    optionalDependencies:
+      '@types/node': 25.0.9
+    transitivePeerDependencies:
+      - msw
+
+  vitest@4.1.4(@types/node@25.0.9)(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
     dependencies:
       '@vitest/expect': 4.1.4
       '@vitest/mocker': 4.1.4(msw@2.7.0(@types/node@25.0.9)(typescript@5.9.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
@@ -42407,8 +42868,6 @@ snapshots:
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 25.0.9
-      '@vitest/ui': 4.1.4(vitest@4.1.4)
-      jsdom: 29.1.1(@noble/hashes@2.0.1)
     transitivePeerDependencies:
       - msw
 

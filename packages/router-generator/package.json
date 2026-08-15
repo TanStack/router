@@ -77,6 +77,10 @@
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",
     "@types/node": ">=20",
-    "vite": "*"
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -87,7 +87,11 @@
     "combinate": "^1.1.11",
     "vite": "*",
     "vue": "^3.5.25",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@vitest/ui": "catalog:"
   },
   "peerDependencies": {
     "vue": "^3.3.0"

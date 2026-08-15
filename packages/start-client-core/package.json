@@ -113,6 +113,9 @@
   },
   "devDependencies": {
     "vite": "*",
-    "@types/node": ">=20"
+    "@types/node": ">=20",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:"
   }
 }

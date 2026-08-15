@@ -66,10 +66,17 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "react": ">=19",
-    "react-dom": ">=19",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "vite": "*",
-    "@types/node": ">=20"
+    "@types/node": ">=20",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/react-router": "workspace:^",

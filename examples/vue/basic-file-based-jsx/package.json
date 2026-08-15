@@ -13,7 +13,7 @@
     "@tanstack/router-plugin": "^1.168.31",
     "@tanstack/vue-router": "^1.170.25",
     "@tanstack/vue-router-devtools": "^1.167.1",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "tailwindcss": "^4.2.2",
     "vue": "^3.5.16",
     "zod": "^4.4.3"

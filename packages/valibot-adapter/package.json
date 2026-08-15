@@ -68,9 +68,14 @@
     "@testing-library/react": "^16.2.0",
     "@tanstack/react-router": "workspace:*",
     "valibot": "1.0.0-beta.15",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "vite": "*"
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:"
   },
   "peerDependencies": {
     "valibot": "^1.0.0 || ^1.0.0-beta.5 || ^1.0.0-rc",

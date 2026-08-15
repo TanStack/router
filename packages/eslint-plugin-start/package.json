@@ -58,7 +58,9 @@
   "devDependencies": {
     "@typescript-eslint/rule-tester": "^8.44.1",
     "eslint": "^9.22.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",
