@@ -618,6 +618,164 @@ describe('Link', () => {
       })
     })
 
+    test('does not republish link props when destination state is unchanged', async () => {
+      const activeProps = vi.fn(() => ({ class: 'active' }))
+      const inactiveProps = vi.fn(() => ({ class: 'inactive' }))
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link
+              data-testid="stable-link"
+              to="/target"
+              activeProps={activeProps}
+              inactiveProps={inactiveProps}
+            >
+              Target
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <p>Index</p>,
+      })
+      const otherRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/other',
+        component: () => <p>Other</p>,
+      })
+      const targetRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+        component: () => <p>Target route</p>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, otherRoute, targetRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const link = await screen.findByTestId('stable-link')
+      const initialInactiveCalls = inactiveProps.mock.calls.length
+      expect(initialInactiveCalls).toBeGreaterThan(0)
+
+      await router.navigate({ to: '/other' })
+      expect(await screen.findByText('Other')).toBeInTheDocument()
+      expect(inactiveProps).toHaveBeenCalledTimes(initialInactiveCalls)
+
+      await router.navigate({ to: '/target' })
+      expect(await screen.findByText('Target route')).toBeInTheDocument()
+      expect(link).toHaveClass('active')
+      expect(activeProps).toHaveBeenCalledTimes(1)
+
+      await router.navigate({ to: '/other' })
+      expect(await screen.findByText('Other')).toBeInTheDocument()
+      expect(inactiveProps).toHaveBeenCalledTimes(initialInactiveCalls + 1)
+    })
+
+    test('does not republish props for an active fuzzy link between descendants', async () => {
+      const activeProps = vi.fn(() => ({ class: 'active' }))
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link
+              data-testid="stable-active-link"
+              to="/posts"
+              activeProps={activeProps}
+            >
+              Posts
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+      const postRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/$postId',
+        component: () => <p>Post</p>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([postRoute]),
+        history: createMemoryHistory({ initialEntries: ['/posts/one'] }),
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const link = await screen.findByTestId('stable-active-link')
+      const initialActiveCalls = activeProps.mock.calls.length
+      expect(link).toHaveClass('active')
+      expect(initialActiveCalls).toBeGreaterThan(0)
+
+      await router.navigate({ to: '/posts/$postId', params: { postId: 'two' } })
+      expect(router.state.location.pathname).toBe('/posts/two')
+      expect(link).toHaveClass('active')
+      expect(activeProps).toHaveBeenCalledTimes(initialActiveCalls)
+    })
+
+    test('preloads the latest built location when published link state is unchanged', async () => {
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <Link
+              data-testid="stable-preload-link"
+              to="/target"
+              preload="intent"
+              preloadDelay={0}
+            >
+              Target
+            </Link>
+            <Outlet />
+          </>
+        ),
+      })
+      const firstRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/first',
+        component: () => <p>First</p>,
+      })
+      const secondRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/second',
+        component: () => <p>Second</p>,
+      })
+      const targetRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+        component: () => <p>Target</p>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          firstRoute,
+          secondRoute,
+          targetRoute,
+        ]),
+        history: createMemoryHistory({ initialEntries: ['/first'] }),
+      })
+      const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+      render(() => <RouterProvider router={router} />)
+
+      const link = await screen.findByTestId('stable-preload-link')
+      fireEvent.focus(link)
+      await waitFor(() => expect(preloadRouteSpy).toHaveBeenCalledTimes(1))
+      const firstBuiltLocation = (preloadRouteSpy.mock.calls[0]![0] as any)
+        ._builtLocation
+
+      await router.navigate({ to: '/second' })
+      expect(await screen.findByText('Second')).toBeInTheDocument()
+
+      fireEvent.mouseOver(link)
+      await waitFor(() => expect(preloadRouteSpy).toHaveBeenCalledTimes(2))
+      const secondBuiltLocation = (preloadRouteSpy.mock.calls[1]![0] as any)
+        ._builtLocation
+
+      expect(secondBuiltLocation).not.toBe(firstBuiltLocation)
+      expect(secondBuiltLocation.href).toBe(firstBuiltLocation.href)
+    })
+
     test('updates exact and fuzzy active state before the next route renders', async () => {
       const postLoader = createControlledPromise()
 
