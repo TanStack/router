@@ -267,5 +267,24 @@ function toHeadTag(t: RouterManagedTag): HeadTag {
     props.children = children
   }
 
-  return { tag: t.tag, props }
+  const headTag: HeadTag = { tag: t.tag, props }
+
+  // Inline scripts and styles have no natural registry identity: the
+  // registry assigns them per-runtime unique ids, which can never match
+  // between server and client, so hydration would append a client copy
+  // next to the server-rendered one. A stable content-derived key gives
+  // both runtimes the same identity to reconcile on.
+  if (t.tag === 'style' || (t.tag === 'script' && props.src === undefined)) {
+    headTag.key = `tsr-${hashString(t.tag + JSON.stringify(props))}`
+  }
+
+  return headTag
+}
+
+function hashString(s: string): string {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  }
+  return (h >>> 0).toString(36)
 }
