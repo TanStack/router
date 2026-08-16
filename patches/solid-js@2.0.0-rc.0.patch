@@ -1,0 +1,304 @@
+diff --git a/dist/dev.cjs b/dist/dev.cjs
+index eb15135bbd0f524729b336bdf3b14f5b97101a99..e97b7645aa689c62bbca0ca09a06825b58c6663f 100644
+--- a/dist/dev.cjs
++++ b/dist/dev.cjs
+@@ -987,15 +987,23 @@ function createComponent(Comp, props) {
+ function lazy(fn, moduleUrl) {
+   let comp;
+   let p;
++  const load = () => {
++    if (!p) {
++      const cur = p = fn();
++      cur.then(mod => {
++        comp = () => mod.default;
++      }, () => {
++        if (p === cur) p = undefined;
++      });
++    }
++    return p;
++  };
+   const wrap = props => {
+     if (sharedConfig.hydrating) comp = _lazyHydrationLookup(comp, moduleUrl);
+     let local = comp;
+     if (!local) {
+-      p || (p = fn());
+-      p.then(mod => {
+-        comp = () => mod.default;
+-      });
+-      local = signals.createMemo(() => p.then(mod => mod.default));
++      const cur = load();
++      local = signals.createMemo(() => cur.then(mod => mod.default));
+     }
+     let Comp;
+     return signals.createMemo(() => (Comp = (comp || local)()) ? signals.untrack(() => {
+@@ -1007,7 +1015,7 @@ function lazy(fn, moduleUrl) {
+       sync: true
+     });
+   };
+-  wrap.preload = () => p || ((p = fn()).then(mod => comp = () => mod.default), p);
++  wrap.preload = load;
+   wrap.moduleUrl = moduleUrl;
+   return wrap;
+ }
+diff --git a/dist/dev.js b/dist/dev.js
+index e9b692addaef5c1285a9003fe4ff360e91d40d79..6608fd18d47caa31074225f0b3d3a5b649ee60a9 100644
+--- a/dist/dev.js
++++ b/dist/dev.js
+@@ -986,15 +986,23 @@ function createComponent(Comp, props) {
+ function lazy(fn, moduleUrl) {
+   let comp;
+   let p;
++  const load = () => {
++    if (!p) {
++      const cur = p = fn();
++      cur.then(mod => {
++        comp = () => mod.default;
++      }, () => {
++        if (p === cur) p = undefined;
++      });
++    }
++    return p;
++  };
+   const wrap = props => {
+     if (sharedConfig.hydrating) comp = _lazyHydrationLookup(comp, moduleUrl);
+     let local = comp;
+     if (!local) {
+-      p || (p = fn());
+-      p.then(mod => {
+-        comp = () => mod.default;
+-      });
+-      local = createMemo$1(() => p.then(mod => mod.default));
++      const cur = load();
++      local = createMemo$1(() => cur.then(mod => mod.default));
+     }
+     let Comp;
+     return createMemo$1(() => (Comp = (comp || local)()) ? untrack(() => {
+@@ -1006,7 +1014,7 @@ function lazy(fn, moduleUrl) {
+       sync: true
+     });
+   };
+-  wrap.preload = () => p || ((p = fn()).then(mod => comp = () => mod.default), p);
++  wrap.preload = load;
+   wrap.moduleUrl = moduleUrl;
+   return wrap;
+ }
+diff --git a/dist/server.cjs b/dist/server.cjs
+index b7652fedf12661b2660550e09352e08c1f716003..95801d7b76c5a368e859f62603cb5b36f2a34e75 100644
+--- a/dist/server.cjs
++++ b/dist/server.cjs
+@@ -1307,13 +1307,14 @@ function lazy(fn, moduleUrl) {
+   let p;
+   let load = () => {
+     if (!p) {
+-      p = fn();
+-      p.then(mod => {
+-        p.mod = mod;
+-        p.v = mod.default;
++      const cur = p = fn();
++      cur.then(mod => {
++        cur.mod = mod;
++        cur.v = mod.default;
+       }, err => {
+-        p.error = err;
+-        p.errored = true;
++        cur.error = err;
++        cur.errored = true;
++        if (p === cur) p = undefined;
+       });
+     }
+     return p;
+@@ -1323,7 +1324,7 @@ function lazy(fn, moduleUrl) {
+     if (!noHydrate && !sharedConfig.context?.resolveAssets) {
+       throw new Error(`lazy() called${moduleUrl ? ` with moduleUrl "${moduleUrl}"` : ""} but no asset manifest is set. ` + "Pass a manifest option to renderToStream/renderToString.");
+     }
+-    load();
++    const cur = load();
+     const ctx = sharedConfig.context;
+     let assetsPending;
+     if (ctx?.registerAsset && ctx.resolveAssets) {
+@@ -1370,8 +1371,8 @@ function lazy(fn, moduleUrl) {
+       if (moduleUrl) {
+         assetsPending = registerLazyAssets(moduleUrl);
+       } else if (!noHydrate) {
+-        if (p.mod !== undefined) {
+-          const id = p.mod?.$$moduleUrl;
++        if (cur.mod !== undefined) {
++          const id = cur.mod?.$$moduleUrl;
+           if (typeof id === "string") {
+             assetsPending = registerLazyAssets(id);
+           } else {
+@@ -1379,7 +1380,7 @@ function lazy(fn, moduleUrl) {
+           }
+         } else {
+           const boundary = ctx._currentBoundaryId;
+-          assetsPending = p.then(mod => {
++          assetsPending = cur.then(mod => {
+             const id = mod?.$$moduleUrl;
+             if (typeof id !== "string") {
+               console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
+@@ -1403,10 +1404,10 @@ function lazy(fn, moduleUrl) {
+       }
+     }
+     return createMemo(() => {
+-      if (p.errored) throw p.error;
+-      if (!p.v) throw new signals.NotReadyError(p);
++      if (cur.errored) throw cur.error;
++      if (!cur.v) throw new signals.NotReadyError(cur);
+       if (assetsPending) throw new signals.NotReadyError(assetsPending);
+-      return p.v(props);
++      return cur.v(props);
+     }, {
+       sync: true
+     });
+diff --git a/dist/server.js b/dist/server.js
+index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..f75a357bcee91d3305c3e67127c8e7d199708c68 100644
+--- a/dist/server.js
++++ b/dist/server.js
+@@ -1306,13 +1306,14 @@ function lazy(fn, moduleUrl) {
+   let p;
+   let load = () => {
+     if (!p) {
+-      p = fn();
+-      p.then(mod => {
+-        p.mod = mod;
+-        p.v = mod.default;
++      const cur = p = fn();
++      cur.then(mod => {
++        cur.mod = mod;
++        cur.v = mod.default;
+       }, err => {
+-        p.error = err;
+-        p.errored = true;
++        cur.error = err;
++        cur.errored = true;
++        if (p === cur) p = undefined;
+       });
+     }
+     return p;
+@@ -1322,7 +1323,7 @@ function lazy(fn, moduleUrl) {
+     if (!noHydrate && !sharedConfig.context?.resolveAssets) {
+       throw new Error(`lazy() called${moduleUrl ? ` with moduleUrl "${moduleUrl}"` : ""} but no asset manifest is set. ` + "Pass a manifest option to renderToStream/renderToString.");
+     }
+-    load();
++    const cur = load();
+     const ctx = sharedConfig.context;
+     let assetsPending;
+     if (ctx?.registerAsset && ctx.resolveAssets) {
+@@ -1369,8 +1370,8 @@ function lazy(fn, moduleUrl) {
+       if (moduleUrl) {
+         assetsPending = registerLazyAssets(moduleUrl);
+       } else if (!noHydrate) {
+-        if (p.mod !== undefined) {
+-          const id = p.mod?.$$moduleUrl;
++        if (cur.mod !== undefined) {
++          const id = cur.mod?.$$moduleUrl;
+           if (typeof id === "string") {
+             assetsPending = registerLazyAssets(id);
+           } else {
+@@ -1378,7 +1379,7 @@ function lazy(fn, moduleUrl) {
+           }
+         } else {
+           const boundary = ctx._currentBoundaryId;
+-          assetsPending = p.then(mod => {
++          assetsPending = cur.then(mod => {
+             const id = mod?.$$moduleUrl;
+             if (typeof id !== "string") {
+               console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
+@@ -1402,10 +1403,10 @@ function lazy(fn, moduleUrl) {
+       }
+     }
+     return createMemo(() => {
+-      if (p.errored) throw p.error;
+-      if (!p.v) throw new NotReadyError(p);
++      if (cur.errored) throw cur.error;
++      if (!cur.v) throw new NotReadyError(cur);
+       if (assetsPending) throw new NotReadyError(assetsPending);
+-      return p.v(props);
++      return cur.v(props);
+     }, {
+       sync: true
+     });
+diff --git a/dist/solid.cjs b/dist/solid.cjs
+index 2f20f8e0edbc08154e4b2be6040a9f7cbd3ab8f6..b8d20037047f59d65183c407cada740d6f0c4d32 100644
+--- a/dist/solid.cjs
++++ b/dist/solid.cjs
+@@ -970,15 +970,23 @@ function createComponent(Comp, props) {
+ function lazy(fn, moduleUrl) {
+   let comp;
+   let p;
++  const load = () => {
++    if (!p) {
++      const cur = p = fn();
++      cur.then(mod => {
++        comp = () => mod.default;
++      }, () => {
++        if (p === cur) p = undefined;
++      });
++    }
++    return p;
++  };
+   const wrap = props => {
+     if (sharedConfig.hydrating) comp = _lazyHydrationLookup(comp, moduleUrl);
+     let local = comp;
+     if (!local) {
+-      p || (p = fn());
+-      p.then(mod => {
+-        comp = () => mod.default;
+-      });
+-      local = signals.createMemo(() => p.then(mod => mod.default));
++      const cur = load();
++      local = signals.createMemo(() => cur.then(mod => mod.default));
+     }
+     let Comp;
+     return signals.createMemo(() => (Comp = (comp || local)()) ? signals.untrack(() => {
+@@ -987,7 +995,7 @@ function lazy(fn, moduleUrl) {
+       sync: true
+     });
+   };
+-  wrap.preload = () => p || ((p = fn()).then(mod => comp = () => mod.default), p);
++  wrap.preload = load;
+   wrap.moduleUrl = moduleUrl;
+   return wrap;
+ }
+diff --git a/dist/solid.js b/dist/solid.js
+index 72515e33c15d70e9d075ba7fc39fecbfb6893f66..9d12c02605259038aad383068df30693ad2a5cb5 100644
+--- a/dist/solid.js
++++ b/dist/solid.js
+@@ -969,15 +969,23 @@ function createComponent(Comp, props) {
+ function lazy(fn, moduleUrl) {
+   let comp;
+   let p;
++  const load = () => {
++    if (!p) {
++      const cur = p = fn();
++      cur.then(mod => {
++        comp = () => mod.default;
++      }, () => {
++        if (p === cur) p = undefined;
++      });
++    }
++    return p;
++  };
+   const wrap = props => {
+     if (sharedConfig.hydrating) comp = _lazyHydrationLookup(comp, moduleUrl);
+     let local = comp;
+     if (!local) {
+-      p || (p = fn());
+-      p.then(mod => {
+-        comp = () => mod.default;
+-      });
+-      local = createMemo$1(() => p.then(mod => mod.default));
++      const cur = load();
++      local = createMemo$1(() => cur.then(mod => mod.default));
+     }
+     let Comp;
+     return createMemo$1(() => (Comp = (comp || local)()) ? untrack(() => {
+@@ -986,7 +994,7 @@ function lazy(fn, moduleUrl) {
+       sync: true
+     });
+   };
+-  wrap.preload = () => p || ((p = fn()).then(mod => comp = () => mod.default), p);
++  wrap.preload = load;
+   wrap.moduleUrl = moduleUrl;
+   return wrap;
+ }
