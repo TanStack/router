@@ -40,7 +40,7 @@ function replaceLoneSurrogates(str: string): string {
     if (c >= 0xd800 && c <= 0xdbff) {
       const next = i + 1 < len ? str.charCodeAt(i + 1) : 0
       if (next >= 0xdc00 && next <= 0xdfff) {
-        out += str[i] + str[i + 1]
+        out += String.fromCharCode(c, next)
         i++
       } else {
         out += '\uFFFD'
@@ -48,7 +48,7 @@ function replaceLoneSurrogates(str: string): string {
     } else if (c >= 0xdc00 && c <= 0xdfff) {
       out += '\uFFFD'
     } else {
-      out += str[i]
+      out += String.fromCharCode(c)
     }
   }
   return out
@@ -105,7 +105,7 @@ function encodeFormComponent(value: unknown): string {
       c === 46 ||
       c === 95
     ) {
-      out += str[i]
+      out += String.fromCharCode(c)
     } else if (c === 32) {
       out += '+'
     } else if (c < 128) {
