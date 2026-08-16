@@ -677,18 +677,19 @@ function settleInto(
   result: LoaderOutcome,
   preload: boolean,
 ): asserts match is SettledMatch {
+  if (result[0 /* kind */] === REDIRECTED) {
+    return
+  }
+  // Reduction installs only the selected terminal failure. Every other
+  // settled attempt remains a renderable, stale match in that lane.
+  match.status = 'success'
+  match.error = undefined
   if (result[0 /* kind */] === SUCCESS) {
     match.loaderData = result[1 /* data */]
-    match.error = undefined
-    match.status = 'success'
     match.invalid = false
     match.updatedAt = Date.now()
     match.preload = preload
-  } else if (result[0 /* kind */] !== REDIRECTED) {
-    // Reduction installs only the selected terminal failure. Every other
-    // settled attempt remains a renderable, stale match in that lane.
-    match.status = 'success'
-    match.error = undefined
+  } else {
     match.invalid = true
   }
 }
@@ -780,7 +781,7 @@ function createLoaderTask(
         reload = true
       } else {
         const staleAge =
-          options[4 /* preload */] || match.preload
+          preload || match.preload
             ? (route.options.preloadStaleTime ??
               router.options.defaultPreloadStaleTime ??
               30_000)
@@ -806,10 +807,11 @@ function createLoaderTask(
     reloadFailure = normalizeLaneError(route, cause, options)
   }
   const routeLoader = route.options.loader
-  const loader =
-    typeof routeLoader === 'function' ? routeLoader : routeLoader?.handler
+  const isLoaderFn = typeof routeLoader === 'function'
+  const loader = isLoaderFn ? routeLoader : routeLoader?.handler
+  const preloadable = !preload || route.options.preload !== false
   let donor =
-    (!preload || route.options.preload !== false) &&
+    preloadable &&
     routeLoader &&
     !(process.env.NODE_ENV !== 'production' && router._tx?.[6 /* refresh */])
       ? router._flights?.get(match.id)
@@ -829,12 +831,10 @@ function createLoaderTask(
     match.status === 'success' &&
     !preload &&
     !options[5 /* sync */] &&
-    ((typeof routeLoader === 'function'
-      ? undefined
-      : routeLoader?.staleReloadMode) ??
+    ((isLoaderFn ? undefined : routeLoader.staleReloadMode) ??
       router.options.defaultStaleReloadMode) !== 'blocking'
   )
-  const loaded = reload && (!preload || route.options.preload !== false)
+  const loaded = reload && preloadable
   const blocking =
     loaded && !background && (match.status !== 'success' || !!routeLoader)
   const onLazyReady =
@@ -1254,10 +1254,9 @@ async function executeClientLane(
       options[0 /* controller */].signal,
       plannedBoundary,
     )
-    if (boundary !== plannedBoundary) {
-      matches[plannedBoundary]!._notFound = undefined
-      matches[boundary]!._notFound = true
-    }
+    // When the boundary did not move this clears and re-sets the same match.
+    matches[plannedBoundary]!._notFound = undefined
+    matches[boundary]!._notFound = true
     plannedBoundary = boundary
   }
   let end = plannedBoundary < 0 ? matches.length : plannedBoundary + 1
@@ -1425,8 +1424,10 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
       continue
     }
     const route = getRoute(router, match as WorkMatch)
+    // The continue above already filtered non-presented successes, so a
+    // success here is a presented pending fallback and reveals immediately.
     delay =
-      (success && presentedPending) || match.invalid
+      success || match.invalid
         ? 0
         : (route.options.pendingMs ?? router.options.defaultPendingMs)
     component =
@@ -1519,6 +1520,12 @@ function publishMatches(
 ): void {
   router._committed = matches
   router.stores.setMatches(matches)
+}
+
+/** Release a `commit()` awaiter once its transaction reaches a settled UI. */
+function resolveCommit(router: CoordinatorRouter): void {
+  router._commitPromise?.resolve()
+  router._commitPromise = undefined
 }
 
 function discardLane(router: AnyRouter, lane: ProjectedLane): void {
@@ -1679,8 +1686,7 @@ function rollbackPublication(
   transferMatchResources(router, discarded, restored)
   discardBackground(router, lane)
   if (router._tx === tx && router._commitPromise === checkpoint.commitPromise) {
-    router._commitPromise?.resolve()
-    router._commitPromise = undefined
+    resolveCommit(router)
   }
   return true
 }
@@ -1786,8 +1792,7 @@ function restoreCommitted(
     router.stores.setMatches(router._committed)
   })
   if (router._tx === tx) {
-    router._commitPromise?.resolve()
-    router._commitPromise = undefined
+    resolveCommit(router)
   }
 }
 
@@ -2000,8 +2005,7 @@ async function runClientTransaction(
     if (router._tx !== tx) {
       return
     }
-    router._commitPromise?.resolve()
-    router._commitPromise = undefined
+    resolveCommit(router)
   })
 }
 
@@ -2074,8 +2078,7 @@ export async function loadClientRoute(
         router._refreshNextLoad = undefined
       }
       await awaitCurrent(router)
-      router._commitPromise?.resolve()
-      router._commitPromise = undefined
+      resolveCommit(router)
       return
     }
     await router.navigate({
