@@ -220,7 +220,7 @@ export type PendingSession = [
   /** Pending reveal time until acknowledged, then minimum-visible-until time. */
   deadline: number,
   revealTimer?: ReturnType<typeof setTimeout>,
-  ack?: Promise<boolean>,
+  ack?: Promise<boolean> | true,
   component?: unknown,
 ]
 
@@ -1397,101 +1397,102 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   }
   const matches = tx[3 /* matches */]
   const presented = router.stores.matches.get()
-  let boundary = -1
-  let delay: number | undefined
-  let min!: number
-  let component: unknown
-  let presentedPending = false
+  let session = router._pending
   for (let index = 0; index < matches.length; index++) {
     const match = matches[index]!
     const success = match.status === 'success' && !match._notFound
-    presentedPending =
+    const presentedPending =
       presented[index]?.id === match.id &&
       presented[index]?.status === 'pending'
     if (success && !presentedPending) {
       continue
     }
     const route = getRoute(router, match as WorkMatch)
-    delay =
+    const delay =
       (success && presentedPending) || match.invalid
         ? 0
         : (route.options.pendingMs ?? router.options.defaultPendingMs)
-    component =
+    const component =
       route.options.pendingComponent ??
       (router.options as any).defaultPendingComponent
     if (!component || typeof delay !== 'number' || delay === Infinity) {
-      return
-    }
-    boundary = index
-    min = route.options.pendingMinMs ?? router.options.defaultPendingMinMs ?? 0
-    break
-  }
-  if (boundary < 0) {
-    return
-  }
-  const boundaryId = matches[boundary]!.id
-  let session = router._pending
-  let tookOver = false
-  if (session?.[1 /* boundaryId */] === boundaryId) {
-    if (session[0 /* generation */] !== tx) {
-      session[0 /* generation */] = tx
-      tookOver = true
-    }
-  } else {
-    clearTimeout(session?.[3 /* revealTimer */])
-    router._pending = session = undefined
-  }
-  if (!session) {
-    // Hydration and redirects can preserve pending presentation without a session.
-    // Do not delay it again; conservatively start pendingMinMs from now.
-    router._pending = session = [
-      tx,
-      boundaryId,
-      presentedPending ? Date.now() + min : tx[4 /* startedAt */] + delay!,
-      undefined,
-      presentedPending ? Promise.resolve(true) : undefined,
-      component,
-    ]
-  }
-  if (
-    session[4 /* ack */] &&
-    !tookOver &&
-    session[5 /* component */] === component
-  ) {
-    return
-  }
-  session[5 /* component */] = component
-  if (!session[4 /* ack */]) {
-    clearTimeout(session[3 /* revealTimer */])
-    const remaining = session[2 /* deadline */] - Date.now()
-    if (remaining > 0) {
-      session[3 /* revealTimer */] = setTimeout(
-        () => offerPending(router, tx),
-        remaining,
-      )
-      return
-    }
-    session[2 /* deadline */] = 0
-  }
-  const offered = matches.map((match) => ({
-    ...match,
-    _flight: undefined,
-  }))
-  offered[boundary]!.status = 'pending'
-  const ack = router
-    .startTransition(() => router.stores.setMatches(offered), offered)
-    .then((rendered) => {
-      if (
-        rendered &&
-        router._pending === session &&
-        session[4 /* ack */] === ack &&
-        !session[2 /* deadline */]
-      ) {
-        session[2 /* deadline */] = Date.now() + min
+      if (session) {
+        session[0 /* generation */] = tx
+        session[2 /* deadline */] = 0
+        session[4 /* ack */] = true
       }
-      return rendered
-    })
-  session[4 /* ack */] = ack
+      return
+    }
+    const min =
+      route.options.pendingMinMs ?? router.options.defaultPendingMinMs ?? 0
+    let tookOver = false
+    if (session?.[1 /* boundaryId */] === match.id) {
+      tookOver = session[0 /* generation */] !== tx
+      session[0 /* generation */] = tx
+    } else {
+      clearTimeout(session?.[3 /* revealTimer */])
+      router._pending = session = undefined
+    }
+    if (!session) {
+      // Hydration and redirects can preserve pending presentation without a session.
+      // Do not delay it again; conservatively start pendingMinMs from now.
+      router._pending = session = [
+        tx,
+        match.id,
+        presentedPending ? Date.now() + min : tx[4 /* startedAt */] + delay,
+        undefined,
+        presentedPending || undefined,
+        component,
+      ]
+    }
+    if (
+      session[4 /* ack */] &&
+      !tookOver &&
+      session[5 /* component */] === component
+    ) {
+      return
+    }
+    session[5 /* component */] = component
+    if (!session[4 /* ack */]) {
+      clearTimeout(session[3 /* revealTimer */])
+      const remaining = session[2 /* deadline */] - Date.now()
+      if (remaining > 0) {
+        session[3 /* revealTimer */] = setTimeout(
+          () => offerPending(router, tx),
+          remaining,
+        )
+        return
+      }
+      session[2 /* deadline */] = 0
+    }
+    const offered = matches.map((match) => ({
+      ...match,
+      _flight: undefined,
+    }))
+    offered[index]!.status = 'pending'
+    const ack = (session[4 /* ack */] = router
+      .startTransition(() => router.stores.setMatches(offered), offered)
+      .then(
+        (rendered) => {
+          if (
+            rendered &&
+            router._pending === session &&
+            session![4 /* ack */] === ack &&
+            !session![2 /* deadline */]
+          ) {
+            session![2 /* deadline */] = Date.now() + min
+          }
+          return rendered
+        },
+        () => {
+          if (router._pending?.[4 /* ack */] === ack) {
+            tx[0 /* controller */].abort()
+          }
+          return false
+        },
+      ))
+    return
+  }
 }
 
 /**
@@ -1499,9 +1500,8 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
  * An obsolete load cannot clear the fallback that remains painted above it.
  */
 function finishPending(router: CoordinatorRouter, tx: LoadTransaction): void {
-  const session = router._pending
   if (router._tx === tx) {
-    clearTimeout(session?.[3 /* revealTimer */])
+    clearTimeout(router._pending?.[3 /* revealTimer */])
     router._pending = undefined
   }
 }

@@ -800,15 +800,23 @@ the current turn instead of introducing a `setTimeout(0)` race.
 publication rendered. A superseded publication that never rendered creates no
 minimum-visible obligation.
 
-Hydration or a redirect can leave an already visible pending presentation
-without a pending session that owns its original acknowledgement. On takeover,
-core conservatively treats that presentation as rendered and starts its minimum
-from the takeover time instead of delaying its reveal again.
+Core considers actual non-success matches and an exact pending presentation in
+route order. An earlier ineligible successor boundary therefore retires the old
+clock without replacing the painted fallback, and a later occurrence of that
+old boundary in the same transaction cannot resurrect its minimum.
 
-A successor may take over timing only when the boundary index and match ID are
-the same. It keeps the existing deadline but republishes a full snapshot from
+Hydration or a redirect can leave an already visible pending presentation
+without a pending session that owns its original acknowledgement. When there is
+no competing semantic boundary, core conservatively treats that presentation as
+rendered and starts its minimum from the takeover time instead of delaying its
+reveal again.
+
+A successor may take over timing only when its selected boundary has the same
+match ID. It keeps the existing deadline but republishes a full snapshot from
 the successor, so pending UI cannot show stale search, params, or context from
-the superseded navigation. Changing the boundary discards the old session.
+the superseded navigation. Normal route matches preserve position with their
+IDs; the deprecated relocatable `notFoundRoute` is not given separate positional
+session identity. Changing the selected boundary discards the old session.
 
 ## Exact framework acknowledgement
 
@@ -819,6 +827,11 @@ the superseded navigation. Changing the boundary discards the old session.
 - `true` means the exact requested match publication rendered;
 - `false` means core must finish without emitting `onRendered` or starting a
   pending minimum based on that publication.
+
+A rejected acknowledgement aborts the transaction that owns the exact pending
+session. The transaction remains responsible for restoring the committed lane
+and releasing resources; stale acknowledgement failures cannot abort a
+successor.
 
 React cannot await `React.startTransition` directly. Its adapter keeps one
 router-owned acknowledgement tuple, and `Matches` settles that tuple from a

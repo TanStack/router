@@ -243,6 +243,123 @@ describe('public presentation lane contracts', () => {
     expect(screen.queryByText('Loading page')).not.toBeInTheDocument()
   })
 
+  test('an earlier pending-ineligible boundary retires a deeper pending minimum', async () => {
+    const childReloadStarted = createControlledPromise<void>()
+    const childReload = createControlledPromise<void>()
+    const parentReloadStarted = createControlledPromise<void>()
+    const parentReload = createControlledPromise<void>()
+    let childLoads = 0
+
+    const rootRoute = createRootRoute({
+      validateSearch: (search: Record<string, unknown>) => ({
+        revision: Number(search.revision),
+      }),
+      component: Outlet,
+    })
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      loaderDeps: ({ search }) => ({ revision: search.revision }),
+      beforeLoad: ({ search }) => {
+        if (search.revision === 2) {
+          parentReloadStarted.resolve()
+          return parentReload
+        }
+        return undefined
+      },
+      component: Outlet,
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+      pendingMs: 0,
+      pendingMinMs: 100,
+      pendingComponent: () => <div>Loading child</div>,
+      loader: {
+        staleReloadMode: 'blocking',
+        handler: () => {
+          if (childLoads++) {
+            childReloadStarted.resolve()
+            return childReload
+          }
+          return undefined
+        },
+      },
+      component: () => (
+        <div>Child revision {childRoute.useSearch().revision}</div>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
+      history: createMemoryHistory({
+        initialEntries: ['/parent/child?revision=1'],
+      }),
+    })
+
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('Child revision 1')).toBeInTheDocument()
+    await waitFor(() => expect(router.state.status).toBe('idle'))
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
+
+    let firstNavigation: Promise<void> | undefined
+    let secondNavigation: Promise<void> | undefined
+    let settledBeforeOldMinimum = false
+    let renderedBeforeOldMinimum = false
+    try {
+      await act(async () => {
+        firstNavigation = router.invalidate({
+          filter: (match) => match.routeId === childRoute.id,
+          forcePending: true,
+        })
+        await childReloadStarted
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(screen.getByText('Loading child')).toBeInTheDocument()
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(25)
+        secondNavigation = router.navigate({
+          to: '/parent/child',
+          search: { revision: 2 },
+        })
+        await parentReloadStarted
+      })
+      expect(screen.getByText('Loading child')).toBeInTheDocument()
+
+      childReload.resolve()
+
+      const successor = secondNavigation
+      if (!successor) {
+        throw new Error('Expected the successor navigation to start')
+      }
+      void successor.then(() => {
+        settledBeforeOldMinimum = true
+      })
+      await act(async () => {
+        parentReload.resolve()
+        await vi.advanceTimersByTimeAsync(5)
+      })
+      renderedBeforeOldMinimum = screen.queryByText('Child revision 2') !== null
+    } finally {
+      childReload.resolve()
+      parentReload.resolve()
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000)
+        await Promise.allSettled(
+          [firstNavigation, secondNavigation].filter(
+            (navigation): navigation is Promise<void> => !!navigation,
+          ),
+        )
+      })
+    }
+
+    expect({
+      settled: settledBeforeOldMinimum,
+      rendered: renderedBeforeOldMinimum,
+    }).toEqual({ settled: true, rendered: true })
+  })
+
   test('same-boundary timing survives a private retained-context barrier', async () => {
     const retainedStarted = createControlledPromise<void>()
     const retainedReady = createControlledPromise<void>()
@@ -368,105 +485,74 @@ describe('public presentation lane contracts', () => {
   })
 
   test('an exact-boundary terminal result supersedes an unrendered pending offer', async () => {
-    const firstLoad = createControlledPromise<void>()
-    const pendingOfferStarted = createControlledPromise<void>()
+    const pendingRenderStarted = createControlledPromise<void>()
+    const pendingRender = createControlledPromise<void>()
     const terminalLoadStarted = createControlledPromise<void>()
-    const terminalTransitionStarted = createControlledPromise<void>()
+    const terminalLoad = createControlledPromise<void>()
 
-    const rootRoute = createRootRoute({ component: Outlet })
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => <div>Home</div>,
-    })
-    const pageRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/page',
+    const rootRoute = createRootRoute({
       validateSearch: (search: Record<string, unknown>) => ({
         terminal: search.terminal === true,
       }),
       pendingMs: 0,
       pendingMinMs: 100,
-      pendingComponent: () => <div>Loading page</div>,
-      beforeLoad: ({ search }) => {
+      pendingComponent: () => {
+        pendingRenderStarted.resolve()
+        throw pendingRender
+      },
+      beforeLoad: async ({ search }) => {
         if (search.terminal) {
           terminalLoadStarted.resolve()
+          await terminalLoad
           throw notFound()
         }
-        return firstLoad
       },
-      notFoundComponent: () => <div>Page not found</div>,
-      component: () => <div>Page</div>,
+      notFoundComponent: () => <div>Root not found</div>,
+      component: Outlet,
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <div>Home</div>,
     })
     const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, pageRoute]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/?terminal=false'] }),
     })
 
     render(<RouterProvider router={router} />)
     expect(await screen.findByText('Home')).toBeInTheDocument()
+    await waitFor(() => expect(router.state.status).toBe('idle'))
     vi.useFakeTimers()
     vi.setSystemTime(0)
 
-    const startTransition = router.startTransition
-    const settlePendingOffers: Array<(rendered: boolean) => void> = []
-    router.startTransition = (fn, expected) => {
-      if (expected?.some((match) => match.status === 'pending')) {
-        pendingOfferStarted.resolve()
-        return new Promise((resolve) => {
-          settlePendingOffers.push(resolve)
-        })
-      }
-      if (settlePendingOffers.length) {
-        terminalTransitionStarted.resolve()
-      }
-      return startTransition(fn, expected)
-    }
-
-    const firstNavigation = router.navigate({
-      to: '/page',
-      search: { terminal: false },
-    })
-    let terminalNavigation: Promise<void> | undefined
-    let terminalSettled = false
+    let navigation: Promise<void> | undefined
     try {
       await act(async () => {
+        navigation = router.navigate({
+          to: '/',
+          search: { terminal: true },
+        })
+        await terminalLoadStarted
         await vi.advanceTimersByTimeAsync(0)
-        await pendingOfferStarted
+        await pendingRenderStarted
       })
       expect(screen.getByText('Home')).toBeInTheDocument()
 
       await act(async () => {
-        terminalNavigation = router.navigate({
-          to: '/page',
-          search: { terminal: true },
-        })
-        void terminalNavigation.then(() => {
-          terminalSettled = true
-        })
-        await terminalLoadStarted
-        await vi.advanceTimersByTimeAsync(0)
-      })
-      await act(async () => {
-        await vi.advanceTimersByTimeAsync(0)
+        terminalLoad.resolve()
+        await navigation
       })
 
-      expect(terminalTransitionStarted.status).toBe('resolved')
-      expect(screen.getByText('Page not found')).toBeInTheDocument()
-      expect(terminalSettled).toBe(true)
+      expect(screen.getByText('Root not found')).toBeInTheDocument()
       expect(Date.now()).toBe(0)
     } finally {
-      settlePendingOffers.forEach((settle) => settle(false))
-      firstLoad.resolve()
+      terminalLoad.resolve()
+      pendingRender.resolve()
       await act(async () => {
         await vi.advanceTimersByTimeAsync(1_000)
-        await Promise.allSettled(
-          [firstNavigation, terminalNavigation].filter(
-            (navigation): navigation is Promise<void> => !!navigation,
-          ),
-        )
+        await Promise.allSettled(navigation ? [navigation] : [])
       })
-      router.startTransition = startTransition
     }
   })
 
