@@ -53,4 +53,25 @@ describe('parseHref', () => {
       expect(parsed.hash).toBe('#section')
     })
   })
+
+  test('keeps query-only hrefs out of the pathname', () => {
+    const parsed = parseHref('?tab=one', undefined)
+    expect(parsed.pathname).toBe('')
+    expect(parsed.search).toBe('?tab=one')
+    expect(parsed.hash).toBe('')
+  })
+
+  test('keeps hash-only hrefs out of the pathname', () => {
+    const parsed = parseHref('#section', undefined)
+    expect(parsed.pathname).toBe('')
+    expect(parsed.search).toBe('')
+    expect(parsed.hash).toBe('#section')
+  })
+
+  test('keeps a leading query before a hash out of the pathname', () => {
+    const parsed = parseHref('?#', undefined)
+    expect(parsed.pathname).toBe('')
+    expect(parsed.search).toBe('?')
+    expect(parsed.hash).toBe('#')
+  })
 })
