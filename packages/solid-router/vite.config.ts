@@ -67,11 +67,7 @@ export default defineConfig((env) =>
     config(env),
     tanstackViteConfig({
       tsconfigPath: './tsconfig.build.json',
-      entry: [
-        './src/index.tsx',
-        './src/ssr/client.ts',
-        './src/ssr/server.ts',
-      ],
+      entry: ['./src/index.tsx', './src/ssr/client.ts', './src/ssr/server.ts'],
       srcDir: './src',
     }),
   ),

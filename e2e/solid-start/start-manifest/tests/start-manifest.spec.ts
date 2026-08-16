@@ -467,9 +467,7 @@ test('direct SSR entry emits head modulepreload hints for the lazy() chunk', asy
   ).toHaveLength(1)
 
   const headStylesheets = getStylesheetHrefsFromHtml(headHtml)
-  expect(countMatchingStylesheetHrefs(headStylesheets, 'SharedWidget-')).toBe(
-    1,
-  )
+  expect(countMatchingStylesheetHrefs(headStylesheets, 'SharedWidget-')).toBe(1)
 
   // Routes that never render the lazy component emit no hints for it.
   const homeResponse = await request.get(buildUrl(baseURL!, '/'))
