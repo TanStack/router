@@ -1846,6 +1846,16 @@ export class RouterCore<
         unmaskOnReload?: boolean
       } = {},
     ): ParsedLocation => {
+      if (dest.href) {
+        const parsed = parseHref(dest.href, {} as ParsedHistoryState)
+        dest.to = executeRewriteInput(
+          this.rewrite,
+          new URL(parsed.pathname, this.origin),
+        ).pathname
+        dest.search = this.options.parseSearch(parsed.search)
+        dest.hash = parsed.hash.slice(1)
+      }
+
       // We allow the caller to override the current location
       const currentLocation =
         dest._fromLocation || this._pendingLocation || this.latestLocation
@@ -2217,36 +2227,20 @@ export class RouterCore<
     viewTransition,
     ignoreBlocker,
     _redirects,
-    href,
     ...rest
   }: BuildNextOptions &
-    CommitLocationOptions & { _redirects?: number } = {}) => {
-    if (href) {
-      const currentIndex = this.history.location.state.__TSR_index
-
-      const parsed = parseHref(href, {
-        __TSR_index: replace ? currentIndex : currentIndex + 1,
+    CommitLocationOptions & {
+      _redirects?: number
+      _builtLocation?: ParsedLocation
+    } = {}) => {
+    const location =
+      (rest as any)._builtLocation ??
+      this.buildLocation({
+        ...(rest as any),
+        _includeValidateSearch: true,
       })
-
-      // If the href contains the basepath, we need to strip it before setting `to`
-      // because `buildLocation` will add the basepath back when creating the final URL.
-      // Without this, hrefs like '/app/about' would become '/app/app/about'.
-      const hrefUrl = new URL(parsed.pathname, this.origin)
-      const rewrittenUrl = executeRewriteInput(this.rewrite, hrefUrl)
-
-      rest.to = rewrittenUrl.pathname
-      rest.search = this.options.parseSearch(parsed.search)
-      // remove the leading `#` from the hash
-      rest.hash = parsed.hash.slice(1)
-    }
-
-    const location = this.buildLocation({
-      ...(rest as any),
-      _includeValidateSearch: true,
-    })
     if (_redirects) {
-      ;(location as typeof location & { _redirects?: number })._redirects =
-        _redirects
+      location._redirects = _redirects
     }
 
     this._pendingLocation = location as ParsedLocation<
@@ -2306,7 +2300,9 @@ export class RouterCore<
       // When only href is provided (no to), use it directly as it should already
       // be a complete path (possibly with basepath)
       if (to !== undefined || !href) {
-        const location = this.buildLocation({ to, ...rest } as any)
+        const location =
+          (rest as any)._builtLocation ??
+          this.buildLocation({ to, ...rest } as any)
         // Use publicHref which contains the path (origin-stripped is fine for reload)
         href = href ?? location.publicHref
         publicHref = publicHref ?? location.publicHref
@@ -2314,7 +2310,7 @@ export class RouterCore<
 
       // Use publicHref when available and href is not a full URL,
       // otherwise use href directly (which may already include basepath)
-      const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
+      const reloadHref = (!hrefIsUrl && publicHref ? publicHref : href)!
 
       // Block dangerous protocols like javascript:, blob:, data:
       // These could execute arbitrary code if passed to window.location
