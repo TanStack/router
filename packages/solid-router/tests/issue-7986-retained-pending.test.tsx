@@ -628,3 +628,73 @@ test('a superseding navigation replaces an unrelated pending presentation', asyn
   expect(screen.getByTestId('content')).toBeVisible()
   expect(screen.getByTestId('content')).toHaveTextContent('reloaded page')
 })
+
+test('a retained root publishes fresh context with a child fallback', async () => {
+  const retainedStarted = controlled()
+  const retainedReady = controlled()
+  const childStarted = controlled()
+  const childReady = controlled()
+  let retainedLoads = 0
+
+  const rootRoute = createRootRoute({
+    validateSearch: (search: Record<string, unknown>): { user: string } => ({
+      user: typeof search.user === 'string' ? search.user : 'unknown',
+    }),
+    beforeLoad: async ({ search }) => {
+      if (++retainedLoads > 1) {
+        retainedStarted.resolve()
+        await retainedReady
+      }
+      return { user: search.user }
+    },
+    component: () => (
+      <div>
+        <div data-testid="user">{rootRoute.useRouteContext()().user}</div>
+        <Outlet />
+      </div>
+    ),
+  })
+  const sourceRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/source',
+    component: () => <div data-testid="source">Source</div>,
+  })
+  const childRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/child',
+    loader: async () => {
+      childStarted.resolve()
+      await childReady
+    },
+    pendingMs: 0,
+    pendingMinMs: 0,
+    pendingComponent: () => <div data-testid="child-pending">Pending</div>,
+    component: () => <div data-testid="child">Child</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([sourceRoute, childRoute]),
+    history: createMemoryHistory({ initialEntries: ['/source?user=Ada'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByTestId('source')).toBeVisible()
+  expect(screen.getByTestId('user')).toHaveTextContent('Ada')
+  await waitFor(() => expect(router.state.status).toBe('idle'))
+
+  const navigation = track(
+    router.navigate({ to: '/child', search: { user: 'Grace' } }),
+  )
+  await retainedStarted
+  expect(screen.getByTestId('source')).toBeVisible()
+  expect(screen.getByTestId('user')).toHaveTextContent('Ada')
+  expect(screen.queryByTestId('child-pending')).not.toBeInTheDocument()
+
+  retainedReady.resolve()
+  await childStarted
+  expect(await screen.findByTestId('child-pending')).toBeVisible()
+  expect(screen.getByTestId('user')).toHaveTextContent('Grace')
+
+  childReady.resolve()
+  await navigation
+  expect(screen.getByTestId('child')).toBeVisible()
+})
