@@ -601,6 +601,13 @@ reduction.
 Returned and thrown redirects/not-founds normalize identically. Only an error
 invokes route `onError`; if `onError` throws, its value is normalized again and
 may itself become an error, not-found, or redirect.
+Client and server lanes build a route redirect while its source route still owns
+the outcome. Target-construction failures therefore become that route's error,
+and a successful client target travels with the redirect so navigation does not
+run functional updaters twice.
+Client loader flights retain the raw redirect because a flight can be shared.
+Each consuming lane materializes that redirect against its own location and
+policy before exposing the lane-owned task outcome to settlement and reduction.
 Router cancellation and request abort bypass `onError`. Aborting the
 `AbortController` exposed to a loader is not by itself proof that the router
 discarded the work: a still-owned loader may fulfill or reject afterward, and
@@ -610,6 +617,8 @@ proves request cancellation, while the already selected failure/control outcome
 proves that an aborted descendant is obsolete. The client calls a discarded
 non-result `canceled`, while the server calls it `skipped`; neither is a
 publishable terminal state.
+Canceled client lanes release only their private work; the transaction that
+superseded them owns presentation and completion.
 
 The client and server use the same settlement order and renderable-ancestor
 rules.

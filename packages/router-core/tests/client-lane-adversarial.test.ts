@@ -173,6 +173,110 @@ describe('adversarial client lane ownership', () => {
     expect(cOnEnter).toHaveBeenCalledTimes(1)
   })
 
+  test('supersession cancels lazy not-found boundary lookup without leaking pending ownership', async () => {
+    const lazyStarted = createControlledPromise<void>()
+    const lazyGate = createControlledPromise<any>()
+    const safeHeadStarted = createControlledPromise<void>()
+    const safeHeadGate = createControlledPromise<void>()
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const missingRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/missing',
+      pendingMs: 0,
+      pendingMinMs: 0,
+      pendingComponent: () => null,
+      beforeLoad: () => {
+        throw notFound()
+      },
+    }).lazy(() => {
+      lazyStarted.resolve()
+      return lazyGate
+    })
+    const safeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/safe',
+      head: async () => {
+        safeHeadStarted.resolve()
+        await safeHeadGate
+        return {}
+      },
+    })
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, missingRoute, safeRoute]),
+      history,
+    })
+
+    await router.load()
+    history.push('/missing')
+    const supersededLoad = router.load()
+    await lazyStarted
+    const supersededTx = router._tx!
+    expect(router._pending?.[0]).toBe(supersededTx)
+
+    let supersededOutcome: unknown
+    const observedSupersededLoad = supersededLoad.then(
+      () => {
+        supersededOutcome = 'resolved'
+      },
+      (cause) => {
+        supersededOutcome = cause
+      },
+    )
+    history.push('/safe')
+    const replacementLoad = router.load()
+    await safeHeadStarted
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+    expect(supersededOutcome).toBeUndefined()
+    expect(safeHeadGate.status).toBe('pending')
+    expect(router._pending).toBeUndefined()
+    expect(router.state.matches.at(-1)?.routeId).toBe(missingRoute.id)
+
+    safeHeadGate.resolve()
+    lazyGate.resolve({ options: { notFoundComponent: () => null } })
+    await Promise.all([observedSupersededLoad, replacementLoad])
+
+    expect(supersededOutcome).toBe('resolved')
+    expect(router._pending).toBeUndefined()
+    expect(router.state).toMatchObject({
+      status: 'idle',
+      location: { pathname: '/safe' },
+    })
+    expect(router.state.matches.at(-1)?.routeId).toBe(safeRoute.id)
+    history.destroy()
+  })
+
+  test('a live signal rejected by lazy not-found lookup is not treated as cancellation', async () => {
+    let laneSignal: AbortSignal | undefined
+    const rootRoute = new BaseRootRoute({})
+    const missingRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/missing',
+      beforeLoad: ({ abortController }) => {
+        laneSignal = abortController.signal
+        throw notFound()
+      },
+    }).lazy(() => Promise.reject(laneSignal))
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([missingRoute]),
+      history: createMemoryHistory({ initialEntries: ['/missing'] }),
+    })
+
+    await router.load()
+
+    expect(laneSignal?.aborted).toBe(false)
+    expect(router.state.status).toBe('idle')
+    expect(router.state.location.pathname).toBe('/missing')
+    expect(router.state.resolvedLocation?.pathname).toBe('/missing')
+    expect(router.state.matches.at(-1)?.status).not.toBe('pending')
+  })
+
   test('keeps a hidden child matched without projecting it below a parent error', async () => {
     const parentError = new Error('parent failed')
     const childHead = vi.fn(() => ({
