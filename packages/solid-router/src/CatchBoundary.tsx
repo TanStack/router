@@ -16,16 +16,26 @@ export function CatchBoundary(
   const [retryKey, setRetryKey] = Solid.createSignal<object>({})
   let resetBoundary: (() => void) | undefined
   let initialized = false
+  let previousKey: unknown
 
   Solid.onCleanup(() => {
     resetBoundary = undefined
   })
 
-  Solid.createEffect(props.getResetKey, () => {
+  Solid.createEffect(props.getResetKey, (key) => {
     if (!initialized) {
       initialized = true
+      previousKey = key
       return
     }
+
+    // The effect re-runs on every recompute of the key function, not only
+    // on value changes — gate on the value so an unchanged key can't
+    // recreate the retried subtree while it settles.
+    if (key === previousKey) {
+      return
+    }
+    previousKey = key
 
     const reset = resetBoundary
     if (reset) {
