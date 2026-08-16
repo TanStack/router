@@ -210,8 +210,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       })) satisfies Array<RouterManagedTag>
   })
 
-  // Reuse equal tag objects so Solid's reference-keyed For keeps DOM nodes.
-  return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
+  return Solid.createMemo(() => {
     const next: Array<RouterManagedTag> = []
     appendUniqueUserTags(next, meta())
     appendUniqueUserTags(next, links())
@@ -219,8 +218,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     next.push(...preloadLinks())
     appendUniqueUserTags(next, styles())
     appendUniqueUserTags(next, headScripts())
-
-    return prev === undefined ? next : replaceEqualTags(prev, next)
+    return next
   })
 }
 
@@ -238,7 +236,7 @@ export function toHeadTags(tags: Array<RouterManagedTag>): Array<HeadTag> {
 
 function toHeadTag(t: RouterManagedTag): HeadTag {
   const props: Record<string, any> = { ...t.attrs }
-  let children = t.children as string | undefined
+  let children: string | undefined = t.children
 
   if (
     t.tag === 'style' &&
@@ -270,30 +268,4 @@ function toHeadTag(t: RouterManagedTag): HeadTag {
   }
 
   return { tag: t.tag, props }
-}
-
-function replaceEqualTags(
-  prev: Array<RouterManagedTag>,
-  next: Array<RouterManagedTag>,
-) {
-  const prevByKey = new Map<string, RouterManagedTag>()
-  for (const tag of prev) {
-    prevByKey.set(JSON.stringify(tag), tag)
-  }
-
-  let isEqual = prev.length === next.length
-  const result = next.map((tag, index) => {
-    const existing = prevByKey.get(JSON.stringify(tag))
-    if (existing) {
-      if (existing !== prev[index]) {
-        isEqual = false
-      }
-      return existing
-    }
-
-    isEqual = false
-    return tag
-  })
-
-  return isEqual ? prev : result
 }
