@@ -22,7 +22,8 @@ export function joinPaths(paths: Array<string | undefined>) {
 
 /** Remove repeated slashes from a path string. */
 export function cleanPath(path: string) {
-  // remove double slashes
+  // Most paths never contain '//' — skip the regex on that common case.
+  if (path.indexOf('//') === -1) return path
   return path.replace(/\/{2,}/g, '/')
 }
 
