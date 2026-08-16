@@ -1,8 +1,22 @@
 diff --git a/dist/dev.cjs b/dist/dev.cjs
-index eb15135bbd0f524729b336bdf3b14f5b97101a99..e97b7645aa689c62bbca0ca09a06825b58c6663f 100644
+index eb15135bbd0f524729b336bdf3b14f5b97101a99..5dfc6231b6155628a0710e8ddf41ed272ad77497 100644
 --- a/dist/dev.cjs
 +++ b/dist/dev.cjs
-@@ -987,15 +987,23 @@ function createComponent(Comp, props) {
+@@ -576,7 +576,12 @@ function lazyHydrationLookup(comp, moduleUrl) {
+   const o = signals.getOwner();
+   const key = o && o.id != null ? signals.peekNextChildId(o) : undefined;
+   const cached = key != null ? globalThis._$HY?.modules?.[key] : undefined;
+-  if (cached) return () => cached.default;
++  // The preloaded-module shortcut assumes the module's default export is
++  // the component, which only the bundler transform (which injects
++  // moduleUrl) guarantees. Wrappers that select a named export (no
++  // moduleUrl) fall through to their own import so the boundary hydrates
++  // through the async path instead of silently rendering the wrong value.
++  if (cached && moduleUrl) return () => cached.default;
+   if (!comp && moduleUrl) {
+     throw new Error(`lazy() module "${moduleUrl}" (hydration id "${key}") was not preloaded before ` + "hydration. Ensure it is inside a Loading boundary.");
+   }
+@@ -987,15 +992,23 @@ function createComponent(Comp, props) {
  function lazy(fn, moduleUrl) {
    let comp;
    let p;
@@ -31,7 +45,7 @@ index eb15135bbd0f524729b336bdf3b14f5b97101a99..e97b7645aa689c62bbca0ca09a06825b
      }
      let Comp;
      return signals.createMemo(() => (Comp = (comp || local)()) ? signals.untrack(() => {
-@@ -1007,7 +1015,7 @@ function lazy(fn, moduleUrl) {
+@@ -1007,7 +1020,7 @@ function lazy(fn, moduleUrl) {
        sync: true
      });
    };
@@ -41,10 +55,24 @@ index eb15135bbd0f524729b336bdf3b14f5b97101a99..e97b7645aa689c62bbca0ca09a06825b
    return wrap;
  }
 diff --git a/dist/dev.js b/dist/dev.js
-index e9b692addaef5c1285a9003fe4ff360e91d40d79..6608fd18d47caa31074225f0b3d3a5b649ee60a9 100644
+index e9b692addaef5c1285a9003fe4ff360e91d40d79..a77453f7caec15ea93e527bb23fe0ea00d56cef8 100644
 --- a/dist/dev.js
 +++ b/dist/dev.js
-@@ -986,15 +986,23 @@ function createComponent(Comp, props) {
+@@ -575,7 +575,12 @@ function lazyHydrationLookup(comp, moduleUrl) {
+   const o = getOwner();
+   const key = o && o.id != null ? peekNextChildId(o) : undefined;
+   const cached = key != null ? globalThis._$HY?.modules?.[key] : undefined;
+-  if (cached) return () => cached.default;
++  // The preloaded-module shortcut assumes the module's default export is
++  // the component, which only the bundler transform (which injects
++  // moduleUrl) guarantees. Wrappers that select a named export (no
++  // moduleUrl) fall through to their own import so the boundary hydrates
++  // through the async path instead of silently rendering the wrong value.
++  if (cached && moduleUrl) return () => cached.default;
+   if (!comp && moduleUrl) {
+     throw new Error(`lazy() module "${moduleUrl}" (hydration id "${key}") was not preloaded before ` + "hydration. Ensure it is inside a Loading boundary.");
+   }
+@@ -986,15 +991,23 @@ function createComponent(Comp, props) {
  function lazy(fn, moduleUrl) {
    let comp;
    let p;
@@ -73,7 +101,7 @@ index e9b692addaef5c1285a9003fe4ff360e91d40d79..6608fd18d47caa31074225f0b3d3a5b6
      }
      let Comp;
      return createMemo$1(() => (Comp = (comp || local)()) ? untrack(() => {
-@@ -1006,7 +1014,7 @@ function lazy(fn, moduleUrl) {
+@@ -1006,7 +1019,7 @@ function lazy(fn, moduleUrl) {
        sync: true
      });
    };
@@ -83,7 +111,7 @@ index e9b692addaef5c1285a9003fe4ff360e91d40d79..6608fd18d47caa31074225f0b3d3a5b6
    return wrap;
  }
 diff --git a/dist/server.cjs b/dist/server.cjs
-index b7652fedf12661b2660550e09352e08c1f716003..95801d7b76c5a368e859f62603cb5b36f2a34e75 100644
+index b7652fedf12661b2660550e09352e08c1f716003..7307f6a59826618ca3e1cb86dd9bb757e37182cf 100644
 --- a/dist/server.cjs
 +++ b/dist/server.cjs
 @@ -1307,13 +1307,14 @@ function lazy(fn, moduleUrl) {
@@ -116,7 +144,7 @@ index b7652fedf12661b2660550e09352e08c1f716003..95801d7b76c5a368e859f62603cb5b36
      const ctx = sharedConfig.context;
      let assetsPending;
      if (ctx?.registerAsset && ctx.resolveAssets) {
-@@ -1370,8 +1371,8 @@ function lazy(fn, moduleUrl) {
+@@ -1370,17 +1371,21 @@ function lazy(fn, moduleUrl) {
        if (moduleUrl) {
          assetsPending = registerLazyAssets(moduleUrl);
        } else if (!noHydrate) {
@@ -126,17 +154,22 @@ index b7652fedf12661b2660550e09352e08c1f716003..95801d7b76c5a368e859f62603cb5b36
 +          const id = cur.mod?.$$moduleUrl;
            if (typeof id === "string") {
              assetsPending = registerLazyAssets(id);
++          } else if (id === null) {
++            // Explicit opt-out: the module manages its own client assets
++            // and hydration (e.g. a wrapper selecting a named export).
            } else {
-@@ -1379,7 +1380,7 @@ function lazy(fn, moduleUrl) {
+             console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
            }
          } else {
            const boundary = ctx._currentBoundaryId;
 -          assetsPending = p.then(mod => {
 +          assetsPending = cur.then(mod => {
              const id = mod?.$$moduleUrl;
++            if (id === null) return;
              if (typeof id !== "string") {
                console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
-@@ -1403,10 +1404,10 @@ function lazy(fn, moduleUrl) {
+               return;
+@@ -1403,10 +1408,10 @@ function lazy(fn, moduleUrl) {
        }
      }
      return createMemo(() => {
@@ -151,7 +184,7 @@ index b7652fedf12661b2660550e09352e08c1f716003..95801d7b76c5a368e859f62603cb5b36
        sync: true
      });
 diff --git a/dist/server.js b/dist/server.js
-index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..f75a357bcee91d3305c3e67127c8e7d199708c68 100644
+index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..d2bc636b0e9cf2b853835cfe3f2279a4b4719894 100644
 --- a/dist/server.js
 +++ b/dist/server.js
 @@ -1306,13 +1306,14 @@ function lazy(fn, moduleUrl) {
@@ -184,7 +217,7 @@ index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..f75a357bcee91d3305c3e67127c8e7d1
      const ctx = sharedConfig.context;
      let assetsPending;
      if (ctx?.registerAsset && ctx.resolveAssets) {
-@@ -1369,8 +1370,8 @@ function lazy(fn, moduleUrl) {
+@@ -1369,17 +1370,21 @@ function lazy(fn, moduleUrl) {
        if (moduleUrl) {
          assetsPending = registerLazyAssets(moduleUrl);
        } else if (!noHydrate) {
@@ -194,17 +227,22 @@ index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..f75a357bcee91d3305c3e67127c8e7d1
 +          const id = cur.mod?.$$moduleUrl;
            if (typeof id === "string") {
              assetsPending = registerLazyAssets(id);
++          } else if (id === null) {
++            // Explicit opt-out: the module manages its own client assets
++            // and hydration (e.g. a wrapper selecting a named export).
            } else {
-@@ -1378,7 +1379,7 @@ function lazy(fn, moduleUrl) {
+             console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
            }
          } else {
            const boundary = ctx._currentBoundaryId;
 -          assetsPending = p.then(mod => {
 +          assetsPending = cur.then(mod => {
              const id = mod?.$$moduleUrl;
++            if (id === null) return;
              if (typeof id !== "string") {
                console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
-@@ -1402,10 +1403,10 @@ function lazy(fn, moduleUrl) {
+               return;
+@@ -1402,10 +1407,10 @@ function lazy(fn, moduleUrl) {
        }
      }
      return createMemo(() => {
@@ -219,10 +257,24 @@ index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..f75a357bcee91d3305c3e67127c8e7d1
        sync: true
      });
 diff --git a/dist/solid.cjs b/dist/solid.cjs
-index 2f20f8e0edbc08154e4b2be6040a9f7cbd3ab8f6..b8d20037047f59d65183c407cada740d6f0c4d32 100644
+index 2f20f8e0edbc08154e4b2be6040a9f7cbd3ab8f6..8ce322189ae805c01b4646e509acfc8c529fe9ed 100644
 --- a/dist/solid.cjs
 +++ b/dist/solid.cjs
-@@ -970,15 +970,23 @@ function createComponent(Comp, props) {
+@@ -559,7 +559,12 @@ function lazyHydrationLookup(comp, moduleUrl) {
+   const o = signals.getOwner();
+   const key = o && o.id != null ? signals.peekNextChildId(o) : undefined;
+   const cached = key != null ? globalThis._$HY?.modules?.[key] : undefined;
+-  if (cached) return () => cached.default;
++  // The preloaded-module shortcut assumes the module's default export is
++  // the component, which only the bundler transform (which injects
++  // moduleUrl) guarantees. Wrappers that select a named export (no
++  // moduleUrl) fall through to their own import so the boundary hydrates
++  // through the async path instead of silently rendering the wrong value.
++  if (cached && moduleUrl) return () => cached.default;
+   if (!comp && moduleUrl) {
+     throw new Error(`lazy() module "${moduleUrl}" (hydration id "${key}") was not preloaded before ` + "hydration. Ensure it is inside a Loading boundary.");
+   }
+@@ -970,15 +975,23 @@ function createComponent(Comp, props) {
  function lazy(fn, moduleUrl) {
    let comp;
    let p;
@@ -251,7 +303,7 @@ index 2f20f8e0edbc08154e4b2be6040a9f7cbd3ab8f6..b8d20037047f59d65183c407cada740d
      }
      let Comp;
      return signals.createMemo(() => (Comp = (comp || local)()) ? signals.untrack(() => {
-@@ -987,7 +995,7 @@ function lazy(fn, moduleUrl) {
+@@ -987,7 +1000,7 @@ function lazy(fn, moduleUrl) {
        sync: true
      });
    };
@@ -261,10 +313,24 @@ index 2f20f8e0edbc08154e4b2be6040a9f7cbd3ab8f6..b8d20037047f59d65183c407cada740d
    return wrap;
  }
 diff --git a/dist/solid.js b/dist/solid.js
-index 72515e33c15d70e9d075ba7fc39fecbfb6893f66..9d12c02605259038aad383068df30693ad2a5cb5 100644
+index 72515e33c15d70e9d075ba7fc39fecbfb6893f66..c73bc2a4fc14c0a196d66e3abe67c710d4a5b8d3 100644
 --- a/dist/solid.js
 +++ b/dist/solid.js
-@@ -969,15 +969,23 @@ function createComponent(Comp, props) {
+@@ -558,7 +558,12 @@ function lazyHydrationLookup(comp, moduleUrl) {
+   const o = getOwner();
+   const key = o && o.id != null ? peekNextChildId(o) : undefined;
+   const cached = key != null ? globalThis._$HY?.modules?.[key] : undefined;
+-  if (cached) return () => cached.default;
++  // The preloaded-module shortcut assumes the module's default export is
++  // the component, which only the bundler transform (which injects
++  // moduleUrl) guarantees. Wrappers that select a named export (no
++  // moduleUrl) fall through to their own import so the boundary hydrates
++  // through the async path instead of silently rendering the wrong value.
++  if (cached && moduleUrl) return () => cached.default;
+   if (!comp && moduleUrl) {
+     throw new Error(`lazy() module "${moduleUrl}" (hydration id "${key}") was not preloaded before ` + "hydration. Ensure it is inside a Loading boundary.");
+   }
+@@ -969,15 +974,23 @@ function createComponent(Comp, props) {
  function lazy(fn, moduleUrl) {
    let comp;
    let p;
@@ -293,7 +359,7 @@ index 72515e33c15d70e9d075ba7fc39fecbfb6893f66..9d12c02605259038aad383068df30693
      }
      let Comp;
      return createMemo$1(() => (Comp = (comp || local)()) ? untrack(() => {
-@@ -986,7 +994,7 @@ function lazy(fn, moduleUrl) {
+@@ -986,7 +999,7 @@ function lazy(fn, moduleUrl) {
        sync: true
      });
    };
