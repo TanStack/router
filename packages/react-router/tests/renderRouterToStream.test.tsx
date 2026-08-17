@@ -266,6 +266,7 @@ describe('renderRouterToStream - pipeable sync errors', () => {
 
   test('destroying the pipeable response cancels the React adapter', async () => {
     const router = await buildRouter()
+    const cleanup = vi.spyOn(router.serverSsr!, 'cleanup')
     const input = new PassThrough()
     let aborts = 0
     const output = transformPipeableStreamWithRouter(router, input, {
@@ -284,6 +285,8 @@ describe('renderRouterToStream - pipeable sync errors', () => {
       await Promise.resolve()
 
       expect(aborts).toEqual(1)
+      expect(input.destroyed).toEqual(true)
+      expect(cleanup).toHaveBeenCalledOnce()
     } finally {
       if (!input.destroyed) {
         input.destroy()

@@ -14,7 +14,7 @@ const isAbortError = (request: Request, error: unknown) =>
   (error as any)?.code === 'ABORT_ERR'
 
 function prependDoctype(
-  readable: globalThis.ReadableStream,
+  readable: ReadableStream<Uint8Array>,
 ): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
   let sentDoctype = false
@@ -122,7 +122,7 @@ export const renderRouterToStream = async ({
     }
   }
 
-  const { writable, readable } = new TransformStream()
+  const { writable, readable } = new TransformStream<Uint8Array, Uint8Array>()
   const innerWriter = writable.getWriter()
   let writerDone = false
   const releaseWriter = () => {
@@ -158,7 +158,7 @@ export const renderRouterToStream = async ({
     throw err
   }
 
-  const vueWritable = new WritableStream({
+  const vueWritable = new WritableStream<Uint8Array>({
     write(chunk) {
       if (writerDone) {
         return
