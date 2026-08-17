@@ -2,7 +2,7 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "tanstack-start-app",
   "compatibility_date": "2025-09-24",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_flags": ["nodejs_als"],
   "main": "@tanstack/solid-start/server-entry",
   "vars": {
     "MY_VAR": "Hello from Cloudflare",

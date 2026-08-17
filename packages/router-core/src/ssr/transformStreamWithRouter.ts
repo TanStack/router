@@ -1,5 +1,3 @@
-import { ReadableStream } from 'node:stream/web'
-import { Readable } from 'node:stream'
 import { TSR_SCRIPT_BARRIER_ID } from './constants'
 import type { AnyRouter } from '../router'
 
@@ -26,16 +24,6 @@ export function transformReadableStreamWithRouter(
   opts?: TransformStreamWithRouterOptions,
 ) {
   return transformStreamWithRouter(router, routerStream, opts)
-}
-
-export function transformPipeableStreamWithRouter(
-  router: AnyRouter,
-  routerStream: Readable,
-  opts?: TransformStreamWithRouterOptions,
-) {
-  return Readable.fromWeb(
-    transformStreamWithRouter(router, Readable.toWeb(routerStream), opts),
-  )
 }
 
 // Minimum length of a valid closing tag: </a> = 4 characters

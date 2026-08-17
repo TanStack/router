@@ -1,4 +1,3 @@
-import { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import * as Vue from 'vue'
 import { pipeToWebWritable, renderToString } from 'vue/server-renderer'
 import { isbot } from 'isbot'
@@ -16,7 +15,7 @@ const isAbortError = (request: Request, error: unknown) =>
 
 function prependDoctype(
   readable: globalThis.ReadableStream,
-): NodeReadableStream<Uint8Array> {
+): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
   let sentDoctype = false
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
@@ -29,7 +28,7 @@ function prependDoctype(
     reader = undefined
   }
 
-  return new NodeReadableStream<Uint8Array>({
+  return new ReadableStream<Uint8Array>({
     start() {
       reader = readable.getReader()
     },
