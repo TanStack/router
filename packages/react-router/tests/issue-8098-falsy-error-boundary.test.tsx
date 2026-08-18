@@ -47,7 +47,8 @@ test.each([
     const router = setupThrowingRoute(thrownValue)
     render(<RouterProvider router={router} />)
 
-    expect(await screen.findByTestId('route-error')).toBeInTheDocument()
+    const errorEl = await screen.findByTestId('route-error')
+    expect(errorEl.textContent).toBe(String(thrownValue))
   },
 )
 
