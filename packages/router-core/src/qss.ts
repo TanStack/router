@@ -47,10 +47,16 @@ export function encode(
  * // Expected output: 123
  */
 function toValue(str: unknown) {
-  if (!str) return ''
+  if (!str) {
+    return ''
+  }
 
-  if (str === 'false') return false
-  if (str === 'true') return true
+  if (str === 'false') {
+    return false
+  }
+  if (str === 'true') {
+    return true
+  }
   return +str * 0 === 0 && +str + '' === str ? +str : str
 }
 /**

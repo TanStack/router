@@ -85,17 +85,25 @@ function getIntentListenerEvents(
 }
 
 function queueHydrationReplayEvent(marker: Element, event: Event) {
-  if (!event.bubbles) return
+  if (!event.bubbles) {
+    return
+  }
 
   const id = marker.getAttribute(hydrateIdAttribute)
   const when = marker.getAttribute(hydrateWhenAttribute)
-  if (!id || !when || when === 'never') return
+  if (!id || !when || when === 'never') {
+    return
+  }
 
   const target = event.target
-  if (!target) return
+  if (!target) {
+    return
+  }
 
   const gate = getMarkerGate(marker)
-  if (gate?.resolved) return
+  if (gate?.resolved) {
+    return
+  }
 
   event.preventDefault()
   event.stopPropagation()
@@ -131,7 +139,9 @@ function queueHydrationReplayEvent(marker: Element, event: Event) {
 if (typeof document !== 'undefined') {
   const onIntent = (event: Event) => {
     const target = event.target
-    if (!(target instanceof Element)) return
+    if (!(target instanceof Element)) {
+      return
+    }
 
     let marker: Element | null = target.closest(hydrateIdSelector)
     const markers: Array<Element> = []
@@ -155,10 +165,14 @@ if (typeof document !== 'undefined') {
       marker = marker.parentElement?.closest(hydrateIdSelector) ?? null
     }
 
-    if (!shouldHandle) return
+    if (!shouldHandle) {
+      return
+    }
 
     markers.reverse()
-    if (markers.every((marker) => getMarkerGate(marker))) return
+    if (markers.every((marker) => getMarkerGate(marker))) {
+      return
+    }
 
     markers.forEach((marker) => {
       queueHydrationReplayEvent(marker, event)
@@ -194,7 +208,9 @@ function listenForIntent(
       if (marker.hasAttribute(hydrateIdAttribute)) {
         markers.push(marker)
       }
-      if (marker === element) break
+      if (marker === element) {
+        break
+      }
       marker = marker.parentElement
     }
 
@@ -227,7 +243,9 @@ function listenForIntent(
   })
 
   return () => {
-    if (disposed) return
+    if (disposed) {
+      return
+    }
     disposed = true
     events.forEach((eventName) => {
       element.removeEventListener(eventName, onIntent, true)
@@ -240,7 +258,9 @@ export function listenForDelegatedHydrationIntent(
   context: HydrationRuntimeContext,
 ) {
   const listenerEvents = getIntentListenerEvents(element, [])
-  if (!listenerEvents.length) return
+  if (!listenerEvents.length) {
+    return
+  }
 
   const cleanupIntent = listenForIntent(element, listenerEvents, {
     ...context,
@@ -264,7 +284,9 @@ export function interaction(
     const seen = new Set<string>()
 
     for (const eventName of eventList) {
-      if (!eventName || seen.has(eventName)) continue
+      if (!eventName || seen.has(eventName)) {
+        continue
+      }
       seen.add(eventName)
       normalizedEvents.push(eventName)
     }
@@ -278,10 +300,14 @@ export function interaction(
     _t: interactionType,
     _s: (context) => {
       const element = context.element
-      if (!element) return
+      if (!element) {
+        return
+      }
       const prefetch = context.prefetch
       if (prefetch) {
-        if (!events.length) return
+        if (!events.length) {
+          return
+        }
         let disposed = false
 
         events.forEach((eventName) => {
@@ -289,7 +315,9 @@ export function interaction(
         })
 
         return () => {
-          if (disposed) return
+          if (disposed) {
+            return
+          }
           disposed = true
           events.forEach((eventName) => {
             element.removeEventListener(eventName, prefetch, true)
@@ -309,7 +337,9 @@ export function interaction(
     _o: (id) => {
       globalThis.requestAnimationFrame(() => {
         const pendingEvents = replayEventsByGateId.get(id)
-        if (!pendingEvents?.length) return
+        if (!pendingEvents?.length) {
+          return
+        }
 
         replayEventsByGateId.delete(id)
 
@@ -317,7 +347,9 @@ export function interaction(
           let replayTarget: Element | null = pendingEvent.marker
           for (const index of pendingEvent.targetPath) {
             replayTarget = replayTarget.children[index] ?? null
-            if (!replayTarget) break
+            if (!replayTarget) {
+              break
+            }
           }
 
           const event = pendingEvent.event

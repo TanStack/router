@@ -160,7 +160,9 @@ function Script({
   }
 
   React.useEffect(() => {
-    if (dataScript) return
+    if (dataScript) {
+      return
+    }
 
     if (attrs?.src) {
       const normSrc = (() => {

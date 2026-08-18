@@ -27,7 +27,9 @@ async function waitForReadyOrAbort(
         const onAbort = () => resolve()
         cleanup = () => signal.removeEventListener('abort', onAbort)
         signal.addEventListener('abort', onAbort, { once: true })
-        if (signal.aborted) resolve()
+        if (signal.aborted) {
+          resolve()
+        }
       }),
     ])
   } finally {
@@ -112,7 +114,9 @@ export const renderRouterToStream = async ({
       reason: unknown,
       opts?: { defaultError?: boolean },
     ) => {
-      if (reactAppPassthrough.destroyed) return
+      if (reactAppPassthrough.destroyed) {
+        return
+      }
       if (responseAttached) {
         reactAppPassthrough.destroy(
           opts?.defaultError ? toError(reason) : destroyError(reason),
@@ -128,7 +132,9 @@ export const renderRouterToStream = async ({
       reason?: unknown,
       opts?: { defaultError?: boolean },
     ) => {
-      if (aborted) return
+      if (aborted) {
+        return
+      }
       aborted = true
       pendingAbortReason = reason
       const err = toError(reason)

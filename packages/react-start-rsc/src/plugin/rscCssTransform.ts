@@ -85,12 +85,18 @@ function createRscCssCompilerTransform(opts: {
 
       for (const candidate of candidates) {
         const args = candidate.path.node.arguments
-        if (args.length !== 1) continue
+        if (args.length !== 1) {
+          continue
+        }
 
         if (opts.kind === 'renderToReadableStream') {
           const firstArg = args[0]
-          if (!firstArg || !t.isExpression(firstArg)) continue
-          if (!isTopLevelJsx(t, firstArg)) continue
+          if (!firstArg || !t.isExpression(firstArg)) {
+            continue
+          }
+          if (!isTopLevelJsx(t, firstArg)) {
+            continue
+          }
 
           args[0] = createCssFragment(
             t,

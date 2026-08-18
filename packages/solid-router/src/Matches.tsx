@@ -218,7 +218,9 @@ export function useMatches<
       MakeRouteMatchUnion<TRouter>
     >
     const res = opts?.select ? opts.select(matches) : matches
-    if (prev === undefined) return res
+    if (prev === undefined) {
+      return res
+    }
     return replaceEqualDeep(prev, res) as any
   }) as Solid.Accessor<UseMatchesResult<TRouter, TSelected>>
 }

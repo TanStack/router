@@ -56,7 +56,9 @@ export function NeverHydrate(props: HydrateProps): React.JSX.Element {
     (isServer ?? typeof window === 'undefined') || !hydrated
   const markerRef = React.useCallback(
     (element: HTMLDivElement | null) => {
-      if (!element) return
+      if (!element) {
+        return
+      }
       if (!shouldPreserveServerHTMLRef.current) {
         element.replaceChildren()
       } else {

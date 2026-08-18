@@ -137,7 +137,9 @@ export function reactStartRscVitePlugin(): PluginOption {
           id: /^(virtual:tanstack-rsc-runtime|virtual:vite-rsc\/encryption-key)$/,
         },
         handler(id) {
-          if (this.environment.config.build.write !== false) return
+          if (this.environment.config.build.write !== false) {
+            return
+          }
 
           if (id === RSC_RUNTIME_VIRTUAL_ID) {
             return `export { renderToReadableStream, createFromReadableStream, createTemporaryReferenceSet, decodeReply, loadServerAction, decodeAction, decodeFormState } from '@vitejs/plugin-rsc/rsc'`

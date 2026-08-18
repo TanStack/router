@@ -10,7 +10,9 @@ function isReactElementLike(value: unknown): boolean {
   }
 
   // Prefer React's own check when available.
-  if (isValidElement(value)) return true
+  if (isValidElement(value)) {
+    return true
+  }
 
   // Fallback: direct $$typeof detection (covers React 19 transitional elements).
   const t = (value as any).$$typeof

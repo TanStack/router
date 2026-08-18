@@ -64,7 +64,9 @@ const Script = Vue.defineComponent({
 
     if (!(isServer ?? router.isServer)) {
       Vue.onMounted(() => {
-        if (dataScript) return
+        if (dataScript) {
+          return
+        }
 
         const attrs = props.attrs
         const children = props.children
@@ -106,7 +108,9 @@ const Script = Vue.defineComponent({
           const existingScript = Array.from(
             document.querySelectorAll('script:not([src])'),
           ).find((el) => {
-            if (!(el instanceof HTMLScriptElement)) return false
+            if (!(el instanceof HTMLScriptElement)) {
+              return false
+            }
             const sType = el.getAttribute('type') ?? 'text/javascript'
             const sNonce = el.getAttribute('nonce') ?? undefined
             return (

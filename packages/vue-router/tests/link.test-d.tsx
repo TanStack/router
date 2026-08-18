@@ -75,7 +75,9 @@ const linesRoute = createRoute({
   getParentRoute: () => detailRoute,
   path: 'lines',
   validateSearch: (input: { linesPage?: number } & SearchSchemaInput) => {
-    if (typeof input.linesPage !== 'number') throw new Error()
+    if (typeof input.linesPage !== 'number') {
+      throw new Error()
+    }
 
     return {
       linesPage: input.linesPage,

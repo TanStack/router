@@ -9,12 +9,16 @@ export function media(
   return {
     _t: mediaType,
     _s: ({ gate, prefetch }) => {
-      if (!query) return
+      if (!query) {
+        return
+      }
 
       const callback = prefetch ?? gate!.resolve
       const mediaQuery = window.matchMedia(query)
       const onChange = () => {
-        if (mediaQuery.matches) callback()
+        if (mediaQuery.matches) {
+          callback()
+        }
       }
       mediaQuery.addEventListener('change', onChange)
       onChange()

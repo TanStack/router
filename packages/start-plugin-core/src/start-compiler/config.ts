@@ -77,7 +77,9 @@ export function getLookupConfigurationsForEnv(
 
   const externalConfigs: Array<LookupConfig> = []
   for (const transform of opts?.compilerTransforms ?? []) {
-    if (!isCompilerTransformEnabledForEnv(transform, env)) continue
+    if (!isCompilerTransformEnabledForEnv(transform, env)) {
+      continue
+    }
 
     const kind = getExternalLookupKind(transform)
     for (const imported of transform.imports) {

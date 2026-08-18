@@ -53,8 +53,12 @@ export type RscSlotUsageEvent = {
 export function isServerComponent(
   value: unknown,
 ): value is AnyCompositeComponent {
-  if (value === null || value === undefined) return false
-  if (typeof value !== 'object' && typeof value !== 'function') return false
+  if (value === null || value === undefined) {
+    return false
+  }
+  if (typeof value !== 'object' && typeof value !== 'function') {
+    return false
+  }
   return (
     SERVER_COMPONENT_STREAM in value &&
     (value as any)[SERVER_COMPONENT_STREAM] !== undefined

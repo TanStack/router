@@ -294,7 +294,9 @@ export function useLinkProps<
         return hrefOption.href
       }
 
-      if (safeInternal) return undefined
+      if (safeInternal) {
+        return undefined
+      }
 
       // Only attempt URL parsing when it looks like an absolute URL.
       if (typeof to === 'string' && to.indexOf(':') > -1) {
@@ -314,7 +316,9 @@ export function useLinkProps<
     })()
 
     const isActive = (() => {
-      if (externalLink) return false
+      if (externalLink) {
+        return false
+      }
 
       const currentLocation = router.stores.location.get()
 
@@ -675,7 +679,7 @@ export function useLinkProps<
 
     if (
       !disabled &&
-      !isCtrlEvent(e) &&
+      !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
@@ -716,7 +720,9 @@ export function useLinkProps<
   }
 
   const handleTouchStart = () => {
-    if (preload !== 'intent') return
+    if (preload !== 'intent') {
+      return
+    }
     doPreload()
   }
 
@@ -762,8 +768,12 @@ const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
   (e: React.SyntheticEvent) => {
     for (const handler of handlers) {
-      if (!handler) continue
-      if (e.defaultPrevented) return
+      if (!handler) {
+        continue
+      }
+      if (e.defaultPrevented) {
+        return
+      }
       handler(e)
     }
   }
@@ -774,7 +784,9 @@ function getHrefOption(
   history: AnyRouter['history'],
   disabled: boolean | undefined,
 ) {
-  if (disabled) return undefined
+  if (disabled) {
+    return undefined
+  }
   // Full URL means rewrite changed the origin - treat as external-like
   if (external) {
     return { href: publicHref, external: true }
@@ -786,9 +798,13 @@ function getHrefOption(
 }
 
 function isSafeInternal(to: unknown) {
-  if (typeof to !== 'string') return false
+  if (typeof to !== 'string') {
+    return false
+  }
   const zero = to.charCodeAt(0)
-  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
+  if (zero === 47) {
+    return to.charCodeAt(1) !== 47
+  } // '/' but not '//'
   return zero === 46 // '.', '..', './', '../'
 }
 
@@ -968,10 +984,6 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     return React.createElement(_asChild, linkProps, children)
   },
 ) as any
-
-function isCtrlEvent(e: React.MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
 
 export type LinkOptionsFnOptions<
   TOptions,

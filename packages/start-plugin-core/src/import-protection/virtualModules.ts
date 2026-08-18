@@ -30,13 +30,19 @@ export function mockRuntimeModuleIdFromViolation(
   mode: MockAccessMode,
   root: string,
 ): string {
-  if (mode === 'off') return MOCK_MODULE_ID
-  if (info.env !== 'client') return MOCK_MODULE_ID
+  if (mode === 'off') {
+    return MOCK_MODULE_ID
+  }
+  if (info.env !== 'client') {
+    return MOCK_MODULE_ID
+  }
 
   const rel = (p: string) => relativizePath(p, root)
   const trace = info.trace.map((s) => {
     const file = rel(s.file)
-    if (s.line == null) return file
+    if (s.line == null) {
+      return file
+    }
     return `${file}:${s.line}:${s.column ?? 1}`
   })
 

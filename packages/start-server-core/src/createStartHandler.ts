@@ -145,7 +145,9 @@ function hasCsrfMiddleware(
 }
 
 function warnMissingCsrfMiddlewareOnce() {
-  if (hasWarnedMissingCsrfMiddleware) return
+  if (hasWarnedMissingCsrfMiddleware) {
+    return
+  }
   hasWarnedMissingCsrfMiddleware = true
 
   console.warn(`TanStack Start server functions are not protected by the CSRF middleware.
@@ -348,7 +350,9 @@ async function executeMiddleware(
 
     index++
     const middleware = middlewares[index]
-    if (!middleware) return ctx
+    if (!middleware) {
+      return ctx
+    }
 
     let result: TODO
     try {
@@ -539,7 +543,9 @@ export function createStartHandler<TRegister = Register>(
 
       // Memoized router getter
       const getRouter = async (): Promise<AnyRouter> => {
-        if (router) return router
+        if (router) {
+          return router
+        }
 
         router = await waitForRequest(
           entries.routerEntry.getRouter(),

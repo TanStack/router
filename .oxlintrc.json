@@ -24,6 +24,7 @@
     "respectEslintDisableDirectives": true
   },
   "rules": {
+    "curly": ["error", "all"],
     "for-direction": "error",
     "no-async-promise-executor": "error",
     "no-case-declarations": "error",
@@ -140,6 +141,7 @@
         "react/no-render-return-value": "error",
         "react/no-string-refs": "error",
         "react/no-unstable-nested-components": "error",
+        "react/no-unsafe": "error",
         "react/no-will-update-set-state": "warn",
         "react/void-dom-elements-no-children": "warn",
         "react/iframe-missing-sandbox": "warn",

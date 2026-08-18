@@ -19,7 +19,9 @@ export function dedupePatterns(patterns: Array<Pattern>): Array<Pattern> {
   const seen = new Set<string>()
   for (const p of patterns) {
     const key = typeof p === 'string' ? `s:${p}` : `r:${p.toString()}`
-    if (seen.has(key)) continue
+    if (seen.has(key)) {
+      continue
+    }
     seen.add(key)
     out.push(p)
   }
@@ -65,9 +67,15 @@ export function dedupeViolationKey(info: {
 export function stripQueryAndHash(id: string): string {
   const q = id.indexOf('?')
   const h = id.indexOf('#')
-  if (q === -1 && h === -1) return id
-  if (q === -1) return id.slice(0, h)
-  if (h === -1) return id.slice(0, q)
+  if (q === -1 && h === -1) {
+    return id
+  }
+  if (q === -1) {
+    return id.slice(0, h)
+  }
+  if (h === -1) {
+    return id.slice(0, q)
+  }
   return id.slice(0, Math.min(q, h))
 }
 
@@ -108,23 +116,31 @@ export function getOrCreate<TKey, TValue>(
 
 /** Make a path relative to `root`, keeping non-rooted paths as-is. */
 export function relativizePath(p: string, root: string): string {
-  if (!p.startsWith(root)) return p
+  if (!p.startsWith(root)) {
+    return p
+  }
   const ch = p.charCodeAt(root.length)
   // Must be followed by a separator or end-of-string to be a true child
-  if (ch !== 47 && !Number.isNaN(ch)) return p
+  if (ch !== 47 && !Number.isNaN(ch)) {
+    return p
+  }
   return ch === 47 ? p.slice(root.length + 1) : p.slice(root.length)
 }
 
 /** Log import-protection debug output when debug mode is enabled. */
 export function debugLog(...args: Array<unknown>): void {
-  if (!IMPORT_PROTECTION_DEBUG) return
+  if (!IMPORT_PROTECTION_DEBUG) {
+    return
+  }
   console.warn('[import-protection:debug]', ...args)
 }
 
 /** Check if any value matches the configured debug filter (if present). */
 export function matchesDebugFilter(...values: Array<string>): boolean {
   const debugFilter = IMPORT_PROTECTION_DEBUG_FILTER
-  if (!debugFilter) return true
+  if (!debugFilter) {
+    return true
+  }
   return values.some((v) => v.includes(debugFilter))
 }
 
@@ -177,7 +193,9 @@ export function buildSourceCandidates(
 ): Set<string> {
   const candidates = new Set<string>()
   const push = (value: string | undefined) => {
-    if (!value) return
+    if (!value) {
+      return
+    }
     candidates.add(value)
     candidates.add(stripQuery(value))
     candidates.add(withoutKnownExtension(stripQuery(value)))

@@ -72,7 +72,9 @@ export function analyzeContext(graph: RenderGraph): ContextAnalysisResult {
   const clientVisited = new Set<string>()
   for (const clientRoot of graph.clientRoots) {
     const ctx = contexts.get(clientRoot)
-    if (!ctx) continue
+    if (!ctx) {
+      continue
+    }
 
     let reason: ClientReason
     if (graph.useClientFiles.has(ctx.component.fileName)) {
@@ -145,11 +147,15 @@ function propagateServerContext(
   contexts: Map<string, ComponentContext>,
   adjacency: Map<string, Array<RenderEdge>>,
 ): void {
-  if (visited.has(key)) return
+  if (visited.has(key)) {
+    return
+  }
   visited.add(key)
 
   const ctx = contexts.get(key)
-  if (!ctx) return
+  if (!ctx) {
+    return
+  }
 
   // Stop at 'use client' boundary
   if (graph.useClientFiles.has(ctx.component.fileName)) {
@@ -180,11 +186,15 @@ function propagateClientContext(
   adjacency: Map<string, Array<RenderEdge>>,
   reason: ClientReason,
 ): void {
-  if (visited.has(key)) return
+  if (visited.has(key)) {
+    return
+  }
   visited.add(key)
 
   const ctx = contexts.get(key)
-  if (!ctx) return
+  if (!ctx) {
+    return
+  }
 
   ctx.isClientContext = true
   if (!ctx.clientReason) {

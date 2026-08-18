@@ -31,7 +31,9 @@ export default function (storageKey: string, key?: string) {
     }
   }
 
-  if (windowRestored) return
+  if (windowRestored) {
+    return
+  }
 
   const hash = location.hash.slice(1)
 

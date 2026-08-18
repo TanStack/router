@@ -49,7 +49,9 @@ let onClientReference: OnClientReference | undefined
 let clientReferenceDepsByModuleId: Map<string, ClientReferenceDeps> | undefined
 
 function getClientReferenceDepsByModuleId() {
-  if (clientReferenceDepsByModuleId) return clientReferenceDepsByModuleId
+  if (clientReferenceDepsByModuleId) {
+    return clientReferenceDepsByModuleId
+  }
 
   clientReferenceDepsByModuleId = new Map()
   const prefix = __rspack_rsc_manifest__.moduleLoading?.prefix ?? ''
@@ -81,7 +83,9 @@ function getClientReferenceDepsByModuleId() {
 
 function emitClientReferencePreloadsForModule(moduleId: string) {
   const deps = getClientReferenceDepsByModuleId().get(moduleId)
-  if (!onClientReference || !deps) return
+  if (!onClientReference || !deps) {
+    return
+  }
 
   if (deps.js.length === 0 && deps.css.length === 0) {
     return

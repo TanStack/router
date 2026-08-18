@@ -35,7 +35,9 @@ function buildTagsFromMatches(
     const metas = routeMeta[i]!
     for (let j = metas.length - 1; j >= 0; j--) {
       const m = metas[j]
-      if (!m) continue
+      if (!m) {
+        continue
+      }
 
       if (m.title) {
         if (!title) {

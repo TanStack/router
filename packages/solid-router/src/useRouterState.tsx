@@ -57,7 +57,9 @@ export function useRouterState<
 
   return Solid.createMemo((prev: TSelected | undefined) => {
     const res = select(router.stores.__store.get())
-    if (prev === undefined) return res
+    if (prev === undefined) {
+      return res
+    }
     return replaceEqualDeep(prev, res)
   }) as Accessor<UseRouterStateResult<TRouter, TSelected>>
 }

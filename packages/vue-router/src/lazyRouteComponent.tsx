@@ -12,7 +12,9 @@ function isModuleNotFoundError(error: any): boolean {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // safari: "Importing a module script failed."
-  if (typeof error?.message !== 'string') return false
+  if (typeof error?.message !== 'string') {
+    return false
+  }
   return (
     error.message.startsWith('Failed to fetch dynamically imported module') ||
     error.message.startsWith('error loading dynamically imported module') ||
@@ -47,7 +49,10 @@ export function lazyRouteComponent<
       error = undefined
       loadPromise = importer()
         .then((res) => {
-          loadPromise = undefined
+          if (typeof document !== 'undefined') {
+            loadPromise = undefined
+            ;(lazyComp as any).preload = undefined
+          }
           comp = res[exportName ?? 'default']
           return comp
         })
@@ -66,7 +71,6 @@ export function lazyRouteComponent<
 
     return loadPromise
   }
-
   // Create a lazy component wrapper using defineComponent so it works in Vue SFC templates
   const lazyComp = Vue.defineComponent({
     name: 'LazyRouteComponent',

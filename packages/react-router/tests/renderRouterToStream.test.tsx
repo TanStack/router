@@ -39,7 +39,9 @@ async function expectBodyRejects(response: Response, message: string) {
     (async () => {
       for (;;) {
         const { done } = await reader.read()
-        if (done) return
+        if (done) {
+          return
+        }
       }
     })(),
   ).rejects.toThrow(message)

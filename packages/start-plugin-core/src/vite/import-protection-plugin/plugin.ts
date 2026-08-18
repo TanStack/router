@@ -190,13 +190,19 @@ export function importProtectionPlugin(
     env: EnvState,
     targetFile: string,
   ): Array<TraceStep> | null {
-    if (!devServer) return null
+    if (!devServer) {
+      return null
+    }
     const environment = devServer.environments[envName]
-    if (!environment) return null
+    if (!environment) {
+      return null
+    }
 
     const file = normalizeFilePath(targetFile)
     const start = environment.moduleGraph.getModuleById(file)
-    if (!start) return null
+    if (!start) {
+      return null
+    }
 
     // Resolve a module graph node to its normalized file path once and
     // cache the result so BFS + reconstruction don't recompute.
@@ -232,12 +238,16 @@ export function importProtectionPlugin(
 
       const importers = node.importers
       if (importers.size === 0) {
-        if (!fallbackRoot) fallbackRoot = node
+        if (!fallbackRoot) {
+          fallbackRoot = node
+        }
         continue
       }
 
       for (const imp of importers) {
-        if (visited.has(imp)) continue
+        if (visited.has(imp)) {
+          continue
+        }
         visited.add(imp)
         parent.set(imp, node)
         queue.push(imp)
@@ -246,21 +256,27 @@ export function importProtectionPlugin(
 
     const root = entryRoot ?? fallbackRoot
 
-    if (!root) return null
+    if (!root) {
+      return null
+    }
 
     // Reconstruct: root -> ... -> start
     const chain: Array<ModuleGraphNode> = []
     let cur: ModuleGraphNode | undefined = root
     for (let i = 0; i < config.maxTraceDepth + 2 && cur; i++) {
       chain.push(cur)
-      if (cur === start) break
+      if (cur === start) {
+        break
+      }
       cur = parent.get(cur)
     }
 
     const steps: Array<TraceStep> = []
     for (let i = 0; i < chain.length; i++) {
       const id = nodeId(chain[i]!)
-      if (!id) continue
+      if (!id) {
+        continue
+      }
       let specifier: string | undefined
       if (i + 1 < chain.length) {
         const nextId = nodeId(chain[i + 1]!)
@@ -419,7 +435,9 @@ export function importProtectionPlugin(
 
     if (trace.length > 0) {
       const last = trace[trace.length - 1]!
-      if (!last.specifier) last.specifier = specifier
+      if (!last.specifier) {
+        last.specifier = specifier
+      }
       if (importerLoc && last.line == null) {
         last.line = importerLoc.line
         last.column = importerLoc.column
@@ -555,7 +573,9 @@ export function importProtectionPlugin(
           env.importLocCache,
           importSpecifierLocationIndex.find,
         ))
-      if (loc) return loc
+      if (loc) {
+        return loc
+      }
     }
     return undefined
   }
@@ -612,7 +632,9 @@ export function importProtectionPlugin(
     const violates =
       (envType === 'client' && markerKind === 'server') ||
       (envType === 'server' && markerKind === 'client')
-    if (!violates) return undefined
+    if (!violates) {
+      return undefined
+    }
 
     const normalizedImporter = normalizeFilePath(importer)
 
@@ -682,7 +704,9 @@ export function importProtectionPlugin(
           getTransformResult(id: string) {
             const fullKey = normalizePath(id)
             const exact = transformResultCache.get(fullKey)
-            if (exact) return exact
+            if (exact) {
+              return exact
+            }
             const strippedKey = normalizeFilePath(id)
             return strippedKey !== fullKey
               ? transformResultCache.get(strippedKey)
@@ -709,7 +733,9 @@ export function importProtectionPlugin(
   ): Array<string> {
     for (const candidate of candidates) {
       const hit = exportMap.get(candidate)
-      if (hit && hit.length > 0) return hit
+      if (hit && hit.length > 0) {
+        return hit
+      }
     }
     return []
   }
@@ -721,7 +747,9 @@ export function importProtectionPlugin(
   function buildIdCandidates(id: string, extra?: string): Array<string> {
     const set = new Set(buildResolutionCandidates(id))
     if (extra) {
-      for (const c of buildResolutionCandidates(extra)) set.add(c)
+      for (const c of buildResolutionCandidates(extra)) {
+        set.add(c)
+      }
       set.add(resolveExtensionlessAbsoluteId(extra))
     }
     return Array.from(set)
@@ -754,8 +782,9 @@ export function importProtectionPlugin(
         (importerIdHint && ctx.getModuleInfo
           ? (ctx.getModuleInfo(importerIdHint)?.code ?? undefined)
           : undefined)
-      if (typeof importerCode !== 'string' || importerCode.length === 0)
+      if (typeof importerCode !== 'string' || importerCode.length === 0) {
         return []
+      }
 
       try {
         parsedBySource = getMockExportNamesBySource(
@@ -774,11 +803,15 @@ export function importProtectionPlugin(
             if (env.resolveCache.has(cacheKey)) {
               return env.resolveCache.get(cacheKey) ?? undefined
             }
-            if (!ctx.resolve) return undefined
+            if (!ctx.resolve) {
+              return undefined
+            }
             const resolved = await ctx.resolve(src, info.importer, {
               skipSelf: true,
             })
-            if (!resolved || resolved.external) return undefined
+            if (!resolved || resolved.external) {
+              return undefined
+            }
             return resolved.id
           },
         )
@@ -793,12 +826,16 @@ export function importProtectionPlugin(
 
     // 1. Direct candidate match
     const direct = findExportsInMap(parsedBySource, specifierCandidates)
-    if (direct.length > 0) return direct
+    if (direct.length > 0) {
+      return direct
+    }
 
     // 2. Resolve each source key and compare candidates.
     const candidateSet = new Set(specifierCandidates)
     for (const [sourceKey, names] of parsedBySource) {
-      if (!names.length) continue
+      if (!names.length) {
+        continue
+      }
 
       const resolvedId = await resolveSourceKey(
         env,
@@ -807,7 +844,9 @@ export function importProtectionPlugin(
         sourceKey,
         info.importer,
       )
-      if (!resolvedId) continue
+      if (!resolvedId) {
+        continue
+      }
 
       const resolvedCandidates = buildIdCandidates(resolvedId)
       resolvedCandidates.push(resolveExtensionlessAbsoluteId(resolvedId))
@@ -831,12 +870,16 @@ export function importProtectionPlugin(
     if (env.resolveCache.has(cacheKey)) {
       return env.resolveCache.get(cacheKey) ?? undefined
     }
-    if (!ctx.resolve) return undefined
+    if (!ctx.resolve) {
+      return undefined
+    }
     try {
       const resolved = await ctx.resolve(sourceKey, importerId, {
         skipSelf: true,
       })
-      if (!resolved || resolved.external) return undefined
+      if (!resolved || resolved.external) {
+        return undefined
+      }
       return resolved.id
     } catch {
       return undefined
@@ -851,13 +894,17 @@ export function importProtectionPlugin(
   ): Promise<void> {
     const importerFile = normalizeFilePath(importerId)
 
-    if (namesBySource.size === 0) return
+    if (namesBySource.size === 0) {
+      return
+    }
 
     const resolvedAliases = new Map<string, Array<string>>()
     for (const [source, names] of namesBySource) {
       try {
         const resolvedId = await resolveSource(source)
-        if (!resolvedId) continue
+        if (!resolvedId) {
+          continue
+        }
 
         resolvedAliases.set(normalizeFilePath(resolvedId), names)
         resolvedAliases.set(resolveExtensionlessAbsoluteId(resolvedId), names)
@@ -902,8 +949,12 @@ export function importProtectionPlugin(
   }
 
   function hasSeen(env: EnvState, key: string): boolean {
-    if (config.logMode === 'always') return false
-    if (env.seenViolations.has(key)) return true
+    if (config.logMode === 'always') {
+      return false
+    }
+    if (env.seenViolations.has(key)) {
+      return true
+    }
     env.seenViolations.add(key)
     return false
   }
@@ -935,7 +986,9 @@ export function importProtectionPlugin(
     // Resolve cache (keyed "importer:source")
     const resolveKeys = envState.resolveCacheByFile.get(file)
     if (resolveKeys) {
-      for (const key of resolveKeys) envState.resolveCache.delete(key)
+      for (const key of resolveKeys) {
+        envState.resolveCache.delete(key)
+      }
       envState.resolveCacheByFile.delete(file)
     }
 
@@ -1013,11 +1066,18 @@ export function importProtectionPlugin(
 
     if (keySet) {
       for (const k of keySet) {
-        if (hasIdQueryFlag(k, SERVER_FN_LOOKUP)) continue
+        if (hasIdQueryFlag(k, SERVER_FN_LOOKUP)) {
+          continue
+        }
         const imports = env.postTransformImports.get(k)
         if (imports) {
-          if (!merged) merged = new Set(imports)
-          else for (const v of imports) merged.add(v)
+          if (!merged) {
+            merged = new Set(imports)
+          } else {
+            for (const v of imports) {
+              merged.add(v)
+            }
+          }
         }
       }
     }
@@ -1025,7 +1085,9 @@ export function importProtectionPlugin(
     // Fallback: direct file-path key
     if (!merged) {
       const imports = env.postTransformImports.get(file)
-      if (imports) merged = new Set(imports)
+      if (imports) {
+        merged = new Set(imports)
+      }
     }
 
     return merged
@@ -1051,18 +1113,24 @@ export function importProtectionPlugin(
 
     if (keySet) {
       for (const k of keySet) {
-        if (hasIdQueryFlag(k, SERVER_FN_LOOKUP)) continue
+        if (hasIdQueryFlag(k, SERVER_FN_LOOKUP)) {
+          continue
+        }
         const imports = env.postTransformImports.get(k)
         if (imports) {
           anyVariantCached = true
-          if (imports.has(target)) return 'live'
+          if (imports.has(target)) {
+            return 'live'
+          }
         }
       }
     }
 
     if (!anyVariantCached) {
       const imports = env.postTransformImports.get(parent)
-      if (imports) return imports.has(target) ? 'live' : 'dead'
+      if (imports) {
+        return imports.has(target) ? 'live' : 'dead'
+      }
       const hasTransformResult =
         env.transformResultCache.has(parent) ||
         (keySet ? keySet.size > 0 : false)
@@ -1093,10 +1161,14 @@ export function importProtectionPlugin(
       }
 
       const importers = env.graph.reverseEdges.get(current)
-      if (!importers) continue
+      if (!importers) {
+        continue
+      }
 
       for (const [parent] of importers) {
-        if (visited.has(parent)) continue
+        if (visited.has(parent)) {
+          continue
+        }
         const liveness = checkEdgeLiveness(env, parent, current)
         if (liveness === 'live' || liveness === 'no-data') {
           // Live edge or warm-start (no transform data) — follow it
@@ -1175,7 +1247,9 @@ export function importProtectionPlugin(
       const surviving = violations.filter(
         (pv) => !pv.info.resolved || postTransform.has(pv.info.resolved),
       )
-      if (surviving.length === 0) return 'all-stripped'
+      if (surviving.length === 0) {
+        return 'all-stripped'
+      }
       env.pendingViolations.set(file, surviving)
       return { active: surviving, edgeSurvivalApplied: true }
     }
@@ -1199,7 +1273,9 @@ export function importProtectionPlugin(
     env: EnvState,
     warnFn: (msg: string) => void,
   ): Promise<void> {
-    if (env.pendingViolations.size === 0) return
+    if (env.pendingViolations.size === 0) {
+      return
+    }
 
     const toDelete: Array<string> = []
 
@@ -1210,7 +1286,9 @@ export function importProtectionPlugin(
         toDelete.push(file)
         continue
       }
-      if (filtered === 'await-transform') continue
+      if (filtered === 'await-transform') {
+        continue
+      }
 
       const { active, edgeSurvivalApplied } = filtered
       const isBundledClientDev =
@@ -1247,7 +1325,9 @@ export function importProtectionPlugin(
         // real.  Without it (warm start), emit conservatively.
         let emittedAny = false
         for (const pv of active) {
-          if (pv.fromPreTransformResolve) continue
+          if (pv.fromPreTransformResolve) {
+            continue
+          }
 
           const shouldEmit =
             edgeSurvivalApplied ||
@@ -1293,7 +1373,9 @@ export function importProtectionPlugin(
 
     if (config.onViolation) {
       const result = await config.onViolation(pv.info)
-      if (result === false) return false
+      if (result === false) {
+        return false
+      }
     }
 
     warnFn(formatViolation(pv.info, config.root))
@@ -1338,7 +1420,9 @@ export function importProtectionPlugin(
 
       if (config.onViolation) {
         const result = await config.onViolation(info)
-        if (result === false) return undefined
+        if (result === false) {
+          return undefined
+        }
       }
 
       if (config.effectiveBehavior === 'error') {
@@ -1370,7 +1454,9 @@ export function importProtectionPlugin(
     // will replace the file's content with a mock module.  This avoids
     // virtual module IDs that could leak across environments via
     // third-party resolver caches.
-    if (info.type === 'file') return info.resolved
+    if (info.type === 'file') {
+      return info.resolved
+    }
 
     // Non-file violations (specifier/marker): create mock-edge module.
     // Dev mode uses a runtime diagnostics ID; build mode uses a unique
@@ -1454,7 +1540,9 @@ export function importProtectionPlugin(
       enforce: 'pre',
 
       applyToEnvironment(env) {
-        if (!config.enabled) return false
+        if (!config.enabled) {
+          return false
+        }
         // Start's environments are named `client` and `ssr` (not `server`), plus
         // an optional serverFn provider environment (eg `rsc`) when configured.
         return environmentNames.has(env.name)
@@ -1550,7 +1638,9 @@ export function importProtectionPlugin(
       },
 
       buildStart() {
-        if (!config.enabled) return
+        if (!config.enabled) {
+          return
+        }
         // Clear memoization caches that grow unboundedly across builds
         clearNormalizeFilePathCache()
         extensionlessIdResolver.clear()
@@ -1568,7 +1658,9 @@ export function importProtectionPlugin(
       },
 
       hotUpdate(ctx) {
-        if (!config.enabled) return
+        if (!config.enabled) {
+          return
+        }
         // Invalidate caches for updated files
         for (const mod of ctx.modules) {
           if (mod.id) {
@@ -1626,7 +1718,9 @@ export function importProtectionPlugin(
 
           // Internal virtual modules (mock:build:N, mock-edge, mock-runtime, marker)
           const internalVirtualId = resolveInternalVirtualModuleId(source)
-          if (internalVirtualId) return internalVirtualId
+          if (internalVirtualId) {
+            return internalVirtualId
+          }
 
           if (!importer) {
             const normalizedSource = normalizeFilePath(source)
@@ -1807,8 +1901,12 @@ export function importProtectionPlugin(
                 env.graph.reverseEdges.get(normalizedImporter)
               if (importersMap && importersMap.size > 0) {
                 for (const [importerFile, specifier] of importersMap) {
-                  if (!specifier) continue
-                  if (!shouldCheckImporter(importerFile)) continue
+                  if (!specifier) {
+                    continue
+                  }
+                  if (!shouldCheckImporter(importerFile)) {
+                    continue
+                  }
                   const markerInfo = buildMarkerViolationFromResolvedImport(
                     envName,
                     envType,
@@ -2009,12 +2107,16 @@ export function importProtectionPlugin(
       async generateBundle(_options, bundle) {
         const envName = this.environment.name
         const env = envStates.get(envName)
-        if (!env || env.deferredBuildViolations.length === 0) return
+        if (!env || env.deferredBuildViolations.length === 0) {
+          return
+        }
 
         const candidateCache = new Map<string, Array<string>>()
         const toModuleIdCandidates = (id: string): Array<string> => {
           let cached = candidateCache.get(id)
-          if (cached) return cached
+          if (cached) {
+            return cached
+          }
 
           const out = new Set<string>()
           const normalized = normalizeFilePath(id)
@@ -2091,7 +2193,9 @@ export function importProtectionPlugin(
             survived = didModuleSurvive(mockModuleId)
           }
 
-          if (!survived) continue
+          if (!survived) {
+            continue
+          }
 
           await enrichViolationInfo(
             env.transformResultProvider,
@@ -2104,13 +2208,17 @@ export function importProtectionPlugin(
 
           if (config.onViolation) {
             const result = await config.onViolation(info)
-            if (result === false) continue
+            if (result === false) {
+              continue
+            }
           }
 
           realViolations.push(info)
         }
 
-        if (realViolations.length === 0) return
+        if (realViolations.length === 0) {
+          return
+        }
 
         if (config.effectiveBehavior === 'error') {
           // Error mode: fail the build on the first real violation.
@@ -2142,7 +2250,9 @@ export function importProtectionPlugin(
       name: 'tanstack-start-core:import-protection-transform-cache',
 
       applyToEnvironment(env) {
-        if (!config.enabled) return false
+        if (!config.enabled) {
+          return false
+        }
         return environmentNames.has(env.name)
       },
 
@@ -2263,7 +2373,9 @@ export function importProtectionPlugin(
           // dev-mode only — it resolves imports for graph reachability,
           // catches violations missed on warm starts (where Vite caches
           // resolveId), and rewrites denied imports to mock modules.
-          if (isBuild) return undefined
+          if (isBuild) {
+            return undefined
+          }
 
           // Dev mode: resolve imports, populate graph, detect violations,
           // and rewrite denied imports.
@@ -2310,7 +2422,9 @@ export function importProtectionPlugin(
                     const match = pending.find(
                       (pv) => pv.info.specifier === src && pv.info.resolved,
                     )
-                    if (match) physicalPath = match.info.resolved
+                    if (match) {
+                      physicalPath = match.info.resolved
+                    }
                   }
                   if (physicalPath && physicalPath !== resolvedPath) {
                     resolvedChildren.add(physicalPath)

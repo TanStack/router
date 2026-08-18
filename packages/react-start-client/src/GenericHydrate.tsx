@@ -103,7 +103,7 @@ function useHydrationGate(props: InternalHydrateProps) {
   }
 
   shouldPreserveServerHTMLRef.current ??=
-    // eslint-disable-next-line typescript/no-unnecessary-condition
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') || !hydrated
   shouldDeferInitialHydrationRef.current ??=
     !hydrated && shouldDeferHydration(hydrateStrategy)
@@ -165,7 +165,9 @@ function useHydrationGate(props: InternalHydrateProps) {
     }
 
     const controller = prefetchControllerRef.current!
-    if (controller.started) return
+    if (controller.started) {
+      return
+    }
     controller.started = true
 
     const onHydrate = (listener: () => void) => {
@@ -209,10 +211,14 @@ function useHydrationGate(props: InternalHydrateProps) {
       return
     }
 
-    if (!latestRef.current.preload) return
+    if (!latestRef.current.preload) {
+      return
+    }
 
     const prefetch = () => {
-      if (didPrefetchRef.current) return
+      if (didPrefetchRef.current) {
+        return
+      }
       didPrefetchRef.current = true
       void preload()
     }
@@ -244,7 +250,9 @@ function useHydrationGate(props: InternalHydrateProps) {
     const resolveGate = gate.resolve
 
     const cleanup = () => {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
       disposed = true
       if (gate.resolve === requestHydration) {
         gate.resolve = resolveGate
@@ -254,7 +262,9 @@ function useHydrationGate(props: InternalHydrateProps) {
     }
 
     const addCleanup = (fn: void | (() => void)) => {
-      if (!fn) return
+      if (!fn) {
+        return
+      }
       if (disposed || gate.resolved) {
         fn()
         return
@@ -274,7 +284,9 @@ function useHydrationGate(props: InternalHydrateProps) {
         resolveGate()
         return
       }
-      if (controller.hydrationResolvePending) return
+      if (controller.hydrationResolvePending) {
+        return
+      }
       controller.hydrationResolvePending = true
 
       controller.promise.then(
@@ -325,7 +337,7 @@ function useHydrationGate(props: InternalHydrateProps) {
 
 function HydrationGate(props: { gate: Gate; children: React.ReactNode }) {
   if (
-    // eslint-disable-next-line typescript/no-unnecessary-condition
+    // oxlint-disable-next-line typescript/no-unnecessary-condition
     isServer ??
     typeof window === 'undefined'
   ) {
@@ -355,7 +367,9 @@ function HydratedBoundary(props: {
   const didHydrateRef = React.useRef(false)
 
   React.useEffect(() => {
-    if (didHydrateRef.current) return
+    if (didHydrateRef.current) {
+      return
+    }
     didHydrateRef.current = true
     onHydrated?.()
     onStrategyHydrated?.(id)
@@ -375,7 +389,9 @@ export function GenericHydrate(props: HydrateProps): React.JSX.Element {
     prefetchError,
     shouldPreserveServerHTML,
   } = useHydrationGate(internalProps)
-  if (prefetchError) throw prefetchError
+  if (prefetchError) {
+    throw prefetchError
+  }
 
   const fallback = shouldPreserveServerHTML
     ? (() => {

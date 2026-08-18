@@ -68,11 +68,19 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.4",
-    "react": ">=19",
-    "react-dom": ">=19",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "@tanstack/react-router": "workspace:*",
     "@tanstack/react-query": ">=5.90.0",
-    "vite": "*"
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

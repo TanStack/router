@@ -69,11 +69,17 @@ export function createRenderGraphBuilder(
   return {
     build(): RenderGraph {
       for (const sourceFile of program.getSourceFiles()) {
-        if (sourceFile.isDeclarationFile) continue
-        if (sourceFile.fileName.includes('node_modules')) continue
+        if (sourceFile.isDeclarationFile) {
+          continue
+        }
+        if (sourceFile.fileName.includes('node_modules')) {
+          continue
+        }
 
         // Pre-filter: skip files that can't contribute to the render graph
-        if (!fileCanContribute(sourceFile)) continue
+        if (!fileCanContribute(sourceFile)) {
+          continue
+        }
 
         processSourceFile(sourceFile)
       }
@@ -125,7 +131,9 @@ export function createRenderGraphBuilder(
 
   function hasUseClientDirective(sourceFile: ts.SourceFile): boolean {
     const firstStatement = sourceFile.statements[0]
-    if (!firstStatement) return false
+    if (!firstStatement) {
+      return false
+    }
 
     if (
       tsLib.isExpressionStatement(firstStatement) &&
@@ -341,7 +349,9 @@ export function createRenderGraphBuilder(
     //   createFileRoute('/x').update({})(...)
     //   (createFileRoute('/x'))({})
     const routeCreator = findRouteCreatorFromCallee(node.expression)
-    if (!routeCreator) return
+    if (!routeCreator) {
+      return
+    }
 
     const routeCreatorName = tsLib.isIdentifier(routeCreator)
       ? routeCreator.text

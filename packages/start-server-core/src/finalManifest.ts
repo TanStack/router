@@ -111,7 +111,9 @@ function createFinalManifestTransformResolver(
     warmup,
     clearCachedCreateTransform,
     getTransformFn: async (ctx) => {
-      if (!transformConfig) return undefined
+      if (!transformConfig) {
+        return undefined
+      }
 
       if (transformConfig.type !== 'createTransform') {
         return transformConfig.transformFn

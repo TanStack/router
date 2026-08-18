@@ -39,7 +39,9 @@ export function getRouteStatusColor(
   route: AnyRoute,
 ) {
   const found = matches.find((d) => d.routeId === route.id)
-  if (!found) return 'gray'
+  if (!found) {
+    return 'gray'
+  }
   return getStatusColor(found)
 }
 
@@ -115,8 +117,12 @@ export type RscSlotUsageEvent = {
 
 function trimTrailingUndefined<T>(arr: Array<T>): Array<T> {
   let end = arr.length
-  while (end > 0 && arr[end - 1] === undefined) end--
-  if (end === 0) return arr
+  while (end > 0 && arr[end - 1] === undefined) {
+    end--
+  }
+  if (end === 0) {
+    return arr
+  }
   return end === arr.length ? arr : arr.slice(0, end)
 }
 
@@ -187,9 +193,13 @@ export const getServerComponentSlotUsages = (
   }
 
   const v = value as Record<symbol, unknown>
-  if (!(RSC_SLOT_USAGES in v)) return []
+  if (!(RSC_SLOT_USAGES in v)) {
+    return []
+  }
   const usages = v[RSC_SLOT_USAGES]
-  if (!Array.isArray(usages)) return []
+  if (!Array.isArray(usages)) {
+    return []
+  }
 
   return usages.filter((d): d is RscSlotUsageEvent => {
     return (
@@ -222,7 +232,9 @@ export const getServerComponentSlotUsageSummary = (
  * @param {unknown} value Value to be stringified
  */
 export const displayValue = (value: unknown) => {
-  if (value === 'React element') return 'React element'
+  if (value === 'React element') {
+    return 'React element'
+  }
   const componentType = getServerComponentType(value)
   if (componentType === 'compositeSource') {
     const slots = getServerComponentSlots(value)

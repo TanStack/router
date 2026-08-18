@@ -51,7 +51,9 @@ export function useRouterState<
   }
 
   return useStore(router.stores.__store, (state) => {
-    if (opts?.select) return opts.select(state)
+    if (opts?.select) {
+      return opts.select(state)
+    }
 
     return state
   }) as Vue.Ref<UseRouterStateResult<TRouter, TSelected>>

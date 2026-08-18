@@ -176,9 +176,15 @@ function getOriginFromUrl(url: string): string | undefined {
 }
 
 function isRefererSameOrigin(referer: string, requestOrigin: string): boolean {
-  if (referer === requestOrigin) return true
-  if (!referer.startsWith(requestOrigin)) return false
-  if (referer.length === requestOrigin.length) return true
+  if (referer === requestOrigin) {
+    return true
+  }
+  if (!referer.startsWith(requestOrigin)) {
+    return false
+  }
+  if (referer.length === requestOrigin.length) {
+    return true
+  }
   const code = referer.charCodeAt(requestOrigin.length)
   return code === 47 /* '/' */ || code === 63 /* '?' */ || code === 35 /* '#' */
 }

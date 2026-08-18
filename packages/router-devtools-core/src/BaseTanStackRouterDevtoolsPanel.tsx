@@ -173,8 +173,12 @@ function RouteComp({
   })
 
   const navigationTarget = createMemo<string | undefined>(() => {
-    if (isRoot) return undefined // rootRouteId has no path
-    if (!route.path) return undefined // no path to navigate to
+    if (isRoot) {
+      return undefined
+    } // rootRouteId has no path
+    if (!route.path) {
+      return undefined
+    } // no path to navigate to
 
     // flatten all params in the router state, into a single object
     const allParams = Object.assign({}, ...matches().map((m) => m.params))
@@ -802,7 +806,9 @@ function CopyButton({ getValue }: { getValue: () => string }) {
       const value = getValue()
       await navigator.clipboard.writeText(value)
       setCopied(true)
-      if (timeoutId) clearTimeout(timeoutId)
+      if (timeoutId) {
+        clearTimeout(timeoutId)
+      }
       timeoutId = setTimeout(() => setCopied(false), 2500)
     } catch (e) {
       console.error('TanStack Router Devtools: Failed to copy', e)
@@ -810,7 +816,9 @@ function CopyButton({ getValue }: { getValue: () => string }) {
   }
 
   onCleanup(() => {
-    if (timeoutId) clearTimeout(timeoutId)
+    if (timeoutId) {
+      clearTimeout(timeoutId)
+    }
   })
 
   return (

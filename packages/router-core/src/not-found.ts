@@ -31,7 +31,9 @@ export type NotFoundError = {
  */
 export function notFound(options: NotFoundError = {}) {
   ;(options as any).isNotFound = true
-  if (options.throw) throw options
+  if (options.throw) {
+    throw options
+  }
   return options
 }
 

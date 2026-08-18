@@ -122,8 +122,11 @@ export function createHistory(opts: {
   }
 
   const handleIndexChange = (action: SubscriberHistoryAction) => {
-    if (opts.notifyOnIndexChange ?? true) notify(action)
-    else location = opts.getLocation()
+    if (opts.notifyOnIndexChange ?? true) {
+      notify(action)
+    } else {
+      location = opts.getLocation()
+    }
   }
 
   const tryNavigation = async ({
@@ -234,7 +237,9 @@ export function createHistory(opts: {
     canGoBack: () => location.state[stateIndexKey] !== 0,
     createHref: (str) => opts.createHref(str),
     block: (blocker) => {
-      if (!opts.setBlockers) return () => {}
+      if (!opts.setBlockers) {
+        return () => {}
+      }
       const blockers = opts.getBlockers?.() ?? []
       opts.setBlockers([...blockers, blocker])
 
@@ -483,12 +488,16 @@ export function createBrowserHistory(opts?: {
     pushState: (href, state) => queueHistoryAction(true, href, state),
     replaceState: (href, state) => queueHistoryAction(false, href, state),
     back: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+      }
       ignoreNextBeforeUnload = true
       return win.history.back()
     },
     forward: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+      }
       ignoreNextBeforeUnload = true
       win.history.forward()
     },
@@ -523,13 +532,17 @@ export function createBrowserHistory(opts?: {
 
   win.history.pushState = function (...args: Array<any>) {
     const res = originalPushState.apply(win.history, args as any)
-    if (!history._ignoreSubscribers) onPushPop('PUSH')
+    if (!history._ignoreSubscribers) {
+      onPushPop('PUSH')
+    }
     return res
   }
 
   win.history.replaceState = function (...args: Array<any>) {
     const res = originalReplaceState.apply(win.history, args as any)
-    if (!history._ignoreSubscribers) onPushPop('REPLACE')
+    if (!history._ignoreSubscribers) {
+      onPushPop('REPLACE')
+    }
     return res
   }
 

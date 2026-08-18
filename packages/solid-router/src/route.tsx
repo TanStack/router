@@ -545,7 +545,7 @@ export interface DefaultRouteTypes<TProps> {
 export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 
 export type AsyncRouteComponent<TProps> = RouteTypes<TProps>['component'] & {
-  preload?: () => Promise<void>
+  preload?: () => Promise<void> | undefined
 }
 
 export type RouteComponent = AsyncRouteComponent<{}>

@@ -162,7 +162,9 @@ export function createFrameDecoder(
       streamId: number
       length: number
     } | null {
-      if (totalLength < FRAME_HEADER_SIZE) return null
+      if (totalLength < FRAME_HEADER_SIZE) {
+        return null
+      }
 
       const first = bufferList[bufferHead]!
 
@@ -217,7 +219,9 @@ export function createFrameDecoder(
      * Flattens buffer list into single Uint8Array and removes from list.
      */
     function extractFlattened(count: number): Uint8Array {
-      if (count === 0) return EMPTY_BUFFER
+      if (count === 0) {
+        return EMPTY_BUFFER
+      }
 
       // Fast path: the requested bytes are fully contained in the first buffered
       // chunk (the common case — most frames arrive within a single network
@@ -265,11 +269,17 @@ export function createFrameDecoder(
       // eslint-disable-next-line typescript/no-unnecessary-condition
       while (true) {
         const { done, value } = await reader.read()
-        if (cancelled) break
-        if (done) break
+        if (cancelled) {
+          break
+        }
+        if (done) {
+          break
+        }
 
         // eslint-disable-next-line typescript/no-unnecessary-condition
-        if (!value) continue
+        if (!value) {
+          continue
+        }
 
         // Append incoming chunk to buffer list
         if (totalLength + value.length > MAX_BUFFERED_BYTES) {
@@ -284,7 +294,9 @@ export function createFrameDecoder(
         // eslint-disable-next-line typescript/no-unnecessary-condition
         while (true) {
           const header = readHeader()
-          if (!header) break // Not enough bytes for header
+          if (!header) {
+            break
+          } // Not enough bytes for header
 
           const { type, streamId, length } = header
 
@@ -315,7 +327,9 @@ export function createFrameDecoder(
           }
 
           const frameSize = FRAME_HEADER_SIZE + length
-          if (totalLength < frameSize) break // Wait for more data
+          if (totalLength < frameSize) {
+            break
+          } // Wait for more data
 
           if (++frameCount > MAX_FRAMES) {
             throw new Error(

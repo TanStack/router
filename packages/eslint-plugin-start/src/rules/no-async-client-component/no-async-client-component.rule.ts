@@ -126,7 +126,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
           }
 
           const reportKey = `def:${key}`
-          if (reported.has(reportKey)) continue
+          if (reported.has(reportKey)) {
+            continue
+          }
 
           // For route-option cases, ONLY report at usage site (in the route file)
           if (ctx.clientReason?.type === 'route-option') {
@@ -175,12 +177,18 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
         // Report usage sites where async component is rendered in client context
         for (const edge of analysis.clientEdges) {
           const targetCtx = analysis.contexts.get(edge.toComponentKey)
-          if (!targetCtx?.component.isAsync) continue
+          if (!targetCtx?.component.isAsync) {
+            continue
+          }
 
-          if (edge.fromFile !== currentFile) continue
+          if (edge.fromFile !== currentFile) {
+            continue
+          }
 
           const reportKey = `usage:${edge.fromFile}:${edge.jsxLine}:${edge.toComponent}`
-          if (reported.has(reportKey)) continue
+          if (reported.has(reportKey)) {
+            continue
+          }
           reported.add(reportKey)
 
           const eslintNode = services.tsNodeToESTreeNodeMap.get(edge.jsxNode)
@@ -226,7 +234,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
       }
 
       const cachedResult = programCache.get(entryFile)
-      if (cachedResult) return cachedResult.analysis
+      if (cachedResult) {
+        return cachedResult.analysis
+      }
 
       // Build a complete graph once (still gated), then slice it to
       // only what’s reachable from entry points in `entryFile`.
@@ -304,18 +314,26 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
 
       const reachable = new Set<string>()
       const queue: Array<string> = []
-      for (const r of entryClientRoots) queue.push(r)
-      for (const r of entryServerRoots) queue.push(r)
+      for (const r of entryClientRoots) {
+        queue.push(r)
+      }
+      for (const r of entryServerRoots) {
+        queue.push(r)
+      }
 
       const adjacency = getAdjacency(full)
 
       while (queue.length) {
         const key = queue.pop()!
-        if (reachable.has(key)) continue
+        if (reachable.has(key)) {
+          continue
+        }
         reachable.add(key)
 
         const children = adjacency.get(key)
-        if (!children) continue
+        if (!children) {
+          continue
+        }
         for (const toKey of children) {
           if (!reachable.has(toKey)) {
             queue.push(toKey)
@@ -326,7 +344,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
       const subComponents = new Map<string, any>()
       for (const key of reachable) {
         const comp = components.get(key)
-        if (comp) subComponents.set(key, comp)
+        if (comp) {
+          subComponents.set(key, comp)
+        }
       }
 
       const subEdges = edges.filter((edge) => {
@@ -370,7 +390,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
 
     function getAdjacency(full: { edges: Array<any> }) {
       let cachedAdjacency = adjacencyCache.get(program)
-      if (cachedAdjacency) return cachedAdjacency
+      if (cachedAdjacency) {
+        return cachedAdjacency
+      }
 
       cachedAdjacency = new Map()
       for (const edge of full.edges) {
@@ -389,7 +411,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
 
     function fileHasUseClientDirective(sourceFile: ts.SourceFile): boolean {
       const firstStmt = sourceFile.statements[0]
-      if (!firstStmt) return false
+      if (!firstStmt) {
+        return false
+      }
       return (
         ts.isExpressionStatement(firstStmt) &&
         ts.isStringLiteral(firstStmt.expression) &&

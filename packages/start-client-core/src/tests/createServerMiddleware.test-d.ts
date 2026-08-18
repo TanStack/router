@@ -661,7 +661,9 @@ test('createMiddleware validator infers unknown for default input type', () => {
     .validator((input) => {
       expectTypeOf(input).toEqualTypeOf<unknown>()
 
-      if (typeof input === 'number') return 'success' as const
+      if (typeof input === 'number') {
+        return 'success' as const
+      }
 
       return 'failed' as const
     })

@@ -82,8 +82,11 @@ function upperBound(values: Array<number>, x: number): number {
   let hi = values.length
   while (lo < hi) {
     const mid = (lo + hi) >> 1
-    if (values[mid]! <= x) lo = mid + 1
-    else hi = mid
+    if (values[mid]! <= x) {
+      lo = mid + 1
+    } else {
+      hi = mid
+    }
   }
   return lo
 }
@@ -161,7 +164,9 @@ export function pickOriginalCodeFromSourcesContent(
 
   for (let i = 0; i < map.sources.length; i++) {
     const content = map.sourcesContent[i]
-    if (typeof content !== 'string') continue
+    if (typeof content !== 'string') {
+      continue
+    }
 
     const src = map.sources[i] ?? ''
 
@@ -214,7 +219,9 @@ function segmentSuffixScore(aSeg: Array<string>, bSeg: Array<string>): number {
     i >= 0 && j >= 0;
     i--, j--
   ) {
-    if (aSeg[i] !== bSeg[j]) break
+    if (aSeg[i] !== bSeg[j]) {
+      break
+    }
     score++
   }
   return score
@@ -236,7 +243,9 @@ async function mapGeneratedToOriginal(
   }
 
   const consumer = await getSourceMapConsumer(map)
-  if (!consumer) return fallback
+  if (!consumer) {
+    return fallback
+  }
 
   try {
     const orig = consumer.originalPositionFor({
@@ -291,7 +300,9 @@ async function getSourceMapConsumer(
   map: SourceMapLike,
 ): Promise<SourceMapConsumer | null> {
   const cached = consumerCache.get(map)
-  if (cached) return cached
+  if (cached) {
+    return cached
+  }
 
   const promise = (async () => {
     try {
@@ -449,7 +460,9 @@ export async function findPostCompileUsageLocation(
   try {
     const importerFile = normalizeFilePath(importerId)
     const res = provider.getTransformResult(importerId)
-    if (!res) return undefined
+    if (!res) {
+      return undefined
+    }
     const { code, map } = res
 
     if (!res.lineIndex) {
@@ -457,7 +470,9 @@ export async function findPostCompileUsageLocation(
     }
 
     const pos = findPostCompileUsagePosFromResult(res, source)
-    if (!pos) return undefined
+    if (!pos) {
+      return undefined
+    }
 
     return await mapGeneratedToOriginal(map, pos, importerFile)
   } catch {
@@ -480,18 +495,24 @@ export function findOriginalUsageLocation(
   try {
     const importerFile = normalizeFilePath(importerId)
     const res = provider.getTransformResult(importerId)
-    if (!res) return undefined
+    if (!res) {
+      return undefined
+    }
     const originalResult = getOrCreateOriginalTransformResult(
       res,
       importerFile,
       root,
     )
-    if (!originalResult) return undefined
+    if (!originalResult) {
+      return undefined
+    }
 
     const pos = envType
       ? findOriginalUnsafeUsagePosFromResult(originalResult, source, envType)
       : findPostCompileUsagePosFromResult(originalResult, source)
-    if (!pos) return undefined
+    if (!pos) {
+      return undefined
+    }
 
     return {
       file: importerFile,
@@ -519,8 +540,12 @@ export async function addTraceImportLocations(
   findImportSpecifierLocationIndex: FindImportSpecifierLocationIndex,
 ): Promise<void> {
   for (const step of trace) {
-    if (!step.specifier) continue
-    if (step.line != null && step.column != null) continue
+    if (!step.specifier) {
+      continue
+    }
+    if (step.line != null && step.column != null) {
+      continue
+    }
     const loc = await findImportStatementLocationFromTransformed(
       provider,
       step.file,
@@ -528,7 +553,9 @@ export async function addTraceImportLocations(
       importLocCache,
       findImportSpecifierLocationIndex,
     )
-    if (!loc) continue
+    if (!loc) {
+      continue
+    }
     step.line = loc.line
     step.column = loc.column
   }
@@ -561,25 +588,33 @@ export function buildCodeSnippet(
   try {
     const importerFile = normalizeFilePath(moduleId)
     const res = provider.getTransformResult(moduleId)
-    if (!res) return undefined
+    if (!res) {
+      return undefined
+    }
 
     const sourceCode = getOriginalCode(res, importerFile, root) ?? res.code
     const targetLine = loc.line // 1-indexed
     const targetCol = loc.column // 1-indexed
 
-    if (targetLine < 1) return undefined
+    if (targetLine < 1) {
+      return undefined
+    }
 
     const allLines = sourceCode.split('\n')
     // Strip trailing \r from \r\n line endings
     for (let i = 0; i < allLines.length; i++) {
       const line = allLines[i]!
-      if (line.endsWith('\r')) allLines[i] = line.slice(0, -1)
+      if (line.endsWith('\r')) {
+        allLines[i] = line.slice(0, -1)
+      }
     }
 
     const wantStart = Math.max(1, targetLine - contextLines)
     const wantEnd = Math.min(allLines.length, targetLine + contextLines)
 
-    if (targetLine > allLines.length) return undefined
+    if (targetLine > allLines.length) {
+      return undefined
+    }
 
     const lines = allLines.slice(wantStart - 1, wantEnd)
     const gutterWidth = String(wantEnd).length

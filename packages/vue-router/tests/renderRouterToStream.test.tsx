@@ -56,7 +56,9 @@ function drainBody(response: Response) {
   return (async () => {
     for (;;) {
       const { done } = await reader.read()
-      if (done) return true
+      if (done) {
+        return true
+      }
     }
   })().catch(() => true)
 }

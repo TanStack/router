@@ -70,7 +70,9 @@ export function normalizeViteClientBuild(
       const queryIndex = moduleId.indexOf('?')
       const sourcePath =
         queryIndex >= 0 ? moduleId.slice(0, queryIndex) : moduleId
-      if (!sourcePath) continue
+      if (!sourcePath) {
+        continue
+      }
 
       const existing = cssFilesBySourcePath.get(sourcePath)
       cssFilesBySourcePath.set(

@@ -9,7 +9,9 @@ function formatTime(ms: number) {
 
   let chosenUnitIndex = 0
   for (let i = 1; i < values.length; i++) {
-    if (values[i]! < 1) break
+    if (values[i]! < 1) {
+      break
+    }
     chosenUnitIndex = i
   }
 

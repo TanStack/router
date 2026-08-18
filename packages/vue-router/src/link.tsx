@@ -231,12 +231,15 @@ function useLinkPropsImpl(
 
   const doPreload = () => {
     const options = getOptions()
-    return router
-      .preloadRoute({ ...options, _builtLocation: next.value } as any)
-      .catch((err: any) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+    return (
+      router.preloadRoute as (
+        opts: typeof options,
+        builtLocation: ReturnType<typeof router.buildLocation>,
+      ) => ReturnType<typeof router.preloadRoute>
+    )(options, next.value).catch((err: any) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
   }
 
   let pendingPreload: 'intent' | 'viewport' | undefined
@@ -320,7 +323,7 @@ function useLinkPropsImpl(
 
     if (
       !options.disabled &&
-      !isCtrlEvent(e) &&
+      !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
@@ -730,10 +733,14 @@ function getHref(
   // Otherwise it's the origin-stripped path
   // This avoids constructing URL objects in the hot path
   const publicHref = location?.publicHref
-  if (!publicHref) return undefined
+  if (!publicHref) {
+    return undefined
+  }
 
   const external = location?.external
-  if (external) return publicHref
+  if (external) {
+    return publicHref
+  }
 
   return router.history.createHref(publicHref) || '/'
 }
@@ -954,10 +961,6 @@ const LinkImpl = Vue.defineComponent({
 export const Link = LinkImpl as unknown as Vue.Component<unknown> &
   Vue.Component<CreateLinkProps> &
   LinkComponent<'a'>
-
-function isCtrlEvent(e: MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
 
 export type LinkOptionsFnOptions<
   TOptions,

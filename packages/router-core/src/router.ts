@@ -692,13 +692,7 @@ export type PreloadRouteFn<
     TTo,
     TMaskFrom,
     TMaskTo
-  > & {
-    /**
-     * @internal
-     * A **trusted** built location that can be used to redirect to.
-     */
-    _builtLocation?: ParsedLocation
-  },
+  >,
 ) => Promise<Array<AnyRouteMatch> | undefined>
 
 export type MatchRouteFn<
@@ -937,10 +931,10 @@ export function runRouteLifecycle(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   matches: Array<AnyRouteMatch>,
-  isCurrent?: () => boolean,
+  owner?: LoadTransaction,
 ): void {
   for (const match of previous) {
-    if (isCurrent?.() === false) {
+    if (owner && router._tx !== owner) {
       return
     }
     if (!matches.some((candidate) => candidate.routeId === match.routeId)) {
@@ -950,7 +944,7 @@ export function runRouteLifecycle(
     }
   }
   for (const match of matches) {
-    if (isCurrent?.() === false) {
+    if (owner && router._tx !== owner) {
       return
     }
     const route = (router.routesById as Record<string, AnyRoute>)[
@@ -1192,10 +1186,11 @@ export class RouterCore<
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
 
-    if (this.options.pathParamsAllowedCharacters)
+    if (this.options.pathParamsAllowedCharacters) {
       this.pathParamsDecoder = compileDecodeCharMap(
         this.options.pathParamsAllowedCharacters,
       )
+    }
 
     if (
       !this.history ||
@@ -1846,6 +1841,19 @@ export class RouterCore<
         unmaskOnReload?: boolean
       } = {},
     ): ParsedLocation => {
+      if (dest.href) {
+        const parsed = parseHref(dest.href, {} as ParsedHistoryState)
+        dest = {
+          ...dest,
+          to: executeRewriteInput(
+            this.rewrite,
+            new URL(parsed.pathname, this.origin),
+          ).pathname,
+          search: this.options.parseSearch(parsed.search),
+          hash: parsed.hash.slice(1),
+        }
+      }
+
       // We allow the caller to override the current location
       const currentLocation =
         dest._fromLocation || this._pendingLocation || this.latestLocation
@@ -2082,59 +2090,35 @@ export class RouterCore<
       }
     }
 
-    const buildWithMatches = (
-      dest: BuildNextOptions = {},
-      maskedDest?: BuildNextOptions,
-    ) => {
-      const next = build(dest)
-
-      let maskedNext = maskedDest ? build(maskedDest) : undefined
-
-      if (!maskedNext) {
-        const params = Object.create(null)
-
-        if (this.options.routeMasks) {
-          const match = findFlatMatch<RouteMask<TRouteTree>>(
-            next.pathname,
-            this.processedTree,
-          )
-          if (match) {
-            Object.assign(params, match.rawParams) // Copy params, because they're cached
-            const {
-              from: _from,
-              params: maskParams,
-              ...maskProps
-            } = match.route
-
-            // If mask has a params function, call it with the matched params as context
-            // Otherwise, use the matched params or the provided params value
-            const nextParams = resolveNextParams(maskParams, params)
-
-            maskedDest = {
-              from: opts.from,
-              ...maskProps,
-              params: nextParams,
-            }
-            maskedNext = build(maskedDest)
-          }
-        }
-      }
-
-      if (maskedNext) {
-        next.maskedLocation = maskedNext
-      }
-
-      return next
-    }
+    const next = build(opts)
 
     if (opts.mask) {
-      return buildWithMatches(opts, {
+      next.maskedLocation = build({
         from: opts.from,
         ...opts.mask,
       })
+    } else if (this.options.routeMasks) {
+      const match = findFlatMatch<RouteMask<TRouteTree>>(
+        next.pathname,
+        this.processedTree,
+      )
+      if (match) {
+        const params = Object.assign(Object.create(null), match.rawParams)
+        const { from: _from, params: maskParams, ...maskProps } = match.route
+
+        // If mask has a params function, call it with the matched params as context
+        // Otherwise, use the matched params or the provided params value
+        const nextParams = resolveNextParams(maskParams, params)
+
+        next.maskedLocation = build({
+          from: opts.from,
+          ...maskProps,
+          params: nextParams,
+        })
+      }
     }
 
-    return buildWithMatches(opts)
+    return next
   }
 
   _commitPromise: (Promise<void> & { resolve: () => void }) | undefined
@@ -2240,38 +2224,12 @@ export class RouterCore<
     hashScrollIntoView,
     viewTransition,
     ignoreBlocker,
-    _redirects,
-    href,
     ...rest
-  }: BuildNextOptions &
-    CommitLocationOptions & { _redirects?: number } = {}) => {
-    if (href) {
-      const currentIndex = this.history.location.state.__TSR_index
-
-      const parsed = parseHref(href, {
-        __TSR_index: replace ? currentIndex : currentIndex + 1,
-      })
-
-      // If the href contains the basepath, we need to strip it before setting `to`
-      // because `buildLocation` will add the basepath back when creating the final URL.
-      // Without this, hrefs like '/app/about' would become '/app/app/about'.
-      const hrefUrl = new URL(parsed.pathname, this.origin)
-      const rewrittenUrl = executeRewriteInput(this.rewrite, hrefUrl)
-
-      rest.to = rewrittenUrl.pathname
-      rest.search = this.options.parseSearch(parsed.search)
-      // remove the leading `#` from the hash
-      rest.hash = parsed.hash.slice(1)
-    }
-
+  }: BuildNextOptions & CommitLocationOptions = {}) => {
     const location = this.buildLocation({
       ...(rest as any),
       _includeValidateSearch: true,
     })
-    if (_redirects) {
-      ;(location as typeof location & { _redirects?: number })._redirects =
-        _redirects
-    }
 
     this._pendingLocation = location as ParsedLocation<
       FullSearchSchema<TRouteTree>
@@ -2538,9 +2496,8 @@ export class RouterCore<
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
     const locationHeader = redirect.headers.get('Location')
 
-    if (!redirect.options.href || redirect.options._builtLocation) {
-      const location =
-        redirect.options._builtLocation ?? this.buildLocation(redirect.options)
+    if (!redirect.options.href) {
+      const location = this.buildLocation(redirect.options)
       const href = location.publicHref || '/'
       redirect.options.href = href
       redirect.headers.set('Location', href)
@@ -2559,7 +2516,6 @@ export class RouterCore<
 
     if (
       redirect.options.href &&
-      !redirect.options._builtLocation &&
       // Check for dangerous protocols before processing the redirect
       isDangerousProtocol(redirect.options.href, this.protocolAllowlist)
     ) {
@@ -2635,7 +2591,8 @@ export class RouterCore<
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory
-  > = (opts) => preloadClientRoute(this, opts)
+  > = (opts: any, builtLocation?: ParsedLocation) =>
+    preloadClientRoute(this, opts, 0, builtLocation)
 
   matchRoute: MatchRouteFn<
     TRouteTree,
@@ -2756,18 +2713,22 @@ export function getInitialRouterState(
 }
 
 function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
-  if (validateSearch == null) return {}
+  if (validateSearch == null) {
+    return {}
+  }
 
   if ('~standard' in validateSearch) {
     const result = validateSearch['~standard'].validate(input)
 
-    if (result instanceof Promise)
+    if (result instanceof Promise) {
       throw new SearchParamError('Async validation not supported')
+    }
 
-    if (result.issues)
+    if (result.issues) {
       throw new SearchParamError(JSON.stringify(result.issues, undefined, 2), {
         cause: result,
       })
+    }
 
     return result.value
   }

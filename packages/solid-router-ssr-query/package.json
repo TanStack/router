@@ -71,7 +71,13 @@
     "@tanstack/solid-router": "workspace:*",
     "solid-js": "^1.9.10",
     "vite": "*",
-    "vite-plugin-solid": "^2.11.10"
+    "vite-plugin-solid": "^2.11.10",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/query-core": ">=5.90.0",

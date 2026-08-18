@@ -68,9 +68,17 @@
     "arktype": "^2.1.7",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "vite": "*"
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "arktype": ">=2.0.0-rc <3",

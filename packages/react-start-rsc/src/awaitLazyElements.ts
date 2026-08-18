@@ -15,8 +15,12 @@ function* findPendingLazyPayloads(
   seen = new Set(),
   cssCollector?: CssHrefCollector,
 ): Generator<PromiseLike<unknown>> {
-  if (!obj || typeof obj !== 'object') return
-  if (seen.has(obj)) return
+  if (!obj || typeof obj !== 'object') {
+    return
+  }
+  if (seen.has(obj)) {
+    return
+  }
   seen.add(obj)
 
   const el = obj as any

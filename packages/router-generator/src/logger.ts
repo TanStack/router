@@ -25,19 +25,29 @@ export function logging(config: { disabled: boolean }): Logger {
 
   return {
     log: (...args: Array<any>) => {
-      if (!config.disabled) console.log(...formatLogArgs(args))
+      if (!config.disabled) {
+        console.log(...formatLogArgs(args))
+      }
     },
     debug: (...args: Array<any>) => {
-      if (!config.disabled) console.debug(...formatLogArgs(args))
+      if (!config.disabled) {
+        console.debug(...formatLogArgs(args))
+      }
     },
     info: (...args: Array<any>) => {
-      if (!config.disabled) console.info(...formatLogArgs(args))
+      if (!config.disabled) {
+        console.info(...formatLogArgs(args))
+      }
     },
     warn: (...args: Array<any>) => {
-      if (!config.disabled) console.warn(...formatLogArgs(args))
+      if (!config.disabled) {
+        console.warn(...formatLogArgs(args))
+      }
     },
     error: (...args: Array<any>) => {
-      if (!config.disabled) console.error(...formatLogArgs(args))
+      if (!config.disabled) {
+        console.error(...formatLogArgs(args))
+      }
     },
   }
 }

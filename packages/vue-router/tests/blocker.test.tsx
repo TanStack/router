@@ -145,8 +145,9 @@ describe('Blocker', () => {
         await screen.findByRole('heading', { name: 'Posts' }),
       ).toBeInTheDocument()
       expect(window.location.pathname).toBe('/posts')
-      if (opts.ignoreBlocker || opts.disabled)
+      if (opts.ignoreBlocker || opts.disabled) {
         expect(blockerFn).not.toHaveBeenCalled()
+      }
     },
   )
 

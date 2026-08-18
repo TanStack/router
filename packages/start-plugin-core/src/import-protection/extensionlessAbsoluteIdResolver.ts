@@ -39,7 +39,9 @@ export class ExtensionlessAbsoluteIdResolver {
   resolve(id: string): string {
     const key = normalizeFilePath(id)
     const cached = this.entries.get(key)
-    if (cached) return cached.value
+    if (cached) {
+      return cached.value
+    }
 
     let result = key
     let resolvedPhysical: string | undefined
@@ -71,7 +73,9 @@ export class ExtensionlessAbsoluteIdResolver {
 
   private invalidateDep(dep: DepKey): void {
     const keys = this.keysByDep.get(dep)
-    if (!keys) return
+    if (!keys) {
+      return
+    }
 
     // Copy because deleting keys mutates indexes.
     for (const key of Array.from(keys)) {
@@ -107,11 +111,15 @@ export class ExtensionlessAbsoluteIdResolver {
   private deleteKey(key: string): void {
     const entry = this.entries.get(key)
     this.entries.delete(key)
-    if (!entry) return
+    if (!entry) {
+      return
+    }
 
     for (const dep of entry.deps) {
       const keys = this.keysByDep.get(dep)
-      if (!keys) continue
+      if (!keys) {
+        continue
+      }
       keys.delete(key)
       if (keys.size === 0) {
         this.keysByDep.delete(dep)

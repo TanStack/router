@@ -243,7 +243,9 @@ function walkIdentifierNode(
   scopes: IdentifierScopeStack,
   ids: Set<string>,
 ) {
-  if (!current) return
+  if (!current) {
+    return
+  }
 
   if (t.isIdentifier(current)) {
     if (
@@ -605,7 +607,9 @@ export function buildDependencyGraph(
   const graph = new Map<string, Set<string>>()
 
   for (const [name, declarationNode] of declarationMap) {
-    if (!localBindings.has(name)) continue
+    if (!localBindings.has(name)) {
+      continue
+    }
 
     const dependencies = new Set<string>()
     for (const id of collectIdentifiersFromNode(declarationNode)) {
@@ -643,11 +647,15 @@ export function expandTransitively(
 
   while (queue.length > 0) {
     const name = queue.pop()!
-    if (visited.has(name)) continue
+    if (visited.has(name)) {
+      continue
+    }
     visited.add(name)
 
     const dependencies = dependencyGraph.get(name)
-    if (!dependencies) continue
+    if (!dependencies) {
+      continue
+    }
 
     for (const dependency of dependencies) {
       if (!bindings.has(dependency)) {
@@ -669,7 +677,9 @@ export function expandSharedDestructuredDeclarators(
         ? statement.declaration
         : statement
 
-    if (!t.isVariableDeclaration(declaration)) continue
+    if (!t.isVariableDeclaration(declaration)) {
+      continue
+    }
 
     for (const declarator of declaration.declarations) {
       if (
@@ -684,7 +694,9 @@ export function expandSharedDestructuredDeclarators(
 
       for (const name of names) {
         const groups = refsByGroup.get(name)
-        if (!groups) continue
+        if (!groups) {
+          continue
+        }
         for (const group of groups) {
           usedGroups.add(group)
         }
@@ -709,7 +721,9 @@ export function expandDestructuredDeclarations(
         ? statement.declaration
         : statement
 
-    if (!t.isVariableDeclaration(declaration)) continue
+    if (!t.isVariableDeclaration(declaration)) {
+      continue
+    }
 
     for (const declarator of declaration.declarations) {
       if (
@@ -752,11 +766,15 @@ export function removeBindingsTransitivelyDependingOn(
 
   while (queue.length > 0) {
     const current = queue.pop()!
-    if (visited.has(current)) continue
+    if (visited.has(current)) {
+      continue
+    }
     visited.add(current)
 
     const parents = reverseGraph.get(current)
-    if (!parents) continue
+    if (!parents) {
+      continue
+    }
 
     for (const parent of parents) {
       if (!visited.has(parent)) {
@@ -820,7 +838,9 @@ export function retainModuleLevelDeclarations(
   bindingsToKeep: Set<string>,
 ) {
   ast.program.body = ast.program.body.filter((statement) => {
-    if (t.isImportDeclaration(statement)) return true
+    if (t.isImportDeclaration(statement)) {
+      return true
+    }
 
     const declaration =
       t.isExportNamedDeclaration(statement) && statement.declaration
@@ -889,7 +909,9 @@ export function stripUnreferencedTopLevelExpressionStatements(ast: t.File) {
   }
 
   ast.program.body = ast.program.body.filter((statement) => {
-    if (!t.isExpressionStatement(statement)) return true
+    if (!t.isExpressionStatement(statement)) {
+      return true
+    }
 
     for (const name of collectIdentifiersFromNode(statement)) {
       if (locallyBound.has(name)) {

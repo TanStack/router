@@ -37,7 +37,9 @@ export function useLocation<
 
   return Solid.createMemo((prev: TSelected | undefined) => {
     const res = select(router.stores.location.get())
-    if (prev === undefined) return res
+    if (prev === undefined) {
+      return res
+    }
     return replaceEqualDeep(prev, res)
   }) as Accessor<UseLocationResult<TRouter, TSelected>>
 }

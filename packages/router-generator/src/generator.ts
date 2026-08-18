@@ -78,7 +78,9 @@ function getRoutePathSegmentMetadataForPath(
   routePath: string,
   parentRoutePath?: string,
 ): Array<RoutePathSegmentMetadata | undefined> | undefined {
-  if (!node._routePathSegmentMetadata) return undefined
+  if (!node._routePathSegmentMetadata) {
+    return undefined
+  }
 
   const segments = routePath.split('/')
   const result = new Array<RoutePathSegmentMetadata | undefined>(
@@ -89,7 +91,9 @@ function getRoutePathSegmentMetadataForPath(
   let segmentCount = 0
 
   for (let i = 0; i < segments.length; i++) {
-    if (!segments[i]) continue
+    if (!segments[i]) {
+      continue
+    }
     const sourceIndex = parentSegmentCount + segmentCount + 1
     result[i] = node._routePathSegmentMetadata[sourceIndex]
     hasMetadata ||= !!result[i]
@@ -666,7 +670,9 @@ export class Generator {
         if (pieces.loader) {
           hasLoaderPieces = true
         }
-        if (hasComponentPieces && hasLoaderPieces) break
+        if (hasComponentPieces && hasLoaderPieces) {
+          break
+        }
       }
     }
     if (hasComponentPieces || hasLoaderPieces) {
@@ -1410,7 +1416,9 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       let searchPath = node.routePath
       while (searchPath.length > 0) {
         const lastSlash = searchPath.lastIndexOf('/')
-        if (lastSlash <= 0) break
+        if (lastSlash <= 0) {
+          break
+        }
 
         searchPath = searchPath.substring(0, lastSlash)
         const candidate = acc.routeNodesByPath.get(searchPath)
@@ -1451,7 +1459,9 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
       // filtered out. Fall back to the path-based parentRoute already computed.
     }
 
-    if (parentRoute) node.parent = parentRoute
+    if (parentRoute) {
+      node.parent = parentRoute
+    }
 
     node.path = determineNodePath(node)
 
@@ -1581,7 +1591,9 @@ ${acc.routeTree.map((child) => `${child.variableName}Route: typeof ${getResolved
           )
           break
         }
-        if (searchPath === '/') break
+        if (searchPath === '/') {
+          break
+        }
         searchPath = removeLastSegmentFromPath(searchPath) || '/'
       }
     }

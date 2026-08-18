@@ -173,6 +173,196 @@ describe('adversarial client lane ownership', () => {
     expect(cOnEnter).toHaveBeenCalledTimes(1)
   })
 
+  test('supersession cancels lazy not-found boundary lookup without leaking pending ownership', async () => {
+    const lazyStarted = createControlledPromise<void>()
+    const lazyGate = createControlledPromise<any>()
+    const safeHeadStarted = createControlledPromise<void>()
+    const safeHeadGate = createControlledPromise<void>()
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const missingRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/missing',
+      pendingMs: 0,
+      pendingMinMs: 0,
+      pendingComponent: () => null,
+      beforeLoad: () => {
+        throw notFound()
+      },
+    }).lazy(() => {
+      lazyStarted.resolve()
+      return lazyGate
+    })
+    const safeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/safe',
+      head: async () => {
+        safeHeadStarted.resolve()
+        await safeHeadGate
+        return {}
+      },
+    })
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, missingRoute, safeRoute]),
+      history,
+    })
+
+    await router.load()
+    history.push('/missing')
+    const supersededLoad = router.load()
+    await lazyStarted
+    const supersededTx = router._tx!
+    expect(router._pending?.[0]).toBe(supersededTx)
+
+    let supersededOutcome: unknown
+    const observedSupersededLoad = supersededLoad.then(
+      () => {
+        supersededOutcome = 'resolved'
+      },
+      (cause) => {
+        supersededOutcome = cause
+      },
+    )
+    history.push('/safe')
+    const replacementLoad = router.load()
+    await safeHeadStarted
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+    expect(supersededOutcome).toBeUndefined()
+    expect(safeHeadGate.status).toBe('pending')
+    expect(router._pending).toBeUndefined()
+    expect(router.state.matches.at(-1)?.routeId).toBe(missingRoute.id)
+
+    safeHeadGate.resolve()
+    lazyGate.resolve({ options: { notFoundComponent: () => null } })
+    await Promise.all([observedSupersededLoad, replacementLoad])
+
+    expect(supersededOutcome).toBe('resolved')
+    expect(router._pending).toBeUndefined()
+    expect(router.state).toMatchObject({
+      status: 'idle',
+      location: { pathname: '/safe' },
+    })
+    expect(router.state.matches.at(-1)?.routeId).toBe(safeRoute.id)
+    history.destroy()
+  })
+
+  test('an unrelated third load clears a pending session awaiting same-boundary takeover', async () => {
+    const pageStarted = createControlledPromise<void>()
+    const pageGate = createControlledPromise<void>()
+    const retainedStarted = createControlledPromise<void>()
+    const retainedGate = createControlledPromise<void>()
+    const safeHeadStarted = createControlledPromise<void>()
+    const safeHeadGate = createControlledPromise<void>()
+
+    const rootRoute = new BaseRootRoute({
+      validateSearch: (search: Record<string, unknown>) => ({
+        revision: Number(search.revision) || 0,
+      }),
+      beforeLoad: ({ search }) => {
+        if (search.revision === 2) {
+          retainedStarted.resolve()
+          return retainedGate.then(() => ({}))
+        }
+        return {}
+      },
+    })
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const pageRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/page',
+      pendingMs: 0,
+      pendingMinMs: 0,
+      pendingComponent: () => null,
+      beforeLoad: ({ search }) => {
+        if (search.revision === 1) {
+          pageStarted.resolve()
+          return pageGate.then(() => ({}))
+        }
+        return {}
+      },
+    })
+    const safeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/safe',
+      head: async () => {
+        safeHeadStarted.resolve()
+        await safeHeadGate
+        return {}
+      },
+    })
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute, pageRoute, safeRoute]),
+      history,
+    })
+
+    await router.load()
+    const loads: Array<Promise<void>> = []
+    try {
+      history.push('/page?revision=1')
+      const firstLoad = router.load()
+      loads.push(firstLoad)
+      await pageStarted
+      const firstTx = router._tx!
+      await vi.waitFor(() => expect(router._pending?.[0]).toBe(firstTx))
+
+      history.push('/page?revision=2')
+      const secondLoad = router.load()
+      loads.push(secondLoad)
+      await retainedStarted
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+      expect(router._pending?.[0]).toBe(firstTx)
+
+      history.push('/safe')
+      const thirdLoad = router.load()
+      loads.push(thirdLoad)
+      await safeHeadStarted
+      await new Promise<void>((resolve) => setTimeout(resolve, 0))
+
+      expect(router._pending).toBeUndefined()
+    } finally {
+      pageGate.resolve()
+      retainedGate.resolve()
+      safeHeadGate.resolve()
+      await Promise.allSettled(loads)
+      history.destroy()
+    }
+  })
+
+  test('a live signal rejected by lazy not-found lookup is not treated as cancellation', async () => {
+    let laneSignal: AbortSignal | undefined
+    const rootRoute = new BaseRootRoute({})
+    const missingRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/missing',
+      beforeLoad: ({ abortController }) => {
+        laneSignal = abortController.signal
+        throw notFound()
+      },
+    }).lazy(() => Promise.reject(laneSignal))
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([missingRoute]),
+      history: createMemoryHistory({ initialEntries: ['/missing'] }),
+    })
+
+    await router.load()
+
+    expect(laneSignal?.aborted).toBe(false)
+    expect(router.state.status).toBe('idle')
+    expect(router.state.location.pathname).toBe('/missing')
+    expect(router.state.resolvedLocation?.pathname).toBe('/missing')
+    expect(router.state.matches.at(-1)?.status).not.toBe('pending')
+  })
+
   test('keeps a hidden child matched without projecting it below a parent error', async () => {
     const parentError = new Error('parent failed')
     const childHead = vi.fn(() => ({
@@ -254,6 +444,57 @@ describe('adversarial client lane ownership', () => {
       status: 'success',
     })
     expect(redirectSignal?.aborted).toBe(true)
+  })
+
+  test('a navigation started while releasing a redirect lane supersedes that redirect', async () => {
+    let successorNavigation: Promise<void> | undefined
+
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: ({ abortController }) => {
+        abortController.signal.addEventListener(
+          'abort',
+          () => {
+            successorNavigation = router.navigate({ to: '/successor' })
+          },
+          { once: true },
+        )
+        throw redirect({ to: '/redirect-target' })
+      },
+    })
+    const redirectTargetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/redirect-target',
+    })
+    const successorRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/successor',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        sourceRoute,
+        redirectTargetRoute,
+        successorRoute,
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+    await router.navigate({ to: '/source' })
+    await successorNavigation
+
+    expect(router.state.location.pathname).toBe('/successor')
+    expect(router.state.matches.at(-1)).toMatchObject({
+      routeId: successorRoute.id,
+      status: 'success',
+    })
   })
 
   test('keeps successful descendant data behind an ancestor boundary', async () => {

@@ -85,9 +85,13 @@ export class ReplayableStream<T = Uint8Array> {
         // Keep reading until upstream ends or we are stopped.
         while (!this.aborted && !this.released) {
           const { done, value } = await reader.read()
-          if (done) break
+          if (done) {
+            break
+          }
           // eslint-disable-next-line typescript/no-unnecessary-condition
-          if (this.aborted || this.released) break
+          if (this.aborted || this.released) {
+            break
+          }
           this.chunks.push(value)
           this.notify()
         }
@@ -135,7 +139,9 @@ export class ReplayableStream<T = Uint8Array> {
   }
 
   private handleAbort(): void {
-    if (this.aborted) return
+    if (this.aborted) {
+      return
+    }
     this.aborted = true
     this.done = true
 
@@ -163,7 +169,9 @@ export class ReplayableStream<T = Uint8Array> {
   }
 
   private wait(): Promise<void> {
-    if (this.done || this.released) return Promise.resolve()
+    if (this.done || this.released) {
+      return Promise.resolve()
+    }
     if (!this.waiter) {
       this.waiter = Promise.withResolvers<void>()
     }
@@ -176,7 +184,9 @@ export class ReplayableStream<T = Uint8Array> {
    * After calling release(), createReplayStream() will return empty streams.
    */
   release(): void {
-    if (this.released) return
+    if (this.released) {
+      return
+    }
 
     this.released = true
     this.chunks = []

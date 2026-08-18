@@ -15,10 +15,14 @@ export function createUseClientResolver(
 ): UseClientResolver {
   function hasUseClientDirective(fileName: string): boolean {
     const sourceFile = program.getSourceFile(fileName)
-    if (!sourceFile) return false
+    if (!sourceFile) {
+      return false
+    }
 
     const firstStmt = sourceFile.statements[0]
-    if (!firstStmt) return false
+    if (!firstStmt) {
+      return false
+    }
 
     if (
       ts.isExpressionStatement(firstStmt) &&

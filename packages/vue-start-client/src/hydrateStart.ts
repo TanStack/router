@@ -19,7 +19,9 @@ function suppressSsrHydrationMismatches(_router: AnyRouter): void {
   const isHydrationMismatchMessage = (args: Array<unknown>): boolean => {
     // Check all args since Vue may pass message in different positions
     for (const arg of args) {
-      if (typeof arg !== 'string') continue
+      if (typeof arg !== 'string') {
+        continue
+      }
       if (
         arg.includes('Hydration completed but contains mismatches') ||
         arg.includes('Hydration node mismatch') ||

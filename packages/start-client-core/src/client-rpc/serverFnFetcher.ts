@@ -377,7 +377,9 @@ async function processFramedResponse({
       // eslint-disable-next-line typescript/no-unnecessary-condition
       while (true) {
         const { value, done } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         if (value) {
           try {
             // Set up post-processing context for this chunk

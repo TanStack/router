@@ -44,17 +44,23 @@ export function createTransitiveAnalyzer(
     visitedSymbols.clear()
 
     const cached = analysisCache.get(symbolKey(entrySymbol))
-    if (cached) return cached
+    if (cached) {
+      return cached
+    }
 
     const violations: Array<Violation & { chain: Array<ImportEdge> }> = []
 
     function visitSymbol(symbol: ts.Symbol, chain: Array<ImportEdge>): boolean {
       const key = symbolKey(symbol)
-      if (visitedSymbols.has(key)) return false
+      if (visitedSymbols.has(key)) {
+        return false
+      }
       visitedSymbols.add(key)
 
       const decl = symbol.getDeclarations()?.[0]
-      if (!decl) return false
+      if (!decl) {
+        return false
+      }
 
       const sourceFile = decl.getSourceFile()
       const fileName = sourceFile.fileName
@@ -89,7 +95,9 @@ export function createTransitiveAnalyzer(
 
         for (const ident of identifiers) {
           const refSym = checker.getSymbolAtLocation(ident)
-          if (!refSym) continue
+          if (!refSym) {
+            continue
+          }
 
           // Resolve alias if needed
           const aliased =
@@ -99,7 +107,9 @@ export function createTransitiveAnalyzer(
 
           const refDecl = aliased.getDeclarations()?.[0]
           const refFile = refDecl?.getSourceFile().fileName
-          if (!refFile) continue
+          if (!refFile) {
+            continue
+          }
 
           // Skip libs / node_modules
           if (refFile.includes('/node_modules/') || refFile.endsWith('.d.ts')) {
@@ -201,7 +211,9 @@ export function createTransitiveAnalyzer(
           const name = node.text
 
           // Skip the defining identifier
-          if (name === declName) return
+          if (name === declName) {
+            return
+          }
 
           // Skip property names in property access (obj.prop -> prop is not a symbol ref)
           const parent = node.parent

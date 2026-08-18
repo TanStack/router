@@ -24,12 +24,18 @@ function RscNodeRenderInner({
   let tree: unknown = getTree()
 
   for (const key of path) {
-    if (tree === null || tree === undefined) return null
-    if (typeof tree !== 'object') return null
+    if (tree === null || tree === undefined) {
+      return null
+    }
+    if (typeof tree !== 'object') {
+      return null
+    }
     tree = (tree as Record<string, unknown>)[key]
   }
 
-  if (tree === null || tree === undefined) return null
+  if (tree === null || tree === undefined) {
+    return null
+  }
 
   // No SlotProvider - just return the tree directly
   return tree as React.ReactNode

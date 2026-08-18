@@ -68,19 +68,29 @@ const PRELOAD_AS_VALUES = new Set<EarlyHint['as']>([
 ])
 
 function buildLinkParam(name: string, value: string | undefined): string {
-  if (value === undefined) return name
-  if (LINK_PARAM_TOKEN_RE.test(value)) return `${name}=${value}`
+  if (value === undefined) {
+    return name
+  }
+  if (LINK_PARAM_TOKEN_RE.test(value)) {
+    return `${name}=${value}`
+  }
   return `${name}=${JSON.stringify(value)}`
 }
 
 export function serializeEarlyHint(hint: EarlyHint): string {
   const parts = [`<${hint.href}>`, buildLinkParam('rel', hint.rel)]
-  if (hint.as) parts.push(buildLinkParam('as', hint.as))
+  if (hint.as) {
+    parts.push(buildLinkParam('as', hint.as))
+  }
   if (hint.crossOrigin !== undefined) {
     parts.push(buildLinkParam('crossorigin', hint.crossOrigin || undefined))
   }
-  if (hint.type) parts.push(buildLinkParam('type', hint.type))
-  if (hint.integrity) parts.push(buildLinkParam('integrity', hint.integrity))
+  if (hint.type) {
+    parts.push(buildLinkParam('type', hint.type))
+  }
+  if (hint.integrity) {
+    parts.push(buildLinkParam('integrity', hint.integrity))
+  }
   if (hint.referrerPolicy) {
     parts.push(buildLinkParam('referrerpolicy', hint.referrerPolicy))
   }
@@ -125,11 +135,21 @@ function addEarlyHintFetchAttrs(
   )
   const fetchPriority = getStringAttr(attrs, 'fetchPriority', 'fetchpriority')
 
-  if (crossOrigin !== undefined) hint.crossOrigin = crossOrigin
-  if (type) hint.type = type
-  if (integrity) hint.integrity = integrity
-  if (referrerPolicy) hint.referrerPolicy = referrerPolicy
-  if (fetchPriority) hint.fetchPriority = fetchPriority
+  if (crossOrigin !== undefined) {
+    hint.crossOrigin = crossOrigin
+  }
+  if (type) {
+    hint.type = type
+  }
+  if (integrity) {
+    hint.integrity = integrity
+  }
+  if (referrerPolicy) {
+    hint.referrerPolicy = referrerPolicy
+  }
+  if (fetchPriority) {
+    hint.fetchPriority = fetchPriority
+  }
 }
 
 function linkAttrsToEarlyHint(
@@ -137,7 +157,9 @@ function linkAttrsToEarlyHint(
 ): EarlyHint | undefined {
   const href = getStringAttr(attrs, 'href')
   const rel = getStringAttr(attrs, 'rel')
-  if (!href || !rel) return undefined
+  if (!href || !rel) {
+    return undefined
+  }
 
   const relTokens = rel.split(/\s+/)
   let hintRel: EarlyHint['rel'] | undefined
@@ -151,7 +173,9 @@ function linkAttrsToEarlyHint(
     hintAs = 'style'
   } else if (relTokens.includes('preload')) {
     hintAs = getPreloadAs(attrs)
-    if (!hintAs) return undefined
+    if (!hintAs) {
+      return undefined
+    }
     hintRel = 'preload'
   } else if (relTokens.includes('preconnect')) {
     hintRel = 'preconnect'
@@ -161,14 +185,18 @@ function linkAttrsToEarlyHint(
     hintAs = undefined
   }
 
-  if (!hintRel) return undefined
+  if (!hintRel) {
+    return undefined
+  }
 
   const hint: EarlyHint = {
     href,
     rel: hintRel,
   }
 
-  if (hintAs) hint.as = hintAs
+  if (hintAs) {
+    hint.as = hintAs
+  }
   addEarlyHintFetchAttrs(hint, attrs)
 
   return hint
@@ -182,7 +210,9 @@ export function collectStaticHintsFromManifest(
 
   for (const route of matchedRoutes) {
     const routeManifest = manifest.routes[route.id]
-    if (!routeManifest) continue
+    if (!routeManifest) {
+      continue
+    }
 
     for (const link of routeManifest.preloads ?? []) {
       const attrs = getScriptPreloadAttrs(manifest, link)
@@ -191,7 +221,9 @@ export function collectStaticHintsFromManifest(
         rel: attrs.rel,
         as: 'script',
       }
-      if (attrs.crossOrigin !== undefined) hint.crossOrigin = attrs.crossOrigin
+      if (attrs.crossOrigin !== undefined) {
+        hint.crossOrigin = attrs.crossOrigin
+      }
       hints.push(hint)
     }
 
@@ -224,11 +256,15 @@ export function collectDynamicHintsFromMatches(
 
   for (const match of matches) {
     const links = match.links
-    if (!Array.isArray(links)) continue
+    if (!Array.isArray(links)) {
+      continue
+    }
 
     for (const link of links as Array<RouterManagedTag['attrs']>) {
       const hint = linkAttrsToEarlyHint(link)
-      if (hint) hints.push(hint)
+      if (hint) {
+        hints.push(hint)
+      }
     }
   }
 
@@ -246,14 +282,18 @@ export function createEarlyHintsEvent(opts: {
 
   for (const hint of opts.hints) {
     const link = serializeEarlyHint(hint)
-    if (opts.sentLinks.has(link)) continue
+    if (opts.sentLinks.has(link)) {
+      continue
+    }
     opts.sentLinks.add(link)
     opts.sentHints.push(hint)
     nextHints.push(hint)
     nextLinks.push(link)
   }
 
-  if (!nextHints.length && opts.phase !== 'dynamic') return undefined
+  if (!nextHints.length && opts.phase !== 'dynamic') {
+    return undefined
+  }
 
   return {
     phase: opts.phase,
@@ -272,7 +312,9 @@ export function createResponseLinkHeaderEntries(opts: {
 }) {
   for (const hint of opts.hints) {
     const link = serializeEarlyHint(hint)
-    if (opts.sentLinks.has(link)) continue
+    if (opts.sentLinks.has(link)) {
+      continue
+    }
 
     opts.sentLinks.add(link)
     opts.entries.push({ phase: opts.phase, hint, link })
@@ -375,7 +417,9 @@ function collectEarlyHintsPhase(opts: {
     notifyEarlyHints(opts.phase, event, opts.onEarlyHints!)
   }
 
-  if (!opts.responseLinkHeaderEntries) return
+  if (!opts.responseLinkHeaderEntries) {
+    return
+  }
 
   if (event) {
     collectResponseLinkHeaderEntries({
@@ -420,7 +464,9 @@ export function createEarlyHintsCollector(
 
   return {
     collectStatic: ({ manifest, matchedRoutes }) => {
-      if (!matchedRoutes?.length) return
+      if (!matchedRoutes?.length) {
+        return
+      }
 
       collectEarlyHintsPhase({
         phase: 'static',
@@ -442,7 +488,9 @@ export function createEarlyHintsCollector(
       })
     },
     appendResponseHeaders: (headers) => {
-      if (!responseLinkHeaderEntries?.length) return
+      if (!responseLinkHeaderEntries?.length) {
+        return
+      }
 
       appendResponseLinkHeaders({
         responseHeaders: headers,

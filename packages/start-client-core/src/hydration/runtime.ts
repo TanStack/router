@@ -58,7 +58,9 @@ export function getOrCreateGate(
     when,
     resolveListeners: new Set(),
     resolve: () => {
-      if (gate.resolved) return
+      if (gate.resolved) {
+        return
+      }
       gate.resolved = true
       resolvePromise()
       gate.resolveListeners.forEach((listener) => listener())
@@ -77,7 +79,9 @@ export function getOrCreateGate(
 export function releaseGate(gate: HydrationGateRecord) {
   resolvedGateIds.delete(gate.id)
   gate.consumers--
-  if (gate.consumers > 0) return
+  if (gate.consumers > 0) {
+    return
+  }
   if (gateRegistry.get(gate.id) === gate) {
     gateRegistry.delete(gate.id)
     fallbackHtmlByGateId.delete(gate.id)
@@ -98,7 +102,9 @@ export function onGateResolve(gate: HydrationGateRecord, listener: () => void) {
 }
 
 export function runHydrationStrategyCleanup(cleanup: void | (() => void)) {
-  if (typeof cleanup === 'function') return cleanup
+  if (typeof cleanup === 'function') {
+    return cleanup
+  }
   return undefined
 }
 
@@ -161,7 +167,9 @@ export function resolveHydrationMarker(marker: Element) {
 
   const gate = gateRegistry.get(id)
   if (gate) {
-    if (gate.when !== 'never') gate.resolve()
+    if (gate.when !== 'never') {
+      gate.resolve()
+    }
     return
   }
 

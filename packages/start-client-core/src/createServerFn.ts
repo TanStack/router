@@ -168,7 +168,9 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
             throw redirect
           }
 
-          if (result.error) throw result.error
+          if (result.error) {
+            throw result.error
+          }
           return result.result
         },
         {
@@ -892,13 +894,16 @@ export async function execValidator(
   validator: AnyValidator,
   input: unknown,
 ): Promise<unknown> {
-  if (validator == null) return {}
+  if (validator == null) {
+    return {}
+  }
 
   if ('~standard' in validator) {
     const result = await validator['~standard'].validate(input)
 
-    if (result.issues)
+    if (result.issues) {
       throw new Error(JSON.stringify(result.issues, undefined, 2))
+    }
 
     return result.value
   }

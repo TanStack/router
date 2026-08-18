@@ -1511,7 +1511,9 @@ describe('Link', () => {
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
-        if (isNaN(page)) throw Error('Not a number!')
+        if (isNaN(page)) {
+          throw Error('Not a number!')
+        }
 
         return {
           page,
@@ -1576,7 +1578,9 @@ describe('Link', () => {
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
-        if (isNaN(page)) throw Error('Not a number!')
+        if (isNaN(page)) {
+          throw Error('Not a number!')
+        }
 
         return {
           page,
@@ -1639,7 +1643,9 @@ describe('Link', () => {
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
-        if (isNaN(page)) throw Error('Not a number!')
+        if (isNaN(page)) {
+          throw Error('Not a number!')
+        }
 
         return {
           page,
@@ -5221,6 +5227,7 @@ describe('Link', () => {
   )
 
   test('Link.preload="intent" should preload on focus, hover, and touchstart', async () => {
+    const updateSearch = vi.fn((search) => search)
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -5228,7 +5235,7 @@ describe('Link', () => {
       component: () => (
         <>
           <h1>Index Heading</h1>
-          <Link to="/about" preload="intent">
+          <Link to="/about" search={updateSearch} preload="intent">
             About Link
           </Link>
         </>
@@ -5255,6 +5262,8 @@ describe('Link', () => {
     expect(aboutLink).toBeInTheDocument()
 
     const baselineCalls = preloadRouteSpy.mock.calls.length
+    const baselineSearchCalls = updateSearch.mock.calls.length
+    expect(baselineSearchCalls).toBeGreaterThan(0)
 
     fireEvent.focus(aboutLink)
     await waitFor(() =>
@@ -5270,6 +5279,7 @@ describe('Link', () => {
     await waitFor(() =>
       expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
     )
+    expect(updateSearch).toHaveBeenCalledTimes(baselineSearchCalls)
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {

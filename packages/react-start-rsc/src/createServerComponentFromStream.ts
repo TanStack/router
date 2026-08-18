@@ -127,7 +127,9 @@ function setupStreamDecode(
   }
 
   const getTree = () => {
-    if (cacheReady) return cachedTree
+    if (cacheReady) {
+      return cachedTree
+    }
     // eslint-disable-next-line react/rules-of-hooks
     return use(startDecode())
   }
