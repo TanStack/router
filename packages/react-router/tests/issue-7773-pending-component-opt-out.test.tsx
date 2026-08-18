@@ -17,8 +17,6 @@ afterEach(() => {
 
 // https://github.com/TanStack/router/issues/7773
 test('pendingComponent: false suppresses the router-wide default pending fallback', async () => {
-  vi.useFakeTimers()
-
   const loaderGate = createControlledPromise<string>()
   const rootRoute = createRootRoute({ component: Outlet })
   const optedOutRoute = createRoute({
@@ -39,18 +37,14 @@ test('pendingComponent: false suppresses the router-wide default pending fallbac
   })
 
   render(<RouterProvider router={router} />)
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
   expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
   expect(screen.queryByTestId('content')).not.toBeInTheDocument()
 
-  loaderGate.resolve('loaded')
-
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
+    loaderGate.resolve('loaded')
+    await loaderGate
   })
+
   expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
   expect(screen.getByTestId('content')).toHaveTextContent('loaded')
 })
@@ -79,17 +73,19 @@ test('a sibling route without pendingComponent: false still uses the router-wide
   })
 
   render(<RouterProvider router={router} />)
-
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(0)
-  })
   expect(screen.getByTestId('pending')).toBeInTheDocument()
   expect(screen.queryByTestId('content')).not.toBeInTheDocument()
 
   loaderGate.resolve('loaded')
 
+  // pendingMinMs (100) hasn't elapsed yet -- the default fallback must stay up.
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(99)
+  })
+  expect(screen.getByTestId('pending')).toBeInTheDocument()
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1)
   })
   expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
   expect(screen.getByTestId('content')).toHaveTextContent('loaded')
