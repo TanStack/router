@@ -8,7 +8,7 @@ export type ListenUrls = {
 type InterfaceMap = ReturnType<typeof networkInterfaces>
 
 function isIpv4(info: NetworkInterfaceInfo): boolean {
-  return info.family === 'IPv4' || info.family === 4
+  return String(info.family) === 'IPv4' || String(info.family) === '4'
 }
 
 function isWildcardHost(hostname: string): boolean {
