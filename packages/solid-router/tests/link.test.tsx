@@ -180,6 +180,51 @@ describe('Link', () => {
     ).rejects.toThrow()
   })
 
+  test('preserves a caller-provided role while enabled', async () => {
+    const [disabled, setDisabled] = Solid.createSignal(false)
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <button onClick={() => setDisabled((value) => !value)}>
+            Toggle disabled
+          </button>
+          <Link
+            data-testid="role-link"
+            to="/posts"
+            role="button"
+            disabled={disabled()}
+          >
+            Posts
+          </Link>
+        </>
+      ),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const link = await screen.findByTestId('role-link')
+    const toggle = screen.getByRole('button', { name: 'Toggle disabled' })
+
+    expect(link).toHaveAttribute('role', 'button')
+
+    fireEvent.click(toggle)
+    await waitFor(() => expect(link).toHaveAttribute('role', 'link'))
+
+    fireEvent.click(toggle)
+    await waitFor(() => expect(link).toHaveAttribute('role', 'button'))
+  })
+
   test('does not forward internal Link props to the DOM', async () => {
     const internalPropNames = [
       'activeProps',
