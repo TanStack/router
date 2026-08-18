@@ -1,12 +1,13 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { NotFound } from '../components/NotFound'
 import { UserErrorComponent } from '../components/UserError'
+import { DEPLOY_URL } from '../utils/users'
 import type { User } from '../utils/users'
 
 export const Route = createFileRoute('/users/$userId')({
   loader: async ({ params: { userId } }) => {
     try {
-      const res = await fetch('/api/users/' + userId)
+      const res = await fetch(DEPLOY_URL + '/api/users/' + userId)
       if (!res.ok) {
         throw new Error('Unexpected status code')
       }
