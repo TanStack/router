@@ -33,9 +33,6 @@ function setupThrowingRoute(thrownValue: unknown) {
   })
 }
 
-// issue #8098: the boundary gated on the error value's truthiness, so a thrown
-// falsy value re-rendered the crashing children and escalated to an uncaught
-// root error instead of rendering the errorComponent.
 test.each([
   ['undefined', undefined],
   ['null', null],

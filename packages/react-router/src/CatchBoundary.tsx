@@ -11,9 +11,7 @@ export class CatchBoundary extends React.Component<{
   errorComponent?: ErrorRouteComponent
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }> {
-  // hasError tracks the caught state separately from the error value: a thrown
-  // falsy value (undefined, null, 0, '') would otherwise re-render the crashing
-  // children and escalate to an uncaught error at the root.
+  // Tracked separately from the value so thrown falsy values still render the boundary
   state = { error: null, hasError: false } as {
     error: Error | null
     hasError: boolean
@@ -47,8 +45,6 @@ export class CatchBoundary extends React.Component<{
       const element = React.createElement(
         this.props.errorComponent ?? ErrorComponent,
         {
-          // The value passes through as thrown; non-Error throws already reached
-          // errorComponent under the previous truthy gate with this same typing.
           error: error as Error,
           reset: this.reset,
         },
