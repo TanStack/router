@@ -1,4 +1,5 @@
 import { join } from 'pathe'
+import { formatListenBanner, listenBannerRuntimeJs } from './listen-urls'
 
 export type BunFetchHandler = (req: Request) => Response | Promise<Response>
 
@@ -108,7 +109,11 @@ export async function createBunProdServer(opts: BunProdServeOptions): Promise<{
   })
 
   console.info(
-    `[tanstack-start-bun] serve http://${hostname}:${server.port}`,
+    formatListenBanner({
+      headline: '[tanstack-start-bun] serve',
+      hostname,
+      port: Number(server.port),
+    }),
   )
 
   return {
@@ -131,10 +136,13 @@ export function generateHostEntrySource(): string {
  */
 import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { networkInterfaces } from 'node:os'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const clientOutDir = join(__dirname, '../client')
 const handler = await import('./server.js')
+
+${listenBannerRuntimeJs()}
 
 function resolveClientAssetPath(pathname) {
   let decoded
@@ -181,6 +189,6 @@ const server = Bun.serve({
   },
 })
 
-console.info(\`[tanstack-start-bun] host http://\${hostname}:\${server.port}\`)
+console.info(formatListenBanner('[tanstack-start-bun] host', hostname, Number(server.port)))
 `
 }

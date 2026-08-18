@@ -1,5 +1,6 @@
 import { watch, existsSync, readFileSync } from 'node:fs'
 import { dirname, extname, join, normalize, relative, isAbsolute } from 'pathe'
+import { formatListenBanner } from './listen-urls'
 import { tryServeClientAsset } from './static-host'
 import {
   classifyBunChange,
@@ -681,8 +682,12 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
   })
 
   console.info(
-    `[tanstack-start-bun] dev server http://${opts.hostname}:${server.port}` +
-      (esmDev ? ' (esm HMR)' : ''),
+    formatListenBanner({
+      headline:
+        `[tanstack-start-bun] dev server` + (esmDev ? ' (esm HMR)' : ''),
+      hostname: opts.hostname,
+      port: Number(server.port),
+    }),
   )
 
   return {

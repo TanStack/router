@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from 'node:fs/promises'
 import { join, relative, dirname, isAbsolute } from 'pathe'
 import { glob } from 'tinyglobby'
+import { listenBannerRuntimeJs } from './listen-urls'
 import type { BunStandaloneOptions } from './types'
 
 export interface BunStandaloneCompileResult {
@@ -74,6 +75,7 @@ export function buildStandaloneEntrySource(opts: {
 }): string {
   const publicBase = opts.publicBase ?? '/'
   const importLines: Array<string> = [
+    `import { networkInterfaces } from 'node:os'`,
     `import * as handler from ${JSON.stringify('./server.js')}`,
   ]
   const mapEntries: Array<string> = []
@@ -128,6 +130,8 @@ function resolveFetchHandler(mod) {
 
 const fetchHandler = resolveFetchHandler(handler)
 
+${listenBannerRuntimeJs()}
+
 const port = Number(process.env.PORT ?? 3000)
 const hostname = process.env.HOST ?? '0.0.0.0'
 
@@ -145,7 +149,7 @@ const server = Bun.serve({
   },
 })
 
-console.info(\`[tanstack-start-bun] standalone http://\${hostname}:\${server.port}\`)
+console.info(formatListenBanner('[tanstack-start-bun] standalone', hostname, Number(server.port)))
 `
 }
 

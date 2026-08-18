@@ -15,6 +15,8 @@ describe('buildStandaloneEntrySource', () => {
     expect(source).toContain('/assets/app.js')
     expect(source).toContain('Bun.serve')
     expect(source).toContain('./server.js')
+    expect(source).toContain('formatListenBanner')
+    expect(source).toContain('networkInterfaces')
   })
 
   it('prefixes asset keys with publicBase', () => {

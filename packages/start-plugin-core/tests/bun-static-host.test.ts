@@ -31,5 +31,7 @@ describe('generateHostEntrySource', () => {
     const source = generateHostEntrySource()
     expect(source).toContain('server.js')
     expect(source).toContain('Bun.serve')
+    expect(source).toContain('formatListenBanner')
+    expect(source).toContain('networkInterfaces')
   })
 })
