@@ -428,10 +428,21 @@ test('a success hidden below an error boundary retries through pending UI', asyn
   expect(screen.getByTestId('content')).toHaveTextContent('reloaded child')
 })
 
-test('a global not-found destination does not retain the mounted root success', async () => {
+test('a global not-found destination keeps pending until its terminal component is ready', async () => {
   const missingStarted = controlled()
   const missingLoader = controlled()
+  const terminalStarted = controlled()
+  const terminalReady = controlled()
   let loaderCalls = 0
+  const Missing = Object.assign(
+    () => <div data-testid="missing">Missing</div>,
+    {
+      preload: () => {
+        terminalStarted.resolve()
+        return terminalReady
+      },
+    },
+  )
 
   const rootRoute = createRootRoute({
     shouldReload: true,
@@ -447,7 +458,7 @@ test('a global not-found destination does not retain the mounted root success', 
     },
     component: () => <Outlet />,
     pendingComponent: () => <div data-testid="pending">Pending root</div>,
-    notFoundComponent: () => <div data-testid="missing">Missing</div>,
+    notFoundComponent: Missing,
   })
   const pageRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -470,11 +481,54 @@ test('a global not-found destination does not retain the mounted root success', 
   expect(await screen.findByTestId('pending')).toBeVisible()
   expect(screen.queryByTestId('content')).not.toBeInTheDocument()
 
+  let settled = false
+  void navigation.then(() => {
+    settled = true
+  })
   missingLoader.resolve()
+  await terminalStarted
+  expect(screen.getByTestId('pending')).toBeVisible()
+  expect(screen.queryByTestId('missing')).not.toBeInTheDocument()
+  expect(settled).toBe(false)
+
+  terminalReady.resolve()
   await navigation
 
   expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
   expect(screen.getByTestId('missing')).toBeVisible()
+})
+
+test('a cold global not-found presents pending only while its terminal component loads', async () => {
+  const terminalStarted = controlled()
+  const terminalReady = controlled()
+  const Missing = Object.assign(
+    () => <div data-testid="missing">Missing</div>,
+    {
+      preload: () => {
+        terminalStarted.resolve()
+        return terminalReady
+      },
+    },
+  )
+  const rootRoute = createRootRoute({
+    pendingMs: 0,
+    pendingMinMs: 0,
+    pendingComponent: () => <div data-testid="pending">Pending root</div>,
+    notFoundComponent: Missing,
+  })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/missing'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+  await terminalStarted
+  expect(await screen.findByTestId('pending')).toBeVisible()
+  expect(screen.queryByTestId('missing')).not.toBeInTheDocument()
+
+  terminalReady.resolve()
+  expect(await screen.findByTestId('missing')).toBeVisible()
+  expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
 })
 
 test('lazy fuzzy-boundary relocation retains the mounted parent', async () => {
@@ -697,4 +751,305 @@ test('a retained root publishes fresh context with a child fallback', async () =
   childReady.resolve()
   await navigation
   expect(screen.getByTestId('child')).toBeVisible()
+})
+
+test('a retained prefix exposes one fresh context chain before descendant pending', async () => {
+  const retainedStarted = controlled()
+  const retainedReady = controlled()
+  const pendingStarted = controlled()
+  const pendingReady = controlled()
+  let retainedLoads = 0
+
+  const rootRoute = createRootRoute({
+    beforeLoad: () => ({ rootReady: true }),
+    component: () => <Outlet />,
+  })
+  const aRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'a',
+    validateSearch: (search: Record<string, unknown>): { user: string } => ({
+      user: typeof search.user === 'string' ? search.user : 'unknown',
+    }),
+    beforeLoad: async ({ search }) => {
+      if (++retainedLoads > 1) {
+        retainedStarted.resolve()
+        await retainedReady
+      }
+      return { user: search.user }
+    },
+    component: () => {
+      const user = aRoute.useRouteContext({
+        select: (context) => context.user,
+      })
+      return (
+        <div>
+          <div data-testid="user">{user()}</div>
+          <Outlet />
+        </div>
+      )
+    },
+  })
+  const bRoute = createRoute({
+    getParentRoute: () => aRoute,
+    path: 'b',
+    component: () => <Outlet />,
+  })
+  const cRoute = createRoute({
+    getParentRoute: () => bRoute,
+    path: 'c',
+    component: () => <Outlet />,
+  })
+  const dRoute = createRoute({
+    getParentRoute: () => cRoute,
+    path: 'd',
+    component: () => <div data-testid="source">Source</div>,
+  })
+  const eRoute = createRoute({
+    getParentRoute: () => aRoute,
+    path: 'e',
+    component: () => {
+      const user = eRoute.useRouteContext({
+        select: (context) => context.user,
+      })
+      return (
+        <div>
+          <div data-testid="e-user">{user()}</div>
+          <Outlet />
+        </div>
+      )
+    },
+  })
+  const fRoute = createRoute({
+    getParentRoute: () => eRoute,
+    path: 'f',
+    loader: async () => {
+      pendingStarted.resolve()
+      await pendingReady
+    },
+    pendingComponent: () => {
+      const user = fRoute.useRouteContext({
+        select: (context) => context.user,
+      })
+      return <div data-testid="f-pending">F pending for {user()}</div>
+    },
+    component: () => <Outlet />,
+  })
+  const gRoute = createRoute({
+    getParentRoute: () => fRoute,
+    path: 'g',
+    component: () => <div data-testid="hidden-g">G</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      aRoute.addChildren([
+        bRoute.addChildren([cRoute.addChildren([dRoute])]),
+        eRoute.addChildren([fRoute.addChildren([gRoute])]),
+      ]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/a/b/c/d?user=Ada'] }),
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
+  })
+
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByTestId('source')).toBeVisible()
+  expect(screen.getByTestId('user')).toHaveTextContent('Ada')
+
+  const navigation = track(
+    router.navigate({
+      to: '/a/e/f/g',
+      search: { user: 'Grace' },
+    }),
+  )
+  await retainedStarted
+
+  expect(screen.getByTestId('source')).toBeVisible()
+  expect(screen.getByTestId('user')).toHaveTextContent('Ada')
+  expect(screen.queryByTestId('f-pending')).not.toBeInTheDocument()
+
+  retainedReady.resolve()
+  await pendingStarted
+
+  expect(await screen.findByTestId('f-pending')).toBeVisible()
+  expect(screen.getByTestId('user')).toHaveTextContent('Grace')
+  expect(screen.getByTestId('e-user')).toHaveTextContent('Grace')
+  expect(screen.getByTestId('f-pending')).toHaveTextContent('Grace')
+  expect(screen.queryByTestId('source')).not.toBeInTheDocument()
+  expect(screen.queryByTestId('hidden-g')).not.toBeInTheDocument()
+  expect(router.state.matches.map((match) => match.routeId)).toContain(
+    gRoute.id,
+  )
+
+  pendingReady.resolve()
+  await navigation
+})
+
+test.each([false, true])(
+  'retained loader and component work does not own the child fallback (parent pending: %s)',
+  async (parentHasPending) => {
+    const parentReloadStarted = controlled()
+    const parentReload = controlled()
+    const parentComponent = controlled()
+    const childLoader = controlled()
+    let parentLoads = 0
+    let parentPreloads = 0
+
+    const rootRoute = createRootRoute({ component: () => <Outlet /> })
+    const Parent = Object.assign(
+      () => (
+        <div data-testid="parent-content">
+          {parentRoute.useLoaderData()()}
+          <Outlet />
+        </div>
+      ),
+      {
+        preload: () => (++parentPreloads === 1 ? undefined : parentComponent),
+      },
+    )
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'parent',
+      shouldReload: true,
+      loader: {
+        staleReloadMode: 'blocking',
+        handler: async () => {
+          if (++parentLoads === 1) {
+            return 'initial parent'
+          }
+          parentReloadStarted.resolve()
+          await parentReload
+          return 'reloaded parent'
+        },
+      },
+      component: Parent,
+      ...(parentHasPending
+        ? {
+            pendingMs: 0,
+            pendingMinMs: 0,
+            pendingComponent: () => (
+              <div data-testid="parent-pending">Parent pending</div>
+            ),
+          }
+        : {}),
+    })
+    const sourceRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: 'source',
+      component: () => <div data-testid="source">Source</div>,
+    })
+    const childOptions = createLazyRoute('/parent/child')({
+      pendingComponent: () => (
+        <div data-testid="child-pending">Child pending</div>
+      ),
+      component: () => <div data-testid="child">Child</div>,
+    })
+    const childLazy = createControlledPromise<typeof childOptions>()
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: 'child',
+      pendingMs: 0,
+      pendingMinMs: 0,
+      loader: () => childLoader,
+    }).lazy(() => childLazy)
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        parentRoute.addChildren([sourceRoute, childRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/parent/source'] }),
+    })
+
+    render(() => <RouterProvider router={router} />)
+    expect(await screen.findByTestId('source')).toBeVisible()
+    await waitFor(() => expect(router.state.status).toBe('idle'))
+
+    const navigation = track(router.navigate({ to: '/parent/child' }))
+    try {
+      await parentReloadStarted
+      parentReload.resolve()
+      await waitFor(() => {
+        expect(
+          router.state.matches.find((match) => match.routeId === parentRoute.id)
+            ?.isFetching,
+        ).toBe(false)
+      })
+
+      childLazy.resolve(childOptions)
+      expect(await screen.findByTestId('child-pending')).toBeVisible()
+      expect(screen.getByTestId('parent-content')).toBeVisible()
+      expect(screen.queryByTestId('parent-pending')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('source')).not.toBeInTheDocument()
+    } finally {
+      parentReload.resolve()
+      parentComponent.resolve()
+      childLazy.resolve(childOptions)
+      childLoader.resolve()
+      await navigation
+    }
+
+    expect(screen.getByTestId('child')).toBeVisible()
+  },
+)
+
+test('a failure in the last retained guard suppresses descendant pending', async () => {
+  const guardStarted = controlled()
+  const guardReady = controlled()
+  const childReady = controlled()
+  let guardLoads = 0
+  let childLoads = 0
+
+  const rootRoute = createRootRoute({
+    beforeLoad: () => ({ rootReady: true }),
+    component: () => <Outlet />,
+  })
+  const layoutRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: 'layout',
+    beforeLoad: async () => {
+      if (++guardLoads > 1) {
+        guardStarted.resolve()
+        await guardReady
+        throw new Error('blocked')
+      }
+    },
+    component: () => <Outlet />,
+    errorComponent: () => <div data-testid="guard-error">Guard error</div>,
+  })
+  const sourceRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/source',
+    component: () => <div data-testid="source">Source</div>,
+  })
+  const childRoute = createRoute({
+    getParentRoute: () => layoutRoute,
+    path: '/child',
+    loader: async () => {
+      childLoads++
+      await childReady
+    },
+    pendingMs: 0,
+    pendingMinMs: 0,
+    pendingComponent: () => <div data-testid="child-pending">Pending</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      layoutRoute.addChildren([sourceRoute, childRoute]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/source'] }),
+  })
+
+  render(() => <RouterProvider router={router} />)
+  expect(await screen.findByTestId('source')).toBeVisible()
+  await waitFor(() => expect(router.state.status).toBe('idle'))
+
+  const navigation = track(router.navigate({ to: '/child' }))
+  await guardStarted
+  expect(screen.getByTestId('source')).toBeVisible()
+  expect(screen.queryByTestId('child-pending')).not.toBeInTheDocument()
+  expect(childLoads).toBe(0)
+
+  guardReady.resolve()
+  await navigation
+  expect(await screen.findByTestId('guard-error')).toBeVisible()
+  expect(screen.queryByTestId('child-pending')).not.toBeInTheDocument()
+  expect(childLoads).toBe(0)
 })

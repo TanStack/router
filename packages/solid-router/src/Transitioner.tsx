@@ -2,7 +2,6 @@ import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
-import type { AnyRouteMatch } from '@tanstack/router-core'
 
 function getResolvedLocation(router: ReturnType<typeof useRouter>) {
   const resolvedLocation = router.stores.resolvedLocation.get()
@@ -22,12 +21,43 @@ export function Transitioner() {
     return null
   }
 
-  let transitionOwner: Array<AnyRouteMatch> | undefined
-  router.startTransition = async (fn, expected) => {
-    transitionOwner = expected
-    await Solid.startTransition(fn)
-    return transitionOwner === expected
+  let settleCurrent: ((rendered: boolean) => void) | undefined
+  router.startTransition = (fn) => {
+    settleCurrent?.(false)
+
+    return new Promise((resolve, reject) => {
+      const settle = (rendered: boolean) => {
+        if (settleCurrent !== settle) {
+          return
+        }
+        settleCurrent = undefined
+        resolve(rendered)
+      }
+      const fail = (cause: unknown) => {
+        if (settleCurrent !== settle) {
+          return
+        }
+        settleCurrent = undefined
+        reject(cause)
+      }
+      settleCurrent = settle
+
+      void Solid.startTransition(() => {
+        // A newer publication may supersede this deferred callback.
+        if (settleCurrent === settle) {
+          try {
+            fn()
+          } catch (cause) {
+            fail(cause)
+          }
+        }
+      }).then(() => settle(true), fail)
+    })
   }
+
+  Solid.onCleanup(() => {
+    settleCurrent?.(false)
+  })
 
   // Subscribe to location changes
   // and try to load the new location
