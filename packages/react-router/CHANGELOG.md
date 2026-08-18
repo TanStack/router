@@ -1,5 +1,16 @@
 # @tanstack/react-router
 
+## 1.170.30
+
+### Patch Changes
+
+- [#8084](https://github.com/TanStack/router/pull/8084) [`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175) - preserve pending UI across retained routes
+
+- [#8068](https://github.com/TanStack/router/pull/8068) [`f75cada`](https://github.com/TanStack/router/commit/f75cada01707e51fb9650dd301bc04f8b2265a2a) - direct export of CatchBoundary class component, remove function wrapper
+
+- Updated dependencies [[`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175), [`63d2cc9`](https://github.com/TanStack/router/commit/63d2cc9155ff5374112f7d067d0b278bafeb8486)]:
+  - @tanstack/router-core@1.171.25
+
 ## 1.170.29
 
 ### Patch Changes
