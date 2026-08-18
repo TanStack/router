@@ -81,6 +81,51 @@ describe('adversarial client lane ownership', () => {
     expect(secondLoader).toHaveBeenCalledTimes(1)
   })
 
+  test('a queued navigation cancels a synchronous beforeLoad result', async () => {
+    let successorNavigation: Promise<void> | undefined
+    const targetLoader = vi.fn(() => 'target data')
+    const successorLoader = vi.fn(() => 'successor data')
+    const rootRoute = new BaseRootRoute({})
+    const currentRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/current',
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+      beforeLoad: ({ navigate }) => {
+        queueMicrotask(() => {
+          successorNavigation = navigate({ to: '/successor' })
+        })
+        return { allowed: true }
+      },
+      loader: targetLoader,
+    })
+    const successorRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/successor',
+      loader: successorLoader,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        currentRoute,
+        targetRoute,
+        successorRoute,
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/current'] }),
+    })
+
+    await router.load()
+    await router.navigate({ to: '/target' })
+    await successorNavigation
+
+    expect(targetLoader).not.toHaveBeenCalled()
+    expect(successorLoader).toHaveBeenCalledTimes(1)
+    expect(router.state.status).toBe('idle')
+    expect(router.state.location.pathname).toBe('/successor')
+    expect(router.state.matches.at(-1)?.routeId).toBe(successorRoute.id)
+  })
+
   test.each(['onBeforeNavigate', 'onBeforeLoad'] as const)(
     'a throwing %s listener cannot interrupt later listeners or navigation finalization',
     async (eventType) => {

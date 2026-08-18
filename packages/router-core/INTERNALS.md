@@ -250,6 +250,11 @@ then merges transported `beforeLoad` output. Every normal client lane,
 including every preload, performs its own contextualization and `beforeLoad`
 chain.
 
+During client contextualization, cancellation subscribes only for a
+Promise-returning hook. A synchronous hook result keeps the ordinary single
+await boundary; contextualization rechecks the transaction signal after that
+boundary before accepting the result.
+
 ### Reduced
 
 On the client, eligible loaders and normal component chunks start concurrently.

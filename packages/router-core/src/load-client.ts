@@ -272,17 +272,27 @@ function isControl(
   return typeof result[0 /* location or kind */] === 'number'
 }
 
+export function waitFor<T>(value: Promise<T>, signal: AbortSignal): Promise<T>
 export function waitFor<T>(
-  value: T | PromiseLike<T>,
+  value: T | Promise<T>,
   signal: AbortSignal,
-): Promise<T> {
+): T | Promise<T>
+export function waitFor<T>(
+  value: T | Promise<T>,
+  signal: AbortSignal,
+): T | Promise<T> {
   if (signal.aborted) {
     return Promise.race([Promise.reject(signal), value])
+  }
+  // Router work is Awaitable: raw values keep their single await boundary,
+  // while Promises need an abort subscription until they settle.
+  if (!(value as Promise<T>)?.then) {
+    return value as T
   }
   return new Promise<T>((resolve, reject) => {
     const abort = () => reject(signal)
     signal.addEventListener('abort', abort, { once: true })
-    Promise.resolve(value)
+    void (value as Promise<T>)
       .then(resolve, reject)
       .finally(() => signal.removeEventListener('abort', abort))
   })
@@ -438,6 +448,8 @@ async function contextualize(
     try {
       setFetching(router, match, 'beforeLoad', options[0 /* controller */])
       const result = await waitFor(beforeLoad(beforeLoadContext), signal)
+      // A synchronous result has no abort listener, but a successor can abort
+      // this lane before the await continuation accepts it.
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
       }
