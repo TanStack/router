@@ -11,22 +11,17 @@ export function lazyRouteComponent<
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
+  const resolvedExport = (exportName as string | undefined) ?? 'default'
   let preloadPromise: Promise<void> | undefined
 
-  const comp = lazy(() =>
-    importer().then(
-      (res) => ({
-        default: res[exportName ?? 'default'] as any,
-        // Server-side lazy() resolves the module's client assets (CSS,
-        // modulepreload hints) by reading the $$moduleUrl export the
-        // bundler's SSR transform appends to project modules. Split route
-        // modules get per-module manifest entries (the query is part of the
-        // module identity), so registration is per-route precise; the head
-        // registry dedupes against TanStack's route-keyed manifest links by
-        // URL.
-        $$moduleUrl: (res as any).$$moduleUrl,
-      }),
-      (error) => {
+  // lazy()'s { export } option names which export of the resolved module is
+  // the component — a call-site literal available on both runtimes, so the
+  // module namespace passes through untouched ($$moduleUrl included, which
+  // is how server-side lazy() resolves the route chunk's client assets) and
+  // hydration claims the component synchronously from the preloaded module.
+  const comp = lazy(
+    () =>
+      importer().catch((error) => {
         // If the load fails due to module not found, it may mean a new
         // version of the build was deployed and the user's browser is still
         // using an old version with an outdated URL to the lazy module. In
@@ -45,13 +40,13 @@ export function lazyRouteComponent<
             window.location.reload()
 
             // The page is reloading; render nothing in the meantime.
-            return { default: () => null }
+            return { [resolvedExport]: () => null } as unknown as T
           }
         }
 
         throw error
-      },
-    ),
+      }),
+    { export: resolvedExport },
   )
 
   const load = comp.preload
@@ -71,5 +66,5 @@ export function lazyRouteComponent<
     return preloadPromise
   }
 
-  return comp
+  return comp as any
 }
