@@ -2159,7 +2159,7 @@ export async function loadClientRoute(
   // matches must wait for lazy routes to place the final boundary.
   if (
     resolvedPrefix ||
-    (!resolvedLocation && !matches.some((match) => match._notFound))
+    (!router._committed.length && !matches.some((match) => match._notFound))
   ) {
     offerPending(router, tx)
   }
