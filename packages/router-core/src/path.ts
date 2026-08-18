@@ -112,8 +112,21 @@ export function resolvePath({
   trailingSlash = 'never',
   cache,
 }: ResolvePathOptions) {
+  if (to.includes('//')) {
+    to = cleanPath(to)
+  }
   const isBase = to === '.'
   const isAbsolute = to.startsWith('/')
+
+  if (isAbsolute) {
+    if (to.length === 1 || trailingSlash === 'preserve') {
+      return to
+    }
+    if (trailingSlash === 'always') {
+      return to.endsWith('/') ? to : `${to}/`
+    }
+    return to.endsWith('/') ? to.slice(0, -1) : to
+  }
 
   let key
   if (cache) {

@@ -184,6 +184,17 @@ describe('resolvePath', () => {
         ).toBe('/a/b/c/d')
       })
     })
+
+    it.each([
+      ['always', '/a//b', '/a/b/'],
+      ['never', '/a//b///', '/a/b'],
+      ['preserve', '/a//b///', '/a/b/'],
+    ] as const)(
+      "normalizes repeated slashes with trailingSlash '%s'",
+      (trailingSlash, to, expected) => {
+        expect(resolvePath({ base: '/', to, trailingSlash })).toBe(expected)
+      },
+    )
   })
 
   describe.each([{ base: '/' }, { base: '/nested' }])(

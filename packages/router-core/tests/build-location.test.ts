@@ -1613,6 +1613,37 @@ describe('buildLocation - params edge cases', () => {
     expect(location.pathname).toBe('/users/000042')
   })
 
+  test('params.stringify should not mutate current params', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/$userId',
+      params: {
+        parse: ({ userId }: { userId: string }) => ({
+          userId: parseInt(userId, 10),
+        }),
+        stringify: (params: { userId: number }) => {
+          const userId = params.userId
+          params.userId = 999
+          return { userId: String(userId).padStart(6, '0') }
+        },
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([userRoute])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/users/000123'] }),
+    })
+
+    await router.load()
+
+    expect(router.buildLocation({ to: '/users/$userId' }).pathname).toBe(
+      '/users/000123',
+    )
+    expect(router.state.matches.at(-1)?.params).toEqual({ userId: 123 })
+  })
+
   test('params.stringify should run for params.parse route templates', async () => {
     const rootRoute = new BaseRootRoute({})
     const languageRoute = new BaseRoute({

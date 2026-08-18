@@ -22,7 +22,6 @@ import {
   processRouteTree,
 } from './new-process-route-tree'
 import {
-  cleanPath,
   compileDecodeCharMap,
   interpolatePath,
   resolvePath,
@@ -1469,7 +1468,7 @@ export class RouterCore<
   resolvePathWithBase = (from: string, path: string) => {
     return resolvePath({
       base: from,
-      to: path.includes('//') ? cleanPath(path) : path,
+      to: path,
       trailingSlash: this.options.trailingSlash,
       cache: this.resolvePathCache,
     })
@@ -1892,28 +1891,19 @@ export class RouterCore<
         dest.unsafeRelative === 'path'
           ? currentLocation.pathname
           : (dest.from ?? lightweightResult[1 /* fullPath */])
-      const destTo = dest.to ? `${dest.to}` : undefined
 
       // From search should always use the current location
       const fromSearch = lightweightResult[2 /* search */]
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = Object.assign(
-        Object.create(null),
-        lightweightResult[3 /* params */],
+      const fromParams = lightweightResult[3 /* params */]
+
+      const nextTo = this.resolvePathWithBase(
+        defaultedFromPath,
+        dest.to ? `${dest.to}` : '.',
       )
 
-      const isAbsoluteTo = destTo?.charCodeAt(0) === 47
-      const sourcePath = isAbsoluteTo
-        ? '/'
-        : this.resolvePathWithBase(defaultedFromPath, '.')
-
-      // Resolve the destination. Absolute destinations don't need the source path.
-      const nextTo = destTo
-        ? this.resolvePathWithBase(sourcePath, destTo)
-        : sourcePath
-
       // Resolve the next params
-      const nextParams = resolveNextParams(dest.params, fromParams)
+      let nextParams = resolveNextParams(dest.params, fromParams)
 
       const destRoute = this.routesByPath[
         trimPathRight(nextTo) as keyof typeof this.routesByPath
@@ -1945,6 +1935,9 @@ export class RouterCore<
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
+            if (nextParams === fromParams) {
+              nextParams = Object.assign(Object.create(null), nextParams)
+            }
             try {
               Object.assign(nextParams, fn(nextParams))
             } catch {
@@ -2864,11 +2857,14 @@ function resolveNextParams(
   spec: unknown,
   base: Record<string, unknown>,
 ): Record<string, unknown> {
-  return spec === false || spec === null
-    ? Object.create(null)
-    : (spec ?? true) === true
-      ? base
-      : Object.assign(base, functionalUpdate(spec as any, base))
+  if (spec === false || spec === null) {
+    return Object.create(null)
+  }
+  if ((spec ?? true) === true) {
+    return base
+  }
+  const next = Object.assign(Object.create(null), base)
+  return Object.assign(next, functionalUpdate(spec as any, next))
 }
 
 function extractStrictParams(
