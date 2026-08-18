@@ -1300,6 +1300,39 @@ describe('buildLocation - relative paths', () => {
     expect(location.pathname).toBe('/a/d')
   })
 
+  test('unsafe path-relative navigation ignores repeated slash segments', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const aRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/a',
+    })
+    const bRoute = new BaseRoute({
+      getParentRoute: () => aRoute,
+      path: '/b',
+    })
+    const cRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/c',
+    })
+    const routeTree = rootRoute.addChildren([
+      aRoute.addChildren([bRoute]),
+      cRoute,
+    ])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/a//b'] }),
+    })
+
+    await router.load()
+
+    expect(
+      router.buildLocation({
+        to: '../../c',
+        unsafeRelative: 'path',
+      }).pathname,
+    ).toBe('/c')
+  })
+
   test('over-root traversal stays rooted for javascript-like segments', async () => {
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({

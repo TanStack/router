@@ -139,6 +139,9 @@ export function resolvePath({
   if (isBase) {
     baseSegments = base.split('/')
   } else {
+    if (base.includes('//')) {
+      base = cleanPath(base)
+    }
     baseSegments = base.split('/')
     while (baseSegments.length > 1 && last(baseSegments) === '') {
       baseSegments.pop()

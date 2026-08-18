@@ -109,6 +109,8 @@ describe('resolvePath', () => {
     ['/a/b/c', '../..', '/a'],
     ['/a/b/c', '../../..', '/'],
     ['/a/b/c/', '../../..', '/'],
+    ['/a//b', '../../c', '/c'],
+    ['/a///b', '../c', '/a/c'],
     ['/', '../javascript:alert(1)', '/javascript:alert(1)'],
     ['/posts', '../../data:text/html,test', '/data:text/html,test'],
   ])('resolves correctly', (a, b, eq) => {
