@@ -50,6 +50,8 @@ afterEach(() => {
 
 describe('hydration terminal lane', () => {
   test('keeps a hydrated pending fallback through its minimum before a terminal result', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(0)
     const rootRoute = createRootRoute({
       pendingMs: 0,
       pendingMinMs: 100,
@@ -72,8 +74,6 @@ describe('hydration terminal lane', () => {
     ])
 
     await hydrate(router)
-    vi.useFakeTimers()
-    vi.setSystemTime(0)
     render(() => <RouterProvider router={router} />)
     expect(screen.getByRole('status')).toHaveTextContent('Missing page pending')
 
