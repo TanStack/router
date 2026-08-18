@@ -215,12 +215,12 @@ export type LoadTransaction = [
 ]
 
 export type PendingSession = [
-  owner: LoadTransaction,
-  boundary: number,
+  generation: LoadTransaction,
+  boundaryId: string,
   /** Pending reveal time until acknowledged, then minimum-visible-until time. */
   deadline: number,
-  timer?: ReturnType<typeof setTimeout>,
-  ack?: Promise<boolean>,
+  revealTimer?: ReturnType<typeof setTimeout>,
+  ack?: Promise<boolean> | true,
   component?: unknown,
 ]
 
@@ -434,11 +434,10 @@ async function contextualize(
     }
 
     const previousStatus = match.status
-    // Retain only a success that is mounted through the same valid prefix.
-    if (previousStatus === 'success' && index >= retainedEnd) {
+    if (index >= retainedEnd) {
       match.status = 'pending'
+      options[8 /* onReady */]?.()
     }
-    options[8 /* onReady */]?.()
     try {
       setFetching(router, match, 'beforeLoad', options[0 /* controller */])
       const result = await waitFor(beforeLoad(beforeLoadContext), signal)
@@ -459,8 +458,8 @@ async function contextualize(
       releaseFlight(router, match)
       return [index, normalizeLaneError(route, cause, options)]
     } finally {
-      if (previousStatus === 'success' && match.status === 'pending') {
-        match.status = 'success'
+      if (match.status === 'pending') {
+        match.status = previousStatus
       }
       setFetching(router, match, false, options[0 /* controller */])
     }
@@ -837,8 +836,8 @@ function createLoaderTask(
   const loaded = reload && (!preload || route.options.preload !== false)
   const blocking =
     loaded && !background && (match.status !== 'success' || !!routeLoader)
-  const onLazyReady =
-    route.lazyFn && route._lazy !== true ? options[8 /* onReady */] : undefined
+  const onReady = index >= retainedEnd ? options[8 /* onReady */] : undefined
+  const onLazyReady = route.lazyFn && route._lazy !== true ? onReady : undefined
   if (loaded && !routeLoader) {
     match.invalid = false
     match.updatedAt = Date.now()
@@ -850,12 +849,12 @@ function createLoaderTask(
     const acceptedFlight = match._flight
     match._flight = donor
     releaseOwnedFlight(router, match, acceptedFlight)?.abort()
-    // A successful route without a loader has no blocking work to present. A
-    // mounted success likewise remains renderable while its loader revalidates.
-    if (match.status === 'success' && index >= retainedEnd) {
+    // A mounted success remains renderable while its loader revalidates. Every
+    // non-retained blocking generation presents pending state.
+    if (index >= retainedEnd) {
       match.status = 'pending'
     }
-    options[8 /* onReady */]?.()
+    onReady?.()
   }
   if (!loaded) {
     match.isFetching = false
@@ -893,7 +892,9 @@ function createLoaderTask(
         }
         // A route is renderable only after both its data and normal component
         // chunk are ready. Its loader data is already available to descendants.
-        match.status = 'pending'
+        if (index >= retainedEnd) {
+          match.status = 'pending'
+        }
       }
     }
     return result
@@ -919,7 +920,7 @@ function createLoaderTask(
         options[2 /* isCurrent */]()
       ) {
         match.status = 'success'
-        options[8 /* onReady */]?.()
+        onReady?.()
       }
       return failure
     }),
@@ -1148,6 +1149,9 @@ async function reduceLane(
       }
     }
     install()
+    if (!outcome) {
+      onReady?.()
+    }
     const route = getRoute(router, match)
     try {
       await waitFor<unknown>(
@@ -1172,7 +1176,6 @@ async function reduceLane(
     }
     if (!outcome) {
       match.status = 'success'
-      onReady?.()
     } else if (redirectLimitExceeded) {
       controller.abort()
       await Promise.all([
@@ -1392,125 +1395,146 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   if (router._tx !== tx) {
     return
   }
-  let session = router._pending
-  let tookOver = false
-  const sessionMatchId =
-    session?.[0 /* owner */][3 /* matches */][session[1 /* boundary */]]?.id
-  if (session?.[0 /* owner */] !== tx) {
-    if (
-      session &&
-      tx[3 /* matches */][session[1 /* boundary */]]?.id === sessionMatchId
-    ) {
-      session[0 /* owner */] = tx
-      tookOver = true
-    } else {
-      clearTimeout(session?.[3 /* timer */])
-      router._pending = session = undefined
-    }
-  }
   const matches = tx[3 /* matches */]
   const presented = router.stores.matches.get()
-  let boundary = -1
-  let delay: number | undefined
-  let min!: number
-  let component: unknown
-  let presentedPending = false
+  let session = router._pending
   for (let index = 0; index < matches.length; index++) {
     const match = matches[index]!
-    const success = match.status === 'success'
-    presentedPending =
+    const success = match.status === 'success' && !match._notFound
+    const presentedPending =
       presented[index]?.id === match.id &&
       presented[index]?.status === 'pending'
     if (success && !presentedPending) {
       continue
     }
     const route = getRoute(router, match as WorkMatch)
-    delay =
+    const delay =
       (success && presentedPending) || match.invalid
         ? 0
         : (route.options.pendingMs ?? router.options.defaultPendingMs)
-    component =
+    const component =
       route.options.pendingComponent ??
       (router.options as any).defaultPendingComponent
     if (!component || typeof delay !== 'number' || delay === Infinity) {
-      return
-    }
-    boundary = index
-    min = route.options.pendingMinMs ?? router.options.defaultPendingMinMs ?? 0
-    break
-  }
-  if (boundary < 0) {
-    return
-  }
-  const matchId = matches[boundary]!.id
-  if (
-    !session ||
-    session[1 /* boundary */] !== boundary ||
-    sessionMatchId !== matchId
-  ) {
-    // Hydration and redirects can preserve pending presentation without a session.
-    // Do not delay it again; conservatively start pendingMinMs from now.
-    clearTimeout(session?.[3 /* timer */])
-    router._pending = session = [
-      tx,
-      boundary,
-      presentedPending ? Date.now() + min : tx[4 /* startedAt */] + delay!,
-      undefined,
-      presentedPending ? Promise.resolve(true) : undefined,
-      component,
-    ]
-  }
-  if (
-    session[4 /* ack */] &&
-    !tookOver &&
-    session[5 /* component */] === component
-  ) {
-    return
-  }
-  session[5 /* component */] = component
-  if (!session[4 /* ack */]) {
-    clearTimeout(session[3 /* timer */])
-    const remaining = session[2 /* deadline */] - Date.now()
-    if (remaining > 0) {
-      session[3 /* timer */] = setTimeout(
-        () => offerPending(router, tx),
-        remaining,
-      )
-      return
-    }
-    session[2 /* deadline */] = 0
-  }
-  const offered = matches.map((match) => ({
-    ...match,
-    _flight: undefined,
-  }))
-  offered[boundary]!.status = 'pending'
-  const ack = router
-    .startTransition(() => router.stores.setMatches(offered), offered)
-    .then((rendered) => {
-      if (
-        rendered &&
-        router._pending === session &&
-        session[4 /* ack */] === ack &&
-        !session[2 /* deadline */]
-      ) {
-        session[2 /* deadline */] = Date.now() + min
+      if (session) {
+        session[0 /* generation */] = tx
+        session[2 /* deadline */] = 0
+        session[4 /* ack */] = true
       }
-      return rendered
-    })
-  session[4 /* ack */] = ack
+      return
+    }
+    const min =
+      route.options.pendingMinMs ?? router.options.defaultPendingMinMs ?? 0
+    let tookOver = false
+    if (session?.[1 /* boundaryId */] === match.id) {
+      tookOver = session[0 /* generation */] !== tx
+      session[0 /* generation */] = tx
+    } else {
+      clearTimeout(session?.[3 /* revealTimer */])
+      router._pending = session = undefined
+    }
+    if (!session) {
+      // Hydration and redirects can preserve pending presentation without a session.
+      // Do not delay it again; conservatively start pendingMinMs from now.
+      router._pending = session = [
+        tx,
+        match.id,
+        presentedPending ? Date.now() + min : tx[4 /* startedAt */] + delay,
+        undefined,
+        presentedPending || undefined,
+        component,
+      ]
+    }
+    if (
+      session[4 /* ack */] &&
+      !tookOver &&
+      session[5 /* component */] === component
+    ) {
+      return
+    }
+    session[5 /* component */] = component
+    if (!session[4 /* ack */]) {
+      clearTimeout(session[3 /* revealTimer */])
+      const remaining = session[2 /* deadline */] - Date.now()
+      if (remaining > 0) {
+        session[3 /* revealTimer */] = setTimeout(
+          () => offerPending(router, tx),
+          remaining,
+        )
+        return
+      }
+      session[2 /* deadline */] = 0
+    }
+    const offered = matches.map((match) => ({
+      ...match,
+      _flight: undefined,
+    }))
+    offered[index]!.status = 'pending'
+    const ack = (session[4 /* ack */] = router
+      .startTransition(() => router.stores.setMatches(offered), offered)
+      .then(
+        (rendered) => {
+          if (
+            rendered &&
+            router._pending === session &&
+            session![4 /* ack */] === ack &&
+            !session![2 /* deadline */]
+          ) {
+            session![2 /* deadline */] = Date.now() + min
+          }
+          return rendered
+        },
+        () => {
+          if (router._pending?.[4 /* ack */] === ack) {
+            tx[0 /* controller */].abort()
+          }
+          return false
+        },
+      ))
+    return
+  }
 }
 
 /**
- * Cancels pending UI timing when its load ends. The ownership check prevents
- * an older, superseded load from clearing pending UI that a newer load took over.
+ * Cancels pending UI timing when the current load replaces its presentation.
+ * An obsolete load cannot clear the fallback that remains painted above it.
  */
 function finishPending(router: CoordinatorRouter, tx: LoadTransaction): void {
-  const session = router._pending
-  if (session?.[0 /* owner */] === tx) {
-    clearTimeout(session[3 /* timer */])
+  if (router._tx === tx) {
+    clearTimeout(router._pending?.[3 /* revealTimer */])
     router._pending = undefined
   }
+}
+
+async function awaitPendingMinimum(
+  router: CoordinatorRouter,
+  tx: LoadTransaction,
+): Promise<void> {
+  const session = router._pending
+  if (!session) {
+    return
+  }
+  clearTimeout(session[3 /* revealTimer */])
+  const remaining = session[2 /* deadline */] - Date.now()
+  if (
+    !session[4 /* ack */] ||
+    remaining <= 0 ||
+    !_getRenderedMatches(tx[3 /* matches */]).some(
+      (match) => match.id === session[1 /* boundaryId */],
+    )
+  ) {
+    return
+  }
+  let timer: ReturnType<typeof setTimeout> | undefined
+  try {
+    await waitFor(
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, remaining)
+      }),
+      tx[0 /* controller */].signal,
+    )
+  } catch {}
+  clearTimeout(timer)
 }
 
 function publishMatches(
@@ -1880,7 +1904,9 @@ async function runClientTransaction(
 
   if (isControl(result)) {
     if (result[0 /* kind */] === REDIRECTED && router._tx === tx) {
-      finishPending(router, tx)
+      if (result[1 /* redirect */].options.reloadDocument) {
+        finishPending(router, tx)
+      }
       transferMatchResources(router, tx[3 /* matches */])
       tx[3 /* matches */] = []
       if (router._tx === tx) {
@@ -1894,47 +1920,14 @@ async function runClientTransaction(
     }
     return
   }
-  const pending = router._pending
-  if (pending?.[0 /* owner */] === tx) {
-    /**
-     * Loading finished, so cancel any pending reveal. If the fallback rendered,
-     * wait out the rest of `pendingMinMs` before replacing it. If it never
-     * rendered, there is no minimum wait; if another load took it over, that
-     * load owns the deadline.
-     */
-    clearTimeout(pending[3 /* timer */])
-    if (pending[4 /* ack */]) {
-      const signal = tx[0 /* controller */].signal
-      let rendered = false
-      try {
-        rendered = await waitFor(pending[4 /* ack */], signal)
-      } catch (cause) {
-        if (cause !== signal) {
-          throw cause
-        }
-      }
-      if (
-        rendered &&
-        router._pending === pending &&
-        pending[0 /* owner */] === tx
-      ) {
-        const remaining = pending[2 /* deadline */] - Date.now()
-        if (remaining > 0) {
-          try {
-            await waitFor(
-              new Promise<void>((resolve) => {
-                pending[3 /* timer */] = setTimeout(resolve, remaining)
-              }),
-              signal,
-            )
-          } catch {}
-          clearTimeout(pending[3 /* timer */])
-        }
-      }
-    }
-  }
   if (router._tx !== tx) {
-    finishPending(router, tx)
+    discardLane(router, result)
+    return
+  }
+  // Only an acknowledged fallback owns a minimum. Recheck at the commit
+  // boundary because native view transitions can defer their update callback.
+  await awaitPendingMinimum(router, tx)
+  if (router._tx !== tx) {
     discardLane(router, result)
     return
   }
@@ -1945,6 +1938,11 @@ async function runClientTransaction(
   )
   const background = result[2 /* background */]
   await router.startViewTransition(async () => {
+    if (router._tx !== tx) {
+      discardLane(router, result)
+      return
+    }
+    await awaitPendingMinimum(router, tx)
     if (router._tx !== tx) {
       discardLane(router, result)
       return
@@ -2159,7 +2157,10 @@ export async function loadClientRoute(
   })
   // Cold loads have no committed UI to retain, but provisional not-found
   // matches must wait for lazy routes to place the final boundary.
-  if (!resolvedLocation && !matches.some((match) => match._notFound)) {
+  if (
+    resolvedPrefix ||
+    (!router._committed.length && !matches.some((match) => match._notFound))
+  ) {
     offerPending(router, tx)
   }
   try {
