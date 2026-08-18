@@ -199,7 +199,27 @@ export const Match = (props: { routeId: string }) => {
                 >
                   {(errorComponent) => (
                     <CatchBoundary
-                      getResetKey={() => router.stores.matches.get()}
+                      // Scope the reset key to this match and its
+                      // descendants (whose errors bubble here when they
+                      // have no errorComponent of their own): resetting on
+                      // unrelated matches' transitions just re-throws the
+                      // still-stale error and recreates the retried
+                      // subtree mid-settle.
+                      getResetKey={() => {
+                        const matches = router.stores.matches.get()
+                        const index = matches.findIndex(
+                          (match) => match.routeId === props.routeId,
+                        )
+                        if (index === -1) {
+                          return ''
+                        }
+                        let key = ''
+                        for (let i = index; i < matches.length; i++) {
+                          const match = matches[i]!
+                          key += `${match.status}|${match.updatedAt},`
+                        }
+                        return key
+                      }}
                       errorComponent={errorComponent() as any}
                       onCatch={(error: Error) => {
                         const notFoundError = getNotFound(error)

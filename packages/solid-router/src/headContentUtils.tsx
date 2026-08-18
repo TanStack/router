@@ -7,7 +7,9 @@ import {
   getScriptPreloadAttrs,
   resolveManifestCssLink,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import type { HeadTag } from '@solidjs/web'
 import type {
   AssetCrossOriginConfig,
   RouterManagedTag,
@@ -208,8 +210,7 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       })) satisfies Array<RouterManagedTag>
   })
 
-  // Reuse equal tag objects so Solid's reference-keyed For keeps DOM nodes.
-  return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
+  return Solid.createMemo(() => {
     const next: Array<RouterManagedTag> = []
     appendUniqueUserTags(next, meta())
     appendUniqueUserTags(next, links())
@@ -217,33 +218,73 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     next.push(...preloadLinks())
     appendUniqueUserTags(next, styles())
     appendUniqueUserTags(next, headScripts())
-
-    return prev === undefined ? next : replaceEqualTags(prev, next)
+    return next
   })
 }
 
-function replaceEqualTags(
-  prev: Array<RouterManagedTag>,
-  next: Array<RouterManagedTag>,
-) {
-  const prevByKey = new Map<string, RouterManagedTag>()
-  for (const tag of prev) {
-    prevByKey.set(JSON.stringify(tag), tag)
+const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
+
+/**
+ * Convert the router-managed tags into head registry descriptors for
+ * `useHead`. Pure data mapping — it is evaluated inside the registry's own
+ * flush boundary (server) / effect (client), so it must not allocate
+ * reactive owners.
+ */
+export function toHeadTags(tags: Array<RouterManagedTag>): Array<HeadTag> {
+  return tags.map(toHeadTag)
+}
+
+function toHeadTag(t: RouterManagedTag): HeadTag {
+  const props: Record<string, any> = { ...t.attrs }
+  let children: string | undefined = t.children
+
+  if (
+    t.tag === 'style' &&
+    t.inlineCss &&
+    (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+      (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
+  ) {
+    // Mark the inline-CSS style so the client can find it again: the
+    // serialized manifest omits the CSS text, so on the client the tag
+    // arrives with `children === undefined` and the text is recovered from
+    // the server-rendered element.
+    props[INLINE_CSS_HYDRATION_ATTR] = ''
   }
 
-  let isEqual = prev.length === next.length
-  const result = next.map((tag, index) => {
-    const existing = prevByKey.get(JSON.stringify(tag))
-    if (existing) {
-      if (existing !== prev[index]) {
-        isEqual = false
-      }
-      return existing
-    }
+  if (
+    t.tag === 'style' &&
+    t.inlineCss &&
+    children === undefined &&
+    typeof document !== 'undefined'
+  ) {
+    children =
+      document.querySelector<HTMLStyleElement>(
+        `style[${INLINE_CSS_HYDRATION_ATTR}]`,
+      )?.textContent ?? ''
+  }
 
-    isEqual = false
-    return tag
-  })
+  if (children !== undefined) {
+    props.children = children
+  }
 
-  return isEqual ? prev : result
+  const headTag: HeadTag = { tag: t.tag, props }
+
+  // Inline scripts and styles have no natural registry identity: the
+  // registry assigns them per-runtime unique ids, which can never match
+  // between server and client, so hydration would append a client copy
+  // next to the server-rendered one. A stable content-derived key gives
+  // both runtimes the same identity to reconcile on.
+  if (t.tag === 'style' || (t.tag === 'script' && props.src === undefined)) {
+    headTag.key = `tsr-${hashString(t.tag + JSON.stringify(props))}`
+  }
+
+  return headTag
+}
+
+function hashString(s: string): string {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  }
+  return (h >>> 0).toString(36)
 }
