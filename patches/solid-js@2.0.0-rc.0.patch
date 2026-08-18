@@ -111,7 +111,7 @@ index e9b692addaef5c1285a9003fe4ff360e91d40d79..a77453f7caec15ea93e527bb23fe0ea0
    return wrap;
  }
 diff --git a/dist/server.cjs b/dist/server.cjs
-index b7652fedf12661b2660550e09352e08c1f716003..7307f6a59826618ca3e1cb86dd9bb757e37182cf 100644
+index b7652fedf12661b2660550e09352e08c1f716003..95801d7b76c5a368e859f62603cb5b36f2a34e75 100644
 --- a/dist/server.cjs
 +++ b/dist/server.cjs
 @@ -1307,13 +1307,14 @@ function lazy(fn, moduleUrl) {
@@ -144,7 +144,7 @@ index b7652fedf12661b2660550e09352e08c1f716003..7307f6a59826618ca3e1cb86dd9bb757
      const ctx = sharedConfig.context;
      let assetsPending;
      if (ctx?.registerAsset && ctx.resolveAssets) {
-@@ -1370,17 +1371,21 @@ function lazy(fn, moduleUrl) {
+@@ -1370,8 +1371,8 @@ function lazy(fn, moduleUrl) {
        if (moduleUrl) {
          assetsPending = registerLazyAssets(moduleUrl);
        } else if (!noHydrate) {
@@ -154,22 +154,17 @@ index b7652fedf12661b2660550e09352e08c1f716003..7307f6a59826618ca3e1cb86dd9bb757
 +          const id = cur.mod?.$$moduleUrl;
            if (typeof id === "string") {
              assetsPending = registerLazyAssets(id);
-+          } else if (id === null) {
-+            // Explicit opt-out: the module manages its own client assets
-+            // and hydration (e.g. a wrapper selecting a named export).
            } else {
-             console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
+@@ -1379,7 +1380,7 @@ function lazy(fn, moduleUrl) {
            }
          } else {
            const boundary = ctx._currentBoundaryId;
 -          assetsPending = p.then(mod => {
 +          assetsPending = cur.then(mod => {
              const id = mod?.$$moduleUrl;
-+            if (id === null) return;
              if (typeof id !== "string") {
                console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
-               return;
-@@ -1403,10 +1408,10 @@ function lazy(fn, moduleUrl) {
+@@ -1403,10 +1404,10 @@ function lazy(fn, moduleUrl) {
        }
      }
      return createMemo(() => {
@@ -184,7 +179,7 @@ index b7652fedf12661b2660550e09352e08c1f716003..7307f6a59826618ca3e1cb86dd9bb757
        sync: true
      });
 diff --git a/dist/server.js b/dist/server.js
-index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..d2bc636b0e9cf2b853835cfe3f2279a4b4719894 100644
+index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..f75a357bcee91d3305c3e67127c8e7d199708c68 100644
 --- a/dist/server.js
 +++ b/dist/server.js
 @@ -1306,13 +1306,14 @@ function lazy(fn, moduleUrl) {
@@ -217,7 +212,7 @@ index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..d2bc636b0e9cf2b853835cfe3f2279a4
      const ctx = sharedConfig.context;
      let assetsPending;
      if (ctx?.registerAsset && ctx.resolveAssets) {
-@@ -1369,17 +1370,21 @@ function lazy(fn, moduleUrl) {
+@@ -1369,8 +1370,8 @@ function lazy(fn, moduleUrl) {
        if (moduleUrl) {
          assetsPending = registerLazyAssets(moduleUrl);
        } else if (!noHydrate) {
@@ -227,22 +222,17 @@ index 394d7c0406d4aa0d6caba5faeb0b9d4928c06f1e..d2bc636b0e9cf2b853835cfe3f2279a4
 +          const id = cur.mod?.$$moduleUrl;
            if (typeof id === "string") {
              assetsPending = registerLazyAssets(id);
-+          } else if (id === null) {
-+            // Explicit opt-out: the module manages its own client assets
-+            // and hydration (e.g. a wrapper selecting a named export).
            } else {
-             console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
+@@ -1378,7 +1379,7 @@ function lazy(fn, moduleUrl) {
            }
          } else {
            const boundary = ctx._currentBoundaryId;
 -          assetsPending = p.then(mod => {
 +          assetsPending = cur.then(mod => {
              const id = mod?.$$moduleUrl;
-+            if (id === null) return;
              if (typeof id !== "string") {
                console.warn("lazy() used in SSR without a moduleUrl and the loaded module has no " + "$$moduleUrl export, so its client assets cannot be resolved — the " + "component will load late during hydration. This is typically " + "injected by the bundler plugin.");
-               return;
-@@ -1402,10 +1407,10 @@ function lazy(fn, moduleUrl) {
+@@ -1402,10 +1403,10 @@ function lazy(fn, moduleUrl) {
        }
      }
      return createMemo(() => {

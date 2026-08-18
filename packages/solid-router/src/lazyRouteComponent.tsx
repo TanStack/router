@@ -17,16 +17,14 @@ export function lazyRouteComponent<
     importer().then(
       (res) => ({
         default: res[exportName ?? 'default'] as any,
-        // Explicit opt-out of the renderer's per-module asset registration
-        // and preloaded-module hydration shortcut: route chunks bundle many
-        // routes, so registering the chunk would emit the union of their
-        // CSS on every route (breaking per-route isolation), and the
-        // shortcut assumes the chunk's default export is the component —
-        // untrue for this wrapper's named-export selection. Route assets
-        // are served by TanStack's route-keyed manifest, and hydration is
-        // synchronous because preload() below warms lazy()'s component
-        // cache before the router renders.
-        $$moduleUrl: null,
+        // Server-side lazy() resolves the module's client assets (CSS,
+        // modulepreload hints) by reading the $$moduleUrl export the
+        // bundler's SSR transform appends to project modules. Split route
+        // modules get per-module manifest entries (the query is part of the
+        // module identity), so registration is per-route precise; the head
+        // registry dedupes against TanStack's route-keyed manifest links by
+        // URL.
+        $$moduleUrl: (res as any).$$moduleUrl,
       }),
       (error) => {
         // If the load fails due to module not found, it may mean a new
