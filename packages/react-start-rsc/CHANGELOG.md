@@ -1,5 +1,45 @@
 # @tanstack/react-start-rsc
 
+## 0.1.45
+
+### Patch Changes
+
+- Updated dependencies [[`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2), [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e), [`0fdf9ff`](https://github.com/TanStack/router/commit/0fdf9ff16fc532de9fc131d18df167ebd8038720), [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff)]:
+  - @tanstack/router-core@1.171.24
+  - @tanstack/react-router@1.170.29
+  - @tanstack/start-client-core@1.170.24
+  - @tanstack/start-plugin-core@1.171.36
+  - @tanstack/start-storage-context@1.167.26
+
+## 0.1.44
+
+### Patch Changes
+
+- Updated dependencies [[`0c25a7b`](https://github.com/TanStack/router/commit/0c25a7b43b5331ee6ebf94d50e9793002783adab), [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90)]:
+  - @tanstack/react-router@1.170.28
+  - @tanstack/router-core@1.171.23
+  - @tanstack/start-client-core@1.170.23
+  - @tanstack/start-plugin-core@1.171.35
+  - @tanstack/start-storage-context@1.167.25
+
+## 0.1.43
+
+### Patch Changes
+
+- Updated dependencies [[`b0817f5`](https://github.com/TanStack/router/commit/b0817f50cc639ae50b6c30cd11c5adbf7eed028c)]:
+  - @tanstack/react-router@1.170.27
+
+## 0.1.42
+
+### Patch Changes
+
+- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13), [`f500760`](https://github.com/TanStack/router/commit/f5007607d62e932b8df19de866cdc6bddcff8db3), [`1aafca9`](https://github.com/TanStack/router/commit/1aafca9b45d24f8f0dba78e716fc9582346c6ca1), [`aa10b65`](https://github.com/TanStack/router/commit/aa10b6589eeda215f5a60ea0af95a3101d8c414e)]:
+  - @tanstack/router-core@1.171.22
+  - @tanstack/react-router@1.170.26
+  - @tanstack/start-client-core@1.170.22
+  - @tanstack/start-plugin-core@1.171.34
+  - @tanstack/start-storage-context@1.167.24
+
 ## 0.1.41
 
 ### Patch Changes

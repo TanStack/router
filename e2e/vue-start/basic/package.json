@@ -20,7 +20,7 @@
     "express": "^5.2.1",
     "http-proxy-middleware": "^3.0.5",
     "js-cookie": "^3.0.5",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "tailwind-merge": "^3.6.0",
     "vue": "^3.5.16",
     "zod": "^4.4.3"

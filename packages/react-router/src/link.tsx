@@ -2,7 +2,6 @@
 
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
-import { flushSync } from 'react-dom'
 import {
   deepEqual,
   exactPathTest,
@@ -593,12 +592,10 @@ export function useLinkProps<
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [isTransitioning, setIsTransitioning] = React.useState(false)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const hasRenderFetched = React.useRef(false)
 
   const preload =
-    options.reloadDocument || externalLink
+    options.reloadDocument || externalLink || disabled
       ? false
       : (userPreload ?? router.options.defaultPreload)
   const preloadDelay =
@@ -615,33 +612,58 @@ export function useLinkProps<
   }, [router, _options])
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const preloadViewportIoCallback = React.useCallback(
-    (entry: IntersectionObserverEntry | undefined) => {
-      if (entry?.isIntersecting) {
-        doPreload()
+  const enqueuePreload = React.useCallback(
+    (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
+      if (!e) {
+        cancelPreload(innerRef)
+        return
       }
+
+      if (
+        !(
+          (e as IntersectionObserverEntry).isIntersecting ??
+          preload === 'intent'
+        )
+      ) {
+        if ((e as IntersectionObserverEntry).isIntersecting === false) {
+          cancelPreload(innerRef)
+        }
+        return
+      }
+
+      if (!preloadDelay) {
+        doPreload()
+        return
+      }
+
+      if (timeoutMap.has(innerRef)) {
+        return
+      }
+
+      timeoutMap.set(
+        innerRef,
+        setTimeout(() => {
+          timeoutMap.delete(innerRef)
+          doPreload()
+        }, preloadDelay),
+      )
     },
-    [doPreload],
+    [doPreload, innerRef, preload, preloadDelay],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  useIntersectionObserver(
-    innerRef,
-    preloadViewportIoCallback,
-    intersectionObserverOptions,
-    !!disabled || preload !== 'viewport',
-  )
+  useIntersectionObserver(innerRef, enqueuePreload, preload !== 'viewport')
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   React.useEffect(() => {
     if (hasRenderFetched.current) {
       return
     }
-    if (!disabled && preload === 'render') {
+    if (preload === 'render') {
       doPreload()
       hasRenderFetched.current = true
     }
-  }, [disabled, doPreload, preload])
+  }, [doPreload, preload])
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
@@ -653,21 +675,12 @@ export function useLinkProps<
 
     if (
       !disabled &&
-      !isCtrlEvent(e) &&
+      !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
     ) {
       e.preventDefault()
-
-      flushSync(() => {
-        setIsTransitioning(true)
-      })
-
-      const unsub = router.subscribe('onResolved', () => {
-        unsub()
-        setIsTransitioning(false)
-      })
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
@@ -702,39 +715,14 @@ export function useLinkProps<
     }
   }
 
-  const enqueueIntentPreload = (e: React.MouseEvent | React.FocusEvent) => {
-    if (disabled || preload !== 'intent') return
-
-    if (!preloadDelay) {
-      doPreload()
-      return
-    }
-
-    const eventTarget = e.currentTarget
-
-    if (timeoutMap.has(eventTarget)) {
-      return
-    }
-
-    const id = setTimeout(() => {
-      timeoutMap.delete(eventTarget)
-      doPreload()
-    }, preloadDelay)
-    timeoutMap.set(eventTarget, id)
-  }
-
-  const handleTouchStart = (_: React.TouchEvent) => {
-    if (disabled || preload !== 'intent') return
+  const handleTouchStart = () => {
+    if (preload !== 'intent') return
     doPreload()
   }
 
-  const handleLeave = (e: React.MouseEvent | React.FocusEvent) => {
-    if (disabled || !preload || !preloadDelay) return
-    const eventTarget = e.currentTarget
-    const id = timeoutMap.get(eventTarget)
-    if (id) {
-      clearTimeout(id)
-      timeoutMap.delete(eventTarget)
+  const handleLeave = () => {
+    if (preload === 'intent') {
+      cancelPreload(innerRef)
     }
   }
 
@@ -746,8 +734,8 @@ export function useLinkProps<
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
     onBlur: composeHandlers([onBlur, handleLeave]),
-    onFocus: composeHandlers([onFocus, enqueueIntentPreload]),
-    onMouseEnter: composeHandlers([onMouseEnter, enqueueIntentPreload]),
+    onFocus: composeHandlers([onFocus, enqueuePreload]),
+    onMouseEnter: composeHandlers([onMouseEnter, enqueuePreload]),
     onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
@@ -756,7 +744,6 @@ export function useLinkProps<
     ...(resolvedClassName && { className: resolvedClassName }),
     ...(disabled && STATIC_DISABLED_PROPS),
     ...(isActive && STATIC_ACTIVE_PROPS),
-    ...(isHydrated && isTransitioning && STATIC_TRANSITIONING_PROPS),
   }
 }
 
@@ -764,12 +751,11 @@ const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
 const STATIC_DISABLED_PROPS = { role: 'link', 'aria-disabled': true }
 const STATIC_ACTIVE_PROPS = { 'data-status': 'active', 'aria-current': 'page' }
-const STATIC_TRANSITIONING_PROPS = { 'data-transitioning': 'transitioning' }
 
-const timeoutMap = new WeakMap<EventTarget, ReturnType<typeof setTimeout>>()
-
-const intersectionObserverOptions: IntersectionObserverInit = {
-  rootMargin: '100px',
+const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
+const cancelPreload = (eventTarget: object) => {
+  clearTimeout(timeoutMap.get(eventTarget))
+  timeoutMap.delete(eventTarget)
 }
 
 const composeHandlers =
@@ -865,10 +851,7 @@ export interface LinkPropsChildren {
   // If a function is passed as a child, it will be given the `isActive` boolean to aid in further styling on the element it returns
   children?:
     | React.ReactNode
-    | ((state: {
-        isActive: boolean
-        isTransitioning: boolean
-      }) => React.ReactNode)
+    | ((state: { isActive: boolean }) => React.ReactNode)
 }
 
 type LinkComponentReactProps<TComp> = Omit<
@@ -955,7 +938,7 @@ export function createLink<const TComp>(
  *
  * Props:
  * - `preload`: Controls route preloading (eg. 'intent', 'render', 'viewport', true/false)
- * - `preloadDelay`: Delay in ms before preloading on hover
+ * - `preloadDelay`: Delay in ms before preloading on focus, hover, or viewport entry
  * - `activeProps`/`inactiveProps`: Additional props merged when link is active/inactive
  * - `resetScroll`/`hashScrollIntoView`: Control scroll behavior on navigation
  * - `viewTransition`/`startTransition`: Use View Transitions/React transitions for navigation
@@ -985,10 +968,6 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     return React.createElement(_asChild, linkProps, children)
   },
 ) as any
-
-function isCtrlEvent(e: React.MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
 
 export type LinkOptionsFnOptions<
   TOptions,

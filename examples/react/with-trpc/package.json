@@ -11,15 +11,15 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/react-router": "^1.170.25",
+    "@tanstack/react-router": "^1.170.29",
     "@tanstack/react-router-devtools": "^1.167.1",
-    "@tanstack/router-plugin": "^1.168.29",
+    "@tanstack/router-plugin": "^1.168.32",
     "@trpc/client": "^11.4.3",
     "@trpc/server": "^11.4.3",
     "express": "^5.2.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "tailwindcss": "^4.2.2",
     "zod": "^4.4.3"
   },

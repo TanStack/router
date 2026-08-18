@@ -18,12 +18,14 @@
     "@codspeed/vitest-plugin": "^5.5.0",
     "@vitejs/plugin-react": "^6.0.1",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
+    "@types/react": "catalog:",
     "seroval": "^1.6.2",
     "@typescript/native": "npm:typescript@^7.0.2",
+    "jsdom": "29.1.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11",
-    "vitest": "^4.1.4"
+    "vitest": "catalog:"
   },
   "nx": {
     "targets": {

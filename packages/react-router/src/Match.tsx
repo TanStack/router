@@ -12,6 +12,10 @@ import { SafeFragment } from './SafeFragment'
 import { renderRouteNotFound } from './renderRouteNotFound'
 import { ScrollRestoration } from './scroll-restoration'
 import { ClientOnly } from './ClientOnly'
+import {
+  nonRouteComponentContext,
+  wrapInNonRouteComponentContext,
+} from './nonRouteComponentContext'
 import type {
   AnyRoute,
   AnyRouteMatch,
@@ -24,7 +28,14 @@ export function renderPending(
 ) {
   const PendingComponent =
     route?.options.pendingComponent ?? router.options.defaultPendingComponent
-  return PendingComponent ? <PendingComponent /> : null
+  if (!PendingComponent) {
+    return null
+  }
+
+  const pendingElement = <PendingComponent />
+  return process.env.NODE_ENV !== 'production'
+    ? wrapInNonRouteComponentContext(pendingElement, 'pendingComponent')
+    : pendingElement
 }
 
 type OutletMatchSelection = [
@@ -36,6 +47,18 @@ const outletMatchSelectionEqual = (
   a: OutletMatchSelection,
   b: OutletMatchSelection,
 ) => a[0] === b[0] && a[1] === b[1]
+
+const canWrapInSuspense = (
+  router: ReturnType<typeof useRouter>,
+  route: AnyRoute,
+  ssr: AnyRouteMatch['ssr'],
+) =>
+  !route.isRoot ||
+  (route.options as RootRouteOptions).shellComponent ||
+  route.options.wrapInSuspense ||
+  ssr === false ||
+  ssr === 'data-only' ||
+  !((isServer ?? router.isServer) || router.ssr)
 
 export const Match = React.memo(function MatchImpl({
   routeId,
@@ -78,10 +101,13 @@ function MatchView({
     : route.options.notFoundComponent
 
   const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
+  // A root component may render the document itself. Only place its Suspense
+  // boundary in pure CSR, inside an explicit shell, or when explicitly opted in.
   const ResolvedSuspenseBoundary =
+    canWrapInSuspense(router, route, match.ssr) &&
     (route.options.wrapInSuspense ??
-    pendingElement ??
-    ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
+      pendingElement ??
+      ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
       ? React.Suspense
       : SafeFragment
 
@@ -123,10 +149,16 @@ function MatchView({
                   throw error
                 }
 
-                return React.createElement(
+                const notFoundElement = React.createElement(
                   routeNotFoundComponent!,
                   error as any,
                 )
+                return process.env.NODE_ENV !== 'production'
+                  ? wrapInNonRouteComponentContext(
+                      notFoundElement,
+                      'notFoundComponent',
+                    )
+                  : notFoundElement
               }}
             >
               {resolvedNoSsr ? (
@@ -181,6 +213,11 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, route.options.component, router.options.defaultComponent])
 
   if (match.status === 'pending') {
+    if (router.ssr && !canWrapInSuspense(router, route, match.ssr)) {
+      // Replacing an SSR document root with pending UI would remove <html>.
+      // Hydrated matches retain their prior data, so keep rendering it.
+      return out
+    }
     if (router._tx) {
       throw router._tx[5]
     }
@@ -197,7 +234,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
         (route.options.errorComponent ??
           router.options.defaultErrorComponent) ||
         ErrorComponent
-      return (
+      const errorElement = (
         <RouteErrorComponent
           error={match.error as any}
           reset={undefined as any}
@@ -206,6 +243,9 @@ export const MatchInner = React.memo(function MatchInnerImpl({
           }}
         />
       )
+      return process.env.NODE_ENV !== 'production'
+        ? wrapInNonRouteComponentContext(errorElement, 'errorComponent')
+        : errorElement
     }
     throw match.error
   }
@@ -220,6 +260,16 @@ export const MatchInner = React.memo(function MatchInnerImpl({
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/outletComponent
  */
 export const Outlet = React.memo(function OutletImpl() {
+  if (process.env.NODE_ENV !== 'production') {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const nonRouteComponent = React.useContext(nonRouteComponentContext!)
+    if (nonRouteComponent) {
+      console.warn(
+        `Warning: An <Outlet /> was rendered inside a ${nonRouteComponent}. <Outlet /> should only be rendered inside a route component.`,
+      )
+    }
+  }
+
   const router = useRouter()
   const routeId = React.useContext(matchContext)!
 

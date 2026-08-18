@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/react-router",
-  "version": "1.170.25",
+  "version": "1.170.29",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -104,10 +104,20 @@
     "@types/node": ">=20",
     "@vitejs/plugin-react": "^4.3.4",
     "combinate": "^1.1.11",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "vite": "*",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "react": ">=18.0.0 || >=19.0.0",

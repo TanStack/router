@@ -4,6 +4,7 @@ import {
   cleanup,
   fireEvent,
   render,
+  renderHook,
   screen,
   waitFor,
 } from '@testing-library/react'
@@ -12,6 +13,7 @@ import { createControlledPromise } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
+  RouterContextProvider,
   RouterProvider,
   createRootRoute,
   createRoute,
@@ -230,6 +232,59 @@ test('useMatchRoute follows superseding pending locations', async () => {
     expect(screen.getByTestId('pending-b')).toHaveTextContent('false')
     expect(screen.getByTestId('resolved-b')).toHaveTextContent('true')
   })
+})
+
+test('useMatchRoute callback identity tracks route matching state', async () => {
+  const root = createRootRoute()
+  const a = createRoute({
+    getParentRoute: () => root,
+    path: '/a',
+  })
+  const b = createRoute({
+    getParentRoute: () => root,
+    path: '/b',
+  })
+  const router = createRouter({
+    routeTree: root.addChildren([a, b]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  const aLocation = router.buildLocation({ to: '/a' })
+  const bLocation = router.buildLocation({ to: '/b' })
+
+  const { result, rerender } = renderHook(() => useMatchRoute(), {
+    wrapper: ({ children }) => (
+      <RouterContextProvider router={router}>{children}</RouterContextProvider>
+    ),
+  })
+
+  let previous = result.current
+  rerender()
+  expect(result.current).toBe(previous)
+
+  async function expectCallbackInvalidated(update: () => void) {
+    previous = result.current
+    act(update)
+    await waitFor(() => expect(result.current).not.toBe(previous))
+  }
+
+  await expectCallbackInvalidated(() => {
+    router.stores.location.set(aLocation)
+  })
+  await expectCallbackInvalidated(() => {
+    router.stores.resolvedLocation.set(bLocation)
+  })
+  await expectCallbackInvalidated(() => {
+    router.stores.status.set('pending')
+  })
+
+  previous = result.current
+  act(() => {
+    router.stores.location.set({ ...aLocation })
+    router.stores.resolvedLocation.set({ ...bLocation })
+    router.stores.status.set('pending')
+  })
+  rerender()
+  expect(result.current).toBe(previous)
 })
 
 test('legacy notFoundRoute drops a stale parent layout after navigation', async () => {

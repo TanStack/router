@@ -1,5 +1,38 @@
 # @tanstack/vue-router
 
+## 1.170.26
+
+### Patch Changes
+
+- [#8073](https://github.com/TanStack/router/pull/8073) [`0fdf9ff`](https://github.com/TanStack/router/commit/0fdf9ff16fc532de9fc131d18df167ebd8038720) - inline isCtrlKey inside Link component for byte shaving
+
+- Updated dependencies [[`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2), [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e), [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff)]:
+  - @tanstack/router-core@1.171.24
+
+## 1.170.25
+
+### Patch Changes
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
+- [#8002](https://github.com/TanStack/router/pull/8002) [`3848503`](https://github.com/TanStack/router/commit/38485038c52ff898777cabeeeb2eaaa29c93f789) - Keep active route components mounted by default when route params change.
+
+- Updated dependencies [[`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90)]:
+  - @tanstack/router-core@1.171.23
+
+## 1.170.24
+
+### Patch Changes
+
+- [#8045](https://github.com/TanStack/router/pull/8045) [`f500760`](https://github.com/TanStack/router/commit/f5007607d62e932b8df19de866cdc6bddcff8db3) - Warn when an Outlet is rendered inside a pending, error, or not-found component.
+
+- [#8043](https://github.com/TanStack/router/pull/8043) [`1aafca9`](https://github.com/TanStack/router/commit/1aafca9b45d24f8f0dba78e716fc9582346c6ca1) - remove the undocumented Link `isTransitioning` state and `data-transitioning` attribute
+
+- [#8044](https://github.com/TanStack/router/pull/8044) [`aa10b65`](https://github.com/TanStack/router/commit/aa10b6589eeda215f5a60ea0af95a3101d8c414e) - Apply `preloadDelay` to viewport link preloading and cancel pending preloads when links leave the viewport.
+
+- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13)]:
+  - @tanstack/router-core@1.171.22
+
 ## 1.170.23
 
 ### Patch Changes
