@@ -231,12 +231,15 @@ function useLinkPropsImpl(
 
   const doPreload = () => {
     const options = getOptions()
-    return router
-      .preloadRoute({ ...options, _builtLocation: next.value } as any)
-      .catch((err: any) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+    return (
+      router.preloadRoute as (
+        opts: typeof options,
+        builtLocation: ReturnType<typeof router.buildLocation>,
+      ) => ReturnType<typeof router.preloadRoute>
+    )(options, next.value).catch((err: any) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
   }
 
   let pendingPreload: 'intent' | 'viewport' | undefined

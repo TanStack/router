@@ -251,12 +251,15 @@ export function useLinkProps<
   })
 
   const doPreload = () =>
-    router
-      .preloadRoute({ ...options, _builtLocation: next() } as any)
-      .catch((err: any) => {
-        console.warn(err)
-        console.warn(preloadWarning)
-      })
+    (
+      router.preloadRoute as (
+        opts: typeof options,
+        builtLocation: ReturnType<typeof router.buildLocation>,
+      ) => ReturnType<typeof router.preloadRoute>
+    )(options, next()).catch((err: any) => {
+      console.warn(err)
+      console.warn(preloadWarning)
+    })
 
   const [ref, setRef] = Solid.createSignal<Element | null>(null)
 
