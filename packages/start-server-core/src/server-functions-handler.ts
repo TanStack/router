@@ -150,7 +150,11 @@ export const handleServerAction = async ({
 
         let jsonPayload
         if (contentType?.includes('application/json')) {
-          jsonPayload = await request.json()
+          const text = await request.text()
+          if (text.length > MAX_PAYLOAD_SIZE) {
+            throw new Error('Payload too large')
+          }
+          jsonPayload = JSON.parse(text)
         }
 
         const payload = jsonPayload ? parsePayload(jsonPayload) : {}
