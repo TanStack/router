@@ -78,7 +78,9 @@ class ScriptBuffer {
   }
 
   enqueue(script: string) {
-    if (this._cleanedUp) return
+    if (this._cleanedUp) {
+      return
+    }
     this._queue.push(script)
     if (this._scriptBarrierLifted) {
       this.scheduleInjectBufferedScripts()
@@ -86,7 +88,9 @@ class ScriptBuffer {
   }
 
   liftBarrier() {
-    if (this._scriptBarrierLifted || this._cleanedUp) return
+    if (this._scriptBarrierLifted || this._cleanedUp) {
+      return
+    }
     this._scriptBarrierLifted = true
     if (this._queue.length > 0) {
       this.scheduleInjectBufferedScripts()
@@ -94,18 +98,24 @@ class ScriptBuffer {
   }
 
   scheduleInjectBufferedScripts() {
-    if (this._pendingMicrotaskVersion !== 0) return
+    if (this._pendingMicrotaskVersion !== 0) {
+      return
+    }
     const pendingVersion = ++this._microtaskVersion
     this._pendingMicrotaskVersion = pendingVersion
     queueMicrotask(() => {
-      if (this._pendingMicrotaskVersion !== pendingVersion) return
+      if (this._pendingMicrotaskVersion !== pendingVersion) {
+        return
+      }
       this._pendingMicrotaskVersion = 0
       this.injectBufferedScripts()
     })
   }
 
   clearPendingMicrotask() {
-    if (this._pendingMicrotaskVersion === 0) return
+    if (this._pendingMicrotaskVersion === 0) {
+      return
+    }
     this._pendingMicrotaskVersion = 0
     this._microtaskVersion++
   }
@@ -118,8 +128,12 @@ class ScriptBuffer {
    * scripts should remain in the queue so takeBufferedScripts() can retrieve them
    */
   flush() {
-    if (!this._scriptBarrierLifted) return
-    if (this._cleanedUp) return
+    if (!this._scriptBarrierLifted) {
+      return
+    }
+    if (this._cleanedUp) {
+      return
+    }
     this.clearPendingMicrotask()
     this.injectBufferedScripts()
   }
@@ -129,7 +143,9 @@ class ScriptBuffer {
   }
 
   takeScripts(count: number) {
-    if (count <= 0) return undefined
+    if (count <= 0) {
+      return undefined
+    }
     const bufferedScripts = this._queue.splice(0, count)
     if (bufferedScripts.length === 0) {
       return undefined
@@ -147,9 +163,13 @@ class ScriptBuffer {
   }
 
   injectBufferedScripts() {
-    if (this._cleanedUp) return
+    if (this._cleanedUp) {
+      return
+    }
     // Early return if queue is empty (avoids unnecessary takeAll() call)
-    if (this._queue.length === 0) return
+    if (this._queue.length === 0) {
+      return
+    }
     const scriptsToInject = this.takeAll()
     if (scriptsToInject) {
       this.injectScript?.(scriptsToInject)
@@ -182,7 +202,9 @@ const manifestCaches = new WeakMap<ServerManifest, ManifestLRU>()
 
 function getManifestCache(manifest: ServerManifest): ManifestLRU {
   const cache = manifestCaches.get(manifest)
-  if (cache) return cache
+  if (cache) {
+    return cache
+  }
   const newCache = createLRUCache<string, PreparedMatchedManifestRoutes>(
     MANIFEST_CACHE_SIZE,
   )
@@ -194,11 +216,15 @@ function getInlineCssForPreparedRoutes(
   manifest: ServerManifest,
   preparedRoutes: PreparedMatchedManifestRoutes,
 ) {
-  if (preparedRoutes.inlineCss !== undefined) return preparedRoutes.inlineCss
+  if (preparedRoutes.inlineCss !== undefined) {
+    return preparedRoutes.inlineCss
+  }
 
   const styles = manifest.inlineCss?.styles
   const hrefs = preparedRoutes.inlineCssHrefs
-  if (!styles || !hrefs?.length) return undefined
+  if (!styles || !hrefs?.length) {
+    return undefined
+  }
 
   let css = ''
   for (const href of hrefs) {
@@ -387,7 +413,9 @@ export function attachRouterServerSsrUtils({
 }) {
   router.ssr = {
     get manifest() {
-      if (!manifest) return manifest
+      if (!manifest) {
+        return manifest
+      }
 
       const requestAssets = getRequestAssets?.()
       const matches = _getRenderedMatches(router.stores.matches.get())
@@ -469,7 +497,9 @@ export function attachRouterServerSsrUtils({
     listener: () => void,
   ) => {
     const index = listeners.indexOf(listener)
-    if (index >= 0) listeners.splice(index, 1)
+    if (index >= 0) {
+      listeners.splice(index, 1)
+    }
   }
 
   const scriptBuffer = new ScriptBuffer((script) => {
@@ -478,13 +508,17 @@ export function attachRouterServerSsrUtils({
 
   const serverSsr: ServerSsr = {
     injectHtml: (html: string) => {
-      if (!html || cleanupStarted) return
+      if (!html || cleanupStarted) {
+        return
+      }
       // Buffer the HTML so it can be retrieved via takeBufferedHtml()
       injectedHtmlBuffer += html
       callListeners(injectedHtmlListeners, 'SSR injected HTML listener error')
     },
     injectScript: (script: string) => {
-      if (!script || cleanupStarted) return
+      if (!script || cleanupStarted) {
+        return
+      }
       const html = `<script${router.options.ssr?.nonce ? ` nonce='${router.options.ssr.nonce}'` : ''}>${script}</script>`
       serverSsr.injectHtml(html)
     },
@@ -563,7 +597,9 @@ export function attachRouterServerSsrUtils({
 
       let serializationCompleteSignaled = false
       const signalSerializationComplete = () => {
-        if (serializationCompleteSignaled || cleanupStarted) return
+        if (serializationCompleteSignaled || cleanupStarted) {
+          return
+        }
         serializationCompleteSignaled = true
         _serializationFinished = true
 
@@ -580,7 +616,9 @@ export function attachRouterServerSsrUtils({
       }
 
       const finishScriptSerialization = () => {
-        if (serializationCompleteSignaled || cleanupStarted) return
+        if (serializationCompleteSignaled || cleanupStarted) {
+          return
+        }
         scriptBuffer.enqueue(GLOBAL_TSR + '.e()')
         // Must synchronously notify injected HTML listeners before signaling
         // completion; otherwise the held </body> tail could flush ahead of the
@@ -633,16 +671,22 @@ export function attachRouterServerSsrUtils({
       return false
     },
     onInjectedHtml: (listener) => {
-      if (cleanupStarted) return () => {}
+      if (cleanupStarted) {
+        return () => {}
+      }
       injectedHtmlListeners.push(listener)
       return () => removeListener(injectedHtmlListeners, listener)
     },
     onRenderFinished: (listener) => {
-      if (cleanupStarted || streamFastPathReserved) return
+      if (cleanupStarted || streamFastPathReserved) {
+        return
+      }
       renderFinishedListeners.push(listener)
     },
     onSerializationFinished: (listener) => {
-      if (cleanupStarted) return () => {}
+      if (cleanupStarted) {
+        return () => {}
+      }
       if (_serializationFinished && !cleanupStarted) {
         try {
           listener()
@@ -655,11 +699,15 @@ export function attachRouterServerSsrUtils({
       return () => removeListener(serializationFinishedListeners, listener)
     },
     onCleanup: (listener) => {
-      if (cleanupStarted) return
+      if (cleanupStarted) {
+        return
+      }
       cleanupListeners.push(listener)
     },
     setRenderFinished: () => {
-      if (cleanupStarted) return
+      if (cleanupStarted) {
+        return
+      }
       scriptBuffer.liftBarrier()
       const listeners = renderFinishedListeners.slice()
       renderFinishedListeners.length = 0
@@ -676,7 +724,9 @@ export function attachRouterServerSsrUtils({
     },
     takeBufferedScripts() {
       const scripts = scriptBuffer.takeAll()
-      if (!scripts) return undefined
+      if (!scripts) {
+        return undefined
+      }
       const serverBufferedScript: RouterManagedTag = {
         tag: 'script',
         attrs: {
@@ -703,7 +753,9 @@ export function attachRouterServerSsrUtils({
       // Guard against multiple/reentrant cleanup calls. A listener could call
       // cleanup() again indirectly; snapshot + clear before invoking so each
       // listener runs exactly once and reentry is a no-op.
-      if (cleanupStarted) return
+      if (cleanupStarted) {
+        return
+      }
       cleanupStarted = true
       const listeners = cleanupListeners.slice()
       cleanupListeners.length = 0
@@ -762,7 +814,9 @@ export function getOrigin(request: Request) {
 // chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
 export function getNormalizedURL(url: string | URL, base?: string | URL) {
   // ensure backslashes are encoded correctly in the URL
-  if (typeof url === 'string') url = url.replace('\\', '%5C')
+  if (typeof url === 'string') {
+    url = url.replace('\\', '%5C')
+  }
 
   const rawUrl = new URL(url, base)
   const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(

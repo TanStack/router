@@ -117,14 +117,20 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
         const sourceFile = services.esTreeNodeToTSNodeMap
           .get(node)
           .getSourceFile()
-        if (useClientResolver.hasUseClientDirective(sourceFile.fileName)) return
+        if (useClientResolver.hasUseClientDirective(sourceFile.fileName)) {
+          return
+        }
 
         const rootKind = getServerRootKind(node)
-        if (!rootKind) return
+        if (!rootKind) {
+          return
+        }
 
         if (rootKind === 'createCompositeComponent') {
           const callback = node.arguments[0]
-          if (!callback) return
+          if (!callback) {
+            return
+          }
 
           const tsNode = services.esTreeNodeToTSNodeMap.get(callback)
 
@@ -142,7 +148,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
         }
 
         const element = node.arguments[0]
-        if (!element) return
+        if (!element) {
+          return
+        }
 
         const tsNode = services.esTreeNodeToTSNodeMap.get(element)
         analyzeServerComponentNode(tsNode, node, rootKind)
@@ -206,7 +214,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
 
       for (const ref of componentRefs) {
         const symbol = checker.getSymbolAtLocation(ref)
-        if (!symbol) continue
+        if (!symbol) {
+          continue
+        }
 
         const resolvedSymbol =
           ts.SymbolFlags.Alias & symbol.flags
@@ -215,7 +225,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
 
         const result = transitiveAnalyzer.analyzeEntrySymbol(resolvedSymbol)
 
-        if (result.isClientBoundary) continue
+        if (result.isClientBoundary) {
+          continue
+        }
 
         for (const violation of result.violations) {
           const key = `${violation.fileName}:${violation.line}:${violation.name}`
@@ -275,7 +287,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
         }
 
         const symbol = checker.getSymbolAtLocation(ref)
-        if (!symbol) continue
+        if (!symbol) {
+          continue
+        }
 
         // Check if the symbol is declared in the callback parameters
         // This handles destructured props like { ActionButton }
@@ -292,7 +306,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
 
         const result = transitiveAnalyzer.analyzeEntrySymbol(resolvedSymbol)
 
-        if (result.isClientBoundary) continue // Has 'use client', skip
+        if (result.isClientBoundary) {
+          continue
+        } // Has 'use client', skip
 
         // Report violations (deduplicated)
         for (const violation of result.violations) {
@@ -317,7 +333,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
         | 'renderServerComponent' = 'createCompositeComponent',
     ) {
       const symbol = checker.getSymbolAtLocation(ref)
-      if (!symbol) return
+      if (!symbol) {
+        return
+      }
 
       // Resolve alias if it's an import
       const resolvedSymbol =
@@ -327,7 +345,9 @@ export const rule = ESLintUtils.RuleCreator<ExtraRuleDocs>(getDocsUrl)({
 
       const result = transitiveAnalyzer.analyzeEntrySymbol(resolvedSymbol)
 
-      if (result.isClientBoundary) return // Has 'use client', skip
+      if (result.isClientBoundary) {
+        return
+      } // Has 'use client', skip
 
       // Track reported violations to avoid duplicates
       const reportedViolations = new Set<string>()

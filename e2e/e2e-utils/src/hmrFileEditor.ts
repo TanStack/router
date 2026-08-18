@@ -53,7 +53,9 @@ export function createHmrFileEditor<TFileKey extends string>(
       [TFileKey, string]
     >) {
       const content = originalContents[key]
-      if (content === undefined) continue
+      if (content === undefined) {
+        continue
+      }
 
       const current = await readFile(filePath, 'utf8')
 

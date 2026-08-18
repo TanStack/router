@@ -69,10 +69,14 @@ export function createViolationDetector(
    * Check if a class declaration extends React.Component or React.PureComponent
    */
   function isReactClassComponent(node: ts.ClassDeclaration): boolean {
-    if (!node.heritageClauses) return false
+    if (!node.heritageClauses) {
+      return false
+    }
 
     for (const clause of node.heritageClauses) {
-      if (clause.token !== tsLib.SyntaxKind.ExtendsKeyword) continue
+      if (clause.token !== tsLib.SyntaxKind.ExtendsKeyword) {
+        continue
+      }
 
       for (const type of clause.types) {
         const expr = type.expression

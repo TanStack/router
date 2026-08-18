@@ -1186,10 +1186,11 @@ export class RouterCore<
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
 
-    if (this.options.pathParamsAllowedCharacters)
+    if (this.options.pathParamsAllowedCharacters) {
       this.pathParamsDecoder = compileDecodeCharMap(
         this.options.pathParamsAllowedCharacters,
       )
+    }
 
     if (
       !this.history ||
@@ -2712,18 +2713,22 @@ export function getInitialRouterState(
 }
 
 function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
-  if (validateSearch == null) return {}
+  if (validateSearch == null) {
+    return {}
+  }
 
   if ('~standard' in validateSearch) {
     const result = validateSearch['~standard'].validate(input)
 
-    if (result instanceof Promise)
+    if (result instanceof Promise) {
       throw new SearchParamError('Async validation not supported')
+    }
 
-    if (result.issues)
+    if (result.issues) {
       throw new SearchParamError(JSON.stringify(result.issues, undefined, 2), {
         cause: result,
       })
+    }
 
     return result.value
   }

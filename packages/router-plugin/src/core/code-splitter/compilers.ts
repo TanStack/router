@@ -183,34 +183,52 @@ export function computeSharedBindings(opts: {
 
   babel.traverse(ast, {
     CallExpression(path) {
-      if (!t.isIdentifier(path.node.callee)) return
-      if (!splittableCreateRouteFns.includes(path.node.callee.name)) return
+      if (!t.isIdentifier(path.node.callee)) {
+        return
+      }
+      if (!splittableCreateRouteFns.includes(path.node.callee.name)) {
+        return
+      }
 
       if (t.isCallExpression(path.parentPath.node)) {
         const opts = resolveIdentifier(path, path.parentPath.node.arguments[0])
-        if (t.isObjectExpression(opts)) routeOptions = opts
+        if (t.isObjectExpression(opts)) {
+          routeOptions = opts
+        }
       } else if (t.isVariableDeclarator(path.parentPath.node)) {
         const caller = resolveIdentifier(path, path.parentPath.node.init)
         if (t.isCallExpression(caller)) {
           const opts = resolveIdentifier(path, caller.arguments[0])
-          if (t.isObjectExpression(opts)) routeOptions = opts
+          if (t.isObjectExpression(opts)) {
+            routeOptions = opts
+          }
         }
       }
     },
   })
 
-  if (!routeOptions) return new Set()
+  if (!routeOptions) {
+    return new Set()
+  }
 
   // Fast path: if fewer than 2 distinct groups are referenced by route options,
   // nothing can be shared and we can skip the rest of the work.
   const splitGroupsPresent = new Set<number>()
   let hasNonSplit = false
   for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop)) continue
+    if (!t.isObjectProperty(prop)) {
+      continue
+    }
     const key = getObjectPropertyKeyName(prop)
-    if (!key) continue
-    if (key === 'codeSplitGroupings') continue
-    if (t.isIdentifier(prop.value) && prop.value.name === 'undefined') continue
+    if (!key) {
+      continue
+    }
+    if (key === 'codeSplitGroupings') {
+      continue
+    }
+    if (t.isIdentifier(prop.value) && prop.value.name === 'undefined') {
+      continue
+    }
     const groupIndex = findIndexForSplitNode(key) // -1 if non-split
     if (groupIndex === -1) {
       hasNonSplit = true
@@ -219,7 +237,9 @@ export function computeSharedBindings(opts: {
     }
   }
 
-  if (!hasNonSplit && splitGroupsPresent.size < 2) return new Set()
+  if (!hasNonSplit && splitGroupsPresent.size < 2) {
+    return new Set()
+  }
 
   // Build dependency graph up front — needed for transitive expansion per-property.
   // This graph excludes `Route` (deleted above) so group attribution works correctly.
@@ -244,11 +264,17 @@ export function computeSharedBindings(opts: {
   const refsByGroup = new Map<string, Set<number>>()
 
   for (const prop of routeOptions.properties) {
-    if (!t.isObjectProperty(prop)) continue
+    if (!t.isObjectProperty(prop)) {
+      continue
+    }
     const key = getObjectPropertyKeyName(prop)
-    if (!key) continue
+    if (!key) {
+      continue
+    }
 
-    if (key === 'codeSplitGroupings') continue
+    if (key === 'codeSplitGroupings') {
+      continue
+    }
 
     const groupIndex = findIndexForSplitNode(key) // -1 if non-split
 
@@ -275,7 +301,9 @@ export function computeSharedBindings(opts: {
   // Shared = bindings appearing in 2+ distinct groups
   const shared = new Set<string>()
   for (const [name, groups] of refsByGroup) {
-    if (groups.size >= 2) shared.add(name)
+    if (groups.size >= 2) {
+      shared.add(name)
+    }
   }
 
   // Destructured declarators (e.g. `const { a, b } = fn()`) must be treated
@@ -285,7 +313,9 @@ export function computeSharedBindings(opts: {
   // shared module to avoid double initialization.
   expandSharedDestructuredDeclarators(ast, refsByGroup, shared)
 
-  if (shared.size === 0) return shared
+  if (shared.size === 0) {
+    return shared
+  }
 
   // If any binding from a destructured declaration is shared,
   // all bindings from that declaration must be shared
@@ -309,23 +339,29 @@ function findExportedSharedBindings(
 ): Set<string> {
   const exported = new Set<string>()
   for (const stmt of ast.program.body) {
-    if (!t.isExportNamedDeclaration(stmt) || !stmt.declaration) continue
+    if (!t.isExportNamedDeclaration(stmt) || !stmt.declaration) {
+      continue
+    }
 
     if (t.isVariableDeclaration(stmt.declaration)) {
       for (const decl of stmt.declaration.declarations) {
         for (const name of collectIdentifiersFromPattern(decl.id)) {
-          if (sharedBindings.has(name)) exported.add(name)
+          if (sharedBindings.has(name)) {
+            exported.add(name)
+          }
         }
       }
     } else if (
       t.isFunctionDeclaration(stmt.declaration) &&
       stmt.declaration.id
     ) {
-      if (sharedBindings.has(stmt.declaration.id.name))
+      if (sharedBindings.has(stmt.declaration.id.name)) {
         exported.add(stmt.declaration.id.name)
+      }
     } else if (t.isClassDeclaration(stmt.declaration) && stmt.declaration.id) {
-      if (sharedBindings.has(stmt.declaration.id.name))
+      if (sharedBindings.has(stmt.declaration.id.name)) {
         exported.add(stmt.declaration.id.name)
+      }
     }
   }
   return exported
@@ -350,11 +386,17 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
         return !names.every((n) => sharedBindings.has(n))
       })
       // If no declarators remain, remove the entire statement
-      if (decl.declarations.length === 0) return false
+      if (decl.declarations.length === 0) {
+        return false
+      }
     } else if (t.isFunctionDeclaration(decl) && decl.id) {
-      if (sharedBindings.has(decl.id.name)) return false
+      if (sharedBindings.has(decl.id.name)) {
+        return false
+      }
     } else if (t.isClassDeclaration(decl) && decl.id) {
-      if (sharedBindings.has(decl.id.name)) return false
+      if (sharedBindings.has(decl.id.name)) {
+        return false
+      }
     }
 
     return true
@@ -769,7 +811,9 @@ export function compileCodeSplitReferenceRoute(
           modified = true
           programPath.traverse({
             ImportDeclaration(path) {
-              if (path.node.specifiers.length > 0) return
+              if (path.node.specifiers.length > 0) {
+                return
+              }
               if (removableImportPaths.has(path.node.source.value)) {
                 path.remove()
               }

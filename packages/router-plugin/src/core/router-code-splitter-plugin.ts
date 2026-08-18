@@ -132,7 +132,9 @@ export function createRouterCodeSplitterPlugin(
     id: string,
     generatorNodeInfo: GetRoutesByFileMapResultValue,
   ): UnpluginTransformResult => {
-    if (debug) console.info('Compiling Route: ', id)
+    if (debug) {
+      console.info('Compiling Route: ', id)
+    }
 
     const fromCode = detectCodeSplitGroupingsFromRoute({
       code,
@@ -216,7 +218,9 @@ export function createRouterCodeSplitterPlugin(
     code: string,
     id: string,
   ): UnpluginTransformResult => {
-    if (debug) console.info('Splitting Route: ', id)
+    if (debug) {
+      console.info('Splitting Route: ', id)
+    }
 
     const [_, ...pathnameParts] = id.split('?')
 
@@ -296,11 +300,15 @@ export function createRouterCodeSplitterPlugin(
             (p) => p.name === CODE_SPLITTER_PLUGIN_NAME,
           )
 
-          if (routerPluginIndex === -1) return
+          if (routerPluginIndex === -1) {
+            return
+          }
 
           const frameworkPlugins =
             TRANSFORMATION_PLUGINS_BY_FRAMEWORK[userConfig.target]
-          if (!frameworkPlugins) return
+          if (!frameworkPlugins) {
+            return
+          }
 
           for (const transformPlugin of frameworkPlugins) {
             const transformPluginIndex = config.plugins.findIndex((p) =>
@@ -382,12 +390,18 @@ export function createRouterCodeSplitterPlugin(
           const normalizedId = normalizePath(fileURLToPath(url))
           const [baseId] = normalizedId.split('?')
 
-          if (!baseId) return null
+          if (!baseId) {
+            return null
+          }
 
           const sharedBindings = sharedBindingsMap.get(baseId)
-          if (!sharedBindings || sharedBindings.size === 0) return null
+          if (!sharedBindings || sharedBindings.size === 0) {
+            return null
+          }
 
-          if (debug) console.info('Compiling Shared Module: ', id)
+          if (debug) {
+            console.info('Compiling Shared Module: ', id)
+          }
 
           const result = compileCodeSplitSharedRoute({
             code,

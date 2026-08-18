@@ -109,7 +109,9 @@ export async function prerender({
     return Array.from(prerendered)
 
     function addCrawlPageTask(page: Page) {
-      if (seen.has(page.path)) return
+      if (seen.has(page.path)) {
+        return
+      }
 
       seen.add(page.path)
 
@@ -117,7 +119,9 @@ export async function prerender({
         startConfig.pages.push(page)
       }
 
-      if (!(page.prerender?.enabled ?? true)) return
+      if (!(page.prerender?.enabled ?? true)) {
+        return
+      }
 
       if (
         startConfig.prerender?.filter &&

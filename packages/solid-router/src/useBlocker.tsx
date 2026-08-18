@@ -101,7 +101,9 @@ function _resolveBlockerOpts(
     const shouldBlock = Boolean(condition ?? true)
 
     const _customBlockerFn = async () => {
-      if (shouldBlock) return await opts()
+      if (shouldBlock) {
+        return await opts()
+      }
       return false
     }
 
@@ -316,7 +318,9 @@ export const Block: BlockComponent = function Block(
   const resolver = useBlocker(args)
   const children = Solid.createMemo(() => {
     const child = propsWithChildren.children
-    if (resolver && typeof child === 'function') return child(resolver())
+    if (resolver && typeof child === 'function') {
+      return child(resolver())
+    }
     return child
   })
 

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/prefer-for-of */
+/* eslint-disable typescript/prefer-for-of */
 import { serialize } from 'seroval'
 import { joinURL } from 'ufo'
 import {

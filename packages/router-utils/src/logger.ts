@@ -32,14 +32,18 @@ export function logDiff(oldStr: string, newStr: string) {
         unchangedLines = ''
       }
       output += ansis.green.bold(part.value)
-      if (nextPart?.removed) output += ' '
+      if (nextPart?.removed) {
+        output += ' '
+      }
     } else if (part.removed) {
       if (unchangedLines) {
         output += processUnchangedLines(unchangedLines)
         unchangedLines = ''
       }
       output += ansis.red.bold(part.value)
-      if (nextPart?.added) output += ' '
+      if (nextPart?.added) {
+        output += ' '
+      }
     } else {
       unchangedLines += part.value
     }

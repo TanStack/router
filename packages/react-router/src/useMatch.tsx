@@ -169,10 +169,10 @@ export function useMatch<
   }
 
   const selector =
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    // eslint-disable-next-line react/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router)
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  // eslint-disable-next-line react/rules-of-hooks -- condition is static
   const matchSelection = useStore(matchStore, (match) =>
     match ? selector(match as any) : dummyMatch,
   )

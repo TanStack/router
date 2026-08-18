@@ -27,7 +27,7 @@ const neverPromise = new Promise<void>(() => {})
 
 function NeverGate(props: { children: React.ReactNode }) {
   if (
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     isServer ??
     typeof window === 'undefined'
   ) {
@@ -52,11 +52,13 @@ export function NeverHydrate(props: HydrateProps): React.JSX.Element {
     undefined,
   )
   shouldPreserveServerHTMLRef.current ??=
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') || !hydrated
   const markerRef = React.useCallback(
     (element: HTMLDivElement | null) => {
-      if (!element) return
+      if (!element) {
+        return
+      }
       if (!shouldPreserveServerHTMLRef.current) {
         element.replaceChildren()
       } else {

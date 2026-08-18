@@ -120,7 +120,9 @@ export function resolvePath({
     // `trailingSlash` is static per router, so it doesn't need to be part of the cache key
     key = isAbsolute ? to : isBase ? base : base + '\0' + to
     const cached = cache.get(key)
-    if (cached) return cached
+    if (cached) {
+      return cached
+    }
   }
 
   let baseSegments: Array<string>
@@ -172,7 +174,9 @@ export function resolvePath({
   }
 
   const result = cleanPath(baseSegments.join('/')) || '/'
-  if (key && cache) cache.set(key, result)
+  if (key && cache) {
+    cache.set(key, result)
+  }
   return result
 }
 
@@ -222,11 +226,15 @@ function encodeParam(
   decoder: InterpolatePathOptions['decoder'],
 ): any {
   const value = params[key]
-  if (typeof value !== 'string') return value
+  if (typeof value !== 'string') {
+    return value
+  }
 
   if (key === '_splat') {
     // Early return if value only contains URL-safe characters (performance optimization)
-    if (/^[a-zA-Z0-9\-._~!/]*$/.test(value)) return value
+    if (/^[a-zA-Z0-9\-._~!/]*$/.test(value)) {
+      return value
+    }
     // the splat/catch-all routes shouldn't have the '/' encoded out
     // Use encodeURIComponent for each segment to properly encode spaces,
     // plus signs, and other special characters that encodeURI leaves unencoded
@@ -259,10 +267,12 @@ export function interpolatePath({
   let isMissingParams = false
   const usedParams: Record<string, unknown> = Object.create(null)
 
-  if (!path || path === '/')
+  if (!path || path === '/') {
     return { interpolatedPath: '/', usedParams, isMissingParams }
-  if (!path.includes('$'))
+  }
+  if (!path.includes('$')) {
     return { interpolatedPath: path, usedParams, isMissingParams }
+  }
 
   if (isServer ?? rest.server) {
     // Fast path for common templates like `/posts/$id` or `/files/$`.
@@ -275,16 +285,24 @@ export function interpolatePath({
 
       while (cursor < length) {
         // Skip slashes between segments. '/' code is 47
-        while (cursor < length && path.charCodeAt(cursor) === 47) cursor++
-        if (cursor >= length) break
+        while (cursor < length && path.charCodeAt(cursor) === 47) {
+          cursor++
+        }
+        if (cursor >= length) {
+          break
+        }
 
         const start = cursor
         let end = path.indexOf('/', cursor)
-        if (end === -1) end = length
+        if (end === -1) {
+          end = length
+        }
         cursor = end
 
         const part = path.substring(start, end)
-        if (!part) continue
+        if (!part) {
+          continue
+        }
 
         // `$id` or `$` (splat). '$' code is 36
         if (part.charCodeAt(0) === 36) {
@@ -316,7 +334,9 @@ export function interpolatePath({
         }
       }
 
-      if (path.endsWith('/')) joined += '/'
+      if (path.endsWith('/')) {
+        joined += '/'
+      }
 
       const interpolatedPath = joined || '/'
       return { usedParams, interpolatedPath, isMissingParams }
@@ -333,7 +353,9 @@ export function interpolatePath({
     const end = segment[5]
     cursor = end + 1
 
-    if (start === end) continue
+    if (start === end) {
+      continue
+    }
 
     const kind = segment[0]
 
@@ -386,7 +408,9 @@ export function interpolatePath({
       const valueRaw = params[key]
 
       // Check if optional parameter is missing or undefined
-      if (valueRaw == null) continue
+      if (valueRaw == null) {
+        continue
+      }
 
       usedParams[key] = valueRaw
 
@@ -398,7 +422,9 @@ export function interpolatePath({
     }
   }
 
-  if (path.endsWith('/')) joined += '/'
+  if (path.endsWith('/')) {
+    joined += '/'
+  }
 
   const interpolatedPath = joined || '/'
 

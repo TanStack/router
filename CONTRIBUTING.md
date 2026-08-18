@@ -52,7 +52,7 @@ pnpm dev
 
 Run the checks relevant to your changes while developing:
 
-- `pnpm test:eslint` checks linting for affected packages.
+- `pnpm test:lint` checks linting for affected packages with Oxlint.
 - `pnpm test:types` checks types for affected packages.
 - `pnpm test:unit` runs unit tests for affected packages.
 - `pnpm test:build` checks builds for affected packages.
@@ -61,7 +61,7 @@ Run the checks relevant to your changes while developing:
 Before opening a pull request, run at least:
 
 ```sh
-pnpm test:eslint
+pnpm test:lint
 pnpm test:types
 pnpm test:unit
 ```

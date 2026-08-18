@@ -35,16 +35,24 @@ function getRouteFilePathsFromModules(
       lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
 
     const queryIndex = resourcePart.indexOf('?')
-    if (queryIndex < 0) continue
+    if (queryIndex < 0) {
+      continue
+    }
 
     const query = resourcePart.slice(queryIndex + 1)
-    if (!query.includes(tsrSplit)) continue
-    if (!new URLSearchParams(query).has(tsrSplit)) continue
+    if (!query.includes(tsrSplit)) {
+      continue
+    }
+    if (!new URLSearchParams(query).has(tsrSplit)) {
+      continue
+    }
 
     const nameForCondition = mod.nameForCondition()
     const routeFilePath = nameForCondition ?? resourcePart.slice(0, queryIndex)
 
-    if (seen?.has(routeFilePath)) continue
+    if (seen?.has(routeFilePath)) {
+      continue
+    }
 
     if (!routeFilePaths || !seen) {
       routeFilePaths = []
@@ -71,13 +79,19 @@ function getHydrationIdsFromModules(
       lastBangIndex >= 0 ? identifier.slice(lastBangIndex + 1) : identifier
 
     const queryIndex = resourcePart.indexOf('?')
-    if (queryIndex < 0) continue
+    if (queryIndex < 0) {
+      continue
+    }
 
     const query = resourcePart.slice(queryIndex + 1)
-    if (!query.includes(tssHydrate)) continue
+    if (!query.includes(tssHydrate)) {
+      continue
+    }
 
     const hydrationId = new URLSearchParams(query).get(tssHydrate)
-    if (!hydrationId || seen?.has(hydrationId)) continue
+    if (!hydrationId || seen?.has(hydrationId)) {
+      continue
+    }
 
     if (!hydrationIds || !seen) {
       hydrationIds = []
@@ -106,7 +120,9 @@ function isHotUpdateAsset(file: string): boolean {
  * Excludes HMR runtime patches.
  */
 function isManifestJsAsset(file: string): boolean {
-  if (!file.endsWith('.js') && !file.endsWith('.mjs')) return false
+  if (!file.endsWith('.js') && !file.endsWith('.mjs')) {
+    return false
+  }
   return !isHotUpdateAsset(file)
 }
 
@@ -241,7 +257,9 @@ export function normalizeRspackClientBuild(
     if (cssFiles.length > 0) {
       for (const mod of modules) {
         const sourcePath = mod.nameForCondition()
-        if (!sourcePath) continue
+        if (!sourcePath) {
+          continue
+        }
 
         const existing = cssFilesBySourcePath.get(sourcePath)
         cssFilesBySourcePath.set(
@@ -255,7 +273,9 @@ export function normalizeRspackClientBuild(
     const isEntryChunk = chunk.name === 'index' && entryChunkSet.has(chunk)
 
     const jsFiles = getChunkJsFiles(chunk)
-    if (jsFiles.length === 0) continue
+    if (jsFiles.length === 0) {
+      continue
+    }
 
     // Compute dynamicImports from chunk group children
     const dynamicImports = computeDynamicImports(chunk)
@@ -360,7 +380,9 @@ function appendUniqueStrings(
   let result: Array<string> | undefined
 
   for (const value of source) {
-    if (seen.has(value)) continue
+    if (seen.has(value)) {
+      continue
+    }
     seen.add(value)
     if (!result) {
       result = target.slice()

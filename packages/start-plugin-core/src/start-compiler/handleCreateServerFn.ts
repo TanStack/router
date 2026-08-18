@@ -552,7 +552,9 @@ function ensureDirectivePrologue(
   const missingDirectives: Array<string> = []
 
   for (const directiveValue of directiveValues) {
-    if (!directiveValue || existingDirectives.has(directiveValue)) continue
+    if (!directiveValue || existingDirectives.has(directiveValue)) {
+      continue
+    }
 
     existingDirectives.add(directiveValue)
     missingDirectives.push(directiveValue)

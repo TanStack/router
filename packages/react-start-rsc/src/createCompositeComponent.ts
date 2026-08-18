@@ -198,7 +198,9 @@ function createSlotProxy<TSlotProps extends object>(options?: {
 
   const proxy = new Proxy({} as TSlotProps & SlotPropsBase, {
     get(_target, prop) {
-      if (prop === 'then' || typeof prop !== 'string') return undefined
+      if (prop === 'then' || typeof prop !== 'string') {
+        return undefined
+      }
 
       if (prop === 'children') {
         options?.onSlotCall?.('children', [])
@@ -258,7 +260,9 @@ function createReadableStreamEmitter<T>(): {
   })
 
   const emit = (value: T) => {
-    if (closed) return
+    if (closed) {
+      return
+    }
     if (!controller) {
       queue.push(value)
       return
@@ -271,7 +275,9 @@ function createReadableStreamEmitter<T>(): {
   }
 
   const close = () => {
-    if (closed) return
+    if (closed) {
+      return
+    }
     closed = true
     if (controller) {
       try {
@@ -298,7 +304,9 @@ function wrapReadableStream<T>(
   let finished = false
 
   const finish = () => {
-    if (finished) return
+    if (finished) {
+      return
+    }
     finished = true
     handlers.onDone?.()
     try {

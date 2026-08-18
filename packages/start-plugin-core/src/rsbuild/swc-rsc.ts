@@ -94,7 +94,9 @@ export function enableSwcReactServerComponents(
       const hasSwcLoader = getRuleLoaders(rule).some((loader) =>
         Boolean(getLoaderPath(loader)?.includes('swc-loader')),
       )
-      if (!hasSwcLoader) continue
+      if (!hasSwcLoader) {
+        continue
+      }
 
       const enableReactServerComponentsOnRule = (nextRule: RspackRule) => {
         for (const loader of getRuleLoaders(nextRule)) {

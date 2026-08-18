@@ -157,7 +157,9 @@ function createRscProxyInternal(options: CreateProxyOptions): any {
 
   const getChild = (key: string) => {
     const cached = childCache.get(key)
-    if (cached) return cached
+    if (cached) {
+      return cached
+    }
 
     const next = createRscProxyInternal({
       ...options,
@@ -179,7 +181,9 @@ function createRscProxyInternal(options: CreateProxyOptions): any {
   return new Proxy(proxyTarget, {
     get(target, prop) {
       const handled = handleProxyTrap('get', prop, options)
-      if (handled !== UNHANDLED) return handled
+      if (handled !== UNHANDLED) {
+        return handled
+      }
 
       if (options.renderable) {
         // Proxy invariants: if target has a non-configurable, read-only property,
@@ -202,11 +206,17 @@ function createRscProxyInternal(options: CreateProxyOptions): any {
 
     has(target, prop) {
       const handled = handleProxyTrap('has', prop, options)
-      if (handled !== UNHANDLED) return handled as boolean
+      if (handled !== UNHANDLED) {
+        return handled as boolean
+      }
 
       if (options.renderable) {
-        if (prop in target) return true
-        if (typeof prop === 'string') return true
+        if (prop in target) {
+          return true
+        }
+        if (typeof prop === 'string') {
+          return true
+        }
         return false
       }
 
@@ -284,8 +294,12 @@ async function consumeSlotUsages(
     const reader = stream.getReader()
     for (;;) {
       const { value, done } = await reader.read()
-      if (done) break
-      if (!value.slot) continue
+      if (done) {
+        break
+      }
+      if (!value.slot) {
+        continue
+      }
       slotUsages.push(value)
     }
   } catch {

@@ -18,10 +18,18 @@ function createInlineCssUrlPlaceholder(index: number) {
 }
 
 function isRelativeCssUrl(url: string) {
-  if (!url) return false
-  if (url.startsWith('#')) return false
-  if (url.startsWith('/')) return false
-  if (/^[a-z][a-z\d+.-]*:/i.test(url)) return false
+  if (!url) {
+    return false
+  }
+  if (url.startsWith('#')) {
+    return false
+  }
+  if (url.startsWith('/')) {
+    return false
+  }
+  if (/^[a-z][a-z\d+.-]*:/i.test(url)) {
+    return false
+  }
   return true
 }
 
@@ -30,10 +38,18 @@ export function shouldRebaseInlineCssUrls(css: string) {
 }
 
 function shouldTransformInlineCssUrl(url: string) {
-  if (!url) return false
-  if (url.startsWith('#')) return false
-  if (url.startsWith('//')) return false
-  if (/^[a-z][a-z\d+.-]*:/i.test(url)) return false
+  if (!url) {
+    return false
+  }
+  if (url.startsWith('#')) {
+    return false
+  }
+  if (url.startsWith('//')) {
+    return false
+  }
+  if (/^[a-z][a-z\d+.-]*:/i.test(url)) {
+    return false
+  }
   return true
 }
 
@@ -196,8 +212,14 @@ function createInlineCssTemplate(
 }
 
 export function getCssAssetSource(source: unknown) {
-  if (typeof source === 'string') return source
-  if (source instanceof Uint8Array) return Buffer.from(source).toString('utf8')
-  if (source == null) return undefined
+  if (typeof source === 'string') {
+    return source
+  }
+  if (source instanceof Uint8Array) {
+    return Buffer.from(source).toString('utf8')
+  }
+  if (source == null) {
+    return undefined
+  }
   return String(source)
 }

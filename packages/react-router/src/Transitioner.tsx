@@ -24,7 +24,7 @@ export function Transitioner({
   const acknowledgement = (router._rendered ??= [])
   const mounted =
     process.env.NODE_ENV !== 'production'
-      ? // eslint-disable-next-line react-hooks/rules-of-hooks
+      ? // eslint-disable-next-line react/rules-of-hooks
         React.useRef(false)
       : undefined
 
@@ -92,7 +92,7 @@ export function Transitioner({
 
     return unsub
     // `mounted` exists only in development and is a stable ref when present.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react/exhaustive-deps
   }, [router, router.history])
 
   return null

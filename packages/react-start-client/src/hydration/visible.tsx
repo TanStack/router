@@ -65,7 +65,7 @@ export function VisibleHydrate(
       },
     }
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       isServer ??
       typeof window === 'undefined'
     ) {
@@ -87,7 +87,9 @@ export function VisibleHydrate(
   }, [prefetchStrategy, preload])
 
   React.useEffect(() => {
-    if (gate.r) return
+    if (gate.r) {
+      return
+    }
 
     return strategy._s?.({
       element: markerRef.current,
@@ -125,7 +127,9 @@ export function visible(
 
       const observer = new IntersectionObserver(
         (entries) => {
-          if (!entries[0]!.isIntersecting) return
+          if (!entries[0]!.isIntersecting) {
+            return
+          }
           observer.disconnect()
           callback()
         },

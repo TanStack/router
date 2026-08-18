@@ -75,7 +75,9 @@ function findHtmlBoundary(str: string): number {
 
   while (searchFrom >= 0) {
     const openSlash = str.lastIndexOf('</', searchFrom)
-    if (openSlash === -1) break
+    if (openSlash === -1) {
+      break
+    }
 
     // Fast case-insensitive match for </body>. Negative return encodes the
     // body start index without allocating a result object.
@@ -173,12 +175,16 @@ function createReaderState<T>(appStream: ReadableStream<T>) {
   return {
     reader,
     cancel: (reason?: unknown) => {
-      if (released) return resolvedPromise
+      if (released) {
+        return resolvedPromise
+      }
       released = true
       return safeCancelReader(reader, reason)
     },
     release: () => {
-      if (released) return
+      if (released) {
+        return
+      }
       released = true
       safeReleaseReader(reader)
     },
@@ -188,7 +194,9 @@ function createReaderState<T>(appStream: ReadableStream<T>) {
 function createAbortNotifier(opts?: TransformStreamWithRouterOptions) {
   let abortNotified = false
   return (reason?: unknown) => {
-    if (abortNotified) return
+    if (abortNotified) {
+      return
+    }
     abortNotified = true
     try {
       opts?.onAbort?.(reason)
@@ -250,7 +258,9 @@ function makeFastPathStream(
   let renderFinished = false
 
   const finishSsrRendering = () => {
-    if (!serverSsr || renderFinished) return true
+    if (!serverSsr || renderFinished) {
+      return true
+    }
     renderFinished = true
     try {
       serverSsr.setRenderFinished()
@@ -263,7 +273,9 @@ function makeFastPathStream(
   }
 
   const cleanup = (reason?: unknown, cancelReader = true) => {
-    if (cleanedUp) return resolvedPromise
+    if (cleanedUp) {
+      return resolvedPromise
+    }
     cleanedUp = true
 
     if (lifetimeTimeoutHandle !== undefined) {
@@ -298,7 +310,9 @@ function makeFastPathStream(
   }
 
   const safeClose = () => {
-    if (isDone()) return
+    if (isDone()) {
+      return
+    }
     state = MergeState.Done
     try {
       controller?.close()
@@ -308,7 +322,9 @@ function makeFastPathStream(
   }
 
   const safeError = (error: unknown) => {
-    if (isDone()) return
+    if (isDone()) {
+      return
+    }
     state = MergeState.Done
     try {
       controller?.error(error)
@@ -342,7 +358,9 @@ function makeFastPathStream(
       controller = c
     },
     async pull(c) {
-      if (cleanedUp || isDone()) return
+      if (cleanedUp || isDone()) {
+        return
+      }
       try {
         const { done, value } = await readerState.reader.read()
         if (!done) {
@@ -352,13 +370,19 @@ function makeFastPathStream(
           return
         }
 
-        if (cleanedUp || isDone()) return
+        if (cleanedUp || isDone()) {
+          return
+        }
 
-        if (!finishSsrRendering()) return
+        if (!finishSsrRendering()) {
+          return
+        }
         safeClose()
         return cleanup(undefined, false)
       } catch (error) {
-        if (cleanedUp) return
+        if (cleanedUp) {
+          return
+        }
         console.error('Error reading appStream:', error)
         if (state < MergeState.AppDone) {
           try {
@@ -451,10 +475,14 @@ function makeMainStream(
   const isDone = () => state === MergeState.Done
 
   function drainPending() {
-    if (!controller || isDone()) return
+    if (!controller || isDone()) {
+      return
+    }
     while (pendingWriteHead < pendingWrites.length) {
       const ds = controller.desiredSize
-      if (ds !== null && ds <= 0) return
+      if (ds !== null && ds <= 0) {
+        return
+      }
       const next = pendingWrites[pendingWriteHead]!
       // Release reference for GC; compact when fully drained.
       pendingWrites[pendingWriteHead] = ''
@@ -488,8 +516,12 @@ function makeMainStream(
    * honors desiredSize) rather than ours.
    */
   function writeChunk(chunk: string) {
-    if (cleanedUp || isDone()) return
-    if (!chunk.length) return
+    if (cleanedUp || isDone()) {
+      return
+    }
+    if (!chunk.length) {
+      return
+    }
     if (pendingWriteChars + chunk.length > MAX_PENDING_WRITE_CHARS) {
       const err = new Error('SSR stream pending output exceeded maximum buffer')
       safeError(err)
@@ -502,7 +534,9 @@ function makeMainStream(
   }
 
   function safeClose() {
-    if (isDone()) return
+    if (isDone()) {
+      return
+    }
     state = MergeState.Done
     try {
       controller?.close()
@@ -512,7 +546,9 @@ function makeMainStream(
   }
 
   function safeError(error: unknown) {
-    if (isDone()) return
+    if (isDone()) {
+      return
+    }
     state = MergeState.Done
     try {
       controller?.error(error)
@@ -525,7 +561,9 @@ function makeMainStream(
    * Cleanup with guards; must be idempotent.
    */
   function cleanup(reason?: unknown, cancelReader = true) {
-    if (cleanedUp) return resolvedPromise
+    if (cleanedUp) {
+      return resolvedPromise
+    }
     cleanedUp = true
 
     try {
@@ -588,15 +626,21 @@ function makeMainStream(
   let serializationFinished = false
 
   function noteBarrierMarker(chunk: string) {
-    if (streamBarrierMarkerSeen) return
+    if (streamBarrierMarkerSeen) {
+      return
+    }
     if (chunk.includes(TSR_SCRIPT_BARRIER_ID)) {
       streamBarrierMarkerSeen = true
     }
   }
 
   function liftBarrierAfterBoundary() {
-    if (streamBarrierLifted) return
-    if (!streamBarrierMarkerSeen) return
+    if (streamBarrierLifted) {
+      return
+    }
+    if (!streamBarrierMarkerSeen) {
+      return
+    }
     streamBarrierLifted = true
     serverSsr.liftScriptBarrier()
   }
@@ -619,7 +663,9 @@ function makeMainStream(
   })
 
   function drainRouterHtml() {
-    if (cleanedUp || isDone()) return
+    if (cleanedUp || isDone()) {
+      return
+    }
     let html: string | undefined
     try {
       html = serverSsr.takeBufferedHtml()
@@ -628,7 +674,9 @@ function makeMainStream(
       cleanup(error)
       return
     }
-    if (!html) return
+    if (!html) {
+      return
+    }
     if (state >= MergeState.Draining) {
       // At this point final tail/close has already been queued. Emitting late
       // router HTML would put scripts after </body> or drop them silently.
@@ -655,7 +703,9 @@ function makeMainStream(
   }
 
   function flushPendingRouterHtml() {
-    if (!pendingRouterHtml.length) return
+    if (!pendingRouterHtml.length) {
+      return
+    }
     for (const html of pendingRouterHtml) {
       writeChunk(html)
     }
@@ -683,8 +733,12 @@ function makeMainStream(
   }
 
   function startSerializationTimeout() {
-    if (cleanedUp || isDone()) return
-    if (serializationTimeoutHandle !== undefined) return
+    if (cleanedUp || isDone()) {
+      return
+    }
+    if (serializationTimeoutHandle !== undefined) {
+      return
+    }
     const timeoutMs = opts?.timeoutMs ?? DEFAULT_SERIALIZATION_TIMEOUT_MS
     serializationTimeoutHandle = setTimeout(() => {
       if (!cleanedUp && !isDone()) {
@@ -702,8 +756,12 @@ function makeMainStream(
    * pending writes still waiting on downstream capacity.
    */
   function tryFinish() {
-    if (state !== MergeState.AppDone || !serializationFinished) return
-    if (cleanedUp || isDone()) return
+    if (state !== MergeState.AppDone || !serializationFinished) {
+      return
+    }
+    if (cleanedUp || isDone()) {
+      return
+    }
 
     if (serializationTimeoutHandle !== undefined) {
       clearTimeout(serializationTimeoutHandle)
@@ -711,19 +769,35 @@ function makeMainStream(
     }
 
     drainRouterHtml()
-    if (cleanedUp || isDone()) return
+    if (cleanedUp || isDone()) {
+      return
+    }
 
     // Flush any remaining bytes in the TextDecoder
     const decoderRemainder = textDecoder.decode()
 
-    if (leftover) writeChunk(leftover)
-    if (cleanedUp || isDone()) return
-    if (decoderRemainder) writeChunk(decoderRemainder)
-    if (cleanedUp || isDone()) return
+    if (leftover) {
+      writeChunk(leftover)
+    }
+    if (cleanedUp || isDone()) {
+      return
+    }
+    if (decoderRemainder) {
+      writeChunk(decoderRemainder)
+    }
+    if (cleanedUp || isDone()) {
+      return
+    }
     flushPendingRouterHtml()
-    if (cleanedUp || isDone()) return
-    if (pendingTail) writeChunk(pendingTail)
-    if (cleanedUp || isDone()) return
+    if (cleanedUp || isDone()) {
+      return
+    }
+    if (pendingTail) {
+      writeChunk(pendingTail)
+    }
+    if (cleanedUp || isDone()) {
+      return
+    }
 
     leftover = ''
     pendingTail = ''
@@ -735,7 +809,9 @@ function makeMainStream(
   }
 
   function finishAppRendering() {
-    if (state >= MergeState.AppDone) return
+    if (state >= MergeState.AppDone) {
+      return
+    }
     state = MergeState.AppDone
     try {
       serverSsr.setRenderFinished()
@@ -745,7 +821,9 @@ function makeMainStream(
       return
     }
     drainRouterHtml()
-    if (cleanedUp || isDone()) return
+    if (cleanedUp || isDone()) {
+      return
+    }
     serializationFinished =
       serializationFinished || serverSsr.isSerializationFinished()
     if (serializationFinished) {
@@ -784,35 +862,46 @@ function makeMainStream(
   // Subscriptions are installed before snapshots, so missed events are
   // recovered by these synchronous drains/rechecks.
   drainRouterHtml()
-  if (cleanedUp || isDone()) return stream
+  if (cleanedUp || isDone()) {
+    return stream
+  }
   serializationFinished =
     serializationFinished || serverSsr.isSerializationFinished()
   if (serializationFinished) {
     drainRouterHtml()
-    if (cleanedUp || isDone()) return stream
+    if (cleanedUp || isDone()) {
+      return stream
+    }
   }
 
   stopListeningToAbort = listenToAbort(opts?.signal, (reason) => {
     safeError(reason)
     cleanup(reason)
   })
-  if (cleanedUp || isDone())
+  if (cleanedUp || isDone()) {
     return stream
 
     // Transform the appStream
+  }
   ;(async () => {
     try {
       while (true) {
         // Backpressure: pause upstream reads while downstream is full.
         if (waitForBackpressure()) {
           await waitForDrain()
-          if (cleanedUp || isDone()) return
+          if (cleanedUp || isDone()) {
+            return
+          }
         }
 
         const { done, value } = await readerState.reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
 
-        if (cleanedUp || isDone()) return
+        if (cleanedUp || isDone()) {
+          return
+        }
 
         const text =
           typeof value === 'string'
@@ -836,10 +925,14 @@ function makeMainStream(
           appendTail(chunkString.slice(bodyEndIndex))
           const bodyChunk = chunkString.slice(0, bodyEndIndex)
           writeChunk(bodyChunk)
-          if (cleanedUp || isDone()) return
+          if (cleanedUp || isDone()) {
+            return
+          }
           noteBarrierMarker(bodyChunk)
           liftBarrierAfterBoundary()
-          if (cleanedUp || isDone()) return
+          if (cleanedUp || isDone()) {
+            return
+          }
           flushPendingRouterHtml()
           leftover = ''
           continue
@@ -850,10 +943,14 @@ function makeMainStream(
         if (lastClosingTagEnd > 0) {
           const safeChunk = chunkString.slice(0, lastClosingTagEnd)
           writeChunk(safeChunk)
-          if (cleanedUp || isDone()) return
+          if (cleanedUp || isDone()) {
+            return
+          }
           noteBarrierMarker(safeChunk)
           liftBarrierAfterBoundary()
-          if (cleanedUp || isDone()) return
+          if (cleanedUp || isDone()) {
+            return
+          }
           flushPendingRouterHtml()
 
           leftover = chunkString.slice(lastClosingTagEnd)
@@ -884,11 +981,15 @@ function makeMainStream(
         }
       }
 
-      if (cleanedUp || isDone()) return
+      if (cleanedUp || isDone()) {
+        return
+      }
 
       finishAppRendering()
     } catch (error) {
-      if (cleanedUp) return
+      if (cleanedUp) {
+        return
+      }
       console.error('Error reading appStream:', error)
       if (state < MergeState.AppDone) {
         try {
@@ -903,7 +1004,9 @@ function makeMainStream(
       readerState.release()
     }
   })().catch((error) => {
-    if (cleanedUp) return
+    if (cleanedUp) {
+      return
+    }
     console.error('Error in stream transform:', error)
     safeError(error)
     cleanup(error)

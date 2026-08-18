@@ -45,7 +45,9 @@ export function createRouterHmrPlugin(
           return null
         }
 
-        if (debug) console.info('Adding HMR handling to route ', normalizedId)
+        if (debug) {
+          console.info('Adding HMR handling to route ', normalizedId)
+        }
 
         const hmrStyle = userConfig.plugin?.hmr?.style ?? 'vite'
 

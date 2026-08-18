@@ -183,7 +183,7 @@ async function serializePayload(
     payloadToSerialize['data'] = opts.data
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // eslint-disable-next-line typescript/no-unnecessary-condition
   if (opts.context && hasOwnProperties(opts.context)) {
     payloadAvailable = true
     payloadToSerialize['context'] = opts.context
@@ -206,7 +206,7 @@ async function getFetchBody(
 ): Promise<FormData | string | undefined> {
   if (opts.data instanceof FormData) {
     let serializedContext = undefined
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     if (opts.context && hasOwnProperties(opts.context)) {
       serializedContext = await serialize(opts.context)
     }
@@ -374,10 +374,12 @@ async function processFramedResponse({
   let drainCancelled = false as boolean
   const drain = (async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       while (true) {
         const { value, done } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         if (value) {
           try {
             // Set up post-processing context for this chunk

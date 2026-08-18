@@ -1,0 +1,212 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "categories": {
+    "correctness": "off"
+  },
+  "plugins": ["eslint", "typescript", "import", "unicorn", "react"],
+  "env": {
+    "browser": true,
+    "builtin": true,
+    "es2020": true
+  },
+  "ignorePatterns": [
+    "**/.nx/**",
+    "**/.svelte-kit/**",
+    "**/build/**",
+    "**/coverage/**",
+    "**/dist/**",
+    "**/snap/**",
+    "**/vite.config.*.timestamp-*.*",
+    "packages/{react-router,solid-router,vue-router,vue-start}/bin/**"
+  ],
+  "options": {
+    "typeAware": true,
+    "respectEslintDisableDirectives": true
+  },
+  "rules": {
+    "curly": ["error", "all"],
+    "for-direction": "error",
+    "no-async-promise-executor": "error",
+    "no-case-declarations": "error",
+    "no-class-assign": "error",
+    "no-compare-neg-zero": "error",
+    "no-cond-assign": "error",
+    "no-constant-binary-expression": "error",
+    "no-constant-condition": "error",
+    "no-control-regex": "error",
+    "no-debugger": "error",
+    "no-delete-var": "error",
+    "no-dupe-else-if": "error",
+    "no-duplicate-case": "error",
+    "no-empty-character-class": "error",
+    "no-empty-pattern": "error",
+    "no-empty-static-block": "error",
+    "no-ex-assign": "error",
+    "no-extra-boolean-cast": "error",
+    "no-fallthrough": "error",
+    "no-global-assign": "error",
+    "no-invalid-regexp": "error",
+    "no-irregular-whitespace": "error",
+    "no-loss-of-precision": "error",
+    "no-misleading-character-class": "error",
+    "no-nonoctal-decimal-escape": "error",
+    "no-regex-spaces": "error",
+    "no-self-assign": "error",
+    "no-shadow-restricted-names": "error",
+    "no-sparse-arrays": "error",
+    "no-unsafe-finally": "error",
+    "no-unsafe-optional-chaining": "error",
+    "no-unused-labels": "error",
+    "no-unused-private-class-members": "error",
+    "no-unused-vars": [
+      "warn",
+      {
+        "vars": "all",
+        "varsIgnorePattern": "^_",
+        "args": "after-used",
+        "argsIgnorePattern": "^_",
+        "caughtErrors": "all",
+        "caughtErrorsIgnorePattern": "^_",
+        "reportVarsOnlyUsedAsTypes": true,
+        "fix": {
+          "imports": "safe-fix",
+          "variables": "off"
+        }
+      }
+    ],
+    "no-useless-backreference": "error",
+    "no-useless-catch": "error",
+    "no-useless-escape": "error",
+    "no-var": "error",
+    "no-with": "error",
+    "prefer-const": "error",
+    "require-yield": "error",
+    "sort-imports": ["error", { "ignoreDeclarationSort": true }],
+    "use-isnan": "error",
+    "valid-typeof": "error",
+    "import/consistent-type-specifier-style": ["error", "prefer-top-level"],
+    "import/first": "error",
+    "import/newline-after-import": "error",
+    "import/no-commonjs": "error",
+    "import/no-duplicates": "error",
+    "typescript/array-type": [
+      "error",
+      { "default": "generic", "readonly": "generic" }
+    ],
+    "typescript/ban-ts-comment": [
+      "error",
+      { "ts-expect-error": false, "ts-ignore": "allow-with-description" }
+    ],
+    "typescript/consistent-type-imports": [
+      "error",
+      { "prefer": "type-imports" }
+    ],
+    "typescript/method-signature-style": ["error", "property"],
+    "typescript/no-duplicate-enum-values": "error",
+    "typescript/no-extra-non-null-assertion": "error",
+    "typescript/no-for-in-array": "error",
+    "typescript/no-inferrable-types": ["error", { "ignoreParameters": true }],
+    "typescript/no-misused-new": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-non-null-asserted-optional-chain": "error",
+    "typescript/no-unnecessary-condition": "error",
+    "typescript/no-unnecessary-type-assertion": "error",
+    "typescript/no-wrapper-object-types": "error",
+    "typescript/prefer-as-const": "error",
+    "typescript/prefer-for-of": "warn",
+    "typescript/require-await": "warn",
+    "typescript/triple-slash-reference": "error",
+    "unicorn/prefer-node-protocol": "error"
+  },
+  "overrides": [
+    {
+      "files": [
+        "packages/{react-router-devtools,react-router-ssr-query,react-start,react-start-client,react-start-rsc,react-start-server,router-devtools,solid-start}/**/*.{ts,tsx}"
+      ],
+      "rules": {
+        "react/forward-ref-uses-ref": "warn",
+        "react/jsx-key": "error",
+        "react/jsx-no-comment-textnodes": "warn",
+        "react/jsx-no-duplicate-props": "warn",
+        "react/no-array-index-key": "warn",
+        "react/no-clone-element": "warn",
+        "react/no-danger": "warn",
+        "react/no-danger-with-children": "error",
+        "react/no-did-mount-set-state": "warn",
+        "react/no-did-update-set-state": "warn",
+        "react/no-direct-mutation-state": "error",
+        "react/no-find-dom-node": "error",
+        "react/no-namespace": "error",
+        "react/no-redundant-should-component-update": "error",
+        "react/no-render-return-value": "error",
+        "react/no-string-refs": "error",
+        "react/no-unstable-nested-components": "error",
+        "react/no-unsafe": "error",
+        "react/no-will-update-set-state": "warn",
+        "react/void-dom-elements-no-children": "warn",
+        "react/iframe-missing-sandbox": "warn",
+        "react/jsx-no-script-url": "warn",
+        "react/jsx-no-target-blank": "warn"
+      }
+    },
+    {
+      "files": [
+        "packages/{react-router,react-router-devtools,react-router-ssr-query,react-start,react-start-client,react-start-rsc,react-start-server,router-devtools,solid-start}/**/*.{js,ts,tsx}"
+      ],
+      "rules": {
+        "react/exhaustive-deps": "error",
+        "react/rules-of-hooks": "error"
+      }
+    },
+    {
+      "files": [
+        "packages/react-router/src/fileRoute.ts",
+        "packages/react-router/src/route.tsx"
+      ],
+      "rules": {
+        "react/rules-of-hooks": "off",
+        "typescript/no-unnecessary-type-assertion": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/{eslint-plugin-start,react-router,react-start-rsc,router-core,router-plugin,router-utils,solid-router,solid-start-client,start-plugin-core,vue-router,vue-router-devtools}/**/*"
+      ],
+      "rules": {
+        "typescript/no-unnecessary-type-assertion": "off"
+      }
+    },
+    {
+      "files": ["packages/router-utils/src/ast.ts"],
+      "rules": {
+        "import/no-duplicates": "off"
+      }
+    },
+    {
+      "files": [
+        "packages/{react-router-devtools,react-router-ssr-query,react-start,react-start-client,react-start-rsc,react-start-server,router-devtools,router-devtools-core,solid-router-devtools,solid-start,solid-start-client,solid-start-server,start-client-core,start-server-core,start-static-server-functions,start-storage-context,vue-router-devtools}/**/__tests__/**",
+        "packages/{router-core,router-ssr-query-core,solid-router,vue-router,vue-router-ssr-query,vue-start,vue-start-client,vue-start-server}/{src,tests}/**/*.{ts,tsx}",
+        "packages/react-router/**/*"
+      ],
+      "rules": {
+        "typescript/no-unnecessary-condition": "off"
+      }
+    },
+    {
+      "files": ["packages/react-start-rsc/src/**/*.{ts,tsx}"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "paths": [
+              {
+                "name": "@tanstack/start-server-core",
+                "message": "Import from a dedicated @tanstack/start-server-core subpath to avoid pulling the full server barrel into the RSC module graph."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

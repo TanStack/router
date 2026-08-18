@@ -134,8 +134,6 @@
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",
-    "@eslint-react/eslint-plugin": "catalog:",
-    "eslint-plugin-react-hooks": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
     "rimraf": "catalog:"

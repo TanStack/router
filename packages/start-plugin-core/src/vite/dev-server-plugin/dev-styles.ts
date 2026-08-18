@@ -36,7 +36,9 @@ export function isCssModulesFile(file: string): boolean {
 
 function hasCssSideEffectFreeParam(url: string): boolean {
   const queryString = url.split('?')[1]
-  if (!queryString) return false
+  if (!queryString) {
+    return false
+  }
 
   const params = new URLSearchParams(queryString)
   return CSS_SIDE_EFFECT_FREE_PARAMS.some(
@@ -132,7 +134,9 @@ export async function collectDevStyles(
     }
   }
 
-  if (styles.size === 0) return undefined
+  if (styles.size === 0) {
+    return undefined
+  }
 
   const parts: Array<string> = []
   for (const [fileName, css] of styles.entries()) {
@@ -164,7 +168,9 @@ async function processEntry(
     node = await viteDevServer.moduleGraph.getModuleByUrl(entryUrl)
   }
 
-  if (!node || visited.has(node)) return
+  if (!node || visited.has(node)) {
+    return
+  }
 
   visited.add(node)
   await findModuleDeps(viteDevServer, node, visited)
@@ -200,9 +206,13 @@ async function findModuleDeps(
   if (deps) {
     for (const depUrl of deps) {
       const dep = await viteDevServer.moduleGraph.getModuleByUrl(depUrl)
-      if (!dep) continue
+      if (!dep) {
+        continue
+      }
 
-      if (visited.has(dep)) continue
+      if (visited.has(dep)) {
+        continue
+      }
       visited.add(dep)
       branches.push(findModuleDeps(viteDevServer, dep, visited))
     }
@@ -212,7 +222,9 @@ async function findModuleDeps(
   // - Code-split chunks (e.g. ?tsr-split=component) not in deps
   // - Already-resolved nodes
   for (const depNode of importedModules) {
-    if (visited.has(depNode)) continue
+    if (visited.has(depNode)) {
+      continue
+    }
     visited.add(depNode)
     branches.push(findModuleDeps(viteDevServer, depNode, visited))
   }
@@ -238,7 +250,9 @@ async function fetchCssFromModule(
   // Otherwise request a fresh transform
   try {
     const transformResult = await viteDevServer.transformRequest(node.url)
-    if (!transformResult?.code) return undefined
+    if (!transformResult?.code) {
+      return undefined
+    }
 
     return extractCssFromCode(transformResult.code)
   } catch {
@@ -259,12 +273,16 @@ async function fetchCssFromModule(
  */
 export function extractCssFromCode(code: string): string | undefined {
   const startIdx = code.indexOf(VITE_CSS_MARKER)
-  if (startIdx === -1) return undefined
+  if (startIdx === -1) {
+    return undefined
+  }
 
   const valueStart = startIdx + VITE_CSS_MARKER.length
   // Vite emits `const __vite__css = ${JSON.stringify(cssContent)}` which always
   // produces double-quoted JSON string literals.
-  if (code.charCodeAt(valueStart) !== 34) return undefined
+  if (code.charCodeAt(valueStart) !== 34) {
+    return undefined
+  }
 
   const codeLength = code.length
   let i = valueStart + 1

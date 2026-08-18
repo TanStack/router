@@ -92,7 +92,9 @@ export function FloatingTanStackRouterDevtools({
     panelElement: HTMLDivElement | undefined,
     startEvent: any,
   ) => {
-    if (startEvent.button !== 0) return // Only allow left click for drag
+    if (startEvent.button !== 0) {
+      return
+    } // Only allow left click for drag
 
     setIsResizing(true)
 
@@ -200,7 +202,9 @@ export function FloatingTanStackRouterDevtools({
   } = toggleButtonProps
 
   // Do not render on the server
-  if (!isMounted()) return null
+  if (!isMounted()) {
+    return null
+  }
 
   const resolvedHeight = createMemo(() => devtoolsHeight() ?? 500)
 
@@ -219,7 +223,7 @@ export function FloatingTanStackRouterDevtools({
   const basePanelStyle = createMemo(() => {
     return {
       height: `${resolvedHeight()}px`,
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       ...(panelStyle || {}),
     }
   })

@@ -87,8 +87,12 @@ function rewriteDeniedImportsFromAst(
     const node = ast.program.body[i]!
 
     if (t.isImportDeclaration(node)) {
-      if (node.importKind === 'type') continue
-      if (!deniedSources.has(node.source.value)) continue
+      if (node.importKind === 'type') {
+        continue
+      }
+      if (!deniedSources.has(node.source.value)) {
+        continue
+      }
 
       const mockVar = `__tss_deny_${mockCounter++}`
       const replacements: Array<t.Statement> = []
@@ -114,7 +118,9 @@ function rewriteDeniedImportsFromAst(
             ]),
           )
         } else if (t.isImportSpecifier(specifier)) {
-          if (specifier.importKind === 'type') continue
+          if (specifier.importKind === 'type') {
+            continue
+          }
           const importedName = getModuleExportName(specifier.imported)
           const memberProperty = toMemberExpressionProperty(importedName)
           replacements.push(
@@ -138,8 +144,12 @@ function rewriteDeniedImportsFromAst(
     }
 
     if (t.isExportNamedDeclaration(node) && node.source) {
-      if (node.exportKind === 'type') continue
-      if (!deniedSources.has(node.source.value)) continue
+      if (node.exportKind === 'type') {
+        continue
+      }
+      if (!deniedSources.has(node.source.value)) {
+        continue
+      }
 
       const mockIndex = mockCounter++
       const mockVar = `__tss_deny_${mockIndex}`
@@ -158,7 +168,9 @@ function rewriteDeniedImportsFromAst(
       }> = []
       for (const specifier of node.specifiers) {
         if (t.isExportSpecifier(specifier)) {
-          if (specifier.exportKind === 'type') continue
+          if (specifier.exportKind === 'type') {
+            continue
+          }
           const localName = getModuleExportName(specifier.local)
           const exportedName = getModuleExportName(specifier.exported)
           const memberProperty = toMemberExpressionProperty(localName)
@@ -204,8 +216,12 @@ function rewriteDeniedImportsFromAst(
     }
 
     if (t.isExportAllDeclaration(node)) {
-      if (node.exportKind === 'type') continue
-      if (!deniedSources.has(node.source.value)) continue
+      if (node.exportKind === 'type') {
+        continue
+      }
+      if (!deniedSources.has(node.source.value)) {
+        continue
+      }
 
       ast.program.body.splice(i, 1)
       modified = true
@@ -213,7 +229,9 @@ function rewriteDeniedImportsFromAst(
     }
   }
 
-  if (!modified) return undefined
+  if (!modified) {
+    return undefined
+  }
 
   const result = generateFromAst(ast, {
     sourceMaps: true,

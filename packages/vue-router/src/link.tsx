@@ -733,10 +733,14 @@ function getHref(
   // Otherwise it's the origin-stripped path
   // This avoids constructing URL objects in the hot path
   const publicHref = location?.publicHref
-  if (!publicHref) return undefined
+  if (!publicHref) {
+    return undefined
+  }
 
   const external = location?.external
-  if (external) return publicHref
+  if (external) {
+    return publicHref
+  }
 
   return router.history.createHref(publicHref) || '/'
 }

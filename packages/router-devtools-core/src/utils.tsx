@@ -39,7 +39,9 @@ export function getRouteStatusColor(
   route: AnyRoute,
 ) {
   const found = matches.find((d) => d.routeId === route.id)
-  if (!found) return 'gray'
+  if (!found) {
+    return 'gray'
+  }
   return getStatusColor(found)
 }
 
@@ -63,7 +65,7 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
 
     const mediaStyles = Object.entries(queries).reduce(
       (current, [key, value]) => {
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        // eslint-disable-next-line typescript/no-unnecessary-condition
         return useMediaQuery(key)
           ? {
               ...current,
@@ -84,7 +86,7 @@ export function styled<T extends keyof HTMLElementTagNameMap>(
         : { ...baseStyles, ...style, ...mediaStyles }
 
     return (
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+      // eslint-disable-next-line typescript/ban-ts-comment
       // @ts-ignore
       <Dynamic component={type} {...rest} style={combinedStyles} ref={ref} />
     )
@@ -115,8 +117,12 @@ export type RscSlotUsageEvent = {
 
 function trimTrailingUndefined<T>(arr: Array<T>): Array<T> {
   let end = arr.length
-  while (end > 0 && arr[end - 1] === undefined) end--
-  if (end === 0) return arr
+  while (end > 0 && arr[end - 1] === undefined) {
+    end--
+  }
+  if (end === 0) {
+    return arr
+  }
   return end === arr.length ? arr : arr.slice(0, end)
 }
 
@@ -187,9 +193,13 @@ export const getServerComponentSlotUsages = (
   }
 
   const v = value as Record<symbol, unknown>
-  if (!(RSC_SLOT_USAGES in v)) return []
+  if (!(RSC_SLOT_USAGES in v)) {
+    return []
+  }
   const usages = v[RSC_SLOT_USAGES]
-  if (!Array.isArray(usages)) return []
+  if (!Array.isArray(usages)) {
+    return []
+  }
 
   return usages.filter((d): d is RscSlotUsageEvent => {
     return (
@@ -222,7 +232,9 @@ export const getServerComponentSlotUsageSummary = (
  * @param {unknown} value Value to be stringified
  */
 export const displayValue = (value: unknown) => {
-  if (value === 'React element') return 'React element'
+  if (value === 'React element') {
+    return 'React element'
+  }
   const componentType = getServerComponentType(value)
   if (componentType === 'compositeSource') {
     const slots = getServerComponentSlots(value)
@@ -257,7 +269,7 @@ export function useSafeState<T>(initialState: T): [T, (value: T) => void] {
   const safeSetState = (value: T) => {
     scheduleMicrotask(() => {
       if (isMounted()) {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // eslint-disable-next-line typescript/ban-ts-comment
         // @ts-ignore
         setState(value)
       }

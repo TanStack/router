@@ -100,7 +100,9 @@ function _resolveBlockerOpts(
     const shouldBlock = Boolean(condition ?? true)
 
     const _customBlockerFn = async () => {
-      if (shouldBlock) return await opts()
+      if (shouldBlock) {
+        return await opts()
+      }
       return false
     }
 
@@ -258,7 +260,9 @@ export function useBlocker(
     })
 
     onCleanup(() => {
-      if (unsubscribe) unsubscribe()
+      if (unsubscribe) {
+        unsubscribe()
+      }
     })
   })
 
@@ -450,7 +454,9 @@ const BlockImpl = Vue.defineComponent({
       })
 
       onCleanup(() => {
-        if (unsubscribe) unsubscribe()
+        if (unsubscribe) {
+          unsubscribe()
+        }
       })
     })
 

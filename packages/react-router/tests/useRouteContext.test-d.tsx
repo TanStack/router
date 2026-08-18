@@ -30,7 +30,7 @@ test('when there is no context', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
   })
@@ -99,7 +99,7 @@ test('when there is the root context', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -181,7 +181,7 @@ test('when there are multiple contexts', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },
@@ -263,7 +263,7 @@ test('when there are overlapping contexts', () => {
     indexRoute,
   ])
 
-  // eslint-disable-next-line unused-imports/no-unused-vars
+  // eslint-disable-next-line no-unused-vars
   const defaultRouter = createRouter({
     routeTree,
     context: { userId: 'userId' },

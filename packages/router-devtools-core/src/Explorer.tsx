@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unnecessary-condition */
+/* eslint-disable typescript/no-unnecessary-condition */
 import { clsx as cx } from 'clsx'
 import * as goober from 'goober'
 import { createMemo, createSignal, useContext } from 'solid-js'
@@ -68,7 +68,9 @@ type RendererProps = {
  * chunkArray(['a','b', 'c', 'd', 'e'], 2) // returns [['a','b'], ['c', 'd'], ['e']]
  */
 export function chunkArray<T>(array: Array<T>, size: number): Array<Array<T>> {
-  if (size < 1) return []
+  if (size < 1) {
+    return []
+  }
   let i = 0
   const result: Array<Array<T>> = []
   while (i < array.length) {
@@ -96,7 +98,9 @@ function isIterable(x: any): x is Iterable<unknown> {
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  if (!value || typeof value !== 'object') return false
+  if (!value || typeof value !== 'object') {
+    return false
+  }
   const proto = Object.getPrototypeOf(value)
   return proto === Object.prototype || proto === null
 }
@@ -230,7 +234,9 @@ export function Explorer({
                 <div class={styles().subEntries}>
                   {serverComponentSlots().map((name) => {
                     const usage = serverComponentSlotUsageSummary()[name]
-                    if (!usage) return null
+                    if (!usage) {
+                      return null
+                    }
                     return (
                       <Explorer
                         label={`${name}:`}

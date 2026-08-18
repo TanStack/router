@@ -26,7 +26,9 @@ function toHeadersInstance(init: AnyHeaders) {
 export function mergeHeaders(...headers: Array<AnyHeaders>) {
   return headers.reduce((acc: Headers, header) => {
     const headersInstance = toHeadersInstance(header)
-    if (!headersInstance) return acc
+    if (!headersInstance) {
+      return acc
+    }
     for (const [key, value] of headersInstance.entries()) {
       if (key === 'set-cookie') {
         const splitCookies = splitSetCookieString(value)

@@ -17,7 +17,9 @@ function HydratedBoundary(props: {
   const didHydrateRef = React.useRef(false)
 
   React.useEffect(() => {
-    if (didHydrateRef.current) return
+    if (didHydrateRef.current) {
+      return
+    }
     didHydrateRef.current = true
     onHydrated?.()
   }, [onHydrated])

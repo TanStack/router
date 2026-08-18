@@ -103,7 +103,9 @@ function isStartCompilerEnvironmentEnabled(
     | undefined,
   env: StartCompilerEnvironment,
 ): boolean {
-  if (!environment) return true
+  if (!environment) {
+    return true
+  }
   if (Array.isArray(environment)) {
     return environment.includes(env)
   }
@@ -244,7 +246,9 @@ export function detectKindsInCode(
   }
 
   for (const transform of opts?.compilerTransforms ?? []) {
-    if (!isCompilerTransformEnabledForEnv(transform, env)) continue
+    if (!isCompilerTransformEnabledForEnv(transform, env)) {
+      continue
+    }
     transform.detect.lastIndex = 0
     if (transform.detect.test(code)) {
       detected.add(getExternalLookupKind(transform))
@@ -352,9 +356,13 @@ function isNestedDirectCallCandidate(
   ) {
     calleeName = node.callee.property.name
   }
-  if (!calleeName) return false
+  if (!calleeName) {
+    return false
+  }
   for (const kind of lookupKinds) {
-    if (isExternalLookupKind(kind)) continue
+    if (isExternalLookupKind(kind)) {
+      continue
+    }
     const setup = getLookupSetup(kind, externalLookupSetup)
     if (setup?.type === 'directCall' && setup.factoryNames.has(calleeName)) {
       return true
@@ -434,15 +442,21 @@ function isDirectCallCandidateForKind(
 
 function hasBuiltInDirectCallKinds(kinds: Set<LookupKind>): boolean {
   for (const kind of kinds) {
-    if (isExternalLookupKind(kind)) continue
-    if (BuiltInLookupSetup[kind].type === 'directCall') return true
+    if (isExternalLookupKind(kind)) {
+      continue
+    }
+    if (BuiltInLookupSetup[kind].type === 'directCall') {
+      return true
+    }
   }
   return false
 }
 
 function hasExternalLookupKinds(kinds: Set<LookupKind>): boolean {
   for (const kind of kinds) {
-    if (isExternalLookupKind(kind)) return true
+    if (isExternalLookupKind(kind)) {
+      return true
+    }
   }
   return false
 }
@@ -472,7 +486,9 @@ function getExternalDirectCallCandidateKind(
 
   if (t.isIdentifier(node.callee)) {
     const kind = candidates.identifiers.get(node.callee.name)
-    if (!kind) return undefined
+    if (!kind) {
+      return undefined
+    }
 
     const binding = path.scope.getBinding(node.callee.name)
     return binding?.path.isImportSpecifier() ? kind : undefined
@@ -486,7 +502,9 @@ function getExternalDirectCallCandidateKind(
     const kind = candidates.namespaces
       .get(node.callee.object.name)
       ?.get(node.callee.property.name)
-    if (!kind) return undefined
+    if (!kind) {
+      return undefined
+    }
 
     const binding = path.scope.getBinding(node.callee.object.name)
     return binding?.path.isImportNamespaceSpecifier() ? kind : undefined
@@ -576,7 +594,9 @@ export class StartCompiler {
 
     for (const transform of options.compilerTransforms ?? []) {
       const kind = getExternalLookupKind(transform)
-      if (!this.validLookupKinds.has(kind)) continue
+      if (!this.validLookupKinds.has(kind)) {
+        continue
+      }
 
       this.externalTransformsByKind.set(kind, transform)
 
@@ -688,12 +708,16 @@ export class StartCompiler {
     }
 
     for (const [localName, binding] of moduleInfo.bindings) {
-      if (binding.type !== 'import') continue
+      if (binding.type !== 'import') {
+        continue
+      }
 
       const rootExports = this.externalDirectCallKindsBySource.get(
         binding.source,
       )
-      if (!rootExports) continue
+      if (!rootExports) {
+        continue
+      }
 
       if (binding.importedName === '*') {
         const namespaceExports = new Map<string, ExternalLookupKind>()
@@ -937,10 +961,14 @@ export class StartCompiler {
         await Promise.all(
           Array.from(importSources, async (source) => {
             const resolved = await resolveSource(source, moduleInfo.id)
-            if (!resolved) return
+            if (!resolved) {
+              return
+            }
 
             const targetId = cleanId(resolved)
-            if (targetId === moduleId) return
+            if (targetId === moduleId) {
+              return
+            }
 
             let importers = importersByTarget.get(targetId)
             if (!importers) {
@@ -1091,7 +1119,9 @@ export class StartCompiler {
             const bodyPaths = programPath.get('body')
             for (const idx of candidateIndices) {
               const stmtPath = bodyPaths[idx]
-              if (!stmtPath) continue
+              if (!stmtPath) {
+                continue
+              }
 
               // Traverse only this statement's subtree
               stmtPath.traverse({
@@ -1195,27 +1225,37 @@ export class StartCompiler {
           // Collect JSX elements where the component is imported from a known package
           // and resolves to a JSX kind (e.g., ClientOnly from @tanstack/react-router)
           JSXElement: (path) => {
-            if (!checkJSX) return
+            if (!checkJSX) {
+              return
+            }
 
             const openingElement = path.node.openingElement
             const nameNode = openingElement.name
 
             // Only handle simple identifier names (not namespaced or member expressions)
-            if (!t.isJSXIdentifier(nameNode)) return
+            if (!t.isJSXIdentifier(nameNode)) {
+              return
+            }
 
             const componentName = nameNode.name
             const binding = moduleInfo.bindings.get(componentName)
 
             // Must be an import binding from a known package
-            if (!binding || binding.type !== 'import') return
+            if (!binding || binding.type !== 'import') {
+              return
+            }
 
             // Verify the import source is a known TanStack router package
             const knownExports = this.knownRootImports.get(binding.source)
-            if (!knownExports) return
+            if (!knownExports) {
+              return
+            }
 
             // Verify the imported name resolves to a JSX kind (e.g., ClientOnlyJSX)
             const kind = knownExports.get(binding.importedName)
-            if (kind !== 'ClientOnlyJSX') return
+            if (kind !== 'ClientOnlyJSX') {
+              return
+            }
 
             jsxCandidatePaths.push(path)
           },
@@ -1308,7 +1348,7 @@ export class StartCompiler {
         let currentNode: t.CallExpression = node
         let currentPath: babel.NodePath<t.CallExpression> = path
 
-        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        // oxlint-disable-next-line typescript/no-unnecessary-condition
         while (true) {
           const callee = currentNode.callee
           if (!t.isMemberExpression(callee)) {
@@ -1396,7 +1436,9 @@ export class StartCompiler {
 
       for (const kind of BuiltInKindHandlerOrder) {
         const candidates = candidatesByKind.get(kind)
-        if (!candidates) continue
+        if (!candidates) {
+          continue
+        }
         const handler = BuiltInKindHandlers[kind]
         handler(candidates, context, kind)
       }
@@ -1454,8 +1496,12 @@ export class StartCompiler {
   ): Array<StartCompilerAstPlugin> {
     return this.compilerPlugins.filter(
       (plugin): plugin is StartCompilerAstPlugin => {
-        if (!plugin.transformAst) return false
-        if (!plugin.detect) return true
+        if (!plugin.transformAst) {
+          return false
+        }
+        if (!plugin.detect) {
+          return true
+        }
         plugin.detect.lastIndex = 0
         return plugin.detect.test(code)
       },
@@ -1511,10 +1557,14 @@ export class StartCompiler {
     context: CompilationContext,
   ) {
     for (const [kind, transform] of this.externalTransformsByKind) {
-      if ((transform.order ?? 'pre') !== order) continue
+      if ((transform.order ?? 'pre') !== order) {
+        continue
+      }
 
       const candidates = candidatesByKind.get(kind)
-      if (!candidates) continue
+      if (!candidates) {
+        continue
+      }
 
       transform.transform(candidates, context)
     }
@@ -1890,7 +1940,9 @@ export class StartCompiler {
 
         // Check each possible kind that uses this identifier
         for (const kind of possibleKinds) {
-          if (!this.validLookupKinds.has(kind)) continue
+          if (!this.validLookupKinds.has(kind)) {
+            continue
+          }
 
           if (kind === 'ServerFn') {
             if (base === 'Root' || base === 'Builder') {

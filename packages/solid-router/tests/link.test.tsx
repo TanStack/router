@@ -1511,7 +1511,9 @@ describe('Link', () => {
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
-        if (isNaN(page)) throw Error('Not a number!')
+        if (isNaN(page)) {
+          throw Error('Not a number!')
+        }
 
         return {
           page,
@@ -1576,7 +1578,9 @@ describe('Link', () => {
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
-        if (isNaN(page)) throw Error('Not a number!')
+        if (isNaN(page)) {
+          throw Error('Not a number!')
+        }
 
         return {
           page,
@@ -1639,7 +1643,9 @@ describe('Link', () => {
       validateSearch: (input: Record<string, unknown>) => {
         const page = Number(input.page)
 
-        if (isNaN(page)) throw Error('Not a number!')
+        if (isNaN(page)) {
+          throw Error('Not a number!')
+        }
 
         return {
           page,

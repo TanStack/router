@@ -259,8 +259,12 @@ export function isClientOnlyHook(
   allowedHooks: Set<string> = DEFAULT_ALLOWED_HOOKS,
 ): boolean {
   // Must match use[A-Z] pattern
-  if (!/^use[A-Z]/.test(name)) return false
+  if (!/^use[A-Z]/.test(name)) {
+    return false
+  }
   // Check if explicitly allowed
-  if (allowedHooks.has(name)) return false
+  if (allowedHooks.has(name)) {
+    return false
+  }
   return true
 }

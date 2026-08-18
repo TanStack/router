@@ -58,7 +58,9 @@ const BufferCtor: any = (globalThis as any).Buffer
 const hasNodeBuffer = !!BufferCtor && typeof BufferCtor.from === 'function'
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
-  if (bytes.length === 0) return ''
+  if (bytes.length === 0) {
+    return ''
+  }
 
   if (hasNodeBuffer) {
     return BufferCtor.from(bytes).toString('base64')
@@ -75,7 +77,9 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 }
 
 function base64ToUint8Array(base64: string): Uint8Array {
-  if (base64.length === 0) return new Uint8Array(0)
+  if (base64.length === 0) {
+    return new Uint8Array(0)
+  }
 
   if (hasNodeBuffer) {
     const buf = BufferCtor.from(base64, 'base64')

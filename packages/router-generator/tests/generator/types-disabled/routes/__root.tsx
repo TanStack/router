@@ -1,4 +1,4 @@
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// eslint-disable-next-line typescript/ban-ts-comment
 // @ts-nocheck
 import * as React from 'react'
 import { Outlet, createRootRoute } from '@tanstack/react-router'

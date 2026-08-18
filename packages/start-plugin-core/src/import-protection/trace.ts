@@ -40,7 +40,9 @@ export class ImportGraph {
   /** Convenience for tests/debugging. */
   getEdges(resolved: string): Set<TraceEdge> | undefined {
     const importers = this.reverseEdges.get(resolved)
-    if (!importers) return undefined
+    if (!importers) {
+      return undefined
+    }
     const out = new Set<TraceEdge>()
     for (const [importer, specifier] of importers) {
       out.add({ importer, specifier })
@@ -130,7 +132,9 @@ export function buildTrace(
     }
 
     for (const [importer, specifier] of importers) {
-      if (visited.has(importer)) continue
+      if (visited.has(importer)) {
+        continue
+      }
       visited.add(importer)
       depthByNode.set(importer, depth + 1)
       down.set(importer, { next: node, specifier })
@@ -148,7 +152,9 @@ export function buildTrace(
   for (let i = 0; i <= maxDepth + 1; i++) {
     const link = down.get(current)
     trace.push({ file: current, specifier: link?.specifier })
-    if (!link) break
+    if (!link) {
+      break
+    }
     current = link.next
   }
 
@@ -206,7 +212,9 @@ export function formatViolation(info: ViolationInfo, root: string): string {
 
   const relTraceStep = (step: TraceStep): string => {
     const file = rel(step.file)
-    if (step.line == null) return file
+    if (step.line == null) {
+      return file
+    }
     const col = step.column ?? 1
     return `${file}:${step.line}:${col}`
   }

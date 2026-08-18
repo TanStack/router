@@ -5,9 +5,13 @@ import { getServerFnById } from '../getServerFnById'
 export const ServerFunctionSerializationAdapter = createSerializationAdapter({
   key: '$TSS/serverfn',
   test: (v): v is { serverFnMeta: { id: string } } => {
-    if (typeof v !== 'function') return false
+    if (typeof v !== 'function') {
+      return false
+    }
 
-    if (!(TSS_SERVER_FUNCTION in v)) return false
+    if (!(TSS_SERVER_FUNCTION in v)) {
+      return false
+    }
 
     return !!v[TSS_SERVER_FUNCTION]
   },

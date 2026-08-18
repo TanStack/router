@@ -63,7 +63,9 @@ function HydratedBoundary(props: {
   let didHydrate = false
 
   Solid.onMount(() => {
-    if (didHydrate) return
+    if (didHydrate) {
+      return
+    }
     didHydrate = true
     props.onHydrated?.()
     props.onStrategyHydrated?.(props.id)
@@ -77,7 +79,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
   const when = props.when
   const dynamicHydrate = typeof when === 'function'
   const initialHydrateStrategy: HydrationStrategy = dynamicHydrate
-    ? // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    ? // eslint-disable-next-line typescript/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined')
       ? dynamicHydrateStrategy
       : when()
@@ -91,17 +93,17 @@ export function GenericHydrate(props: InternalHydrateProps) {
   const id = props.h ? `${props.h}${uniqueId}` : uniqueId
   const initialHydrateType = initialHydrateStrategy._t!
   const shouldPreserveServerHTML =
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') || !hydrated()
   const shouldDeferInitialHydration =
     !hydrated() && shouldDeferHydration(initialHydrateStrategy)
   const gate: HydrationGateRecord =
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined')
       ? createResolvedGate(id, initialHydrateType)
       : getOrCreateGate(id, initialHydrateType)
   const [ready, setReady] = Solid.createSignal(
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     (isServer ?? typeof window === 'undefined') ||
       (!shouldDeferInitialHydration && initialHydrateType !== 'never'),
   )
@@ -117,7 +119,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
   let markerElement: HTMLDivElement | undefined
 
   if (
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+    // eslint-disable-next-line typescript/no-unnecessary-condition
     !(isServer ?? typeof window === 'undefined') &&
     initialHydrateType !== 'never' &&
     (!shouldDeferInitialHydration ||
@@ -218,7 +220,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
       } else if (props.p) {
         const currentStrategy = currentPrefetchStrategy
         const prefetch = () => {
-          if (didPrefetch) return
+          if (didPrefetch) {
+            return
+          }
           didPrefetch = true
           void preload()
         }
@@ -228,7 +232,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
             prefetch,
           }),
         )
-        if (cleanupPrefetch) Solid.onCleanup(cleanupPrefetch)
+        if (cleanupPrefetch) {
+          Solid.onCleanup(cleanupPrefetch)
+        }
       }
     }
 
@@ -250,7 +256,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
     }
 
     const cleanup = () => {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
       disposed = true
       if (gate.resolve === requestHydration) {
         gate.resolve = resolveGate
@@ -260,7 +268,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
     }
 
     const addCleanup = (fn: void | (() => void)) => {
-      if (!fn) return
+      if (!fn) {
+        return
+      }
       if (disposed || gate.resolved) {
         fn()
         return
@@ -285,7 +295,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
       !shouldDeferInitialHydration ||
       currentHydrateType === 'never'
     ) {
-      if (gate.resolved) resolveBoundary()
+      if (gate.resolved) {
+        resolveBoundary()
+      }
       return
     }
 
@@ -311,7 +323,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
 
   Solid.createRenderEffect(() => {
     if (
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+      // eslint-disable-next-line typescript/no-unnecessary-condition
       (isServer ?? typeof window === 'undefined') ||
       gate.resolved ||
       initialHydrateStrategy._t === 'never' ||
@@ -334,10 +346,14 @@ export function GenericHydrate(props: InternalHydrateProps) {
     ...markerAttributes,
   }
   const fallback = () => {
-    if (!shouldPreserveServerHTML) return props.fallback ?? null
+    if (!shouldPreserveServerHTML) {
+      return props.fallback ?? null
+    }
 
     const html = getFallbackHtml(id)
-    if (!html) return null
+    if (!html) {
+      return null
+    }
 
     const fallbackProps: HydrationFallbackDynamicProps = {
       component: 'div',
@@ -352,7 +368,9 @@ export function GenericHydrate(props: InternalHydrateProps) {
     <Dynamic {...markerProps}>
       {(() => {
         const error = prefetchError()
-        if (error) throw error
+        if (error) {
+          throw error
+        }
         return null
       })()}
       {initialHydrateType === 'never' && !shouldPreserveServerHTML ? (

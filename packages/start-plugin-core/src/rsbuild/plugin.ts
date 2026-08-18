@@ -442,7 +442,9 @@ export function tanStackStartRsbuild(
       if (isInsideRouterMonoRepo && api.context.action === 'dev') {
         api.modifyRspackConfig((config) => {
           const workspaceDistRealpaths = resolveWorkspacePackageDistRealpaths()
-          if (workspaceDistRealpaths.length === 0) return
+          if (workspaceDistRealpaths.length === 0) {
+            return
+          }
 
           const workspaceDistIgnored = new RegExp(
             workspaceDistRealpaths
@@ -683,8 +685,9 @@ export function tanStackStartRsbuild(
           START_MANIFEST_PLACEHOLDER,
         )
         api.modifyRspackConfig((config, utils) => {
-          if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.server)
+          if (utils.environment.name !== RSBUILD_ENVIRONMENT_NAMES.server) {
             return
+          }
 
           config.plugins.push({
             apply(compiler: RspackCompiler) {
@@ -765,7 +768,9 @@ export function tanStackStartRsbuild(
       // 9. After client env compiles — refresh resolver + manifest
       // ---------------------------------------------------------------
       api.onAfterEnvironmentCompile(({ environment }) => {
-        if (environment.name !== RSBUILD_ENVIRONMENT_NAMES.client) return
+        if (environment.name !== RSBUILD_ENVIRONMENT_NAMES.client) {
+          return
+        }
 
         virtualModuleState.updateServerFnResolver()
 
@@ -818,8 +823,11 @@ function rebuildModulesContaining(
     rebuilds.push(
       new Promise<void>((resolve, reject) => {
         compilation.rebuildModule(mod, (err: Error | null) => {
-          if (err) reject(err)
-          else resolve()
+          if (err) {
+            reject(err)
+          } else {
+            resolve()
+          }
         })
       }),
     )
@@ -841,7 +849,9 @@ function resolveWorkspacePackageDistRealpaths(): Array<string> {
   // or <repo>/packages/start-plugin-core/dist/<fmt>/rsbuild. Four levels up
   // lands on <repo>/packages in both layouts.
   const packagesDir = resolve(currentDir, '../../../../')
-  if (!existsSync(packagesDir)) return []
+  if (!existsSync(packagesDir)) {
+    return []
+  }
 
   let entries: Array<string>
   try {
@@ -854,7 +864,9 @@ function resolveWorkspacePackageDistRealpaths(): Array<string> {
   for (const entry of entries) {
     const distPath = join(packagesDir, entry, 'dist')
     try {
-      if (!statSync(distPath).isDirectory()) continue
+      if (!statSync(distPath).isDirectory()) {
+        continue
+      }
     } catch {
       continue
     }

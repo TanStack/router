@@ -193,8 +193,6 @@
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",
-    "@eslint-react/eslint-plugin": "catalog:",
-    "eslint-plugin-react-hooks": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "@types/react": "catalog:",

@@ -25,7 +25,9 @@ async function waitForReadyOrAbort(
         const onAbort = () => resolve()
         cleanup = () => signal.removeEventListener('abort', onAbort)
         signal.addEventListener('abort', onAbort, { once: true })
-        if (signal.aborted) resolve()
+        if (signal.aborted) {
+          resolve()
+        }
       }),
     ])
   } finally {
@@ -98,7 +100,9 @@ export const renderRouterToStream = async ({
     }
   }
   const abortSolidPipe = (reason?: unknown) => {
-    if (writerDone) return
+    if (writerDone) {
+      return
+    }
     writerDone = true
     void innerWriter
       .abort(reason)
@@ -150,8 +154,9 @@ export const renderRouterToStream = async ({
             writerDone ||
             err?.name === 'AbortError' ||
             err?.code === 'ABORT_ERR'
-          )
+          ) {
             return
+          }
           console.error('Error in Solid render stream:', err)
           abortSolidPipe(err)
         },

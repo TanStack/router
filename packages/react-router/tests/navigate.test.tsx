@@ -495,7 +495,9 @@ describe('router.navigate navigation using layout routes resolves correctly', ()
 })
 
 function toNullObj<T>(obj: T): T {
-  if (typeof obj === 'object') return Object.assign(Object.create(null), obj)
+  if (typeof obj === 'object') {
+    return Object.assign(Object.create(null), obj)
+  }
   return obj
 }
 

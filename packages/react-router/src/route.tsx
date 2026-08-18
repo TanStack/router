@@ -119,7 +119,7 @@ export class RouteApi<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    // eslint-disable-next-line typescript/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -128,7 +128,7 @@ export class RouteApi<
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    // eslint-disable-next-line typescript/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -273,7 +273,7 @@ export class Route<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    // eslint-disable-next-line typescript/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -282,7 +282,7 @@ export class Route<
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    // eslint-disable-next-line typescript/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -544,7 +544,7 @@ export class RootRoute<
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    // eslint-disable-next-line typescript/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
@@ -553,7 +553,7 @@ export class RootRoute<
   }
 
   useParams: UseParamsRoute<RootRouteId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    // eslint-disable-next-line typescript/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,

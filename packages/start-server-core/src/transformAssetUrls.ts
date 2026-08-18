@@ -245,8 +245,12 @@ function resolveTransformAssetsCrossOrigin(
   config: TransformAssetsCrossOriginConfig | undefined,
   kind: TransformAssetsShorthandCrossOriginKind,
 ): AssetCrossOrigin | undefined {
-  if (!config) return undefined
-  if (typeof config === 'string') return config
+  if (!config) {
+    return undefined
+  }
+  if (typeof config === 'string') {
+    return config
+  }
 
   return config[kind]
 }

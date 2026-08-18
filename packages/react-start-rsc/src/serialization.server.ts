@@ -73,7 +73,9 @@ setOnClientReference(
       return
     }
 
-    if (!ctx.requestAssets) ctx.requestAssets = {}
+    if (!ctx.requestAssets) {
+      ctx.requestAssets = {}
+    }
     const seenHrefs = new Set<string>()
     for (const preload of ctx.requestAssets.preloads ?? []) {
       seenHrefs.add(typeof preload === 'string' ? preload : preload.href)
@@ -86,7 +88,9 @@ setOnClientReference(
 
     let nextPreloads: typeof ctx.requestAssets.preloads | undefined
     for (const href of deps.js) {
-      if (seenHrefs.has(href)) continue
+      if (seenHrefs.has(href)) {
+        continue
+      }
       seenHrefs.add(href)
       if (!nextPreloads) {
         nextPreloads = ctx.requestAssets.preloads
@@ -101,7 +105,9 @@ setOnClientReference(
 
     let nextCss: typeof ctx.requestAssets.css | undefined
     for (const href of deps.css) {
-      if (seenHrefs.has(href)) continue
+      if (seenHrefs.has(href)) {
+        continue
+      }
       seenHrefs.add(href)
       if (!nextCss) {
         nextCss = ctx.requestAssets.css ? ctx.requestAssets.css.slice() : []
@@ -175,8 +181,12 @@ globalThis.__RSC_SSR__ = ssrHandler
  * The value can be either an object (proxy target) or a function (stub for server functions).
  */
 function isRenderableRsc(value: unknown): boolean {
-  if (value === null || value === undefined) return false
-  if (typeof value !== 'object' && typeof value !== 'function') return false
+  if (value === null || value === undefined) {
+    return false
+  }
+  if (typeof value !== 'object' && typeof value !== 'function') {
+    return false
+  }
   return RENDERABLE_RSC in value && (value as any)[RENDERABLE_RSC] === true
 }
 

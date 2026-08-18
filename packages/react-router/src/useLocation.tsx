@@ -59,10 +59,10 @@ export function useLocation<
     ) as UseLocationResult<TRouter, TSelected>
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  // eslint-disable-next-line react/rules-of-hooks -- condition is static
   return useStore(
     router.stores.location,
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    // eslint-disable-next-line react/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router),
   ) as UseLocationResult<TRouter, TSelected>
 }

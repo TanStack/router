@@ -70,9 +70,15 @@ function getJSXAttribute(node: t.JSXOpeningElement, name: string) {
 
 function getBooleanProp(node: t.JSXOpeningElement, name: string) {
   const attr = getJSXAttribute(node, name)
-  if (!attr) return undefined
-  if (!attr.value) return true
-  if (t.isStringLiteral(attr.value)) return attr.value.value !== 'false'
+  if (!attr) {
+    return undefined
+  }
+  if (!attr.value) {
+    return true
+  }
+  if (t.isStringLiteral(attr.value)) {
+    return attr.value.value !== 'false'
+  }
   if (t.isJSXExpressionContainer(attr.value)) {
     if (t.isBooleanLiteral(attr.value.expression)) {
       return attr.value.expression.value
@@ -124,7 +130,9 @@ function isReferenceInsideAnyNode(
   referencePath: babel.NodePath,
   nodes: ReadonlySet<t.Node>,
 ) {
-  if (nodes.has(referencePath.node)) return true
+  if (nodes.has(referencePath.node)) {
+    return true
+  }
   return Boolean(referencePath.findParent((parent) => nodes.has(parent.node)))
 }
 
@@ -150,10 +158,16 @@ function stripBindingsOnlyReferencedByNodes(
   })
 
   for (const name of names) {
-    if (seen.has(name)) continue
-    if (preserve.has(name)) continue
+    if (seen.has(name)) {
+      continue
+    }
+    if (preserve.has(name)) {
+      continue
+    }
     const binding = scope.getBinding(name)
-    if (!binding?.constant) continue
+    if (!binding?.constant) {
+      continue
+    }
     if (
       binding.path.findParent(
         (parentPath) =>
@@ -163,7 +177,9 @@ function stripBindingsOnlyReferencedByNodes(
     ) {
       continue
     }
-    if (binding.referencePaths.length === 0) continue
+    if (binding.referencePaths.length === 0) {
+      continue
+    }
     if (
       !binding.referencePaths.every((referencePath) =>
         isReferenceInsideAnyNode(referencePath, nodeSet),
@@ -184,7 +200,9 @@ function stripBindingsOnlyReferencedByNodes(
       !t.isIdentifier(declarationPath.node.id) &&
       collectIdentifiersFromPattern(declarationPath.node.id).some(
         (bindingName) => {
-          if (bindingName === binding.identifier.name) return false
+          if (bindingName === binding.identifier.name) {
+            return false
+          }
 
           const siblingBinding = binding.scope.getBinding(bindingName)
           return siblingBinding?.referencePaths.some(
@@ -259,10 +277,18 @@ function getSingleUseObjectExpressionBinding(
   identifier: t.Identifier,
 ) {
   const binding = path.scope.getBinding(identifier.name)
-  if (!binding?.constant) return undefined
-  if (binding.referencePaths.length !== 1) return undefined
-  if (binding.referencePaths[0]?.node !== identifier) return undefined
-  if (!binding.path.isVariableDeclarator()) return undefined
+  if (!binding?.constant) {
+    return undefined
+  }
+  if (binding.referencePaths.length !== 1) {
+    return undefined
+  }
+  if (binding.referencePaths[0]?.node !== identifier) {
+    return undefined
+  }
+  if (!binding.path.isVariableDeclarator()) {
+    return undefined
+  }
   const init = binding.path.node.init
   return t.isObjectExpression(init) ? init : undefined
 }
@@ -272,11 +298,15 @@ function objectExpressionMayHaveProperty(
   name: string,
 ) {
   return node.properties.some((property) => {
-    if (t.isSpreadElement(property)) return true
+    if (t.isSpreadElement(property)) {
+      return true
+    }
     if (!t.isObjectMethod(property) && !t.isObjectProperty(property)) {
       return true
     }
-    if (property.computed) return true
+    if (property.computed) {
+      return true
+    }
     return isObjectPropertyName(property, name)
   })
 }
@@ -362,8 +392,12 @@ function inspectSplitBoundary(options: {
   const validateVisitors = options.validate
     ? {
         CallExpression(callPath: babel.NodePath<t.CallExpression>) {
-          if (!t.isIdentifier(callPath.node.callee)) return
-          if (!/^use[A-Z0-9]/.test(callPath.node.callee.name)) return
+          if (!t.isIdentifier(callPath.node.callee)) {
+            return
+          }
+          if (!/^use[A-Z0-9]/.test(callPath.node.callee.name)) {
+            return
+          }
 
           throwBoundaryError(
             options.code,
@@ -398,7 +432,9 @@ function inspectSplitBoundary(options: {
           }
 
           const split = getBooleanProp(nestedPath.node.openingElement, 'split')
-          if (split === false) return
+          if (split === false) {
+            return
+          }
 
           nestedBoundaryCount++
         },
@@ -426,23 +462,36 @@ function inspectSplitBoundary(options: {
           const binding = identifierPath.scope.getBinding(
             identifierPath.node.name,
           )
-          if (!binding) return
-          if (t.isProgram(binding.scope.block)) return
+          if (!binding) {
+            return
+          }
+          if (t.isProgram(binding.scope.block)) {
+            return
+          }
           if (
             path.node === binding.scope.block ||
             path.isAncestor(binding.path)
-          )
+          ) {
             return
+          }
 
           capturedNames.add(identifierPath.node.name)
         },
         JSXIdentifier(identifierPath: babel.NodePath<t.JSXIdentifier>) {
-          if (identifierPath.parentKey !== 'name') return
+          if (identifierPath.parentKey !== 'name') {
+            return
+          }
           const name = identifierPath.node.name
-          if (!/^[A-Z]/.test(name)) return
+          if (!/^[A-Z]/.test(name)) {
+            return
+          }
           const binding = identifierPath.scope.getBinding(name)
-          if (!binding) return
-          if (t.isProgram(binding.scope.block)) return
+          if (!binding) {
+            return
+          }
+          if (t.isProgram(binding.scope.block)) {
+            return
+          }
 
           capturedNames.add(name)
         },
@@ -469,8 +518,12 @@ function getHydrateImport(
   const hydrateImportSource = `@tanstack/${framework}-start`
 
   for (const node of ast.program.body) {
-    if (!t.isImportDeclaration(node)) continue
-    if (node.source.value !== hydrateImportSource) continue
+    if (!t.isImportDeclaration(node)) {
+      continue
+    }
+    if (node.source.value !== hydrateImportSource) {
+      continue
+    }
 
     for (const specifier of node.specifiers) {
       if (
@@ -504,10 +557,14 @@ function transformHydrateAst(options: {
   framework: CompileStartFrameworkOptions
   indexOffset?: number
 }) {
-  if (!options.code.includes('Hydrate')) return null
+  if (!options.code.includes('Hydrate')) {
+    return null
+  }
 
   const hydrateImport = getHydrateImport(options.ast, options.framework)
-  if (!hydrateImport) return null
+  if (!hydrateImport) {
+    return null
+  }
   const { hydrateLocalName: localName } = hydrateImport
   const sourceId = cleanId(options.id)
   const getBoundaryId = createBoundaryId(options.root, sourceId)
@@ -524,7 +581,9 @@ function transformHydrateAst(options: {
     Program(programPath) {
       programPath.traverse({
         JSXElement(path) {
-          if (getJSXElementName(path.node) !== localName) return
+          if (getJSXElementName(path.node) !== localName) {
+            return
+          }
 
           if (options.env === 'server') {
             path.node.openingElement.attributes =
@@ -577,7 +636,9 @@ function transformHydrateAst(options: {
           }
 
           const split = getBooleanProp(path.node.openingElement, 'split')
-          if (split === false) return
+          if (split === false) {
+            return
+          }
 
           const boundaryInspection = inspectSplitBoundary({
             code: options.code,
@@ -611,7 +672,9 @@ function transformHydrateAst(options: {
           }
           state.modified = true
 
-          if (options.env === 'server') return
+          if (options.env === 'server') {
+            return
+          }
 
           const needsPreloadProp = path.node.openingElement.attributes.some(
             (attribute) => {
@@ -748,7 +811,9 @@ function transformHydrateAst(options: {
     },
   })
 
-  if (!state.modified) return null
+  if (!state.modified) {
+    return null
+  }
 
   return true
 }
@@ -760,12 +825,16 @@ function loadHydrateVirtualModule(options: {
   framework: CompileStartFrameworkOptions
 }) {
   const { sourceId, splitId, boundaryIndex } = parseHydrateVirtualId(options.id)
-  if (!splitId || boundaryIndex < 0) return null
+  if (!splitId || boundaryIndex < 0) {
+    return null
+  }
   const getBoundaryId = createBoundaryId(options.root, sourceId)
 
   const ast = parseAst({ code: options.code, sourceFilename: sourceId })
   const hydrateImport = getHydrateImport(ast, options.framework)
-  if (!hydrateImport) return null
+  if (!hydrateImport) {
+    return null
+  }
   const { hydrateLocalName: localName } = hydrateImport
 
   let target: t.JSXElement | undefined
@@ -775,9 +844,13 @@ function loadHydrateVirtualModule(options: {
 
   babel.traverse(ast, {
     JSXElement(path) {
-      if (getJSXElementName(path.node) !== localName) return
+      if (getJSXElementName(path.node) !== localName) {
+        return
+      }
       const split = getBooleanProp(path.node.openingElement, 'split')
-      if (split === false) return
+      if (split === false) {
+        return
+      }
 
       if (index === boundaryIndex) {
         const id = getBoundaryId(index)
@@ -799,7 +872,9 @@ function loadHydrateVirtualModule(options: {
     },
   })
 
-  if (!target || targetIndex < 0) return null
+  if (!target || targetIndex < 0) {
+    return null
+  }
 
   const children = target.children
   const exportName = `H${targetIndex}`

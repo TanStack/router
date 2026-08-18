@@ -77,7 +77,9 @@ function Script({
     attrs.type !== 'module'
 
   onMount(() => {
-    if (dataScript) return
+    if (dataScript) {
+      return
+    }
 
     if (attrs?.src) {
       const normSrc = (() => {
@@ -124,7 +126,9 @@ function Script({
       const existingScript = Array.from(
         document.querySelectorAll('script:not([src])'),
       ).find((el) => {
-        if (!(el instanceof HTMLScriptElement)) return false
+        if (!(el instanceof HTMLScriptElement)) {
+          return false
+        }
         const sType = el.getAttribute('type') ?? 'text/javascript'
         const sNonce = el.getAttribute('nonce') ?? undefined
         return (

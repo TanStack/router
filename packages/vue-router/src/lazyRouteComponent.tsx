@@ -12,7 +12,9 @@ function isModuleNotFoundError(error: any): boolean {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // safari: "Importing a module script failed."
-  if (typeof error?.message !== 'string') return false
+  if (typeof error?.message !== 'string') {
+    return false
+  }
   return (
     error.message.startsWith('Failed to fetch dynamically imported module') ||
     error.message.startsWith('error loading dynamically imported module') ||

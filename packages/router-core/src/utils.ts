@@ -47,7 +47,7 @@ export type MakeDifferenceOptional<TLeft, TRight> = keyof TLeft &
     }
 
 // from https://stackoverflow.com/a/53955431
-// eslint-disable-next-line @typescript-eslint/naming-convention
+// eslint-disable-next-line typescript/naming-convention
 export type IsUnion<T, U extends T = T> = (
   T extends any ? (U extends T ? false : true) : never
 ) extends false
@@ -213,7 +213,9 @@ const isEnumerable = Object.prototype.propertyIsEnumerable
 
 export function hasKeys(obj: Record<string, unknown>) {
   for (const key in obj) {
-    if (hasOwn.call(obj, key)) return true
+    if (hasOwn.call(obj, key)) {
+      return true
+    }
   }
   return false
 }
@@ -241,18 +243,26 @@ export function replaceEqualDeep<T>(
     return prev
   }
 
-  if (_depth > 500) return _next
+  if (_depth > 500) {
+    return _next
+  }
 
   const next = _next as any
 
   const array = isPlainArray(prev) && isPlainArray(next)
 
-  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) {
+    return next
+  }
 
   const prevItems = array ? prev : getEnumerableOwnKeys(prev)
-  if (!prevItems) return next
+  if (!prevItems) {
+    return next
+  }
   const nextItems = array ? next : getEnumerableOwnKeys(next)
-  if (!nextItems) return next
+  if (!nextItems) {
+    return next
+  }
   const prevSize = prevItems.length
   const nextSize = nextItems.length
   const copy: any = array ? new Array(nextSize) : _makeObj()
@@ -266,7 +276,9 @@ export function replaceEqualDeep<T>(
 
     if (p === n) {
       copy[key] = p
-      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
+      if (array ? i < prevSize : hasOwn.call(prev, key)) {
+        equalItems++
+      }
       continue
     }
 
@@ -282,7 +294,9 @@ export function replaceEqualDeep<T>(
 
     const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
     copy[key] = v
-    if (v === p) equalItems++
+    if (v === p) {
+      equalItems++
+    }
   }
 
   return prevSize === nextSize && equalItems === prevSize ? prev : copy
@@ -380,9 +394,13 @@ export function deepEqual(
   }
 
   if (Array.isArray(a) && Array.isArray(b)) {
-    if (a.length !== b.length) return false
+    if (a.length !== b.length) {
+      return false
+    }
     for (let i = 0, l = a.length; i < l; i++) {
-      if (!deepEqual(a[i], b[i], opts)) return false
+      if (!deepEqual(a[i], b[i], opts)) {
+        return false
+      }
     }
     return true
   }
@@ -393,7 +411,9 @@ export function deepEqual(
     if (opts?.partial) {
       for (const k in b) {
         if (!ignoreUndefined || b[k] !== undefined) {
-          if (!deepEqual(a[k], b[k], opts)) return false
+          if (!deepEqual(a[k], b[k], opts)) {
+            return false
+          }
         }
       }
       return true
@@ -404,7 +424,9 @@ export function deepEqual(
       aCount = Object.keys(a).length
     } else {
       for (const k in a) {
-        if (a[k] !== undefined) aCount++
+        if (a[k] !== undefined) {
+          aCount++
+        }
       }
     }
 
@@ -412,7 +434,9 @@ export function deepEqual(
     for (const k in b) {
       if (!ignoreUndefined || b[k] !== undefined) {
         bCount++
-        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) return false
+        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) {
+          return false
+        }
       }
     }
 
@@ -496,7 +520,9 @@ export function isModuleNotFoundError(error: any): boolean {
   // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
   // safari: "Importing a module script failed."
-  if (typeof error?.message !== 'string') return false
+  if (typeof error?.message !== 'string') {
+    return false
+  }
   return (
     error.message.startsWith('Failed to fetch dynamically imported module') ||
     error.message.startsWith('error loading dynamically imported module') ||
@@ -520,7 +546,9 @@ export function findLast<T>(
 ): T | undefined {
   for (let i = array.length - 1; i >= 0; i--) {
     const item = array[i]!
-    if (predicate(item)) return item
+    if (predicate(item)) {
+      return item
+    }
   }
   return undefined
 }
@@ -598,7 +626,9 @@ export function isDangerousProtocol(
   url: string,
   allowlist: Set<string>,
 ): boolean {
-  if (!url) return false
+  if (!url) {
+    return false
+  }
 
   try {
     // Use the URL constructor - it correctly normalizes protocols
@@ -636,7 +666,9 @@ export function escapeHtml(str: string): string {
 }
 
 export function decodePath(path: string) {
-  if (!path) return { path, handledProtocolRelativeURL: false }
+  if (!path) {
+    return { path, handledProtocolRelativeURL: false }
+  }
 
   // Fast path: most paths are already decoded and safe.
   // Only fall back to the slower scan/regex path when we see a '%' (encoded),
@@ -694,7 +726,9 @@ export function encodePathLikeUrl(path: string): string {
 
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
-  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  if (!/\s|[^\u0000-\u007F]/.test(path)) {
+    return path
+  }
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
   return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
@@ -721,10 +755,16 @@ export function buildDevStylesUrl(
 }
 
 export function arraysEqual<T>(a: Array<T>, b: Array<T>) {
-  if (a === b) return true
-  if (a.length !== b.length) return false
+  if (a === b) {
+    return true
+  }
+  if (a.length !== b.length) {
+    return false
+  }
   for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false
+    if (a[i] !== b[i]) {
+      return false
+    }
   }
   return true
 }

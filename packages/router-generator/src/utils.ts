@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/prefer-for-of */
+/* eslint-disable typescript/prefer-for-of */
 import * as fsp from 'node:fs/promises'
 import path from 'node:path'
 import * as prettier from 'prettier'
@@ -20,7 +20,9 @@ export class RoutePrefixMap {
 
   constructor(routes: Array<RouteNode>) {
     for (const route of routes) {
-      if (!route.routePath || route.routePath === `/${rootPathId}`) continue
+      if (!route.routePath || route.routePath === `/${rootPathId}`) {
+        continue
+      }
 
       // Skip route pieces (lazy, loader, component, etc.) - they are merged with main routes
       // and should not be valid parent candidates
@@ -45,13 +47,17 @@ export class RoutePrefixMap {
    * O(k) where k is the number of path segments, not O(n) routes.
    */
   findParent(routePath: string): RouteNode | null {
-    if (!routePath || routePath === '/') return null
+    if (!routePath || routePath === '/') {
+      return null
+    }
 
     // Walk up the path segments
     let searchPath = routePath
     while (searchPath.length > 0) {
       const lastSlash = searchPath.lastIndexOf('/')
-      if (lastSlash <= 0) break
+      if (lastSlash <= 0) {
+        break
+      }
 
       searchPath = searchPath.substring(0, lastSlash)
       const parent = this.prefixToRoute.get(searchPath)
@@ -201,7 +207,9 @@ function determineInitialRoutePathFromParts(
     let match
     while ((match = BRACKET_CONTENT_RE.exec(part)) !== null) {
       const character = match[1]
-      if (character === undefined) continue
+      if (character === undefined) {
+        continue
+      }
       if (DISALLOWED_ESCAPE_CHARS.has(character)) {
         console.error(
           `Error: Disallowed character "${character}" found in square brackets in route path "${routePath}".\nYou cannot use any of the following characters in square brackets: ${Array.from(
@@ -310,7 +318,9 @@ export function countSlashSeparatedParts(path: string): number {
   let count = 1
 
   for (let i = 0; i < path.length; i++) {
-    if (path[i] === '/') count++
+    if (path[i] === '/') {
+      count++
+    }
   }
 
   return count
@@ -331,8 +341,12 @@ function mergeRoutePathSegmentMetadata(
   const hasCurrent = hasRoutePathSegmentMetadata(current)
   const hasIncoming = hasRoutePathSegmentMetadata(incoming)
 
-  if (!hasCurrent) return hasIncoming ? incoming : undefined
-  if (!hasIncoming) return current
+  if (!hasCurrent) {
+    return hasIncoming ? incoming : undefined
+  }
+  if (!hasIncoming) {
+    return current
+  }
 
   return {
     literalLeadingUnderscore:
@@ -346,7 +360,9 @@ export function createRoutePathSegmentMetadata(
   routePath: string = '/',
   originalPath?: string,
 ): Array<RoutePathSegmentMetadata | undefined> | undefined {
-  if (!originalPath) return undefined
+  if (!originalPath) {
+    return undefined
+  }
 
   const routeSegments = routePath.split('/')
   const originalSegments = originalPath.split('/')
@@ -363,7 +379,9 @@ export function createRoutePathSegmentMetadata(
     const literalTrailingUnderscore =
       segment.endsWith('_') && hasEscapedTrailingUnderscore(originalSegment)
 
-    if (!literalLeadingUnderscore && !literalTrailingUnderscore) continue
+    if (!literalLeadingUnderscore && !literalTrailingUnderscore) {
+      continue
+    }
 
     hasMetadata = true
     metadata[i] = {
@@ -393,7 +411,9 @@ export function createLiteralRoutePathSegmentMetadata(
     metadata[i] = parent?._routePathSegmentMetadata?.[i]
     hasMetadata ||= hasRoutePathSegmentMetadata(metadata[i])
 
-    if (!segment) continue
+    if (!segment) {
+      continue
+    }
 
     if (literalNewSegments && depth >= parentDepth) {
       const literalLeadingUnderscore = segment.startsWith('_')
@@ -436,7 +456,9 @@ export function joinRoutePathSegmentMetadata(
   if (childMetadata) {
     for (let i = 1; i < childMetadata.length; i++) {
       const targetIndex = offset + i
-      if (targetIndex >= metadata.length) break
+      if (targetIndex >= metadata.length) {
+        break
+      }
 
       metadata[targetIndex] = mergeRoutePathSegmentMetadata(
         metadata[targetIndex],
@@ -489,7 +511,9 @@ const toVariableSafeChar = (char: string): string => {
 
 export function routePathToVariable(routePath: string): string {
   const cleaned = removeUnderscores(routePath)
-  if (!cleaned) return ''
+  if (!cleaned) {
+    return ''
+  }
 
   const parts = cleaned
     .replace(splatSlashRegex, '/splat/')
@@ -548,8 +572,12 @@ export function removeUnderscoresWithEscape(
   routePath?: string,
   originalPath?: string,
 ): string {
-  if (!routePath) return ''
-  if (!originalPath) return removeUnderscores(routePath) ?? ''
+  if (!routePath) {
+    return ''
+  }
+  if (!originalPath) {
+    return removeUnderscores(routePath) ?? ''
+  }
 
   const routeSegments = routePath.split('/')
   const metadata = createRoutePathSegmentMetadata(routePath, originalPath)
@@ -612,7 +640,9 @@ export function removeLayoutSegmentsWithEscape(
   routePath: string = '/',
   originalPath?: string,
 ): string {
-  if (!originalPath) return removeLayoutSegments(routePath)
+  if (!originalPath) {
+    return removeLayoutSegments(routePath)
+  }
 
   const routeSegments = routePath.split('/')
   const originalSegments = originalPath.split('/')
@@ -638,7 +668,9 @@ export function isSegmentPathless(
   segment: string,
   originalSegment: string,
 ): boolean {
-  if (!segment.startsWith('_')) return false
+  if (!segment.startsWith('_')) {
+    return false
+  }
   return !hasEscapedLeadingUnderscore(originalSegment)
 }
 
@@ -647,7 +679,9 @@ export function escapeRegExp(s: string): string {
 }
 
 function sanitizeTokenFlags(flags?: string): string | undefined {
-  if (!flags) return flags
+  if (!flags) {
+    return flags
+  }
 
   // Prevent stateful behavior with RegExp.prototype.test/exec
   // g = global, y = sticky
@@ -662,7 +696,7 @@ export function createTokenRegex(
 ): RegExp {
   // Defensive check: if token is undefined/null, throw a clear error
   // (runtime safety for config loading edge cases)
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+  // oxlint-disable-next-line typescript/no-unnecessary-condition
   if (token === undefined || token === null) {
     throw new Error(
       `createTokenRegex: token is ${token}. This usually means the config was not properly parsed with defaults.`,
@@ -719,7 +753,9 @@ export function unwrapBracketWrappedSegment(segment: string): string {
 }
 
 export function removeLeadingUnderscores(s: string, routeToken: string) {
-  if (!s) return s
+  if (!s) {
+    return s
+  }
 
   const hasLeadingUnderscore = routeToken[0] === '_'
 
@@ -737,7 +773,9 @@ export function removeLeadingUnderscores(s: string, routeToken: string) {
 }
 
 export function removeTrailingUnderscores(s: string, routeToken: string) {
-  if (!s) return s
+  if (!s) {
+    return s
+  }
 
   const hasTrailingUnderscore = routeToken.slice(-1) === '_'
 
@@ -755,14 +793,18 @@ export function removeTrailingUnderscores(s: string, routeToken: string) {
 }
 
 export function capitalize(s: string) {
-  if (typeof s !== 'string') return ''
+  if (typeof s !== 'string') {
+    return ''
+  }
   return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
 export function removeExt(d: string, addExtensions: boolean | string = false) {
   if (typeof addExtensions === 'string') {
     const dotIndex = d.lastIndexOf('.')
-    if (dotIndex === -1) return d
+    if (dotIndex === -1) {
+      return d
+    }
     return d.substring(0, dotIndex) + addExtensions
   }
   return addExtensions ? d : d.substring(0, d.lastIndexOf('.')) || d
@@ -1067,7 +1109,9 @@ export const createRouteNodesById = (
 const inferTo = (routeNode: RouteNode): string => {
   const fullPath = inferFullPath(routeNode)
 
-  if (fullPath === '/') return fullPath
+  if (fullPath === '/') {
+    return fullPath
+  }
 
   return fullPath.replace(/\/$/, '')
 }
@@ -1079,7 +1123,9 @@ const dedupeBranchesAndIndexRoutes = (
   routes: Array<RouteNode>,
 ): Array<RouteNode> => {
   return routes.filter((route) => {
-    if (route.children?.find((child) => child.cleanedPath === '/')) return false
+    if (route.children?.find((child) => child.cleanedPath === '/')) {
+      return false
+    }
     return true
   })
 }

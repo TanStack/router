@@ -13,7 +13,9 @@ export function createLRUCache<TKey, TValue>(
   let newest: Node | undefined
 
   const touch = (entry: Node) => {
-    if (!entry.next) return
+    if (!entry.next) {
+      return
+    }
     if (!entry.prev) {
       entry.next.prev = undefined
       oldest = entry.next
@@ -37,7 +39,9 @@ export function createLRUCache<TKey, TValue>(
   return {
     get(key) {
       const entry = cache.get(key)
-      if (!entry) return undefined
+      if (!entry) {
+        return undefined
+      }
       touch(entry)
       return entry.value
     },
@@ -59,9 +63,13 @@ export function createLRUCache<TKey, TValue>(
         touch(existing)
       } else {
         const entry: Node = { key, value, prev: newest }
-        if (newest) newest.next = entry
+        if (newest) {
+          newest.next = entry
+        }
         newest = entry
-        if (!oldest) oldest = entry
+        if (!oldest) {
+          oldest = entry
+        }
         cache.set(key, entry)
       }
     },

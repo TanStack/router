@@ -143,7 +143,9 @@ export function useLinkProps<
   })
 
   const hrefOption = Solid.createMemo(() => {
-    if (options.disabled) return undefined
+    if (options.disabled) {
+      return undefined
+    }
     // Use publicHref - it contains the correct href for display
     // When a rewrite changes the origin, publicHref is the full URL
     // Otherwise it's the origin-stripped path
@@ -176,8 +178,12 @@ export function useLinkProps<
     }
     const to = options.to
     const safeInternal = isSafeInternal(to)
-    if (safeInternal) return undefined
-    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
+    if (safeInternal) {
+      return undefined
+    }
+    if (typeof to !== 'string' || to.indexOf(':') === -1) {
+      return undefined
+    }
     try {
       new URL(to as any)
       // Block dangerous protocols like javascript:, blob:, data:
@@ -202,7 +208,9 @@ export function useLinkProps<
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const isActive = Solid.createMemo(() => {
-    if (externalLink()) return false
+    if (externalLink()) {
+      return false
+    }
     const activeOptions = local.activeOptions
     const current = currentLocation()
     const nextLocation = next()
@@ -368,7 +376,9 @@ export function useLinkProps<
   }
 
   const handleTouchStart = () => {
-    if (preload() !== 'intent') return
+    if (preload() !== 'intent') {
+      return
+    }
     doPreload()
   }
 
@@ -502,7 +512,9 @@ function createComposedHandler<T, TEvent extends Event>(
 ) {
   return (event: TEvent & { currentTarget: T; target: Element }) => {
     const handler = getHandler()
-    if (!handler || !callHandler(event, handler)) fallback(event)
+    if (!handler || !callHandler(event, handler)) {
+      fallback(event)
+    }
   }
 }
 
@@ -668,9 +680,13 @@ export const Link: LinkComponent<'a'> = (props) => {
 }
 
 function isSafeInternal(to: unknown) {
-  if (typeof to !== 'string') return false
+  if (typeof to !== 'string') {
+    return false
+  }
   const zero = to.charCodeAt(0)
-  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
+  if (zero === 47) {
+    return to.charCodeAt(1) !== 47
+  } // '/' but not '//'
   return zero === 46 // '.', '..', './', '../'
 }
 

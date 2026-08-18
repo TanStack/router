@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test:e2e": "vitest run",
-    "test:lint": "eslint src/",
+    "test:eslint": "eslint src/",
     "perf:gen": "node scripts/generate-perf-fixtures.mjs",
     "perf:gen:small": "PERF_MODE=small pnpm perf:gen",
     "perf:gen:huge": "PERF_MODE=huge pnpm perf:gen",

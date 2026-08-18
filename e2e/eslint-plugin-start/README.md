@@ -10,7 +10,7 @@ Runs end-to-end linting tests against `@tanstack/eslint-plugin-start`.
 ## Tests
 
 - Unit-style e2e via Vitest: `pnpm -C e2e/eslint-plugin-start test:e2e`
-- Lint all fixtures: `pnpm -C e2e/eslint-plugin-start test:lint`
+- Lint all fixtures: `pnpm -C e2e/eslint-plugin-start test:eslint`
 
 ## Perf benchmark (hyperfine)
 

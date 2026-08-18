@@ -316,8 +316,12 @@ function getRouteIdQuote(
 ): '"' | "'" | '`' {
   const raw = source.slice(arg.start!, arg.end!)
 
-  if (raw.startsWith("'")) return "'"
-  if (raw.startsWith('"')) return '"'
+  if (raw.startsWith("'")) {
+    return "'"
+  }
+  if (raw.startsWith('"')) {
+    return '"'
+  }
   return '`'
 }
 

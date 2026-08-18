@@ -50,7 +50,9 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
     let tornDown = false
 
     const teardown = () => {
-      if (tornDown) return
+      if (tornDown) {
+        return
+      }
       tornDown = true
       try {
         unsubscribe?.()
@@ -59,7 +61,9 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       }
       unsubscribe = undefined
       try {
-        if (!queryStream.isClosed()) queryStream.close()
+        if (!queryStream.isClosed()) {
+          queryStream.close()
+        }
       } catch {
         // ignore
       }
@@ -84,8 +88,12 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
     // runs before router.load(), so this covers redirects/errors thrown before
     // router.options.dehydrate() can run.
     const registerCleanup = (serverSsr = router.serverSsr) => {
-      if (cleanupRegistered) return
-      if (!serverSsr) return
+      if (cleanupRegistered) {
+        return
+      }
+      if (!serverSsr) {
+        return
+      }
       serverSsr.onCleanup(teardown)
       cleanupRegistered = true
     }
@@ -100,7 +108,9 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
     router.options.dehydrate =
       async (): Promise<DehydratedRouterQueryState> => {
         router.serverSsr!.onRenderFinished(() => {
-          if (!queryStream.isClosed()) queryStream.close()
+          if (!queryStream.isClosed()) {
+            queryStream.close()
+          }
           unsubscribe?.()
           unsubscribe = undefined
         })
@@ -256,16 +266,22 @@ function createPushableStream(): PushableStream {
   return {
     stream,
     enqueue: (chunk) => {
-      if (!_isClosed) controllerRef.enqueue(chunk)
+      if (!_isClosed) {
+        controllerRef.enqueue(chunk)
+      }
     },
     close: () => {
-      if (_isClosed) return
+      if (_isClosed) {
+        return
+      }
       controllerRef.close()
       _isClosed = true
     },
     isClosed: () => _isClosed,
     error: (err: unknown) => {
-      if (_isClosed) return
+      if (_isClosed) {
+        return
+      }
       _isClosed = true
       controllerRef.error(err)
     },

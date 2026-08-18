@@ -88,8 +88,12 @@ function getStringLiteralValueStart(node: t.StringLiteral): number {
 }
 
 function isTypeOnlyImportDeclaration(node: t.ImportDeclaration): boolean {
-  if (node.importKind === 'type') return true
-  if (node.specifiers.length === 0) return false
+  if (node.importKind === 'type') {
+    return true
+  }
+  if (node.specifiers.length === 0) {
+    return false
+  }
 
   return node.specifiers.every(
     (specifier) =>
@@ -100,7 +104,9 @@ function isTypeOnlyImportDeclaration(node: t.ImportDeclaration): boolean {
 function isTypeOnlyExportNamedDeclaration(
   node: t.ExportNamedDeclaration,
 ): boolean {
-  if (node.exportKind === 'type') return true
+  if (node.exportKind === 'type') {
+    return true
+  }
   if (!node.source || node.declaration || node.specifiers.length === 0) {
     return false
   }
@@ -127,7 +133,9 @@ function collectIdentifiersFromPattern(
     }
   } else if (t.isArrayPattern(pattern)) {
     for (const elem of pattern.elements) {
-      if (elem) collectIdentifiersFromPattern(elem as t.LVal, add)
+      if (elem) {
+        collectIdentifiersFromPattern(elem as t.LVal, add)
+      }
     }
   } else if (t.isAssignmentPattern(pattern)) {
     collectIdentifiersFromPattern(pattern.left, add)
@@ -137,7 +145,9 @@ function collectIdentifiersFromPattern(
 }
 
 export function isValidExportName(name: string): boolean {
-  if (name === 'default' || name.length === 0) return false
+  if (name === 'default' || name.length === 0) {
+    return false
+  }
   const first = name.charCodeAt(0)
   if (
     !(
@@ -146,8 +156,9 @@ export function isValidExportName(name: string): boolean {
       first === 95 ||
       first === 36
     )
-  )
+  ) {
     return false
+  }
   for (let i = 1; i < name.length; i++) {
     const ch = name.charCodeAt(i)
     if (
@@ -158,8 +169,9 @@ export function isValidExportName(name: string): boolean {
         ch === 95 ||
         ch === 36
       )
-    )
+    ) {
       return false
+    }
   }
   return true
 }
@@ -194,7 +206,9 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
   }
 
   const addMockName = (source: string, name: string) => {
-    if (name === 'default' || name.length === 0) return
+    if (name === 'default' || name.length === 0) {
+      return
+    }
     getOrCreate(mockNamesBySource, source, () => new Set<string>()).add(name)
   }
 
@@ -230,8 +244,12 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
             continue
           }
 
-          if (!t.isImportSpecifier(specifier)) continue
-          if (specifier.importKind === 'type') continue
+          if (!t.isImportSpecifier(specifier)) {
+            continue
+          }
+          if (specifier.importKind === 'type') {
+            continue
+          }
 
           bindingInfo.importedLocalNames.add(specifier.local.name)
           const importedName = getModuleExportName(specifier.imported)
@@ -249,8 +267,12 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
       if (!isTypeOnly && node.source?.value) {
         const source = node.source.value
         for (const specifier of node.specifiers) {
-          if (!t.isExportSpecifier(specifier)) continue
-          if (specifier.exportKind === 'type') continue
+          if (!t.isExportSpecifier(specifier)) {
+            continue
+          }
+          if (specifier.exportKind === 'type') {
+            continue
+          }
           addMockName(source, getModuleExportName(specifier.local))
         }
       }
@@ -259,7 +281,9 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         if (node.declaration) {
           const decl = node.declaration
           if (t.isFunctionDeclaration(decl) || t.isClassDeclaration(decl)) {
-            if (decl.id?.name) addNamedExport(decl.id.name)
+            if (decl.id?.name) {
+              addNamedExport(decl.id.name)
+            }
           } else if (t.isVariableDeclaration(decl)) {
             for (const d of decl.declarations) {
               collectIdentifiersFromPattern(d.id as t.LVal, addNamedExport)
@@ -268,8 +292,12 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
         }
 
         for (const specifier of node.specifiers) {
-          if (!t.isExportSpecifier(specifier)) continue
-          if (specifier.exportKind === 'type') continue
+          if (!t.isExportSpecifier(specifier)) {
+            continue
+          }
+          if (specifier.exportKind === 'type') {
+            continue
+          }
           const exportedName = getModuleExportName(specifier.exported)
           addNamedExport(exportedName)
         }
@@ -308,7 +336,9 @@ function buildImportAnalysis(result: TransformResult): ImportAnalysis {
     }
 
     const keys = t.VISITOR_KEYS[node.type]
-    if (!keys) return
+    if (!keys) {
+      return
+    }
     for (const key of keys) {
       const child = (node as unknown as Record<string, unknown>)[key]
       if (Array.isArray(child)) {
@@ -499,7 +529,9 @@ function getBoundNamesFromPattern(pattern: t.LVal, out: Set<string>): void {
     }
   } else if (t.isArrayPattern(pattern)) {
     for (const elem of pattern.elements) {
-      if (elem) getBoundNamesFromPattern(elem as t.LVal, out)
+      if (elem) {
+        getBoundNamesFromPattern(elem as t.LVal, out)
+      }
     }
   } else if (t.isAssignmentPattern(pattern)) {
     getBoundNamesFromPattern(pattern.left, out)
@@ -539,7 +571,9 @@ function collectHoistedVarBindings(
   }
 
   const keys = t.VISITOR_KEYS[node.type]
-  if (!keys) return
+  if (!keys) {
+    return
+  }
   for (const key of keys) {
     const child = (node as unknown as Record<string, unknown>)[key]
     if (Array.isArray(child)) {
@@ -648,7 +682,9 @@ function isBindingIdentifierInParent(
   node: t.Identifier,
   parent: t.Node | undefined,
 ): boolean {
-  if (!parent) return false
+  if (!parent) {
+    return false
+  }
 
   if (t.isImportSpecifier(parent) || t.isImportDefaultSpecifier(parent)) {
     return parent.local === node
@@ -792,8 +828,12 @@ function findUsagePosInAnalysis(
           : ctx.scopeStack,
       }
       visit(node.init, nextCtx)
-      if (node.test) visit(node.test, nextCtx)
-      if (node.update) visit(node.update, nextCtx)
+      if (node.test) {
+        visit(node.test, nextCtx)
+      }
+      if (node.update) {
+        visit(node.update, nextCtx)
+      }
       visit(node.body, nextCtx)
       return
     }
@@ -869,7 +909,9 @@ function findUsagePosInAnalysis(
     }
 
     const keys = t.VISITOR_KEYS[node.type]
-    if (!keys) return
+    if (!keys) {
+      return
+    }
     for (const key of keys) {
       const child = (node as unknown as Record<string, unknown>)[key]
       if (Array.isArray(child)) {

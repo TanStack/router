@@ -73,7 +73,7 @@ export const Match = React.memo(function MatchImpl({
   }
 
   const matchStore = router.stores.getMatchStore(routeId)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const match = useStore(matchStore, (value) => value)
   return <MatchView router={router} match={match!} />
 })
@@ -261,7 +261,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
  */
 export const Outlet = React.memo(function OutletImpl() {
   if (process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // eslint-disable-next-line react/rules-of-hooks
     const nonRouteComponent = React.useContext(nonRouteComponentContext!)
     if (nonRouteComponent) {
       console.warn(
@@ -287,14 +287,14 @@ export const Outlet = React.memo(function OutletImpl() {
   } else {
     const parentMatchStore = router.stores.getMatchStore(routeId)
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // eslint-disable-next-line react/rules-of-hooks
     ;[parentGlobalNotFound, parentNotFoundError] = useStore(
       parentMatchStore,
       (match): OutletMatchSelection => [!!match!._notFound, match!.error],
       outletMatchSelectionEqual,
     )
 
-    // eslint-disable-next-line react-hooks/rules-of-hooks
+    // eslint-disable-next-line react/rules-of-hooks
     childRouteId = useStore(router.stores.ids, (ids) => {
       return ids[ids.indexOf(routeId) + 1]
     })

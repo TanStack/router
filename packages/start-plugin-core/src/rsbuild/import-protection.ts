@@ -655,7 +655,9 @@ async function buildTransformResultProvider(opts: {
 
   for (const module of opts.modules) {
     const source = module.originalSource()
-    if (!source) continue
+    if (!source) {
+      continue
+    }
 
     const sourceAndMapStartedAt = opts.perf ? performance.now() : 0
     const sourceAndMap = source.sourceAndMap()
@@ -721,7 +723,9 @@ function addEntryModulesToGraph(opts: {
     for (const dependency of entry.dependencies) {
       const connection = opts.compilation.moduleGraph.getConnection(dependency)
       const module = connection?.module
-      if (!module) continue
+      if (!module) {
+        continue
+      }
       opts.graph.addEntry(getModuleFile(module))
     }
   }
@@ -750,7 +754,9 @@ function buildCompilationGraph(opts: {
       opts.compilation.moduleGraph.getOutgoingConnectionsInOrder(module)
 
     for (const connection of connections) {
-      if (!connection.module) continue
+      if (!connection.module) {
+        continue
+      }
 
       // Only consider modules that are not errored
       if ('error' in connection.module && connection.module.error) {

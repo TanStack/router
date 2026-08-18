@@ -63,7 +63,7 @@ export function Matches() {
           // subscription is active. Storing the router here forces Matches to render
           // that first publication before paint. Later publications store the same
           // router object, so React skips the update.
-          // eslint-disable-next-line react-hooks/rules-of-hooks -- server only, condition is static
+          // eslint-disable-next-line react/rules-of-hooks -- server only, condition is static
           t={React.useState<AnyRouter>()[1]}
         />
       )}
@@ -86,7 +86,7 @@ function MatchesInner() {
   const matches =
     (isServer ?? router.isServer)
       ? router.stores.matches.get()
-      : // eslint-disable-next-line react-hooks/rules-of-hooks
+      : // eslint-disable-next-line react/rules-of-hooks
         useStore(
           router.stores.matches,
           (value) => acknowledgement[0 /* offered */] ?? value,
@@ -177,7 +177,7 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>(): <
     }
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   return React.useCallback(
     (opts) => {
       const { pending, caseSensitive, fuzzy, includeSearch, ...rest } = opts
@@ -191,11 +191,11 @@ export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>(): <
     },
     [
       router,
-      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      // eslint-disable-next-line react/rules-of-hooks, react/exhaustive-deps
       useStore(router.stores.location, (location) => location.href),
-      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      // eslint-disable-next-line react/rules-of-hooks, react/exhaustive-deps
       useStore(router.stores.resolvedLocation, (location) => location?.href),
-      // eslint-disable-next-line react-hooks/rules-of-hooks, react-hooks/exhaustive-deps
+      // eslint-disable-next-line react/rules-of-hooks, react/exhaustive-deps
       useStore(router.stores.status, (status) => status),
     ],
   )
@@ -277,10 +277,10 @@ export function useMatches<
     >
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+  // eslint-disable-next-line react/rules-of-hooks -- condition is static
   return useStore(
     router.stores.matches,
-    // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
+    // eslint-disable-next-line react/rules-of-hooks -- condition is static
     useStructuralSharing(opts, router),
   ) as UseMatchesResult<TRouter, TSelected>
 }

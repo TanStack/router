@@ -116,7 +116,9 @@ export function createMultiplexedStream(
 
   // Helper to enqueue a frame, ignoring errors if stream is closed/cancelled
   const enqueue = (frame: Uint8Array): boolean => {
-    if (cancelled) return false
+    if (cancelled) {
+      return false
+    }
     try {
       controller.enqueue(frame)
       return true
@@ -127,7 +129,9 @@ export function createMultiplexedStream(
 
   // Helper to error the output stream (for fatal errors like JSON stream failure)
   const errorOutput = (error: unknown): void => {
-    if (cancelled) return
+    if (cancelled) {
+      return
+    }
     cancelled = true
     try {
       controller.error(error)
@@ -154,7 +158,9 @@ export function createMultiplexedStream(
           enqueue(encodeEndFrame(streamId))
           return
         }
-        if (!enqueue(encodeChunkFrame(streamId, value))) return
+        if (!enqueue(encodeChunkFrame(streamId, value))) {
+          return
+        }
       }
     } catch (error) {
       // Raw stream error - send ERROR frame, don't fail entire response
@@ -172,8 +178,12 @@ export function createMultiplexedStream(
     try {
       while (!cancelled) {
         const { done, value } = await reader.read()
-        if (done) return
-        if (!enqueue(encodeJSONFrame(value))) return
+        if (done) {
+          return
+        }
+        if (!enqueue(encodeJSONFrame(value))) {
+          return
+        }
       }
     } catch (error) {
       // JSON stream error is fatal - error the entire output
@@ -186,7 +196,9 @@ export function createMultiplexedStream(
 
   // Pumps late stream registrations, spawning raw stream pumps as they arrive
   async function pumpLateStreams(): Promise<Array<Promise<void>>> {
-    if (!lateStreamSource) return []
+    if (!lateStreamSource) {
+      return []
+    }
 
     const lateStreamPumps: Array<Promise<void>> = []
     const reader = lateStreamSource.getReader()
@@ -194,7 +206,9 @@ export function createMultiplexedStream(
     try {
       while (!cancelled) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         // Start pumping this late stream and track it
         lateStreamPumps.push(pumpRawStream(value.id, value.stream))
       }

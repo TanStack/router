@@ -294,7 +294,9 @@ export function useLinkProps<
         return hrefOption.href
       }
 
-      if (safeInternal) return undefined
+      if (safeInternal) {
+        return undefined
+      }
 
       // Only attempt URL parsing when it looks like an absolute URL.
       if (typeof to === 'string' && to.indexOf(':') > -1) {
@@ -314,7 +316,9 @@ export function useLinkProps<
     })()
 
     const isActive = (() => {
-      if (externalLink) return false
+      if (externalLink) {
+        return false
+      }
 
       const currentLocation = router.stores.location.get()
 
@@ -486,19 +490,19 @@ export function useLinkProps<
   // 3. In client bundles, `isServer` is `false`, so the early return never executes
   // ==========================================================================
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const isHydrated = useHydrated()
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const stableSearch = useValueStable(options.search)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const stableParams = useValueStable(options.params)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const stableActiveOptions = useValueStable(activeOptions)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const _options = React.useMemo(
     () => options,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react/exhaustive-deps
     [
       router,
       options.from,
@@ -516,7 +520,7 @@ export function useLinkProps<
   // Derive inside the selector so `compareLinkState` can bail out. Deriving after
   // the subscription instead re-renders every link on every navigation, because
   // the comparator only sees the location, not whether this link's output moved.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const selectLinkState = React.useCallback(
     (location: ParsedLocation): LinkState => {
       const next = router.buildLocation({
@@ -557,7 +561,7 @@ export function useLinkProps<
     [stableActiveOptions, disabled, isHydrated, _options, router, to],
   )
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const [href, externalLink, isActive] = useStore(
     router.stores.location,
     selectLinkState,
@@ -591,7 +595,7 @@ export function useLinkProps<
     ...resolvedInactiveProps.style,
   }
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const hasRenderFetched = React.useRef(false)
 
   const preload =
@@ -601,7 +605,7 @@ export function useLinkProps<
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const doPreload = React.useCallback(() => {
     // `preloadRoute` builds the location itself; it is no longer held in render
     // state. It only reads the options, so `_options` can go through as-is.
@@ -611,7 +615,7 @@ export function useLinkProps<
     })
   }, [router, _options])
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   const enqueuePreload = React.useCallback(
     (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
       if (!e) {
@@ -651,10 +655,10 @@ export function useLinkProps<
     [doPreload, innerRef, preload, preloadDelay],
   )
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   useIntersectionObserver(innerRef, enqueuePreload, preload !== 'viewport')
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  // eslint-disable-next-line react/rules-of-hooks
   React.useEffect(() => {
     if (hasRenderFetched.current) {
       return
@@ -716,7 +720,9 @@ export function useLinkProps<
   }
 
   const handleTouchStart = () => {
-    if (preload !== 'intent') return
+    if (preload !== 'intent') {
+      return
+    }
     doPreload()
   }
 
@@ -762,8 +768,12 @@ const composeHandlers =
   (handlers: Array<undefined | React.EventHandler<any>>) =>
   (e: React.SyntheticEvent) => {
     for (const handler of handlers) {
-      if (!handler) continue
-      if (e.defaultPrevented) return
+      if (!handler) {
+        continue
+      }
+      if (e.defaultPrevented) {
+        return
+      }
       handler(e)
     }
   }
@@ -774,7 +784,9 @@ function getHrefOption(
   history: AnyRouter['history'],
   disabled: boolean | undefined,
 ) {
-  if (disabled) return undefined
+  if (disabled) {
+    return undefined
+  }
   // Full URL means rewrite changed the origin - treat as external-like
   if (external) {
     return { href: publicHref, external: true }
@@ -786,9 +798,13 @@ function getHrefOption(
 }
 
 function isSafeInternal(to: unknown) {
-  if (typeof to !== 'string') return false
+  if (typeof to !== 'string') {
+    return false
+  }
   const zero = to.charCodeAt(0)
-  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
+  if (zero === 47) {
+    return to.charCodeAt(1) !== 47
+  } // '/' but not '//'
   return zero === 46 // '.', '..', './', '../'
 }
 
