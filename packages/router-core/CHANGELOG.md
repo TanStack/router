@@ -1,5 +1,14 @@
 # @tanstack/router-core
 
+## 1.171.26
+
+### Patch Changes
+
+- [#8117](https://github.com/TanStack/router/pull/8117) [`3e016ac`](https://github.com/TanStack/router/commit/3e016ac84ffec8119f0c25cfdd1fb17e5292bd34) - optimize buildLocation path resolution https://github.com/TanStack/router/pull/8108
+  skip building search validation when disabled https://github.com/TanStack/router/pull/8112
+  skip location state sharing when impossible https://github.com/TanStack/router/pull/8110
+  fix cache hits for mask resolution when entry is null https://github.com/TanStack/router/pull/8111
+
 ## 1.171.25
 
 ### Patch Changes
