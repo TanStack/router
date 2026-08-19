@@ -6,6 +6,7 @@ import {
   retainSearchParams,
   stripSearchParams,
 } from '../src'
+import type { SearchMiddleware } from '../src'
 import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
 
@@ -233,6 +234,67 @@ describe('buildLocation - params function receives parsed params', () => {
 })
 
 describe('buildLocation - search params', () => {
+  test('only applies route validation when requested', async () => {
+    const events: Array<string> = []
+    const validateSearch = vi.fn((search: Record<string, unknown>) => {
+      events.push('validate')
+      return { ...search, validated: true }
+    })
+    const middleware = vi.fn<SearchMiddleware<{ validated: boolean }>>(
+      ({ search, next }) => {
+        events.push('middleware:before')
+        const result = next(search)
+        events.push('middleware:after')
+        return { ...result, middleware: true }
+      },
+    )
+    const rootRoute = new BaseRootRoute({
+      validateSearch,
+      search: { middlewares: [middleware] },
+    })
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    router.buildLocation({ to: '/' })
+    validateSearch.mockClear()
+    middleware.mockClear()
+    events.length = 0
+
+    const unvalidated = router.buildLocation({
+      to: '/',
+      search: { explicit: true },
+    })
+    expect(validateSearch).not.toHaveBeenCalled()
+    expect(middleware).toHaveBeenCalledOnce()
+    expect(events).toEqual(['middleware:before', 'middleware:after'])
+    expect(unvalidated.search).toEqual({ explicit: true, middleware: true })
+
+    events.length = 0
+    const validated = router.buildLocation({
+      to: '/',
+      search: { explicit: true },
+      _includeValidateSearch: true,
+    })
+    expect(validateSearch).toHaveBeenCalledOnce()
+    expect(events).toEqual([
+      'middleware:before',
+      'validate',
+      'middleware:after',
+    ])
+    expect(validated.search).toEqual({
+      explicit: true,
+      middleware: true,
+      validated: true,
+    })
+  })
+
   test('retainSearchParams should preserve current search over defaults during navigation', async () => {
     const rootRoute = new BaseRootRoute({
       validateSearch: (search: Record<string, unknown>) => ({

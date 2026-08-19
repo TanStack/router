@@ -2770,24 +2770,22 @@ function applySearchMiddleware(
     }
 
     const routeValidateSearch = routeOptions.validateSearch
-    if (routeValidateSearch) {
+    if (includeValidateSearch && routeValidateSearch) {
       const validate: SearchMiddleware<any> = ({ search, next, meta }) => {
         const result = next(search)
-        if (includeValidateSearch) {
-          try {
-            const validated = validateSearch(routeValidateSearch, result) as any
+        try {
+          const validated = validateSearch(routeValidateSearch, result) as any
 
-            if (meta && validated) {
-              for (const key in validated) {
-                if (!(key in result)) {
-                  ;(meta.defaulted ||= new Map()).set(key, validated[key])
-                }
+          if (meta && validated) {
+            for (const key in validated) {
+              if (!(key in result)) {
+                ;(meta.defaulted ||= new Map()).set(key, validated[key])
               }
             }
-            return { ...result, ...validated }
-          } catch {
-            // ignore errors here because they are already handled in matchRoutes
           }
+          return { ...result, ...validated }
+        } catch {
+          // ignore errors here because they are already handled in matchRoutes
         }
         return result
       }
