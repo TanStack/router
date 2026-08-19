@@ -233,6 +233,41 @@ describe('buildLocation - params function receives parsed params', () => {
 })
 
 describe('buildLocation - search params', () => {
+  test('only applies route validation when requested', async () => {
+    const validateSearch = vi.fn((search: Record<string, unknown>) => ({
+      ...search,
+      validated: true,
+    }))
+    const rootRoute = new BaseRootRoute({ validateSearch })
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    router.buildLocation({ to: '/' })
+    validateSearch.mockClear()
+
+    const unvalidated = router.buildLocation({
+      to: '/',
+      search: { explicit: true },
+    })
+    expect(validateSearch).not.toHaveBeenCalled()
+    expect(unvalidated.search).toEqual({ explicit: true })
+
+    const validated = router.buildLocation({
+      to: '/',
+      search: { explicit: true },
+      _includeValidateSearch: true,
+    } as any)
+    expect(validateSearch).toHaveBeenCalled()
+    expect(validated.search).toEqual({ explicit: true, validated: true })
+  })
+
   test('retainSearchParams should preserve current search over defaults during navigation', async () => {
     const rootRoute = new BaseRootRoute({
       validateSearch: (search: Record<string, unknown>) => ({
