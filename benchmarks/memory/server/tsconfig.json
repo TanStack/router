@@ -1,7 +1,14 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "types": ["node", "vite/client", "vitest/globals"]
   },
-  "include": ["bench-utils.ts"]
+  "include": [
+    "bench-utils.ts",
+    "isolated-benchmark.ts",
+    "isolated-process.test.ts",
+    "test-fixtures/**/*.ts",
+    "../shared/**/*.ts"
+  ]
 }

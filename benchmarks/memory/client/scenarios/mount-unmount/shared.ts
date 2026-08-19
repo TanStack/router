@@ -12,7 +12,8 @@ type RenderRouter = {
   subscribe: (event: 'onRendered', listener: () => void) => () => void
 }
 
-const mountUnmountIterations = 100
+const mountUnmountIterations = 200
+const mountUnmountWarmupIterations = mountUnmountIterations
 
 function assertEmptyBody() {
   if (document.body.childNodes.length !== 0) {
@@ -57,14 +58,17 @@ export function createWorkload(
     }
   }
 
+  async function runCycles(iterations: number) {
+    for (let index = 0; index < iterations; index++) {
+      await cycle()
+    }
+  }
+
   return {
     name: `mem client mount-unmount (${framework})`,
     cycle,
-    async run() {
-      for (let index = 0; index < mountUnmountIterations; index++) {
-        await cycle()
-      }
-    },
+    run: () => runCycles(mountUnmountIterations),
+    warmup: () => runCycles(mountUnmountWarmupIterations),
     async sanity() {
       assertEmptyBody()
       await cycle()

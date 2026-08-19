@@ -13,7 +13,8 @@ type AbortedRequestMode = {
   cancelMode: AbortedRequestCancelMode
 }
 
-const abortedRequestIterations = 40
+const abortedRequestIterations = 80
+const abortedRequestWarmupIterations = abortedRequestIterations
 let abortedRequestCounter = 0
 const eagerMarker = 'data-bench="aborted-requests-eager"'
 const alphaFallbackMarker = 'data-bench="aborted-requests-alpha-fallback"'
@@ -234,10 +235,12 @@ async function assertAbortedRequestsSanity(
 async function runAbortedRequestLoop(
   handler: StartRequestHandler,
   mode: AbortedRequestMode,
+  iterations: number,
+  createId: (index: number) => string,
 ) {
-  for (let index = 0; index < abortedRequestIterations; index++) {
+  for (let index = 0; index < iterations; index++) {
     const controller = new AbortController()
-    const id = `abort-${(abortedRequestCounter++).toString(36)}`
+    const id = createId(index)
     const request = buildStreamRequest(id, controller.signal)
     const response = await handler.fetch(request)
     validateDocumentResponse(response, request)
@@ -259,10 +262,23 @@ export function createWorkloadGroup(
   handler: StartRequestHandler,
 ) {
   const mode = abortedRequestModes[framework]
-  const run = () => runAbortedRequestLoop(handler, mode)
+  const run = () =>
+    runAbortedRequestLoop(
+      handler,
+      mode,
+      abortedRequestIterations,
+      () => `abort-${(abortedRequestCounter++).toString(36)}`,
+    )
 
   return {
     sanity: () => assertAbortedRequestsSanity(handler, mode),
+    warmup: () =>
+      runAbortedRequestLoop(
+        handler,
+        mode,
+        abortedRequestWarmupIterations,
+        (index) => `warmup-abort-${index.toString(36)}`,
+      ),
     workloads: [
       {
         name: `mem server aborted-requests (${framework})`,

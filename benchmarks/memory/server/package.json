@@ -8,7 +8,8 @@
   "imports": {
     "#memory-server/benchmark": "./benchmark.ts",
     "#memory-server/bench-utils": "./bench-utils.ts",
-    "#memory-server/flame-runner": "./flame-runner.ts"
+    "#memory-server/flame-runner": "./flame-runner.ts",
+    "#memory-server/isolated-benchmark": "./isolated-benchmark.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:*",
@@ -236,9 +237,25 @@
           "cwd": "benchmarks/memory/server"
         }
       },
+      "test:unit": {
+        "executor": "nx:run-commands",
+        "cache": false,
+        "options": {
+          "command": "vitest run ./isolated-process.test.ts",
+          "cwd": "benchmarks/memory/server"
+        }
+      },
+      "test:types:isolated": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "tsc -p ./tsconfig.json --noEmit",
+          "cwd": "benchmarks/memory/server"
+        }
+      },
       "test:types": {
         "executor": "nx:noop",
         "dependsOn": [
+          "test:types:isolated",
           {
             "projects": [
               "@benchmarks/memory-server-request-churn-react",

@@ -28,7 +28,6 @@ export default defineConfig({
   test: {
     name: '@benchmarks/memory-client interrupted-navigations (solid)',
     watch: false,
-    environment: 'jsdom',
-    setupFiles: ['../../../vitest.setup.ts'],
+    environment: 'node',
   },
 })

@@ -1,21 +1,6 @@
-import { afterAll, beforeAll, bench, describe } from 'vitest'
-import { memoryBenchOptions } from '#memory-client/bench-utils'
-import { workload } from './setup'
+import { registerIsolatedClientMemoryBenchmark } from '#memory-client/isolated-benchmark'
 
-await workload.sanity()
-
-describe('memory', () => {
-  if (workload.before && workload.after) {
-    beforeAll(workload.before)
-    afterAll(workload.after)
-
-    bench(workload.name, workload.run, {
-      ...memoryBenchOptions,
-      setup: workload.before,
-      teardown: workload.after,
-    })
-    return
-  }
-
-  bench(workload.name, workload.run, memoryBenchOptions)
+registerIsolatedClientMemoryBenchmark({
+  name: 'mem client unique-location-churn (solid)',
+  setupUrl: new URL('./setup.ts', import.meta.url),
 })

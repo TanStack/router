@@ -9,6 +9,7 @@
     "#memory-client/benchmark": "./benchmark.ts",
     "#memory-client/bench-utils": "./bench-utils.ts",
     "#memory-client/flame-runner": "./flame-runner.ts",
+    "#memory-client/isolated-benchmark": "./isolated-benchmark.ts",
     "#memory-client/lifecycle": "./lifecycle.ts"
   },
   "dependencies": {
