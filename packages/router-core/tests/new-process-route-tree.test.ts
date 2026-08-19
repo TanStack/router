@@ -1856,6 +1856,7 @@ describe('processRouteMasks', { sequential: true }, () => {
     expect(findFlatMatch('/missing', localTree)).toBeNull()
     expect(findFlatMatch('/missing', localTree)).toBeNull()
     expect(cacheSet).toHaveBeenCalledTimes(1)
+    cacheSet.mockRestore()
   })
   it('matches uppercase static route masks case-insensitively', () => {
     const res = findFlatMatch('/admin/panel', processedTree)
