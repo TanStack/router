@@ -9,6 +9,7 @@ import {
   functionalUpdate,
   hasKeys,
   isDangerousProtocol,
+  isPlainObject,
   last,
   nullReplaceEqualDeep,
   replaceEqualDeep,
@@ -2035,16 +2036,23 @@ export class RouterCore<
       const hashStr = hash ? `#${hash}` : ''
 
       // Resolve the next state
+      const destState = dest.state
+      const currentState = currentLocation.state
       let nextState =
-        dest.state === true
-          ? currentLocation.state
-          : dest.state
-            ? functionalUpdate(dest.state, currentLocation.state)
+        destState === true
+          ? currentState
+          : destState
+            ? functionalUpdate(destState, currentState)
             : {}
 
       // Replace the equal deep
-      if (dest.state || !hasKeys(currentLocation.state)) {
-        nextState = replaceEqualDeep(currentLocation.state, nextState)
+      if (
+        isServer ||
+        destState ||
+        !isPlainObject(currentState) ||
+        !currentState.__TSR_key
+      ) {
+        nextState = replaceEqualDeep(currentState, nextState)
       }
 
       // Create the full path of the location

@@ -1164,6 +1164,34 @@ describe('buildLocation - state', () => {
     expect(location.state).toBe(emptyState)
   })
 
+  test('no state option does not enumerate non-plain current state', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/posts'] }),
+    })
+    await router.load()
+
+    const state = new Proxy(new (class {})(), {
+      ownKeys: () => {
+        throw new Error('state should not be enumerated')
+      },
+    })
+    const location = router.buildLocation({
+      to: '/posts',
+      _fromLocation: {
+        ...router.state.location,
+        state,
+      },
+    } as any)
+
+    expect(location.state).toEqual({})
+  })
+
   test('state can contain complex nested objects', async () => {
     const rootRoute = new BaseRootRoute({})
     const postsRoute = new BaseRoute({
