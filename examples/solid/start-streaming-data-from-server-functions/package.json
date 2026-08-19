@@ -11,9 +11,9 @@
   },
   "dependencies": {
     "@solidjs/web": "^2.0.0-rc.1",
-    "@tanstack/solid-router": "^2.0.0-rc.0",
-    "@tanstack/solid-router-devtools": "^2.0.0-rc.0",
-    "@tanstack/solid-start": "^2.0.0-rc.0",
+    "@tanstack/solid-router": "^2.0.0-rc.1",
+    "@tanstack/solid-router-devtools": "^2.0.0-rc.1",
+    "@tanstack/solid-start": "^2.0.0-rc.1",
     "solid-js": "^2.0.0-rc.1",
     "zod": "^4.4.3"
   },
