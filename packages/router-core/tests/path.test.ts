@@ -271,9 +271,8 @@ describe('resolvePath', () => {
   })
 })
 
-describe.each([{ server: true }, { server: false }])(
-  'interpolatePath (server: $server)',
-  ({ server }) => {
+describe('interpolatePath', () => {
+  describe('shared behavior', () => {
     describe('regular usage', () => {
       it.each([
         {
@@ -378,13 +377,18 @@ describe.each([{ server: true }, { server: false }])(
           params: { _splat: 'sean/cassiere' },
           result: '/users/sean/cassiere',
         },
+        {
+          name: 'should stop interpolating after a non-terminal splat',
+          path: '/users/$/ignored',
+          params: { _splat: 'sean/cassiere' },
+          result: '/users/sean/cassiere',
+        },
       ])('$name', ({ path, params, decoder, result }) => {
         expect(
           interpolatePath({
             path,
             params,
             decoder,
-            server,
           }).interpolatedPath,
         ).toBe(result)
       })
@@ -419,7 +423,6 @@ describe.each([{ server: true }, { server: false }])(
             interpolatePath({
               path,
               params,
-              server,
             }).interpolatedPath,
           ).toBe(result)
         },
@@ -463,7 +466,6 @@ describe.each([{ server: true }, { server: false }])(
           interpolatePath({
             path: to,
             params,
-            server,
           }).interpolatedPath,
         ).toBe(result)
       })
@@ -530,7 +532,6 @@ describe.each([{ server: true }, { server: false }])(
           interpolatePath({
             path,
             params,
-            server,
           }).interpolatedPath,
         ).toBe(result)
       })
@@ -579,7 +580,6 @@ describe.each([{ server: true }, { server: false }])(
           interpolatePath({
             path: to,
             params,
-            server,
           }).interpolatedPath,
         ).toBe(result)
       })
@@ -627,11 +627,16 @@ describe.each([{ server: true }, { server: false }])(
           },
           expectedResult: '/hello',
         },
+        {
+          name: 'non-terminal splat route',
+          path: '/hello/$/ignored',
+          params: {},
+          expectedResult: '/hello',
+        },
       ])('$name', ({ path, params, expectedResult }) => {
         const result = interpolatePath({
           path,
           params,
-          server,
         })
         expect(result.interpolatedPath).toBe(expectedResult)
         expect(result.isMissingParams).toBe(true)
@@ -658,12 +663,81 @@ describe.each([{ server: true }, { server: false }])(
           const interpolatedNextTo = interpolatePath({
             path: nextTo,
             params: nextParams,
-            server,
           }).interpolatedPath
           expect(interpolatedNextTo).toBe(`/splat${tail}`)
         },
       )
     })
+  })
+})
+
+it.each([
+  {
+    name: 'multiple params',
+    path: '//organizations/$organizationId//projects/$projectId/',
+    params: { organizationId: 'tanstack', projectId: 'router' },
+    expectedPath: '/organizations/tanstack/projects/router/',
+    expectedParams: { organizationId: 'tanstack', projectId: 'router' },
+    isMissingParams: false,
+  },
+  {
+    name: 'missing param',
+    path: '/organizations/$organizationId/projects/$projectId',
+    params: { organizationId: 'tanstack' },
+    expectedPath: '/organizations/tanstack/projects/undefined',
+    expectedParams: { organizationId: 'tanstack', projectId: undefined },
+    isMissingParams: true,
+  },
+  {
+    name: 'terminal splat',
+    path: '/files/$',
+    params: { _splat: 'docs/router guide.pdf' },
+    expectedPath: '/files/docs/router%20guide.pdf',
+    expectedParams: {
+      _splat: 'docs/router guide.pdf',
+      '*': 'docs/router guide.pdf',
+    },
+    isMissingParams: false,
+  },
+  {
+    name: 'non-terminal splat',
+    path: '/files/$/ignored/$param',
+    params: { _splat: 'docs/router', param: 'unused' },
+    expectedPath: '/files/docs/router',
+    expectedParams: { _splat: 'docs/router', '*': 'docs/router' },
+    isMissingParams: false,
+  },
+  {
+    name: 'missing non-terminal splat',
+    path: '/files/$/ignored',
+    params: {},
+    expectedPath: '/files',
+    expectedParams: { _splat: undefined, '*': undefined },
+    isMissingParams: true,
+  },
+  {
+    name: 'custom decoder',
+    path: '/users/$id',
+    params: { id: 'tanner+linsley@example.com' },
+    decoder: compileDecodeCharMap(['+', '@']),
+    expectedPath: '/users/tanner+linsley@example.com',
+    expectedParams: { id: 'tanner+linsley@example.com' },
+    isMissingParams: false,
+  },
+])(
+  'plain-template interpolation: $name',
+  ({
+    path,
+    params,
+    decoder,
+    expectedPath,
+    expectedParams,
+    isMissingParams,
+  }) => {
+    const result = interpolatePath({ path, params, decoder })
+    expect(result.interpolatedPath).toBe(expectedPath)
+    expect(result.usedParams).toEqual(expectedParams)
+    expect(result.isMissingParams).toBe(isMissingParams)
   },
 )
 
