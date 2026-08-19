@@ -2036,7 +2036,9 @@ export class RouterCore<
             : {}
 
       // Replace the equal deep
-      nextState = replaceEqualDeep(currentLocation.state, nextState)
+      if (dest.state) {
+        nextState = replaceEqualDeep(currentLocation.state, nextState)
+      }
 
       // Create the full path of the location
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
