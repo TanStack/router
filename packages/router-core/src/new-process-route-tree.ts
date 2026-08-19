@@ -68,7 +68,7 @@ export function parseSegment(
 ): ParsedSegment {
   const next = path.indexOf('/', start)
   const end = next === -1 ? path.length : next
-  const part = path.substring(start, end)
+  const part = path.slice(start, end)
 
   if (!part || !part.includes('$')) {
     // early escape for static pathname
@@ -213,7 +213,7 @@ function parseSegments<TRouteLike extends RouteLike>(
       const kind = segment[0]
       switch (kind) {
         case SEGMENT_TYPE_PATHNAME: {
-          const value = path.substring(segment[2], segment[3])
+          const value = path.slice(segment[2], segment[3])
           let name = value
           let staticChildren: Map<string, StaticSegmentNode<TRouteLike>>
           if (caseSensitive) {
@@ -237,8 +237,8 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_PARAM:
         case SEGMENT_TYPE_OPTIONAL_PARAM:
         case SEGMENT_TYPE_WILDCARD: {
-          const prefix_raw = path.substring(start, segment[1])
-          const suffix_raw = path.substring(segment[4], end)
+          const prefix_raw = path.slice(start, segment[1])
+          const suffix_raw = path.slice(segment[4], end)
           const actuallyCaseSensitive =
             caseSensitive && !!(prefix_raw || suffix_raw)
           const prefix = !prefix_raw
@@ -831,7 +831,7 @@ function extractParams<T extends RouteLike>(
         const value = part!.substring(preLength, part!.length - sufLength)
         rawParams[name] = decodeURIComponent(value)
       } else {
-        const name = nodePart.substring(1)
+        const name = nodePart.slice(1)
         rawParams[name] = decodeURIComponent(part!)
       }
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
