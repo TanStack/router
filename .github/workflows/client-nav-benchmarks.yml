@@ -73,6 +73,7 @@ jobs:
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         uses: CodSpeedHQ/action@4296e51e7041e24dadb86d1d6e8b9320d223dbe8 # v5.0.3
+        timeout-minutes: 20
         with:
           mode: ${{ matrix.mode }}
           run: >-
