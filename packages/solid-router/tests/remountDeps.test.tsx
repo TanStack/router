@@ -22,7 +22,8 @@ function setup(remountOnParams: boolean | 'falsy' = false) {
   function ItemComponent() {
     const params = itemRoute.useParams()
 
-    Solid.onMount(mounted)
+    // Solid 2: `onMount` is now `onSettled`
+    Solid.onSettled(mounted)
     Solid.onCleanup(unmounted)
 
     return <div>Item {params().itemId}</div>

@@ -51,6 +51,10 @@ afterEach(() => {
   browserHistories.splice(0).forEach((history) => history.destroy())
   window.history.replaceState(null, 'root', '/')
   delete window.$_TSR
+  // Head tags are owned by Solid's head registry rather than rendered
+  // in-tree, so testing-library's cleanup() does not remove them. Clear
+  // them so resource dedupe (keyed by href) starts fresh per test.
+  document.head.innerHTML = ''
 })
 
 describe('ssr scripts', () => {
@@ -657,9 +661,13 @@ describe('ssr HeadContent', () => {
       </RouterContextProvider>
     ))
 
-    expect(
-      document.querySelector('meta[name="solid-data-only-child"]'),
-    ).not.toBeNull()
+    // Replaceable head tags are applied by the head registry on a
+    // microtask rather than rendered synchronously in-tree.
+    await waitFor(() => {
+      expect(
+        document.querySelector('meta[name="solid-data-only-child"]'),
+      ).not.toBeNull()
+    })
     expect(
       document.querySelector('link[href="/solid-data-only-manifest.js"]'),
     ).not.toBeNull()
