@@ -9,7 +9,6 @@ import {
   functionalUpdate,
   hasKeys,
   isDangerousProtocol,
-  isPlainObject,
   last,
   nullReplaceEqualDeep,
   replaceEqualDeep,
@@ -2046,12 +2045,7 @@ export class RouterCore<
             : {}
 
       // Replace the equal deep
-      if (
-        isServer ||
-        destState ||
-        !isPlainObject(currentState) ||
-        !currentState.__TSR_key
-      ) {
+      if (destState) {
         nextState = replaceEqualDeep(currentState, nextState)
       }
 

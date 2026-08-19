@@ -1140,7 +1140,7 @@ describe('buildLocation - state', () => {
     expect(location.state).not.toBe(router.state.location.state)
   })
 
-  test('no state option preserves an already-empty state reference', async () => {
+  test('no state option replaces an already-empty custom state', async () => {
     const rootRoute = new BaseRootRoute({})
     const postsRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -1161,7 +1161,8 @@ describe('buildLocation - state', () => {
       },
     } as any)
 
-    expect(location.state).toBe(emptyState)
+    expect(location.state).toEqual({})
+    expect(location.state).not.toBe(emptyState)
   })
 
   test('no state option does not enumerate non-plain current state', async () => {
