@@ -21,6 +21,11 @@ on:
       - 'benchmarks/**'
   workflow_dispatch:
 
+concurrency:
+  group: client-nav-benchmarks-${{ github.ref }}
+  cancel-in-progress: false
+  queue: single
+
 permissions:
   contents: read # required for actions/checkout
   id-token: write # required for OIDC authentication with CodSpeed
