@@ -1227,32 +1227,38 @@ describe('buildLocation - state', () => {
     expect(location.state).not.toBe(emptyState)
   })
 
-  test('no state option does not enumerate non-plain current state', async () => {
+  test('explicit state structurally shares unchanged nested values', async () => {
     const rootRoute = new BaseRootRoute({})
     const postsRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/posts',
     })
+    const history = createMemoryHistory({ initialEntries: ['/posts'] })
+    history.replace('/posts', {
+      user: { id: 1, name: 'Test' },
+      count: 1,
+    })
     const router = createTestRouter({
       routeTree: rootRoute.addChildren([postsRoute]),
-      history: createMemoryHistory({ initialEntries: ['/posts'] }),
+      history,
     })
     await router.load()
 
-    const state = new Proxy(new (class {})(), {
-      ownKeys: () => {
-        throw new Error('state should not be enumerated')
-      },
-    })
+    const currentState = router.state.location.state as any
     const location = router.buildLocation({
       to: '/posts',
-      _fromLocation: {
-        ...router.state.location,
-        state,
-      },
-    } as any)
+      state: {
+        user: { id: 1, name: 'Test' },
+        count: 2,
+      } as any,
+    })
 
-    expect(location.state).toEqual({})
+    expect(location.state).toEqual({
+      user: { id: 1, name: 'Test' },
+      count: 2,
+    })
+    expect((location.state as any).user).toBe(currentState.user)
+    expect(location.state).not.toBe(currentState)
   })
 
   test('state can contain complex nested objects', async () => {
