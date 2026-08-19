@@ -172,6 +172,8 @@ The component tree would look like this:
 </Root>
 ```
 
+For this tree to render, the `posts.tsx` layout route's component must render an [`<Outlet />`](#defining-routes) — that's where the matching child route (`<Post />`) is displayed. Without `<Outlet />`, only the `<Posts>` component renders and the child route will not appear.
+
 ## Types of Routes
 
 There are a few different types of routes that you can create in your project.
@@ -201,6 +203,27 @@ To create a route, create a new file that corresponds to the path of the route y
 | `/posts/`        | `posts/index.tsx`   | Index Route    |
 | `/posts/:postId` | `posts/$postId.tsx` | Dynamic Route  |
 | `/rest/*`        | `rest/$.tsx`        | Wildcard Route |
+
+> [!NOTE]
+> A file like `posts.tsx` is a **layout route** that wraps its child routes (`posts/index.tsx`, `posts/$postId.tsx`). Its component **must render an [`<Outlet />`](#defining-routes)** for the matching child route to appear. The route generator creates a placeholder component for `posts.tsx` that does not include `<Outlet />`, so when you intend `posts.tsx` to be a layout you need to add it manually — otherwise navigating to `/posts/123` renders only the `posts.tsx` component and the child never shows up.
+>
+> ```tsx
+> // src/routes/posts.tsx
+> import { Outlet, createFileRoute } from '@tanstack/react-router'
+>
+> export const Route = createFileRoute('/posts')({
+>   component: PostsLayoutComponent,
+> })
+>
+> function PostsLayoutComponent() {
+>   return (
+>     <div>
+>       <h1>Posts</h1>
+>       <Outlet />
+>     </div>
+>   )
+> }
+> ```
 
 ## Defining Routes
 
