@@ -9,18 +9,18 @@
     "start": "vite"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.0",
+    "@solidjs/web": "^2.0.0-rc.1",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-query": "^6.0.0-rc.0",
     "@tanstack/solid-query-devtools": "^6.0.0-rc.0",
     "@tanstack/solid-router": "^2.0.0-rc.0",
     "@tanstack/solid-router-devtools": "^2.0.0-rc.0",
     "redaxios": "^0.5.1",
-    "solid-js": "^2.0.0-rc.0",
+    "solid-js": "^2.0.0-rc.1",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
-    "@solidjs/vite-plugin": "^3.0.0-next.28",
+    "@solidjs/vite-plugin": "^3.0.0-next.30",
     "@tanstack/router-plugin": "^1.168.30",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",

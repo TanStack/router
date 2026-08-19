@@ -152,5 +152,3 @@ allowBuilds:
   # protobufjs
   protobufjs: false # transitive dep
 
-patchedDependencies:
-  solid-js@2.0.0-rc.0: patches/solid-js@2.0.0-rc.0.patch
