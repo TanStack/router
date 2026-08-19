@@ -392,7 +392,13 @@ async function contextualize(
         ...parentContext,
         ...routeContext,
       }
-      match.context = context
+      // Seeded from the committed match so a reloading match never exposes a
+      // context stripped of its previous beforeLoad result (#8115).
+      const base = options[2 /* base */][index]
+      match.context =
+        base?.id === match.id && base.context
+          ? { ...base.context, ...context }
+          : context
     } catch (cause) {
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
@@ -402,6 +408,7 @@ async function contextualize(
     }
     const validationError = match.paramsError ?? match.searchError
     if (validationError !== undefined) {
+      match.context = context
       releaseFlight(router, match)
       return [
         index,
@@ -410,6 +417,7 @@ async function contextualize(
     }
     const beforeLoad = route.options.beforeLoad
     if (!beforeLoad) {
+      match.context = context
       continue
     }
 
@@ -449,6 +457,7 @@ async function contextualize(
         options,
       )
       if (outcome[0 /* kind */] !== SUCCESS) {
+        match.context = context
         releaseFlight(router, match)
         return [index, outcome]
       }
@@ -457,6 +466,7 @@ async function contextualize(
         ...result,
       }
     } catch (cause) {
+      match.context = context
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
     } finally {
