@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   findFlatMatch,
   findRouteMatch,
@@ -1847,6 +1847,16 @@ describe('processRouteMasks', { sequential: true }, () => {
   it('can match static routes masks w/ `findFlatMatch`', () => {
     const res = findFlatMatch('/a/b/c', processedTree)
     expect(res?.route.from).toBe('/a/b/c')
+  })
+  it('caches route mask misses', () => {
+    const localTree = processRouteTree(routeTree).processedTree
+    processRouteMasks(routeMasks, localTree)
+    const cacheSet = vi.spyOn(localTree.flatCache!, 'set')
+
+    expect(findFlatMatch('/missing', localTree)).toBeNull()
+    expect(findFlatMatch('/missing', localTree)).toBeNull()
+    expect(cacheSet).toHaveBeenCalledTimes(1)
+    cacheSet.mockRestore()
   })
   it('matches uppercase static route masks case-insensitively', () => {
     const res = findFlatMatch('/admin/panel', processedTree)
