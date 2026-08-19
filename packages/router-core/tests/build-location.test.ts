@@ -1300,6 +1300,39 @@ describe('buildLocation - relative paths', () => {
     expect(location.pathname).toBe('/a/d')
   })
 
+  test('unsafe path-relative navigation ignores repeated slash segments', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const aRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/a',
+    })
+    const bRoute = new BaseRoute({
+      getParentRoute: () => aRoute,
+      path: '/b',
+    })
+    const cRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/c',
+    })
+    const routeTree = rootRoute.addChildren([
+      aRoute.addChildren([bRoute]),
+      cRoute,
+    ])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/a//b'] }),
+    })
+
+    await router.load()
+
+    expect(
+      router.buildLocation({
+        to: '../../c',
+        unsafeRelative: 'path',
+      }).pathname,
+    ).toBe('/c')
+  })
+
   test('over-root traversal stays rooted for javascript-like segments', async () => {
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
@@ -1611,6 +1644,37 @@ describe('buildLocation - params edge cases', () => {
     // Without stringify, this would be '/users/42'
     // With stringify, it should be padded to 6 digits
     expect(location.pathname).toBe('/users/000042')
+  })
+
+  test('params.stringify should not mutate current params', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/$userId',
+      params: {
+        parse: ({ userId }: { userId: string }) => ({
+          userId: parseInt(userId, 10),
+        }),
+        stringify: (params: { userId: number }) => {
+          const userId = params.userId
+          params.userId = 999
+          return { userId: String(userId).padStart(6, '0') }
+        },
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([userRoute])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/users/000123'] }),
+    })
+
+    await router.load()
+
+    expect(router.buildLocation({ to: '/users/$userId' }).pathname).toBe(
+      '/users/000123',
+    )
+    expect(router.state.matches.at(-1)?.params).toEqual({ userId: 123 })
   })
 
   test('params.stringify should run for params.parse route templates', async () => {
