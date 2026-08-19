@@ -2035,18 +2035,16 @@ export class RouterCore<
       const hashStr = hash ? `#${hash}` : ''
 
       // Resolve the next state
-      const destState = dest.state
-      const currentState = currentLocation.state
       let nextState =
-        destState === true
-          ? currentState
-          : destState
-            ? functionalUpdate(destState, currentState)
+        dest.state === true
+          ? currentLocation.state
+          : dest.state
+            ? functionalUpdate(dest.state, currentLocation.state)
             : {}
 
       // Replace the equal deep
-      if (destState) {
-        nextState = replaceEqualDeep(currentState, nextState)
+      if (dest.state) {
+        nextState = replaceEqualDeep(currentLocation.state, nextState)
       }
 
       // Create the full path of the location
