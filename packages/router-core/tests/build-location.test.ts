@@ -238,7 +238,15 @@ describe('buildLocation - search params', () => {
       ...search,
       validated: true,
     }))
-    const rootRoute = new BaseRootRoute({ validateSearch })
+    const middleware = vi.fn(
+      ({ search, next }: { search: any; next: (search: any) => any }) => {
+        return { ...next(search), middleware: true }
+      },
+    )
+    const rootRoute = new BaseRootRoute({
+      validateSearch,
+      search: { middlewares: [middleware] },
+    })
     const indexRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
       path: '/',
@@ -257,7 +265,8 @@ describe('buildLocation - search params', () => {
       search: { explicit: true },
     })
     expect(validateSearch).not.toHaveBeenCalled()
-    expect(unvalidated.search).toEqual({ explicit: true })
+    expect(middleware).toHaveBeenCalled()
+    expect(unvalidated.search).toEqual({ explicit: true, middleware: true })
 
     const validated = router.buildLocation({
       to: '/',
@@ -265,7 +274,11 @@ describe('buildLocation - search params', () => {
       _includeValidateSearch: true,
     } as any)
     expect(validateSearch).toHaveBeenCalled()
-    expect(validated.search).toEqual({ explicit: true, validated: true })
+    expect(validated.search).toEqual({
+      explicit: true,
+      middleware: true,
+      validated: true,
+    })
   })
 
   test('retainSearchParams should preserve current search over defaults during navigation', async () => {
