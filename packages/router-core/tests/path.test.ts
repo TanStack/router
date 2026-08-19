@@ -125,6 +125,10 @@ describe('resolvePath', () => {
     })
   })
 
+  it('normalizes repeated slashes when resolving the base path', () => {
+    expect(resolvePath({ base: '/a//b', to: '.' })).toBe('/a/b')
+  })
+
   describe('trailingSlash', () => {
     describe(`'always'`, () => {
       it('keeps trailing slash', () => {

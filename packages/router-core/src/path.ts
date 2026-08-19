@@ -184,7 +184,8 @@ export function resolvePath({
     }
   }
 
-  const result = cleanPath(baseSegments.join('/')) || '/'
+  const joined = baseSegments.join('/')
+  const result = (isBase ? cleanPath(joined) : joined) || '/'
   if (key && cache) cache.set(key, result)
   return result
 }
