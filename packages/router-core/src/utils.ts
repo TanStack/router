@@ -211,7 +211,7 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
 export const hasOwn = Object.prototype.hasOwnProperty
 const isEnumerable = Object.prototype.propertyIsEnumerable
 
-export function hasKeys(obj: Record<string, unknown>) {
+export function hasKeys(obj: object) {
   for (const key in obj) {
     if (hasOwn.call(obj, key)) return true
   }

@@ -1137,6 +1137,31 @@ describe('buildLocation - state', () => {
     })
 
     expect(location.state).toEqual({})
+    expect(location.state).not.toBe(router.state.location.state)
+  })
+
+  test('no state option preserves an already-empty state reference', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/posts'] }),
+    })
+    await router.load()
+
+    const emptyState = {}
+    const location = router.buildLocation({
+      to: '/posts',
+      _fromLocation: {
+        ...router.state.location,
+        state: emptyState,
+      },
+    } as any)
+
+    expect(location.state).toBe(emptyState)
   })
 
   test('state can contain complex nested objects', async () => {
