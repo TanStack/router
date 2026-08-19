@@ -200,6 +200,77 @@ describe('ssr scripts', () => {
     )
   })
 
+  test('injects client script attributes and removes the script on cleanup', async () => {
+    const externalScript = {
+      src: 'solid-client-script.js',
+      async: true,
+      defer: false,
+      crossOrigin: 'anonymous' as const,
+    }
+    const inlineScript = {
+      id: 'solid-client-inline-script',
+      type: 'module',
+      children: 'window.__solidClientScript = true',
+    }
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        externalScript,
+        externalScript,
+        inlineScript,
+        inlineScript,
+      ],
+      component: () => (
+        <>
+          <div data-testid="solid-client-script-root" />
+          <Scripts />
+        </>
+      ),
+    })
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: false,
+    })
+
+    await router.load()
+    const result = render(() => <RouterProvider router={router} />)
+    expect(
+      await screen.findByTestId('solid-client-script-root'),
+    ).toBeInTheDocument()
+
+    const getScript = () =>
+      document.head.querySelector<HTMLScriptElement>(
+        'script[src="solid-client-script.js"]',
+      )
+    await waitFor(() => expect(getScript()).not.toBeNull())
+    expect(getScript()?.hasAttribute('async')).toBe(true)
+    expect(getScript()?.hasAttribute('defer')).toBe(false)
+    expect(getScript()?.getAttribute('crossorigin')).toBe('anonymous')
+    expect(
+      document.head.querySelectorAll('script[src="solid-client-script.js"]'),
+    ).toHaveLength(1)
+    const getInlineScript = () =>
+      document.head.querySelector<HTMLScriptElement>(
+        'script#solid-client-inline-script',
+      )
+    await waitFor(() => expect(getInlineScript()).not.toBeNull())
+    expect(getInlineScript()?.textContent).toBe(
+      'window.__solidClientScript = true',
+    )
+    expect(
+      document.head.querySelectorAll('script#solid-client-inline-script'),
+    ).toHaveLength(1)
+
+    getScript()?.remove()
+    expect(() => result.unmount()).not.toThrow()
+    expect(getScript()).toBeNull()
+    expect(getInlineScript()).toBeNull()
+  })
+
   test('keeps manifest stylesheet links mounted across repeated Link navigations', async () => {
     const history = createTestBrowserHistory()
 
