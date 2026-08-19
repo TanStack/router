@@ -4,6 +4,36 @@ import { waitFor } from '../src/load-client'
 import { waitForRequest } from '../src/ssr/createRequestHandler'
 
 describe('waitFor', () => {
+  test('does not wrap synchronous values or subscribe them to cancellation', () => {
+    const controller = new AbortController()
+    const addEventListener = vi.spyOn(controller.signal, 'addEventListener')
+    const value = { synchronous: true }
+
+    expect(waitFor(value, controller.signal)).toBe(value)
+    expect(addEventListener).not.toHaveBeenCalled()
+  })
+
+  test('subscribes pending work until it settles', async () => {
+    const controller = new AbortController()
+    const addEventListener = vi.spyOn(controller.signal, 'addEventListener')
+    const removeEventListener = vi.spyOn(
+      controller.signal,
+      'removeEventListener',
+    )
+    let resolve!: (value: string) => void
+    const value = new Promise<string>((resolveValue) => {
+      resolve = resolveValue
+    })
+
+    const result = waitFor(value, controller.signal)
+    expect(addEventListener).toHaveBeenCalledOnce()
+
+    controller.abort()
+    await expect(result).rejects.toBe(controller.signal)
+    resolve('late')
+    await vi.waitFor(() => expect(removeEventListener).toHaveBeenCalledOnce())
+  })
+
   test('observes a rejected value when the signal is already aborted', async () => {
     const controller = new AbortController()
     const error = new Error('late failure')
