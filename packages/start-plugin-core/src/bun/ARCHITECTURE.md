@@ -60,6 +60,7 @@ ESM-dev specifics (learned from real app usage):
 
 - Pass Start **entry aliases** (`#tanstack-router-entry`, …) and **define** into the transform pipeline so package.json fake stubs and env defines resolve like production `Bun.build`
 - Prefer stable `/@fs` URLs for bare imports (especially `react` / `react-dom`) so the browser dedupes a single React copy
+- **optimizeDeps (default on):** scan `src/` bare imports → `Bun.build` into `node_modules/.tanstack-start/deps` → rewrite to `/@deps/…` (Vite-like). Disable with `bun.optimizeDeps: false`. Force rebuild: `bun.optimizeDeps.force` or `TANSTACK_START_OPTIMIZE_DEPS_FORCE=1`
 - Strip built `/assets/*.js` link tags and scrub SSR manifest `scripts`/`preloads` so a second StartClient does not hydrate after `$_TSR.h()`
 - CJS→ESM: externalize only React singletons; reject bundles that still emit `__require`; soften `import * as X` when the CJS wrapper reassigns `X`
 - `import './x.css?url'` returns a URL module pointing at `/@tanstack-start/styles.css` (not raw CSS)

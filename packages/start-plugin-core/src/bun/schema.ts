@@ -38,6 +38,17 @@ export const tanstackStartBunOptionsSchema = tanstackStartOptionsObjectSchema
             modules: z.boolean().optional(),
           })
           .optional(),
+        optimizeDeps: z
+          .union([
+            z.literal(false),
+            z.object({
+              include: z.array(z.string()).optional(),
+              exclude: z.array(z.string()).optional(),
+              disabled: z.boolean().optional(),
+              force: z.boolean().optional(),
+            }),
+          ])
+          .optional(),
         nitro: z
           .union([
             z.literal(false),

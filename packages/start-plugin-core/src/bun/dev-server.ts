@@ -29,6 +29,11 @@ import {
   type DevTransformOptions,
 } from './dev-transform'
 import {
+  DEPS_PREFIX,
+  runOptimizeDeps,
+  type OptimizeDepsResult,
+} from './optimize-deps'
+import {
   applyReactRefreshBabel,
   getReactRefreshBrowserEntry,
 } from './react-refresh'
@@ -66,6 +71,11 @@ export interface BunDevServerOptions {
   debounceMs?: number
   /** CSS emitted during builds for `/@tanstack-start/styles.css`. */
   emittedCss?: Map<string, string>
+  /**
+   * Vite-like dependency prebundling for ESM-dev (`/@deps`).
+   * `false` disables; omit uses defaults (scan `src/` bare imports).
+   */
+  optimizeDeps?: import('./optimize-deps').OptimizeDepsConfig | false
 }
 
 /**
@@ -379,12 +389,27 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
     )
   }
 
+  const optimizedDeps: OptimizeDepsResult = esmDev
+    ? await runOptimizeDeps({
+        root: opts.root,
+        clientEntryPath: opts.clientEntryPath,
+        aliases: opts.aliases,
+        optimizeDeps: opts.optimizeDeps,
+      })
+    : {
+        depsDir: '',
+        count: 0,
+        urlForSpec: () => undefined,
+        resolvePath: () => null,
+      }
+
   const transformOpts: DevTransformOptions = {
     root: opts.root,
     framework: opts.framework,
     aliases: opts.aliases,
     define: opts.define,
     transformAppModule: opts.transformAppModule,
+    optimizeDepsUrl: optimizedDeps.urlForSpec,
     applyReactRefresh:
       opts.framework === 'react'
         ? (code, absPath) => applyReactRefreshBabel(code, absPath)
@@ -446,6 +471,20 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
       })
     }
 
+    if (url.pathname.startsWith(`${DEPS_PREFIX}/`)) {
+      const abs = optimizedDeps.resolvePath(url.pathname)
+      if (!abs) {
+        return new Response(`Not found: ${url.pathname}`, { status: 404 })
+      }
+      const code = await Bun.file(abs).text()
+      return new Response(code, {
+        headers: {
+          'Content-Type': 'text/javascript; charset=utf-8',
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      })
+    }
+
     if (url.pathname.startsWith('/@id/')) {
       const encoded = url.pathname.slice('/@id/'.length)
       const spec = decodeURIComponent(encoded)
@@ -456,6 +495,10 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
             'Cache-Control': 'no-store',
           },
         })
+      }
+      const depsUrl = optimizedDeps.urlForSpec(spec)
+      if (depsUrl) {
+        return Response.redirect(`${url.origin}${depsUrl}`, 302)
       }
       const importer =
         url.searchParams.get('importer') ?? opts.clientEntryPath

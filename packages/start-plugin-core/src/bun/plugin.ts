@@ -65,6 +65,7 @@ function mergeBunCoreOptions(
     css: primary?.css ?? fallback?.css,
     nitro: primary?.nitro ?? fallback?.nitro,
     standalone: primary?.standalone ?? fallback?.standalone,
+    optimizeDeps: primary?.optimizeDeps ?? fallback?.optimizeDeps,
   }
 }
 
@@ -305,6 +306,7 @@ export function tanStackStartBun(
         define: ctx.clientDefine,
         esmDev: true,
         emittedCss: ctx.emittedCss,
+        optimizeDeps: ctx.bunOpts?.optimizeDeps,
         transformAppModule: async (code, absPath) => {
           const splitter = ctx.routerSession.getCodeSplitterRuntime('client')
           let next =

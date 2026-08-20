@@ -8,6 +8,8 @@ export type {
   BunStandaloneOptions,
   BunEnvironmentName,
 } from './types'
+export type { OptimizeDepsConfig, OptimizeDepsResult } from './optimize-deps'
+export { DEPS_PREFIX, DEPS_CACHE_DIR } from './optimize-deps'
 export type { TanStackStartBunInputConfig } from './schema'
 export type {
   StartCompilerImportTransform,

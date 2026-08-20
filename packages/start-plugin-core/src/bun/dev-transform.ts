@@ -30,6 +30,8 @@ export interface DevTransformOptions {
     code: string,
     absPath: string,
   ) => string | Promise<string>
+  /** Bare specifier → `/@deps/….js` when optimizeDeps prebundled it. */
+  optimizeDepsUrl?: (spec: string) => string | undefined
 }
 
 export interface DevTransformResult {
@@ -229,6 +231,7 @@ export function rewriteImportsForDevMiddleware(
   filePath: string,
   root: string,
   aliases?: Record<string, string>,
+  optimizeDepsUrl?: (spec: string) => string | undefined,
 ): string {
   let out = ''
   let i = 0
@@ -264,7 +267,7 @@ export function rewriteImportsForDevMiddleware(
         const quote = (m[2] ?? m[5]) as string
         const prefix = (m[1] ?? m[4]) as string
         if (isPlausibleModuleSpecifier(spec)) {
-          out += `${prefix}${quote}${rewriteOneSpecifier(spec, filePath, root, aliases)}${quote}`
+          out += `${prefix}${quote}${rewriteOneSpecifier(spec, filePath, root, aliases, optimizeDepsUrl)}${quote}`
         } else {
           out += m[0]
         }
@@ -347,6 +350,7 @@ function rewriteOneSpecifier(
   filePath: string,
   root: string,
   aliases?: Record<string, string>,
+  optimizeDepsUrl?: (spec: string) => string | undefined,
 ): string {
   if (
     spec.startsWith('/@') ||
@@ -377,6 +381,12 @@ function rewriteOneSpecifier(
   // Node builtins must never hit /@fs (Bun.resolve returns "node:…" literally)
   if (isNodeBuiltinSpecifier(spec)) {
     return `/@id/${encodeURIComponent(spec)}?importer=${encodeURIComponent(filePath)}`
+  }
+
+  // Prebundled dependency (Vite-like optimizeDeps)
+  const depsUrl = optimizeDepsUrl?.(spec)
+  if (depsUrl) {
+    return depsUrl
   }
 
   // Bare specifier → resolve to a stable /@fs URL so the browser dedupes
@@ -660,6 +670,7 @@ export default css;
             filePath,
             opts.root,
             opts.aliases,
+            opts.optimizeDepsUrl,
           ),
           opts.define,
         ),
@@ -693,6 +704,7 @@ export default css;
     filePath,
     opts.root,
     opts.aliases,
+    opts.optimizeDepsUrl,
   )
   next = applyDefineReplacements(next, opts.define)
 

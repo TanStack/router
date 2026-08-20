@@ -94,6 +94,11 @@ export interface BunCoreOptions {
    * Always based on `dist/` (not `.output`). Production build only.
    */
   standalone?: false | BunStandaloneOptions | undefined
+  /**
+   * Vite-like ESM-dev dependency prebundling (`/@deps`).
+   * Default: enabled (scan `src/` bare imports). Set `false` to disable.
+   */
+  optimizeDeps?: import('./optimize-deps').OptimizeDepsConfig | false | undefined
 }
 
 export type TanStackStartBunPluginCoreOptions = TanStackStartCoreOptions & {
