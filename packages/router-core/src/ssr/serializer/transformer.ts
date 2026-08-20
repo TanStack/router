@@ -86,10 +86,10 @@ export type ValidateSerializable<T, TSerializable> = T extends TSerializable
           ? ValidateSerializablePromise<T, TSerializable>
           : T extends ReadableStream<any>
             ? ValidateReadableStream<T, TSerializable>
-            : T extends Set<any>
-              ? ValidateSerializableSet<T, TSerializable>
-              : T extends Map<any, any>
-                ? ValidateSerializableMap<T, TSerializable>
+            : T extends ReadonlyMap<any, any>
+              ? ValidateSerializableMap<T, TSerializable>
+              : T extends ReadonlySet<any>
+                ? ValidateSerializableSet<T, TSerializable>
                 : T extends AsyncGenerator<any, any>
                   ? ValidateSerializableAsyncGenerator<T, TSerializable>
                   : T extends object
@@ -118,7 +118,9 @@ export type ValidateReadableStream<T, TSerializable> =
 export type ValidateSerializableSet<T, TSerializable> =
   T extends Set<infer TItem>
     ? Set<ValidateSerializable<TItem, TSerializable>>
-    : never
+    : T extends ReadonlySet<infer TItem>
+      ? ReadonlySet<ValidateSerializable<TItem, TSerializable>>
+      : never
 
 export type ValidateSerializableMap<T, TSerializable> =
   T extends Map<infer TKey, infer TValue>
@@ -126,7 +128,12 @@ export type ValidateSerializableMap<T, TSerializable> =
         ValidateSerializable<TKey, TSerializable>,
         ValidateSerializable<TValue, TSerializable>
       >
-    : never
+    : T extends ReadonlyMap<infer TKey, infer TValue>
+      ? ReadonlyMap<
+          ValidateSerializable<TKey, TSerializable>,
+          ValidateSerializable<TValue, TSerializable>
+        >
+      : never
 
 export type ValidateSerializableArray<T, TSerializable> = T extends readonly [
   any,
