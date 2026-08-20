@@ -1321,7 +1321,8 @@ describe('public hydration contracts', () => {
 
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: pageRoute.id,
-      status: 'success',
+      status: 'pending',
+      ssr: false,
       error: undefined,
       loaderData: 'server data',
     })
@@ -1376,7 +1377,8 @@ describe('public hydration contracts', () => {
     expect(router.state.location.pathname).toBe('/source')
     expect(router.state.matches.at(-1)).toMatchObject({
       routeId: sourceRoute.id,
-      status: 'success',
+      status: 'pending',
+      ssr: false,
     })
     expect(router.state.resolvedLocation).toBeUndefined()
 

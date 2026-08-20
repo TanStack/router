@@ -710,33 +710,34 @@ test('a same-id navigation merges new inherited context with cached route contex
     context: ({ location }) => ({
       selfRevision: location.state.issue8115Revision,
     }),
-    component: () => {
-      const location = useLocation()
-      const context = indexRoute.useRouteContext()
-      const matchId = indexRoute.useMatch({ select: (match) => match.id })
-      const navigate = indexRoute.useNavigate()
-
-      return (
-        <>
-          <output data-testid="match-id">{matchId}</output>
-          <output data-testid="snapshot">
-            location: {location.state.issue8115Revision}; inherited:{' '}
-            {context.inheritedRevision}; self: {context.selfRevision}
-          </output>
-          <button
-            onClick={() => {
-              void navigate({
-                to: '/',
-                state: { issue8115Revision: 'new' },
-              })
-            }}
-          >
-            Update state
-          </button>
-        </>
-      )
-    },
+    component: IndexComponent,
   })
+  function IndexComponent() {
+    const location = useLocation()
+    const context = indexRoute.useRouteContext()
+    const matchId = indexRoute.useMatch({ select: (match) => match.id })
+    const navigate = indexRoute.useNavigate()
+
+    return (
+      <>
+        <output data-testid="match-id">{matchId}</output>
+        <output data-testid="snapshot">
+          location: {location.state.issue8115Revision}; inherited:{' '}
+          {context.inheritedRevision}; self: {context.selfRevision}
+        </output>
+        <button
+          onClick={() => {
+            void navigate({
+              to: '/',
+              state: { issue8115Revision: 'new' },
+            })
+          }}
+        >
+          Update state
+        </button>
+      </>
+    )
+  }
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
     history,

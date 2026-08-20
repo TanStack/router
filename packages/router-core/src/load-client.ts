@@ -377,22 +377,22 @@ async function contextualize(
       matches,
       routeId: route.id,
     }
-    let context = parentContext
+    let context: typeof parentContext
     try {
-      let routeContext = match._ctx
-      if (!routeContext && route.options.context) {
-        routeContext = match._ctx =
-          route.options.context({
-            ...common,
-            deps: match.loaderDeps,
-            context: parentContext,
-          } satisfies RouteContextOptions<any, any, any, any, any>) || {}
-      }
-      context = {
+      // Reuse the route's cached contribution while rebuilding its inheritance.
+      const routeContext =
+        match._ctx ||
+        (route.options.context &&
+          (match._ctx =
+            route.options.context({
+              ...common,
+              deps: match.loaderDeps,
+              context: parentContext,
+            } satisfies RouteContextOptions<any, any, any, any, any>) || {}))
+      match.context = context = {
         ...parentContext,
         ...routeContext,
       }
-      match.context = context
     } catch (cause) {
       match.context = parentContext
       releaseFlight(router, match)
@@ -2240,7 +2240,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   let pendingBoundary: number | undefined
   let verifiedAssetEnd = 0
   const retryFrom = (index: number) => {
-    pendingBoundary = Math.min(pendingBoundary ?? index, index)
     // The failing route's identity is still verified, but no descendant is.
     verifiedAssetEnd = Math.min(verifiedAssetEnd, index + 1)
     const removed = committed.splice(index)
@@ -2420,6 +2419,8 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           match.status !== 'notFound' &&
           !match._notFound
         ) {
+          // Never present transported success without reconstructed context.
+          pendingBoundary = Math.min(pendingBoundary ?? index, index)
           retryFrom(index)
           break
         }
