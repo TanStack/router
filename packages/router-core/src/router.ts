@@ -22,7 +22,6 @@ import {
   processRouteTree,
 } from './new-process-route-tree'
 import {
-  cleanPath,
   compileDecodeCharMap,
   interpolatePath,
   resolvePath,
@@ -226,7 +225,8 @@ export interface RouterOptions<
    */
   defaultPreload?: false | 'intent' | 'viewport' | 'render'
   /**
-   * The delay in milliseconds that a route must be hovered over or touched before it is preloaded.
+   * The delay in milliseconds before intent focus/hover and viewport preloading.
+   * Touch intent preloads immediately.
    *
    * @default 50
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultpreloaddelay-property)
@@ -704,13 +704,7 @@ export type PreloadRouteFn<
     TTo,
     TMaskFrom,
     TMaskTo
-  > & {
-    /**
-     * @internal
-     * A **trusted** built location that can be used to redirect to.
-     */
-    _builtLocation?: ParsedLocation
-  },
+  >,
 ) => Promise<Array<AnyRouteMatch> | undefined>
 
 export type MatchRouteFn<
@@ -949,10 +943,10 @@ export function runRouteLifecycle(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   matches: Array<AnyRouteMatch>,
-  isCurrent?: () => boolean,
+  owner?: LoadTransaction,
 ): void {
   for (const match of previous) {
-    if (isCurrent?.() === false) {
+    if (owner && router._tx !== owner) {
       return
     }
     if (!matches.some((candidate) => candidate.routeId === match.routeId)) {
@@ -962,7 +956,7 @@ export function runRouteLifecycle(
     }
   }
   for (const match of matches) {
-    if (isCurrent?.() === false) {
+    if (owner && router._tx !== owner) {
       return
     }
     const route = (router.routesById as Record<string, AnyRoute>)[
@@ -1488,7 +1482,7 @@ export class RouterCore<
   resolvePathWithBase = (from: string, path: string) => {
     return resolvePath({
       base: from,
-      to: path.includes('//') ? cleanPath(path) : path,
+      to: path,
       trailingSlash: this.options.trailingSlash,
       cache: this.resolvePathCache,
     })
@@ -1859,6 +1853,19 @@ export class RouterCore<
         unmaskOnReload?: boolean
       } = {},
     ): ParsedLocation => {
+      if (dest.href) {
+        const parsed = parseHref(dest.href, {} as ParsedHistoryState)
+        dest = {
+          ...dest,
+          to: executeRewriteInput(
+            this.rewrite,
+            new URL(parsed.pathname, this.origin),
+          ).pathname,
+          search: this.options.parseSearch(parsed.search),
+          hash: parsed.hash.slice(1),
+        }
+      }
+
       // We allow the caller to override the current location
       const currentLocation =
         dest._fromLocation || this._pendingLocation || this.latestLocation
@@ -1898,28 +1905,19 @@ export class RouterCore<
         dest.unsafeRelative === 'path'
           ? currentLocation.pathname
           : (dest.from ?? lightweightResult[1 /* fullPath */])
-      const destTo = dest.to ? `${dest.to}` : undefined
 
       // From search should always use the current location
       const fromSearch = lightweightResult[2 /* search */]
       // Same with params. It can't hurt to provide as many as possible
-      const fromParams = Object.assign(
-        Object.create(null),
-        lightweightResult[3 /* params */],
+      const fromParams = lightweightResult[3 /* params */]
+
+      const nextTo = this.resolvePathWithBase(
+        defaultedFromPath,
+        dest.to ? `${dest.to}` : '.',
       )
 
-      const isAbsoluteTo = destTo?.charCodeAt(0) === 47
-      const sourcePath = isAbsoluteTo
-        ? '/'
-        : this.resolvePathWithBase(defaultedFromPath, '.')
-
-      // Resolve the destination. Absolute destinations don't need the source path.
-      const nextTo = destTo
-        ? this.resolvePathWithBase(sourcePath, destTo)
-        : sourcePath
-
       // Resolve the next params
-      const nextParams = resolveNextParams(dest.params, fromParams)
+      let nextParams = resolveNextParams(dest.params, fromParams)
 
       const destRoute = this.routesByPath[
         trimPathRight(nextTo) as keyof typeof this.routesByPath
@@ -1951,6 +1949,9 @@ export class RouterCore<
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
+            if (nextParams === fromParams) {
+              nextParams = Object.assign(Object.create(null), nextParams)
+            }
             try {
               Object.assign(nextParams, fn(nextParams))
             } catch {
@@ -2049,7 +2050,9 @@ export class RouterCore<
             : {}
 
       // Replace the equal deep
-      nextState = replaceEqualDeep(currentLocation.state, nextState)
+      if (dest.state) {
+        nextState = replaceEqualDeep(currentLocation.state, nextState)
+      }
 
       // Create the full path of the location
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
@@ -2095,59 +2098,35 @@ export class RouterCore<
       }
     }
 
-    const buildWithMatches = (
-      dest: BuildNextOptions = {},
-      maskedDest?: BuildNextOptions,
-    ) => {
-      const next = build(dest)
-
-      let maskedNext = maskedDest ? build(maskedDest) : undefined
-
-      if (!maskedNext) {
-        const params = Object.create(null)
-
-        if (this.options.routeMasks) {
-          const match = findFlatMatch<RouteMask<TRouteTree>>(
-            next.pathname,
-            this.processedTree,
-          )
-          if (match) {
-            Object.assign(params, match.rawParams) // Copy params, because they're cached
-            const {
-              from: _from,
-              params: maskParams,
-              ...maskProps
-            } = match.route
-
-            // If mask has a params function, call it with the matched params as context
-            // Otherwise, use the matched params or the provided params value
-            const nextParams = resolveNextParams(maskParams, params)
-
-            maskedDest = {
-              from: opts.from,
-              ...maskProps,
-              params: nextParams,
-            }
-            maskedNext = build(maskedDest)
-          }
-        }
-      }
-
-      if (maskedNext) {
-        next.maskedLocation = maskedNext
-      }
-
-      return next
-    }
+    const next = build(opts)
 
     if (opts.mask) {
-      return buildWithMatches(opts, {
+      next.maskedLocation = build({
         from: opts.from,
         ...opts.mask,
       })
+    } else if (this.options.routeMasks) {
+      const match = findFlatMatch<RouteMask<TRouteTree>>(
+        next.pathname,
+        this.processedTree,
+      )
+      if (match) {
+        const params = Object.assign(Object.create(null), match.rawParams)
+        const { from: _from, params: maskParams, ...maskProps } = match.route
+
+        // If mask has a params function, call it with the matched params as context
+        // Otherwise, use the matched params or the provided params value
+        const nextParams = resolveNextParams(maskParams, params)
+
+        next.maskedLocation = build({
+          from: opts.from,
+          ...maskProps,
+          params: nextParams,
+        })
+      }
     }
 
-    return buildWithMatches(opts)
+    return next
   }
 
   _commitPromise: (Promise<void> & { resolve: () => void }) | undefined
@@ -2253,38 +2232,12 @@ export class RouterCore<
     hashScrollIntoView,
     viewTransition,
     ignoreBlocker,
-    _redirects,
-    href,
     ...rest
-  }: BuildNextOptions &
-    CommitLocationOptions & { _redirects?: number } = {}) => {
-    if (href) {
-      const currentIndex = this.history.location.state.__TSR_index
-
-      const parsed = parseHref(href, {
-        __TSR_index: replace ? currentIndex : currentIndex + 1,
-      })
-
-      // If the href contains the basepath, we need to strip it before setting `to`
-      // because `buildLocation` will add the basepath back when creating the final URL.
-      // Without this, hrefs like '/app/about' would become '/app/app/about'.
-      const hrefUrl = new URL(parsed.pathname, this.origin)
-      const rewrittenUrl = executeRewriteInput(this.rewrite, hrefUrl)
-
-      rest.to = rewrittenUrl.pathname
-      rest.search = this.options.parseSearch(parsed.search)
-      // remove the leading `#` from the hash
-      rest.hash = parsed.hash.slice(1)
-    }
-
+  }: BuildNextOptions & CommitLocationOptions = {}) => {
     const location = this.buildLocation({
       ...(rest as any),
       _includeValidateSearch: true,
     })
-    if (_redirects) {
-      ;(location as typeof location & { _redirects?: number })._redirects =
-        _redirects
-    }
 
     this._pendingLocation = location as ParsedLocation<
       FullSearchSchema<TRouteTree>
@@ -2551,9 +2504,8 @@ export class RouterCore<
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
     const locationHeader = redirect.headers.get('Location')
 
-    if (!redirect.options.href || redirect.options._builtLocation) {
-      const location =
-        redirect.options._builtLocation ?? this.buildLocation(redirect.options)
+    if (!redirect.options.href) {
+      const location = this.buildLocation(redirect.options)
       const href = location.publicHref || '/'
       redirect.options.href = href
       redirect.headers.set('Location', href)
@@ -2572,7 +2524,6 @@ export class RouterCore<
 
     if (
       redirect.options.href &&
-      !redirect.options._builtLocation &&
       // Check for dangerous protocols before processing the redirect
       isDangerousProtocol(redirect.options.href, this.protocolAllowlist)
     ) {
@@ -2648,7 +2599,8 @@ export class RouterCore<
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
     TRouterHistory
-  > = (opts) => preloadClientRoute(this, opts)
+  > = (opts: any, builtLocation?: ParsedLocation) =>
+    preloadClientRoute(this, opts, 0, builtLocation)
 
   matchRoute: MatchRouteFn<
     TRouteTree,
@@ -2834,24 +2786,22 @@ function applySearchMiddleware(
     }
 
     const routeValidateSearch = routeOptions.validateSearch
-    if (routeValidateSearch) {
+    if (includeValidateSearch && routeValidateSearch) {
       const validate: SearchMiddleware<any> = ({ search, next, meta }) => {
         const result = next(search)
-        if (includeValidateSearch) {
-          try {
-            const validated = validateSearch(routeValidateSearch, result) as any
+        try {
+          const validated = validateSearch(routeValidateSearch, result) as any
 
-            if (meta && validated) {
-              for (const key in validated) {
-                if (!(key in result)) {
-                  ;(meta.defaulted ||= new Map()).set(key, validated[key])
-                }
+          if (meta && validated) {
+            for (const key in validated) {
+              if (!(key in result)) {
+                ;(meta.defaulted ||= new Map()).set(key, validated[key])
               }
             }
-            return { ...result, ...validated }
-          } catch {
-            // ignore errors here because they are already handled in matchRoutes
           }
+          return { ...result, ...validated }
+        } catch {
+          // ignore errors here because they are already handled in matchRoutes
         }
         return result
       }
@@ -2921,11 +2871,14 @@ function resolveNextParams(
   spec: unknown,
   base: Record<string, unknown>,
 ): Record<string, unknown> {
-  return spec === false || spec === null
-    ? Object.create(null)
-    : (spec ?? true) === true
-      ? base
-      : Object.assign(base, functionalUpdate(spec as any, base))
+  if (spec === false || spec === null) {
+    return Object.create(null)
+  }
+  if ((spec ?? true) === true) {
+    return base
+  }
+  const next = Object.assign(Object.create(null), base)
+  return Object.assign(next, functionalUpdate(spec as any, next))
 }
 
 function extractStrictParams(

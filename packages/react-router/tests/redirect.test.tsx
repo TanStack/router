@@ -75,6 +75,57 @@ describe('redirect', () => {
       expect(router.state.status).toBe('idle')
     })
 
+    test('renders the source error boundary when building a redirect target fails', async () => {
+      const boom = new Error('redirect search failed')
+      const rootRoute = createRootRoute({ component: Outlet })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div>Home</div>,
+      })
+      const sourceRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/source',
+        beforeLoad: () => {
+          throw redirect({
+            to: '/target',
+            search: () => {
+              throw boom
+            },
+          })
+        },
+        errorComponent: ({ error }) => (
+          <div data-testid="source-error">{error.message}</div>
+        ),
+      })
+      const targetRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+        component: () => <div>Target</div>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([
+          indexRoute,
+          sourceRoute,
+          targetRoute,
+        ]),
+        history,
+      })
+
+      render(<RouterProvider router={router} />)
+      expect(await screen.findByText('Home')).toBeInTheDocument()
+
+      await act(() => router.navigate({ to: '/source' }))
+
+      expect(await screen.findByTestId('source-error')).toHaveTextContent(
+        boom.message,
+      )
+      expect(screen.queryByText('Home')).not.toBeInTheDocument()
+      expect(screen.queryByText('Target')).not.toBeInTheDocument()
+      expect(window.location.pathname).toBe('/source')
+      expect(router.state.status).toBe('idle')
+    })
+
     test('renders a root error after too many same-location redirects', async () => {
       const loader = vi.fn(() => {
         throw redirect({ to: '/' })

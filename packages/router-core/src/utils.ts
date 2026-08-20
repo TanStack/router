@@ -193,10 +193,6 @@ export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
-function isFunction(d: any): d is Function {
-  return typeof d === 'function'
-}
-
 /**
  * Apply a value-or-updater to a previous value.
  * Accepts either a literal value or a function of the previous value.
@@ -205,8 +201,8 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   updater: Updater<TPrevious, TResult> | NonNullableUpdater<TPrevious, TResult>,
   previous: TPrevious,
 ): TResult {
-  if (isFunction(updater)) {
-    return updater(previous)
+  if (typeof updater === 'function') {
+    return (updater as Function)(previous)
   }
 
   return updater

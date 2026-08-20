@@ -82,17 +82,51 @@ function normalize(value: unknown, rejected: boolean): LoaderOutcome {
   return rejected ? [ERROR, value] : [SUCCESS, value]
 }
 
-function normalizeError(route: AnyRoute, cause: unknown): LoaderOutcome {
+function normalizeError(
+  router: AnyRouter,
+  lane: { location: ParsedLocation },
+  route: AnyRoute,
+  cause: unknown,
+  signal?: AbortSignal,
+  notify = true,
+): LoaderOutcome {
+  signal?.throwIfAborted()
   let outcome = normalize(cause, true)
   if (outcome[0] !== ERROR) {
-    return outcome
+    return materializeRedirect(router, lane, route, outcome, signal, notify)
   }
   try {
     route.options.onError?.(outcome[1])
   } catch (onErrorCause) {
     outcome = normalize(onErrorCause, true)
   }
-  return outcome
+  signal?.throwIfAborted()
+  return materializeRedirect(router, lane, route, outcome, signal, notify)
+}
+
+function materializeRedirect(
+  router: AnyRouter,
+  lane: { location: ParsedLocation },
+  route: AnyRoute,
+  outcome: LoaderOutcome,
+  signal?: AbortSignal,
+  notify = true,
+): LoaderOutcome {
+  if (outcome[0] !== REDIRECTED) {
+    return outcome
+  }
+  signal?.throwIfAborted()
+  try {
+    outcome[1].options._fromLocation = lane.location
+    router.resolveRedirect(outcome[1])
+    signal?.throwIfAborted()
+    return outcome
+  } catch (cause) {
+    signal?.throwIfAborted()
+    return notify
+      ? normalizeError(router, lane, route, cause, signal, false)
+      : [ERROR, cause]
+  }
 }
 
 function maybe<TValue>(
@@ -197,7 +231,13 @@ async function contextualize(
       match.ssr = await resolveSsr(router, lane, index)
     } catch (cause) {
       signal?.throwIfAborted()
-      failure = [index, stampNotFound(match, normalizeError(route, cause))]
+      failure = [
+        index,
+        stampNotFound(
+          match,
+          normalizeError(router, lane, route, cause, signal),
+        ),
+      ]
       end = index
     }
     signal?.throwIfAborted()
@@ -239,7 +279,13 @@ async function contextualize(
     } catch (cause) {
       signal?.throwIfAborted()
       if (!failure) {
-        failure = [index, stampNotFound(match, normalizeError(route, cause))]
+        failure = [
+          index,
+          stampNotFound(
+            match,
+            normalizeError(router, lane, route, cause, signal),
+          ),
+        ]
       }
       end = index
       break
@@ -252,7 +298,10 @@ async function contextualize(
     if (validationError !== undefined) {
       failure = [
         index,
-        stampNotFound(match, normalizeError(route, validationError)),
+        stampNotFound(
+          match,
+          normalizeError(router, lane, route, validationError, signal),
+        ),
       ]
       end = index
       break
@@ -293,7 +342,16 @@ async function contextualize(
     try {
       const beforeLoadContext = await route.options.beforeLoad(options)
       signal?.throwIfAborted()
-      const outcome = stampNotFound(match, normalize(beforeLoadContext, false))
+      const outcome = stampNotFound(
+        match,
+        materializeRedirect(
+          router,
+          lane,
+          route,
+          normalize(beforeLoadContext, false),
+          signal,
+        ),
+      )
       if (outcome[0] !== SUCCESS) {
         failure = [index, outcome]
         end = index
@@ -307,7 +365,13 @@ async function contextualize(
       parentContext = match.context
     } catch (cause) {
       signal?.throwIfAborted()
-      failure = [index, stampNotFound(match, normalizeError(route, cause))]
+      failure = [
+        index,
+        stampNotFound(
+          match,
+          normalizeError(router, lane, route, cause, signal),
+        ),
+      ]
       end = index
       break
     }
@@ -373,14 +437,13 @@ function createLoaderTask(
           (cause) => normalize(cause, true),
         )
         .then((result): LoaderOutcome => {
-          if (
-            result[0] !== REDIRECTED &&
-            (signal?.aborted || match.abortController.signal.reason === lane)
-          ) {
+          if (signal?.aborted || match.abortController.signal.reason === lane) {
             return [SKIPPED]
           }
           if (result[0] === ERROR) {
-            result = normalizeError(route, result[1])
+            result = normalizeError(router, lane, route, result[1], signal)
+          } else {
+            result = materializeRedirect(router, lane, route, result, signal)
           }
           return stampNotFound(match, result)
         })
@@ -424,13 +487,13 @@ async function getNotFoundBoundary(
   }
   for (let candidate = index; candidate >= 0; candidate--) {
     const route = getRoute(router, matches[candidate]!)
-    const loading = loadRouteChunk(route, false)
-    if (loading) {
-      try {
+    try {
+      const loading = loadRouteChunk(route, false)
+      if (loading) {
         await loading
-      } catch {
-        signal?.throwIfAborted()
       }
+    } catch {
+      signal?.throwIfAborted()
     }
     signal?.throwIfAborted()
     if (route.options.notFoundComponent) {
@@ -448,15 +511,6 @@ function abortMatches(
   for (let index = start; index < matches.length; index++) {
     matches[index]!.abortController.abort(reason)
   }
-}
-
-function resolveServerRedirect(
-  router: AnyRouter,
-  location: ParsedLocation,
-  value: AnyRedirect,
-): ServerLoadResult {
-  value.options._fromLocation = location
-  return { type: 'redirect', redirect: router.resolveRedirect(value) }
 }
 
 async function applyFailure(
@@ -530,7 +584,10 @@ async function loadNormalChunks(
             signal?.throwIfAborted()
             return [
               index,
-              stampNotFound(match, normalizeError(route, cause)),
+              stampNotFound(
+                match,
+                normalizeError(router, lane, route, cause, signal),
+              ),
             ] as IndexedOutcome
           },
         )
@@ -540,7 +597,13 @@ async function loadNormalChunks(
       }
     } catch (cause) {
       signal?.throwIfAborted()
-      chunks.push([index, stampNotFound(match, normalizeError(route, cause))])
+      chunks.push([
+        index,
+        stampNotFound(
+          match,
+          normalizeError(router, lane, route, cause, signal),
+        ),
+      ])
     }
   }
   for (const chunk of chunks) {
@@ -698,7 +761,7 @@ async function executeServerLane(
 
     if (control?.[1][0] === REDIRECTED) {
       abortMatches(lane.matches, 0, lane)
-      return resolveServerRedirect(router, location, control[1][1])
+      return { type: 'redirect', redirect: control[1][1] }
     }
 
     let failure = lane.failure ?? loaderFailure
@@ -742,7 +805,7 @@ async function executeServerLane(
     if (requiredFailure) {
       if (requiredFailure[1][0] === REDIRECTED) {
         abortMatches(lane.matches)
-        return resolveServerRedirect(router, location, requiredFailure[1][1])
+        return { type: 'redirect', redirect: requiredFailure[1][1] }
       }
       failure = requiredFailure
     }
@@ -808,9 +871,7 @@ export async function loadServerRoute(
     })
     if (next.publicHref !== canonical.publicHref) {
       const href = canonical.publicHref || '/'
-      throw canonical.external
-        ? redirect({ href })
-        : redirect({ href, _builtLocation: canonical })
+      throw redirect({ href })
     }
 
     const fromLocation = router.stores.resolvedLocation.get()
@@ -828,7 +889,8 @@ export async function loadServerRoute(
     if (!isRedirect(cause)) {
       throw cause
     }
-    result = resolveServerRedirect(router, next, cause)
+    cause.options._fromLocation = next
+    result = { type: 'redirect', redirect: router.resolveRedirect(cause) }
   }
 
   router._serverResult = result
