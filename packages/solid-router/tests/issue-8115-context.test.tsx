@@ -8,6 +8,7 @@ import {
 } from '@solidjs/testing-library'
 import { afterEach, expect, test, vi } from 'vitest'
 import { hydrate } from '@tanstack/router-core/ssr/client'
+import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import {
   Outlet,
   RouterProvider,
@@ -20,7 +21,6 @@ import {
   createRouter,
   useLocation,
 } from '../src'
-import type { TsrSsrGlobal } from '@tanstack/router-core/ssr/client'
 
 declare module '@tanstack/history' {
   interface HistoryState {
@@ -32,7 +32,7 @@ afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
   delete window.$_TSR
-  delete (window as any).$R
+  delete (window as Window & { $R?: unknown }).$R
   document.body.innerHTML = ''
 })
 
@@ -96,9 +96,13 @@ test('invalidate merges fresh parent beforeLoad context with cached child contex
   expect(router.state.matches[1]!.id).toBe(childMatchId)
   expect(generation).toBe(2)
   expect(childContextCalls).toBe(1)
-  expect(screen.getByTestId('parent-generation')).toHaveTextContent('2')
-  expect(screen.getByTestId('child-snapshot')).toHaveTextContent('1')
-  expect(screen.getByTestId('collision')).toHaveTextContent('child-snapshot-1')
+  await waitFor(() => {
+    expect(screen.getByTestId('parent-generation')).toHaveTextContent('2')
+    expect(screen.getByTestId('child-snapshot')).toHaveTextContent('1')
+    expect(screen.getByTestId('collision')).toHaveTextContent(
+      'child-snapshot-1',
+    )
+  })
 })
 
 test('a same-id child beforeLoad error observes fresh inherited context', async () => {
@@ -213,13 +217,15 @@ test('a same-match reload merges new provider context with cached route context'
   await Promise.resolve()
   await router.invalidate()
 
-  expect(screen.getByTestId('full-context')).toHaveTextContent(
-    JSON.stringify({
-      providerValue: 'B',
-      collision: 'route-cached:A',
-      derivedFromProvider: 'derived:A',
-    }),
-  )
+  await waitFor(() => {
+    expect(screen.getByTestId('full-context')).toHaveTextContent(
+      JSON.stringify({
+        providerValue: 'B',
+        collision: 'route-cached:A',
+        derivedFromProvider: 'derived:A',
+      }),
+    )
+  })
 })
 
 test('a child context error preserves inherited context without the child contribution', async () => {
@@ -458,9 +464,13 @@ test('a cached child context contribution is merged with fresh parent context', 
     search: { version: 2 },
   })
 
-  expect(
-    screen.getByText('Parent: version-2; cached child: derived-from-version-1'),
-  ).toBeInTheDocument()
+  await waitFor(() => {
+    expect(
+      screen.getByText(
+        'Parent: version-2; cached child: derived-from-version-1',
+      ),
+    ).toBeInTheDocument()
+  })
 
   const nextParentMatchId = router.state.matches.find(
     (match) => match.routeId === parentRoute.id,
@@ -526,32 +536,26 @@ test('#8115: hydration does not render a successful route with missing context w
     history: createMemoryHistory({ initialEntries: ['/'] }),
     isServer: true,
   })
-  await serverRouter.load()
-  expect(serverRouter.state.matches.at(-1)?.context).toMatchObject({
-    locale: 'en',
-  })
-  expect(serverRouter.state.matches.at(-1)?.status).toBe('success')
+  attachRouterServerSsrUtils({ router: serverRouter, manifest: undefined })
+  const currentScriptSpy = vi.spyOn(document, 'currentScript', 'get')
+  try {
+    await serverRouter.load()
+    expect(serverRouter.state.matches.at(-1)?.context).toMatchObject({
+      locale: 'en',
+    })
+    expect(serverRouter.state.matches.at(-1)?.status).toBe('success')
 
-  window.$_TSR = {
-    router: {
-      manifest: undefined,
-      matches: serverRouter.state.matches.map((match) => ({
-        i: match.id
-          .replaceAll('~', '~~')
-          .replaceAll('\0', '~0')
-          .replaceAll('\uFFFD', '~r')
-          .replaceAll('/', '\0'),
-        s: match.status,
-        ssr: true,
-        u: match.updatedAt,
-      })),
-    },
-    h: vi.fn(),
-    e: vi.fn(),
-    c: vi.fn(),
-    p: vi.fn(),
-    buffer: [],
-  } as TsrSsrGlobal
+    await serverRouter.serverSsr!.dehydrate()
+    const script = serverRouter.serverSsr!.takeBufferedScripts()
+    expect(script?.children).toBeTruthy()
+    currentScriptSpy.mockReturnValue(document.createElement('script'))
+    // This script comes exclusively from the router's production SSR serializer.
+    new Function(script!.children!)()
+  } finally {
+    currentScriptSpy.mockRestore()
+    serverRouter.serverSsr?.cleanup()
+  }
+  expect(window.$_TSR?.router?.matches.at(-1)?.s).toBe('success')
 
   serverPhase = false
   const clientRouter = createRouter({
@@ -853,8 +857,12 @@ test('a same-id search navigation merges fresh inherited context with cached rou
     search: { revision: 'two' },
   })
 
-  expect(await screen.findByTestId('current-search')).toHaveTextContent('two')
-  expect(screen.getByTestId('match-id').textContent).toBe(initialMatchId)
-  expect(screen.getByTestId('inherited-context')).toHaveTextContent('two')
-  expect(screen.getByTestId('cached-self-context')).toHaveTextContent('one:one')
+  await waitFor(() => {
+    expect(screen.getByTestId('current-search')).toHaveTextContent('two')
+    expect(screen.getByTestId('match-id').textContent).toBe(initialMatchId)
+    expect(screen.getByTestId('inherited-context')).toHaveTextContent('two')
+    expect(screen.getByTestId('cached-self-context')).toHaveTextContent(
+      'one:one',
+    )
+  })
 })

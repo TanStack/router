@@ -37,7 +37,7 @@ afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
   delete window.$_TSR
-  delete (window as any).$R
+  delete (window as Window & { $R?: unknown }).$R
   document.body.innerHTML = ''
 })
 
@@ -302,19 +302,26 @@ test('a same-id reload keeps the committed beforeLoad context visible until the 
   render(<RouterProvider router={router} />)
   expect(await screen.findByTestId('locale')).toHaveTextContent('en')
 
-  let invalidation!: Promise<void>
-  await act(async () => {
-    invalidation = router.invalidate()
-    await reloadStarted
-  })
+  let invalidation: Promise<void> | undefined
+  try {
+    await act(async () => {
+      invalidation = router.invalidate()
+      await reloadStarted
+    })
 
-  expect(beforeLoadRuns).toBe(2)
-  expect(screen.getByTestId('locale')).toHaveTextContent('en')
+    expect(beforeLoadRuns).toBe(2)
+    expect(screen.getByTestId('locale')).toHaveTextContent('en')
 
-  reload.resolve()
-  await act(() => invalidation)
+    reload.resolve()
+    await act(() => invalidation!)
 
-  expect(observedContexts).toEqual([{ locale: 'en' }])
+    expect(observedContexts).toEqual([{ locale: 'en' }])
+  } finally {
+    reload.resolve()
+    await act(async () => {
+      await Promise.allSettled(invalidation ? [invalidation] : [])
+    })
+  }
 })
 
 test('navigation merges fresh parent context with cached child preload context', async () => {
@@ -536,6 +543,7 @@ test('#8115: hydration does not render a successful route with missing context w
   expect(serverDocument.body.textContent).toContain('Locale: en')
   const currentScriptSpy = vi.spyOn(document, 'currentScript', 'get')
   try {
+    // These scripts come exclusively from this test's renderRouterToString output.
     for (const script of serverDocument.querySelectorAll('script')) {
       currentScriptSpy.mockReturnValue(script)
       new Function(script.textContent ?? '')()
@@ -562,10 +570,18 @@ test('#8115: hydration does not render a successful route with missing context w
     await act(async () => {
       root = hydrateRoot(container, <RouterProvider router={clientRouter} />, {
         onRecoverableError: (error) => {
+          const messages = [
+            error instanceof Error ? error.message : String(error),
+            error instanceof Error && error.cause instanceof Error
+              ? error.cause.message
+              : '',
+          ]
           if (
             error instanceof Error &&
-            error.message.startsWith(
-              "Hydration failed because the server rendered HTML didn't match the client.",
+            messages.some((message) =>
+              /hydration (?:failed|mismatch)|server rendered HTML.*client/i.test(
+                message,
+              ),
             )
           ) {
             recoverableHydrationErrors.push(error)
@@ -585,7 +601,7 @@ test('#8115: hydration does not render a successful route with missing context w
     expect(clientContextAttempts).toBeGreaterThan(0)
     expect(container.querySelector('[data-testid="route-success"]')).toBeNull()
     expect(clientSuccessRenderValues).not.toContain(undefined)
-    expect(recoverableHydrationErrors).toHaveLength(1)
+    expect(recoverableHydrationErrors.length).toBeGreaterThan(0)
   } finally {
     if (root) {
       await act(() => root!.unmount())

@@ -33,7 +33,7 @@ afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
   delete window.$_TSR
-  delete (window as any).$R
+  delete (window as Window & { $R?: unknown }).$R
   document.body.innerHTML = ''
 })
 
@@ -571,6 +571,7 @@ test('#8115: hydration does not render a successful route with missing context w
   expect(serverDocument.body.textContent).toContain('Locale: en')
   const currentScriptSpy = vi.spyOn(document, 'currentScript', 'get')
   try {
+    // These scripts come exclusively from this test's renderRouterToString output.
     for (const script of serverDocument.querySelectorAll('script')) {
       currentScriptSpy.mockReturnValue(script)
       new Function(script.textContent ?? '')()
@@ -593,14 +594,26 @@ test('#8115: hydration does not render a successful route with missing context w
   container.innerHTML = serverContainer!.innerHTML
   document.body.appendChild(container)
   const hydrationMessages: Array<string> = []
+  const originalError = console.error.bind(console)
+  const originalWarn = console.warn.bind(console)
   const recordHydrationMessage = (...args: Array<unknown>) => {
     const message = args.map(String).join(' ')
     if (/hydration|mismatch/i.test(message)) {
       hydrationMessages.push(message)
+      return true
     }
+    return false
   }
-  vi.spyOn(console, 'error').mockImplementation(recordHydrationMessage)
-  vi.spyOn(console, 'warn').mockImplementation(recordHydrationMessage)
+  vi.spyOn(console, 'error').mockImplementation((...args) => {
+    if (!recordHydrationMessage(...args)) {
+      originalError(...args)
+    }
+  })
+  vi.spyOn(console, 'warn').mockImplementation((...args) => {
+    if (!recordHydrationMessage(...args)) {
+      originalWarn(...args)
+    }
+  })
   let app: Vue.App<Element> | undefined
 
   try {
