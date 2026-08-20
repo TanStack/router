@@ -1991,26 +1991,26 @@ export async function loadClientRoute(
   }
   router._preflight = undefined
 
+  let settle: ((value: void | PromiseLike<void>) => void) | undefined
+  const run = () =>
+    runClientTransaction(
+      router,
+      tx,
+      sameHref,
+      () => offerPending(router, tx),
+      opts?.sync,
+      resolvedPrefix,
+    )
+  const done = opts?.sync
+    ? new Promise<void>((resolve) => (settle = resolve))
+    : Promise.resolve().then(run).then()
   const tx: LoadTransaction = [
     controller,
     redirects,
     location,
     matches,
     Date.now(),
-    Promise.resolve()
-      .then(() =>
-        runClientTransaction(
-          router,
-          tx,
-          sameHref,
-          () => offerPending(router, tx),
-          opts?.sync,
-          resolvedPrefix,
-        ),
-      )
-      // Preserve the settlement turn in which immediately completed background
-      // work can publish before callers resume from `load`.
-      .then(),
+    done,
   ]
   if (process.env.NODE_ENV !== 'production' && rematerialize) {
     tx[6 /* refresh */] = [handoff]
@@ -2037,6 +2037,7 @@ export async function loadClientRoute(
   if (router._tx !== tx) {
     transferMatchResources(router, tx[3 /* matches */])
     tx[3 /* matches */] = []
+    settle?.()
     await awaitCurrent(router, tx)
     return
   }
@@ -2044,8 +2045,7 @@ export async function loadClientRoute(
     router.stores.status.set('pending')
     router.stores.location.set(location)
   })
-  // An unresolved cold root has no UI to retain. Child boundaries wait for
-  // contextualization to publish through onReady; provisional not-found waits
+  // An unresolved cold root has no UI to retain. Provisional not-found waits
   // for lazy routes to place the final boundary.
   if (
     resolvedPrefix ||
@@ -2055,7 +2055,9 @@ export async function loadClientRoute(
   ) {
     offerPending(router, tx)
   }
-  await tx[5 /* done */]
+  // Let explicit synchronous loads publish ready pending work before paint.
+  settle?.(run())
+  await done
   await awaitCurrent(router, tx)
 }
 
