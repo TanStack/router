@@ -14,7 +14,7 @@ import { dirname, join, normalize, relative } from 'pathe'
 export const DEPS_PREFIX = '/@deps'
 export const DEPS_CACHE_DIR = 'node_modules/.tanstack-start/deps'
 /** Bump when prebundle post-processing changes (invalidates disk cache). */
-const OPTIMIZE_DEPS_CACHE_VERSION = '3-cjs-named-exports-richest'
+const OPTIMIZE_DEPS_CACHE_VERSION = '4-cjs-named-exports-all-factories'
 
 /** React singletons: one shared prebundle; other deps externalize these. */
 export const OPTIMIZE_DEPS_REACT_EXTERNALS = [
@@ -302,44 +302,33 @@ function rewriteBareToRelativeDeps(
   })
 }
 
-/** Collect `exports.foo =` names from Bun CJS→ESM interop (all factories). */
+/** Collect every `exports.foo =` name from Bun CJS→ESM interop factories. */
 function collectCjsExportNames(bundledEsm: string): Array<string> {
-  // Prefer the __commonJS factory with the most `exports.*` assignments.
-  // The last factory is often a thin `module.exports = other` re-export (react/index.js)
-  // with zero `exports.foo =`, which would wrongly fall back to jsx-only names.
-  const parts = bundledEsm.split('__commonJS')
-  let best: Array<string> = []
-  for (const part of parts) {
-    const names = new Set<string>()
-    for (const m of part.matchAll(/\bexports\.([A-Za-z_$][\w$]*)\s*=/g)) {
-      const name = m[1]!
-      if (name !== '__esModule' && name !== 'default') names.add(name)
-    }
-    if (names.size > best.length) best = [...names]
+  // Must scan the whole file: the entry is often a thin `module.exports = other`
+  // re-export (react/index.js) with zero `exports.foo =`, while hooks live in an
+  // earlier factory (react.development.js). Taking only the "richest" factory
+  // breaks jsx-runtime (which embeds both react + jsx-runtime factories).
+  const names = new Set<string>()
+  for (const m of bundledEsm.matchAll(/\bexports\.([A-Za-z_$][\w$]*)\s*=/g)) {
+    const name = m[1]!
+    if (name !== '__esModule' && name !== 'default') names.add(name)
   }
-  return best
+  return [...names]
 }
 
 /**
  * Bun.build of CJS packages (react, jsx-runtime, …) often emits only
- * `export { X as default }`. Browsers need named ESM exports (`jsx`, `useState`).
+ * `export { X as default }`. Browsers need named ESM exports (`jsx`, `useCallback`).
  */
 function addCjsNamedEsmExports(bundledEsm: string): string {
   if (!/__commonJS\b|__toESM\b/.test(bundledEsm)) return bundledEsm
-  // Already has named ESM exports beyond default
+
+  // Already post-processed
   if (
-    /export\s*\{[^}]*\bas\s+(?!default\b)[A-Za-z_$]/.test(bundledEsm) ||
-    /export\s+const\s+[A-Za-z_$]/.test(bundledEsm) ||
-    /export\s+function\s+[A-Za-z_$]/.test(bundledEsm)
+    /export\s+const\s+useCallback\s*=/.test(bundledEsm) ||
+    /export\s+const\s+jsx\s*=/.test(bundledEsm)
   ) {
-    // Still may only export default in the final export block — check footer
-    const footer = bundledEsm.slice(-400)
-    if (
-      /export\s*\{[^}]*\bas\s+(?!default\b)/.test(footer) ||
-      /export const \w+/.test(footer)
-    ) {
-      return bundledEsm
-    }
+    return bundledEsm
   }
 
   const names = collectCjsExportNames(bundledEsm)
