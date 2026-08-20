@@ -393,6 +393,18 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
 
   const fsAllowList = resolveFsAllowList(opts.root)
 
+  function cacheControlForFsPath(absPath: string): string {
+    // Bun 目录含版本哈希（react-aria@3.51.0+…）；应用源码仍 no-store 以便 HMR
+    const normalized = absPath.replace(/\\/g, '/')
+    if (
+      normalized.includes('/node_modules/') ||
+      normalized.includes('/.bun/')
+    ) {
+      return 'public, max-age=31536000, immutable'
+    }
+    return 'no-store'
+  }
+
   async function serveEsmPath(url: URL): Promise<Response | null> {
     if (!esmDev) {
       return null
@@ -504,7 +516,7 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
         return new Response(result.code, {
           headers: {
             'Content-Type': result.contentType,
-            'Cache-Control': 'no-store',
+            'Cache-Control': cacheControlForFsPath(resolvedFs),
           },
         })
       } catch (error) {

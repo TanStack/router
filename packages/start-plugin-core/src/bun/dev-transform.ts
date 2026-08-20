@@ -67,24 +67,37 @@ function guessLoader(filePath: string): 'tsx' | 'ts' | 'jsx' | 'js' {
 }
 
 /**
- * Bun.Transpiler emits mangled automatic-runtime helpers (`jsxDEV_<suffix>`)
- * without imports (Bun injects them at runtime). Browsers need ESM imports.
- * Suffix is Bun-build-specific — detect it from the emitted code.
+ * Bun.Transpiler emits mangled automatic-runtime helpers (`jsxDEV_<suffix>`,
+ * `Fragment_<suffix>`, …) without imports (Bun injects them at runtime).
+ * Browsers need ESM imports. Suffix is Bun-build-specific — detect from code.
  * React-only: Solid/Vue use their own JSX pipelines.
  */
 function injectBunJsxRuntimeImports(code: string): string {
   const devSuffix = code.match(/\bjsxDEV_([A-Za-z0-9]+)\b/)?.[1]
   const jsxSuffix = code.match(/\bjsx_([A-Za-z0-9]+)\b/)?.[1]
   const jsxsSuffix = code.match(/\bjsxs_([A-Za-z0-9]+)\b/)?.[1]
-  if (!devSuffix && !jsxSuffix && !jsxsSuffix) {
+  const fragmentSuffix = code.match(/\bFragment_([A-Za-z0-9]+)\b/)?.[1]
+  if (!devSuffix && !jsxSuffix && !jsxsSuffix && !fragmentSuffix) {
     return code
   }
 
   const lines: Array<string> = []
-  if (devSuffix && !code.includes(`jsxDEV as jsxDEV_${devSuffix}`)) {
-    lines.push(
-      `import { jsxDEV as jsxDEV_${devSuffix} } from "react/jsx-dev-runtime";`,
-    )
+  if (devSuffix) {
+    const parts: Array<string> = []
+    if (!code.includes(`jsxDEV as jsxDEV_${devSuffix}`)) {
+      parts.push(`jsxDEV as jsxDEV_${devSuffix}`)
+    }
+    if (
+      fragmentSuffix &&
+      !code.includes(`Fragment as Fragment_${fragmentSuffix}`)
+    ) {
+      parts.push(`Fragment as Fragment_${fragmentSuffix}`)
+    }
+    if (parts.length > 0) {
+      lines.push(
+        `import { ${parts.join(', ')} } from "react/jsx-dev-runtime";`,
+      )
+    }
   }
 
   if (jsxSuffix || jsxsSuffix) {
@@ -95,9 +108,28 @@ function injectBunJsxRuntimeImports(code: string): string {
     if (jsxsSuffix && !code.includes(`jsxs as jsxs_${jsxsSuffix}`)) {
       parts.push(`jsxs as jsxs_${jsxsSuffix}`)
     }
+    if (
+      fragmentSuffix &&
+      !devSuffix &&
+      !code.includes(`Fragment as Fragment_${fragmentSuffix}`)
+    ) {
+      parts.push(`Fragment as Fragment_${fragmentSuffix}`)
+    }
     if (parts.length > 0) {
       lines.push(`import { ${parts.join(', ')} } from "react/jsx-runtime";`)
     }
+  }
+
+  if (
+    fragmentSuffix &&
+    !devSuffix &&
+    !jsxSuffix &&
+    !jsxsSuffix &&
+    !code.includes(`Fragment as Fragment_${fragmentSuffix}`)
+  ) {
+    lines.push(
+      `import { Fragment as Fragment_${fragmentSuffix} } from "react/jsx-runtime";`,
+    )
   }
 
   if (lines.length === 0) {
