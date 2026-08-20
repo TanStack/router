@@ -394,6 +394,7 @@ async function contextualize(
       }
       match.context = context
     } catch (cause) {
+      match.context = parentContext
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
     }
@@ -411,6 +412,12 @@ async function contextualize(
     const beforeLoad = route.options.beforeLoad
     if (!beforeLoad) {
       continue
+    }
+
+    const base = options[2 /* base */][index]
+    // Keep the committed context observable until beforeLoad settles.
+    if (base?.id === match.id) {
+      match.context = base.context
     }
 
     const beforeLoadContext: BeforeLoadContextOptions<
@@ -452,7 +459,7 @@ async function contextualize(
         releaseFlight(router, match)
         return [index, outcome]
       }
-      match.context = {
+      context = {
         ...context,
         ...result,
       }
@@ -460,6 +467,7 @@ async function contextualize(
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
     } finally {
+      match.context = context
       if (match.status === 'pending') {
         match.status = previousStatus
       }
@@ -2038,11 +2046,14 @@ export async function loadClientRoute(
     router.stores.status.set('pending')
     router.stores.location.set(location)
   })
-  // Cold loads have no committed UI to retain, but provisional not-found
-  // matches must wait for lazy routes to place the final boundary.
+  // An unresolved cold root has no UI to retain. Child boundaries wait for
+  // contextualization to publish through onReady; provisional not-found waits
+  // for lazy routes to place the final boundary.
   if (
     resolvedPrefix ||
-    (!router._committed.length && !matches.some((match) => match._notFound))
+    (!router._committed.length &&
+      matches[0]?.status !== 'success' &&
+      !matches.some((match) => match._notFound))
   ) {
     offerPending(router, tx)
   }
@@ -2229,6 +2240,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   let pendingBoundary: number | undefined
   let verifiedAssetEnd = 0
   const retryFrom = (index: number) => {
+    pendingBoundary = Math.min(pendingBoundary ?? index, index)
     // The failing route's identity is still verified, but no descendant is.
     verifiedAssetEnd = Math.min(verifiedAssetEnd, index + 1)
     const removed = committed.splice(index)
