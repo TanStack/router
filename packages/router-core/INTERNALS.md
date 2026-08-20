@@ -81,7 +81,7 @@ The main authorities are:
 | Match flight lease           | Ownership keeping that loader work alive                            |
 | Pending session              | One reveal/minimum-visible deadline and its current owner           |
 | React acknowledgement slot   | The one requested publication whose render may settle a transition  |
-| Refresh transaction          | Its starting presentation, handoff, and ability to roll back        |
+| Refresh transaction          | Forced rematerialization and an optional hydration handoff          |
 | Request signal               | Lifetime of one server request and any accepted SSR stream          |
 | Accepted SSR stream response | Cleanup ownership transferred from the handler to the response body |
 
@@ -400,8 +400,8 @@ lane uses that data or requires a loader generation. A discoverable same-ID
 flight may satisfy that requirement, including when `shouldReload` returns
 `true`.
 
-Every eligible successful blocking loader task from an ordinary foreground
-navigation or preload attempts cache admission immediately after loader
+Every eligible successful blocking loader task from a foreground navigation,
+development refresh, or preload attempts cache admission immediately after loader
 settlement. It does not wait for component readiness, whole-lane reduction,
 projection, commit, or render acknowledgement. The cache receives a
 non-terminal copy with merged context removed and an additional flight lease;
@@ -413,9 +413,10 @@ normal navigation staleness and GC semantics rather than becoming synthetic
 preloads.
 
 Background loader candidates remain private until their exact transaction and
-committed base authorize background publication. Development refresh foreground
-generations also skip early cache admission because their candidate publication
-may roll back.
+committed base authorize background publication. A development refresh may
+admit successful loader work while its lane is private, but refresh commit
+discards every cache generation instead of preserving stale rematerialization
+inputs.
 
 It is valid for cached loader data to have been produced under context from an
 older `beforeLoad` generation. Loaders are the cache boundary; guards are not.
@@ -601,6 +602,13 @@ reduction.
 Returned and thrown redirects/not-founds normalize identically. Only an error
 invokes route `onError`; if `onError` throws, its value is normalized again and
 may itself become an error, not-found, or redirect.
+Client and server lanes build a route redirect while its source route still owns
+the outcome. Target-construction failures therefore become that route's error,
+and a successful client target travels with the redirect so navigation does not
+run functional updaters twice.
+Client loader flights retain the raw redirect because a flight can be shared.
+Each consuming lane materializes that redirect against its own location and
+policy before exposing the lane-owned task outcome to settlement and reduction.
 Router cancellation and request abort bypass `onError`. Aborting the
 `AbortController` exposed to a loader is not by itself proof that the router
 discarded the work: a still-owned loader may fulfill or reject afterward, and
@@ -610,6 +618,11 @@ proves request cancellation, while the already selected failure/control outcome
 proves that an aborted descendant is obsolete. The client calls a discarded
 non-result `canceled`, while the server calls it `skipped`; neither is a
 publishable terminal state.
+The transaction controller exposed to client `context` and `beforeLoad` is
+router-owned; route code may observe its signal but must not abort it. A canceled
+client lane has therefore already lost writer authority to a successor.
+Canceled client lanes release only their private work; the transaction that
+superseded them owns presentation and completion.
 
 The client and server use the same settlement order and renderable-ancestor
 rules.
@@ -800,15 +813,23 @@ the current turn instead of introducing a `setTimeout(0)` race.
 publication rendered. A superseded publication that never rendered creates no
 minimum-visible obligation.
 
-Hydration or a redirect can leave an already visible pending presentation
-without a pending session that owns its original acknowledgement. On takeover,
-core conservatively treats that presentation as rendered and starts its minimum
-from the takeover time instead of delaying its reveal again.
+Core considers actual non-success matches and an exact pending presentation in
+route order. An earlier ineligible successor boundary therefore retires the old
+clock without replacing the painted fallback, and a later occurrence of that
+old boundary in the same transaction cannot resurrect its minimum.
 
-A successor may take over timing only when the boundary index and match ID are
-the same. It keeps the existing deadline but republishes a full snapshot from
+Hydration or a redirect can leave an already visible pending presentation
+without a pending session that owns its original acknowledgement. When there is
+no competing semantic boundary, core conservatively treats that presentation as
+rendered and starts its minimum from the takeover time instead of delaying its
+reveal again.
+
+A successor may take over timing only when its selected boundary has the same
+match ID. It keeps the existing deadline but republishes a full snapshot from
 the successor, so pending UI cannot show stale search, params, or context from
-the superseded navigation. Changing the boundary discards the old session.
+the superseded navigation. Normal route matches preserve position with their
+IDs; the deprecated relocatable `notFoundRoute` is not given separate positional
+session identity. Changing the selected boundary discards the old session.
 
 ## Exact framework acknowledgement
 
@@ -819,6 +840,10 @@ the superseded navigation. Changing the boundary discards the old session.
 - `true` means the exact requested match publication rendered;
 - `false` means core must finish without emitting `onRendered` or starting a
   pending minimum based on that publication.
+
+Framework transition wrappers are controlled adapters. Supersession settles an
+older acknowledgement as `false`; core does not retain a prior presentation or
+install a compensating restoration path for wrapper failure.
 
 React cannot await `React.startTransition` directly. Its adapter keeps one
 router-owned acknowledgement tuple, and `Matches` settles that tuple from a
@@ -960,19 +985,19 @@ rematches with committed/cache reuse disabled so obsolete params, context,
 loader data, or projected assets cannot seed the refreshed lane. Selected cache
 and preload resources are detached before their controllers are aborted.
 
-Unlike an ordinary foreground navigation, a development refresh does not admit
-its loader successes to the cache while its candidate lane is private. The
-refresh publication checkpoint is created only after lane execution; admitting
-the new generation earlier would capture it as rollback cache and allow a failed
-or superseded refresh to remain reusable. Acknowledged refresh data becomes
-committed normally and may be cached later when displaced.
+Before publication, a failed or superseded refresh leaves the painted
+presentation alone because its candidate is still private. Once published, the
+refresh is the accepted semantic and presentation generation even while exact
+framework acknowledgement is pending. Publication uses the ordinary commit
+ownership transfer, releases the replaced generation immediately, consumes any
+obsolete hydration handoff, and retains no prior cache or presentation
+checkpoint.
 
-Refresh does not immediately discard the accepted committed lane or abort the
-loader signals it still owns. The previous semantic lane, presentation, and
-their resources remain available to the refresh transaction until the new
-publication settles or rolls back. Settlement releases the replaced generation;
-rollback restores it. The ability to roll back belongs to that refresh
-transaction, not to a separate router-global owner.
+A rapid successor refresh rematerializes again, settles the older framework
+receipt as `false`, and owns convergence and public completion through the same
+`_tx` and `awaitCurrent` chain as ordinary navigation. The older transaction
+releases only private background work that did not transfer. No refresh has
+authority to restore a predecessor or resolve a successor's commit promise.
 
 ## Speculative preloading
 
@@ -1254,6 +1279,12 @@ identity check aborts its private work. If the published handoff becomes
 incompatible, its failed identity check retires the hydration controller
 and starts normal client loading from a fresh preflight.
 
+Development refresh rematerializes instead of claiming the prefix. Its
+transaction carries the existing handoff only until refreshed matches publish;
+that one-way publication consumes the handoff and retires the hydration
+controller before lifecycle reentrancy. A refresh superseded before publication
+leaves the handoff for its rematerializing successor.
+
 Generic framework `RouterClient` components signal streaming hydration
 completion after the hydration attempt settles, including rejection. This
 finally-style handoff allows bootstrap globals to be removed once the server
@@ -1308,6 +1339,12 @@ algorithm here.
 
 - Do error/not-found selection, required ancestor readiness, component chunks,
   and descendant redirects still reduce to one final outcome?
+- Are redirects materialized while their source route owns target-construction
+  errors, with shared flights retaining only the raw redirect and each lane
+  building its own target once?
+- Does cancellation require both exact signal identity and proof that the signal
+  is aborted, and does a canceled lane release every private background
+  candidate without changing presentation?
 - Does pending or terminal publication retain the complete structural branch
   while rendering and outputs apply their relevant cutoff, including the
   selective-SSR hydration asset-prefix exception?

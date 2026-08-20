@@ -434,9 +434,10 @@ describe('hydration asset currentness', () => {
     expect(childLoader).toHaveBeenCalledTimes(1)
   })
 
-  test('failed HMR restores a partial hydration presentation and handoff', async () => {
+  test('published HMR consumes a partial hydration handoff before its successor converges', async () => {
     let hydrationController: AbortController | undefined
-    const childLoader = vi.fn(() => 'client child data')
+    let generation = 0
+    const childLoader = vi.fn(() => `client child data ${++generation}`)
     const rootRoute = new BaseRootRoute({
       context: ({ abortController }: { abortController: AbortController }) => {
         hydrationController ??= abortController
@@ -465,30 +466,40 @@ describe('hydration asset currentness', () => {
 
     await hydrate(router)
     const handoff = router._handoff
-    const startTransition = router.startTransition
-    router.startTransition = async (fn) => {
+    const firstAck = createControlledPromise<boolean>()
+    const firstPublished = createControlledPromise<void>()
+    let transitions = 0
+    router.startTransition = (fn) => {
+      transitions++
+      if (transitions === 1) {
+        fn()
+        firstPublished.resolve()
+        return firstAck
+      }
+      firstAck.resolve(false)
       fn()
-      throw new Error('HMR render failed')
+      return Promise.resolve(true)
     }
 
-    await router._refreshRoute!()
+    const firstRefresh = router._refreshRoute!()
+    await firstPublished
 
-    expect(router.state.matches.map((match) => match.routeId)).toEqual([
-      rootRoute.id,
-      childRoute.id,
-    ])
-    expect(router.state.matches[1]).toMatchObject({
-      status: 'pending',
-      ssr: false,
-    })
-    expect(router._handoff).toBe(handoff)
-    expect(hydrationController?.signal.aborted).toBe(false)
-
-    router.startTransition = startTransition
-    await router.load()
+    expect(handoff).toBeDefined()
+    expect(router._handoff).toBeUndefined()
+    expect(hydrationController?.signal.aborted).toBe(true)
     expect(router.state.matches[1]).toMatchObject({
       status: 'success',
-      loaderData: 'client child data',
+      ssr: false,
+      loaderData: 'client child data 1',
+    })
+
+    const secondRefresh = router._refreshRoute!()
+    await Promise.all([firstRefresh, secondRefresh])
+
+    expect(router._handoff).toBeUndefined()
+    expect(router.state.matches[1]).toMatchObject({
+      status: 'success',
+      loaderData: 'client child data 2',
     })
     expect(childLoader).toHaveBeenCalledTimes(2)
   })

@@ -112,13 +112,25 @@ export function resolvePath({
   trailingSlash = 'never',
   cache,
 }: ResolvePathOptions) {
-  const isBase = to === '.'
-  const isAbsolute = to.startsWith('/')
+  if (to.includes('//')) {
+    to = cleanPath(to)
+  }
 
+  if (to.startsWith('/')) {
+    if (to.length === 1 || trailingSlash === 'preserve') {
+      return to
+    }
+    if (trailingSlash === 'always') {
+      return to.endsWith('/') ? to : `${to}/`
+    }
+    return to.endsWith('/') ? to.slice(0, -1) : to
+  }
+
+  const isBase = to === '.'
   let key
   if (cache) {
     // `trailingSlash` is static per router, so it doesn't need to be part of the cache key
-    key = isAbsolute ? to : isBase ? base : base + '\0' + to
+    key = isBase ? base : base + '\0' + to
     const cached = cache.get(key)
     if (cached) return cached
   }
@@ -126,9 +138,10 @@ export function resolvePath({
   let baseSegments: Array<string>
   if (isBase) {
     baseSegments = base.split('/')
-  } else if (isAbsolute) {
-    baseSegments = to.split('/')
   } else {
+    if (base.includes('//')) {
+      base = cleanPath(base)
+    }
     baseSegments = base.split('/')
     while (baseSegments.length > 1 && last(baseSegments) === '') {
       baseSegments.pop()
@@ -171,7 +184,8 @@ export function resolvePath({
     }
   }
 
-  const result = cleanPath(baseSegments.join('/')) || '/'
+  const joined = baseSegments.join('/')
+  const result = (isBase ? cleanPath(joined) : joined) || '/'
   if (key && cache) cache.set(key, result)
   return result
 }

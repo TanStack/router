@@ -582,7 +582,7 @@ export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
 ) {
   path ||= '/'
   const cached = processedTree.flatCache!.get(path)
-  if (cached) return cached
+  if (cached !== undefined) return cached
   const result = findMatch(path, processedTree.masksTree!)
   processedTree.flatCache!.set(path, result)
   return result
