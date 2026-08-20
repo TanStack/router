@@ -733,42 +733,56 @@ export function arraysEqual<T>(a: Array<T>, b: Array<T>) {
  * Safely stringify a value for use as a hash key, handling types that
  * JSON.stringify cannot serialize (bigint, Set, Map, circular refs, etc.).
  *
- * - bigint → string representation (e.g. "123n")
- * - Set/Map → sorted array / entries array
- * - undefined → empty string
- * - Circular references → detected and replaced with "[Circular]"
- * - Functions/Symbols → replaced with "[Function]" / "[Symbol]"
+ * - bigint → tagged string (e.g. "\u0000bigint:123")
+ * - Set/Map → tagged array (e.g. ["\u0000set", [...]])
+ * - undefined → tagged string ("\u0000undefined")
+ * - Circular references → tagged string ("\u0000circular")
+ * - Functions/Symbols → tagged string
+ * - Dates → tagged ISO string
+ *
+ * Special values use a reserved \u0000 tag prefix. User strings that start
+ * with \u0000 are escaped by doubling the prefix, so they can never collide
+ * with a tagged value (e.g. `123n` vs `'123n'` produce different output).
  */
 export function safeStringify(value: unknown): string {
   const seen = new WeakSet<object>()
 
-  function serialize(val: unknown): any {
+  const escape = (s: string): string =>
+    s.startsWith('\u0000') ? `\u0000${s}` : s
+
+  function serialize(val: unknown): unknown {
     if (val === null) return null
-    if (val === undefined) return ''
+    if (typeof val === 'undefined') return '\u0000undefined'
 
-    if (typeof val === 'bigint') return val.toString() + 'n'
-    if (typeof val === 'symbol') return val.description ?? '[Symbol]'
-    if (typeof val === 'function') return '[Function]'
+    if (typeof val === 'string') return escape(val)
+    if (typeof val === 'bigint') return `\u0000bigint:${val.toString()}`
+    if (typeof val === 'symbol') {
+      return val.description ? `\u0000symbol:${val.description}` : '\u0000symbol'
+    }
+    if (typeof val === 'function') return '\u0000function'
 
-    if (typeof val === 'object' && val !== null) {
-      if (seen.has(val)) return '[Circular]'
+    if (typeof val === 'object') {
+      if (seen.has(val)) return '\u0000circular'
       seen.add(val)
 
       if (val instanceof Set) {
-        return Array.from(val).map(serialize)
+        return ['\u0000set', Array.from(val).map(serialize)]
       }
       if (val instanceof Map) {
-        return Array.from(val.entries()).map(([k, v]) => [
-          serialize(k),
-          serialize(v),
-        ])
+        return [
+          '\u0000map',
+          Array.from(val.entries()).map(([k, v]) => [
+            serialize(k),
+            serialize(v),
+          ]),
+        ]
       }
-      if (val instanceof Date) return val.toISOString()
+      if (val instanceof Date) return `\u0000date:${val.toISOString()}`
       if (Array.isArray(val)) return val.map(serialize)
 
-      const obj: Record<string, any> = {}
+      const obj: Record<string, unknown> = {}
       for (const key of Object.keys(val).sort()) {
-        obj[key] = serialize((val as Record<string, any>)[key])
+        obj[escape(key)] = serialize((val as Record<string, unknown>)[key])
       }
       return obj
     }
@@ -777,4 +791,21 @@ export function safeStringify(value: unknown): string {
   }
 
   return JSON.stringify(serialize(value))
+}
+
+/**
+ * Default serializer for `loaderDeps` hash keys.
+ *
+ * Uses `JSON.stringify` for plain-object loader deps (no added bundle weight
+ * for the common case) and falls back to `safeStringify` when a value throws
+ * during serialization (e.g. bigint), which would otherwise crash the hash
+ * computation.
+ */
+export function defaultStringifyLoaderDeps(value: Record<string, any>): string {
+  if (!value) return ''
+  try {
+    return JSON.stringify(value) || ''
+  } catch {
+    return safeStringify(value)
+  }
 }

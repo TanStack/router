@@ -4,6 +4,7 @@ import {
   DEFAULT_PROTOCOL_ALLOWLIST,
   decodePath,
   deepEqual,
+  defaultStringifyLoaderDeps,
   encodePathLikeUrl,
   findLast,
   functionalUpdate,
@@ -203,13 +204,14 @@ export interface RouterOptions<
    * A function that will be used to stringify `loaderDeps` values when
    * computing the `loaderDepsHash` used for loader data caching.
    *
-   * Defaults to `JSON.stringify`, which covers plain-object loader deps. If
-   * your loader deps contain values that `JSON.stringify` cannot serialize
-   * (bigint, Set, Map, circular references, functions, symbols, etc.), pass a
-   * custom serializer such as `safeStringify` so those deps produce a stable
-   * hash and are cached correctly.
+   * Defaults to `defaultStringifyLoaderDeps`, which uses `JSON.stringify` for
+   * plain-object loader deps and falls back to `safeStringify` when a value
+   * throws during serialization (e.g. bigint). If your loader deps contain
+   * values that `JSON.stringify` silently mishandles (Set, Map, Date, circular
+   * references, etc.), pass a custom serializer such as `safeStringify` so
+   * those deps produce a stable hash and are cached correctly.
    *
-   * @default JSON.stringify
+   * @default defaultStringifyLoaderDeps
    */
   stringifyLoaderDeps?: SearchSerializer
   /**
@@ -1151,7 +1153,7 @@ export class RouterCore<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
-      stringifyLoaderDeps: options.stringifyLoaderDeps ?? JSON.stringify,
+      stringifyLoaderDeps: options.stringifyLoaderDeps ?? defaultStringifyLoaderDeps,
       protocolAllowlist:
         options.protocolAllowlist ?? DEFAULT_PROTOCOL_ALLOWLIST,
     })
