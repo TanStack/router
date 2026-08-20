@@ -261,6 +261,62 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     expect(queryClient.getQueryData(['initial'])).toBe('initial-hydrated')
     expect(queryClient.getQueryData(['streamed'])).toBe('stream-hydrated')
   })
+
+  it('streams queries created together in one chunk and keeps later queries', async () => {
+    const queryClient = track(new QueryClient())
+    const { router, finishRender, attachServerSsr, setDehydrated } =
+      createServerRouter()
+
+    router.serverSsr = undefined
+    setupCoreRouterSsrQueryIntegration({
+      router: router as any,
+      queryClient,
+    })
+    attachServerSsr()
+
+    const dehydrated = (await router.options.dehydrate?.()) as {
+      queryStream: ReadableStream<{
+        queries: Array<{ queryKey: Array<unknown> }>
+      }>
+    }
+    const streamedQueriesPromise = readStream(dehydrated.queryStream)
+    const firstDeferred = createDeferred<string>()
+    const secondDeferred = createDeferred<string>()
+    const laterDeferred = createDeferred<string>()
+
+    setDehydrated(true)
+    const firstPromise = queryClient.fetchQuery({
+      queryKey: ['first'],
+      queryFn: () => firstDeferred.promise,
+    })
+    const secondPromise = queryClient.fetchQuery({
+      queryKey: ['second'],
+      queryFn: () => secondDeferred.promise,
+    })
+
+    firstDeferred.resolve('first-data')
+    secondDeferred.resolve('second-data')
+    await Promise.all([firstPromise, secondPromise])
+
+    const laterPromise = queryClient.fetchQuery({
+      queryKey: ['later'],
+      queryFn: () => laterDeferred.promise,
+    })
+    laterDeferred.resolve('later-data')
+    await laterPromise
+    finishRender()
+
+    const streamedQueries = await streamedQueriesPromise
+
+    expect(streamedQueries).toHaveLength(2)
+    expect(streamedQueries[0]?.queries.map((query) => query.queryKey)).toEqual([
+      ['first'],
+      ['second'],
+    ])
+    expect(streamedQueries[1]?.queries.map((query) => query.queryKey)).toEqual([
+      ['later'],
+    ])
+  })
 })
 
 // GC reclamation tests are non-deterministic by nature (V8 makes no
