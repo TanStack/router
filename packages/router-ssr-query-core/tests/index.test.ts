@@ -1,24 +1,39 @@
 import { QueryClient } from '@tanstack/query-core'
+import {
+  BaseRootRoute,
+  RouterCore,
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
+} from '@tanstack/router-core'
+import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { setupCoreRouterSsrQueryIntegration } from '../src'
+import type { GetStoreConfig } from '@tanstack/router-core'
 
-type TestRouter = {
-  isServer: boolean
-  options: {
-    dehydrate?: () => unknown | Promise<unknown>
-    hydrate?: (dehydrated: any) => unknown | Promise<unknown>
+const getStoreConfig: GetStoreConfig = () => ({
+  createMutableStore: createNonReactiveMutableStore,
+  createReadonlyStore: createNonReactiveReadonlyStore,
+  batch: (fn) => fn(),
+})
+
+function createTestRouter(isServer: boolean) {
+  const router = new RouterCore(
+    {
+      routeTree: new BaseRootRoute({}),
+      isServer,
+    },
+    getStoreConfig,
+  )
+
+  // RouterCore exposes test routers globally in jsdom, defeating the GC tests.
+  if (Reflect.get(globalThis, '__TSR_ROUTER__') === router) {
+    Reflect.deleteProperty(globalThis, '__TSR_ROUTER__')
   }
-  serverSsr?: {
-    isDehydrated: () => boolean
-    onRenderFinished: (listener: () => void) => void
-    onCleanup: (listener: () => void) => void
-  }
-  serverSsrLifecycle?: {
-    onServerSsrAttach: Array<
-      (serverSsr: NonNullable<TestRouter['serverSsr']>) => void
-    >
-  }
+
+  return router
 }
+
+type TestRouter = ReturnType<typeof createTestRouter>
 
 type ServerRouterFixture = {
   router: TestRouter
@@ -30,46 +45,48 @@ type ServerRouterFixture = {
 }
 
 function createServerRouter(): ServerRouterFixture {
-  const renderFinishedListeners = new Array<() => void>()
-  const cleanupListeners = new Array<() => void>()
+  const router = createTestRouter(true)
+  let serverSsr: NonNullable<TestRouter['serverSsr']> | undefined
   let dehydrated = false
-  const serverSsr = {
-    isDehydrated: () => dehydrated,
-    onRenderFinished: (listener: () => void) => {
-      renderFinishedListeners.push(listener)
-    },
-    onCleanup: (listener: () => void) => {
-      cleanupListeners.push(listener)
-    },
+  let cleanupListenerCount = 0
+
+  router.serverSsrLifecycle = {
+    onServerSsrAttach: [
+      (attachedServerSsr) => {
+        serverSsr = attachedServerSsr
+        attachedServerSsr.isDehydrated = () => dehydrated
+
+        const onCleanup = attachedServerSsr.onCleanup
+        attachedServerSsr.onCleanup = (listener) => {
+          cleanupListenerCount++
+          onCleanup(() => {
+            try {
+              listener()
+            } finally {
+              cleanupListenerCount--
+            }
+          })
+        }
+      },
+    ],
   }
 
-  const result: ServerRouterFixture = {
-    router: {
-      isServer: true,
-      options: {},
-      serverSsr,
-    },
+  return {
+    router,
     finishRender: () => {
-      renderFinishedListeners.splice(0).forEach((listener) => listener())
+      serverSsr?.setRenderFinished()
     },
     triggerCleanup: () => {
-      cleanupListeners.splice(0).forEach((listener) => listener())
+      serverSsr?.cleanup()
     },
     attachServerSsr: () => {
-      result.router.serverSsr = serverSsr
-      result.router.serverSsrLifecycle?.onServerSsrAttach.forEach(
-        (listener) => {
-          listener(serverSsr)
-        },
-      )
+      attachRouterServerSsrUtils({ router, manifest: undefined })
     },
     setDehydrated: (value: boolean) => {
       dehydrated = value
     },
-    cleanupListenerCount: () => cleanupListeners.length,
+    cleanupListenerCount: () => cleanupListenerCount,
   }
-
-  return result
 }
 
 async function readStream<T>(stream: ReadableStream<T>): Promise<Array<T>> {
@@ -149,9 +166,8 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     const { router, finishRender, attachServerSsr, setDehydrated } =
       createServerRouter()
 
-    router.serverSsr = undefined
     setupCoreRouterSsrQueryIntegration({
-      router: router as any,
+      router,
       queryClient,
       dehydrateOptions: {
         serializeData: (data) => `${data}-serialized`,
@@ -210,13 +226,10 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
 
   it('uses custom hydrate options for the initial payload and streamed queries', async () => {
     const queryClient = track(new QueryClient())
-    const router: TestRouter = {
-      isServer: false,
-      options: {},
-    }
+    const router = createTestRouter(false)
 
     setupCoreRouterSsrQueryIntegration({
-      router: router as any,
+      router,
       queryClient,
       hydrateOptions: {
         defaultOptions: {
@@ -267,9 +280,8 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     const { router, finishRender, attachServerSsr, setDehydrated } =
       createServerRouter()
 
-    router.serverSsr = undefined
     setupCoreRouterSsrQueryIntegration({
-      router: router as any,
+      router,
       queryClient,
     })
     attachServerSsr()
@@ -327,16 +339,11 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
 
   it('does not stream pending queries after request cleanup', async () => {
     const queryClient = track(new QueryClient())
-    const {
-      router,
-      triggerCleanup,
-      attachServerSsr,
-      setDehydrated,
-    } = createServerRouter()
+    const { router, triggerCleanup, attachServerSsr, setDehydrated } =
+      createServerRouter()
 
-    router.serverSsr = undefined
     setupCoreRouterSsrQueryIntegration({
-      router: router as any,
+      router,
       queryClient,
     })
     attachServerSsr()
@@ -394,9 +401,8 @@ describe.runIf(gcTestsEnabled)('SSR memory: GC reclamation', () => {
     let serverRouter: ReturnType<typeof createServerRouter> | null =
       createServerRouter()
 
-    serverRouter.router.serverSsr = undefined
     setupCoreRouterSsrQueryIntegration({
-      router: serverRouter.router as any,
+      router: serverRouter.router,
       queryClient,
     })
     serverRouter.attachServerSsr()
@@ -435,9 +441,8 @@ describe.runIf(gcTestsEnabled)('SSR memory: GC reclamation', () => {
     let serverRouter: ReturnType<typeof createServerRouter> | null =
       createServerRouter()
 
-    serverRouter.router.serverSsr = undefined
     setupCoreRouterSsrQueryIntegration({
-      router: serverRouter.router as any,
+      router: serverRouter.router,
       queryClient,
     })
     serverRouter.attachServerSsr()
@@ -477,9 +482,8 @@ describe('SSR cleanup: deterministic behavior', () => {
     const { router, triggerCleanup, attachServerSsr, setDehydrated } =
       createServerRouter()
 
-    router.serverSsr = undefined
     setupCoreRouterSsrQueryIntegration({
-      router: router as any,
+      router,
       queryClient,
     })
     attachServerSsr()
@@ -505,9 +509,8 @@ describe('SSR cleanup: deterministic behavior', () => {
     const { router, triggerCleanup, attachServerSsr, setDehydrated } =
       createServerRouter()
 
-    router.serverSsr = undefined
     setupCoreRouterSsrQueryIntegration({
-      router: router as any,
+      router,
       queryClient,
     })
     attachServerSsr()
@@ -551,9 +554,8 @@ describe('SSR cleanup: deterministic behavior', () => {
       cleanupListenerCount,
     } = createServerRouter()
 
-    router.serverSsr = undefined
     setupCoreRouterSsrQueryIntegration({
-      router: router as any,
+      router,
       queryClient,
     })
     attachServerSsr()
@@ -591,10 +593,8 @@ describe('SSR cleanup: deterministic behavior', () => {
       cleanupListenerCount,
     } = createServerRouter()
     // Detach to simulate pre-attach state.
-    router.serverSsr = undefined
-
     setupCoreRouterSsrQueryIntegration({
-      router: router as any,
+      router,
       queryClient,
     })
 
