@@ -12,7 +12,6 @@ import {
   last,
   nullReplaceEqualDeep,
   replaceEqualDeep,
-  safeStringify,
 } from './utils'
 import {
   buildRouteBranch,
@@ -201,6 +200,19 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization)
    */
   parseSearch?: SearchParser
+  /**
+   * A function that will be used to stringify `loaderDeps` values when
+   * computing the `loaderDepsHash` used for loader data caching.
+   *
+   * Defaults to `JSON.stringify`, which covers plain-object loader deps. If
+   * your loader deps contain values that `JSON.stringify` cannot serialize
+   * (bigint, Set, Map, circular references, functions, symbols, etc.), pass a
+   * custom serializer such as `safeStringify` so those deps produce a stable
+   * hash and are cached correctly.
+   *
+   * @default JSON.stringify
+   */
+  stringifyLoaderDeps?: SearchSerializer
   /**
    * If `false`, routes will not be preloaded by default in any way.
    *
@@ -1098,7 +1110,7 @@ export class RouterCore<
       TRouterHistory,
       TDehydrated
     >,
-    'stringifySearch' | 'parseSearch' | 'context'
+    'stringifySearch' | 'parseSearch' | 'stringifyLoaderDeps' | 'context'
   >
   history!: TRouterHistory
   rewrite?: LocationRewrite
@@ -1145,6 +1157,7 @@ export class RouterCore<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
+      stringifyLoaderDeps: options.stringifyLoaderDeps ?? JSON.stringify,
       protocolAllowlist:
         options.protocolAllowlist ?? DEFAULT_PROTOCOL_ALLOWLIST,
     })
@@ -1609,7 +1622,7 @@ export class RouterCore<
           route.options.loaderDeps?.({
             search: preMatchSearch,
           }) ?? ''
-        loaderDepsHash = loaderDeps ? safeStringify(loaderDeps) || '' : ''
+        loaderDepsHash = loaderDeps ? this.options.stringifyLoaderDeps(loaderDeps) || '' : ''
       } catch (cause) {
         if (opts?.throwOnError) {
           throw cause

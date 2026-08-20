@@ -227,6 +227,64 @@ describe('callbacks', () => {
     })
   })
 
+  // `stringifyLoaderDeps` lets users provide a custom serializer for loader
+  // deps that contain values JSON.stringify cannot handle (bigint, Set, Map,
+  // circular refs, etc.). Default is JSON.stringify, so this is opt-in and
+  // does not add bundle weight for users that don't need it.
+  describe('stringifyLoaderDeps option', () => {
+    const createBigintRouter = (stringifyLoaderDeps?: (v: any) => string) => {
+      const rootRoute = new BaseRootRoute({})
+      const fooRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/foo',
+        loaderDeps: () => ({ id: 123n }), // bigint breaks JSON.stringify
+        loader: () => 'data',
+      })
+      return createTestRouter({
+        routeTree: rootRoute.addChildren([fooRoute]),
+        history: createMemoryHistory(),
+        stringifyLoaderDeps,
+      })
+    }
+
+    it('uses the custom stringifier for loaderDepsHash', async () => {
+      const stringifyLoaderDeps = vi.fn((v: any) => JSON.stringify(v))
+      const router = createBigintRouter(stringifyLoaderDeps)
+
+      await router.navigate({ to: '/foo' })
+
+      expect(stringifyLoaderDeps).toHaveBeenCalled()
+      // bigint must reach the stringifier as-is (not coerced to a plain number)
+      expect(stringifyLoaderDeps).toHaveBeenCalledWith(expect.objectContaining({ id: 123n }))
+    })
+
+    it('produces a stable hash for bigint loader deps via safeStringify', async () => {
+      const { safeStringify } = await import('../src/utils')
+      const loader = vi.fn()
+      const router = createTestRouter({
+        routeTree: (() => {
+          const rootRoute = new BaseRootRoute({})
+          const fooRoute = new BaseRoute({
+            getParentRoute: () => rootRoute,
+            path: '/foo',
+            loaderDeps: () => ({ id: 123n }),
+            loader,
+            staleTime: 60_000,
+            gcTime: 60_000,
+          })
+          return rootRoute.addChildren([fooRoute])
+        })(),
+        history: createMemoryHistory(),
+        stringifyLoaderDeps: safeStringify,
+      })
+
+      await router.navigate({ to: '/foo' })
+      await router.navigate({ to: '/foo' })
+      // stable hash means the loader is cached and not re-run for equal deps
+      expect(loader).toHaveBeenCalledTimes(1)
+    })
+  })
+
   // Verify that router-level subscription events still fire correctly.
   // These are used by integrations like Sentry's TanStack Router instrumentation
   // (https://github.com/getsentry/sentry-javascript/blob/develop/packages/react/src/tanstackrouter.ts)

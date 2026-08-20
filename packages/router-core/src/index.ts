@@ -319,6 +319,7 @@ export {
   escapeHtml,
   isDangerousProtocol,
   buildDevStylesUrl,
+  safeStringify,
 } from './utils'
 export type {
   NoInfer,

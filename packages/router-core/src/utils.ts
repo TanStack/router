@@ -754,9 +754,9 @@ export function safeStringify(value: unknown): string {
     if (typeof val === 'symbol') return val.description ?? '[Symbol]'
     if (typeof val === 'function') return '[Function]'
 
-    if (typeof val === 'object') {
-      if (seen.has(val as object)) return '[Circular]'
-      seen.add(val as object)
+    if (typeof val === 'object' && val !== null) {
+      if (seen.has(val)) return '[Circular]'
+      seen.add(val)
 
       if (val instanceof Set) {
         return Array.from(val).map(serialize)
@@ -771,8 +771,8 @@ export function safeStringify(value: unknown): string {
       if (Array.isArray(val)) return val.map(serialize)
 
       const obj: Record<string, any> = {}
-      for (const key of Object.keys(val as object).sort()) {
-        obj[key] = serialize((val as any)[key])
+      for (const key of Object.keys(val).sort()) {
+        obj[key] = serialize((val as Record<string, any>)[key])
       }
       return obj
     }
