@@ -13,6 +13,8 @@ import { dirname, join, normalize, relative } from 'pathe'
 
 export const DEPS_PREFIX = '/@deps'
 export const DEPS_CACHE_DIR = 'node_modules/.tanstack-start/deps'
+/** Bump when prebundle post-processing changes (invalidates disk cache). */
+const OPTIMIZE_DEPS_CACHE_VERSION = '2-cjs-named-exports'
 
 /** React singletons: one shared prebundle; other deps externalize these. */
 export const OPTIMIZE_DEPS_REACT_EXTERNALS = [
@@ -227,6 +229,7 @@ async function scanAppBareImports(
 
 function computeHash(specs: Array<string>, root: string): string {
   const h = createHash('sha256')
+  h.update(OPTIMIZE_DEPS_CACHE_VERSION)
   h.update(specs.join('\0'))
   try {
     h.update(readFileSync(join(root, 'package.json'), 'utf8'))
@@ -297,6 +300,58 @@ function rewriteBareToRelativeDeps(
     if (!target) return full
     return `${prefix}${quote}./${target}${quote}`
   })
+}
+
+/** Collect `exports.foo =` names from the last CJS module in a Bun interop bundle. */
+function collectCjsExportNames(bundledEsm: string): Array<string> {
+  const lastCommon = bundledEsm.lastIndexOf('__commonJS')
+  const slice = lastCommon >= 0 ? bundledEsm.slice(lastCommon) : bundledEsm
+  const names = new Set<string>()
+  for (const m of slice.matchAll(/\bexports\.([A-Za-z_$][\w$]*)\s*=/g)) {
+    const name = m[1]!
+    if (name !== '__esModule' && name !== 'default') names.add(name)
+  }
+  return [...names]
+}
+
+/**
+ * Bun.build of CJS packages (react, jsx-runtime, …) often emits only
+ * `export { X as default }`. Browsers need named ESM exports (`jsx`, `useState`).
+ */
+function addCjsNamedEsmExports(bundledEsm: string): string {
+  if (!/__commonJS\b|__toESM\b/.test(bundledEsm)) return bundledEsm
+  // Already has named ESM exports beyond default
+  if (
+    /export\s*\{[^}]*\bas\s+(?!default\b)[A-Za-z_$]/.test(bundledEsm) ||
+    /export\s+const\s+[A-Za-z_$]/.test(bundledEsm) ||
+    /export\s+function\s+[A-Za-z_$]/.test(bundledEsm)
+  ) {
+    // Still may only export default in the final export block — check footer
+    const footer = bundledEsm.slice(-400)
+    if (
+      /export\s*\{[^}]*\bas\s+(?!default\b)/.test(footer) ||
+      /export const \w+/.test(footer)
+    ) {
+      return bundledEsm
+    }
+  }
+
+  const names = collectCjsExportNames(bundledEsm)
+  const fallback =
+    names.length > 0
+      ? names
+      : ['jsx', 'jsxs', 'jsxDEV', 'Fragment', 'createElement']
+
+  const replaced = bundledEsm.replace(
+    /export\s*\{\s*([A-Za-z_$][\w$]*)\s+as\s+default\s*\}\s*;?\s*$/,
+    (_full, defaultId: string) => {
+      const named = fallback
+        .map((n) => `export const ${n} = ${defaultId}.${n};`)
+        .join('\n')
+      return `export { ${defaultId} as default };\n${named}\n`
+    },
+  )
+  return replaced === bundledEsm ? bundledEsm : replaced
 }
 
 /**
@@ -444,6 +499,7 @@ export async function runOptimizeDeps(opts: {
         continue
       }
       fileMap.set(spec, fileName)
+      code = addCjsNamedEsmExports(code)
       code = rewriteBareToRelativeDeps(code, fileMap, spec)
       writeFileSync(outfile, code)
     } catch (err) {
