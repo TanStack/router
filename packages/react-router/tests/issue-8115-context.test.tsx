@@ -588,7 +588,7 @@ test('#8115: hydration does not render a successful route with missing context w
     expect(recoverableHydrationErrors).toHaveLength(1)
   } finally {
     if (root) {
-      await act(() => root.unmount())
+      await act(() => root!.unmount())
     }
     container.remove()
   }
@@ -826,7 +826,7 @@ test('a same-id search navigation merges fresh inherited context with cached rou
     path: '/child',
     loaderDeps: () => ({}),
     context: ({ context, location }) => ({
-      cachedSelfRevision: `${context.inheritedRevision}:${String(location.search.revision)}`,
+      cachedSelfRevision: `${context.inheritedRevision}:${String((location.search as any).revision)}`,
     }),
     component: () => {
       const context = childRoute.useRouteContext()
