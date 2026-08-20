@@ -14,7 +14,7 @@ import { dirname, join, normalize, relative } from 'pathe'
 export const DEPS_PREFIX = '/@deps'
 export const DEPS_CACHE_DIR = 'node_modules/.tanstack-start/deps'
 /** Bump when prebundle post-processing changes (invalidates disk cache). */
-const OPTIMIZE_DEPS_CACHE_VERSION = '4-cjs-named-exports-all-factories'
+const OPTIMIZE_DEPS_CACHE_VERSION = '6-react-fs-no-css'
 
 /** React singletons: one shared prebundle; other deps externalize these. */
 export const OPTIMIZE_DEPS_REACT_EXTERNALS = [
@@ -132,6 +132,7 @@ function shouldCrawlAppFile(absPath: string, root: string): boolean {
   if (rel.includes('/node_modules/') || rel.startsWith('node_modules/')) {
     return false
   }
+  if (/\.css$/i.test(absPath)) return false
   if (
     /(?:^|\/)server(?:\/|$)/.test(rel) ||
     /(?:^|\/)cli(?:\/|$)/.test(rel) ||
@@ -193,6 +194,8 @@ async function scanAppBareImports(
     while ((m = IMPORT_SPEC_RE.exec(code))) {
       const spec = (m[3] ?? m[6]) as string
       if (isBareSpecifier(spec)) {
+        // CSS @import "pkg/file.css" is matched by the import scanner — skip
+        if (/\.css$/i.test(spec)) continue
         specs.add(spec)
         continue
       }
@@ -285,10 +288,11 @@ function makeResult(
   }
 }
 
-/** Rewrite bare externals inside a prebundle to relative `./other.js` deps. */
-function rewriteBareToRelativeDeps(
+/** Rewrite bare imports inside a prebundle to /@deps siblings or /@fs React. */
+function rewriteBareImportsInDep(
   code: string,
   fileMap: Map<string, string>,
+  reactFsUrls: Map<string, string>,
   selfSpec: string,
 ): string {
   return code.replace(IMPORT_SPEC_RE, (full, g1, g2, g3, g4, g5, g6) => {
@@ -296,9 +300,15 @@ function rewriteBareToRelativeDeps(
     const quote = (g2 ?? g5) as string
     const prefix = (g1 ?? g4) as string
     if (!isBareSpecifier(spec) || spec === selfSpec) return full
-    const target = fileMap.get(spec)
-    if (!target) return full
-    return `${prefix}${quote}./${target}${quote}`
+    const depFile = fileMap.get(spec)
+    if (depFile) {
+      return `${prefix}${quote}./${depFile}${quote}`
+    }
+    const reactUrl = reactFsUrls.get(spec)
+    if (reactUrl) {
+      return `${prefix}${quote}${reactUrl}${quote}`
+    }
+    return full
   })
 }
 
@@ -375,11 +385,13 @@ export async function runOptimizeDeps(opts: {
     opts.aliases,
   )
   for (const s of config.include ?? []) discovered.add(s)
-  for (const s of OPTIMIZE_DEPS_REACT_EXTERNALS) {
-    if (s !== 'react-dom/server') discovered.add(s)
-  }
+  // React family stays on /@fs (CJS transform) so the browser has exactly one React.
+  // Prebundling react-dom/client with packages:bundle still inlines react and
+  // causes "Invalid hook call" / mismatched dispatcher.
 
-  const specs = [...discovered].filter((s) => !isExcluded(s, exclude)).sort()
+  const specs = [...discovered]
+    .filter((s) => !isExcluded(s, exclude) && !isReactFamily(s))
+    .sort()
   if (specs.length === 0) {
     return emptyResult(depsDir)
   }
@@ -423,14 +435,19 @@ export async function runOptimizeDeps(opts: {
     }
   }
 
-  resolvedEntries.sort((a, b) => {
-    const ar = isReactFamily(a.spec) ? 0 : 1
-    const br = isReactFamily(b.spec) ? 0 : 1
-    return ar - br || a.spec.localeCompare(b.spec)
-  })
+  resolvedEntries.sort((a, b) => a.spec.localeCompare(b.spec))
 
   const fileMap = new Map<string, string>()
   const failures: Array<string> = []
+  const reactFsUrls = new Map<string, string>()
+  for (const spec of OPTIMIZE_DEPS_REACT_EXTERNALS) {
+    try {
+      const abs = Bun.resolveSync(spec, opts.root)
+      reactFsUrls.set(spec, `/@fs${abs.startsWith('/') ? abs : `/${abs}`}`)
+    } catch {
+      // optional
+    }
+  }
 
   for (const { spec, abs } of resolvedEntries) {
     const fileName = depsFileName(spec)
@@ -447,9 +464,7 @@ export async function runOptimizeDeps(opts: {
         '',
       ].join('\n'),
     )
-    const external = isReactFamily(spec)
-      ? []
-      : [...OPTIMIZE_DEPS_REACT_EXTERNALS]
+    const external = [...OPTIMIZE_DEPS_REACT_EXTERNALS]
     try {
       const built = await Bun.build({
         entrypoints: [wrapperPath],
@@ -495,7 +510,7 @@ export async function runOptimizeDeps(opts: {
       }
       fileMap.set(spec, fileName)
       code = addCjsNamedEsmExports(code)
-      code = rewriteBareToRelativeDeps(code, fileMap, spec)
+      code = rewriteBareImportsInDep(code, fileMap, reactFsUrls, spec)
       writeFileSync(outfile, code)
     } catch (err) {
       try {
@@ -511,12 +526,12 @@ export async function runOptimizeDeps(opts: {
     }
   }
 
-  // Second pass once the full map exists (react may land after first consumers)
+  // Second pass once the full map exists
   for (const [spec, fileName] of fileMap) {
     const outfile = join(depsDir, fileName)
     try {
       const code = readFileSync(outfile, 'utf8')
-      const next = rewriteBareToRelativeDeps(code, fileMap, spec)
+      const next = rewriteBareImportsInDep(code, fileMap, reactFsUrls, spec)
       if (next !== code) writeFileSync(outfile, next)
     } catch {
       // ignore
