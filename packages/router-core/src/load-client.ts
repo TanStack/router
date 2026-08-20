@@ -380,15 +380,13 @@ async function contextualize(
     let context: typeof parentContext
     try {
       // Reuse the route's cached contribution while rebuilding its inheritance.
-      const routeContext =
-        match._ctx ||
-        (route.options.context &&
-          (match._ctx =
-            route.options.context({
-              ...common,
-              deps: match.loaderDeps,
-              context: parentContext,
-            } satisfies RouteContextOptions<any, any, any, any, any>) || {}))
+      const routeContext = (match._ctx ||= route.options.context
+        ? route.options.context({
+            ...common,
+            deps: match.loaderDeps,
+            context: parentContext,
+          } satisfies RouteContextOptions<any, any, any, any, any>) || {}
+        : undefined)
       match.context = context = {
         ...parentContext,
         ...routeContext,
