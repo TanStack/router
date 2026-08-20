@@ -12,7 +12,6 @@ import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
 import type {
   AnyRoute,
-  BeforeLoadContextOptions,
   LoaderFnContext,
   RouteContextOptions,
   RouteLoaderFn,
@@ -377,7 +376,6 @@ async function contextualize(
       matches,
       routeId: route.id,
     }
-    let context: typeof parentContext
     try {
       // Reuse the route's cached contribution while rebuilding its inheritance.
       const routeContext = (match._ctx ||= route.options.context
@@ -387,12 +385,11 @@ async function contextualize(
             context: parentContext,
           } satisfies RouteContextOptions<any, any, any, any, any>) || {}
         : undefined)
-      match.context = context = {
+      match.context = {
         ...parentContext,
         ...routeContext,
       }
     } catch (cause) {
-      match.context = parentContext
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
     }
@@ -412,29 +409,6 @@ async function contextualize(
       continue
     }
 
-    const base = options[2 /* base */][index]
-    // Keep the committed context observable until beforeLoad settles.
-    if (base?.id === match.id) {
-      match.context = base.context
-    }
-
-    const beforeLoadContext: BeforeLoadContextOptions<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any
-    > = {
-      ...common,
-      search: match.search,
-      context,
-      ...router.options.additionalContext,
-    }
-
     const previousStatus = match.status
     if (index >= retainedEnd) {
       match.status = 'pending'
@@ -442,7 +416,15 @@ async function contextualize(
     }
     try {
       setFetching(router, match, 'beforeLoad', options[0 /* controller */])
-      const result = await waitFor(beforeLoad(beforeLoadContext), signal)
+      const result = await waitFor(
+        beforeLoad({
+          ...common,
+          search: match.search,
+          context: match.context,
+          ...router.options.additionalContext,
+        }),
+        signal,
+      )
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
       }
@@ -457,18 +439,15 @@ async function contextualize(
         releaseFlight(router, match)
         return [index, outcome]
       }
-      context = {
-        ...context,
+      match.context = {
+        ...match.context,
         ...result,
       }
     } catch (cause) {
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
     } finally {
-      match.context = context
-      if (match.status === 'pending') {
-        match.status = previousStatus
-      }
+      match.status = previousStatus
       setFetching(router, match, false, options[0 /* controller */])
     }
   }
