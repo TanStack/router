@@ -452,6 +452,7 @@ async function contextualize(
         releaseFlight(router, match)
         return [index, outcome]
       }
+      match.__beforeLoadContext = result ?? {}
       match.context = {
         ...context,
         ...result,
@@ -2286,6 +2287,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     }
     candidate.status = dehydrated.s
     candidate.ssr = dehydrated.ssr
+    candidate.__beforeLoadContext = dehydrated.b ?? {}
     route.options.ssr = candidate.ssr
     candidate.updatedAt = dehydrated.u
     candidate.error = dehydrated.e

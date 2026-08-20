@@ -213,9 +213,17 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }, [key, route.options.component, router.options.defaultComponent])
 
   if (match.status === 'pending') {
-    if (router.ssr && !canWrapInSuspense(router, route, match.ssr)) {
+    if (
+      router.ssr &&
+      !canWrapInSuspense(router, route, match.ssr) &&
+      (!route.options.beforeLoad ||
+        (match as { __beforeLoadContext?: Record<string, unknown> })
+          .__beforeLoadContext !== undefined)
+    ) {
       // Replacing an SSR document root with pending UI would remove <html>.
-      // Hydrated matches retain their prior data, so keep rendering it.
+      // Hydrated matches retain their prior data, so keep rendering it — but
+      // only when the data is actually there: a root whose beforeLoad has not
+      // contributed yet would render with its context keys missing (#8115).
       return out
     }
     if (router._tx) {
