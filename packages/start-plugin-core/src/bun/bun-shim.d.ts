@@ -97,6 +97,22 @@ declare module 'bun' {
     transform(code: string, loader?: Loader): Promise<string>
   }
 
+  export interface GlobScanOptions {
+    cwd?: string
+    dot?: boolean
+    absolute?: boolean
+    followSymlinks?: boolean
+    throwErrorOnBrokenSymlink?: boolean
+    onlyFiles?: boolean
+  }
+
+  export class Glob {
+    constructor(pattern: string)
+    scan(optionsOrCwd?: string | GlobScanOptions): AsyncIterableIterator<string>
+    scanSync(optionsOrCwd?: string | GlobScanOptions): IterableIterator<string>
+    match(str: string): boolean
+  }
+
   const Bun: {
     build: typeof build
     plugin: typeof plugin
@@ -106,6 +122,7 @@ declare module 'bun' {
     file: typeof file
     sleep: typeof sleep
     Transpiler: typeof Transpiler
+    Glob: typeof Glob
   }
 
   export default Bun
