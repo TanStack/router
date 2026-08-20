@@ -14,9 +14,9 @@ import { dirname, join, normalize, relative } from 'pathe'
 export const DEPS_PREFIX = '/@deps'
 export const DEPS_CACHE_DIR = 'node_modules/.tanstack-start/deps'
 /** Bump when prebundle post-processing changes (invalidates disk cache). */
-const OPTIMIZE_DEPS_CACHE_VERSION = '6-react-fs-no-css'
+const OPTIMIZE_DEPS_CACHE_VERSION = '7-deps-url-hash'
 
-/** React singletons: one shared prebundle; other deps externalize these. */
+/** React singletons: always served via `/@fs` (never prebundled). */
 export const OPTIMIZE_DEPS_REACT_EXTERNALS = [
   'react',
   'react/jsx-runtime',
@@ -40,8 +40,15 @@ export type OptimizeDepsConfig = {
 
 export type OptimizeDepsResult = {
   depsDir: string
+  /** Content hash embedded in `/@deps/<hash>/…` URLs (cache bust). */
+  hash: string
   urlForSpec: (spec: string) => string | undefined
   resolvePath: (pathname: string) => string | null
+  /**
+   * Legacy `/@deps/react.js` (pre-hash / removed React prebundles) → `/@fs/…`.
+   * Avoids NS_ERROR_CORRUPTED_CONTENT from stale browser caches.
+   */
+  fallbackFsUrl: (pathname: string) => string | undefined
   count: number
 }
 
@@ -97,6 +104,19 @@ function isExcluded(spec: string, exclude: Array<string>): boolean {
 
 function isReactFamily(spec: string): boolean {
   return /^(react|react-dom|scheduler)(\/|$)/.test(spec)
+}
+
+function resolveReactFsUrls(root: string): Map<string, string> {
+  const reactFsUrls = new Map<string, string>()
+  for (const spec of OPTIMIZE_DEPS_REACT_EXTERNALS) {
+    try {
+      const abs = Bun.resolveSync(spec, root)
+      reactFsUrls.set(spec, `/@fs${abs.startsWith('/') ? abs : `/${abs}`}`)
+    } catch {
+      // optional
+    }
+  }
+  return reactFsUrls
 }
 
 function packageRootFromResolved(absPath: string): string | null {
@@ -258,8 +278,10 @@ function computeHash(specs: Array<string>, root: string): string {
 function emptyResult(depsDir: string): OptimizeDepsResult {
   return {
     depsDir,
+    hash: '',
     urlForSpec: () => undefined,
     resolvePath: () => null,
+    fallbackFsUrl: () => undefined,
     count: 0,
   }
 }
@@ -267,23 +289,51 @@ function emptyResult(depsDir: string): OptimizeDepsResult {
 function makeResult(
   depsDir: string,
   fileMap: Map<string, string>,
+  hash: string,
+  reactFsUrls: Map<string, string>,
 ): OptimizeDepsResult {
   const urls = new Map<string, string>()
   for (const [spec, fileName] of fileMap) {
-    urls.set(spec, `${DEPS_PREFIX}/${fileName}`)
+    urls.set(spec, `${DEPS_PREFIX}/${hash}/${fileName}`)
   }
+
+  const reactByFile = new Map<string, string>()
+  for (const [spec, fsUrl] of reactFsUrls) {
+    reactByFile.set(depsFileName(spec), fsUrl)
+  }
+
   return {
     depsDir,
+    hash,
     count: urls.size,
     urlForSpec: (spec) => urls.get(spec),
     resolvePath: (pathname) => {
       if (!pathname.startsWith(`${DEPS_PREFIX}/`)) return null
-      const name = pathname.slice(DEPS_PREFIX.length + 1)
-      if (!name || name.includes('..') || name.includes('/') || name.includes('\\')) {
+      const rest = pathname.slice(DEPS_PREFIX.length + 1)
+      // /@deps/<hash>/file.js  or legacy /@deps/file.js
+      const parts = rest.split('/')
+      const name =
+        parts.length === 2 && parts[0] === hash
+          ? parts[1]
+          : parts.length === 1
+            ? parts[0]
+            : null
+      if (
+        !name ||
+        name.includes('..') ||
+        name.includes('/') ||
+        name.includes('\\')
+      ) {
         return null
       }
       const abs = join(depsDir, name)
       return existsSync(abs) ? abs : null
+    },
+    fallbackFsUrl: (pathname) => {
+      if (!pathname.startsWith(`${DEPS_PREFIX}/`)) return undefined
+      const rest = pathname.slice(DEPS_PREFIX.length + 1)
+      const name = rest.includes('/') ? rest.split('/').pop()! : rest
+      return reactByFile.get(name)
     },
   }
 }
@@ -397,6 +447,7 @@ export async function runOptimizeDeps(opts: {
   }
 
   const hash = computeHash(specs, opts.root)
+  const reactFsUrls = resolveReactFsUrls(opts.root)
   const metaPath = join(depsDir, '_metadata.json')
   const force =
     config.force === true ||
@@ -410,7 +461,7 @@ export async function runOptimizeDeps(opts: {
         console.info(
           `[tanstack-start-bun] optimizeDeps: cache hit (${fileMap.size} entries)`,
         )
-        return makeResult(depsDir, fileMap)
+        return makeResult(depsDir, fileMap, hash, reactFsUrls)
       }
     } catch {
       // rebuild
@@ -439,15 +490,6 @@ export async function runOptimizeDeps(opts: {
 
   const fileMap = new Map<string, string>()
   const failures: Array<string> = []
-  const reactFsUrls = new Map<string, string>()
-  for (const spec of OPTIMIZE_DEPS_REACT_EXTERNALS) {
-    try {
-      const abs = Bun.resolveSync(spec, opts.root)
-      reactFsUrls.set(spec, `/@fs${abs.startsWith('/') ? abs : `/${abs}`}`)
-    } catch {
-      // optional
-    }
-  }
 
   for (const { spec, abs } of resolvedEntries) {
     const fileName = depsFileName(spec)
@@ -555,5 +597,5 @@ export async function runOptimizeDeps(opts: {
     )
   }
 
-  return makeResult(depsDir, fileMap)
+  return makeResult(depsDir, fileMap, hash, reactFsUrls)
 }

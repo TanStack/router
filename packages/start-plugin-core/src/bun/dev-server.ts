@@ -398,9 +398,11 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
       })
     : {
         depsDir: '',
+        hash: '',
         count: 0,
         urlForSpec: () => undefined,
         resolvePath: () => null,
+        fallbackFsUrl: () => undefined,
       }
 
   const transformOpts: DevTransformOptions = {
@@ -473,14 +475,26 @@ export async function createBunDevServer(opts: BunDevServerOptions): Promise<{
 
     if (url.pathname.startsWith(`${DEPS_PREFIX}/`)) {
       const abs = optimizedDeps.resolvePath(url.pathname)
-      if (!abs) {
-        return new Response(`Not found: ${url.pathname}`, { status: 404 })
+      if (abs) {
+        const code = await Bun.file(abs).text()
+        return new Response(code, {
+          headers: {
+            'Content-Type': 'text/javascript; charset=utf-8',
+            'Cache-Control': 'public, max-age=31536000, immutable',
+          },
+        })
       }
-      const code = await Bun.file(abs).text()
-      return new Response(code, {
+      // Stale browser cache may still request /@deps/react.js after React
+      // was moved back to /@fs — redirect instead of text/plain 404.
+      const fsFallback = optimizedDeps.fallbackFsUrl(url.pathname)
+      if (fsFallback) {
+        return Response.redirect(`${url.origin}${fsFallback}`, 302)
+      }
+      return new Response(`// not found: ${url.pathname}\nexport {}\n`, {
+        status: 404,
         headers: {
           'Content-Type': 'text/javascript; charset=utf-8',
-          'Cache-Control': 'public, max-age=31536000, immutable',
+          'Cache-Control': 'no-store',
         },
       })
     }
