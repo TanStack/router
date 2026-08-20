@@ -8,6 +8,7 @@ import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { AnySerializationAdapter } from './ssr/serializer/transformer'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'
+import type { NavigateOptions } from './link'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
 import type {
@@ -17,7 +18,9 @@ import type {
   RouteLoaderFn,
 } from './route'
 import type { AnyRedirect } from './redirect'
-import type { AnyRouter } from './router'
+import type { AnyRouter, RouterCore, TrailingSlashOption } from './router'
+import type { RoutePaths } from './routeInfo'
+import type { RouterHistory } from '@tanstack/history'
 
 type RouteComponentType =
   | 'component'
@@ -2061,71 +2064,101 @@ export async function refreshClientRoute(
   await loadClientRoute(router, { sync: true })
 }
 
-export async function preloadClientRoute(
-  router: CoordinatorRouter,
-  opts: any,
-  redirects = 0,
-  builtLocation?: ParsedLocation,
+export async function preloadClientRoute<
+  TRouteTree extends AnyRoute,
+  TTrailingSlashOption extends TrailingSlashOption,
+  TDefaultStructuralSharingOption extends boolean,
+  TRouterHistory extends RouterHistory,
+  TDehydrated extends Record<string, any> = Record<string, any>,
+  TFrom extends RoutePaths<TRouteTree> | string = string,
+  TTo extends string | undefined = undefined,
+  TMaskFrom extends RoutePaths<TRouteTree> | string = TFrom,
+  TMaskTo extends string = '',
+>(
+  router: RouterCore<
+    TRouteTree,
+    TTrailingSlashOption,
+    TDefaultStructuralSharingOption,
+    TRouterHistory,
+    TDehydrated
+  >,
+  opts: NavigateOptions<
+    RouterCore<
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
+    TFrom,
+    TTo,
+    TMaskFrom,
+    TMaskTo
+  >,
 ): Promise<Array<AnyRouteMatch> | undefined> {
   if (
     process.env.NODE_ENV !== 'production' &&
-    (router._refreshNextLoad || router._tx?.[6 /* refresh */])
+    ((router as CoordinatorRouter)._refreshNextLoad ||
+      router._tx?.[6 /* refresh */])
   ) {
     return
   }
-  const location = builtLocation ?? router.buildLocation(opts)
-  const base = router._committed
-  const controller = new AbortController()
-  let matches: Array<AnyRouteMatch>
-  try {
-    matches = router.matchRoutes(location, {
-      _controller: controller,
-    })
-    acquireMatchResources(matches)
-  } catch (cause) {
-    controller.abort()
-    if (!isNotFound(cause)) {
-      console.error(cause)
-    }
-    return
-  }
-  ;(router._preloads ??= new Map()).set(controller, matches)
-  let active: boolean
-  try {
-    let result: LaneResult
+  let location = router.buildLocation(
+    opts as Parameters<typeof router.buildLocation>[0],
+  )
+  for (let redirects = 0; ; redirects++) {
+    const base = router._committed
+    const controller = new AbortController()
+    let matches: Array<AnyRouteMatch>
     try {
-      result = await executeClientLane(router, location, matches, [
-        controller,
-        redirects,
-        base,
-        true,
-      ])
-    } finally {
-      active = router._preloads.delete(controller)
-      transferMatchResources(router, matches)
+      matches = router.matchRoutes(location, {
+        _controller: controller,
+      })
+      acquireMatchResources(matches)
+    } catch (cause) {
       controller.abort()
+      if (!isNotFound(cause)) {
+        console.error(cause)
+      }
+      return
     }
-    if (!isControl(result)) {
-      return result[1 /* matches */]
-    }
-    if (
-      active &&
-      result[0 /* kind */] === REDIRECTED &&
-      !result[1 /* redirect */].options.reloadDocument
-    ) {
-      return preloadClientRoute(
-        router,
-        result[1 /* redirect */].options,
-        redirects + 1,
-        result[2 /* location */],
-      )
-    }
-  } catch (cause) {
-    if (!isNotFound(cause)) {
-      console.error(cause)
+    ;(router._preloads ??= new Map()).set(controller, matches)
+    let active: boolean
+    try {
+      let result: LaneResult
+      try {
+        result = await executeClientLane(router, location, matches, [
+          controller,
+          redirects,
+          base,
+          true,
+        ])
+      } finally {
+        active = router._preloads.delete(controller)
+        transferMatchResources(router, matches)
+        controller.abort()
+      }
+      if (!isControl(result)) {
+        return result[1 /* matches */]
+      }
+      // Only a materialized redirect has a third tuple item.
+      if (
+        !active ||
+        result.length < 3 ||
+        (process.env.NODE_ENV !== 'production' &&
+          ((router as CoordinatorRouter)._refreshNextLoad ||
+            router._tx?.[6 /* refresh */]))
+      ) {
+        return
+      }
+      location = result[2 /* location */]!
+    } catch (cause) {
+      if (!isNotFound(cause)) {
+        console.error(cause)
+      }
+      return
     }
   }
-  return
 }
 
 // --- SSR hydration (client entry via @tanstack/router-core/ssr/client) ---
