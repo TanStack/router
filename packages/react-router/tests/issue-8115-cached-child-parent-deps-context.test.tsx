@@ -74,9 +74,7 @@ test('a cached child context contribution is merged with fresh parent context', 
   )
 
   expect(
-    screen.getByText(
-      'Parent: version-2; cached child: derived-from-version-1',
-    ),
+    screen.getByText('Parent: version-2; cached child: derived-from-version-1'),
   ).toBeInTheDocument()
 
   const nextParentMatchId = router.state.matches.find(

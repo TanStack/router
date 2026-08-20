@@ -50,9 +50,7 @@ test('a same-id child beforeLoad error observes fresh inherited context', async 
     },
   })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([
-      parentRoute.addChildren([childRoute]),
-    ]),
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
     history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
   })
 
@@ -67,7 +65,9 @@ test('a same-id child beforeLoad error observes fresh inherited context', async 
 
   await act(() => router.invalidate())
 
-  expect(await screen.findByTestId('child-error-generation')).toBeInTheDocument()
+  expect(
+    await screen.findByTestId('child-error-generation'),
+  ).toBeInTheDocument()
   expect(renderedError).toBe(childError)
   expect(
     router.state.matches.find((match) => match.routeId === childRoute.id)?.id,

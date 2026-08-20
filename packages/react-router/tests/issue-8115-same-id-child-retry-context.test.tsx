@@ -60,9 +60,7 @@ test('a same-id child retry presents one coherent beforeLoad context generation'
     ),
   })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([
-      parentRoute.addChildren([childRoute]),
-    ]),
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
     history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
   })
 
@@ -97,9 +95,7 @@ test('a same-id child retry presents one coherent beforeLoad context generation'
       'Child generation 2',
     )
     expect(
-      router.state.matches.find(
-        (match) => match.routeId === parentRoute.id,
-      ),
+      router.state.matches.find((match) => match.routeId === parentRoute.id),
     ).toMatchObject({
       status: 'success',
       context: { generation: 2 },

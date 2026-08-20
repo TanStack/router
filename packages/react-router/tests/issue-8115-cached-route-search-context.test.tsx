@@ -41,9 +41,7 @@ test('a same-id search navigation merges fresh inherited context with cached rou
         <>
           <div data-testid="match-id">{matchId}</div>
           <div data-testid="current-search">{search.revision}</div>
-          <div data-testid="inherited-context">
-            {context.inheritedRevision}
-          </div>
+          <div data-testid="inherited-context">{context.inheritedRevision}</div>
           <div data-testid="cached-self-context">
             {context.cachedSelfRevision}
           </div>
@@ -52,9 +50,7 @@ test('a same-id search navigation merges fresh inherited context with cached rou
     },
   })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([
-      parentRoute.addChildren([childRoute]),
-    ]),
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
     history: createMemoryHistory({
       initialEntries: ['/parent/child?revision=one'],
     }),
@@ -64,9 +60,7 @@ test('a same-id search navigation merges fresh inherited context with cached rou
 
   expect(await screen.findByTestId('current-search')).toHaveTextContent('one')
   expect(screen.getByTestId('inherited-context')).toHaveTextContent('one')
-  expect(screen.getByTestId('cached-self-context')).toHaveTextContent(
-    'one:one',
-  )
+  expect(screen.getByTestId('cached-self-context')).toHaveTextContent('one:one')
   const initialMatchId = screen.getByTestId('match-id').textContent
 
   await act(() =>
@@ -79,7 +73,5 @@ test('a same-id search navigation merges fresh inherited context with cached rou
   expect(await screen.findByTestId('current-search')).toHaveTextContent('two')
   expect(screen.getByTestId('match-id').textContent).toBe(initialMatchId)
   expect(screen.getByTestId('inherited-context')).toHaveTextContent('two')
-  expect(screen.getByTestId('cached-self-context')).toHaveTextContent(
-    'one:one',
-  )
+  expect(screen.getByTestId('cached-self-context')).toHaveTextContent('one:one')
 })

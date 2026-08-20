@@ -50,9 +50,7 @@ test('a child context error preserves inherited context without the child contri
     },
   })
   const router = createRouter({
-    routeTree: rootRoute.addChildren([
-      parentRoute.addChildren([childRoute]),
-    ]),
+    routeTree: rootRoute.addChildren([parentRoute.addChildren([childRoute])]),
     history: createMemoryHistory({ initialEntries: ['/parent/child'] }),
     context: { routerValue: 'router' },
   })

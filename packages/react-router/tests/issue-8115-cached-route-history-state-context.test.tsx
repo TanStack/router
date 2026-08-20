@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
 import {
   RouterProvider,

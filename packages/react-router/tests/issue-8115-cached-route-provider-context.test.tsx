@@ -45,9 +45,7 @@ test('a same-match reload merges new provider context with cached route context'
     context: providerA,
   })
 
-  const view = render(
-    <RouterProvider router={router} context={providerA} />,
-  )
+  const view = render(<RouterProvider router={router} context={providerA} />)
   expect(await screen.findByTestId('full-context')).toHaveTextContent(
     JSON.stringify({
       providerValue: 'A',
