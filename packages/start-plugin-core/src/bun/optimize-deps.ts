@@ -14,7 +14,7 @@ import { dirname, join, normalize, relative } from 'pathe'
 export const DEPS_PREFIX = '/@deps'
 export const DEPS_CACHE_DIR = 'node_modules/.tanstack-start/deps'
 /** Bump when prebundle post-processing changes (invalidates disk cache). */
-const OPTIMIZE_DEPS_CACHE_VERSION = '2-cjs-named-exports'
+const OPTIMIZE_DEPS_CACHE_VERSION = '3-cjs-named-exports-richest'
 
 /** React singletons: one shared prebundle; other deps externalize these. */
 export const OPTIMIZE_DEPS_REACT_EXTERNALS = [
@@ -302,16 +302,22 @@ function rewriteBareToRelativeDeps(
   })
 }
 
-/** Collect `exports.foo =` names from the last CJS module in a Bun interop bundle. */
+/** Collect `exports.foo =` names from Bun CJS→ESM interop (all factories). */
 function collectCjsExportNames(bundledEsm: string): Array<string> {
-  const lastCommon = bundledEsm.lastIndexOf('__commonJS')
-  const slice = lastCommon >= 0 ? bundledEsm.slice(lastCommon) : bundledEsm
-  const names = new Set<string>()
-  for (const m of slice.matchAll(/\bexports\.([A-Za-z_$][\w$]*)\s*=/g)) {
-    const name = m[1]!
-    if (name !== '__esModule' && name !== 'default') names.add(name)
+  // Prefer the __commonJS factory with the most `exports.*` assignments.
+  // The last factory is often a thin `module.exports = other` re-export (react/index.js)
+  // with zero `exports.foo =`, which would wrongly fall back to jsx-only names.
+  const parts = bundledEsm.split('__commonJS')
+  let best: Array<string> = []
+  for (const part of parts) {
+    const names = new Set<string>()
+    for (const m of part.matchAll(/\bexports\.([A-Za-z_$][\w$]*)\s*=/g)) {
+      const name = m[1]!
+      if (name !== '__esModule' && name !== 'default') names.add(name)
+    }
+    if (names.size > best.length) best = [...names]
   }
-  return [...names]
+  return best
 }
 
 /**
