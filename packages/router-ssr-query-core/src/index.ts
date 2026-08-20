@@ -1,4 +1,5 @@
 import {
+  notifyManager,
   dehydrate as queryDehydrate,
   hydrate as queryHydrate,
 } from '@tanstack/query-core'
@@ -198,7 +199,7 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       }
       if (!pendingQueryHashes) {
         pendingQueryHashes = new Set()
-        queueMicrotask(() => {
+        notifyManager.schedule(() => {
           try {
             flushPendingQueries()
           } catch (err) {

@@ -262,7 +262,7 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     expect(queryClient.getQueryData(['streamed'])).toBe('stream-hydrated')
   })
 
-  it('streams queries created together in one chunk and keeps later queries', async () => {
+  it('streams queries that resolve together in one chunk', async () => {
     const queryClient = track(new QueryClient())
     const { router, finishRender, attachServerSsr, setDehydrated } =
       createServerRouter()
@@ -297,6 +297,7 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     firstDeferred.resolve('first-data')
     secondDeferred.resolve('second-data')
     await Promise.all([firstPromise, secondPromise])
+    await new Promise((resolve) => setTimeout(resolve, 0))
 
     const laterPromise = queryClient.fetchQuery({
       queryKey: ['later'],
