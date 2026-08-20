@@ -25,6 +25,7 @@ const MAX_ROUTER_HTML_CHARS = 16 * 1024 * 1024
 
 type FakeServerSsr = {
   isSerializationFinished: () => boolean
+  claimCleanup: () => void
   reserveStreamFastPath: () => boolean
   onInjectedHtml: (listener: () => void) => () => void
   onSerializationFinished: (listener: () => void) => () => void
@@ -53,6 +54,7 @@ function makeRouter(opts: Partial<FakeServerSsr> = {}): {
   const router: FakeRouter = {
     serverSsr: {
       isSerializationFinished: () => false,
+      claimCleanup: () => {},
       reserveStreamFastPath: () => false,
       onInjectedHtml: (cb) => {
         injectedListeners.push(cb)
