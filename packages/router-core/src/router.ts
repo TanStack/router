@@ -674,6 +674,7 @@ export type PreloadRouteFn<
   TTrailingSlashOption extends TrailingSlashOption,
   TDefaultStructuralSharingOption extends boolean,
   TRouterHistory extends RouterHistory,
+  TDehydrated extends Record<string, any> = Record<string, any>,
 > = <
   TFrom extends RoutePaths<TRouteTree> | string = string,
   TTo extends string | undefined = undefined,
@@ -685,7 +686,8 @@ export type PreloadRouteFn<
       TRouteTree,
       TTrailingSlashOption,
       TDefaultStructuralSharingOption,
-      TRouterHistory
+      TRouterHistory,
+      TDehydrated
     >,
     TFrom,
     TTo,
@@ -2584,9 +2586,9 @@ export class RouterCore<
     TRouteTree,
     TTrailingSlashOption,
     TDefaultStructuralSharingOption,
-    TRouterHistory
-  > = (opts: any, builtLocation?: ParsedLocation) =>
-    preloadClientRoute(this, opts, 0, builtLocation)
+    TRouterHistory,
+    TDehydrated
+  > = (opts) => preloadClientRoute(this, opts)
 
   matchRoute: MatchRouteFn<
     TRouteTree,

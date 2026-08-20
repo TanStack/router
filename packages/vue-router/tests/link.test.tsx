@@ -5713,7 +5713,10 @@ describe('Link', () => {
     await waitFor(() =>
       expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
     )
-    expect(updateSearch).toHaveBeenCalledTimes(baselineSearchCalls)
+    expect(updateSearch).toHaveBeenCalledTimes(baselineSearchCalls + 3)
+    for (const call of preloadRouteSpy.mock.calls.slice(baselineCalls)) {
+      expect(call).toHaveLength(1)
+    }
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
