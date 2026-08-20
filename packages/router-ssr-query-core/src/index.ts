@@ -199,6 +199,8 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       }
       if (!pendingQueryHashes) {
         pendingQueryHashes = new Set()
+        // QueryCache listeners run inside notifyManager.batch. Scheduling the
+        // flush collects queries completed during the same scheduler turn.
         notifyManager.schedule(() => {
           try {
             flushPendingQueries()

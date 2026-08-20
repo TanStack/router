@@ -262,7 +262,7 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     expect(queryClient.getQueryData(['streamed'])).toBe('stream-hydrated')
   })
 
-  it('streams queries that resolve together in one chunk', async () => {
+  it('batches queries by scheduler turn and only streams them once', async () => {
     const queryClient = track(new QueryClient())
     const { router, finishRender, attachServerSsr, setDehydrated } =
       createServerRouter()
@@ -299,6 +299,12 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     await Promise.all([firstPromise, secondPromise])
     await new Promise((resolve) => setTimeout(resolve, 0))
 
+    await queryClient.fetchQuery({
+      queryKey: ['first'],
+      queryFn: () => 'first-data-updated',
+    })
+    expect(queryClient.getQueryData(['first'])).toBe('first-data-updated')
+
     const laterPromise = queryClient.fetchQuery({
       queryKey: ['later'],
       queryFn: () => laterDeferred.promise,
@@ -317,6 +323,44 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     expect(streamedQueries[1]?.queries.map((query) => query.queryKey)).toEqual([
       ['later'],
     ])
+  })
+
+  it('does not stream pending queries after request cleanup', async () => {
+    const queryClient = track(new QueryClient())
+    const {
+      router,
+      triggerCleanup,
+      attachServerSsr,
+      setDehydrated,
+    } = createServerRouter()
+
+    router.serverSsr = undefined
+    setupCoreRouterSsrQueryIntegration({
+      router: router as any,
+      queryClient,
+    })
+    attachServerSsr()
+
+    const dehydrated = (await router.options.dehydrate?.()) as {
+      queryStream: ReadableStream<{
+        queries: Array<{ queryKey: Array<unknown> }>
+      }>
+    }
+    const streamedQueriesPromise = readStream(dehydrated.queryStream)
+    const deferred = createDeferred<string>()
+
+    setDehydrated(true)
+    const queryPromise = queryClient.fetchQuery({
+      queryKey: ['pending'],
+      queryFn: () => deferred.promise,
+    })
+
+    deferred.resolve('pending-data')
+    await queryPromise
+    triggerCleanup()
+
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(await streamedQueriesPromise).toEqual([])
   })
 })
 
