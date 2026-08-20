@@ -13,7 +13,6 @@ import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
 import type {
   AnyRoute,
-  BeforeLoadContextOptions,
   LoaderFnContext,
   RouteContextOptions,
   RouteLoaderFn,
@@ -380,22 +379,19 @@ async function contextualize(
       matches,
       routeId: route.id,
     }
-    let context = parentContext
     try {
-      let routeContext = match._ctx
-      if (!routeContext && route.options.context) {
-        routeContext = match._ctx =
-          route.options.context({
+      // Reuse the route's cached contribution while rebuilding its inheritance.
+      const routeContext = (match._ctx ||= route.options.context
+        ? route.options.context({
             ...common,
             deps: match.loaderDeps,
             context: parentContext,
           } satisfies RouteContextOptions<any, any, any, any, any>) || {}
-      }
-      context = {
+        : undefined)
+      match.context = {
         ...parentContext,
         ...routeContext,
       }
-      match.context = context
     } catch (cause) {
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
@@ -416,23 +412,6 @@ async function contextualize(
       continue
     }
 
-    const beforeLoadContext: BeforeLoadContextOptions<
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any,
-      any
-    > = {
-      ...common,
-      search: match.search,
-      context,
-      ...router.options.additionalContext,
-    }
-
     const previousStatus = match.status
     if (index >= retainedEnd) {
       match.status = 'pending'
@@ -440,7 +419,15 @@ async function contextualize(
     }
     try {
       setFetching(router, match, 'beforeLoad', options[0 /* controller */])
-      const result = await waitFor(beforeLoad(beforeLoadContext), signal)
+      const result = await waitFor(
+        beforeLoad({
+          ...common,
+          search: match.search,
+          context: match.context,
+          ...router.options.additionalContext,
+        }),
+        signal,
+      )
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
       }
@@ -456,16 +443,14 @@ async function contextualize(
         return [index, outcome]
       }
       match.context = {
-        ...context,
+        ...match.context,
         ...result,
       }
     } catch (cause) {
       releaseFlight(router, match)
       return [index, normalizeLaneError(router, lane, route, cause, options)]
     } finally {
-      if (match.status === 'pending') {
-        match.status = previousStatus
-      }
+      match.status = previousStatus
       setFetching(router, match, false, options[0 /* controller */])
     }
   }
@@ -1988,26 +1973,26 @@ export async function loadClientRoute(
   }
   router._preflight = undefined
 
+  let settle: ((value: void | PromiseLike<void>) => void) | undefined
+  const run = () =>
+    runClientTransaction(
+      router,
+      tx,
+      sameHref,
+      () => offerPending(router, tx),
+      opts?.sync,
+      resolvedPrefix,
+    )
+  const done = opts?.sync
+    ? new Promise<void>((resolve) => (settle = resolve))
+    : Promise.resolve().then(run).then()
   const tx: LoadTransaction = [
     controller,
     redirects,
     location,
     matches,
     Date.now(),
-    Promise.resolve()
-      .then(() =>
-        runClientTransaction(
-          router,
-          tx,
-          sameHref,
-          () => offerPending(router, tx),
-          opts?.sync,
-          resolvedPrefix,
-        ),
-      )
-      // Preserve the settlement turn in which immediately completed background
-      // work can publish before callers resume from `load`.
-      .then(),
+    done,
   ]
   if (process.env.NODE_ENV !== 'production' && rematerialize) {
     tx[6 /* refresh */] = [handoff]
@@ -2034,6 +2019,7 @@ export async function loadClientRoute(
   if (router._tx !== tx) {
     transferMatchResources(router, tx[3 /* matches */])
     tx[3 /* matches */] = []
+    settle?.()
     await awaitCurrent(router, tx)
     return
   }
@@ -2041,15 +2027,19 @@ export async function loadClientRoute(
     router.stores.status.set('pending')
     router.stores.location.set(location)
   })
-  // Cold loads have no committed UI to retain, but provisional not-found
-  // matches must wait for lazy routes to place the final boundary.
+  // An unresolved cold root has no UI to retain. Provisional not-found waits
+  // for lazy routes to place the final boundary.
   if (
     resolvedPrefix ||
-    (!router._committed.length && !matches.some((match) => match._notFound))
+    (!router._committed.length &&
+      matches[0]?.status !== 'success' &&
+      !matches.some((match) => match._notFound))
   ) {
     offerPending(router, tx)
   }
-  await tx[5 /* done */]
+  // Let explicit synchronous loads publish ready pending work before paint.
+  settle?.(run())
+  await done
   await awaitCurrent(router, tx)
 }
 
@@ -2441,6 +2431,8 @@ export async function hydrate(router: AnyRouter): Promise<void> {
           match.status !== 'notFound' &&
           !match._notFound
         ) {
+          // Never present transported success without reconstructed context.
+          pendingBoundary = Math.min(pendingBoundary ?? index, index)
           retryFrom(index)
           break
         }
