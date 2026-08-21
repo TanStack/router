@@ -1,8 +1,104 @@
 import { describe, expect, test } from 'vitest'
 import {
+  createRsbuildEnvironmentDefaults,
   createRsbuildEnvironmentPlan,
+  resolveRsbuildAssetBase,
   resolveRsbuildOutputDirectory,
 } from '../../src/rsbuild/planning'
+
+describe('createRsbuildEnvironmentDefaults', () => {
+  test('provides framework defaults when the user leaves them unset', () => {
+    const clientDefaults = createRsbuildEnvironmentDefaults({
+      environmentName: 'client',
+      config: {},
+      isDev: true,
+      rscEnabled: true,
+      serverFnProviderEnv: 'ssr',
+    })
+    const serverDefaults = createRsbuildEnvironmentDefaults({
+      environmentName: 'ssr',
+      config: {},
+      isDev: true,
+      rscEnabled: true,
+      serverFnProviderEnv: 'ssr',
+    })
+
+    expect(clientDefaults.output?.module).toBe(true)
+    expect(clientDefaults.performance?.chunkSplit).toEqual({
+      strategy: 'custom',
+      override: {
+        chunks: 'async',
+      },
+    })
+    expect(serverDefaults.output?.module).toBe(false)
+    expect(serverDefaults.splitChunks).toEqual({
+      preset: 'single-vendor',
+    })
+  })
+
+  test('does not shadow values in the shared client config', () => {
+    const defaults = createRsbuildEnvironmentDefaults({
+      environmentName: 'client',
+      config: {
+        output: {
+          module: false,
+        },
+        performance: {
+          chunkSplit: {
+            strategy: 'split-by-experience',
+          },
+        },
+      },
+      isDev: true,
+      rscEnabled: true,
+      serverFnProviderEnv: 'ssr',
+    })
+
+    expect(defaults).toEqual({})
+  })
+
+  test('does not shadow values in the shared server config', () => {
+    const defaults = createRsbuildEnvironmentDefaults({
+      environmentName: 'ssr',
+      config: {
+        output: {
+          module: true,
+        },
+        splitChunks: false,
+      },
+      isDev: true,
+      rscEnabled: true,
+      serverFnProviderEnv: 'ssr',
+    })
+
+    expect(defaults).toEqual({})
+  })
+
+  test('does not shadow values in an environment config', () => {
+    const defaults = createRsbuildEnvironmentDefaults({
+      environmentName: 'client',
+      config: {
+        environments: {
+          client: {
+            output: {
+              module: false,
+            },
+            performance: {
+              chunkSplit: {
+                strategy: 'all-in-one',
+              },
+            },
+          },
+        },
+      },
+      isDev: true,
+      rscEnabled: false,
+      serverFnProviderEnv: 'ssr',
+    })
+
+    expect(defaults).toEqual({})
+  })
+})
 
 describe('resolveRsbuildOutputDirectory', () => {
   test('uses explicit environment distPath string', () => {
@@ -61,9 +157,86 @@ describe('resolveRsbuildOutputDirectory', () => {
   })
 })
 
+describe('resolveRsbuildAssetBase', () => {
+  test('uses the production asset prefix for build and preview', () => {
+    for (const action of ['build', 'preview'] as const) {
+      expect(
+        resolveRsbuildAssetBase({
+          action,
+          config: {
+            server: { base: '/app/' },
+            output: { assetPrefix: 'https://cdn.example.com/assets/' },
+          },
+        }),
+      ).toBe('https://cdn.example.com/assets/')
+    }
+  })
+
+  test('uses the development asset prefix in dev', () => {
+    expect(
+      resolveRsbuildAssetBase({
+        action: 'dev',
+        config: {
+          dev: { assetPrefix: '/dev-assets/' },
+          output: { assetPrefix: 'https://cdn.example.com/assets/' },
+          server: { base: '/app/' },
+        },
+      }),
+    ).toBe('/dev-assets/')
+  })
+
+  test('prefers the client environment asset prefix over the root config', () => {
+    expect(
+      resolveRsbuildAssetBase({
+        action: 'build',
+        environmentName: 'client',
+        config: {
+          output: { assetPrefix: '/root-assets/' },
+          environments: {
+            client: {
+              output: { assetPrefix: 'https://cdn.example.com/client/' },
+            },
+            ssr: {
+              output: { assetPrefix: '/server-assets/' },
+            },
+          },
+        },
+      }),
+    ).toBe('https://cdn.example.com/client/')
+  })
+
+  test('prefers the client development asset prefix in dev', () => {
+    expect(
+      resolveRsbuildAssetBase({
+        action: 'dev',
+        environmentName: 'client',
+        config: {
+          dev: { assetPrefix: '/root-dev-assets/' },
+          environments: {
+            client: {
+              dev: { assetPrefix: '/client-dev-assets/' },
+            },
+          },
+        },
+      }),
+    ).toBe('/client-dev-assets/')
+  })
+
+  test('falls back to server.base when the active asset prefix is not concrete', () => {
+    expect(
+      resolveRsbuildAssetBase({
+        action: 'build',
+        config: {
+          output: { assetPrefix: 'auto' },
+          server: { base: '/app/' },
+        },
+      }),
+    ).toBe('/app/')
+  })
+})
+
 describe('createRsbuildEnvironmentPlan client output', () => {
   const baseOptions = {
-    root: '/app',
     entryAliases: {
       client: '/app/src/client.tsx',
       server: '/app/src/server.ts',
@@ -78,59 +251,47 @@ describe('createRsbuildEnvironmentPlan client output', () => {
     },
     clientOutputDirectory: 'dist/client',
     serverOutputDirectory: 'dist/server',
-    publicBase: '/_build/',
     serverFnProviderEnv: 'ssr',
+    enforcedDefines: {},
+    enforcedAliases: {
+      'virtual:tanstack-start-client-entry': '/app/src/client.tsx',
+      'virtual:tanstack-start-server-entry': '/app/src/server.ts',
+      '#tanstack-start-entry': '/app/src/start.ts',
+      '#tanstack-router-entry': '/app/src/router.tsx',
+    },
   }
 
-  test('sets client output.module from scriptFormat', () => {
-    expect(
-      createRsbuildEnvironmentPlan({
-        ...baseOptions,
-        scriptFormat: 'iife',
-      }).environments.client!.output?.module,
-    ).toBe(false)
+  test('leaves assetPrefix unset so environments inherit the root config', () => {
+    const environments = createRsbuildEnvironmentPlan(baseOptions).environments
 
+    expect(environments.client!.output?.assetPrefix).toBeUndefined()
+    expect(environments.ssr!.output?.assetPrefix).toBeUndefined()
+    expect(environments.client!.performance).toBeUndefined()
     expect(
-      createRsbuildEnvironmentPlan({
-        ...baseOptions,
-        scriptFormat: 'module',
-      }).environments.client!.output?.module,
-    ).toBe(true)
+      createRsbuildEnvironmentPlan({ ...baseOptions, rsc: true }).environments
+        .ssr!.splitChunks,
+    ).toBeUndefined()
   })
 
-  test('throws when client output.module conflicts with scriptFormat', () => {
-    expect(() =>
-      createRsbuildEnvironmentPlan({
-        ...baseOptions,
-        scriptFormat: 'iife',
-        environmentOverrides: {
-          client: {
-            output: {
-              module: true,
-            },
-          },
-        },
-      }),
-    ).toThrow(
-      'TanStack Start rsbuild.client.output controls environments.client.output.module',
+  test('applies enforced defines and aliases to every managed environment', () => {
+    const enforcedDefines = {
+      'process.env.TSS_SERVER_FN_BASE': '"/_serverFn/"',
+    }
+    const environments = createRsbuildEnvironmentPlan({
+      ...baseOptions,
+      serverFnProviderEnv: 'server-fn',
+      enforcedDefines,
+    }).environments
+
+    expect(environments.client!.source?.define).toBe(enforcedDefines)
+    expect(environments.ssr!.source?.define).toBe(enforcedDefines)
+    expect(environments['server-fn']!.source?.define).toBe(enforcedDefines)
+    expect(environments.client!.resolve?.alias).toBe(
+      baseOptions.enforcedAliases,
     )
-  })
-
-  test('throws when shared output.module conflicts with scriptFormat', () => {
-    expect(() =>
-      createRsbuildEnvironmentPlan({
-        ...baseOptions,
-        scriptFormat: 'iife',
-        environmentOverrides: {
-          all: {
-            output: {
-              module: true,
-            },
-          },
-        },
-      }),
-    ).toThrow(
-      'TanStack Start rsbuild.client.output controls environments.client.output.module',
+    expect(environments.ssr!.resolve?.alias).toBe(baseOptions.enforcedAliases)
+    expect(environments['server-fn']!.resolve?.alias).toBe(
+      baseOptions.enforcedAliases,
     )
   })
 })
