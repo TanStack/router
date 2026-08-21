@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest'
 import {
   defaultParseSearch,
   defaultStringifySearch,
+  parseSearchWith,
   stringifySearchWith,
 } from '../src'
 
@@ -107,6 +108,43 @@ describe('Search Params serialization and deserialization', () => {
     } finally {
       parseSpy.mockRestore()
     }
+  })
+
+  test('parse skips JSON.parse for strings that cannot begin valid JSON', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+    try {
+      expect(
+        defaultParseSearch('?empty=&filter=foo&tab=specs&sort=newest'),
+      ).toEqual({ empty: '', filter: 'foo', tab: 'specs', sort: 'newest' })
+      expect(defaultParseSearch('?file=.env&path=/products')).toEqual({
+        file: '.env',
+        path: '/products',
+      })
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
+  })
+
+  test('parse still parses strings that pass the jsonStart guard', () => {
+    expect(defaultParseSearch('?n=123&flag=true&obj={"a":1}&arr=[1]')).toEqual({
+      n: 123,
+      flag: true,
+      obj: { a: 1 },
+      arr: [1],
+    })
+  })
+
+  test('parse applies the guard only when the parser is JSON.parse', () => {
+    const upperCaseParser = (str: string) => str.toUpperCase()
+    const parse = parseSearchWith(upperCaseParser)
+
+    // A non-JSON parser is invoked even for values the jsonStart
+    // regex would reject.
+    expect(parse('?foo=bar&filter=available')).toEqual({
+      foo: 'BAR',
+      filter: 'AVAILABLE',
+    })
   })
 
   test('[edge case] self-reference serializes to "object Object"', () => {
