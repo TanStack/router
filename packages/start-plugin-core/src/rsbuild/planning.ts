@@ -80,6 +80,13 @@ function createEnvironmentDistPathDefaults(opts: {
     const distPathKey = key as keyof RsbuildDistPathObject
 
     if (distPathKey === 'root') {
+      // Preserve the string shorthand by carrying its resolved value into the
+      // object defaults. Otherwise merging these defaults after the
+      // environment config would replace the string and lose its root.
+      if (typeof opts.environmentDistPath === 'string') {
+        return true
+      }
+
       // An explicit environment root wins. Otherwise provide the Start
       // convention derived from the shared root output directory.
       return (
