@@ -230,6 +230,66 @@ export type UpdatableStaticRouteOption = {} extends StaticDataRouteOption
   ? OptionalStaticDataRouteOption
   : RequiredStaticDataRouteOption
 
+/**
+ * Augmentable registry mapping a route-id prefix (typically a pathless
+ * layout route, e.g. `/_sidebar`) to the `staticData` shape accepted by
+ * every route whose id starts with that prefix. Routes that match no
+ * prefix fall back to `StaticDataRouteOption`.
+ *
+ * Prefix-scoped `staticData` is always optional to declare, even when the
+ * registered shape has required properties: the registry constrains the
+ * shape of `staticData` where it is provided, not its presence. When
+ * several registered prefixes match the same route id, `staticData`
+ * accepts the union of their shapes.
+ *
+ * @example
+ * ```ts
+ * declare module '@tanstack/react-router' {
+ *   interface StaticDataByRoutePrefix {
+ *     '/_sidebar': SidebarPageConfig
+ *     '/_details': DetailsPageConfig
+ *   }
+ * }
+ * ```
+ */
+export interface StaticDataByRoutePrefix {}
+
+type StaticDataPrefixMatch<TRouteId> = {
+  [K in keyof StaticDataByRoutePrefix]: TRouteId extends
+    | K
+    | `${K & string}/${string}`
+    ? StaticDataByRoutePrefix[K]
+    : never
+}[keyof StaticDataByRoutePrefix]
+
+/**
+ * Maps a route id to the `staticData` shape registered for its prefix in
+ * `StaticDataByRoutePrefix`, falling back to `StaticDataRouteOption` when
+ * no prefix matches. Useful for typing utilities that read `staticData`
+ * for a known route id.
+ *
+ * The result is the registered shape only, not the composed constraint:
+ * routes under a matched prefix additionally accept `StaticDataRouteOption`
+ * members. When several registered prefixes match, the shapes union.
+ */
+export type StaticDataByRouteId<TRouteId> = [
+  StaticDataPrefixMatch<TRouteId>,
+] extends [never]
+  ? StaticDataRouteOption
+  : StaticDataPrefixMatch<TRouteId>
+
+/**
+ * Narrows `staticData` to the shape registered for the route id's prefix.
+ * Evaluates to `unknown` (no additional constraint) when no prefix matches,
+ * preserving the plain `StaticDataRouteOption` behavior, including required
+ * `staticData` when that interface is augmented with required properties.
+ */
+export type UpdatableStaticRouteOptionByRouteId<TRouteId> = [
+  StaticDataPrefixMatch<TRouteId>,
+] extends [never]
+  ? unknown
+  : { staticData?: StaticDataPrefixMatch<TRouteId> }
+
 export type MetaDescriptor =
   | { charSet: 'utf-8' }
   | { title: string }
@@ -741,7 +801,8 @@ export interface Route<
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn
-    >,
+    > &
+      UpdatableStaticRouteOptionByRouteId<TId>,
   ) => this
   lazy: RouteLazyFn<
     Route<
@@ -902,7 +963,8 @@ export type RouteOptions<
     NoInfer<TRouterContext>,
     NoInfer<TRouteContextFn>,
     NoInfer<TBeforeLoadFn>
-  >
+  > &
+  UpdatableStaticRouteOptionByRouteId<NoInfer<TId>>
 
 export type RouteContextFn<
   in out TParentRoute extends AnyRoute,
@@ -1953,7 +2015,8 @@ export class BaseRoute<
       TRouterContext,
       TRouteContextFn,
       TBeforeLoadFn
-    >,
+    > &
+      UpdatableStaticRouteOptionByRouteId<TId>,
   ): this => {
     Object.assign(this.options, options)
     return this
