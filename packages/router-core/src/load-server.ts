@@ -620,6 +620,15 @@ async function projectLane(
   lane: ReducedLane,
   signal?: AbortSignal,
 ): Promise<void> {
+  // Applying a result below never mutates `ssr`, `status`, or `_notFound`, so
+  // the rendered prefix (the loop's break conditions) is stable and can be
+  // determined before any callback resolves. All head/scripts/headers
+  // callbacks therefore start in route order up front, while their results are
+  // still awaited and applied strictly one match at a time.
+  const attempts: Array<{
+    match: AnyRouteMatch
+    attempt: Promise<[any, any, any]>
+  }> = []
   for (const match of lane.matches) {
     const routeOptions = getRoute(router, match).options
     if (routeOptions.head || routeOptions.scripts || routeOptions.headers) {
@@ -630,23 +639,39 @@ async function projectLane(
         params: match.params,
         loaderData: match.loaderData,
       }
+      let attempt: Promise<[any, any, any]>
       try {
-        const [head, scripts, headers] = await Promise.all([
+        attempt = Promise.all([
           routeOptions.head?.(context),
           routeOptions.scripts?.(context),
           routeOptions.headers?.(context),
         ])
-        signal?.throwIfAborted()
-        match.meta = head?.meta
-        match.links = head?.links
-        match.headScripts = head?.scripts
-        match.styles = head?.styles
-        match.scripts = scripts
-        match.headers = headers
       } catch (cause) {
-        signal?.throwIfAborted()
-        console.error(cause)
+        // A synchronous throw from user code behaves like a rejection.
+        attempt = Promise.reject(cause)
       }
+      // Attach a handler immediately so an attempt discarded past the break
+      // boundary can never surface as an unhandled rejection.
+      void attempt.catch(() => {})
+      attempts.push({ match, attempt })
+    }
+    if (match.ssr === false || match.status !== 'success' || match._notFound) {
+      break
+    }
+  }
+  for (const { match, attempt } of attempts) {
+    try {
+      const [head, scripts, headers] = await attempt
+      signal?.throwIfAborted()
+      match.meta = head?.meta
+      match.links = head?.links
+      match.headScripts = head?.scripts
+      match.styles = head?.styles
+      match.scripts = scripts
+      match.headers = headers
+    } catch (cause) {
+      signal?.throwIfAborted()
+      console.error(cause)
     }
     if (match.ssr === false || match.status !== 'success' || match._notFound) {
       break

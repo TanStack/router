@@ -1231,36 +1231,63 @@ export async function projectLane(
   end = lane[1 /* matches */].length,
 ): Promise<ProjectedLane> {
   const matches = lane[1 /* matches */]
+  // Applying a result below never mutates `status` or `_notFound`, so the
+  // rendered prefix (the loop's break conditions) is stable and can be
+  // determined before any callback resolves. All head/scripts callbacks
+  // therefore start in route order up front, while their results are still
+  // awaited and applied strictly one match at a time.
+  const attempts: Array<{
+    match: (typeof matches)[number]
+    attempt: Promise<[any, any]>
+  }> = []
   for (let index = start; index < end; index++) {
     const match = matches[index]!
     const routeOptions = getRoute(router, match).options
     if (routeOptions.head || routeOptions.scripts) {
-      try {
-        const context = {
-          ssr: router.options.ssr,
-          matches,
-          match,
-          params: match.params,
-          loaderData: match.loaderData,
-        }
-        const [head, scripts] = await waitFor(
+      const context = {
+        ssr: router.options.ssr,
+        matches,
+        match,
+        params: match.params,
+        loaderData: match.loaderData,
+      }
+      const startAttempt = () =>
+        waitFor(
           Promise.all([
             routeOptions.head?.(context),
             routeOptions.scripts?.(context),
           ]),
           signal,
         )
-        match.meta = head?.meta
-        match.links = head?.links
-        match.headScripts = head?.scripts
-        match.styles = head?.styles
-        match.scripts = scripts
+      let attempt: ReturnType<typeof startAttempt>
+      try {
+        attempt = startAttempt()
       } catch (cause) {
-        if (cause === signal && signal.aborted) {
-          break
-        }
-        console.error(cause)
+        // A synchronous throw from user code behaves like a rejection.
+        attempt = Promise.reject(cause)
       }
+      // Attach a handler immediately so an attempt discarded past the break
+      // boundary can never surface as an unhandled rejection.
+      void attempt.catch(() => {})
+      attempts.push({ match, attempt })
+    }
+    if (match.status !== 'success' || match._notFound) {
+      break
+    }
+  }
+  for (const { match, attempt } of attempts) {
+    try {
+      const [head, scripts] = await attempt
+      match.meta = head?.meta
+      match.links = head?.links
+      match.headScripts = head?.scripts
+      match.styles = head?.styles
+      match.scripts = scripts
+    } catch (cause) {
+      if (cause === signal && signal.aborted) {
+        break
+      }
+      console.error(cause)
     }
     if (match.status !== 'success' || match._notFound) {
       break
