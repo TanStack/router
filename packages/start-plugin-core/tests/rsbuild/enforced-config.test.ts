@@ -29,6 +29,9 @@ const resolvedConfig: RsbuildConfig = {
       output: {
         target: 'web',
         module: true,
+        distPath: {
+          js: 'assets/js',
+        },
       },
     },
     ssr: {
@@ -123,9 +126,8 @@ describe('warnOverriddenConfig', () => {
     })
 
     expect(error).toHaveBeenCalledOnce()
-    expect(
-      stripVTControlCharacters(error.mock.calls[0]![0]),
-    ).toMatchInlineSnapshot(`
+    expect(stripVTControlCharacters(error.mock.calls[0]![0]))
+      .toMatchInlineSnapshot(`
       "The following Rsbuild config options will be overridden by TanStack Start:
         - source.define.process.env.TSS_SERVER_FN_BASE
         - server.compress
@@ -161,6 +163,9 @@ describe('warnOverriddenConfig', () => {
               target: 'web',
               module: true,
               assetPrefix: '/client-assets/',
+              distPath: {
+                js: '',
+              },
             },
           },
           provider: {

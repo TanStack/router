@@ -50,24 +50,13 @@ const commonEnvironmentConfig = {
   },
 } satisfies EnforcedConfig
 
-const publicAssetDistPathConfig = {
-  css: true,
-  cssAsync: true,
-  svg: true,
-  font: true,
-  wasm: true,
-  image: true,
-  media: true,
-  assets: true,
-} satisfies EnforcedConfig
-
 /**
  * Rsbuild config fields that TanStack Start owns.
  *
  * A `true` leaf means that Start writes the final value for that field. Keep
- * user-owned fields such as `server.base`, `dev.assetPrefix`, and
- * `output.assetPrefix` out of this object: Start consumes those values but
- * must not claim ownership of them.
+ * user-owned fields such as `server.base`, `dev.assetPrefix`,
+ * `output.assetPrefix`, and `output.distPath` out of this object: Start
+ * consumes those values but must not claim ownership of them.
  */
 const enforcedConfig = {
   global: {
@@ -88,18 +77,12 @@ const enforcedConfig = {
       ...commonEnvironmentConfig,
       output: {
         target: true,
-        distPath: {
-          ...publicAssetDistPathConfig,
-          js: true,
-          jsAsync: true,
-        },
       },
     },
     server: {
       ...commonEnvironmentConfig,
       output: {
         target: true,
-        distPath: publicAssetDistPathConfig,
       },
     },
   },

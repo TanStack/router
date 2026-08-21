@@ -2,7 +2,6 @@ import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { joinURL } from 'ufo'
 import {
   applyResolvedBaseAndOutput,
   applyResolvedRouterBasepath,
@@ -12,7 +11,6 @@ import { escapeRegExp, normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
 import { parseStartConfig } from './schema'
 import {
-  RSBUILD_CLIENT_ASSETS_DIR,
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYERS,
   createRsbuildEnvironmentDefaults,
@@ -271,8 +269,6 @@ export function tanStackStartRsbuild(
           }
           const environmentPlan = createRsbuildEnvironmentPlan({
             entryAliases,
-            clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
-            serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
             serverFnProviderEnv,
             enforcedDefines,
             enforcedAliases,
@@ -395,8 +391,6 @@ export function tanStackStartRsbuild(
         providerEnvName: serverFnProviderEnv,
         ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
-        getDevClientEntryUrl: (publicBase: string) =>
-          joinURL(publicBase, RSBUILD_CLIENT_ASSETS_DIR, 'js/index.js'),
         rscEnabled,
       })
       updateServerFnResolver = virtualModuleState.updateServerFnResolver

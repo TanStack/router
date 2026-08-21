@@ -75,8 +75,6 @@ describe('createRsbuildEnvironmentPlan client output', () => {
         '#tanstack-router-entry': '/app/src/router.tsx',
       },
     },
-    clientOutputDirectory: 'dist/client',
-    serverOutputDirectory: 'dist/server',
     serverFnProviderEnv: 'ssr',
     enforcedDefines: {},
     enforcedAliases: {
@@ -92,6 +90,8 @@ describe('createRsbuildEnvironmentPlan client output', () => {
 
     expect(environments.client!.output?.assetPrefix).toBeUndefined()
     expect(environments.ssr!.output?.assetPrefix).toBeUndefined()
+    expect(environments.client!.output?.distPath).toBeUndefined()
+    expect(environments.ssr!.output?.distPath).toBeUndefined()
     expect(environments.client!.performance).toBeUndefined()
     expect(
       createRsbuildEnvironmentPlan({ ...baseOptions, rsc: true }).environments

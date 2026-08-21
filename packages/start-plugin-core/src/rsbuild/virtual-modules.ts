@@ -1,4 +1,5 @@
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
+import { joinURL } from 'ufo'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
@@ -227,12 +228,6 @@ export interface RegisterVirtualModulesOptions {
   providerEnvName: string
   ssrIsProvider: boolean
   serializationAdapters: Array<SerializationAdapterConfig> | undefined
-  /**
-   * Get the URL at which the rsbuild dev server serves the client entry JS.
-   * Called lazily inside modifyRspackConfig when getConfig() is available.
-   * Example return: '/assets/js/index.js'
-   */
-  getDevClientEntryUrl: (publicBase: string) => string
   /** Whether RSC virtual modules should be registered. */
   rscEnabled?: boolean | undefined
 }
@@ -286,6 +281,14 @@ export function registerVirtualModules(
     }).output.module === false
       ? 'iife'
       : 'module'
+  }
+
+  function getDevClientEntryUrl(assetBase: string): string {
+    const clientConfig = api.getNormalizedConfig({
+      environment: RSBUILD_ENVIRONMENT_NAMES.client,
+    })
+
+    return joinURL(assetBase, clientConfig.output.distPath.js, 'index.js')
   }
 
   function isProviderEnvironment(environmentName: string): boolean {
@@ -386,7 +389,7 @@ export function registerVirtualModules(
 
     // Manifest — only meaningful for server env
     if (isServerEnv) {
-      const devClientEntryUrl = opts.getDevClientEntryUrl(assetBase)
+      const devClientEntryUrl = getDevClientEntryUrl(assetBase)
       content[paths.manifest] = isDev
         ? generateManifestModuleDev(devClientEntryUrl, scriptFormat)
         : generateManifestModuleBuild(
@@ -537,7 +540,7 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       const assetBase = isDev
         ? resolvedStartConfig.basePaths.assetBase.dev
         : resolvedStartConfig.basePaths.assetBase.build
-      const devClientEntryUrl = opts.getDevClientEntryUrl(assetBase)
+      const devClientEntryUrl = getDevClientEntryUrl(assetBase)
       return generateManifestModuleBuild(
         newClientBuild,
         assetBase,

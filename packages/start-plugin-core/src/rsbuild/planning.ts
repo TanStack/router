@@ -29,7 +29,9 @@ export const RSBUILD_CLIENT_ASSETS_DIR = 'assets'
 export type RsbuildEnvironmentName =
   (typeof RSBUILD_ENVIRONMENT_NAMES)[keyof typeof RSBUILD_ENVIRONMENT_NAMES]
 
-type RsbuildDistPath = NonNullable<EnvironmentConfig['output']>['distPath']
+type RsbuildDistPath = NonNullable<
+  NonNullable<EnvironmentConfig['output']>['distPath']
+>
 type RsbuildDistPathObject = Exclude<RsbuildDistPath, string>
 
 function createPublicAssetDistPath(root: string): RsbuildDistPathObject {
@@ -52,6 +54,93 @@ function createClientAssetDistPath(root: string): RsbuildDistPathObject {
     js: `${RSBUILD_CLIENT_ASSETS_DIR}/js`,
     jsAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/js/async`,
   }
+}
+
+function getDistPathProperty(
+  distPath: RsbuildDistPath | undefined,
+  key: keyof RsbuildDistPathObject,
+): unknown {
+  if (typeof distPath === 'string') {
+    return key === 'root' ? distPath : undefined
+  }
+
+  return distPath?.[key]
+}
+
+function createEnvironmentDistPathDefaults(opts: {
+  outputDirectory: string
+  environmentDistPath: RsbuildDistPath | undefined
+  rootDistPath: RsbuildDistPath | undefined
+  includeJsAssets: boolean
+}): RsbuildDistPathObject | undefined {
+  const defaultDistPath = opts.includeJsAssets
+    ? createClientAssetDistPath(opts.outputDirectory)
+    : createPublicAssetDistPath(opts.outputDirectory)
+  const entries = Object.entries(defaultDistPath).filter(([key]) => {
+    const distPathKey = key as keyof RsbuildDistPathObject
+
+    if (distPathKey === 'root') {
+      // An explicit environment root wins. Otherwise provide the Start
+      // convention derived from the shared root output directory.
+      return (
+        getDistPathProperty(opts.environmentDistPath, distPathKey) === undefined
+      )
+    }
+
+    return (
+      getDistPathProperty(opts.environmentDistPath, distPathKey) ===
+        undefined &&
+      getDistPathProperty(opts.rootDistPath, distPathKey) === undefined
+    )
+  })
+
+  return entries.length > 0
+    ? (Object.fromEntries(entries) as RsbuildDistPathObject)
+    : undefined
+}
+
+function resolveEnvironmentOutputDirectory(opts: {
+  environmentName: string
+  config: RsbuildConfig
+  serverFnProviderEnv: string
+}): string | undefined {
+  const rootDistPath = opts.config.output?.distPath
+  const environmentDistPath =
+    opts.config.environments?.[opts.environmentName]?.output?.distPath
+
+  if (opts.environmentName === RSBUILD_ENVIRONMENT_NAMES.client) {
+    return resolveRsbuildOutputDirectory({
+      distPath: environmentDistPath,
+      rootDistPath,
+      fallback: 'dist/client',
+      subdirectory: 'client',
+    })
+  }
+
+  const serverDistPath =
+    opts.config.environments?.[RSBUILD_ENVIRONMENT_NAMES.server]?.output
+      ?.distPath
+  const serverOutputDirectory = resolveRsbuildOutputDirectory({
+    distPath: serverDistPath,
+    rootDistPath,
+    fallback: 'dist/server',
+    subdirectory: 'server',
+  })
+
+  if (opts.environmentName === RSBUILD_ENVIRONMENT_NAMES.server) {
+    return serverOutputDirectory
+  }
+
+  if (opts.environmentName === opts.serverFnProviderEnv) {
+    return resolveRsbuildOutputDirectory({
+      distPath: environmentDistPath,
+      rootDistPath: undefined,
+      fallback: join(serverOutputDirectory, opts.serverFnProviderEnv),
+      subdirectory: opts.serverFnProviderEnv,
+    })
+  }
+
+  return undefined
 }
 
 export interface RsbuildResolvedEntryAliases {
@@ -96,16 +185,28 @@ export function createRsbuildEnvironmentDefaults(opts: {
   serverFnProviderEnv: string
 }): EnvironmentConfig {
   const environmentConfig = opts.config.environments?.[opts.environmentName]
+  const outputDirectory = resolveEnvironmentOutputDirectory(opts)
+  const rootDistPath = opts.config.output?.distPath
+  const distPathDefaults = outputDirectory
+    ? createEnvironmentDistPathDefaults({
+        outputDirectory,
+        environmentDistPath: environmentConfig?.output?.distPath,
+        rootDistPath,
+        includeJsAssets:
+          opts.environmentName === RSBUILD_ENVIRONMENT_NAMES.client,
+      })
+    : undefined
   const outputModuleConfigured =
     environmentConfig?.output?.module !== undefined ||
     opts.config.output?.module !== undefined
 
   if (opts.environmentName === RSBUILD_ENVIRONMENT_NAMES.client) {
     return {
-      ...(!outputModuleConfigured
+      ...(distPathDefaults || !outputModuleConfigured
         ? {
             output: {
-              module: true,
+              ...(distPathDefaults ? { distPath: distPathDefaults } : {}),
+              ...(!outputModuleConfigured ? { module: true } : {}),
             },
           }
         : {}),
@@ -130,14 +231,17 @@ export function createRsbuildEnvironmentDefaults(opts: {
 
   if (opts.environmentName === RSBUILD_ENVIRONMENT_NAMES.server) {
     return {
-      ...(opts.isDev && !outputModuleConfigured
+      ...(distPathDefaults || (opts.isDev && !outputModuleConfigured)
         ? {
             // Rsbuild's dev `loadBundle()` path evaluates ESM via
             // vm.SourceTextModule, which requires
             // `--experimental-vm-modules`. Default the server environment to
             // CJS so SSR works without extra Node flags.
             output: {
-              module: false,
+              ...(distPathDefaults ? { distPath: distPathDefaults } : {}),
+              ...(opts.isDev && !outputModuleConfigured
+                ? { module: false }
+                : {}),
             },
           }
         : {}),
@@ -153,16 +257,18 @@ export function createRsbuildEnvironmentDefaults(opts: {
     }
   }
 
-  if (
-    opts.environmentName === opts.serverFnProviderEnv &&
-    opts.isDev &&
-    !opts.rscEnabled &&
-    !outputModuleConfigured
-  ) {
+  if (opts.environmentName === opts.serverFnProviderEnv && !opts.rscEnabled) {
     return {
-      output: {
-        module: false,
-      },
+      ...(distPathDefaults || (opts.isDev && !outputModuleConfigured)
+        ? {
+            output: {
+              ...(distPathDefaults ? { distPath: distPathDefaults } : {}),
+              ...(opts.isDev && !outputModuleConfigured
+                ? { module: false }
+                : {}),
+            },
+          }
+        : {}),
     }
   }
 
@@ -171,8 +277,6 @@ export function createRsbuildEnvironmentDefaults(opts: {
 
 export function createRsbuildEnvironmentPlan(opts: {
   entryAliases: Pick<RsbuildResolvedEntryAliases, 'client' | 'server'>
-  clientOutputDirectory: string
-  serverOutputDirectory: string
   serverFnProviderEnv: string
   enforcedDefines: NonNullable<SourceConfig['define']>
   enforcedAliases: Record<string, string>
@@ -181,8 +285,6 @@ export function createRsbuildEnvironmentPlan(opts: {
   const createEnvironment = (environment: {
     entry: string
     target: 'web' | 'node'
-    outputDirectory: string
-    includeJsAssets?: boolean
     layer?: string
   }): EnvironmentConfig => ({
     source: {
@@ -197,9 +299,6 @@ export function createRsbuildEnvironmentPlan(opts: {
     },
     output: {
       target: environment.target,
-      distPath: environment.includeJsAssets
-        ? createClientAssetDistPath(environment.outputDirectory)
-        : createPublicAssetDistPath(environment.outputDirectory),
     },
     resolve: {
       alias: opts.enforcedAliases,
@@ -211,13 +310,10 @@ export function createRsbuildEnvironmentPlan(opts: {
       [RSBUILD_ENVIRONMENT_NAMES.client]: createEnvironment({
         entry: opts.entryAliases.client,
         target: 'web',
-        outputDirectory: opts.clientOutputDirectory,
-        includeJsAssets: true,
       }),
       [RSBUILD_ENVIRONMENT_NAMES.server]: createEnvironment({
         entry: opts.entryAliases.server,
         target: 'node',
-        outputDirectory: opts.serverOutputDirectory,
         ...(opts.rsc ? { layer: RSBUILD_RSC_LAYERS.ssr } : {}),
       }),
       // When provider is a separate environment (not layered RSC),
@@ -229,7 +325,6 @@ export function createRsbuildEnvironmentPlan(opts: {
             [opts.serverFnProviderEnv]: createEnvironment({
               entry: opts.entryAliases.server,
               target: 'node',
-              outputDirectory: `${opts.serverOutputDirectory}/${opts.serverFnProviderEnv}`,
             }),
           }
         : {}),
