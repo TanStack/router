@@ -1,4 +1,8 @@
-import { crossSerializeStream, getCrossReferenceHeader } from 'seroval'
+import {
+  crossSerializeStream,
+  getCrossReferenceHeader,
+  serialize,
+} from 'seroval'
 import { invariant } from '../invariant'
 import {
   createInlineCssPlaceholderAsset,
@@ -15,6 +19,7 @@ import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
 import type { LRUCache } from '../lru-cache'
+import type { Plugin } from 'seroval'
 import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter, ServerSsr } from '../router'
@@ -164,7 +169,9 @@ class ScriptBuffer {
   }
 }
 
-const isProd = process.env.NODE_ENV === 'production'
+function isManifestSerializationCacheEnabled() {
+  return process.env.NODE_ENV === 'production'
+}
 
 type FilteredRoutes = Manifest['routes']
 
@@ -218,6 +225,64 @@ function getInlineCssAssetForPreparedRoutes(
   return css === undefined ? undefined : createInlineCssStyleAsset(css)
 }
 
+/**
+ * Pre-serialized static manifest fragment for a matched-route set.
+ *
+ * `head`/`tail` wrap the serialized `routes` expression so the fragment can be
+ * assembled into `$_TSR.router.manifest=<head>routes<tail>`. The routes
+ * expression is also reused verbatim when request-scoped assets need to
+ * override the root route (via `Object.assign`).
+ */
+type SerializedManifestFragment = {
+  head: string
+  routes: string
+  tail: string
+}
+
+const SERIALIZED_MANIFEST_CACHE_SIZE = 100
+const serializedManifestCaches = new WeakMap<
+  ServerManifest,
+  LRUCache<string, SerializedManifestFragment>
+>()
+
+function getSerializedManifestCache(
+  manifest: ServerManifest,
+): LRUCache<string, SerializedManifestFragment> {
+  const cache = serializedManifestCaches.get(manifest)
+  if (cache) return cache
+  const newCache = createLRUCache<string, SerializedManifestFragment>(
+    SERIALIZED_MANIFEST_CACHE_SIZE,
+  )
+  serializedManifestCaches.set(manifest, newCache)
+  return newCache
+}
+
+function createSerializedManifestFragment(
+  manifest: ServerManifest,
+  preparedRoutes: PreparedMatchedManifestRoutes,
+  plugins: Array<Plugin<any, any>>,
+): SerializedManifestFragment {
+  let head = '{'
+  let hasEntries = false
+  if (manifest.scriptFormat !== undefined) {
+    head += `"scriptFormat":${JSON.stringify(manifest.scriptFormat)}`
+    hasEntries = true
+  }
+  if (preparedRoutes.inlineCssHrefs) {
+    if (hasEntries) {
+      head += ','
+    }
+    head += '"inlineStyle":{"attrs":{"suppressHydrationWarning":true}}'
+  }
+  head += '"routes":'
+
+  return {
+    head,
+    routes: serialize(preparedRoutes.routes, { plugins }),
+    tail: '}',
+  }
+}
+
 function getMatchedRoutesCacheKey(matches: Array<AnyRouteMatch>) {
   let cacheKey = ''
   for (let i = 0; i < matches.length; i++) {
@@ -231,7 +296,7 @@ function getPreparedMatchedManifestRoutes(
   matches: Array<AnyRouteMatch>,
   cacheKey: string,
 ) {
-  if (isProd) {
+  if (isManifestSerializationCacheEnabled()) {
     const cached = getManifestCache(manifest).get(cacheKey)
     if (cached) {
       return cached
@@ -240,7 +305,7 @@ function getPreparedMatchedManifestRoutes(
 
   const preparedRoutes = prepareMatchedManifestRoutes(manifest, matches)
 
-  if (isProd) {
+  if (isManifestSerializationCacheEnabled()) {
     getManifestCache(manifest).set(cacheKey, preparedRoutes)
   }
 
@@ -504,7 +569,25 @@ export function attachRouterServerSsrUtils({
       }
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
+      const trackPlugins = { didRun: false }
+      const serializationAdapters = router.options.serializationAdapters as
+        | Array<AnySerializationAdapter>
+        | undefined
+      const plugins = serializationAdapters
+        ? serializationAdapters
+            .map((t) => makeSsrSerovalPlugin(t, trackPlugins))
+            .concat(defaultSerovalPlugins)
+        : defaultSerovalPlugins
+
+      // The static portion of the dehydrated router (scriptFormat,
+      // inlineStyle placeholder, and routes for the matched route set) is
+      // byte-identical across requests that match the same routes, so its
+      // serialized form is cached in an LRU and emitted as a separate
+      // `$_TSR.router.manifest=` assignment right after the initial
+      // `$_TSR.router=` chunk of the stream. Only dynamic data (matches,
+      // loader data, request-scoped assets) is streamed per request.
       let manifestToDehydrate: Manifest | undefined = undefined
+      let manifestAssignmentScript: string | undefined = undefined
       // Only currently matched routes are dehydrated. Other route assets are
       // loaded through dynamic imports when those routes become active.
       if (manifest) {
@@ -525,7 +608,10 @@ export function attachRouterServerSsrUtils({
           routes: preparedManifest.routes,
         }
 
-        // Merge request-scoped assets into root route (without mutating cached manifest)
+        // Merge request-scoped assets into root route (without mutating cached
+        // manifest). This only matters for the fallback path where the whole
+        // manifest is embedded in the streamed graph; the cached-fragment path
+        // serializes the merged root separately below.
         const requestAssets = opts?.requestAssets
         if (hasRequestAssets(requestAssets)) {
           const existingRoot = manifestToDehydrate.routes[rootRouteId]
@@ -537,9 +623,72 @@ export function attachRouterServerSsrUtils({
             ),
           }
         }
+
+        let fragment: SerializedManifestFragment | undefined
+        if (isManifestSerializationCacheEnabled()) {
+          const cache = getSerializedManifestCache(manifest)
+          fragment = cache.get(cacheKey)
+          if (!fragment) {
+            try {
+              fragment = createSerializedManifestFragment(
+                manifest,
+                preparedManifest,
+                plugins,
+              )
+              cache.set(cacheKey, fragment)
+            } catch (err) {
+              console.error(
+                'SSR manifest serialization cache fill failed:',
+                err,
+              )
+              fragment = undefined
+            }
+          }
+        }
+
+        if (fragment) {
+          try {
+            if (!hasRequestAssets(requestAssets)) {
+              manifestAssignmentScript =
+                GLOBAL_TSR +
+                '.router.manifest=' +
+                fragment.head +
+                fragment.routes +
+                fragment.tail
+            } else if (requestAssets) {
+              const existingRoot = preparedManifest.routes[rootRouteId]
+              const mergedRoot = mergeRequestAssetsIntoRootRoute(
+                existingRoot,
+                requestAssets,
+              )
+              manifestAssignmentScript =
+                GLOBAL_TSR +
+                '.router.manifest=' +
+                fragment.head +
+                'Object.assign({},' +
+                fragment.routes +
+                ',{"' +
+                rootRouteId +
+                '":' +
+                serialize(mergedRoot, { plugins }) +
+                '})' +
+                fragment.tail
+            }
+          } catch (err) {
+            console.error('SSR manifest assignment serialization failed:', err)
+            manifestAssignmentScript = undefined
+          }
+        }
       }
+
+      // When the manifest is emitted as a separate cached assignment, it must
+      // not be part of the streamed graph. Seroval would otherwise assign
+      // reference IDs within this stream's scope that no other request shares.
       const dehydratedRouter: DehydratedRouter = {
-        manifest: manifestToDehydrate,
+        manifest:
+          manifestAssignmentScript !== undefined
+            ? undefined
+            : manifestToDehydrate,
         matches,
       }
       const dehydratedData = await router.options.dehydrate?.()
@@ -550,16 +699,6 @@ export function attachRouterServerSsrUtils({
         dehydratedRouter.dehydratedData = dehydratedData
       }
       _dehydrated = true
-
-      const trackPlugins = { didRun: false }
-      const serializationAdapters = router.options.serializationAdapters as
-        | Array<AnySerializationAdapter>
-        | undefined
-      const plugins = serializationAdapters
-        ? serializationAdapters
-            .map((t) => makeSsrSerovalPlugin(t, trackPlugins))
-            .concat(defaultSerovalPlugins)
-        : defaultSerovalPlugins
 
       let serializationCompleteSignaled = false
       const signalSerializationComplete = () => {
@@ -598,6 +737,14 @@ export function attachRouterServerSsrUtils({
             serialized = P_PREFIX + serialized + P_SUFFIX
           }
           scriptBuffer.enqueue(serialized)
+          // Emit the cached manifest assignment immediately after the initial
+          // `$_TSR.router=` chunk so the object exists before we attach the
+          // manifest, and before any streamed continuation chunks or the end
+          // signal. ScriptBuffer preserves enqueue order.
+          if (initial && manifestAssignmentScript !== undefined) {
+            scriptBuffer.enqueue(manifestAssignmentScript)
+            manifestAssignmentScript = undefined
+          }
         },
         onError: (err: unknown) => {
           console.error('Serialization error:', err)
