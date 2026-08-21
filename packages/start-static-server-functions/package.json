@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-static-server-functions",
-  "version": "1.167.27",
+  "version": "1.167.31",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -64,7 +64,13 @@
   },
   "devDependencies": {
     "vite": "*",
-    "@types/node": ">=20"
+    "@types/node": ">=20",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "@tanstack/react-start": "workspace:^",

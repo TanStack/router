@@ -27,18 +27,6 @@ type ExtendedSegmentKind =
   | typeof SEGMENT_TYPE_INDEX
   | typeof SEGMENT_TYPE_PATHLESS
 
-function getOpenAndCloseBraces(
-  part: string,
-): [openBrace: number, closeBrace: number] | null {
-  const openBrace = part.indexOf('{')
-  if (openBrace === -1) return null
-  const closeBrace = part.indexOf('}', openBrace)
-  if (closeBrace === -1) return null
-  const afterOpen = openBrace + 1
-  if (afterOpen >= part.length) return null
-  return [openBrace, closeBrace]
-}
-
 type ParsedSegment = Uint16Array & {
   /** segment type (0 = pathname, 1 = param, 2 = wildcard, 3 = optional param) */
   0: SegmentKind
@@ -116,9 +104,13 @@ export function parseSegment(
     return output as ParsedSegment
   }
 
-  const braces = getOpenAndCloseBraces(part)
-  if (braces) {
-    const [openBrace, closeBrace] = braces
+  const openBrace = part.indexOf('{')
+  let closeBrace
+  if (
+    openBrace !== -1 &&
+    openBrace + 1 < part.length &&
+    (closeBrace = part.indexOf('}', openBrace)) !== -1
+  ) {
     const firstChar = part.charCodeAt(openBrace + 1)
 
     // Check for {-$...} (optional param)
@@ -590,7 +582,7 @@ export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
 ) {
   path ||= '/'
   const cached = processedTree.flatCache!.get(path)
-  if (cached) return cached
+  if (cached !== undefined) return cached
   const result = findMatch(path, processedTree.masksTree!)
   processedTree.flatCache!.set(path, result)
   return result

@@ -109,6 +109,8 @@ describe('resolvePath', () => {
     ['/a/b/c', '../..', '/a'],
     ['/a/b/c', '../../..', '/'],
     ['/a/b/c/', '../../..', '/'],
+    ['/a//b', '../../c', '/c'],
+    ['/a///b', '../c', '/a/c'],
     ['/', '../javascript:alert(1)', '/javascript:alert(1)'],
     ['/posts', '../../data:text/html,test', '/data:text/html,test'],
   ])('resolves correctly', (a, b, eq) => {
@@ -121,6 +123,10 @@ describe('resolvePath', () => {
     it(`${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
       expect(resolvePath({ base: a + '/', to: b + '/' })).toEqual(eq)
     })
+  })
+
+  it('normalizes repeated slashes when resolving the base path', () => {
+    expect(resolvePath({ base: '/a//b', to: '.' })).toBe('/a/b')
   })
 
   describe('trailingSlash', () => {
@@ -184,6 +190,17 @@ describe('resolvePath', () => {
         ).toBe('/a/b/c/d')
       })
     })
+
+    it.each([
+      ['always', '/a//b', '/a/b/'],
+      ['never', '/a//b///', '/a/b'],
+      ['preserve', '/a//b///', '/a/b/'],
+    ] as const)(
+      "normalizes repeated slashes with trailingSlash '%s'",
+      (trailingSlash, to, expected) => {
+        expect(resolvePath({ base: '/', to, trailingSlash })).toBe(expected)
+      },
+    )
   })
 
   describe.each([{ base: '/' }, { base: '/nested' }])(

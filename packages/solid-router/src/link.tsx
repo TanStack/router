@@ -252,7 +252,7 @@ export function useLinkProps<
 
   const doPreload = () =>
     router
-      .preloadRoute({ ...options, _builtLocation: next() } as any)
+      .preloadRoute(options as Parameters<typeof router.preloadRoute>[0])
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -343,7 +343,7 @@ export function useLinkProps<
 
     if (
       !local.disabled &&
-      !isCtrlEvent(e) &&
+      !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
@@ -662,10 +662,6 @@ export const Link: LinkComponent<'a'> = (props) => {
       {children()}
     </Dynamic>
   )
-}
-
-function isCtrlEvent(e: MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
 }
 
 function isSafeInternal(to: unknown) {

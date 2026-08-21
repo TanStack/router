@@ -552,7 +552,7 @@ export type VueNode = Vue.VNode
 export type SyncRouteComponent<TProps> = (props: TProps) => Vue.VNode
 
 export type AsyncRouteComponent<TProps> = SyncRouteComponent<TProps> & {
-  preload?: () => Promise<void>
+  preload?: () => Promise<void> | undefined
 }
 
 export type RouteComponent<TProps = any> = AsyncRouteComponent<TProps>

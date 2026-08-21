@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-storage-context",
-  "version": "1.167.24",
+  "version": "1.167.28",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -63,6 +63,12 @@
   },
   "devDependencies": {
     "vite": "*",
-    "@types/node": ">=20"
+    "@types/node": ">=20",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   }
 }

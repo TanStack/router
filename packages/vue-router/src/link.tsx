@@ -232,7 +232,7 @@ function useLinkPropsImpl(
   const doPreload = () => {
     const options = getOptions()
     return router
-      .preloadRoute({ ...options, _builtLocation: next.value } as any)
+      .preloadRoute(options as Parameters<typeof router.preloadRoute>[0])
       .catch((err: any) => {
         console.warn(err)
         console.warn(preloadWarning)
@@ -320,7 +320,7 @@ function useLinkPropsImpl(
 
     if (
       !options.disabled &&
-      !isCtrlEvent(e) &&
+      !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
       e.button === 0
@@ -954,10 +954,6 @@ const LinkImpl = Vue.defineComponent({
 export const Link = LinkImpl as unknown as Vue.Component<unknown> &
   Vue.Component<CreateLinkProps> &
   LinkComponent<'a'>
-
-function isCtrlEvent(e: MouseEvent) {
-  return !!(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey)
-}
 
 export type LinkOptionsFnOptions<
   TOptions,

@@ -29,26 +29,12 @@ export function Transitioner({
       : undefined
 
   router.startTransition = (fn, expected) =>
-    new Promise((resolve, reject) => {
+    new Promise((resolve) => {
       settleOwner(acknowledgement, false)
       acknowledgement.push(expected, resolve)
       t(router)
-      React.startTransition(() => {
-        try {
-          fn()
-        } catch (cause) {
-          if (acknowledgement[1 /* settle */] === resolve) {
-            acknowledgement.length = 0
-          }
-          reject(cause)
-        }
-      })
+      React.startTransition(fn)
     })
-  if (process.env.NODE_ENV !== 'production') {
-    ;(
-      router as typeof router & { _cancelTransition?: () => void }
-    )._cancelTransition = () => settleOwner(acknowledgement, false)
-  }
 
   // Subscribe before canonicalizing so the initial URL has exactly one load.
   useLayoutEffect(() => {
@@ -101,7 +87,7 @@ export function Transitioner({
         }
       })
     } else if (!router._tx) {
-      router.load().catch(console.error)
+      router.load({ sync: true }).catch(console.error)
     }
 
     return unsub

@@ -1,5 +1,38 @@
 # @tanstack/router-core
 
+## 1.171.26
+
+### Patch Changes
+
+- [#8117](https://github.com/TanStack/router/pull/8117) [`3e016ac`](https://github.com/TanStack/router/commit/3e016ac84ffec8119f0c25cfdd1fb17e5292bd34) - optimize buildLocation path resolution https://github.com/TanStack/router/pull/8108
+  skip building search validation when disabled https://github.com/TanStack/router/pull/8112
+  skip location state sharing when impossible https://github.com/TanStack/router/pull/8110
+  fix cache hits for mask resolution when entry is null https://github.com/TanStack/router/pull/8111
+
+## 1.171.25
+
+### Patch Changes
+
+- [#8084](https://github.com/TanStack/router/pull/8084) [`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175) - preserve pending UI across retained routes
+
+- [#8092](https://github.com/TanStack/router/pull/8092) [`63d2cc9`](https://github.com/TanStack/router/commit/63d2cc9155ff5374112f7d067d0b278bafeb8486) - Render route errors when redirect target construction fails and let successor transactions own navigation and HMR presentation.
+
+## 1.171.24
+
+### Patch Changes
+
+- [#8071](https://github.com/TanStack/router/pull/8071) [`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2) - inline getOpenAndCloseBraces in parseSegment for byte shaving
+
+- [#8069](https://github.com/TanStack/router/pull/8069) [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e) - inline isFunction utility fn for byte shaving
+
+- [#8070](https://github.com/TanStack/router/pull/8070) [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff) - inline buildWithMatches inside buildLocation for byte shaving
+
+## 1.171.23
+
+### Patch Changes
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
 ## 1.171.22
 
 ### Patch Changes

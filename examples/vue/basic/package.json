@@ -9,9 +9,9 @@
     "start": "vite"
   },
   "dependencies": {
-    "@tanstack/vue-router": "^1.170.24",
+    "@tanstack/vue-router": "^1.170.28",
     "@tanstack/vue-router-devtools": "^1.167.1",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "vue": "^3.5.13",
     "tailwindcss": "4.1.18"
   },
