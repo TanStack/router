@@ -45,18 +45,29 @@ const MIN_CLOSING_TAG_LENGTH = 4
 const DEFAULT_SERIALIZATION_TIMEOUT_MS = 60000
 const DEFAULT_LIFETIME_TIMEOUT_MS = DEFAULT_SERIALIZATION_TIMEOUT_MS * 2
 const MAX_LEFTOVER_CHARS = 2048
-const MAX_TAIL_CHARS = 64 * 1024
 const MAX_ROUTER_HTML_CHARS = 16 * 1024 * 1024
 const MAX_PENDING_WRITE_CHARS = 16 * 1024 * 1024
 
-// Merge lifecycle: body bytes can stream, router HTML must precede tail,
-// terminal states own close/error/cleanup exactly once.
+const BODY_CLOSE_LENGTH = '</body>'.length
+const HTML_CLOSE = '</html>'
+// Whitespace tolerated between </body> and </html> while capturing the
+// document terminator. Past this the shape is treated as unknown and bytes
+// stream through instead of buffering.
+const MAX_TERMINATOR_WHITESPACE = 256
+
+// Merge lifecycle: body bytes can stream, router HTML must precede the held
+// document terminator, terminal states own close/error/cleanup exactly once.
 const MergeState = {
   ReadingBody: 0,
+  // Saw </body>; capturing the document terminator (</body>[ws]</html>).
   HoldingTail: 1,
-  AppDone: 2,
-  Draining: 3,
-  Done: 4,
+  // Terminator captured (or shape unknown): app bytes stream through again
+  // (out-of-order fragments from renderers like Solid that emit a complete
+  // document up front), and the held terminator is emitted last.
+  PostBody: 2,
+  AppDone: 3,
+  Draining: 4,
+  Done: 5,
 } as const
 
 type MergeState = (typeof MergeState)[keyof typeof MergeState]
@@ -124,6 +135,40 @@ function findHtmlBoundary(str: string): number {
   }
 
   return lastClosingTagEnd
+}
+
+/**
+ * Incrementally match the document terminator `</body>[whitespace]</html>`
+ * (case-insensitive) at the start of `tail`, which is known to begin with
+ * `</body>`. Returns the end index of the terminator when fully matched,
+ * -1 while more bytes could still complete it, and -2 when the shape cannot
+ * match (unknown renderer shape — caller should stop buffering).
+ */
+function matchDocumentTerminator(tail: string): number {
+  let i = BODY_CLOSE_LENGTH
+  let whitespace = 0
+  while (i < tail.length) {
+    const code = tail.charCodeAt(i)
+    if (
+      code === 32 || // space
+      code === 9 || // \t
+      code === 10 || // \n
+      code === 13 || // \r
+      code === 12 // \f
+    ) {
+      if (++whitespace > MAX_TERMINATOR_WHITESPACE) return -2
+      i++
+      continue
+    }
+    break
+  }
+  for (let j = 0; j < HTML_CLOSE.length; j++) {
+    const at = i + j
+    if (at >= tail.length) return -1
+    // `| 32` lowercases ASCII letters and is a no-op for `<`, `/`, `>`.
+    if ((tail.charCodeAt(at) | 32) !== HTML_CLOSE.charCodeAt(j)) return -2
+  }
+  return i + HTML_CLOSE.length
 }
 
 /**
@@ -580,7 +625,8 @@ function makeMainStream(
   // between-chunk text buffer; keep bounded to avoid unbounded memory
   let leftover = ''
 
-  // captured bytes from </body> onward; must stay behind router scripts.
+  // Held document terminator (</body>[ws]</html>, bounded by construction);
+  // emitted last so injected router scripts always land inside <body>.
   let pendingTail = ''
 
   let streamBarrierLifted = false
@@ -639,7 +685,14 @@ function makeMainStream(
       cleanup(err)
       return
     }
-    if (state === MergeState.HoldingTail) {
+    // Past </body> the injected HTML is self-contained script/markup and can
+    // be written immediately — but only when the scanner sits at a safe
+    // boundary (no partial app tag pending in `leftover`), so an injection
+    // can never split an app tag mid-bytes.
+    if (
+      state === MergeState.HoldingTail ||
+      (state === MergeState.PostBody && !leftover)
+    ) {
       flushPendingRouterHtml()
       writeChunk(html)
     } else {
@@ -667,10 +720,84 @@ function makeMainStream(
     pendingRouterHtmlChars = 0
   }
 
-  function appendTail(chunk: string) {
+  /**
+   * Accumulate bytes into the held document terminator. Returns the excess
+   * that follows the terminator (to be streamed through), or '' while the
+   * terminator may still be completing. When the bytes after </body> don't
+   * form `[whitespace]</html>`, degrade gracefully: hold only </body> and
+   * stream everything else — never buffer unbounded app output.
+   */
+  function captureTail(chunk: string): string {
     pendingTail += chunk
-    if (pendingTail.length > MAX_TAIL_CHARS) {
-      throw new Error('SSR stream tail exceeded maximum buffer')
+    const end = matchDocumentTerminator(pendingTail)
+    if (end === -1) return ''
+    state = MergeState.PostBody
+    const keep = end === -2 ? BODY_CLOSE_LENGTH : end
+    const excess = pendingTail.slice(keep)
+    pendingTail = pendingTail.slice(0, keep)
+    return excess
+  }
+
+  /**
+   * Scan a chunk for safe injection boundaries and stream it. In ReadingBody
+   * a </body> match starts terminator capture (and any excess re-enters here
+   * in PostBody, so recursion depth is at most 2); in PostBody a literal
+   * </body> is treated as an ordinary closing-tag boundary.
+   */
+  function processScanChunk(chunkString: string): void {
+    const boundary = findHtmlBoundary(chunkString)
+
+    if (boundary < -1 && state === MergeState.ReadingBody) {
+      const bodyStart = -boundary - 2
+      state = MergeState.HoldingTail
+      const bodyChunk = chunkString.slice(0, bodyStart)
+      writeChunk(bodyChunk)
+      if (cleanedUp || isDone()) return
+      noteBarrierMarker(bodyChunk)
+      liftBarrierAfterBoundary()
+      if (cleanedUp || isDone()) return
+      flushPendingRouterHtml()
+      if (cleanedUp || isDone()) return
+      const excess = captureTail(chunkString.slice(bodyStart))
+      if (cleanedUp || isDone()) return
+      if (excess) processScanChunk(excess)
+      return
+    }
+
+    const lastClosingTagEnd =
+      boundary < -1 ? -boundary - 2 + BODY_CLOSE_LENGTH : boundary
+
+    if (lastClosingTagEnd > 0) {
+      const safeChunk = chunkString.slice(0, lastClosingTagEnd)
+      writeChunk(safeChunk)
+      if (cleanedUp || isDone()) return
+      noteBarrierMarker(safeChunk)
+      liftBarrierAfterBoundary()
+      if (cleanedUp || isDone()) return
+      flushPendingRouterHtml()
+
+      leftover = chunkString.slice(lastClosingTagEnd)
+      if (leftover.length > MAX_LEFTOVER_CHARS) {
+        // Ensure bounded memory even if a consumer streams long text sequences
+        // without any closing tags. This may reduce injection granularity but is correct.
+        noteBarrierMarker(leftover)
+        const flushed = leftover.slice(0, leftover.length - MAX_LEFTOVER_CHARS)
+        writeChunk(flushed)
+        leftover = leftover.slice(-MAX_LEFTOVER_CHARS)
+      }
+    } else {
+      // No closing tag found; keep small tail to handle split closing tags,
+      // but stream older bytes to prevent unbounded buffering.
+      const combined = chunkString
+      if (combined.length > MAX_LEFTOVER_CHARS) {
+        noteBarrierMarker(combined)
+        const flushUpto = combined.length - MAX_LEFTOVER_CHARS
+        const flushed = combined.slice(0, flushUpto)
+        writeChunk(flushed)
+        leftover = combined.slice(flushUpto)
+      } else {
+        leftover = combined
+      }
     }
   }
 
@@ -819,69 +946,22 @@ function makeMainStream(
             ? value
             : textDecoder.decode(value as ArrayBufferView, { stream: true })
 
-        const chunkString = leftover ? leftover + text : text
+        let chunkString = leftover ? leftover + text : text
+        leftover = ''
 
-        // If we already saw </body>, everything else is tail. Keep it bounded
-        // and held until router scripts are ready so injection remains before </body>.
-        if (state >= MergeState.HoldingTail) {
-          appendTail(chunkString)
-          leftover = ''
-          continue
+        // Saw </body>: we're capturing the document terminator so it can be
+        // emitted after all injected router HTML. Renderers that keep
+        // producing after the terminator (Solid's out-of-order boundary
+        // fragments) continue below in PostBody pass-through.
+        // (`state` is mutated inside processScanChunk/captureTail; widen to
+        // defeat stale control-flow narrowing.)
+        if ((state as MergeState) === MergeState.HoldingTail) {
+          chunkString = captureTail(chunkString)
+          if (!chunkString) continue
         }
 
-        const boundary = findHtmlBoundary(chunkString)
-        if (boundary < -1) {
-          const bodyEndIndex = -boundary - 2
-          state = MergeState.HoldingTail
-          appendTail(chunkString.slice(bodyEndIndex))
-          const bodyChunk = chunkString.slice(0, bodyEndIndex)
-          writeChunk(bodyChunk)
-          if (cleanedUp || isDone()) return
-          noteBarrierMarker(bodyChunk)
-          liftBarrierAfterBoundary()
-          if (cleanedUp || isDone()) return
-          flushPendingRouterHtml()
-          leftover = ''
-          continue
-        }
-
-        const lastClosingTagEnd = boundary
-
-        if (lastClosingTagEnd > 0) {
-          const safeChunk = chunkString.slice(0, lastClosingTagEnd)
-          writeChunk(safeChunk)
-          if (cleanedUp || isDone()) return
-          noteBarrierMarker(safeChunk)
-          liftBarrierAfterBoundary()
-          if (cleanedUp || isDone()) return
-          flushPendingRouterHtml()
-
-          leftover = chunkString.slice(lastClosingTagEnd)
-          if (leftover.length > MAX_LEFTOVER_CHARS) {
-            // Ensure bounded memory even if a consumer streams long text sequences
-            // without any closing tags. This may reduce injection granularity but is correct.
-            noteBarrierMarker(leftover)
-            const flushed = leftover.slice(
-              0,
-              leftover.length - MAX_LEFTOVER_CHARS,
-            )
-            writeChunk(flushed)
-            leftover = leftover.slice(-MAX_LEFTOVER_CHARS)
-          }
-        } else {
-          // No closing tag found; keep small tail to handle split closing tags,
-          // but stream older bytes to prevent unbounded buffering.
-          const combined = chunkString
-          if (combined.length > MAX_LEFTOVER_CHARS) {
-            noteBarrierMarker(combined)
-            const flushUpto = combined.length - MAX_LEFTOVER_CHARS
-            const flushed = combined.slice(0, flushUpto)
-            writeChunk(flushed)
-            leftover = combined.slice(flushUpto)
-          } else {
-            leftover = combined
-          }
-        }
+        processScanChunk(chunkString)
+        if (cleanedUp || isDone()) return
       }
 
       if (cleanedUp || isDone()) return
