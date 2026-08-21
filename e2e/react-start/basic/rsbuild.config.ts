@@ -8,7 +8,7 @@ const startModeConfig = getStartModeConfig()
 
 export default defineConfig({
   plugins: [
-    pluginReact({ splitChunks: false }),
+    pluginReact(),
     tanstackStart(startModeConfig),
   ],
   output: {
