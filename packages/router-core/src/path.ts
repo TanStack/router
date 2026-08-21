@@ -1,6 +1,11 @@
 import { isServer } from '@tanstack/router-core/isServer'
 import { last } from './utils'
 import {
+  encodePathParam,
+  type EncodedPath,
+  type EncodedPathParam,
+} from './string-encoding'
+import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
@@ -190,33 +195,14 @@ export function resolvePath({
   return result
 }
 
-/**
- * Create a pre-compiled decode config from allowed characters.
- * This should be called once at router initialization.
- */
-export function compileDecodeCharMap(
-  pathParamsAllowedCharacters: ReadonlyArray<string>,
-) {
-  const charMap = new Map(
-    pathParamsAllowedCharacters.map((char) => [encodeURIComponent(char), char]),
-  )
-  // Escape special regex characters and join with |
-  const pattern = Array.from(charMap.keys())
-    .map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('|')
-  const regex = new RegExp(pattern, 'g')
-  return (encoded: string) =>
-    encoded.replace(regex, (match) => charMap.get(match) ?? match)
-}
-
 interface InterpolatePathOptions {
   path?: string
   params: Record<string, unknown>
   /**
-   * A function that decodes a path parameter value.
+   * A function that un-escapes characters allowed in path params.
    * Obtained from `compileDecodeCharMap(pathParamsAllowedCharacters)`.
    */
-  decoder?: (encoded: string) => string
+  decoder?: (encoded: EncodedPathParam) => string
   /**
    * @internal
    * For testing only, in development mode we use the router.isServer value
@@ -225,7 +211,8 @@ interface InterpolatePathOptions {
 }
 
 type InterPolatePathResult = {
-  interpolatedPath: string
+  /** The fully interpolated path with all param values percent-encoded. */
+  interpolatedPath: EncodedPath
   usedParams: Record<string, unknown>
   isMissingParams: boolean // true if any params were not available when being looked up in the params object
 }
@@ -274,9 +261,13 @@ export function interpolatePath({
   const usedParams: Record<string, unknown> = Object.create(null)
 
   if (!path || path === '/')
-    return { interpolatedPath: '/', usedParams, isMissingParams }
+    return { interpolatedPath: '/' as EncodedPath, usedParams, isMissingParams }
   if (!path.includes('$'))
-    return { interpolatedPath: path, usedParams, isMissingParams }
+    return {
+      interpolatedPath: path as EncodedPath,
+      usedParams,
+      isMissingParams,
+    }
 
   if (isServer ?? rest.server) {
     // Fast path for common templates like `/posts/$id` or `/files/$`.
@@ -332,7 +323,7 @@ export function interpolatePath({
 
       if (path.endsWith('/')) joined += '/'
 
-      const interpolatedPath = joined || '/'
+      const interpolatedPath = (joined || '/') as EncodedPath
       return { usedParams, interpolatedPath, isMissingParams }
     }
   }
@@ -414,15 +405,7 @@ export function interpolatePath({
 
   if (path.endsWith('/')) joined += '/'
 
-  const interpolatedPath = joined || '/'
+  const interpolatedPath = (joined || '/') as EncodedPath
 
   return { usedParams, interpolatedPath, isMissingParams }
-}
-
-function encodePathParam(
-  value: string,
-  decoder?: InterpolatePathOptions['decoder'],
-) {
-  const encoded = encodeURIComponent(value)
-  return decoder?.(encoded) ?? encoded
 }

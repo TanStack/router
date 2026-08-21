@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import {
-  compileDecodeCharMap,
   exactPathTest,
   interpolatePath,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
 } from '../src/path'
+import { compileDecodeCharMap } from '../src/string-encoding'
 import {
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,

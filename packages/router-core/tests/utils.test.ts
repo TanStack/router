@@ -1,12 +1,10 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   decodePath,
-  deepEqual,
   encodePathLikeUrl,
   escapeHtml,
-  isPlainArray,
-  replaceEqualDeep,
-} from '../src/utils'
+} from '../src/string-encoding'
+import { deepEqual, isPlainArray, replaceEqualDeep } from '../src/utils'
 
 describe('replaceEqualDeep', () => {
   it('should return the same object if the input objects are equal', () => {

@@ -3,7 +3,7 @@ import {
   defaultGetScrollRestorationKey,
   storageKey,
 } from '../scroll-restoration'
-import { escapeHtml } from '../utils'
+import { escapeHtml } from '../string-encoding'
 import type { AnyRouter } from '../router'
 
 const defaultInlineScrollRestorationScript = `(${minifiedScrollRestorationScript})(${escapeHtml(
