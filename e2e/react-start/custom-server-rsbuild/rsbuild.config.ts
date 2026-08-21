@@ -43,6 +43,7 @@ export default defineConfig({
         distPath: {
           root: path.resolve(__dirname, 'dist/client'),
           js: '',
+          css: ''
         },
       },
       tools: {
