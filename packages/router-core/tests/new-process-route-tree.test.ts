@@ -716,6 +716,48 @@ describe('findRouteMatch', () => {
     it('multi-segment wildcard w/ suffix', () => {
       const tree = makeTree(['/{$}/c/file'])
       expect(findRouteMatch('/a/b/c/file', tree)?.route.id).toBe('/{$}/c/file')
+      expect(findRouteMatch('/A/B/C/FILE', tree)?.route.id).toBe('/{$}/c/file')
+      expect(findRouteMatch('/c/file', tree)).toBeNull()
+    })
+    it('matches wildcard suffixes with Unicode case folding', () => {
+      const tree = makeTree(['/a/{$}σ', '/b/{$}İ', '/c/{$}İx'])
+      expect(findRouteMatch('/a/xΣ', tree)?.route.id).toBe('/a/{$}σ')
+      expect(findRouteMatch('/b/İ', tree)?.route.id).toBe('/b/{$}İ')
+      const match = findRouteMatch('/b/xİ', tree)
+      expect(match?.route.id).toBe('/b/{$}İ')
+      expect(match?.rawParams).toEqual({ '*': 'x', _splat: 'x' })
+      expect(findRouteMatch('/b/xi\u0307', tree)?.rawParams).toEqual({
+        '*': 'x',
+        _splat: 'x',
+      })
+      expect(findRouteMatch('/c/yİX', tree)?.rawParams).toEqual({
+        '*': 'y',
+        _splat: 'y',
+      })
+
+      const decomposed = makeTree(['/d/{$}i\u0307'])
+      expect(findRouteMatch('/d/xİ', decomposed)?.rawParams).toEqual({
+        '*': 'x',
+        _splat: 'x',
+      })
+      expect(findRouteMatch('/d/İ', decomposed)?.rawParams).toEqual({
+        '*': '',
+        _splat: '',
+      })
+      expect(
+        findRouteMatch('/İ', makeTree(['/{$}i\u0307']))?.rawParams,
+      ).toEqual({ '*': '', _splat: '' })
+      expect(findRouteMatch('/İ', makeTree(['/{$}a']))).toBeNull()
+
+      const afterOptional = makeTree(['/e/{-$id}/{$}İ'])
+      expect(findRouteMatch('/e/value/xİ', afterOptional)?.rawParams).toEqual({
+        id: 'value',
+        '*': 'x',
+        _splat: 'x',
+      })
+
+      const prioritized = makeTree(['/{$}A', '/{$}ba'])
+      expect(findRouteMatch('/ba', prioritized)?.route.id).toBe('/{$}ba')
     })
     it('multi-segment wildcard w/ prefix and suffix', () => {
       const tree = makeTree(['/file{$}end'])

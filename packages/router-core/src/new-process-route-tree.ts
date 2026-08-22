@@ -394,6 +394,15 @@ function sortDynamic(
   return 0
 }
 
+function getSuffixStart(value: string, suffix: string) {
+  const length = suffix.toLowerCase().length
+  let start = value.length - length
+  while (value.slice(start).toLowerCase().length > length) {
+    start++
+  }
+  return start
+}
+
 function createStaticNode<T extends RouteLike>(
   fullPath: string,
 ): StaticSegmentNode<T> {
@@ -857,7 +866,7 @@ function extractParams<T extends RouteLike>(
       const n = node
       const value = path.substring(
         currentPathIndex + (n.prefix?.length ?? 0),
-        path.length - (n.suffix?.length ?? 0),
+        n.suffix ? getSuffixStart(path, n.suffix) : path.length,
       )
       const splat = decodeURIComponent(value)
       // TODO: Deprecate *
@@ -1061,9 +1070,14 @@ function getNodeMatch<T extends RouteLike>(
         }
         if (suffix) {
           if (isBeyondPath) continue
-          const end = parts.slice(index).join('/').slice(-suffix.length)
-          const casePart = segment.caseSensitive ? end : end.toLowerCase()
-          if (casePart !== suffix) continue
+          const end = parts.slice(index).join('/')
+          const suffixPart = end.slice(getSuffixStart(end, suffix))
+          if (
+            (segment.caseSensitive ? suffixPart : suffixPart.toLowerCase()) !==
+            suffix
+          ) {
+            continue
+          }
         }
         // wildcard matches consume the rest of the URL and cannot have children
         stack.push({
