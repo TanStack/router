@@ -1133,6 +1133,7 @@ export function buildRouteTreeConfig(
   nodes: Array<RouteNode>,
   disableTypes: boolean,
   depth = 1,
+  isolatedDeclarations = false,
 ): Array<string> {
   const children = nodes.map((node) => {
     if (node._fsRouteType === '__root') {
@@ -1150,6 +1151,7 @@ export function buildRouteTreeConfig(
         node.children,
         disableTypes,
         depth + 1,
+        isolatedDeclarations,
       )
 
       const childrenDeclaration = disableTypes
@@ -1172,7 +1174,7 @@ export function buildRouteTreeConfig(
     .join(',')}
 }`
 
-      const routeWithChildren = `const ${route}RouteWithChildren = ${route}Route._addFileChildren(${route}RouteChildren)`
+      const routeWithChildren = `const ${route}RouteWithChildren${isolatedDeclarations && !disableTypes ? ': any' : ''} = ${route}Route._addFileChildren(${route}RouteChildren)`
 
       return [
         childConfigs.join('\n'),
