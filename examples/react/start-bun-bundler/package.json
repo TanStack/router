@@ -1,0 +1,32 @@
+{
+  "name": "tanstack-start-bun-bundler",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "bun run ./scripts/dev.ts",
+    "build": "bun run ./scripts/build.ts",
+    "build:nitro": "bun run ./scripts/build-nitro.ts",
+    "build:standalone": "bun run ./scripts/build-standalone.ts",
+    "start": "bun run ./dist/server/host.js",
+    "start:nitro": "node .output/server/index.mjs",
+    "start:standalone": "./dist/server/start",
+    "smoke": "bun run ./scripts/smoke.ts",
+    "smoke:nitro": "bun run ./scripts/smoke-nitro.ts",
+    "smoke:standalone": "bun run ./scripts/smoke-standalone.ts",
+    "test:e2e": "bun run smoke"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "workspace:*",
+    "@tanstack/react-start": "workspace:*",
+    "@tanstack/router-plugin": "workspace:*",
+    "nitro": "npm:nitro-nightly@latest",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.2.22",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "typescript": "^5.9.0"
+  }
+}

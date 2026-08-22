@@ -445,7 +445,33 @@ bun run server.ts
 🚀 Server running at http://localhost:3000
 ```
 
-For a complete working example, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+For a complete working example of **Vite build + Bun HTTP host**, check out the [TanStack Start + Bun example](https://github.com/TanStack/router/tree/main/examples/react/start-bun) in this repository.
+
+### Bun as the bundler (experimental)
+
+There is also an experimental path that uses **Bun as the bundler** (no Vite), via `@tanstack/react-start/plugin/bun`:
+
+```ts
+import { tanstackStart } from '@tanstack/react-start/plugin/bun'
+
+const start = tanstackStart({ bun: { port: 3000 } })
+await start.build()
+// or: await start.dev()
+```
+
+Default production output matches the **Rsbuild-style** host: `dist/client` + `dist/server/server.js` + `dist/server/host.js` (static assets then `fetch`). Deploy `dist/` and run `bun dist/server/host.js`. See the [`start-bun-bundler`](https://github.com/TanStack/router/tree/main/examples/react/start-bun-bundler) example. Solid/Vue mirrors: `@tanstack/solid-start/plugin/bun`, `@tanstack/vue-start/plugin/bun`.
+
+**Optional extras (production only, experimental):** `bun.nitro` (post-build Nitro 3 → `.output`; cannot reuse `nitro/vite`) and `bun.standalone` (`Bun.build({ compile })` single OS/arch executable embedding `dist/client`). Prefer the default `host.js` path unless you need those outputs. Details and scripts live in the React example README / [`ARCHITECTURE.md`](https://github.com/TanStack/router/blob/main/packages/start-plugin-core/src/bun/ARCHITECTURE.md).
+
+**Dev HMR:** experimental ESM middleware + HMR + React Refresh. Entry aliases and define map are applied in the transform path; built `/assets` scripts are scrubbed from SSR HTML/manifest so they do not fight the ESM-dev client. Granularity and stability are not on par with Vite; some client changes may still trigger a full rebuild.
+
+**Serialization adapters:** pass `serializationAdapters` through the framework Start options (same as Vite/Rsbuild). The Bun adapter wires them into `#tanstack-start-plugin-adapters` for client and server builds.
+
+**Known limitations:**
+
+- **No RSC** — React Server Components are not supported on the Bun bundler adapter.
+- Import protection is a simplified deny/mock path (no full Vite-style graph tracing / source maps yet).
+- Optional `bun.nitro` / `bun.standalone` are production-only and experimental.
 
 ### Appwrite Sites
 

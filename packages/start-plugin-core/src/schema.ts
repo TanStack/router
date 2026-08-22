@@ -61,7 +61,7 @@ export function parseStartConfig(
   root: string,
 ) {
   const rawOptions = opts ?? {}
-  const rawRouterOptions = rawOptions.router ?? {}
+  const rawRouterOptions = (rawOptions.router ?? {}) as Record<string, unknown>
   const options = tanstackStartOptionsSchema.parse(opts)
 
   const srcDirectory = options.srcDirectory
@@ -69,13 +69,17 @@ export function parseStartConfig(
   const routesDirectory = path.resolve(
     root,
     srcDirectory,
-    rawRouterOptions.routesDirectory ?? 'routes',
+    (typeof rawRouterOptions.routesDirectory === 'string'
+      ? rawRouterOptions.routesDirectory
+      : undefined) ?? 'routes',
   )
 
   const generatedRouteTree = path.resolve(
     root,
     srcDirectory,
-    rawRouterOptions.generatedRouteTree ?? 'routeTree.gen.ts',
+    (typeof rawRouterOptions.generatedRouteTree === 'string'
+      ? rawRouterOptions.generatedRouteTree
+      : undefined) ?? 'routeTree.gen.ts',
   )
 
   return {
@@ -85,6 +89,11 @@ export function parseStartConfig(
       ...getConfig(
         {
           ...options.router,
+          // Preserve autoCodeSplitting (omitted from zod router schema but
+          // still honored by @tanstack/router-plugin getConfig).
+          ...(typeof rawRouterOptions.autoCodeSplitting === 'boolean'
+            ? { autoCodeSplitting: rawRouterOptions.autoCodeSplitting }
+            : {}),
           routesDirectory,
           generatedRouteTree,
         },
