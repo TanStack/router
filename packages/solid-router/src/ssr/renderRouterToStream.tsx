@@ -6,7 +6,6 @@ import {
 } from '@tanstack/router-core/ssr/server'
 import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
-import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 
 const noop = () => {}

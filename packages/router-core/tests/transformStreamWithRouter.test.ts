@@ -4,8 +4,6 @@
 // (TanStack/router#7402) without relying on GC, timing of real I/O, or
 // process.memoryUsage(). On-demand backpressure/external-memory
 // assertions live in transformStreamBackpressure.perf.test.ts.
-import { ReadableStream } from 'node:stream/web'
-import { PassThrough } from 'node:stream'
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
@@ -13,7 +11,6 @@ import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from '../src/ssr/constants'
 import { createSsrStreamResponse } from '../src/ssr/handlerCallback'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import {
-  transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
   transformStreamWithRouter,
 } from '../src/ssr/transformStreamWithRouter'
@@ -1025,35 +1022,6 @@ describe('transformStreamWithRouter — injected HTML ordering', () => {
     }
 
     expect(aborts).toBe(0)
-  })
-
-  test('onAbort: fires when pipeable wrapper consumer destroys', async () => {
-    const { router, finishSerialization } = makeRouter()
-    finishSerialization()
-
-    const pass = new PassThrough()
-    let aborts = 0
-    const out = transformPipeableStreamWithRouter(router as any, pass, {
-      onAbort: () => aborts++,
-    })
-    // Swallow expected error emission from destroy().
-    out.on('error', () => {})
-
-    // Push something so the read loop is engaged.
-    pass.write('<p>x</p>')
-    // Wait a tick to let reader start.
-    await new Promise((r) => setImmediate(r))
-
-    // Destroy downstream — simulates Node response being closed by client.
-    out.destroy(new Error('client gone'))
-    // Allow microtasks + readable webstream cancel propagation.
-    await new Promise((r) => setImmediate(r))
-    await Promise.resolve()
-
-    expect(aborts).toBe(1)
-
-    // Cleanup: destroy upstream so we don't leak.
-    if (!pass.destroyed) pass.destroy()
   })
 
   test('onAbort: lifetime timeout triggers abort exactly once', async () => {
