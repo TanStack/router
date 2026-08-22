@@ -758,6 +758,26 @@ describe('findRouteMatch', () => {
 
       const prioritized = makeTree(['/{$}A', '/{$}ba'])
       expect(findRouteMatch('/ba', prioritized)?.route.id).toBe('/{$}ba')
+
+      const sensitive = processRouteTree({
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/f/{$}İ',
+            fullPath: '/f/{$}İ',
+            path: '/f/{$}İ',
+            options: { caseSensitive: true },
+          },
+        ],
+      }).processedTree
+      expect(findRouteMatch('/f/xİ', sensitive)?.rawParams).toEqual({
+        '*': 'x',
+        _splat: 'x',
+      })
+      expect(findRouteMatch('/f/xi\u0307', sensitive)).toBeNull()
     })
     it('multi-segment wildcard w/ prefix and suffix', () => {
       const tree = makeTree(['/file{$}end'])

@@ -394,10 +394,14 @@ function sortDynamic(
   return 0
 }
 
-function getSuffixStart(value: string, suffix: string) {
-  const length = suffix.toLowerCase().length
-  let start = value.length - length
-  while (value.slice(start).toLowerCase().length > length) {
+function getSuffixStart(value: string, suffix: string, caseSensitive: boolean) {
+  if (caseSensitive) {
+    return value.length - suffix.length
+  }
+  // Lowercasing can expand Unicode characters, changing the raw suffix length.
+  const foldedLength = suffix.length
+  let start = value.length - foldedLength
+  while (value.slice(start).toLowerCase().length > foldedLength) {
     start++
   }
   return start
@@ -866,7 +870,9 @@ function extractParams<T extends RouteLike>(
       const n = node
       const value = path.substring(
         currentPathIndex + (n.prefix?.length ?? 0),
-        n.suffix ? getSuffixStart(path, n.suffix) : path.length,
+        n.suffix
+          ? getSuffixStart(path, n.suffix, n.caseSensitive)
+          : path.length,
       )
       const splat = decodeURIComponent(value)
       // TODO: Deprecate *
@@ -1071,7 +1077,9 @@ function getNodeMatch<T extends RouteLike>(
         if (suffix) {
           if (isBeyondPath) continue
           const end = parts.slice(index).join('/')
-          const suffixPart = end.slice(getSuffixStart(end, suffix))
+          const suffixPart = end.slice(
+            getSuffixStart(end, suffix, segment.caseSensitive),
+          )
           if (
             (segment.caseSensitive ? suffixPart : suffixPart.toLowerCase()) !==
             suffix
