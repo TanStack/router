@@ -627,6 +627,31 @@ describe('findRouteMatch', () => {
         '/A{$id}B',
       )
     })
+    it('case sensitivity does not distinguish plain dynamic segments', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/$first',
+            fullPath: '/$first',
+            path: '$first',
+            options: { caseSensitive: false },
+          },
+          {
+            id: '/$second',
+            fullPath: '/$second',
+            path: '$second',
+            options: { caseSensitive: true },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+
+      expect(findRouteMatch('/value', processedTree)?.route.id).toBe('/$first')
+    })
   })
 
   describe('basic matching', () => {
@@ -686,6 +711,22 @@ describe('findRouteMatch', () => {
           '/file{-$id}.txt',
         )
       })
+      it.each([
+        ['/ab{$id}bc', '/abbc', { id: '' }],
+        ['/ab{-$id}bc', '/abbc', {}],
+        ['/ab{$}bc', '/abbc', { '*': '', _splat: '' }],
+        ['/ab{$}bc', '/abfoo/barbc', { '*': 'foo/bar', _splat: 'foo/bar' }],
+      ] as const)(
+        'does not match overlapping affixes for %s',
+        (route, path, rawParams) => {
+          const tree = makeTree([route])
+          expect(findRouteMatch('/abc', tree)).toBeNull()
+          expect(findRouteMatch(`${path}x`, tree)).toBeNull()
+          const match = findRouteMatch(path, tree)
+          expect(match?.route.id).toBe(route)
+          expect(match?.rawParams).toEqual(rawParams)
+        },
+      )
     })
 
     it('optional at the end can still be omitted', () => {
@@ -1676,7 +1717,7 @@ describe('findRouteMatch', () => {
                   "wildcard": null,
                 },
               ],
-              "prefix": undefined,
+              "prefix": "",
               "priority": 0,
               "route": null,
               "static": null,
@@ -1703,7 +1744,7 @@ describe('findRouteMatch', () => {
                   "wildcard": null,
                 },
               },
-              "suffix": undefined,
+              "suffix": "",
               "wildcard": null,
             },
           ],
