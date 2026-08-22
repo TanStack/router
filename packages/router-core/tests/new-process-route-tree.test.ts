@@ -686,12 +686,19 @@ describe('findRouteMatch', () => {
           '/file{-$id}.txt',
         )
       })
-      it.each(['/ab{$id}bc', '/ab{-$id}bc', '/ab{$}bc'])(
+      it.each([
+        ['/ab{$id}bc', '/abbc', { id: '' }],
+        ['/ab{-$id}bc', '/abbc', {}],
+        ['/ab{$}bc', '/abbc', { '*': '', _splat: '' }],
+        ['/ab{$}bc', '/abfoo/barbc', { '*': 'foo/bar', _splat: 'foo/bar' }],
+      ] as const)(
         'does not match overlapping affixes for %s',
-        (route) => {
+        (route, path, rawParams) => {
           const tree = makeTree([route])
           expect(findRouteMatch('/abc', tree)).toBeNull()
-          expect(findRouteMatch('/abbc', tree)?.route.id).toBe(route)
+          const match = findRouteMatch(path, tree)
+          expect(match?.route.id).toBe(route)
+          expect(match?.rawParams).toEqual(rawParams)
         },
       )
     })
