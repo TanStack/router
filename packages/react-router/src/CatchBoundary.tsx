@@ -11,36 +11,41 @@ export class CatchBoundary extends React.Component<{
   errorComponent?: ErrorRouteComponent
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: Error | null; resetKey?: unknown }
+  // Tracked separately from the value so thrown falsy values still render the boundary
+  state = { error: null, hasError: false } as {
+    error: Error | null
+    hasError: boolean
+    resetKey?: unknown
+  }
 
   static getDerivedStateFromProps(
     props: { getResetKey: () => unknown },
-    state: { resetKey?: unknown; error: Error | null },
+    state: { resetKey?: unknown; error: Error | null; hasError: boolean },
   ) {
     const resetKey = props.getResetKey()
 
-    if (state.error && state.resetKey !== resetKey) {
-      return { resetKey, error: null }
+    if (state.hasError && state.resetKey !== resetKey) {
+      return { resetKey, error: null, hasError: false }
     }
 
     return { resetKey }
   }
   static getDerivedStateFromError(error: Error) {
-    return { error }
+    return { error, hasError: true }
   }
   reset = () => {
-    this.setState({ error: null })
+    this.setState({ error: null, hasError: false })
   }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.props.onCatch?.(error, errorInfo)
   }
   render() {
     const error = this.state.error
-    if (error) {
+    if (this.state.hasError) {
       const element = React.createElement(
         this.props.errorComponent ?? ErrorComponent,
         {
-          error,
+          error: error as Error,
           reset: this.reset,
         },
       )
@@ -88,7 +93,7 @@ export function ErrorComponent({ error }: { error: any }) {
               overflow: 'auto',
             }}
           >
-            {error.message ? <code>{error.message}</code> : null}
+            {error?.message ? <code>{error.message}</code> : null}
           </pre>
         </div>
       ) : null}
