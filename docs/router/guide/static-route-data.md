@@ -202,9 +202,9 @@ export const Route = createFileRoute('/_sidebar/home')({
 })
 ```
 
-Routes that match no registered prefix fall back to `StaticDataRouteOption`, so the registry composes with the augmentations above. If several registered prefixes match the same route id (for example `/_sidebar` and `/_sidebar/settings`), `staticData` accepts the union of the registered shapes.
+A matching prefix fully replaces the global static data shape for those routes: `staticData` is typed as exactly the registered shape, and a `StaticDataRouteOption` augmentation no longer applies there — even one with required properties, as in [Enforcing Static Data](#enforcing-static-data) above. Routes that match no registered prefix keep the plain `StaticDataRouteOption` behavior, unchanged. If several registered prefixes match the same route id (for example `/_sidebar` and `/_sidebar/settings`), `staticData` accepts the union of the registered shapes.
 
-Unlike `StaticDataRouteOption`, prefix-scoped `staticData` is always optional to declare, even when the registered shape has required properties: the registry constrains the shape of `staticData` where it is provided, not its presence. This lets a layout route declare defaults while its children override them selectively.
+Prefix-scoped `staticData` is always optional to declare, even when the registered shape has required properties: the registry constrains the shape of `staticData` where it is provided, not its presence. This lets a layout route declare defaults while its children override them selectively.
 
 You can look up the shape registered for a given route id with `StaticDataByRouteId`, which is useful when typing your own utilities that read `staticData`:
 
@@ -215,7 +215,7 @@ You can look up the shape registered for a given route id with `StaticDataByRout
 ```tsx
 import type { StaticDataByRouteId } from '@tanstack/react-router'
 
-// SidebarPageConfig — '/_sidebar/home' matches the '/_sidebar' prefix
+// { appBar?: { title: string } } — '/_sidebar/home' matches the '/_sidebar' prefix
 type HomeStaticData = StaticDataByRouteId<'/_sidebar/home'>
 ```
 
@@ -224,7 +224,7 @@ type HomeStaticData = StaticDataByRouteId<'/_sidebar/home'>
 ```tsx
 import type { StaticDataByRouteId } from '@tanstack/solid-router'
 
-// SidebarPageConfig — '/_sidebar/home' matches the '/_sidebar' prefix
+// { appBar?: { title: string } } — '/_sidebar/home' matches the '/_sidebar' prefix
 type HomeStaticData = StaticDataByRouteId<'/_sidebar/home'>
 ```
 

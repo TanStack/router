@@ -152,6 +152,7 @@ export type {
   FileBaseRouteOptions,
   BaseRouteOptions,
   UpdatableRouteOptions,
+  UpdatableRouteOptionsWithoutStaticData,
   RouteLoaderFn,
   LoaderFnContext,
   MakeRouteMatch,

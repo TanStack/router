@@ -1,6 +1,11 @@
 import { expectTypeOf, test } from 'vitest'
 import { createFileRoute, createRootRoute, createRoute } from '../src'
-import type { StaticDataByRouteId, StaticDataRouteOption } from '../src'
+import type {
+  AnyRoute,
+  StaticDataByRouteId,
+  StaticDataRouteOption,
+  UpdatableStaticRouteOptionByRouteId,
+} from '../src'
 
 interface PillarStaticData {
   layout: 'pillar'
@@ -90,7 +95,6 @@ test('overlapping registered prefixes union their shapes', () => {
     StaticDataByRouteId<'/_staticPillar/nested/leaf'>
   >().toEqualTypeOf<PillarStaticData | NestedStaticData>()
 
-  // a route under both prefixes accepts either registered shape
   createRoute({
     getParentRoute: () => pillarRoute,
     path: 'nested/leaf',
@@ -154,6 +158,28 @@ test('update() keeps the StaticDataRouteOption behavior outside registered prefi
   legalRoute.update({ staticData: { anything: 'goes' } })
 })
 
+test('a matching prefix replaces the staticData option instead of intersecting it', () => {
+  // exactly the registered shape, not `StaticDataRouteOption & <shape>`
+  expectTypeOf<
+    Parameters<typeof pillarRoute.update>[0]['staticData']
+  >().toEqualTypeOf<PillarStaticData | undefined>()
+
+  const legalRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: 'legal',
+  })
+
+  expectTypeOf<
+    Parameters<typeof legalRoute.update>[0]['staticData']
+  >().toEqualTypeOf<StaticDataRouteOption | undefined>()
+
+  // That a prefix also lifts a *required* `StaticDataRouteOption`
+  // augmentation (the "Enforcing Static Data" pattern) cannot be asserted
+  // here: augmenting that interface would leak into every other test of
+  // this shared tsconfig project, so that case is pinned only by the
+  // implementation of `UpdatableStaticRouteOptionByRouteId`.
+})
+
 test('file-based routes type staticData by the registered prefix of their id', () => {
   expectTypeOf(
     pillarFileChildRoute.id,
@@ -176,4 +202,17 @@ test('routes outside any registered prefix keep the StaticDataRouteOption behavi
   })
 
   expectTypeOf(aboutRoute.id).toEqualTypeOf<'/about'>()
+})
+
+test('non-literal route ids type staticData permissively once a prefix is registered', () => {
+  // Wide instantiations such as `AnyRoute` cover prefixed routes (optional,
+  // prefix-shaped staticData) and unprefixed routes (StaticDataRouteOption)
+  // at once, so non-literal ids widen to `{ staticData?: any }`.
+  expectTypeOf<UpdatableStaticRouteOptionByRouteId<string>>().toEqualTypeOf<{
+    staticData?: any
+  }>()
+
+  // ...which keeps prefixed and unprefixed routes assignable to AnyRoute.
+  const routes: Array<AnyRoute> = [rootRoute, pillarRoute, pillarFileChildRoute]
+  expectTypeOf(routes).toEqualTypeOf<Array<AnyRoute>>()
 })

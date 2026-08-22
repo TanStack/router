@@ -8,6 +8,7 @@ import type {
   Route,
   RouteConstraints,
   UpdatableRouteOptions,
+  UpdatableRouteOptionsWithoutStaticData,
   UpdatableStaticRouteOptionByRouteId,
 } from './route'
 import type { AnyValidator } from './validators'
@@ -67,7 +68,7 @@ export type FileRouteOptions<
   TServerMiddlewares,
   THandlers
 > &
-  UpdatableRouteOptions<
+  UpdatableRouteOptionsWithoutStaticData<
     TParentRoute,
     TId,
     TFullPath,

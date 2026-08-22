@@ -233,14 +233,16 @@ export type UpdatableStaticRouteOption = {} extends StaticDataRouteOption
 /**
  * Augmentable registry mapping a route-id prefix (typically a pathless
  * layout route, e.g. `/_sidebar`) to the `staticData` shape accepted by
- * every route whose id starts with that prefix. Routes that match no
- * prefix fall back to `StaticDataRouteOption`.
+ * every route whose id starts with that prefix. A matching prefix replaces
+ * `StaticDataRouteOption` for those routes entirely; routes that match no
+ * prefix keep the plain `StaticDataRouteOption` behavior.
  *
  * Prefix-scoped `staticData` is always optional to declare, even when the
- * registered shape has required properties: the registry constrains the
- * shape of `staticData` where it is provided, not its presence. When
- * several registered prefixes match the same route id, `staticData`
- * accepts the union of their shapes.
+ * registered shape has required properties or `StaticDataRouteOption` is
+ * augmented with required properties: the registry constrains the shape of
+ * `staticData` where it is provided, not its presence. When several
+ * registered prefixes match the same route id, `staticData` accepts the
+ * union of their shapes.
  *
  * @example
  * ```ts
@@ -254,13 +256,16 @@ export type UpdatableStaticRouteOption = {} extends StaticDataRouteOption
  */
 export interface StaticDataByRoutePrefix {}
 
-type StaticDataPrefixMatch<TRouteId> = {
-  [K in keyof StaticDataByRoutePrefix]: TRouteId extends
-    | K
-    | `${K & string}/${string}`
-    ? StaticDataByRoutePrefix[K]
-    : never
-}[keyof StaticDataByRoutePrefix]
+type StaticDataPrefixMatch<TRouteId> = string extends TRouteId
+  ? // Non-literal ids (`string`, `any`) never match a registered prefix.
+    never
+  : {
+      [K in keyof StaticDataByRoutePrefix]: TRouteId extends
+        | K
+        | `${K & string}/${string}`
+        ? StaticDataByRoutePrefix[K]
+        : never
+    }[keyof StaticDataByRoutePrefix]
 
 /**
  * Maps a route id to the `staticData` shape registered for its prefix in
@@ -268,9 +273,9 @@ type StaticDataPrefixMatch<TRouteId> = {
  * no prefix matches. Useful for typing utilities that read `staticData`
  * for a known route id.
  *
- * The result is the registered shape only, not the composed constraint:
- * routes under a matched prefix additionally accept `StaticDataRouteOption`
- * members. When several registered prefixes match, the shapes union.
+ * A matched prefix replaces `StaticDataRouteOption`, so the result is
+ * exactly the shape such routes accept. When several registered prefixes
+ * match, the shapes union.
  */
 export type StaticDataByRouteId<TRouteId> = [
   StaticDataPrefixMatch<TRouteId>,
@@ -279,16 +284,30 @@ export type StaticDataByRouteId<TRouteId> = [
   : StaticDataPrefixMatch<TRouteId>
 
 /**
- * Narrows `staticData` to the shape registered for the route id's prefix.
- * Evaluates to `unknown` (no additional constraint) when no prefix matches,
- * preserving the plain `StaticDataRouteOption` behavior, including required
- * `staticData` when that interface is augmented with required properties.
+ * Computes the `staticData` route option for a route id. A prefix
+ * registered in `StaticDataByRoutePrefix` replaces `StaticDataRouteOption`
+ * for the routes it matches: `staticData` becomes optional and accepts
+ * exactly the registered shape (a union when several prefixes match).
+ * When no prefix matches, evaluates to the plain
+ * `UpdatableStaticRouteOption`, including required `staticData` when
+ * `StaticDataRouteOption` is augmented with required properties.
+ *
+ * While `StaticDataByRoutePrefix` is empty this is always the plain
+ * `UpdatableStaticRouteOption`. Once a prefix is registered, non-literal
+ * route ids (`string`, and `any` as in `AnyRoute` instantiations) widen
+ * to the permissive `{ staticData?: any }` so that prefixed (optional,
+ * prefix-shaped) and unprefixed (`StaticDataRouteOption`) routes both
+ * stay assignable to them.
  */
 export type UpdatableStaticRouteOptionByRouteId<TRouteId> = [
-  StaticDataPrefixMatch<TRouteId>,
+  keyof StaticDataByRoutePrefix,
 ] extends [never]
-  ? unknown
-  : { staticData?: StaticDataPrefixMatch<TRouteId> }
+  ? UpdatableStaticRouteOption
+  : string extends TRouteId
+    ? { staticData?: any }
+    : [StaticDataPrefixMatch<TRouteId>] extends [never]
+      ? UpdatableStaticRouteOption
+      : { staticData?: StaticDataPrefixMatch<TRouteId> }
 
 export type MetaDescriptor =
   | { charSet: 'utf-8' }
@@ -789,8 +808,14 @@ export interface Route<
   rank: number
   to: TrimPathRight<TFullPath>
   init: (opts: { originalIndex: number }) => void
-  update: (
-    options: UpdatableRouteOptions<
+  // Declared method-style (not as a function-typed property) so that
+  // `update` parameters are related bivariantly: `staticData` varies by
+  // route id once a prefix is registered, and strict contravariance would
+  // otherwise make routes with diverging `staticData` (e.g. prefixed
+  // routes) unassignable to `AnyRoute`.
+  // eslint-disable-next-line @typescript-eslint/method-signature-style
+  update(
+    options: UpdatableRouteOptionsWithoutStaticData<
       TParentRoute,
       TCustomId,
       TFullPath,
@@ -803,7 +828,7 @@ export interface Route<
       TBeforeLoadFn
     > &
       UpdatableStaticRouteOptionByRouteId<TId>,
-  ) => this
+  ): this
   lazy: RouteLazyFn<
     Route<
       TRegister,
@@ -952,7 +977,7 @@ export type RouteOptions<
   TServerMiddlewares,
   THandlers
 > &
-  UpdatableRouteOptions<
+  UpdatableRouteOptionsWithoutStaticData<
     NoInfer<TParentRoute>,
     NoInfer<TCustomId>,
     NoInfer<TFullPath>,
@@ -964,7 +989,10 @@ export type RouteOptions<
     NoInfer<TRouteContextFn>,
     NoInfer<TBeforeLoadFn>
   > &
-  UpdatableStaticRouteOptionByRouteId<NoInfer<TId>>
+  // Not wrapped in `NoInfer`: conditional types are never inference
+  // sources, and a retained `NoInfer` substitution would defeat the
+  // route-id prefix matching (and its `any` guard) above.
+  UpdatableStaticRouteOptionByRouteId<TId>
 
 export type RouteContextFn<
   in out TParentRoute extends AnyRoute,
@@ -1311,7 +1339,12 @@ export interface DefaultUpdatableRouteOptionsExtensions {
 
 export interface UpdatableRouteOptionsExtensions extends DefaultUpdatableRouteOptionsExtensions {}
 
-export interface UpdatableRouteOptions<
+/**
+ * Intersect with `UpdatableStaticRouteOptionByRouteId` to type
+ * `staticData` by route id, or use `UpdatableRouteOptions` for the plain
+ * `StaticDataRouteOption` behavior.
+ */
+export interface UpdatableRouteOptionsWithoutStaticData<
   in out TParentRoute extends AnyRoute,
   in out TRouteId,
   in out TFullPath,
@@ -1322,8 +1355,7 @@ export interface UpdatableRouteOptions<
   in out TRouterContext,
   in out TRouteContextFn,
   in out TBeforeLoadFn,
->
-  extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
+> extends UpdatableRouteOptionsExtensions {
   /**
    * If true, this route will be matched as case-sensitive
    *
@@ -1469,6 +1501,33 @@ export interface UpdatableRouteOptions<
     >
   >
 }
+
+export interface UpdatableRouteOptions<
+  in out TParentRoute extends AnyRoute,
+  in out TRouteId,
+  in out TFullPath,
+  in out TParams,
+  in out TSearchValidator,
+  in out TLoaderFn,
+  in out TLoaderDeps,
+  in out TRouterContext,
+  in out TRouteContextFn,
+  in out TBeforeLoadFn,
+>
+  extends
+    UpdatableRouteOptionsWithoutStaticData<
+      TParentRoute,
+      TRouteId,
+      TFullPath,
+      TParams,
+      TSearchValidator,
+      TLoaderFn,
+      TLoaderDeps,
+      TRouterContext,
+      TRouteContextFn,
+      TBeforeLoadFn
+    >,
+    UpdatableStaticRouteOption {}
 
 export type RouteLoaderFn<
   in out TRegister,
@@ -2004,7 +2063,7 @@ export class BaseRoute<
   }
 
   update = (
-    options: UpdatableRouteOptions<
+    options: UpdatableRouteOptionsWithoutStaticData<
       TParentRoute,
       TCustomId,
       TFullPath,
