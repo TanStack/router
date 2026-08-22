@@ -2,9 +2,7 @@ import { createBrowserHistory, parseHref } from '@tanstack/history'
 import { isServer, loadServerRoute } from '@tanstack/router-core/isServer'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
-  decodePath,
   deepEqual,
-  encodePathLikeUrl,
   findLast,
   functionalUpdate,
   hasKeys,
@@ -13,6 +11,13 @@ import {
   nullReplaceEqualDeep,
   replaceEqualDeep,
 } from './utils'
+import { interpolatePath, resolvePath, trimPath, trimPathRight } from './path'
+import type { EncodedPathParam } from './string-encoding'
+import {
+  compileDecodeCharMap,
+  decodePath,
+  encodePathLikeUrl,
+} from './string-encoding'
 import {
   buildRouteBranch,
   findFlatMatch,
@@ -21,13 +26,6 @@ import {
   processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
-import {
-  compileDecodeCharMap,
-  interpolatePath,
-  resolvePath,
-  trimPath,
-  trimPathRight,
-} from './path'
 import { createLRUCache } from './lru-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
@@ -1112,7 +1110,7 @@ export class RouterCore<
     LightweightRouteMatchCacheEntry
   >()
   isServer!: boolean
-  pathParamsDecoder?: (encoded: string) => string
+  pathParamsDecoder?: (encoded: EncodedPathParam) => string
   protocolAllowlist!: Set<string>
 
   /**

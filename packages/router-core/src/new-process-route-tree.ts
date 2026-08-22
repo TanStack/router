@@ -1,5 +1,6 @@
 import { invariant } from './invariant'
 import { createLRUCache } from './lru-cache'
+import { decodeParam } from './string-encoding'
 import { last } from './utils'
 import type { LRUCache } from './lru-cache'
 
@@ -633,21 +634,11 @@ export function findRouteMatch<
   const cached = processedTree.matchCache.get(key)
   if (cached !== undefined) return cached
   path ||= '/'
-  let result: RouteMatch<T> | null
-
-  try {
-    result = findMatch(
-      path,
-      processedTree.segmentTree,
-      fuzzy,
-    ) as RouteMatch<T> | null
-  } catch (err) {
-    if (err instanceof URIError) {
-      result = null
-    } else {
-      throw err
-    }
-  }
+  const result = findMatch(
+    path,
+    processedTree.segmentTree,
+    fuzzy,
+  ) as RouteMatch<T> | null
 
   if (result) result.branch = buildRouteBranch(result.route)
   processedTree.matchCache.set(key, result)
@@ -753,12 +744,20 @@ function findMatch<T extends RouteLike>(
   rawParams: Record<string, string>
 } | null {
   const parts = path.split('/')
-  const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
-  if (!leaf) return null
-  const [rawParams] = extractParams(path, parts, leaf)
-  return {
-    route: leaf.node.route!,
-    rawParams,
+  // extractParams throws URIError when a param value contains malformed
+  // percent-encoding. This is the single choke point that converts that into
+  // "no match" — all public matching entry points funnel through here.
+  try {
+    const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
+    if (!leaf) return null
+    const [rawParams] = extractParams(path, parts, leaf)
+    return {
+      route: leaf.node.route!,
+      rawParams,
+    }
+  } catch (err) {
+    if (err instanceof URIError) return null
+    throw err
   }
 }
 
@@ -829,10 +828,10 @@ function extractParams<T extends RouteLike>(
           nodePart.length - sufLength - 1,
         )
         const value = part!.substring(preLength, part!.length - sufLength)
-        rawParams[name] = decodeURIComponent(value)
+        rawParams[name] = decodeParam(value)
       } else {
         const name = nodePart.substring(1)
-        rawParams[name] = decodeURIComponent(part!)
+        rawParams[name] = decodeParam(part!)
       }
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       if (leaf.skipped & (1 << nodeIndex)) {
@@ -852,14 +851,14 @@ function extractParams<T extends RouteLike>(
         node.suffix || node.prefix
           ? part!.substring(preLength, part!.length - sufLength)
           : part
-      if (value) rawParams[name] = decodeURIComponent(value)
+      if (value) rawParams[name] = decodeParam(value)
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
       const value = path.substring(
         currentPathIndex + (n.prefix?.length ?? 0),
         path.length - (n.suffix?.length ?? 0),
       )
-      const splat = decodeURIComponent(value)
+      const splat = decodeParam(value)
       // TODO: Deprecate *
       rawParams['*'] = splat
       rawParams._splat = splat
@@ -1210,7 +1209,7 @@ function getNodeMatch<T extends RouteLike>(
     }
     const splat = sliceIndex === path.length ? '/' : path.slice(sliceIndex)
     bestFuzzy.rawParams ??= Object.create(null)
-    bestFuzzy.rawParams!['**'] = decodeURIComponent(splat)
+    bestFuzzy.rawParams!['**'] = decodeParam(splat)
     return bestFuzzy
   }
 
