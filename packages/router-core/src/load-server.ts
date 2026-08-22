@@ -620,6 +620,7 @@ async function projectLane(
   lane: ReducedLane,
   signal?: AbortSignal,
 ): Promise<void> {
+  let projections: Array<[AnyRouteMatch, Promise<any>]> | undefined
   for (const match of lane.matches) {
     const routeOptions = getRoute(router, match).options
     if (routeOptions.head || routeOptions.scripts || routeOptions.headers) {
@@ -630,12 +631,27 @@ async function projectLane(
         params: match.params,
         loaderData: match.loaderData,
       }
+      let projection
       try {
-        const [head, scripts, headers] = await Promise.all([
+        projection = Promise.all([
           routeOptions.head?.(context),
           routeOptions.scripts?.(context),
           routeOptions.headers?.(context),
         ])
+      } catch (cause) {
+        projection = Promise.reject(cause)
+      }
+      void projection.catch(() => {})
+      ;(projections ??= []).push([match, projection])
+    }
+    if (match.ssr === false || match.status !== 'success' || match._notFound) {
+      break
+    }
+  }
+  if (projections) {
+    for (const [match, projection] of projections) {
+      try {
+        const [head, scripts, headers] = await projection
         signal?.throwIfAborted()
         match.meta = head?.meta
         match.links = head?.links
@@ -647,9 +663,6 @@ async function projectLane(
         signal?.throwIfAborted()
         console.error(cause)
       }
-    }
-    if (match.ssr === false || match.status !== 'success' || match._notFound) {
-      break
     }
   }
 }
