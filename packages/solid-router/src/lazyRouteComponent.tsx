@@ -1,7 +1,5 @@
+import { lazy } from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
-import { Dynamic } from '@solidjs/web'
-import { createMemo } from 'solid-js'
-import { isServer } from '@tanstack/router-core/isServer'
 import type { AsyncRouteComponent } from './route'
 
 export function lazyRouteComponent<
@@ -13,81 +11,60 @@ export function lazyRouteComponent<
 ): T[TKey] extends (props: infer TProps) => any
   ? AsyncRouteComponent<TProps>
   : never {
-  let loadPromise: Promise<any> | undefined
-  let comp: T[TKey] | T['default']
-  let error: any
+  const resolvedExport = (exportName as string | undefined) ?? 'default'
+  let preloadPromise: Promise<void> | undefined
 
-  const load = () => {
-    if (!loadPromise) {
-      error = undefined
-      loadPromise = importer()
-        .then((res) => {
-          // Keep browser preload behavior unchanged; SSR can reuse the import.
-          if (!(isServer ?? typeof window === 'undefined')) {
-            loadPromise = undefined
-          }
-          comp = res[exportName ?? 'default']
-          return comp
-        })
-        .catch((err) => {
-          loadPromise = undefined
-          error = err
-        })
-    }
-
-    return loadPromise
-  }
-
-  const lazyComp = function Lazy(props: any) {
-    // Now that we're out of preload and into actual render path,
-    // throw the error if it was a module not found error during preload
-    if (error) {
-      // If the load fails due to module not found, it may mean a new version of
-      // the build was deployed and the user's browser is still using an old version.
-      // If this happens, the old version in the user's browser would have an outdated
-      // URL to the lazy module.
-      // In that case, we want to attempt one window refresh to get the latest.
-      if (isModuleNotFoundError(error)) {
-        // We don't want an error thrown from preload in this case, because
-        // there's nothing we want to do about module not found during preload.
-        // Record the error, recover the promise with a null return,
-        // and we will attempt module not found resolution during the render path.
-
+  // lazy()'s { export } option names which export of the resolved module is
+  // the component — a call-site literal available on both runtimes, so the
+  // module namespace passes through untouched ($$moduleUrl included, which
+  // is how server-side lazy() resolves the route chunk's client assets) and
+  // hydration claims the component synchronously from the preloaded module.
+  const comp = lazy(
+    () =>
+      importer().catch((error) => {
+        // If the load fails due to module not found, it may mean a new
+        // version of the build was deployed and the user's browser is still
+        // using an old version with an outdated URL to the lazy module. In
+        // that case, attempt one window refresh to get the latest — gated
+        // through sessionStorage so some other issue can't cause a reload
+        // loop.
         if (
+          isModuleNotFoundError(error) &&
           error instanceof Error &&
           typeof window !== 'undefined' &&
           typeof sessionStorage !== 'undefined'
         ) {
-          // Again, we want to reload one time on module not found error and not enter
-          // a reload loop if there is some other issue besides an old deploy.
-          // That's why we store our reload attempt in sessionStorage.
-          // Use error.message as key because it contains the module path that failed.
           const storageKey = `tanstack_router_reload:${error.message}`
           if (!sessionStorage.getItem(storageKey)) {
             sessionStorage.setItem(storageKey, '1')
             window.location.reload()
 
-            // Return empty component while we wait for window to reload
-            return {
-              default: () => null,
-            }
+            // The page is reloading; render nothing in the meantime.
+            return { [resolvedExport]: () => null } as unknown as T
           }
         }
-      }
 
-      // Otherwise, just throw the error
-      throw error
+        throw error
+      }),
+    { export: resolvedExport },
+  )
+
+  const load = comp.preload
+
+  // TanStack's preload contract: a memoized Promise<void> that never
+  // rejects. lazy() does not cache rejected module promises, so a failed
+  // download is retried by the next preload or render.
+  comp.preload = () => {
+    if (!preloadPromise) {
+      preloadPromise = load().then(
+        () => {},
+        () => {
+          preloadPromise = undefined
+        },
+      )
     }
-
-    if (!comp) {
-      const compResource = createMemo(load)
-      return <Dynamic component={compResource()} {...props} />
-    }
-
-    return <Dynamic component={comp} {...props} />
+    return preloadPromise
   }
 
-  ;(lazyComp as any).preload = load
-
-  return lazyComp as any
+  return comp as any
 }
