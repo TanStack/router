@@ -1116,8 +1116,7 @@ function getNodeMatch<T extends RouteLike>(
             if (prefix && !casePart.startsWith(prefix)) continue
             if (
               suffix &&
-              ((prefix &&
-                casePart.length - suffix.length < prefix.length) ||
+              ((prefix && casePart.length - suffix.length < prefix.length) ||
                 !casePart.endsWith(suffix))
             ) {
               continue
