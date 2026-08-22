@@ -627,6 +627,31 @@ describe('findRouteMatch', () => {
         '/A{$id}B',
       )
     })
+    it('case sensitivity does not distinguish plain dynamic segments', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/$first',
+            fullPath: '/$first',
+            path: '$first',
+            options: { caseSensitive: false },
+          },
+          {
+            id: '/$second',
+            fullPath: '/$second',
+            path: '$second',
+            options: { caseSensitive: true },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+
+      expect(findRouteMatch('/value', processedTree)?.route.id).toBe('/$first')
+    })
   })
 
   describe('basic matching', () => {
