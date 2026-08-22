@@ -1,7 +1,7 @@
 import { existsSync, readdirSync, realpathSync, statSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { joinURL } from 'ufo'
 import {
   applyResolvedBaseAndOutput,
   applyResolvedRouterBasepath,
@@ -9,13 +9,14 @@ import {
 } from '../config-context'
 import { escapeRegExp, normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
-import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
+import { parseStartConfig } from './schema'
 import {
-  RSBUILD_CLIENT_ASSETS_DIR,
   RSBUILD_ENVIRONMENT_NAMES,
   RSBUILD_RSC_LAYERS,
+  createRsbuildEnvironmentDefaults,
   createRsbuildEnvironmentPlan,
   createRsbuildResolvedEntryAliases,
+  resolveRsbuildAssetBase,
   resolveRsbuildOutputDirectory,
 } from './planning'
 import { registerStartCompilerTransforms } from './start-compiler-host'
@@ -29,10 +30,12 @@ import { registerClientBuildCapture } from './normalized-client-build'
 import { registerRouterPlugins } from './start-router-plugin'
 import { postBuildWithRsbuild } from './post-build'
 import { enableSwcReactServerComponents } from './swc-rsc'
+import { warnOverriddenConfig } from './enforced-config'
 import type { ServerFn } from '../start-compiler/types'
 import type { TanStackStartRsbuildPluginCoreOptions } from './types'
 import type {
   ModifyRspackConfigFn,
+  RsbuildConfig,
   RsbuildDevServer,
   RsbuildPlugin,
   RsbuildPluginAPI,
@@ -40,7 +43,8 @@ import type {
   rspack as rspackNamespaceType,
 } from '@rsbuild/core'
 import type { TanStackStartRsbuildInputConfig } from './schema'
-import type { ScriptFormat } from '@tanstack/router-core'
+
+const require = createRequire(import.meta.url)
 
 // Detect whether this plugin source is running from inside the TanStack
 // Router monorepo (packages/start-plugin-core/src/rsbuild/plugin.ts). When
@@ -80,9 +84,6 @@ export function tanStackStartRsbuild(
   const { getConfig, resolvedStartConfig } = configContext
   const serverFnProviderEnv = corePluginOpts.providerEnvironmentName
   const ssrIsProvider = corePluginOpts.ssrIsProvider
-  const scriptFormat = rsbuildClientOutputSchema.parse(
-    startPluginOpts.rsbuild?.client?.output ?? 'module',
-  ) satisfies ScriptFormat
 
   // RSC plugin instances — created lazily when rspack namespace is available
   let rscPlugins: RscPluginPair | undefined
@@ -95,6 +96,9 @@ export function tanStackStartRsbuild(
   return {
     name: 'tanstack-start-rsbuild',
     setup(api: RsbuildPluginAPI) {
+      const isDev = api.context.action === 'dev'
+      const isPreview = api.context.action === 'preview'
+
       const startCompilerEnvironments = [
         { name: RSBUILD_ENVIRONMENT_NAMES.client, type: 'client' as const },
         { name: RSBUILD_ENVIRONMENT_NAMES.server, type: 'server' as const },
@@ -108,183 +112,245 @@ export function tanStackStartRsbuild(
         .map((env) => env.name)
 
       // ---------------------------------------------------------------
-      // 1. modifyRsbuildConfig — resolve config, set up environments
+      // 1. Rsbuild config lifecycle
+      //
+      //    TanStack Start treats Rsbuild config as three ordered layers:
+      //
+      //    framework defaults -> user config -> framework enforced config
+      //
+      //    - Defaults provide working conventions, but users can override them.
+      //    - User config is the source of truth for every field Start does not
+      //      own. It is also used to resolve Start's derived config below.
+      //    - Enforced config contains invariants required by Start's runtime.
+      //      It wins over conflicting user values, which are reported together
+      //      by warnOverriddenConfig.
+      //
+      //    Environment defaults are filled after Rsbuild has merged the root
+      //    and environment configs. Framework invariants are applied through a
+      //    post hook so they win over conflicting user values.
       // ---------------------------------------------------------------
-      api.modifyRsbuildConfig((rsbuildConfig, { mergeRsbuildConfig }) => {
-        const root =
-          typeof rsbuildConfig.root === 'string'
-            ? rsbuildConfig.root
-            : process.cwd()
+      api.modifyEnvironmentConfig({
+        order: 'pre',
+        handler(environmentConfig, { name, mergeEnvironmentConfig }) {
+          const defaults = createRsbuildEnvironmentDefaults({
+            environmentName: name,
+            config: api.getRsbuildConfig(),
+            isDev,
+            rscEnabled,
+            serverFnProviderEnv,
+          })
 
-        const serverBase = rsbuildConfig.server?.base
-        const assetPrefix = rsbuildConfig.output?.assetPrefix
-        const publicBase = normalizePublicBase(
-          typeof serverBase === 'string'
-            ? serverBase
-            : typeof assetPrefix === 'string' && assetPrefix !== 'auto'
-              ? assetPrefix
-              : undefined,
-        )
-        const rootDistPath = rsbuildConfig.output?.distPath
-        const clientDistPath =
-          rsbuildConfig.environments?.[RSBUILD_ENVIRONMENT_NAMES.client]?.output
-            ?.distPath
-        const serverDistPath =
-          rsbuildConfig.environments?.[RSBUILD_ENVIRONMENT_NAMES.server]?.output
-            ?.distPath
+          return mergeEnvironmentConfig(environmentConfig, defaults)
+        },
+      })
 
-        applyResolvedBaseAndOutput({
-          resolvedStartConfig,
-          root,
-          publicBase,
-          clientOutputDirectory: resolveRsbuildOutputDirectory({
-            distPath: clientDistPath,
-            rootDistPath,
-            fallback: 'dist/client',
-            subdirectory: 'client',
-          }),
-          serverOutputDirectory: resolveRsbuildOutputDirectory({
-            distPath: serverDistPath,
-            rootDistPath,
-            fallback: 'dist/server',
-            subdirectory: 'server',
-          }),
-        })
+      // Framework invariants win over the config resolved above.
+      api.modifyRsbuildConfig({
+        order: 'post',
+        handler(userConfigWithDefaults, { mergeRsbuildConfig }) {
+          const root =
+            typeof userConfigWithDefaults.root === 'string'
+              ? userConfigWithDefaults.root
+              : process.cwd()
 
-        const { startConfig } = getConfig()
-        const routerBasepath = applyResolvedRouterBasepath({
-          resolvedStartConfig,
-          startConfig,
-        })
+          const publicBase = normalizePublicBase(
+            userConfigWithDefaults.server?.base,
+          )
+          const assetBase = {
+            dev: resolveRsbuildAssetBase({
+              config: userConfigWithDefaults,
+              environmentName: RSBUILD_ENVIRONMENT_NAMES.client,
+              action: 'dev',
+            }),
+            build: resolveRsbuildAssetBase({
+              config: userConfigWithDefaults,
+              environmentName: RSBUILD_ENVIRONMENT_NAMES.client,
+              action: 'build',
+            }),
+          }
+          const rootDistPath = userConfigWithDefaults.output?.distPath
+          const clientDistPath =
+            userConfigWithDefaults.environments?.[
+              RSBUILD_ENVIRONMENT_NAMES.client
+            ]?.output?.distPath
+          const serverDistPath =
+            userConfigWithDefaults.environments?.[
+              RSBUILD_ENVIRONMENT_NAMES.server
+            ]?.output?.distPath
 
-        const resolvedEntryPlan = configContext.resolveEntries()
-        const isDev = api.context.action === 'dev'
-        const isPreview = api.context.action === 'preview'
+          applyResolvedBaseAndOutput({
+            resolvedStartConfig,
+            root,
+            publicBase,
+            assetBase,
+            clientOutputDirectory: resolveRsbuildOutputDirectory({
+              distPath: clientDistPath,
+              rootDistPath,
+              fallback: 'dist/client',
+              subdirectory: 'client',
+            }),
+            serverOutputDirectory: resolveRsbuildOutputDirectory({
+              distPath: serverDistPath,
+              rootDistPath,
+              fallback: 'dist/server',
+              subdirectory: 'server',
+            }),
+          })
 
-        const entryAliases = createRsbuildResolvedEntryAliases({
-          entryPaths: resolvedEntryPlan.entryPaths,
-        })
+          const { startConfig } = getConfig()
+          const routerBasepath = applyResolvedRouterBasepath({
+            resolvedStartConfig,
+            startConfig,
+          })
 
-        const environmentPlan = createRsbuildEnvironmentPlan({
-          root,
-          entryAliases,
-          clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
-          serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
-          publicBase: resolvedStartConfig.basePaths.publicBase,
-          serverFnProviderEnv,
-          environmentOverrides: corePluginOpts.rsbuild?.environments,
-          scriptFormat,
-          rsc: rscOpts,
-          dev: isDev,
-        })
-        const serverFnBase = createServerFnBasePath({
-          routerBasepath,
-          serverFnBase: startConfig.serverFns.base,
-        })
-        const inlineCssEnabled =
-          !isDev && startConfig.server.build.inlineCss.enabled
+          const resolvedEntryPlan = configContext.resolveEntries()
 
-        return mergeRsbuildConfig(rsbuildConfig, {
-          source: {
-            ...(rscEnabled
-              ? {
-                  include: [
-                    // RSC needs SWC to inspect package code in node_modules so directives such as "use client" can be discovered.
-                    // This follows Rsbuild's documented broad include form for compiling node_modules, with core-js excluded:
-                    // https://rsbuild.rs/config/source/include#compile-node_modules
-                    //
-                    // TODO: Once the Rspack rule matching needed here is ready, narrow this to React-aware packages, for example via
-                    // descriptionData: { "peerDependencies.react": /./ }, so unrelated dependencies are not sent through swc-loader.
-                    {
-                      not: /[\\/]core-js[\\/]/,
-                    },
-                  ],
-                }
-              : {}),
-            define: {
-              'process.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
-              'import.meta.env.TSS_SERVER_FN_BASE':
-                JSON.stringify(serverFnBase),
-              'process.env.TSS_ROUTER_BASEPATH': JSON.stringify(routerBasepath),
-              'import.meta.env.TSS_ROUTER_BASEPATH':
-                JSON.stringify(routerBasepath),
-              'process.env.TSS_DEV_SERVER': JSON.stringify(
-                isDev ? 'true' : 'false',
-              ),
-              'import.meta.env.TSS_DEV_SERVER': JSON.stringify(
-                isDev ? 'true' : 'false',
-              ),
-              // Rsbuild dev already injects emitted CSS asset hrefs, so keep
-              // Start's synthetic `/@tanstack-start/styles.css` path disabled.
-              'process.env.TSS_DEV_SSR_STYLES_ENABLED': JSON.stringify('false'),
-              'import.meta.env.TSS_DEV_SSR_STYLES_ENABLED':
-                JSON.stringify('false'),
-              'process.env.TSS_DEV_SSR_STYLES_BASEPATH': JSON.stringify(
-                resolvedStartConfig.basePaths.publicBase,
-              ),
-              'import.meta.env.TSS_DEV_SSR_STYLES_BASEPATH': JSON.stringify(
-                resolvedStartConfig.basePaths.publicBase,
-              ),
-              'process.env.TSS_INLINE_CSS_ENABLED': JSON.stringify(
-                inlineCssEnabled ? 'true' : 'false',
-              ),
-              'import.meta.env.TSS_INLINE_CSS_ENABLED': JSON.stringify(
-                inlineCssEnabled ? 'true' : 'false',
-              ),
-              'process.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING': JSON.stringify(
+          const entryAliases = createRsbuildResolvedEntryAliases({
+            entryPaths: resolvedEntryPlan.entryPaths,
+          })
+
+          const serverFnBase = createServerFnBasePath({
+            routerBasepath,
+            serverFnBase: startConfig.serverFns.base,
+          })
+          const inlineCssEnabled =
+            !isDev && startConfig.server.build.inlineCss.enabled
+          const enforcedDefines = {
+            'process.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
+            'import.meta.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
+            'process.env.TSS_ROUTER_BASEPATH': JSON.stringify(routerBasepath),
+            'import.meta.env.TSS_ROUTER_BASEPATH':
+              JSON.stringify(routerBasepath),
+            'process.env.TSS_DEV_SERVER': JSON.stringify(
+              isDev ? 'true' : 'false',
+            ),
+            'import.meta.env.TSS_DEV_SERVER': JSON.stringify(
+              isDev ? 'true' : 'false',
+            ),
+            // Rsbuild dev already injects emitted CSS asset hrefs, so keep
+            // Start's synthetic `/@tanstack-start/styles.css` path disabled.
+            'process.env.TSS_DEV_SSR_STYLES_ENABLED': JSON.stringify('false'),
+            'import.meta.env.TSS_DEV_SSR_STYLES_ENABLED':
+              JSON.stringify('false'),
+            'process.env.TSS_DEV_SSR_STYLES_BASEPATH': JSON.stringify(
+              resolvedStartConfig.basePaths.assetBase.dev,
+            ),
+            'import.meta.env.TSS_DEV_SSR_STYLES_BASEPATH': JSON.stringify(
+              resolvedStartConfig.basePaths.assetBase.dev,
+            ),
+            'process.env.TSS_INLINE_CSS_ENABLED': JSON.stringify(
+              inlineCssEnabled ? 'true' : 'false',
+            ),
+            'import.meta.env.TSS_INLINE_CSS_ENABLED': JSON.stringify(
+              inlineCssEnabled ? 'true' : 'false',
+            ),
+            'process.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING': JSON.stringify(
+              startConfig.serverFns.disableCsrfMiddlewareWarning
+                ? 'true'
+                : 'false',
+            ),
+            'import.meta.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING':
+              JSON.stringify(
                 startConfig.serverFns.disableCsrfMiddlewareWarning
                   ? 'true'
                   : 'false',
               ),
-              'import.meta.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING':
-                JSON.stringify(
-                  startConfig.serverFns.disableCsrfMiddlewareWarning
-                    ? 'true'
-                    : 'false',
-                ),
-            },
-          },
-          server: {
-            ...(rsbuildConfig.server?.printUrls === undefined ||
-            rsbuildConfig.server.printUrls === true
-              ? { printUrls: ({ urls }: { urls: Array<string> }) => urls }
-              : {}),
-            // Rsbuild compression currently treats Node's raw header array
-            // writeHead form as an object, which corrupts SSR response headers.
-            compress: false,
-            // SSR apps render every route on the server — disable HTML
-            // fallback so rsbuild doesn't intercept /_serverFn/ URLs.
-            htmlFallback: false,
-            // server.setup returned callback runs after built-in middleware
-            // but BEFORE fallback middleware — the ideal slot for SSR.
-            // Preview always installs the middleware since it is the only SSR
-            // handler; dev can opt out when a custom server hosts SSR.
-            ...(isPreview ||
-            (isDev &&
-              startPluginOpts.rsbuild?.installDevServerMiddleware !== false)
+          }
+          const enforcedAliases = {
+            ...entryAliases.alias,
+            ...(rscEnabled
               ? {
-                  setup: createServerSetup({
-                    serverFnBasePath: serverFnBase,
-                    serverOutputDirectory:
-                      resolvedStartConfig.outputDirectories.server,
-                    publicBase: resolvedStartConfig.basePaths.publicBase,
-                  }),
+                  'react-server-dom-rspack/server$': require.resolve(
+                    'react-server-dom-rspack/server.node',
+                    { paths: [root] },
+                  ),
                 }
               : {}),
-          },
-          ...(isDev
-            ? {
-                dev: {
-                  lazyCompilation: false,
-                  ...(rscEnabled ? { liveReload: false } : {}),
-                },
-              }
-            : {}),
-          environments: environmentPlan.environments,
-          resolve: {
-            alias: environmentPlan.alias,
-          },
-        })
+          }
+          const environmentPlan = createRsbuildEnvironmentPlan({
+            entryAliases,
+            serverFnProviderEnv,
+            enforcedDefines,
+            enforcedAliases,
+            rsc: rscOpts,
+          })
+
+          const frameworkEnforcedConfig: RsbuildConfig = {
+            source: {
+              ...(rscEnabled
+                ? {
+                    include: [
+                      // RSC needs SWC to inspect package code in node_modules so directives such as "use client" can be discovered.
+                      // This follows Rsbuild's documented broad include form for compiling node_modules, with core-js excluded:
+                      // https://rsbuild.rs/config/source/include#compile-node_modules
+                      //
+                      // TODO: Once the Rspack rule matching needed here is ready, narrow this to React-aware packages, for example via
+                      // descriptionData: { "peerDependencies.react": /./ }, so unrelated dependencies are not sent through swc-loader.
+                      {
+                        not: /[\\/]core-js[\\/]/,
+                      },
+                    ],
+                  }
+                : {}),
+              define: enforcedDefines,
+            },
+            server: {
+              ...(userConfigWithDefaults.server?.printUrls === undefined ||
+              userConfigWithDefaults.server.printUrls === true
+                ? { printUrls: ({ urls }: { urls: Array<string> }) => urls }
+                : {}),
+              // Rsbuild compression currently treats Node's raw header array
+              // writeHead form as an object, which corrupts SSR response headers.
+              compress: false,
+              // SSR apps render every route on the server — disable HTML
+              // fallback so rsbuild doesn't intercept /_serverFn/ URLs.
+              htmlFallback: false,
+              // server.setup returned callback runs after built-in middleware
+              // but BEFORE fallback middleware — the ideal slot for SSR.
+              // Preview always installs the middleware since it is the only SSR
+              // handler; dev can opt out when a custom server hosts SSR.
+              ...(isPreview ||
+              (isDev &&
+                startPluginOpts.rsbuild?.installDevServerMiddleware !== false)
+                ? {
+                    setup: createServerSetup({
+                      serverFnBasePath: serverFnBase,
+                      serverOutputDirectory:
+                        resolvedStartConfig.outputDirectories.server,
+                      publicBase: resolvedStartConfig.basePaths.publicBase,
+                    }),
+                  }
+                : {}),
+            },
+            ...(isDev
+              ? {
+                  dev: {
+                    lazyCompilation: false,
+                    ...(rscEnabled ? { liveReload: false } : {}),
+                  },
+                }
+              : {}),
+            environments: environmentPlan.environments,
+            resolve: {
+              alias: enforcedAliases,
+            },
+          }
+
+          const resolvedConfig = mergeRsbuildConfig(
+            userConfigWithDefaults,
+            frameworkEnforcedConfig,
+          )
+
+          warnOverriddenConfig({
+            originalConfig: api.getRsbuildConfig('original'),
+            resolvedConfig,
+            clientEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.client,
+            serverEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
+            providerEnvironmentName: serverFnProviderEnv,
+          })
+
+          return resolvedConfig
+        },
       })
 
       // ---------------------------------------------------------------
@@ -325,10 +391,7 @@ export function tanStackStartRsbuild(
         providerEnvName: serverFnProviderEnv,
         ssrIsProvider,
         serializationAdapters: corePluginOpts.serializationAdapters,
-        getDevClientEntryUrl: (publicBase: string) =>
-          joinURL(publicBase, RSBUILD_CLIENT_ASSETS_DIR, 'js/index.js'),
         rscEnabled,
-        scriptFormat,
       })
       updateServerFnResolver = virtualModuleState.updateServerFnResolver
 
