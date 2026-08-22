@@ -4,6 +4,7 @@ import {
   DEFAULT_PROTOCOL_ALLOWLIST,
   decodePath,
   deepEqual,
+  defaultStringifyLoaderDeps,
   encodePathLikeUrl,
   findLast,
   functionalUpdate,
@@ -199,6 +200,20 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization)
    */
   parseSearch?: SearchParser
+  /**
+   * A function that will be used to stringify `loaderDeps` values when
+   * computing the `loaderDepsHash` used for loader data caching.
+   *
+   * Defaults to `defaultStringifyLoaderDeps`, which uses `JSON.stringify` for
+   * plain-object loader deps and falls back to `safeStringify` when a value
+   * throws during serialization (e.g. bigint). If your loader deps contain
+   * values that `JSON.stringify` silently mishandles (Set, Map, Date, circular
+   * references, etc.), pass a custom serializer such as `safeStringify` so
+   * those deps produce a stable hash and are cached correctly.
+   *
+   * @default defaultStringifyLoaderDeps
+   */
+  stringifyLoaderDeps?: SearchSerializer
   /**
    * If `false`, routes will not be preloaded by default in any way.
    *
@@ -1093,7 +1108,7 @@ export class RouterCore<
       TRouterHistory,
       TDehydrated
     >,
-    'stringifySearch' | 'parseSearch' | 'context'
+    'stringifySearch' | 'parseSearch' | 'stringifyLoaderDeps' | 'context'
   >
   history!: TRouterHistory
   rewrite?: LocationRewrite
@@ -1140,6 +1155,7 @@ export class RouterCore<
       notFoundMode: options.notFoundMode ?? 'fuzzy',
       stringifySearch: options.stringifySearch ?? defaultStringifySearch,
       parseSearch: options.parseSearch ?? defaultParseSearch,
+      stringifyLoaderDeps: options.stringifyLoaderDeps ?? defaultStringifyLoaderDeps,
       protocolAllowlist:
         options.protocolAllowlist ?? DEFAULT_PROTOCOL_ALLOWLIST,
     })
@@ -1604,7 +1620,7 @@ export class RouterCore<
           route.options.loaderDeps?.({
             search: preMatchSearch,
           }) ?? ''
-        loaderDepsHash = loaderDeps ? JSON.stringify(loaderDeps) || '' : ''
+        loaderDepsHash = loaderDeps ? this.options.stringifyLoaderDeps(loaderDeps) || '' : ''
       } catch (cause) {
         if (opts?.throwOnError) {
           throw cause

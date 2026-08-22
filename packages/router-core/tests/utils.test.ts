@@ -2,10 +2,12 @@ import { afterEach, describe, expect, it } from 'vitest'
 import {
   decodePath,
   deepEqual,
+  defaultStringifyLoaderDeps,
   encodePathLikeUrl,
   escapeHtml,
   isPlainArray,
   replaceEqualDeep,
+  safeStringify,
 } from '../src/utils'
 
 describe('replaceEqualDeep', () => {
@@ -1092,5 +1094,145 @@ describe('encodePathLikeUrl', () => {
     expect(encodePathLikeUrl('/path/\u{1F600}/file')).toBe(
       '/path/%F0%9F%98%80/file',
     )
+  })
+})
+
+describe('safeStringify', () => {
+  it('should stringify plain objects like JSON.stringify', () => {
+    expect(safeStringify({ a: 1, b: 'hello' })).toBe('{"a":1,"b":"hello"}')
+  })
+
+  it('should handle bigint values', () => {
+    expect(safeStringify({ a: 123n })).toBe('{"a":"\\u0000bigint:123"}')
+  })
+
+  it('should handle Set values', () => {
+    const result = safeStringify({ a: new Set([3, 1, 2]) })
+    const parsed = JSON.parse(result)
+    expect(parsed.a).toEqual(['\u0000set', [3, 1, 2]])
+  })
+
+  it('should handle Map values', () => {
+    expect(safeStringify({ a: new Map([['x', 1], ['y', 2]]) })).toBe(
+      '{"a":["\\u0000map",[["x",1],["y",2]]]}',
+    )
+  })
+
+  it('should handle undefined values', () => {
+    expect(safeStringify({ a: undefined })).toBe('{"a":"\\u0000undefined"}')
+  })
+
+  it('should handle null values', () => {
+    expect(safeStringify({ a: null })).toBe('{"a":null}')
+  })
+
+  it('should handle circular references without throwing', () => {
+    const obj: any = { a: 1 }
+    obj.self = obj
+    const result = safeStringify(obj)
+    expect(result).toContain('\\u0000circular')
+  })
+
+  it('should handle functions', () => {
+    expect(safeStringify({ a: () => {} })).toBe('{"a":"\\u0000function"}')
+  })
+
+  it('should handle symbols', () => {
+    expect(safeStringify({ a: Symbol('test') })).toBe('{"a":"\\u0000symbol:test"}')
+  })
+
+  it('should handle symbols without description', () => {
+    expect(safeStringify({ a: Symbol() })).toBe('{"a":"\\u0000symbol"}')
+  })
+
+  it('should handle Date objects', () => {
+    const date = new Date('2024-01-01')
+    expect(safeStringify({ a: date })).toBe(
+      '{"a":"\\u0000date:2024-01-01T00:00:00.000Z"}',
+    )
+  })
+
+  it('should handle nested objects with mixed types', () => {
+    const val = {
+      num: 42,
+      big: 9007199254740993n,
+      set: new Set(['a', 'b']),
+      nested: { inner: new Map([[1, 'one']]) },
+    }
+    const result = safeStringify(val)
+    expect(result).toBe(
+      '{"big":"\\u0000bigint:9007199254740993","nested":{"inner":["\\u0000map",[[1,"one"]]]},"num":42,"set":["\\u0000set",["a","b"]]}',
+    )
+  })
+
+  it('should be deterministic (same input = same output)', () => {
+    const a = { b: 2, a: 1 }
+    const result1 = safeStringify(a)
+    const result2 = safeStringify({ a: 1, b: 2 })
+    expect(result1).toBe(result2)
+  })
+
+  it('should not collide bigint with an equal-looking string', () => {
+    expect(safeStringify({ a: 123n })).not.toBe(safeStringify({ a: '123n' }))
+    expect(safeStringify({ a: '123n' })).toBe('{"a":"123n"}')
+  })
+
+  it('should not collide undefined with empty string', () => {
+    expect(safeStringify({ a: undefined })).not.toBe(
+      safeStringify({ a: '' }),
+    )
+    expect(safeStringify({ a: '' })).toBe('{"a":""}')
+  })
+
+  it('should not collide a Date with an equal ISO string', () => {
+    const iso = '2024-01-01T00:00:00.000Z'
+    expect(safeStringify({ a: new Date(iso) })).not.toBe(
+      safeStringify({ a: iso }),
+    )
+    expect(safeStringify({ a: iso })).toBe(`{"a":"${iso}"}`)
+  })
+
+  it('should not collide a Set with an array that looks like a tag', () => {
+    const setResult = safeStringify({ a: new Set([1, 2]) })
+    const arrayResult = safeStringify({ a: ['\u0000set', [1, 2]] })
+    expect(setResult).not.toBe(arrayResult)
+  })
+
+  it('should escape user strings and keys that start with the reserved prefix', () => {
+    // input has a real null byte (the reserved prefix)
+    expect(safeStringify({ '\u0000key': '\u0000value' })).toBe(
+      '{"\\u0000\\u0000key":"\\u0000\\u0000value"}',
+    )
+  })
+
+  it('should not collide a bigint tag with an escaped user string', () => {
+    expect(safeStringify({ a: 123n })).not.toBe(
+      safeStringify({ a: '\u0000bigint:123' }),
+    )
+  })
+})
+
+
+describe('defaultStringifyLoaderDeps', () => {
+  it('returns an empty string for falsy deps', () => {
+    expect(defaultStringifyLoaderDeps(undefined as any)).toBe('')
+    expect(defaultStringifyLoaderDeps(null as any)).toBe('')
+  })
+
+  it('stringifies plain objects with JSON.stringify', () => {
+    expect(defaultStringifyLoaderDeps({ a: 1, b: 'x' })).toBe('{"a":1,"b":"x"}')
+  })
+
+  it('falls back to safeStringify for bigint deps instead of throwing', () => {
+    expect(defaultStringifyLoaderDeps({ id: 123n })).toBe(
+      '{"id":"\\u0000bigint:123"}',
+    )
+  })
+
+  it('keeps JSON.stringify behavior for Set deps (serialized as empty object)', () => {
+    // JSON.stringify does not throw on Set - it silently serializes it as {}.
+    // The default keeps that behavior; users with Set loader deps should pass
+    // safeStringify explicitly via stringifyLoaderDeps.
+    expect(defaultStringifyLoaderDeps({ set: new Set([1, 2]) })).toBe('{"set":{}}')
   })
 })
