@@ -22,6 +22,14 @@ export function createViteHmrStatement(
   const routeIdFallback =
     typeof opts.routeId === 'string' ? JSON.stringify(opts.routeId) : 'Route.id'
 
+  // `hot.data` persists across re-evaluations of this module but starts empty
+  // on the very first import. The eager patch below (which mirrors the live
+  // route's generated state onto this module's `Route` export, see #4303)
+  // must therefore only run on a hot re-evaluation: on a first import, a
+  // same-id route found on `window.__TSR_ROUTER__` belongs to a *different*
+  // router living in the same window (e.g. a module-federation host/remote
+  // pair), and patching it would graft foreign route options and components
+  // across the two apps (#7921).
   return [
     template.statement(
       `
@@ -33,8 +41,10 @@ if (import.meta.hot) {
   if (initialRouteId) {
     hotData['tsr-route-id'] = initialRouteId
   }
+  const isHotReevaluation = hotData['tsr-route-initialized'] === true
+  hotData['tsr-route-initialized'] = true
   const existingRoute =
-    typeof window !== 'undefined' && initialRouteId
+    isHotReevaluation && typeof window !== 'undefined' && initialRouteId
       ? window.__TSR_ROUTER__?.routesById?.[initialRouteId]
       : undefined
   if (initialRouteId && existingRoute && existingRoute !== Route) {
