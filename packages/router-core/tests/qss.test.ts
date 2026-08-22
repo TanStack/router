@@ -31,6 +31,35 @@ describe('encode function', () => {
     const queryString = encode(obj)
     expect(queryString).toEqual('foo%3Dbar=1')
   })
+
+  it('should match URLSearchParams encoding for form-urlencoded reserved characters', () => {
+    const obj = { q: 'a b', x: '!~*()~', n: 1 }
+    const expected = new URLSearchParams(
+      Object.entries(obj).map(([key, value]) => [key, String(value)]),
+    ).toString()
+    expect(encode(obj)).toEqual(expected)
+  })
+
+  it('should return the same string when encoding the same object again', () => {
+    const obj = { token: 'foo', key: 'value' }
+    expect(encode(obj)).toEqual(encode(obj))
+  })
+
+  it('should encode lone surrogates the way URLSearchParams does', () => {
+    const obj = { q: '\uD800' }
+    const expected = new URLSearchParams({ q: '\uD800' }).toString()
+    expect(encode(obj)).toEqual(expected)
+    expect(encode({ q: 'a\uD800b' })).toEqual(
+      new URLSearchParams({ q: 'a\uD800b' }).toString(),
+    )
+  })
+
+  it('should not reuse a previous encode after the object is mutated', () => {
+    const obj: Record<string, string> = { key: 'one' }
+    expect(encode(obj)).toEqual('key=one')
+    obj.key = 'two'
+    expect(encode(obj)).toEqual('key=two')
+  })
 })
 
 describe('decode function', () => {
@@ -97,5 +126,18 @@ describe('decode function', () => {
     const queryString = 'q=%2540'
     const decodedObj = decode(queryString)
     expect(decodedObj).toEqual({ q: '%40' })
+  })
+
+  it('should decode malformed percent escapes the way URLSearchParams does', () => {
+    expect(decode('q=%E0%A4%A')).toEqual({
+      q: new URLSearchParams('q=%E0%A4%A').get('q'),
+    })
+    expect(decode('q=%20%')).toEqual({
+      q: new URLSearchParams('q=%20%').get('q'),
+    })
+    expect(decode('q=%E0%A4%A&x=1')).toEqual({
+      q: new URLSearchParams('q=%E0%A4%A&x=1').get('q'),
+      x: 1,
+    })
   })
 })
