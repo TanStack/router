@@ -8,6 +8,8 @@ import type {
   Route,
   RouteConstraints,
   UpdatableRouteOptions,
+  UpdatableRouteOptionsWithoutStaticData,
+  UpdatableStaticRouteOptionByRouteId,
 } from './route'
 import type { AnyValidator } from './validators'
 
@@ -33,7 +35,7 @@ export interface FileRoutesByPath {
   // }
 }
 
-export interface FileRouteOptions<
+export type FileRouteOptions<
   TRegister,
   TFilePath extends string,
   TParentRoute extends AnyRoute,
@@ -49,37 +51,36 @@ export interface FileRouteOptions<
   TSSR = unknown,
   TServerMiddlewares = unknown,
   THandlers = undefined,
->
-  extends
-    FileBaseRouteOptions<
-      TRegister,
-      TParentRoute,
-      TId,
-      TPath,
-      TSearchValidator,
-      TParams,
-      TLoaderDeps,
-      TLoaderFn,
-      AnyContext,
-      TRouteContextFn,
-      TBeforeLoadFn,
-      AnyContext,
-      TSSR,
-      TServerMiddlewares,
-      THandlers
-    >,
-    UpdatableRouteOptions<
-      TParentRoute,
-      TId,
-      TFullPath,
-      TParams,
-      TSearchValidator,
-      TLoaderFn,
-      TLoaderDeps,
-      AnyContext,
-      TRouteContextFn,
-      TBeforeLoadFn
-    > {}
+> = FileBaseRouteOptions<
+  TRegister,
+  TParentRoute,
+  TId,
+  TPath,
+  TSearchValidator,
+  TParams,
+  TLoaderDeps,
+  TLoaderFn,
+  AnyContext,
+  TRouteContextFn,
+  TBeforeLoadFn,
+  AnyContext,
+  TSSR,
+  TServerMiddlewares,
+  THandlers
+> &
+  UpdatableRouteOptionsWithoutStaticData<
+    TParentRoute,
+    TId,
+    TFullPath,
+    TParams,
+    TSearchValidator,
+    TLoaderFn,
+    TLoaderDeps,
+    AnyContext,
+    TRouteContextFn,
+    TBeforeLoadFn
+  > &
+  UpdatableStaticRouteOptionByRouteId<TId>
 
 export type CreateFileRoute<
   TFilePath extends string,
