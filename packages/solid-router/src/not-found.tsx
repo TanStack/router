@@ -27,8 +27,8 @@ export function CatchNotFound(props: {
 }) {
   const router = useRouter()
   // TODO: Some way for the user to programmatically reset the not-found boundary?
-  const pathname = Solid.createMemo(() => router.stores.location.state.pathname)
-  const status = Solid.createMemo(() => router.stores.status.state)
+  const pathname = Solid.createMemo(() => router.stores.location.get().pathname)
+  const status = Solid.createMemo(() => router.stores.status.get())
 
   return (
     <CatchBoundary

@@ -1,13 +1,14 @@
 ---
-name: start-core/deployment
+name: deployment
 description: >-
   Deploy to Cloudflare Workers, Netlify, Vercel, Node.js/Docker,
   Bun, Railway. Selective SSR (ssr option per route), SPA mode,
   static prerendering, ISR with Cache-Control headers, SEO and
   head management.
-type: sub-skill
-library: tanstack-start
-library_version: '1.166.2'
+metadata:
+  type: sub-skill
+  library: tanstack-start
+  library_version: '1.170.14'
 requires:
   - start-core
 sources:
@@ -56,6 +57,15 @@ export default defineConfig({
 ```
 
 Deploy: `npx wrangler login && pnpm run deploy`
+
+> **Worker env is per-request.** Cloudflare Workers inject env vars at request time. `process.env.X` at module scope evaluates to `undefined` even on the server. The Cloudflare-canonical way to read env (including from module scope) is the `cloudflare:workers` env binding:
+>
+> ```ts
+> import { env } from 'cloudflare:workers'
+> const apiHost = env.API_HOST
+> ```
+>
+> Or read `process.env.X` per-request inside `.handler()` / middleware `.server()`. See [Cloudflare's environment-variables docs](https://developers.cloudflare.com/workers/configuration/environment-variables/) and [start-core/execution-model](../execution-model/SKILL.md).
 
 ### Netlify
 

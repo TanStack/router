@@ -43,16 +43,14 @@ export function createFileRoute<
   TFullPath extends RouteConstraints['TFullPath'] =
     FileRoutesByPath[TFilePath]['fullPath'],
 >(
+  // eslint-disable-next-line unused-imports/no-unused-vars
   path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  if (typeof path === 'object') {
-    return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-      silent: true,
-    }).createRoute(path) as any
+  return (options) => {
+    const route = createRoute(options as any)
+    ;(route as any).isRoot = false
+    return route as any
   }
-  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-    silent: true,
-  }).createRoute
 }
 
 /** 
@@ -86,7 +84,7 @@ export class FileRoute<
     TLoaderFn = undefined,
     TChildren = unknown,
     TSSR = unknown,
-    TMiddlewares = unknown,
+    const TMiddlewares = unknown,
     THandlers = undefined,
   >(
     options?: FileBaseRouteOptions<
@@ -153,7 +151,7 @@ export class FileRoute<
 
 /** 
   @deprecated It's recommended not to split loaders into separate files.
-  Instead, place the loader function in the the main route file, inside the
+  Instead, place the loader function in the main route file, inside the
   `createFileRoute('/path/to/file)(options)` options.
 */
 export function FileRouteLoader<
@@ -178,7 +176,7 @@ export function FileRouteLoader<
 ) => TLoaderFn {
   if (process.env.NODE_ENV !== 'production') {
     console.warn(
-      `Warning: FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
+      `Warning: FileRouteLoader is deprecated and will be removed in the next major version. Please place the loader function in the main route file, inside the \`createFileRoute('/path/to/file')(options)\` options`,
     )
   }
   return (loaderFn) => loaderFn as any
@@ -217,7 +215,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
-    return useRouteContext({ ...(opts as any), from: this.options.id }) as any
+    return useRouteContext({ ...(opts as any), from: this.options.id })
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {

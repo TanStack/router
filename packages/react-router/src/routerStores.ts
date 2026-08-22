@@ -1,4 +1,4 @@
-import { batch, createStore } from '@tanstack/react-store'
+import { batch, createAtom } from '@tanstack/react-store'
 import {
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
@@ -19,8 +19,8 @@ export const getStoreFactory: GetStoreConfig = (opts) => {
     }
   }
   return {
-    createMutableStore: createStore,
-    createReadonlyStore: createStore,
+    createMutableStore: createAtom,
+    createReadonlyStore: createAtom,
     batch: batch,
   }
 }

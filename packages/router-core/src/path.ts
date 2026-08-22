@@ -112,13 +112,25 @@ export function resolvePath({
   trailingSlash = 'never',
   cache,
 }: ResolvePathOptions) {
-  const isAbsolute = to.startsWith('/')
-  const isBase = !isAbsolute && to === '.'
+  if (to.includes('//')) {
+    to = cleanPath(to)
+  }
 
+  if (to.startsWith('/')) {
+    if (to.length === 1 || trailingSlash === 'preserve') {
+      return to
+    }
+    if (trailingSlash === 'always') {
+      return to.endsWith('/') ? to : `${to}/`
+    }
+    return to.endsWith('/') ? to.slice(0, -1) : to
+  }
+
+  const isBase = to === '.'
   let key
   if (cache) {
     // `trailingSlash` is static per router, so it doesn't need to be part of the cache key
-    key = isAbsolute ? to : isBase ? base : base + '\0' + to
+    key = isBase ? base : base + '\0' + to
     const cached = cache.get(key)
     if (cached) return cached
   }
@@ -126,9 +138,10 @@ export function resolvePath({
   let baseSegments: Array<string>
   if (isBase) {
     baseSegments = base.split('/')
-  } else if (isAbsolute) {
-    baseSegments = to.split('/')
   } else {
+    if (base.includes('//')) {
+      base = cleanPath(base)
+    }
     baseSegments = base.split('/')
     while (baseSegments.length > 1 && last(baseSegments) === '') {
       baseSegments.pop()
@@ -148,7 +161,11 @@ export function resolvePath({
           // ignore inter-slashes
         }
       } else if (value === '..') {
-        baseSegments.pop()
+        if (baseSegments.length > 1) {
+          baseSegments.pop()
+        } else {
+          baseSegments = ['']
+        }
       } else if (value === '.') {
         // ignore
       } else {
@@ -167,33 +184,8 @@ export function resolvePath({
     }
   }
 
-  let segment
-  let joined = ''
-  for (let i = 0; i < baseSegments.length; i++) {
-    if (i > 0) joined += '/'
-    const part = baseSegments[i]!
-    if (!part) continue
-    segment = parseSegment(part, 0, segment)
-    const kind = segment[0]
-    if (kind === SEGMENT_TYPE_PATHNAME) {
-      joined += part
-      continue
-    }
-    const end = segment[5]
-    const prefix = part.substring(0, segment[1])
-    const suffix = part.substring(segment[4], end)
-    const value = part.substring(segment[2], segment[3])
-    if (kind === SEGMENT_TYPE_PARAM) {
-      joined += prefix || suffix ? `${prefix}{$${value}}${suffix}` : `$${value}`
-    } else if (kind === SEGMENT_TYPE_WILDCARD) {
-      joined += prefix || suffix ? `${prefix}{$}${suffix}` : '$'
-    } else {
-      // SEGMENT_TYPE_OPTIONAL_PARAM
-      joined += `${prefix}{-$${value}}${suffix}`
-    }
-  }
-  joined = cleanPath(joined)
-  const result = joined || '/'
+  const joined = baseSegments.join('/')
+  const result = (isBase ? cleanPath(joined) : joined) || '/'
   if (key && cache) cache.set(key, result)
   return result
 }

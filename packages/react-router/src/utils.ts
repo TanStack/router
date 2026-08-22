@@ -1,10 +1,13 @@
+'use client'
 import * as React from 'react'
+import { isServer } from '@tanstack/router-core/isServer'
 
 // Safe version of React.use() that will not cause compilation errors against
 // React 18 with Webpack, which statically analyzes imports and fails when it
 // sees React.use referenced (since 'use' is not exported from React 18).
 // This uses a dynamic string lookup to avoid the static analysis.
-const REACT_USE = 'use'
+// eslint-disable-next-line prefer-const -- Must be `let` to prevent bundler constant-folding
+let REACT_USE = 'use'
 
 /**
  * React.use if available (React 19+), undefined otherwise.
@@ -25,7 +28,9 @@ export function useStableCallback<T extends (...args: Array<any>) => any>(
 }
 
 export const useLayoutEffect =
-  typeof window !== 'undefined' ? React.useLayoutEffect : React.useEffect
+  (isServer ?? typeof window === 'undefined')
+    ? React.useEffect
+    : React.useLayoutEffect
 
 /**
  * Taken from https://www.developerway.com/posts/implementing-advanced-use-previous-hook#part3
@@ -61,9 +66,8 @@ export function usePrevious<T>(value: T): T | null {
  * When the intersection changes, the callback will be called with the `IntersectionObserverEntry`.
  *
  * @param ref - The ref to observe
- * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
- * @param options - The options to pass to the hook
  * @param callback - The callback to call when the intersection changes
+ * @param disabled - Whether observation is disabled
  * @returns The IntersectionObserver instance
  * @example
  * ```tsx
@@ -72,37 +76,39 @@ export function usePrevious<T>(value: T): T | null {
  * useIntersectionObserver(
  *  ref,
  *  (entry) => { doSomething(entry) },
- *  { rootMargin: '10px' },
- *  { disabled: false }
+ *  false
  * )
  * return <div ref={ref} />
  * ```
  */
 export function useIntersectionObserver<T extends Element>(
   ref: React.RefObject<T | null>,
-  callback: (entry: IntersectionObserverEntry | undefined) => void,
-  intersectionObserverOptions: IntersectionObserverInit = {},
-  options: { disabled?: boolean } = {},
+  callback: (entry?: IntersectionObserverEntry) => void,
+  disabled?: boolean,
 ) {
   React.useEffect(() => {
     if (
       !ref.current ||
-      options.disabled ||
+      disabled ||
       typeof IntersectionObserver !== 'function'
     ) {
-      return
+      return () => callback()
     }
 
-    const observer = new IntersectionObserver(([entry]) => {
-      callback(entry)
-    }, intersectionObserverOptions)
+    const observer = new IntersectionObserver(
+      (entries) => {
+        callback(entries.pop())
+      },
+      { rootMargin: '100px' },
+    )
 
     observer.observe(ref.current)
 
     return () => {
       observer.disconnect()
+      callback()
     }
-  }, [callback, intersectionObserverOptions, options.disabled, ref])
+  }, [callback, disabled, ref])
 }
 
 /**

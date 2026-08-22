@@ -40,8 +40,8 @@ export function useLoaderDeps<
   const { select, ...rest } = opts
   return useMatch({
     ...rest,
-    select: (s) => {
-      return select ? select(s.loaderDeps) : s.loaderDeps
+    select: (match) => {
+      return select ? select(match.loaderDeps) : match.loaderDeps
     },
   }) as Vue.Ref<UseLoaderDepsResult<TRouter, TFrom, TSelected>>
 }

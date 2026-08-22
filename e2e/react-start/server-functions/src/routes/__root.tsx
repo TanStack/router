@@ -10,7 +10,7 @@ import {
 
 import { DefaultCatchBoundary } from '~/components/DefaultCatchBoundary'
 import { NotFound } from '~/components/NotFound'
-import appCss from '~/styles/app.css?url'
+import '~/styles/app.css'
 
 export const Route = createRootRouteWithContext<{ foo: { bar: string } }>()({
   head: () => ({
@@ -23,7 +23,6 @@ export const Route = createRootRouteWithContext<{ foo: { bar: string } }>()({
         content: 'width=device-width, initial-scale=1',
       },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   errorComponent: (props) => {
     return (

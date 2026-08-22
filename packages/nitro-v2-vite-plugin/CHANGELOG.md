@@ -1,5 +1,11 @@
 # @tanstack/nitro-v2-vite-plugin
 
+## 1.155.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
 ## 1.154.9
 
 ### Patch Changes

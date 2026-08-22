@@ -1,6 +1,18 @@
-import { createFileRoute } from '@tanstack/solid-router'
+import {
+  createFileRoute,
+  retainSearchParams,
+  stripSearchParams,
+} from '@tanstack/solid-router'
+
+const defaultSearch = { page: 1 }
 
 export const Route = createFileRoute('/')({
+  search: {
+    middlewares: [
+      retainSearchParams<Record<string, unknown>>(['persist']),
+      stripSearchParams(defaultSearch),
+    ],
+  },
   component: IndexComponent,
 })
 

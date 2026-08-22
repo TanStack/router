@@ -9,9 +9,17 @@
   },
   "namedInputs": {
     "sharedGlobals": [
+      "{workspaceRoot}/.npmrc",
+      "{workspaceRoot}/.nx/workflows/sandboxing-config.yaml",
       "{workspaceRoot}/.nvmrc",
       "{workspaceRoot}/package.json",
       "{workspaceRoot}/tsconfig.json"
+    ],
+    "dependentTaskOutputs": [
+      {
+        "dependentTasksOutputFiles": "**/*",
+        "transitive": true
+      }
     ],
     "default": [
       "sharedGlobals",
@@ -22,7 +30,8 @@
       "default",
       "!{projectRoot}/tests/**/*",
       "!{projectRoot}/eslint.config.js"
-    ]
+    ],
+    "buildProduction": ["sharedGlobals", "{projectRoot}/**/*"]
   },
   "targetDefaults": {
     "test:docs": {
@@ -31,19 +40,34 @@
     },
     "test:eslint": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["default", "^production", "{workspaceRoot}/eslint.config.js"]
+      "dependsOn": ["^build", "build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ]
     },
     "test:unit": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ],
       "outputs": ["{projectRoot}/coverage"]
     },
     "test:e2e": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "dependsOn": ["^build", "test:e2e--*"],
+      "inputs": ["default", "^production", "dependentTaskOutputs"],
+      "outputs": [
+        "{projectRoot}/dist",
+        "{projectRoot}/port-*.txt",
+        "{projectRoot}/test-results"
+      ]
     },
     "test:e2e:nitro": {
       "cache": true,
@@ -62,19 +86,47 @@
     },
     "test:types": {
       "cache": true,
-      "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "dependsOn": ["^build", "build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/eslint.config.js",
+        "dependentTaskOutputs"
+      ]
+    },
+    "test:types:ssr": {
+      "cache": true,
+      "dependsOn": ["^build", "build"],
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/benchmarks/ssr/bench-utils.ts",
+        "dependentTaskOutputs"
+      ]
     },
     "build": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["production", "^production"],
-      "outputs": ["{projectRoot}/build", "{projectRoot}/dist"]
+      "inputs": ["buildProduction", "^buildProduction", "dependentTaskOutputs"],
+      "outputs": [
+        "{projectRoot}/.netlify",
+        "{projectRoot}/.wrangler",
+        "{projectRoot}/.output",
+        "{projectRoot}/build",
+        "{projectRoot}/dist"
+      ]
     },
     "test:build": {
       "cache": true,
       "dependsOn": ["build"],
-      "inputs": ["production"]
+      "inputs": ["buildProduction", "dependentTaskOutputs"]
     }
-  }
+  },
+  "plugins": [
+    {
+      "name": "Playwright Sharding Plugin",
+      "plugin": "./scripts/nx/playwright-plugin.ts"
+    }
+  ],
+  "analytics": true
 }

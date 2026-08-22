@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite'
+import viteReact from '@vitejs/plugin-react'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 
 // Allow env var to override the import protection behavior.
@@ -29,5 +30,6 @@ export default defineConfig({
         },
       },
     }),
+    viteReact(),
   ],
 })

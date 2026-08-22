@@ -20,7 +20,11 @@ By default, TanStack Start does not include path aliases. However, you can easil
 
 In this example, we've defined the path alias `~/*` that maps to the `./src/*` directory. This means that you can now import files from the `src` directory using the `~` prefix.
 
-After updating your `tsconfig.json` file, you'll need to make changes to `vite.config.ts` to ensure that Vite resolves the path aliases correctly.
+After updating your `tsconfig.json` file, configure your build tool so it resolves the same path aliases.
+
+<!-- ::start:tabs variant="bundler" -->
+
+# Vite
 
 ## Vite 8
 
@@ -62,6 +66,25 @@ export default defineConfig({
   ],
 })
 ```
+
+# Rsbuild
+
+Rsbuild reads the `paths` field from `tsconfig.json` by default. No extra config is needed when your aliases live in the root `tsconfig.json`.
+
+If you use a custom tsconfig file, point Rsbuild at it with `source.tsconfigPath`:
+
+```ts
+// rsbuild.config.ts
+import { defineConfig } from '@rsbuild/core'
+
+export default defineConfig({
+  source: {
+    tsconfigPath: './tsconfig.custom.json',
+  },
+})
+```
+
+<!-- ::end:tabs -->
 
 Once this configuration has completed, you'll now be able to import files using the path alias like so:
 

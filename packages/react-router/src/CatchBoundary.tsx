@@ -1,79 +1,56 @@
+'use client'
+
 import * as React from 'react'
+import { wrapInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 import type { ErrorInfo } from 'react'
 
-export function CatchBoundary(props: {
-  getResetKey: () => number | string
+export class CatchBoundary extends React.Component<{
+  getResetKey: () => unknown
   children: React.ReactNode
   errorComponent?: ErrorRouteComponent
   onCatch?: (error: Error, errorInfo: ErrorInfo) => void
-}) {
-  const errorComponent = props.errorComponent ?? ErrorComponent
-
-  return (
-    <CatchBoundaryImpl
-      getResetKey={props.getResetKey}
-      onCatch={props.onCatch}
-      children={({ error, reset }) => {
-        if (error) {
-          return React.createElement(errorComponent, {
-            error,
-            reset,
-          })
-        }
-
-        return props.children
-      }}
-    />
-  )
-}
-
-class CatchBoundaryImpl extends React.Component<{
-  getResetKey: () => number | string
-  children: (props: {
-    error: Error | null
-    reset: () => void
-  }) => React.ReactNode
-  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: Error | null; resetKey: string }
-  static getDerivedStateFromProps(props: any) {
-    return { resetKey: props.getResetKey() }
+  state = { error: null } as { error: Error | null; resetKey?: unknown }
+
+  static getDerivedStateFromProps(
+    props: { getResetKey: () => unknown },
+    state: { resetKey?: unknown; error: Error | null },
+  ) {
+    const resetKey = props.getResetKey()
+
+    if (state.error && state.resetKey !== resetKey) {
+      return { resetKey, error: null }
+    }
+
+    return { resetKey }
   }
   static getDerivedStateFromError(error: Error) {
     return { error }
   }
-  reset() {
+  reset = () => {
     this.setState({ error: null })
   }
-  componentDidUpdate(
-    prevProps: Readonly<{
-      getResetKey: () => string
-      children: (props: { error: any; reset: () => void }) => any
-      onCatch?: ((error: any, info: any) => void) | undefined
-    }>,
-    prevState: any,
-  ): void {
-    if (prevState.error && prevState.resetKey !== this.state.resetKey) {
-      this.reset()
-    }
-  }
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (this.props.onCatch) {
-      this.props.onCatch(error, errorInfo)
-    }
+    this.props.onCatch?.(error, errorInfo)
   }
   render() {
-    // If the resetKey has changed, don't render the error
-    return this.props.children({
-      error:
-        this.state.resetKey !== this.props.getResetKey()
-          ? null
-          : this.state.error,
-      reset: () => {
-        this.reset()
-      },
-    })
+    const error = this.state.error
+    if (error) {
+      const element = React.createElement(
+        this.props.errorComponent ?? ErrorComponent,
+        {
+          error,
+          reset: this.reset,
+        },
+      )
+
+      return process.env.NODE_ENV !== 'production'
+        ? wrapInNonRouteComponentContext(element, 'errorComponent')
+        : element
+    }
+
+    return this.props.children
   }
 }
 

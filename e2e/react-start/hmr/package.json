@@ -4,9 +4,13 @@
   "sideEffects": false,
   "type": "module",
   "scripts": {
-    "dev": "vite dev --port 3000",
-    "dev:e2e": "vite dev --port $PORT",
-    "build": "vite build && tsc --noEmit",
+    "dev": "pnpm dev:vite --port 3000",
+    "dev:e2e": "pnpm dev:vite",
+    "dev:vite": "vite dev",
+    "dev:rsbuild": "rsbuild dev",
+    "build": "pnpm build:vite",
+    "build:vite": "vite build && tsc --noEmit",
+    "build:rsbuild": "rsbuild build && tsc --noEmit",
     "test:e2e": "MODE=dev playwright test --project=chromium"
   },
   "dependencies": {
@@ -16,7 +20,10 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.61.0",
+    "@rsbuild/core": "^2.1.0",
+    "@rsbuild/plugin-react": "^2.0.0",
+    "@tailwindcss/postcss": "^4.2.2",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
@@ -24,7 +31,47 @@
     "@types/react-dom": "^19.0.3",
     "tailwindcss": "^4.2.2",
     "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.0.14"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "parallelism": false
+      },
+      "test:e2e--vite-ssr": {
+        "parallelism": false
+      },
+      "test:e2e--vite-ssr--bundled-dev": {
+        "parallelism": false
+      },
+      "test:e2e--rsbuild-ssr": {
+        "parallelism": false
+      }
+    },
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "env": {
+            "E2E_VITE_BUNDLED_DEV": "false"
+          }
+        },
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "bundled-dev",
+          "env": {
+            "E2E_VITE_BUNDLED_DEV": "true"
+          }
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
+        }
+      ]
+    }
   }
 }

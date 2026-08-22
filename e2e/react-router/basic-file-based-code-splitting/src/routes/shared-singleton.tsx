@@ -1,3 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 
 // All shared state lives in declarations — no bare expression statements.
@@ -13,7 +14,7 @@ function getInitCount() {
   return (globalThis as any).__tsrSharedSingleton?.initCount as number
 }
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/shared-singleton')({
   loader: () => {
     return {
       loaderSawInitCount: getInitCount(),

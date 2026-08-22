@@ -9,7 +9,7 @@ The `LinkOptions` type extends the [`NavigateOptions`](./NavigateOptionsType.md)
 type LinkOptions = NavigateOptions & {
   target?: HTMLAnchorElement['target']
   activeOptions?: ActiveOptions
-  preload?: false | 'intent'
+  preload?: false | 'intent' | 'viewport' | 'render'
   preloadDelay?: number
   disabled?: boolean
 }
@@ -42,7 +42,7 @@ The `LinkOptions` object accepts/contains the following properties:
 
 - Type: `number`
 - Optional
-- Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
+- Delay focus, hover, and viewport preloading by this many milliseconds. Touch intent preloads immediately. If focus or hover ends, or the link leaves the viewport before the delay, the preload will be cancelled.
 
 ### `disabled`
 

@@ -1,71 +1,43 @@
-export default function (options: {
-  storageKey: string
-  key?: string
-  behavior?: ScrollToOptions['behavior']
-  shouldScrollRestoration?: boolean
-}) {
+export default function (storageKey: string, key?: string) {
   let byKey
 
   try {
-    byKey = JSON.parse(sessionStorage.getItem(options.storageKey) || '{}')
-  } catch (error) {
-    console.error(error)
+    byKey = JSON.parse(sessionStorage.getItem(storageKey) || '{}')
+  } catch {
     return
   }
 
-  const resolvedKey = options.key || window.history.state?.__TSR_key
-  const elementEntries = resolvedKey ? byKey[resolvedKey] : undefined
+  const elementEntries = byKey?.[key || history.state?.__TSR_key]
+  let windowRestored = false
 
-  if (
-    options.shouldScrollRestoration &&
-    elementEntries &&
-    typeof elementEntries === 'object' &&
-    Object.keys(elementEntries).length > 0
-  ) {
-    for (const elementSelector in elementEntries) {
-      const entry = elementEntries[elementSelector]
+  for (const elementSelector in elementEntries) {
+    const entry = elementEntries[elementSelector]
+    const scrollX = entry?.scrollX
+    const scrollY = entry?.scrollY
 
-      if (!entry || typeof entry !== 'object') {
-        continue
-      }
-
-      const scrollX = entry.scrollX
-      const scrollY = entry.scrollY
-
-      if (!Number.isFinite(scrollX) || !Number.isFinite(scrollY)) {
-        continue
-      }
-
+    if (Number.isFinite(scrollX) && Number.isFinite(scrollY)) {
       if (elementSelector === 'window') {
-        window.scrollTo({
-          top: scrollY,
-          left: scrollX,
-          behavior: options.behavior,
-        })
+        scrollTo(scrollX, scrollY)
+        windowRestored = true
       } else if (elementSelector) {
-        let element
-
         try {
-          element = document.querySelector(elementSelector)
-        } catch {
-          continue
-        }
-
-        if (element) {
-          element.scrollLeft = scrollX
-          element.scrollTop = scrollY
-        }
+          const element = document.querySelector(elementSelector)
+          if (element) {
+            element.scrollLeft = scrollX
+            element.scrollTop = scrollY
+          }
+        } catch {}
       }
     }
-
-    return
   }
 
-  const hash = window.location.hash.split('#', 2)[1]
+  if (windowRestored) return
+
+  const hash = location.hash.slice(1)
 
   if (hash) {
     const hashScrollIntoViewOptions =
-      window.history.state?.__hashScrollIntoViewOptions ?? true
+      history.state?.__hashScrollIntoViewOptions ?? true
 
     if (hashScrollIntoViewOptions) {
       const el = document.getElementById(hash)
@@ -77,5 +49,5 @@ export default function (options: {
     return
   }
 
-  window.scrollTo({ top: 0, left: 0, behavior: options.behavior })
+  scrollTo(0, 0)
 }

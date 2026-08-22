@@ -1,8 +1,11 @@
 import * as Vue from 'vue'
 import {
+  _getAssetMatches,
+  appendUniqueUserTags,
   escapeHtml,
   getAssetCrossOrigin,
-  resolveManifestAssetLink,
+  getScriptPreloadAttrs,
+  resolveManifestCssLink,
 } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
@@ -13,174 +16,127 @@ import type {
 
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
-  const matches = useStore(
-    router.stores.activeMatchesSnapshot,
-    (value) => value,
-  )
+  const matches = useStore(router.stores.matches, _getAssetMatches)
 
-  const meta = Vue.computed<Array<RouterManagedTag>>(() => {
+  const tags = Vue.computed<Array<RouterManagedTag>>(() => {
+    const currentMatches = matches.value
+    const tags: Array<RouterManagedTag> = []
+    const manifest = router.ssr?.manifest
+    for (const match of currentMatches) {
+      for (const link of manifest?.routes[match.routeId]?.css ?? []) {
+        const resolvedLink = resolveManifestCssLink(link)
+        tags.push({
+          tag: 'link',
+          attrs: {
+            rel: 'stylesheet',
+            ...resolvedLink,
+            crossOrigin:
+              getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
+              resolvedLink.crossOrigin,
+          },
+        })
+      }
+    }
+    if (manifest?.inlineStyle) {
+      tags.push({
+        tag: 'style',
+        attrs: manifest.inlineStyle.attrs,
+        children: manifest.inlineStyle.children,
+        inlineCss: true,
+      })
+    }
+
     const resultMeta: Array<RouterManagedTag> = []
     const metaByAttribute: Record<string, true> = {}
     let title: RouterManagedTag | undefined
-    ;[...matches.value.map((match) => match.meta!).filter(Boolean)]
-      .reverse()
-      .forEach((metas) => {
-        ;[...metas].reverse().forEach((m) => {
-          if (!m) return
+    for (let i = currentMatches.length - 1; i >= 0; i--) {
+      const metas = currentMatches[i]!.meta
+      if (!metas) {
+        continue
+      }
+      for (let j = metas.length - 1; j >= 0; j--) {
+        const m = metas[j]
+        if (!m) {
+          continue
+        }
 
-          if (m.title) {
-            if (!title) {
-              title = {
-                tag: 'title',
-                children: m.title,
-              }
+        if (m.title) {
+          if (!title) {
+            title = {
+              tag: 'title',
+              children: m.title,
             }
-          } else if ('script:ld+json' in m) {
-            // Handle JSON-LD structured data
-            // Content is HTML-escaped to prevent XSS when injected via innerHTML
-            try {
-              const json = JSON.stringify(m['script:ld+json'])
-              resultMeta.push({
-                tag: 'script',
-                attrs: {
-                  type: 'application/ld+json',
-                },
-                children: escapeHtml(json),
-              })
-            } catch {
-              // Skip invalid JSON-LD objects
-            }
-          } else {
-            const attribute = m.name ?? m.property
-            if (attribute) {
-              if (metaByAttribute[attribute]) {
-                return
-              } else {
-                metaByAttribute[attribute] = true
-              }
-            }
-
-            resultMeta.push({
-              tag: 'meta',
-              attrs: {
-                ...m,
-              },
-            })
           }
-        })
-      })
+        } else if ('script:ld+json' in m) {
+          // Content is HTML-escaped to prevent XSS when injected via innerHTML.
+          try {
+            resultMeta.push({
+              tag: 'script',
+              attrs: { type: 'application/ld+json' },
+              children: escapeHtml(JSON.stringify(m['script:ld+json'])),
+            })
+          } catch {
+            // Skip invalid JSON-LD objects.
+          }
+        } else {
+          const attribute = m.name ?? m.property
+          if (attribute) {
+            if (metaByAttribute[attribute]) {
+              continue
+            } else {
+              metaByAttribute[attribute] = true
+            }
+          }
+          resultMeta.push({
+            tag: 'meta',
+            attrs: {
+              ...m,
+            },
+          })
+        }
+      }
+    }
 
     if (title) {
       resultMeta.push(title)
     }
-
     resultMeta.reverse()
+    appendUniqueUserTags(tags, resultMeta)
 
-    return resultMeta
-  })
-
-  const links = Vue.computed<Array<RouterManagedTag>>(
-    () =>
-      matches.value
-        .map((match) => match.links!)
-        .filter(Boolean)
-        .flat(1)
-        .map((link) => ({
-          tag: 'link',
-          attrs: {
-            ...link,
-          },
-        })) as Array<RouterManagedTag>,
-  )
-
-  const preloadMeta = Vue.computed<Array<RouterManagedTag>>(() => {
-    const preloadMeta: Array<RouterManagedTag> = []
-
-    matches.value
-      .map((match) => router.looseRoutesById[match.routeId]!)
-      .forEach((route) =>
-        router.ssr?.manifest?.routes[route.id]?.preloads
-          ?.filter(Boolean)
-          .forEach((preload) => {
-            const preloadLink = resolveManifestAssetLink(preload)
-            preloadMeta.push({
-              tag: 'link',
-              attrs: {
-                rel: 'modulepreload',
-                href: preloadLink.href,
-                crossOrigin:
-                  getAssetCrossOrigin(assetCrossOrigin, 'modulepreload') ??
-                  preloadLink.crossOrigin,
-              },
-            })
-          }),
-      )
-
-    return preloadMeta
-  })
-
-  const headScripts = Vue.computed<Array<RouterManagedTag>>(() =>
-    (
-      matches.value
-        .map((match) => match.headScripts!)
-        .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...script }) => ({
-      tag: 'script',
-      attrs: {
-        ...script,
-      },
-      children,
-    })),
-  )
-
-  const manifestAssets = Vue.computed<Array<RouterManagedTag>>(() => {
-    const manifest = router.ssr?.manifest
-
-    const assets = matches.value
-      .map((match) => manifest?.routes[match.routeId]?.assets ?? [])
-      .filter(Boolean)
-      .flat(1)
-      .filter((asset) => asset.tag === 'link')
-      .map(
-        (asset) =>
-          ({
+    const preloads: Array<RouterManagedTag> = []
+    const links: Array<RouterManagedTag> = []
+    const headScripts: Array<RouterManagedTag> = []
+    for (const match of currentMatches) {
+      for (const preload of manifest?.routes[match.routeId]?.preloads ?? []) {
+        if (preload) {
+          preloads.push({
             tag: 'link',
             attrs: {
-              ...asset.attrs,
-              crossOrigin:
-                getAssetCrossOrigin(assetCrossOrigin, 'stylesheet') ??
-                asset.attrs?.crossOrigin,
+              ...getScriptPreloadAttrs(manifest, preload, assetCrossOrigin),
             },
-          }) satisfies RouterManagedTag,
-      )
-
-    return assets
-  })
-
-  return () =>
-    uniqBy(
-      [
-        ...manifestAssets.value,
-        ...meta.value,
-        ...preloadMeta.value,
-        ...links.value,
-        ...headScripts.value,
-      ] as Array<RouterManagedTag>,
-      (d) => {
-        return JSON.stringify(d)
-      },
-    )
-}
-
-export function uniqBy<T>(arr: Array<T>, fn: (item: T) => string) {
-  const seen = new Set<string>()
-  return arr.filter((item) => {
-    const key = fn(item)
-    if (seen.has(key)) {
-      return false
+          })
+        }
+      }
+      for (const link of match.links ?? []) {
+        if (link) {
+          links.push({ tag: 'link', attrs: { ...link } })
+        }
+      }
+      for (const script of match.headScripts ?? []) {
+        if (script) {
+          const { children, ...attrs } = script
+          headScripts.push({
+            tag: 'script',
+            attrs: { ...attrs },
+            children: children as string | undefined,
+          })
+        }
+      }
     }
-    seen.add(key)
-    return true
+    tags.push(...preloads)
+    appendUniqueUserTags(tags, links)
+    appendUniqueUserTags(tags, headScripts)
+    return tags
   })
+  return () => tags.value
 }

@@ -36,6 +36,7 @@ app.use((req, res, next) => {
 
 app.use(express.static(path.resolve(__dirname, '..', 'dist', 'client')))
 
-app.listen(port, () => {
+app.listen(port, (error) => {
+  if (error) throw error
   console.info(`CDN Server: http://localhost:${port}`)
 })

@@ -51,7 +51,7 @@ export async function createServer(
 
   if (isProd) app.use(express.static('./dist/client'))
 
-  app.use('*', async (req, res) => {
+  app.use('/{*splat}', async (req, res) => {
     try {
       const url = req.originalUrl
 
@@ -97,7 +97,8 @@ export async function createServer(
 
 if (!isTest) {
   createServer().then(async ({ app }) =>
-    app.listen(await getPort({ port: portNumbers(3000, 3100) }), () => {
+    app.listen(await getPort({ port: portNumbers(3000, 3100) }), (error) => {
+      if (error) throw error
       console.info('Client Server: http://localhost:3000')
     }),
   )

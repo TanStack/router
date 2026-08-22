@@ -122,7 +122,18 @@ export function requestHandler<TRegister = unknown>(
   handler: RequestHandler<TRegister>,
 ) {
   return (request: Request, requestOpts: any): Promise<Response> | Response => {
-    const h3Event = new H3Event(request)
+    let h3Event: H3Event
+    try {
+      h3Event = new H3Event(request)
+    } catch (error) {
+      if (error instanceof URIError) {
+        return new Response(null, {
+          status: 400,
+          statusText: 'Bad Request',
+        })
+      }
+      throw error
+    }
 
     const response = eventStorage.run({ h3Event }, () =>
       handler(request, requestOpts),
@@ -147,8 +158,7 @@ export function getRequest(): Request {
 }
 
 export function getRequestHeaders(): TypedHeaders<RequestHeaderMap> {
-  // TODO `as any` not needed when fetchdts is updated
-  return getH3Event().req.headers as any
+  return getH3Event().req.headers
 }
 
 export function getRequestHeader(name: RequestHeaderName): string | undefined {
@@ -284,7 +294,16 @@ export function setResponseStatus(code?: number, text?: string): void {
  */
 export function getCookies(): Record<string, string> {
   const event = getH3Event()
-  return h3_parseCookies(event)
+  const cookies = h3_parseCookies(event)
+  const definedCookies: Record<string, string> = Object.create(null)
+
+  for (const [name, value] of Object.entries(cookies)) {
+    if (value !== undefined) {
+      definedCookies[name] = value
+    }
+  }
+
+  return definedCookies
 }
 
 /**
@@ -296,7 +315,7 @@ export function getCookies(): Record<string, string> {
  * ```
  */
 export function getCookie(name: string): string | undefined {
-  return getCookies()[name] || undefined
+  return getCookies()[name]
 }
 
 /**

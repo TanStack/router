@@ -12,8 +12,6 @@ const optionsKind =
   process.env.TRANSFORM_ASSETS_OPTIONS_KIND || 'createTransform'
 const optionsCache = process.env.TRANSFORM_ASSETS_OPTIONS_CACHE || 'true'
 const optionsWarmup = process.env.TRANSFORM_ASSETS_OPTIONS_WARMUP || 'true'
-const useDeprecatedTransformAssetUrls =
-  process.env.USE_DEPRECATED_TRANSFORM_ASSET_URLS || 'false'
 
 export default defineConfig({
   testDir: './tests',
@@ -49,7 +47,6 @@ export default defineConfig({
         TRANSFORM_ASSETS_OPTIONS_KIND: optionsKind,
         TRANSFORM_ASSETS_OPTIONS_CACHE: optionsCache,
         TRANSFORM_ASSETS_OPTIONS_WARMUP: optionsWarmup,
-        USE_DEPRECATED_TRANSFORM_ASSET_URLS: useDeprecatedTransformAssetUrls,
       },
       timeout: 120_000,
     },

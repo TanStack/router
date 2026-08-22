@@ -1,3 +1,5 @@
+'use client'
+
 import * as Devtools from './TanStackRouterDevtools'
 import * as DevtoolsPanel from './TanStackRouterDevtoolsPanel'
 

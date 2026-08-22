@@ -1,4 +1,6 @@
 import * as Solid from 'solid-js'
+import { _getAssetMatches, replaceEqualDeep } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
@@ -6,70 +8,46 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const activeMatches = Solid.createMemo(
-    () => router.stores.activeMatchesSnapshot.state,
+
+  const scripts = Solid.createMemo(
+    (previous: Array<RouterManagedTag> | undefined) => {
+      const matches = _getAssetMatches(router.stores.matches.get())
+      const next: Array<RouterManagedTag> = []
+      const assets: Array<RouterManagedTag> = []
+      const manifest = router.ssr?.manifest
+      for (const match of matches) {
+        for (const script of match.scripts ?? []) {
+          if (!script) {
+            continue
+          }
+          const { children, ...attrs } = script
+          next.push({
+            tag: 'script',
+            attrs: { ...attrs, nonce },
+            children: children as string | undefined,
+          })
+        }
+        for (const asset of manifest?.routes[match.routeId]?.scripts ?? []) {
+          assets.push({
+            tag: 'script',
+            attrs: { ...asset.attrs, nonce },
+            children: asset.children,
+          })
+        }
+      }
+      next.push(...assets)
+      return previous ? replaceEqualDeep(previous, next) : next
+    },
   )
-  const assetScripts = Solid.createMemo(() => {
-    const assetScripts: Array<RouterManagedTag> = []
-    const manifest = router.ssr?.manifest
-
-    if (!manifest) {
-      return []
-    }
-
-    activeMatches()
-      .map((match) => router.looseRoutesById[match.routeId]!)
-      .forEach((route) =>
-        manifest.routes[route.id]?.assets
-          ?.filter((d) => d.tag === 'script')
-          .forEach((asset) => {
-            assetScripts.push({
-              tag: 'script',
-              attrs: { ...asset.attrs, nonce },
-              children: asset.children,
-            } as any)
-          }),
-      )
-
-    return assetScripts
-  })
-
-  const scripts = Solid.createMemo(() =>
-    (
-      activeMatches()
-        .map((match) => match.scripts!)
-        .flat(1)
-        .filter(Boolean) as Array<RouterManagedTag>
-    ).map(({ children, ...script }) => ({
-      tag: 'script',
-      attrs: {
-        ...script,
-        nonce,
-      },
-      children,
-    })),
-  )
-
-  let serverBufferedScript: RouterManagedTag | undefined = undefined
-
-  if (router.serverSsr) {
-    serverBufferedScript = router.serverSsr.takeBufferedScripts()
-  }
-
-  const allScripts = [
-    ...scripts(),
-    ...assetScripts(),
-  ] as Array<RouterManagedTag>
-
-  if (serverBufferedScript) {
-    allScripts.unshift(serverBufferedScript)
-  }
+  const serverBufferedScript =
+    (isServer ?? router.isServer) && router.serverSsr
+      ? router.serverSsr.takeBufferedScripts()
+      : undefined
 
   return (
     <>
-      {allScripts.map((asset, i) => (
-        <Asset {...asset} />
-      ))}
+      {serverBufferedScript && <Asset {...serverBufferedScript} />}
+      <Solid.For each={scripts()}>{(asset) => <Asset {...asset} />}</Solid.For>
     </>
   )
 }

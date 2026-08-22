@@ -62,20 +62,6 @@ function RootComponent() {
           >
             Quoted CSS
           </Link>
-          <Link
-            to="/lazy-css-static"
-            style={{ color: '#0284c7', textDecoration: 'none' }}
-            data-testid="nav-lazy-css-static"
-          >
-            Lazy CSS Static
-          </Link>
-          <Link
-            to="/lazy-css-lazy"
-            style={{ color: '#0284c7', textDecoration: 'none' }}
-            data-testid="nav-lazy-css-lazy"
-          >
-            Lazy CSS Lazy
-          </Link>
         </nav>
 
         <main style={{ padding: '20px' }}>

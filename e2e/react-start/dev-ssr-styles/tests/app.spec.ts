@@ -1,4 +1,5 @@
 import { expect } from '@playwright/test'
+import { DEV_STYLES_ATTR } from '@tanstack/router-core'
 import { test } from '@tanstack/router-e2e-utils'
 import { ssrStylesMode } from '../env'
 
@@ -29,9 +30,9 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(response.ok()).toBeTruthy()
         const html = await response.text()
 
-        // Should have a link tag with data-tanstack-router-dev-styles
-        expect(html).toContain('data-tanstack-router-dev-styles')
+        // Should have a dev styles link tag.
         expect(html).toContain('/@tanstack-start/styles.css')
+        expect(html).toContain(DEV_STYLES_ATTR)
       })
 
       test('dev styles link uses vite base (/) as basepath prefix', async ({
@@ -75,9 +76,9 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(response.ok()).toBeTruthy()
         const html = await response.text()
 
-        // Should NOT have a link tag with data-tanstack-router-dev-styles
-        expect(html).not.toContain('data-tanstack-router-dev-styles')
+        // Should NOT have a dev styles link tag.
         expect(html).not.toContain('/@tanstack-start/styles.css')
+        expect(html).not.toContain(DEV_STYLES_ATTR)
       })
 
       test('page still renders without dev styles', async ({ page }) => {
@@ -100,9 +101,6 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(response.ok()).toBeTruthy()
         const html = await response.text()
 
-        // Should have a link tag with data-tanstack-router-dev-styles
-        expect(html).toContain('data-tanstack-router-dev-styles')
-
         // The dev styles URL should use /custom-styles/ as the basepath prefix
         const match = html.match(
           /href="([^"]*@tanstack-start\/styles\.css[^"]*)"/,
@@ -110,6 +108,7 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
         expect(match).toBeTruthy()
         const href = match![1]
         expect(href).toMatch(/^\/custom-styles\/@tanstack-start\/styles\.css/)
+        expect(html).toContain(DEV_STYLES_ATTR)
       })
 
       test.describe('with JavaScript disabled', () => {

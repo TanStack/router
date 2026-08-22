@@ -33,6 +33,7 @@ import {
   useRouteContext,
   useSearch,
 } from '../src'
+import { useIntersectionObserver } from '../src/utils'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
@@ -42,12 +43,16 @@ import type { RouterHistory } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
+let ioCallback: IntersectionObserverCallback
 let history: RouterHistory
 
 beforeEach(() => {
   const io = getIntersectionObserverMock({
     observe: ioObserveMock,
     disconnect: ioDisconnectMock,
+    onCreate: (callback) => {
+      ioCallback = callback
+    },
   })
   vi.stubGlobal('IntersectionObserver', io)
   history = createBrowserHistory()
@@ -55,6 +60,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   history.destroy?.()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
@@ -171,6 +177,90 @@ describe('Link', () => {
     await expect(
       screen.findByRole('header', { name: 'Posts' }),
     ).rejects.toThrow()
+  })
+
+  test('does not forward internal Link props to the DOM', async () => {
+    const internalPropNames = [
+      'activeProps',
+      'inactiveProps',
+      'activeOptions',
+      'to',
+      'from',
+      'preload',
+      'preloadDelay',
+      'preloadIntentProximity',
+      'hashScrollIntoView',
+      'replace',
+      'startTransition',
+      'resetScroll',
+      'viewTransition',
+      'ignoreBlocker',
+      'params',
+      'search',
+      'hash',
+      'state',
+      'mask',
+      'reloadDocument',
+      'unsafeRelative',
+    ].map((propName) => propName.toLowerCase())
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link
+          to="/posts"
+          from="/"
+          activeProps={{ class: 'active' }}
+          inactiveProps={{ class: 'inactive' }}
+          activeOptions={{
+            exact: true,
+            includeHash: true,
+            includeSearch: true,
+          }}
+          preload="intent"
+          preloadDelay={50}
+          preloadIntentProximity={123}
+          hashScrollIntoView={true}
+          replace={true}
+          startTransition={true}
+          resetScroll={true}
+          viewTransition={true}
+          ignoreBlocker={true}
+          params={{}}
+          search={{ foo: 'bar' }}
+          hash="details"
+          state={{}}
+          mask={{ to: '/posts', hash: 'masked' }}
+          reloadDocument={true}
+          unsafeRelative="path"
+        >
+          Posts
+        </Link>
+      ),
+    })
+
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const postsLink = await screen.findByRole('link', { name: 'Posts' })
+    const renderedAttributeNames = postsLink
+      .getAttributeNames()
+      .map((attributeName) => attributeName.toLowerCase())
+
+    for (const propName of internalPropNames) {
+      expect(renderedAttributeNames).not.toContain(propName)
+    }
   })
 
   test('when a Link has children', async () => {
@@ -320,6 +410,220 @@ describe('Link', () => {
 
     expect(vueCaseMouseenter).toHaveBeenCalledTimes(1)
     expect(vueCaseTouchstart).toHaveBeenCalledTimes(1)
+  })
+
+  test('reacts to internal and external destination changes', async () => {
+    const to = Vue.ref('/posts')
+    const target = Vue.ref<string>()
+    const decorated = Vue.ref(false)
+    const disabled = Vue.ref(false)
+
+    const rootRoute = createRootRoute({
+      component: Vue.defineComponent({
+        setup() {
+          return () =>
+            Vue.h(
+              Link as any,
+              {
+                to: to.value,
+                target: target.value,
+                disabled: disabled.value,
+                ...(decorated.value
+                  ? { class: 'decorated', 'aria-label': 'Updated link' }
+                  : {}),
+              },
+              { default: () => 'Dynamic link' },
+            )
+        },
+      }),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postsRoute, aboutRoute]),
+      history,
+    })
+    const navigateSpy = vi.spyOn(router, 'navigate')
+
+    render(<RouterProvider router={router} />)
+
+    const link = await screen.findByRole('link', { name: 'Dynamic link' })
+    expect(link).toHaveAttribute('href', '/posts')
+    expect(link).not.toHaveClass('decorated')
+
+    to.value = 'https://example.com/one'
+    target.value = '_blank'
+    decorated.value = true
+    disabled.value = true
+    await Vue.nextTick()
+
+    expect(link).not.toHaveAttribute('href')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('aria-label', 'Updated link')
+    expect(link).toHaveClass('decorated')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(link).not.toHaveAttribute('disabled')
+
+    disabled.value = false
+    to.value = 'https://example.com/two'
+    await Vue.nextTick()
+    expect(link).toHaveAttribute('href', 'https://example.com/two')
+    expect(link).not.toHaveAttribute('aria-disabled')
+    expect(link).not.toHaveAttribute('disabled')
+
+    to.value = 'javascript:alert(1)'
+    await Vue.nextTick()
+    expect(link).not.toHaveAttribute('href')
+
+    to.value = 'https://example.com/three'
+    await Vue.nextTick()
+    expect(link).toHaveAttribute('href', 'https://example.com/three')
+
+    to.value = '/about'
+    target.value = undefined
+    decorated.value = false
+    disabled.value = false
+    await Vue.nextTick()
+
+    expect(link).toHaveAttribute('href', '/about')
+    expect(link).not.toHaveAttribute('target')
+    expect(link).not.toHaveAttribute('aria-label')
+    expect(link).not.toHaveClass('decorated')
+    expect(link).not.toHaveAttribute('aria-disabled')
+    expect(link).not.toHaveAttribute('disabled')
+
+    decorated.value = true
+    await Vue.nextTick()
+    expect(link).toHaveAttribute('aria-label', 'Updated link')
+    expect(link).toHaveClass('decorated')
+
+    decorated.value = false
+    await Vue.nextTick()
+    expect(link).not.toHaveAttribute('aria-label')
+    expect(link).not.toHaveClass('decorated')
+
+    await fireEvent.click(link)
+    expect(navigateSpy).toHaveBeenCalledOnce()
+  })
+
+  test('tracks router location after an external link becomes internal', async () => {
+    const to = Vue.ref('https://example.com')
+    const rootRoute = createRootRoute({
+      component: Vue.defineComponent({
+        setup() {
+          return () => (
+            <Link to={to.value as '/posts' | 'https://example.com'}>
+              Initially external
+            </Link>
+          )
+        },
+      }),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const link = await screen.findByRole('link', { name: 'Initially external' })
+    expect(link).toHaveAttribute('href', 'https://example.com')
+
+    to.value = '/posts'
+    await Vue.nextTick()
+    expect(link).toHaveAttribute('href', '/posts')
+
+    await fireEvent.click(link)
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/posts')
+      expect(link).toHaveAttribute('data-status', 'active')
+    })
+  })
+
+  test('uses current event handlers after link props change', async () => {
+    const firstClick = vi.fn((event: MouseEvent) => event.preventDefault())
+    const secondClick = vi.fn((event: MouseEvent) => event.preventDefault())
+    const firstMouseEnter = vi.fn()
+    const secondMouseEnter = vi.fn()
+    const clickHandler = Vue.shallowRef<
+      ((event: MouseEvent) => void) | undefined
+    >(firstClick)
+    const mouseEnterHandler = Vue.shallowRef<
+      ((event: MouseEvent) => void) | undefined
+    >(firstMouseEnter)
+    const disabled = Vue.ref(false)
+
+    const rootRoute = createRootRoute({
+      component: Vue.defineComponent({
+        setup() {
+          return () => (
+            <Link
+              to="/posts"
+              disabled={disabled.value}
+              onClick={clickHandler.value}
+              onMouseEnter={mouseEnterHandler.value}
+            >
+              Dynamic handlers
+            </Link>
+          )
+        },
+      }),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const link = await screen.findByRole('link', { name: 'Dynamic handlers' })
+    await fireEvent.click(link)
+    await fireEvent.mouseEnter(link)
+    expect(firstClick).toHaveBeenCalledOnce()
+    expect(firstMouseEnter).toHaveBeenCalledOnce()
+
+    clickHandler.value = secondClick
+    mouseEnterHandler.value = secondMouseEnter
+    await Vue.nextTick()
+    await fireEvent.click(link)
+    await fireEvent.mouseEnter(link)
+
+    expect(firstClick).toHaveBeenCalledOnce()
+    expect(firstMouseEnter).toHaveBeenCalledOnce()
+    expect(secondClick).toHaveBeenCalledOnce()
+    expect(secondMouseEnter).toHaveBeenCalledOnce()
+
+    clickHandler.value = undefined
+    mouseEnterHandler.value = undefined
+    await Vue.nextTick()
+    await fireEvent.click(link)
+    await fireEvent.mouseEnter(link)
+
+    expect(secondClick).toHaveBeenCalledOnce()
+    expect(secondMouseEnter).toHaveBeenCalledOnce()
+
+    disabled.value = true
+    await Vue.nextTick()
+    await fireEvent.click(link)
+    await fireEvent.mouseEnter(link)
+
+    expect(secondClick).toHaveBeenCalledOnce()
+    expect(secondMouseEnter).toHaveBeenCalledOnce()
   })
 
   describe('when the current route has a search fields with undefined values', () => {
@@ -1281,15 +1585,16 @@ describe('Link', () => {
       expect(window.location.search).toBe('?page=2&filter=inactive')
     })
 
-    const updatedPage = await screen.findByTestId('current-page')
-    const updatedFilter = await screen.findByTestId('current-filter')
-
     // Verify search was updated
     expect(window.location.pathname).toBe('/posts')
     expect(window.location.search).toBe('?page=2&filter=inactive')
 
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    await waitFor(() => {
+      expect(screen.getByTestId('current-page')).toHaveTextContent('Page: 2')
+      expect(screen.getByTestId('current-filter')).toHaveTextContent(
+        'Filter: inactive',
+      )
+    })
   })
 
   test('when navigation to . from /posts while updating search from / and using base path', async () => {
@@ -1407,10 +1712,12 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/Dashboard/posts')
     expect(window.location.search).toBe('?page=2&filter=inactive')
 
-    const updatedPage = await screen.findByTestId('current-page')
-    const updatedFilter = await screen.findByTestId('current-filter')
-    expect(updatedPage).toHaveTextContent('Page: 2')
-    expect(updatedFilter).toHaveTextContent('Filter: inactive')
+    await waitFor(() => {
+      expect(screen.getByTestId('current-page')).toHaveTextContent('Page: 2')
+      expect(screen.getByTestId('current-filter')).toHaveTextContent(
+        'Filter: inactive',
+      )
+    })
   })
 
   test('when navigating to /posts with invalid search', async () => {
@@ -4966,6 +5273,191 @@ describe('Link', () => {
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
   })
 
+  test('Link.preload="viewport" should respect preloadDelay', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/about" preload="viewport" preloadDelay={50}>
+            Viewport Link
+          </Link>
+          <Link to="/about" preload="intent" preloadDelay={50}>
+            Intent Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+
+    const viewportLink = await screen.findByRole('link', {
+      name: 'Viewport Link',
+    })
+    const intentLink = await screen.findByRole('link', { name: 'Intent Link' })
+    vi.useFakeTimers()
+
+    ioCallback([], {} as IntersectionObserver)
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    fireEvent.mouseLeave(viewportLink)
+
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(49)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+
+    fireEvent.mouseEnter(intentLink)
+    fireEvent.mouseLeave(intentLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+  })
+
+  test('Link.disabled should disable viewport observation', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/" disabled>
+            Index Link
+          </Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'viewport',
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    expect(indexLink).toBeInTheDocument()
+    expect(indexLink).toHaveAttribute('aria-disabled', 'true')
+    expect(ioObserveMock).not.toHaveBeenCalled()
+  })
+
+  test('useIntersectionObserver should react to its disabled getter', async () => {
+    const TestComponent = Vue.defineComponent({
+      name: 'TestComponent',
+      setup() {
+        const element = Vue.ref<HTMLElement | null>(null)
+        const disabled = Vue.ref(true)
+
+        useIntersectionObserver(
+          element,
+          () => {},
+          () => disabled.value,
+        )
+
+        return () => (
+          <>
+            <button onClick={() => (disabled.value = !disabled.value)}>
+              Toggle disabled
+            </button>
+            <div ref={element} />
+          </>
+        )
+      },
+    })
+
+    render(<TestComponent />)
+    expect(ioObserveMock).not.toHaveBeenCalled()
+
+    const toggle = screen.getByRole('button', { name: 'Toggle disabled' })
+    await fireEvent.click(toggle)
+    await waitFor(() => expect(ioObserveMock).toHaveBeenCalledOnce())
+
+    await fireEvent.click(toggle)
+    await waitFor(() => expect(ioDisconnectMock).toHaveBeenCalledOnce())
+  })
+
   test("Router.preload='render', should trigger the route loader on render", async () => {
     const mock = vi.fn()
 
@@ -5004,6 +5496,112 @@ describe('Link', () => {
     expect(aboutLink).toBeInTheDocument()
 
     expect(mock).toHaveBeenCalledTimes(1)
+  })
+
+  test('Link.preload="render" preloads each reactive destination', async () => {
+    const to = Vue.ref('/posts')
+    const rootRoute = createRootRoute({
+      component: Vue.defineComponent({
+        setup() {
+          return () => (
+            <Link to={to.value as '/posts' | '/about'} preload="render">
+              Dynamic render preload
+            </Link>
+          )
+        },
+      }),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postsRoute, aboutRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+
+    const link = await screen.findByRole('link', {
+      name: 'Dynamic render preload',
+    })
+    await waitFor(() => expect(preloadRouteSpy).toHaveBeenCalledOnce())
+    expect(link).toHaveAttribute('href', '/posts')
+
+    to.value = '/about'
+    await waitFor(() => expect(preloadRouteSpy).toHaveBeenCalledTimes(2))
+    expect(link).toHaveAttribute('href', '/about')
+  })
+
+  test('cancels stale delayed preloads after link inputs change', async () => {
+    const to = Vue.ref('/posts')
+    const disabled = Vue.ref(false)
+    const rootRoute = createRootRoute({
+      component: Vue.defineComponent({
+        setup() {
+          return () => (
+            <Link
+              to={to.value as '/posts' | '/about' | 'https://example.com'}
+              preload="intent"
+              preloadDelay={50}
+              disabled={disabled.value}
+            >
+              Dynamic intent preload
+            </Link>
+          )
+        },
+      }),
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([postsRoute, aboutRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByRole('link', {
+      name: 'Dynamic intent preload',
+    })
+    vi.useFakeTimers()
+
+    await fireEvent.mouseEnter(link)
+    disabled.value = true
+    await Vue.nextTick()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    disabled.value = false
+    await Vue.nextTick()
+    await fireEvent.mouseEnter(link)
+    to.value = '/about'
+    await Vue.nextTick()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    await fireEvent.mouseEnter(link)
+    to.value = 'https://example.com'
+    await Vue.nextTick()
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    to.value = '/about'
+    await Vue.nextTick()
+    await fireEvent.mouseEnter(link)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
   })
 
   test.each([undefined, false, 'render', 'viewport'] as const)(
@@ -5063,6 +5661,7 @@ describe('Link', () => {
   )
 
   test('Link.preload="intent" should preload on focus, hover, and touchstart', async () => {
+    const updateSearch = vi.fn((search) => search)
     const rootRoute = createRootRoute()
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -5070,7 +5669,7 @@ describe('Link', () => {
       component: () => (
         <>
           <h1>Index Heading</h1>
-          <Link to="/about" preload="intent">
+          <Link to="/about" search={updateSearch} preload="intent">
             About Link
           </Link>
         </>
@@ -5097,6 +5696,8 @@ describe('Link', () => {
     expect(aboutLink).toBeInTheDocument()
 
     const baselineCalls = preloadRouteSpy.mock.calls.length
+    const baselineSearchCalls = updateSearch.mock.calls.length
+    expect(baselineSearchCalls).toBeGreaterThan(0)
 
     fireEvent.focus(aboutLink)
     await waitFor(() =>
@@ -5112,6 +5713,10 @@ describe('Link', () => {
     await waitFor(() =>
       expect(preloadRouteSpy).toHaveBeenCalledTimes(baselineCalls + 3),
     )
+    expect(updateSearch).toHaveBeenCalledTimes(baselineSearchCalls + 3)
+    for (const call of preloadRouteSpy.mock.calls.slice(baselineCalls)) {
+      expect(call).toHaveLength(1)
+    }
   })
 
   test('Router.preload="intent", pendingComponent renders during unresolved route loader', async () => {
@@ -5164,79 +5769,6 @@ describe('Link', () => {
     expect(postsElement).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/posts')
-  })
-
-  test('Link slot receives isTransitioning during pending navigation', async () => {
-    let resolvePostsLoader: (() => void) | undefined
-
-    const postsLoaderPromise = new Promise<void>((resolve) => {
-      resolvePostsLoader = resolve
-    })
-
-    const rootRoute = createRootRoute({
-      component: () =>
-        Vue.h(Vue.Fragment, null, [
-          Vue.h(
-            Link,
-            { to: '/posts', 'data-testid': 'posts-link' },
-            {
-              default: ({ isTransitioning }: { isTransitioning: boolean }) => (
-                <>
-                  <span data-testid="slot-transition-state">
-                    {isTransitioning ? 'transitioning' : 'idle'}
-                  </span>
-                  <span>Posts</span>
-                </>
-              ),
-            },
-          ),
-          Vue.h(Outlet),
-        ]),
-    })
-
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => <h1>Index page</h1>,
-    })
-
-    const postsRoute = createRoute({
-      ssr: false,
-      getParentRoute: () => rootRoute,
-      path: '/posts',
-      loader: () => postsLoaderPromise,
-      component: () => <h1>Posts page</h1>,
-    })
-
-    const router = createRouter({
-      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
-      history,
-    })
-
-    render(<RouterProvider router={router} />)
-
-    await screen.findByRole('heading', { name: 'Index page' })
-
-    const postsLink = await screen.findByTestId('posts-link')
-    const transitionState = await screen.findByTestId('slot-transition-state')
-
-    expect(transitionState).toHaveTextContent('idle')
-    expect(postsLink).not.toHaveAttribute('data-transitioning')
-
-    fireEvent.click(postsLink)
-
-    await waitFor(() => expect(resolvePostsLoader).toBeDefined())
-    await waitFor(() =>
-      expect(transitionState).toHaveTextContent('transitioning'),
-    )
-    expect(postsLink).toHaveAttribute('data-transitioning', 'transitioning')
-
-    resolvePostsLoader?.()
-
-    await screen.findByRole('heading', { name: 'Posts page' })
-
-    await waitFor(() => expect(transitionState).toHaveTextContent('idle'))
-    expect(postsLink).not.toHaveAttribute('data-transitioning')
   })
 
   describe('when preloading a link, `preload` should be', () => {

@@ -5,10 +5,11 @@ description: >-
   StartServer, React-specific imports, re-exports from
   @tanstack/react-router, full project setup with React, useServerFn
   hook.
-type: framework
-library: tanstack-start
-library_version: '1.166.2'
-framework: react
+metadata:
+  type: framework
+  library: tanstack-start
+  library_version: '1.168.32'
+  framework: react
 requires:
   - start-core
 sources:
@@ -18,15 +19,25 @@ sources:
 
 # React Start (`@tanstack/react-start`)
 
-This skill builds on start-core. Read [start-core](../../../start-client-core/skills/start-core/SKILL.md) first for foundational concepts.
+This is the React Start entry skill. Use the workflow below, then load only the package skill that owns the boundary you are changing. Do not read `start-core`, Router Core, and React Router manuals in full before starting.
 
-This skill covers the React-specific bindings, setup, and patterns for TanStack Start.
+For React Server Components patterns, see [react-start/server-components](./server-components/SKILL.md).
 
 > **CRITICAL**: All code is ISOMORPHIC by default. Loaders run on BOTH server and client. Use `createServerFn` for server-only logic.
 
 > **CRITICAL**: Do not confuse `@tanstack/react-start` with Next.js or Remix. They are completely different frameworks with different APIs.
 
 > **CRITICAL**: Types are FULLY INFERRED. Never cast, never annotate inferred values.
+
+## Full-Stack Workflow
+
+1. Define the route and component with `createFileRoute`.
+2. Put private or server-only reads and writes in `createServerFn`; call reads directly from loaders.
+3. Use `useServerFn` for component mutations, then invalidate the router or query cache after the write resolves.
+4. Enforce auth in every private server function or server route. Add `beforeLoad` separately for navigation UX.
+5. Run the initial SSR path, client navigation, mutation plus reload, direct anonymous endpoint request, runtime response assertion, type tests, and production build.
+
+Load `start-core/server-routes` instead of `server-functions` only when a raw HTTP endpoint is required. Load `router-core/*` only for the specific routing concern involved, such as params or search validation.
 
 ## Package API Surface
 
@@ -179,7 +190,7 @@ Use `useServerFn` to call server functions from React components with proper int
 import { createServerFn, useServerFn } from '@tanstack/react-start'
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string; title: string }) => data)
+  .validator((data: { id: string; title: string }) => data)
   .handler(async ({ data }) => {
     await db.posts.update(data.id, { title: data.title })
     return { success: true }

@@ -43,8 +43,8 @@ export function useLoaderData<
   return useMatch({
     from: opts.from!,
     strict: opts.strict,
-    select: (s: any) => {
-      return opts.select ? opts.select(s.loaderData) : s.loaderData
+    select: (match) => {
+      return opts.select ? opts.select(match.loaderData) : match.loaderData
     },
-  } as any) as any
+  }) as any
 }

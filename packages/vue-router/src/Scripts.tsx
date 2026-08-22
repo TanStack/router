@@ -1,5 +1,7 @@
 import * as Vue from 'vue'
+import { _getAssetMatches } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
+import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
@@ -9,51 +11,34 @@ export const Scripts = Vue.defineComponent({
   setup() {
     const router = useRouter()
     const nonce = router.options.ssr?.nonce
-    const matches = useStore(
-      router.stores.activeMatchesSnapshot,
-      (value) => value,
-    )
+    const matches = useStore(router.stores.matches, _getAssetMatches)
 
-    const assetScripts = Vue.computed<Array<RouterManagedTag>>(() => {
+    const scripts = Vue.computed(() => {
+      const userScripts: Array<RouterManagedTag> = []
       const assetScripts: Array<RouterManagedTag> = []
       const manifest = router.ssr?.manifest
-
-      if (!manifest) {
-        return []
+      for (const match of matches.value) {
+        for (const script of match.scripts ?? []) {
+          if (!script) {
+            continue
+          }
+          const { children, ...attrs } = script
+          userScripts.push({
+            tag: 'script',
+            attrs: { ...attrs, nonce },
+            children,
+          })
+        }
+        for (const asset of manifest?.routes[match.routeId]?.scripts ?? []) {
+          assetScripts.push({
+            tag: 'script',
+            attrs: { ...asset.attrs, nonce },
+            children: asset.children,
+          })
+        }
       }
-
-      matches.value
-        .map((match) => router.looseRoutesById[match.routeId]!)
-        .forEach((route) =>
-          manifest.routes[route.id]?.assets
-            ?.filter((d) => d.tag === 'script')
-            .forEach((asset) => {
-              assetScripts.push({
-                tag: 'script',
-                attrs: { ...asset.attrs, nonce },
-                children: asset.children,
-              } as RouterManagedTag)
-            }),
-        )
-
-      return assetScripts
+      return [userScripts, assetScripts] as const
     })
-
-    const scripts = Vue.computed(() => ({
-      scripts: (
-        matches.value
-          .map((match) => match.scripts!)
-          .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(({ children, ...script }) => ({
-        tag: 'script' as const,
-        attrs: {
-          ...script,
-          nonce,
-        },
-        children,
-      })),
-    }))
 
     const mounted = Vue.ref(false)
     Vue.onMounted(() => {
@@ -61,59 +46,67 @@ export const Scripts = Vue.defineComponent({
     })
 
     return () => {
-      const allScripts: Array<RouterManagedTag> = []
-
-      if (router.serverSsr) {
-        const serverBufferedScript = router.serverSsr.takeBufferedScripts()
-        if (serverBufferedScript) {
-          allScripts.push(serverBufferedScript)
-        }
-      } else if (router.ssr && !mounted.value) {
-        allScripts.push({
-          tag: 'script',
-          attrs: { nonce, 'data-allow-mismatch': true },
-          children: '',
-        } as RouterManagedTag)
-
-        allScripts.push({
-          tag: 'script',
-          attrs: {
-            nonce,
-            id: '$tsr-stream-barrier',
-            'data-allow-mismatch': true,
-          },
-          children: '',
-        } as RouterManagedTag)
-
-        for (const asset of assetScripts.value) {
-          allScripts.push({
-            tag: 'script',
-            attrs: {
-              ...asset.attrs,
-              'data-allow-mismatch': true,
-            },
-            children: '',
-          } as RouterManagedTag)
-        }
-      }
-
-      for (const script of scripts.value.scripts) {
-        allScripts.push(script as RouterManagedTag)
-      }
-
-      if (mounted.value || router.serverSsr) {
-        for (const asset of assetScripts.value) {
-          allScripts.push(asset)
-        }
-      }
-
-      return (
-        <>
-          {allScripts.map((asset, i) => (
-            <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
-          ))}
-        </>
-      )
+      return renderScripts(router, scripts.value, mounted.value, nonce)
     }
   },
 })
+
+function renderScripts(
+  router: ReturnType<typeof useRouter>,
+  [scripts, assetScripts]: readonly [
+    Array<RouterManagedTag>,
+    Array<RouterManagedTag>,
+  ],
+  mounted: boolean,
+  nonce?: string,
+) {
+  const allScripts: Array<RouterManagedTag> = []
+
+  if ((isServer ?? router.isServer) && router.serverSsr) {
+    const serverBufferedScript = router.serverSsr.takeBufferedScripts()
+    if (serverBufferedScript) {
+      allScripts.push(serverBufferedScript)
+    }
+  } else if (router.ssr && !mounted) {
+    allScripts.push({
+      tag: 'script',
+      attrs: { nonce, 'data-allow-mismatch': true },
+      children: '',
+    } satisfies RouterManagedTag)
+
+    allScripts.push({
+      tag: 'script',
+      attrs: {
+        nonce,
+        id: '$tsr-stream-barrier',
+        'data-allow-mismatch': true,
+      },
+      children: '',
+    } satisfies RouterManagedTag)
+
+    for (const asset of assetScripts) {
+      allScripts.push({
+        tag: 'script',
+        attrs: {
+          ...asset.attrs,
+          'data-allow-mismatch': true,
+        },
+        children: '',
+      } satisfies RouterManagedTag)
+    }
+  }
+
+  allScripts.push(...scripts)
+
+  if (mounted || ((isServer ?? router.isServer) && router.serverSsr)) {
+    allScripts.push(...assetScripts)
+  }
+
+  return (
+    <>
+      {allScripts.map((asset, i) => (
+        <Asset {...asset} key={`tsr-scripts-${asset.tag}-${i}`} />
+      ))}
+    </>
+  )
+}

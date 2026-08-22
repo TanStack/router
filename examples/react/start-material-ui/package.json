@@ -15,19 +15,20 @@
     "@emotion/styled": "11.14.0",
     "@fontsource-variable/roboto": "5.2.5",
     "@mui/material": "6.4.7",
-    "@tanstack/react-router": "^1.168.10",
-    "@tanstack/react-start": "^1.167.16",
-    "@tanstack/react-router-devtools": "^1.166.11",
+    "@tanstack/react-router": "^1.170.31",
+    "@tanstack/react-router-devtools": "^1.167.1",
+    "@tanstack/react-start": "^1.168.48",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "zod": "^3.24.2"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.0.14"
   }
 }

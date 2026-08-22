@@ -1,5 +1,11 @@
 # @tanstack/virtual-file-routes
 
+## 1.162.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
 ## 1.161.7
 
 ### Patch Changes

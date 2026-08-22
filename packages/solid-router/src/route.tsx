@@ -105,7 +105,7 @@ export class RouteApi<
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
-    return useRouteContext({ ...(opts as any), from: this.id as any }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
@@ -491,7 +491,7 @@ export class RootRoute<
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useRouteContext({ ...(opts as any), from: this.id }) as any
+    return useRouteContext({ ...(opts as any), from: this.id })
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
@@ -545,7 +545,7 @@ export interface DefaultRouteTypes<TProps> {
 export interface RouteTypes<TProps> extends DefaultRouteTypes<TProps> {}
 
 export type AsyncRouteComponent<TProps> = RouteTypes<TProps>['component'] & {
-  preload?: () => Promise<void>
+  preload?: () => Promise<void> | undefined
 }
 
 export type RouteComponent = AsyncRouteComponent<{}>

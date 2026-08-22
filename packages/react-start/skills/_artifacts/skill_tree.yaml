@@ -1,7 +1,7 @@
 # skills/_artifacts/start_skill_tree.yaml
 library:
   name: '@tanstack/react-start'
-  version: '1.166.2'
+  version: '1.168.32'
   repository: 'https://github.com/TanStack/router'
   description: >-
     Full-stack React framework built on TanStack Router and Vite.
@@ -37,7 +37,7 @@ skills:
     path: 'skills/start-core/server-functions/SKILL.md'
     package: 'packages/start-client-core'
     description: >-
-      createServerFn (GET/POST), inputValidator (Zod or function),
+      createServerFn (GET/POST), validator (Zod or function),
       useServerFn hook, server context utilities (getRequest,
       getRequestHeader, setResponseHeader, setResponseStatus), error
       handling (throw errors, redirect, notFound), streaming
@@ -136,6 +136,25 @@ skills:
     sources:
       - 'TanStack/router:packages/react-start/src'
       - 'TanStack/router:docs/start/framework/react/build-from-scratch.md'
+
+  - name: 'Server Components'
+    slug: 'react-start/server-components'
+    type: 'sub-skill'
+    domain: 'deployment-and-rendering'
+    path: 'skills/react-start/server-components/SKILL.md'
+    package: 'packages/react-start'
+    description: >-
+      Implement, review, debug, and refactor TanStack Start React
+      Server Components in React 19 apps.
+    requires:
+      - 'react-start'
+      - 'start-core/server-functions'
+      - 'start-core/execution-model'
+    sources:
+      - 'TanStack/router:docs/start/framework/react/guide/server-components.md'
+      - 'TanStack/router:docs/start/framework/react/guide/server-functions.md'
+      - 'TanStack/router:docs/start/framework/react/guide/execution-model.md'
+      - 'TanStack/router:docs/router/guide/data-loading.md'
 
   # ── Lifecycle Skills ────────────────────────────────────────────
   - name: 'Migrate from Next.js'

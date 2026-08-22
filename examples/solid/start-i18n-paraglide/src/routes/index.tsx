@@ -4,7 +4,7 @@ import { m } from '@/paraglide/messages.js'
 // import { getLocale } from '@/paraglide/runtime.js'
 
 const getServerMessage = createServerFn()
-  .inputValidator((emoji: string) => emoji)
+  .validator((emoji: string) => emoji)
   .handler((ctx) => {
     return m.server_message({ emoji: ctx.data })
   })

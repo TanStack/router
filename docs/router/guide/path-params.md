@@ -131,6 +131,32 @@ function PostComponent() {
 
 <!-- ::end:framework -->
 
+## Prioritizing Parsed Path Param Routes
+
+When multiple dynamic, optional, or wildcard routes can match the same URL, routes with `params.parse` are tried before equivalent routes without it. If multiple matching candidates use `params.parse`, you can use `params.priority` to control which candidate is tried first.
+
+Higher `params.priority` values are tried first. The default priority is `0`, and if a higher-priority route's `params.parse` returns `false`, matching continues to the next candidate route.
+
+`params.parse` runs during route planning and may be evaluated more than once.
+It must be deterministic and side-effect-free for the same raw params.
+
+```tsx title="src/routes/posts.$postId.tsx"
+export const Route = createFileRoute('/posts/$postId')({
+  params: {
+    priority: 10,
+    parse: ({ postId }) => {
+      if (!/^\d+$/.test(postId)) return false
+      return { postId: Number(postId) }
+    },
+    stringify: ({ postId }) => ({ postId: String(postId) }),
+  },
+})
+```
+
+With a fallback `/posts/$slug` route, `/posts/123` can match the parsed numeric route first, while `/posts/hello-world` can fall through to the slug route when `params.parse` returns `false`.
+
+`params.priority` only affects competing candidates that use `params.parse`. It does not override normal route specificity, so static routes still match before dynamic, optional, or wildcard routes.
+
 ## Navigating with Path Params
 
 When navigating to a route with path params, TypeScript will require you to pass the params either as an object or as a function that returns an object of params.
@@ -203,7 +229,7 @@ function PostComponent() {
 
 <!-- ::end:framework -->
 
-You can even combines prefixes with wildcard routes to create more complex patterns:
+You can even combine prefixes with wildcard routes to create more complex patterns:
 
 <!-- ::start:framework -->
 
@@ -317,7 +343,7 @@ You can combine both prefixes and suffixes to create very specific routing patte
 
 # React
 
-```tsx title="src/routes/users/user-{$userId}.json"
+```tsx title="src/routes/users/user-{$userId}[.]json.tsx"
 export const Route = createFileRoute('/users/user-{$userId}.json')({
   component: UserComponent,
 })
@@ -331,7 +357,7 @@ function UserComponent() {
 
 # Solid
 
-```tsx title="src/routes/users/user-{$userId}.json"
+```tsx title="src/routes/users/user-{$userId}[.]json.tsx"
 export const Route = createFileRoute('/users/user-{$userId}.json')({
   component: UserComponent,
 })
@@ -455,7 +481,7 @@ Optional parameters support prefix and suffix patterns:
 
 # React
 
-```tsx title="src/routes/files/prefix{-$name}.txt"
+```tsx title="src/routes/files/prefix{-$name}[.]txt.tsx"
 // Route: /files/prefix{-$name}.txt
 // Matches: /files/prefix.txt and /files/prefixdocument.txt
 export const Route = createFileRoute('/files/prefix{-$name}.txt')({
@@ -470,7 +496,7 @@ function FileComponent() {
 
 # Solid
 
-```tsx title="src/routes/files/prefix{-$name}.txt"
+```tsx title="src/routes/files/prefix{-$name}[.]txt.tsx"
 // Route: /files/prefix{-$name}.txt
 // Matches: /files/prefix.txt and /files/prefixdocument.txt
 export const Route = createFileRoute('/files/prefix{-$name}.txt')({
@@ -559,10 +585,10 @@ Optional parameters can be combined with wildcards for complex routing patterns:
 
 # React
 
-```tsx title="src/routes/docs/{-$version}/$.tsx"
-// Route: /docs/{-$version}/$
+```tsx title="src/routes/docs/v{-$version}/$.tsx"
+// Route: /docs/v{-$version}/$
 // Matches: /docs/extra/path, /docs/v2/extra/path
-export const Route = createFileRoute('/docs/{-$version}/$')({
+export const Route = createFileRoute('/docs/v{-$version}/$')({
   component: DocsComponent,
 })
 
@@ -572,7 +598,7 @@ function DocsComponent() {
 
   return (
     <div>
-      Version: {version || 'latest'}
+      Version: {version ? `v${version}` : 'latest'}
       Path: {_splat}
     </div>
   )
@@ -581,10 +607,10 @@ function DocsComponent() {
 
 # Solid
 
-```tsx title="src/routes/docs/{-$version}/$.tsx"
-// Route: /docs/{-$version}/$
+```tsx title="src/routes/docs/v{-$version}/$.tsx"
+// Route: /docs/v{-$version}/$
 // Matches: /docs/extra/path, /docs/v2/extra/path
-export const Route = createFileRoute('/docs/{-$version}/$')({
+export const Route = createFileRoute('/docs/v{-$version}/$')({
   component: DocsComponent,
 })
 
@@ -593,7 +619,7 @@ function DocsComponent() {
 
   return (
     <div>
-      Version: {params().version || 'latest'}
+      Version: {params().version ? `v${params().version}` : 'latest'}
       Path: {params()._splat}
     </div>
   )

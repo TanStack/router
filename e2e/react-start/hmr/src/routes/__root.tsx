@@ -10,7 +10,7 @@ import {
   useMatches,
 } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
-import appCss from '~/styles/app.css?url'
+import '~/styles/app.css'
 
 export const Route = createRootRoute({
   head: () => ({
@@ -18,7 +18,6 @@ export const Route = createRootRoute({
       { charSet: 'utf-8' },
       { name: 'viewport', content: 'width=device-width, initial-scale=1' },
     ],
-    links: [{ rel: 'stylesheet', href: appCss }],
   }),
   loader: () => ({
     crumb: 'Home',
@@ -142,6 +141,12 @@ function RootContent() {
       detail: 'Base component refresh checks',
     },
     {
+      testId: 'server-fn-hmr-link',
+      to: '/server-fn-hmr',
+      label: 'Server Fn HMR',
+      detail: 'Transitive invalidation for server functions',
+    },
+    {
       testId: 'component-hmr-inline-split-link',
       to: '/component-hmr-inline-split',
       label: 'Inline Split',
@@ -158,6 +163,12 @@ function RootContent() {
       to: '/component-hmr-named-split',
       label: 'Named Split',
       detail: 'Named component with default splitting',
+    },
+    {
+      testId: 'component-hmr-lowercase-named-split-link',
+      to: '/component-hmr-lowercase-named-split',
+      label: 'Lowercase Named Split',
+      detail: 'Lowercase named component with default splitting',
     },
     {
       testId: 'component-hmr-named-nosplit-link',

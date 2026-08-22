@@ -3,7 +3,9 @@ import type * as App from './app'
 import { getRequiredLink, waitForRequiredLink } from '../setup-helpers'
 
 const appModulePath = './dist/app.js'
-const { mountTestApp } = (await import(appModulePath)) as typeof App
+const { mountTestApp } = (await import(
+  /* @vite-ignore */ appModulePath
+)) as typeof App
 
 export function setup() {
   if (process.env.NODE_ENV !== 'production') {

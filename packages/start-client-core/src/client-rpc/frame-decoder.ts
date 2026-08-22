@@ -25,9 +25,9 @@ const MAX_FRAMES = 100_000 // Limit total frames to prevent CPU DoS
  */
 export interface FrameDecoderResult {
   /** Gets or creates a raw stream by ID (for use by deserialize plugin) */
-  getOrCreateStream: (id: number) => ReadableStream<Uint8Array>
+  getStream: (id: number) => ReadableStream<Uint8Array>
   /** Stream of JSON strings (NDJSON lines) */
-  jsonChunks: ReadableStream<string>
+  chunks: ReadableStream<string>
 }
 
 /**
@@ -133,7 +133,25 @@ export function createFrameDecoder(
     inputReader = reader
 
     const bufferList: Array<Uint8Array> = []
+    // Index of the first un-consumed chunk in bufferList. Advancing this
+    // pointer is O(1); using bufferList.shift() to drop a consumed chunk is
+    // O(n) and degrades to O(n^2) when a single large frame is assembled from
+    // many small chunks (e.g. a big RawStream payload split across reads).
+    let bufferHead = 0
     let totalLength = 0
+
+    function advanceBufferHead(): void {
+      bufferList[bufferHead++] = EMPTY_BUFFER
+
+      // Reset drained buffers immediately and compact long-lived buffers in batches.
+      if (bufferHead === bufferList.length) {
+        bufferList.length = 0
+        bufferHead = 0
+      } else if (bufferHead >= 32) {
+        bufferList.splice(0, bufferHead)
+        bufferHead = 0
+      }
+    }
 
     /**
      * Reads header bytes from buffer chunks without flattening.
@@ -146,7 +164,7 @@ export function createFrameDecoder(
     } | null {
       if (totalLength < FRAME_HEADER_SIZE) return null
 
-      const first = bufferList[0]!
+      const first = bufferList[bufferHead]!
 
       // Fast path: header fits entirely in first chunk (common case)
       if (first.length >= FRAME_HEADER_SIZE) {
@@ -170,7 +188,7 @@ export function createFrameDecoder(
       const headerBytes = new Uint8Array(FRAME_HEADER_SIZE)
       let offset = 0
       let remaining = FRAME_HEADER_SIZE
-      for (let i = 0; i < bufferList.length && remaining > 0; i++) {
+      for (let i = bufferHead; i < bufferList.length && remaining > 0; i++) {
         const chunk = bufferList[i]!
         const toCopy = Math.min(chunk.length, remaining)
         headerBytes.set(chunk.subarray(0, toCopy), offset)
@@ -201,13 +219,31 @@ export function createFrameDecoder(
     function extractFlattened(count: number): Uint8Array {
       if (count === 0) return EMPTY_BUFFER
 
+      // Fast path: the requested bytes are fully contained in the first buffered
+      // chunk (the common case — most frames arrive within a single network
+      // read). Return a subarray view instead of allocating a new buffer and
+      // copying `count` bytes. The view shares the chunk's backing ArrayBuffer,
+      // which is safe because buffered chunks are never mutated in place after
+      // being read from the network.
+      const first = bufferList[bufferHead]
+      if (first && first.length >= count) {
+        const result = first.subarray(0, count)
+        if (first.length === count) {
+          advanceBufferHead()
+        } else {
+          bufferList[bufferHead] = first.subarray(count)
+        }
+        totalLength -= count
+        return result
+      }
+
+      // Slow path: the requested bytes span multiple chunks — flatten by copying.
       const result = new Uint8Array(count)
       let offset = 0
       let remaining = count
 
-      while (remaining > 0 && bufferList.length > 0) {
-        const chunk = bufferList[0]
-        if (!chunk) break
+      while (remaining > 0 && bufferHead < bufferList.length) {
+        const chunk = bufferList[bufferHead]!
         const toCopy = Math.min(chunk.length, remaining)
         result.set(chunk.subarray(0, toCopy), offset)
 
@@ -215,9 +251,9 @@ export function createFrameDecoder(
         remaining -= toCopy
 
         if (toCopy === chunk.length) {
-          bufferList.shift()
+          advanceBufferHead()
         } else {
-          bufferList[0] = chunk.subarray(toCopy)
+          bufferList[bufferHead] = chunk.subarray(toCopy)
         }
       }
 
@@ -385,5 +421,5 @@ export function createFrameDecoder(
     }
   })()
 
-  return { getOrCreateStream, jsonChunks }
+  return { getStream: getOrCreateStream, chunks: jsonChunks }
 }

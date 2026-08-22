@@ -3,6 +3,8 @@ import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
+
 interface ScriptAttrs {
   [key: string]: string | boolean | undefined
   src?: string
@@ -171,7 +173,42 @@ const Script = Vue.defineComponent({
   },
 })
 
-export function Asset({ tag, attrs, children }: RouterManagedTag): any {
+const InlineCssStyle = Vue.defineComponent({
+  name: 'InlineCssStyle',
+  props: {
+    attrs: {
+      type: Object as Vue.PropType<Record<string, any>>,
+      default: () => ({}),
+    },
+    children: {
+      type: String,
+      default: undefined,
+    },
+  },
+  setup(props) {
+    const isInlineCssPlaceholder = props.children === undefined
+    const hydratedInlineCss =
+      isInlineCssPlaceholder && typeof document !== 'undefined'
+        ? (document.querySelector<HTMLStyleElement>(
+            `style[${INLINE_CSS_HYDRATION_ATTR}]`,
+          )?.textContent ?? '')
+        : undefined
+
+    return () =>
+      Vue.h('style', {
+        ...props.attrs,
+        [INLINE_CSS_HYDRATION_ATTR]: '',
+        'data-allow-mismatch': true,
+        innerHTML: isInlineCssPlaceholder
+          ? (hydratedInlineCss ?? '')
+          : (props.children ?? ''),
+      })
+  },
+})
+
+export function Asset(asset: RouterManagedTag): any {
+  const { tag, attrs, children } = asset
+
   switch (tag) {
     case 'title':
       return Vue.h(Title, { children: children })
@@ -180,7 +217,21 @@ export function Asset({ tag, attrs, children }: RouterManagedTag): any {
     case 'link':
       return <link {...attrs} />
     case 'style':
-      return <style {...attrs} innerHTML={children} />
+      if (
+        asset.inlineCss &&
+        (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+          (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
+      ) {
+        return Vue.h(InlineCssStyle, { attrs, children })
+      }
+
+      return (
+        <style
+          {...attrs}
+          data-allow-mismatch={asset.inlineCss || undefined}
+          innerHTML={children}
+        />
+      )
     case 'script':
       return Vue.h(Script, { attrs, children: children })
     default:

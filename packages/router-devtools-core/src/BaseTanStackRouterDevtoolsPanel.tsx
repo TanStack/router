@@ -1,5 +1,10 @@
 import { clsx as cx } from 'clsx'
-import { interpolatePath, rootRouteId, trimPath } from '@tanstack/router-core'
+import {
+  hasKeys,
+  interpolatePath,
+  rootRouteId,
+  trimPath,
+} from '@tanstack/router-core'
 import {
   For,
   Match,
@@ -277,48 +282,40 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
-    let pendingMatches: Accessor<Array<AnyRouteMatch>>
-    let cachedMatches: Accessor<Array<AnyRouteMatch>>
-    // subscribable implementation
-    if ('subscribe' in router().stores.pendingMatchesSnapshot) {
-      const [_pendingMatches, setPendingMatches] = createSignal<
-        Array<AnyRouteMatch>
-      >([])
-      pendingMatches = _pendingMatches
-
-      const [_cachedMatches, setCachedMatches] = createSignal<
-        Array<AnyRouteMatch>
-      >([])
-      cachedMatches = _cachedMatches
-
-      type Subscribe = (fn: () => void) => { unsubscribe: () => void }
-      createEffect(() => {
-        const pendingMatchesStore = router().stores.pendingMatchesSnapshot
-        setPendingMatches(pendingMatchesStore.state)
-        const subscription = (
-          (pendingMatchesStore as any).subscribe as Subscribe
-        )(() => {
-          setPendingMatches(pendingMatchesStore.state)
-        })
-        onCleanup(() => subscription.unsubscribe())
-      })
-
-      createEffect(() => {
-        const cachedMatchesStore = router().stores.cachedMatchesSnapshot
-        setCachedMatches(cachedMatchesStore.state)
-        const subscription = (
-          (cachedMatchesStore as any).subscribe as Subscribe
-        )(() => {
-          setCachedMatches(cachedMatchesStore.state)
-        })
-        onCleanup(() => subscription.unsubscribe())
-      })
+    const pendingMatches = () => {
+      const matches = routerState().matches
+      return matches.some((match: AnyRouteMatch) => match.status === 'pending')
+        ? matches
+        : []
     }
-    // signal implementation
-    else {
-      pendingMatches = () => router().stores.pendingMatchesSnapshot.state
-      cachedMatches = () => router().stores.cachedMatchesSnapshot.state
-    }
+    let cache = router()._cache
+    let cacheMatches = [...cache.values()]
+    const [cachedMatches, setCachedMatches] = createSignal(cacheMatches)
+
+    createEffect(() => {
+      const refreshCache = () => {
+        const next = router()._cache
+        let valuesChanged = next.size !== cacheMatches.length
+        if (!valuesChanged) {
+          let index = 0
+          for (const match of next.values()) {
+            if (match !== cacheMatches[index++]) {
+              valuesChanged = true
+              break
+            }
+          }
+        }
+
+        if (next !== cache || valuesChanged) {
+          cache = next
+          cacheMatches = [...next.values()]
+          setCachedMatches(cacheMatches)
+        }
+      }
+      refreshCache()
+      const interval = setInterval(refreshCache, 500)
+      onCleanup(() => clearInterval(interval))
+    })
 
     createEffect(() => {
       const matches = routerState().matches
@@ -358,9 +355,7 @@ export const BaseTanStackRouterDevtoolsPanel =
       )
     })
 
-    const hasSearch = createMemo(
-      () => Object.keys(routerState().location.search).length,
-    )
+    const hasSearch = createMemo(() => hasKeys(routerState().location.search))
 
     const explorerState = createMemo(() => {
       return {
@@ -390,11 +385,8 @@ export const BaseTanStackRouterDevtoolsPanel =
               ![
                 'stores',
                 'basepath',
-                'injectedHtml',
                 'subscribers',
-                'latestLoadPromise',
-                'navigateTimeout',
-                'resetNextScroll',
+                '_scroll',
                 'tempLocationKey',
                 'latestLocation',
                 'routeTree',
@@ -720,7 +712,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {pendingMatches().find((d) => d.id === activeMatch()?.id)
+                    {pendingMatches().find(
+                      (d: AnyRouteMatch) => d.id === activeMatch()?.id,
+                    )
                       ? 'Pending'
                       : routerState().matches.find(
                             (d: any) => d.id === activeMatch()?.id,

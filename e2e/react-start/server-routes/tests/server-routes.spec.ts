@@ -17,6 +17,79 @@ test('merge-middleware-context', async ({ page }) => {
   expect(contextResult).toContain('test')
 })
 
+test.describe('HEAD fallback', () => {
+  test('strips body and preserves headers when falling back to GET', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const res = await fetch('/api/head-fallback', { method: 'HEAD' })
+      return {
+        status: res.status,
+        contentType: res.headers.get('content-type'),
+        body: await res.text(),
+      }
+    })
+    expect(result.status).toBe(200)
+    expect(result.contentType).toBe('application/xml; charset=utf-8')
+    expect(result.body).toBe('')
+  })
+
+  test('strips body and preserves headers when falling back to ANY', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const res = await fetch('/api/only-any', { method: 'HEAD' })
+      return {
+        status: res.status,
+        xHandler: res.headers.get('x-handler'),
+        xMethod: res.headers.get('x-method'),
+        body: await res.text(),
+      }
+    })
+    expect(result.status).toBe(200)
+    expect(result.xHandler).toBe('ANY')
+    expect(result.xMethod).toBe('HEAD')
+    expect(result.body).toBe('')
+  })
+
+  test('prefers GET over ANY for HEAD requests', async ({ page }) => {
+    await page.goto('/')
+    const result = await page.evaluate(async () => {
+      const res = await fetch('/api/get-and-any', { method: 'HEAD' })
+      return {
+        status: res.status,
+        xHandler: res.headers.get('x-handler'),
+        body: await res.text(),
+      }
+    })
+    expect(result.status).toBe(200)
+    expect(result.xHandler).toBe('GET')
+    expect(result.body).toBe('')
+  })
+
+  test('preserves Location header when GET handler returns a redirect', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    // HEAD /api/head-redirect-fallback → server returns 307 Location:/api/head-fallback
+    // Browser follows the redirect: HEAD /api/head-fallback → 200 with correct headers
+    // If the Location header were lost, the browser could not follow and would see a 307.
+    const result = await page.evaluate(async () => {
+      const res = await fetch('/api/head-redirect-fallback', { method: 'HEAD' })
+      return {
+        status: res.status,
+        contentType: res.headers.get('content-type'),
+        body: await res.text(),
+      }
+    })
+    expect(result.status).toBe(200)
+    expect(result.contentType).toBe('application/xml; charset=utf-8')
+    expect(result.body).toBe('')
+  })
+})
+
 test.describe('methods', () => {
   test('only ANY', async ({ page }) => {
     await page.goto('/methods/only-any')

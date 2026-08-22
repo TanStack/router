@@ -3,13 +3,13 @@ import { createServerFn } from '@tanstack/vue-start'
 import { Suspense, ref, defineComponent } from 'vue'
 
 const personServerFn = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string }) => data)
+  .validator((data: { name: string }) => data)
   .handler(({ data }) => {
     return { name: data.name, randomNumber: Math.floor(Math.random() * 100) }
   })
 
 const slowServerFn = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string }) => data)
+  .validator((data: { name: string }) => data)
   .handler(async ({ data }) => {
     await new Promise((r) => setTimeout(r, 1000))
     return { name: data.name, randomNumber: Math.floor(Math.random() * 100) }

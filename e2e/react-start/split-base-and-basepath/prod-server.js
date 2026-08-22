@@ -20,6 +20,7 @@ app.use(async (req, res, next) => {
   }
 })
 
-app.listen(PORT, () => {
+app.listen(PORT, (error) => {
+  if (error) throw error
   console.log(`Server is running on http://localhost:${PORT}`)
 })

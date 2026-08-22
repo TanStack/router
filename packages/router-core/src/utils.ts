@@ -193,10 +193,6 @@ export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
-function isFunction(d: any): d is Function {
-  return typeof d === 'function'
-}
-
 /**
  * Apply a value-or-updater to a previous value.
  * Accepts either a literal value or a function of the previous value.
@@ -205,17 +201,24 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   updater: Updater<TPrevious, TResult> | NonNullableUpdater<TPrevious, TResult>,
   previous: TPrevious,
 ): TResult {
-  if (isFunction(updater)) {
-    return updater(previous)
+  if (typeof updater === 'function') {
+    return (updater as Function)(previous)
   }
 
   return updater
 }
 
-const hasOwn = Object.prototype.hasOwnProperty
+export const hasOwn = Object.prototype.hasOwnProperty
 const isEnumerable = Object.prototype.propertyIsEnumerable
 
-const createNull = () => Object.create(null)
+export function hasKeys(obj: Record<string, unknown>) {
+  for (const key in obj) {
+    if (hasOwn.call(obj, key)) return true
+  }
+  return false
+}
+
+export const createNull = () => Object.create(null)
 export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
   replaceEqualDeep(prev, next, createNull)
 
@@ -292,24 +295,31 @@ export function replaceEqualDeep<T>(
  * Optimized for the common case where objects have no symbol properties.
  */
 function getEnumerableOwnKeys(o: object) {
-  const names = Object.getOwnPropertyNames(o)
-
-  // Fast path: check all string property names are enumerable
-  for (const name of names) {
-    if (!isEnumerable.call(o, name)) return false
+  // `Object.keys` returns only enumerable own string keys natively (no per-key
+  // JS callback). If it has fewer entries than `getOwnPropertyNames` (all own
+  // string keys), the object has a non-enumerable own string prop and is not
+  // "clone-friendly" -> bail. This replaces an O(n) loop of
+  // `propertyIsEnumerable` calls with two native calls.
+  const keys = Object.keys(o)
+  if (keys.length !== Object.getOwnPropertyNames(o).length) {
+    return false
   }
 
   // Only check symbols if the object has any (most plain objects don't)
   const symbols = Object.getOwnPropertySymbols(o)
 
-  // Fast path: no symbols, return names directly (avoids array allocation/concat)
-  if (symbols.length === 0) return names
+  // Fast path: no symbols, return enumerable string keys directly
+  if (symbols.length === 0) {
+    return keys
+  }
 
-  // Slow path: has symbols, need to check and merge
-  const keys: Array<string | symbol> = names
+  // Slow path: has symbols, include only enumerable ones, bail on any
+  // non-enumerable symbol so it round-trips like the string-key check above.
   for (const symbol of symbols) {
-    if (!isEnumerable.call(o, symbol)) return false
-    keys.push(symbol)
+    if (!isEnumerable.call(o, symbol)) {
+      return false
+    }
+    ;(keys as Array<string | symbol>).push(symbol)
   }
   return keys
 }
@@ -516,15 +526,26 @@ export function findLast<T>(
 }
 
 /**
- * Remove control characters that can cause open redirect vulnerabilities.
- * Characters like \r (CR) and \n (LF) can trick URL parsers into interpreting
- * paths like "/\r/evil.com" as "http://evil.com".
+ * Re-encode characters that are unsafe in URL paths.
+ * Includes ASCII control characters (0x00-0x1F, 0x7F) and a subset of the
+ * WHATWG URL "path percent-encode set" (", <, >, `, {, }).
+ *
+ * Space (0x20) is intentionally excluded — decodeURI decodes %20 to space
+ * and the router stores decoded spaces in location.pathname. The existing
+ * encodePathLikeUrl already handles re-encoding spaces for outgoing URLs.
+ *
+ * These characters are decoded by decodeURI but must remain percent-encoded
+ * in paths to match how upstream layers (CDNs, edge middleware, browsers)
+ * interpret the URL, preventing infinite redirect loops and path mismatches.
  */
+// eslint-disable-next-line no-control-regex
+const PATH_UNSAFE_RE = /[\x00-\x1f\x7f"<>`{}]/g
+
 function sanitizePathSegment(segment: string): string {
-  // Remove ASCII control characters (0x00-0x1F) and DEL (0x7F)
-  // These include CR (\r = 0x0D), LF (\n = 0x0A), and other potentially dangerous characters
-  // eslint-disable-next-line no-control-regex
-  return segment.replace(/[\x00-\x1f\x7f]/g, '')
+  return segment.replace(
+    PATH_UNSAFE_RE,
+    (ch) => '%' + ch.charCodeAt(0).toString(16).toUpperCase().padStart(2, '0'),
+  )
 }
 
 function decodeSegment(segment: string): string {
@@ -637,8 +658,9 @@ export function decodePath(path: string) {
   result = result + decodeSegment(cursor ? path.slice(cursor) : path)
 
   // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
-  // After sanitizing control characters, paths like "/\r/evil.com" become "//evil.com"
-  // Collapse leading double slashes to a single slash
+  // This is defense-in-depth: since control characters are no longer decoded,
+  // paths like "/%0d/evil.com" can no longer become "//evil.com". But we keep
+  // this check to guard against other edge cases.
   let handledProtocolRelativeURL = false
   if (result.startsWith('//')) {
     handledProtocolRelativeURL = true

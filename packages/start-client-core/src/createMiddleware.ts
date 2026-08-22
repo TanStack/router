@@ -36,32 +36,33 @@ export const createMiddleware: CreateMiddlewareFn<{}> = (options, __opts) => {
     type: 'request',
     ...(__opts || options),
   }
+  const setValidator = (validator: any) => {
+    return createMiddleware(
+      {},
+      Object.assign(resolvedOptions, {
+        validator,
+        // TODO remove upon stable
+        inputValidator: validator,
+      }),
+    )
+  }
 
   return {
     options: resolvedOptions,
     middleware: (middleware: any) => {
       return createMiddleware(
-        {} as any,
+        {},
         Object.assign(resolvedOptions, { middleware }),
-      ) as any
+      )
     },
-    inputValidator: (inputValidator: any) => {
-      return createMiddleware(
-        {} as any,
-        Object.assign(resolvedOptions, { inputValidator }),
-      ) as any
-    },
+    validator: setValidator,
+    // TODO remove upon stable
+    inputValidator: setValidator,
     client: (client: any) => {
-      return createMiddleware(
-        {} as any,
-        Object.assign(resolvedOptions, { client }),
-      ) as any
+      return createMiddleware({}, Object.assign(resolvedOptions, { client }))
     },
     server: (server: any) => {
-      return createMiddleware(
-        {} as any,
-        Object.assign(resolvedOptions, { server }),
-      ) as any
+      return createMiddleware({}, Object.assign(resolvedOptions, { server }))
     },
   } as any
 }
@@ -176,6 +177,9 @@ export interface FunctionMiddlewareTypes<
     TMiddlewares,
     TClientSendContext
   >
+  validator: TInputValidator
+  // TODO remove upon stable
+  /** @deprecated Use `validator` instead. */
   inputValidator: TInputValidator
 }
 
@@ -385,6 +389,9 @@ export interface FunctionMiddlewareOptions<
   in out TClientContext,
 > {
   middleware?: TMiddlewares
+  validator?: ConstrainValidator<TRegister, 'GET', TInputValidator>
+  // TODO remove upon stable
+  /** @deprecated Use `validator` instead. */
   inputValidator?: ConstrainValidator<TRegister, 'GET', TInputValidator>
   client?: FunctionMiddlewareClientFn<
     TRegister,
@@ -674,8 +681,13 @@ export interface FunctionMiddlewareAfterClient<
     > {}
 
 export interface FunctionMiddlewareValidator<TRegister, TMiddlewares> {
+  validator: <TNewValidator>(
+    validator: ConstrainValidator<TRegister, 'GET', TNewValidator>,
+  ) => FunctionMiddlewareAfterValidator<TRegister, TMiddlewares, TNewValidator>
+  // TODO remove upon stable
+  /** @deprecated Use `validator` instead. */
   inputValidator: <TNewValidator>(
-    inputValidator: ConstrainValidator<TRegister, 'GET', TNewValidator>,
+    validator: ConstrainValidator<TRegister, 'GET', TNewValidator>,
   ) => FunctionMiddlewareAfterValidator<TRegister, TMiddlewares, TNewValidator>
 }
 
@@ -770,6 +782,10 @@ export interface RequestServerOptions<TRegister, TMiddlewares> {
   pathname: string
   context: Expand<AssignAllServerRequestContext<TRegister, TMiddlewares>>
   next: RequestServerNextFn<TRegister, TMiddlewares>
+  /**
+   * Type of Start handler currently processing this request.
+   */
+  handlerType: 'serverFn' | 'router'
   /**
    * Metadata about the server function being invoked.
    * This is only present when the request is handling a server function call.

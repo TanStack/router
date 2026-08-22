@@ -1,17 +1,17 @@
 ---
-name: router-core/auth-and-guards
+name: auth-and-guards
 description: >-
   Route protection with beforeLoad, redirect()/throw redirect(),
   isRedirect helper, authenticated layout routes (_authenticated),
   non-redirect auth (inline login), RBAC with roles and permissions,
   auth provider integration (Auth0, Clerk, Supabase), router context
   for auth state.
-type: sub-skill
-library: tanstack-router
-library_version: '1.166.2'
+metadata:
+  type: sub-skill
+  library: tanstack-router
+  library_version: '1.171.15'
 requires:
   - router-core
-  - router-core/data-loading
 sources:
   - TanStack/router:docs/router/guide/authenticated-routes.md
   - TanStack/router:docs/router/how-to/setup-authentication.md
@@ -20,6 +20,10 @@ sources:
 ---
 
 # Auth and Guards
+
+> **This skill covers the routing side of auth.** Route guards are UX and navigation control; the data/API boundary still belongs in the server function, server route, or API endpoint that reads or mutates private data. For the **server-side primitives** — session cookies (`HttpOnly`/`Secure`/`SameSite`), `useSession`-style helpers, OAuth `state` + PKCE, password-reset enumeration defense, CSRF, rate limiting — see [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md).
+>
+> **CRITICAL**: A route guard (`beforeLoad`) does NOT protect a `createServerFn` declared on that route. Server functions are API endpoints reachable independently of the route that calls them. See "Route guards do not protect server functions" below.
 
 ## Setup
 
@@ -371,6 +375,45 @@ export const Route = createFileRoute('/_authenticated')({
 
 ## Common Mistakes
 
+### CRITICAL: Route guards do not protect server functions
+
+A `beforeLoad` redirect protects the **route's UI**, not the **server functions** declared on it. `createServerFn` produces an RPC endpoint reachable directly with its declared HTTP method regardless of which route renders the calling UI. An attacker doesn't have to load `/_authenticated/orders` — they can call this GET RPC endpoint directly.
+
+```tsx
+// WRONG — handler has no auth check; the route guard doesn't help
+import { createServerFn } from '@tanstack/react-start'
+import { createFileRoute, redirect } from '@tanstack/react-router'
+
+const getMyOrders = createServerFn({ method: 'GET' }).handler(async () => {
+  return db.orders.findMany() // ← anyone can hit the RPC
+})
+
+export const Route = createFileRoute('/_authenticated/orders')({
+  beforeLoad: ({ context }) => {
+    if (!context.auth.isAuthenticated) throw redirect({ to: '/login' })
+  },
+  loader: () => getMyOrders(),
+})
+```
+
+```tsx
+// CORRECT — auth enforced on the handler itself, via middleware
+import { createServerFn } from '@tanstack/react-start'
+import { authMiddleware } from '~/server/auth-middleware'
+
+const getMyOrders = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    return db.orders.findMany({ where: { userId: context.session.userId } })
+  })
+```
+
+Rule of thumb: every `createServerFn`, server route, or API endpoint that touches user data needs `authMiddleware` (or an equivalent in-handler check). The route guard is for the page experience; the endpoint guard is for the data. See [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md) for the full session/middleware pattern.
+
+### CRITICAL: The anonymous destination can still disclose protected data
+
+Protect the entire anonymous response, not only the API call. A public login or unauthorized page still leaks data if its title, copy, search params, or serialized loader state names the protected user, tenant, record, or resource. Test a direct anonymous request and follow redirects. Assert that the handler rejects before reading private data, no protected loader runs, the final HTML and serialized state contain no protected identity, and the redirect contains only a sanitized relative return URL.
+
 ### HIGH: Auth check in component instead of beforeLoad
 
 Component-level auth checks cause a **flash of protected content** before the redirect:
@@ -395,8 +438,6 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
   component: Dashboard,
 })
 ```
-
-`beforeLoad` runs before any component rendering and before the loader. It completely prevents the flash.
 
 ### HIGH: Not re-throwing redirects in try/catch
 
@@ -451,8 +492,8 @@ export const Route = createFileRoute('/_authenticated')({
 
 Place protected routes as children of the `_authenticated` layout route. Public routes (login, home, etc.) live outside it.
 
----
-
 ## Cross-References
 
 - See also: **router-core/data-loading/SKILL.md** — `beforeLoad` runs before `loader`; auth context flows into loader via route context
+- See also: **start-core/auth-server-primitives/SKILL.md** — server-side session cookies, OAuth state + PKCE, CSRF, password-reset hardening, rate limiting (the server half of authentication)
+- See also: **start-core/middleware/SKILL.md** — `authMiddleware` factory pattern for protecting individual `createServerFn` calls

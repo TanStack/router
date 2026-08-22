@@ -64,7 +64,7 @@ export function useParams<
     from: opts.from!,
     strict: opts.strict,
     shouldThrow: opts.shouldThrow,
-    select: (match: any) => {
+    select: (match) => {
       const params = opts.strict === false ? match.params : match._strictParams
       return opts.select ? opts.select(params) : params
     },

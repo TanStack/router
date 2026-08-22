@@ -67,7 +67,7 @@ TanStack Router is a type-safe router for React and Solid applications with buil
 
 | #   | Mistake                                       | Priority | Source                        | Cross-skill? |
 | --- | --------------------------------------------- | -------- | ----------------------------- | ------------ |
-| 1   | Interpolating path params into to string      | CRITICAL | docs/guide/navigation         | navigation   |
+| 1   | Interpolating path params into `to` string    | CRITICAL | docs/guide/navigation         | navigation   |
 | 2   | Using \* for splat routes instead of $        | MEDIUM   | docs/routing/routing-concepts | —            |
 | 3   | Using curly braces for basic dynamic segments | MEDIUM   | docs/guide/path-params        | —            |
 

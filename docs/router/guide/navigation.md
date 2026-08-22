@@ -11,7 +11,7 @@ TanStack Router keeps this constant concept of relative navigation in mind for e
 - `from` - The origin route path
 - `to` - The destination route path
 
-> ⚠️ If a `from` route path isn't provided the router will assume you are navigating from the root `/` route and only auto-complete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
+> ⚠️ If a `from` route path isn't provided, the router will assume you are navigating from the root `/` route and only autocomplete absolute paths. After all, you need to know where you are from in order to know where you're going 😉.
 
 ## Shared Navigation API
 
@@ -127,9 +127,10 @@ export type LinkOptions<
     includeSearch?: boolean
     explicitUndefined?: boolean
   }
-  // If set, will preload the linked route on hover and cache it for this many milliseconds in hopes that the user will eventually navigate there.
-  preload?: false | 'intent'
-  // Delay intent preloading by this many milliseconds. If the intent exits before this delay, the preload will be cancelled.
+  // Choose the preload strategy for this link. `false` disables preloading;
+  // `'intent'`, `'viewport'`, and `'render'` select when it begins.
+  preload?: false | 'intent' | 'viewport' | 'render'
+  // Delay focus/hover intent by this many milliseconds. Touch intent preloads immediately.
   preloadDelay?: number
   // If true, will render the link without the href attribute
   disabled?: boolean
@@ -143,7 +144,7 @@ Since `LinkOptions` extends `NavigateOptions`, it also supports `mask`.
 With relative navigation and all of the interfaces in mind now, let's talk about the different flavors of navigation API at your disposal:
 
 - The `<Link>` component
-  - Generates an actual `<a>` tag with a valid `href` which can be click or even cmd/ctrl + clicked to open in a new tab
+  - Generates an actual `<a>` tag with a valid `href` which can be clicked or even cmd/ctrl + clicked to open in a new tab.
 - The `useNavigate()` hook
   - When possible, `Link` component should be used for navigation, but sometimes you need to navigate imperatively as a result of a side-effect. `useNavigate` returns a function that can be called to perform an immediate client-side navigation.
 - The `<Navigate>` component
@@ -309,7 +310,7 @@ const link = (
 
 ### Search Param Type Safety
 
-Search params are a highly dynamic state management mechanism, so it's important to ensure that you are passing the correct types to your search params. We'll see in a later section in detail how to validate and ensure search params typesafety, among other great features!
+Search params are a highly dynamic state management mechanism, so it's important to ensure that you are passing the correct types to your search params. We'll see in a later section in detail how to validate and ensure search params type safety, among other great features!
 
 ### Hash Links
 
@@ -707,7 +708,14 @@ const link = (
 
 ### Link Preloading
 
-The `Link` component supports automatically preloading routes on intent (hovering or touchstart for now). This can be configured as a default in the router options (which we'll talk more about soon) or by passing a `preload='intent'` prop to the `Link` component. Here's an example:
+The `Link` component supports four `preload` values:
+
+- `false` disables automatic preloading.
+- `'intent'` preloads when the link receives focus, is hovered, or is touched.
+- `'viewport'` preloads when the link enters the viewport.
+- `'render'` preloads as soon as the link renders.
+
+This can be configured as a default in the router options (which we'll talk more about soon) or by passing the `preload` prop to the `Link` component. Here's an intent-preloading example:
 
 ```tsx
 const link = (
@@ -723,7 +731,7 @@ What's even better is that by using a cache-first library like `@tanstack/query`
 
 ### Link Preloading Delay
 
-Along with preloading is a configurable delay which determines how long a user must hover over a link to trigger the intent-based preloading. The default delay is 50 milliseconds, but you can change this by passing a `preloadDelay` prop to the `Link` component with the number of milliseconds you'd like to wait:
+For `'intent'` and `'viewport'` preloading, a configurable delay determines how long to wait before preloading begins after focus, hover, or viewport entry. If focus or hover ends, or the link leaves the viewport before the delay, the queued preload is cancelled. Touch intent preloads immediately without waiting for the delay. The default delay is 50 milliseconds, but you can change it by passing a `preloadDelay` prop to the `Link` component:
 
 ```tsx
 const link = (
@@ -784,7 +792,7 @@ The `router.navigate` method is the same as the `navigate` function returned by 
 
 ## `useMatchRoute` and `<MatchRoute>`
 
-The `useMatchRoute` hook and `<MatchRoute>` component are the same thing, but the hook is a bit more flexible. They both accept the standard navigation `ToOptions` interface either as options or props and return `true/false` if that route is currently matched. It also has a handy `pending` option that will return `true` if the route is currently pending (e.g. a route is currently transitioning to that route). This can be extremely useful for showing optimistic UI around where a user is navigating:
+The `useMatchRoute` hook and `<MatchRoute>` component are the same thing, but the hook is a bit more flexible. They both accept the standard navigation `ToOptions` interface, either as options or props, to determine whether a route is currently matched. The `pending` option checks whether the route is currently pending (e.g. the router is currently transitioning to that route). This can be extremely useful for showing optimistic UI around where a user is navigating:
 
 ```tsx
 function Component() {
@@ -820,7 +828,7 @@ function Component() {
 }
 ```
 
-The hook version `useMatchRoute` returns a function that can be called programmatically to check if a route is matched:
+The hook version `useMatchRoute` returns a function for checking whether a route is matched. It subscribes the component to the router state used for matching, so use it when the result affects rendering or to trigger an effect. This subscription ensures the component updates as the current or pending location changes:
 
 ```tsx
 function Component() {
@@ -830,12 +838,32 @@ function Component() {
     if (matchRoute({ to: '/users', pending: true })) {
       console.info('The /users route is matched and pending')
     }
-  })
+  }, [matchRoute])
 
   return (
     <div>
       <Link to="/users">Users</Link>
     </div>
+  )
+}
+```
+
+The `matchRoute` function returned by `useMatchRoute` changes identity when the relevant router state changes. If you only need to check the route at the time an event occurs, use the stable router instance returned by `useRouter` and call `router.matchRoute` directly. This reads the latest router state without subscribing the component to matching state that it does not use while rendering:
+
+```tsx
+function Component() {
+  const router = useRouter()
+
+  return (
+    <button
+      onClick={() => {
+        if (router.matchRoute({ to: '/users' }, { fuzzy: true })) {
+          console.info('The users route is active')
+        }
+      }}
+    >
+      Check current route
+    </button>
   )
 }
 ```

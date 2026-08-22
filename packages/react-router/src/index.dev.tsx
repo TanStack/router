@@ -1,3 +1,5 @@
+'use client'
+
 // Development entry point - re-exports everything from index.tsx
 // but overrides HeadContent with the dev version that handles
 // dev styles cleanup after hydration

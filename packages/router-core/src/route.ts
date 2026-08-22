@@ -55,7 +55,7 @@ export type AnyContext = {}
 
 export interface RouteContext {}
 
-export type PreloadableObj = { preload?: () => Promise<void> }
+export type PreloadableObj = { preload?: () => Promise<void> | undefined }
 
 export type RoutePathOptions<TCustomId, TPath> =
   | {
@@ -74,9 +74,17 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 
 export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 
+export type SearchMiddlewareMeta = {
+  removed?: Map<string, unknown>
+  removedAny?: Set<string>
+  defaulted?: Map<string, unknown>
+  explicit?: unknown
+}
+
 export type SearchMiddlewareContext<TSearchSchema> = {
   search: TSearchSchema
   next: (newSearch: TSearchSchema) => TSearchSchema
+  meta?: SearchMiddlewareMeta
 }
 
 export type SearchMiddleware<TSearchSchema> = (
@@ -173,9 +181,13 @@ export type ResolveParams<
 
 export type ParseParamsFn<in out TPath extends string, in out TParams> = (
   rawParams: Expand<ResolveParams<TPath>>,
-) => TParams extends ResolveParams<TPath, any>
-  ? TParams
-  : ResolveParams<TPath, any>
+) => TParams | false
+
+type ValidateParsedParams<TPath extends string, TParams> = [TParams] extends [
+  ResolveParams<TPath, any>,
+]
+  ? unknown
+  : never
 
 export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
   params: TParams,
@@ -183,14 +195,22 @@ export type StringifyParamsFn<in out TPath extends string, in out TParams> = (
 
 export type ParamsOptions<in out TPath extends string, in out TParams> = {
   params?: {
-    parse?: ParseParamsFn<TPath, TParams>
+    parse?: ParseParamsFn<TPath, TParams> & ValidateParsedParams<TPath, TParams>
+    /**
+     * When multiple route candidates use `params.parse` during matching,
+     * higher priorities are tried first.
+     *
+     * @default 0
+     */
+    priority?: number
     stringify?: StringifyParamsFn<TPath, TParams>
   }
 
   /** 
   @deprecated Use params.parse instead
   */
-  parseParams?: ParseParamsFn<TPath, TParams>
+  parseParams?: ParseParamsFn<TPath, TParams> &
+    ValidateParsedParams<TPath, TParams>
 
   /** 
   @deprecated Use params.stringify instead
@@ -680,10 +700,6 @@ export interface Route<
     THandlers
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
-  /** @internal */
-  _componentsPromise?: Promise<void>
-  /** @internal */
-  _componentsLoaded?: boolean
   lazyFn?: () => Promise<
     LazyRoute<
       Route<
@@ -709,9 +725,7 @@ export interface Route<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
-  /** @internal */
-  _lazyLoaded?: boolean
+  _lazy?: Promise<void> | true
   rank: number
   to: TrimPathRight<TFullPath>
   init: (opts: { originalIndex: number }) => void
@@ -1249,37 +1263,6 @@ export interface UpdatableRouteOptions<
 >
   extends UpdatableStaticRouteOption, UpdatableRouteOptionsExtensions {
   /**
-   * Options to control route matching behavior with runtime code.
-   *
-   * @experimental 🚧 this feature is subject to change
-   *
-   * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouteOptionsType
-   */
-  skipRouteOnParseError?: {
-    /**
-     * If `true`, skip this route during matching if `params.parse` fails.
-     *
-     * Without this option, a `/$param` route could match *any* value for `param`,
-     * and only later during the route lifecycle would `params.parse` run and potentially
-     * show the `errorComponent` if validation failed.
-     *
-     * With this option enabled, the route will only match if `params.parse` succeeds.
-     * If it fails, the router will continue trying to match other routes, potentially
-     * finding a different route that works, or ultimately showing the `notFoundComponent`.
-     *
-     * @default false
-     */
-    params?: boolean
-    /**
-     * In cases where multiple routes would need to run `params.parse` during matching
-     * to determine which route to pick, this priority number can be used as a tie-breaker
-     * for which route to try first. Higher number = higher priority.
-     *
-     * @default 0
-     */
-    priority?: number
-  }
-  /**
    * If true, this route will be matched as case-sensitive
    *
    * @default false
@@ -1300,9 +1283,7 @@ export interface UpdatableRouteOptions<
   preloadGcTime?: number
   search?: {
     middlewares?: Array<
-      SearchMiddleware<
-        ResolveFullSearchSchemaInput<TParentRoute, TSearchValidator>
-      >
+      SearchMiddleware<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
     >
   }
   /** 
@@ -1724,10 +1705,7 @@ export class BaseRoute<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
-  /** @internal */
-  _componentsPromise?: Promise<void>
-
+  _lazy?: Promise<void> | true
   constructor(
     options?: RouteOptions<
       TRegister,

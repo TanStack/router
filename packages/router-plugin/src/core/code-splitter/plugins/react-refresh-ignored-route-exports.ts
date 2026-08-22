@@ -3,9 +3,11 @@ import * as t from '@babel/types'
 import { getUniqueProgramIdentifier } from '../../utils'
 import type { ReferenceRouteCompilerPlugin } from '../plugins'
 
-const buildReactRefreshIgnoredRouteExportsStatement = template.statement(
+const buildReactRefreshIgnoredRouteExportsStatements = template.statements(
   `
-if (import.meta.hot && typeof window !== 'undefined') {
+const hot = import.meta.hot
+if (hot && typeof window !== 'undefined') {
+  hot.data ??= {}
   const tsrReactRefresh = window.__TSR_REACT_REFRESH__ ??= (() => {
     const ignoredExportsById = new Map()
     const previousGetIgnoredExports = window.__getReactRefreshIgnoredExports
@@ -49,7 +51,7 @@ export function createReactRefreshIgnoredRouteExportsPlugin(): ReferenceRouteCom
 
       ctx.programPath.pushContainer(
         'body',
-        buildReactRefreshIgnoredRouteExportsStatement({
+        buildReactRefreshIgnoredRouteExportsStatements({
           moduleId: t.stringLiteral(ctx.opts.id),
         }),
       )

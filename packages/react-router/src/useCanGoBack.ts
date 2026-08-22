@@ -6,7 +6,7 @@ export function useCanGoBack() {
   const router = useRouter()
 
   if (isServer ?? router.isServer) {
-    return router.stores.location.state.state.__TSR_index !== 0
+    return router.stores.location.get().state.__TSR_index !== 0
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static

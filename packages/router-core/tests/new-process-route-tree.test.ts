@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { beforeAll, describe, expect, it, vi } from 'vitest'
 import {
   findFlatMatch,
   findRouteMatch,
@@ -22,6 +22,44 @@ function makeTree(routes: Array<string>) {
 }
 
 describe('findRouteMatch', () => {
+  describe('routesByPath', () => {
+    it('uses exact route-template keys while matching duplicate bare aliases by insertion order', () => {
+      const routeTree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/$id',
+            fullPath: '/$id',
+            path: '$id',
+          },
+          {
+            id: '/{$id}',
+            fullPath: '/{$id}',
+            path: '{$id}',
+          },
+          {
+            id: '/prefix{$id}',
+            fullPath: '/prefix{$id}',
+            path: 'prefix{$id}',
+          },
+        ],
+      }
+
+      const { processedTree, routesByPath } = processRouteTree(routeTree)
+
+      expect(routesByPath['/$id']?.id).toBe('/$id')
+      expect(routesByPath['/{$id}']?.id).toBe('/{$id}')
+      expect(routesByPath['/prefix{$id}']?.id).toBe('/prefix{$id}')
+      expect(findRouteMatch('/value', processedTree)?.route.id).toBe('/$id')
+      expect(findRouteMatch('/prefixvalue', processedTree)?.route.id).toBe(
+        '/prefix{$id}',
+      )
+    })
+  })
+
   describe('priority', () => {
     describe('basic permutations priorities', () => {
       it('/static/static vs /static/dynamic', () => {
@@ -76,6 +114,10 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/a/{-$b}b', '/a/{-$b}'])
         expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{-$b}b')
       })
+      it('prefix+suffix optional wins when declared after plain optional', () => {
+        const tree = makeTree(['/a/{-$b}', '/a/b{-$b}b'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{-$b}b')
+      })
 
       it('prefix+suffix wildcard wins over plain wildcard', () => {
         const tree = makeTree(['/a/b{$}b', '/a/$'])
@@ -89,6 +131,90 @@ describe('findRouteMatch', () => {
         const tree = makeTree(['/a/{$}b', '/a/$'])
         expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/{$}b')
       })
+      it('sorts a third, more specific wildcard declared last', () => {
+        const tree = makeTree(['/a/$', '/a/b{$}', '/a/b{$}b'])
+        expect(findRouteMatch('/a/bbb', tree)?.route.id).toBe('/a/b{$}b')
+      })
+    })
+
+    it('sorts parser priorities after building required, optional, and wildcard siblings', () => {
+      const cases = [
+        ['pre{$value}suf', 'dynamic'],
+        ['pre{-$value}suf', 'optional'],
+        ['pre{$}suf', 'wildcard'],
+      ] as const
+
+      for (const [segment, siblingKind] of cases) {
+        let acceptHigherPriority = true
+        const fullPath = `/a/${segment}`
+        const routeTree = {
+          id: '__root__',
+          isRoot: true,
+          fullPath: '/',
+          path: '/',
+          children: [
+            {
+              id: `low-${siblingKind}`,
+              fullPath,
+              path: fullPath.slice(1),
+              options: {
+                params: {
+                  priority: 1,
+                  parse: (params: Record<string, string>) => params,
+                },
+              },
+            },
+            {
+              id: `high-${siblingKind}`,
+              fullPath,
+              path: fullPath.slice(1),
+              options: {
+                params: {
+                  priority: 2,
+                  parse: (params: Record<string, string>) =>
+                    acceptHigherPriority ? params : false,
+                },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(routeTree)
+        const branch = processedTree.segmentTree.staticInsensitive?.get('a')
+
+        expect(branch?.[siblingKind]).toHaveLength(2)
+        expect(findRouteMatch('/a/prewinsuf', processedTree)?.route.id).toBe(
+          `high-${siblingKind}`,
+        )
+
+        acceptHigherPriority = false
+        expect(
+          findRouteMatch('/a/prefallbacksuf', processedTree)?.route.id,
+        ).toBe(`low-${siblingKind}`)
+      }
+    })
+
+    it('reuses optional nodes with the same shape when they have no parser', () => {
+      const tree = makeTree([
+        '/a/{-$first}/first-child',
+        '/a/{-$second}/second-child',
+      ])
+      const branch = tree.segmentTree.staticInsensitive?.get('a')
+
+      expect(branch?.optional).toHaveLength(1)
+      expect(findRouteMatch('/a/value/first-child', tree)?.route.id).toBe(
+        '/a/{-$first}/first-child',
+      )
+      expect(findRouteMatch('/a/value/second-child', tree)?.route.id).toBe(
+        '/a/{-$second}/second-child',
+      )
+    })
+
+    it('keeps same-shaped wildcard aliases as separate match candidates', () => {
+      const tree = makeTree(['/a/$', '/a/{$}'])
+      const branch = tree.segmentTree.staticInsensitive?.get('a')
+
+      expect(branch?.wildcard).toHaveLength(2)
+      expect(findRouteMatch('/a/value', tree)?.route.id).toBe('/a/$')
     })
 
     describe('prefix / suffix lengths', () => {
@@ -233,6 +359,64 @@ describe('findRouteMatch', () => {
         const treeWithIndex = makeTree(['/a/', '/a/{-$b}'])
         expect(findRouteMatch('/a', treeWithIndex)?.route.id).toBe('/a/')
       })
+      it('optional+static vs static+wildcard', () => {
+        const tree = makeTree(['/{-$a}/b', '/a/$'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/$')
+      })
+      it('dynamic+static vs static+wildcard', () => {
+        const tree = makeTree(['/$a/b', '/a/$'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/$')
+      })
+      it('dynamic+static+static vs static+wildcard', () => {
+        const tree = makeTree(['/$a/b/c', '/a/$'])
+        expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/$')
+      })
+      it('case-insensitive static+wildcard beats optional+static', () => {
+        const tree = makeTree(['/{-$a}/bar', '/foo/$'])
+        expect(findRouteMatch('/FOO/bar', tree)?.route.id).toBe('/foo/$')
+      })
+      it('static+optional+static vs static+static+wildcard', () => {
+        const tree = makeTree(['/a/{-$b}/c', '/a/b/$'])
+        expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/b/$')
+      })
+      it('static+optional+static vs static+static+dynamic', () => {
+        const tree = makeTree(['/a/{-$b}/c/d', '/a/b/c/$d'])
+        expect(findRouteMatch('/a/b/c/d', tree)?.route.id).toBe('/a/b/c/$d')
+      })
+      it('static+optional+static+static beats static+dynamic+static+optional', () => {
+        const tree = makeTree(['/a/$b/c/{-$d}', '/a/{-$b}/c/d'])
+        expect(findRouteMatch('/a/b/c/d', tree)?.route.id).toBe('/a/{-$b}/c/d')
+      })
+      it('static+dynamic+wildcard vs static+optional+static', () => {
+        const tree = makeTree(['/a/$b/$', '/a/{-$b}/c'])
+        expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/{-$b}/c')
+      })
+      it('static+dynamic+static vs static+dynamic+wildcard', () => {
+        const tree = makeTree(['/a/$b/c', '/a/$b/$'])
+        expect(findRouteMatch('/a/b/c', tree)?.route.id).toBe('/a/$b/c')
+      })
+      it('prefix+suffix wildcard wins over prefix wildcard and plain wildcard', () => {
+        const tree = makeTree(['/a/foo{$}bar', '/a/foo{$}', '/a/$'])
+        expect(findRouteMatch('/a/fooxbar', tree)?.route.id).toBe(
+          '/a/foo{$}bar',
+        )
+      })
+      it('skipped optional keeps later static priority over wildcard', () => {
+        const tree = makeTree(['/{-$a}/b/c', '/b/$'])
+        expect(findRouteMatch('/b/c', tree)?.route.id).toBe('/{-$a}/b/c')
+      })
+      it('skipped optional aligns later static priority with wildcard siblings', () => {
+        const tree = makeTree(['/{-$a}/b/{-$c}/d', '/b/c/$'])
+        expect(findRouteMatch('/b/c/d', tree)?.route.id).toBe('/b/c/$')
+      })
+      it('optional child wins over empty wildcard at the same node', () => {
+        const tree = makeTree(['/a/{-$b}', '/a/$'])
+        expect(findRouteMatch('/a', tree)?.route.id).toBe('/a/{-$b}')
+      })
+      it('optional+static vs static+optional', () => {
+        const tree = makeTree(['/{-$a}/b', '/a/{-$b}'])
+        expect(findRouteMatch('/a/b', tree)?.route.id).toBe('/a/{-$b}')
+      })
     })
   })
 
@@ -294,6 +478,63 @@ describe('findRouteMatch', () => {
   })
 
   describe('case sensitivity competition', () => {
+    it('reuses an insensitive static node for differently cased siblings', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/Docs/API',
+            fullPath: '/Docs/API',
+            path: 'Docs/API',
+          },
+          {
+            id: '/docs/guide',
+            fullPath: '/docs/guide',
+            path: 'docs/guide',
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const docs = processedTree.segmentTree.staticInsensitive?.get('docs')
+
+      expect(processedTree.segmentTree.staticInsensitive?.size).toBe(1)
+      expect(docs?.staticInsensitive?.size).toBe(2)
+      expect(findRouteMatch('/DOCS/api', processedTree)?.route.id).toBe(
+        '/Docs/API',
+      )
+      expect(findRouteMatch('/Docs/GUIDE', processedTree)?.route.id).toBe(
+        '/docs/guide',
+      )
+    })
+    it('allows a route to override a sensitive tree default', () => {
+      const tree = {
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/Strict',
+            fullPath: '/Strict',
+            path: 'Strict',
+          },
+          {
+            id: '/loose',
+            fullPath: '/loose',
+            path: 'loose',
+            options: { caseSensitive: false },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree, true)
+
+      expect(findRouteMatch('/Strict', processedTree)?.route.id).toBe('/Strict')
+      expect(findRouteMatch('/strict', processedTree)).toBeNull()
+      expect(findRouteMatch('/LOOSE', processedTree)?.route.id).toBe('/loose')
+    })
     it('a case sensitive segment early on should not prevent a case insensitive match', () => {
       const tree = {
         id: '__root__',
@@ -475,6 +716,16 @@ describe('findRouteMatch', () => {
     it('multi-segment wildcard w/ suffix', () => {
       const tree = makeTree(['/{$}/c/file'])
       expect(findRouteMatch('/a/b/c/file', tree)?.route.id).toBe('/{$}/c/file')
+    })
+
+    it.fails('matches U+0130 wildcard suffixes case-insensitively', () => {
+      // U+0130 is currently the only character whose default lowercase mapping
+      // changes UTF-16 length, so its folded length cannot index the raw URL.
+      const tree = makeTree(['/{$}İ'])
+      expect(findRouteMatch('/valueİ', tree)?.rawParams).toEqual({
+        '*': 'value',
+        _splat: 'value',
+      })
     })
     it('multi-segment wildcard w/ prefix and suffix', () => {
       const tree = makeTree(['/file{$}end'])
@@ -776,6 +1027,77 @@ describe('findRouteMatch', () => {
       const actualMatch = findRouteMatch('/dashboard', processed.processedTree)
       expect(actualMatch?.route.id).toBe('/dashboard/')
     })
+
+    it('uses an exact wildcard match instead of a fuzzy layout match', () => {
+      const tree = makeTree(['/a', '/a/$'])
+      const match = findRouteMatch('/a/b/c', tree, true)
+      expect(match?.route.id).toBe('/a/$')
+      expect(match?.rawParams).toEqual({ '*': 'b/c', _splat: 'b/c' })
+    })
+
+    it('falls back to fuzzy layout matching when wildcard params.parse returns false', () => {
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        isRoot: true,
+        options: {},
+        children: [
+          {
+            id: '/a',
+            fullPath: '/a',
+            path: 'a',
+          },
+          {
+            id: '/a/$',
+            fullPath: '/a/$',
+            path: 'a/$',
+            options: {
+              params: {
+                parse: () => {
+                  return false
+                },
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      const match = findRouteMatch('/a/b/c', processedTree, true)
+      expect(match?.route.id).toBe('/a')
+      expect(match?.rawParams).toEqual({ '**': 'b/c' })
+    })
+
+    it('falls back to exact layout matching when empty wildcard params.parse returns false', () => {
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        isRoot: true,
+        options: {},
+        children: [
+          {
+            id: '/a',
+            fullPath: '/a',
+            path: 'a',
+          },
+          {
+            id: '/a/$',
+            fullPath: '/a/$',
+            path: 'a/$',
+            options: {
+              params: {
+                parse: () => {
+                  return false
+                },
+              },
+            },
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/a', processedTree)?.route.id).toBe('/a')
+    })
   })
 
   describe('param extraction', () => {
@@ -886,9 +1208,333 @@ describe('findRouteMatch', () => {
         expect(result?.route.id).toBe('/{-$foo}/bar/$')
         expect(result?.rawParams).toEqual({ '*': 'rest', _splat: 'rest' })
       })
+      it('validates a stacked wildcard route once', () => {
+        let calls = 0
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    calls++
+                    return params
+                  },
+                },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/rest', processedTree)
+        expect(result?.route.id).toBe('/a/$')
+        expect(result?.rawParams).toEqual({ '*': 'rest', _splat: 'rest' })
+        expect(calls).toBe(1)
+      })
+      it('can fall back to a lower-priority wildcard when wildcard params.parse returns false', () => {
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/foo{$}',
+              fullPath: '/a/foo{$}',
+              path: 'a/foo{$}',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: () => {
+                    return false
+                  },
+                },
+              },
+            },
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/foobar', processedTree)
+        expect(result?.route.id).toBe('/a/$')
+        expect(result?.rawParams).toEqual({ '*': 'foobar', _splat: 'foobar' })
+      })
+      it('falls back to the next matching wildcard by priority when the best wildcard params.parse returns false', () => {
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/foo{$}bar',
+              fullPath: '/a/foo{$}bar',
+              path: 'a/foo{$}bar',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: () => {
+                    return false
+                  },
+                },
+              },
+            },
+            {
+              id: '/a/foo{$}',
+              fullPath: '/a/foo{$}',
+              path: 'a/foo{$}',
+              isRoot: false,
+              options: {},
+            },
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {},
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/fooxbar', processedTree)
+        expect(result?.route.id).toBe('/a/foo{$}')
+        expect(result?.rawParams).toEqual({ '*': 'xbar', _splat: 'xbar' })
+      })
+      it('does not validate a lower-priority wildcard after a better wildcard matches', () => {
+        let higherPriorityCalls = 0
+        let lowerPriorityCalls = 0
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/foo{$}',
+              fullPath: '/a/foo{$}',
+              path: 'a/foo{$}',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    higherPriorityCalls++
+                    return params
+                  },
+                },
+              },
+            },
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    lowerPriorityCalls++
+                    return params
+                  },
+                },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/foobar', processedTree)
+        expect(result?.route.id).toBe('/a/foo{$}')
+        expect(result?.rawParams).toEqual({ '*': 'bar', _splat: 'bar' })
+        expect(higherPriorityCalls).toBe(1)
+        expect(lowerPriorityCalls).toBe(0)
+      })
+      it('does not validate wildcard fallback after a static sibling matches', () => {
+        let calls = 0
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/b',
+              fullPath: '/a/b',
+              path: 'a/b',
+              isRoot: false,
+              options: {},
+            },
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    calls++
+                    return params
+                  },
+                },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/b', processedTree)
+        expect(result?.route.id).toBe('/a/b')
+        expect(calls).toBe(0)
+      })
+      it('does not validate empty wildcard fallback after an index sibling matches', () => {
+        let calls = 0
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/',
+              fullPath: '/a/',
+              path: 'a/',
+              isRoot: false,
+              options: {},
+            },
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    calls++
+                    return params
+                  },
+                },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a', processedTree)
+        expect(result?.route.id).toBe('/a/')
+        expect(calls).toBe(0)
+      })
+      it('passes wildcard raw params to params.parse', () => {
+        let parsedParams: Record<string, string> | undefined
+        const tree = {
+          id: '__root__',
+          fullPath: '/',
+          path: '/',
+          isRoot: true,
+          options: {},
+          children: [
+            {
+              id: '/a/$',
+              fullPath: '/a/$',
+              path: 'a/$',
+              isRoot: false,
+              options: {
+                params: {
+                  parse: (params: Record<string, string>) => {
+                    parsedParams = params
+                    return { length: params._splat!.length }
+                  },
+                },
+              },
+            },
+          ],
+        }
+        const { processedTree } = processRouteTree(tree)
+        const result = findRouteMatch('/a/foo/bar', processedTree)
+        expect(result?.route.id).toBe('/a/$')
+        expect(result?.rawParams).toEqual({ '*': 'foo/bar', _splat: 'foo/bar' })
+        expect(parsedParams).toEqual({ '*': 'foo/bar', _splat: 'foo/bar' })
+      })
     })
   })
   describe('pathless routes', () => {
+    it('pathless nodes do not shift positional priority scores', () => {
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        isRoot: true,
+        children: [
+          {
+            id: '/_layout',
+            fullPath: '/',
+            children: [
+              {
+                id: '/_layout/a/b',
+                fullPath: '/a/b',
+                path: 'a/b',
+              },
+            ],
+          },
+          {
+            id: '/a/$',
+            fullPath: '/a/$',
+            path: 'a/$',
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+      expect(findRouteMatch('/a/b', processedTree)?.route.id).toBe(
+        '/_layout/a/b',
+      )
+    })
+    it('uses trie depth to break equal-specificity pathless ties', () => {
+      const tree = {
+        id: '__root__',
+        fullPath: '/',
+        path: '/',
+        isRoot: true,
+        children: [
+          {
+            id: '/a',
+            fullPath: '/a',
+            path: 'a',
+          },
+          {
+            id: '/_layout',
+            fullPath: '/',
+            options: {
+              params: {
+                parse: (params: Record<string, string>) => params,
+              },
+            },
+            children: [
+              {
+                id: '/_layout/a',
+                fullPath: '/a',
+                path: 'a',
+              },
+            ],
+          },
+        ],
+      }
+      const { processedTree } = processRouteTree(tree)
+
+      expect(findRouteMatch('/a', processedTree)?.route.id).toBe('/_layout/a')
+    })
     it('builds segment tree correctly', () => {
       const tree = {
         path: '/',
@@ -907,10 +1553,7 @@ describe('findRouteMatch', () => {
             path: '$foo',
             fullPath: '/$foo',
             options: {
-              params: { parse: () => {} },
-              skipRouteOnParseError: {
-                params: true,
-              },
+              params: { parse: (params: Record<string, string>) => params },
             },
             children: [
               {
@@ -950,7 +1593,6 @@ describe('findRouteMatch', () => {
               "optional": null,
               "parent": [Circular],
               "parse": null,
-              "parsingPriority": 0,
               "pathless": [
                 {
                   "depth": 2,
@@ -965,15 +1607,14 @@ describe('findRouteMatch', () => {
                     "optional": null,
                     "parent": [Circular],
                     "parse": null,
-                    "parsingPriority": 0,
                     "pathless": null,
+                    "priority": 0,
                     "route": {
                       "fullPath": "/$foo/",
                       "id": "/$foo/_layout/",
                       "options": {},
                       "path": "/",
                     },
-                    "skipOnParamError": false,
                     "static": null,
                     "staticInsensitive": null,
                     "wildcard": null,
@@ -982,8 +1623,8 @@ describe('findRouteMatch', () => {
                   "optional": null,
                   "parent": [Circular],
                   "parse": [Function],
-                  "parsingPriority": 0,
                   "pathless": null,
+                  "priority": 0,
                   "route": {
                     "children": [
                       {
@@ -1005,13 +1646,9 @@ describe('findRouteMatch', () => {
                       "params": {
                         "parse": [Function],
                       },
-                      "skipRouteOnParseError": {
-                        "params": true,
-                      },
                     },
                     "path": "$foo",
                   },
-                  "skipOnParamError": true,
                   "static": null,
                   "staticInsensitive": Map {
                     "bar" => {
@@ -1023,15 +1660,14 @@ describe('findRouteMatch', () => {
                       "optional": null,
                       "parent": [Circular],
                       "parse": null,
-                      "parsingPriority": 0,
                       "pathless": null,
+                      "priority": 0,
                       "route": {
                         "fullPath": "/$foo/bar",
                         "id": "/$foo/_layout/bar",
                         "options": {},
                         "path": "bar",
                       },
-                      "skipOnParamError": false,
                       "static": null,
                       "staticInsensitive": null,
                       "wildcard": null,
@@ -1041,8 +1677,8 @@ describe('findRouteMatch', () => {
                 },
               ],
               "prefix": undefined,
+              "priority": 0,
               "route": null,
-              "skipOnParamError": false,
               "static": null,
               "staticInsensitive": Map {
                 "hello" => {
@@ -1054,15 +1690,14 @@ describe('findRouteMatch', () => {
                   "optional": null,
                   "parent": [Circular],
                   "parse": null,
-                  "parsingPriority": 0,
                   "pathless": null,
+                  "priority": 0,
                   "route": {
                     "fullPath": "/$foo/hello",
                     "id": "/$foo/hello",
                     "options": {},
                     "path": "$foo/hello",
                   },
-                  "skipOnParamError": false,
                   "static": null,
                   "staticInsensitive": null,
                   "wildcard": null,
@@ -1082,15 +1717,14 @@ describe('findRouteMatch', () => {
             "optional": null,
             "parent": [Circular],
             "parse": null,
-            "parsingPriority": 0,
             "pathless": null,
+            "priority": 0,
             "route": {
               "fullPath": "/",
               "id": "/",
               "options": {},
               "path": "/",
             },
-            "skipOnParamError": false,
             "static": null,
             "staticInsensitive": null,
             "wildcard": null,
@@ -1099,10 +1733,9 @@ describe('findRouteMatch', () => {
           "optional": null,
           "parent": null,
           "parse": null,
-          "parsingPriority": 0,
           "pathless": null,
+          "priority": 0,
           "route": null,
-          "skipOnParamError": false,
           "static": null,
           "staticInsensitive": null,
           "wildcard": null,
@@ -1125,7 +1758,6 @@ describe('findRouteMatch', () => {
                 parse: (params: Record<string, string>) => params,
               },
               // force the creation of a pathless node
-              skipRouteOnParseError: { params: true },
             },
             children: [
               {
@@ -1159,7 +1791,6 @@ describe('findRouteMatch', () => {
                 parse: (params: Record<string, string>) => params,
               },
               // force the creation of a pathless node
-              skipRouteOnParseError: { params: true },
             },
             children: [
               {
@@ -1196,15 +1827,27 @@ describe('processRouteMasks', { sequential: true }, () => {
     fullPath: '/',
   } as AnyRoute
   const { processedTree } = processRouteTree(routeTree)
-  it('processes a route masks list into a segment tree', () => {
-    const routeMasks: Array<RouteMask<AnyRoute>> = [
-      { from: '/a/b/c', routeTree },
-      { from: '/a/b/d', routeTree },
-      { from: '/a/$param/d', routeTree },
-      { from: '/a/{-$optional}/d', routeTree },
-      { from: '/a/b/{$}.txt', routeTree },
-    ]
+  const routeMasks: Array<RouteMask<AnyRoute>> = [
+    { from: '/a/b/c', routeTree },
+    { from: '/a/b/d', routeTree },
+    { from: '/a/$param/d', routeTree },
+    { from: '/a/{-$optional}/d', routeTree },
+    { from: '/a/b/{$}.txt', routeTree },
+    { from: '/a/$', routeTree },
+    { from: '/a/foo{$}', routeTree },
+    { from: '/a/foo{$}bar', routeTree },
+    { from: '/required/$param', routeTree },
+    { from: '/required/foo{$param}bar', routeTree },
+    { from: '/optional/{-$param}', routeTree },
+    { from: '/optional/foo{-$param}bar', routeTree },
+    { from: '/Admin/Panel', routeTree },
+  ]
+
+  beforeAll(() => {
     processRouteMasks(routeMasks, processedTree)
+  })
+
+  it('processes a route masks list into a segment tree', () => {
     const aBranch = processedTree.masksTree?.staticInsensitive?.get('a')
     expect(aBranch).toBeDefined()
     expect(aBranch?.staticInsensitive?.get('b')).toBeDefined()
@@ -1214,6 +1857,20 @@ describe('processRouteMasks', { sequential: true }, () => {
   it('can match static routes masks w/ `findFlatMatch`', () => {
     const res = findFlatMatch('/a/b/c', processedTree)
     expect(res?.route.from).toBe('/a/b/c')
+  })
+  it('caches route mask misses', () => {
+    const localTree = processRouteTree(routeTree).processedTree
+    processRouteMasks(routeMasks, localTree)
+    const cacheSet = vi.spyOn(localTree.flatCache!, 'set')
+
+    expect(findFlatMatch('/missing', localTree)).toBeNull()
+    expect(findFlatMatch('/missing', localTree)).toBeNull()
+    expect(cacheSet).toHaveBeenCalledTimes(1)
+    cacheSet.mockRestore()
+  })
+  it('matches uppercase static route masks case-insensitively', () => {
+    const res = findFlatMatch('/admin/panel', processedTree)
+    expect(res?.route.from).toBe('/Admin/Panel')
   })
   it('can match dynamic route masks w/ `findFlatMatch`', () => {
     const res = findFlatMatch('/a/123/d', processedTree)
@@ -1229,5 +1886,45 @@ describe('processRouteMasks', { sequential: true }, () => {
     const res = findFlatMatch('/a/b/file/path.txt', processedTree)
     expect(res?.route.from).toBe('/a/b/{$}.txt')
     expect(res?.rawParams).toEqual({ '*': 'file/path', _splat: 'file/path' })
+  })
+  it('sorts competing wildcard masks by specificity', () => {
+    const res = findFlatMatch('/a/fooxbar', processedTree)
+    expect(res?.route.from).toBe('/a/foo{$}bar')
+    expect(res?.rawParams).toEqual({ '*': 'x', _splat: 'x' })
+  })
+  it('sorts competing required masks by specificity', () => {
+    const res = findFlatMatch('/required/fooxbar', processedTree)
+    expect(res?.route.from).toBe('/required/foo{$param}bar')
+    expect(res?.rawParams).toEqual({ param: 'x' })
+  })
+  it('sorts competing optional masks by specificity', () => {
+    const res = findFlatMatch('/optional/fooxbar', processedTree)
+    expect(res?.route.from).toBe('/optional/foo{-$param}bar')
+    expect(res?.rawParams).toEqual({ param: 'x' })
+  })
+  it('sorts competing route masks declared least-specific first', () => {
+    const localTree = processRouteTree(routeTree).processedTree
+    processRouteMasks(
+      [
+        { from: '/dynamic/$param', routeTree },
+        { from: '/dynamic/prefix{$param}', routeTree },
+        { from: '/optional/{-$param}', routeTree },
+        { from: '/optional/prefix{-$param}', routeTree },
+        { from: '/wildcard/$', routeTree },
+        { from: '/wildcard/prefix{$}', routeTree },
+        { from: '/wildcard/prefix{$}.txt', routeTree },
+      ],
+      localTree,
+    )
+
+    expect(findFlatMatch('/dynamic/prefixvalue', localTree)?.route.from).toBe(
+      '/dynamic/prefix{$param}',
+    )
+    expect(findFlatMatch('/optional/prefixvalue', localTree)?.route.from).toBe(
+      '/optional/prefix{-$param}',
+    )
+    expect(
+      findFlatMatch('/wildcard/prefixvalue.txt', localTree)?.route.from,
+    ).toBe('/wildcard/prefix{$}.txt')
   })
 })

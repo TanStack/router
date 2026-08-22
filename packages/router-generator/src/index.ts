@@ -45,10 +45,4 @@ export { getRouteNodes as virtualGetRouteNodes } from './filesystem/virtual/getR
 
 export { rootPathId } from './filesystem/physical/rootPathId'
 
-export { ensureStringArgument } from './transform/utils'
-
-export type {
-  TransformImportsConfig,
-  TransformContext,
-  TransformOptions,
-} from './transform/types'
+export type { TransformContext, TransformOptions } from './transform/types'

@@ -21,20 +21,20 @@ export const RouterContextProvider = Vue.defineComponent({
     const router = props.router as AnyRouter
     const restAttrs = attrs
 
-    // Allow the router to update options on the router instance
-    router.update({
-      ...router.options,
-      ...restAttrs,
-      context: {
-        ...router.options.context,
-        ...((restAttrs.context as Record<string, any>) || {}),
-      },
-    } as any)
-
     // Provide router to all child components
     provideRouter(router)
 
     return () => {
+      // Allow the router to update options on the router instance
+      router.update({
+        ...router.options,
+        ...restAttrs,
+        context: {
+          ...router.options.context,
+          ...(restAttrs.context || {}),
+        },
+      })
+
       // Get child content
       const childContent = slots.default?.()
 
@@ -90,10 +90,7 @@ export const RouterProvider = Vue.defineComponent({
     } & Record<string, any>,
   ): Vue.VNode
   new (): {
-    $props: {
-      router: AnyRouter
-      routeTree?: AnyRouter['routeTree']
-    }
+    $props: RouterProps<AnyRouter>
   }
 }
 

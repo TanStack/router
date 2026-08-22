@@ -1,6 +1,6 @@
 import type babel from '@babel/core'
 import type * as t from '@babel/types'
-import type { Config, DeletableNodes } from '../config'
+import type { Config, DeletableNodes, HmrStyle } from '../config'
 import type { CodeSplitGroupings } from '../constants'
 import type { SplitNodeMeta } from './types'
 
@@ -11,6 +11,8 @@ export type CompileCodeSplitReferenceRouteOptions = {
   filename: string
   id: string
   addHmr?: boolean
+  hmrStyle?: HmrStyle
+  hmrRouteId?: string
   sharedBindings?: Set<string>
 }
 
@@ -31,15 +33,25 @@ export type ReferenceRouteSplitPropertyCompilerPluginContext = {
   prop: t.ObjectProperty
   splitNodeMeta: SplitNodeMeta
   lazyRouteComponentIdent: string
+  opts: CompileCodeSplitReferenceRouteOptions
 }
 
 export type ReferenceRouteCompilerPluginResult = {
   modified?: boolean
 }
 
-export type ReferenceRouteCompilerPlugin = {
+export type VirtualRouteSplitNodeCompilerPluginContext = {
+  programPath: babel.NodePath<t.Program>
+  splitNode: t.Node
+  splitNodeMeta: SplitNodeMeta
+}
+
+export type CodeSplitCompilerPlugin = {
   name: string
   getStableRouteOptionKeys?: () => Array<string>
+  onRouteOptions?: (
+    ctx: ReferenceRouteCompilerPluginContext,
+  ) => void | ReferenceRouteCompilerPluginResult
   onAddHmr?: (
     ctx: ReferenceRouteCompilerPluginContext,
   ) => void | ReferenceRouteCompilerPluginResult
@@ -49,4 +61,9 @@ export type ReferenceRouteCompilerPlugin = {
   onSplitRouteProperty?: (
     ctx: ReferenceRouteSplitPropertyCompilerPluginContext,
   ) => void | t.Expression
+  onVirtualRouteSplitNode?: (
+    ctx: VirtualRouteSplitNodeCompilerPluginContext,
+  ) => void
 }
+
+export type ReferenceRouteCompilerPlugin = CodeSplitCompilerPlugin

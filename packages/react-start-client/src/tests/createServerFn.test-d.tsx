@@ -24,7 +24,9 @@ test('createServerFn returns async array', () => {
     return result
   })
 
-  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
+  expectTypeOf<ReturnType<typeof serverFn>>().toEqualTypeOf<
+    Promise<Array<{ a: number }>>
+  >()
 })
 
 test('createServerFn returns sync array', () => {
@@ -33,7 +35,9 @@ test('createServerFn returns sync array', () => {
     return result
   })
 
-  expectTypeOf(serverFn()).toEqualTypeOf<Promise<Array<{ a: number }>>>()
+  expectTypeOf<ReturnType<typeof serverFn>>().toEqualTypeOf<
+    Promise<Array<{ a: number }>>
+  >()
 })
 
 test('createServerFn returns async union', () => {
@@ -42,7 +46,9 @@ test('createServerFn returns async union', () => {
     return result
   })
 
-  expectTypeOf(serverFn()).toEqualTypeOf<Promise<string | number>>()
+  expectTypeOf<ReturnType<typeof serverFn>>().toEqualTypeOf<
+    Promise<string | number>
+  >()
 })
 
 test('createServerFn returns sync union', () => {
@@ -51,5 +57,7 @@ test('createServerFn returns sync union', () => {
     return result
   })
 
-  expectTypeOf(serverFn()).toEqualTypeOf<Promise<string | number>>()
+  expectTypeOf<ReturnType<typeof serverFn>>().toEqualTypeOf<
+    Promise<string | number>
+  >()
 })

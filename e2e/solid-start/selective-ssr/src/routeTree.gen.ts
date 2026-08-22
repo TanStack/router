@@ -9,15 +9,28 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SsrFalsePendingMinRouteImport } from './routes/ssr-false-pending-min'
 import { Route as PostsRouteImport } from './routes/posts'
+import { Route as DataOnlyPendingComponentRouteImport } from './routes/data-only-pending-component'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
 
+const SsrFalsePendingMinRoute = SsrFalsePendingMinRouteImport.update({
+  id: '/ssr-false-pending-min',
+  path: '/ssr-false-pending-min',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostsRoute = PostsRouteImport.update({
   id: '/posts',
   path: '/posts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DataOnlyPendingComponentRoute =
+  DataOnlyPendingComponentRouteImport.update({
+    id: '/data-only-pending-component',
+    path: '/data-only-pending-component',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -31,40 +44,78 @@ const PostsPostIdRoute = PostsPostIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
+  '/ssr-false-pending-min': typeof SsrFalsePendingMinRoute
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
+  '/ssr-false-pending-min': typeof SsrFalsePendingMinRoute
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/data-only-pending-component': typeof DataOnlyPendingComponentRoute
   '/posts': typeof PostsRouteWithChildren
+  '/ssr-false-pending-min': typeof SsrFalsePendingMinRoute
   '/posts/$postId': typeof PostsPostIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/posts' | '/posts/$postId'
+  fullPaths:
+    | '/'
+    | '/data-only-pending-component'
+    | '/posts'
+    | '/ssr-false-pending-min'
+    | '/posts/$postId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/posts' | '/posts/$postId'
-  id: '__root__' | '/' | '/posts' | '/posts/$postId'
+  to:
+    | '/'
+    | '/data-only-pending-component'
+    | '/posts'
+    | '/ssr-false-pending-min'
+    | '/posts/$postId'
+  id:
+    | '__root__'
+    | '/'
+    | '/data-only-pending-component'
+    | '/posts'
+    | '/ssr-false-pending-min'
+    | '/posts/$postId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  DataOnlyPendingComponentRoute: typeof DataOnlyPendingComponentRoute
   PostsRoute: typeof PostsRouteWithChildren
+  SsrFalsePendingMinRoute: typeof SsrFalsePendingMinRoute
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
+    '/ssr-false-pending-min': {
+      id: '/ssr-false-pending-min'
+      path: '/ssr-false-pending-min'
+      fullPath: '/ssr-false-pending-min'
+      preLoaderRoute: typeof SsrFalsePendingMinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/posts': {
       id: '/posts'
       path: '/posts'
       fullPath: '/posts'
       preLoaderRoute: typeof PostsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/data-only-pending-component': {
+      id: '/data-only-pending-component'
+      path: '/data-only-pending-component'
+      fullPath: '/data-only-pending-component'
+      preLoaderRoute: typeof DataOnlyPendingComponentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -96,7 +147,9 @@ const PostsRouteWithChildren = PostsRoute._addFileChildren(PostsRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  DataOnlyPendingComponentRoute: DataOnlyPendingComponentRoute,
   PostsRoute: PostsRouteWithChildren,
+  SsrFalsePendingMinRoute: SsrFalsePendingMinRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

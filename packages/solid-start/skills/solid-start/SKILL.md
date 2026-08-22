@@ -5,10 +5,11 @@ description: >-
   Vite plugin, StartClient, StartServer, Solid-specific setup,
   re-exports from @tanstack/start-client-core. Full project setup
   with Solid.
-type: framework
-library: tanstack-start
-library_version: '1.166.2'
-framework: solid
+metadata:
+  type: framework
+  library: tanstack-start
+  library_version: '1.166.2'
+  framework: solid
 requires:
   - start-core
 sources:
@@ -176,7 +177,7 @@ import { createServerFn, useServerFn } from '@tanstack/solid-start'
 import { createSignal } from 'solid-js'
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string; title: string }) => data)
+  .validator((data: { id: string; title: string }) => data)
   .handler(async ({ data }) => {
     await db.posts.update(data.id, { title: data.title })
     return { success: true }

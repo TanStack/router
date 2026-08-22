@@ -1,7 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import packageJson from './package.json' with { type: 'json' }
-import { ssrStylesMode, useNitro } from './env'
+import { ssrStylesMode, useNitro, viteBundledDev } from './env'
 
 const mode = process.env.MODE ?? 'prod'
 const isDev = mode === 'dev'
@@ -16,6 +16,9 @@ function getPortKey() {
   }
   if (useNitro) {
     key += '-nitro'
+  }
+  if (viteBundledDev) {
+    key += '-bundled-dev'
   }
   return key
 }
@@ -55,6 +58,7 @@ export default defineConfig({
     env: {
       VITE_NODE_ENV: 'test',
       PORT: String(PORT),
+      E2E_VITE_BUNDLED_DEV: String(viteBundledDev),
     },
   },
 

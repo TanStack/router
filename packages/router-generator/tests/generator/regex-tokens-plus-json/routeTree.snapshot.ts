@@ -9,19 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as DashboardChar43layoutRouteImport } from './routes/dashboard/+layout'
 import { Route as Char43pageRouteImport } from './routes/+page'
+import { Route as DashboardChar43layoutRouteImport } from './routes/dashboard/+layout'
 import { Route as DashboardChar43pageRouteImport } from './routes/dashboard/+page'
 import { Route as DashboardSettingsRouteImport } from './routes/dashboard/settings'
 
-const DashboardChar43layoutRoute = DashboardChar43layoutRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const Char43pageRoute = Char43pageRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardChar43layoutRoute = DashboardChar43layoutRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardChar43pageRoute = DashboardChar43pageRouteImport.update({
@@ -68,18 +68,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardChar43layoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof Char43pageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardChar43layoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard/': {

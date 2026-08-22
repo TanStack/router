@@ -70,16 +70,15 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatch = opts.from
-    ? undefined
-    : Solid.useContext(nearestMatchContext)
+  const contextMatch = Solid.useContext(nearestMatchContext)
+  const nearestMatch = opts.from ? undefined : contextMatch
 
   const match = () => {
     if (opts.from) {
-      return router.stores.getMatchStoreByRouteId(opts.from).state
+      return router.stores.getMatchStore(opts.from).get()
     }
 
-    return nearestMatch?.match()
+    return nearestMatch?.[1 /* match */]()
   }
 
   Solid.createEffect(() => {
@@ -87,15 +86,7 @@ export function useMatch<
       return
     }
 
-    const hasPendingMatch = opts.from
-      ? Boolean(router.stores.pendingRouteIds.state[opts.from!])
-      : (nearestMatch?.hasPending() ?? false)
-
-    if (
-      !hasPendingMatch &&
-      !router.stores.isTransitioning.state &&
-      (opts.shouldThrow ?? true)
-    ) {
+    if (opts.shouldThrow ?? true) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
           `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
@@ -109,8 +100,11 @@ export function useMatch<
   return Solid.createMemo((prev: TSelected | undefined) => {
     const selectedMatch = match()
 
-    if (selectedMatch === undefined) return undefined
-    const res = opts.select ? opts.select(selectedMatch as any) : selectedMatch
+    if (selectedMatch === undefined) {
+      return undefined
+    }
+
+    const res = opts.select ? opts.select(selectedMatch) : selectedMatch
     if (prev === undefined) return res as TSelected
     return replaceEqualDeep(prev, res) as TSelected
   }) as any

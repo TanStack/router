@@ -647,7 +647,7 @@ test('reproducer #4546', async () => {
   }
 })
 
-test('clears pendingTimeout when match resolves', async () => {
+test('does not show pending UI when loaders finish before their pending delays', async () => {
   const defaultPendingComponentOnMountMock = vi.fn()
   const nestedPendingComponentOnMountMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
@@ -716,7 +716,6 @@ test('clears pendingTimeout when match resolves', async () => {
   })
 
   render(<RouterProvider router={router} />)
-  await act(() => router.latestLoadPromise)
   const linkToFoo = await screen.findByTestId('link-to-foo')
   fireEvent.click(linkToFoo)
   const fooElement = await screen.findByText('Nested Foo page')
@@ -730,20 +729,32 @@ test('clears pendingTimeout when match resolves', async () => {
   expect(fooPendingComponentOnMountMock).not.toHaveBeenCalled()
 })
 
-test('throw abortError from loader upon initial load with basepath', async () => {
-  window.history.replaceState(null, 'root', '/app')
+// https://github.com/TanStack/router/pull/7673
+test('#7673: a spontaneous loader AbortError renders the boundary without executing the route component', async () => {
+  history.replace('/app')
+  history.flush()
   const rootRoute = createRootRoute({})
+  const abortError = new DOMException('Aborted', 'AbortError')
+  const routeComponentRendered = vi.fn()
+  const renderedError = vi.fn()
+  let routeSignal: AbortSignal | undefined
 
   const indexRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/',
-    loader: async () => {
-      return Promise.reject(new DOMException('Aborted', 'AbortError'))
+    loader: async ({ abortController }): Promise<{ value: string }> => {
+      routeSignal = abortController.signal
+      return Promise.reject(abortError)
     },
-    component: () => <div>Index route content</div>,
-    errorComponent: () => (
-      <div data-testid="index-error">indexErrorComponent</div>
-    ),
+    component: () => {
+      routeComponentRendered()
+      const data = indexRoute.useLoaderData()
+      return <div data-testid="index-content">{data.value}</div>
+    },
+    errorComponent: ({ error }) => {
+      renderedError(error)
+      return <div data-testid="index-error">indexErrorComponent</div>
+    },
   })
 
   const routeTree = rootRoute.addChildren([indexRoute])
@@ -751,13 +762,21 @@ test('throw abortError from loader upon initial load with basepath', async () =>
 
   render(<RouterProvider router={router} />)
 
-  const indexElement = await screen.findByText('Index route content')
-  expect(indexElement).toBeInTheDocument()
-  expect(screen.queryByTestId('index-error')).not.toBeInTheDocument()
-  expect(window.location.pathname.startsWith('/app')).toBe(true)
+  expect(await screen.findByTestId('index-error')).toBeInTheDocument()
+  expect(screen.queryByTestId('index-content')).not.toBeInTheDocument()
+  expect(routeComponentRendered).not.toHaveBeenCalled()
+  expect(renderedError).toHaveBeenCalledWith(abortError)
+  expect(routeSignal?.aborted).toBe(false)
+  expect(
+    router.state.matches.find((match) => match.routeId === indexRoute.id),
+  ).toMatchObject({
+    status: 'error',
+    error: abortError,
+  })
+  expect(window.location.pathname).toBe('/app')
 })
 
-test('cancelMatches after pending timeout', async () => {
+test('navigating away from a pending route aborts its loader', async () => {
   function getPendingComponent(onMount: () => void) {
     const PendingComponent = () => {
       useEffect(() => {
@@ -770,6 +789,7 @@ test('cancelMatches after pending timeout', async () => {
   }
   const onAbortMock = vi.fn()
   const fooPendingComponentOnMountMock = vi.fn()
+  let fooSignal: AbortSignal | undefined
   const rootRoute = createRootRoute({
     component: () => (
       <div>
@@ -787,17 +807,18 @@ test('cancelMatches after pending timeout', async () => {
   const fooRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/foo',
-    pendingMs: WAIT_TIME * 20,
+    pendingMs: 0,
     loader: async ({ abortController }) => {
+      fooSignal = abortController.signal
       await new Promise<void>((resolve) => {
-        const timer = setTimeout(() => {
-          resolve()
-        }, WAIT_TIME * 40)
-        abortController.signal.addEventListener('abort', () => {
-          onAbortMock()
-          clearTimeout(timer)
-          resolve()
-        })
+        abortController.signal.addEventListener(
+          'abort',
+          () => {
+            onAbortMock()
+            resolve()
+          },
+          { once: true },
+        )
       })
     },
     pendingComponent: getPendingComponent(fooPendingComponentOnMountMock),
@@ -811,18 +832,22 @@ test('cancelMatches after pending timeout', async () => {
   const routeTree = rootRoute.addChildren([fooRoute, barRoute])
   const router = createRouter({ routeTree, history })
   render(<RouterProvider router={router} />)
-  await act(() => router.latestLoadPromise)
   const fooLink = await screen.findByTestId('link-to-foo')
   fireEvent.click(fooLink)
-  await sleep(WAIT_TIME * 30)
   const pendingElement = await screen.findByText('Pending...')
   expect(pendingElement).toBeInTheDocument()
-  const barLink = await screen.findByTestId('link-to-bar')
-  fireEvent.click(barLink)
-  const barElement = await screen.findByText('Bar page')
+  expect(fooSignal?.aborted).toBe(false)
+  await act(() => router.navigate({ to: '/bar' }))
+  const barElement = screen.getByText('Bar page')
   expect(barElement).toBeInTheDocument()
+
   expect(fooPendingComponentOnMountMock).toHaveBeenCalled()
-  expect(onAbortMock).toHaveBeenCalled()
+  expect(onAbortMock).toHaveBeenCalledTimes(1)
+  expect(fooSignal?.aborted).toBe(true)
+  expect(screen.queryByText('Pending...')).not.toBeInTheDocument()
+  expect(screen.queryByText('Foo page')).not.toBeInTheDocument()
+  expect(router.state.location.href).toBe('/bar')
+  expect(router.state.status).toBe('idle')
 })
 
 test('reproducer for #6388 - rapid navigation between parameterized routes should not trigger errorComponent', async () => {
@@ -912,30 +937,25 @@ test('reproducer for #6388 - rapid navigation between parameterized routes shoul
   })
 
   render(<RouterProvider router={router} />)
-  await act(() => router.latestLoadPromise)
-
-  const pendingComponent = screen.findByTestId('pending-component')
   expect(await screen.findByTestId('home-page')).toBeInTheDocument()
-
   const param1Link = await screen.findByTestId('link-to-param-1')
   fireEvent.click(param1Link)
-  expect(await pendingComponent).toBeInTheDocument()
+  expect(await screen.findByTestId('pending-component')).toBeInTheDocument()
 
   const param2Link = await screen.findByTestId('link-to-param-2')
   fireEvent.click(param2Link)
-  expect(await pendingComponent).toBeInTheDocument()
+  expect(await screen.findByTestId('pending-component')).toBeInTheDocument()
 
   fireEvent.click(param1Link)
-  expect(await pendingComponent).toBeInTheDocument()
+  expect(await screen.findByTestId('pending-component')).toBeInTheDocument()
 
-  await act(() => router.latestLoadPromise)
+  const paramPage = await screen.findByTestId('param-page')
 
   expect(onAbortMock).toHaveBeenCalled()
   expect(errorComponentRenderCount).not.toHaveBeenCalled()
   expect(screen.queryByTestId('error-component')).not.toBeInTheDocument()
-  expect(await pendingComponent).not.toBeInTheDocument()
+  expect(screen.queryByTestId('pending-component')).not.toBeInTheDocument()
 
-  const paramPage = await screen.findByTestId('param-page')
   expect(paramPage).toBeInTheDocument()
   expect(paramPage).toHaveTextContent('Param Component 1 Done')
   expect(loaderCompleteMock).toHaveBeenCalled()

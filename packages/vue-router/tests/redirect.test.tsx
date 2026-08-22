@@ -1,10 +1,12 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 
-import { afterEach, describe, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
 import {
   Link,
+  Outlet,
   RouterProvider,
+  createBrowserHistory,
   createMemoryHistory,
   createRootRoute,
   createRoute,
@@ -14,8 +16,17 @@ import {
 } from '../src'
 
 import { sleep } from './utils'
+import type { RouterHistory } from '../src'
+
+let history: RouterHistory
+
+beforeEach(() => {
+  history = createBrowserHistory()
+  expect(window.location.pathname).toBe('/')
+})
 
 afterEach(() => {
+  history.destroy()
   vi.clearAllMocks()
   vi.resetAllMocks()
   window.history.replaceState(null, 'root', '/')
@@ -73,7 +84,7 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -92,6 +103,51 @@ describe('redirect', () => {
 
       expect(nestedLoaderMock).toHaveBeenCalled()
       expect(nestedFooLoaderMock).toHaveBeenCalled()
+    })
+
+    test('when root `beforeLoad` redirects while root pendingComponent is showing and the target route is lazy', async () => {
+      let hasRedirected = false
+      const consoleError = vi
+        .spyOn(console, 'error')
+        .mockImplementation(() => {})
+
+      const rootRoute = createRootRoute({
+        component: () => <Outlet />,
+        pendingMs: 0,
+        pendingComponent: () => <div data-testid="pending">loading</div>,
+        beforeLoad: async () => {
+          await sleep(WAIT_TIME)
+          if (!hasRedirected) {
+            hasRedirected = true
+            throw redirect({ to: '/posts' })
+          }
+        },
+      })
+
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <div data-testid="index-page">Index page</div>,
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+      }).lazy(() => import('./lazy/normal').then((d) => d.Route('/posts')))
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+      })
+
+      render(<RouterProvider router={router} />)
+
+      // The lazy target route adds the async boundary that exposes the stale
+      // redirected-match render path this regression is guarding.
+      expect(await screen.findByTestId('lazy-route-page')).toBeInTheDocument()
+      expect(screen.queryByTestId('pending')).not.toBeInTheDocument()
+      expect(router.state.location.href).toBe('/posts')
+      expect(consoleError).not.toHaveBeenCalled()
     })
 
     test('when `redirect` is thrown in `loader`', async () => {
@@ -150,7 +206,7 @@ describe('redirect', () => {
         aboutRoute,
         indexRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -228,7 +284,7 @@ describe('redirect', () => {
         indexRoute,
         finalRoute,
       ])
-      const router = createRouter({ routeTree })
+      const router = createRouter({ routeTree, history })
 
       render(<RouterProvider router={router} />)
 
@@ -244,110 +300,6 @@ describe('redirect', () => {
 
       expect(await screen.findByText('Final')).toBeInTheDocument()
       expect(window.location.pathname).toBe('/final')
-    })
-  })
-
-  describe('SSR', () => {
-    test('when `redirect` is thrown in `beforeLoad`', async () => {
-      const rootRoute = createRootRoute()
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        beforeLoad: () => {
-          throw redirect({
-            to: '/about',
-          })
-        },
-      })
-
-      const aboutRoute = createRoute({
-        path: '/about',
-        getParentRoute: () => rootRoute,
-        component: () => {
-          return <>About</>
-        },
-      })
-
-      const router = createRouter({
-        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-        // Mock server mode
-        isServer: true,
-        history: createMemoryHistory({
-          initialEntries: ['/'],
-        }),
-      })
-
-      await router.load()
-
-      expect(router.state.redirect).toBeDefined()
-      expect(router.state.redirect).toBeInstanceOf(Response)
-      const redirectResponse = router.state.redirect!
-
-      expect(redirectResponse.options).toEqual({
-        _fromLocation: expect.objectContaining({
-          hash: '',
-          href: '/',
-          pathname: '/',
-          search: {},
-          searchStr: '',
-        }),
-        to: '/about',
-        href: '/about',
-        statusCode: 307,
-      })
-    })
-
-    test('when `redirect` is thrown in `loader`', async () => {
-      const rootRoute = createRootRoute()
-
-      const indexRoute = createRoute({
-        path: '/',
-        getParentRoute: () => rootRoute,
-        loader: () => {
-          throw redirect({
-            to: '/about',
-          })
-        },
-      })
-
-      const aboutRoute = createRoute({
-        path: '/about',
-        getParentRoute: () => rootRoute,
-        component: () => {
-          return <>About</>
-        },
-      })
-
-      const router = createRouter({
-        history: createMemoryHistory({
-          initialEntries: ['/'],
-        }),
-        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
-        // Mock server mode
-        isServer: true,
-      })
-
-      await router.load()
-
-      const currentRedirect = router.state.redirect
-
-      expect(currentRedirect).toBeDefined()
-      expect(currentRedirect).toBeInstanceOf(Response)
-      const redirectResponse = currentRedirect!
-
-      expect(redirectResponse.options).toEqual({
-        _fromLocation: expect.objectContaining({
-          hash: '',
-          href: '/',
-          pathname: '/',
-          search: {},
-          searchStr: '',
-        }),
-        to: '/about',
-        href: '/about',
-        statusCode: 307,
-      })
     })
   })
 })

@@ -1,10 +1,23 @@
 import { defineConfig, devices } from '@playwright/test'
 import { getTestServerPort } from '@tanstack/router-e2e-utils'
 import { isErrorMode } from './tests/utils/isErrorMode'
+import { getViolationArtifactName } from './tests/violations.utils'
 import packageJson from './package.json' with { type: 'json' }
 
-const PORT = await getTestServerPort(packageJson.name)
+const toolchain = process.env.E2E_TOOLCHAIN ?? 'vite'
+const viteBundledDev = process.env.E2E_VITE_BUNDLED_DEV === 'true'
+const e2ePortKey =
+  process.env.E2E_PORT_KEY ??
+  `${packageJson.name}-${toolchain}${viteBundledDev ? '-bundled-dev' : ''}`
+const distDir = process.env.E2E_DIST_DIR ?? 'dist'
+const PORT = await getTestServerPort(e2ePortKey)
 const baseURL = `http://localhost:${PORT}`
+const violationArtifacts = [
+  getViolationArtifactName('build'),
+  getViolationArtifactName('dev'),
+  getViolationArtifactName('dev.cold'),
+  getViolationArtifactName('dev.warm'),
+].join(' ')
 
 console.log('running in error mode:', isErrorMode.toString())
 
@@ -28,11 +41,18 @@ export default defineConfig({
     ? {}
     : {
         webServer: {
-          command: `rm -f webserver-build.log webserver-dev.log violations.build.json violations.dev.json && VITE_SERVER_PORT=${PORT} pnpm build > webserver-build.log 2>&1 && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
+          command: `rm -f webserver-dev.log ${violationArtifacts} && PORT=${PORT} VITE_SERVER_PORT=${PORT} pnpm start`,
           url: baseURL,
           reuseExistingServer: !process.env.CI,
           stdout: 'pipe',
           cwd: import.meta.dirname,
+          env: {
+            PORT: String(PORT),
+            VITE_SERVER_PORT: String(PORT),
+            E2E_DIST_DIR: distDir,
+            E2E_PORT_KEY: e2ePortKey,
+            E2E_VITE_BUNDLED_DEV: String(viteBundledDev),
+          },
         },
       }),
 

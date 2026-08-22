@@ -15,10 +15,10 @@
     "@convex-dev/react-query": "0.0.0-alpha.8",
     "@tanstack/react-query": "^5.90.0",
     "@tanstack/react-query-devtools": "^5.90.0",
-    "@tanstack/react-router": "^1.168.10",
-    "@tanstack/react-router-devtools": "^1.166.11",
-    "@tanstack/react-router-ssr-query": "^1.166.10",
-    "@tanstack/react-start": "^1.167.16",
+    "@tanstack/react-router": "^1.170.31",
+    "@tanstack/react-router-devtools": "^1.167.1",
+    "@tanstack/react-router-ssr-query": "^1.167.1",
+    "@tanstack/react-start": "^1.168.48",
     "concurrently": "^8.2.2",
     "convex": "^1.19.0",
     "ky": "^1.7.4",
@@ -26,9 +26,9 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.1",
-    "redaxios": "^0.5.1",
-    "tailwind-merge": "^2.6.0",
-    "zod": "^3.24.2"
+    "redaxios": "catalog:",
+    "tailwind-merge": "^3.6.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.2.2",
@@ -37,7 +37,8 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.0"
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.0.14"
   }
 }

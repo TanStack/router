@@ -2,27 +2,15 @@ import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { getStartModeConfig } from './start-mode-config'
 
-const FUNCTION_IDS: Record<string, Record<string, string>> = {
-  'src/routes/submit-post-formdata.tsx': {
-    greetUser_createServerFn_handler: 'submit-post-formdata-greetUser',
-  },
-  'src/routes/formdata-redirect/index.tsx': {
-    greetUser_createServerFn_handler: 'formdata-redirect-greetUser',
-  },
-}
+const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+const startModeConfig = getStartModeConfig()
 
 export default defineConfig({
   resolve: { tsconfigPaths: true },
-  plugins: [
-    tailwindcss(),
-    tanstackStart({
-      serverFns: {
-        generateFunctionId: (opts) => {
-          return FUNCTION_IDS[opts.filename]?.[opts.functionName]
-        },
-      },
-    }),
-    viteReact(),
-  ],
+  build: {
+    outDir,
+  },
+  plugins: [tailwindcss(), tanstackStart(startModeConfig), viteReact()],
 })

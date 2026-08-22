@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start",
-  "version": "1.167.15",
+  "version": "1.168.46",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -44,6 +44,12 @@
         "default": "./dist/esm/client.js"
       }
     },
+    "./hydration": {
+      "import": {
+        "types": "./dist/esm/hydration.d.ts",
+        "default": "./dist/esm/hydration.js"
+      }
+    },
     "./client-rpc": {
       "import": {
         "types": "./dist/esm/client-rpc.d.ts",
@@ -72,6 +78,12 @@
       "import": {
         "types": "./dist/esm/plugin/vite.d.ts",
         "default": "./dist/esm/plugin/vite.js"
+      }
+    },
+    "./plugin/rsbuild": {
+      "import": {
+        "types": "./dist/esm/plugin/rsbuild.d.ts",
+        "default": "./dist/esm/plugin/rsbuild.js"
       }
     },
     "./server-entry": {
@@ -106,25 +118,39 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
+    "@tanstack/solid-router": "workspace:*",
     "@tanstack/solid-start-client": "workspace:*",
     "@tanstack/solid-start-server": "workspace:*",
-    "@tanstack/start-plugin-core": "workspace:*",
-    "@tanstack/solid-router": "workspace:*",
     "@tanstack/start-client-core": "workspace:*",
+    "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
     "pathe": "^2.0.3"
   },
   "devDependencies": {
-    "@tanstack/intent": "^0.0.14",
+    "@rsbuild/core": "^2.1.0",
     "@tanstack/router-utils": "workspace:*",
+    "@types/node": ">=20",
     "vite": "*",
-    "@types/node": ">=20"
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@eslint-react/eslint-plugin": "catalog:",
+    "eslint-plugin-react-hooks": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
+    "@rsbuild/core": "^2.0.0",
     "solid-js": ">=1.0.0",
     "vite": ">=7.0.0"
   },
-  "bin": {
-    "intent": "./bin/intent.js"
+  "peerDependenciesMeta": {
+    "@rsbuild/core": {
+      "optional": true
+    },
+    "vite": {
+      "optional": true
+    }
   }
 }

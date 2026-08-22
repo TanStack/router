@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/solid-router'
+import { useNavigate, createFileRoute } from '@tanstack/solid-router'
 import { type } from 'arktype'
 import { Suspense } from 'solid-js'
 import { Header } from '../../components/Header'
@@ -30,7 +30,7 @@ const search = type({
   search: 'string = ""',
 })
 
-export const Route = createFileRoute({
+export const Route = createFileRoute('/users/arktype/')({
   validateSearch: search,
   loaderDeps: (opt) => ({ search: opt.search }),
   loader: (opt) => {

@@ -1,1 +1,0 @@
-import{S as o}from"./scroll-block-BAas_Ct-.js";import{a as l,b as e}from"./index-BwsVWHwV.js";function t(){return l("div",{class:"p-2"},[l("h3",null,[e("page-with-search")]),l("hr",null,null),l(o,null,null)])}export{t as component};

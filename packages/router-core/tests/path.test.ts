@@ -15,6 +15,7 @@ import {
   parseSegment,
   processRouteTree,
 } from '../src/new-process-route-tree'
+import { createLRUCache } from '../src/lru-cache'
 import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
@@ -93,6 +94,9 @@ describe('resolvePath', () => {
     ['/', 'a/', '/a'],
     ['/', '/a/b', '/a/b'],
     ['/a', 'b', '/a/b'],
+    ['/a', '', '/'],
+    ['/a', '.well-known', '/a/.well-known'],
+    ['/a', '/absolute', '/absolute'],
     ['/', 'a/b', '/a/b'],
     ['/', './a/b', '/a/b'],
     ['/a/b/c', 'd', '/a/b/c/d'],
@@ -105,6 +109,10 @@ describe('resolvePath', () => {
     ['/a/b/c', '../..', '/a'],
     ['/a/b/c', '../../..', '/'],
     ['/a/b/c/', '../../..', '/'],
+    ['/a//b', '../../c', '/c'],
+    ['/a///b', '../c', '/a/c'],
+    ['/', '../javascript:alert(1)', '/javascript:alert(1)'],
+    ['/posts', '../../data:text/html,test', '/data:text/html,test'],
   ])('resolves correctly', (a, b, eq) => {
     it(`${a} to ${b} === ${eq}`, () => {
       expect(resolvePath({ base: a, to: b })).toEqual(eq)
@@ -115,6 +123,10 @@ describe('resolvePath', () => {
     it(`${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
       expect(resolvePath({ base: a + '/', to: b + '/' })).toEqual(eq)
     })
+  })
+
+  it('normalizes repeated slashes when resolving the base path', () => {
+    expect(resolvePath({ base: '/a//b', to: '.' })).toBe('/a/b')
   })
 
   describe('trailingSlash', () => {
@@ -178,6 +190,17 @@ describe('resolvePath', () => {
         ).toBe('/a/b/c/d')
       })
     })
+
+    it.each([
+      ['always', '/a//b', '/a/b/'],
+      ['never', '/a//b///', '/a/b'],
+      ['preserve', '/a//b///', '/a/b/'],
+    ] as const)(
+      "normalizes repeated slashes with trailingSlash '%s'",
+      (trailingSlash, to, expected) => {
+        expect(resolvePath({ base: '/', to, trailingSlash })).toBe(expected)
+      },
+    )
   })
 
   describe.each([{ base: '/' }, { base: '/nested' }])(
@@ -240,6 +263,29 @@ describe('resolvePath', () => {
       })
     },
   )
+
+  it('preserves explicit route-template param syntax', () => {
+    expect(
+      resolvePath({
+        base: '/{$language}',
+        to: '.',
+      }),
+    ).toBe('/{$language}')
+
+    expect(
+      resolvePath({
+        base: '/{$language}/posts',
+        to: '../{$language}',
+      }),
+    ).toBe('/{$language}/{$language}')
+  })
+
+  it('caches route-template paths without changing param syntax', () => {
+    const cache = createLRUCache<string, string>(10)
+
+    expect(resolvePath({ base: '/', to: '/{$id}', cache })).toBe('/{$id}')
+    expect(resolvePath({ base: '/', to: '/$id', cache })).toBe('/$id')
+  })
 })
 
 describe.each([{ server: true }, { server: false }])(
@@ -687,7 +733,7 @@ describe('matchPathname', () => {
         expectedMatchedParams: { id: '123' },
       },
       {
-        name: 'should match and return the the splat param',
+        name: 'should match and return the splat param',
         input: '/users/123',
         matchingOptions: {
           to: '/users/$',

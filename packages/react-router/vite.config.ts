@@ -28,6 +28,7 @@ export default mergeConfig(
     tsconfigPath: './tsconfig.build.json',
     entry: [
       './src/index.tsx',
+      './src/index.rsc.ts',
       './src/index.dev.tsx',
       './src/ssr/client.ts',
       './src/ssr/server.ts',

@@ -1,5 +1,517 @@
 # @tanstack/router-plugin
 
+## 1.168.34
+
+### Patch Changes
+
+- Updated dependencies [[`3e016ac`](https://github.com/TanStack/router/commit/3e016ac84ffec8119f0c25cfdd1fb17e5292bd34)]:
+  - @tanstack/router-core@1.171.26
+  - @tanstack/react-router@1.170.31
+  - @tanstack/router-generator@1.167.32
+
+## 1.168.33
+
+### Patch Changes
+
+- Updated dependencies [[`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175), [`63d2cc9`](https://github.com/TanStack/router/commit/63d2cc9155ff5374112f7d067d0b278bafeb8486), [`f75cada`](https://github.com/TanStack/router/commit/f75cada01707e51fb9650dd301bc04f8b2265a2a)]:
+  - @tanstack/react-router@1.170.30
+  - @tanstack/router-core@1.171.25
+  - @tanstack/router-generator@1.167.31
+
+## 1.168.32
+
+### Patch Changes
+
+- Updated dependencies [[`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2), [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e), [`0fdf9ff`](https://github.com/TanStack/router/commit/0fdf9ff16fc532de9fc131d18df167ebd8038720), [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff)]:
+  - @tanstack/router-core@1.171.24
+  - @tanstack/react-router@1.170.29
+  - @tanstack/router-generator@1.167.30
+
+## 1.168.31
+
+### Patch Changes
+
+- Updated dependencies [[`0c25a7b`](https://github.com/TanStack/router/commit/0c25a7b43b5331ee6ebf94d50e9793002783adab), [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90)]:
+  - @tanstack/react-router@1.170.28
+  - @tanstack/router-core@1.171.23
+  - @tanstack/router-generator@1.167.29
+
+## 1.168.30
+
+### Patch Changes
+
+- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13), [`f500760`](https://github.com/TanStack/router/commit/f5007607d62e932b8df19de866cdc6bddcff8db3), [`1aafca9`](https://github.com/TanStack/router/commit/1aafca9b45d24f8f0dba78e716fc9582346c6ca1), [`aa10b65`](https://github.com/TanStack/router/commit/aa10b6589eeda215f5a60ea0af95a3101d8c414e)]:
+  - @tanstack/router-core@1.171.22
+  - @tanstack/react-router@1.170.26
+  - @tanstack/router-generator@1.167.28
+
+## 1.168.29
+
+### Patch Changes
+
+- Updated dependencies [[`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05)]:
+  - @tanstack/router-core@1.171.21
+  - @tanstack/react-router@1.170.25
+  - @tanstack/router-generator@1.167.27
+
+## 1.168.28
+
+### Patch Changes
+
+- Updated dependencies [[`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246), [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a)]:
+  - @tanstack/router-core@1.171.20
+  - @tanstack/react-router@1.170.24
+  - @tanstack/router-generator@1.167.26
+
+## 1.168.27
+
+### Patch Changes
+
+- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
+  - @tanstack/react-router@1.170.22
+  - @tanstack/router-core@1.171.19
+  - @tanstack/router-generator@1.167.25
+
+## 1.168.26
+
+### Patch Changes
+
+- Updated dependencies [[`697ebb6`](https://github.com/TanStack/router/commit/697ebb6ddbd433d052b6b4707938a5c595865d58), [`2435885`](https://github.com/TanStack/router/commit/2435885fa8b5e31c8c4b74d93920919f27316ebf), [`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`86bf510`](https://github.com/TanStack/router/commit/86bf510c2923afb76804223bd04afc2a809b33e7), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
+  - @tanstack/react-router@1.170.21
+  - @tanstack/router-core@1.171.18
+  - @tanstack/router-generator@1.167.24
+
+## 1.168.25
+
+### Patch Changes
+
+- Updated dependencies [[`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5)]:
+  - @tanstack/router-core@1.171.17
+  - @tanstack/react-router@1.170.20
+  - @tanstack/router-generator@1.167.23
+
+## 1.168.24
+
+### Patch Changes
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+  - @tanstack/react-router@1.170.19
+  - @tanstack/router-generator@1.167.22
+
+## 1.168.23
+
+### Patch Changes
+
+- [#7855](https://github.com/TanStack/router/pull/7855) [`49f6863`](https://github.com/TanStack/router/commit/49f686324574ea65851317cbba084eb386a911c6) - Preserve React component state during HMR when route components are declared with lowercase function names. The development-only React transforms cover split route component groups and unsplit root route component options, including shell, pending, and error components, without changing production output.
+
+## 1.168.22
+
+### Patch Changes
+
+- Updated dependencies [[`78dd1a6`](https://github.com/TanStack/router/commit/78dd1a645dc1a9e9f4f649d9aff12005044d4fcc)]:
+  - @tanstack/router-generator@1.167.21
+
+## 1.168.21
+
+### Patch Changes
+
+- Updated dependencies [[`e56a677`](https://github.com/TanStack/router/commit/e56a67742da9021b009b8db0cdc8bfe99878c25b)]:
+  - @tanstack/router-generator@1.167.20
+
+## 1.168.20
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+  - @tanstack/react-router@1.170.18
+  - @tanstack/router-generator@1.167.19
+
+## 1.168.19
+
+### Patch Changes
+
+- Updated dependencies [[`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b)]:
+  - @tanstack/router-core@1.171.14
+  - @tanstack/react-router@1.170.17
+  - @tanstack/router-generator@1.167.18
+
+## 1.168.18
+
+### Patch Changes
+
+- Updated dependencies [[`776d8ef`](https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03)]:
+  - @tanstack/router-core@1.171.13
+  - @tanstack/react-router@1.170.15
+  - @tanstack/router-generator@1.167.17
+
+## 1.168.17
+
+### Patch Changes
+
+- [#7560](https://github.com/TanStack/router/pull/7560) [`837897f`](https://github.com/TanStack/router/commit/837897f0733b836dd63880546eec4c20cf06be59) - Fix route HMR so aliased route imports keep generated route properties after hot reloads.
+
+- Updated dependencies [[`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107)]:
+  - @tanstack/router-core@1.171.12
+  - @tanstack/react-router@1.170.14
+  - @tanstack/router-generator@1.167.16
+
+## 1.168.16
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/router-core@1.171.11
+  - @tanstack/react-router@1.170.13
+  - @tanstack/router-generator@1.167.15
+
+## 1.168.15
+
+### Patch Changes
+
+- Updated dependencies [[`301f6ba`](https://github.com/TanStack/router/commit/301f6ba4599386edd6fb3b8423938c48eedb501f), [`2cca73c`](https://github.com/TanStack/router/commit/2cca73c92262ffd96dac4e283c9f69fb37f4b43a), [`7a83e67`](https://github.com/TanStack/router/commit/7a83e67e6596fbef21cb0a88a7127f5935bed2ba), [`76b3d3b`](https://github.com/TanStack/router/commit/76b3d3b24522bd3d1d216674c441252c9b8f184c)]:
+  - @tanstack/router-utils@1.162.2
+  - @tanstack/router-core@1.171.10
+  - @tanstack/router-generator@1.167.14
+  - @tanstack/react-router@1.170.12
+
+## 1.168.14
+
+### Patch Changes
+
+- Updated dependencies [[`b4cd5af`](https://github.com/TanStack/router/commit/b4cd5af8d0f9d4aaa2d29095e6a261b9181bc778)]:
+  - @tanstack/router-core@1.171.9
+  - @tanstack/react-router@1.170.11
+  - @tanstack/router-generator@1.167.13
+
+## 1.168.13
+
+### Patch Changes
+
+- Updated dependencies [[`2f53749`](https://github.com/TanStack/router/commit/2f5374945e2138559a51464f45a5152eae67e1dd)]:
+  - @tanstack/router-core@1.171.8
+  - @tanstack/react-router@1.170.10
+  - @tanstack/router-generator@1.167.12
+
+## 1.168.12
+
+### Patch Changes
+
+- Updated dependencies [[`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48)]:
+  - @tanstack/react-router@1.170.9
+  - @tanstack/router-core@1.171.7
+  - @tanstack/router-generator@1.167.11
+
+## 1.168.11
+
+### Patch Changes
+
+- Updated dependencies [[`51a97a1`](https://github.com/TanStack/router/commit/51a97a167fb3ef1b8ca70fbb63db635158f43509)]:
+  - @tanstack/router-core@1.171.6
+  - @tanstack/react-router@1.170.8
+  - @tanstack/router-generator@1.167.10
+
+## 1.168.10
+
+### Patch Changes
+
+- Updated dependencies [[`5268ba4`](https://github.com/TanStack/router/commit/5268ba4566233ea58880df85f167ad0401a93a46)]:
+  - @tanstack/router-core@1.171.5
+  - @tanstack/react-router@1.170.7
+  - @tanstack/router-generator@1.167.9
+
+## 1.168.9
+
+### Patch Changes
+
+- Updated dependencies [[`7df0d02`](https://github.com/TanStack/router/commit/7df0d02bfb1407b1f07731ef69af24e2f0e415d7)]:
+  - @tanstack/router-generator@1.167.8
+
+## 1.168.8
+
+### Patch Changes
+
+- Updated dependencies [[`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960), [`0300f87`](https://github.com/TanStack/router/commit/0300f87ec5a7f878ffbe0b181acf84cba9139960)]:
+  - @tanstack/router-core@1.171.4
+  - @tanstack/react-router@1.170.6
+  - @tanstack/router-generator@1.167.7
+
+## 1.168.7
+
+### Patch Changes
+
+- Update chokidar to v5. ([#7439](https://github.com/TanStack/router/pull/7439))
+
+- Add deferred Hydrate boundary support for TanStack Start. ([#7362](https://github.com/TanStack/router/pull/7362))
+
+  Hydrate boundaries can now be code-split by the Start compiler, preload their generated client chunks, preserve server-rendered fallback HTML, and replay interaction-triggered events after hydration. The compiler integration now uses a Start-owned compiler plugin for Hydrate virtual modules across Vite and Rsbuild, with dev invalidation for generated virtual modules.
+
+  Shared AST utilities used by the router code-splitter and Hydrate virtual modules were moved into `@tanstack/router-utils` so both pipelines can retain referenced top-level declarations, unwrap local exports, and let dead-code elimination remove unused route module code.
+
+- Updated dependencies [[`5fa9e55`](https://github.com/TanStack/router/commit/5fa9e555f3a2edb5e45586623e6bcbfa7f7c7a6b)]:
+  - @tanstack/router-core@1.171.3
+  - @tanstack/router-utils@1.162.1
+  - @tanstack/react-router@1.170.5
+  - @tanstack/router-generator@1.167.6
+
+## 1.168.6
+
+### Patch Changes
+
+- Fix route mismatch warnings, HMR route index refresh, and generated route type preferences for duplicate pathless/index routes. ([#7422](https://github.com/TanStack/router/pull/7422))
+
+- Updated dependencies [[`b60eb36`](https://github.com/TanStack/router/commit/b60eb36e59e8a468ee0742cbcf7f47aca1ff1c67)]:
+  - @tanstack/router-core@1.171.2
+  - @tanstack/router-generator@1.167.5
+  - @tanstack/react-router@1.170.4
+
+## 1.168.5
+
+### Patch Changes
+
+- Fix Vite Fast Refresh detection for root routes created with `createRootRouteWithContext` type arguments. ([#7420](https://github.com/TanStack/router/pull/7420))
+
+## 1.168.4
+
+### Patch Changes
+
+- Updated dependencies [[`d9cf933`](https://github.com/TanStack/router/commit/d9cf9331b83fcbd2abfee75d839d862f9bb18e6b)]:
+  - @tanstack/router-core@1.171.1
+  - @tanstack/react-router@1.170.3
+  - @tanstack/router-generator@1.167.4
+
+## 1.168.3
+
+### Patch Changes
+
+- Updated dependencies [[`d533f87`](https://github.com/TanStack/router/commit/d533f87976704098a40b48f160b37c28c8182806)]:
+  - @tanstack/router-core@1.171.0
+  - @tanstack/react-router@1.170.2
+  - @tanstack/router-generator@1.167.3
+
+## 1.168.2
+
+### Patch Changes
+
+- Updated dependencies [[`742941e`](https://github.com/TanStack/router/commit/742941e2f1bf069c950d0a4985b2cd733639509e)]:
+  - @tanstack/router-generator@1.167.2
+
+## 1.168.1
+
+### Patch Changes
+
+- Updated dependencies [[`2387a2e`](https://github.com/TanStack/router/commit/2387a2eea0683004cc400b9f71bed5944eb60110)]:
+  - @tanstack/router-core@1.170.1
+  - @tanstack/react-router@1.170.1
+  - @tanstack/router-generator@1.167.1
+
+## 1.168.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- Updated dependencies [[`b1c061a`](https://github.com/TanStack/router/commit/b1c061aff9185cdf5fdc08c0136382a9dce0302f), [`038cd12`](https://github.com/TanStack/router/commit/038cd123b70bc6154d75abb6404a744c376f8f6a), [`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/router-core@1.170.0
+  - @tanstack/router-generator@1.167.0
+  - @tanstack/react-router@1.170.0
+  - @tanstack/router-utils@1.162.0
+  - @tanstack/virtual-file-routes@1.162.0
+
+## 1.167.35
+
+### Patch Changes
+
+- Updated dependencies [[`c5811aa`](https://github.com/TanStack/router/commit/c5811aacb59b69a8179f14cd9529a51b2206d504)]:
+  - @tanstack/router-generator@1.166.42
+
+## 1.167.34
+
+### Patch Changes
+
+- Updated dependencies [[`35e88f0`](https://github.com/TanStack/router/commit/35e88f04996d71019a1868b7b06ecb4ddbc9df9e)]:
+  - @tanstack/router-core@1.169.2
+  - @tanstack/react-router@1.169.2
+  - @tanstack/router-generator@1.166.41
+
+## 1.167.33
+
+### Patch Changes
+
+- Parse plain TypeScript files without JSX when a filename is available, preventing angle-bracket type assertions from being interpreted as JSX during route and Start import-protection transforms. ([#7342](https://github.com/TanStack/router/pull/7342))
+
+- Updated dependencies [[`056337e`](https://github.com/TanStack/router/commit/056337ef02ccbeaf45ec8533a227761be869e8f3)]:
+  - @tanstack/router-generator@1.166.40
+  - @tanstack/router-utils@1.161.8
+
+## 1.167.32
+
+### Patch Changes
+
+- Replace global route metadata with explicit router plugin contexts so multiple router plugin instances cannot cross-transform route files. ([#7313](https://github.com/TanStack/router/pull/7313))
+
+## 1.167.31
+
+### Patch Changes
+
+- Updated dependencies [[`4a1e63f`](https://github.com/TanStack/router/commit/4a1e63f1d1230b1ed8234609acad4639d8982c13)]:
+  - @tanstack/router-core@1.169.1
+  - @tanstack/react-router@1.169.1
+  - @tanstack/router-generator@1.166.39
+
+## 1.167.30
+
+### Patch Changes
+
+- Updated dependencies [[`c992495`](https://github.com/TanStack/router/commit/c992495bf4010ff4c3597bb1f3b1ba02594e857e)]:
+  - @tanstack/router-core@1.169.0
+  - @tanstack/react-router@1.169.0
+  - @tanstack/router-generator@1.166.38
+
+## 1.167.29
+
+### Patch Changes
+
+- Updated dependencies [[`b5c4183`](https://github.com/TanStack/router/commit/b5c4183ab8b44be8a75647b7f7b588ad7c146ece)]:
+  - @tanstack/router-core@1.168.18
+  - @tanstack/react-router@1.168.26
+  - @tanstack/router-generator@1.166.37
+
+## 1.167.28
+
+### Patch Changes
+
+- Updated dependencies [[`493148b`](https://github.com/TanStack/router/commit/493148bc5378b7f9de1544d87f6aaa425c12eb34)]:
+  - @tanstack/router-core@1.168.17
+  - @tanstack/react-router@1.168.25
+  - @tanstack/router-generator@1.166.36
+
+## 1.167.27
+
+### Patch Changes
+
+- Updated dependencies [[`a2ad394`](https://github.com/TanStack/router/commit/a2ad394598e2079ab4050ebb16bb03b31d69c32a)]:
+  - @tanstack/router-generator@1.166.35
+
+## 1.167.26
+
+### Patch Changes
+
+- refactor(router-plugin): upgrade unplugin to `v3` ([#7258](https://github.com/TanStack/router/pull/7258))
+
+## 1.167.25
+
+### Patch Changes
+
+- Fix React route HMR for webpack and rspack so it no longer imports `react-refresh/runtime`, avoiding failures when that optional dependency is not installed. ([#7255](https://github.com/TanStack/router/pull/7255))
+
+## 1.167.24
+
+### Patch Changes
+
+- Updated dependencies [[`4d864ee`](https://github.com/TanStack/router/commit/4d864eebbd184265eabb563d326ab409c93feb17)]:
+  - @tanstack/react-router@1.168.24
+  - @tanstack/router-core@1.168.16
+  - @tanstack/router-generator@1.166.34
+
+## 1.167.23
+
+### Patch Changes
+
+- rsbuild ([#7228](https://github.com/TanStack/router/pull/7228))
+
+- Updated dependencies [[`91a7089`](https://github.com/TanStack/router/commit/91a708989d00537a21911e74ff60bbfec8266295)]:
+  - @tanstack/router-utils@1.161.7
+  - @tanstack/router-generator@1.166.33
+
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies [[`16f6892`](https://github.com/TanStack/router/commit/16f6892d6b7ceadf606677c5a40e743f29163aa6)]:
+  - @tanstack/router-core@1.168.15
+  - @tanstack/react-router@1.168.21
+  - @tanstack/router-generator@1.166.32
+
+## 1.167.21
+
+### Patch Changes
+
+- Updated dependencies [[`328d7e5`](https://github.com/TanStack/router/commit/328d7e5ebc6b8074242a07d68ccafafb83e37a0e)]:
+  - @tanstack/router-generator@1.166.31
+
+## 1.167.20
+
+### Patch Changes
+
+- fix: update vite-plugin-solid peer dependency to support version 3.0.0-0 ([#7170](https://github.com/TanStack/router/pull/7170))
+
+## 1.167.19
+
+### Patch Changes
+
+- Updated dependencies [[`105d056`](https://github.com/TanStack/router/commit/105d05691a247779a63e7b688aa1207cce619339)]:
+  - @tanstack/router-generator@1.166.30
+  - @tanstack/react-router@1.168.19
+
+## 1.167.18
+
+### Patch Changes
+
+- add vite 8 to peer deps ([#7160](https://github.com/TanStack/router/pull/7160))
+
+## 1.167.17
+
+### Patch Changes
+
+- Updated dependencies [[`0e2c900`](https://github.com/TanStack/router/commit/0e2c9003c18ae07c09969189c028f277ea562a7a)]:
+  - @tanstack/router-core@1.168.14
+  - @tanstack/react-router@1.168.18
+  - @tanstack/router-generator@1.166.29
+
+## 1.167.16
+
+### Patch Changes
+
+- Updated dependencies [[`812792f`](https://github.com/TanStack/router/commit/812792fbda3caf97b300770855cf5641252f413b)]:
+  - @tanstack/router-core@1.168.13
+  - @tanstack/react-router@1.168.17
+  - @tanstack/router-generator@1.166.28
+
+## 1.167.15
+
+### Patch Changes
+
+- Updated dependencies [[`8ec9ca9`](https://github.com/TanStack/router/commit/8ec9ca97b472779de878c2a6510f21deb24d386c)]:
+  - @tanstack/router-core@1.168.12
+  - @tanstack/react-router@1.168.16
+  - @tanstack/router-generator@1.166.27
+
+## 1.167.14
+
+### Patch Changes
+
+- shorten internal non-minifiable store names for byte shaving ([#7152](https://github.com/TanStack/router/pull/7152))
+
+- Updated dependencies [[`6355bb7`](https://github.com/TanStack/router/commit/6355bb75f7637ba77f06a923c18fdaf37720bb48)]:
+  - @tanstack/react-router@1.168.15
+  - @tanstack/router-core@1.168.11
+  - @tanstack/router-generator@1.166.26
+
+## 1.167.13
+
+### Patch Changes
+
+- migrate createStore > createAtom for simpler API ([#7150](https://github.com/TanStack/router/pull/7150))
+
+- Updated dependencies [[`459057c`](https://github.com/TanStack/router/commit/459057cd2d90cff20d20e51d4964b0a8c950555e)]:
+  - @tanstack/react-router@1.168.14
+  - @tanstack/router-core@1.168.10
+  - @tanstack/router-generator@1.166.25
+
 ## 1.167.12
 
 ### Patch Changes

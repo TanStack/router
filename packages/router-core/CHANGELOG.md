@@ -1,5 +1,332 @@
 # @tanstack/router-core
 
+## 1.171.26
+
+### Patch Changes
+
+- [#8117](https://github.com/TanStack/router/pull/8117) [`3e016ac`](https://github.com/TanStack/router/commit/3e016ac84ffec8119f0c25cfdd1fb17e5292bd34) - optimize buildLocation path resolution https://github.com/TanStack/router/pull/8108
+  skip building search validation when disabled https://github.com/TanStack/router/pull/8112
+  skip location state sharing when impossible https://github.com/TanStack/router/pull/8110
+  fix cache hits for mask resolution when entry is null https://github.com/TanStack/router/pull/8111
+
+## 1.171.25
+
+### Patch Changes
+
+- [#8084](https://github.com/TanStack/router/pull/8084) [`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175) - preserve pending UI across retained routes
+
+- [#8092](https://github.com/TanStack/router/pull/8092) [`63d2cc9`](https://github.com/TanStack/router/commit/63d2cc9155ff5374112f7d067d0b278bafeb8486) - Render route errors when redirect target construction fails and let successor transactions own navigation and HMR presentation.
+
+## 1.171.24
+
+### Patch Changes
+
+- [#8071](https://github.com/TanStack/router/pull/8071) [`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2) - inline getOpenAndCloseBraces in parseSegment for byte shaving
+
+- [#8069](https://github.com/TanStack/router/pull/8069) [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e) - inline isFunction utility fn for byte shaving
+
+- [#8070](https://github.com/TanStack/router/pull/8070) [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff) - inline buildWithMatches inside buildLocation for byte shaving
+
+## 1.171.23
+
+### Patch Changes
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
+## 1.171.22
+
+### Patch Changes
+
+- [#8039](https://github.com/TanStack/router/pull/8039) [`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13) - load-client can cache settles abandonned loader work without preload authority
+
+## 1.171.21
+
+### Patch Changes
+
+- [#8019](https://github.com/TanStack/router/pull/8019) [`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05) - handle excessive parent relative links
+
+## 1.171.20
+
+### Patch Changes
+
+- [#8006](https://github.com/TanStack/router/pull/8006) [`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246) - skip impossible JSON parse attempts
+
+- [#8010](https://github.com/TanStack/router/pull/8010) [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a) - perf: speed up structural sharing (`replaceEqualDeep`) by computing enumerable own keys with `Object.keys` + a length compare instead of `getOwnPropertyNames` followed by a `propertyIsEnumerable` call per key. This runs on every selector result on every state update when `defaultStructuralSharing` is enabled, and is ~1.3-1.5x faster on typical router state objects with identical behavior.
+
+## 1.171.19
+
+### Patch Changes
+
+- [#7992](https://github.com/TanStack/router/pull/7992) [`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9) - retain mounted UI during revalidation
+
+## 1.171.18
+
+### Patch Changes
+
+- [#7984](https://github.com/TanStack/router/pull/7984) [`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7) - Improve route-tree construction and matching performance by fusing static and
+  dynamic node creation, sorting only dynamic sibling lists that need it, and
+  deriving matcher depth from trie nodes.
+
+- [#7985](https://github.com/TanStack/router/pull/7985) [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b) - perf: compact private bundle boundaries- [#7975](https://github.com/TanStack/router/issues/7975)
+
+- [#7967](https://github.com/TanStack/router/pull/7967) [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c) - Preserve path params in their raw string form while matching routes so structured values returned by `params.parse` produce stable match IDs and do not reuse stale loader data.
+
+  `RouterCore.getMatchedRoutes()` now returns `[matchedRoutes, rawParams, foundRoute]` instead of an object.
+
+- Updated dependencies [[`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b)]:
+  - @tanstack/history@1.162.1
+
+## 1.171.17
+
+### Patch Changes
+
+- [#7962](https://github.com/TanStack/router/pull/7962) [`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5) - Update Seroval dependencies to version 1.6.2.
+
+## 1.171.16
+
+### Patch Changes
+
+- [#7805](https://github.com/TanStack/router/pull/7805) [`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd) - Rewrite match loading around a lane-based scheduler that tracks each navigation, preload, and background reload as an ordered unit of work. This fixes pending/redirect/retry state leaking between overlapping navigations, restores correct SSR status codes for redirects, errors, and not-found responses, and closes hydration gaps where the client re-ran work the server had already completed.
+  - Invalidation now retires matching active preloads so older speculative loader results cannot become fresh cache data after invalidation.
+  - Route `headers()` now only runs on the server, matching the documented behavior — it is no longer invoked during client-side asset projection.
+  - The documented default `gcTime` and `preloadGcTime` now match the existing runtime default of 5 minutes (`300_000`).
+
+  **Removed / changed exported internals**
+  - `RouterState` no longer includes `loadedAt`, `isTransitioning`, `statusCode`, or `redirect`. Use `match.updatedAt` in place of `loadedAt`; subscribe to `router.state.status` / `router.state.isLoading` in place of `isTransitioning`; server response status and redirect handling are now internal to the server loader and are no longer exposed on `router.state`.
+  - `RouteMatch.fetchCount` has been removed, with no replacement — it was purely informational.
+  - `RouteMatch.status` no longer includes `'redirected'` (it remains `'pending' | 'success' | 'error' | 'notFound'`) — redirected matches are dropped from the match list instead of being rendered.
+  - `RouteMatch.globalNotFound` has been renamed and privatized to the internal `_notFound` field. Use `match.status === 'notFound'` instead.
+  - The exported React, Solid, and Vue `Match` components now accept `routeId` instead of `matchId`.
+  - The exported `RouterStores` adapter contract now uses route-keyed presentation stores: `matchesId` is replaced by `ids`, `matchStores` by `byRoute`, and `getRouteMatchStore()` by `getMatchStore()`. The separate `loadedAt`, `isLoading`, `isTransitioning`, `statusCode`, and `redirect` stores have been removed, along with the pending/cache stores and their setters. `StoreConfig.init` has also been removed. Read application-facing state from `router.state`; preload and cache coordination are now internal.
+  - Removed `RouterCore` members `getMatch()`, `updateMatch()`, `cancelMatch()`, and `cancelMatches()` — read matches from `router.state.matches` (e.g. `router.state.matches.find((m) => m.id === id)`); there is no replacement for mutating or cancelling an individual in-flight match from outside the router.
+  - Removed `RouterCore.hasNotFoundMatch()` — use `router.state.matches.some((m) => m.status === 'notFound')`.
+  - Removed `RouterCore.looseRoutesById` — use `routesById`.
+  - Removed `RouterCore.isPrerendering()`, `RouterCore.isViewTransitionTypesSupported`, and `RouterCore.viewTransitionPromise`, with no replacement.
+  - Removed `RouterCore.getParsedLocationHref()` and `RouterCore.clearExpiredCache()`, with no replacement — expired cache entries are now reconciled automatically as part of match commit.
+  - Removed `RouterCore.latestLoadPromise` and `RouterCore.beforeLoad()`, with no replacement.
+  - `RouterCore.commitLocationPromise` and `RouterCore.pendingBuiltLocation` have been replaced by the internal `_commitPromise` and `_pendingLocation` fields.
+  - Removed the exported `GetMatchFn` and `UpdateMatchFn` types, along with the methods they typed.
+  - Removed the standalone `getMatchedRoutes()` export from `@tanstack/router-core` — use the `router.getMatchedRoutes()` instance method instead.
+  - `RouterCore.loadRouteChunk()` no longer accepts an array of component types as its second argument. One-argument usage is unchanged; the optional second argument is now `'errorComponent'`, `'notFoundComponent'`, or `false` for internal boundary loading.
+  - Removed `Redirect.redirectHandled`, which was internal redirect bookkeeping.
+  - `MatchRoutesOpts.preload` and `MatchRoutesOpts.dest` have been removed.
+  - `StartTransitionFn` is now `(fn, expected) => Promise<boolean>` (previously `(fn) => void`). This only affects custom framework adapters that implement `startTransition`.
+
+## 1.171.15
+
+### Patch Changes
+
+- [#7807](https://github.com/TanStack/router/pull/7807) [`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa) - fix(router-core): handle window and element scroll restoration independently
+
+  Window and element scroll targets are now handled independently. Restoring one target no longer suppresses resets for other uncached configured targets, and a restored element is no longer reset when the window has no cached position.
+
+  Hash navigation no longer resets elements configured through `scrollToTopSelectors` and retains precedence over stale window positions through destination invalidations.
+
+  Scroll positions are sampled when leaving a route, preserving live changes made after the most recent scroll event. This also prevents client hydration from undoing nested positions restored by the SSR script.
+
+  Fixes [#7687](https://github.com/TanStack/router/issues/7687).
+
+## 1.171.14
+
+### Patch Changes
+
+- [#7695](https://github.com/TanStack/router/pull/7695) [`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b) - fix(router-core): re-encode URL-unsafe characters in `sanitizePathSegment` to prevent infinite redirect loops
+
+  `sanitizePathSegment` now re-encodes characters in the WHATWG URL "path percent-encode set" (`<`, `>`, `"`, `` ` ``, `{`, `}`) and ASCII control characters back to their percent-encoded form, instead of stripping control characters. This prevents mismatches between the original URL and the router's internal representation that previously caused infinite 307 redirect loops on paths containing these characters (e.g. `/%7B%7Btemplate%7D%7D`).
+
+  Fixes [#7587](https://github.com/TanStack/router/issues/7587).
+
+## 1.171.13
+
+### Patch Changes
+
+- [#7562](https://github.com/TanStack/router/pull/7562) [`776d8ef`](https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03) - Prevent scroll restoration listeners from being installed when scroll restoration is disabled.
+
+## 1.171.12
+
+### Patch Changes
+
+- [#7559](https://github.com/TanStack/router/pull/7559) [`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107) - Fix retained search params overriding explicit default-valued navigations when used with `stripSearchParams`.
+
+## 1.171.11
+
+### Patch Changes
+
+- [#7555](https://github.com/TanStack/router/pull/7555) [`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01) - Fix search middleware composition so `retainSearchParams` does not restore search params that a downstream `stripSearchParams` removed.
+
+## 1.171.10
+
+### Patch Changes
+
+- [#7381](https://github.com/TanStack/router/pull/7381) [`2cca73c`](https://github.com/TanStack/router/commit/2cca73c92262ffd96dac4e283c9f69fb37f4b43a) - fix(router-core): use search validator output type for search middleware context
+
+- [#7549](https://github.com/TanStack/router/pull/7549) [`7a83e67`](https://github.com/TanStack/router/commit/7a83e67e6596fbef21cb0a88a7127f5935bed2ba) - Fix `retainSearchParams` preserving current search params when validation adds default search values during navigation.
+
+- [#7533](https://github.com/TanStack/router/pull/7533) [`76b3d3b`](https://github.com/TanStack/router/commit/76b3d3b24522bd3d1d216674c441252c9b8f184c) - delete $\_TSR immediately on stream end
+
+## 1.171.9
+
+### Patch Changes
+
+- [#7524](https://github.com/TanStack/router/pull/7524) [`b4cd5af`](https://github.com/TanStack/router/commit/b4cd5af8d0f9d4aaa2d29095e6a261b9181bc778) - defer `$_TSR` teardown until DOMContentLoaded
+
+## 1.171.8
+
+### Patch Changes
+
+- [#7505](https://github.com/TanStack/router/pull/7505) [`2f53749`](https://github.com/TanStack/router/commit/2f5374945e2138559a51464f45a5152eae67e1dd) - Preserve primitive values thrown from beforeLoad error handling.
+
+## 1.171.7
+
+### Patch Changes
+
+- [#7497](https://github.com/TanStack/router/pull/7497) [`d1997b6`](https://github.com/TanStack/router/commit/d1997b66d7c24c1d64772bb8bab5caf9c6d9cc48) - fix streaming
+
+## 1.171.6
+
+### Patch Changes
+
+- Add support for Rsbuild client output formats, including module output by default and IIFE output for classic script environments. ([#7477](https://github.com/TanStack/router/pull/7477))
+
+  Client entry scripts and preloads are now represented as root route manifest assets, script preloads follow the manifest script format, and script asset cross-origin configuration uses the `script` key. The `transformAssets` script callback context now exposes only `kind: 'script'` and `url`, keeping script format handling internal to manifest rendering.
+
+## 1.171.5
+
+### Patch Changes
+
+- Fix hash scrolling with `resetScroll={false}` ([#7464](https://github.com/TanStack/router/pull/7464))
+
+## 1.171.4
+
+### Patch Changes
+
+- Fix hash navigation being overridden by stale scroll restoration entries. ([#7447](https://github.com/TanStack/router/pull/7447))
+
+- Preserve carried scroll positions across SPA navigations that create new restoration keys. ([#7447](https://github.com/TanStack/router/pull/7447))
+
+## 1.171.3
+
+### Patch Changes
+
+- Add deferred Hydrate boundary support for TanStack Start. ([#7362](https://github.com/TanStack/router/pull/7362))
+
+  Hydrate boundaries can now be code-split by the Start compiler, preload their generated client chunks, preserve server-rendered fallback HTML, and replay interaction-triggered events after hydration. The compiler integration now uses a Start-owned compiler plugin for Hydrate virtual modules across Vite and Rsbuild, with dev invalidation for generated virtual modules.
+
+  Shared AST utilities used by the router code-splitter and Hydrate virtual modules were moved into `@tanstack/router-utils` so both pipelines can retain referenced top-level declarations, unwrap local exports, and let dead-code elimination remove unused route module code.
+
+## 1.171.2
+
+### Patch Changes
+
+- Fix route mismatch warnings, HMR route index refresh, and generated route type preferences for duplicate pathless/index routes. ([#7422](https://github.com/TanStack/router/pull/7422))
+
+## 1.171.1
+
+### Patch Changes
+
+- Run custom router hydration before the initial client route match so hydrated router configuration, such as request-specific URL rewrites, can be installed before SSR hydration compares matches. ([#7416](https://github.com/TanStack/router/pull/7416))
+
+## 1.171.0
+
+### Minor Changes
+
+- params.priority route option as tie breaker in route matching algorithm ([#7411](https://github.com/TanStack/router/pull/7411))
+
+## 1.170.1
+
+### Patch Changes
+
+- Add runtime-configurable inline CSS and opt-in CSS URL templates for transformAssets. ([#7380](https://github.com/TanStack/router/pull/7380))
+
+## 1.170.0
+
+### Minor Changes
+
+- Clean minor bump, fresh start ([#7395](https://github.com/TanStack/router/pull/7395))
+
+### Patch Changes
+
+- fix(router-core): fix missing closing paren in CSS.supports check for view transition types ([#7369](https://github.com/TanStack/router/pull/7369))
+
+- Updated dependencies [[`201e150`](https://github.com/TanStack/router/commit/201e150bd1412bae2faa9ce53f0fefcb7574ac14)]:
+  - @tanstack/history@1.162.0
+
+## 1.169.2
+
+### Patch Changes
+
+- Update seroval dependencies to version 1.5.4. ([#7340](https://github.com/TanStack/router/pull/7340))
+
+## 1.169.1
+
+### Patch Changes
+
+- Fix params.parse inference for discriminated union path params while preserving path key validation. ([#7306](https://github.com/TanStack/router/pull/7306))
+
+## 1.169.0
+
+### Minor Changes
+
+- Allow `params.parse` to experimentally return `false` to skip an incoming route candidate during path matching. Thrown parse errors still surface on the selected match instead of falling through, and outgoing typed route-template links continue to use exact route lookup followed by `params.stringify` for URL generation. ([#7263](https://github.com/TanStack/router/pull/7263))
+
+## 1.168.18
+
+### Patch Changes
+
+- prevent isServer exports from being transformed to top-level vars so rspack can dead-code eliminate them ([#7293](https://github.com/TanStack/router/pull/7293))
+
+## 1.168.17
+
+### Patch Changes
+
+- wildcard nodes have the same priority rules as other nodes in route matching ([#7273](https://github.com/TanStack/router/pull/7273))
+
+## 1.168.16
+
+### Patch Changes
+
+- Add TanStack Start inline CSS manifest support for SSR so route styles can be embedded in the HTML response and hydrated without duplicate stylesheet links. ([#7253](https://github.com/TanStack/router/pull/7253))
+
+## 1.168.15
+
+### Patch Changes
+
+- Fix async loaders that throw or return `notFound()` so they do not briefly mark the match as `success` before the final not-found boundary is resolved. ([#7184](https://github.com/TanStack/router/pull/7184))
+
+  This prevents route components from rendering with missing loader data during navigation when React observes the intermediate match state before not-found finalization completes.
+
+## 1.168.14
+
+### Patch Changes
+
+- chore: bump to h3 v2-rc.20 ([#7140](https://github.com/TanStack/router/pull/7140))
+
+## 1.168.13
+
+### Patch Changes
+
+- Reduce React Start SSR manifest payload size by omitting unmatched route assets from dehydrated router state while keeping start-manifest asset serialization deduplicated by shared object identity. ([#7157](https://github.com/TanStack/router/pull/7157))
+
+  This improves SSR HTML size for apps with many routes that share the same CSS assets and adds regression coverage for CSS module hydration, navigation, and start-manifest asset reuse.
+
+## 1.168.12
+
+### Patch Changes
+
+- avoid false notFound matches for proxied loader data ([#7156](https://github.com/TanStack/router/pull/7156))
+
+## 1.168.11
+
+### Patch Changes
+
+- shorten internal non-minifiable store names for byte shaving ([#7152](https://github.com/TanStack/router/pull/7152))
+
+## 1.168.10
+
+### Patch Changes
+
+- migrate createStore > createAtom for simpler API ([#7150](https://github.com/TanStack/router/pull/7150))
+
 ## 1.168.9
 
 ### Patch Changes

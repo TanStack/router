@@ -1,10 +1,10 @@
 import path from 'node:path'
 import { z } from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
-import type { TanStackStartVitePluginCoreOptions } from './types'
+import type { CompileStartFrameworkOptions } from './types'
 
 const tsrConfig = configSchema
-  .omit({ autoCodeSplitting: true, target: true, verboseFileRoutes: true })
+  .omit({ autoCodeSplitting: true, target: true })
   .partial()
 
 // --- Import Protection Schema ---
@@ -41,15 +41,9 @@ const importProtectionOptionsSchema = z
      */
     mockAccess: z.enum(['error', 'warn', 'off']).optional(),
     onViolation: z
-      .function()
-      .args(z.any())
-      .returns(
-        z.union([
-          z.boolean(),
-          z.void(),
-          z.promise(z.union([z.boolean(), z.void()])),
-        ]),
-      )
+      .custom<
+        (violation: unknown) => boolean | void | Promise<boolean | void>
+      >((value) => typeof value === 'function')
       .optional(),
     include: z.array(patternSchema).optional(),
     exclude: z.array(patternSchema).optional(),
@@ -63,9 +57,11 @@ const importProtectionOptionsSchema = z
 
 export function parseStartConfig(
   opts: z.input<typeof tanstackStartOptionsSchema>,
-  corePluginOpts: TanStackStartVitePluginCoreOptions,
+  corePluginOpts: { framework: CompileStartFrameworkOptions },
   root: string,
 ) {
+  const rawOptions = opts ?? {}
+  const rawRouterOptions = rawOptions.router ?? {}
   const options = tanstackStartOptionsSchema.parse(opts)
 
   const srcDirectory = options.srcDirectory
@@ -73,13 +69,13 @@ export function parseStartConfig(
   const routesDirectory = path.resolve(
     root,
     srcDirectory,
-    options.router.routesDirectory ?? 'routes',
+    rawRouterOptions.routesDirectory ?? 'routes',
   )
 
   const generatedRouteTree = path.resolve(
     root,
     srcDirectory,
-    options.router.generatedRouteTree ?? 'routeTree.gen.ts',
+    rawRouterOptions.generatedRouteTree ?? 'routeTree.gen.ts',
   )
 
   return {
@@ -149,14 +145,12 @@ const pagePrerenderOptionsSchema = z.object({
   retryCount: z.number().optional(),
   retryDelay: z.number().optional(),
   onSuccess: z
-    .function()
-    .args(
-      z.object({
-        page: pageBaseSchema,
-        html: z.string(),
-      }),
-    )
-    .returns(z.any())
+    .custom<
+      (result: {
+        page: z.infer<typeof pageBaseSchema>
+        html: string
+      }) => unknown
+    >((value) => typeof value === 'function')
     .optional(),
   headers: z.record(z.string(), z.string()).optional(),
 })
@@ -166,7 +160,7 @@ const spaSchema = z.object({
   maskPath: z.string().optional().default('/'),
   prerender: pagePrerenderOptionsSchema
     .optional()
-    .default({})
+    .prefault({})
     .transform((opts) => ({
       outputPath: opts.outputPath ?? '/_shell',
       crawlLinks: false,
@@ -176,107 +170,145 @@ const spaSchema = z.object({
     })),
 })
 
+const inlineCssSchema = z
+  .union([
+    z.boolean(),
+    z.object({
+      /**
+       * Inline route CSS into the server-rendered HTML response.
+       *
+       * @experimental This option is experimental!
+       */
+      enabled: z.boolean().optional().default(true),
+      /**
+       * Emit build-time templates that allow `transformAssets` to rewrite
+       * `url(...)` references inside inlined CSS at runtime.
+       */
+      transformAssets: z.boolean().optional().default(false),
+    }),
+  ])
+  .optional()
+  .default(false)
+  .transform((value) => {
+    if (typeof value === 'boolean') {
+      return { enabled: value, transformAssets: false }
+    }
+
+    return value
+  })
+
+export type InlineCssInputOptions = z.input<typeof inlineCssSchema>
+
 const pageSchema = pageBaseSchema.extend({
   prerender: pagePrerenderOptionsSchema.optional(),
 })
 
-const tanstackStartOptionsSchema = z
-  .object({
-    srcDirectory: z.string().optional().default('src'),
-    start: z
-      .object({
-        entry: z.string().optional(),
-      })
-      .optional()
-      .default({}),
-    router: z
-      .object({
-        entry: z.string().optional(),
-        basepath: z.string().optional(),
-      })
-      .and(tsrConfig.optional().default({}))
-      .optional()
-      .default({}),
-    client: z
-      .object({
-        entry: z.string().optional(),
-        base: z.string().optional().default('/_build'),
-      })
-      .optional()
-      .default({}),
-    server: z
-      .object({
-        entry: z.string().optional(),
-        build: z
-          .object({
-            staticNodeEnv: z.boolean().optional().default(true),
-          })
-          .optional()
-          .default({}),
-      })
-      .optional()
-      .default({}),
-    serverFns: z
-      .object({
-        base: z.string().optional().default('/_serverFn'),
-        generateFunctionId: z
-          .function()
-          .args(
-            z.object({
-              filename: z.string(),
-              functionName: z.string(),
-            }),
-          )
-          .returns(z.string().optional())
-          .optional(),
-      })
-      .optional()
-      .default({}),
-    pages: z.array(pageSchema).optional().default([]),
-    sitemap: z
-      .object({
-        enabled: z.boolean().optional().default(true),
-        host: z.string().optional(),
-        outputPath: z.string().optional().default('sitemap.xml'),
-      })
-      .optional(),
-    prerender: z
-      .object({
-        enabled: z.boolean().optional(),
-        concurrency: z.number().optional(),
-        filter: z.function().args(pageSchema).returns(z.any()).optional(),
-        failOnError: z.boolean().optional(),
-        autoStaticPathsDiscovery: z.boolean().optional(),
-        maxRedirects: z.number().min(0).optional(),
-      })
-      .and(pagePrerenderOptionsSchema.optional())
-      .optional(),
-    dev: z
-      .object({
-        ssrStyles: z
-          .object({
-            enabled: z.boolean().optional().default(true),
-            basepath: z.string().optional(),
-          })
-          .optional()
-          .default({}),
-      })
-      .optional()
-      .default({}),
-    spa: spaSchema.optional(),
-    vite: z
-      .object({ installDevServerMiddleware: z.boolean().optional() })
-      .optional(),
-    importProtection: importProtectionOptionsSchema,
-  })
+export const tanstackStartOptionsObjectSchema = z.object({
+  srcDirectory: z.string().optional().default('src'),
+  start: z
+    .object({
+      entry: z.string().optional(),
+    })
+    .optional()
+    .prefault({}),
+  router: z
+    .object({
+      entry: z.string().optional(),
+      basepath: z.string().optional(),
+    })
+    .and(tsrConfig.optional().prefault({}))
+    .optional()
+    .prefault({}),
+  client: z
+    .object({
+      entry: z.string().optional(),
+      base: z.string().optional().default('/_build'),
+    })
+    .optional()
+    .prefault({}),
+  server: z
+    .object({
+      entry: z.string().optional(),
+      build: z
+        .object({
+          staticNodeEnv: z.boolean().optional().default(true),
+          /**
+           * Inline route CSS into the server-rendered HTML response.
+           *
+           * @experimental This option is experimental!
+           */
+          inlineCss: inlineCssSchema,
+        })
+        .optional()
+        .prefault({}),
+    })
+    .optional()
+    .prefault({}),
+  serverFns: z
+    .object({
+      base: z.string().optional().default('/_serverFn'),
+      disableCsrfMiddlewareWarning: z.boolean().optional().default(false),
+      generateFunctionId: z
+        .custom<
+          (opts: {
+            filename: string
+            functionName: string
+          }) => string | undefined
+        >((value) => typeof value === 'function')
+        .optional(),
+    })
+    .optional()
+    .prefault({}),
+  pages: z.array(pageSchema).optional().default([]),
+  sitemap: z
+    .object({
+      enabled: z.boolean().optional().default(true),
+      host: z.string().optional(),
+      outputPath: z.string().optional().default('sitemap.xml'),
+    })
+    .optional(),
+  prerender: z
+    .object({
+      enabled: z.boolean().optional(),
+      concurrency: z.number().optional(),
+      filter: z
+        .custom<
+          (page: z.infer<typeof pageSchema>) => unknown
+        >((value) => typeof value === 'function')
+        .optional(),
+      failOnError: z.boolean().optional(),
+      autoStaticPathsDiscovery: z.boolean().optional(),
+      maxRedirects: z.number().min(0).optional(),
+    })
+    .and(pagePrerenderOptionsSchema.optional())
+    .optional(),
+  dev: z
+    .object({
+      ssrStyles: z
+        .object({
+          enabled: z.boolean().optional().default(true),
+          basepath: z.string().optional(),
+        })
+        .optional()
+        .prefault({}),
+    })
+    .optional()
+    .prefault({}),
+  spa: spaSchema.optional(),
+  importProtection: importProtectionOptionsSchema,
+})
+
+export const tanstackStartOptionsSchema = tanstackStartOptionsObjectSchema
   .optional()
-  .default({})
+  .prefault({})
 
 export type Page = z.infer<typeof pageSchema>
 
-export type TanStackStartInputConfig = z.input<
-  typeof tanstackStartOptionsSchema
+type TanStackStartOptionsInput = NonNullable<
+  z.input<typeof tanstackStartOptionsSchema>
 >
+
+export type TanStackStartInputConfig = TanStackStartOptionsInput
 export type TanStackStartOutputConfig = ReturnType<typeof parseStartConfig>
 
 export type ImportProtectionBehavior = z.infer<

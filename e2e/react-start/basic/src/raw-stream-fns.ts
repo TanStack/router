@@ -364,6 +364,93 @@ export const errorStreamFn = createServerFn().handler(async () => {
   }
 })
 
+// ============================================================================
+// LATE RAWSTREAM TESTS - RawStream inside Promise (discovered after initial serialization)
+// ============================================================================
+
+// Expected data for late stream tests
+export const LATE_STREAM_CHUNKS = [
+  encode('late-1'),
+  encode('late-2'),
+  encode('late-3'),
+]
+export const LATE_STREAM_EXPECTED = concatBytes(LATE_STREAM_CHUNKS)
+
+export const LATE_STREAM_A_CHUNKS = [encode('lateA-1'), encode('lateA-2')]
+export const LATE_STREAM_A_EXPECTED = concatBytes(LATE_STREAM_A_CHUNKS)
+
+export const LATE_STREAM_B_CHUNKS = [encode('lateB-1'), encode('lateB-2')]
+export const LATE_STREAM_B_EXPECTED = concatBytes(LATE_STREAM_B_CHUNKS)
+
+export const IMMEDIATE_STREAM_CHUNKS = [
+  encode('immediate-1'),
+  encode('immediate-2'),
+]
+export const IMMEDIATE_STREAM_EXPECTED = concatBytes(IMMEDIATE_STREAM_CHUNKS)
+
+// Test 17: Single late RawStream (Promise<RawStream>)
+// The RawStream is wrapped in a Promise, so it's not discovered during initial serialization
+export const lateRawStreamFn = createServerFn().handler(async () => {
+  // Promise that resolves to a RawStream after a delay
+  const lateStream = new Promise<RawStream>((resolve) => {
+    setTimeout(() => {
+      const stream = createDelayedStream(LATE_STREAM_CHUNKS, 30)
+      resolve(new RawStream(stream))
+    }, 100)
+  })
+
+  return {
+    message: 'Late stream test',
+    lateData: lateStream,
+  }
+})
+
+// Test 18: Multiple late RawStreams with different delays
+export const multipleLateStreamsFn = createServerFn().handler(async () => {
+  // Two Promises resolving to RawStreams at different times
+  const lateStreamA = new Promise<RawStream>((resolve) => {
+    setTimeout(() => {
+      const stream = createDelayedStream(LATE_STREAM_A_CHUNKS, 20)
+      resolve(new RawStream(stream))
+    }, 50)
+  })
+
+  const lateStreamB = new Promise<RawStream>((resolve) => {
+    setTimeout(() => {
+      const stream = createDelayedStream(LATE_STREAM_B_CHUNKS, 20)
+      resolve(new RawStream(stream))
+    }, 150)
+  })
+
+  return {
+    message: 'Multiple late streams test',
+    streamA: lateStreamA,
+    streamB: lateStreamB,
+  }
+})
+
+// Test 19: Mixed immediate and late RawStreams
+// One RawStream is immediate (discovered during initial serialization)
+// One is wrapped in Promise (discovered after initial serialization)
+export const mixedImmediateLateFn = createServerFn().handler(async () => {
+  // Immediate RawStream - discovered during initial serialization
+  const immediateStream = createDelayedStream(IMMEDIATE_STREAM_CHUNKS, 30)
+
+  // Late RawStream - wrapped in Promise, discovered after initial serialization
+  const lateStream = new Promise<RawStream>((resolve) => {
+    setTimeout(() => {
+      const stream = createDelayedStream(LATE_STREAM_CHUNKS, 30)
+      resolve(new RawStream(stream))
+    }, 100)
+  })
+
+  return {
+    message: 'Mixed immediate and late test',
+    immediate: new RawStream(immediateStream),
+    late: lateStream,
+  }
+})
+
 // Helpers for consuming streams (exported for use in components)
 // Note: RawStream is the marker class used in loaders/server functions,
 // but after SSR deserialization it becomes ReadableStream<Uint8Array>.

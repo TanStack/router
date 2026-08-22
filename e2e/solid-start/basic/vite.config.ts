@@ -30,8 +30,13 @@ const prerenderConfiguration = {
   maxRedirects: 100,
 }
 
+const outDir = process.env.E2E_DIST_DIR ?? 'dist'
+
 export default defineConfig({
   resolve: { tsconfigPaths: true },
+  build: {
+    outDir,
+  },
   server: {
     port: 3000,
   },

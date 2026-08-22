@@ -1,3 +1,5 @@
+'use client'
+
 import * as React from 'react'
 import { useStore } from '@tanstack/react-store'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
@@ -18,11 +20,46 @@ import type {
   ThrowOrOptional,
 } from '@tanstack/router-core'
 
-const dummyStore = {
-  state: undefined,
-  get: () => undefined,
-  subscribe: () => () => {},
-} as any
+const dummyMatch = {}
+
+export function useStructuralSharing<
+  TRouter extends AnyRouter,
+  TSelected,
+  TStructuralSharing extends boolean,
+  TStoreSlice,
+  TSelectSlice = TStoreSlice,
+>(
+  opts:
+    | {
+        select?: (
+          slice: TSelectSlice,
+        ) => ValidateSelected<TRouter, TSelected, TStructuralSharing>
+        structuralSharing?: boolean
+      }
+    | undefined,
+  router: TRouter,
+): (
+  slice: TStoreSlice,
+) => ValidateSelected<TRouter, TSelected, TStructuralSharing> {
+  const previousResult =
+    // @ts-expect-error -- init to undefined, but without writing `undefined` to shave bytes
+    React.useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>()
+
+  return (slice) => {
+    const selected = opts?.select
+      ? opts.select(slice as unknown as TSelectSlice)
+      : (slice as ValidateSelected<TRouter, TSelected, TStructuralSharing>)
+
+    if (opts?.structuralSharing ?? router.options.defaultStructuralSharing) {
+      return (previousResult.current = replaceEqualDeep(
+        previousResult.current,
+        selected,
+      ))
+    }
+
+    return selected
+  }
+}
 
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,
@@ -105,68 +142,54 @@ export function useMatch<
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
   const router = useRouter<TRouter>()
-  const nearestMatchId = React.useContext(
+  const nearestRouteId = React.useContext(
     opts.from ? dummyMatchContext : matchContext,
   )
 
-  const key = opts.from ?? nearestMatchId
-  const matchStore = key
-    ? opts.from
-      ? router.stores.getMatchStoreByRouteId(key)
-      : router.stores.activeMatchStoresById.get(key)
-    : undefined
+  const routeId = opts.from ?? nearestRouteId
+  const matchStore = router.stores.getMatchStore(routeId!)
 
   if (isServer ?? router.isServer) {
-    const match = matchStore?.state
-    if ((opts.shouldThrow ?? true) && !match) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error(
-          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-        )
+    const match = matchStore.get()
+    if (!match) {
+      if (opts.shouldThrow ?? true) {
+        if (process.env.NODE_ENV !== 'production') {
+          throw new Error(
+            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+          )
+        }
+
+        invariant()
       }
 
-      invariant()
-    }
-
-    if (match === undefined) {
       return undefined as any
     }
 
     return (opts.select ? opts.select(match as any) : match) as any
   }
 
-  const previousResult =
+  const selector =
     // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-    React.useRef<ValidateSelected<TRouter, TSelected, TStructuralSharing>>(
-      undefined,
-    )
+    useStructuralSharing(opts, router)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  return useStore(matchStore ?? dummyStore, (match) => {
-    if ((opts.shouldThrow ?? true) && !match) {
-      if (process.env.NODE_ENV !== 'production') {
-        throw new Error(
-          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-        )
-      }
+  const matchSelection = useStore(matchStore, (match) =>
+    match ? selector(match as any) : dummyMatch,
+  )
 
-      invariant()
+  if (matchSelection !== dummyMatch) {
+    return matchSelection as any
+  }
+
+  if (opts.shouldThrow ?? true) {
+    if (process.env.NODE_ENV !== 'production') {
+      throw new Error(
+        `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+      )
     }
 
-    if (match === undefined) {
-      return undefined
-    }
+    invariant()
+  }
 
-    const selected = (
-      opts.select ? opts.select(match as any) : match
-    ) as ValidateSelected<TRouter, TSelected, TStructuralSharing>
-
-    if (opts.structuralSharing ?? router.options.defaultStructuralSharing) {
-      const shared = replaceEqualDeep(previousResult.current, selected)
-      previousResult.current = shared
-      return shared
-    }
-
-    return selected
-  }) as any
+  return undefined as any
 }

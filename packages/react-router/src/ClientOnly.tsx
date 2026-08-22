@@ -1,3 +1,5 @@
+'use client'
+
 import React from 'react'
 
 export interface ClientOnlyProps {
@@ -29,11 +31,7 @@ export interface ClientOnlyProps {
  * ```
  */
 export function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
-  return useHydrated() ? (
-    <React.Fragment>{children}</React.Fragment>
-  ) : (
-    <React.Fragment>{fallback}</React.Fragment>
-  )
+  return <React.Fragment>{useHydrated() ? children : fallback}</React.Fragment>
 }
 
 /**
@@ -64,5 +62,7 @@ export function useHydrated(): boolean {
 }
 
 function subscribe() {
-  return () => {}
+  return () => {
+    // noop
+  }
 }

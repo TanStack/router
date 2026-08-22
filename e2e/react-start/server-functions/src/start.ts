@@ -1,4 +1,4 @@
-import { createStart } from '@tanstack/react-start'
+import { createCsrfMiddleware, createStart } from '@tanstack/react-start'
 import type { CustomFetch } from '@tanstack/react-start'
 
 /**
@@ -16,6 +16,11 @@ const globalServerFnFetch: CustomFetch = (input, init) => {
 }
 
 export const startInstance = createStart(() => ({
+  requestMiddleware: [
+    createCsrfMiddleware({
+      filter: (ctx) => ctx.handlerType === 'serverFn',
+    }),
+  ],
   serverFns: {
     fetch: globalServerFnFetch,
   },

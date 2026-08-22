@@ -24,7 +24,7 @@ export function useRouteContext<
   opts: UseRouteContextOptions<TRouter, TFrom, TStrict, TSelected>,
 ): Vue.Ref<UseRouteContextResult<TRouter, TFrom, TStrict, TSelected>> {
   return useMatch({
-    ...(opts as any),
+    ...opts,
     select: (match) =>
       opts.select ? opts.select(match.context) : match.context,
   }) as any

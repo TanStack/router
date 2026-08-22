@@ -1,5 +1,53 @@
 import { expectTypeOf, test } from 'vitest'
 import { createFileRoute, createRootRoute } from '../src'
+import type { Route } from '@tanstack/router-core'
+
+declare module '@tanstack/router-core' {
+  interface FilebaseRouteOptionsInterface<
+    TRegister,
+    TParentRoute,
+    TId,
+    TPath,
+    TSearchValidator,
+    TParams,
+    TLoaderDeps,
+    TLoaderFn,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TRemountDepsFn,
+    TSSR,
+    TServerMiddlewares,
+    THandlers,
+  > {
+    server?: {
+      middleware?: TServerMiddlewares
+    }
+  }
+
+  interface RouteTypes<
+    TRegister,
+    TParentRoute,
+    TPath,
+    TFullPath,
+    TCustomId,
+    TId,
+    TSearchValidator,
+    TParams,
+    TRouterContext,
+    TRouteContextFn,
+    TBeforeLoadFn,
+    TLoaderDeps,
+    TLoaderFn,
+    TChildren,
+    TFileRouteTypes,
+    TSSR,
+    TServerMiddlewares,
+    THandlers,
+  > {
+    middleware: TServerMiddlewares
+  }
+}
 
 const rootRoute = createRootRoute()
 
@@ -99,4 +147,43 @@ test('when creating a folder group', () => {
   expectTypeOf<'/protected'>(protectedRoute.fullPath)
   expectTypeOf<'(auth)/protected'>(protectedRoute.path)
   expectTypeOf<'/protected'>(protectedRoute.id)
+})
+
+test('when creating a file route with middleware options', () => {
+  type Middleware = { readonly middleware: 'middleware' }
+  const middleware = { middleware: 'middleware' } as const
+
+  const route = createFileRoute('/invoices')({
+    server: {
+      middleware: [middleware],
+    },
+  })
+
+  type ExtractMiddlewares<TRoute> =
+    TRoute extends Route<
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      any,
+      infer TMiddlewares,
+      any
+    >
+      ? TMiddlewares
+      : never
+
+  expectTypeOf<ExtractMiddlewares<typeof route>>().toEqualTypeOf<
+    readonly [Middleware]
+  >()
 })

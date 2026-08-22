@@ -3,8 +3,8 @@ import {
   ImportGraph,
   buildTrace,
   formatViolation,
-} from '../../src/import-protection-plugin/trace'
-import type { ViolationInfo } from '../../src/import-protection-plugin/trace'
+} from '../../src/import-protection/trace'
+import type { ViolationInfo } from '../../src/import-protection/trace'
 
 describe('ImportGraph', () => {
   test('addEdge and reverse lookup', () => {
@@ -207,7 +207,6 @@ describe('formatViolation', () => {
         { file: '/project/src/main.tsx' },
         { file: '/project/src/routes/index.tsx', specifier: './routes/index' },
       ],
-      message: 'Import denied',
     }
 
     const formatted = formatViolation(info, '/project')
@@ -231,7 +230,6 @@ describe('formatViolation', () => {
       importer: '/project/src/edge-a.ts',
       resolved: '/project/src/secret.server.ts',
       trace: [],
-      message: 'Import denied',
     }
 
     const formatted = formatViolation(info, '/project')
@@ -255,7 +253,6 @@ describe('formatViolation', () => {
       specifier: '@tanstack/react-start/server-only',
       importer: '/project/src/routes/index.tsx',
       trace: [],
-      message: 'Module is server-only',
     }
 
     const formatted = formatViolation(info, '/project')
@@ -277,7 +274,6 @@ describe('formatViolation', () => {
       importer: '/project/src/routes/page.tsx',
       resolved: '/project/src/browser-api.client.ts',
       trace: [],
-      message: 'Import denied',
     }
 
     const formatted = formatViolation(info, '/project')
@@ -299,7 +295,6 @@ describe('formatViolation', () => {
       specifier: 'node:fs',
       importer: '/project/src/routes/page.tsx',
       trace: [],
-      message: 'Import denied',
     }
 
     const formatted = formatViolation(info, '/project')
@@ -317,7 +312,6 @@ describe('formatViolation', () => {
       importer: '/project/src/routes/page.tsx',
       resolved: '/project/src/browser-api.client.ts',
       trace: [],
-      message: 'Import denied',
       snippet: {
         lines: [
           '     15 |     <div>',
@@ -351,7 +345,6 @@ describe('formatViolation', () => {
       specifier: '@tanstack/react-start/server',
       importer: '/project/src/routes/index.tsx',
       trace: [],
-      message: 'Import denied',
     }
 
     const formatted = formatViolation(info, '/project')
@@ -371,7 +364,6 @@ describe('formatViolation', () => {
       specifier: '@tanstack/react-start/client-only',
       importer: '/project/src/routes/page.tsx',
       trace: [],
-      message: 'Module is client-only',
     }
 
     const formatted = formatViolation(info, '/project')
@@ -401,7 +393,6 @@ describe('formatViolation', () => {
           specifier: '/project/src/utils/prisma',
         },
       ],
-      message: 'Import denied',
     }
 
     const formatted = formatViolation(info, '/project')
@@ -428,7 +419,6 @@ describe('formatViolation', () => {
           specifier: './secret.server',
         },
       ],
-      message: 'Import denied',
     }
 
     const formatted = formatViolation(info, '/project')
