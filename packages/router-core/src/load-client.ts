@@ -1231,25 +1231,41 @@ export async function projectLane(
   end = lane[1 /* matches */].length,
 ): Promise<ProjectedLane> {
   const matches = lane[1 /* matches */]
+  let projections: Array<[WorkMatch, Promise<any>]> | undefined
   for (let index = start; index < end; index++) {
     const match = matches[index]!
     const routeOptions = getRoute(router, match).options
     if (routeOptions.head || routeOptions.scripts) {
+      const context = {
+        ssr: router.options.ssr,
+        matches,
+        match,
+        params: match.params,
+        loaderData: match.loaderData,
+      }
+      let projection
       try {
-        const context = {
-          ssr: router.options.ssr,
-          matches,
-          match,
-          params: match.params,
-          loaderData: match.loaderData,
-        }
-        const [head, scripts] = await waitFor(
+        projection = waitFor(
           Promise.all([
             routeOptions.head?.(context),
             routeOptions.scripts?.(context),
           ]),
           signal,
         )
+      } catch (cause) {
+        projection = Promise.reject(cause)
+      }
+      void projection.catch(() => {})
+      ;(projections ??= []).push([match, projection])
+    }
+    if (match.status !== 'success' || match._notFound) {
+      break
+    }
+  }
+  if (projections) {
+    for (const [match, projection] of projections) {
+      try {
+        const [head, scripts] = await projection
         match.meta = head?.meta
         match.links = head?.links
         match.headScripts = head?.scripts
@@ -1261,9 +1277,6 @@ export async function projectLane(
         }
         console.error(cause)
       }
-    }
-    if (match.status !== 'success' || match._notFound) {
-      break
     }
   }
   return lane as ProjectedLane
