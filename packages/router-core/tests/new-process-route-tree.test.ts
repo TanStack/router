@@ -696,6 +696,7 @@ describe('findRouteMatch', () => {
         (route, path, rawParams) => {
           const tree = makeTree([route])
           expect(findRouteMatch('/abc', tree)).toBeNull()
+          expect(findRouteMatch(`${path}x`, tree)).toBeNull()
           const match = findRouteMatch(path, tree)
           expect(match?.route.id).toBe(route)
           expect(match?.rawParams).toEqual(rawParams)
@@ -1691,7 +1692,7 @@ describe('findRouteMatch', () => {
                   "wildcard": null,
                 },
               ],
-              "prefix": undefined,
+              "prefix": "",
               "priority": 0,
               "route": null,
               "static": null,
@@ -1718,7 +1719,7 @@ describe('findRouteMatch', () => {
                   "wildcard": null,
                 },
               },
-              "suffix": undefined,
+              "suffix": "",
               "wildcard": null,
             },
           ],

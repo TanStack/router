@@ -237,20 +237,14 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_PARAM:
         case SEGMENT_TYPE_OPTIONAL_PARAM:
         case SEGMENT_TYPE_WILDCARD: {
-          const prefix_raw = path.substring(start, segment[1])
-          const suffix_raw = path.substring(segment[4], end)
+          let prefix = path.substring(start, segment[1])
+          let suffix = path.substring(segment[4], end)
           const actuallyCaseSensitive =
-            caseSensitive && !!(prefix_raw || suffix_raw)
-          const prefix = !prefix_raw
-            ? undefined
-            : actuallyCaseSensitive
-              ? prefix_raw
-              : prefix_raw.toLowerCase()
-          const suffix = !suffix_raw
-            ? undefined
-            : actuallyCaseSensitive
-              ? suffix_raw
-              : suffix_raw.toLowerCase()
+            caseSensitive && !!(prefix || suffix)
+          if (!actuallyCaseSensitive) {
+            prefix = prefix.toLowerCase()
+            suffix = suffix.toLowerCase()
+          }
           const siblings =
             kind === SEGMENT_TYPE_PARAM
               ? node.dynamic
@@ -357,15 +351,15 @@ function parseSegments<TRouteLike extends RouteLike>(
 
 function sortDynamic(
   a: {
-    prefix?: string
-    suffix?: string
+    prefix: string
+    suffix: string
     caseSensitive: boolean
     parse: null | ((params: Record<string, string>) => unknown)
     priority: number
   },
   b: {
-    prefix?: string
-    suffix?: string
+    prefix: string
+    suffix: string
     caseSensitive: boolean
     parse: null | ((params: Record<string, string>) => unknown)
     priority: number
@@ -426,8 +420,8 @@ function createDynamicNode<T extends RouteLike>(
     | typeof SEGMENT_TYPE_OPTIONAL_PARAM,
   fullPath: string,
   caseSensitive: boolean,
-  prefix?: string,
-  suffix?: string,
+  prefix: string,
+  suffix: string,
 ): DynamicSegmentNode<T> {
   return {
     kind,
@@ -462,8 +456,8 @@ type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
     | typeof SEGMENT_TYPE_PARAM
     | typeof SEGMENT_TYPE_WILDCARD
     | typeof SEGMENT_TYPE_OPTIONAL_PARAM
-  prefix?: string
-  suffix?: string
+  prefix: string
+  suffix: string
   caseSensitive: boolean
 }
 
@@ -818,12 +812,12 @@ function extractParams<T extends RouteLike>(
     if (node.kind === SEGMENT_TYPE_PARAM) {
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[segmentCount]!
-      const preLength = node.prefix?.length ?? 0
+      const preLength = node.prefix.length
       // we can't rely on the presence of prefix/suffix to know whether it's curly-braced or not, because `/{$param}/` is valid, but has no prefix/suffix
       const isCurlyBraced = nodePart.charCodeAt(preLength) === 123 // '{'
       // param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
       if (isCurlyBraced) {
-        const sufLength = node.suffix?.length ?? 0
+        const sufLength = node.suffix.length
         const name = nodePart.substring(
           preLength + 2,
           nodePart.length - sufLength - 1,
@@ -842,8 +836,8 @@ function extractParams<T extends RouteLike>(
       }
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[segmentCount]!
-      const preLength = node.prefix?.length ?? 0
-      const sufLength = node.suffix?.length ?? 0
+      const preLength = node.prefix.length
+      const sufLength = node.suffix.length
       const name = nodePart.substring(
         preLength + 3,
         nodePart.length - sufLength - 1,
@@ -856,8 +850,8 @@ function extractParams<T extends RouteLike>(
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
       const value = path.substring(
-        currentPathIndex + (n.prefix?.length ?? 0),
-        path.length - (n.suffix?.length ?? 0),
+        currentPathIndex + n.prefix.length,
+        path.length - n.suffix.length,
       )
       const splat = decodeURIComponent(value)
       // TODO: Deprecate *
@@ -1068,7 +1062,7 @@ function getNodeMatch<T extends RouteLike>(
             : suffixPart.toLowerCase()
           if (
             casePart !== suffix ||
-            (prefix && end.length - suffix.length < prefix.length)
+            end.length - suffix.length < prefix.length
           ) {
             continue
           }
@@ -1116,8 +1110,8 @@ function getNodeMatch<T extends RouteLike>(
             if (prefix && !casePart.startsWith(prefix)) continue
             if (
               suffix &&
-              ((prefix && casePart.length - suffix.length < prefix.length) ||
-                !casePart.endsWith(suffix))
+              casePart.indexOf(suffix, casePart.length - suffix.length) <
+                prefix.length
             ) {
               continue
             }
@@ -1148,8 +1142,8 @@ function getNodeMatch<T extends RouteLike>(
           if (prefix && !casePart.startsWith(prefix)) continue
           if (
             suffix &&
-            ((prefix && casePart.length - suffix.length < prefix.length) ||
-              !casePart.endsWith(suffix))
+            casePart.indexOf(suffix, casePart.length - suffix.length) <
+              prefix.length
           ) {
             continue
           }
