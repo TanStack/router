@@ -270,7 +270,17 @@ function Script({
   // After hydration, return null — the useEffect handles imperative injection.
   if (!hydrated) {
     if (attrs?.src) {
-      return <script {...attrs} suppressHydrationWarning />
+      if (!preventScriptHoist) {
+        return <script {...attrs} suppressHydrationWarning />
+      }
+
+      return (
+        <script
+          {...attrs}
+          onLoad={noopScriptHandler}
+          suppressHydrationWarning
+        />
+      )
     }
 
     if (typeof children === 'string') {
