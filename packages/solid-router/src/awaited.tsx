@@ -34,9 +34,6 @@ export function Await<T>(
     const [resource] = Solid.createResource(
       () => defer(props.promise),
       (p) => p,
-      {
-        deferStream: true,
-      },
     )
 
     return (
