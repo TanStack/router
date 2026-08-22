@@ -41,12 +41,32 @@ test('a component loads when rendered before preload', async () => {
   expect(importer).toHaveBeenCalledTimes(1)
 })
 
+test('a failed preload is retried at render', async () => {
+  const importer = vi
+    .fn<() => Promise<{ default: () => any }>>()
+    .mockRejectedValueOnce(new Error('component download failed'))
+    .mockResolvedValue({ default: () => <div>Page content</div> })
+  const Page = lazyRouteComponent(importer)
+
+  // The preload failure is swallowed; the render-time attempt re-imports.
+  await Page.preload?.()
+  expect(importer).toHaveBeenCalledTimes(1)
+
+  render(() => <Page />)
+
+  expect(await screen.findByText('Page content')).toBeInTheDocument()
+  expect(importer).toHaveBeenCalledTimes(2)
+})
+
 test('a failed component download is retried from the route error UI', async () => {
   vi.spyOn(console, 'error').mockImplementation(() => {})
 
   const PageContent = () => <div>Page content</div>
   const importer = vi
     .fn<() => Promise<{ default: typeof PageContent }>>()
+    // Fail the route-load preload AND the render-time retry so the error
+    // reaches the route error boundary.
+    .mockRejectedValueOnce(new Error('component download failed'))
     .mockRejectedValueOnce(new Error('component download failed'))
     .mockResolvedValue({ default: PageContent })
   const Page = lazyRouteComponent(importer)
