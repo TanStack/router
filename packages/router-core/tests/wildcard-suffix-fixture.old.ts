@@ -1,7 +1,7 @@
-import { invariant } from './invariant'
-import { createLRUCache } from './lru-cache'
-import { last } from './utils'
-import type { LRUCache } from './lru-cache'
+import { invariant } from '../src/invariant'
+import { createLRUCache } from '../src/lru-cache'
+import { last } from '../src/utils'
+import type { LRUCache } from '../src/lru-cache'
 
 export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
@@ -1061,13 +1061,7 @@ function getNodeMatch<T extends RouteLike>(
         }
         if (suffix) {
           if (isBeyondPath) continue
-          // the tail of the remaining URL always extends to the end of `path`,
-          // so compare against `path` directly instead of slice/join
-          let start = index
-          for (let j = 0; j < index; j++) start += parts[j]!.length
-          const endPos = path.length - suffix.length
-          if (endPos < start) continue
-          const end = path.slice(endPos)
+          const end = parts.slice(index).join('/').slice(-suffix.length)
           const casePart = segment.caseSensitive ? end : end.toLowerCase()
           if (casePart !== suffix) continue
         }
