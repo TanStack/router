@@ -641,37 +641,100 @@ function sanitizePath(path: string): string {
   return sanitized
 }
 
+let lastHref: string | undefined
+let lastSanitizedHref = ''
+let lastPathname = ''
+let lastSearch = ''
+let lastHash = ''
+
+function historyState(
+  state: ParsedHistoryState | undefined,
+): ParsedHistoryState {
+  if (state) {
+    return state
+  }
+  const addedKey = createRandomKey()
+  return { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey }
+}
+
 export function parseHref(
   href: string,
   state: ParsedHistoryState | undefined,
 ): HistoryLocation {
+  if (href === lastHref) {
+    return {
+      href: lastSanitizedHref,
+      pathname: lastPathname,
+      hash: lastHash,
+      search: lastSearch,
+      state: historyState(state),
+    }
+  }
+
+  const hrefLen = href.length
+  if (
+    hrefLen !== 0 &&
+    href.charCodeAt(0) === 47 &&
+    (hrefLen === 1 || href.charCodeAt(1) !== 47)
+  ) {
+    let simple = true
+    for (let i = 1; i < hrefLen; i++) {
+      const code = href.charCodeAt(i)
+      if (code <= 0x1f || code === 0x7f || code === 63 || code === 35) {
+        simple = false
+        break
+      }
+    }
+    if (simple) {
+      lastHref = href
+      lastSanitizedHref = href
+      lastPathname = href
+      lastSearch = ''
+      lastHash = ''
+      return {
+        href,
+        pathname: href,
+        hash: '',
+        search: '',
+        state: historyState(state),
+      }
+    }
+  }
+
   const sanitizedHref = sanitizePath(href)
   const hashIndex = sanitizedHref.indexOf('#')
   const searchIndex = sanitizedHref.indexOf('?')
 
-  const addedKey = createRandomKey()
+  let pathEnd = sanitizedHref.length
+  if (hashIndex >= 0 && searchIndex >= 0) {
+    pathEnd = Math.min(hashIndex, searchIndex)
+  } else if (hashIndex >= 0) {
+    pathEnd = hashIndex
+  } else if (searchIndex >= 0) {
+    pathEnd = searchIndex
+  }
+  const pathname = sanitizedHref.substring(0, pathEnd)
+  const hash = hashIndex >= 0 ? sanitizedHref.substring(hashIndex) : ''
+  const search =
+    searchIndex >= 0
+      ? sanitizedHref.slice(
+          searchIndex,
+          hashIndex === -1 ? undefined : hashIndex,
+        )
+      : ''
+
+  lastHref = href
+  lastSanitizedHref = sanitizedHref
+  lastPathname = pathname
+  lastSearch = search
+  lastHash = hash
 
   return {
     href: sanitizedHref,
-    pathname: sanitizedHref.substring(
-      0,
-      hashIndex > 0
-        ? searchIndex > 0
-          ? Math.min(hashIndex, searchIndex)
-          : hashIndex
-        : searchIndex > 0
-          ? searchIndex
-          : sanitizedHref.length,
-    ),
-    hash: hashIndex > -1 ? sanitizedHref.substring(hashIndex) : '',
-    search:
-      searchIndex > -1
-        ? sanitizedHref.slice(
-            searchIndex,
-            hashIndex === -1 ? undefined : hashIndex,
-          )
-        : '',
-    state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
+    pathname,
+    hash,
+    search,
+    state: historyState(state),
   }
 }
 
