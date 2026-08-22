@@ -7,10 +7,7 @@ const outDir = process.env.E2E_DIST_DIR ?? 'dist'
 const startModeConfig = getStartModeConfig()
 
 export default defineConfig({
-  plugins: [
-    pluginReact(),
-    tanstackStart(startModeConfig),
-  ],
+  plugins: [pluginReact(), tanstackStart(startModeConfig)],
   output: {
     distPath: {
       root: outDir,
