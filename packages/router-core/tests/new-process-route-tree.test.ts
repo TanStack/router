@@ -717,6 +717,16 @@ describe('findRouteMatch', () => {
       const tree = makeTree(['/{$}/c/file'])
       expect(findRouteMatch('/a/b/c/file', tree)?.route.id).toBe('/{$}/c/file')
     })
+
+    it.fails('matches U+0130 wildcard suffixes case-insensitively', () => {
+      // U+0130 is currently the only character whose default lowercase mapping
+      // changes UTF-16 length, so its folded length cannot index the raw URL.
+      const tree = makeTree(['/{$}İ'])
+      expect(findRouteMatch('/valueİ', tree)?.rawParams).toEqual({
+        '*': 'value',
+        _splat: 'value',
+      })
+    })
     it('multi-segment wildcard w/ prefix and suffix', () => {
       const tree = makeTree(['/file{$}end'])
       expect(findRouteMatch('/file/a/b/c/end', tree)?.route.id).toBe(
