@@ -632,10 +632,13 @@ function sanitizePath(path: string): string {
   // eslint-disable-next-line no-control-regex
   let sanitized = path.replace(/[\x00-\x1f\x7f]/g, '')
 
-  // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
-  // Collapse leading double slashes to a single slash
-  if (sanitized.startsWith('//')) {
-    sanitized = '/' + sanitized.replace(/^\/+/, '')
+  // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com").
+  // Per the WHATWG URL spec, browsers treat backslashes as forward slashes in
+  // the authority, so "\\evil.com", "/\evil.com" and "\/evil.com" are
+  // equivalent to "//evil.com". Collapse any run of two or more leading
+  // slashes/backslashes to a single slash so all of these stay same-origin.
+  if (/^[/\\]{2,}/.test(sanitized)) {
+    sanitized = '/' + sanitized.replace(/^[/\\]+/, '')
   }
 
   return sanitized

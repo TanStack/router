@@ -38,6 +38,17 @@ describe('parseHref', () => {
       expect(parsed.pathname).toBe('/evil.com/path')
     })
 
+    test('collapses leading backslashes to prevent protocol-relative URLs', () => {
+      // Browsers treat backslashes as forward slashes in the authority, so
+      // these are equivalent to "//evil.com" and would otherwise redirect.
+      for (const href of ['\\\\evil.com/path', '/\\evil.com/path', '\\/evil.com/path']) {
+        const parsed = parseHref(href, undefined)
+        expect(parsed.pathname).toBe('/evil.com/path')
+        const url = new URL(parsed.href, 'http://localhost:3000')
+        expect(url.origin).toBe('http://localhost:3000')
+      }
+    })
+
     test('sanitized href resolves safely to same origin', () => {
       const parsed = parseHref('/\r/evil.com/', undefined)
       const url = new URL(parsed.href, 'http://localhost:3000')
