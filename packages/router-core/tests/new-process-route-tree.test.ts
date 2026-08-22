@@ -779,6 +779,181 @@ describe('findRouteMatch', () => {
       })
       expect(findRouteMatch('/f/xi\u0307', sensitive)).toBeNull()
     })
+    it('matches and extracts Unicode case-folded parameter affixes', () => {
+      const wildcard = makeTree(['/w/İ{$}İ'])
+      expect(findRouteMatch('/w/İa/bİ', wildcard)?.rawParams).toEqual({
+        '*': 'a/b',
+        _splat: 'a/b',
+      })
+      expect(
+        findRouteMatch('/w/i\u0307a/bi\u0307', wildcard)?.rawParams,
+      ).toEqual({
+        '*': 'a/b',
+        _splat: 'a/b',
+      })
+      expect(findRouteMatch('/w/İa/bi\u0307', wildcard)?.rawParams).toEqual({
+        '*': 'a/b',
+        _splat: 'a/b',
+      })
+      expect(findRouteMatch('/w/İİ', wildcard)?.rawParams).toEqual({
+        '*': '',
+        _splat: '',
+      })
+      expect(findRouteMatch('/w/İ', wildcard)).toBeNull()
+      expect(findRouteMatch('/w/xvalueİ', wildcard)).toBeNull()
+      expect(findRouteMatch('/w/İvaluex', wildcard)).toBeNull()
+
+      const wildcardPrefix = makeTree(['/wp/İ{$}'])
+      expect(findRouteMatch('/wp/İa/b', wildcardPrefix)?.rawParams).toEqual({
+        '*': 'a/b',
+        _splat: 'a/b',
+      })
+      expect(
+        findRouteMatch('/wp/i\u0307a/b', wildcardPrefix)?.rawParams,
+      ).toEqual({ '*': 'a/b', _splat: 'a/b' })
+
+      const required = makeTree(['/d/İ{$id}İ'])
+      expect(findRouteMatch('/d/İvalueİ', required)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(
+        findRouteMatch('/d/i\u0307valuei\u0307', required)?.rawParams,
+      ).toEqual({ id: 'value' })
+      expect(findRouteMatch('/d/ivalueİ', required)).toBeNull()
+      expect(findRouteMatch('/d/İvaluei', required)).toBeNull()
+      expect(findRouteMatch('/d/İİ', required)?.rawParams).toEqual({ id: '' })
+      expect(findRouteMatch('/d/İ😀İ', required)?.rawParams).toEqual({
+        id: '😀',
+      })
+      expect(findRouteMatch('/d/İ', required)).toBeNull()
+
+      const requiredPrefix = makeTree(['/dp/İ{$id}'])
+      expect(findRouteMatch('/dp/İvalue', requiredPrefix)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(
+        findRouteMatch('/dp/i\u0307value', requiredPrefix)?.rawParams,
+      ).toEqual({ id: 'value' })
+
+      const requiredSuffix = makeTree(['/ds/{$id}İ'])
+      expect(findRouteMatch('/ds/valueİ', requiredSuffix)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(
+        findRouteMatch('/ds/valuei\u0307', requiredSuffix)?.rawParams,
+      ).toEqual({ id: 'value' })
+
+      const optional = makeTree(['/o/İ{-$id}İ'])
+      expect(findRouteMatch('/o/İvalueİ', optional)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(
+        findRouteMatch('/o/i\u0307valuei\u0307', optional)?.rawParams,
+      ).toEqual({ id: 'value' })
+      expect(findRouteMatch('/o/İİ', optional)?.rawParams).toEqual({})
+      expect(findRouteMatch('/o/İ', optional)).toBeNull()
+      expect(findRouteMatch('/o/xvalueİ', optional)).toBeNull()
+      expect(findRouteMatch('/o/İvaluex', optional)).toBeNull()
+
+      const optionalPrefix = makeTree(['/op/İ{-$id}'])
+      expect(findRouteMatch('/op/İvalue', optionalPrefix)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(
+        findRouteMatch('/op/i\u0307value', optionalPrefix)?.rawParams,
+      ).toEqual({ id: 'value' })
+
+      const optionalSuffix = makeTree(['/os/{-$id}İ'])
+      expect(findRouteMatch('/os/valueİ', optionalSuffix)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(
+        findRouteMatch('/os/valuei\u0307', optionalSuffix)?.rawParams,
+      ).toEqual({ id: 'value' })
+
+      const decomposed = makeTree(['/p/i\u0307{$id}i\u0307'])
+      expect(findRouteMatch('/p/İvalueİ', decomposed)?.rawParams).toEqual({
+        id: 'value',
+      })
+
+      const contextual = makeTree(['/c/aσ{$id}', '/s/{$id}aς', '/t/{-$id}aς'])
+      expect(findRouteMatch('/c/AΣvalue', contextual)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(findRouteMatch('/s/valueAΣ', contextual)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(findRouteMatch('/t/valueAΣ', contextual)?.rawParams).toEqual({
+        id: 'value',
+      })
+
+      const shared = makeTree([
+        '/q/İ{$first}İ/one',
+        '/q/i\u0307{$second}i\u0307/two',
+      ])
+      expect(findRouteMatch('/q/İvalueİ/two', shared)?.rawParams).toEqual({
+        second: 'value',
+      })
+
+      const afterSkippedOptional = makeTree(['/e/{-$id}/İ{$}İ'])
+      expect(
+        findRouteMatch('/e/İvalueİ', afterSkippedOptional)?.rawParams,
+      ).toEqual({
+        '*': 'value',
+        _splat: 'value',
+      })
+    })
+    it('uses raw affix lengths for case-sensitive parameters', () => {
+      const sensitive = processRouteTree({
+        id: '__root__',
+        isRoot: true,
+        fullPath: '/',
+        path: '/',
+        children: [
+          {
+            id: '/w/İ{$}İ',
+            fullPath: '/w/İ{$}İ',
+            path: '/w/İ{$}İ',
+            options: { caseSensitive: true },
+          },
+          {
+            id: '/d/İ{$id}İ',
+            fullPath: '/d/İ{$id}İ',
+            path: '/d/İ{$id}İ',
+            options: { caseSensitive: true },
+          },
+          {
+            id: '/o/İ{-$id}İ',
+            fullPath: '/o/İ{-$id}İ',
+            path: '/o/İ{-$id}İ',
+            options: { caseSensitive: true },
+          },
+        ],
+      }).processedTree
+
+      expect(findRouteMatch('/w/İvalueİ', sensitive)?.rawParams).toEqual({
+        '*': 'value',
+        _splat: 'value',
+      })
+      expect(findRouteMatch('/d/İvalueİ', sensitive)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(findRouteMatch('/o/İvalueİ', sensitive)?.rawParams).toEqual({
+        id: 'value',
+      })
+      expect(findRouteMatch('/w/İİ', sensitive)?.rawParams).toEqual({
+        '*': '',
+        _splat: '',
+      })
+      expect(findRouteMatch('/d/İİ', sensitive)?.rawParams).toEqual({ id: '' })
+      expect(findRouteMatch('/o/İİ', sensitive)?.rawParams).toEqual({})
+      expect(findRouteMatch('/w/İ', sensitive)).toBeNull()
+      expect(findRouteMatch('/d/İ', sensitive)).toBeNull()
+      expect(findRouteMatch('/o/İ', sensitive)).toBeNull()
+      expect(findRouteMatch('/w/i\u0307valuei\u0307', sensitive)).toBeNull()
+      expect(findRouteMatch('/d/i\u0307valuei\u0307', sensitive)).toBeNull()
+      expect(findRouteMatch('/o/i\u0307valuei\u0307', sensitive)).toBeNull()
+    })
     it('multi-segment wildcard w/ prefix and suffix', () => {
       const tree = makeTree(['/file{$}end'])
       expect(findRouteMatch('/file/a/b/c/end', tree)?.route.id).toBe(

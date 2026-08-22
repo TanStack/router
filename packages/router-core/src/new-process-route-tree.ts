@@ -394,17 +394,46 @@ function sortDynamic(
   return 0
 }
 
+// Case folding can expand Unicode characters, so folded affix lengths cannot
+// be used as offsets into the raw URL.
+function getPrefixEnd(value: string, prefix: string, caseSensitive: boolean) {
+  if (caseSensitive) {
+    return prefix.length
+  }
+
+  const foldedLength = prefix.length
+  let end = Math.min(value.length, foldedLength)
+  while (value.slice(0, end).toLowerCase().length > foldedLength) {
+    end--
+  }
+  return end
+}
+
 function getSuffixStart(value: string, suffix: string, caseSensitive: boolean) {
   if (caseSensitive) {
     return value.length - suffix.length
   }
-  // Lowercasing can expand Unicode characters, changing the raw suffix length.
+
   const foldedLength = suffix.length
-  let start = value.length - foldedLength
+  let start = Math.max(0, value.length - foldedLength)
   while (value.slice(start).toLowerCase().length > foldedLength) {
     start++
   }
   return start
+}
+
+function affixesOverlap(
+  value: string,
+  prefix: string | undefined,
+  suffix: string | undefined,
+  caseSensitive: boolean,
+) {
+  return (
+    !!prefix &&
+    !!suffix &&
+    getPrefixEnd(value, prefix, caseSensitive) >
+      getSuffixStart(value, suffix, caseSensitive)
+  )
 }
 
 function createStaticNode<T extends RouteLike>(
@@ -831,22 +860,22 @@ function extractParams<T extends RouteLike>(
     if (node.kind === SEGMENT_TYPE_PARAM) {
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[segmentCount]!
-      const preLength = node.prefix?.length ?? 0
-      // we can't rely on the presence of prefix/suffix to know whether it's curly-braced or not, because `/{$param}/` is valid, but has no prefix/suffix
-      const isCurlyBraced = nodePart.charCodeAt(preLength) === 123 // '{'
+      const openBrace =
+        nodePart.charCodeAt(0) === 36 ? -1 : nodePart.indexOf('{')
       // param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
-      if (isCurlyBraced) {
-        const sufLength = node.suffix?.length ?? 0
-        const name = nodePart.substring(
-          preLength + 2,
-          nodePart.length - sufLength - 1,
-        )
-        const value = part!.substring(preLength, part!.length - sufLength)
-        rawParams[name] = decodeURIComponent(value)
-      } else {
-        const name = nodePart.substring(1)
-        rawParams[name] = decodeURIComponent(part!)
-      }
+      const name =
+        openBrace === -1
+          ? nodePart.substring(1)
+          : nodePart.substring(openBrace + 2, nodePart.indexOf('}', openBrace))
+      const prefixEnd = node.prefix
+        ? getPrefixEnd(part!, node.prefix, node.caseSensitive)
+        : 0
+      const suffixStart = node.suffix
+        ? getSuffixStart(part!, node.suffix, node.caseSensitive)
+        : part!.length
+      rawParams[name] = decodeURIComponent(
+        part!.substring(prefixEnd, suffixStart),
+      )
     } else if (node.kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
       if (leaf.skipped & (1 << nodeIndex)) {
         partIndex-- // stay on the same part
@@ -855,24 +884,27 @@ function extractParams<T extends RouteLike>(
       }
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[segmentCount]!
-      const preLength = node.prefix?.length ?? 0
-      const sufLength = node.suffix?.length ?? 0
+      const openBrace = nodePart.indexOf('{')
       const name = nodePart.substring(
-        preLength + 3,
-        nodePart.length - sufLength - 1,
+        openBrace + 3,
+        nodePart.indexOf('}', openBrace),
       )
-      const value =
-        node.suffix || node.prefix
-          ? part!.substring(preLength, part!.length - sufLength)
-          : part
+      const prefixEnd = node.prefix
+        ? getPrefixEnd(part!, node.prefix, node.caseSensitive)
+        : 0
+      const suffixStart = node.suffix
+        ? getSuffixStart(part!, node.suffix, node.caseSensitive)
+        : part!.length
+      const value = part!.substring(prefixEnd, suffixStart)
       if (value) rawParams[name] = decodeURIComponent(value)
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
-      const value = path.substring(
-        currentPathIndex + (n.prefix?.length ?? 0),
+      const remaining = path.substring(currentPathIndex)
+      const value = remaining.substring(
+        n.prefix ? getPrefixEnd(remaining, n.prefix, n.caseSensitive) : 0,
         n.suffix
-          ? getSuffixStart(path, n.suffix, n.caseSensitive)
-          : path.length,
+          ? getSuffixStart(remaining, n.suffix, n.caseSensitive)
+          : remaining.length,
       )
       const splat = decodeURIComponent(value)
       // TODO: Deprecate *
@@ -1082,7 +1114,8 @@ function getNodeMatch<T extends RouteLike>(
           )
           if (
             (segment.caseSensitive ? suffixPart : suffixPart.toLowerCase()) !==
-            suffix
+              suffix ||
+            affixesOverlap(end, prefix, suffix, segment.caseSensitive)
           ) {
             continue
           }
@@ -1129,6 +1162,9 @@ function getNodeMatch<T extends RouteLike>(
               : (lowerPart ??= part!.toLowerCase())
             if (prefix && !casePart.startsWith(prefix)) continue
             if (suffix && !casePart.endsWith(suffix)) continue
+            if (affixesOverlap(part!, prefix, suffix, segment.caseSensitive)) {
+              continue
+            }
           }
           stack.push({
             node: segment,
@@ -1155,6 +1191,9 @@ function getNodeMatch<T extends RouteLike>(
             : (lowerPart ??= part.toLowerCase())
           if (prefix && !casePart.startsWith(prefix)) continue
           if (suffix && !casePart.endsWith(suffix)) continue
+          if (affixesOverlap(part, prefix, suffix, segment.caseSensitive)) {
+            continue
+          }
         }
         stack.push({
           node: segment,
