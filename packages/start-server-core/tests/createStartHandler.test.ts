@@ -406,7 +406,7 @@ describe('createStartHandler request cancellation', () => {
       const cancellation = new Error('request disconnected')
       requestController.abort(cancellation)
 
-      expect((await response).status).toBe(500)
+      expect((await response).status).toBe(499)
       expect(routeSignal?.aborted).toBe(true)
       expect(routeSignal?.reason).toBe(cancellation)
       expect(render).not.toHaveBeenCalled()
@@ -463,7 +463,7 @@ describe('createStartHandler request cancellation', () => {
     await renderStarted
     requestController.abort(new Error('request disconnected'))
 
-    expect((await response).status).toBe(500)
+    expect((await response).status).toBe(499)
     expect(cleanupCalls).toBe(1)
     expect(router.serverSsr).toBeUndefined()
 
@@ -503,7 +503,7 @@ describe('createStartHandler request cancellation', () => {
     const cancellation = new Error('request disconnected')
     requestController.abort(cancellation)
 
-    expect((await response).status).toBe(500)
+    expect((await response).status).toBe(499)
     resolveRender(new Response(new ReadableStream({ cancel })))
     await vi.waitFor(() => {
       expect(cancel).toHaveBeenCalledTimes(1)
@@ -542,7 +542,7 @@ describe('createStartHandler request cancellation', () => {
     const cancellation = new Error('request disconnected')
     requestController.abort(cancellation)
 
-    expect((await response).status).toBe(500)
+    expect((await response).status).toBe(499)
     resolveMiddleware(new Response(new ReadableStream({ cancel })))
     await vi.waitFor(() => {
       expect(cancel).toHaveBeenCalledTimes(1)
@@ -594,7 +594,7 @@ describe('createStartHandler request cancellation', () => {
 
       await renderStarted
       requestController.abort(new Error('request disconnected'))
-      expect((await response).status).toBe(500)
+      expect((await response).status).toBe(499)
 
       resolveRender({
         response: new Response('stream'),
@@ -657,7 +657,7 @@ describe('createStartHandler request cancellation', () => {
       await middlewareStarted
       requestController.abort(new Error('request disconnected'))
 
-      expect((await response).status).toBe(500)
+      expect((await response).status).toBe(499)
       await vi.waitFor(() => {
         expect(consoleError).toHaveBeenCalledWith(cleanupError)
       })
@@ -731,7 +731,7 @@ describe('createStartHandler request cancellation', () => {
     await middlewareStarted
     requestController.abort(new Error('request disconnected'))
 
-    expect((await response).status).toBe(500)
+    expect((await response).status).toBe(499)
     expect(render).not.toHaveBeenCalled()
 
     releaseMiddleware({
@@ -779,7 +779,7 @@ describe('createStartHandler request cancellation', () => {
     await innerStarted
     requestController.abort(new Error('request disconnected'))
 
-    expect((await response).status).toBe(500)
+    expect((await response).status).toBe(499)
     expect(outerFinally).toHaveBeenCalledOnce()
     expect(render).not.toHaveBeenCalled()
   })
@@ -812,7 +812,7 @@ describe('createStartHandler request cancellation', () => {
     await innerStarted
     requestController.abort(new Error('request disconnected'))
 
-    expect((await response).status).toBe(500)
+    expect((await response).status).toBe(499)
     expect(render).not.toHaveBeenCalled()
   })
 
@@ -838,7 +838,7 @@ describe('createStartHandler request cancellation', () => {
       {},
     )
 
-    expect(response.status).toBe(500)
+    expect(response.status).toBe(499)
     expect(render).not.toHaveBeenCalled()
   })
 
@@ -882,7 +882,7 @@ describe('createStartHandler request cancellation', () => {
       {},
     )
 
-    expect(response.status).toBe(500)
+    expect(response.status).toBe(499)
     await vi.waitFor(() => expect(observedErrors).toEqual([reason]))
     await vi.waitFor(() => {
       expect(dispose).toHaveBeenCalledOnce()
@@ -920,7 +920,7 @@ describe('createStartHandler request cancellation', () => {
       {},
     )
 
-    expect(response.status).toBe(500)
+    expect(response.status).toBe(499)
     await vi.waitFor(() => {
       expect(dispose).toHaveBeenCalledOnce()
       expect(dispose).toHaveBeenCalledWith(reason)
@@ -985,7 +985,7 @@ describe('createStartHandler request cancellation', () => {
     const dispose = vi.spyOn(ssrResponse as any, 'dispose')
     requestController.abort(reason)
 
-    expect((await result).status).toBe(500)
+    expect((await result).status).toBe(499)
     releaseMiddleware()
     await lateResultDelivered
     await vi.waitFor(() => {
@@ -995,6 +995,101 @@ describe('createStartHandler request cancellation', () => {
       expect(cancel).toHaveBeenCalledWith(reason)
     })
     expect(router.serverSsr).toBeUndefined()
+  })
+
+  it('returns 499 when the client disconnects during SSR rendering', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    const requestController = new AbortController()
+    let notifyRenderStarted!: () => void
+    const renderStarted = new Promise<void>((resolve) => {
+      notifyRenderStarted = resolve
+    })
+    const handler = createStartHandler(() => {
+      notifyRenderStarted()
+      return new Promise<Response>(() => {})
+    })
+    const response = handler(
+      new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await renderStarted
+    requestController.abort(new Error('request disconnected'))
+
+    const result = await response
+    expect(result.status).toBe(499)
+    expect(result.statusText).toBe('Client Closed Request')
+  })
+
+  it('returns 499 when the client disconnects during a server route handler', async () => {
+    const rootRoute = new BaseRootRoute({})
+    let notifyHandlerStarted!: () => void
+    const handlerStarted = new Promise<void>((resolve) => {
+      notifyHandlerStarted = resolve
+    })
+    const apiRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/api/slow',
+      server: {
+        handlers: {
+          GET: () => {
+            notifyHandlerStarted()
+            return new Promise<Response>(() => {})
+          },
+        },
+      },
+    })
+    const router = new RouterCore(
+      {
+        history: createMemoryHistory({ initialEntries: ['/api/slow'] }),
+        routeTree: rootRoute.addChildren([apiRoute]),
+      },
+      getStoreConfig,
+    )
+    router.isServer = true
+    startMocks.router = router
+    const requestController = new AbortController()
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+    const response = handler(
+      new Request('http://localhost/api/slow', {
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await handlerStarted
+    requestController.abort(new Error('request disconnected'))
+
+    const result = await response
+    expect(result.status).toBe(499)
+    expect(result.statusText).toBe('Client Closed Request')
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it('returns 499 when the client disconnects during a server function call', async () => {
+    const router = makeRouter()
+    startMocks.router = router
+    startMocks.serverFnResult = new Promise<Response>(() => {})
+    const requestController = new AbortController()
+    const handler = createStartHandler(() => new Response('unused'))
+    const response = handler(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+        signal: requestController.signal,
+      }),
+      {},
+    )
+
+    await Promise.resolve()
+    requestController.abort(new Error('request disconnected'))
+
+    const result = await response
+    expect(result.status).toBe(499)
+    expect(result.statusText).toBe('Client Closed Request')
   })
 })
 
