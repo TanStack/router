@@ -239,8 +239,7 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_WILDCARD: {
           let prefix = path.substring(start, segment[1])
           let suffix = path.substring(segment[4], end)
-          const actuallyCaseSensitive =
-            caseSensitive && !!(prefix || suffix)
+          const actuallyCaseSensitive = caseSensitive && !!(prefix || suffix)
           if (!actuallyCaseSensitive) {
             prefix = prefix.toLowerCase()
             suffix = suffix.toLowerCase()
