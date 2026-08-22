@@ -1062,14 +1062,16 @@ function getNodeMatch<T extends RouteLike>(
         if (suffix) {
           if (isBeyondPath) continue
           const end = parts.slice(index).join('/')
-          if (prefix && end.length < prefix.length + suffix.length) {
-            continue
-          }
           const suffixPart = end.slice(-suffix.length)
           const casePart = segment.caseSensitive
             ? suffixPart
             : suffixPart.toLowerCase()
-          if (casePart !== suffix) continue
+          if (
+            casePart !== suffix ||
+            (prefix && end.length - suffix.length < prefix.length)
+          ) {
+            continue
+          }
         }
         // wildcard matches consume the rest of the URL and cannot have children
         stack.push({
@@ -1113,13 +1115,13 @@ function getNodeMatch<T extends RouteLike>(
               : (lowerPart ??= part!.toLowerCase())
             if (prefix && !casePart.startsWith(prefix)) continue
             if (
-              prefix &&
               suffix &&
-              casePart.length < prefix.length + suffix.length
+              ((prefix &&
+                casePart.length - suffix.length < prefix.length) ||
+                !casePart.endsWith(suffix))
             ) {
               continue
             }
-            if (suffix && !casePart.endsWith(suffix)) continue
           }
           stack.push({
             node: segment,
@@ -1146,13 +1148,12 @@ function getNodeMatch<T extends RouteLike>(
             : (lowerPart ??= part.toLowerCase())
           if (prefix && !casePart.startsWith(prefix)) continue
           if (
-            prefix &&
             suffix &&
-            casePart.length < prefix.length + suffix.length
+            ((prefix && casePart.length - suffix.length < prefix.length) ||
+              !casePart.endsWith(suffix))
           ) {
             continue
           }
-          if (suffix && !casePart.endsWith(suffix)) continue
         }
         stack.push({
           node: segment,
