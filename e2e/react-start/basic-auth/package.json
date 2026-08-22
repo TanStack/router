@@ -8,9 +8,9 @@
     "dev:e2e": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "start": "node .output/server/index.mjs",
+    "start": "vite preview --host 127.0.0.1 --port $PORT --strictPort",
     "prisma-generate": "prisma generate",
-    "test:e2e": "exit 0; rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
+    "test:e2e": "rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
