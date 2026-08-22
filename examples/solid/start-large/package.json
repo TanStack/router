@@ -13,9 +13,9 @@
   },
   "dependencies": {
     "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-router": "^1.170.29",
+    "@tanstack/solid-router": "^1.170.30",
     "@tanstack/solid-router-devtools": "^1.167.1",
-    "@tanstack/solid-start": "^1.168.46",
+    "@tanstack/solid-start": "^1.168.47",
     "redaxios": "catalog:",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^3.6.0",
