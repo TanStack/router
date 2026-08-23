@@ -9,13 +9,22 @@ import test from 'node:test'
 const execFileAsync = promisify(execFile)
 const reportScript = new URL('./pr-report.mjs', import.meta.url)
 
-function metric(id, gzipBytes) {
+function metric(id, gzipBytes, overrides = {}) {
   return {
     id,
     gzipBytes,
     rawBytes: gzipBytes * 3,
     brotliBytes: gzipBytes - 100,
     initialGzipBytes: gzipBytes - 10,
+    ...overrides,
+  }
+}
+
+function historyBench(value) {
+  return {
+    name: value.id,
+    value: value.gzipBytes,
+    extra: `raw=${value.rawBytes}; brotli=${value.brotliBytes}; initial_gzip=${value.initialGzipBytes}`,
   }
 }
 
@@ -80,8 +89,10 @@ test('renders a concise message when no measured scenario changed', async () => 
 })
 
 test('renders only scenarios that changed against the historical baseline', async () => {
+  const unchangedMetric = metric('react-router.minimal', 1_000)
+  const baselineMetric = metric('react-router.full', 1_100)
   const current = currentJson([
-    metric('react-router.minimal', 1_000),
+    unchangedMetric,
     metric('react-router.full', 1_200),
   ])
   const history = {
@@ -90,8 +101,8 @@ test('renders only scenarios that changed against the historical baseline', asyn
         {
           commit: { id: 'baseline-sha' },
           benches: [
-            { name: 'react-router.minimal', value: 1_000 },
-            { name: 'react-router.full', value: 1_100 },
+            historyBench(unchangedMetric),
+            historyBench(baselineMetric),
           ],
         },
       ],
@@ -110,7 +121,12 @@ test('renders only scenarios that changed against the historical baseline', asyn
   assert.doesNotMatch(report, /`react-router\.minimal`/)
   assert.match(
     report,
-    /\| `react-router\.full` \| 1\.17 KiB \| \+100 B \(\+9\.09%\) \|/,
+    /\| Scenario \| Current \(gzip\) \| Initial \(gzip\) \| Raw \| Brotli \| Trend \|/,
+  )
+  assert.doesNotMatch(report, /Delta vs baseline|%/)
+  assert.match(
+    report,
+    /\| `react-router\.full` \| 1\.2&nbsp;KiB<br>\+100&nbsp;B \| 1\.2&nbsp;KiB<br>\+100&nbsp;B \| 3\.5&nbsp;KiB<br>\+300&nbsp;B \| 1\.1&nbsp;KiB<br>\+100&nbsp;B \| <pre>▁█<\/pre> \|/,
   )
 })
 
@@ -127,5 +143,22 @@ test('keeps scenarios that do not have baseline data visible', async () => {
     /The following scenarios have bundle-size changes or lack baseline data for comparison:/,
   )
   assert.doesNotMatch(report, /`react-router\.minimal`/)
-  assert.match(report, /\| `new-scenario` \| 900 B \| n\/a \|/)
+  assert.match(
+    report,
+    /\| `new-scenario` \| 900&nbsp;B<br>n\/a \| 890&nbsp;B<br>n\/a \| 2\.6&nbsp;KiB<br>n\/a \| 800&nbsp;B<br>n\/a \|/,
+  )
+})
+
+test('renders scenarios when only a secondary metric changed', async () => {
+  const baselineMetric = metric('react-router.minimal', 1_000)
+  const current = currentJson([
+    metric('react-router.minimal', 1_000, { rawBytes: 3_002 }),
+  ])
+  const baseline = currentJson([baselineMetric])
+  const report = await generateReport({ current, baseline })
+
+  assert.match(
+    report,
+    /\| `react-router\.minimal` \| 1,000&nbsp;B<br>0&nbsp;B \| 990&nbsp;B<br>0&nbsp;B \| 2\.9&nbsp;KiB<br>\+2&nbsp;B \| 900&nbsp;B<br>0&nbsp;B \|/,
+  )
 })
