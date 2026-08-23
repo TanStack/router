@@ -3,7 +3,9 @@ id: useMatchRouteHook
 title: useMatchRoute hook
 ---
 
-The `useMatchRoute` hook is a hook that returns a `matchRoute` function that can be used to match a route against either the current or pending location.
+The `useMatchRoute` hook returns a `matchRoute` function that can be used to match a route against either the current or pending location. The hook subscribes the component to changes in the router state used for matching, making it useful when the match result affects what the component renders.
+
+The `matchRoute` function's identity changes when that router state changes. For an imperative check, such as one performed in an event handler, use [`useRouter`](./useRouterHook.md) and call `router.matchRoute` instead. The router instance is stable, and this avoids subscribing the component to router state that it does not use while rendering.
 
 ## useMatchRoute returns
 
@@ -25,6 +27,8 @@ The `matchRoute` function accepts a single argument, an `options` object.
 
 ## Examples
 
+Use `useMatchRoute` when the result determines the rendered output:
+
 ```tsx
 import { useMatchRoute } from '@tanstack/react-router'
 
@@ -33,7 +37,36 @@ function Component() {
   const matchRoute = useMatchRoute()
   const params = matchRoute({ to: '/posts/$postId' })
   //    ^ { postId: '123' }
+
+  return params ? <Post postId={params.postId} /> : <NotFound />
 }
+```
+
+For a check made at the time of an event, call `router.matchRoute` directly:
+
+```tsx
+import { useRouter } from '@tanstack/react-router'
+
+function Component() {
+  const router = useRouter()
+
+  return (
+    <button
+      onClick={() => {
+        const params = router.matchRoute({ to: '/posts/$postId' })
+        //    ^ { postId: '123' }
+      }}
+    >
+      Check current route
+    </button>
+  )
+}
+```
+
+Additional matching examples:
+
+```tsx
+import { useMatchRoute } from '@tanstack/react-router'
 
 // Current location: /posts/123
 function Component() {

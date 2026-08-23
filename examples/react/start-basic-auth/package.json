@@ -14,12 +14,12 @@
     "@libsql/client": "^0.15.15",
     "@prisma/adapter-libsql": "^7.0.0",
     "@prisma/client": "^7.0.0",
-    "@tanstack/react-router": "^1.170.18",
-    "@tanstack/react-router-devtools": "^1.167.0",
-    "@tanstack/react-start": "^1.168.32",
+    "@tanstack/react-router": "^1.170.32",
+    "@tanstack/react-router-devtools": "^1.167.1",
+    "@tanstack/react-start": "^1.168.49",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
@@ -31,7 +31,8 @@
     "dotenv": "^17.2.3",
     "prisma": "^7.0.0",
     "tailwindcss": "^4.2.2",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
   }
 }
