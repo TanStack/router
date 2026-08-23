@@ -153,13 +153,9 @@ export function createRsbuildEnvironmentPlan(opts: {
           // Only split async chunks (route code-splitting). Keep all initial
           // vendor/shared code inlined in the entry chunk so the SSR HTML only
           // needs the single client entry bootstrap.
-          performance: {
-            chunkSplit: {
-              strategy: 'custom',
-              override: {
-                chunks: 'async',
-              },
-            },
+          splitChunks: {
+            preset: 'none',
+            chunks: 'async',
           },
         },
         environmentOverrides.all,
