@@ -356,15 +356,16 @@ Streaming dehydration/hydration is an advanced pattern that goes beyond markup a
 
 ## Data Serialization
 
-When using SSR, data passed between the server and the client must be serialized before it is sent across network-boundaries. TanStack Router handles this serialization using a very lightweight serializer that supports common data types beyond JSON.stringify/JSON.parse.
+When using SSR, data passed between the server and the client must be serialized before it is sent across network boundaries. TanStack Router handles this serialization and supports common values beyond `JSON.stringify`/`JSON.parse`.
 
-Out of the box, the following types are supported:
+Common supported values include:
 
-- `undefined`
+- JSON-compatible primitives, arrays, and plain objects
+- `undefined` and `BigInt`
 - `Date`
-- `Error`
-- `FormData`
+- `Error` objects (the message is preserved)
+- `Map` and `Set`
 
-If you feel that there are other types that should be supported by default, please open an issue on the TanStack Router repository.
+Nested and cyclic references are preserved. TanStack Start also supports `FormData` as input to `POST` server functions, but `FormData` is not a general SSR-hydration serialization type.
 
-If you are using more complex data types like `Map`, `Set`, `BigInt`, etc, you may need to use a custom serializer to ensure that your type-definitions are accurate and your data is correctly serialized and deserialized. We are currently working on both a more robust serializer and a way to customize the serializer for your application. Open an issue if you are interested in helping out!
+For application-specific types, TanStack Start applications can register custom serialization adapters to preserve the type across serialization boundaries.
