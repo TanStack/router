@@ -70,8 +70,8 @@ pnpm benchmark:bundle-size:analyze --id react-router.minimal --top-sources 30
 ## CI Reporting
 
 - PR workflow generates a sticky comment with:
-  - current gzip values
-  - baseline delta
+  - current gzip, initial gzip, raw, and Brotli values
+  - per-metric deltas from the `main` baseline
   - inline sparkline trend
 - Pushes to `main` publish historical chart data to GitHub Pages via `benchmark-action/github-action-benchmark`.
 

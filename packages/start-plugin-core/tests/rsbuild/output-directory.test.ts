@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import {
+  createRsbuildEnvironmentDefaults,
   createRsbuildEnvironmentPlan,
   resolveRsbuildOutputDirectory,
 } from '../../src/rsbuild/planning'
@@ -119,5 +120,39 @@ describe('createRsbuildEnvironmentPlan client output', () => {
     expect(environments['server-fn']!.resolve?.alias).toBe(
       baseOptions.enforcedAliases,
     )
+  })
+})
+
+describe('createRsbuildEnvironmentDefaults client splitting', () => {
+  const baseOptions = {
+    environmentName: 'client',
+    isDev: false,
+    rscEnabled: false,
+    serverFnProviderEnv: 'ssr',
+  }
+
+  test('uses the Rsbuild splitChunks API for the client default', () => {
+    expect(
+      createRsbuildEnvironmentDefaults({
+        ...baseOptions,
+        config: {},
+      }).splitChunks,
+    ).toEqual({
+      preset: 'none',
+      chunks: 'async',
+    })
+  })
+
+  test('preserves a user-defined root splitChunks config', () => {
+    expect(
+      createRsbuildEnvironmentDefaults({
+        ...baseOptions,
+        config: {
+          splitChunks: {
+            preset: 'single-vendor',
+          },
+        },
+      }).splitChunks,
+    ).toBeUndefined()
   })
 })

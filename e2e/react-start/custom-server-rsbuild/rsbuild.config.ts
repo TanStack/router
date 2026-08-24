@@ -7,6 +7,10 @@ import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 // non-default client chunk layout. The combination that matters for the
 // repro is:
 //
+//   - `client.output.module: false` — emit the client entry as a self-executing
+//     script. The manifest uses plain script tags and classic script preloads;
+//     setting IIFE here exercises that non-module asset path.
+//
 //   - Client `runtimeChunk: 'single'` — extracts the webpack runtime into
 //     its own chunk. With IIFE plain scripts, the entry can't bootstrap
 //     until the runtime has executed, so `<Scripts />` has to emit a
@@ -23,7 +27,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 //     explicit prefix mounted by `express-server.ts`.
 export default defineConfig({
   plugins: [
-    pluginReact({ splitChunks: false }),
+    pluginReact(),
     tanstackStart({
       rsbuild: {
         installDevServerMiddleware: false,

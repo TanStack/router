@@ -1,5 +1,13 @@
 # @tanstack/router-core
 
+## 1.171.27
+
+### Patch Changes
+
+- [#8132](https://github.com/TanStack/router/pull/8132) [`fa65287`](https://github.com/TanStack/router/commit/fa652872812c9433ba8b9d9a285e51b535e7367c) - Build client preload locations on demand and remove the prebuilt-location argument used by framework links.
+
+- [#8130](https://github.com/TanStack/router/pull/8130) [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b) - preserve context during reloads
+
 ## 1.171.26
 
 ### Patch Changes

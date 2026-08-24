@@ -1,5 +1,14 @@
 # @tanstack/solid-start-client
 
+## 1.168.29
+
+### Patch Changes
+
+- Updated dependencies [[`fa65287`](https://github.com/TanStack/router/commit/fa652872812c9433ba8b9d9a285e51b535e7367c), [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b)]:
+  - @tanstack/router-core@1.171.27
+  - @tanstack/solid-router@1.170.30
+  - @tanstack/start-client-core@1.170.27
+
 ## 1.168.28
 
 ### Patch Changes
