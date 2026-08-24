@@ -87,7 +87,7 @@ export function Transitioner({
         }
       })
     } else if (!router._tx) {
-      router.load().catch(console.error)
+      router.load({ sync: true }).catch(console.error)
     }
 
     return unsub
