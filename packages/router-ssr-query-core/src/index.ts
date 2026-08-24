@@ -195,10 +195,10 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       reader
         .read()
         .then(async function handle({ done, value }) {
-          queryHydrate(queryClient, value, hydrateOptions)
           if (done) {
             return
           }
+          queryHydrate(queryClient, value, hydrateOptions)
           const result = await reader.read()
           return handle(result)
         })
