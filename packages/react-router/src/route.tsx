@@ -110,6 +110,7 @@ export class RouteApi<
     return useMatch({
       select: opts?.select,
       from: this.id,
+      shouldThrow: opts?.shouldThrow,
       structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
@@ -264,6 +265,7 @@ export class Route<
     return useMatch({
       select: opts?.select,
       from: this.id,
+      shouldThrow: opts?.shouldThrow,
       structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
@@ -535,6 +537,7 @@ export class RootRoute<
     return useMatch({
       select: opts?.select,
       from: this.id,
+      shouldThrow: opts?.shouldThrow,
       structuralSharing: opts?.structuralSharing,
     } as any) as any
   }

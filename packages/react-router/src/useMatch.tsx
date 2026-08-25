@@ -79,17 +79,18 @@ export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
   TStructuralSharing extends boolean = boolean,
+  TThrow extends boolean = true,
 >(
   opts?: UseMatchBaseOptions<
     TRouter,
     TFrom,
     true,
-    true,
+    TThrow,
     TSelected,
     TStructuralSharing
   > &
     StructuralSharingOption<TRouter, TSelected, TStructuralSharing>,
-) => UseMatchResult<TRouter, TFrom, true, TSelected>
+) => ThrowOrOptional<UseMatchResult<TRouter, TFrom, true, TSelected>, TThrow>
 
 export type UseMatchOptions<
   TRouter extends AnyRouter,

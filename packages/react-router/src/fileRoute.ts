@@ -221,6 +221,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
     return useMatch({
       select: opts?.select,
       from: this.options.id,
+      shouldThrow: opts?.shouldThrow,
       structuralSharing: opts?.structuralSharing,
     } as any) as any
   }

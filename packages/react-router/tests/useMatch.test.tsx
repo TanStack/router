@@ -14,6 +14,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  getRouteApi,
   useMatch,
 } from '../src'
 import type { RouteComponent, RouterHistory } from '../src'
@@ -286,5 +287,121 @@ describe('useMatch', () => {
         expect(select).not.toHaveBeenCalled()
       })
     })
+  })
+})
+
+describe('Route.useMatch', () => {
+  function createPostsRouter(
+    RootComponent: RouteComponent,
+    history?: RouterHistory,
+  ) {
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>IndexTitle</h1>,
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>PostsTitle</h1>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: history ?? createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    return { postsRoute, router }
+  }
+
+  type PostsRoute = ReturnType<typeof createPostsRouter>['postsRoute']
+
+  test('returns undefined when the target route is inactive and shouldThrow is false', async () => {
+    const route = {} as { current: PostsRoute }
+
+    function RootComponent() {
+      const match = route.current.useMatch({ shouldThrow: false })
+      expect(match).toBeUndefined()
+      return <Outlet />
+    }
+
+    const created = createPostsRouter(RootComponent)
+    route.current = created.postsRoute
+    render(<RouterProvider router={created.router} />)
+    expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
+  })
+
+  test.each([undefined, true])(
+    'throws when the target route is inactive and shouldThrow is %s',
+    async (shouldThrow) => {
+      const route = {} as { current: PostsRoute }
+
+      function RootComponent() {
+        route.current.useMatch({ shouldThrow })
+        return <Outlet />
+      }
+
+      const created = createPostsRouter(RootComponent)
+      route.current = created.postsRoute
+      render(<RouterProvider router={created.router} />)
+      const postsError = await screen.findByText(
+        'Invariant failed: Could not find an active match from "/posts"',
+      )
+      expect(postsError).toBeInTheDocument()
+    },
+  )
+
+  test('returns the match when the target route is active and shouldThrow is false', async () => {
+    const route = {} as { current: PostsRoute }
+
+    function RootComponent() {
+      const match = route.current.useMatch({ shouldThrow: false })
+      expect(match).toBeDefined()
+      expect(match?.routeId).toBe('/posts')
+      return <Outlet />
+    }
+
+    const created = createPostsRouter(
+      RootComponent,
+      createMemoryHistory({ initialEntries: ['/posts'] }),
+    )
+    route.current = created.postsRoute
+    render(<RouterProvider router={created.router} />)
+    expect(await screen.findByText('PostsTitle')).toBeInTheDocument()
+  })
+})
+
+describe('RouteApi.useMatch', () => {
+  test('returns undefined when the target route is inactive and shouldThrow is false', async () => {
+    const postsRouteApi = getRouteApi('/posts')
+
+    function RootComponent() {
+      const match = postsRouteApi.useMatch({ shouldThrow: false })
+      expect(match).toBeUndefined()
+      return <Outlet />
+    }
+
+    const rootRoute = createRootRoute({
+      component: RootComponent,
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>IndexTitle</h1>,
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>PostsTitle</h1>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+    expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
   })
 })
