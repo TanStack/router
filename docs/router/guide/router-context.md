@@ -281,7 +281,7 @@ export const Route = createFileRoute('/todos')({
     await context.queryClient.query({
       queryKey: ['todos', { userId: user.id }],
       queryFn: fetchTodos,
-      staleTime: 'static'
+      staleTime: 'static',
     })
   },
 })
