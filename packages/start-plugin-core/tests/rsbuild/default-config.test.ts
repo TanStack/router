@@ -195,10 +195,7 @@ describe('createRsbuildEnvironmentDefaults', () => {
   ])(
     'omits defaults for fields configured at the $scope level',
     ({ config }) => {
-      const getDefaults = (
-        environmentName: string,
-        rscEnabled: boolean,
-      ) =>
+      const getDefaults = (environmentName: string, rscEnabled: boolean) =>
         createRsbuildEnvironmentDefaults({
           environmentName,
           config,
