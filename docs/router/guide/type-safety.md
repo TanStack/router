@@ -159,7 +159,10 @@ This may look fine and for small route trees and you may not notice any TS perfo
 ```tsx
 export const Route = createFileRoute('/posts/$postId/deep')({
   loader: async ({ context: { queryClient }, params: { postId } }) => {
-    await queryClient.query({ ...postQueryOptions(postId), staleTime: 'static' })
+    await queryClient.query({
+      ...postQueryOptions(postId),
+      staleTime: 'static',
+    })
   },
   component: PostDeepComponent,
 })

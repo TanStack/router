@@ -165,7 +165,8 @@ const postsQuery = queryOptions({
 
 export const Route = createFileRoute('/posts')({
   // Ensure the data is in the cache before render
-  loader: ({ context }) => context.queryClient.query({...postsQuery, staleTime: 'static' }),
+  loader: ({ context }) =>
+    context.queryClient.query({ ...postsQuery, staleTime: 'static' }),
   component: PostsPage,
 })
 
@@ -188,7 +189,7 @@ You can also prefetch with `query` in a loader without consuming the data in a c
 
 ```tsx title="src/routes/users.$id.tsx"
 import { createFileRoute } from '@tanstack/react-router'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { noop, queryOptions, useQuery } from '@tanstack/react-query'
 
 const userQuery = (id: string) =>
   queryOptions({
@@ -197,9 +198,9 @@ const userQuery = (id: string) =>
   })
 
 export const Route = createFileRoute('/user/$id')({
-  loader: ({ params }) => {
-    // do not await this nor return the promise, just kick off the query to stream it to the client
-    context.queryClient.fetchQuery(userQuery(params.id))
+  loader: ({ context, params }) => {
+    // Do not await this nor return the promise, just kick off the query to stream it to the client
+    void context.queryClient.query(userQuery(params.id)).catch(noop)
   },
 })
 ```
