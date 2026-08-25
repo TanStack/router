@@ -11,7 +11,10 @@ export const Route = createFileRoute('/dashboard/posts/$postId')({
     notes: z.string().optional(),
   }),
   loader: async ({ context: { trpc, queryClient }, params: { postId } }) => {
-    await queryClient.ensureQueryData(trpc.post.queryOptions(postId))
+    await queryClient.query({
+      ...trpc.post.queryOptions(postId),
+      staleTime: 'static',
+    })
   },
   pendingComponent: Spinner,
   component: DashboardPostsPostIdComponent,

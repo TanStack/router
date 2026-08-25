@@ -12,7 +12,7 @@
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
-    "@tanstack/react-query": "^5.102.0",
+    "@tanstack/react-query": "^5.102.3",
     "@tanstack/react-router": "^1.170.41",
     "@tanstack/react-router-devtools": "^1.167.2",
     "@tanstack/react-start": "^1.168.60",
@@ -35,5 +35,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "peerDependencies": {},
+  "optionalDependencies": {}
 }

@@ -12,7 +12,10 @@ import { Spinner } from './-components/spinner'
 export const Route = createFileRoute('/dashboard/posts')({
   errorComponent: () => 'Oh crap!',
   loader: async ({ context: { trpc, queryClient } }) => {
-    await queryClient.ensureQueryData(trpc.posts.queryOptions())
+    await queryClient.query({
+      ...trpc.posts.queryOptions(),
+      staleTime: 'static',
+    })
     return
   },
   pendingComponent: Spinner,

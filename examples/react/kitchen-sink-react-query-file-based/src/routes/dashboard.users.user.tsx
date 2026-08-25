@@ -11,9 +11,10 @@ export const Route = createFileRoute('/dashboard/users/user')({
   }),
   loaderDeps: ({ search: { userId } }) => ({ userId }),
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(
-      userQueryOptions(opts.deps.userId),
-    ),
+    opts.context.queryClient.query({
+      ...userQueryOptions(opts.deps.userId),
+      staleTime: 'static',
+    }),
   component: UserComponent,
 })
 

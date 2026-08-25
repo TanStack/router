@@ -58,9 +58,10 @@ export const Route = createFileRoute('/search/searchPlaceholder')({
     }),
   }),
   loader: async (opts) => {
-    const search = await opts.context.queryClient.ensureQueryData(
-      opts.context.searchQueryOptions,
-    )
+    const search = await opts.context.queryClient.query({
+      ...opts.context.searchQueryOptions,
+      staleTime: 'static',
+    })
 
     return {
       search,
