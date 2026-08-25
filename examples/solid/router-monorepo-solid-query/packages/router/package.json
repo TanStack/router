@@ -11,7 +11,7 @@
     "@tanstack/history": "^1.162.1",
     "@tanstack/router-plugin": "^1.168.30",
     "@tanstack/solid-query": "^6.0.0-rc.0",
-    "@tanstack/solid-router": "^2.0.0-rc.1",
+    "@tanstack/solid-router": "^2.0.0-rc.2",
     "@router-solid-mono-solid-query/post-query": "workspace:*",
     "redaxios": "^0.5.1",
     "zod": "^4.4.3",
