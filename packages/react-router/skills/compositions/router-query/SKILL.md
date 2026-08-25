@@ -2,7 +2,7 @@
 name: router-query
 description: >-
   Integrating TanStack Router with TanStack Query: queryClient
-  in router context, ensureQueryData/prefetchQuery in loaders,
+  in router context, static queries and fire-and-forget queries in loaders,
   useSuspenseQuery in components, defaultPreloadStaleTime: 0,
   setupRouterSsrQueryIntegration for SSR dehydration/hydration
   and streaming, per-request QueryClient isolation.
@@ -182,9 +182,9 @@ export function createAppRouter() {
 }
 ```
 
-## Core Pattern: `ensureQueryData` in Loader + `useSuspenseQuery` in Component
+## Core Pattern: Static `query` in Loader + `useSuspenseQuery` in Component
 
-This is the recommended pattern. The loader ensures data is in the cache before render (no loading flash). The component subscribes to the cache for updates.
+This is the recommended pattern. The loader queries data before render (no loading flash), using `staleTime: 'static'` to reuse cached data without a stale refetch. The component subscribes to the cache for updates.
 
 ```tsx
 // src/routes/posts.tsx
@@ -204,9 +204,12 @@ const postsQueryOptions = queryOptions({
 
 export const Route = createFileRoute('/posts')({
   loader: ({ context }) => {
-    // ensureQueryData returns cached data if available, fetches if not in cache
-    // To also refetch stale data, pass revalidateIfStale: true
-    return context.queryClient.ensureQueryData(postsQueryOptions)
+    // query returns cached data when available and fetches when it is missing
+    // Keep this query static so a stale refetch does not block navigation
+    return context.queryClient.query({
+      ...postsQueryOptions,
+      staleTime: 'static',
+    })
   },
   component: PostsPage,
 })
@@ -246,7 +249,10 @@ const postQueryOptions = (postId: string) =>
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context, params }) => {
-    return context.queryClient.ensureQueryData(postQueryOptions(params.postId))
+    return context.queryClient.query({
+      ...postQueryOptions(params.postId),
+      staleTime: 'static',
+    })
   },
   component: PostPage,
 })
@@ -259,20 +265,23 @@ function PostPage() {
 }
 ```
 
-## Streaming Pattern: `prefetchQuery` (Not Awaited)
+## Streaming Pattern: Fire-and-Forget `query` (Not Awaited)
 
-For non-critical data, start the fetch without blocking navigation:
+For non-critical data, start a query without blocking navigation. Handle its rejection with `noop` so a background failure does not become an unhandled rejection:
 
 ```tsx
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { noop, useQuery, useSuspenseQuery } from '@tanstack/react-query'
 
 export const Route = createFileRoute('/dashboard')({
   loader: ({ context }) => {
     // Await critical data
-    const user = context.queryClient.ensureQueryData(userQueryOptions)
+    const user = context.queryClient.query({
+      ...userQueryOptions,
+      staleTime: 'static',
+    })
 
-    // Start non-critical fetch without awaiting — streams during SSR
-    context.queryClient.prefetchQuery(analyticsQueryOptions)
+    // Start non-critical query without awaiting — streams during SSR
+    void context.queryClient.query({ ...analyticsQueryOptions }).catch(noop)
 
     return user
   },
@@ -304,7 +313,10 @@ import { useRouter } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts')({
   loader: ({ context }) =>
-    context.queryClient.ensureQueryData(postsQueryOptions),
+    context.queryClient.query({
+      ...postsQueryOptions,
+      staleTime: 'static',
+    }),
   errorComponent: PostsErrorComponent,
   component: PostsPage,
 })
@@ -373,24 +385,29 @@ export function createAppRouter() {
 }
 ```
 
-### 3. MEDIUM: Awaiting `prefetchQuery` in loader blocks rendering
+### 3. MEDIUM: Awaiting a fire-and-forget query in a loader blocks rendering
 
-`prefetchQuery` is designed to fire-and-forget. Awaiting it blocks the navigation transition until the data resolves, defeating the purpose of streaming.
+A query used for streaming should start in the background and handle errors with `catch(noop)`. Awaiting it blocks the navigation transition until the data resolves, defeating the purpose of streaming.
 
 ```tsx
+import { noop } from '@tanstack/react-query'
+
 // WRONG — blocks navigation, no streaming benefit
 loader: async ({ context }) => {
-  await context.queryClient.prefetchQuery(analyticsQueryOptions)
+  await context.queryClient.query({ ...analyticsQueryOptions }).catch(noop)
 }
 
-// CORRECT — fire and forget for streaming
+// CORRECT — fire and forget for streaming, with handled rejection
 loader: ({ context }) => {
-  context.queryClient.prefetchQuery(analyticsQueryOptions)
+  void context.queryClient.query({ ...analyticsQueryOptions }).catch(noop)
 }
 
-// If you need to block (critical data), use ensureQueryData instead:
+// If you need to block (critical data), use a static query instead:
 loader: ({ context }) => {
-  return context.queryClient.ensureQueryData(criticalQueryOptions)
+  return context.queryClient.query({
+    ...criticalQueryOptions,
+    staleTime: 'static',
+  })
 }
 ```
 
@@ -415,8 +432,8 @@ const rootRoute = createRootRouteWithContext<{ queryClient: QueryClient }>()({
 TanStack Router has its own SWR cache (`staleTime`, `gcTime`, `defaultPreloadStaleTime`). When using Query as an external cache:
 
 - Set `defaultPreloadStaleTime: 0` to prevent Router's cache from short-circuiting Query's freshness logic
-- Router's `staleTime`/`gcTime` still apply to the loader return value. For pure Query patterns, return nothing from the loader (just `ensureQueryData` for the side effect) and read data exclusively from `useSuspenseQuery`
-- `router.invalidate()` re-runs loaders (which call `ensureQueryData`), but Query decides whether to actually refetch based on its own `staleTime`
+- Router's `staleTime`/`gcTime` still apply to the loader return value. For pure Query patterns, return nothing from the loader (just a static `query` for the side effect) and read data exclusively from `useSuspenseQuery`
+- `router.invalidate()` re-runs loaders (which call `query` with `staleTime: 'static'`), so the cached Query data remains the freshness authority
 
 ## Cross-References
 
