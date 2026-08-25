@@ -128,10 +128,10 @@
   },
   "devDependencies": {
     "@rsbuild/core": "^2.1.0",
-    "@solidjs/web": "^2.0.0-rc.1",
+    "@solidjs/web": "^2.0.0-rc.2",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
-    "solid-js": "^2.0.0-rc.1",
+    "solid-js": "^2.0.0-rc.2",
     "vite": "*"
   },
   "peerDependencies": {

@@ -12,15 +12,15 @@
     "postinstall": "npm run cf-typegen"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.1",
+    "@solidjs/web": "^2.0.0-rc.2",
     "@tanstack/solid-router": "^2.0.0-rc.1",
     "@tanstack/solid-router-devtools": "^2.0.0-rc.1",
     "@tanstack/solid-start": "^2.0.0-rc.1",
-    "solid-js": "^2.0.0-rc.1"
+    "solid-js": "^2.0.0-rc.2"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.29.0",
-    "@solidjs/vite-plugin": "^3.0.0-next.30",
+    "@solidjs/vite-plugin": "^3.0.0-next.32",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.2.2",
