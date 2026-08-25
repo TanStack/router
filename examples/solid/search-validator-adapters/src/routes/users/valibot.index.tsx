@@ -32,9 +32,10 @@ export const Route = createFileRoute('/users/valibot/')({
   }),
   loaderDeps: (opt) => ({ search: opt.search }),
   loader: (opt) => {
-    opt.context.queryClient.ensureQueryData(
-      usersQueryOptions(opt.deps.search.search),
-    )
+    opt.context.queryClient.query({
+      ...usersQueryOptions(opt.deps.search.search),
+      staleTime: 'static',
+    })
   },
   component: Valibot,
 })
