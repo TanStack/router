@@ -654,7 +654,7 @@ describe('React Query Integration', () => {
         queryClient.query({
           queryKey: ['posts'],
           queryFn: mockFetchPosts,
-          staleTime: 'static'
+          staleTime: 'static',
         }),
     })
 

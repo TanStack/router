@@ -90,6 +90,7 @@ So, instead of using `defer` and `Await`, you'll instead want to use the Route's
 ```tsx
 // src/routes/posts.$postId.tsx
 import { createFileRoute } from '@tanstack/react-router'
+import { noop } from '@tanstack/react-query'
 import { slowDataOptions, fastDataOptions } from '~/api/query-options'
 
 export const Route = createFileRoute('/posts/$postId')({
@@ -98,7 +99,7 @@ export const Route = createFileRoute('/posts/$postId')({
     void queryClient.query(slowDataOptions()).catch(noop)
 
     // Fetch and await some data that resolves quickly
-    await queryClient.query({...fastDataOptions(), staleTime: 'static')
+    await queryClient.query({ ...fastDataOptions(), staleTime: 'static' })
   },
 })
 ```
@@ -108,6 +109,7 @@ export const Route = createFileRoute('/posts/$postId')({
 ```tsx
 // src/routes/posts.$postId.tsx
 import { createFileRoute } from '@tanstack/solid-router'
+import { noop } from '@tanstack/solid-query'
 import { slowDataOptions, fastDataOptions } from '~/api/query-options'
 
 export const Route = createFileRoute('/posts/$postId')({
@@ -116,7 +118,7 @@ export const Route = createFileRoute('/posts/$postId')({
     void queryClient.query(slowDataOptions()).catch(noop)
 
     // Fetch and await some data that resolves quickly
-    await queryClient.query({...fastDataOptions(), staleTime: 'static')
+    await queryClient.query({ ...fastDataOptions(), staleTime: 'static' })
   },
 })
 ```
