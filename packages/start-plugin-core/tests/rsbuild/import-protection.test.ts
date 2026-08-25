@@ -54,10 +54,11 @@ describe('getRsbuildResolvedImportProtectionCheck', () => {
 })
 
 describe('registerImportProtection transform', () => {
-  test('does not read original source during the post transform', async () => {
+  test('does not read original source through the filesystem', async () => {
     let beforeBuild: (() => void) | undefined
     let modifyRspackConfig: ((config: any, utils: any) => void) | undefined
     let transformHandler: ((context: any) => Promise<unknown>) | undefined
+    let processAssetsHandler: ((context: any) => Promise<void>) | undefined
 
     const api = {
       context: { action: 'build' },
@@ -74,7 +75,12 @@ describe('registerImportProtection transform', () => {
       ) {
         transformHandler = handler
       },
-      processAssets() {},
+      processAssets(
+        _options: unknown,
+        handler: (context: any) => Promise<void>,
+      ) {
+        processAssetsHandler = handler
+      },
     }
 
     registerImportProtection(api as any, {
@@ -90,7 +96,12 @@ describe('registerImportProtection transform', () => {
         }) as any,
     })
 
-    if (!beforeBuild || !modifyRspackConfig || !transformHandler) {
+    if (
+      !beforeBuild ||
+      !modifyRspackConfig ||
+      !transformHandler ||
+      !processAssetsHandler
+    ) {
       throw new Error('Expected import-protection hooks to be registered')
     }
 
@@ -128,6 +139,20 @@ describe('registerImportProtection transform', () => {
     })
 
     expect(result).toBe(code)
+
+    await processAssetsHandler({
+      environment: { name: 'client' },
+      compilation: {
+        modules: new Set(),
+        entries: new Map(),
+        moduleGraph: {},
+        inputFileSystem: { readFile },
+        errors: [],
+        warnings: [],
+      },
+      compiler: { rspack: {} },
+    })
+
     expect(readFile).not.toHaveBeenCalled()
   })
 })

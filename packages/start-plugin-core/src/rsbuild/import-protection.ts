@@ -96,7 +96,6 @@ type RspackModuleGraphConnection = {
   dependency?: unknown
   getActiveState?: (runtime: string | Array<string> | undefined) => unknown
 }
-type OriginalCodeLoader = (file: string) => Promise<string | undefined>
 const importSpecifierLocationIndex = createImportSpecifierLocationIndex()
 
 type PerfTiming = {
@@ -442,36 +441,6 @@ function getMockEdgePayloadFromFile(
   }
 }
 
-async function loadOriginalCode(
-  cache: Map<string, Promise<string | undefined>>,
-  file: string,
-  loader: OriginalCodeLoader,
-): Promise<string | undefined> {
-  let result = cache.get(file)
-  if (!result) {
-    result = loader(file)
-    cache.set(file, result)
-  }
-
-  return result
-}
-
-async function loadOriginalCodeFromInputFileSystem(
-  inputFileSystem: NonNullable<RspackCompilation['inputFileSystem']>,
-  file: string,
-): Promise<string | undefined> {
-  return new Promise((resolve) => {
-    inputFileSystem.readFile(file, (error, data) => {
-      if (error || data == null) {
-        resolve(undefined)
-        return
-      }
-
-      resolve(typeof data === 'string' ? data : data.toString('utf8'))
-    })
-  })
-}
-
 async function resolveAgainstImporter(opts: {
   envState: EnvRuntimeState
   config: PluginConfig
@@ -607,12 +576,11 @@ function hasOriginalUnsafeUsage(
   return !!findOriginalUnsafeUsagePosFromResult(originalResult, source, envType)
 }
 
-async function buildTransformResultProvider(opts: {
+function buildTransformResultProvider(opts: {
   modules: Array<RspackModule>
   root: string
-  loadOriginalCode: OriginalCodeLoader
   perf?: PerfCollector
-}): Promise<TransformResultProvider> {
+}): TransformResultProvider {
   const cache = new Map<string, TransformResult>()
 
   opts.perf?.count('processAssets.provider.modules', opts.modules.length)
@@ -636,11 +604,8 @@ async function buildTransformResultProvider(opts: {
 
     const originalCodeStartedAt = opts.perf ? performance.now() : 0
     const originalCode = map?.sourcesContent
-      ? (pickOriginalCodeFromSourcesContent(map, resource ?? file, opts.root) ??
-        (resource ? await opts.loadOriginalCode(resource) : undefined))
-      : resource
-        ? await opts.loadOriginalCode(resource)
-        : undefined
+      ? pickOriginalCodeFromSourcesContent(map, resource ?? file, opts.root)
+      : undefined
     if (opts.perf) {
       opts.perf.time(
         'processAssets.provider.originalCode',
@@ -950,50 +915,44 @@ async function buildViolationInfo(opts: {
   return info
 }
 
-async function getMarkerKindForFile(opts: {
+function getMarkerKindForFile(opts: {
   config: PluginConfig
   provider: TransformResultProvider
-  loadOriginalCode: OriginalCodeLoader
-  markerKindCache: Map<string, Promise<'server' | 'client' | undefined>>
+  markerKindCache: Map<string, 'server' | 'client' | null>
   file: string
-}): Promise<'server' | 'client' | undefined> {
+}): 'server' | 'client' | undefined {
   if (!isImportProtectionSourceFile(opts.file)) {
     return undefined
   }
 
-  let cached = opts.markerKindCache.get(opts.file)
-  if (!cached) {
-    cached = (async () => {
-      const code =
-        opts.provider.getTransformResult(opts.file)?.originalCode ??
-        (await opts.loadOriginalCode(opts.file))
-
-      if (!code) {
-        return undefined
-      }
-
-      const imports = getImportSources(code, opts.file)
-      const hasServerOnly = imports.some((source) =>
-        opts.config.markerSpecifiers.serverOnly.has(source),
-      )
-      const hasClientOnly = imports.some((source) =>
-        opts.config.markerSpecifiers.clientOnly.has(source),
-      )
-
-      if (hasServerOnly && !hasClientOnly) {
-        return 'server'
-      }
-
-      if (hasClientOnly && !hasServerOnly) {
-        return 'client'
-      }
-
-      return undefined
-    })()
-    opts.markerKindCache.set(opts.file, cached)
+  const cached = opts.markerKindCache.get(opts.file)
+  if (cached !== undefined) {
+    return cached ?? undefined
   }
 
-  return cached
+  const result = opts.provider.getTransformResult(opts.file)
+  const code = result?.originalCode ?? result?.code
+  if (!code) {
+    opts.markerKindCache.set(opts.file, null)
+    return undefined
+  }
+
+  const imports = getImportSources(code, opts.file)
+  const hasServerOnly = imports.some((source) =>
+    opts.config.markerSpecifiers.serverOnly.has(source),
+  )
+  const hasClientOnly = imports.some((source) =>
+    opts.config.markerSpecifiers.clientOnly.has(source),
+  )
+  const markerKind =
+    hasServerOnly && !hasClientOnly
+      ? 'server'
+      : hasClientOnly && !hasServerOnly
+        ? 'client'
+        : null
+
+  opts.markerKindCache.set(opts.file, markerKind)
+  return markerKind ?? undefined
 }
 
 async function reportViolation(opts: {
@@ -1443,22 +1402,6 @@ export function registerImportProtection(
         const envType = getImportProtectionEnvType(config, envName)
         const envState = getOrCreateEnvState(envStates, envName)
         const matchers = getRulesForEnvironment(config, envName)
-        const processFileReadCache = new Map<
-          string,
-          Promise<string | undefined>
-        >()
-        const loadOriginalCodeFromCompilation: OriginalCodeLoader = (file) =>
-          loadOriginalCode(
-            processFileReadCache,
-            file,
-            context.compilation.inputFileSystem
-              ? (target) =>
-                  loadOriginalCodeFromInputFileSystem(
-                    context.compilation.inputFileSystem!,
-                    target,
-                  )
-              : () => Promise.resolve(undefined),
-          )
         const allModules = Array.from(context.compilation.modules)
         const relevantModules = allModules.filter(
           isImportProtectionSourceModule,
@@ -1467,20 +1410,16 @@ export function registerImportProtection(
         perf?.count('processAssets.modules.relevant', relevantModules.length)
 
         const providerStartedAt = perf ? performance.now() : 0
-        const provider = await buildTransformResultProvider({
+        const provider = buildTransformResultProvider({
           modules: relevantModules,
           root: config.root,
-          loadOriginalCode: loadOriginalCodeFromCompilation,
           perf,
         })
         if (perf) {
           perf.time('processAssets.provider.build', providerStartedAt)
         }
         const importLocCache = new ImportLocCache()
-        const markerKindCache = new Map<
-          string,
-          Promise<'server' | 'client' | undefined>
-        >()
+        const markerKindCache = new Map<string, 'server' | 'client' | null>()
         const graphStartedAt = perf ? performance.now() : 0
         const { graph, edges, inactiveEdges } = buildCompilationGraph({
           compilation: context.compilation,
@@ -1602,10 +1541,9 @@ export function registerImportProtection(
             continue
           }
 
-          const markerKind = await getMarkerKindForFile({
+          const markerKind = getMarkerKindForFile({
             config,
             provider,
-            loadOriginalCode: loadOriginalCodeFromCompilation,
             markerKindCache,
             file: edge.resolved,
           })

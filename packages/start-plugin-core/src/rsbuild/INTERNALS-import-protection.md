@@ -106,7 +106,7 @@ It reconstructs the final view of the compilation from Rspack data by:
 2. rebuilding the active compilation graph from outgoing connections
 3. reconstructing surviving specifier violations from compiled mock-edge files
 4. reporting live file violations from active edges
-5. reporting live marker violations from active edges plus original source
+5. reporting live marker violations from active edges plus compilation source
 
 This is the core Rsbuild-native replacement for Vite's `generateBundle`
 verification plus dev pending-violation flow.
@@ -127,10 +127,6 @@ Compilation-time:
 - `module.resourceResolveData?.resource`
 - `module.originalSource().sourceAndMap()`
 - sourcemap `sourcesContent`
-- `compilation.inputFileSystem.readFile(...)`
-
-This keeps the adapter closer to Rsbuild/Rspack truth and avoids falling back to
-Node fs when the compilation already has the needed data.
 
 ## Marker Handling
 
@@ -138,7 +134,8 @@ Unlike Vite, Rsbuild does not introduce plugin-owned virtual marker modules for
 normal operation.
 
 The real package marker files are used as source-level markers, and the adapter
-later infers marker kind from original source while reporting compiled edges.
+later infers marker kind from the compiled module source (preferring embedded
+`sourcesContent` when available) while reporting compiled edges.
 
 ## Practical Maintainer Rule
 
