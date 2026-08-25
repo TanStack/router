@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-rc.2
+
+### Patch Changes
+
+- [#8166](https://github.com/TanStack/router/pull/8166) [`eaa2e8d`](https://github.com/TanStack/router/commit/eaa2e8d5ce0df6b55e3bb787844e44e1a49f6548) - Bump solid-js and @solidjs/web to ^2.0.0-rc.2 and @solidjs/vite-plugin to ^3.0.0-next.32 across the monorepo.
+
 ## 2.0.0-rc.1
 
 ### Patch Changes
