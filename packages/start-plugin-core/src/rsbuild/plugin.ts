@@ -125,26 +125,41 @@ export function tanStackStartRsbuild(
       //      It wins over conflicting user values, which are reported together
       //      by warnOverriddenConfig.
       //
-      //    Environment defaults are filled after Rsbuild has merged the root
-      //    and environment configs. Framework invariants are applied through a
+      //    Environment defaults are added before Rsbuild normalizes each
+      //    environment. This keeps Rsbuild-generated values from being treated
+      //    as user config while allowing modifyEnvironmentConfig hooks to
+      //    override the defaults. Framework invariants are applied through a
       //    post hook so they win over conflicting user values.
       // ---------------------------------------------------------------
-      api.modifyEnvironmentConfig({
+      api.modifyRsbuildConfig({
         order: 'pre',
-        handler(environmentConfig, { name, mergeEnvironmentConfig }) {
-          const defaults = createRsbuildEnvironmentDefaults({
-            environmentName: name,
-            config: api.getRsbuildConfig(),
-            isDev,
-            rscEnabled,
-            serverFnProviderEnv,
-          })
+        handler(rsbuildConfigWithDefaults, { mergeRsbuildConfig }) {
+          const originalConfig = api.getRsbuildConfig('original')
+          const frameworkDefaultConfig = {
+            environments: Object.fromEntries(
+              startCompilerEnvironments.map(({ name }) => [
+                name,
+                createRsbuildEnvironmentDefaults({
+                  environmentName: name,
+                  config: originalConfig,
+                  isDev,
+                  rscEnabled,
+                  serverFnProviderEnv,
+                }),
+              ]),
+            ),
+          } satisfies RsbuildConfig
 
-          return mergeEnvironmentConfig(environmentConfig, defaults)
+          // The hook input already contains Rsbuild's defaults. Start's
+          // defaults are derived from the original config, so this overlay
+          // only replaces generated values for fields the user left unset.
+          return mergeRsbuildConfig(
+            rsbuildConfigWithDefaults,
+            frameworkDefaultConfig,
+          )
         },
       })
 
-      // Framework invariants win over the config resolved above.
       api.modifyRsbuildConfig({
         order: 'post',
         handler(userConfigWithDefaults, { mergeRsbuildConfig }) {
