@@ -1,6 +1,9 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import { compileMatchers } from '../../src/import-protection/matchers'
-import { getRsbuildResolvedImportProtectionCheck } from '../../src/rsbuild/import-protection'
+import {
+  getRsbuildResolvedImportProtectionCheck,
+  registerImportProtection,
+} from '../../src/rsbuild/import-protection'
 
 describe('getRsbuildResolvedImportProtectionCheck', () => {
   test('skips file and marker checks for excluded resolved files', () => {
@@ -47,5 +50,84 @@ describe('getRsbuildResolvedImportProtectionCheck', () => {
         matchers,
       ),
     ).toEqual({ type: 'marker' })
+  })
+})
+
+describe('registerImportProtection transform', () => {
+  test('does not read original source during the post transform', async () => {
+    let beforeBuild: (() => void) | undefined
+    let modifyRspackConfig: ((config: any, utils: any) => void) | undefined
+    let transformHandler: ((context: any) => Promise<unknown>) | undefined
+
+    const api = {
+      context: { action: 'build' },
+      onBeforeBuild(handler: () => void) {
+        beforeBuild = handler
+      },
+      onBeforeDevCompile() {},
+      modifyRspackConfig(handler: (config: any, utils: any) => void) {
+        modifyRspackConfig = handler
+      },
+      transform(
+        _options: unknown,
+        handler: (context: any) => Promise<unknown>,
+      ) {
+        transformHandler = handler
+      },
+      processAssets() {},
+    }
+
+    registerImportProtection(api as any, {
+      framework: 'react',
+      environments: [{ name: 'client', type: 'client' }],
+      getConfig: () =>
+        ({
+          startConfig: {},
+          resolvedStartConfig: {
+            root: '/app',
+            srcDirectory: '/app/src',
+          },
+        }) as any,
+    })
+
+    if (!beforeBuild || !modifyRspackConfig || !transformHandler) {
+      throw new Error('Expected import-protection hooks to be registered')
+    }
+
+    beforeBuild()
+
+    class VirtualModulesPlugin {}
+    const rspackConfig = { plugins: [] as Array<any> }
+    modifyRspackConfig(rspackConfig, {
+      environment: { name: 'client' },
+      rspack: {
+        experiments: { VirtualModulesPlugin },
+      },
+    })
+
+    const readFile = vi.fn(
+      (_file: string, callback: (error: null, data: Buffer) => void) => {
+        callback(null, Buffer.from(`import { secret } from './secret.server'`))
+      },
+    )
+    const rspackPlugin = rspackConfig.plugins[1]
+    rspackPlugin.apply({
+      inputFileSystem: { readFile },
+      hooks: {
+        thisCompilation: { tap: vi.fn() },
+      },
+    })
+
+    const code = `import { value } from './safe'\nexport { value }`
+    const result = await transformHandler({
+      code,
+      resource: '/app/src/entry.ts',
+      resourcePath: '/app/src/entry.ts',
+      context: '/app/src',
+      resolve: vi.fn(),
+    })
+
+    expect(result).toBe(code)
+    expect(readFile).not.toHaveBeenCalled()
   })
 })

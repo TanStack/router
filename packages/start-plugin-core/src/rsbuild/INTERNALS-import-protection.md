@@ -11,8 +11,6 @@ Rsbuild owns:
 - virtual-module transport through `VirtualModulesPlugin`
 - compilation-truth reporting in `processAssets`
 - final graph reconstruction from Rspack compilation data
-- the small build-only deferred queue for file violations that can disappear
-  from the compiled graph
 
 Shared AST analysis, rewrite logic, source extraction, usage lookup, source
 locations, trace formatting, and mock code generation are described in the
@@ -45,16 +43,12 @@ Per environment, Rsbuild keeps a smaller runtime state than Vite:
 
 - `resolveCache`
 - `seenViolations`
-- `buildTransformResults`
-- `deferredFileViolations`
-- `deferredFileViolationKeys`
 
-Shared state is for virtual module transport and compiler fs access:
+Shared state is for virtual module transport:
 
 - `virtualModules`
 - `vmPlugins`
 - `readyVmPlugins`
-- `inputFileSystems`
 - `pendingWrites`
 
 Notably absent compared to Vite:
@@ -77,9 +71,11 @@ The transform phase is responsible for:
 - self-denial for forbidden files
 - self-denial for marker-protected files in the wrong environment
 - direct specifier rewrites to mock-edge modules
-- build-time transformed/original source preloading for later diagnostics
-- recording build-only deferred file violations when original unsafe usage may
-  outlive a direct compiled graph edge
+
+The transform treats the code it receives as authoritative. It does not read,
+parse, or analyze original source. Imports removed by the Start compiler are no
+longer part of this phase; imports with unsafe client/server usage remain in the
+transformed code and are checked normally.
 
 ## Virtual Module Transport
 
@@ -111,22 +107,9 @@ It reconstructs the final view of the compilation from Rspack data by:
 3. reconstructing surviving specifier violations from compiled mock-edge files
 4. reporting live file violations from active edges
 5. reporting live marker violations from active edges plus original source
-6. reporting deferred file violations only when both importer and target truly
-   survived compilation
 
 This is the core Rsbuild-native replacement for Vite's `generateBundle`
 verification plus dev pending-violation flow.
-
-## Why The Deferred Queue Is Narrow
-
-Rsbuild only needs explicit build deferral for file violations whose direct edge
-may disappear after compilation.
-
-Specifier violations are rediscovered from surviving mock-edge virtual files.
-Marker violations are rediscovered from live compiled edges.
-
-Only file violations need extra bookkeeping when the final compiled graph can no
-longer show the original denied edge directly.
 
 ## Source And Compilation APIs
 
@@ -137,7 +120,6 @@ Transform-time:
 - `ctx.resource`
 - `ctx.context`
 - `ctx.resolve(...)`
-- captured `compiler.inputFileSystem.readFile(...)`
 
 Compilation-time:
 

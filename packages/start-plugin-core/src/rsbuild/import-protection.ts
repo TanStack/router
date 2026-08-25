@@ -211,18 +211,6 @@ interface PluginConfig {
 interface EnvRuntimeState {
   resolveCache: Map<string, string | null>
   seenViolations: Set<string>
-  buildTransformResults: Map<string, TransformResult>
-  deferredFileViolations: Array<DeferredFileViolation>
-  deferredFileViolationKeys: Set<string>
-}
-
-interface DeferredFileViolation {
-  importer: string
-  specifier: string
-  resolved: string
-  relativeResolved: string
-  pattern: string | RegExp
-  useOriginalLocation: boolean
 }
 
 interface SharedState {
@@ -230,7 +218,6 @@ interface SharedState {
   virtualModules: Map<string, string>
   vmPlugins: Record<string, RspackVirtualModulesPlugin>
   readyVmPlugins: Record<string, boolean>
-  inputFileSystems: Record<string, Rspack.Compiler['inputFileSystem']>
   pendingWrites: Map<string, Map<string, string>>
 }
 
@@ -313,9 +300,6 @@ function getOrCreateEnvState(
     env = {
       resolveCache: new Map(),
       seenViolations: new Set(),
-      buildTransformResults: new Map(),
-      deferredFileViolations: [],
-      deferredFileViolationKeys: new Set(),
     }
     envStates.set(envName, env)
   }
@@ -606,19 +590,6 @@ function hasTransformResult(
   return cache.has(normalizePath(key)) || cache.has(normalizeFilePath(key))
 }
 
-function deferFileViolation(
-  envState: EnvRuntimeState,
-  violation: DeferredFileViolation,
-): void {
-  const key = `${violation.importer}:${violation.specifier}:${violation.resolved}:${String(violation.pattern)}`
-  if (envState.deferredFileViolationKeys.has(key)) {
-    return
-  }
-
-  envState.deferredFileViolationKeys.add(key)
-  envState.deferredFileViolations.push(violation)
-}
-
 function hasOriginalUnsafeUsage(
   result: TransformResult | undefined,
   source: string,
@@ -640,16 +611,9 @@ async function buildTransformResultProvider(opts: {
   modules: Array<RspackModule>
   root: string
   loadOriginalCode: OriginalCodeLoader
-  preloaded?: Map<string, TransformResult>
   perf?: PerfCollector
 }): Promise<TransformResultProvider> {
   const cache = new Map<string, TransformResult>()
-
-  if (opts.preloaded) {
-    for (const [key, result] of opts.preloaded) {
-      cache.set(key, result)
-    }
-  }
 
   opts.perf?.count('processAssets.provider.modules', opts.modules.length)
 
@@ -1085,7 +1049,6 @@ export function registerImportProtection(
   const perf = isPerfEnabled() ? createPerfCollector() : undefined
   const extensionlessResolver = new ExtensionlessAbsoluteIdResolver()
   const envStates = new Map<string, EnvRuntimeState>()
-  const fileReadCache = new Map<string, Promise<string | undefined>>()
   const shouldCheckImporterCache = new Map<string, boolean>()
 
   const config: PluginConfig = {
@@ -1126,7 +1089,6 @@ export function registerImportProtection(
     virtualModules: new Map(),
     vmPlugins: {},
     readyVmPlugins: {},
-    inputFileSystems: {},
     pendingWrites: new Map(),
   }
 
@@ -1228,7 +1190,6 @@ export function registerImportProtection(
     applyUserConfig()
     clearNormalizeFilePathCache()
     extensionlessResolver.clear()
-    fileReadCache.clear()
     shouldCheckImporterCache.clear()
     envStates.clear()
     if (perf) {
@@ -1241,14 +1202,10 @@ export function registerImportProtection(
     applyUserConfig()
     clearNormalizeFilePathCache()
     extensionlessResolver.clear()
-    fileReadCache.clear()
     shouldCheckImporterCache.clear()
 
     for (const envState of envStates.values()) {
       envState.resolveCache.clear()
-      envState.buildTransformResults.clear()
-      envState.deferredFileViolations.length = 0
-      envState.deferredFileViolationKeys.clear()
     }
     if (perf) {
       perf.time('onBeforeDevCompile', startedAt)
@@ -1269,7 +1226,6 @@ export function registerImportProtection(
     rspackConfig.plugins.push(vmPlugin)
     rspackConfig.plugins.push({
       apply(compiler: Rspack.Compiler) {
-        shared.inputFileSystems[envName] = compiler.inputFileSystem
         compiler.hooks.thisCompilation.tap(
           'TanStackStartImportProtectionVirtualModulesReady',
           () => {
@@ -1326,72 +1282,6 @@ export function registerImportProtection(
           }
           const importSources = getImportSourcesFromResult(transformResult)
           perf?.count('transform.importSources', importSources.length)
-          const transformedImportSources = new Set(importSources)
-          const transformInputFileSystem = shared.inputFileSystems[envName]
-          const loadOriginalCodeForTransform: OriginalCodeLoader =
-            transformInputFileSystem
-              ? (target) =>
-                  loadOriginalCodeFromInputFileSystem(
-                    transformInputFileSystem,
-                    target,
-                  )
-              : () => Promise.resolve(undefined)
-          const originalCodeStartedAt = perf ? performance.now() : 0
-          const originalCode =
-            config.command === 'build'
-              ? await loadOriginalCode(
-                  fileReadCache,
-                  file,
-                  loadOriginalCodeForTransform,
-                )
-              : undefined
-          if (perf && config.command === 'build') {
-            perf.time('transform.originalCode.load', originalCodeStartedAt)
-          }
-          transformResult.originalCode = originalCode
-          const originalTransformResult = originalCode
-            ? getOrCreateOriginalTransformResult(transformResult)
-            : undefined
-          const buildImportSourcesStartedAt = perf ? performance.now() : 0
-          const buildImportSources = originalTransformResult
-            ? getImportSourcesFromResult(originalTransformResult)
-            : []
-          if (perf && originalCode) {
-            perf.time(
-              'transform.originalImportAnalysis',
-              buildImportSourcesStartedAt,
-            )
-            perf.count(
-              'transform.originalImportSources',
-              buildImportSources.length,
-            )
-          }
-          const buildTransformResult: TransformResult | undefined =
-            config.command === 'build' ? transformResult : undefined
-
-          if (config.command === 'build') {
-            const relativeBuildFile = getImportProtectionRelativePath(
-              config.root,
-              file,
-            )
-            addTransformResult(
-              envState.buildTransformResults,
-              file,
-              buildTransformResult!,
-            )
-            addTransformResult(
-              envState.buildTransformResults,
-              relativeBuildFile,
-              buildTransformResult!,
-            )
-            if (id !== file) {
-              addTransformResult(
-                envState.buildTransformResults,
-                id,
-                buildTransformResult!,
-              )
-            }
-          }
 
           const hasServerOnlyMarker = importSources.some((source) =>
             config.markerSpecifiers.serverOnly.has(source),
@@ -1506,56 +1396,6 @@ export function registerImportProtection(
             deniedSpecifierReplacements.set(source, replacement)
           }
 
-          if (config.command === 'build') {
-            for (const source of buildImportSources) {
-              if (transformedImportSources.has(source)) {
-                continue
-              }
-
-              if (matchesAny(source, matchers.specifiers)) {
-                continue
-              }
-
-              if (
-                !hasOriginalUnsafeUsage(buildTransformResult, source, envType)
-              ) {
-                continue
-              }
-
-              const resolved = await resolveAgainstImporter({
-                envState,
-                config,
-                ctx,
-                importerId: id,
-                source,
-                extensionlessResolver,
-                perf,
-              })
-
-              if (!resolved) {
-                continue
-              }
-
-              const relativeResolved = getImportProtectionRelativePath(
-                config.root,
-                resolved,
-              )
-              const buildFileMatch = checkFileDenial(relativeResolved, matchers)
-              if (!buildFileMatch) {
-                continue
-              }
-
-              deferFileViolation(envState, {
-                importer: file,
-                specifier: source,
-                resolved,
-                relativeResolved,
-                pattern: buildFileMatch.pattern,
-                useOriginalLocation: true,
-              })
-            }
-          }
-
           if (deniedSpecifierReplacements.size === 0) {
             return ctx.code
           }
@@ -1631,7 +1471,6 @@ export function registerImportProtection(
           modules: relevantModules,
           root: config.root,
           loadOriginalCode: loadOriginalCodeFromCompilation,
-          preloaded: envState.buildTransformResults,
           perf,
         })
         if (perf) {
@@ -1867,46 +1706,6 @@ export function registerImportProtection(
               info,
             })
           }
-        }
-
-        for (const violation of envState.deferredFileViolations) {
-          const liveEdgeKey = `${normalizeFilePath(violation.importer)}::${violation.specifier}::${normalizeFilePath(violation.resolved)}`
-          if (liveFileEdgeKeys.has(liveEdgeKey)) {
-            continue
-          }
-
-          if (!didModuleSurvive(violation.resolved)) {
-            continue
-          }
-
-          if (!didModuleSurvive(violation.importer)) {
-            continue
-          }
-
-          const info = await buildViolationInfo({
-            config,
-            provider,
-            graph,
-            importLocCache,
-            perf,
-            envName,
-            envType,
-            importer: violation.importer,
-            source: violation.specifier,
-            resolved: violation.resolved,
-            type: 'file',
-            pattern: violation.pattern,
-            preferOriginalCode: violation.useOriginalLocation,
-          })
-
-          await reportViolation({
-            config,
-            envState,
-            compilation: context.compilation,
-            rspack: context.compiler.rspack,
-            perf,
-            info,
-          })
         }
       } finally {
         if (perf) {
