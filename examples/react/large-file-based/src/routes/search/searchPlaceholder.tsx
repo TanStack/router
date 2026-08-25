@@ -31,7 +31,10 @@ export const Route = createFileRoute('/search/searchPlaceholder')({
   component: SearchComponent,
   validateSearch: search,
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(searchQueryOptions),
+    opts.context.queryClient.query({
+      ...searchQueryOptions,
+      staleTime: 'static',
+    }),
 })
 
 function SearchComponent() {

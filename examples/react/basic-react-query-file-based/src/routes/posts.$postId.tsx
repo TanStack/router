@@ -11,7 +11,10 @@ import type { ErrorComponentProps } from '@tanstack/react-router'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: ({ context: { queryClient }, params: { postId } }) => {
-    return queryClient.ensureQueryData(postQueryOptions(postId))
+    return queryClient.query({
+      ...postQueryOptions(postId),
+      staleTime: 'static',
+    })
   },
   errorComponent: PostErrorComponent,
   component: PostComponent,

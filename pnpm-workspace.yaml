@@ -66,10 +66,10 @@ catalog:
   zod: ^4.5.4
   '@types/node': 25.0.9
   '@playwright/test': ^1.63.0
-  '@tanstack/query-core': ^5.102.0
-  '@tanstack/react-query': ^5.102.0
-  '@tanstack/solid-query': ^5.102.0
-  '@tanstack/vue-query': ^5.102.0
+  '@tanstack/query-core': ^5.102.3
+  '@tanstack/react-query': ^5.102.3
+  '@tanstack/solid-query': ^5.102.3
+  '@tanstack/vue-query': ^5.102.3
 
 overrides:
   '@types/babel__traverse': '^7.28.0'
