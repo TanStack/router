@@ -49,7 +49,6 @@ import {
   loadSilentMockModule,
 } from '../import-protection/virtualModules'
 import {
-  buildResolutionCandidates,
   buildSourceCandidates,
   canonicalizeResolvedId,
   checkFileDenial,
@@ -1438,25 +1437,6 @@ export function registerImportProtection(
                 `${normalizeFilePath(edge.importer)}::${edge.specifier!}::${normalizeFilePath(edge.resolved)}`,
             ),
         )
-        const candidateCache = new Map<string, Array<string>>()
-        const getCandidates = (id: string) => {
-          const normalized = normalizeFilePath(id)
-          let candidates = candidateCache.get(normalized)
-          if (!candidates) {
-            candidates = buildResolutionCandidates(normalized)
-            candidateCache.set(normalized, candidates)
-          }
-          return candidates
-        }
-        const survivingModules = new Set<string>()
-        for (const module of relevantModules) {
-          for (const candidate of getCandidates(getModuleFile(module))) {
-            survivingModules.add(candidate)
-          }
-        }
-
-        const didModuleSurvive = (id: string): boolean =>
-          getCandidates(id).some((candidate) => survivingModules.has(candidate))
 
         for (const module of relevantModules) {
           const payload = getMockEdgePayloadFromFile(getModuleFile(module))
@@ -1596,12 +1576,6 @@ export function registerImportProtection(
               continue
             }
             seenInactiveFileEdgeKeys.add(liveEdgeKey)
-            if (!didModuleSurvive(edge.resolved)) {
-              continue
-            }
-            if (!didModuleSurvive(edge.importer)) {
-              continue
-            }
 
             const transformResult = provider.getTransformResult(edge.importer)
             if (
