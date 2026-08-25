@@ -15,7 +15,6 @@ import {
   shouldCheckImportProtectionImporter,
 } from '../import-protection/adapterUtils'
 import {
-  findOriginalUnsafeUsagePosFromResult,
   getImportSources,
   getImportSourcesFromResult,
   getMockExportNamesBySourceFromResult,
@@ -558,23 +557,6 @@ function hasTransformResult(
   return cache.has(normalizePath(key)) || cache.has(normalizeFilePath(key))
 }
 
-function hasOriginalUnsafeUsage(
-  result: TransformResult | undefined,
-  source: string,
-  envType: 'client' | 'server',
-): boolean {
-  if (!result) {
-    return false
-  }
-
-  const originalResult = getOrCreateOriginalTransformResult(result)
-  if (!originalResult) {
-    return false
-  }
-
-  return !!findOriginalUnsafeUsagePosFromResult(originalResult, source, envType)
-}
-
 function buildTransformResultProvider(opts: {
   modules: Array<RspackModule>
   root: string
@@ -661,11 +643,9 @@ function buildCompilationGraph(opts: {
 }): {
   graph: ImportGraph
   edges: Array<CompilationEdge>
-  inactiveEdges: Array<CompilationEdge>
 } {
   const graph = new ImportGraph()
   const edges: Array<CompilationEdge> = []
-  const inactiveEdges: Array<CompilationEdge> = []
 
   addEntryModulesToGraph({
     compilation: opts.compilation,
@@ -691,13 +671,11 @@ function buildCompilationGraph(opts: {
       if (isActiveConnection(connection)) {
         graph.addEdge(resolved, importer, specifier)
         edges.push({ importer, specifier, resolved })
-      } else {
-        inactiveEdges.push({ importer, specifier, resolved })
       }
     }
   }
 
-  return { graph, edges, inactiveEdges }
+  return { graph, edges }
 }
 
 function isActiveConnection(connection: RspackModuleGraphConnection): boolean {
@@ -1420,23 +1398,14 @@ export function registerImportProtection(
         const importLocCache = new ImportLocCache()
         const markerKindCache = new Map<string, 'server' | 'client' | null>()
         const graphStartedAt = perf ? performance.now() : 0
-        const { graph, edges, inactiveEdges } = buildCompilationGraph({
+        const { graph, edges } = buildCompilationGraph({
           compilation: context.compilation,
           modules: relevantModules,
         })
         if (perf) {
           perf.time('processAssets.graph.build', graphStartedAt)
           perf.count('processAssets.graph.edges', edges.length)
-          perf.count('processAssets.graph.inactiveEdges', inactiveEdges.length)
         }
-        const liveFileEdgeKeys = new Set(
-          edges
-            .filter((edge) => !!edge.specifier)
-            .map(
-              (edge) =>
-                `${normalizeFilePath(edge.importer)}::${edge.specifier!}::${normalizeFilePath(edge.resolved)}`,
-            ),
-        )
 
         for (const module of relevantModules) {
           const payload = getMockEdgePayloadFromFile(getModuleFile(module))
@@ -1557,67 +1526,6 @@ export function registerImportProtection(
             perf,
             info,
           })
-        }
-
-        if (config.command === 'build') {
-          const seenInactiveFileEdgeKeys = new Set<string>()
-          for (const edge of inactiveEdges) {
-            if (!edge.specifier) {
-              continue
-            }
-            if (!shouldCheckImporter(edge.importer)) {
-              continue
-            }
-            const liveEdgeKey = `${normalizeFilePath(edge.importer)}::${edge.specifier}::${normalizeFilePath(edge.resolved)}`
-            if (liveFileEdgeKeys.has(liveEdgeKey)) {
-              continue
-            }
-            if (seenInactiveFileEdgeKeys.has(liveEdgeKey)) {
-              continue
-            }
-            seenInactiveFileEdgeKeys.add(liveEdgeKey)
-
-            const transformResult = provider.getTransformResult(edge.importer)
-            if (
-              !hasOriginalUnsafeUsage(transformResult, edge.specifier, envType)
-            ) {
-              continue
-            }
-
-            const relativeResolved = getImportProtectionRelativePath(
-              config.root,
-              edge.resolved,
-            )
-            const fileMatch = checkFileDenial(relativeResolved, matchers)
-            if (!fileMatch) {
-              continue
-            }
-
-            const info = await buildViolationInfo({
-              config,
-              provider,
-              graph,
-              importLocCache,
-              perf,
-              envName,
-              envType,
-              importer: edge.importer,
-              source: edge.specifier,
-              resolved: edge.resolved,
-              type: 'file',
-              pattern: fileMatch.pattern,
-              preferOriginalCode: true,
-            })
-
-            await reportViolation({
-              config,
-              envState,
-              compilation: context.compilation,
-              rspack: context.compiler.rspack,
-              perf,
-              info,
-            })
-          }
         }
       } finally {
         if (perf) {

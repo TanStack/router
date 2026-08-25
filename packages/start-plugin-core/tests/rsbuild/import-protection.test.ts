@@ -155,4 +155,99 @@ describe('registerImportProtection transform', () => {
 
     expect(readFile).not.toHaveBeenCalled()
   })
+
+  test('does not report inactive compilation connections', async () => {
+    let beforeBuild: (() => void) | undefined
+    let processAssetsHandler: ((context: any) => Promise<void>) | undefined
+    const onViolation = vi.fn(() => false)
+
+    const api = {
+      context: { action: 'build' },
+      onBeforeBuild(handler: () => void) {
+        beforeBuild = handler
+      },
+      onBeforeDevCompile() {},
+      modifyRspackConfig() {},
+      transform() {},
+      processAssets(
+        _options: unknown,
+        handler: (context: any) => Promise<void>,
+      ) {
+        processAssetsHandler = handler
+      },
+    }
+
+    registerImportProtection(api as any, {
+      framework: 'react',
+      environments: [{ name: 'client', type: 'client' }],
+      getConfig: () =>
+        ({
+          startConfig: {
+            importProtection: { onViolation },
+          },
+          resolvedStartConfig: {
+            root: '/app',
+            srcDirectory: '/app/src',
+          },
+        }) as any,
+    })
+
+    if (!beforeBuild || !processAssetsHandler) {
+      throw new Error('Expected import-protection hooks to be registered')
+    }
+    beforeBuild()
+
+    const createModule = (
+      resource: string,
+      code: string,
+      originalCode: string = code,
+    ) => ({
+      nameForCondition: () => resource,
+      identifier: () => resource,
+      originalSource: () => ({
+        sourceAndMap: () => ({
+          source: code,
+          map: {
+            version: 3,
+            names: [],
+            sources: [resource],
+            sourcesContent: [originalCode],
+            mappings: '',
+          },
+        }),
+      }),
+    })
+    const importer = createModule(
+      '/app/src/entry.ts',
+      `export function leak() { return undefined }`,
+      `import { secret } from './secret.server'\nexport function leak() { return secret }`,
+    )
+    const target = createModule(
+      '/app/src/secret.server.ts',
+      `export const secret = 'secret'`,
+    )
+    const inactiveConnection = {
+      module: target,
+      dependency: { request: './secret.server' },
+      getActiveState: () => false,
+    }
+
+    await processAssetsHandler({
+      environment: { name: 'client' },
+      compilation: {
+        modules: new Set([importer, target]),
+        entries: new Map(),
+        moduleGraph: {
+          getOutgoingConnectionsInOrder(module: unknown) {
+            return module === importer ? [inactiveConnection] : []
+          },
+        },
+        errors: [],
+        warnings: [],
+      },
+      compiler: { rspack: {} },
+    })
+
+    expect(onViolation).not.toHaveBeenCalled()
+  })
 })
