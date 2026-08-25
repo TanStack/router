@@ -141,6 +141,7 @@ A great pattern with client side data caches (TanStack Query, etc.) is to prefet
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId/deep')({
+  // (ctx: LoaderFnContext) => Promise<PostQueryData>
   loader: ({ context: { queryClient }, params: { postId } }) =>
     queryClient.query({ ...postQueryOptions(postId), staleTime: 'static' }),
   component: PostDeepComponent,
@@ -154,10 +155,11 @@ function PostDeepComponent() {
 }
 ```
 
-This may look fine and for small route trees and you may not notice any TS performance issues. However in this case TS has to infer the loader's return type, despite it never being used in your route. If the loader data is a complex type with many routes that prefetch in this manner, it can slow down editor performance. In this case, the change is quite simple and let typescript infer Promise<void>.
+This may look fine and for small route trees and you may not notice any TS performance issues. However in this case TS has to infer the loader's return type, despite it never being used in your route. If the loader data is a complex type with many routes that prefetch in this manner, it can slow down editor performance. In this case, the change is quite simple and let typescript infer `Promise<void>`.
 
 ```tsx
 export const Route = createFileRoute('/posts/$postId/deep')({
+  // (ctx: LoaderFnContext) => Promise<void>
   loader: async ({ context: { queryClient }, params: { postId } }) => {
     await queryClient.query({
       ...postQueryOptions(postId),
