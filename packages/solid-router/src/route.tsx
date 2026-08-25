@@ -243,48 +243,17 @@ export class Route<
     >,
   ) {
     super(options)
+    initSolidRouteApi(this)
   }
 
-  useMatch: UseMatchRoute<TId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
-  }
-
-  useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useRouteContext({ ...(opts as any), from: this.id }) as any
-  }
-
-  useSearch: UseSearchRoute<TId> = (opts) => {
-    return useSearch({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
-  }
-
-  useParams: UseParamsRoute<TId> = (opts) => {
-    return useParams({
-      select: opts?.select,
-      from: this.id,
-    } as any) as any
-  }
-
-  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
-    return useLoaderDeps({ ...opts, from: this.id } as any)
-  }
-
-  useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
-    return useLoaderData({ ...opts, from: this.id } as any)
-  }
-
-  useNavigate = (): UseNavigateResult<TFullPath> => {
-    return useNavigate({ from: this.fullPath })
-  }
-
-  Link: LinkComponentRoute<TFullPath> = ((props) => {
-    return <Link from={this.fullPath} {...props} />
-  }) as LinkComponentRoute<TFullPath>
+  declare useMatch: UseMatchRoute<TId>
+  declare useRouteContext: UseRouteContextRoute<TId>
+  declare useSearch: UseSearchRoute<TId>
+  declare useParams: UseParamsRoute<TId>
+  declare useLoaderDeps: UseLoaderDepsRoute<TId>
+  declare useLoaderData: UseLoaderDataRoute<TId>
+  declare useNavigate: () => UseNavigateResult<TFullPath>
+  declare Link: LinkComponentRoute<TFullPath>
 }
 
 export function createRoute<
@@ -481,48 +450,53 @@ export class RootRoute<
     >,
   ) {
     super(options)
+    initSolidRouteApi(this)
   }
 
-  useMatch: UseMatchRoute<RootRouteId> = (opts) => {
+  declare useMatch: UseMatchRoute<RootRouteId>
+  declare useRouteContext: UseRouteContextRoute<RootRouteId>
+  declare useSearch: UseSearchRoute<RootRouteId>
+  declare useParams: UseParamsRoute<RootRouteId>
+  declare useLoaderDeps: UseLoaderDepsRoute<RootRouteId>
+  declare useLoaderData: UseLoaderDataRoute<RootRouteId>
+  declare useNavigate: () => UseNavigateResult<'/'>
+  declare Link: LinkComponentRoute<'/'>
+}
+
+function initSolidRouteApi(route: AnyRoute) {
+  route.useMatch = (opts) => {
     return useMatch({
       select: opts?.select,
-      from: this.id,
+      from: route.id,
     } as any) as any
   }
-
-  useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useRouteContext({ ...(opts as any), from: this.id })
+  route.useRouteContext = (opts) => {
+    return useRouteContext({ ...(opts as any), from: route.id }) as any
   }
-
-  useSearch: UseSearchRoute<RootRouteId> = (opts) => {
+  route.useSearch = (opts) => {
     return useSearch({
       select: opts?.select,
-      from: this.id,
+      from: route.id,
     } as any) as any
   }
-
-  useParams: UseParamsRoute<RootRouteId> = (opts) => {
+  route.useParams = (opts) => {
     return useParams({
       select: opts?.select,
-      from: this.id,
+      from: route.id,
     } as any) as any
   }
-
-  useLoaderDeps: UseLoaderDepsRoute<RootRouteId> = (opts) => {
-    return useLoaderDeps({ ...opts, from: this.id } as any)
+  route.useLoaderDeps = (opts) => {
+    return useLoaderDeps({ ...opts, from: route.id } as any)
   }
-
-  useLoaderData: UseLoaderDataRoute<RootRouteId> = (opts) => {
-    return useLoaderData({ ...opts, from: this.id } as any)
+  route.useLoaderData = (opts) => {
+    return useLoaderData({ ...opts, from: route.id } as any)
   }
-
-  useNavigate = (): UseNavigateResult<'/'> => {
-    return useNavigate({ from: this.fullPath })
+  route.useNavigate = () => {
+    return useNavigate({ from: route.fullPath })
   }
-
-  Link: LinkComponentRoute<'/'> = ((props) => {
-    return <Link from={this.fullPath} {...(props as any)} />
-  }) as LinkComponentRoute<'/'>
+  route.Link = ((props) => {
+    return <Link from={route.fullPath} {...(props as any)} />
+  }) as LinkComponentRoute<string>
 }
 
 export function createRouteMask<

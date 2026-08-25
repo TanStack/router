@@ -258,55 +258,17 @@ export class Route<
     >,
   ) {
     super(options)
+    initReactRouteApi(this)
   }
 
-  useMatch: UseMatchRoute<TId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-      structuralSharing: opts?.structuralSharing,
-    } as any) as any
-  }
-
-  useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
-    return useRouteContext({ ...(opts as any), from: this.id })
-  }
-
-  useSearch: UseSearchRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useSearch({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.id,
-    } as any) as any
-  }
-
-  useParams: UseParamsRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useParams({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.id,
-    } as any) as any
-  }
-
-  useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
-    return useLoaderDeps({ ...opts, from: this.id } as any)
-  }
-
-  useLoaderData: UseLoaderDataRoute<TId> = (opts) => {
-    return useLoaderData({ ...opts, from: this.id } as any)
-  }
-
-  useNavigate = (): UseNavigateResult<TFullPath> => {
-    return useNavigate({ from: this.fullPath })
-  }
-
-  Link: LinkComponentRoute<TFullPath> = React.forwardRef(
-    (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      return <Link ref={ref} from={this.fullPath as never} {...props} />
-    },
-  ) as unknown as LinkComponentRoute<TFullPath>
+  declare useMatch: UseMatchRoute<TId>
+  declare useRouteContext: UseRouteContextRoute<TId>
+  declare useSearch: UseSearchRoute<TId>
+  declare useParams: UseParamsRoute<TId>
+  declare useLoaderDeps: UseLoaderDepsRoute<TId>
+  declare useLoaderData: UseLoaderDataRoute<TId>
+  declare useNavigate: () => UseNavigateResult<TFullPath>
+  declare Link: LinkComponentRoute<TFullPath>
 }
 
 /**
@@ -529,56 +491,63 @@ export class RootRoute<
     >,
   ) {
     super(options)
+    initReactRouteApi(this)
   }
 
-  useMatch: UseMatchRoute<RootRouteId> = (opts) => {
+  declare useMatch: UseMatchRoute<RootRouteId>
+  declare useRouteContext: UseRouteContextRoute<RootRouteId>
+  declare useSearch: UseSearchRoute<RootRouteId>
+  declare useParams: UseParamsRoute<RootRouteId>
+  declare useLoaderDeps: UseLoaderDepsRoute<RootRouteId>
+  declare useLoaderData: UseLoaderDataRoute<RootRouteId>
+  declare useNavigate: () => UseNavigateResult<'/'>
+  declare Link: LinkComponentRoute<'/'>
+}
+
+/* eslint-disable react-hooks/rules-of-hooks -- These route fields are custom hooks assigned during construction. */
+function initReactRouteApi(route: AnyRoute) {
+  route.useMatch = (opts) => {
     return useMatch({
       select: opts?.select,
-      from: this.id,
+      from: route.id,
       structuralSharing: opts?.structuralSharing,
     } as any) as any
   }
-
-  useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
-    return useRouteContext({ ...(opts as any), from: this.id })
+  route.useRouteContext = (opts) => {
+    return useRouteContext({ ...(opts as any), from: route.id })
   }
-
-  useSearch: UseSearchRoute<RootRouteId> = (opts) => {
+  route.useSearch = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useSearch({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
-      from: this.id,
+      from: route.id,
     } as any) as any
   }
-
-  useParams: UseParamsRoute<RootRouteId> = (opts) => {
+  route.useParams = (opts) => {
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
     return useParams({
       select: opts?.select,
       structuralSharing: opts?.structuralSharing,
-      from: this.id,
+      from: route.id,
     } as any) as any
   }
-
-  useLoaderDeps: UseLoaderDepsRoute<RootRouteId> = (opts) => {
-    return useLoaderDeps({ ...opts, from: this.id } as any)
+  route.useLoaderDeps = (opts) => {
+    return useLoaderDeps({ ...opts, from: route.id } as any)
   }
-
-  useLoaderData: UseLoaderDataRoute<RootRouteId> = (opts) => {
-    return useLoaderData({ ...opts, from: this.id } as any)
+  route.useLoaderData = (opts) => {
+    return useLoaderData({ ...opts, from: route.id } as any)
   }
-
-  useNavigate = (): UseNavigateResult<'/'> => {
-    return useNavigate({ from: this.fullPath })
+  route.useNavigate = () => {
+    return useNavigate({ from: route.fullPath })
   }
-
-  Link: LinkComponentRoute<'/'> = React.forwardRef(
+  route.Link = React.forwardRef(
     (props, ref: React.ForwardedRef<HTMLAnchorElement>) => {
-      return <Link ref={ref} from={this.fullPath} {...props} />
+      return <Link ref={ref} from={route.fullPath as never} {...props} />
     },
-  ) as unknown as LinkComponentRoute<'/'>
+  ) as unknown as LinkComponentRoute<string>
 }
+/* eslint-enable react-hooks/rules-of-hooks */
 
 /**
  * Creates a root Route instance used to build your route tree.

@@ -74,6 +74,15 @@ describe('createRoute has the same hooks as getRouteApi', () => {
       expect(route[hookName as keyof typeof route]).toBeDefined()
     },
   )
+
+  it.each([
+    ['route', route],
+    ['root route', createRootRoute()],
+  ])('defines Solid APIs as own properties on the %s', (_, instance) => {
+    for (const key of [...hookNames, 'Link']) {
+      expect(Object.prototype.hasOwnProperty.call(instance, key)).toBe(true)
+    }
+  })
 })
 
 /* disabled until HMR bug is fixed 
