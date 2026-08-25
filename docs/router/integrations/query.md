@@ -166,7 +166,11 @@ const postsQuery = queryOptions({
 export const Route = createFileRoute('/posts')({
   // Ensure the data is in the cache before render
   loader: ({ context }) =>
-    context.queryClient.query({ ...postsQuery, staleTime: 'static' }),
+    context.queryClient.query({ 
+      ...postsQuery, 
+      // returns data from cache immediately, otherwise executes a fetch
+      staleTime: 'static' 
+    }),
   component: PostsPage,
 })
 
@@ -204,6 +208,9 @@ export const Route = createFileRoute('/user/$id')({
   },
 })
 ```
+
+> [!NOTE]
+> Previous versions of this guide used `queryClient.ensureQueryData` and `queryClient.prefetchQuery`. These methods are now deprecated in TanStack Query in favor of `queryClient.query`. See the TanStack Query [v5 migration guide](https://tanstack.com/query/latest/docs/framework/react/guides/migrating-to-v5#imperative-queryclient-methods) for more details.
 
 <!-- ::end:framework -->
 
