@@ -19,6 +19,7 @@ import { Route as MultipartRouteImport } from './routes/multipart'
 import { Route as RawResponseRouteImport } from './routes/raw-response'
 import { Route as ReturnNullRouteImport } from './routes/return-null'
 import { Route as SerializeFormDataRouteImport } from './routes/serialize-form-data'
+import { Route as SingleFlightRouteImport } from './routes/single-flight'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as SubmitPostFormdataRouteImport } from './routes/submit-post-formdata'
 import { Route as AbortSignalIndexRouteImport } from './routes/abort-signal/index'
@@ -88,6 +89,11 @@ const ReturnNullRoute = ReturnNullRouteImport.update({
 const SerializeFormDataRoute = SerializeFormDataRouteImport.update({
   id: '/serialize-form-data',
   path: '/serialize-form-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SingleFlightRoute = SingleFlightRouteImport.update({
+  id: '/single-flight',
+  path: '/single-flight',
   getParentRoute: () => rootRouteImport,
 } as any)
 const StatusRoute = StatusRouteImport.update({
@@ -205,6 +211,7 @@ export interface FileRoutesByFullPath {
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
+  '/single-flight': typeof SingleFlightRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
@@ -237,6 +244,7 @@ export interface FileRoutesByTo {
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
+  '/single-flight': typeof SingleFlightRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
   '/serialize-form-data': typeof SerializeFormDataRoute
+  '/single-flight': typeof SingleFlightRoute
   '/status': typeof StatusRoute
   '/submit-post-formdata': typeof SubmitPostFormdataRoute
   '/abort-signal/$method': typeof AbortSignalMethodRoute
@@ -304,6 +313,7 @@ export interface FileRouteTypes {
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
+    | '/single-flight'
     | '/status'
     | '/submit-post-formdata'
     | '/abort-signal/$method'
@@ -336,6 +346,7 @@ export interface FileRouteTypes {
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
+    | '/single-flight'
     | '/status'
     | '/submit-post-formdata'
     | '/abort-signal/$method'
@@ -368,6 +379,7 @@ export interface FileRouteTypes {
     | '/raw-response'
     | '/return-null'
     | '/serialize-form-data'
+    | '/single-flight'
     | '/status'
     | '/submit-post-formdata'
     | '/abort-signal/$method'
@@ -401,6 +413,7 @@ export interface RootRouteChildren {
   RawResponseRoute: typeof RawResponseRoute
   ReturnNullRoute: typeof ReturnNullRoute
   SerializeFormDataRoute: typeof SerializeFormDataRoute
+  SingleFlightRoute: typeof SingleFlightRoute
   StatusRoute: typeof StatusRoute
   SubmitPostFormdataRoute: typeof SubmitPostFormdataRoute
   AbortSignalMethodRoute: typeof AbortSignalMethodRoute
@@ -493,6 +506,13 @@ declare module '@tanstack/solid-router' {
       path: '/serialize-form-data'
       fullPath: '/serialize-form-data'
       preLoaderRoute: typeof SerializeFormDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/single-flight': {
+      id: '/single-flight'
+      path: '/single-flight'
+      fullPath: '/single-flight'
+      preLoaderRoute: typeof SingleFlightRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/status': {
@@ -649,6 +669,7 @@ const rootRouteChildren: RootRouteChildren = {
   RawResponseRoute: RawResponseRoute,
   ReturnNullRoute: ReturnNullRoute,
   SerializeFormDataRoute: SerializeFormDataRoute,
+  SingleFlightRoute: SingleFlightRoute,
   StatusRoute: StatusRoute,
   SubmitPostFormdataRoute: SubmitPostFormdataRoute,
   AbortSignalMethodRoute: AbortSignalMethodRoute,

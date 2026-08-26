@@ -25,6 +25,11 @@ type FnUrls = {
   post: string
 }
 
+export type GlobalMiddlewareBenchAdapter = {
+  responseHeader: string
+  buildPostRequest: (url: string, body: string, index: number) => Request
+}
+
 export interface GlobalMiddlewareBenchContext {
   urls: FnUrls
   bodies: Array<string>
@@ -54,6 +59,11 @@ const postHeaders = {
   accept: acceptHeader,
   'content-type': 'application/json',
 } satisfies HeadersInit
+const tanstackGlobalMiddlewareBenchAdapter: GlobalMiddlewareBenchAdapter = {
+  responseHeader: xTssSerialized,
+  buildPostRequest: buildTanStackPostRequest,
+}
+let activeGlobalMiddlewareBenchAdapter = tanstackGlobalMiddlewareBenchAdapter
 const documentLoopTotalRequests = 64
 const serverFnLoopTotalRequests = 128
 const serverRouteLoopTotalRequests = 256
@@ -130,16 +140,26 @@ function buildServerRouteRequest(random: () => number, index: number) {
 }
 
 function buildPostRequest(urls: FnUrls, bodies: Array<string>, index: number) {
-  return new Request(`${origin}${urls.post}`, {
+  return activeGlobalMiddlewareBenchAdapter.buildPostRequest(
+    urls.post,
+    bodies[index % bodies.length]!,
+    index,
+  )
+}
+
+function buildTanStackPostRequest(url: string, body: string) {
+  return new Request(`${origin}${url}`, {
     method: 'POST',
     headers: postHeaders,
-    body: bodies[index % bodies.length],
+    body,
   })
 }
 
 export async function setupGlobalMiddlewareBench(
   handler: StartRequestHandler,
+  adapter: GlobalMiddlewareBenchAdapter = tanstackGlobalMiddlewareBenchAdapter,
 ): Promise<GlobalMiddlewareBenchContext> {
+  activeGlobalMiddlewareBenchAdapter = adapter
   const urls = await discoverUrls(handler)
   const payloads = createPayloads()
   const bodies = await createBodies(payloads)
@@ -240,8 +260,12 @@ async function assertServerFnResponse(
     )
   }
 
-  if (!response.headers.get(xTssSerialized)) {
-    throw new Error(`Server function response missing ${xTssSerialized} header`)
+  if (
+    !response.headers.get(activeGlobalMiddlewareBenchAdapter.responseHeader)
+  ) {
+    throw new Error(
+      `Server function response missing ${activeGlobalMiddlewareBenchAdapter.responseHeader} header`,
+    )
   }
 
   if (!text.includes(context.expectedFnMarker)) {

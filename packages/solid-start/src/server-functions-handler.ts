@@ -1,0 +1,236 @@
+import {
+  FUNCTION_HEADER,
+  configureServerFunctionsServer,
+  createNoJSHandler,
+  handleServerFunctionRequest,
+} from '@solidjs/web/server-functions/server'
+import { redirect } from '@tanstack/solid-router'
+import { provideRequestEvent } from '@solidjs/web/storage'
+import {
+  getStartContext,
+  runWithStartContext,
+} from '@tanstack/start-storage-context'
+import { getSolidStartServerFunctionCodec } from './solid-rpc-codec'
+import { collectSolidStartFlightData } from './solid-rpc-flight-server'
+import type { HandleServerFunctionOptions } from '@solidjs/web/server-functions/server'
+import type { StartStorageContext } from '@tanstack/start-storage-context'
+import { getServerFnById } from '#tanstack-start-server-fn-resolver'
+
+configureServerFunctionsServer({
+  provideEvent: provideRequestEvent,
+})
+
+const solidNoJSHandler = createNoJSHandler()
+
+export interface HandleSolidServerFunctionRequestOptions extends HandleServerFunctionOptions {
+  startContext?: Partial<StartStorageContext>
+}
+
+export async function handleSolidServerFunctionRequest(
+  request: Request,
+  options: HandleSolidServerFunctionRequestOptions = {},
+) {
+  const serverFnId = getSolidServerFunctionId(request)
+
+  if (!serverFnId) {
+    throw new Error('Unable to resolve Solid server function id from request')
+  }
+
+  await getServerFnById(serverFnId, { origin: 'client' })
+
+  const requestWithId = withSolidServerFunctionId(request, serverFnId)
+  const { startContext, ...solidOptions } = options
+  const transformResult = solidOptions.transformResult
+  const handleNoJS = solidOptions.handleNoJS
+  const collectFlightData = solidOptions.collectFlightData
+  const existingStartContext = getStartContext({ throwIfNotFound: false })
+  const handlerOptions: HandleServerFunctionOptions = {
+    ...solidOptions,
+    collectFlightData: collectFlightData ?? collectSolidStartFlightData,
+    transformResult: async (event, result, context) => {
+      const transformed = transformResult
+        ? await transformResult(event, result, context)
+        : result
+      return adaptTanStackResult(transformed)
+    },
+    handleNoJS: async (result, currentRequest, args, thrown) => {
+      if (handleNoJS) {
+        return await handleNoJS(result, currentRequest, args, thrown)
+      }
+      return await handleSolidStartNoJS(result, currentRequest, args, thrown)
+    },
+  }
+  const handleRequest = () =>
+    handleServerFunctionRequest(requestWithId, {
+      codec: getSolidStartServerFunctionCodec(),
+      ...handlerOptions,
+    })
+
+  if (existingStartContext) {
+    return await handleRequest()
+  }
+
+  return await runWithStartContext(
+    {
+      getRouter: unavailableRouter,
+      request,
+      startOptions: {},
+      contextAfterGlobalMiddlewares: {},
+      executedRequestMiddlewares: new Set(),
+      handlerType: 'serverFn',
+      ...startContext,
+    },
+    handleRequest,
+  )
+}
+
+function getSolidServerFunctionId(request: Request) {
+  const headerId = request.headers.get(FUNCTION_HEADER)
+  if (headerId) {
+    return headerId
+  }
+
+  const url = new URL(request.url)
+  const queryId = url.searchParams.get('id')
+  if (queryId) {
+    return queryId
+  }
+
+  const serverFnBase = process.env.TSS_SERVER_FN_BASE
+  if (serverFnBase && url.pathname.startsWith(serverFnBase)) {
+    return url.pathname.slice(serverFnBase.length).split('/')[0]
+  }
+
+  return undefined
+}
+
+function withSolidServerFunctionId(request: Request, serverFnId: string) {
+  if (request.headers.has(FUNCTION_HEADER)) {
+    return request
+  }
+
+  try {
+    request.headers.set(FUNCTION_HEADER, serverFnId)
+    return request
+  } catch {
+    const clonedRequest = request.clone()
+    clonedRequest.headers.set(FUNCTION_HEADER, serverFnId)
+    return clonedRequest
+  }
+}
+
+function serializeTanStackRedirect(result: unknown) {
+  if (!isObject(result) || !isTanStackRedirect(result.error)) {
+    return result
+  }
+
+  const redirectResponse = result.error
+  return {
+    ...result,
+    error: {
+      ...redirectResponse.options,
+      headers: Object.fromEntries(redirectResponse.headers),
+      isSerializedRedirect: true,
+    },
+  }
+}
+
+function adaptTanStackResult(result: unknown) {
+  const serialized = serializeTanStackRedirect(result)
+  if (!isTanStackResultEnvelope(serialized)) {
+    return serialized
+  }
+
+  return Object.fromEntries(
+    Object.entries(serialized).filter(([, value]) => value !== undefined),
+  )
+}
+
+async function handleSolidStartNoJS(
+  result: unknown,
+  request: Request,
+  args: Array<unknown>,
+  thrown?: boolean,
+) {
+  if (isObject(result) && isSerializedRedirect(result.error)) {
+    const startContext = getStartContext({ throwIfNotFound: false })
+    if (startContext) {
+      const router = await startContext.getRouter()
+      return router.resolveRedirect(redirect(result.error as never))
+    }
+  }
+
+  if (isObject(result)) {
+    const unwrapped = result.result ?? result.error
+    if (isResponseLike(unwrapped)) {
+      return normalizeResponse(unwrapped)
+    }
+    if (typeof unwrapped === 'string') {
+      return new Response(unwrapped)
+    }
+    if (unwrapped !== undefined) {
+      return Response.json(unwrapped)
+    }
+  }
+
+  return solidNoJSHandler(result, request, args, thrown)
+}
+
+function isTanStackRedirect(
+  value: unknown,
+): value is Response & { options: Record<string, unknown> } {
+  return isResponseLike(value) && isObject(value.options)
+}
+
+function isTanStackResultEnvelope(
+  value: unknown,
+): value is Record<string, unknown> {
+  return (
+    isObject(value) &&
+    ('result' in value || 'error' in value || 'context' in value)
+  )
+}
+
+interface ResponseLike {
+  body: ReadableStream<Uint8Array> | null
+  headers: Headers
+  options?: unknown
+  status: number
+  statusText: string
+}
+
+function isResponseLike(value: unknown): value is ResponseLike {
+  return (
+    isObject(value) &&
+    typeof value.status === 'number' &&
+    isObject(value.headers) &&
+    typeof value.headers.forEach === 'function' &&
+    ('body' in value || typeof value.text === 'function')
+  )
+}
+
+function normalizeResponse(response: ResponseLike) {
+  if (response instanceof Response) {
+    return response
+  }
+
+  return new Response(response.body, {
+    headers: response.headers,
+    status: response.status,
+    statusText: response.statusText,
+  })
+}
+
+function isSerializedRedirect(value: unknown) {
+  return isObject(value) && value.isSerializedRedirect === true
+}
+
+function isObject(value: unknown): value is Record<string, any> {
+  return !!value && typeof value === 'object'
+}
+
+function unavailableRouter(): never {
+  throw new Error(
+    'Router context is not available in handleSolidServerFunctionRequest. Use it inside createStartHandler or pass startContext.getRouter.',
+  )
+}

@@ -14,10 +14,16 @@ type FnUrls = {
   post: string
 }
 
-type PayloadFixture = {
+export type PayloadFixture = {
   id: string
   body: string
   query: string
+}
+
+export type ServerFnChurnAdapter = {
+  buildGetRequest: (url: string, fixture: PayloadFixture) => Request
+  buildPostRequest: (url: string, fixture: PayloadFixture) => Request
+  validateResponse: (response: Response, request: Request) => void
 }
 
 type SerovalNode =
@@ -162,6 +168,12 @@ function validateServerFnResponse(response: Response, request: Request) {
   }
 }
 
+const tanstackServerFnChurnAdapter: ServerFnChurnAdapter = {
+  buildGetRequest,
+  buildPostRequest,
+  validateResponse: validateServerFnResponse,
+}
+
 function validateEchoedBody(
   body: string,
   request: Request,
@@ -181,27 +193,29 @@ function validateEchoedBody(
 async function assertServerFnChurnSanity(
   handler: StartRequestHandler,
   urls: FnUrls,
+  adapter: ServerFnChurnAdapter,
 ) {
   const getFixture = getFixtures[0]!
-  const getRequest = buildGetRequest(urls.get, getFixture)
+  const getRequest = adapter.buildGetRequest(urls.get, getFixture)
   const getResponse = await handler.fetch(getRequest)
   const getBody = await getResponse.text()
 
-  validateServerFnResponse(getResponse, getRequest)
+  adapter.validateResponse(getResponse, getRequest)
   validateEchoedBody(getBody, getRequest, getFixture.id)
 
   const postFixture = postFixtures[0]!
-  const postRequest = buildPostRequest(urls.post, postFixture)
+  const postRequest = adapter.buildPostRequest(urls.post, postFixture)
   const postResponse = await handler.fetch(postRequest)
   const postBody = await postResponse.text()
 
-  validateServerFnResponse(postResponse, postRequest)
+  adapter.validateResponse(postResponse, postRequest)
   validateEchoedBody(postBody, postRequest, postFixture.id)
 }
 
 export async function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
+  adapter: ServerFnChurnAdapter = tanstackServerFnChurnAdapter,
 ) {
   const urls = await discoverUrls(handler)
   const run = () =>
@@ -214,17 +228,17 @@ export async function createWorkloadGroup(
 
         if (index % 2 === 0) {
           const fixture = getFixtures[fixtureIndex]!
-          return buildGetRequest(urls.get, fixture)
+          return adapter.buildGetRequest(urls.get, fixture)
         } else {
           const fixture = postFixtures[fixtureIndex]!
-          return buildPostRequest(urls.post, fixture)
+          return adapter.buildPostRequest(urls.post, fixture)
         }
       },
-      validateResponse: validateServerFnResponse,
+      validateResponse: adapter.validateResponse,
     })
 
   return {
-    sanity: () => assertServerFnChurnSanity(handler, urls),
+    sanity: () => assertServerFnChurnSanity(handler, urls, adapter),
     workloads: [
       {
         name: `mem server server-fn-churn (${framework})`,
