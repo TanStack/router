@@ -6,9 +6,11 @@ import {
 import { TSS_SERVER_FUNCTION } from '@tanstack/start-client-core'
 import { encodeSolidStartPayload } from './solid-rpc-payload'
 import { getSolidStartServerFunctionCodec } from './solid-rpc-codec'
+import { subscribeSolidStartFlightData } from './solid-rpc-flight-client'
 import type { ClientFnMeta } from '@tanstack/start-client-core'
 
 export function createClientRpc(functionId: string) {
+  subscribeSolidStartFlightData()
   const endpoint = process.env.TSS_SERVER_FN_BASE
   const url = endpoint + functionId
   const serverFnMeta: ClientFnMeta = { id: functionId }

@@ -11,6 +11,7 @@ import {
   runWithStartContext,
 } from '@tanstack/start-storage-context'
 import { getSolidStartServerFunctionCodec } from './solid-rpc-codec'
+import { collectSolidStartFlightData } from './solid-rpc-flight-server'
 import type { HandleServerFunctionOptions } from '@solidjs/web/server-functions/server'
 import type { StartStorageContext } from '@tanstack/start-storage-context'
 import { getServerFnById } from '#tanstack-start-server-fn-resolver'
@@ -41,9 +42,11 @@ export async function handleSolidServerFunctionRequest(
   const { startContext, ...solidOptions } = options
   const transformResult = solidOptions.transformResult
   const handleNoJS = solidOptions.handleNoJS
+  const collectFlightData = solidOptions.collectFlightData
   const existingStartContext = getStartContext({ throwIfNotFound: false })
   const handlerOptions: HandleServerFunctionOptions = {
     ...solidOptions,
+    collectFlightData: collectFlightData ?? collectSolidStartFlightData,
     transformResult: async (event, result, context) => {
       const transformed = transformResult
         ? await transformResult(event, result, context)
