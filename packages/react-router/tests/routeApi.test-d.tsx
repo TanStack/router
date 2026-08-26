@@ -60,6 +60,12 @@ describe('getRouteApi', () => {
     expectTypeOf(invoiceRouteApi.useParams<DefaultRouter>()).toEqualTypeOf<{
       invoiceId: string
     }>()
+
+    expectTypeOf(
+      invoiceRouteApi.useParams<DefaultRouter, unknown, boolean, false>({
+        shouldThrow: false,
+      }),
+    ).toEqualTypeOf<{ invoiceId: string } | undefined>()
   })
   test('useContext', () => {
     expectTypeOf(
@@ -72,6 +78,12 @@ describe('getRouteApi', () => {
     expectTypeOf(invoiceRouteApi.useSearch<DefaultRouter>()).toEqualTypeOf<{
       page: number
     }>()
+
+    expectTypeOf(
+      invoiceRouteApi.useSearch<DefaultRouter, unknown, boolean, false>({
+        shouldThrow: false,
+      }),
+    ).toEqualTypeOf<{ page: number } | undefined>()
   })
   test('useLoaderData', () => {
     expectTypeOf(invoiceRouteApi.useLoaderData<DefaultRouter>()).toEqualTypeOf<{
