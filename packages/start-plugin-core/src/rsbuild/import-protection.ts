@@ -276,7 +276,7 @@ interface ModuleGraphEdge {
   module: RspackModule
 }
 
-type CompilationViolationCandidate =
+type CompilationViolation =
   | {
       type: 'specifier'
       payload: MockEdgePayload
@@ -817,14 +817,11 @@ interface MarkerCheckTarget {
   module: RspackModule
 }
 
-type FileViolationCandidate = Extract<
-  CompilationViolationCandidate,
-  { type: 'file' }
->
+type FileViolation = Extract<CompilationViolation, { type: 'file' }>
 
 interface CompilationViolationScanner {
   visitNode: (node: RspackModuleGraphNode) => void
-  finish: () => Array<CompilationViolationCandidate>
+  finish: () => Array<CompilationViolation>
 }
 
 function createCompilationViolationScanner(opts: {
@@ -833,8 +830,9 @@ function createCompilationViolationScanner(opts: {
   matchers: FileMatchers
   shouldCheckImporter: (importer: string) => boolean
 }): CompilationViolationScanner {
-  const mockCandidates: Array<CompilationViolationCandidate> = []
-  const regularChecks: Array<FileViolationCandidate | MarkerCheckTarget> = []
+  const specifierViolations: Array<CompilationViolation> = []
+  const fileViolations: Array<FileViolation> = []
+  const markerCheckTargets: Array<MarkerCheckTarget> = []
   const mockPayloadByModule = new WeakMap<
     RspackModule,
     MockEdgePayload | null
@@ -866,7 +864,7 @@ function createCompilationViolationScanner(opts: {
         if (shouldCheckImporter) {
           const payload = getMockPayload(imported.module)
           if (payload?.violation.importer === importer) {
-            mockCandidates.push({
+            specifierViolations.push({
               type: 'specifier',
               payload,
               edge: {
@@ -896,12 +894,12 @@ function createCompilationViolationScanner(opts: {
         }
 
         if (importProtectionCheck.type === 'marker') {
-          regularChecks.push({ module: imported.module })
+          markerCheckTargets.push({ module: imported.module })
           continue
         }
 
         if (shouldCheckImporter) {
-          regularChecks.push({
+          fileViolations.push({
             type: 'file',
             edge: {
               importer: node.module,
@@ -915,25 +913,20 @@ function createCompilationViolationScanner(opts: {
       }
     },
     finish() {
-      const candidates = [...mockCandidates]
+      const violations = [...specifierViolations, ...fileViolations]
       const checkedMarkerModules = new WeakSet<RspackModule>()
 
-      for (const check of regularChecks) {
-        if ('type' in check) {
-          candidates.push(check)
+      for (const target of markerCheckTargets) {
+        if (checkedMarkerModules.has(target.module)) {
+          continue
+        }
+        checkedMarkerModules.add(target.module)
+
+        if (!opts.shouldCheckImporter(getModuleResource(target.module))) {
           continue
         }
 
-        if (checkedMarkerModules.has(check.module)) {
-          continue
-        }
-        checkedMarkerModules.add(check.module)
-
-        if (!opts.shouldCheckImporter(getModuleResource(check.module))) {
-          continue
-        }
-
-        const marker = getMarkerForModule(check.module)
+        const marker = getMarkerForModule(target.module)
         const violatesMarker =
           (opts.envType === 'client' && marker?.kind === 'server') ||
           (opts.envType === 'server' && marker?.kind === 'client')
@@ -941,14 +934,14 @@ function createCompilationViolationScanner(opts: {
           continue
         }
 
-        candidates.push({
+        violations.push({
           type: 'marker',
-          importer: check.module,
+          importer: target.module,
           source: marker.source,
         })
       }
 
-      return candidates
+      return violations
     },
   }
 }
