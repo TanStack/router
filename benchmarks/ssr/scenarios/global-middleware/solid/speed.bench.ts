@@ -8,6 +8,7 @@ import {
   setupGlobalMiddlewareBench,
 } from '../bench'
 import type { StartRequestHandler } from '../bench'
+import { solidGlobalMiddlewareBenchAdapter } from './adapter'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 
@@ -17,7 +18,10 @@ const { default: handler } = (await import(
   default: StartRequestHandler
 }
 
-const context = await setupGlobalMiddlewareBench(handler)
+const context = await setupGlobalMiddlewareBench(
+  handler,
+  solidGlobalMiddlewareBenchAdapter,
+)
 
 await assertGlobalMiddlewareScenario(handler, context)
 

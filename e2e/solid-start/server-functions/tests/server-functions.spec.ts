@@ -174,11 +174,11 @@ test('POST server functions return single-flight loader data', async ({
   const initialReads = Number(
     await page.getByTestId('single-flight-reads').textContent(),
   )
-  const serverFunctionRequests: Array<{ method: string; url: string }> = []
+  const dataRequests: Array<{ method: string; url: string }> = []
 
   page.on('request', (request) => {
-    if (request.url().includes('/_serverFn/')) {
-      serverFunctionRequests.push({
+    if (['fetch', 'xhr'].includes(request.resourceType())) {
+      dataRequests.push({
         method: request.method(),
         url: request.url(),
       })
@@ -200,8 +200,12 @@ test('POST server functions return single-flight loader data', async ({
   await expect(page.getByTestId('single-flight-reads')).toHaveText(
     String(initialReads + 1),
   )
-  expect(serverFunctionRequests).toHaveLength(1)
-  expect(serverFunctionRequests[0]?.method).toBe('POST')
+  expect(dataRequests).toEqual([
+    {
+      method: 'POST',
+      url: expect.stringContaining('/_serverFn/'),
+    },
+  ])
 })
 
 test('Server function can correctly send and receive FormData', async ({

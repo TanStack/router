@@ -1,4 +1,9 @@
 import { provideRequestEvent } from '@solidjs/web/storage'
+import {
+  createNullProtoObject,
+  flattenMiddlewares,
+  safeObjectMerge,
+} from '@tanstack/start-client-core'
 import { createStartHandler } from '@tanstack/solid-start-server'
 import { createMemoryHistory } from '@tanstack/solid-router'
 import {
@@ -8,7 +13,17 @@ import {
 import { handleSolidServerFunctionRequest } from './server-functions-handler'
 import type { RequestHandler } from '@tanstack/solid-start-server'
 import type { AnyRouter, Register } from '@tanstack/solid-router'
-import type { AnyStartInstanceOptions } from '@tanstack/start-client-core'
+import type {
+  AnyRequestMiddleware,
+  AnyStartInstanceOptions,
+} from '@tanstack/start-client-core'
+
+type RequestMiddlewareResult = {
+  request: Request
+  pathname: string
+  context: Record<string, unknown>
+  response: Response
+}
 
 export function createSolidStartHandler<TRegister = Register>(
   cbOrOptions: Parameters<typeof createStartHandler>[0],
@@ -18,14 +33,25 @@ export function createSolidStartHandler<TRegister = Register>(
     async (request, requestOptions) => {
       const getRouter = createRequestRouterGetter(request)
       const startOptions = await getRequestStartOptions(getRouter)
-      const response = await handleSolidServerFunctionRequest(request, {
-        startContext: {
-          contextAfterGlobalMiddlewares: requestOptions?.context ?? {},
-          getRouter,
-          request,
-          startOptions,
+      const requestMiddlewares = flattenMiddlewares(
+        (startOptions.requestMiddleware ?? []) as Array<AnyRequestMiddleware>,
+      )
+      const response = await executeRequestMiddleware(
+        request,
+        requestMiddlewares,
+        requestOptions?.context,
+        async (context) => {
+          return await handleSolidServerFunctionRequest(request, {
+            startContext: {
+              contextAfterGlobalMiddlewares: context,
+              executedRequestMiddlewares: new Set(requestMiddlewares),
+              getRouter,
+              request,
+              startOptions,
+            },
+          })
         },
-      })
+      )
       const startResponse = getResponse()
       const status = startResponse.status || 200
       const statusText = startResponse.statusText || ''
@@ -57,6 +83,75 @@ export function createSolidStartHandler<TRegister = Register>(
       return await (startHandler as any)(request, requestOptions)
     })
   }) as RequestHandler<TRegister>
+}
+
+async function executeRequestMiddleware(
+  request: Request,
+  middlewares: Array<AnyRequestMiddleware>,
+  initialContext: object | undefined,
+  handler: (context: Record<string, unknown>) => Promise<Response>,
+) {
+  const pathname = new URL(request.url).pathname
+
+  const dispatch = async (
+    index: number,
+    context: Record<string, unknown>,
+  ): Promise<RequestMiddlewareResult> => {
+    request.signal.throwIfAborted()
+    const middleware = middlewares[index]?.options.server
+
+    if (!middleware) {
+      if (index < middlewares.length) {
+        return await dispatch(index + 1, context)
+      }
+
+      return {
+        request,
+        pathname,
+        context,
+        response: await handler(context),
+      }
+    }
+
+    let nextCalled = false
+    const next = async (options?: { context?: Record<string, unknown> }) => {
+      if (nextCalled) {
+        throw new Error('Request middleware called next() more than once')
+      }
+      nextCalled = true
+      return await dispatch(
+        index + 1,
+        safeObjectMerge(context, options?.context),
+      )
+    }
+
+    try {
+      const result = await middleware({
+        request,
+        pathname,
+        handlerType: 'serverFn',
+        context,
+        next,
+      } as never)
+
+      if (result instanceof Response) {
+        return { request, pathname, context, response: result }
+      }
+
+      return result as RequestMiddlewareResult
+    } catch (error) {
+      if (error instanceof Response) {
+        return { request, pathname, context, response: error }
+      }
+      throw error
+    }
+  }
+
+  const context = createNullProtoObject(initialContext) as Record<
+    string,
+    unknown
+  >
+  return (await dispatch(0, context)).response
 }
 
 async function getRequestStartOptions(
