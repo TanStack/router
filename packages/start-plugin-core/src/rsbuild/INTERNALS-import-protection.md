@@ -12,9 +12,9 @@ Rsbuild owns:
 - compilation-truth reporting in `processAssets`
 - final graph reconstruction from Rspack compilation data
 
-Shared AST analysis, rewrite logic, source extraction, usage lookup, source
-locations, trace formatting, and mock code generation are described in the
-shared internals doc.
+Shared transform-time AST analysis, rewrite logic, source extraction, usage
+lookup, source locations, trace formatting, and mock code generation are
+described in the shared internals doc.
 
 ## Mental Model
 
@@ -102,11 +102,47 @@ adapter queues them and flushes during compilation setup.
 
 It reconstructs the final view of the compilation from Rspack data by:
 
-1. building a `TransformResultProvider` from `compilation.modules`
-2. rebuilding the active compilation graph from outgoing connections
-3. reconstructing surviving specifier violations from compiled mock-edge files
-4. reporting live file violations from active edges
-5. reporting live marker violations from active edges plus compilation source
+1. collecting every module's active outgoing connections into
+   `RspackModuleGraphNode[]`, while a separate visitor classifies each node as
+   soon as it is created
+2. finishing marker fallback checks after all module specifiers are known
+3. returning immediately when collection produces no candidates
+4. building the `ImportGraph` and diagnostic indexes only for confirmed
+   candidates
+
+Each `RspackModuleGraphNode` contains only a module and its active
+`{ dependency, module }` imports. For multiple active connections to the same
+target `Module`, collection keeps only the first connection in Rspack's outgoing
+order. Collection does not filter by source-file eligibility, because every
+intermediate module is required to preserve complete entry-to-violation traces.
+The classification visitor applies source-file and rule eligibility separately;
+it does not traverse the node array afterward. Marker fallback retains only
+pending imports until every eligible node's specifier set is available. Module
+identity keeps query, layer, and other same-resource variants distinct.
+Normalized file paths remain the user-facing identity for rules, traces, source
+mapping, and diagnostics.
+
+When at least one candidate exists, the adapter replays the in-memory node array
+to build `ImportGraph`; it never calls
+`getOutgoingConnectionsInOrder(module)` a second time. A successful compilation
+therefore avoids allocating `ImportGraph`, entry data, and path-based trace
+indexes entirely.
+
+`processAssets` does not parse module source. Import requests come from
+the retained `connection.dependency.request`. Diagnostic locations come from
+that dependency's `loc`, then map through the compiled module sourcemap. The
+adapter does not distinguish import and usage locations. When Rspack does not
+expose a dependency location, the diagnostic remains valid but may omit its
+source location and snippet.
+
+When `sourceAndMap()` does not provide a sourcemap, generated dependency
+locations are not reported as original source locations. Importer and trace
+locations, along with the source snippet, are omitted in that case.
+
+`module.originalSource()` plus `sourceAndMap()` are called only for modules
+required to build a confirmed violation. A compilation with no violations
+therefore does not read dependency locations, module sources, or compilation
+entries.
 
 This is the core Rsbuild-native replacement for Vite's `generateBundle`
 verification plus dev pending-violation flow.
@@ -123,19 +159,25 @@ Transform-time:
 
 Compilation-time:
 
-- `module.nameForCondition?.()`
 - `module.resourceResolveData?.resource`
-- `module.originalSource().sourceAndMap()`
+- `module.identifier()` (normalized fallback)
+- `module.originalSource().sourceAndMap()` (confirmed diagnostics only)
 - sourcemap `sourcesContent`
+- `moduleGraph.getOutgoingConnectionsInOrder(module)`
+- `connection.dependency.request`
+- `connection.dependency.loc` (confirmed diagnostics only)
+
+Diagnostics use the retained first connection's dependency location and map it
+back through the composed compilation sourcemap.
 
 ## Marker Handling
 
 Unlike Vite, Rsbuild does not introduce plugin-owned virtual marker modules for
 normal operation.
 
-The real package marker files are used as source-level markers, and the adapter
-later infers marker kind from the compiled module source (preferring embedded
-`sourcesContent` when available) while reporting compiled edges.
+The real package marker files are used as source-level markers. The adapter
+derives marker kind exclusively from dependency requests in the final module
+graph.
 
 ## Practical Maintainer Rule
 

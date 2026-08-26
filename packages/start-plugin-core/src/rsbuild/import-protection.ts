@@ -1,6 +1,8 @@
 import { writeFileSync } from 'node:fs'
 import { extname, resolve as resolvePath } from 'node:path'
 
+import { SourceMapConsumer } from 'source-map'
+
 import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
@@ -15,23 +17,13 @@ import {
   shouldCheckImportProtectionImporter,
 } from '../import-protection/adapterUtils'
 import {
-  getImportSources,
   getImportSourcesFromResult,
   getMockExportNamesBySourceFromResult,
   getNamedExportsFromResult,
 } from '../import-protection/analysis'
 import { rewriteDeniedImports } from '../import-protection/rewrite'
 import {
-  ImportLocCache,
-  addTraceImportLocations,
   buildCodeSnippet,
-  buildLineIndex,
-  createImportSpecifierLocationIndex,
-  findImportStatementLocationFromTransformed,
-  findOriginalUsageLocation,
-  findPostCompileUsageLocation,
-  getOrCreateOriginalTransformResult,
-  indexToLineColumn,
   normalizeSourceMap,
   pickOriginalCodeFromSourcesContent,
 } from '../import-protection/sourceLocation'
@@ -48,7 +40,6 @@ import {
   loadSilentMockModule,
 } from '../import-protection/virtualModules'
 import {
-  buildSourceCandidates,
   canonicalizeResolvedId,
   checkFileDenial,
   clearNormalizeFilePathCache,
@@ -67,7 +58,6 @@ import type { FileMatchers } from '../import-protection/utils'
 import type {
   SourceMapLike,
   TransformResult,
-  TransformResultProvider,
 } from '../import-protection/sourceLocation'
 import type { Loc, TraceStep, ViolationInfo } from '../import-protection/trace'
 import type { CompileStartFrameworkOptions, GetConfigFn } from '../types'
@@ -76,6 +66,7 @@ import type {
   Rspack,
   rspack as rspackNamespaceType,
 } from '@rsbuild/core'
+import type { RawSourceMap } from 'source-map'
 
 type RspackNamespace = typeof rspackNamespaceType
 type RspackVirtualModulesPlugin = InstanceType<
@@ -89,12 +80,7 @@ type TransformContext = Parameters<
 >[0]
 type RspackCompilation = Rspack.Compilation
 type RspackModule = Rspack.Module
-type RspackModuleGraphConnection = {
-  module?: RspackModule | null
-  dependency?: unknown
-  getActiveState?: (runtime: string | Array<string> | undefined) => unknown
-}
-const importSpecifierLocationIndex = createImportSpecifierLocationIndex()
+type RspackDependency = Rspack.Dependency
 
 type PerfTiming = {
   count: number
@@ -219,9 +205,40 @@ interface SharedState {
 }
 
 interface CompilationEdge {
-  importer: string
+  dependency: RspackDependency
+  importerModule: RspackModule
   specifier?: string
   resolved: string
+  resolvedModule: RspackModule
+}
+
+interface CompilationEdgeIndex {
+  edges: Array<CompilationEdge>
+  edgeByKey: Map<string, CompilationEdge>
+  edgesByModules: Map<string, Array<CompilationEdge>>
+}
+
+interface CompilationImportGraph {
+  importGraph: ImportGraph
+  edgeIndex: CompilationEdgeIndex
+}
+
+interface CompilationTransformResultProvider {
+  getTransformResult: (
+    module: RspackModule,
+  ) => TransformResult | undefined
+}
+
+// An identity-only snapshot of one module's active compilation connections.
+// Derived paths, requests, locations, and diagnostic indexes live elsewhere.
+interface CompilationImport {
+  dependency: RspackDependency
+  module: RspackModule
+}
+
+interface RspackModuleGraphNode {
+  module: RspackModule
+  imports: Array<CompilationImport>
 }
 
 interface MockEdgePayload {
@@ -236,6 +253,30 @@ interface MockEdgePayload {
     patternText: string
   }
 }
+
+interface ModuleGraphEdge {
+  dependency: RspackDependency
+  importer: RspackModule
+  module: RspackModule
+}
+
+type CompilationViolationCandidate =
+  | {
+      type: 'specifier'
+      payload: MockEdgePayload
+      edge: ModuleGraphEdge
+    }
+  | {
+      type: 'file'
+      edge: ModuleGraphEdge
+      source: string
+      pattern: string | RegExp
+    }
+  | {
+      type: 'marker'
+      edge: ModuleGraphEdge
+      source: string
+    }
 
 type ResolvedImportProtectionCheck =
   | { type: 'file'; fileMatch: FileMatchers['files'][number] }
@@ -492,26 +533,37 @@ async function resolveAgainstImporter(opts: {
   return canonical
 }
 
-function getModuleResource(module: RspackModule): string | undefined {
-  const candidate = module as RspackModule & {
-    nameForCondition?: () => string | undefined
-    resourceResolveData?: { resource?: string }
-    resource?: string
-    userRequest?: string
-    request?: string
-  }
+function getModuleResource(module: RspackModule): string {
+  const resourceResolveData = (
+    module as RspackModule & {
+      resourceResolveData?: { resource?: string }
+    }
+  ).resourceResolveData
 
   return (
-    candidate.nameForCondition() ??
-    candidate.resourceResolveData?.resource ??
-    candidate.resource ??
-    candidate.userRequest ??
-    candidate.request
+    resourceResolveData?.resource ?? normalizeFilePath(module.identifier())
   )
 }
 
-function getModuleFile(module: RspackModule): string {
-  return normalizeFilePath(getModuleResource(module) ?? module.identifier())
+function getDependencyLocation(
+  dependency: RspackDependency,
+): Loc | undefined {
+  const loc = dependency.loc
+  if (!loc || !('start' in loc)) {
+    return undefined
+  }
+
+  const start = loc.start
+  const line = start.line
+  const column = start.column
+  if (typeof line !== 'number') {
+    return undefined
+  }
+
+  return {
+    line,
+    column: typeof column === 'number' ? column : 1,
+  }
 }
 
 const IMPORT_PROTECTION_PARSEABLE_EXTENSIONS = new Set([
@@ -537,268 +589,470 @@ function isImportProtectionSourceFile(file: string | undefined): boolean {
   )
 }
 
-function isImportProtectionSourceModule(module: RspackModule): boolean {
-  return isImportProtectionSourceFile(getModuleResource(module))
-}
-
-function addTransformResult(
-  cache: Map<string, TransformResult>,
-  key: string,
-  result: TransformResult,
-): void {
-  cache.set(normalizePath(key), result)
-  cache.set(normalizeFilePath(key), result)
-}
-
-function hasTransformResult(
-  cache: Map<string, TransformResult>,
-  key: string,
-): boolean {
-  return cache.has(normalizePath(key)) || cache.has(normalizeFilePath(key))
-}
-
 function buildTransformResultProvider(opts: {
-  modules: Array<RspackModule>
   root: string
   perf?: PerfCollector
-}): TransformResultProvider {
-  const cache = new Map<string, TransformResult>()
-
-  opts.perf?.count('processAssets.provider.modules', opts.modules.length)
-
-  for (const module of opts.modules) {
-    const source = module.originalSource()
-    if (!source) continue
-
-    const sourceAndMapStartedAt = opts.perf ? performance.now() : 0
-    const sourceAndMap = source.sourceAndMap()
-    if (opts.perf) {
-      opts.perf.time(
-        'processAssets.provider.sourceAndMap',
-        sourceAndMapStartedAt,
-      )
-    }
-    const code = String(sourceAndMap.source)
-    const map = normalizeSourceMap(sourceAndMap.map as SourceMapLike | null)
-    const file = getModuleFile(module)
-    const resource = getModuleResource(module)
-
-    const originalCodeStartedAt = opts.perf ? performance.now() : 0
-    const originalCode = map?.sourcesContent
-      ? pickOriginalCodeFromSourcesContent(map, resource ?? file, opts.root)
-      : undefined
-    if (opts.perf) {
-      opts.perf.time(
-        'processAssets.provider.originalCode',
-        originalCodeStartedAt,
-      )
-    }
-
-    const result: TransformResult = {
-      code,
-      filename: resource ?? file,
-      map,
-      originalCode,
-      perf: opts.perf,
-    }
-
-    if (!hasTransformResult(cache, file)) {
-      addTransformResult(cache, file, result)
-    }
-
-    if (resource && !hasTransformResult(cache, resource)) {
-      addTransformResult(cache, resource, result)
-    }
-  }
+}): CompilationTransformResultProvider {
+  const resultByModule = new WeakMap<RspackModule, TransformResult>()
+  const missingSource = new WeakSet<RspackModule>()
 
   return {
-    getTransformResult(id: string) {
-      return cache.get(normalizePath(id)) ?? cache.get(normalizeFilePath(id))
+    getTransformResult(module) {
+      if (missingSource.has(module)) {
+        return undefined
+      }
+
+      const cached = resultByModule.get(module)
+      if (cached) {
+        return cached
+      }
+
+      opts.perf?.count('processAssets.provider.modulesLoaded')
+      const source = module.originalSource()
+      if (!source) {
+        missingSource.add(module)
+        return undefined
+      }
+
+      const sourceAndMapStartedAt = opts.perf ? performance.now() : 0
+      const sourceAndMap = source.sourceAndMap()
+      if (opts.perf) {
+        opts.perf.time(
+          'processAssets.provider.sourceAndMap',
+          sourceAndMapStartedAt,
+        )
+      }
+      const resource = getModuleResource(module)
+      const code = String(sourceAndMap.source)
+      const map = normalizeSourceMap(sourceAndMap.map as SourceMapLike | null)
+      const originalCodeStartedAt = opts.perf ? performance.now() : 0
+      const originalCode = map?.sourcesContent
+        ? pickOriginalCodeFromSourcesContent(map, resource, opts.root)
+        : undefined
+      if (opts.perf) {
+        opts.perf.time(
+          'processAssets.provider.originalCode',
+          originalCodeStartedAt,
+        )
+      }
+
+      const result: TransformResult = {
+        code,
+        filename: resource,
+        map,
+        originalCode,
+        perf: opts.perf,
+      }
+      resultByModule.set(module, result)
+      return result
     },
   }
 }
 
-function getConnectionRequest(dependency: unknown): string | undefined {
-  const candidate = dependency as { request?: unknown }
-  return typeof candidate.request === 'string' ? candidate.request : undefined
+function getCompilationEdgeKey(
+  importer: string,
+  resolved: string,
+  specifier: string | undefined,
+): string {
+  return `${importer}\0${resolved}\0${specifier ?? ''}`
+}
+
+function getCompilationModulesKey(importer: string, resolved: string): string {
+  return `${importer}\0${resolved}`
 }
 
 function addEntryModulesToGraph(opts: {
   compilation: RspackCompilation
-  graph: ImportGraph
+  importGraph: ImportGraph
 }): void {
   for (const entry of opts.compilation.entries.values()) {
     for (const dependency of entry.dependencies) {
       const connection = opts.compilation.moduleGraph.getConnection(dependency)
       const module = connection?.module
-      if (!module) continue
-      opts.graph.addEntry(getModuleFile(module))
+      if (!module) {
+        continue
+      }
+      opts.importGraph.addEntry(getModuleResource(module))
     }
   }
 }
 
-function buildCompilationGraph(opts: {
+function forEachActiveModules(opts: {
   compilation: RspackCompilation
   modules: Array<RspackModule>
-}): {
-  graph: ImportGraph
-  edges: Array<CompilationEdge>
-} {
-  const graph = new ImportGraph()
-  const edges: Array<CompilationEdge> = []
-
-  addEntryModulesToGraph({
-    compilation: opts.compilation,
-    graph,
-  })
+  visitNode: (node: RspackModuleGraphNode) => void
+}): Array<RspackModuleGraphNode> {
+  const nodes: Array<RspackModuleGraphNode> = []
 
   for (const module of opts.modules) {
-    const importer = getModuleFile(module)
+    const imports: Array<CompilationImport> = []
+    const importedModules = new WeakSet<RspackModule>()
     const connections =
       opts.compilation.moduleGraph.getOutgoingConnectionsInOrder(module)
 
     for (const connection of connections) {
-      if (!connection.module) continue
-
-      // Only consider modules that are not errored
-      if ('error' in connection.module && connection.module.error) {
+      const connectedModule = connection.module
+      if (!connectedModule) {
         continue
       }
 
-      const resolved = getModuleFile(connection.module)
-      const specifier = getConnectionRequest(connection.dependency)
-
-      if (isActiveConnection(connection)) {
-        graph.addEdge(resolved, importer, specifier)
-        edges.push({ importer, specifier, resolved })
+      if (connection.getActiveState(undefined) !== true) {
+        continue
       }
+
+      // Only consider modules that are not errored
+      if ('error' in connectedModule && connectedModule.error) {
+        continue
+      }
+
+      if (importedModules.has(connectedModule)) {
+        continue
+      }
+      importedModules.add(connectedModule)
+
+      imports.push({
+        dependency: connection.dependency,
+        module: connectedModule,
+      })
     }
+
+    const node = { module, imports }
+    nodes.push(node)
+    opts.visitNode(node)
   }
 
-  return { graph, edges }
+  return nodes
 }
 
-function isActiveConnection(connection: RspackModuleGraphConnection): boolean {
-  if (typeof connection.getActiveState !== 'function') {
-    return true
-  }
-
-  return connection.getActiveState(undefined) === true
+interface PendingMarkerImport {
+  importer: RspackModule
+  imported: CompilationImport
+  source: string
 }
 
-function findImportLocationInOriginalCode(
-  provider: TransformResultProvider,
-  importer: string,
-  source: string,
-): Loc | undefined {
-  const result = provider.getTransformResult(importer)
-  if (!result) {
-    return undefined
-  }
+type FileViolationCandidate = Extract<
+  CompilationViolationCandidate,
+  { type: 'file' }
+>
 
-  const originalResult = getOrCreateOriginalTransformResult(result)
-  if (!originalResult) {
-    return undefined
-  }
+interface CompilationViolationScanner {
+  visitNode: (node: RspackModuleGraphNode) => void
+  finish: () => Array<CompilationViolationCandidate>
+}
 
-  const index = importSpecifierLocationIndex.find(originalResult, source)
-  if (index === -1) {
-    return undefined
-  }
+function createCompilationViolationScanner(opts: {
+  config: PluginConfig
+  envType: 'client' | 'server'
+  matchers: FileMatchers
+  shouldCheckImporter: (importer: string) => boolean
+}): CompilationViolationScanner {
+  const mockCandidates: Array<CompilationViolationCandidate> = []
+  const regularChecks: Array<FileViolationCandidate | PendingMarkerImport> = []
+  const importSpecifiersByModule = new WeakMap<RspackModule, Set<string>>()
+  const mockPayloadByModule = new WeakMap<
+    RspackModule,
+    MockEdgePayload | null
+  >()
 
-  const lineIndex =
-    originalResult.lineIndex ??
-    (originalResult.lineIndex = buildLineIndex(originalResult.code))
-  const loc = indexToLineColumn(lineIndex, index)
+  const getMockPayload = (module: RspackModule) => {
+    const cached = mockPayloadByModule.get(module)
+    if (cached !== undefined) {
+      return cached ?? undefined
+    }
+
+    const payload = getMockEdgePayloadFromFile(getModuleResource(module))
+    mockPayloadByModule.set(module, payload ?? null)
+    return payload
+  }
 
   return {
-    file: normalizeFilePath(importer),
-    line: loc.line,
-    column: loc.column,
+    visitNode(node) {
+      const importer = getModuleResource(node.module)
+      if (!isImportProtectionSourceFile(importer)) {
+        return
+      }
+
+      const shouldCheckImporter = opts.shouldCheckImporter(importer)
+      const importSpecifiers = new Set<string>()
+
+      for (const imported of node.imports) {
+        const source = imported.dependency.request
+        if (source) {
+          importSpecifiers.add(source)
+        }
+
+        if (!shouldCheckImporter) {
+          continue
+        }
+
+        const payload = getMockPayload(imported.module)
+        if (payload?.violation.importer === importer) {
+          mockCandidates.push({
+            type: 'specifier',
+            payload,
+            edge: {
+              importer: node.module,
+              module: imported.module,
+              dependency: imported.dependency,
+            },
+          })
+        }
+
+        if (!source) {
+          continue
+        }
+
+        const resolved = getModuleResource(imported.module)
+        const relativeResolved = getImportProtectionRelativePath(
+          opts.config.root,
+          resolved,
+        )
+        const importProtectionCheck = getRsbuildResolvedImportProtectionCheck(
+          relativeResolved,
+          opts.matchers,
+        )
+        if (!importProtectionCheck) {
+          continue
+        }
+
+        if (importProtectionCheck.type === 'file') {
+          regularChecks.push({
+            type: 'file',
+            edge: {
+              importer: node.module,
+              module: imported.module,
+              dependency: imported.dependency,
+            },
+            source,
+            pattern: importProtectionCheck.fileMatch.pattern,
+          })
+        } else {
+          regularChecks.push({ importer: node.module, imported, source })
+        }
+      }
+
+      importSpecifiersByModule.set(node.module, importSpecifiers)
+    },
+    finish() {
+      const candidates = [...mockCandidates]
+
+      for (const check of regularChecks) {
+        if ('type' in check) {
+          candidates.push(check)
+          continue
+        }
+
+        const markerKind = getMarkerKindForModule({
+          config: opts.config,
+          importSpecifiersByModule,
+          module: check.imported.module,
+        })
+        const violatesMarker =
+          (opts.envType === 'client' && markerKind === 'server') ||
+          (opts.envType === 'server' && markerKind === 'client')
+        if (!violatesMarker) {
+          continue
+        }
+
+        candidates.push({
+          type: 'marker',
+          edge: {
+            importer: check.importer,
+            module: check.imported.module,
+            dependency: check.imported.dependency,
+          },
+          source: check.source,
+        })
+      }
+
+      return candidates
+    },
   }
 }
 
-async function resolveImporterLocation(opts: {
-  provider: TransformResultProvider
-  importLocCache: ImportLocCache
+function buildCompilationImportGraph(opts: {
+  compilation: RspackCompilation
+  nodes: Array<RspackModuleGraphNode>
+}): CompilationImportGraph {
+  const importGraph = new ImportGraph()
+  const edges: Array<CompilationEdge> = []
+  const edgeByKey = new Map<string, CompilationEdge>()
+  const edgesByModules = new Map<string, Array<CompilationEdge>>()
+
+  addEntryModulesToGraph({
+    compilation: opts.compilation,
+    importGraph,
+  })
+
+  for (const node of opts.nodes) {
+    const importer = getModuleResource(node.module)
+    for (const imported of node.imports) {
+      const resolved = getModuleResource(imported.module)
+      const specifier = imported.dependency.request
+      const edge = {
+        importerModule: node.module,
+        specifier,
+        resolved,
+        resolvedModule: imported.module,
+        dependency: imported.dependency,
+      }
+      edges.push(edge)
+      importGraph.addEdge(resolved, importer, specifier)
+
+      const edgeKey = getCompilationEdgeKey(importer, resolved, specifier)
+      if (!edgeByKey.has(edgeKey)) {
+        edgeByKey.set(edgeKey, edge)
+      }
+
+      const modulesKey = getCompilationModulesKey(importer, resolved)
+      const moduleEdges = edgesByModules.get(modulesKey)
+      if (moduleEdges) {
+        moduleEdges.push(edge)
+      } else {
+        edgesByModules.set(modulesKey, [edge])
+      }
+    }
+  }
+
+  return {
+    importGraph,
+    edgeIndex: {
+      edges,
+      edgeByKey,
+      edgesByModules,
+    },
+  }
+}
+
+function findCompilationEdge(
+  edgeIndex: CompilationEdgeIndex,
+  importer: string,
+  resolved: string,
+  specifier?: string,
+): CompilationEdge | undefined {
+  if (specifier) {
+    const exact = edgeIndex.edgeByKey.get(
+      getCompilationEdgeKey(importer, resolved, specifier),
+    )
+    if (exact) {
+      return exact
+    }
+  }
+
+  return edgeIndex.edgesByModules.get(
+    getCompilationModulesKey(importer, resolved),
+  )?.[0]
+}
+
+async function mapCompilationLocation(opts: {
+  provider: CompilationTransformResultProvider
   importer: string
-  sourceCandidates: Iterable<string>
-  preferOriginalCode?: boolean
-  envType?: 'client' | 'server'
+  importerModule: RspackModule
+  generatedLoc?: Loc
 }): Promise<Loc | undefined> {
-  if (opts.preferOriginalCode) {
-    for (const candidate of opts.sourceCandidates) {
-      const loc =
-        findOriginalUsageLocation(
-          opts.provider,
-          opts.importer,
-          candidate,
-          opts.envType,
-        ) ??
-        findImportLocationInOriginalCode(
-          opts.provider,
-          opts.importer,
-          candidate,
-        )
-      if (loc) {
-        return loc
+  if (!opts.generatedLoc) {
+    return undefined
+  }
+
+  const map = opts.provider.getTransformResult(opts.importerModule)?.map
+  if (!map) {
+    return undefined
+  }
+
+  const fallback: Loc = {
+    file: normalizeFilePath(opts.importer),
+    line: opts.generatedLoc.line,
+    column: opts.generatedLoc.column,
+  }
+  const consumer = await getCompilationSourceMapConsumer(map)
+  if (!consumer) {
+    return fallback
+  }
+
+  try {
+    const original = consumer.originalPositionFor({
+      line: opts.generatedLoc.line,
+      column: Math.max(0, opts.generatedLoc.column - 1),
+    })
+    if (original.line != null && original.column != null) {
+      return {
+        file: original.source
+          ? normalizeFilePath(original.source)
+          : fallback.file,
+        line: original.line,
+        column: original.column + 1,
       }
     }
+  } catch {
+    // Malformed sourcemap
   }
 
-  for (const candidate of opts.sourceCandidates) {
-    const loc =
-      (await findPostCompileUsageLocation(
-        opts.provider,
-        opts.importer,
-        candidate,
-      )) ||
-      (await findImportStatementLocationFromTransformed(
-        opts.provider,
-        opts.importer,
-        candidate,
-        opts.importLocCache,
-        importSpecifierLocationIndex.find,
-      ))
+  return fallback
+}
 
-    if (loc) {
-      return loc
-    }
+const compilationSourceMapConsumerCache = new WeakMap<
+  object,
+  Promise<SourceMapConsumer | null>
+>()
+
+function getCompilationSourceMapConsumer(
+  map: SourceMapLike,
+): Promise<SourceMapConsumer | null> {
+  const cached = compilationSourceMapConsumerCache.get(map)
+  if (cached) {
+    return cached
   }
 
-  if (!opts.preferOriginalCode) {
-    for (const candidate of opts.sourceCandidates) {
-      const loc = findImportLocationInOriginalCode(
-        opts.provider,
-        opts.importer,
-        candidate,
-      )
-      if (loc) {
-        return loc
+  const consumer = (async () => {
+    try {
+      const rawMap: RawSourceMap = {
+        ...map,
+        file: map.file ?? '',
+        version: Number(map.version),
+        sourcesContent: map.sourcesContent?.map((source) => source ?? '') ?? [],
       }
+      return await new SourceMapConsumer(rawMap)
+    } catch {
+      return null
     }
-  }
-
-  return undefined
+  })()
+  compilationSourceMapConsumerCache.set(map, consumer)
+  return consumer
 }
 
 async function rebuildAndAnnotateTrace(opts: {
-  provider: TransformResultProvider
-  graph: ImportGraph
-  importLocCache: ImportLocCache
+  provider: CompilationTransformResultProvider
+  importGraph: ImportGraph
+  edgeIndex: CompilationEdgeIndex
   importer: string
   specifier: string
   importerLoc?: Loc
   maxTraceDepth: number
 }): Promise<Array<TraceStep>> {
-  const trace = buildTrace(opts.graph, opts.importer, opts.maxTraceDepth)
+  const trace = buildTrace(opts.importGraph, opts.importer, opts.maxTraceDepth)
 
-  await addTraceImportLocations(
-    opts.provider,
-    trace,
-    opts.importLocCache,
-    importSpecifierLocationIndex.find,
-  )
+  for (let i = 0; i < trace.length - 1; i++) {
+    const step = trace[i]!
+    const next = trace[i + 1]!
+    const edge = findCompilationEdge(
+      opts.edgeIndex,
+      step.file,
+      next.file,
+      step.specifier,
+    )
+    const loc = edge
+      ? await mapCompilationLocation({
+          provider: opts.provider,
+          importer: step.file,
+          importerModule: edge.importerModule,
+          generatedLoc: getDependencyLocation(edge.dependency),
+        })
+      : undefined
+    if (loc) {
+      step.line = loc.line
+      step.column = loc.column
+    }
+  }
 
   if (trace.length > 0) {
     const last = trace[trace.length - 1]!
@@ -816,34 +1070,29 @@ async function rebuildAndAnnotateTrace(opts: {
 
 async function buildViolationInfo(opts: {
   config: PluginConfig
-  provider: TransformResultProvider
-  graph: ImportGraph
-  importLocCache: ImportLocCache
+  provider: CompilationTransformResultProvider
+  importGraph: ImportGraph
+  edgeIndex: CompilationEdgeIndex
   perf?: PerfCollector
   envName: string
   envType: 'client' | 'server'
   importer: string
+  importerModule: RspackModule
   source: string
   resolved?: string
+  importLoc?: Loc
   type: 'specifier' | 'file' | 'marker'
   pattern?: string | RegExp
-  preferOriginalCode?: boolean
 }): Promise<ViolationInfo> {
   const startedAt = opts.perf ? performance.now() : 0
   opts.perf?.count('violations.enriched')
 
   const importerLocStartedAt = opts.perf ? performance.now() : 0
-  const importerLoc = await resolveImporterLocation({
+  const importerLoc = await mapCompilationLocation({
     provider: opts.provider,
-    importLocCache: opts.importLocCache,
     importer: opts.importer,
-    sourceCandidates: buildSourceCandidates(
-      opts.source,
-      opts.resolved,
-      opts.config.root,
-    ),
-    preferOriginalCode: opts.preferOriginalCode,
-    envType: opts.envType,
+    importerModule: opts.importerModule,
+    generatedLoc: opts.importLoc,
   })
   if (opts.perf) {
     opts.perf.time('violations.resolveImporterLocation', importerLocStartedAt)
@@ -852,8 +1101,8 @@ async function buildViolationInfo(opts: {
   const traceStartedAt = opts.perf ? performance.now() : 0
   const trace = await rebuildAndAnnotateTrace({
     provider: opts.provider,
-    graph: opts.graph,
-    importLocCache: opts.importLocCache,
+    importGraph: opts.importGraph,
+    edgeIndex: opts.edgeIndex,
     importer: opts.importer,
     specifier: opts.source,
     importerLoc,
@@ -865,7 +1114,14 @@ async function buildViolationInfo(opts: {
 
   const snippetStartedAt = opts.perf ? performance.now() : 0
   const snippet = importerLoc
-    ? buildCodeSnippet(opts.provider, opts.importer, importerLoc)
+    ? buildCodeSnippet(
+        {
+          getTransformResult: () =>
+            opts.provider.getTransformResult(opts.importerModule),
+        },
+        opts.importer,
+        importerLoc,
+      )
     : undefined
   if (opts.perf && importerLoc) {
     opts.perf.time('violations.snippet', snippetStartedAt)
@@ -892,44 +1148,31 @@ async function buildViolationInfo(opts: {
   return info
 }
 
-function getMarkerKindForFile(opts: {
+function getMarkerKindForModule(opts: {
   config: PluginConfig
-  provider: TransformResultProvider
-  markerKindCache: Map<string, 'server' | 'client' | null>
-  file: string
+  importSpecifiersByModule: WeakMap<RspackModule, Set<string>>
+  module: RspackModule
 }): 'server' | 'client' | undefined {
-  if (!isImportProtectionSourceFile(opts.file)) {
+  const file = getModuleResource(opts.module)
+  if (!isImportProtectionSourceFile(file)) {
     return undefined
   }
 
-  const cached = opts.markerKindCache.get(opts.file)
-  if (cached !== undefined) {
-    return cached ?? undefined
+  const imports = opts.importSpecifiersByModule.get(opts.module)
+  let hasServerOnly = false
+  let hasClientOnly = false
+  for (const source of imports ?? []) {
+    hasServerOnly ||= opts.config.markerSpecifiers.serverOnly.has(source)
+    hasClientOnly ||= opts.config.markerSpecifiers.clientOnly.has(source)
   }
 
-  const result = opts.provider.getTransformResult(opts.file)
-  const code = result?.originalCode ?? result?.code
-  if (!code) {
-    opts.markerKindCache.set(opts.file, null)
-    return undefined
+  if (hasServerOnly && !hasClientOnly) {
+    return 'server'
   }
-
-  const imports = getImportSources(code, opts.file)
-  const hasServerOnly = imports.some((source) =>
-    opts.config.markerSpecifiers.serverOnly.has(source),
-  )
-  const hasClientOnly = imports.some((source) =>
-    opts.config.markerSpecifiers.clientOnly.has(source),
-  )
-  const markerKind =
-    hasServerOnly && !hasClientOnly
-      ? 'server'
-      : hasClientOnly && !hasServerOnly
-        ? 'client'
-        : null
-
-  opts.markerKindCache.set(opts.file, markerKind)
-  return markerKind ?? undefined
+  if (hasClientOnly && !hasServerOnly) {
+    return 'client'
+  }
+  return undefined
 }
 
 async function reportViolation(opts: {
@@ -1380,143 +1623,118 @@ export function registerImportProtection(
         const envState = getOrCreateEnvState(envStates, envName)
         const matchers = getRulesForEnvironment(config, envName)
         const allModules = Array.from(context.compilation.modules)
-        const relevantModules = allModules.filter(
-          isImportProtectionSourceModule,
-        )
         perf?.count('processAssets.modules.total', allModules.length)
-        perf?.count('processAssets.modules.relevant', relevantModules.length)
 
-        const providerStartedAt = perf ? performance.now() : 0
-        const provider = buildTransformResultProvider({
-          modules: relevantModules,
-          root: config.root,
-          perf,
+        const violationScanner = createCompilationViolationScanner({
+          config,
+          envType,
+          matchers,
+          shouldCheckImporter,
         })
-        if (perf) {
-          perf.time('processAssets.provider.build', providerStartedAt)
-        }
-        const importLocCache = new ImportLocCache()
-        const markerKindCache = new Map<string, 'server' | 'client' | null>()
-        const graphStartedAt = perf ? performance.now() : 0
-        const { graph, edges } = buildCompilationGraph({
+        const forEachStartedAt = perf ? performance.now() : 0
+        const moduleGraphNodes: Array<RspackModuleGraphNode> = []
+        forEachActiveModules({
           compilation: context.compilation,
-          modules: relevantModules,
+          modules: allModules,
+          visitNode(node) {
+            moduleGraphNodes.push(node)
+            violationScanner.visitNode(node)
+          },
         })
         if (perf) {
-          perf.time('processAssets.graph.build', graphStartedAt)
-          perf.count('processAssets.graph.edges', edges.length)
+          perf.time('processAssets.forEachActiveModules', forEachStartedAt)
+          perf.count('processAssets.modules.collected', moduleGraphNodes.length)
+          perf.count(
+            'processAssets.imports.active',
+            moduleGraphNodes.reduce(
+              (total, node) => total + node.imports.length,
+              0,
+            ),
+          )
         }
 
-        for (const module of relevantModules) {
-          const payload = getMockEdgePayloadFromFile(getModuleFile(module))
-          if (!payload) {
-            continue
-          }
-          if (!shouldCheckImporter(payload.violation.importer)) {
-            continue
-          }
-
-          const info = await buildViolationInfo({
-            config,
-            provider,
-            graph,
-            importLocCache,
-            perf,
-            envName,
-            envType,
-            importer: payload.violation.importer,
-            source: payload.violation.specifier,
-            resolved: payload.violation.resolved,
-            type: 'specifier',
-            pattern: payload.violation.patternText,
-            preferOriginalCode: true,
-          })
-
-          await reportViolation({
-            config,
-            envState,
-            compilation: context.compilation,
-            rspack: context.compiler.rspack,
-            perf,
-            info,
-          })
+        const candidateStartedAt = perf ? performance.now() : 0
+        const candidates = violationScanner.finish()
+        if (perf) {
+          perf.time('processAssets.candidates.finish', candidateStartedAt)
+          perf.count('processAssets.candidates', candidates.length)
         }
 
-        for (const edge of edges) {
-          if (!edge.specifier) {
-            continue
-          }
-          if (!shouldCheckImporter(edge.importer)) {
-            continue
-          }
+        if (candidates.length === 0) {
+          return
+        }
 
-          const relativeResolved = getImportProtectionRelativePath(
-            config.root,
-            edge.resolved,
-          )
+        const graphStartedAt = perf ? performance.now() : 0
+        const { importGraph, edgeIndex } = buildCompilationImportGraph({
+          compilation: context.compilation,
+          nodes: moduleGraphNodes,
+        })
+        if (perf) {
+          perf.time('processAssets.importGraph.build', graphStartedAt)
+          perf.count('processAssets.importGraph.edges', edgeIndex.edges.length)
+        }
 
-          const importProtectionCheck = getRsbuildResolvedImportProtectionCheck(
-            relativeResolved,
-            matchers,
-          )
-          if (!importProtectionCheck) {
-            continue
+        let provider: CompilationTransformResultProvider | undefined
+        const getProvider = () => {
+          if (!provider) {
+            const providerStartedAt = perf ? performance.now() : 0
+            provider = buildTransformResultProvider({
+              root: config.root,
+              perf,
+            })
+            if (perf) {
+              perf.time('processAssets.provider.build', providerStartedAt)
+            }
           }
+          return provider
+        }
 
-          if (importProtectionCheck.type === 'file') {
-            const info = await buildViolationInfo({
+        for (const candidate of candidates) {
+          let info: ViolationInfo
+
+          if (candidate.type === 'specifier') {
+            const { payload } = candidate
+            info = await buildViolationInfo({
               config,
-              provider,
-              graph,
-              importLocCache,
+              provider: getProvider(),
+              importGraph,
+              edgeIndex,
               perf,
               envName,
               envType,
-              importer: edge.importer,
-              source: edge.specifier,
-              resolved: edge.resolved,
-              type: 'file',
-              pattern: importProtectionCheck.fileMatch.pattern,
+              importer: payload.violation.importer,
+              importerModule: candidate.edge.importer,
+              source: payload.violation.specifier,
+              resolved: payload.violation.resolved,
+              importLoc: getDependencyLocation(
+                candidate.edge.dependency,
+              ),
+              type: 'specifier',
+              pattern: payload.violation.patternText,
             })
-
-            await reportViolation({
+          } else {
+            const { edge, source } = candidate
+            const importer = getModuleResource(edge.importer)
+            const resolved = getModuleResource(edge.module)
+            info = await buildViolationInfo({
               config,
-              envState,
-              compilation: context.compilation,
-              rspack: context.compiler.rspack,
+              provider: getProvider(),
+              importGraph,
+              edgeIndex,
               perf,
-              info,
+              envName,
+              envType,
+              importer,
+              importerModule: edge.importer,
+              source,
+              resolved,
+              importLoc: getDependencyLocation(edge.dependency),
+              type: candidate.type,
+              ...(candidate.type === 'file'
+                ? { pattern: candidate.pattern }
+                : {}),
             })
-            continue
           }
-
-          const markerKind = getMarkerKindForFile({
-            config,
-            provider,
-            markerKindCache,
-            file: edge.resolved,
-          })
-          const violatesMarker =
-            (envType === 'client' && markerKind === 'server') ||
-            (envType === 'server' && markerKind === 'client')
-
-          if (!violatesMarker) {
-            continue
-          }
-
-          const info = await buildViolationInfo({
-            config,
-            provider,
-            graph,
-            importLocCache,
-            perf,
-            envName,
-            envType,
-            importer: edge.importer,
-            source: edge.specifier,
-            resolved: edge.resolved,
-            type: 'marker',
-          })
 
           await reportViolation({
             config,
