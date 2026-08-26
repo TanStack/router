@@ -14,17 +14,17 @@
     "@sentry/solid": "^10.32.0",
     "@sentry/tracing": "^7.120.4",
     "@sentry/vite-plugin": "^4.6.1",
-    "@solidjs/web": "^2.0.0-rc.1",
+    "@solidjs/web": "^2.0.0-rc.2",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "redaxios": "^0.5.1",
-    "solid-js": "^2.0.0-rc.1",
+    "solid-js": "^2.0.0-rc.2",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
-    "@solidjs/vite-plugin": "^3.0.0-next.30",
+    "@solidjs/vite-plugin": "^3.0.0-next.32",
     "@tanstack/router-e2e-utils": "workspace:^",
     "vite": "^8.0.14"
   }
