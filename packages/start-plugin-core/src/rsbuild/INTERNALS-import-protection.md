@@ -44,6 +44,10 @@ Per environment, Rsbuild keeps a smaller runtime state than Vite:
 - `resolveCache`
 - `seenViolations`
 
+A per-environment resource map associates each loader resource with its Rspack
+module. It is populated by Rspack's loader hook and consumed by the matching
+post-transform callback; durable marker state lives on `module.buildInfo`.
+
 Shared state is for virtual module transport:
 
 - `virtualModules`
@@ -70,6 +74,7 @@ The transform phase is responsible for:
 
 - self-denial for forbidden files
 - self-denial for marker-protected files in the wrong environment
+- persisting detected marker kinds in Rspack `module.buildInfo`
 - direct specifier rewrites to mock-edge modules
 
 The transform treats the code it receives as authoritative. It does not read,
@@ -105,7 +110,7 @@ It reconstructs the final view of the compilation from Rspack data by:
 1. collecting every module's active outgoing connections into
    `RspackModuleGraphNode[]`, while a separate visitor classifies each node as
    soon as it is created
-2. finishing marker fallback checks after all module specifiers are known
+2. finishing marker checks after all modules are known
 3. returning immediately when collection produces no candidates
 4. building the `ImportGraph` and diagnostic indexes only for confirmed
    candidates
@@ -175,9 +180,15 @@ back through the composed compilation sourcemap.
 Unlike Vite, Rsbuild does not introduce plugin-owned virtual marker modules for
 normal operation.
 
-The real package marker files are used as source-level markers. The adapter
-derives marker kind exclusively from dependency requests in the final module
-graph.
+The real package marker files are used as source-level markers. Rspack's loader
+hook records the module under the exact loader resource. The matching post
+transform consumes that association and writes the detected marker kind to the
+module's `buildInfo` before replacing a wrong-environment module. This preserves
+the marker after self-denial mocking and when Rspack restores modules from its
+persistent cache.
+
+`processAssets` reads the persisted marker kind first. Dependency requests in
+the final module graph remain a fallback for modules without metadata.
 
 ## Practical Maintainer Rule
 

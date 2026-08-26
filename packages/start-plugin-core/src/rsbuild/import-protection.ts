@@ -48,7 +48,6 @@ import {
   isFileExcluded,
   normalizeFilePath,
 } from '../import-protection/utils'
-
 import type {
   ImportProtectionBehavior,
   ImportProtectionOptions,
@@ -81,6 +80,16 @@ type TransformContext = Parameters<
 type RspackCompilation = Rspack.Compilation
 type RspackModule = Rspack.Module
 type RspackDependency = Rspack.Dependency
+
+type ImportProtectionMarkerKind = 'server' | 'client'
+type ImportProtectionBuildInfo = {
+  markerKind: ImportProtectionMarkerKind | null
+}
+
+const IMPORT_PROTECTION_BUILD_INFO_FIELD = 'tanstack.start.importProtection'
+const EMPTY_IMPORT_PROTECTION_BUILD_INFO: ImportProtectionBuildInfo = {
+  markerKind: null,
+}
 
 type PerfTiming = {
   count: number
@@ -202,6 +211,7 @@ interface SharedState {
   vmPlugins: Record<string, RspackVirtualModulesPlugin>
   readyVmPlugins: Record<string, boolean>
   pendingWrites: Map<string, Map<string, string>>
+  moduleByResource: Record<string, Map<string, RspackModule>>
 }
 
 interface CompilationEdge {
@@ -224,9 +234,7 @@ interface CompilationImportGraph {
 }
 
 interface CompilationTransformResultProvider {
-  getTransformResult: (
-    module: RspackModule,
-  ) => TransformResult | undefined
+  getTransformResult: (module: RspackModule) => TransformResult | undefined
 }
 
 // An identity-only snapshot of one module's active compilation connections.
@@ -540,14 +548,27 @@ function getModuleResource(module: RspackModule): string {
     }
   ).resourceResolveData
 
-  return (
-    resourceResolveData?.resource ?? normalizeFilePath(module.identifier())
-  )
+  return resourceResolveData?.resource ?? normalizeFilePath(module.identifier())
 }
 
-function getDependencyLocation(
-  dependency: RspackDependency,
-): Loc | undefined {
+function getMarkerKindFromBuildInfo(
+  module: RspackModule,
+): ImportProtectionMarkerKind | undefined {
+  const metadata = module.buildInfo[IMPORT_PROTECTION_BUILD_INFO_FIELD]
+  if (!metadata || typeof metadata !== 'object') {
+    return undefined
+  }
+
+  if (!('markerKind' in metadata)) {
+    return undefined
+  }
+
+  return metadata.markerKind === 'server' || metadata.markerKind === 'client'
+    ? metadata.markerKind
+    : undefined
+}
+
+function getDependencyLocation(dependency: RspackDependency): Loc | undefined {
   const loc = dependency.loc
   if (!loc || !('start' in loc)) {
     return undefined
@@ -1158,6 +1179,11 @@ function getMarkerKindForModule(opts: {
     return undefined
   }
 
+  const markerKind = getMarkerKindFromBuildInfo(opts.module)
+  if (markerKind) {
+    return markerKind
+  }
+
   const imports = opts.importSpecifiersByModule.get(opts.module)
   let hasServerOnly = false
   let hasClientOnly = false
@@ -1229,7 +1255,6 @@ export function registerImportProtection(
   const extensionlessResolver = new ExtensionlessAbsoluteIdResolver()
   const envStates = new Map<string, EnvRuntimeState>()
   const shouldCheckImporterCache = new Map<string, boolean>()
-
   const config: PluginConfig = {
     enabled: true,
     root: '',
@@ -1269,6 +1294,7 @@ export function registerImportProtection(
     vmPlugins: {},
     readyVmPlugins: {},
     pendingWrites: new Map(),
+    moduleByResource: {},
   }
 
   function applyUserConfig(): void {
@@ -1401,10 +1427,35 @@ export function registerImportProtection(
 
     shared.vmPlugins[envName] = vmPlugin
     shared.readyVmPlugins[envName] = false
+    const moduleByResource = new Map<string, RspackModule>()
+    shared.moduleByResource[envName] = moduleByResource
 
     rspackConfig.plugins.push(vmPlugin)
     rspackConfig.plugins.push({
       apply(compiler: Rspack.Compiler) {
+        compiler.hooks.compilation.tap(
+          'TanStackStartImportProtectionBuildInfo',
+          (compilation) => {
+            utils.rspack.NormalModule.getCompilationHooks(
+              compilation,
+            ).loader.tap(
+              'TanStackStartImportProtectionBuildInfo',
+              (loaderContext, module) => {
+                if (!isImportProtectionSourceFile(loaderContext.resourcePath)) {
+                  return
+                }
+
+                moduleByResource.set(loaderContext.resource, module)
+              },
+            )
+          },
+        )
+
+        compiler.hooks.compile.tap(
+          'TanStackStartImportProtectionModuleCleanup',
+          () => moduleByResource.clear(),
+        )
+
         compiler.hooks.thisCompilation.tap(
           'TanStackStartImportProtectionVirtualModulesReady',
           () => {
@@ -1432,14 +1483,23 @@ export function registerImportProtection(
         perf?.count(`transform.env.${environment.name}`)
 
         try {
+          const envName = environment.name
+          const id = ctx.resource
+          const moduleByResource = shared.moduleByResource[envName]
+          const module = moduleByResource?.get(id)
+          moduleByResource?.delete(id)
+
+          if (module) {
+            module.buildInfo[IMPORT_PROTECTION_BUILD_INFO_FIELD] =
+              EMPTY_IMPORT_PROTECTION_BUILD_INFO
+          }
+
           if (!config.enabled) {
             return ctx.code
           }
 
-          const envName = environment.name
           const envType = getImportProtectionEnvType(config, envName)
           const envState = getOrCreateEnvState(envStates, envName)
-          const id = ctx.resource
           const file = normalizeFilePath(ctx.resourcePath)
 
           if (!shouldCheckImporter(file)) {
@@ -1480,6 +1540,12 @@ export function registerImportProtection(
             : hasClientOnlyMarker
               ? ('client' as const)
               : undefined
+
+          if (module && markerKind) {
+            module.buildInfo[IMPORT_PROTECTION_BUILD_INFO_FIELD] = {
+              markerKind,
+            }
+          }
 
           const fileMatch = checkFileDenial(relativeFile, matchers)
           const markerViolation =
@@ -1706,9 +1772,7 @@ export function registerImportProtection(
               importerModule: candidate.edge.importer,
               source: payload.violation.specifier,
               resolved: payload.violation.resolved,
-              importLoc: getDependencyLocation(
-                candidate.edge.dependency,
-              ),
+              importLoc: getDependencyLocation(candidate.edge.dependency),
               type: 'specifier',
               pattern: payload.violation.patternText,
             })
