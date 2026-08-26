@@ -10,24 +10,19 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as BoomIdRouteImport } from './routes/boom.$id'
-import { Route as FromIdRouteImport } from './routes/from.$id'
-import { Route as MissingIdRouteImport } from './routes/missing.$id'
 import { Route as TargetIdRouteImport } from './routes/target.$id'
+import { Route as MissingIdRouteImport } from './routes/missing.$id'
+import { Route as FromIdRouteImport } from './routes/from.$id'
+import { Route as BoomIdRouteImport } from './routes/boom.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const BoomIdRoute = BoomIdRouteImport.update({
-  id: '/boom/$id',
-  path: '/boom/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FromIdRoute = FromIdRouteImport.update({
-  id: '/from/$id',
-  path: '/from/$id',
+const TargetIdRoute = TargetIdRouteImport.update({
+  id: '/target/$id',
+  path: '/target/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MissingIdRoute = MissingIdRouteImport.update({
@@ -35,9 +30,14 @@ const MissingIdRoute = MissingIdRouteImport.update({
   path: '/missing/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TargetIdRoute = TargetIdRouteImport.update({
-  id: '/target/$id',
-  path: '/target/$id',
+const FromIdRoute = FromIdRouteImport.update({
+  id: '/from/$id',
+  path: '/from/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BoomIdRoute = BoomIdRouteImport.update({
+  id: '/boom/$id',
+  path: '/boom/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -94,18 +94,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/boom/$id': {
-      id: '/boom/$id'
-      path: '/boom/$id'
-      fullPath: '/boom/$id'
-      preLoaderRoute: typeof BoomIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/from/$id': {
-      id: '/from/$id'
-      path: '/from/$id'
-      fullPath: '/from/$id'
-      preLoaderRoute: typeof FromIdRouteImport
+    '/target/$id': {
+      id: '/target/$id'
+      path: '/target/$id'
+      fullPath: '/target/$id'
+      preLoaderRoute: typeof TargetIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/missing/$id': {
@@ -115,11 +108,18 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof MissingIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/target/$id': {
-      id: '/target/$id'
-      path: '/target/$id'
-      fullPath: '/target/$id'
-      preLoaderRoute: typeof TargetIdRouteImport
+    '/from/$id': {
+      id: '/from/$id'
+      path: '/from/$id'
+      fullPath: '/from/$id'
+      preLoaderRoute: typeof FromIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/boom/$id': {
+      id: '/boom/$id'
+      path: '/boom/$id'
+      fullPath: '/boom/$id'
+      preLoaderRoute: typeof BoomIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
