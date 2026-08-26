@@ -162,6 +162,52 @@ test('Server function can return null for GET and POST calls', async ({
   ).toContainText(JSON.stringify(null))
 })
 
+test('POST server functions return single-flight loader data', async ({
+  page,
+}) => {
+  await page.goto('/single-flight')
+  await page.waitForLoadState('networkidle')
+
+  const initialCount = Number(
+    await page.getByTestId('single-flight-count').textContent(),
+  )
+  const initialReads = Number(
+    await page.getByTestId('single-flight-reads').textContent(),
+  )
+  const dataRequests: Array<{ method: string; url: string }> = []
+
+  page.on('request', (request) => {
+    if (['fetch', 'xhr'].includes(request.resourceType())) {
+      dataRequests.push({
+        method: request.method(),
+        url: request.url(),
+      })
+    }
+  })
+
+  const responsePromise = page.waitForResponse((response) =>
+    response.url().includes('/_serverFn/'),
+  )
+  await page.getByTestId('single-flight-mutate').click()
+  const response = await responsePromise
+
+  expect(response.request().headers()['x-single-flight']).toBe('true')
+  expect(response.headers()['x-single-flight']).toBe('true')
+
+  await expect(page.getByTestId('single-flight-count')).toHaveText(
+    String(initialCount + 1),
+  )
+  await expect(page.getByTestId('single-flight-reads')).toHaveText(
+    String(initialReads + 1),
+  )
+  expect(dataRequests).toEqual([
+    {
+      method: 'POST',
+      url: expect.stringContaining('/_serverFn/'),
+    },
+  ])
+})
+
 test('Server function can correctly send and receive FormData', async ({
   page,
 }) => {
@@ -290,7 +336,9 @@ test.describe('server function sets cookies', () => {
       expect(errorMessage).toBe('$undefined')
     })
 
-    test('aborting', async ({ page }) => {
+    // Solid 2 does not yet expose a per-call AbortSignal transport seam.
+    // https://github.com/solidjs/solid/issues/3057
+    test.skip('aborting', async ({ page }) => {
       await page.goto('/abort-signal/' + method)
       await page.waitForLoadState('networkidle')
 
