@@ -147,4 +147,22 @@ test.describe('Query heavy route (9 useSuspenseQuery)', () => {
     expect(html.slice(lastScriptOpen, endIndex)).toContain('.return(void 0)')
     expect(endIndex).toBeLessThan(html.indexOf('</body>'))
   })
+
+  test('batches same-turn queries into one stream chunk', async ({
+    request,
+  }) => {
+    const response = await request.get('/query-heavy')
+    const html = await response.text()
+    const scripts = Array.from(
+      html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g),
+      (match) => match[1]!,
+    )
+    const syncQueryChunk = scripts.find(
+      (script) => script.includes('.next(') && script.includes('sync-value-1'),
+    )
+
+    expect(syncQueryChunk).toBeDefined()
+    expect(syncQueryChunk).toContain('sync-value-2')
+    expect(syncQueryChunk).toContain('sync-value-3')
+  })
 })

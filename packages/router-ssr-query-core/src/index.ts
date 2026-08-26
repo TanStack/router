@@ -1,6 +1,6 @@
 import {
-  dehydrate as queryDehydrate,
-  hydrate as queryHydrate,
+  dehydrateQuery,
+  hydrate as hydrateQueryClient,
 } from '@tanstack/query-core'
 import { isRedirect } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
@@ -8,9 +8,20 @@ import type { AnyRouter } from '@tanstack/router-core'
 import type {
   DehydrateOptions,
   HydrateOptions,
+  Query,
   QueryClient,
-  DehydratedState as QueryDehydratedState,
 } from '@tanstack/query-core'
+
+type DehydratedQuery = ReturnType<typeof dehydrateQuery>
+
+const shouldDehydrateAllQueries = () => true
+
+type QueryStreamState = {
+  controller: ReadableStreamDefaultController<Array<DehydratedQuery>>
+  sentQueries: Set<string>
+  unsubscribe: () => void
+  pendingQueries?: Map<string, Query>
+}
 
 export type RouterSsrQueryOptions<TRouter extends AnyRouter> = {
   router: TRouter
@@ -28,8 +39,10 @@ export type RouterSsrQueryOptions<TRouter extends AnyRouter> = {
 }
 
 type DehydratedRouterQueryState = {
-  dehydratedQueryClient?: QueryDehydratedState
-  queryStream: ReadableStream<QueryDehydratedState>
+  query: {
+    initial?: Array<DehydratedQuery>
+    stream: ReadableStream<Array<DehydratedQuery>>
+  }
 }
 
 export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
@@ -39,235 +52,228 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
   hydrateOptions,
   handleRedirects = true,
 }: RouterSsrQueryOptions<TRouter>) {
-  const ogHydrate = router.options.hydrate
-  const ogDehydrate = router.options.dehydrate
-
   if (isServer ?? router.isServer) {
-    const sentQueries = new Set<string>()
-    const queryStream = createPushableStream()
-    let unsubscribe: (() => void) | undefined = undefined
-    let cleanupRegistered = false
-    let tornDown = false
+    const originalDehydrate = router.options.dehydrate
+    let streamState: QueryStreamState | undefined
+    let cleanedUp = false
+
+    const finalizeQueryStream = (failure?: { error: unknown }) => {
+      const state = streamState
+      streamState = undefined
+      if (!state) return
+
+      state.unsubscribe()
+
+      if (failure) {
+        state.controller.error(failure.error)
+      } else {
+        state.controller.close()
+      }
+    }
 
     const teardown = () => {
-      if (tornDown) return
-      tornDown = true
-      try {
-        unsubscribe?.()
-      } catch {
-        // ignore
-      }
-      unsubscribe = undefined
-      try {
-        if (!queryStream.isClosed()) queryStream.close()
-      } catch {
-        // ignore
-      }
-      // Cancel any in-flight queries and clear the cache. Removing queries
-      // cancels their gcTime setTimeout handles which would otherwise pin
-      // the queryClient (and transitively the router via router.context)
-      // alive for the full gcTime window (default 5min) per SSR request.
-      try {
-        queryClient.cancelQueries()
-      } catch {
-        // ignore
-      }
-      try {
-        queryClient.clear()
-      } catch {
-        // ignore
-      }
-      sentQueries.clear()
+      cleanedUp = true
+      finalizeQueryStream()
+      // Clearing destroys queries, aborts in-flight work, and cancels gcTime
+      // handles that would otherwise retain request state for up to 5 minutes.
+      queryClient.clear()
     }
 
     // Register teardown as soon as SSR attaches. attachRouterServerSsrUtils()
     // runs before router.load(), so this covers redirects/errors thrown before
     // router.options.dehydrate() can run.
-    const registerCleanup = (serverSsr = router.serverSsr) => {
-      if (cleanupRegistered) return
-      if (!serverSsr) return
-      serverSsr.onCleanup(teardown)
-      cleanupRegistered = true
-    }
     router.serverSsrLifecycle = {
       ...router.serverSsrLifecycle,
       onServerSsrAttach: [
         ...(router.serverSsrLifecycle?.onServerSsrAttach ?? []),
-        registerCleanup,
+        (serverSsr) => serverSsr.onCleanup(teardown),
       ],
     }
 
-    router.options.dehydrate =
-      async (): Promise<DehydratedRouterQueryState> => {
-        router.serverSsr!.onRenderFinished(() => {
-          if (!queryStream.isClosed()) queryStream.close()
-          unsubscribe?.()
-          unsubscribe = undefined
-        })
-        const ogDehydrated = await ogDehydrate?.()
-
-        const dehydratedRouter = {
-          ...ogDehydrated,
-          // prepare the stream for queries coming up during rendering
-          queryStream: queryStream.stream,
+    router.options.dehydrate = async (): Promise<
+      DehydratedRouterQueryState | undefined
+    > => {
+      let originalDehydrated: Awaited<
+        ReturnType<NonNullable<typeof originalDehydrate>>
+      >
+      try {
+        originalDehydrated = await originalDehydrate?.()
+      } finally {
+        if (cleanedUp) {
+          queryClient.clear()
         }
-
-        const dehydratedQueryClient = queryDehydrate(
-          queryClient,
-          dehydrateOptions,
-        )
-        if (dehydratedQueryClient.queries.length > 0) {
-          dehydratedQueryClient.queries.forEach((query) => {
-            sentQueries.add(query.queryHash)
-          })
-          dehydratedRouter.dehydratedQueryClient = dehydratedQueryClient
-        }
-
-        return dehydratedRouter
       }
 
-    const ogClientOptions = queryClient.getDefaultOptions()
-    queryClient.setDefaultOptions({
-      ...ogClientOptions,
-      dehydrate: {
-        shouldDehydrateQuery: () => true,
-        ...ogClientOptions.dehydrate,
-      },
-    })
-
-    unsubscribe = queryClient.getQueryCache().subscribe((event) => {
-      // before rendering starts, we do not stream individual queries
-      // instead we dehydrate the entire query client in router's dehydrate()
-      // if attachRouterServerSsrUtils() has not been called yet, `router.serverSsr` will be undefined and we also do not stream
-      if (!router.serverSsr?.isDehydrated()) {
+      if (cleanedUp) {
         return
       }
-      if (sentQueries.has(event.query.queryHash)) {
-        return
-      }
-      // promise not yet set on the query, so we cannot stream it yet
-      if (!event.query.promise) {
-        return
-      }
-      if (queryStream.isClosed()) {
-        console.warn(
-          `tried to stream query ${event.query.queryHash} after stream was already closed`,
-        )
-        return
-      }
-      const dehydratedQuery = queryDehydrate(queryClient, {
-        ...dehydrateOptions,
-        shouldDehydrateQuery: (query) => {
-          if (query.queryHash !== event.query.queryHash) {
-            return false
-          }
 
-          return (
-            (ogClientOptions.dehydrate?.shouldDehydrateQuery?.(query) ??
-              true) &&
-            (dehydrateOptions?.shouldDehydrateQuery?.(query) ?? true)
+      const currentDehydrateOptions = queryClient.getDefaultOptions().dehydrate
+      const shouldDehydrateQuery =
+        dehydrateOptions?.shouldDehydrateQuery ??
+        currentDehydrateOptions?.shouldDehydrateQuery ??
+        shouldDehydrateAllQueries
+      const serializeData =
+        dehydrateOptions?.serializeData ??
+        currentDehydrateOptions?.serializeData
+      const shouldRedactErrors =
+        dehydrateOptions?.shouldRedactErrors ??
+        currentDehydrateOptions?.shouldRedactErrors
+      const initialQueries = new Array<DehydratedQuery>()
+      const sentQueries = new Set<string>()
+
+      for (const query of queryClient.getQueryCache().getAll()) {
+        if (shouldDehydrateQuery(query)) {
+          initialQueries.push(
+            dehydrateQuery(query, serializeData, shouldRedactErrors),
           )
+          sentQueries.add(query.queryHash)
+        }
+      }
+
+      let controller!: ReadableStreamDefaultController<Array<DehydratedQuery>>
+      const stream = new ReadableStream<Array<DehydratedQuery>>({
+        start(value) {
+          controller = value
         },
       })
+      const flushPendingQueries = () => {
+        const state = streamState
+        const queries = state?.pendingQueries
+        if (!state || !queries) {
+          return
+        }
+        state.pendingQueries = undefined
 
-      if (dehydratedQuery.queries.length === 0) {
-        return
-      }
+        const dehydratedQueries = new Array<DehydratedQuery>()
 
-      sentQueries.add(event.query.queryHash)
-      queryStream.enqueue(dehydratedQuery)
-    })
-    // on the client
-  } else {
-    router.options.hydrate = async (dehydrated: DehydratedRouterQueryState) => {
-      await ogHydrate?.(dehydrated)
-      // hydrate the query client with the dehydrated data (if it was dehydrated on the server)
-      if (dehydrated.dehydratedQueryClient) {
-        queryHydrate(
-          queryClient,
-          dehydrated.dehydratedQueryClient,
-          hydrateOptions,
-        )
-      }
-
-      // read the query stream and hydrate the queries as they come in
-      const reader = dehydrated.queryStream.getReader()
-      reader
-        .read()
-        .then(async function handle({ done, value }) {
-          queryHydrate(queryClient, value, hydrateOptions)
-          if (done) {
-            return
-          }
-          const result = await reader.read()
-          return handle(result)
-        })
-        .catch((err) => {
-          console.error('Error reading query stream:', err)
-        })
-    }
-    if (handleRedirects) {
-      const ogMutationCacheConfig = queryClient.getMutationCache().config
-      queryClient.getMutationCache().config = {
-        ...ogMutationCacheConfig,
-        onError: (error, ...rest) => {
-          if (isRedirect(error)) {
-            error.options._fromLocation = router.stores.location.get()
-            return router.navigate(router.resolveRedirect(error).options)
+        for (const query of queries.values()) {
+          if (
+            state.sentQueries.has(query.queryHash) ||
+            !shouldDehydrateQuery(query)
+          ) {
+            continue
           }
 
-          return ogMutationCacheConfig.onError?.(error, ...rest)
+          dehydratedQueries.push(
+            dehydrateQuery(query, serializeData, shouldRedactErrors),
+          )
+          state.sentQueries.add(query.queryHash)
+        }
+
+        if (dehydratedQueries.length > 0) {
+          state.controller.enqueue(dehydratedQueries)
+        }
+      }
+      const unsubscribe = queryClient.getQueryCache().subscribe((event) => {
+        const state = streamState
+        if (!state) {
+          return
+        }
+        if (
+          state.sentQueries.has(event.query.queryHash) ||
+          // The promise is not set yet for the first query-cache event.
+          !event.query.promise
+        ) {
+          return
+        }
+
+        if (!state.pendingQueries) {
+          state.pendingQueries = new Map()
+          // Flush before React resumes resolved Suspense boundaries while
+          // still batching queries that settle in the same turn.
+          queueMicrotask(() => {
+            try {
+              flushPendingQueries()
+            } catch (error) {
+              finalizeQueryStream({ error })
+            }
+          })
+        }
+        state.pendingQueries.set(event.query.queryHash, event.query)
+      })
+      streamState = { controller, sentQueries, unsubscribe }
+
+      const finishRendering = () => {
+        try {
+          flushPendingQueries()
+        } catch (error) {
+          finalizeQueryStream({ error })
+          return
+        }
+        finalizeQueryStream()
+      }
+
+      router.serverSsr!.onRenderFinished(finishRendering)
+      return {
+        ...originalDehydrated,
+        query: {
+          ...(initialQueries.length > 0 && {
+            initial: initialQueries,
+          }),
+          stream,
         },
       }
-
-      const ogQueryCacheConfig = queryClient.getQueryCache().config
-      queryClient.getQueryCache().config = {
-        ...ogQueryCacheConfig,
-        onError: (error, ...rest) => {
-          if (isRedirect(error)) {
-            error.options._fromLocation = router.stores.location.get()
-            return router.navigate(router.resolveRedirect(error).options)
-          }
-
-          return ogQueryCacheConfig.onError?.(error, ...rest)
-        },
-      }
     }
+    return
   }
-}
+  const originalHydrate = router.options.hydrate
+  router.options.hydrate = async (dehydrated: DehydratedRouterQueryState) => {
+    await originalHydrate?.(dehydrated)
 
-type PushableStream = {
-  stream: ReadableStream
-  enqueue: (chunk: unknown) => void
-  close: () => void
-  isClosed: () => boolean
-  error: (err: unknown) => void
-}
+    const query = dehydrated.query
+    if (query.initial) {
+      hydrateQueryClient(
+        queryClient,
+        { queries: query.initial },
+        hydrateOptions,
+      )
+    }
 
-function createPushableStream(): PushableStream {
-  let controllerRef: ReadableStreamDefaultController
-  const stream = new ReadableStream({
-    start(controller) {
-      controllerRef = controller
-    },
-  })
-  let _isClosed = false
+    const reader = query.stream.getReader()
+    reader
+      .read()
+      .then(function handle({
+        done,
+        value,
+      }: ReadableStreamReadResult<
+        Array<DehydratedQuery>
+      >): void | Promise<void> {
+        if (done) {
+          return
+        }
+        hydrateQueryClient(queryClient, { queries: value }, hydrateOptions)
+        return reader.read().then(handle)
+      })
+      .catch((error) => {
+        console.error('Error reading query stream:', error)
+      })
+  }
+  if (handleRedirects) {
+    const originalMutationCacheConfig = queryClient.getMutationCache().config
+    queryClient.getMutationCache().config = {
+      ...originalMutationCacheConfig,
+      onError: (error, ...rest) => {
+        if (isRedirect(error)) {
+          error.options._fromLocation = router.stores.location.get()
+          return router.navigate(router.resolveRedirect(error).options)
+        }
 
-  return {
-    stream,
-    enqueue: (chunk) => {
-      if (!_isClosed) controllerRef.enqueue(chunk)
-    },
-    close: () => {
-      if (_isClosed) return
-      controllerRef.close()
-      _isClosed = true
-    },
-    isClosed: () => _isClosed,
-    error: (err: unknown) => {
-      if (_isClosed) return
-      _isClosed = true
-      controllerRef.error(err)
-    },
+        return originalMutationCacheConfig.onError?.(error, ...rest)
+      },
+    }
+
+    const originalQueryCacheConfig = queryClient.getQueryCache().config
+    queryClient.getQueryCache().config = {
+      ...originalQueryCacheConfig,
+      onError: (error, ...rest) => {
+        if (isRedirect(error)) {
+          error.options._fromLocation = router.stores.location.get()
+          return router.navigate(router.resolveRedirect(error).options)
+        }
+
+        return originalQueryCacheConfig.onError?.(error, ...rest)
+      },
+    }
   }
 }
