@@ -1,5 +1,6 @@
 import type { ServerMemoryWorkloadGroup } from '#memory-server/benchmark'
 import { createWorkloadGroup } from '../shared.ts'
+import { solidServerFnChurnAdapter } from './adapter'
 import type { StartRequestHandler } from '../shared.ts'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
@@ -11,4 +12,4 @@ const { default: handler } = (await import(
 }
 
 export const workloadGroup: ServerMemoryWorkloadGroup =
-  await createWorkloadGroup('solid', handler)
+  await createWorkloadGroup('solid', handler, solidServerFnChurnAdapter)

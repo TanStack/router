@@ -1,4 +1,4 @@
-import { RawStream, createServerFn } from '@tanstack/solid-start'
+import { createServerFn } from '@tanstack/solid-start'
 
 type FormEchoData = {
   alpha: string
@@ -96,6 +96,6 @@ export const streamOut = createServerFn({ method: 'GET' })
   .handler(({ data }) => {
     return {
       label: `stream-${data}`,
-      data: new RawStream(createDeterministicStream(data)),
+      data: createDeterministicStream(data),
     }
   })

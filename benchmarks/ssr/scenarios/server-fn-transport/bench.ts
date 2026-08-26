@@ -22,14 +22,33 @@ type MultipartPayloadSpec = {
   fileContents: string
 }
 
-type MultipartPayload = MultipartPayloadSpec & {
+export type MultipartPayload = MultipartPayloadSpec & {
   body: ArrayBuffer
   contentType: string
 }
 
-type QueryPayload = {
+export type QueryPayload = {
   query: string
   expectedBody: string
+}
+
+export type ServerFnTransportBenchAdapter = {
+  responseHeader: string
+  buildMultipartRequest: (
+    url: string,
+    payload: MultipartPayload,
+    index: number,
+  ) => Request
+  buildGetRequest: (
+    url: string,
+    payload: QueryPayload,
+    index: number,
+  ) => Request
+  assertRawResponse: (response: Response, expectedBody: string) => Promise<void>
+  assertRawStream: (response: Response, expectedLabel: string) => Promise<void>
+  validateSerializedResponse: (response: Response, request: Request) => void
+  validateRawResponse: (response: Response, request: Request) => void
+  validateRawStreamResponse: (response: Response, request: Request) => void
 }
 
 type FrameStats = {
@@ -67,6 +86,17 @@ const commonHeaders = {
   'sec-fetch-site': 'same-origin',
   accept: acceptHeader,
 } satisfies HeadersInit
+const tanstackServerFnTransportBenchAdapter: ServerFnTransportBenchAdapter = {
+  responseHeader: xTssSerialized,
+  buildMultipartRequest: buildTanStackMultipartRequest,
+  buildGetRequest: buildTanStackGetRequest,
+  assertRawResponse,
+  assertRawStream,
+  validateSerializedResponse,
+  validateRawResponse,
+  validateRawStreamResponse,
+}
+let activeServerFnTransportBenchAdapter = tanstackServerFnTransportBenchAdapter
 const serverFnMultipartLoopTotalRequests = 128
 const serverFnRawResponseLoopTotalRequests = 176
 const serverFnRawStreamLoopTotalRequests = 112
@@ -205,7 +235,15 @@ function buildMultipartRequest(
 ) {
   const payload = payloads[index % payloads.length]!
 
-  return new Request(`${origin}${urls.form}`, {
+  return activeServerFnTransportBenchAdapter.buildMultipartRequest(
+    urls.form,
+    payload,
+    index,
+  )
+}
+
+function buildTanStackMultipartRequest(url: string, payload: MultipartPayload) {
+  return new Request(`${origin}${url}`, {
     method: 'POST',
     headers: {
       ...commonHeaders,
@@ -222,7 +260,15 @@ function buildRawResponseRequest(
 ) {
   const payload = payloads[index % payloads.length]!
 
-  return new Request(`${origin}${urls.raw}${payload.query}`, {
+  return activeServerFnTransportBenchAdapter.buildGetRequest(
+    urls.raw,
+    payload,
+    index,
+  )
+}
+
+function buildTanStackGetRequest(url: string, payload: QueryPayload) {
+  return new Request(`${origin}${url}${payload.query}`, {
     method: 'GET',
     headers: commonHeaders,
   })
@@ -235,10 +281,11 @@ function buildRawStreamRequest(
 ) {
   const payload = payloads[index % payloads.length]!
 
-  return new Request(`${origin}${urls.stream}${payload.query}`, {
-    method: 'GET',
-    headers: commonHeaders,
-  })
+  return activeServerFnTransportBenchAdapter.buildGetRequest(
+    urls.stream,
+    payload,
+    index,
+  )
 }
 
 async function assertSerializedResponse({
@@ -268,8 +315,12 @@ async function assertSerializedResponse({
     )
   }
 
-  if (!response.headers.get(xTssSerialized)) {
-    throw new Error(`${label} sanity check missing ${xTssSerialized} header`)
+  if (
+    !response.headers.get(activeServerFnTransportBenchAdapter.responseHeader)
+  ) {
+    throw new Error(
+      `${label} sanity check missing ${activeServerFnTransportBenchAdapter.responseHeader} header`,
+    )
   }
 
   return text
@@ -459,7 +510,9 @@ function validateRawStreamResponse(response: Response, request: Request) {
 
 export async function setupServerFnTransportBench(
   handler: StartRequestHandler,
+  adapter: ServerFnTransportBenchAdapter = tanstackServerFnTransportBenchAdapter,
 ) {
+  activeServerFnTransportBenchAdapter = adapter
   const urls = await discoverUrls(handler)
   const multipartPayloads = await createMultipartPayloads()
   const rawPayloads = await createQueryPayloads(
@@ -499,17 +552,18 @@ export async function assertServerFnTransportScenario(
   })
   assertMultipartBody(multipartText, multipartPayload)
 
-  await assertRawResponse(
+  await activeServerFnTransportBenchAdapter.assertRawResponse(
     await handler.fetch(
       buildRawResponseRequest(context.urls, context.rawPayloads, 0),
     ),
     context.rawPayloads[0]!.expectedBody,
   )
 
-  await assertRawStream(
+  await activeServerFnTransportBenchAdapter.assertRawStream(
     await handler.fetch(
       buildRawStreamRequest(context.urls, context.streamPayloads, 0),
     ),
+    context.streamPayloads[0]!.expectedBody,
   )
 }
 
@@ -523,7 +577,8 @@ export function runServerFnMultipartRequestLoop(
     totalRequests: serverFnMultipartLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildMultipartRequest(context.urls, context.multipartPayloads, index),
-    validateResponse: validateSerializedResponse,
+    validateResponse:
+      activeServerFnTransportBenchAdapter.validateSerializedResponse,
   })
 }
 
@@ -537,7 +592,7 @@ export function runServerFnRawResponseRequestLoop(
     totalRequests: serverFnRawResponseLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildRawResponseRequest(context.urls, context.rawPayloads, index),
-    validateResponse: validateRawResponse,
+    validateResponse: activeServerFnTransportBenchAdapter.validateRawResponse,
   })
 }
 
@@ -551,6 +606,7 @@ export function runServerFnRawStreamRequestLoop(
     totalRequests: serverFnRawStreamLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildRawStreamRequest(context.urls, context.streamPayloads, index),
-    validateResponse: validateRawStreamResponse,
+    validateResponse:
+      activeServerFnTransportBenchAdapter.validateRawStreamResponse,
   })
 }
