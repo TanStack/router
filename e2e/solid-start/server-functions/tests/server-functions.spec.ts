@@ -185,7 +185,14 @@ test('POST server functions return single-flight loader data', async ({
     }
   })
 
+  const responsePromise = page.waitForResponse((response) =>
+    response.url().includes('/_serverFn/'),
+  )
   await page.getByTestId('single-flight-mutate').click()
+  const response = await responsePromise
+
+  expect(response.request().headers()['x-single-flight']).toBe('true')
+  expect(response.headers()['x-single-flight']).toBe('true')
 
   await expect(page.getByTestId('single-flight-count')).toHaveText(
     String(initialCount + 1),

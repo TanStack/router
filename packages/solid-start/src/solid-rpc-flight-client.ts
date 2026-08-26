@@ -1,12 +1,12 @@
 import { subscribeFlightData } from '@solidjs/web/server-functions/client'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/solid-router'
+import { getRouterInstance } from '@tanstack/start-client-core'
 import type {
   SolidStartFlightData,
   SolidStartFlightMatch,
 } from './solid-rpc-flight'
 
 let subscribed = false
-let routerPromise: Promise<AnyRouter> | undefined
 
 export function subscribeSolidStartFlightData() {
   if (subscribed) {
@@ -19,7 +19,7 @@ export function subscribeSolidStartFlightData() {
       return
     }
 
-    const router = await getRouter()
+    const router = await getRouterInstance()
     if ('dehydratedData' in data) {
       await router.options.hydrate?.(data.dehydratedData as never)
     }
@@ -48,13 +48,6 @@ export function subscribeSolidStartFlightData() {
       seedRedirectMatches(router, hydratedMatches)
     }
   })
-}
-
-function getRouter() {
-  routerPromise ??= import('#tanstack-router-entry').then(
-    async ({ getRouter }) => await getRouter(),
-  )
-  return routerPromise
 }
 
 function applyFlightMatch(
