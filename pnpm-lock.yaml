@@ -14405,6 +14405,9 @@ importers:
       '@tanstack/start-server-core':
         specifier: workspace:*
         version: link:../start-server-core
+      '@tanstack/start-storage-context':
+        specifier: workspace:*
+        version: link:../start-storage-context
       pathe:
         specifier: ^2.0.3
         version: 2.0.3

@@ -74,6 +74,18 @@
         "default": "./dist/esm/server.js"
       }
     },
+    "./server-functions-handler": {
+      "import": {
+        "types": "./dist/esm/server-functions-handler.d.ts",
+        "default": "./dist/esm/server-functions-handler.js"
+      }
+    },
+    "./createSolidStartHandler": {
+      "import": {
+        "types": "./dist/esm/createSolidStartHandler.d.ts",
+        "default": "./dist/esm/createSolidStartHandler.js"
+      }
+    },
     "./plugin/vite": {
       "import": {
         "types": "./dist/esm/plugin/vite.d.ts",
@@ -106,6 +118,14 @@
     },
     "./package.json": "./package.json"
   },
+  "imports": {
+    "#tanstack-start-entry": {
+      "default": "./dist/esm/empty-start-entry.js"
+    },
+    "#tanstack-start-plugin-adapters": {
+      "default": "./dist/esm/empty-plugin-adapters.js"
+    }
+  },
   "sideEffects": false,
   "files": [
     "dist",
@@ -124,6 +144,7 @@
     "@tanstack/start-client-core": "workspace:*",
     "@tanstack/start-plugin-core": "workspace:*",
     "@tanstack/start-server-core": "workspace:*",
+    "@tanstack/start-storage-context": "workspace:*",
     "pathe": "^2.0.3"
   },
   "devDependencies": {
