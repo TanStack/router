@@ -60,14 +60,20 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
     const finalizeQueryStream = (failure?: { error: unknown }) => {
       const state = streamState
       streamState = undefined
-      if (!state) return
+      if (!state) {
+        return
+      }
 
       state.unsubscribe()
 
-      if (failure) {
-        state.controller.error(failure.error)
-      } else {
-        state.controller.close()
+      try {
+        if (failure) {
+          state.controller.error(failure.error)
+        } else {
+          state.controller.close()
+        }
+      } catch {
+        // The stream consumer can already have cancelled the stream.
       }
     }
 

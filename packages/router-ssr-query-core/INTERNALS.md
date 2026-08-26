@@ -138,6 +138,8 @@ This type keeps all active stream resources together. The controller and unsubsc
 
 If `finalizeQueryStream` receives an error, the function puts the stream in an error state. Otherwise, the function closes the stream.
 
+A cancelled stream is already terminal. Finalization still removes the Query cache subscription and releases the stream state.
+
 A queued microtask sees the inactive state after finalization and exits.
 
 ## Query Selection
@@ -350,6 +352,7 @@ The core unit tests cover these behaviors:
 - A default serializer changed after setup
 - A streamed serialization error
 - Cleanup during an active render-time query
+- Cleanup after Query stream cancellation
 - Cleanup before dehydration
 - Query cancellation during cleanup
 - Cleanup registration during server SSR attachment.

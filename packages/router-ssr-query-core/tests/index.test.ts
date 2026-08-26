@@ -541,6 +541,26 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     expect(queryClient.getQueryCache().hasListeners()).toBe(false)
     expect(aborted).toBe(true)
   })
+
+  it('clears the QueryClient when the stream is already cancelled', async () => {
+    const queryClient = track(new QueryClient())
+    const { router, attachServerSsr, triggerCleanup } = createServerRouter()
+
+    setupCoreRouterSsrQueryIntegration({
+      router: router as any,
+      queryClient,
+    })
+    attachServerSsr()
+    queryClient.setQueryData(['cancelled-stream'], 'data')
+    const dehydrated = (await router.options.dehydrate?.()) as {
+      query: { stream: ReadableStream<Array<unknown>> }
+    }
+    await dehydrated.query.stream.cancel()
+
+    expect(() => triggerCleanup()).not.toThrow()
+    expect(queryClient.getQueryCache().getAll()).toEqual([])
+    expect(queryClient.getQueryCache().hasListeners()).toBe(false)
+  })
 })
 
 describe('SSR cleanup', () => {
