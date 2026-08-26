@@ -1,8 +1,7 @@
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { compileMatchers } from '../../src/import-protection/matchers'
 import {
   getRsbuildResolvedImportProtectionCheck,
-  registerImportProtection,
 } from '../../src/rsbuild/import-protection'
 
 describe('getRsbuildResolvedImportProtectionCheck', () => {
