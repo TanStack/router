@@ -24,8 +24,10 @@ export function subscribeSolidStartFlightData() {
       await router.options.hydrate?.(data.dehydratedData as never)
     }
 
-    const location = router.buildLocation({ href: data.href } as never)
-    const matches = router.matchRoutes(location)
+    const currentLocation = isCurrentLocation(router, data.href)
+    const matches = currentLocation
+      ? router.stores.matches.get()
+      : router.matchRoutes(router.buildLocation({ href: data.href } as never))
     if (matches.length !== data.matches.length) {
       return
     }
@@ -42,7 +44,7 @@ export function subscribeSolidStartFlightData() {
       hydratedMatches.push(applyFlightMatch(match, flightMatch))
     }
 
-    if (isCurrentLocation(router, data.href)) {
+    if (currentLocation) {
       publishCurrentMatches(router, hydratedMatches)
     } else {
       seedRedirectMatches(router, hydratedMatches)
@@ -54,6 +56,18 @@ function applyFlightMatch(
   match: AnyRouteMatch,
   flightMatch: SolidStartFlightMatch,
 ): AnyRouteMatch {
+  const hasRouteState =
+    flightMatch.loaderData !== undefined ||
+    flightMatch.beforeLoadContext !== undefined ||
+    'error' in flightMatch ||
+    flightMatch.notFound === true ||
+    match.error !== undefined ||
+    match._notFound === true
+
+  if (!hasRouteState) {
+    return match
+  }
+
   const nextMatch = {
     ...match,
     error: flightMatch.error,
