@@ -162,6 +162,41 @@ test('Server function can return null for GET and POST calls', async ({
   ).toContainText(JSON.stringify(null))
 })
 
+test('POST server functions return single-flight loader data', async ({
+  page,
+}) => {
+  await page.goto('/single-flight')
+  await page.waitForLoadState('networkidle')
+
+  const initialCount = Number(
+    await page.getByTestId('single-flight-count').textContent(),
+  )
+  const initialReads = Number(
+    await page.getByTestId('single-flight-reads').textContent(),
+  )
+  const serverFunctionRequests: Array<{ method: string; url: string }> = []
+
+  page.on('request', (request) => {
+    if (request.url().includes('/_serverFn/')) {
+      serverFunctionRequests.push({
+        method: request.method(),
+        url: request.url(),
+      })
+    }
+  })
+
+  await page.getByTestId('single-flight-mutate').click()
+
+  await expect(page.getByTestId('single-flight-count')).toHaveText(
+    String(initialCount + 1),
+  )
+  await expect(page.getByTestId('single-flight-reads')).toHaveText(
+    String(initialReads + 1),
+  )
+  expect(serverFunctionRequests).toHaveLength(1)
+  expect(serverFunctionRequests[0]?.method).toBe('POST')
+})
+
 test('Server function can correctly send and receive FormData', async ({
   page,
 }) => {
