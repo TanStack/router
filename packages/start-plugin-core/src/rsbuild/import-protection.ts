@@ -548,7 +548,7 @@ function getModuleResource(module: RspackModule): string {
     }
   ).resourceResolveData
 
-  return resourceResolveData?.resource ?? normalizeFilePath(module.identifier())
+  return normalizeFilePath(resourceResolveData?.resource ?? module.identifier())
 }
 
 function getMarkerKindFromBuildInfo(
