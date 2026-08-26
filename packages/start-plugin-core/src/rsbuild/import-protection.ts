@@ -24,6 +24,8 @@ import {
 import { rewriteDeniedImports } from '../import-protection/rewrite'
 import {
   buildCodeSnippet,
+  findOriginalUsageLocation,
+  findPostCompileUsageLocation,
   normalizeSourceMap,
   pickOriginalCodeFromSourcesContent,
 } from '../import-protection/sourceLocation'
@@ -40,6 +42,7 @@ import {
   loadSilentMockModule,
 } from '../import-protection/virtualModules'
 import {
+  buildSourceCandidates,
   canonicalizeResolvedId,
   checkFileDenial,
   clearNormalizeFilePathCache,
@@ -57,6 +60,7 @@ import type { FileMatchers } from '../import-protection/utils'
 import type {
   SourceMapLike,
   TransformResult,
+  TransformResultProvider,
 } from '../import-protection/sourceLocation'
 import type { Loc, TraceStep, ViolationInfo } from '../import-protection/trace'
 import type { CompileStartFrameworkOptions, GetConfigFn } from '../types'
@@ -237,7 +241,7 @@ interface CompilationTransformResultProvider {
   getTransformResult: (module: RspackModule) => TransformResult | undefined
 }
 
-// An identity-only snapshot of one module's active compilation connections.
+// An identity-only snapshot of one module's compilation connections.
 // Derived paths, requests, locations, and diagnostic indexes live elsewhere.
 interface CompilationImport {
   dependency: RspackDependency
@@ -698,7 +702,7 @@ function addEntryModulesToGraph(opts: {
   }
 }
 
-function forEachActiveModules(opts: {
+function forEachModules(opts: {
   compilation: RspackCompilation
   modules: Array<RspackModule>
   visitNode: (node: RspackModuleGraphNode) => void
@@ -714,10 +718,6 @@ function forEachActiveModules(opts: {
     for (const connection of connections) {
       const connectedModule = connection.module
       if (!connectedModule) {
-        continue
-      }
-
-      if (connection.getActiveState(undefined) !== true) {
         continue
       }
 
@@ -969,9 +969,9 @@ async function mapCompilationLocation(opts: {
   provider: CompilationTransformResultProvider
   importer: string
   importerModule: RspackModule
-  generatedLoc?: Loc
+  dependencyLoc?: Loc
 }): Promise<Loc | undefined> {
-  if (!opts.generatedLoc) {
+  if (!opts.dependencyLoc) {
     return undefined
   }
 
@@ -982,8 +982,8 @@ async function mapCompilationLocation(opts: {
 
   const fallback: Loc = {
     file: normalizeFilePath(opts.importer),
-    line: opts.generatedLoc.line,
-    column: opts.generatedLoc.column,
+    line: opts.dependencyLoc.line,
+    column: opts.dependencyLoc.column,
   }
   const consumer = await getCompilationSourceMapConsumer(map)
   if (!consumer) {
@@ -992,8 +992,8 @@ async function mapCompilationLocation(opts: {
 
   try {
     const original = consumer.originalPositionFor({
-      line: opts.generatedLoc.line,
-      column: Math.max(0, opts.generatedLoc.column - 1),
+      line: opts.dependencyLoc.line,
+      column: Math.max(0, opts.dependencyLoc.column - 1),
     })
     if (original.line != null && original.column != null) {
       return {
@@ -1041,6 +1041,52 @@ function getCompilationSourceMapConsumer(
   return consumer
 }
 
+async function resolveImporterLocation(opts: {
+  config: PluginConfig
+  provider: CompilationTransformResultProvider
+  importer: string
+  importerModule: RspackModule
+  source: string
+  resolved?: string
+  dependencyLoc?: Loc
+  envType: 'client' | 'server'
+}): Promise<Loc | undefined> {
+  const dependencyLoc = await mapCompilationLocation({
+    provider: opts.provider,
+    importer: opts.importer,
+    importerModule: opts.importerModule,
+    dependencyLoc: opts.dependencyLoc,
+  })
+  if (dependencyLoc) {
+    return dependencyLoc
+  }
+
+  const provider: TransformResultProvider = {
+    getTransformResult: () =>
+      opts.provider.getTransformResult(opts.importerModule),
+  }
+  for (const source of buildSourceCandidates(
+    opts.source,
+    opts.resolved,
+    opts.config.root,
+  )) {
+    const loc =
+      (await findPostCompileUsageLocation(provider, opts.importer, source)) ??
+      findOriginalUsageLocation(
+        provider,
+        opts.importer,
+        source,
+        opts.envType,
+        opts.config.root,
+      )
+    if (loc) {
+      return loc
+    }
+  }
+
+  return undefined
+}
+
 async function rebuildAndAnnotateTrace(opts: {
   provider: CompilationTransformResultProvider
   importGraph: ImportGraph
@@ -1066,7 +1112,7 @@ async function rebuildAndAnnotateTrace(opts: {
           provider: opts.provider,
           importer: step.file,
           importerModule: edge.importerModule,
-          generatedLoc: getDependencyLocation(edge.dependency),
+          dependencyLoc: getDependencyLocation(edge.dependency),
         })
       : undefined
     if (loc) {
@@ -1109,11 +1155,15 @@ async function buildViolationInfo(opts: {
   opts.perf?.count('violations.enriched')
 
   const importerLocStartedAt = opts.perf ? performance.now() : 0
-  const importerLoc = await mapCompilationLocation({
+  const importerLoc = await resolveImporterLocation({
+    config: opts.config,
     provider: opts.provider,
     importer: opts.importer,
     importerModule: opts.importerModule,
-    generatedLoc: opts.importLoc,
+    source: opts.source,
+    resolved: opts.resolved,
+    dependencyLoc: opts.importLoc,
+    envType: opts.envType,
   })
   if (opts.perf) {
     opts.perf.time('violations.resolveImporterLocation', importerLocStartedAt)
@@ -1699,7 +1749,7 @@ export function registerImportProtection(
         })
         const forEachStartedAt = perf ? performance.now() : 0
         const moduleGraphNodes: Array<RspackModuleGraphNode> = []
-        forEachActiveModules({
+        forEachModules({
           compilation: context.compilation,
           modules: allModules,
           visitNode(node) {
@@ -1708,10 +1758,10 @@ export function registerImportProtection(
           },
         })
         if (perf) {
-          perf.time('processAssets.forEachActiveModules', forEachStartedAt)
+          perf.time('processAssets.forEachModules', forEachStartedAt)
           perf.count('processAssets.modules.collected', moduleGraphNodes.length)
           perf.count(
-            'processAssets.imports.active',
+            'processAssets.imports.collected',
             moduleGraphNodes.reduce(
               (total, node) => total + node.imports.length,
               0,
