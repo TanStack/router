@@ -1,6 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
-/// <reference path="./tanstack-start.d.ts" />
-
 import { getRequestEvent } from '@solidjs/web'
 import { createServerReference } from '@solidjs/web/server-functions/server'
 import { TSS_SERVER_FUNCTION } from '@tanstack/start-client-core'

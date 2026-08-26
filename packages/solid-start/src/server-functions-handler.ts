@@ -1,6 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
-/// <reference path="./tanstack-start.d.ts" />
-
 import {
   FUNCTION_HEADER,
   configureServerFunctionsServer,

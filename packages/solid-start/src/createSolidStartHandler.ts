@@ -1,6 +1,3 @@
-// eslint-disable-next-line @typescript-eslint/triple-slash-reference
-/// <reference path="./tanstack-start.d.ts" />
-
 import { provideRequestEvent } from '@solidjs/web/storage'
 import { createStartHandler } from '@tanstack/solid-start-server'
 import { createMemoryHistory } from '@tanstack/solid-router'
