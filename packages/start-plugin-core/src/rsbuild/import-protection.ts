@@ -1,5 +1,6 @@
 import { writeFileSync } from 'node:fs'
-import { extname, resolve as resolvePath } from 'node:path'
+import { dirname, extname, resolve as resolvePath } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 import {
   getDefaultImportProtectionRules,
@@ -7,19 +8,13 @@ import {
 } from '../import-protection/defaults'
 import { normalizePath } from '../utils'
 import { ExtensionlessAbsoluteIdResolver } from '../import-protection/extensionlessAbsoluteIdResolver'
-import { compileMatchers, matchesAny } from '../import-protection/matchers'
+import { compileMatchers } from '../import-protection/matchers'
 import {
   getImportProtectionEnvType,
   getImportProtectionRelativePath,
   getImportProtectionRulesForEnvironment,
   shouldCheckImportProtectionImporter,
 } from '../import-protection/adapterUtils'
-import {
-  getImportSourcesFromResult,
-  getMockExportNamesBySourceFromResult,
-  getNamedExportsFromResult,
-} from '../import-protection/analysis'
-import { rewriteDeniedImports } from '../import-protection/rewrite'
 import {
   ImportLocCache,
   buildCodeSnippet,
@@ -36,16 +31,12 @@ import {
   formatViolation,
 } from '../import-protection/trace'
 import {
-  generateDevSelfDenialModule,
-  generateSelfContainedMockModule,
   loadMockEdgeModule,
   loadMockRuntimeModule,
   loadSilentMockModule,
 } from '../import-protection/virtualModules'
 import {
   buildSourceCandidates,
-  canonicalizeResolvedId,
-  checkFileDenial,
   clearNormalizeFilePathCache,
   dedupePatterns,
   dedupeViolationKey,
@@ -78,21 +69,19 @@ type RspackVirtualModulesPlugin = InstanceType<
 type ProcessAssetsContext = Parameters<
   Parameters<RsbuildPluginAPI['processAssets']>[1]
 >[0]
-type TransformContext = Parameters<
-  Parameters<RsbuildPluginAPI['transform']>[1]
->[0]
 type RspackCompilation = Rspack.Compilation
 type RspackModule = Rspack.Module
 type RspackDependency = Rspack.Dependency
 type RspackInputFileSystem = NonNullable<RspackCompilation['inputFileSystem']>
 
-type ImportProtectionMarkerKind = 'server' | 'client'
-interface ImportProtectionMarker {
+export type ImportProtectionMarkerKind = 'server' | 'client'
+export interface ImportProtectionMarker {
   kind: ImportProtectionMarkerKind
   source: string
 }
 
-const IMPORT_PROTECTION_BUILD_INFO_FIELD = 'tanstack.start.importProtection'
+export const IMPORT_PROTECTION_BUILD_INFO_FIELD =
+  'tanstack.start.importProtection'
 
 type PerfTiming = {
   count: number
@@ -100,7 +89,7 @@ type PerfTiming = {
   maxMs: number
 }
 
-type PerfCollector = {
+export type PerfCollector = {
   count: (name: string, value?: number) => void
   time: (name: string, startedAt: number) => void
   flush: (root: string, envName: string, phase: string) => void
@@ -170,13 +159,13 @@ function createPerfCollector(): PerfCollector {
   }
 }
 
-interface EnvRules {
+export interface EnvRules {
   specifiers: Array<CompiledMatcher>
   files: Array<CompiledMatcher>
   excludeFiles: Array<CompiledMatcher>
 }
 
-interface PluginConfig {
+export interface PluginConfig {
   enabled: boolean
   root: string
   command: 'build' | 'serve'
@@ -203,18 +192,17 @@ interface PluginConfig {
   ) => boolean | void | Promise<boolean | void>
 }
 
-interface EnvRuntimeState {
+export interface EnvRuntimeState {
   resolveCache: Map<string, string | null>
   seenViolations: Set<string>
 }
 
-interface SharedState {
+export interface SharedState {
   root: string
   virtualModules: Map<string, string>
   vmPlugins: Record<string, RspackVirtualModulesPlugin>
   readyVmPlugins: Record<string, boolean>
   pendingWrites: Map<string, Map<string, string>>
-  moduleByResource: Record<string, Map<string, RspackModule>>
 }
 
 interface CompilationEdge {
@@ -297,6 +285,11 @@ const IMPORT_PROTECTION_VIRTUAL_DIR = 'node_modules/.virtual/import-protection'
 const MOCK_EDGE_FILE_PREFIX = 'mock-edge-'
 const MOCK_RUNTIME_FILE_PREFIX = 'mock-runtime-'
 const MOCK_SILENT_FILE = 'mock-silent.mjs'
+const currentDir = dirname(fileURLToPath(import.meta.url))
+const importProtectionLoader = resolvePath(
+  currentDir,
+  'import-protection-loader.js',
+)
 
 function toBase64Url(input: unknown): string {
   return Buffer.from(JSON.stringify(input), 'utf8').toString('base64url')
@@ -306,14 +299,14 @@ function fromBase64Url<T>(input: string): T {
   return JSON.parse(Buffer.from(input, 'base64url').toString('utf8')) as T
 }
 
-function getRulesForEnvironment(
+export function getRulesForEnvironment(
   config: PluginConfig,
   envName: string,
 ): EnvRules {
   return getImportProtectionRulesForEnvironment(config, envName) as EnvRules
 }
 
-function serializePattern(pattern: string | RegExp): string {
+export function serializePattern(pattern: string | RegExp): string {
   return typeof pattern === 'string' ? pattern : pattern.toString()
 }
 
@@ -339,7 +332,7 @@ export function getRsbuildResolvedImportProtectionCheck(
   return { type: 'marker' }
 }
 
-function getOrCreateEnvState(
+export function getOrCreateEnvState(
   envStates: Map<string, EnvRuntimeState>,
   envName: string,
 ): EnvRuntimeState {
@@ -354,6 +347,27 @@ function getOrCreateEnvState(
   }
 
   return env
+}
+
+export function shouldCheckImporterWithCache(opts: {
+  config: PluginConfig
+  cache: Map<string, boolean>
+  perf?: PerfCollector
+  file: string
+}): boolean {
+  const normalizedFile = normalizeFilePath(opts.file)
+  const cached = opts.cache.get(normalizedFile)
+  if (cached !== undefined) {
+    opts.perf?.count('shouldCheckImporter.cached')
+    return cached
+  }
+
+  const result = shouldCheckImportProtectionImporter(
+    opts.config,
+    normalizedFile,
+  )
+  opts.cache.set(normalizedFile, result)
+  return result
 }
 
 function getVirtualModulePath(
@@ -420,7 +434,10 @@ function flushPendingWrites(shared: SharedState, envName: string): void {
   }
 }
 
-function ensureSilentMockModule(shared: SharedState, envName: string): string {
+export function ensureSilentMockModule(
+  shared: SharedState,
+  envName: string,
+): string {
   return tryWriteVirtualModule(
     shared,
     envName,
@@ -429,7 +446,7 @@ function ensureSilentMockModule(shared: SharedState, envName: string): string {
   )
 }
 
-function ensureRuntimeMockModule(opts: {
+export function ensureRuntimeMockModule(opts: {
   shared: SharedState
   envName: string
   mode: 'error' | 'warn' | 'off'
@@ -457,7 +474,7 @@ function ensureRuntimeMockModule(opts: {
   )
 }
 
-function ensureMockEdgeModule(opts: {
+export function ensureMockEdgeModule(opts: {
   shared: SharedState
   envName: string
   payload: MockEdgePayload
@@ -489,59 +506,6 @@ function getMockEdgePayloadFromFile(
   } catch {
     return undefined
   }
-}
-
-async function resolveAgainstImporter(opts: {
-  envState: EnvRuntimeState
-  config: PluginConfig
-  ctx: TransformContext
-  importerId: string
-  source: string
-  extensionlessResolver: ExtensionlessAbsoluteIdResolver
-  perf?: PerfCollector
-}): Promise<string | null> {
-  const importerDir =
-    opts.ctx.context ?? opts.importerId.replace(/[/\\][^/\\]*$/, '')
-  const normalizedImporterDir = normalizeFilePath(importerDir)
-  const cacheKey = `${normalizedImporterDir}:${opts.source}`
-
-  if (opts.envState.resolveCache.has(cacheKey)) {
-    opts.perf?.count('resolve.cached')
-    return opts.envState.resolveCache.get(cacheKey) ?? null
-  }
-
-  const startedAt = opts.perf ? performance.now() : 0
-  opts.perf?.count('resolve.calls')
-  const resolved = await new Promise<string | null>((resolve, reject) => {
-    opts.ctx.resolve(importerDir, opts.source, (error, result) => {
-      if (error) {
-        reject(error)
-        return
-      }
-
-      resolve(typeof result === 'string' ? result : null)
-    })
-  })
-    .catch(() => null)
-    .finally(() => {
-      if (opts.perf) {
-        opts.perf.time('resolve', startedAt)
-      }
-    })
-
-  if (!resolved) {
-    opts.envState.resolveCache.set(cacheKey, null)
-    return null
-  }
-
-  const canonical = canonicalizeResolvedId(
-    resolved,
-    opts.config.root,
-    (value) => opts.extensionlessResolver.resolve(value),
-  )
-
-  opts.envState.resolveCache.set(cacheKey, canonical)
-  return canonical
 }
 
 function getModuleResource(module: RspackModule): string {
@@ -1368,7 +1332,6 @@ export function registerImportProtection(
     vmPlugins: {},
     readyVmPlugins: {},
     pendingWrites: new Map(),
-    moduleByResource: {},
   }
 
   function applyUserConfig(): void {
@@ -1452,16 +1415,12 @@ export function registerImportProtection(
   }
 
   function shouldCheckImporter(file: string): boolean {
-    const normalizedFile = normalizeFilePath(file)
-    const cached = shouldCheckImporterCache.get(normalizedFile)
-    if (cached !== undefined) {
-      perf?.count('shouldCheckImporter.cached')
-      return cached
-    }
-
-    const result = shouldCheckImportProtectionImporter(config, normalizedFile)
-    shouldCheckImporterCache.set(normalizedFile, result)
-    return result
+    return shouldCheckImporterWithCache({
+      config,
+      cache: shouldCheckImporterCache,
+      perf,
+      file,
+    })
   }
 
   api.onBeforeBuild(() => {
@@ -1496,40 +1455,42 @@ export function registerImportProtection(
     applyUserConfig()
 
     const envName = utils.environment.name
+    if (
+      !opts.environments.some((environment) => environment.name === envName)
+    ) {
+      return
+    }
+
     const VMP = utils.rspack.experiments.VirtualModulesPlugin
     const vmPlugin = new VMP({})
 
     shared.vmPlugins[envName] = vmPlugin
     shared.readyVmPlugins[envName] = false
-    const moduleByResource = new Map<string, RspackModule>()
-    shared.moduleByResource[envName] = moduleByResource
+
+    const rules = rspackConfig.module.rules ?? []
+    rules.push({
+      test: /\.[cm]?[tj]sx?$/,
+      enforce: 'post',
+      use: [
+        {
+          loader: importProtectionLoader,
+          options: {
+            config,
+            envName,
+            envStates,
+            extensionlessResolver,
+            perf,
+            shared,
+            shouldCheckImporterCache,
+          },
+        },
+      ],
+    })
+    rspackConfig.module.rules = rules
 
     rspackConfig.plugins.push(vmPlugin)
     rspackConfig.plugins.push({
       apply(compiler: Rspack.Compiler) {
-        compiler.hooks.compilation.tap(
-          'TanStackStartImportProtectionBuildInfo',
-          (compilation) => {
-            utils.rspack.NormalModule.getCompilationHooks(
-              compilation,
-            ).loader.tap(
-              'TanStackStartImportProtectionBuildInfo',
-              (loaderContext, module) => {
-                if (!isImportProtectionSourceFile(loaderContext.resourcePath)) {
-                  return
-                }
-
-                moduleByResource.set(loaderContext.resource, module)
-              },
-            )
-          },
-        )
-
-        compiler.hooks.compile.tap(
-          'TanStackStartImportProtectionModuleCleanup',
-          () => moduleByResource.clear(),
-        )
-
         compiler.hooks.thisCompilation.tap(
           'TanStackStartImportProtectionVirtualModulesReady',
           () => {
@@ -1543,202 +1504,6 @@ export function registerImportProtection(
       perf.time('modifyRspackConfig', startedAt)
     }
   })
-
-  for (const environment of opts.environments) {
-    api.transform(
-      {
-        test: /\.[cm]?[tj]sx?$/,
-        environments: [environment.name],
-        order: 'post',
-      },
-      async (ctx) => {
-        const startedAt = perf ? performance.now() : 0
-        perf?.count('transform.calls')
-        perf?.count(`transform.env.${environment.name}`)
-
-        try {
-          const envName = environment.name
-          const id = ctx.resource
-          const moduleByResource = shared.moduleByResource[envName]
-          const module = moduleByResource?.get(id)
-          moduleByResource?.delete(id)
-
-          if (module) {
-            delete module.buildInfo[IMPORT_PROTECTION_BUILD_INFO_FIELD]
-          }
-
-          if (!config.enabled) {
-            return ctx.code
-          }
-
-          const envType = getImportProtectionEnvType(config, envName)
-          const envState = getOrCreateEnvState(envStates, envName)
-          const file = normalizeFilePath(ctx.resourcePath)
-
-          if (!shouldCheckImporter(file)) {
-            perf?.count('transform.skippedImporter')
-            return ctx.code
-          }
-
-          const matchers = getRulesForEnvironment(config, envName)
-          const relativeFile = getImportProtectionRelativePath(
-            config.root,
-            file,
-          )
-          const transformResult: TransformResult = {
-            code: ctx.code,
-            filename: file,
-            map: undefined,
-            originalCode: undefined,
-            perf,
-          }
-          const importSources = getImportSourcesFromResult(transformResult)
-          perf?.count('transform.importSources', importSources.length)
-
-          const serverOnlyMarker = importSources.find((source) =>
-            config.markerSpecifiers.serverOnly.has(source),
-          )
-          const clientOnlyMarker = importSources.find((source) =>
-            config.markerSpecifiers.clientOnly.has(source),
-          )
-
-          if (serverOnlyMarker && clientOnlyMarker) {
-            throw new Error(
-              `[import-protection] File "${relativeFile}" has both server-only and client-only markers. This is not allowed.`,
-            )
-          }
-
-          const marker: ImportProtectionMarker | undefined = serverOnlyMarker
-            ? { kind: 'server', source: serverOnlyMarker }
-            : clientOnlyMarker
-              ? { kind: 'client', source: clientOnlyMarker }
-              : undefined
-
-          if (module && marker) {
-            module.buildInfo[IMPORT_PROTECTION_BUILD_INFO_FIELD] = marker
-          }
-
-          const fileMatch = checkFileDenial(relativeFile, matchers)
-          const markerViolation =
-            (envType === 'client' && marker?.kind === 'server') ||
-            (envType === 'server' && marker?.kind === 'client')
-
-          if (fileMatch || markerViolation) {
-            let exportNames: Array<string> = []
-
-            try {
-              exportNames = getNamedExportsFromResult(transformResult)
-            } catch {
-              exportNames = []
-            }
-
-            if (config.command === 'build') {
-              return generateSelfContainedMockModule(exportNames)
-            }
-
-            const runtimeId = ensureRuntimeMockModule({
-              shared,
-              envName,
-              mode: config.mockAccess,
-              env: envName,
-              importer: file,
-              specifier: relativeFile,
-            })
-
-            return generateDevSelfDenialModule(exportNames, runtimeId)
-          }
-
-          const deniedSpecifierReplacements = new Map<string, string>()
-          let exportsBySource: Map<string, Array<string>> | undefined
-          const getExportsBySource = () => {
-            if (exportsBySource) {
-              return exportsBySource
-            }
-
-            try {
-              exportsBySource =
-                getMockExportNamesBySourceFromResult(transformResult)
-            } catch {
-              exportsBySource = new Map<string, Array<string>>()
-            }
-            return exportsBySource
-          }
-
-          for (const source of importSources) {
-            const specifierMatch = matchesAny(source, matchers.specifiers)
-            if (!specifierMatch) {
-              continue
-            }
-
-            const resolved = await resolveAgainstImporter({
-              envState,
-              config,
-              ctx,
-              importerId: id,
-              source,
-              extensionlessResolver,
-              perf,
-            })
-
-            const runtimeId =
-              config.command === 'build'
-                ? ensureSilentMockModule(shared, envName)
-                : ensureRuntimeMockModule({
-                    shared,
-                    envName,
-                    mode: config.mockAccess,
-                    env: envName,
-                    importer: file,
-                    specifier: source,
-                  })
-
-            const replacement = ensureMockEdgeModule({
-              shared,
-              envName,
-              payload: {
-                exports: getExportsBySource().get(source) ?? [],
-                runtimeId,
-                violation: {
-                  env: envName,
-                  envType,
-                  importer: file,
-                  specifier: source,
-                  ...(resolved ? { resolved } : {}),
-                  patternText: serializePattern(specifierMatch.pattern),
-                },
-              },
-            })
-
-            deniedSpecifierReplacements.set(source, replacement)
-          }
-
-          if (deniedSpecifierReplacements.size === 0) {
-            return ctx.code
-          }
-
-          const rewritten = rewriteDeniedImports(
-            ctx.code,
-            id,
-            new Set(deniedSpecifierReplacements.keys()),
-            (source) => deniedSpecifierReplacements.get(source) ?? source,
-          )
-
-          if (!rewritten) {
-            return ctx.code
-          }
-
-          return {
-            code: rewritten.code,
-            map: normalizeSourceMap(rewritten.map) ?? null,
-          }
-        } finally {
-          if (perf) {
-            perf.time('transform', startedAt)
-          }
-        }
-      },
-    )
-  }
 
   api.processAssets(
     {

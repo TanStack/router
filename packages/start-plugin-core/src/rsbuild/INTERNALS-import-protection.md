@@ -7,7 +7,7 @@ import-protection core in `src/import-protection/INTERNALS.md`.
 
 Rsbuild owns:
 
-- post-transform enforcement through `api.transform({ order: 'post' })`
+- post-transform enforcement through a Rspack post-loader
 - virtual-module transport through `VirtualModulesPlugin`
 - compilation-truth reporting in `processAssets`
 - final graph reconstruction from Rspack compilation data
@@ -34,8 +34,10 @@ object:
 1. `onBeforeBuild`
 2. `onBeforeDevCompile`
 3. `modifyRspackConfig`
-4. `transform(..., { order: 'post' })`
-5. `processAssets(..., { stage: 'report' })`
+4. `processAssets(..., { stage: 'report' })`
+
+`modifyRspackConfig` installs both the virtual-modules plugin and the
+environment-scoped import-protection post-loader.
 
 ## State Model
 
@@ -50,11 +52,6 @@ Shared adapter state contains:
 - `vmPlugins`
 - `readyVmPlugins`
 - `pendingWrites`
-- `moduleByResource`
-
-`moduleByResource` associates each loader resource with its Rspack module. The
-loader hook populates it, the matching post-transform hook consumes it, and
-durable marker metadata lives on `module.buildInfo`.
 
 Notably absent compared to Vite:
 
@@ -65,7 +62,10 @@ Notably absent compared to Vite:
 
 ## Transform Phase
 
-Rsbuild enforcement runs after the Start compiler in a `post` transform.
+Rsbuild enforcement runs after the Start compiler in a Rspack loader with
+`enforce: 'post'`. The complete transform pipeline lives in
+`import-protection-loader.ts`; mutable configuration and per-environment state
+are passed through loader options.
 
 That matters because many compiler-safe imports are already stripped by the time
 import protection runs. This naturally suppresses a large class of false
@@ -154,9 +154,16 @@ The Rsbuild adapter intentionally prefers native Rspack APIs where possible.
 
 Transform-time:
 
-- `ctx.resource`
-- `ctx.context`
-- `ctx.resolve(...)`
+- `loaderContext.resource`
+- `loaderContext.resourcePath`
+- `loaderContext.context`
+- `loaderContext.resolve(...)`
+- `loaderContext._module.buildInfo`
+
+`_module` is a deprecated Rspack loader-context API. It is used deliberately
+because a loader invocation is bound to one exact module instance, including
+its layer. Keying modules by resource would collapse distinct modules that use
+the same resource in different layers. Do not add a resource-map fallback.
 
 Compilation-time:
 
@@ -175,11 +182,11 @@ Compilation-time:
 Unlike Vite, Rsbuild does not introduce plugin-owned virtual marker modules for
 normal operation.
 
-The real package marker files are source-level markers. Rspack's loader hook
-records the module under the exact loader resource. The matching post-transform
-hook writes `{ kind, source }` to `module.buildInfo` before replacing a
-wrong-environment module. The metadata survives self-denial mocking and
-persistent-cache restores.
+The real package marker files are source-level markers. The post-loader writes
+`{ kind, source }` directly to its current `_module.buildInfo` before replacing
+a wrong-environment module. The metadata therefore stays attached to the exact
+resource-and-layer module and survives self-denial mocking and persistent-cache
+restores.
 
 `processAssets` treats non-excluded, non-file-denied imports as possible marker
 modules, then checks their `buildInfo`. It does not infer marker kind from final

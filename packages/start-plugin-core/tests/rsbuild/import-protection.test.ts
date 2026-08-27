@@ -53,6 +53,72 @@ describe('getRsbuildResolvedImportProtectionCheck', () => {
   })
 })
 
+describe('registerImportProtection loader registration', () => {
+  test('registers a post loader instead of an Rsbuild transform', () => {
+    let modifyRspackConfig: ((config: any, utils: any) => void) | undefined
+    const transform = vi.fn()
+
+    registerImportProtection(
+      {
+        context: { action: 'build' },
+        onBeforeBuild() {},
+        onBeforeDevCompile() {},
+        modifyRspackConfig(handler: (config: any, utils: any) => void) {
+          modifyRspackConfig = handler
+        },
+        transform,
+        processAssets() {},
+      } as any,
+      {
+        framework: 'react',
+        environments: [{ name: 'client', type: 'client' }],
+        getConfig: () =>
+          ({
+            startConfig: {},
+            resolvedStartConfig: {
+              root: '/app',
+              srcDirectory: '/app/src',
+            },
+          }) as any,
+      },
+    )
+
+    if (!modifyRspackConfig) {
+      throw new Error('Expected modifyRspackConfig to be registered')
+    }
+
+    class VirtualModulesPlugin {
+      writeModule() {}
+    }
+
+    const config: any = {
+      module: { rules: [] },
+      plugins: [],
+    }
+    modifyRspackConfig(config, {
+      environment: { name: 'client' },
+      rspack: {
+        experiments: { VirtualModulesPlugin },
+      },
+    })
+
+    expect(transform).not.toHaveBeenCalled()
+    expect(config.module.rules).toHaveLength(1)
+    expect(config.module.rules[0]).toMatchObject({
+      enforce: 'post',
+      use: [
+        {
+          loader: expect.stringMatching(/import-protection-loader\.js$/),
+          options: {
+            envName: 'client',
+          },
+        },
+      ],
+    })
+    expect(config.module.rules[0].test).toEqual(/\.[cm]?[tj]sx?$/)
+  })
+})
+
 describe('registerImportProtection marker scope', () => {
   async function runMarkerBuild(importerFiles: Array<string>) {
     let beforeBuild: (() => void) | undefined
