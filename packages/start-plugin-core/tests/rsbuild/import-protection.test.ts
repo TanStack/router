@@ -24,26 +24,37 @@ interface MockRspackModule {
   }
 }
 
+interface MockRspackDependency {
+  request?: string
+}
+
 interface MockRspackConnection {
-  dependency: { request: string }
+  dependency: MockRspackDependency
   module: MockRspackModule
+}
+
+interface MockRspackEntry {
+  dependencies: Array<MockRspackDependency>
 }
 
 interface MockProcessAssetsContext {
   environment: { name: string }
   compilation: {
-    entries: Map<unknown, unknown>
+    entries: Map<string, MockRspackEntry>
     errors: Array<Error>
     inputFileSystem: null
     modules: Set<MockRspackModule>
     moduleGraph: {
+      getConnection: (
+        dependency: MockRspackDependency,
+      ) => MockRspackConnection | undefined
       getOutgoingConnectionsInOrder: (
         module: MockRspackModule,
       ) => Array<MockRspackConnection>
     }
     warnings: Array<Error>
   }
-  compiler: { rspack: Record<string, never> }
+  compiler: { rspack: { WebpackError: typeof Error } }
 }
 
 function asProcessAssetsContext(
@@ -173,7 +184,14 @@ describe('registerImportProtection loader registration', () => {
 })
 
 describe('registerImportProtection marker scope', () => {
-  async function runMarkerBuild(importerFiles: Array<string>) {
+  async function runMarkerBuild(
+    importerFiles: Array<string>,
+    options: {
+      markedModuleIsEntry?: boolean
+      importerResourceQuery?: string
+      reportBuildError?: boolean
+    } = {},
+  ) {
     let beforeBuild: (() => void) | undefined
     let processAssetsHandler: ProcessAssetsHandler | undefined
     const onViolation = vi.fn(() => false)
@@ -197,7 +215,7 @@ describe('registerImportProtection marker scope', () => {
         startConfig: {
           importProtection: {
             ignoreImporters: ['**/ignored.ts'],
-            onViolation,
+            onViolation: options.reportBuildError ? undefined : onViolation,
           },
         },
         resolvedStartConfig: {
@@ -212,7 +230,11 @@ describe('registerImportProtection marker scope', () => {
     }
     beforeBuild()
 
-    const createModule = (file: string, marker = false): MockRspackModule => ({
+    const createModule = (
+      file: string,
+      marker = false,
+      resourceQuery = '',
+    ): MockRspackModule => ({
       buildInfo: marker
         ? {
             'tanstack.start.importProtection': {
@@ -221,8 +243,8 @@ describe('registerImportProtection marker scope', () => {
             },
           }
         : {},
-      resourceResolveData: { path: file, resource: file },
-      identifier: () => file,
+      resourceResolveData: { path: file, resource: `${file}${resourceQuery}` },
+      identifier: () => `${file}${resourceQuery}`,
       originalSource: () => ({
         sourceAndMap: () => ({
           source: marker ? "import '@tanstack/react-start/server-only'" : '',
@@ -232,7 +254,9 @@ describe('registerImportProtection marker scope', () => {
     })
 
     const markedModule = createModule('/app/src/marked.ts', true)
-    const importerModules = importerFiles.map((file) => createModule(file))
+    const importerModules = importerFiles.map((file) =>
+      createModule(file, false, options.importerResourceQuery),
+    )
     const connectionsByModule = new Map<
       MockRspackModule,
       Array<MockRspackConnection>
@@ -247,37 +271,47 @@ describe('registerImportProtection marker scope', () => {
         ],
       ]),
     )
+    const entryDependency: MockRspackDependency = { request: './marked' }
+    const entryConnection: MockRspackConnection = {
+      dependency: entryDependency,
+      module: markedModule,
+    }
 
     const context: MockProcessAssetsContext = {
       environment: { name: 'client' },
       compilation: {
-        entries: new Map(),
+        entries: options.markedModuleIsEntry
+          ? new Map([['main', { dependencies: [entryDependency] }]])
+          : new Map(),
         errors: [],
         inputFileSystem: null,
         modules: new Set([...importerModules, markedModule]),
         moduleGraph: {
+          getConnection(dependency) {
+            return dependency === entryDependency ? entryConnection : undefined
+          },
           getOutgoingConnectionsInOrder(module) {
             return connectionsByModule.get(module) ?? []
           },
         },
         warnings: [],
       },
-      compiler: { rspack: {} },
+      compiler: { rspack: { WebpackError: Error } },
     }
 
     await processAssetsHandler(asProcessAssetsContext(context))
 
-    return onViolation
+    return { errors: context.compilation.errors, onViolation }
   }
 
   test('skips marker violations imported only by an ignored importer', async () => {
-    const onViolation = await runMarkerBuild(['/app/src/ignored.ts'])
+    const { onViolation } = await runMarkerBuild(['/app/src/ignored.ts'])
 
     expect(onViolation).not.toHaveBeenCalled()
   })
 
   test('reports a marker shared with a non-ignored importer', async () => {
-    const onViolation = await runMarkerBuild([
+    const { onViolation } = await runMarkerBuild([
       '/app/src/ignored.ts',
       '/app/src/entry.ts',
     ])
@@ -289,5 +323,23 @@ describe('registerImportProtection marker scope', () => {
         type: 'marker',
       }),
     )
+  })
+
+  test('reports a marker imported by a resource-query module', async () => {
+    const { onViolation } = await runMarkerBuild(['/app/src/entry.ts'], {
+      importerResourceQuery: '?tsr-split=component',
+    })
+
+    expect(onViolation).toHaveBeenCalledTimes(1)
+  })
+
+  test('reports a marker violation when the marked module is an entry', async () => {
+    const { errors } = await runMarkerBuild([], {
+      markedModuleIsEntry: true,
+      reportBuildError: true,
+    })
+
+    expect(errors).toHaveLength(1)
+    expect(errors[0]?.message).toContain('@tanstack/react-start/server-only')
   })
 })

@@ -552,16 +552,6 @@ function getModuleResource(module: RspackModule): string {
     }
   ).resourceResolveData
 
-  return normalizeFilePath(resourceResolveData?.resource ?? module.identifier())
-}
-
-function getModuleResourcePath(module: RspackModule): string {
-  const resourceResolveData = (
-    module as RspackModule & {
-      resourceResolveData?: { path?: string; resource?: string }
-    }
-  ).resourceResolveData
-
   return normalizeFilePath(
     resourceResolveData?.path ??
       resourceResolveData?.resource ??
@@ -629,7 +619,6 @@ function buildTransformResultProvider(opts: {
   ): Promise<TransformResult | undefined> {
     opts.perf?.count('processAssets.provider.modulesLoaded')
     const resource = getModuleResource(module)
-    const resourcePath = getModuleResourcePath(module)
     let code: string | undefined
     let map: SourceMapLike | undefined
 
@@ -649,12 +638,12 @@ function buildTransformResultProvider(opts: {
 
     const originalCodeStartedAt = opts.perf ? performance.now() : 0
     let originalCode = map?.sourcesContent
-      ? pickOriginalCodeFromSourcesContent(map, resourcePath, opts.root)
+      ? pickOriginalCodeFromSourcesContent(map, resource, opts.root)
       : undefined
     if (originalCode === undefined) {
       originalCode = await readModuleSourceFromInputFileSystem(
         opts.inputFileSystem,
-        resourcePath,
+        resource,
       )
       if (originalCode !== undefined) {
         opts.perf?.count('processAssets.provider.inputFileSystemReads')
@@ -719,9 +708,9 @@ function getCompilationModulesKey(importer: string, resolved: string): string {
   return `${importer}\0${resolved}`
 }
 
-function addEntryModulesToGraph(opts: {
+function forEachEntryModule(opts: {
   compilation: RspackCompilation
-  importGraph: ImportGraph
+  visitModule: (module: RspackModule) => void
 }): void {
   for (const entry of opts.compilation.entries.values()) {
     for (const dependency of entry.dependencies) {
@@ -730,9 +719,21 @@ function addEntryModulesToGraph(opts: {
       if (!module) {
         continue
       }
-      opts.importGraph.addEntry(getModuleResource(module))
+      opts.visitModule(module)
     }
   }
+}
+
+function addEntryModulesToGraph(opts: {
+  compilation: RspackCompilation
+  importGraph: ImportGraph
+}): void {
+  forEachEntryModule({
+    compilation: opts.compilation,
+    visitModule(module) {
+      opts.importGraph.addEntry(getModuleResource(module))
+    },
+  })
 }
 
 function forEachModules(opts: {
@@ -788,6 +789,7 @@ interface MarkerCheckTarget {
 type FileViolation = Extract<CompilationViolation, { type: 'file' }>
 
 interface CompilationViolationScanner {
+  visitEntry: (module: RspackModule) => void
   visitNode: (node: RspackModuleGraphNode) => void
   finish: () => Array<CompilationViolation>
 }
@@ -818,6 +820,9 @@ function createCompilationViolationScanner(opts: {
   }
 
   return {
+    visitEntry(module) {
+      markerCheckTargets.push({ importer: module, module })
+    },
     visitNode(node) {
       const importer = getModuleResource(node.module)
       if (!isImportProtectionSourceFile(importer)) {
@@ -1569,6 +1574,10 @@ export function registerImportProtection(
           envType,
           matchers,
           shouldCheckImporter,
+        })
+        forEachEntryModule({
+          compilation: context.compilation,
+          visitModule: violationScanner.visitEntry,
         })
         const forEachStartedAt = perf ? performance.now() : 0
         const moduleGraphNodes: Array<RspackModuleGraphNode> = []
