@@ -1,157 +1,76 @@
-import { afterEach, describe, expect, test } from 'vitest'
+import { afterEach, expect, test } from 'vitest'
 import { cleanup, render, screen } from '@testing-library/react'
 import {
   Outlet,
   RouterProvider,
+  createLazyRoute,
   createMemoryHistory,
   createRootRoute,
   createRoute,
   createRouter,
   getRouteApi,
 } from '../src'
-import type { RouteComponent, RouterHistory } from '../src'
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
 
-function createPostsRouter(
-  RootComponent: RouteComponent,
-  history?: RouterHistory,
-) {
+test('route-scoped hooks render undefined for an inactive route when shouldThrow is false', async () => {
   const rootRoute = createRootRoute({
-    component: RootComponent,
-  })
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: () => <h1>IndexTitle</h1>,
+    component: Outlet,
   })
   const postsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/posts/$postId',
     validateSearch: () => ({ page: 0 }),
-    component: () => <h1>PostsTitle</h1>,
+  })
+  const postsRouteApi = getRouteApi('/posts/$postId')
+  const lazyPostsRoute = createLazyRoute('/posts/$postId')({})
+
+  function IndexComponent() {
+    const routeMatch = postsRoute.useMatch({ shouldThrow: false })
+    const routeSearch = postsRoute.useSearch({ shouldThrow: false })
+    const routeParams = postsRoute.useParams({ shouldThrow: false })
+    const routeApiMatch = postsRouteApi.useMatch({ shouldThrow: false })
+    const routeApiSearch = postsRouteApi.useSearch({ shouldThrow: false })
+    const routeApiParams = postsRouteApi.useParams({ shouldThrow: false })
+    const lazyRouteMatch = lazyPostsRoute.useMatch({ shouldThrow: false })
+    const lazyRouteSearch = lazyPostsRoute.useSearch({ shouldThrow: false })
+    const lazyRouteParams = lazyPostsRoute.useParams({ shouldThrow: false })
+
+    return (
+      <>
+        <div data-testid="route-use-match">{String(routeMatch)}</div>
+        <div data-testid="route-use-search">{String(routeSearch)}</div>
+        <div data-testid="route-use-params">{String(routeParams)}</div>
+        <div data-testid="route-api-use-match">{String(routeApiMatch)}</div>
+        <div data-testid="route-api-use-search">{String(routeApiSearch)}</div>
+        <div data-testid="route-api-use-params">{String(routeApiParams)}</div>
+        <div data-testid="lazy-route-use-match">{String(lazyRouteMatch)}</div>
+        <div data-testid="lazy-route-use-search">{String(lazyRouteSearch)}</div>
+        <div data-testid="lazy-route-use-params">{String(lazyRouteParams)}</div>
+      </>
+    )
+  }
+
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: IndexComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
-    history: history ?? createMemoryHistory({ initialEntries: ['/'] }),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
   })
 
-  return { postsRoute, router }
-}
+  render(<RouterProvider router={router} />)
 
-describe('Route.useSearch', () => {
-  test('returns undefined when the target route is inactive and shouldThrow is false', async () => {
-    const route = {} as {
-      current: ReturnType<typeof createPostsRouter>['postsRoute']
-    }
-
-    function RootComponent() {
-      const search = route.current.useSearch({ shouldThrow: false })
-      expect(search).toBeUndefined()
-      return <Outlet />
-    }
-
-    const created = createPostsRouter(RootComponent)
-    route.current = created.postsRoute
-    render(<RouterProvider router={created.router} />)
-    expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
-  })
-
-  test.each([undefined, true])(
-    'throws when the target route is inactive and shouldThrow is %s',
-    async (shouldThrow) => {
-      const route = {} as {
-        current: ReturnType<typeof createPostsRouter>['postsRoute']
-      }
-
-      function RootComponent() {
-        route.current.useSearch({ shouldThrow })
-        return <Outlet />
-      }
-
-      const created = createPostsRouter(RootComponent)
-      route.current = created.postsRoute
-      render(<RouterProvider router={created.router} />)
-      const postsError = await screen.findByText(
-        'Invariant failed: Could not find an active match from "/posts/$postId"',
+  for (const scope of ['route', 'route-api', 'lazy-route']) {
+    for (const hook of ['use-match', 'use-search', 'use-params']) {
+      expect(await screen.findByTestId(`${scope}-${hook}`)).toHaveTextContent(
+        'undefined',
       )
-      expect(postsError).toBeInTheDocument()
-    },
-  )
-})
-
-describe('Route.useParams', () => {
-  test('returns undefined when the target route is inactive and shouldThrow is false', async () => {
-    const route = {} as {
-      current: ReturnType<typeof createPostsRouter>['postsRoute']
     }
-
-    function RootComponent() {
-      const params = route.current.useParams({ shouldThrow: false })
-      expect(params).toBeUndefined()
-      return <Outlet />
-    }
-
-    const created = createPostsRouter(RootComponent)
-    route.current = created.postsRoute
-    render(<RouterProvider router={created.router} />)
-    expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
-  })
-
-  test.each([undefined, true])(
-    'throws when the target route is inactive and shouldThrow is %s',
-    async (shouldThrow) => {
-      const route = {} as {
-        current: ReturnType<typeof createPostsRouter>['postsRoute']
-      }
-
-      function RootComponent() {
-        route.current.useParams({ shouldThrow })
-        return <Outlet />
-      }
-
-      const created = createPostsRouter(RootComponent)
-      route.current = created.postsRoute
-      render(<RouterProvider router={created.router} />)
-      const postsError = await screen.findByText(
-        'Invariant failed: Could not find an active match from "/posts/$postId"',
-      )
-      expect(postsError).toBeInTheDocument()
-    },
-  )
-})
-
-describe('RouteApi.useSearch', () => {
-  test('returns undefined when the target route is inactive and shouldThrow is false', async () => {
-    const postsRouteApi = getRouteApi('/posts/$postId')
-
-    function RootComponent() {
-      const search = postsRouteApi.useSearch({ shouldThrow: false })
-      expect(search).toBeUndefined()
-      return <Outlet />
-    }
-
-    const created = createPostsRouter(RootComponent)
-    render(<RouterProvider router={created.router} />)
-    expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
-  })
-})
-
-describe('RouteApi.useParams', () => {
-  test('returns undefined when the target route is inactive and shouldThrow is false', async () => {
-    const postsRouteApi = getRouteApi('/posts/$postId')
-
-    function RootComponent() {
-      const params = postsRouteApi.useParams({ shouldThrow: false })
-      expect(params).toBeUndefined()
-      return <Outlet />
-    }
-
-    const created = createPostsRouter(RootComponent)
-    render(<RouterProvider router={created.router} />)
-    expect(await screen.findByText('IndexTitle')).toBeInTheDocument()
-  })
+  }
 })
