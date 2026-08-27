@@ -152,7 +152,7 @@ Preload critical data in the route `loader` to avoid waterfalls and loading flas
 
 <!-- ::start:framework -->
 
-# React
+# Blocking `query` in loader
 
 ```tsx title="src/routes/posts.tsx"
 import { queryOptions, useSuspenseQuery, useQuery } from '@tanstack/react-query'
@@ -189,7 +189,7 @@ You can also prefetch with `query` in a loader without consuming the data in a c
 
 <!-- ::start:framework -->
 
-# React
+# Non-blocking `query` in loader
 
 ```tsx title="src/routes/users.$id.tsx"
 import { createFileRoute } from '@tanstack/react-router'
