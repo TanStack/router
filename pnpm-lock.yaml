@@ -160,9 +160,15 @@ importers:
 
   benchmarks/bundle-size:
     dependencies:
+      '@tanstack/react-query':
+        specifier: ^5.102.3
+        version: 5.102.3(react@19.2.3)
       '@tanstack/react-router':
         specifier: workspace:*
         version: link:../../packages/react-router
+      '@tanstack/react-router-ssr-query':
+        specifier: workspace:*
+        version: link:../../packages/react-router-ssr-query
       '@tanstack/react-start':
         specifier: workspace:*
         version: link:../../packages/react-start
