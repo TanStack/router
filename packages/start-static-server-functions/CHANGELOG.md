@@ -1,5 +1,14 @@
 # @tanstack/start-static-server-functions
 
+## 1.167.32
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-client-core@1.170.27
+  - @tanstack/solid-start@1.168.47
+  - @tanstack/react-start@1.168.49
+
 ## 1.167.31
 
 ### Patch Changes
