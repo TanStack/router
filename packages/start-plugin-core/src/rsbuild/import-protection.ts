@@ -780,6 +780,7 @@ function forEachModules(opts: {
 }
 
 interface MarkerCheckTarget {
+  importer: RspackModule
   module: RspackModule
 }
 
@@ -859,7 +860,10 @@ function createCompilationViolationScanner(opts: {
         }
 
         if (importProtectionCheck.type === 'marker') {
-          markerCheckTargets.push({ module: imported.module })
+          markerCheckTargets.push({
+            importer: node.module,
+            module: imported.module,
+          })
           continue
         }
 
@@ -881,14 +885,14 @@ function createCompilationViolationScanner(opts: {
       const checkedMarkerModules = new WeakSet<RspackModule>()
 
       for (const target of markerCheckTargets) {
+        if (!opts.shouldCheckImporter(getModuleResource(target.importer))) {
+          continue
+        }
+
         if (checkedMarkerModules.has(target.module)) {
           continue
         }
         checkedMarkerModules.add(target.module)
-
-        if (!opts.shouldCheckImporter(getModuleResource(target.module))) {
-          continue
-        }
 
         const marker = getMarkerForModule(target.module)
         const violatesMarker =

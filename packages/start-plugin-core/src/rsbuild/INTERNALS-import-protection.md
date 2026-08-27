@@ -53,8 +53,8 @@ Shared adapter state contains:
 - `moduleByResource`
 
 `moduleByResource` associates each loader resource with its Rspack module. The
-loader hook populates it, the matching post transform consumes it, and durable
-marker metadata lives on `module.buildInfo`.
+loader hook populates it, the matching post-transform hook consumes it, and
+durable marker metadata lives on `module.buildInfo`.
 
 Notably absent compared to Vite:
 
@@ -176,8 +176,8 @@ Unlike Vite, Rsbuild does not introduce plugin-owned virtual marker modules for
 normal operation.
 
 The real package marker files are source-level markers. Rspack's loader hook
-records the module under the exact loader resource. The matching post transform
-writes `{ kind, source }` to `module.buildInfo` before replacing a
+records the module under the exact loader resource. The matching post-transform
+hook writes `{ kind, source }` to `module.buildInfo` before replacing a
 wrong-environment module. The metadata survives self-denial mocking and
 persistent-cache restores.
 
