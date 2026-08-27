@@ -1,8 +1,6 @@
 import { writeFileSync } from 'node:fs'
 import { extname, resolve as resolvePath } from 'node:path'
 
-import { SourceMapConsumer } from 'source-map'
-
 import {
   getDefaultImportProtectionRules,
   getMarkerSpecifiers,
@@ -72,7 +70,6 @@ import type {
   Rspack,
   rspack as rspackNamespaceType,
 } from '@rsbuild/core'
-import type { RawSourceMap } from 'source-map'
 
 type RspackNamespace = typeof rspackNamespaceType
 type RspackVirtualModulesPlugin = InstanceType<
@@ -221,7 +218,6 @@ interface SharedState {
 }
 
 interface CompilationEdge {
-  dependency: RspackDependency
   importerModule: RspackModule
   specifier?: string
   resolved: string
@@ -271,7 +267,6 @@ interface MockEdgePayload {
 }
 
 interface ModuleGraphEdge {
-  dependency: RspackDependency
   importer: RspackModule
   module: RspackModule
 }
@@ -573,25 +568,6 @@ function getModuleResourcePath(module: RspackModule): string {
   )
 }
 
-function getDependencyLocation(dependency: RspackDependency): Loc | undefined {
-  const loc = dependency.loc
-  if (!loc || !('start' in loc)) {
-    return undefined
-  }
-
-  const start = loc.start
-  const line = start.line
-  const column = start.column
-  if (typeof line !== 'number') {
-    return undefined
-  }
-
-  return {
-    line,
-    column: typeof column === 'number' ? column : 1,
-  }
-}
-
 const IMPORT_PROTECTION_PARSEABLE_EXTENSIONS = new Set([
   '.ts',
   '.tsx',
@@ -784,16 +760,6 @@ function forEachModules(opts: {
 
       const existingImportIndex = importIndexByModule.get(connectedModule)
       if (existingImportIndex !== undefined) {
-        const existingImport = imports[existingImportIndex]!
-        if (
-          !getDependencyLocation(existingImport.dependency) &&
-          getDependencyLocation(connection.dependency)
-        ) {
-          imports[existingImportIndex] = {
-            dependency: connection.dependency,
-            module: connectedModule,
-          }
-        }
         continue
       }
 
@@ -870,7 +836,6 @@ function createCompilationViolationScanner(opts: {
               edge: {
                 importer: node.module,
                 module: imported.module,
-                dependency: imported.dependency,
               },
             })
           }
@@ -904,7 +869,6 @@ function createCompilationViolationScanner(opts: {
             edge: {
               importer: node.module,
               module: imported.module,
-              dependency: imported.dependency,
             },
             source,
             pattern: importProtectionCheck.fileMatch.pattern,
@@ -970,7 +934,6 @@ function buildCompilationImportGraph(opts: {
         specifier,
         resolved,
         resolvedModule: imported.module,
-        dependency: imported.dependency,
       }
       edges.push(edge)
       importGraph.addEdge(resolved, importer, specifier)
@@ -1020,86 +983,8 @@ function findCompilationEdge(
   )?.[0]
 }
 
-async function mapCompilationLocation(opts: {
-  provider: CompilationTransformResultProvider
-  importer: string
-  importerModule: RspackModule
-  dependencyLoc?: Loc
-}): Promise<Loc | undefined> {
-  const transformResult = await opts.provider.getTransformResult(
-    opts.importerModule,
-  )
-  if (!opts.dependencyLoc) {
-    return undefined
-  }
-
-  const map = transformResult?.map
-  if (!map) {
-    return undefined
-  }
-
-  const fallback: Loc = {
-    file: normalizeFilePath(opts.importer),
-    line: opts.dependencyLoc.line,
-    column: opts.dependencyLoc.column,
-  }
-  const consumer = await getCompilationSourceMapConsumer(map)
-  if (!consumer) {
-    return fallback
-  }
-
-  try {
-    const original = consumer.originalPositionFor({
-      line: opts.dependencyLoc.line,
-      column: Math.max(0, opts.dependencyLoc.column - 1),
-    })
-    if (original.line != null && original.column != null) {
-      return {
-        file: original.source
-          ? normalizeFilePath(original.source)
-          : fallback.file,
-        line: original.line,
-        column: original.column + 1,
-      }
-    }
-  } catch {
-    // Malformed sourcemap
-  }
-
-  return fallback
-}
-
-const compilationSourceMapConsumerCache = new WeakMap<
-  object,
-  Promise<SourceMapConsumer | null>
->()
 const compilationImportSpecifierLocationIndex =
   createImportSpecifierLocationIndex()
-
-function getCompilationSourceMapConsumer(
-  map: SourceMapLike,
-): Promise<SourceMapConsumer | null> {
-  const cached = compilationSourceMapConsumerCache.get(map)
-  if (cached) {
-    return cached
-  }
-
-  const consumer = (async () => {
-    try {
-      const rawMap: RawSourceMap = {
-        ...map,
-        file: map.file ?? '',
-        version: Number(map.version),
-        sourcesContent: map.sourcesContent?.map((source) => source ?? '') ?? [],
-      }
-      return await new SourceMapConsumer(rawMap)
-    } catch {
-      return null
-    }
-  })()
-  compilationSourceMapConsumerCache.set(map, consumer)
-  return consumer
-}
 
 async function resolveImporterLocation(opts: {
   config: PluginConfig
@@ -1109,19 +994,8 @@ async function resolveImporterLocation(opts: {
   source: string
   resolved?: string
   transformedSources?: Array<string>
-  dependencyLoc?: Loc
   envType: 'client' | 'server'
 }): Promise<Loc | undefined> {
-  const dependencyLoc = await mapCompilationLocation({
-    provider: opts.provider,
-    importer: opts.importer,
-    importerModule: opts.importerModule,
-    dependencyLoc: opts.dependencyLoc,
-  })
-  if (dependencyLoc) {
-    return dependencyLoc
-  }
-
   const transformResult = await opts.provider.getTransformResult(
     opts.importerModule,
   )
@@ -1160,7 +1034,6 @@ async function resolveImporterLocation(opts: {
   const originalImportLocCache = new ImportLocCache()
   for (const source of sourceCandidates) {
     const loc =
-      (await findPostCompileUsageLocation(provider, opts.importer, source)) ??
       findOriginalUsageLocation(
         provider,
         opts.importer,
@@ -1168,6 +1041,7 @@ async function resolveImporterLocation(opts: {
         opts.envType,
         opts.config.root,
       ) ??
+      (await findPostCompileUsageLocation(provider, opts.importer, source)) ??
       (await findImportStatementLocationFromTransformed(
         provider,
         opts.importer,
@@ -1198,16 +1072,6 @@ async function resolveTraceEdgeLocation(opts: {
   edge: CompilationEdge
   specifier?: string
 }): Promise<Loc | undefined> {
-  const dependencyLoc = await mapCompilationLocation({
-    provider: opts.provider,
-    importer: opts.importer,
-    importerModule: opts.edge.importerModule,
-    dependencyLoc: getDependencyLocation(opts.edge.dependency),
-  })
-  if (dependencyLoc) {
-    return dependencyLoc
-  }
-
   if (!opts.specifier) {
     return undefined
   }
@@ -1303,7 +1167,6 @@ async function buildViolationInfo(opts: {
   source: string
   resolved?: string
   transformedSources?: Array<string>
-  importLoc?: Loc
   type: 'specifier' | 'file' | 'marker'
   pattern?: string | RegExp
 }): Promise<ViolationInfo> {
@@ -1319,7 +1182,6 @@ async function buildViolationInfo(opts: {
     source: opts.source,
     resolved: opts.resolved,
     transformedSources: opts.transformedSources,
-    dependencyLoc: opts.importLoc,
     envType: opts.envType,
   })
   if (opts.perf) {
@@ -1979,7 +1841,6 @@ export function registerImportProtection(
               source: payload.violation.specifier,
               resolved: payload.violation.resolved,
               transformedSources: [getModuleResource(candidate.edge.module)],
-              importLoc: getDependencyLocation(candidate.edge.dependency),
               type: 'specifier',
               pattern: payload.violation.patternText,
             })
@@ -2014,7 +1875,6 @@ export function registerImportProtection(
               importerModule: edge.importer,
               source,
               resolved,
-              importLoc: getDependencyLocation(edge.dependency),
               type: 'file',
               pattern: candidate.pattern,
             })

@@ -114,12 +114,11 @@ It reconstructs the final view of the compilation from Rspack data by:
 4. returning early when no violations remain
 5. building the `ImportGraph` and diagnostic indexes only when needed
 
-Each `RspackModuleGraphNode` stores a module and its
-`{ dependency, module }` imports. Missing and errored target modules are skipped.
+Each `RspackModuleGraphNode` stores a module and its imported modules. Missing and
+errored target modules are skipped.
 Connections are not filtered by `getActiveState()` because inactive connections
 can still carry diagnostic evidence. Duplicate connections to the same target
-module collapse to one; a connection with `dependency.loc` replaces one without
-it.
+module collapse to one.
 
 Snapshotting does not apply source-file eligibility. Intermediate modules remain
 available for entry-to-violation traces, while the scanner applies importer and
@@ -138,14 +137,13 @@ per module.
 
 Importer locations use this order:
 
-1. map `dependency.loc` through the compiled sourcemap
+1. find unsafe usage in original code
 2. find unsafe usage in compiled code
-3. find unsafe usage in original code
-4. find the import statement in compiled, then original code
+3. find the import statement in compiled, then original code
 
-Trace edges first map `dependency.loc`, then search compiled import statements.
-A raw dependency location is not reported as an original location without a
-sourcemap. Source parsing can still recover a location and snippet.
+Trace edges search compiled import statements. The adapter does not use
+`dependency.loc`, which may identify a transformed declaration rather than the
+actual import usage.
 
 This is the core Rsbuild-native replacement for Vite's `generateBundle`
 verification plus dev pending-violation flow.
@@ -171,7 +169,6 @@ Compilation-time:
 - `compilation.inputFileSystem.readFile()` (original-source fallback)
 - `moduleGraph.getOutgoingConnectionsInOrder(module)`
 - `connection.dependency.request`
-- `connection.dependency.loc`
 
 ## Marker Handling
 
