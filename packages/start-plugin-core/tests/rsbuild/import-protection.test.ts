@@ -14,6 +14,7 @@ type ProcessAssetsContext = Parameters<ProcessAssetsHandler>[0]
 
 interface MockRspackModule {
   buildInfo: Record<string, unknown>
+  error?: Error
   resourceResolveData: { path: string; resource: string }
   identifier: () => string
   originalSource: () => {
@@ -188,6 +189,7 @@ describe('registerImportProtection marker scope', () => {
     importerFiles: Array<string>,
     options: {
       markedModuleIsEntry?: boolean
+      importerError?: Error
       importerResourceQuery?: string
       reportBuildError?: boolean
     } = {},
@@ -234,6 +236,7 @@ describe('registerImportProtection marker scope', () => {
       file: string,
       marker = false,
       resourceQuery = '',
+      error?: Error,
     ): MockRspackModule => ({
       buildInfo: marker
         ? {
@@ -243,6 +246,7 @@ describe('registerImportProtection marker scope', () => {
             },
           }
         : {},
+      ...(error ? { error } : {}),
       resourceResolveData: { path: file, resource: `${file}${resourceQuery}` },
       identifier: () => `${file}${resourceQuery}`,
       originalSource: () => ({
@@ -255,7 +259,12 @@ describe('registerImportProtection marker scope', () => {
 
     const markedModule = createModule('/app/src/marked.ts', true)
     const importerModules = importerFiles.map((file) =>
-      createModule(file, false, options.importerResourceQuery),
+      createModule(
+        file,
+        false,
+        options.importerResourceQuery,
+        options.importerError,
+      ),
     )
     const connectionsByModule = new Map<
       MockRspackModule,
@@ -331,6 +340,14 @@ describe('registerImportProtection marker scope', () => {
     })
 
     expect(onViolation).toHaveBeenCalledTimes(1)
+  })
+
+  test('skips marker violations from an errored importer module', async () => {
+    const { onViolation } = await runMarkerBuild(['/app/src/entry.ts'], {
+      importerError: new Error('Failed to build importer'),
+    })
+
+    expect(onViolation).not.toHaveBeenCalled()
   })
 
   test('reports a marker violation when the marked module is an entry', async () => {

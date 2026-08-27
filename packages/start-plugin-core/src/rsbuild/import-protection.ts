@@ -708,6 +708,10 @@ function getCompilationModulesKey(importer: string, resolved: string): string {
   return `${importer}\0${resolved}`
 }
 
+function hasModuleError(module: RspackModule): boolean {
+  return 'error' in module && Boolean(module.error)
+}
+
 function forEachEntryModule(opts: {
   compilation: RspackCompilation
   visitModule: (module: RspackModule) => void
@@ -716,7 +720,7 @@ function forEachEntryModule(opts: {
     for (const dependency of entry.dependencies) {
       const connection = opts.compilation.moduleGraph.getConnection(dependency)
       const module = connection?.module
-      if (!module) {
+      if (!module || hasModuleError(module)) {
         continue
       }
       opts.visitModule(module)
@@ -744,6 +748,10 @@ function forEachModules(opts: {
   const nodes: Array<RspackModuleGraphNode> = []
 
   for (const module of opts.modules) {
+    if (hasModuleError(module)) {
+      continue
+    }
+
     const imports: Array<CompilationImport> = []
     const importIndexByModule = new WeakMap<RspackModule, number>()
     const connections =
@@ -756,7 +764,7 @@ function forEachModules(opts: {
       }
 
       // Only consider modules that are not errored
-      if ('error' in connectedModule && connectedModule.error) {
+      if (hasModuleError(connectedModule)) {
         continue
       }
 
