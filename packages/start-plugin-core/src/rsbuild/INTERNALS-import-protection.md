@@ -44,16 +44,17 @@ Per environment, Rsbuild keeps a smaller runtime state than Vite:
 - `resolveCache`
 - `seenViolations`
 
-A per-environment resource map associates each loader resource with its Rspack
-module. It is populated by Rspack's loader hook and consumed by the matching
-post-transform callback; durable marker state lives on `module.buildInfo`.
-
-Shared state is for virtual module transport:
+Shared adapter state contains:
 
 - `virtualModules`
 - `vmPlugins`
 - `readyVmPlugins`
 - `pendingWrites`
+- `moduleByResource`
+
+`moduleByResource` associates each loader resource with its Rspack module. The
+loader hook populates it, the matching post transform consumes it, and durable
+marker metadata lives on `module.buildInfo`.
 
 Notably absent compared to Vite:
 
@@ -74,7 +75,7 @@ The transform phase is responsible for:
 
 - self-denial for forbidden files
 - self-denial for marker-protected files in the wrong environment
-- persisting detected marker kinds in Rspack `module.buildInfo`
+- persisting detected marker metadata in Rspack `module.buildInfo`
 - direct specifier rewrites to mock-edge modules
 
 The transform treats the code it receives as authoritative. It does not read,
@@ -107,47 +108,44 @@ adapter queues them and flushes during compilation setup.
 
 It reconstructs the final view of the compilation from Rspack data by:
 
-1. collecting every module's active outgoing connections into
-   `RspackModuleGraphNode[]`, while a separate visitor classifies each node as
-   soon as it is created
-2. finishing marker checks after all modules are known
-3. returning immediately when collection produces no candidates
-4. building the `ImportGraph` and diagnostic indexes only for confirmed
-   candidates
+1. snapshotting each module and its outgoing connections
+2. collecting specifier and file violations plus possible marker modules
+3. deduplicating marker modules and validating their persisted metadata
+4. returning early when no violations remain
+5. building the `ImportGraph` and diagnostic indexes only when needed
 
-Each `RspackModuleGraphNode` contains only a module and its active
-`{ dependency, module }` imports. For multiple active connections to the same
-target `Module`, collection keeps only the first connection in Rspack's outgoing
-order. Collection does not filter by source-file eligibility, because every
-intermediate module is required to preserve complete entry-to-violation traces.
-The classification visitor applies source-file and rule eligibility separately;
-it does not traverse the node array afterward. Marker fallback retains only
-pending imports until every eligible node's specifier set is available. Module
-identity keeps query, layer, and other same-resource variants distinct.
-Normalized file paths remain the user-facing identity for rules, traces, source
-mapping, and diagnostics.
+Each `RspackModuleGraphNode` stores a module and its
+`{ dependency, module }` imports. Missing and errored target modules are skipped.
+Connections are not filtered by `getActiveState()` because inactive connections
+can still carry diagnostic evidence. Duplicate connections to the same target
+module collapse to one; a connection with `dependency.loc` replaces one without
+it.
 
-When at least one candidate exists, the adapter replays the in-memory node array
-to build `ImportGraph`; it never calls
-`getOutgoingConnectionsInOrder(module)` a second time. A successful compilation
-therefore avoids allocating `ImportGraph`, entry data, and path-based trace
-indexes entirely.
+Snapshotting does not apply source-file eligibility. Intermediate modules remain
+available for entry-to-violation traces, while the scanner applies importer and
+rule checks. Normalized resource ids are used for rules, traces, and diagnostics;
+`resourceResolveData.path` is preferred for original-source lookup.
 
-`processAssets` does not parse module source. Import requests come from
-the retained `connection.dependency.request`. Diagnostic locations come from
-that dependency's `loc`, then map through the compiled module sourcemap. The
-adapter does not distinguish import and usage locations. When Rspack does not
-expose a dependency location, the diagnostic remains valid but may omit its
-source location and snippet.
+When violations exist, the adapter replays the snapshot to build `ImportGraph`;
+it does not query outgoing connections again. A clean compilation avoids entry
+traversal, graph indexes, and module-source loading.
 
-When `sourceAndMap()` does not provide a sourcemap, generated dependency
-locations are not reported as original source locations. Importer and trace
-locations, along with the source snippet, are omitted in that case.
+Diagnostic enrichment is lazy. The transform-result provider reads
+`module.originalSource().sourceAndMap()` when available. It gets original code
+from sourcemap `sourcesContent`, then falls back to
+`compilation.inputFileSystem.readFile()`. Results and in-flight reads are cached
+per module.
 
-`module.originalSource()` plus `sourceAndMap()` are called only for modules
-required to build a confirmed violation. A compilation with no violations
-therefore does not read dependency locations, module sources, or compilation
-entries.
+Importer locations use this order:
+
+1. map `dependency.loc` through the compiled sourcemap
+2. find unsafe usage in compiled code
+3. find unsafe usage in original code
+4. find the import statement in compiled, then original code
+
+Trace edges first map `dependency.loc`, then search compiled import statements.
+A raw dependency location is not reported as an original location without a
+sourcemap. Source parsing can still recover a location and snippet.
 
 This is the core Rsbuild-native replacement for Vite's `generateBundle`
 verification plus dev pending-violation flow.
@@ -165,30 +163,30 @@ Transform-time:
 Compilation-time:
 
 - `module.resourceResolveData?.resource`
+- `module.resourceResolveData?.path`
 - `module.identifier()` (normalized fallback)
+- `module.buildInfo`
 - `module.originalSource().sourceAndMap()` (confirmed diagnostics only)
 - sourcemap `sourcesContent`
+- `compilation.inputFileSystem.readFile()` (original-source fallback)
 - `moduleGraph.getOutgoingConnectionsInOrder(module)`
 - `connection.dependency.request`
-- `connection.dependency.loc` (confirmed diagnostics only)
-
-Diagnostics use the retained first connection's dependency location and map it
-back through the composed compilation sourcemap.
+- `connection.dependency.loc`
 
 ## Marker Handling
 
 Unlike Vite, Rsbuild does not introduce plugin-owned virtual marker modules for
 normal operation.
 
-The real package marker files are used as source-level markers. Rspack's loader
-hook records the module under the exact loader resource. The matching post
-transform consumes that association and writes the detected marker kind to the
-module's `buildInfo` before replacing a wrong-environment module. This preserves
-the marker after self-denial mocking and when Rspack restores modules from its
-persistent cache.
+The real package marker files are source-level markers. Rspack's loader hook
+records the module under the exact loader resource. The matching post transform
+writes `{ kind, source }` to `module.buildInfo` before replacing a
+wrong-environment module. The metadata survives self-denial mocking and
+persistent-cache restores.
 
-`processAssets` reads the persisted marker kind first. Dependency requests in
-the final module graph remain a fallback for modules without metadata.
+`processAssets` treats non-excluded, non-file-denied imports as possible marker
+modules, then checks their `buildInfo`. It does not infer marker kind from final
+dependency requests.
 
 ## Practical Maintainer Rule
 
