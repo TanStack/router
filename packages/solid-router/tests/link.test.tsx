@@ -5043,7 +5043,7 @@ describe('Link', () => {
     addEventListener.mockRestore()
   })
 
-  test('Link.preload={false} still calls the user\'s own hover handlers', async () => {
+  test("Link.preload={false} still calls the user's own hover handlers", async () => {
     const onMouseEnter = vi.fn()
     const onFocus = vi.fn()
 

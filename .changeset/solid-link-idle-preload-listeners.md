@@ -6,7 +6,7 @@ Stop installing intent-preload listeners on `<Link>` when intent preloading is o
 
 `useLinkProps` handed out `onFocus`/`onBlur`/`onMouseEnter`/`onMouseLeave` (and the
 mouse-over/out/touch-start pair) unconditionally, with the `preload() !== 'intent'`
-check living *inside* each handler. Solid does not delegate `mouseenter`,
+check living _inside_ each handler. Solid does not delegate `mouseenter`,
 `mouseleave`, `focus` or `blur`, so every anchor installed four real listeners that
 did nothing but return — on a list view that is four per row (a 165-row board
 measured 660 listeners whose only job was to bail).
