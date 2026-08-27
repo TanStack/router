@@ -5,6 +5,53 @@ import {
   registerImportProtection,
 } from '../../src/rsbuild/import-protection'
 
+type ImportProtectionApi = Parameters<typeof registerImportProtection>[0]
+type ModifyRspackConfigHandler = Parameters<
+  ImportProtectionApi['modifyRspackConfig']
+>[0]
+type ProcessAssetsHandler = Parameters<ImportProtectionApi['processAssets']>[1]
+type ProcessAssetsContext = Parameters<ProcessAssetsHandler>[0]
+
+interface MockRspackModule {
+  buildInfo: Record<string, unknown>
+  resourceResolveData: { path: string; resource: string }
+  identifier: () => string
+  originalSource: () => {
+    sourceAndMap: () => {
+      source: string
+      map: null
+    }
+  }
+}
+
+interface MockRspackConnection {
+  dependency: { request: string }
+  module: MockRspackModule
+}
+
+interface MockProcessAssetsContext {
+  environment: { name: string }
+  compilation: {
+    entries: Map<unknown, unknown>
+    errors: Array<Error>
+    inputFileSystem: null
+    modules: Set<MockRspackModule>
+    moduleGraph: {
+      getOutgoingConnectionsInOrder: (
+        module: MockRspackModule,
+      ) => Array<MockRspackConnection>
+    }
+    warnings: Array<Error>
+  }
+  compiler: { rspack: Record<string, never> }
+}
+
+function asProcessAssetsContext(
+  context: MockProcessAssetsContext,
+): ProcessAssetsContext {
+  return context as unknown as ProcessAssetsContext
+}
+
 describe('getRsbuildResolvedImportProtectionCheck', () => {
   test('skips file and marker checks for excluded resolved files', () => {
     const matchers = {
@@ -55,56 +102,62 @@ describe('getRsbuildResolvedImportProtectionCheck', () => {
 
 describe('registerImportProtection loader registration', () => {
   test('registers a post loader instead of an Rsbuild transform', () => {
-    let modifyRspackConfig: ((config: any, utils: any) => void) | undefined
+    let modifyRspackConfig: ModifyRspackConfigHandler | undefined
     const transform = vi.fn()
 
-    registerImportProtection(
-      {
-        context: { action: 'build' },
-        onBeforeBuild() {},
-        onBeforeDevCompile() {},
-        modifyRspackConfig(handler: (config: any, utils: any) => void) {
-          modifyRspackConfig = handler
-        },
-        transform,
-        processAssets() {},
-      } as any,
-      {
-        framework: 'react',
-        environments: [{ name: 'client', type: 'client' }],
-        getConfig: () =>
-          ({
-            startConfig: {},
-            resolvedStartConfig: {
-              root: '/app',
-              srcDirectory: '/app/src',
-            },
-          }) as any,
+    const api = {
+      context: { action: 'build' },
+      onBeforeBuild() {},
+      onBeforeDevCompile() {},
+      modifyRspackConfig(handler) {
+        modifyRspackConfig = handler
       },
-    )
+      transform,
+      processAssets() {},
+    } satisfies ImportProtectionApi & { transform: typeof transform }
+
+    registerImportProtection(api, {
+      framework: 'react',
+      environments: [{ name: 'client', type: 'client' }],
+      getConfig: () => ({
+        startConfig: {},
+        resolvedStartConfig: {
+          root: '/app',
+          srcDirectory: '/app/src',
+        },
+      }),
+    })
 
     if (!modifyRspackConfig) {
       throw new Error('Expected modifyRspackConfig to be registered')
     }
 
     class VirtualModulesPlugin {
-      writeModule() {}
+      constructor(_modules: Record<string, string>) {}
+
+      writeModule(_filePath: string, _contents: string) {}
     }
 
-    const config: any = {
+    const config: Parameters<ModifyRspackConfigHandler>[0] = {
       module: { rules: [] },
       plugins: [],
     }
-    modifyRspackConfig(config, {
+    const utils: Parameters<ModifyRspackConfigHandler>[1] = {
       environment: { name: 'client' },
       rspack: {
         experiments: { VirtualModulesPlugin },
       },
-    })
+    }
+    modifyRspackConfig(config, utils)
 
     expect(transform).not.toHaveBeenCalled()
-    expect(config.module.rules).toHaveLength(1)
-    expect(config.module.rules[0]).toMatchObject({
+    const rules = config.module.rules
+    expect(rules).toHaveLength(1)
+    const rule = rules?.[0]
+    if (!rule || typeof rule !== 'object' || !('test' in rule)) {
+      throw new Error('Expected an import-protection Rspack rule')
+    }
+    expect(rule).toMatchObject({
       enforce: 'post',
       use: [
         {
@@ -115,57 +168,51 @@ describe('registerImportProtection loader registration', () => {
         },
       ],
     })
-    expect(config.module.rules[0].test).toEqual(/\.[cm]?[tj]sx?$/)
+    expect(rule.test).toEqual(/\.[cm]?[tj]sx?$/)
   })
 })
 
 describe('registerImportProtection marker scope', () => {
   async function runMarkerBuild(importerFiles: Array<string>) {
     let beforeBuild: (() => void) | undefined
-    let processAssetsHandler: ((context: any) => Promise<void>) | undefined
+    let processAssetsHandler: ProcessAssetsHandler | undefined
     const onViolation = vi.fn(() => false)
 
-    registerImportProtection(
-      {
-        context: { action: 'build' },
-        onBeforeBuild(handler: () => void) {
-          beforeBuild = handler
-        },
-        onBeforeDevCompile() {},
-        modifyRspackConfig() {},
-        transform() {},
-        processAssets(
-          _options: unknown,
-          handler: (context: any) => Promise<void>,
-        ) {
-          processAssetsHandler = handler
-        },
-      } as any,
-      {
-        framework: 'react',
-        environments: [{ name: 'client', type: 'client' }],
-        getConfig: () =>
-          ({
-            startConfig: {
-              importProtection: {
-                ignoreImporters: ['**/ignored.ts'],
-                onViolation,
-              },
-            },
-            resolvedStartConfig: {
-              root: '/app',
-              srcDirectory: '/app/src',
-            },
-          }) as any,
+    const api = {
+      context: { action: 'build' },
+      onBeforeBuild(handler) {
+        beforeBuild = handler
       },
-    )
+      onBeforeDevCompile() {},
+      modifyRspackConfig() {},
+      processAssets(_options, handler) {
+        processAssetsHandler = handler
+      },
+    } satisfies ImportProtectionApi
+
+    registerImportProtection(api, {
+      framework: 'react',
+      environments: [{ name: 'client', type: 'client' }],
+      getConfig: () => ({
+        startConfig: {
+          importProtection: {
+            ignoreImporters: ['**/ignored.ts'],
+            onViolation,
+          },
+        },
+        resolvedStartConfig: {
+          root: '/app',
+          srcDirectory: '/app/src',
+        },
+      }),
+    })
 
     if (!beforeBuild || !processAssetsHandler) {
       throw new Error('Expected import-protection hooks to be registered')
     }
     beforeBuild()
 
-    const createModule = (file: string, marker = false) => ({
+    const createModule = (file: string, marker = false): MockRspackModule => ({
       buildInfo: marker
         ? {
             'tanstack.start.importProtection': {
@@ -186,7 +233,10 @@ describe('registerImportProtection marker scope', () => {
 
     const markedModule = createModule('/app/src/marked.ts', true)
     const importerModules = importerFiles.map((file) => createModule(file))
-    const connectionsByModule = new Map(
+    const connectionsByModule = new Map<
+      MockRspackModule,
+      Array<MockRspackConnection>
+    >(
       importerModules.map((module) => [
         module,
         [
@@ -198,7 +248,7 @@ describe('registerImportProtection marker scope', () => {
       ]),
     )
 
-    await processAssetsHandler({
+    const context: MockProcessAssetsContext = {
       environment: { name: 'client' },
       compilation: {
         entries: new Map(),
@@ -206,14 +256,16 @@ describe('registerImportProtection marker scope', () => {
         inputFileSystem: null,
         modules: new Set([...importerModules, markedModule]),
         moduleGraph: {
-          getOutgoingConnectionsInOrder(module: unknown) {
-            return connectionsByModule.get(module as any) ?? []
+          getOutgoingConnectionsInOrder(module) {
+            return connectionsByModule.get(module) ?? []
           },
         },
         warnings: [],
       },
       compiler: { rspack: {} },
-    })
+    }
+
+    await processAssetsHandler(asProcessAssetsContext(context))
 
     return onViolation
   }

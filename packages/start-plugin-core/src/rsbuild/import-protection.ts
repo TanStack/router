@@ -57,18 +57,55 @@ import type {
 import type { Loc, TraceStep, ViolationInfo } from '../import-protection/trace'
 import type { CompileStartFrameworkOptions, GetConfigFn } from '../types'
 import type {
+  ModifyRspackConfigFn,
   RsbuildPluginAPI,
   Rspack,
   rspack as rspackNamespaceType,
 } from '@rsbuild/core'
 
 type RspackNamespace = typeof rspackNamespaceType
-type RspackVirtualModulesPlugin = InstanceType<
-  RspackNamespace['experiments']['VirtualModulesPlugin']
+type RspackVirtualModulesPlugin = Pick<
+  InstanceType<RspackNamespace['experiments']['VirtualModulesPlugin']>,
+  'writeModule'
 >
 type ProcessAssetsContext = Parameters<
   Parameters<RsbuildPluginAPI['processAssets']>[1]
 >[0]
+type ModifyRspackConfig = Parameters<ModifyRspackConfigFn>[0]
+type ModifyRspackConfigUtils = Parameters<ModifyRspackConfigFn>[1]
+type ImportProtectionRspackConfig = {
+  module: Pick<ModifyRspackConfig['module'], 'rules'>
+  plugins: Array<Rspack.Plugin | RspackVirtualModulesPlugin>
+}
+type ImportProtectionModifyRspackConfigUtils = {
+  environment: Pick<ModifyRspackConfigUtils['environment'], 'name'>
+  rspack: {
+    experiments: {
+      VirtualModulesPlugin: new (
+        modules: Record<string, string>,
+      ) => RspackVirtualModulesPlugin
+    }
+  }
+}
+type ImportProtectionRsbuildPluginAPI = {
+  context: Pick<RsbuildPluginAPI['context'], 'action'>
+  onBeforeBuild: (handler: () => void) => void
+  onBeforeDevCompile: (handler: () => void) => void
+  modifyRspackConfig: (
+    handler: (
+      config: ImportProtectionRspackConfig,
+      utils: ImportProtectionModifyRspackConfigUtils,
+    ) => void,
+  ) => void
+  processAssets: RsbuildPluginAPI['processAssets']
+}
+type ImportProtectionGetConfigFn = () => {
+  startConfig: Pick<ReturnType<GetConfigFn>['startConfig'], 'importProtection'>
+  resolvedStartConfig: Pick<
+    ReturnType<GetConfigFn>['resolvedStartConfig'],
+    'root' | 'srcDirectory'
+  >
+}
 type RspackCompilation = Rspack.Compilation
 type RspackModule = Rspack.Module
 type RspackDependency = Rspack.Dependency
@@ -1282,9 +1319,9 @@ async function reportViolation(opts: {
 }
 
 export function registerImportProtection(
-  api: RsbuildPluginAPI,
+  api: ImportProtectionRsbuildPluginAPI,
   opts: {
-    getConfig: GetConfigFn
+    getConfig: ImportProtectionGetConfigFn
     framework: CompileStartFrameworkOptions
     environments: Array<{ name: string; type: 'client' | 'server' }>
   },
