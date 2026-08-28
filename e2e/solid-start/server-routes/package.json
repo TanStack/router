@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@solidjs/web": "^2.0.0-rc.4",
-    "@tanstack/solid-query": "^6.0.0-rc.0",
+    "@tanstack/solid-query": "^6.0.0-rc.1",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-router-ssr-query": "workspace:^",

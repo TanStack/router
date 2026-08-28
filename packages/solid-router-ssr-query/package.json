@@ -69,7 +69,7 @@
   "devDependencies": {
     "@solidjs/vite-plugin": "^3.0.0-next.35",
     "@solidjs/web": "^2.0.0-rc.4",
-    "@tanstack/solid-query": "^6.0.0-rc.0",
+    "@tanstack/solid-query": "^6.0.0-rc.1",
     "@tanstack/solid-router": "workspace:*",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "^2.0.0-rc.4",
