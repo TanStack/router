@@ -10,9 +10,19 @@ import {
   waitFor,
 } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { hydrateIdAttribute } from '@tanstack/start-client-core/hydration/constants'
+import {
+  hydrateIdAttribute,
+  hydrateWhenAttribute,
+} from '@tanstack/start-client-core/hydration/constants'
 import { Hydrate } from '../Hydrate'
-import { condition, idle, interaction, load, never } from '../hydration'
+import {
+  condition,
+  idle,
+  interaction,
+  load,
+  never,
+  visible,
+} from '../hydration'
 import type { HydrateProps, HydrationPrefetchStrategy } from '../Hydrate'
 
 const InternalHydrate = Hydrate as React.ComponentType<
@@ -20,6 +30,39 @@ const InternalHydrate = Hydrate as React.ComponentType<
 >
 
 const hydrateIdSelector = `[${hydrateIdAttribute}]`
+
+class IntersectionObserverMock implements IntersectionObserver {
+  readonly root: Document | Element | null
+  readonly rootMargin: string
+  readonly scrollMargin: string
+  readonly thresholds: ReadonlyArray<number>
+  readonly observe = vi.fn((_target: Element) => {})
+  readonly unobserve = vi.fn((_target: Element) => {})
+  readonly disconnect = vi.fn(() => {})
+
+  constructor(
+    readonly callback: IntersectionObserverCallback,
+    options: IntersectionObserverInit = {},
+  ) {
+    this.root = options.root ?? null
+    this.rootMargin = options.rootMargin ?? '0px'
+    this.scrollMargin = options.scrollMargin ?? '0px'
+    this.thresholds = Array.isArray(options.threshold)
+      ? options.threshold
+      : [options.threshold ?? 0]
+  }
+
+  takeRecords(): Array<IntersectionObserverEntry> {
+    return []
+  }
+
+  emit(target: Element, isIntersecting = true) {
+    this.callback(
+      [{ target, isIntersecting } as IntersectionObserverEntry],
+      this,
+    )
+  }
+}
 
 function getMarker() {
   const marker = document.querySelector(hydrateIdSelector)
@@ -356,6 +399,73 @@ describe('Hydrate', () => {
       root.unmount()
     })
     container.remove()
+  })
+
+  it('hydrates a visible boundary in place once it enters the viewport', async () => {
+    const onHydrated = vi.fn()
+    const onRecoverableError = vi.fn()
+    const app = (
+      <Hydrate when={visible()} onHydrated={onHydrated}>
+        <InteractiveChild />
+      </Hydrate>
+    )
+
+    vi.stubGlobal('window', undefined)
+    const html = renderToString(app)
+    vi.unstubAllGlobals()
+
+    const observers: Array<IntersectionObserverMock> = []
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class extends IntersectionObserverMock {
+        constructor(
+          callback: IntersectionObserverCallback,
+          options?: IntersectionObserverInit,
+        ) {
+          super(callback, options)
+          observers.push(this)
+        }
+      },
+    )
+
+    const container = document.createElement('div')
+    document.body.append(container)
+    container.innerHTML = html
+
+    let root!: ReturnType<typeof hydrateRoot>
+    await act(async () => {
+      root = hydrateRoot(container, app, { onRecoverableError })
+      await Promise.resolve()
+    })
+
+    // Off screen: the boundary stays as the server left it.
+    const marker = getMarker()
+    expect(marker.getAttribute(hydrateWhenAttribute)).toBe('visible')
+    expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+      'false',
+    )
+    expect(onHydrated).not.toHaveBeenCalled()
+    expect(observers).toHaveLength(1)
+
+    // The gate opens while the boundary is suspended on it.
+    await act(async () => {
+      observers[0]!.emit(marker)
+      await Promise.resolve()
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
+        'true',
+      ),
+    )
+
+    // React had nothing to recover from: no hydration error, no client-side
+    // re-render of the boundary behind its back.
+    expect(onRecoverableError).not.toHaveBeenCalled()
+    expect(marker.hasAttribute(hydrateWhenAttribute)).toBe(false)
+    expect(onHydrated).toHaveBeenCalledTimes(1)
+
+    await unmountHydratedRoot(root, container)
   })
 
   it('prefetches split children without hydrating the boundary', async () => {
