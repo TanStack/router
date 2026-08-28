@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { act } from '@testing-library/react'
+import { act, waitFor } from '@testing-library/react'
 import { hydrateRoot } from 'react-dom/client'
 import { renderToString } from 'react-dom/server'
 import { afterEach, describe, expect, test, vi } from 'vitest'
@@ -9,6 +9,7 @@ import { hydrate } from '../src/ssr/client'
 import {
   Outlet,
   RouterProvider,
+  createControlledPromise,
   createRootRoute,
   createRoute,
   createRouter,
@@ -34,6 +35,90 @@ afterEach(async () => {
 })
 
 describe('hydrating a server-capped boundary lane', () => {
+  test('keeps the route error boundary around a client-only hydration fallback', async () => {
+    const loader = createControlledPromise<void>()
+    const hydrationError = new Error('client fallback failed')
+    const onCatch = vi.fn()
+    let serverPhase = true
+
+    const makeRouteTree = () =>
+      createRootRoute({
+        ssr: false,
+        loader: () => loader,
+        pendingComponent: () => {
+          if (!serverPhase) {
+            throw hydrationError
+          }
+          return <div data-testid="client-pending">Client pending</div>
+        },
+        errorComponent: ({ error }) => (
+          <div data-testid="route-error">{error.message}</div>
+        ),
+        onCatch,
+        component: () => <div>Client content</div>,
+      })
+
+    const serverRouter = createRouter({
+      routeTree: makeRouteTree(),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    serverRouter.isServer = true
+    await serverRouter.load()
+    const serverMatches = serverRouter.stores.matches.get()
+    const serverHtml = renderToString(<RouterProvider router={serverRouter} />)
+    expect(serverHtml).toContain('Client pending')
+
+    serverPhase = false
+    const clientRouter = createRouter({
+      routeTree: makeRouteTree(),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    window.$_TSR = {
+      router: {
+        manifest: { routes: {} },
+        dehydratedData: {},
+        matches: serverMatches.map((match) => ({
+          i: dehydrateSsrMatchId(match.id),
+          u: match.updatedAt,
+          s: match.status,
+          l: match.loaderData,
+          e: match.error,
+          ssr: match.ssr,
+        })),
+      },
+      h: vi.fn(),
+      e: vi.fn(),
+      c: vi.fn(),
+      p: vi.fn(),
+      buffer: [],
+      initialized: false,
+    }
+    await hydrate(clientRouter)
+
+    const container = document.createElement('div')
+    container.innerHTML = serverHtml
+    document.body.appendChild(container)
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let root!: ReturnType<typeof hydrateRoot>
+    await act(async () => {
+      root = hydrateRoot(container, <RouterProvider router={clientRouter} />, {
+        onRecoverableError: () => {},
+      })
+      testCleanups.push(async () => {
+        loader.resolve()
+        await act(() => root.unmount())
+      })
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(
+        container.querySelector('[data-testid="route-error"]'),
+      ).toHaveTextContent(hydrationError.message)
+    })
+    expect(onCatch).toHaveBeenCalledWith(hydrationError, expect.any(Object))
+  })
+
   test('recovers a /404 payload against a missing browser URL', async () => {
     function MissingPage() {
       return <div data-testid="missing-page">Missing page</div>

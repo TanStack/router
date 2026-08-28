@@ -66,111 +66,30 @@ export const Match = React.memo(function MatchImpl({
   routeId: string
 }) {
   const router = useRouter()
-
-  if (isServer ?? router.isServer) {
-    const match = router.stores.byRoute.get(routeId)!.get()!
-    return <MatchView router={router} match={match} />
-  }
-
-  const matchStore = router.stores.getMatchStore(routeId)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const match = useStore(matchStore, (value) => value)
-  return <MatchView router={router} match={match!} />
-})
-
-function MatchView({
-  router,
-  match,
-}: {
-  router: ReturnType<typeof useRouter>
-  match: AnyRouteMatch
-}) {
-  const route: AnyRoute = router.routesById[match.routeId]
-
-  const pendingElement = renderPending(router, route)
-
-  const routeErrorComponent =
-    route.options.errorComponent ?? router.options.defaultErrorComponent
-
-  const routeOnCatch = route.options.onCatch ?? router.options.defaultOnCatch
-
-  const routeNotFoundComponent = route.isRoot
-    ? // If it's the root route, use the _notFound option, with fallback to the notFoundRoute's component
-      (route.options.notFoundComponent ??
-      router.options.notFoundRoute?.options.component)
-    : route.options.notFoundComponent
-
-  const resolvedNoSsr = match.ssr === false || match.ssr === 'data-only'
-  // A root component may render the document itself. Only place its Suspense
-  // boundary in pure CSR, inside an explicit shell, or when explicitly opted in.
-  const ResolvedSuspenseBoundary =
-    canWrapInSuspense(router, route, match.ssr) &&
-    (route.options.wrapInSuspense ??
-      pendingElement ??
-      ((route.options.errorComponent as any)?.preload || resolvedNoSsr))
-      ? React.Suspense
-      : SafeFragment
-
-  const ResolvedCatchBoundary = routeErrorComponent
-    ? CatchBoundary
-    : SafeFragment
-
-  const ResolvedNotFoundBoundary = routeNotFoundComponent
-    ? CatchNotFound
-    : SafeFragment
-
+  const match = router.stores.byRoute.get(routeId)!.get()!
+  const route: AnyRoute = router.routesById[routeId]
   const ShellComponent = route.isRoot
     ? ((route.options as RootRouteOptions).shellComponent ?? SafeFragment)
     : SafeFragment
+  // Keep the reactive match subtree out of dehydrated client-only boundaries.
+  const inner = <MatchInner routeId={routeId} />
   return (
     <ShellComponent>
-      <matchContext.Provider value={match.routeId}>
-        <ResolvedSuspenseBoundary fallback={pendingElement}>
-          <ResolvedCatchBoundary
-            getResetKey={() => match}
-            errorComponent={routeErrorComponent as any}
-            onCatch={(error, errorInfo) => {
-              // Forward not found errors (we don't want to show the error component for these)
-              if (isNotFound(error)) {
-                error.routeId ??= match.routeId
-                throw error
-              }
-              if (process.env.NODE_ENV !== 'production') {
-                console.warn(`Warning: Error in route match: ${match.id}`)
-              }
-              routeOnCatch?.(error, errorInfo)
-            }}
+      <matchContext.Provider value={routeId}>
+        {match.ssr === false || match.ssr === 'data-only' ? (
+          <ClientOnly
+            fallback={renderMatchBoundaries(
+              router,
+              route,
+              match,
+              renderPending(router, route),
+            )}
           >
-            <ResolvedNotFoundBoundary
-              fallback={(error) => {
-                error.routeId ??= match.routeId
-
-                if (error.routeId !== match.routeId) {
-                  throw error
-                }
-
-                const notFoundElement = React.createElement(
-                  routeNotFoundComponent!,
-                  error as any,
-                )
-                return process.env.NODE_ENV !== 'production'
-                  ? wrapInNonRouteComponentContext(
-                      notFoundElement,
-                      'notFoundComponent',
-                    )
-                  : notFoundElement
-              }}
-            >
-              {resolvedNoSsr ? (
-                <ClientOnly fallback={pendingElement}>
-                  <MatchInner match={match} />
-                </ClientOnly>
-              ) : (
-                <MatchInner match={match} />
-              )}
-            </ResolvedNotFoundBoundary>
-          </ResolvedCatchBoundary>
-        </ResolvedSuspenseBoundary>
+            {inner}
+          </ClientOnly>
+        ) : (
+          inner
+        )}
       </matchContext.Provider>
       {(isServer ?? router.isServer) &&
       route.parentRoute?.id === rootRouteId &&
@@ -179,28 +98,129 @@ function MatchView({
       ) : null}
     </ShellComponent>
   )
+})
+
+function renderMatchBoundaries(
+  router: ReturnType<typeof useRouter>,
+  route: AnyRoute,
+  match: AnyRouteMatch,
+  children: React.ReactNode,
+) {
+  const routeErrorComponent =
+    route.options.errorComponent ?? router.options.defaultErrorComponent
+  const onCatch = route.options.onCatch ?? router.options.defaultOnCatch
+  const routeNotFoundComponent = route.isRoot
+    ? (route.options.notFoundComponent ??
+      router.options.notFoundRoute?.options.component)
+    : route.options.notFoundComponent
+  const ResolvedCatchBoundary = routeErrorComponent
+    ? CatchBoundary
+    : SafeFragment
+  const ResolvedNotFoundBoundary = routeNotFoundComponent
+    ? CatchNotFound
+    : SafeFragment
+
+  return (
+    <ResolvedCatchBoundary
+      getResetKey={() => match}
+      errorComponent={routeErrorComponent as any}
+      onCatch={(error, errorInfo) => {
+        // Forward not found errors (we don't want to show the error component for these)
+        if (isNotFound(error)) {
+          error.routeId ??= match.routeId
+          throw error
+        }
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Warning: Error in route match: ${match.id}`)
+        }
+        onCatch?.(error, errorInfo)
+      }}
+    >
+      <ResolvedNotFoundBoundary
+        fallback={(error) => {
+          error.routeId ??= match.routeId
+
+          if (error.routeId !== match.routeId) {
+            throw error
+          }
+
+          const notFoundElement = React.createElement(
+            routeNotFoundComponent!,
+            error as any,
+          )
+          return process.env.NODE_ENV !== 'production'
+            ? wrapInNonRouteComponentContext(
+                notFoundElement,
+                'notFoundComponent',
+              )
+            : notFoundElement
+        }}
+      >
+        {children}
+      </ResolvedNotFoundBoundary>
+    </ResolvedCatchBoundary>
+  )
 }
 
-export const MatchInner = React.memo(function MatchInnerImpl({
+export function MatchInner({ routeId }: { routeId: string }): any {
+  const router = useRouter()
+  let match: AnyRouteMatch
+
+  if (isServer ?? router.isServer) {
+    match = router.stores.byRoute.get(routeId)!.get()!
+  } else {
+    const matchStore = router.stores.getMatchStore(routeId)
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    match = useStore(matchStore, (value) => value!)
+  }
+
+  const route = router.routesById[routeId] as AnyRoute
+  const pendingElement = renderPending(router, route)
+  // A root component may render the document itself. Only place its Suspense
+  // boundary in pure CSR, inside an explicit shell, or when explicitly opted in.
+  const ResolvedSuspenseBoundary =
+    canWrapInSuspense(router, route, match.ssr) &&
+    (route.options.wrapInSuspense ??
+      pendingElement ??
+      ((route.options.errorComponent as any)?.preload ||
+        match.ssr === false ||
+        match.ssr === 'data-only'))
+      ? React.Suspense
+      : SafeFragment
+
+  return (
+    <ResolvedSuspenseBoundary fallback={pendingElement}>
+      {renderMatchBoundaries(
+        router,
+        route,
+        match,
+        <MatchView router={router} route={route} match={match} />,
+      )}
+    </ResolvedSuspenseBoundary>
+  )
+}
+
+function MatchView({
+  router,
+  route,
   match,
 }: {
+  router: ReturnType<typeof useRouter>
+  route: AnyRoute
   match: AnyRouteMatch
 }): any {
-  const router = useRouter()
-  const routeId = match.routeId
-  const route = router.routesById[routeId] as AnyRoute
   const key = React.useMemo(() => {
     const remountFn =
       route.options.remountDeps ?? router.options.defaultRemountDeps
     const remountDeps = remountFn?.({
-      routeId,
+      routeId: route.id,
       loaderDeps: match.loaderDeps,
       params: match._strictParams,
       search: match._strictSearch,
     })
     return remountDeps ? JSON.stringify(remountDeps) : undefined
   }, [
-    routeId,
+    route.id,
     match.loaderDeps,
     match._strictParams,
     match._strictSearch,
@@ -251,7 +271,7 @@ export const MatchInner = React.memo(function MatchInnerImpl({
   }
 
   return out
-})
+}
 
 /**
  * Render the next child match in the route tree. Typically used inside
