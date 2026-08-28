@@ -10,16 +10,16 @@
     "start": "node .output/server/index.mjs"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.2",
+    "@solidjs/web": "^2.0.0-rc.4",
     "@tanstack/solid-router": "^2.0.0-rc.3",
     "@tanstack/solid-router-devtools": "^2.0.0-rc.3",
     "@tanstack/solid-start": "^2.0.0-rc.3",
     "redaxios": "^0.5.1",
-    "solid-js": "^2.0.0-rc.2",
+    "solid-js": "^2.0.0-rc.4",
     "tailwind-merge": "^3.6.0"
   },
   "devDependencies": {
-    "@solidjs/vite-plugin": "^3.0.0-next.32",
+    "@solidjs/vite-plugin": "^3.0.0-next.35",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "nitro": "^3.0.260311-beta",

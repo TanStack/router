@@ -1,8 +1,9 @@
 import {
-  FUNCTION_HEADER,
   configureServerFunctionsServer,
   createNoJSHandler,
   handleServerFunctionRequest,
+  parseServerFunctionUrl,
+  serverFunctionUrl,
 } from '@solidjs/web/server-functions/server'
 import { redirect } from '@tanstack/solid-router'
 import { provideRequestEvent } from '@solidjs/web/storage'
@@ -18,6 +19,7 @@ import { getServerFnById } from '#tanstack-start-server-fn-resolver'
 
 configureServerFunctionsServer({
   provideEvent: provideRequestEvent,
+  endpoint: process.env.TSS_SERVER_FN_BASE,
 })
 
 const solidNoJSHandler = createNoJSHandler()
@@ -85,9 +87,9 @@ export async function handleSolidServerFunctionRequest(
 }
 
 function getSolidServerFunctionId(request: Request) {
-  const headerId = request.headers.get(FUNCTION_HEADER)
-  if (headerId) {
-    return headerId
+  const parsedId = parseServerFunctionUrl(request.url)
+  if (parsedId) {
+    return parsedId
   }
 
   const url = new URL(request.url)
@@ -105,18 +107,17 @@ function getSolidServerFunctionId(request: Request) {
 }
 
 function withSolidServerFunctionId(request: Request, serverFnId: string) {
-  if (request.headers.has(FUNCTION_HEADER)) {
+  // Solid resolves the function id from the request URL's pathname
+  // (endpoint mount + id segment). Requests that carried the id some other
+  // way (e.g. an `?id=` query) are rewritten onto that canonical shape.
+  if (parseServerFunctionUrl(request.url) === serverFnId) {
     return request
   }
 
-  try {
-    request.headers.set(FUNCTION_HEADER, serverFnId)
-    return request
-  } catch {
-    const clonedRequest = request.clone()
-    clonedRequest.headers.set(FUNCTION_HEADER, serverFnId)
-    return clonedRequest
-  }
+  const url = new URL(request.url)
+  const canonicalUrl = new URL(serverFunctionUrl(serverFnId), url.origin)
+  canonicalUrl.search = url.search
+  return new Request(canonicalUrl, request)
 }
 
 function serializeTanStackRedirect(result: unknown) {
