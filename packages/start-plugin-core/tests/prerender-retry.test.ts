@@ -1,8 +1,11 @@
 import { describe, expect, it, vi } from 'vitest'
 import { prerender } from '../src/prerender'
+import type { TanStackStartOutputConfig } from '../src/schema'
+import type * as Utils from '../src/utils'
+import type * as Fs from 'node:fs'
 
 vi.mock('../src/utils', async () => {
-  const actual = await vi.importActual<any>('../src/utils')
+  const actual = await vi.importActual<typeof Utils>('../src/utils')
   return {
     ...actual,
     createLogger: () => ({ info: () => {}, warn: () => {}, error: () => {} }),
@@ -11,7 +14,7 @@ vi.mock('../src/utils', async () => {
 
 // Mock fs to prevent actual file system operations
 vi.mock('node:fs', async () => {
-  const actual = await vi.importActual<any>('node:fs')
+  const actual = await vi.importActual<typeof Fs>('node:fs')
   return {
     ...actual,
     promises: {
@@ -46,7 +49,9 @@ function makeStartConfig(
         enabled: true,
       },
     },
-  } as any
+    // Only a subset of TanStackStartOutputConfig is needed to exercise
+    // prerender(); building the full parsed schema shape isn't worth it here.
+  } as unknown as TanStackStartOutputConfig
 }
 
 const handler = {
