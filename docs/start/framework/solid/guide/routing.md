@@ -218,7 +218,9 @@ function PostsLayout() {
 Place `<Outlet />` wherever the child route should render within any shared
 layout UI. If the parent route does not need a component, remove the generated
 `component` option instead; a route without a component renders an outlet
-automatically.
+automatically by default. If the router has a `defaultComponent`, the route
+renders that component instead, so it must render an `<Outlet />` for child
+routes to appear.
 
 ## Defining Routes
 
