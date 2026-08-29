@@ -336,9 +336,7 @@ test.describe('server function sets cookies', () => {
       expect(errorMessage).toBe('$undefined')
     })
 
-    // Solid 2 does not yet expose a per-call AbortSignal transport seam.
-    // https://github.com/solidjs/solid/issues/3057
-    test.skip('aborting', async ({ page }) => {
+    test('aborting', async ({ page }) => {
       await page.goto('/abort-signal/' + method)
       await page.waitForLoadState('networkidle')
 

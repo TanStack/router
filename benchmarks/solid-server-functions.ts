@@ -1,34 +1,24 @@
 const origin = 'http://localhost'
-const functionHeader = 'X-Server-Function-Id'
 const instanceHeader = 'X-Server-Function-Instance'
 export const solidServerFunctionFormatHeader = 'X-Server-Function-Format'
 
-type SolidServerFunctionTarget = {
-  endpoint: string
-  id: string
-}
-
-function resolveSolidServerFunctionTarget(
-  url: string,
-): SolidServerFunctionTarget {
+// Since solid-js 2.0.0-rc.4 the server resolves the function id from the
+// request url pathname (`<endpoint>/<id>`); the X-Server-Function-Id header
+// no longer exists. Requests keep the full function url they were given.
+function resolveSolidServerFunctionPathname(url: string) {
   const parsed = new URL(url, origin)
-  const separator = parsed.pathname.lastIndexOf('/') + 1
-  const id = parsed.pathname.slice(separator)
+  const id = parsed.pathname.slice(parsed.pathname.lastIndexOf('/') + 1)
 
   if (!id) {
     throw new Error(`Unable to resolve Solid server function id from ${url}`)
   }
 
-  return {
-    endpoint: parsed.pathname.slice(0, separator),
-    id: decodeURIComponent(id),
-  }
+  return parsed.pathname
 }
 
-function createSolidServerFunctionHeaders(id: string, instance: string) {
+function createSolidServerFunctionHeaders(instance: string) {
   return new Headers({
     'sec-fetch-site': 'same-origin',
-    [functionHeader]: id,
     [instanceHeader]: instance,
   })
 }
@@ -38,15 +28,14 @@ export function createSolidServerFunctionGetRequest(
   args: Array<unknown>,
   instance: string,
 ) {
-  const { endpoint, id } = resolveSolidServerFunctionTarget(url)
+  const pathname = resolveSolidServerFunctionPathname(url)
   const search = new URLSearchParams({
-    id,
     args: JSON.stringify(args),
   })
 
-  return new Request(`${origin}${endpoint}?${search}`, {
+  return new Request(`${origin}${pathname}?${search}`, {
     method: 'GET',
-    headers: createSolidServerFunctionHeaders(id, instance),
+    headers: createSolidServerFunctionHeaders(instance),
   })
 }
 
@@ -55,12 +44,12 @@ export function createSolidServerFunctionPostRequest(
   args: Array<unknown>,
   instance: string,
 ) {
-  const { endpoint, id } = resolveSolidServerFunctionTarget(url)
-  const headers = createSolidServerFunctionHeaders(id, instance)
+  const pathname = resolveSolidServerFunctionPathname(url)
+  const headers = createSolidServerFunctionHeaders(instance)
   headers.set('content-type', 'application/json')
   headers.set(solidServerFunctionFormatHeader, '8')
 
-  return new Request(`${origin}${endpoint}`, {
+  return new Request(`${origin}${pathname}`, {
     method: 'POST',
     headers,
     body: JSON.stringify(args),
@@ -74,13 +63,13 @@ export function createSolidServerFunctionFormDataRequest(
   contentType: string,
   instance: string,
 ) {
-  const { endpoint, id } = resolveSolidServerFunctionTarget(url)
+  const pathname = resolveSolidServerFunctionPathname(url)
   const search = new URLSearchParams({ args: JSON.stringify(args) })
-  const headers = createSolidServerFunctionHeaders(id, instance)
+  const headers = createSolidServerFunctionHeaders(instance)
   headers.set('content-type', contentType)
   headers.set(solidServerFunctionFormatHeader, '2')
 
-  return new Request(`${origin}${endpoint}?${search}`, {
+  return new Request(`${origin}${pathname}?${search}`, {
     method: 'POST',
     headers,
     body,

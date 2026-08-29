@@ -10,18 +10,13 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as NotFoundReloadIdRouteImport } from './routes/not-found-reload.$id'
 import { Route as UseQueryRouteImport } from './routes/useQuery'
 import { Route as LoaderFetchQueryTypeRouteImport } from './routes/loader-fetchQuery/$type'
+import { Route as NotFoundReloadIdRouteImport } from './routes/not-found-reload.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotFoundReloadIdRoute = NotFoundReloadIdRouteImport.update({
-  id: '/not-found-reload/$id',
-  path: '/not-found-reload/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UseQueryRoute = UseQueryRouteImport.update({
@@ -32,6 +27,11 @@ const UseQueryRoute = UseQueryRouteImport.update({
 const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
   id: '/loader-fetchQuery/$type',
   path: '/loader-fetchQuery/$type',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotFoundReloadIdRoute = NotFoundReloadIdRouteImport.update({
+  id: '/not-found-reload/$id',
+  path: '/not-found-reload/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -87,13 +87,6 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/not-found-reload/$id': {
-      id: '/not-found-reload/$id'
-      path: '/not-found-reload/$id'
-      fullPath: '/not-found-reload/$id'
-      preLoaderRoute: typeof NotFoundReloadIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/useQuery': {
       id: '/useQuery'
       path: '/useQuery'
@@ -106,6 +99,13 @@ declare module '@tanstack/solid-router' {
       path: '/loader-fetchQuery/$type'
       fullPath: '/loader-fetchQuery/$type'
       preLoaderRoute: typeof LoaderFetchQueryTypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/not-found-reload/$id': {
+      id: '/not-found-reload/$id'
+      path: '/not-found-reload/$id'
+      fullPath: '/not-found-reload/$id'
+      preLoaderRoute: typeof NotFoundReloadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
