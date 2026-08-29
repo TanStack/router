@@ -38,15 +38,16 @@ type PreloadRouter = {
 // Fixed id for the eviction navigations interleaved into the bench loop; its
 // payload is a constant-size steady-state resident, never part of the signal.
 const evictionItemId = 'nav-evict'
-const preloadChurnIterations = 200
+const preloadChurnIterations = 400
+const preloadChurnWarmupIterations = preloadChurnIterations
 // A navigation commit is what triggers the router's clearExpiredCache --
 // preloaded matches (defaultPreloadGcTime: 0) are only evicted then, never
 // during a preload-only loop. Interleaving a navigation every few preloads is
 // what makes the flat floor assert "eviction releases preloaded payloads".
 const preloadsPerEvictionNavigation = 10
-// Module-level so ids stay unique across runner invocations on one mount; a
-// per-invocation LCG would replay identical ids, and every preload after the
-// first invocation would dedupe against cachedMatches instead of doing work.
+// Module-level within the isolated process so every id in the inner loop is
+// unique. Every fresh CodSpeed invocation deliberately replays the same seeded
+// sequence in a new router, so no cached match can dedupe work across runs.
 const benchmarkRandom = createDeterministicRandom(0x706c6f61)
 let preloadCounter = 0
 
@@ -179,21 +180,35 @@ export function createWorkload(
     }
   }
 
+  async function runPreloadLoop(iterations: number, createId: () => string) {
+    for (let index = 0; index < iterations; index++) {
+      await preloadItem(createId())
+
+      if ((index + 1) % preloadsPerEvictionNavigation === 0) {
+        await evictPreloads()
+      }
+    }
+  }
+
   return {
     name: `mem client preload-churn (${framework})`,
     before,
     preload: (id: string) => preloadItem(id),
     evictPreloads,
-    async run() {
-      for (let index = 0; index < preloadChurnIterations; index++) {
-        await preloadItem(
+    run: () =>
+      runPreloadLoop(
+        preloadChurnIterations,
+        () =>
           `${(preloadCounter++).toString(36)}-${randomSegment(benchmarkRandom)}`,
-        )
+      ),
+    warmup() {
+      const random = createDeterministicRandom(0x5072e10a)
+      let counter = 0
 
-        if ((index + 1) % preloadsPerEvictionNavigation === 0) {
-          await evictPreloads()
-        }
-      }
+      return runPreloadLoop(
+        preloadChurnWarmupIterations,
+        () => `warmup-${(counter++).toString(36)}-${randomSegment(random)}`,
+      )
     },
     async sanity() {
       await before()

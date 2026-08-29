@@ -47,9 +47,17 @@ type InterruptedNavigationRouter = {
   ) => () => void
 }
 
-const interruptedNavigationIterations = 150
+const interruptedNavigationIterations = 300
+const interruptedNavigationWarmupIterations = interruptedNavigationIterations
 const interruptedNavigationPairs = createInterruptedNavigationPairs(
   interruptedNavigationIterations,
+  13,
+  '',
+)
+const interruptedNavigationWarmupPairs = createInterruptedNavigationPairs(
+  interruptedNavigationWarmupIterations,
+  0x1a2b3c,
+  'warmup-',
 )
 
 const uninitialized = () =>
@@ -63,12 +71,16 @@ const uninitializedSettlement = () =>
     reason: new Error('interrupted-navigations benchmark is not initialized'),
   })
 
-function createInterruptedNavigationPairs(iterations: number) {
-  const random = createDeterministicRandom(13)
+function createInterruptedNavigationPairs(
+  iterations: number,
+  seed: number,
+  prefix: string,
+) {
+  const random = createDeterministicRandom(seed)
 
   return Array.from({ length: iterations }, (_, index) => ({
-    slowId: `slow-${index}-${randomSegment(random)}`,
-    fastId: `fast-${index}-${randomSegment(random)}`,
+    slowId: `${prefix}slow-${index}-${randomSegment(random)}`,
+    fastId: `${prefix}fast-${index}-${randomSegment(random)}`,
   }))
 }
 
@@ -272,15 +284,20 @@ export function createWorkload(
     await drainMicrotasks()
   }
 
+  async function runPairs(
+    pairs: ReadonlyArray<{ slowId: string; fastId: string }>,
+  ) {
+    for (const pair of pairs) {
+      await interrupt(pair.slowId, pair.fastId)
+    }
+  }
+
   return {
     name: `mem client interrupted-navigations (${framework})`,
     before,
     interrupt,
-    async run() {
-      for (const pair of interruptedNavigationPairs) {
-        await interrupt(pair.slowId, pair.fastId)
-      }
-    },
+    run: () => runPairs(interruptedNavigationPairs),
+    warmup: () => runPairs(interruptedNavigationWarmupPairs),
     async sanity() {
       await before()
 

@@ -9,9 +9,11 @@ export type { StartRequestHandler }
 
 type Framework = 'react' | 'solid' | 'vue'
 
-// Sized to sit just above the 2s measured-run floor on CI (per-iteration
-// cost with the pinned collection is ~0.13-0.19s across frameworks).
-const errorPathsIterations = 18
+// Twice the count needed for the original ~2s CI floor (per-iteration cost
+// with the pinned collection is ~0.13-0.19s across frameworks), so the regular
+// loop shape dominates the timeline and an accumulating leak is amplified.
+const errorPathsIterations = 36
+const errorPathsWarmupIterations = errorPathsIterations
 const redirectSeed = 0xdecafbad
 const notFoundSeed = 0xdecafb0d
 const errorSeed = 0xdecafbed
@@ -19,7 +21,8 @@ const unmatchedSeed = 0xdecaf00d
 const redirectStatus = 302
 const notFoundStatus = 404
 const errorStatus = 500
-// Module-level so each error-path bench keeps advancing across runner invocations.
+// Module-level within the isolated process so each error-path inner loop uses
+// unique URLs. Fresh CodSpeed invocations replay the sequence in a fresh handler.
 const redirectRandom = createDeterministicRandom(redirectSeed)
 const notFoundRandom = createDeterministicRandom(notFoundSeed)
 const errorRandom = createDeterministicRandom(errorSeed)
@@ -134,6 +137,28 @@ async function assertErrorPathsSanity(handler: StartRequestHandler) {
   )
 }
 
+function runErrorPathWarmup(
+  handler: StartRequestHandler,
+  options: {
+    path: string
+    seed: number
+    validateResponse: (response: Response, request: Request) => void
+  },
+) {
+  let counter = 0
+
+  return runSequentialRequestLoop(handler, {
+    seed: options.seed,
+    iterations: errorPathsWarmupIterations,
+    buildRequest: (random) => {
+      const id = `warmup-${(counter++).toString(36)}-${randomSegment(random)}`
+      return new Request(`http://localhost/${options.path}/${id}`, requestInit)
+    },
+    validateResponse: options.validateResponse,
+    pinGcBetweenIterations: true,
+  })
+}
+
 export function createWorkloadGroup(
   framework: Framework,
   handler: StartRequestHandler,
@@ -174,8 +199,32 @@ export function createWorkloadGroup(
       pinGcBetweenIterations: true,
     })
 
+  async function warmup() {
+    await runErrorPathWarmup(handler, {
+      path: 'from',
+      seed: 0x7ed1ec71,
+      validateResponse: validateRedirectResponse,
+    })
+    await runErrorPathWarmup(handler, {
+      path: 'missing',
+      seed: 0x7ed1ec72,
+      validateResponse: validateNotFoundResponse,
+    })
+    await runErrorPathWarmup(handler, {
+      path: 'boom',
+      seed: 0x7ed1ec73,
+      validateResponse: validateErrorResponse,
+    })
+    await runErrorPathWarmup(handler, {
+      path: 'nope',
+      seed: 0x7ed1ec74,
+      validateResponse: validateNotFoundResponse,
+    })
+  }
+
   return {
     sanity: () => assertErrorPathsSanity(handler),
+    warmup,
     workloads: [
       {
         name: `mem server error-paths redirect (${framework})`,
