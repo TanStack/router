@@ -1,6 +1,7 @@
-import { provideRequestEvent } from '@solidjs/web/storage'
-import { createMemoryHistory } from '@tanstack/solid-router'
-import { attachRouterServerSsrUtils } from '@tanstack/solid-router/ssr/server'
+import {
+  attachRouterServerSsrUtils,
+  loadFlightTarget,
+} from '@tanstack/solid-router/ssr/server'
 import {
   getStartContext,
   runWithStartContext,
@@ -10,7 +11,6 @@ import type {
   CollectFlightDataHook,
   ServerFunctionOutcome,
 } from '@solidjs/web/server-functions/server'
-import type { ServerFunctionEvent } from '@solidjs/web/server-functions/server'
 
 export const collectSolidStartFlightData: CollectFlightDataHook = async (
   event,
@@ -26,60 +26,55 @@ export const collectSolidStartFlightData: CollectFlightDataHook = async (
     return undefined
   }
 
-  const targetUrl = new URL(href)
-  const request = new Request(targetUrl, {
+  const router = await startContext.getRouter()
+  // Mirrors the flight request loadFlightTarget derives, so Start handlers
+  // reading the start context observe the same target the router loads.
+  const request = new Request(href, {
     headers: outcome.foldedHeaders,
     signal: outcome.request.signal,
   })
-  const flightEvent: ServerFunctionEvent = {
-    ...event,
-    request,
-  }
-  const router = await startContext.getRouter()
-  router.update({
-    history: createMemoryHistory({
-      initialEntries: [targetUrl.pathname + targetUrl.search + targetUrl.hash],
-    }),
-    origin: targetUrl.origin,
-  })
 
-  return await provideRequestEvent(flightEvent, async () => {
+  let attachedServerSsr = false
+  try {
+    if (router.options.dehydrate && !router.serverSsr) {
+      attachRouterServerSsrUtils({ router, manifest: undefined })
+      attachedServerSsr = true
+    }
+
     return await runWithStartContext(
       {
         ...startContext,
         handlerType: 'router',
         request,
       },
-      async () => {
-        let attachedServerSsr = false
-        try {
-          if (router.options.dehydrate && !router.serverSsr) {
-            attachRouterServerSsrUtils({ router, manifest: undefined })
-            attachedServerSsr = true
-          }
+      () =>
+        loadFlightTarget({
+          router,
+          event,
+          outcome,
+          href,
+          collect: async () => {
+            const dehydratedData = await router.options.dehydrate?.()
+            router.serverSsr?.setRenderFinished()
 
-          await router.load({ _signal: outcome.request.signal })
-          const dehydratedData = await router.options.dehydrate?.()
-          router.serverSsr?.setRenderFinished()
-
-          return {
-            ...(dehydratedData === undefined ? {} : { dehydratedData }),
-            href: targetUrl.href,
-            matches: router.stores.matches
-              .get()
-              .map(createSolidStartFlightMatch),
-          }
-        } catch (error) {
-          console.error('Unable to collect TanStack Start flight data', error)
-          return undefined
-        } finally {
-          if (attachedServerSsr) {
-            router.serverSsr?.cleanup()
-          }
-        }
-      },
+            return {
+              ...(dehydratedData === undefined ? {} : { dehydratedData }),
+              href: request.url,
+              matches: router.stores.matches
+                .get()
+                .map(createSolidStartFlightMatch),
+            }
+          },
+        }),
     )
-  })
+  } catch (error) {
+    console.error('Unable to collect TanStack Start flight data', error)
+    return undefined
+  } finally {
+    if (attachedServerSsr) {
+      router.serverSsr?.cleanup()
+    }
+  }
 }
 
 function getTargetHref(outcome: ServerFunctionOutcome) {
