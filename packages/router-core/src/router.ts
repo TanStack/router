@@ -1616,7 +1616,6 @@ export class RouterCore<
         path: route.fullPath,
         params: rawParams,
         decoder: this.pathParamsDecoder,
-        server: this.isServer,
       })
 
       // Seed planning from the accepted same-ID cache generation first, then
@@ -1961,7 +1960,6 @@ export class RouterCore<
               path: nextTo,
               params: nextParams,
               decoder: this.pathParamsDecoder,
-              server: this.isServer,
             }).interpolatedPath,
           ).path
 
