@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest'
 
 import { compileCodeSplitReferenceRoute } from '../src/core/code-splitter/compilers'
 import { defaultCodeSplitGroupings } from '../src/core/constants'
-import { getReferenceRouteCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
+import { getFrameworkHmrCompilerPlugins } from '../src/core/code-splitter/plugins/framework-plugins'
 import { createRouteHmrStatement } from '../src/core/hmr'
 import { frameworks } from './constants'
 
@@ -32,9 +32,8 @@ describe('add-hmr works', () => {
           addHmr: true,
           codeSplitGroupings: defaultCodeSplitGroupings,
           targetFramework: framework,
-          compilerPlugins: getReferenceRouteCompilerPlugins({
+          compilerPlugins: getFrameworkHmrCompilerPlugins({
             targetFramework: framework,
-            addHmr: true,
           }),
         })
 
@@ -57,10 +56,6 @@ describe('add-hmr works', () => {
           addHmr: false,
           codeSplitGroupings: defaultCodeSplitGroupings,
           targetFramework: framework,
-          compilerPlugins: getReferenceRouteCompilerPlugins({
-            targetFramework: framework,
-            addHmr: false,
-          }),
         })
 
         await expect(compileResult?.code || code).toMatchFileSnapshot(
@@ -86,9 +81,8 @@ describe('add-hmr works', () => {
       hmrStyle: 'webpack',
       codeSplitGroupings: defaultCodeSplitGroupings,
       targetFramework: framework,
-      compilerPlugins: getReferenceRouteCompilerPlugins({
+      compilerPlugins: getFrameworkHmrCompilerPlugins({
         targetFramework: framework,
-        addHmr: true,
         hmrStyle: 'webpack',
       }),
     })
@@ -111,7 +105,6 @@ describe('add-hmr works', () => {
     expect(output).toContain('webpackHot')
     expect(output).not.toContain('import.meta.hot')
     expect(output).toContain('oldHasShellComponent')
-    expect(output).toContain('__routeContext')
   })
 
   it('supports configurable Vite unsplittable HMR generation', async () => {
@@ -125,6 +118,36 @@ describe('add-hmr works', () => {
     expect(output).toContain('hot')
     expect(output).not.toContain('webpackHot')
     expect(output).toContain('newModule')
+  })
+
+  it('generates lazy reset and scoped route refresh without route context mutation', async () => {
+    const filename = 'arrow-function.tsx'
+    const framework = 'react'
+    const file = await readFile(
+      path.join(getFrameworkDir(framework).files, filename),
+    )
+    const code = file.toString()
+    const compileResult = compileCodeSplitReferenceRoute({
+      code,
+      filename,
+      id: filename,
+      addHmr: true,
+      codeSplitGroupings: defaultCodeSplitGroupings,
+      targetFramework: framework,
+      compilerPlugins: getFrameworkHmrCompilerPlugins({
+        targetFramework: framework,
+      }),
+    })
+    if (!compileResult) {
+      throw new Error('Expected the reference route to be transformed')
+    }
+    const output = compileResult.code
+
+    expect(output).toContain(
+      'router._replaceRouteChunk(oldRoute, newRoute.lazyFn);',
+    )
+    expect(output).toContain('void router._refreshRoute?.();')
+    expect(output).not.toContain('__routeContext')
   })
 
   it('uses a generated route id fallback for Vite HMR', async () => {

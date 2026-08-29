@@ -63,6 +63,12 @@ describe('getRouteApi', () => {
         invoiceId: string
       }>
     >()
+
+    expectTypeOf(
+      invoiceRouteApi.useParams<DefaultRouter, unknown, false>({
+        shouldThrow: false,
+      }),
+    ).toEqualTypeOf<Accessor<{ invoiceId: string } | undefined>>()
   })
   test('useContext', () => {
     expectTypeOf(
@@ -79,6 +85,12 @@ describe('getRouteApi', () => {
         page: number
       }>
     >()
+
+    expectTypeOf(
+      invoiceRouteApi.useSearch<DefaultRouter, unknown, false>({
+        shouldThrow: false,
+      }),
+    ).toEqualTypeOf<Accessor<{ page: number } | undefined>>()
   })
   test('useLoaderData', () => {
     expectTypeOf(invoiceRouteApi.useLoaderData<DefaultRouter>()).toEqualTypeOf<
@@ -97,6 +109,16 @@ describe('getRouteApi', () => {
   test('useMatch', () => {
     expectTypeOf(invoiceRouteApi.useMatch<DefaultRouter>()).toEqualTypeOf<
       Accessor<MakeRouteMatch<typeof routeTree, '/invoices/$invoiceId'>>
+    >()
+
+    expectTypeOf(
+      invoiceRouteApi.useMatch<DefaultRouter, unknown, false>({
+        shouldThrow: false,
+      }),
+    ).toEqualTypeOf<
+      Accessor<
+        MakeRouteMatch<typeof routeTree, '/invoices/$invoiceId'> | undefined
+      >
     >()
   })
   test('Link', () => {

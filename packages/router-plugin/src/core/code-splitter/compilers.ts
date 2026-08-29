@@ -25,8 +25,8 @@ import { createRouteHmrStatement } from '../hmr'
 import { getObjectPropertyKeyName } from '../utils'
 import { getFrameworkOptions } from './framework-options'
 import type {
+  CodeSplitCompilerPlugin,
   CompileCodeSplitReferenceRouteOptions,
-  ReferenceRouteCompilerPlugin,
 } from './plugins'
 import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
@@ -364,7 +364,7 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions &
     CompileCodeSplitReferenceRouteOptions & {
-      compilerPlugins?: Array<ReferenceRouteCompilerPlugin>
+      compilerPlugins?: Array<CodeSplitCompilerPlugin>
     },
 ): GeneratorResult | null {
   const ast = parseAst(opts)
@@ -879,6 +879,7 @@ export function compileCodeSplitVirtualRoute(
     splitTargets: Array<SplitRouteIdentNodes>
     filename: string
     sharedBindings?: Set<string>
+    compilerPlugins?: Array<CodeSplitCompilerPlugin>
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -1015,6 +1016,14 @@ export function compileCodeSplitVirtualRoute(
 
           // Add the node to the program
           if (splitNode) {
+            for (const plugin of opts.compilerPlugins ?? []) {
+              plugin.onVirtualRouteSplitNode?.({
+                programPath,
+                splitNode,
+                splitNodeMeta: splitMeta,
+              })
+            }
+
             if (t.isFunctionDeclaration(splitNode)) {
               // an anonymous function declaration should only happen for `export default function() {...}`
               // so we should never get here
@@ -1023,6 +1032,7 @@ export function compileCodeSplitVirtualRoute(
                   `Function declaration for "${SPLIT_TYPE}" must have an identifier.`,
                 )
               }
+
               splitMeta.shouldRemoveNode = false
               splitMeta.localExporterIdent = splitNode.id.name
             } else if (

@@ -193,10 +193,6 @@ export function last<T>(arr: ReadonlyArray<T>) {
   return arr[arr.length - 1]
 }
 
-function isFunction(d: any): d is Function {
-  return typeof d === 'function'
-}
-
 /**
  * Apply a value-or-updater to a previous value.
  * Accepts either a literal value or a function of the previous value.
@@ -205,8 +201,8 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
   updater: Updater<TPrevious, TResult> | NonNullableUpdater<TPrevious, TResult>,
   previous: TPrevious,
 ): TResult {
-  if (isFunction(updater)) {
-    return updater(previous)
+  if (typeof updater === 'function') {
+    return (updater as Function)(previous)
   }
 
   return updater
@@ -299,24 +295,31 @@ export function replaceEqualDeep<T>(
  * Optimized for the common case where objects have no symbol properties.
  */
 function getEnumerableOwnKeys(o: object) {
-  const names = Object.getOwnPropertyNames(o)
-
-  // Fast path: check all string property names are enumerable
-  for (const name of names) {
-    if (!isEnumerable.call(o, name)) return false
+  // `Object.keys` returns only enumerable own string keys natively (no per-key
+  // JS callback). If it has fewer entries than `getOwnPropertyNames` (all own
+  // string keys), the object has a non-enumerable own string prop and is not
+  // "clone-friendly" -> bail. This replaces an O(n) loop of
+  // `propertyIsEnumerable` calls with two native calls.
+  const keys = Object.keys(o)
+  if (keys.length !== Object.getOwnPropertyNames(o).length) {
+    return false
   }
 
   // Only check symbols if the object has any (most plain objects don't)
   const symbols = Object.getOwnPropertySymbols(o)
 
-  // Fast path: no symbols, return names directly (avoids array allocation/concat)
-  if (symbols.length === 0) return names
+  // Fast path: no symbols, return enumerable string keys directly
+  if (symbols.length === 0) {
+    return keys
+  }
 
-  // Slow path: has symbols, need to check and merge
-  const keys: Array<string | symbol> = names
+  // Slow path: has symbols, include only enumerable ones, bail on any
+  // non-enumerable symbol so it round-trips like the string-key check above.
   for (const symbol of symbols) {
-    if (!isEnumerable.call(o, symbol)) return false
-    keys.push(symbol)
+    if (!isEnumerable.call(o, symbol)) {
+      return false
+    }
+    ;(keys as Array<string | symbol>).push(symbol)
   }
   return keys
 }

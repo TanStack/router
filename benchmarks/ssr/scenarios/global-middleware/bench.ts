@@ -54,9 +54,9 @@ const postHeaders = {
   accept: acceptHeader,
   'content-type': 'application/json',
 } satisfies HeadersInit
-const documentLoopIterations = 50
-const serverFnLoopIterations = 125
-const serverRouteLoopIterations = 250
+const documentLoopTotalRequests = 64
+const serverFnLoopTotalRequests = 128
+const serverRouteLoopTotalRequests = 256
 
 export const globalMiddlewareBenchOptions = {
   warmupIterations: 100,
@@ -263,7 +263,8 @@ export async function assertGlobalMiddlewareScenario(
 export function runGlobalMiddlewareDocumentLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: documentLoopIterations,
+    concurrency: 16,
+    totalRequests: documentLoopTotalRequests,
     buildRequest: buildDocumentRequest,
   })
 }
@@ -274,7 +275,8 @@ export function runGlobalMiddlewareServerFnLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildPostRequest(context.urls, context.bodies, index),
   })
@@ -285,7 +287,8 @@ export function runGlobalMiddlewareServerRouteLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverRouteLoopIterations,
+    concurrency: 16,
+    totalRequests: serverRouteLoopTotalRequests,
     buildRequest: buildServerRouteRequest,
   })
 }

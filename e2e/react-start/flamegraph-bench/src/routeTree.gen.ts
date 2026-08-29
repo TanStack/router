@@ -9,10 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SearchRouteImport } from './routes/search'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as PageIdRouteImport } from './routes/page.$id'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as NestedARouteImport } from './routes/nested/$a'
+import { Route as PageIdRouteImport } from './routes/page.$id'
 import { Route as NestedABRouteImport } from './routes/nested/$a.$b'
 import { Route as NestedABCRouteImport } from './routes/nested/$a.$b.$c'
 import { Route as NestedABCDRouteImport } from './routes/nested/$a.$b.$c.$d'
@@ -39,24 +39,24 @@ import { Route as NestedABCDEFGHIJKLMNOPQRSTUVWXRouteImport } from './routes/nes
 import { Route as NestedABCDEFGHIJKLMNOPQRSTUVWXYRouteImport } from './routes/nested/$a.$b.$c.$d.$e.$f.$g.$h.$i.$j.$k.$l.$m.$n.$o.$p.$q.$r.$s.$t.$u.$v.$w.$x.$y'
 import { Route as NestedABCDEFGHIJKLMNOPQRSTUVWXYZRouteImport } from './routes/nested/$a.$b.$c.$d.$e.$f.$g.$h.$i.$j.$k.$l.$m.$n.$o.$p.$q.$r.$s.$t.$u.$v.$w.$x.$y.$z'
 
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PageIdRoute = PageIdRouteImport.update({
-  id: '/page/$id',
-  path: '/page/$id',
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NestedARoute = NestedARouteImport.update({
   id: '/nested/$a',
   path: '/nested/$a',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PageIdRoute = PageIdRouteImport.update({
+  id: '/page/$id',
+  path: '/page/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NestedABRoute = NestedABRouteImport.update({
@@ -393,13 +393,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
@@ -407,11 +400,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/page/$id': {
-      id: '/page/$id'
-      path: '/page/$id'
-      fullPath: '/page/$id'
-      preLoaderRoute: typeof PageIdRouteImport
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nested/$a': {
@@ -419,6 +412,13 @@ declare module '@tanstack/react-router' {
       path: '/nested/$a'
       fullPath: '/nested/$a'
       preLoaderRoute: typeof NestedARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/page/$id': {
+      id: '/page/$id'
+      path: '/page/$id'
+      fullPath: '/page/$id'
+      preLoaderRoute: typeof PageIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nested/$a/$b': {

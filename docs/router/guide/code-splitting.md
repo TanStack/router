@@ -115,7 +115,7 @@ These are the only options that `createLazyFileRoute` supports:
 
 ### Example code splitting with `.lazy.tsx`
 
-When you are using `.lazy.tsx` you can split your route into two files to enable code splitting:
+When you are using `.lazy.tsx`, you can split your route into two files to enable code splitting:
 
 **Before (Single File)**
 

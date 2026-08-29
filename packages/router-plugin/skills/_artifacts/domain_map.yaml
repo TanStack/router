@@ -1,12 +1,12 @@
 # domain_map.yaml
 # Library: @tanstack/router-plugin
-# Version: 1.166.2
+# Version: 1.168.23
 # Date: 2026-03-08
 # Status: reviewed
 
 library:
   name: '@tanstack/router-plugin'
-  version: '1.166.2'
+  version: '1.168.23'
   repository: 'https://github.com/TanStack/router'
   description: >-
     Bundler plugin for route generation and automatic code splitting.
@@ -57,6 +57,14 @@ skills:
           generatedRouteTree to the desired output path. Wrong paths
           cause missing routes or stale route trees.
         priority: MEDIUM
+        status: active
+
+      - mistake: 'Editing routeTree.gen.ts instead of regenerating'
+        mechanism: >-
+          Manual changes are overwritten and can put source routes, generated
+          types, and runtime routing out of sync. Fix source or config and
+          regenerate the tree.
+        priority: HIGH
         status: active
 
 gaps: []

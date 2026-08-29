@@ -1,11 +1,13 @@
+import type { RouterHistory } from '@tanstack/history'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { createRoot } from 'react-dom/client'
 import { routeTree } from './routeTree.gen'
 import { basepath, localeRewrite } from '../../shared'
 
-export function createTestRouter() {
+export function createTestRouter(history: RouterHistory) {
   return createRouter({
     routeTree,
+    history,
     basepath,
     rewrite: localeRewrite,
     scrollRestoration: true,
@@ -23,8 +25,8 @@ declare module '@tanstack/react-router' {
   }
 }
 
-export function mountTestApp(container: HTMLElement) {
-  const router = createTestRouter()
+export function mountTestApp(container: HTMLElement, history: RouterHistory) {
+  const router = createTestRouter(history)
 
   const reactRoot = createRoot(container)
   reactRoot.render(<RouterProvider router={router} />)

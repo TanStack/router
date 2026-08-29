@@ -1,5 +1,9 @@
-import { describe, expect, test } from 'vitest'
-import { defaultParseSearch, defaultStringifySearch } from '../src'
+import { describe, expect, test, vi } from 'vitest'
+import {
+  defaultParseSearch,
+  defaultStringifySearch,
+  stringifySearchWith,
+} from '../src'
 
 describe('Search Params serialization and deserialization', () => {
   /*
@@ -45,6 +49,64 @@ describe('Search Params serialization and deserialization', () => {
     const str = defaultStringifySearch({ foo: 'bar', bar: undefined })
     expect(str).toEqual('?foo=bar')
     expect(defaultParseSearch(str)).toEqual({ foo: 'bar' })
+  })
+
+  test.each([
+    'false',
+    '-1',
+    '"quoted"',
+    ' true ',
+    'true ',
+    'false\t',
+    'null\r\n',
+    '\tfalse',
+    '\nnull',
+    '\r1',
+    '   ',
+    '雪',
+    '"雪"',
+  ])('preserves JSON-compatible string %j as a string', (value) => {
+    const str = defaultStringifySearch({ value })
+    expect(defaultParseSearch(str)).toEqual({ value })
+  })
+
+  test('uses custom parsers for ordinary strings', () => {
+    const stringify = stringifySearchWith(JSON.stringify, (value) => {
+      if (value === 'word') {
+        return value
+      }
+      throw new Error('not parseable')
+    })
+
+    expect(stringify({ value: 'word' })).toEqual('?value=%22word%22')
+  })
+
+  test('skips JSON.parse for strings that cannot be JSON', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+    try {
+      const stringify = stringifySearchWith(JSON.stringify, JSON.parse)
+
+      expect(
+        stringify({
+          empty: '',
+          filter: 'foo',
+          future: 'future',
+          name: 'name',
+          notification: 'new',
+          tab: 'tabular',
+          topic: 'topic',
+          unicode: '雪',
+        }),
+      ).toEqual(
+        '?empty=&filter=foo&future=future&name=name&notification=new&tab=tabular&topic=topic&unicode=%E9%9B%AA',
+      )
+      expect(
+        stringify({ file: '.env', path: '/products', positive: '+1' }),
+      ).toEqual('?file=.env&path=%2Fproducts&positive=%2B1')
+      expect(parseSpy).not.toHaveBeenCalled()
+    } finally {
+      parseSpy.mockRestore()
+    }
   })
 
   test('[edge case] self-reference serializes to "object Object"', () => {

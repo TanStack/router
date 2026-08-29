@@ -9,68 +9,52 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SecFRouteImport } from './routes/sec-f'
-import { Route as SecERouteImport } from './routes/sec-e'
-import { Route as SecDRouteImport } from './routes/sec-d'
-import { Route as SecCRouteImport } from './routes/sec-c'
-import { Route as SecBRouteImport } from './routes/sec-b'
-import { Route as SecARouteImport } from './routes/sec-a'
-import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SecFIndexRouteImport } from './routes/sec-f.index'
-import { Route as SecEIndexRouteImport } from './routes/sec-e.index'
-import { Route as SecDIndexRouteImport } from './routes/sec-d.index'
-import { Route as SecCIndexRouteImport } from './routes/sec-c.index'
-import { Route as SecBIndexRouteImport } from './routes/sec-b.index'
-import { Route as SecAIndexRouteImport } from './routes/sec-a.index'
-import { Route as SecFSettingsRouteImport } from './routes/sec-f.settings'
-import { Route as SecFAboutRouteImport } from './routes/sec-f.about'
-import { Route as SecFIdRouteImport } from './routes/sec-f.$id'
-import { Route as SecESettingsRouteImport } from './routes/sec-e.settings'
-import { Route as SecEAboutRouteImport } from './routes/sec-e.about'
-import { Route as SecEIdRouteImport } from './routes/sec-e.$id'
-import { Route as SecDSettingsRouteImport } from './routes/sec-d.settings'
-import { Route as SecDAboutRouteImport } from './routes/sec-d.about'
-import { Route as SecDIdRouteImport } from './routes/sec-d.$id'
-import { Route as SecCSettingsRouteImport } from './routes/sec-c.settings'
-import { Route as SecCAboutRouteImport } from './routes/sec-c.about'
-import { Route as SecCIdRouteImport } from './routes/sec-c.$id'
-import { Route as SecBSettingsRouteImport } from './routes/sec-b.settings'
-import { Route as SecBAboutRouteImport } from './routes/sec-b.about'
-import { Route as SecBIdRouteImport } from './routes/sec-b.$id'
-import { Route as SecASettingsRouteImport } from './routes/sec-a.settings'
-import { Route as SecAAboutRouteImport } from './routes/sec-a.about'
-import { Route as SecAIdRouteImport } from './routes/sec-a.$id'
-import { Route as ReleaseVChar123versionChar125RouteImport } from './routes/release.v{$version}'
-import { Route as FilesSplatRouteImport } from './routes/files.$'
-import { Route as LayoutBetaRouteImport } from './routes/_layout.beta'
-import { Route as LayoutAlphaRouteImport } from './routes/_layout.alpha'
-import { Route as marketingPromoRouteImport } from './routes/(marketing)/promo'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as SecARouteImport } from './routes/sec-a'
+import { Route as SecBRouteImport } from './routes/sec-b'
+import { Route as SecCRouteImport } from './routes/sec-c'
+import { Route as SecDRouteImport } from './routes/sec-d'
+import { Route as SecERouteImport } from './routes/sec-e'
+import { Route as SecFRouteImport } from './routes/sec-f'
 import { Route as marketingPricingRouteImport } from './routes/(marketing)/pricing'
+import { Route as marketingPromoRouteImport } from './routes/(marketing)/promo'
+import { Route as LayoutAlphaRouteImport } from './routes/_layout.alpha'
+import { Route as LayoutBetaRouteImport } from './routes/_layout.beta'
+import { Route as FilesSplatRouteImport } from './routes/files.$'
+import { Route as ReleaseVChar123versionChar125RouteImport } from './routes/release.v{$version}'
+import { Route as SecAIndexRouteImport } from './routes/sec-a.index'
+import { Route as SecAIdRouteImport } from './routes/sec-a.$id'
+import { Route as SecAAboutRouteImport } from './routes/sec-a.about'
+import { Route as SecASettingsRouteImport } from './routes/sec-a.settings'
+import { Route as SecBIndexRouteImport } from './routes/sec-b.index'
+import { Route as SecBIdRouteImport } from './routes/sec-b.$id'
+import { Route as SecBAboutRouteImport } from './routes/sec-b.about'
+import { Route as SecBSettingsRouteImport } from './routes/sec-b.settings'
+import { Route as SecCIndexRouteImport } from './routes/sec-c.index'
+import { Route as SecCIdRouteImport } from './routes/sec-c.$id'
+import { Route as SecCAboutRouteImport } from './routes/sec-c.about'
+import { Route as SecCSettingsRouteImport } from './routes/sec-c.settings'
+import { Route as SecDIndexRouteImport } from './routes/sec-d.index'
+import { Route as SecDIdRouteImport } from './routes/sec-d.$id'
+import { Route as SecDAboutRouteImport } from './routes/sec-d.about'
+import { Route as SecDSettingsRouteImport } from './routes/sec-d.settings'
+import { Route as SecEIndexRouteImport } from './routes/sec-e.index'
+import { Route as SecEIdRouteImport } from './routes/sec-e.$id'
+import { Route as SecEAboutRouteImport } from './routes/sec-e.about'
+import { Route as SecESettingsRouteImport } from './routes/sec-e.settings'
+import { Route as SecFIndexRouteImport } from './routes/sec-f.index'
+import { Route as SecFIdRouteImport } from './routes/sec-f.$id'
+import { Route as SecFAboutRouteImport } from './routes/sec-f.about'
+import { Route as SecFSettingsRouteImport } from './routes/sec-f.settings'
 
-const SecFRoute = SecFRouteImport.update({
-  id: '/sec-f',
-  path: '/sec-f',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SecERoute = SecERouteImport.update({
-  id: '/sec-e',
-  path: '/sec-e',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SecDRoute = SecDRouteImport.update({
-  id: '/sec-d',
-  path: '/sec-d',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SecCRoute = SecCRouteImport.update({
-  id: '/sec-c',
-  path: '/sec-c',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SecBRoute = SecBRouteImport.update({
-  id: '/sec-b',
-  path: '/sec-b',
+const LayoutRoute = LayoutRouteImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SecARoute = SecARouteImport.update({
@@ -78,134 +62,55 @@ const SecARoute = SecARouteImport.update({
   path: '/sec-a',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
+const SecBRoute = SecBRouteImport.update({
+  id: '/sec-b',
+  path: '/sec-b',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const SecCRoute = SecCRouteImport.update({
+  id: '/sec-c',
+  path: '/sec-c',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SecFIndexRoute = SecFIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SecFRoute,
+const SecDRoute = SecDRouteImport.update({
+  id: '/sec-d',
+  path: '/sec-d',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SecEIndexRoute = SecEIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SecERoute,
+const SecERoute = SecERouteImport.update({
+  id: '/sec-e',
+  path: '/sec-e',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SecDIndexRoute = SecDIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SecDRoute,
+const SecFRoute = SecFRouteImport.update({
+  id: '/sec-f',
+  path: '/sec-f',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SecCIndexRoute = SecCIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SecCRoute,
+const marketingPricingRoute = marketingPricingRouteImport.update({
+  id: '/(marketing)/pricing',
+  path: '/pricing',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SecBIndexRoute = SecBIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SecBRoute,
+const marketingPromoRoute = marketingPromoRouteImport.update({
+  id: '/(marketing)/promo',
+  path: '/promo',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const SecAIndexRoute = SecAIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SecARoute,
+const LayoutAlphaRoute = LayoutAlphaRouteImport.update({
+  id: '/alpha',
+  path: '/alpha',
+  getParentRoute: () => LayoutRoute,
 } as any)
-const SecFSettingsRoute = SecFSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => SecFRoute,
+const LayoutBetaRoute = LayoutBetaRouteImport.update({
+  id: '/beta',
+  path: '/beta',
+  getParentRoute: () => LayoutRoute,
 } as any)
-const SecFAboutRoute = SecFAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => SecFRoute,
-} as any)
-const SecFIdRoute = SecFIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SecFRoute,
-} as any)
-const SecESettingsRoute = SecESettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => SecERoute,
-} as any)
-const SecEAboutRoute = SecEAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => SecERoute,
-} as any)
-const SecEIdRoute = SecEIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SecERoute,
-} as any)
-const SecDSettingsRoute = SecDSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => SecDRoute,
-} as any)
-const SecDAboutRoute = SecDAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => SecDRoute,
-} as any)
-const SecDIdRoute = SecDIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SecDRoute,
-} as any)
-const SecCSettingsRoute = SecCSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => SecCRoute,
-} as any)
-const SecCAboutRoute = SecCAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => SecCRoute,
-} as any)
-const SecCIdRoute = SecCIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SecCRoute,
-} as any)
-const SecBSettingsRoute = SecBSettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => SecBRoute,
-} as any)
-const SecBAboutRoute = SecBAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => SecBRoute,
-} as any)
-const SecBIdRoute = SecBIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SecBRoute,
-} as any)
-const SecASettingsRoute = SecASettingsRouteImport.update({
-  id: '/settings',
-  path: '/settings',
-  getParentRoute: () => SecARoute,
-} as any)
-const SecAAboutRoute = SecAAboutRouteImport.update({
-  id: '/about',
-  path: '/about',
-  getParentRoute: () => SecARoute,
-} as any)
-const SecAIdRoute = SecAIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => SecARoute,
+const FilesSplatRoute = FilesSplatRouteImport.update({
+  id: '/files/$',
+  path: '/files/$',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ReleaseVChar123versionChar125Route =
   ReleaseVChar123versionChar125RouteImport.update({
@@ -213,30 +118,125 @@ const ReleaseVChar123versionChar125Route =
     path: '/release/v{$version}',
     getParentRoute: () => rootRouteImport,
   } as any)
-const FilesSplatRoute = FilesSplatRouteImport.update({
-  id: '/files/$',
-  path: '/files/$',
-  getParentRoute: () => rootRouteImport,
+const SecAIndexRoute = SecAIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SecARoute,
 } as any)
-const LayoutBetaRoute = LayoutBetaRouteImport.update({
-  id: '/beta',
-  path: '/beta',
-  getParentRoute: () => LayoutRoute,
+const SecAIdRoute = SecAIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SecARoute,
 } as any)
-const LayoutAlphaRoute = LayoutAlphaRouteImport.update({
-  id: '/alpha',
-  path: '/alpha',
-  getParentRoute: () => LayoutRoute,
+const SecAAboutRoute = SecAAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SecARoute,
 } as any)
-const marketingPromoRoute = marketingPromoRouteImport.update({
-  id: '/(marketing)/promo',
-  path: '/promo',
-  getParentRoute: () => rootRouteImport,
+const SecASettingsRoute = SecASettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SecARoute,
 } as any)
-const marketingPricingRoute = marketingPricingRouteImport.update({
-  id: '/(marketing)/pricing',
-  path: '/pricing',
-  getParentRoute: () => rootRouteImport,
+const SecBIndexRoute = SecBIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SecBRoute,
+} as any)
+const SecBIdRoute = SecBIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SecBRoute,
+} as any)
+const SecBAboutRoute = SecBAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SecBRoute,
+} as any)
+const SecBSettingsRoute = SecBSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SecBRoute,
+} as any)
+const SecCIndexRoute = SecCIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SecCRoute,
+} as any)
+const SecCIdRoute = SecCIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SecCRoute,
+} as any)
+const SecCAboutRoute = SecCAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SecCRoute,
+} as any)
+const SecCSettingsRoute = SecCSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SecCRoute,
+} as any)
+const SecDIndexRoute = SecDIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SecDRoute,
+} as any)
+const SecDIdRoute = SecDIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SecDRoute,
+} as any)
+const SecDAboutRoute = SecDAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SecDRoute,
+} as any)
+const SecDSettingsRoute = SecDSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SecDRoute,
+} as any)
+const SecEIndexRoute = SecEIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SecERoute,
+} as any)
+const SecEIdRoute = SecEIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SecERoute,
+} as any)
+const SecEAboutRoute = SecEAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SecERoute,
+} as any)
+const SecESettingsRoute = SecESettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SecERoute,
+} as any)
+const SecFIndexRoute = SecFIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SecFRoute,
+} as any)
+const SecFIdRoute = SecFIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => SecFRoute,
+} as any)
+const SecFAboutRoute = SecFAboutRouteImport.update({
+  id: '/about',
+  path: '/about',
+  getParentRoute: () => SecFRoute,
+} as any)
+const SecFSettingsRoute = SecFSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => SecFRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -484,46 +484,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/sec-f': {
-      id: '/sec-f'
-      path: '/sec-f'
-      fullPath: '/sec-f'
-      preLoaderRoute: typeof SecFRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sec-e': {
-      id: '/sec-e'
-      path: '/sec-e'
-      fullPath: '/sec-e'
-      preLoaderRoute: typeof SecERouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sec-d': {
-      id: '/sec-d'
-      path: '/sec-d'
-      fullPath: '/sec-d'
-      preLoaderRoute: typeof SecDRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sec-c': {
-      id: '/sec-c'
-      path: '/sec-c'
-      fullPath: '/sec-c'
-      preLoaderRoute: typeof SecCRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sec-b': {
-      id: '/sec-b'
-      path: '/sec-b'
-      fullPath: '/sec-b'
-      preLoaderRoute: typeof SecBRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/sec-a': {
-      id: '/sec-a'
-      path: '/sec-a'
-      fullPath: '/sec-a'
-      preLoaderRoute: typeof SecARouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -533,172 +498,95 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/sec-a': {
+      id: '/sec-a'
+      path: '/sec-a'
+      fullPath: '/sec-a'
+      preLoaderRoute: typeof SecARouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/sec-f/': {
-      id: '/sec-f/'
-      path: '/'
-      fullPath: '/sec-f/'
-      preLoaderRoute: typeof SecFIndexRouteImport
-      parentRoute: typeof SecFRoute
+    '/sec-b': {
+      id: '/sec-b'
+      path: '/sec-b'
+      fullPath: '/sec-b'
+      preLoaderRoute: typeof SecBRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/sec-e/': {
-      id: '/sec-e/'
-      path: '/'
-      fullPath: '/sec-e/'
-      preLoaderRoute: typeof SecEIndexRouteImport
-      parentRoute: typeof SecERoute
+    '/sec-c': {
+      id: '/sec-c'
+      path: '/sec-c'
+      fullPath: '/sec-c'
+      preLoaderRoute: typeof SecCRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/sec-d/': {
-      id: '/sec-d/'
-      path: '/'
-      fullPath: '/sec-d/'
-      preLoaderRoute: typeof SecDIndexRouteImport
-      parentRoute: typeof SecDRoute
+    '/sec-d': {
+      id: '/sec-d'
+      path: '/sec-d'
+      fullPath: '/sec-d'
+      preLoaderRoute: typeof SecDRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/sec-c/': {
-      id: '/sec-c/'
-      path: '/'
-      fullPath: '/sec-c/'
-      preLoaderRoute: typeof SecCIndexRouteImport
-      parentRoute: typeof SecCRoute
+    '/sec-e': {
+      id: '/sec-e'
+      path: '/sec-e'
+      fullPath: '/sec-e'
+      preLoaderRoute: typeof SecERouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/sec-b/': {
-      id: '/sec-b/'
-      path: '/'
-      fullPath: '/sec-b/'
-      preLoaderRoute: typeof SecBIndexRouteImport
-      parentRoute: typeof SecBRoute
+    '/sec-f': {
+      id: '/sec-f'
+      path: '/sec-f'
+      fullPath: '/sec-f'
+      preLoaderRoute: typeof SecFRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(marketing)/pricing': {
+      id: '/(marketing)/pricing'
+      path: '/pricing'
+      fullPath: '/pricing'
+      preLoaderRoute: typeof marketingPricingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(marketing)/promo': {
+      id: '/(marketing)/promo'
+      path: '/promo'
+      fullPath: '/promo'
+      preLoaderRoute: typeof marketingPromoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout/alpha': {
+      id: '/_layout/alpha'
+      path: '/alpha'
+      fullPath: '/alpha'
+      preLoaderRoute: typeof LayoutAlphaRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/_layout/beta': {
+      id: '/_layout/beta'
+      path: '/beta'
+      fullPath: '/beta'
+      preLoaderRoute: typeof LayoutBetaRouteImport
+      parentRoute: typeof LayoutRoute
+    }
+    '/files/$': {
+      id: '/files/$'
+      path: '/files/$'
+      fullPath: '/files/$'
+      preLoaderRoute: typeof FilesSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/release/v{$version}': {
+      id: '/release/v{$version}'
+      path: '/release/v{$version}'
+      fullPath: '/release/v{$version}'
+      preLoaderRoute: typeof ReleaseVChar123versionChar125RouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/sec-a/': {
       id: '/sec-a/'
       path: '/'
       fullPath: '/sec-a/'
       preLoaderRoute: typeof SecAIndexRouteImport
-      parentRoute: typeof SecARoute
-    }
-    '/sec-f/settings': {
-      id: '/sec-f/settings'
-      path: '/settings'
-      fullPath: '/sec-f/settings'
-      preLoaderRoute: typeof SecFSettingsRouteImport
-      parentRoute: typeof SecFRoute
-    }
-    '/sec-f/about': {
-      id: '/sec-f/about'
-      path: '/about'
-      fullPath: '/sec-f/about'
-      preLoaderRoute: typeof SecFAboutRouteImport
-      parentRoute: typeof SecFRoute
-    }
-    '/sec-f/$id': {
-      id: '/sec-f/$id'
-      path: '/$id'
-      fullPath: '/sec-f/$id'
-      preLoaderRoute: typeof SecFIdRouteImport
-      parentRoute: typeof SecFRoute
-    }
-    '/sec-e/settings': {
-      id: '/sec-e/settings'
-      path: '/settings'
-      fullPath: '/sec-e/settings'
-      preLoaderRoute: typeof SecESettingsRouteImport
-      parentRoute: typeof SecERoute
-    }
-    '/sec-e/about': {
-      id: '/sec-e/about'
-      path: '/about'
-      fullPath: '/sec-e/about'
-      preLoaderRoute: typeof SecEAboutRouteImport
-      parentRoute: typeof SecERoute
-    }
-    '/sec-e/$id': {
-      id: '/sec-e/$id'
-      path: '/$id'
-      fullPath: '/sec-e/$id'
-      preLoaderRoute: typeof SecEIdRouteImport
-      parentRoute: typeof SecERoute
-    }
-    '/sec-d/settings': {
-      id: '/sec-d/settings'
-      path: '/settings'
-      fullPath: '/sec-d/settings'
-      preLoaderRoute: typeof SecDSettingsRouteImport
-      parentRoute: typeof SecDRoute
-    }
-    '/sec-d/about': {
-      id: '/sec-d/about'
-      path: '/about'
-      fullPath: '/sec-d/about'
-      preLoaderRoute: typeof SecDAboutRouteImport
-      parentRoute: typeof SecDRoute
-    }
-    '/sec-d/$id': {
-      id: '/sec-d/$id'
-      path: '/$id'
-      fullPath: '/sec-d/$id'
-      preLoaderRoute: typeof SecDIdRouteImport
-      parentRoute: typeof SecDRoute
-    }
-    '/sec-c/settings': {
-      id: '/sec-c/settings'
-      path: '/settings'
-      fullPath: '/sec-c/settings'
-      preLoaderRoute: typeof SecCSettingsRouteImport
-      parentRoute: typeof SecCRoute
-    }
-    '/sec-c/about': {
-      id: '/sec-c/about'
-      path: '/about'
-      fullPath: '/sec-c/about'
-      preLoaderRoute: typeof SecCAboutRouteImport
-      parentRoute: typeof SecCRoute
-    }
-    '/sec-c/$id': {
-      id: '/sec-c/$id'
-      path: '/$id'
-      fullPath: '/sec-c/$id'
-      preLoaderRoute: typeof SecCIdRouteImport
-      parentRoute: typeof SecCRoute
-    }
-    '/sec-b/settings': {
-      id: '/sec-b/settings'
-      path: '/settings'
-      fullPath: '/sec-b/settings'
-      preLoaderRoute: typeof SecBSettingsRouteImport
-      parentRoute: typeof SecBRoute
-    }
-    '/sec-b/about': {
-      id: '/sec-b/about'
-      path: '/about'
-      fullPath: '/sec-b/about'
-      preLoaderRoute: typeof SecBAboutRouteImport
-      parentRoute: typeof SecBRoute
-    }
-    '/sec-b/$id': {
-      id: '/sec-b/$id'
-      path: '/$id'
-      fullPath: '/sec-b/$id'
-      preLoaderRoute: typeof SecBIdRouteImport
-      parentRoute: typeof SecBRoute
-    }
-    '/sec-a/settings': {
-      id: '/sec-a/settings'
-      path: '/settings'
-      fullPath: '/sec-a/settings'
-      preLoaderRoute: typeof SecASettingsRouteImport
-      parentRoute: typeof SecARoute
-    }
-    '/sec-a/about': {
-      id: '/sec-a/about'
-      path: '/about'
-      fullPath: '/sec-a/about'
-      preLoaderRoute: typeof SecAAboutRouteImport
       parentRoute: typeof SecARoute
     }
     '/sec-a/$id': {
@@ -708,47 +596,159 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SecAIdRouteImport
       parentRoute: typeof SecARoute
     }
-    '/release/v{$version}': {
-      id: '/release/v{$version}'
-      path: '/release/v{$version}'
-      fullPath: '/release/v{$version}'
-      preLoaderRoute: typeof ReleaseVChar123versionChar125RouteImport
-      parentRoute: typeof rootRouteImport
+    '/sec-a/about': {
+      id: '/sec-a/about'
+      path: '/about'
+      fullPath: '/sec-a/about'
+      preLoaderRoute: typeof SecAAboutRouteImport
+      parentRoute: typeof SecARoute
     }
-    '/files/$': {
-      id: '/files/$'
-      path: '/files/$'
-      fullPath: '/files/$'
-      preLoaderRoute: typeof FilesSplatRouteImport
-      parentRoute: typeof rootRouteImport
+    '/sec-a/settings': {
+      id: '/sec-a/settings'
+      path: '/settings'
+      fullPath: '/sec-a/settings'
+      preLoaderRoute: typeof SecASettingsRouteImport
+      parentRoute: typeof SecARoute
     }
-    '/_layout/beta': {
-      id: '/_layout/beta'
-      path: '/beta'
-      fullPath: '/beta'
-      preLoaderRoute: typeof LayoutBetaRouteImport
-      parentRoute: typeof LayoutRoute
+    '/sec-b/': {
+      id: '/sec-b/'
+      path: '/'
+      fullPath: '/sec-b/'
+      preLoaderRoute: typeof SecBIndexRouteImport
+      parentRoute: typeof SecBRoute
     }
-    '/_layout/alpha': {
-      id: '/_layout/alpha'
-      path: '/alpha'
-      fullPath: '/alpha'
-      preLoaderRoute: typeof LayoutAlphaRouteImport
-      parentRoute: typeof LayoutRoute
+    '/sec-b/$id': {
+      id: '/sec-b/$id'
+      path: '/$id'
+      fullPath: '/sec-b/$id'
+      preLoaderRoute: typeof SecBIdRouteImport
+      parentRoute: typeof SecBRoute
     }
-    '/(marketing)/promo': {
-      id: '/(marketing)/promo'
-      path: '/promo'
-      fullPath: '/promo'
-      preLoaderRoute: typeof marketingPromoRouteImport
-      parentRoute: typeof rootRouteImport
+    '/sec-b/about': {
+      id: '/sec-b/about'
+      path: '/about'
+      fullPath: '/sec-b/about'
+      preLoaderRoute: typeof SecBAboutRouteImport
+      parentRoute: typeof SecBRoute
     }
-    '/(marketing)/pricing': {
-      id: '/(marketing)/pricing'
-      path: '/pricing'
-      fullPath: '/pricing'
-      preLoaderRoute: typeof marketingPricingRouteImport
-      parentRoute: typeof rootRouteImport
+    '/sec-b/settings': {
+      id: '/sec-b/settings'
+      path: '/settings'
+      fullPath: '/sec-b/settings'
+      preLoaderRoute: typeof SecBSettingsRouteImport
+      parentRoute: typeof SecBRoute
+    }
+    '/sec-c/': {
+      id: '/sec-c/'
+      path: '/'
+      fullPath: '/sec-c/'
+      preLoaderRoute: typeof SecCIndexRouteImport
+      parentRoute: typeof SecCRoute
+    }
+    '/sec-c/$id': {
+      id: '/sec-c/$id'
+      path: '/$id'
+      fullPath: '/sec-c/$id'
+      preLoaderRoute: typeof SecCIdRouteImport
+      parentRoute: typeof SecCRoute
+    }
+    '/sec-c/about': {
+      id: '/sec-c/about'
+      path: '/about'
+      fullPath: '/sec-c/about'
+      preLoaderRoute: typeof SecCAboutRouteImport
+      parentRoute: typeof SecCRoute
+    }
+    '/sec-c/settings': {
+      id: '/sec-c/settings'
+      path: '/settings'
+      fullPath: '/sec-c/settings'
+      preLoaderRoute: typeof SecCSettingsRouteImport
+      parentRoute: typeof SecCRoute
+    }
+    '/sec-d/': {
+      id: '/sec-d/'
+      path: '/'
+      fullPath: '/sec-d/'
+      preLoaderRoute: typeof SecDIndexRouteImport
+      parentRoute: typeof SecDRoute
+    }
+    '/sec-d/$id': {
+      id: '/sec-d/$id'
+      path: '/$id'
+      fullPath: '/sec-d/$id'
+      preLoaderRoute: typeof SecDIdRouteImport
+      parentRoute: typeof SecDRoute
+    }
+    '/sec-d/about': {
+      id: '/sec-d/about'
+      path: '/about'
+      fullPath: '/sec-d/about'
+      preLoaderRoute: typeof SecDAboutRouteImport
+      parentRoute: typeof SecDRoute
+    }
+    '/sec-d/settings': {
+      id: '/sec-d/settings'
+      path: '/settings'
+      fullPath: '/sec-d/settings'
+      preLoaderRoute: typeof SecDSettingsRouteImport
+      parentRoute: typeof SecDRoute
+    }
+    '/sec-e/': {
+      id: '/sec-e/'
+      path: '/'
+      fullPath: '/sec-e/'
+      preLoaderRoute: typeof SecEIndexRouteImport
+      parentRoute: typeof SecERoute
+    }
+    '/sec-e/$id': {
+      id: '/sec-e/$id'
+      path: '/$id'
+      fullPath: '/sec-e/$id'
+      preLoaderRoute: typeof SecEIdRouteImport
+      parentRoute: typeof SecERoute
+    }
+    '/sec-e/about': {
+      id: '/sec-e/about'
+      path: '/about'
+      fullPath: '/sec-e/about'
+      preLoaderRoute: typeof SecEAboutRouteImport
+      parentRoute: typeof SecERoute
+    }
+    '/sec-e/settings': {
+      id: '/sec-e/settings'
+      path: '/settings'
+      fullPath: '/sec-e/settings'
+      preLoaderRoute: typeof SecESettingsRouteImport
+      parentRoute: typeof SecERoute
+    }
+    '/sec-f/': {
+      id: '/sec-f/'
+      path: '/'
+      fullPath: '/sec-f/'
+      preLoaderRoute: typeof SecFIndexRouteImport
+      parentRoute: typeof SecFRoute
+    }
+    '/sec-f/$id': {
+      id: '/sec-f/$id'
+      path: '/$id'
+      fullPath: '/sec-f/$id'
+      preLoaderRoute: typeof SecFIdRouteImport
+      parentRoute: typeof SecFRoute
+    }
+    '/sec-f/about': {
+      id: '/sec-f/about'
+      path: '/about'
+      fullPath: '/sec-f/about'
+      preLoaderRoute: typeof SecFAboutRouteImport
+      parentRoute: typeof SecFRoute
+    }
+    '/sec-f/settings': {
+      id: '/sec-f/settings'
+      path: '/settings'
+      fullPath: '/sec-f/settings'
+      preLoaderRoute: typeof SecFSettingsRouteImport
+      parentRoute: typeof SecFRoute
     }
   }
 }
