@@ -14,6 +14,49 @@ import type {
   ThrowOrOptional,
 } from '@tanstack/router-core'
 
+const functionalMatchStoreRefs = new WeakMap<
+  object,
+  WeakMap<object, Readonly<Vue.Ref<any>>>
+>()
+
+type ComponentEffectScope = {
+  run: <T>(fn: () => T) => T | undefined
+}
+
+function useMatchStore<TStore extends Parameters<typeof useStore>[0]>(
+  matchStore: TStore,
+): Readonly<Vue.Ref<ReturnType<TStore['get']>>> {
+  const instance = Vue.getCurrentInstance()
+
+  if (
+    !instance ||
+    typeof instance.type !== 'function' ||
+    Vue.getCurrentScope()
+  ) {
+    return useStore(matchStore)
+  }
+
+  let refsByStore = functionalMatchStoreRefs.get(instance)
+  if (!refsByStore) {
+    refsByStore = new WeakMap()
+    functionalMatchStoreRefs.set(instance, refsByStore)
+  }
+
+  let match = refsByStore.get(matchStore)
+  if (!match) {
+    // Vue runs plain functional components outside their effect scope. Re-enter
+    // that scope so Vue owns the watcher, then reuse it on later renders of the
+    // same component instead of subscribing again on every render.
+    const componentScope = (
+      instance as unknown as { scope: ComponentEffectScope }
+    ).scope
+    match = componentScope.run(() => useStore(matchStore))!
+    refsByStore.set(matchStore, match)
+  }
+
+  return match as Readonly<Vue.Ref<ReturnType<TStore['get']>>>
+}
+
 export interface UseMatchBaseOptions<
   TRouter extends AnyRouter,
   TFrom,
@@ -120,13 +163,13 @@ export function useMatch<
   if (opts.from) {
     // routeId case: subscribe to the stable per-route presentation atom.
     const matchStore = router.stores.getMatchStore(opts.from)
-    match = useStore(matchStore)
+    match = useMatchStore(matchStore)
   } else {
     // Nearest-match case: use the routeId from context for stable lookup.
     // The routeId is provided by the nearest Match component and doesn't
     // change for the component's lifetime, so the store is stable.
     if (nearestRouteId) {
-      match = useStore(router.stores.getMatchStore(nearestRouteId))
+      match = useMatchStore(router.stores.getMatchStore(nearestRouteId))
     } else {
       // No route context — will fall through to error handling below
       match = Vue.ref(undefined) as Readonly<Vue.Ref<undefined>>
