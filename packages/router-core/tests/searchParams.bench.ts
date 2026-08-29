@@ -1,5 +1,5 @@
 import { bench, describe, expect } from 'vitest'
-import { defaultStringifySearch } from '../src'
+import { defaultParseSearch, defaultStringifySearch } from '../src'
 
 const iterations = 1_000
 
@@ -103,10 +103,28 @@ expect(defaultStringifySearch(mixedValues)).toBe(
   '?tab=specs&page=2&filters=%5B%22available%22%2C%22featured%22%5D&exactPage=%222%22',
 )
 
+const ordinarySearch = defaultStringifySearch(ordinaryStrings)
+const jsonInitialSearch = defaultStringifySearch(jsonInitialStrings)
+const jsonSearch = defaultStringifySearch(jsonStrings)
+const mixedSearch = defaultStringifySearch(mixedValues)
+
+expect(defaultParseSearch(ordinarySearch)).toEqual(ordinaryStrings)
+expect(defaultParseSearch(jsonInitialSearch)).toEqual(jsonInitialStrings)
+expect(defaultParseSearch(jsonSearch)).toEqual(jsonStrings)
+expect(defaultParseSearch(mixedSearch)).toEqual(mixedValues)
+
 function stringifyBatch(search: Record<string, unknown>) {
   let size = 0
   for (let index = 0; index < iterations; index++) {
     size += defaultStringifySearch(search).length
+  }
+  benchmarkSink = size
+}
+
+function parseBatch(search: string) {
+  let size = 0
+  for (let index = 0; index < iterations; index++) {
+    size += Object.keys(defaultParseSearch(search)).length
   }
   benchmarkSink = size
 }
@@ -154,6 +172,24 @@ describe('default search serialization', () => {
 
   bench('mixed application values', () => {
     stringifyBatch(mixedValues)
+  })
+})
+
+describe('default search parsing', () => {
+  bench('ordinary string values', () => {
+    parseBatch(ordinarySearch)
+  })
+
+  bench('ordinary strings with JSON-literal initials', () => {
+    parseBatch(jsonInitialSearch)
+  })
+
+  bench('JSON-compatible string values', () => {
+    parseBatch(jsonSearch)
+  })
+
+  bench('mixed application values', () => {
+    parseBatch(mixedSearch)
   })
 })
 

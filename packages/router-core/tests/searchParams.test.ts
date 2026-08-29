@@ -1,7 +1,8 @@
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, onTestFinished, test, vi } from 'vitest'
 import {
   defaultParseSearch,
   defaultStringifySearch,
+  parseSearchWith,
   stringifySearchWith,
 } from '../src'
 
@@ -79,6 +80,41 @@ describe('Search Params serialization and deserialization', () => {
     })
 
     expect(stringify({ value: 'word' })).toEqual('?value=%22word%22')
+  })
+
+  test('uses custom parsers for ordinary strings during parsing', () => {
+    const parser = vi.fn((value: string) => value.toUpperCase())
+    const parse = parseSearchWith(parser)
+
+    expect(parse('?value=word')).toEqual({ value: 'WORD' })
+    expect(parser).toHaveBeenCalledWith('word')
+  })
+
+  test('skips JSON.parse during parsing for strings that cannot be JSON', () => {
+    const parseSpy = vi.spyOn(JSON, 'parse')
+    onTestFinished(() => parseSpy.mockRestore())
+    const parse = parseSearchWith(JSON.parse)
+
+    expect(
+      parse(
+        '?empty=&filter=foo&future=future&name=name&notification=new&tab=tabular&topic=topic&unicode=%E9%9B%AA',
+      ),
+    ).toEqual({
+      empty: '',
+      filter: 'foo',
+      future: 'future',
+      name: 'name',
+      notification: 'new',
+      tab: 'tabular',
+      topic: 'topic',
+      unicode: '雪',
+    })
+    expect(parse('?file=.env&path=%2Fproducts&positive=%2B1')).toEqual({
+      file: '.env',
+      path: '/products',
+      positive: '+1',
+    })
+    expect(parseSpy).not.toHaveBeenCalled()
   })
 
   test('skips JSON.parse for strings that cannot be JSON', () => {
