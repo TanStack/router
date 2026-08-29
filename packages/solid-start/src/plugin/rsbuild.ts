@@ -75,6 +75,26 @@ export function tanstackStart(
             return babelOptions
           })
         }
+
+        // @rsbuild/plugin-solid >= 2.0.0-beta.1 compiles through its own
+        // `solid` loader (native compiler by default) instead of registering
+        // babel-preset-solid, so the preset patch above never fires for it.
+        if (chain.module.rules.has(CHAIN_ID.RULE.JS)) {
+          const jsRule = chain.module.rule(CHAIN_ID.RULE.JS)
+          if (jsRule.oneOfs.has(CHAIN_ID.ONE_OF.JS_MAIN)) {
+            const jsMainRule = jsRule.oneOf(CHAIN_ID.ONE_OF.JS_MAIN)
+            if (jsMainRule.uses.has('solid')) {
+              jsMainRule.use('solid').tap((loaderOptions) => ({
+                ...loaderOptions,
+                solid: {
+                  ...(loaderOptions?.solid ?? {}),
+                  hydratable: true,
+                  generate: target === 'node' ? 'ssr' : 'dom',
+                },
+              }))
+            }
+          }
+        }
       })
     },
   }

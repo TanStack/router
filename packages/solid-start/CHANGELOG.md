@@ -1,5 +1,20 @@
 # @tanstack/solid-start
 
+## 2.0.0-rc.4
+
+### Patch Changes
+
+- [#8189](https://github.com/TanStack/router/pull/8189) [`22fd367`](https://github.com/TanStack/router/commit/22fd367d8103edd0150acf3be75af9aa03eec6c3) - Bump solid-js and @solidjs/web to ^2.0.0-rc.4 and @solidjs/vite-plugin to ^3.0.0-next.35 across the monorepo.
+
+- [#8189](https://github.com/TanStack/router/pull/8189) [`22fd367`](https://github.com/TanStack/router/commit/22fd367d8103edd0150acf3be75af9aa03eec6c3) - Patch @rsbuild/plugin-solid's native `solid` loader options for SSR builds. Since 2.0.0-beta.1 the plugin compiles through its own loader (native compiler by default) instead of registering babel-preset-solid, so the babel preset patch never fired and node-target bundles were compiled in dom mode, crashing at import with "Client-only API called on the server side". The rsbuild start plugin now patches the loader's `solid` options (`generate: 'ssr'` on node targets, `hydratable: true`) alongside the legacy babel preset patch.
+
+- [#8189](https://github.com/TanStack/router/pull/8189) [`22fd367`](https://github.com/TanStack/router/commit/22fd367d8103edd0150acf3be75af9aa03eec6c3) - Support per-call AbortSignals for Solid server functions. solid-js 2.0.0-rc.4 added the per-call invocation channel (`invoke(fn, { signal }, ...args)`) and moved server function id resolution from the `X-Server-Function` header to the request url pathname; the client rpc now rides that channel when a `signal` is passed to a server function, and the server handler resolves/normalizes ids via the url. The previously skipped abort e2e tests are re-enabled.
+
+- Updated dependencies [[`22fd367`](https://github.com/TanStack/router/commit/22fd367d8103edd0150acf3be75af9aa03eec6c3)]:
+  - @tanstack/solid-router@2.0.0-rc.4
+  - @tanstack/solid-start-client@2.0.0-rc.4
+  - @tanstack/solid-start-server@2.0.0-rc.4
+
 ## 2.0.0-rc.3
 
 ### Patch Changes
