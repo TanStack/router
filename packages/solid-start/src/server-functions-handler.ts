@@ -1,3 +1,4 @@
+import * as solidServerFunctions from '@solidjs/web/server-functions/server'
 import {
   configureServerFunctionsServer,
   createNoJSHandler,
@@ -12,8 +13,12 @@ import {
   runWithStartContext,
 } from '@tanstack/start-storage-context'
 import { getSolidStartServerFunctionCodec } from './solid-rpc-codec'
+import { SOLID_START_FLIGHT_SOURCE } from './solid-rpc-flight'
 import { collectSolidStartFlightData } from './solid-rpc-flight-server'
-import type { HandleServerFunctionOptions } from '@solidjs/web/server-functions/server'
+import type {
+  CollectFlightDataHook,
+  HandleServerFunctionOptions,
+} from '@solidjs/web/server-functions/server'
 import type { StartStorageContext } from '@tanstack/start-storage-context'
 import { getServerFnById } from '#tanstack-start-server-fn-resolver'
 
@@ -21,6 +26,31 @@ configureServerFunctionsServer({
   provideEvent: provideRequestEvent,
   endpoint: process.env.TSS_SERVER_FN_BASE,
 })
+
+// Named flight sources (Solid's multi-source single-flight protocol) ship
+// in the @solidjs/web release after 2.0.0-rc.4. When present, the router's
+// collector registers additively under its own source id — other caches'
+// collectors (e.g. solid-query's "sq") fold their slices into the same
+// mutation response, and a user-supplied `collectFlightData` hook keeps
+// the unnamed slot to itself instead of displacing the router's data. On
+// older versions the collector falls back to claiming the unnamed slot
+// per-handler, exactly as before; the client half detects the same
+// installed package, so the two halves cannot disagree.
+const registerFlightDataSource = (
+  solidServerFunctions as {
+    registerFlightDataSource?: (
+      source: string,
+      hook: CollectFlightDataHook,
+    ) => () => void
+  }
+).registerFlightDataSource
+const hasNamedFlightSources = registerFlightDataSource !== undefined
+if (registerFlightDataSource) {
+  registerFlightDataSource(
+    SOLID_START_FLIGHT_SOURCE,
+    collectSolidStartFlightData,
+  )
+}
 
 const solidNoJSHandler = createNoJSHandler()
 
@@ -48,7 +78,13 @@ export async function handleSolidServerFunctionRequest(
   const existingStartContext = getStartContext({ throwIfNotFound: false })
   const handlerOptions: HandleServerFunctionOptions = {
     ...solidOptions,
-    collectFlightData: collectFlightData ?? collectSolidStartFlightData,
+    // With named sources the router's collector is registered globally
+    // under SOLID_START_FLIGHT_SOURCE and the unnamed slot stays the
+    // user's; without them, the legacy behavior: the router's collector
+    // claims the unnamed slot unless the user overrides it.
+    collectFlightData: hasNamedFlightSources
+      ? collectFlightData
+      : (collectFlightData ?? collectSolidStartFlightData),
     transformResult: async (event, result, context) => {
       const transformed = transformResult
         ? await transformResult(event, result, context)

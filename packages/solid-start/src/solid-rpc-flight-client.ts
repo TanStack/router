@@ -1,10 +1,25 @@
+import * as solidServerFunctions from '@solidjs/web/server-functions/client'
 import { subscribeFlightData } from '@solidjs/web/server-functions/client'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/solid-router'
 import { getRouterInstance } from '@tanstack/start-client-core'
+import { SOLID_START_FLIGHT_SOURCE } from './solid-rpc-flight'
 import type {
   SolidStartFlightData,
   SolidStartFlightMatch,
 } from './solid-rpc-flight'
+
+// Named flight sources (Solid's multi-source single-flight protocol) ship
+// in the @solidjs/web release after 2.0.0-rc.4 — detected by an export the
+// protocol introduced. When present, the router subscribes under its own
+// source id and receives exactly its slice of the keyed envelope, so other
+// caches' consumers (e.g. solid-query's "sq") coexist on the same mutation
+// response. On older versions this falls back to the unnamed legacy slot,
+// matching the server half's detection of the same installed package.
+const hasNamedFlightSources = 'getFlightDataSourceIds' in solidServerFunctions
+const subscribeNamedFlightData = subscribeFlightData as unknown as <D>(
+  source: string,
+  consumer: (data: D, context: { response: Response }) => void | Promise<void>,
+) => () => void
 
 let subscribed = false
 
@@ -14,7 +29,15 @@ export function subscribeSolidStartFlightData() {
   }
   subscribed = true
 
-  subscribeFlightData<SolidStartFlightData>(async (data) => {
+  const subscribe = hasNamedFlightSources
+    ? (consumer: (data: SolidStartFlightData) => Promise<void>) =>
+        subscribeNamedFlightData<SolidStartFlightData>(
+          SOLID_START_FLIGHT_SOURCE,
+          consumer,
+        )
+    : subscribeFlightData<SolidStartFlightData>
+
+  subscribe(async (data) => {
     if (!isSolidStartFlightData(data)) {
       return
     }
