@@ -1227,8 +1227,8 @@ export class RouterCore<
       this.routeTree = this.options.routeTree as TRouteTree
       let processRouteTreeResult: ProcessRouteTreeResult<TRouteTree>
       if (
-        (isServer ?? this.isServer) &&
         process.env.NODE_ENV !== 'development' &&
+        (isServer ?? this.isServer) &&
         globalThis.__TSR_CACHE__ &&
         globalThis.__TSR_CACHE__.routeTree === this.routeTree
       ) {
@@ -1240,8 +1240,8 @@ export class RouterCore<
         processRouteTreeResult = this.buildRouteTree()
         // only cache if nothing else is cached yet
         if (
-          (isServer ?? this.isServer) &&
           process.env.NODE_ENV !== 'development' &&
+          (isServer ?? this.isServer) &&
           globalThis.__TSR_CACHE__ === undefined
         ) {
           globalThis.__TSR_CACHE__ = {
@@ -1865,8 +1865,8 @@ export class RouterCore<
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
       if (
-        dest.from &&
         process.env.NODE_ENV !== 'production' &&
+        dest.from &&
         dest._isNavigate
       ) {
         const [allFromMatches] = this.getMatchedRoutes(dest.from)
