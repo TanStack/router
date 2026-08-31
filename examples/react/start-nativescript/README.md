@@ -7,15 +7,17 @@ with the `*-native.tsx` convention.
 
 ```sh
 pnpm dev
-pnpm native:ios
-pnpm native:android
+pnpm ios
+pnpm android
 ```
 
-The native commands start the Start development server and the NativeScript
-debug build together. Production native builds run in release mode and must set
-`TSS_SERVER_FN_BASE` to the absolute HTTPS server-function endpoint. Android
-release builds also require NativeScript's four `--key-store-*` signing
-arguments.
+NativeScript 9.1 integrates the Vite dev server into the CLI, so `ns debug`
+handles bundling and HMR on its own. Run `pnpm dev` in a second terminal when
+screens call Start server functions; it hosts them on port 3000. Production
+native builds run in release mode (`ns build ios --release` /
+`ns build android --release`) and must set `TSS_SERVER_FN_BASE` to the absolute
+HTTPS server-function endpoint. Android release builds also require
+NativeScript's four `--key-store-*` signing arguments.
 
 NativeScript renders native `Frame`, `Page`, `ActionBar`, and layout views. It is
 not a WebView. iOS interactive swipe-back is provided by the native `Page`
@@ -27,6 +29,3 @@ The web root route is replaced only in the native bundle. Imports such as
 `screens/HomeScreen` resolve to `HomeScreen-native.tsx`, while route and server
 modules stay shared. This is the intended migration boundary: DOM and CSS are
 not translated into NativeScript controls.
-
-The stable NativeScript Vite 2 integration currently requires Vite 7. This
-example pins Vite 7.3.6 while the rest of the monorepo can use Vite 8.

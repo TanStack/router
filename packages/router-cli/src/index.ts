@@ -94,7 +94,7 @@ export async function main() {
                 `Initialized the ${result.mode} NativeScript target in ${result.root}.`,
               )
               console.info(
-                `Run ${result.packageManager} run native:ios or ${result.packageManager} run native:android.`,
+                `Run ${result.packageManager} run ios or ${result.packageManager} run android.`,
               )
             },
           )

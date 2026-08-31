@@ -19,19 +19,19 @@ merges an explicit build-script policy without replacing workspace settings.
 Then run one of:
 
 ```sh
-npm run native:ios
-npm run native:android
+npm run ios
+npm run android
 ```
 
-The current stable toolchain requires React 19, NativeScript 9,
+The current stable toolchain requires React 19, NativeScript 9.1,
 `@nativescript-community/react` 19, a `react-nativescript` npm alias pointing
-to that renderer, `@nativescript/vite@2.0.3`, and Vite 7.3 or newer within the
-Vite 7 major.
-The initializer refuses an existing Vite 8 range unless `--force` is used.
+to that renderer, `@nativescript/vite` 8, and Vite 8.
+The initializer refuses an existing incompatible Vite range such as Vite 7
+unless `--force` is used.
 
-NativeScript Vite 2.0.3 does not register an HMR server for React. Generated
-React scripts therefore use its supported `ns debug --no-hmr` workflow. Source
-changes rebuild and restart the native app instead of hot-patching it.
+NativeScript 9.1 integrates the Vite dev server, including HMR, into the
+`ns debug` command, so the generated scripts are plain `ns debug ios` and
+`ns debug android`.
 
 ## What is shared
 

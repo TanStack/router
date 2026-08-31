@@ -97,12 +97,12 @@
   },
   "peerDependencies": {
     "@nativescript-community/react": ">=19.0.0 <20.0.0",
-    "@nativescript/core": ">=9.0.0 <10.0.0",
+    "@nativescript/core": ">=9.1.0",
     "dominative": ">=0.1.2",
     "react": ">=19.0.0 <20.0.0",
     "react-nativescript": ">=19.0.0 <20.0.0",
     "undom-ng": ">=1.1.2",
-    "vite": ">=7.3.0 <8.0.0"
+    "vite": ">=8.0.0"
   },
   "peerDependenciesMeta": {
     "vite": {
@@ -111,8 +111,8 @@
   },
   "devDependencies": {
     "@nativescript-community/react": "^19.0.0",
-    "@nativescript/core": "^9.0.20",
-    "@nativescript/types": "^9.0.0",
+    "@nativescript/core": "~9.1.0",
+    "@nativescript/types": "~9.1.0",
     "@types/node": ">=20",
     "@types/react": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",

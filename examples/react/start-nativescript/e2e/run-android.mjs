@@ -480,7 +480,6 @@ async function main() {
     ANDROID_HOME:
       process.env.ANDROID_HOME || process.env.ANDROID_SDK_ROOT || tools.sdkRoot,
     JAVA_HOME: javaHome,
-    TSS_NATIVE_PLATFORM: 'android',
     TSS_SERVER_FN_BASE: serverFunctionBase,
   }
 
