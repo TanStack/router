@@ -868,3 +868,36 @@ describe('notFoundComponent is rendered when an error is thrown in params.parse'
     expect(notFoundComponent).toBeInTheDocument()
   })
 })
+
+test.each([
+  { desc: 'undefined', value: undefined, expected: 'undefined' },
+  { desc: 'null', value: null, expected: 'null' },
+  { desc: 'empty string', value: '', expected: '""' },
+])(
+  'errorComponent is rendered when component throws falsy value: $desc',
+  async ({ value, expected }) => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        throw value
+      },
+      errorComponent: ({ error }) => (
+        <div>Caught falsy error: {JSON.stringify(error) ?? 'undefined'}</div>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(
+      await screen.findByText(`Caught falsy error: ${expected}`),
+    ).toBeInTheDocument()
+  },
+)
+
