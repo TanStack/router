@@ -316,10 +316,9 @@ export {
   createControlledPromise,
   isModuleNotFoundError,
   DEFAULT_PROTOCOL_ALLOWLIST,
-  escapeHtml,
   isDangerousProtocol,
-  buildDevStylesUrl,
 } from './utils'
+export { buildDevStylesUrl, escapeHtml } from './string-encoding'
 export type {
   NoInfer,
   IsAny,

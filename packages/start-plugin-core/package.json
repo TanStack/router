@@ -108,17 +108,18 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
     "@rsbuild/core": "^2.1.0",
+    "@tanstack/vite-config": "catalog:",
     "@types/babel__code-frame": "^7.0.6",
     "@types/babel__core": "^7.20.5",
     "@types/node": ">=20",
     "@types/picomatch": "^4.0.2",
-    "vite": "*",
-    "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:",
-    "@arethetypeswrong/cli": "catalog:",
+    "fast-check": "^4.9.0",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "vite": "*",
+    "vitest": "catalog:"
   },
   "peerDependencies": {
     "@rsbuild/core": "^2.0.0",

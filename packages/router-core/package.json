@@ -188,15 +188,16 @@
     "seroval-plugins": "^1.6.2"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
     "@tanstack/store": "^0.9.3",
+    "@tanstack/vite-config": "catalog:",
     "@types/node": "25.0.9",
     "esbuild": "^0.27.4",
-    "vite": "catalog:",
-    "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:",
+    "fast-check": "^4.9.0",
     "jsdom": "catalog:",
-    "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "vite": "catalog:",
+    "vitest": "catalog:"
   }
 }

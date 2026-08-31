@@ -112,13 +112,14 @@
     "seroval": "^1.6.2"
   },
   "devDependencies": {
-    "vite": "*",
-    "@types/node": ">=20",
-    "@tanstack/vite-config": "catalog:",
-    "vitest": "catalog:",
-    "jsdom": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
+    "@tanstack/vite-config": "catalog:",
+    "@types/node": ">=20",
+    "fast-check": "^4.9.0",
+    "jsdom": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "vite": "*",
+    "vitest": "catalog:"
   }
 }
