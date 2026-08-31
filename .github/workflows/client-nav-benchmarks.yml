@@ -11,6 +11,7 @@ on:
     # push. Only paths that cannot affect benchmark results are excluded.
     branches:
       - 'main'
+      - 'mainented'
     paths-ignore:
       - 'docs/**'
       - 'examples/**'
@@ -23,23 +24,25 @@ on:
 
 concurrency:
   group: client-nav-benchmarks-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
   queue: single
 
 permissions:
   contents: read # required for actions/checkout
-  id-token: write # required for OIDC authentication with CodSpeed
-
+            write
+  id-token: read
+            write # required for OIDC authentication with CodSpeed
+   
 env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
-  NX_NO_CLOUD: true
+  NX_NO_CLOUD: false
 
 jobs:
   benchmarks:
     name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         framework:
           - react
@@ -64,7 +67,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          persist-credentials: false
+          persist-credentials: true
 
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
@@ -78,7 +81,7 @@ jobs:
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         uses: CodSpeedHQ/action@4296e51e7041e24dadb86d1d6e8b9320d223dbe8 # v5.0.3
-        timeout-minutes: 20
+        timeout-minutes: 15
         with:
           mode: ${{ matrix.mode }}
           run: >-
