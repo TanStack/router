@@ -1,37 +1,12 @@
-import { runInNewContext } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, isNotFound, notFound } from '../src'
 import { hydrate } from '../src/ssr/client'
-import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
-import { createTestRouter } from './routerTestUtils'
-import type { AnyRouter } from '../src'
+import { createTestRouter, dehydrateToBootstrap } from './routerTestUtils'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { ServerManifest } from '../src/manifest'
 
 const testManifest: ServerManifest = { routes: {} }
-
-async function dehydrateToBootstrap(router: AnyRouter): Promise<TsrSsrGlobal> {
-  attachRouterServerSsrUtils({ router, manifest: testManifest })
-  try {
-    await router.load()
-    await router.serverSsr!.dehydrate()
-
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-
-    const context: Record<string, any> = {
-      document: { currentScript: { remove() {} } },
-    }
-    context.self = context
-    runInNewContext(script!.children!, context)
-
-    expect(context.$_TSR).toBeDefined()
-    return context.$_TSR
-  } finally {
-    router.serverSsr?.cleanup()
-  }
-}
 
 describe('hydration route chunks below a server boundary', () => {
   let mockWindow: { $_TSR?: TsrSsrGlobal }
@@ -64,7 +39,7 @@ describe('hydration route chunks below a server boundary', () => {
       isServer: true,
     })
 
-    const bootstrap = await dehydrateToBootstrap(serverRouter)
+    const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
 
     expect(serverBeforeLoad).toHaveBeenCalledTimes(1)
     expect(serverRouter.state.location.pathname).toBe('/app')
@@ -163,7 +138,7 @@ describe('hydration route chunks below a server boundary', () => {
         isServer: true,
       })
 
-      const bootstrap = await dehydrateToBootstrap(serverRouter)
+      const bootstrap = await dehydrateToBootstrap(serverRouter, testManifest)
 
       expect(serverChildLoader).toHaveBeenCalledTimes(1)
       expect(serverRouter.state.matches.map((match) => match.routeId)).toEqual([

@@ -275,6 +275,116 @@ describe('setupCoreRouterSsrQueryIntegration', () => {
     expect(queryClient.getQueryData(['initial'])).toBe('initial-hydrated')
     expect(queryClient.getQueryData(['streamed'])).toBe('stream-hydrated')
     expect(queryClient.getQueryData(['streamed-batch'])).toBe('batch-hydrated')
+    expect(stream.locked).toBe(false)
+  })
+
+  it('releases a failed query stream reader', async () => {
+    const queryClient = track(new QueryClient())
+    const router: TestRouter = { isServer: false, options: {} }
+    const error = new Error('stream failed')
+    const stream = new ReadableStream<Array<never>>({
+      start(controller) {
+        controller.error(error)
+      },
+    })
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    setupCoreRouterSsrQueryIntegration({
+      router: router as any,
+      queryClient,
+    })
+    await router.options.hydrate?.({ query: { stream } })
+    await vi.waitFor(() => {
+      expect(stream.locked).toBe(false)
+    })
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Error reading query stream:',
+      error,
+    )
+  })
+
+  it('cancels the query stream when hydration fails', async () => {
+    const queryClient = track(new QueryClient())
+    const router: TestRouter = { isServer: false, options: {} }
+    const error = new Error('hydration failed')
+    const cancel = vi.fn(() => new Promise<void>(() => {}))
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue([
+          {
+            queryHash: '["streamed"]',
+            queryKey: ['streamed'],
+            state: createDehydratedQueryState('stream'),
+          },
+        ])
+      },
+      cancel,
+    })
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined)
+
+    setupCoreRouterSsrQueryIntegration({
+      router: router as any,
+      queryClient,
+      hydrateOptions: {
+        defaultOptions: {
+          deserializeData: () => {
+            throw error
+          },
+        },
+      },
+    })
+    await router.options.hydrate?.({ query: { stream } })
+    await vi.waitFor(() => {
+      expect(cancel).toHaveBeenCalledWith(error)
+      expect(stream.locked).toBe(false)
+    })
+
+    expect(consoleError).toHaveBeenCalledWith(
+      'Error reading query stream:',
+      error,
+    )
+  })
+
+  it('cancels the query stream when initial hydration fails', async () => {
+    const queryClient = track(new QueryClient())
+    const router: TestRouter = { isServer: false, options: {} }
+    const error = new Error('initial hydration failed')
+    const cancel = vi.fn(() => new Promise<void>(() => {}))
+    const stream = new ReadableStream({ cancel })
+
+    setupCoreRouterSsrQueryIntegration({
+      router: router as any,
+      queryClient,
+      hydrateOptions: {
+        defaultOptions: {
+          deserializeData: () => {
+            throw error
+          },
+        },
+      },
+    })
+    await expect(
+      router.options.hydrate?.({
+        query: {
+          initial: [
+            {
+              queryHash: '["initial"]',
+              queryKey: ['initial'],
+              state: createDehydratedQueryState('initial'),
+            },
+          ],
+          stream,
+        },
+      }),
+    ).rejects.toBe(error)
+
+    expect(cancel).toHaveBeenCalledWith(error)
+    expect(stream.locked).toBe(false)
   })
 
   it('subscribes after initial dehydration and releases after rendering', async () => {

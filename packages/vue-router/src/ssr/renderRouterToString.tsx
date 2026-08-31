@@ -1,5 +1,10 @@
 import * as Vue from 'vue'
 import { renderToString as vueRenderToString } from 'vue/server-renderer'
+import {
+  getSsrStatus,
+  transformHtmlStringWithRouter,
+} from '@tanstack/router-core/ssr/server'
+import { warnUnlessHtmlRoot } from './renderRouterToStream'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
 
@@ -14,20 +19,13 @@ export const renderRouterToString = async ({
 }) => {
   try {
     const app = Vue.createSSRApp(App, { router })
+    const rendered = await vueRenderToString(app)
+    warnUnlessHtmlRoot(rendered)
 
-    let html = await vueRenderToString(app)
-    router.serverSsr!.setRenderFinished()
+    const html = await transformHtmlStringWithRouter(router, rendered)
 
-    const injectedHtml = router.serverSsr!.takeBufferedHtml()
-    if (injectedHtml) {
-      html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
-    }
-
-    return new Response(`<!DOCTYPE html>${html}`, {
-      status:
-        router._serverResult?.type === 'render'
-          ? router._serverResult.status
-          : 200,
+    return new Response(html, {
+      status: getSsrStatus(router),
       headers: responseHeaders,
     })
   } catch (error) {
