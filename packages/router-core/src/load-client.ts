@@ -2141,7 +2141,6 @@ export async function preloadClientRoute<
 
 // --- SSR hydration (client entry via @tanstack/router-core/ssr/client) ---
 
-/** @internal */
 declare global {
   interface Window {
     [GLOBAL_TSR]?: TsrSsrGlobal
