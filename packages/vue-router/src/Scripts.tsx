@@ -6,6 +6,10 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+/**
+ * During streaming SSR, `<Scripts>` marks where late hydration scripts may
+ * begin to be inserted.
+ */
 export const Scripts = Vue.defineComponent({
   name: 'Scripts',
   setup() {
@@ -61,11 +65,14 @@ function renderScripts(
   nonce?: string,
 ) {
   const allScripts: Array<RouterManagedTag> = []
+  let streamBoundary: RouterManagedTag | undefined
 
   if ((isServer ?? router.isServer) && router.serverSsr) {
-    const serverBufferedScript = router.serverSsr.takeBufferedScripts()
-    if (serverBufferedScript) {
-      allScripts.push(serverBufferedScript)
+    const initialHydrationScripts =
+      router.serverSsr.takeInitialHydrationScriptTags()
+    if (initialHydrationScripts) {
+      allScripts.push(...initialHydrationScripts.before)
+      streamBoundary = initialHydrationScripts.boundary
     }
   } else if (router.ssr && !mounted) {
     allScripts.push({
@@ -74,15 +81,14 @@ function renderScripts(
       children: '',
     } satisfies RouterManagedTag)
 
-    allScripts.push({
+    streamBoundary = {
       tag: 'script',
       attrs: {
         nonce,
-        id: '$tsr-stream-barrier',
         'data-allow-mismatch': true,
       },
       children: '',
-    } satisfies RouterManagedTag)
+    } satisfies RouterManagedTag
 
     for (const asset of assetScripts) {
       allScripts.push({
@@ -100,6 +106,10 @@ function renderScripts(
 
   if (mounted || ((isServer ?? router.isServer) && router.serverSsr)) {
     allScripts.push(...assetScripts)
+  }
+
+  if (streamBoundary) {
+    allScripts.push(streamBoundary)
   }
 
   return (

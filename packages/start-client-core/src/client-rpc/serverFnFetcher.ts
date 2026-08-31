@@ -1,24 +1,24 @@
 import {
-  createRawStreamDeserializePlugin,
   encode,
   invariant,
   isNotFound,
   parseRedirect,
 } from '@tanstack/router-core'
+import { createRawStreamDeserializePlugin } from '@tanstack/router-core/ssr/client'
 import { fromCrossJSON, toJSONAsync } from 'seroval'
 import { getDefaultSerovalPlugins } from '../getDefaultSerovalPlugins'
 import {
   TSS_CONTENT_TYPE_FRAMED,
   TSS_FORMDATA_CONTEXT,
+  TSS_FRAMED_PROTOCOL_VERSION,
   X_TSS_RAW_RESPONSE,
   X_TSS_SERIALIZED,
-  validateFramedProtocolVersion,
 } from '../constants'
 import { createFrameDecoder } from './frame-decoder'
 import type { FunctionMiddlewareClientFnOptions } from '../createMiddleware'
 import type { Plugin as SerovalPlugin } from 'seroval'
 
-let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
+let serovalPlugins: Array<SerovalPlugin<any, any>> | undefined
 
 /**
  * Current async post-processing context for deserialization.
@@ -30,33 +30,12 @@ let serovalPlugins: Array<SerovalPlugin<any, any>> | null = null
  * This uses a synchronous execution context pattern:
  * - Each call to `fromCrossJSON` is synchronous
  * - Within that synchronous execution, all `fromSerializable` calls happen
- * - We set the context before `fromCrossJSON`, clear it after
- * - For streaming chunks, we set/clear context around each `onMessage` call
+ * - We set the context before `fromCrossJSON`, then clear it afterward
  *
  * Even with concurrent server function calls, each individual deserialization
  * is atomic (synchronous), so promises are correctly scoped to their call.
  */
 let currentPostProcessContext: Array<Promise<unknown>> | null = null
-
-/**
- * Set the current post-processing context for async deserialization work.
- * Called before deserialization starts.
- *
- * @param ctx - Array to collect async work promises, or null to clear
- */
-export function setPostProcessContext(
-  ctx: Array<Promise<unknown>> | null,
-): void {
-  currentPostProcessContext = ctx
-}
-
-/**
- * Get the current post-processing context.
- * Returns null if no deserialization is in progress.
- */
-export function getPostProcessContext(): Array<Promise<unknown>> | null {
-  return currentPostProcessContext
-}
 
 /**
  * Track an async post-processing promise in the current deserialization context.
@@ -72,6 +51,25 @@ export function trackPostProcessPromise(promise: Promise<unknown>): void {
   }
 }
 
+function deserialize(
+  value: any,
+  options: {
+    refs?: Map<any, any>
+    plugins: Array<SerovalPlugin<any, any>>
+  },
+  promises: Array<Promise<unknown>>,
+) {
+  currentPostProcessContext = promises
+  try {
+    return fromCrossJSON(value, options)
+  } catch (error) {
+    observePostProcessPromises(promises)
+    throw error
+  } finally {
+    currentPostProcessContext = null
+  }
+}
+
 /**
  * Helper to await all post-processing promises.
  * Uses Promise.allSettled to ensure all promises complete even if some reject.
@@ -81,7 +79,15 @@ async function awaitPostProcessPromises(
 ): Promise<void> {
   if (promises.length > 0) {
     await Promise.allSettled(promises)
+    promises.length = 0
   }
+}
+
+function observePostProcessPromises(promises: Array<Promise<unknown>>): void {
+  for (const promise of promises) {
+    void promise.catch(() => {})
+  }
+  promises.length = 0
 }
 
 /**
@@ -115,22 +121,20 @@ export async function serverFnFetcher(
   if (!serovalPlugins) {
     serovalPlugins = getDefaultSerovalPlugins()
   }
-  const _first = args[0]
-
-  const first = _first as FunctionMiddlewareClientFnOptions<any, any, any> & {
+  const first = args[0] as FunctionMiddlewareClientFnOptions<any, any, any> & {
     headers?: HeadersInit
   }
 
   // Use custom fetch if provided, otherwise fall back to the passed handler (global fetch)
   const fetchImpl = first.fetch ?? handler
 
-  const type = first.data instanceof FormData ? 'formData' : 'payload'
+  const isFormData = first.data instanceof FormData
 
   // Arrange the headers
-  const headers = first.headers ? new Headers(first.headers) : new Headers()
+  const headers = new Headers(first.headers)
   headers.set('x-tsr-serverFn', 'true')
 
-  if (type === 'payload') {
+  if (!isFormData) {
     headers.set(
       'accept',
       `${TSS_CONTENT_TYPE_FRAMED}, application/x-ndjson, application/json`,
@@ -139,7 +143,7 @@ export async function serverFnFetcher(
 
   // If the method is GET, we need to move the payload to the query string
   if (first.method === 'GET') {
-    if (type === 'formData') {
+    if (isFormData) {
       throw new Error('FormData is not supported with GET requests')
     }
     const serializedPayload = await serializePayload(first)
@@ -163,7 +167,7 @@ export async function serverFnFetcher(
     }
   }
 
-  return await getResponse(async () =>
+  return getResponse(() =>
     fetchImpl(url, {
       method: first.method,
       headers,
@@ -176,29 +180,30 @@ export async function serverFnFetcher(
 async function serializePayload(
   opts: FunctionMiddlewareClientFnOptions<any, any, any>,
 ): Promise<string | undefined> {
-  let payloadAvailable = false
-  const payloadToSerialize: any = {}
+  let payload: any
   if (opts.data !== undefined) {
-    payloadAvailable = true
-    payloadToSerialize['data'] = opts.data
+    payload = { data: opts.data }
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   if (opts.context && hasOwnProperties(opts.context)) {
-    payloadAvailable = true
-    payloadToSerialize['context'] = opts.context
+    ;(payload ??= {}).context = opts.context
   }
 
-  if (payloadAvailable) {
-    return serialize(payloadToSerialize)
-  }
-  return undefined
+  return payload ? serialize(payload, opts.signal) : undefined
 }
 
-async function serialize(data: any) {
-  return JSON.stringify(
-    await Promise.resolve(toJSONAsync(data, { plugins: serovalPlugins! })),
-  )
+async function serialize(data: any, signal?: AbortSignal) {
+  signal?.throwIfAborted()
+  let value
+  try {
+    value = await toJSONAsync(data, {
+      plugins: signal ? getDefaultSerovalPlugins(signal) : serovalPlugins!,
+    })
+  } finally {
+    signal?.throwIfAborted()
+  }
+  return JSON.stringify(value)
 }
 
 async function getFetchBody(
@@ -208,18 +213,14 @@ async function getFetchBody(
     let serializedContext = undefined
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     if (opts.context && hasOwnProperties(opts.context)) {
-      serializedContext = await serialize(opts.context)
+      serializedContext = await serialize(opts.context, opts.signal)
     }
     if (serializedContext !== undefined) {
       opts.data.set(TSS_FORMDATA_CONTEXT, serializedContext)
     }
     return opts.data
   }
-  const serializedBody = await serializePayload(opts)
-  if (serializedBody) {
-    return serializedBody
-  }
-  return undefined
+  return serializePayload(opts)
 }
 
 /**
@@ -238,7 +239,6 @@ async function getResponse(fn: () => Promise<Response>) {
     if (error instanceof Response) {
       response = error
     } else {
-      console.log(error)
       throw error
     }
   }
@@ -266,39 +266,33 @@ async function getResponse(fn: () => Promise<Response>) {
 
     // If it's a framed response (contains RawStream), use frame decoder
     if (contentType.includes(TSS_CONTENT_TYPE_FRAMED)) {
-      // Validate protocol version compatibility
-      validateFramedProtocolVersion(contentType)
-
+      // A server without a version parameter predates versioning.
+      const version = /;\s*v=(\d+)/.exec(contentType)?.[1]
+      if (version && +version !== TSS_FRAMED_PROTOCOL_VERSION) {
+        throw new Error(`Unsupported framed protocol version ${version}`)
+      }
       if (!response.body) {
         throw new Error('No response body for framed response')
       }
 
-      const { getStream, chunks } = createFrameDecoder(response.body)
+      const [chunks, getStream] = createFrameDecoder(response.body)
 
       // Create deserialize plugin that wires up the raw streams
       const rawStreamPlugin = createRawStreamDeserializePlugin(getStream)
-      const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
+      const plugins = [rawStreamPlugin, ...serovalPlugins!]
 
-      const refs = new Map()
-      result = await processFramedResponse({
-        jsonStream: chunks,
-        onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
-        onError(msg, error) {
-          console.error(msg, error)
-        },
-      })
+      result = await processFramedResponse(chunks, plugins)
     }
     // If it's a JSON response, it can be simpler
     else if (contentType.includes('application/json')) {
       const jsonPayload = await response.json()
       // Track async post-processing work for this deserialization
       const postProcessPromises: Array<Promise<unknown>> = []
-      setPostProcessContext(postProcessPromises)
-      try {
-        result = fromCrossJSON(jsonPayload, { plugins: serovalPlugins! })
-      } finally {
-        setPostProcessContext(null)
-      }
+      result = deserialize(
+        jsonPayload,
+        { plugins: serovalPlugins! },
+        postProcessPromises,
+      )
       // Await any async post-processing before returning
       await awaitPostProcessPromises(postProcessPromises)
     }
@@ -340,102 +334,58 @@ async function getResponse(fn: () => Promise<Response>) {
   return response
 }
 
-/**
- * Processes a framed response where each JSON chunk is a complete JSON string
- * (already decoded by frame decoder).
- *
- * Uses per-chunk post-processing context to ensure async deserialization work
- * completes before the next chunk is processed. This prevents issues when
- * streaming values require async post-processing (e.g., RSC decoding).
- */
-async function processFramedResponse({
-  jsonStream,
-  onMessage,
-  onError,
-}: {
-  jsonStream: ReadableStream<string>
-  onMessage: (msg: any) => any
-  onError?: (msg: string, error?: any) => void
-}) {
+/** Processes the complete JSON values emitted by the frame decoder. */
+async function processFramedResponse(
+  jsonStream: ReadableStream<string>,
+  plugins: Array<SerovalPlugin<any, any>>,
+) {
   const reader = jsonStream.getReader()
+  const options = { refs: new Map(), plugins }
 
-  // Read first JSON frame - this is the main result
-  const { value: firstValue, done: firstDone } = await reader.read()
-  if (firstDone || !firstValue) {
-    throw new Error('Stream ended before first object')
+  let result: any
+  const initialPostProcessPromises: Array<Promise<unknown>> = []
+  try {
+    const first = await reader.read()
+    if (first.done) {
+      throw new Error('Stream ended before first object')
+    }
+
+    result = deserialize(
+      JSON.parse(first.value),
+      options,
+      initialPostProcessPromises,
+    )
+  } catch (error) {
+    void reader.cancel(error).catch(() => {})
+    reader.releaseLock()
+    throw error
   }
 
-  // Each frame is a complete JSON string
-  const firstObject = JSON.parse(firstValue)
-
-  // Process remaining frames for streaming refs like RawStream.
-  // Keep draining until the server closes the stream.
-  // Each chunk gets its own post-processing context to properly scope async work.
-  let drainCancelled = false as boolean
-  const drain = (async () => {
+  // Keep consuming patches before awaiting root post-processing: that work may
+  // itself depend on raw frames which follow later JSON frames on the wire.
+  void (async () => {
+    const postProcessPromises: Array<Promise<unknown>> = []
     try {
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
-      while (true) {
-        const { value, done } = await reader.read()
-        if (done) break
-        if (value) {
-          try {
-            // Set up post-processing context for this chunk
-            const chunkPostProcessPromises: Array<Promise<unknown>> = []
-            setPostProcessContext(chunkPostProcessPromises)
-            try {
-              onMessage(JSON.parse(value))
-            } finally {
-              setPostProcessContext(null)
-            }
-            // Await any async post-processing from this chunk before processing next.
-            // This ensures values requiring async work are ready before their
-            // containing Promise/Stream resolves/emits to consumers.
-            await awaitPostProcessPromises(chunkPostProcessPromises)
-          } catch (e) {
-            onError?.(`Invalid JSON: ${value}`, e)
-          }
+      for (;;) {
+        const next = await reader.read()
+        if (next.done) {
+          return
         }
+
+        deserialize(JSON.parse(next.value), options, postProcessPromises)
+        // Later patches publish their promise/stream values synchronously.
+        // Observe auxiliary work without blocking frames those values need.
+        observePostProcessPromises(postProcessPromises)
       }
-    } catch (err) {
-      if (!drainCancelled) {
-        onError?.('Stream processing error:', err)
-      }
+    } catch (error) {
+      void reader.cancel(error).catch(() => {})
+      console.error('Stream processing error:', error)
+    } finally {
+      reader.releaseLock()
     }
   })()
 
-  // Process first object with its own post-processing context
-  let result: any
-  const initialPostProcessPromises: Array<Promise<unknown>> = []
-  setPostProcessContext(initialPostProcessPromises)
-  try {
-    result = onMessage(firstObject)
-  } catch (err) {
-    setPostProcessContext(null)
-    drainCancelled = true
-    reader.cancel().catch(() => {})
-    throw err
-  }
-  setPostProcessContext(null)
-
-  // Await initial post-processing promises before returning result
   await awaitPostProcessPromises(initialPostProcessPromises)
-
-  // If the initial decode fails async, stop draining to avoid holding
-  // onto the response body and raw stream buffers unnecessarily.
-  Promise.resolve(result).catch(() => {
-    drainCancelled = true
-    reader.cancel().catch(() => {})
-  })
-
-  // Detach reader once draining completes.
-  drain.finally(() => {
-    try {
-      reader.releaseLock()
-    } catch {
-      // Ignore
-    }
-  })
 
   return result
 }
