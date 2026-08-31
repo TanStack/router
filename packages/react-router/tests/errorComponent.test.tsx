@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
+  CatchBoundary,
   HeadContent,
   Link,
   Outlet,
@@ -420,6 +421,62 @@ test('errorComponent receives primitive errors thrown from beforeLoad', async ()
     }),
   ).toBeInTheDocument()
   expect(screen.queryByText('About route content')).not.toBeInTheDocument()
+})
+
+test.each([
+  ['false', false],
+  ['zero', 0],
+  ['negative zero', -0],
+  ['bigint zero', 0n],
+  ['empty string', ''],
+  ['null', null],
+  ['undefined', undefined],
+  ['NaN', NaN],
+] as const)('CatchBoundary renders falsy thrown value %s', (_, thrown) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const onCatch = vi.fn()
+
+  function ThrowFalsy(): never {
+    throw thrown
+  }
+
+  render(
+    <CatchBoundary
+      getResetKey={() => 0}
+      errorComponent={({ error }) => (
+        <div>{Object.is(error, thrown) ? 'Caught value' : 'Wrong value'}</div>
+      )}
+      onCatch={onCatch}
+    >
+      <ThrowFalsy />
+    </CatchBoundary>,
+  )
+
+  expect(screen.getByText('Caught value')).toBeInTheDocument()
+  expect(screen.queryByText('Wrong value')).not.toBeInTheDocument()
+  expect(onCatch).toHaveBeenCalledWith(thrown, expect.anything())
+})
+
+test.each([
+  ['null', null],
+  ['undefined', undefined],
+] as const)('default error UI renders thrown %s', async (_, thrown) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+  function ThrowFalsy(): never {
+    throw thrown
+  }
+
+  const rootRoute = createRootRoute({ component: ThrowFalsy })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('Something went wrong!')).toBeInTheDocument()
 })
 
 test.each(['beforeLoad', 'loader'] as const)(
