@@ -1,15 +1,18 @@
-import { createMemoryHistory } from '@tanstack/history'
 import { runInNewContext } from 'node:vm'
-import { BaseRootRoute, BaseRoute } from '../src'
-import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
-import { GLOBAL_TSR } from '../src/ssr/constants'
-import { createTestRouter } from './routerTestUtils'
 import { describe, expect, test } from 'vitest'
+import { createMemoryHistory } from '@tanstack/history'
+import { BaseRootRoute, BaseRoute } from '../src'
+import { GLOBAL_TSR } from '../src/ssr/constants'
+import { HYDRATION_SCRIPT_BOUNDARY_SOURCE } from '../src/ssr/hydrationScripts'
+import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
+import { createTestRouter } from './routerTestUtils'
+import type { AnyRouter } from '../src'
 import type {
   ManifestCssLink,
   ManifestRouteAssets,
   ServerManifest,
 } from '../src/manifest'
+import type { InitialHydrationScriptTags } from '../src/ssr/hydrationScripts'
 import type { DehydratedRouter } from '../src/ssr/types'
 
 function buildRouter() {
@@ -79,14 +82,16 @@ async function dehydrateManifest() {
   await router.load()
   await router.serverSsr!.dehydrate()
 
-  const script = router.serverSsr!.takeBufferedScripts()
-  expect(script?.tag).toBe('script')
-  expect(script?.children).toBeTruthy()
+  const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+  expect(scripts?.boundary.children).toBe(HYDRATION_SCRIPT_BOUNDARY_SOURCE)
+  expect(scripts?.boundary.attrs).not.toHaveProperty('id')
 
-  return parseSerializedRouter(script!.children!).manifest!
+  return parseSerializedRouter(scripts!).manifest!
 }
 
-function parseSerializedRouter(serialized: string): DehydratedRouter {
+function parseSerializedRouter(
+  scripts: InitialHydrationScriptTags,
+): DehydratedRouter {
   const context: Record<string, any> = {
     document: {
       currentScript: {
@@ -96,7 +101,17 @@ function parseSerializedRouter(serialized: string): DehydratedRouter {
   }
   context.self = context
 
-  runInNewContext(serialized, context)
+  expect(scripts.boundary.children).toBe(HYDRATION_SCRIPT_BOUNDARY_SOURCE)
+  expect(scripts.boundary.attrs).not.toHaveProperty('id')
+
+  const streamParts = scripts.before
+  expect(streamParts.length).toBeGreaterThan(0)
+  for (const script of streamParts) {
+    expect(script.tag).toBe('script')
+    expect(script.attrs?.['data-tsr-stream-part']).toBe('')
+    expect(script.children).toBeTruthy()
+    runInNewContext(script.children!, context)
+  }
 
   const router = context[GLOBAL_TSR]?.router
   expect(router).toBeDefined()
@@ -104,6 +119,40 @@ function parseSerializedRouter(serialized: string): DehydratedRouter {
 }
 
 describe('attachRouterServerSsrUtils manifest dehydration', () => {
+  test.each([
+    { label: 'false', value: false, expectedProperty: true },
+    { label: 'zero', value: 0, expectedProperty: true },
+    { label: 'an empty string', value: '', expectedProperty: true },
+    { label: 'null', value: null, expectedProperty: true },
+    { label: 'undefined', value: undefined, expectedProperty: false },
+  ])(
+    'preserves $label custom dehydration values',
+    async ({ value, expectedProperty }) => {
+      const router: AnyRouter = buildRouter()
+      router.options.dehydrate = () => value
+      attachRouterServerSsrUtils({ router, manifest: undefined })
+
+      try {
+        await router.load()
+        await router.serverSsr!.dehydrate()
+        const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+        const dehydratedRouter = parseSerializedRouter(scripts!)
+
+        expect(
+          Object.prototype.hasOwnProperty.call(
+            dehydratedRouter,
+            'dehydratedData',
+          ),
+        ).toBe(expectedProperty)
+        if (expectedProperty) {
+          expect(dehydratedRouter.dehydratedData).toBe(value)
+        }
+      } finally {
+        router.serverSsr?.cleanup()
+      }
+    },
+  )
+
   test('omits unmatched route assets by default', async () => {
     const manifest = await dehydrateManifest()
 
@@ -126,11 +175,8 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     await router.load()
     await router.serverSsr!.dehydrate()
 
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-    const dehydratedManifest = parseSerializedRouter(
-      script!.children!,
-    ).manifest!
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    const dehydratedManifest = parseSerializedRouter(scripts!).manifest!
 
     expect(dehydratedManifest.scriptFormat).toBe('iife')
   })
@@ -233,11 +279,8 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
       },
     })
 
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-    const dehydratedManifest = parseSerializedRouter(
-      script!.children!,
-    ).manifest!
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    const dehydratedManifest = parseSerializedRouter(scripts!).manifest!
 
     expect(dehydratedManifest.routes.__root__).toMatchObject({
       preloads: [
@@ -280,11 +323,8 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
       },
     })
 
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-    const dehydratedManifest = parseSerializedRouter(
-      script!.children!,
-    ).manifest!
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    const dehydratedManifest = parseSerializedRouter(scripts!).manifest!
 
     expect(dehydratedManifest.routes.__root__?.preloads).toEqual([
       { href: '/assets/rsc-client.js', crossOrigin: 'anonymous' },
@@ -310,9 +350,8 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
 
     await router.serverSsr!.dehydrate()
 
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-    const dehydratedRouter = parseSerializedRouter(script!.children!)
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    const dehydratedRouter = parseSerializedRouter(scripts!)
     const dehydratedManifest = dehydratedRouter.manifest!
     const rootInlineCss = dehydratedManifest.inlineStyle
     const allLinks = Object.values(dehydratedManifest.routes).flatMap(
@@ -335,6 +374,73 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     expect(dehydratedManifest.routes['/']?.preloads).toEqual([
       '/assets/index.js',
     ])
+  })
+
+  test('memoizes prepared inline CSS while composing request assets freshly', async () => {
+    const router = buildRouter()
+    const manifest = buildInlineManifest()
+    const requestAssets: ManifestRouteAssets = {
+      preloads: ['/assets/request.js'],
+    }
+
+    attachRouterServerSsrUtils({
+      router,
+      manifest,
+      getRequestAssets: () => requestAssets,
+    })
+
+    await router.load()
+
+    const first = router.ssr!.manifest
+    const second = router.ssr!.manifest
+    // The composed manifest is fresh because request assets are mutable, while
+    // the immutable inline CSS preparation is reused for this route set.
+    expect(second).not.toBe(first)
+    expect(second?.inlineStyle).toBe(first?.inlineStyle)
+    expect(first?.inlineStyle).toMatchObject({
+      children: '.shared{color:red}',
+    })
+    expect(first?.routes.__root__?.preloads).toEqual([
+      '/assets/request.js',
+      '/assets/root.js',
+    ])
+  })
+
+  test('refreshes the composed manifest when a stable request-assets object changes', async () => {
+    const router = buildRouter()
+    const manifest = buildManifest()
+    const requestAssets: ManifestRouteAssets = {
+      preloads: ['/assets/discovered-early.js'],
+    }
+
+    attachRouterServerSsrUtils({
+      router,
+      manifest,
+      getRequestAssets: () => requestAssets,
+    })
+
+    try {
+      await router.load()
+
+      const beforeDiscovery = router.ssr!.manifest
+      expect(beforeDiscovery?.routes.__root__?.preloads).toEqual([
+        '/assets/discovered-early.js',
+        '/assets/root.js',
+      ])
+
+      // React Start RSC retains this object and replaces these members as it
+      // discovers client references during the request.
+      requestAssets.preloads = ['/assets/discovered-late.js']
+
+      const afterDiscovery = router.ssr!.manifest
+      expect(afterDiscovery).not.toBe(beforeDiscovery)
+      expect(afterDiscovery?.routes.__root__?.preloads).toEqual([
+        '/assets/discovered-late.js',
+        '/assets/root.js',
+      ])
+    } finally {
+      router.serverSsr?.cleanup()
+    }
   })
 
   test('strips only inlinable stylesheet links from dehydrated manifest data', async () => {
@@ -382,11 +488,8 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
 
     await router.serverSsr!.dehydrate()
 
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-    const dehydratedManifest = parseSerializedRouter(
-      script!.children!,
-    ).manifest!
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    const dehydratedManifest = parseSerializedRouter(scripts!).manifest!
 
     expect(dehydratedManifest.routes.__root__?.css).toEqual([
       {
@@ -445,11 +548,9 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     expect(router.ssr!.manifest?.inlineStyle?.children).toBe('.root{}.parent{}')
 
     await router.serverSsr!.dehydrate()
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
-    const dehydratedManifest = parseSerializedRouter(
-      script!.children!,
-    ).manifest!
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    expect(scripts).toBeDefined()
+    const dehydratedManifest = parseSerializedRouter(scripts!).manifest!
 
     expect(dehydratedManifest.routes[childRoute.id]).toBeUndefined()
   })

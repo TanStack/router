@@ -5,6 +5,10 @@ import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
+/**
+ * During streaming SSR, `<Scripts>` marks where late hydration scripts may
+ * begin to be inserted.
+ */
 export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
@@ -39,15 +43,19 @@ export const Scripts = () => {
       return previous ? replaceEqualDeep(previous, next) : next
     },
   )
-  const serverBufferedScript =
+  const initialHydrationScripts =
     (isServer ?? router.isServer) && router.serverSsr
-      ? router.serverSsr.takeBufferedScripts()
+      ? router.serverSsr.takeInitialHydrationScriptTags()
       : undefined
-
   return (
     <>
-      {serverBufferedScript && <Asset {...serverBufferedScript} />}
+      <Solid.For each={initialHydrationScripts?.before}>
+        {(asset) => <Asset {...asset} />}
+      </Solid.For>
       <Solid.For each={scripts()}>{(asset) => <Asset {...asset} />}</Solid.For>
+      {initialHydrationScripts && (
+        <Asset {...initialHydrationScripts.boundary} />
+      )}
     </>
   )
 }

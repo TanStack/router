@@ -1,9 +1,36 @@
 import * as Solid from 'solid-js/web'
-import { makeSsrSerovalPlugin } from '@tanstack/router-core'
+import {
+  makeSsrSerovalPlugin,
+  transformHtmlStringWithRouter,
+} from '@tanstack/router-core/ssr/server'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 
-export const renderRouterToString = ({
+async function renderToCompleteString(
+  children: () => JSXElement,
+  options: Parameters<typeof Solid.renderToStream>[1],
+): Promise<string> {
+  // Solid creates its timeout before it starts rendering and does not clear it
+  // when rendering throws synchronously.
+  const stream = Solid.renderToStream(children, options)
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined
+  const timeout = new Promise<never>((_, reject) => {
+    timeoutHandle = setTimeout(() => reject('renderToString timed out'), 30_000)
+  })
+
+  try {
+    // The server runtime is thenable, although its public type exposes only the
+    // streaming methods.
+    return await Promise.race([
+      stream as unknown as PromiseLike<string>,
+      timeout,
+    ])
+  } finally {
+    clearTimeout(timeoutHandle)
+  }
+}
+
+export const renderRouterToString = async ({
   router,
   responseHeaders,
   children,
@@ -13,25 +40,19 @@ export const renderRouterToString = ({
   children: () => JSXElement
 }) => {
   try {
-    const serializationAdapters =
-      (router.options as any)?.serializationAdapters ||
-      (router.options.ssr as any)?.serializationAdapters
-    const serovalPlugins = serializationAdapters?.map((adapter: any) => {
-      const plugin = makeSsrSerovalPlugin(adapter, { didRun: false })
-      return plugin
-    })
+    const serializationAdapters = router.options.serializationAdapters
+    const serovalPlugins = serializationAdapters?.map((adapter) =>
+      makeSsrSerovalPlugin(adapter, { didRun: false }),
+    )
 
-    let html = Solid.renderToString(children, {
-      nonce: router.options.ssr?.nonce,
-      plugins: serovalPlugins,
-    } as any)
-    router.serverSsr!.setRenderFinished()
-
-    const injectedHtml = router.serverSsr!.takeBufferedHtml()
-    if (injectedHtml) {
-      html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
-    }
-    return new Response(`<!DOCTYPE html>${html}`, {
+    const html = await transformHtmlStringWithRouter(
+      router,
+      await renderToCompleteString(children, {
+        nonce: router.options.ssr?.nonce,
+        plugins: serovalPlugins,
+      } as any),
+    )
+    return new Response(html, {
       status:
         router._serverResult?.type === 'render'
           ? router._serverResult.status

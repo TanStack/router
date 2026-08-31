@@ -21,6 +21,10 @@
         "transitive": true
       }
     ],
+    "streamingSsrTests": [
+      "{workspaceRoot}/e2e/streaming-ssr-assertions.ts",
+      "{workspaceRoot}/e2e/streaming-ssr-specs/**/*"
+    ],
     "default": [
       "sharedGlobals",
       "{projectRoot}/**/*",

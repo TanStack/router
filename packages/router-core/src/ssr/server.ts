@@ -1,11 +1,11 @@
-export { createRequestHandler, waitForRequest } from './createRequestHandler'
+export { createRequestHandler } from './createRequestHandler'
+export { waitForReason } from '../await-signal'
 export type { RequestHandler } from './createRequestHandler'
 export {
   bindSsrResponseToRequest,
   createSsrStreamResponse,
   defineHandlerCallback,
   disposeSsrResponse,
-  disposeSsrResponseDetached,
   isSsrResponse,
   normalizeSsrResponse,
   replaceSsrResponse,
@@ -18,7 +18,7 @@ export type {
 } from './handlerCallback'
 export {
   transformPipeableStreamWithRouter,
-  transformStreamWithRouter,
+  transformHtmlStringWithRouter,
   transformReadableStreamWithRouter,
 } from './transformStreamWithRouter'
 export type { TransformStreamWithRouterOptions } from './transformStreamWithRouter'
@@ -27,3 +27,6 @@ export {
   getNormalizedURL,
   getOrigin,
 } from './ssr-server'
+export { defaultSerovalPlugins } from './serializer/seroval-plugins.server'
+export { createRawStreamRPCPlugin } from './serializer/RawStreamRPCPlugin'
+export { makeSsrSerovalPlugin } from './serializer/makeSsrSerovalPlugin'
