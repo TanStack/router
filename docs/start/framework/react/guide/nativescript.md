@@ -19,17 +19,17 @@ From a React Start app:
 npx @tanstack/router-cli@latest native init
 ```
 
-The generated development scripts start the Start server and NativeScript app
-together:
+NativeScript 9.1 integrates the Vite dev server, including HMR, directly into
+the CLI, so the generated scripts are plain `ns debug` commands:
 
 ```sh
-npm run native:ios
-npm run native:android
+npm run ios
+npm run android
 ```
 
-NativeScript Vite 2.0.3 does not register an HMR server for React, so these
-scripts use `ns debug --no-hmr`. Source changes rebuild and restart the native
-app instead of hot-patching it.
+Run the normal Start dev server (`npm run dev`) in a second terminal when
+screens call server functions during development; it hosts them on the
+configured Start port.
 
 The Android emulator reaches the host server through `10.0.2.2`. The iOS
 simulator uses `127.0.0.1`. A physical device needs a reachable LAN or deployed
@@ -111,17 +111,16 @@ are sent to `serverFnBase`.
 
 ## Production builds
 
-Set the deployed endpoint before invoking a generated build script:
+Set the deployed endpoint before invoking a release build:
 
 ```sh
-TSS_SERVER_FN_BASE=https://app.example.com/_serverFn/ npm run native:build:ios
-TSS_SERVER_FN_BASE=https://app.example.com/_serverFn/ npm run native:build:android
+TSS_SERVER_FN_BASE=https://app.example.com/_serverFn/ ns build ios --release
+TSS_SERVER_FN_BASE=https://app.example.com/_serverFn/ ns build android --release
 ```
 
-The generated scripts pass NativeScript's `--release` flag. Android release
-builds require all four `--key-store-*` options, which can be appended after
-`npm run native:build:android --`. Add `--for-device` and the appropriate iOS
-signing options when producing an iOS device build.
+Android release builds require all four `--key-store-*` options. Add
+`--for-device` and the appropriate iOS signing options when producing an iOS
+device build.
 
 NativeScript platform signing, App Store configuration, Android manifests, and
 device permissions remain standard NativeScript responsibilities. The

@@ -5,7 +5,7 @@ import { createRequire } from 'node:module'
 import path from 'node:path'
 import { isMap, parseDocument } from 'yaml'
 
-const NATIVE_SCRIPT_VITE_VERSION = '^7.3.6'
+const NATIVE_SCRIPT_VITE_VERSION = '^8.0.0'
 const NATIVE_SCRIPT_PNPM_BUILD_POLICY = {
   '@nativescript/core': true,
   '@parcel/watcher': true,
@@ -288,14 +288,11 @@ function normalizePackageVersionRange(
 
 function supportsNativeScriptVite(version: string): boolean {
   const range = normalizePackageVersionRange('vite', version).trim()
-  const simpleRange = range.match(
-    /^(?:[~^])?v?7\.(\d+)\.(\d+)(?:-[0-9A-Za-z.-]+)?$/,
-  )
-  if (simpleRange) {
-    return Number(simpleRange[1]) >= 3
+  if (/^(?:[~^])?v?8\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(range)) {
+    return true
   }
 
-  return /^>=\s*7\.3\.0\s+<\s*8(?:\.0\.0)?$/.test(range)
+  return /^>=\s*8(?:\.0){0,2}\s+<\s*9(?:\.0\.0)?$/.test(range)
 }
 
 function validateAppId(appId: string): void {
@@ -429,9 +426,27 @@ function createStartViteConfig(
     ? ` ?? ${JSON.stringify(serverFnBase)}`
     : ''
 
-  return `import { reactConfig } from '@nativescript/vite/react'
+  return `import { getCliFlags } from '@nativescript/vite'
+import { reactConfig } from '@nativescript/vite/react'
 import { tanstackStartNativeScript } from '@tanstack/react-start/plugin/nativescript'
 import { defineConfig, mergeConfig } from 'vite'
+
+function isAndroidBuild(): boolean {
+  // NATIVESCRIPT_BUNDLER_ENV is checked first: the CLI injects it into the
+  // integrated dev-server process, where the argv --env flags may be absent.
+  try {
+    const env = JSON.parse(process.env.NATIVESCRIPT_BUNDLER_ENV ?? '{}')
+    if (env.android) {
+      return true
+    }
+    if (env.ios || env.visionos) {
+      return false
+    }
+  } catch {
+    // fall through to the argv flags
+  }
+  return Boolean(getCliFlags().android)
+}
 
 function getServerFnBase(mode: string): string {
   const configured = process.env.TSS_SERVER_FN_BASE${configuredBase}
@@ -443,7 +458,7 @@ function getServerFnBase(mode: string): string {
       'Set TSS_SERVER_FN_BASE to the deployed absolute Start server-function URL before building the native app.',
     )
   }
-  return process.env.TSS_NATIVE_PLATFORM === 'android'
+  return isAndroidBuild()
     ? 'http://10.0.2.2:${serverPort}/_serverFn/'
     : 'http://127.0.0.1:${serverPort}/_serverFn/'
 }
@@ -597,8 +612,6 @@ function createPackageJson(
   mode: 'router' | 'start',
   adapterVersion: string,
   routerVersion: string,
-  serverPort: number,
-  packageManager: NativeScriptPackageManager,
   force: boolean,
   conflicts: Array<string>,
 ): PackageJson {
@@ -608,42 +621,26 @@ function createPackageJson(
   }
 
   const scripts: Record<string, string> = {
-    'native:ios': isStart
-      ? `concurrently --kill-others-on-fail --names start,ios "${packageManager} run native:server" "wait-on http-get://127.0.0.1:${serverPort} && cross-env TSS_NATIVE_PLATFORM=ios ns debug ios --no-hmr"`
-      : 'cross-env TSS_NATIVE_PLATFORM=ios ns debug ios --no-hmr',
-    'native:android': isStart
-      ? `concurrently --kill-others-on-fail --names start,android "${packageManager} run native:server" "wait-on http-get://127.0.0.1:${serverPort} && cross-env TSS_NATIVE_PLATFORM=android ns debug android --no-hmr"`
-      : 'cross-env TSS_NATIVE_PLATFORM=android ns debug android --no-hmr',
-    'native:build:ios':
-      'cross-env TSS_NATIVE_PLATFORM=ios ns build ios --release --env.production',
-    'native:build:android':
-      'cross-env TSS_NATIVE_PLATFORM=android ns build android --release --env.production',
-    'native:clean': 'ns clean',
-  }
-  if (isStart) {
-    scripts['native:server'] = `vite dev --host 0.0.0.0 --port ${serverPort}`
+    ios: 'ns debug ios',
+    android: 'ns debug android',
   }
 
   const dependencies = {
     '@nativescript-community/react': '^19.0.0',
-    '@nativescript/core': '^9.0.20',
+    '@nativescript/core': '~9.1.0',
     '@tanstack/react-nativescript-router': adapterVersion,
     dominative: '^0.1.3',
     'react-nativescript': 'npm:@nativescript-community/react@^19.0.0',
     'undom-ng': '^1.1.2',
   }
   const devDependencies: Record<string, string> = {
-    '@nativescript/android': '^9.0.5',
-    '@nativescript/ios': '^9.0.3',
-    '@nativescript/types': '^9.0.0',
-    '@nativescript/vite': '2.0.3',
-    'cross-env': '^10.1.0',
-    nativescript: '^9.0.6',
+    '@nativescript/android': '~9.1.0',
+    '@nativescript/ios': '~9.1.0',
+    '@nativescript/types': '~9.1.0',
+    '@nativescript/vite': '~8.0.0',
+    nativescript: '~9.1.0',
   }
-  if (isStart) {
-    devDependencies.concurrently = '^9.2.1'
-    devDependencies['wait-on'] = '^9.0.3'
-  } else {
+  if (!isStart) {
     devDependencies['@tanstack/router-plugin'] = routerVersion
   }
 
@@ -839,8 +836,6 @@ export async function initializeNativeScript(
     mode,
     adapterVersion,
     routerVersion,
-    serverPort,
-    packageManager,
     options.force ?? false,
     conflicts,
   )
