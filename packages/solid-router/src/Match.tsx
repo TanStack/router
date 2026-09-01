@@ -117,7 +117,7 @@ export const Match = (props: { routeId: string }) => {
             component={routeErrorComponent() ? CatchBoundary : SafeFragment}
             getResetKey={currentMatch}
             errorComponent={routeErrorComponent() as any}
-            onCatch={(error: Error) => {
+            onCatch={(error: unknown) => {
               // Forward not found errors (we don't want to show the error component for these)
               const notFoundError = getNotFound(error)
               if (notFoundError) {

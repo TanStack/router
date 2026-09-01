@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 import { createControlledPromise } from '@tanstack/router-core'
 
 import {
+  CatchBoundary,
   Link,
   Outlet,
   RouterProvider,
@@ -14,7 +15,11 @@ import {
 import type { ErrorComponentProps } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
-  return <div>Error: {props.error.message}</div>
+  return <div>Error: {getErrorMessage(props.error)}</div>
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
 
 async function asyncToThrowFn() {
@@ -213,7 +218,9 @@ test('ancestor route errorComponent resets when a background child generation re
   let loaderCalls = 0
   const rootRoute = createRootRoute({
     component: Outlet,
-    errorComponent: ({ error }) => <div>Ancestor error: {error.message}</div>,
+    errorComponent: ({ error }) => (
+      <div>Ancestor error: {getErrorMessage(error)}</div>
+    ),
   })
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -259,4 +266,45 @@ test('ancestor route errorComponent resets when a background child generation re
   expect(
     await screen.findByText('Recovered child revision 2'),
   ).toBeInTheDocument()
+})
+
+test.each([
+  ['false', false],
+  ['zero', 0],
+  ['negative zero', -0],
+  ['bigint zero', 0n],
+  ['empty string', ''],
+  ['null', null],
+  ['undefined', undefined],
+  ['NaN', NaN],
+] as const)('CatchBoundary renders falsy thrown value %s', (_, thrown) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  let caught: unknown
+
+  function ThrowFalsy(): never {
+    throw thrown
+  }
+
+  render(() => (
+    <CatchBoundary
+      getResetKey={() => 0}
+      errorComponent={({ error }) => (
+        <div>
+          {error instanceof Error && Object.is(error.cause, thrown)
+            ? 'Caught value'
+            : 'Wrong value'}
+        </div>
+      )}
+      onCatch={(error) => {
+        caught = error
+      }}
+    >
+      <ThrowFalsy />
+    </CatchBoundary>
+  ))
+
+  expect(screen.getByText('Caught value')).toBeInTheDocument()
+  expect(screen.queryByText('Wrong value')).not.toBeInTheDocument()
+  expect(caught).toBeInstanceOf(Error)
+  expect(Object.is((caught as Error).cause, thrown)).toBe(true)
 })

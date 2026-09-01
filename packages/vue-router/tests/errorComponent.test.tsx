@@ -14,7 +14,11 @@ import {
 import type { ErrorComponentProps } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
-  return <div>Error: {props.error.message}</div>
+  return <div>Error: {getErrorMessage(props.error)}</div>
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
 
 async function asyncToThrowFn() {
@@ -213,7 +217,9 @@ test('ancestor route errorComponent resets when a background child generation re
   let loaderCalls = 0
   const rootRoute = createRootRoute({
     component: Outlet,
-    errorComponent: ({ error }) => <div>Ancestor error: {error.message}</div>,
+    errorComponent: ({ error }) => (
+      <div>Ancestor error: {getErrorMessage(error)}</div>
+    ),
   })
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -263,3 +269,41 @@ test('ancestor route errorComponent resets when a background child generation re
     }
   }
 })
+
+test.each([
+  ['false', false],
+  ['zero', 0],
+  ['negative zero', -0],
+  ['bigint zero', 0n],
+  ['empty string', ''],
+  ['null', null],
+  ['undefined', undefined],
+  ['NaN', NaN],
+] as const)(
+  'CatchBoundary renders falsy thrown value %s',
+  async (_, thrown) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let caught: unknown
+
+    function ThrowFalsy(): never {
+      throw thrown
+    }
+
+    const rootRoute = createRootRoute({
+      component: ThrowFalsy,
+      errorComponent: ({ error }) => (
+        <div>{Object.is(error, thrown) ? 'Caught value' : 'Wrong value'}</div>
+      ),
+      onCatch: (error) => {
+        caught = error
+      },
+    })
+    const router = createRouter({ routeTree: rootRoute })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Caught value')).toBeInTheDocument()
+    expect(screen.queryByText('Wrong value')).not.toBeInTheDocument()
+    expect(Object.is(caught, thrown)).toBe(true)
+  },
+)

@@ -1298,7 +1298,7 @@ export interface UpdatableRouteOptions<
   postSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  onCatch?: (error: Error) => void
+  onCatch?: (error: unknown) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -1601,7 +1601,7 @@ export type ErrorRouteProps = {
   reset: () => void
 }
 
-export type ErrorComponentProps<TError = Error> = {
+export type ErrorComponentProps<TError = unknown> = {
   error: TError
   info?: { componentStack: string }
   reset: () => void

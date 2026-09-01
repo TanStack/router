@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
+  CatchBoundary,
   HeadContent,
   Link,
   Outlet,
@@ -23,7 +24,11 @@ import {
 import type { ErrorComponentProps, RouterHistory } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
-  return <div>Error: {props.error.message}</div>
+  return <div>Error: {getErrorMessage(props.error)}</div>
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
 
 async function asyncToThrowFn() {
@@ -324,7 +329,9 @@ test('ancestor route errorComponent resets when a background child generation re
   let loaderCalls = 0
   const rootRoute = createRootRoute({
     component: Outlet,
-    errorComponent: ({ error }) => <div>Ancestor error: {error.message}</div>,
+    errorComponent: ({ error }) => (
+      <div>Ancestor error: {getErrorMessage(error)}</div>
+    ),
   })
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -420,6 +427,62 @@ test('errorComponent receives primitive errors thrown from beforeLoad', async ()
     }),
   ).toBeInTheDocument()
   expect(screen.queryByText('About route content')).not.toBeInTheDocument()
+})
+
+test.each([
+  ['false', false],
+  ['zero', 0],
+  ['negative zero', -0],
+  ['bigint zero', 0n],
+  ['empty string', ''],
+  ['null', null],
+  ['undefined', undefined],
+  ['NaN', NaN],
+] as const)('CatchBoundary renders falsy thrown value %s', (_, thrown) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const onCatch = vi.fn()
+
+  function ThrowFalsy(): never {
+    throw thrown
+  }
+
+  render(
+    <CatchBoundary
+      getResetKey={() => 0}
+      errorComponent={({ error }) => (
+        <div>{Object.is(error, thrown) ? 'Caught value' : 'Wrong value'}</div>
+      )}
+      onCatch={onCatch}
+    >
+      <ThrowFalsy />
+    </CatchBoundary>,
+  )
+
+  expect(screen.getByText('Caught value')).toBeInTheDocument()
+  expect(screen.queryByText('Wrong value')).not.toBeInTheDocument()
+  expect(onCatch).toHaveBeenCalledWith(thrown, expect.anything())
+})
+
+test.each([
+  ['null', null],
+  ['undefined', undefined],
+] as const)('default error UI renders thrown %s', async (_, thrown) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+  function ThrowFalsy(): never {
+    throw thrown
+  }
+
+  const rootRoute = createRootRoute({ component: ThrowFalsy })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('Something went wrong!')).toBeInTheDocument()
 })
 
 test.each(['beforeLoad', 'loader'] as const)(
@@ -736,7 +799,9 @@ test('#4684: SSR renders head content when beforeLoad throws', async () => {
     component: function FailingRoute() {
       return <div>Route content</div>
     },
-    errorComponent: ({ error }) => <div>Error UI: {error.message}</div>,
+    errorComponent: ({ error }) => (
+      <div>Error UI: {getErrorMessage(error)}</div>
+    ),
   })
 
   const handler = createRequestHandler({

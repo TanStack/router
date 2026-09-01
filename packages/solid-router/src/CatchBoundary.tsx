@@ -8,7 +8,7 @@ export function CatchBoundary(
     getResetKey: () => unknown
     children: Solid.JSX.Element
     errorComponent?: ErrorRouteComponent
-    onCatch?: (error: Error) => void
+    onCatch?: (error: unknown) => void
   } & Solid.ParentProps,
 ) {
   return (
@@ -45,7 +45,7 @@ export function CatchBoundary(
   )
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: unknown }) {
   const [show, setShow] = Solid.createSignal(
     process.env.NODE_ENV !== 'production',
   )
@@ -81,7 +81,9 @@ export function ErrorComponent({ error }: { error: any }) {
               overflow: 'auto',
             }}
           >
-            {error.message ? <code>{error.message}</code> : null}
+            {(error as { message?: string } | null)?.message ? (
+              <code>{(error as { message: string }).message}</code>
+            ) : null}
           </pre>
         </div>
       ) : null}

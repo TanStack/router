@@ -18,7 +18,9 @@ describe('errorComponent (server)', () => {
       },
       component: () => <div>Index route</div>,
       errorComponent: ({ error }) => (
-        <div data-testid="error-component">Route error: {error.message}</div>
+        <div data-testid="error-component">
+          Route error: {error instanceof Error ? error.message : String(error)}
+        </div>
       ),
     })
 

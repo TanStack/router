@@ -176,7 +176,9 @@ it('renders an eager loader error with a delayed lazy errorComponent', async () 
   const lazyPageOptions = createLazyRoute('/page')({
     component: () => <h1>Page</h1>,
     errorComponent: ({ error }) => (
-      <p role="alert">Lazy error: {error.message}</p>
+      <p role="alert">
+        Lazy error: {error instanceof Error ? error.message : String(error)}
+      </p>
     ),
   })
   const lazyOptions = createControlledPromise<typeof lazyPageOptions>()

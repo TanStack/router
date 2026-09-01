@@ -114,7 +114,7 @@ test('warns when Outlet is rendered inside an errorComponent', async () => {
 test('warns with the current component after a fallback transition', async () => {
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
   const pending = createControlledPromise<void>()
-  const FallbackComponent = (props: { error?: Error }) => (
+  const FallbackComponent = (props: { error?: unknown }) => (
     <>
       <span>{props.error ? 'Error route' : 'Pending route'}</span>
       <Outlet />
