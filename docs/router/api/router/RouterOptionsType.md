@@ -411,3 +411,41 @@ If you want to configure to remount all route components upon `params` change, u
 ```tsx
 remountDeps: ({ params }) => params
 ```
+
+### `scrollRestoration` property
+
+- Type: `boolean | ((opts: { location: ParsedLocation }) => boolean)`
+- Optional
+- Defaults to `false`
+- If `true`, scroll restoration will be enabled.
+- See the [Scroll Restoration Guide](../../guide/scroll-restoration.md/#scroll-restoration) for more information.
+
+---
+
+### `getScrollRestorationKey` property
+
+- Type: `(location: ParsedLocation) => string`
+- Optional
+- Defaults to `(location) => location.href`
+- A function that will be called to get the key for the scroll restoration cache.
+- See the [Scroll Restoration Guide](../../guide/scroll-restoration.md/#custom-cache-keys) for more information.
+
+---
+
+### `scrollRestorationBehavior` property
+
+- Type: `ScrollBehavior` (e.g., `'auto' | 'smooth'`)
+- Optional
+- Defaults to `'auto'`
+- The default behavior for scroll restoration.
+- See the [Scroll Restoration Guide](../../guide/scroll-restoration.md/#scroll-behavior) for more information.
+
+---
+
+### `scrollToTopSelectors` property
+
+- Type: `Array<string | (() => Element | null | undefined)>`
+- Optional
+- Defaults to `['window']`
+- An array of selectors that will be used to scroll to the top of the page in addition to `window`.
+- See the [Scroll Restoration Guide](../../guide/scroll-restoration.md/#hashtop-of-page-scrolling) for more information.
