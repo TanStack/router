@@ -108,12 +108,12 @@ export async function prerender({
 
     return Array.from(prerendered)
 
-    function addCrawlPageTask(page: Page) {
-      if (seen.has(page.path)) return
+    function addCrawlPageTask(page: Page, isRetry = false) {
+      if (!isRetry && seen.has(page.path)) return
 
       seen.add(page.path)
 
-      if (page.fromCrawl) {
+      if (page.fromCrawl && !isRetry) {
         startConfig.pages.push(page)
       }
 
@@ -219,9 +219,14 @@ export async function prerender({
             )
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
             retriesByPath.set(page.path, retries + 1)
-            addCrawlPageTask(page)
-          } else if (prerenderOptions.failOnError ?? true) {
-            throw error
+            addCrawlPageTask(page, true)
+          } else {
+            // Do not include failed pages in the sitemap
+            page.sitemap = { ...page.sitemap, exclude: true }
+
+            if (prerenderOptions.failOnError ?? true) {
+              throw error
+            }
           }
         }
       })
