@@ -1,7 +1,9 @@
 import * as Solid from 'solid-js'
+import { isServer } from '@tanstack/router-core/isServer'
 import { routerContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
+import { serializeMatchTransfer } from './registryTransfer'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -35,6 +37,15 @@ export function RouterContextProvider<
         },
       } as any)
     })
+  }
+
+  // Native SSR transfer for the bare pairing (no-op under Start — see
+  // registryTransfer): serialize settled match state into the hydration
+  // registry while the render's serialization context is live. The client
+  // half — the hydration-claiming boot — runs at router creation, outside
+  // the render.
+  if (isServer) {
+    serializeMatchTransfer(router)
   }
 
   const OptionalWrapper = router.options.Wrap || SafeFragment

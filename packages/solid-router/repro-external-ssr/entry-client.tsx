@@ -1,7 +1,7 @@
 import { hydrate } from 'solid-js/web'
 import { RouterProvider } from '../src'
 import { createAppRouter, loaderRuns } from './app.shared'
-import { primeRouterFromRegistry } from './registry-transfer'
+import { MATCH_KEY_PREFIX } from '../src/registryTransfer'
 
 declare global {
   interface Window {
@@ -38,14 +38,25 @@ async function main() {
   const root = document.getElementById('root')!
   const serverNode = document.getElementById('home')
 
+  // The registry entries the server's RouterProvider wrote, populated at
+  // document parse — createRouter's boot consumes (and deletes) them, so
+  // sample before construction.
+  const hasMatchEntries = () =>
+    Object.keys((window as any)._$HY?.r ?? {}).some((key) =>
+      key.startsWith(MATCH_KEY_PREFIX),
+    )
+  results.registryHadMatchEntries = hasMatchEntries()
+
   const { router, resolveAboutChunk } = createAppRouter()
   results.loaderRunsBeforeHydrate = loaderRuns.count
+  // Phase 1 boot happened at router creation: entries consumed, matches
+  // committed, zero loader runs — nothing left for the app to wire.
+  results.registryPrimed =
+    results.registryHadMatchEntries &&
+    !hasMatchEntries() &&
+    router.stores.matches.get().length > 0
 
   results.htmlBeforeHydrate = root.innerHTML
-  // Phase 1 boot: NO router.load() — match synchronously, prime match state
-  // from the hydration registry (populated at document parse), commit, then
-  // hydrate.
-  results.registryPrimed = primeRouterFromRegistry(router)
   hydrate(() => <RouterProvider router={router} />, root)
   await sleep(50)
   results.loaderRunsAfterHydrate = loaderRuns.count

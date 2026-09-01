@@ -1,5 +1,7 @@
 import { RouterCore } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { getStoreFactory } from './routerStores'
+import { primeRouterFromRegistry } from './registryTransfer'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -100,5 +102,16 @@ export class Router<
     >,
   ) {
     super(options, getStoreFactory)
+    // The hydration-claiming boot (see registryTransfer). Router creation is
+    // the client's natural pre-render moment: module code runs after the
+    // document — and the registry entries the server's RouterProvider wrote —
+    // have parsed, and always before hydrate(). Committing here keeps every
+    // store write outside the hydration render, where it would desync the
+    // claiming walk. Inert without entries: an SPA page has no registry, and
+    // a Start app transfers through its own channel (`router.serverSsr`),
+    // so the first missing entry falls through to unchanged behavior.
+    if (!isServer) {
+      primeRouterFromRegistry(this)
+    }
   }
 }
