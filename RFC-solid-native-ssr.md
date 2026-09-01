@@ -70,22 +70,32 @@ hydration-claiming, so the router had to build both:
 The template path (`createRouter` + `RouterProvider` under Solid's
 renderer) never enters `createStartHandler`, so it can change freely.
 
-- **Registry match transfer.** During server render the adapter
-  serializes each match's `loaderData`/status content-addressed
-  (`tsr:<routeId+params>` keys) at loader dispatch, promise-valued —
-  exactly the pattern `solid-query`'s provider proved (pending work
-  streams as it settles; entries cover matches never read by a rendered
-  component; late client mounts find state by key).
-- **Hydration-claiming boot.** Match synchronously (matching is sync),
-  prime match state from the registry, commit without running loaders.
-  Route chunks resolve at the read point via Solid `lazy` semantics under
-  the boundaries the server actually rendered. This deletes the
-  template's `bootLoad` and its prefetch-pausing flag outright; staleness
-  rules decide any post-hydration refetching.
-- **Boundary parity by default.** When hydrating markup Solid's renderer
-  produced, the adapter renders the identical tree —
-  `disableGlobalCatchBoundary` stops being a user-facing footgun and
-  becomes the hydration-aware default.
+- **Registry match transfer.** *(Landed: `registryTransfer.ts`,
+  serialization in `RouterProvider`.)* During server render the adapter
+  serializes each settled match's state content-addressed
+  (`tsr:<matchId>` keys) — the pattern `solid-query`'s provider proved.
+  Still open within this bullet: promise-valued entries for matches
+  pending at render time (streaming SSR). This core has no per-match
+  settle promise, so it needs a dispatch-time hook; today pending matches
+  are skipped and the client boot falls through to current behavior.
+- **Hydration-claiming boot.** *(Landed: the `Router` constructor.)*
+  Match synchronously, prime match state from the registry, commit
+  without running loaders. Placement discovered to be load-bearing:
+  committing inside the hydration render desyncs the claiming walk's
+  registry bookkeeping even with writes moved off the owner — router
+  creation is the client's natural pre-render moment (after document
+  parse, before `hydrate()`). Route chunks resolve at the read point via
+  Solid `lazy` semantics. This deleted the template's `bootLoad` (and its
+  URL-divergence reload guard) and the prefetch-pausing flag outright —
+  verified on the production template: zero server-function requests at
+  boot, hydration clean, single-flight unchanged.
+- **Boundary parity.** *(Already true on this line.)* The adapter's
+  boundary structure is symmetric between server and client
+  (`_resolveMatchesLoadingBoundary` consults no hydration state), so
+  `disableGlobalCatchBoundary` is no longer a parity workaround — it
+  survives as a semantic choice: let errors (including SSR-thrown
+  `redirect()`) bubble past the router to app-owned boundaries and the
+  stream handler. The template's comment was corrected to say so.
 
 ## Phase 2 — Start rides it behind the existing contract
 
