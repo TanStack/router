@@ -558,7 +558,7 @@ function getExternalLinkProps(
     options.to as string,
     router.protocolAllowlist,
   )
-  if (dangerous && process.env.NODE_ENV !== 'production') {
+  if (process.env.NODE_ENV !== 'production' && dangerous) {
     console.warn(`Blocked Link with dangerous protocol: ${options.to}`)
   }
 
