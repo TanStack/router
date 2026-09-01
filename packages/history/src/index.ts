@@ -274,7 +274,7 @@ function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
  * but if you need to ensure that the browser state is up to date, you can use the
  * `history.flush` method to immediately flush all pending state changes to the browser URL.
  * @param opts
- * @param opts.getHref A function that returns the current href (path + search + hash)
+ * @param opts.parseLocation A function that returns the current location as a `HistoryLocation`
  * @param opts.createHref A function that takes a path and returns a href (path + search + hash)
  * @returns A history instance
  */
