@@ -1,5 +1,16 @@
 import type { AnyRouteMatch } from '@tanstack/solid-router'
 
+/**
+ * The router's single-flight source id on Solid's multi-source flight
+ * channel. Mutation responses fold one slice per cache — the router's
+ * loader/match data rides under this id, coexisting with other caches'
+ * slices (e.g. solid-query's `"sq"`) on the same round trip instead of
+ * competing for the single unnamed consumer slot. Requires the
+ * `@solidjs/web` release after 2.0.0-rc.4; both halves feature-detect and
+ * fall back to the unnamed slot on older versions.
+ */
+export const SOLID_START_FLIGHT_SOURCE = 'tsr'
+
 export interface SolidStartFlightMatch {
   id: string
   beforeLoadContext?: unknown

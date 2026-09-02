@@ -3,17 +3,21 @@ const instanceHeader = 'X-Server-Function-Instance'
 export const solidServerFunctionFormatHeader = 'X-Server-Function-Format'
 
 // Since solid-js 2.0.0-rc.4 the server resolves the function id from the
-// request url pathname (`<endpoint>/<id>`); the X-Server-Function-Id header
-// no longer exists. Requests keep the full function url they were given.
+// request url pathname; the X-Server-Function-Id header no longer exists.
+// Since 2.0.0-rc.6 scripted callers must use the data address
+// (`<endpoint>/data/<id>`) — the bare address (`<endpoint>/<id>`) answers
+// document traffic with the no-JS convention instead of the wire protocol.
 function resolveSolidServerFunctionPathname(url: string) {
   const parsed = new URL(url, origin)
-  const id = parsed.pathname.slice(parsed.pathname.lastIndexOf('/') + 1)
+  const slash = parsed.pathname.lastIndexOf('/')
+  const id = parsed.pathname.slice(slash + 1)
 
   if (!id) {
     throw new Error(`Unable to resolve Solid server function id from ${url}`)
   }
 
-  return parsed.pathname
+  const mount = parsed.pathname.slice(0, slash)
+  return mount.endsWith('/data') ? parsed.pathname : `${mount}/data/${id}`
 }
 
 function createSolidServerFunctionHeaders(instance: string) {

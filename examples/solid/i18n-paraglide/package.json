@@ -10,11 +10,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.4",
+    "@solidjs/web": "^2.0.0-rc.6",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-plugin": "^1.168.30",
     "@tanstack/solid-router": "^2.0.0-rc.4",
-    "solid-js": "^2.0.0-rc.4",
+    "solid-js": "^2.0.0-rc.6",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

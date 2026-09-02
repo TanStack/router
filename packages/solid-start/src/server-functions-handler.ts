@@ -3,6 +3,7 @@ import {
   createNoJSHandler,
   handleServerFunctionRequest,
   parseServerFunctionUrl,
+  registerFlightDataSource,
   serverFunctionUrl,
 } from '@solidjs/web/server-functions/server'
 import { redirect } from '@tanstack/solid-router'
@@ -12,6 +13,7 @@ import {
   runWithStartContext,
 } from '@tanstack/start-storage-context'
 import { getSolidStartServerFunctionCodec } from './solid-rpc-codec'
+import { SOLID_START_FLIGHT_SOURCE } from './solid-rpc-flight'
 import { collectSolidStartFlightData } from './solid-rpc-flight-server'
 import type { HandleServerFunctionOptions } from '@solidjs/web/server-functions/server'
 import type { StartStorageContext } from '@tanstack/start-storage-context'
@@ -21,6 +23,13 @@ configureServerFunctionsServer({
   provideEvent: provideRequestEvent,
   endpoint: process.env.TSS_SERVER_FN_BASE,
 })
+
+// The router's collector registers additively under its own source id
+// (Solid's multi-source single-flight protocol) — other caches' collectors
+// (e.g. solid-query's "sq") fold their slices into the same mutation
+// response, and a user-supplied `collectFlightData` hook keeps the unnamed
+// slot to itself instead of displacing the router's data.
+registerFlightDataSource(SOLID_START_FLIGHT_SOURCE, collectSolidStartFlightData)
 
 const solidNoJSHandler = createNoJSHandler()
 
@@ -44,11 +53,9 @@ export async function handleSolidServerFunctionRequest(
   const { startContext, ...solidOptions } = options
   const transformResult = solidOptions.transformResult
   const handleNoJS = solidOptions.handleNoJS
-  const collectFlightData = solidOptions.collectFlightData
   const existingStartContext = getStartContext({ throwIfNotFound: false })
   const handlerOptions: HandleServerFunctionOptions = {
     ...solidOptions,
-    collectFlightData: collectFlightData ?? collectSolidStartFlightData,
     transformResult: async (event, result, context) => {
       const transformed = transformResult
         ? await transformResult(event, result, context)
