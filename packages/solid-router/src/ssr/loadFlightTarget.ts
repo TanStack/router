@@ -90,7 +90,10 @@ export async function loadFlightTarget<TRouter extends AnyRouter, T>(
       await options.router.load({ _signal: request.signal })
       return await options.collect(options.router)
     } catch (error) {
-      console.error('Error collecting flight data for the mutation target', error)
+      console.error(
+        'Error collecting flight data for the mutation target',
+        error,
+      )
       return undefined
     }
   })

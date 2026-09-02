@@ -19,42 +19,45 @@ export function subscribeSolidStartFlightData() {
   // single-flight protocol) and receives exactly its slice of the keyed
   // envelope, so other caches' consumers (e.g. solid-query's "sq") coexist
   // on the same mutation response.
-  subscribeFlightData<SolidStartFlightData>(SOLID_START_FLIGHT_SOURCE, async (data) => {
-    if (!isSolidStartFlightData(data)) {
-      return
-    }
-
-    const router = await getRouterInstance()
-    if ('dehydratedData' in data) {
-      await router.options.hydrate?.(data.dehydratedData as never)
-    }
-
-    const currentLocation = isCurrentLocation(router, data.href)
-    const matches = currentLocation
-      ? router.stores.matches.get()
-      : router.matchRoutes(router.buildLocation({ href: data.href } as never))
-    if (matches.length !== data.matches.length) {
-      return
-    }
-
-    const flightMatches = new Map(
-      data.matches.map((match) => [match.id, match]),
-    )
-    const hydratedMatches: Array<AnyRouteMatch> = []
-    for (const match of matches) {
-      const flightMatch = flightMatches.get(match.id)
-      if (!flightMatch) {
+  subscribeFlightData<SolidStartFlightData>(
+    SOLID_START_FLIGHT_SOURCE,
+    async (data) => {
+      if (!isSolidStartFlightData(data)) {
         return
       }
-      hydratedMatches.push(applyFlightMatch(match, flightMatch))
-    }
 
-    if (currentLocation) {
-      publishCurrentMatches(router, hydratedMatches)
-    } else {
-      seedRedirectMatches(router, hydratedMatches)
-    }
-  })
+      const router = await getRouterInstance()
+      if ('dehydratedData' in data) {
+        await router.options.hydrate?.(data.dehydratedData as never)
+      }
+
+      const currentLocation = isCurrentLocation(router, data.href)
+      const matches = currentLocation
+        ? router.stores.matches.get()
+        : router.matchRoutes(router.buildLocation({ href: data.href } as never))
+      if (matches.length !== data.matches.length) {
+        return
+      }
+
+      const flightMatches = new Map(
+        data.matches.map((match) => [match.id, match]),
+      )
+      const hydratedMatches: Array<AnyRouteMatch> = []
+      for (const match of matches) {
+        const flightMatch = flightMatches.get(match.id)
+        if (!flightMatch) {
+          return
+        }
+        hydratedMatches.push(applyFlightMatch(match, flightMatch))
+      }
+
+      if (currentLocation) {
+        publishCurrentMatches(router, hydratedMatches)
+      } else {
+        seedRedirectMatches(router, hydratedMatches)
+      }
+    },
+  )
 }
 
 function applyFlightMatch(
