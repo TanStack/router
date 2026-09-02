@@ -12,7 +12,7 @@ export function useSessionStorage<T>(key: string, initialValue: any) {
     })(),
   )
 
-  Solid.createEffect(() => {
+  Solid.createEffect(state, () => {
     console.log('setting', JSON.stringify(state()))
     sessionStorage.setItem(key, JSON.stringify(state()))
   })

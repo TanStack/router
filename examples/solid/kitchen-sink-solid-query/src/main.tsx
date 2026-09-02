@@ -435,7 +435,7 @@ function InvoiceComponent() {
   const updateInvoiceMutation = useUpdateInvoiceMutation(params().invoiceId)
   const [notes, setNotes] = Solid.createSignal(search().notes ?? '')
 
-  Solid.createEffect(() => {
+  Solid.createEffect(notes, () => {
     navigate({
       search: (old: any) => ({
         ...old,
@@ -557,7 +557,7 @@ function UsersComponent() {
 
   const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy() ?? '')
 
-  Solid.createEffect(() => {
+  Solid.createEffect(filterBy, () => {
     setFilterDraft(filterBy() ?? '')
   })
 
@@ -592,7 +592,7 @@ function UsersComponent() {
       replace: true,
     })
 
-  Solid.createEffect(() => {
+  Solid.createEffect(filterDraft, () => {
     navigate({
       search: (old: any) => {
         return {
@@ -1104,7 +1104,7 @@ function useSessionStorage<T>(key: string, initialValue: T) {
     stored ? JSON.parse(stored) : initialValue,
   )
 
-  Solid.createEffect(() => {
+  Solid.createEffect(state, () => {
     sessionStorage.setItem(key, JSON.stringify(state()))
   })
 
