@@ -44,7 +44,10 @@ export function createAppRouter() {
         // stream its resolution, and be consumed by <Await> on the client
         // without re-running.
         slow: new Promise<string>((resolve) =>
-          setTimeout(() => resolve(`deferred-data-run-${loaderRuns.count}`), 30),
+          setTimeout(
+            () => resolve(`deferred-data-run-${loaderRuns.count}`),
+            30,
+          ),
         ),
       }
     },

@@ -87,7 +87,9 @@ async function main() {
   results.domDuringNav = root.innerHTML
 
   // -- Phase 3: chunk resolves, content appears --
-  resolveAboutChunk({ default: () => <section id="about">About content</section> })
+  resolveAboutChunk({
+    default: () => <section id="about">About content</section>,
+  })
   await navDone.catch(() => {})
   await sleep(100)
   results.aboutVisibleAfterResolve = !!document.getElementById('about')
@@ -99,6 +101,8 @@ async function main() {
 }
 
 main().catch((err) => {
-  results.fatal = String(err && (err as Error).stack ? (err as Error).stack : err)
+  results.fatal = String(
+    err && (err as Error).stack ? (err as Error).stack : err,
+  )
   window.__REPRO_DONE = true
 })

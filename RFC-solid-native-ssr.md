@@ -58,10 +58,10 @@ hydration-claiming, so the router had to build both:
   where they're read.
 - **Loader API semantics are untouched.** Blocking loaders,
   `pendingComponent`, `beforeLoad`, deferred — the cross-framework
-  contract stays. This RFC changes how the *adapter* transfers and boots,
+  contract stays. This RFC changes how the _adapter_ transfers and boots,
   not what the API promises.
 - **Data lives in caches that know how to transfer themselves.** The
-  router transfers *its* state (matches, `loaderData`, statuses); query
+  router transfers _its_ state (matches, `loaderData`, statuses); query
   caches transfer theirs; the flight envelope keys them independently.
   Nothing aggregates someone else's state.
 
@@ -70,15 +70,15 @@ hydration-claiming, so the router had to build both:
 The template path (`createRouter` + `RouterProvider` under Solid's
 renderer) never enters `createStartHandler`, so it can change freely.
 
-- **Registry match transfer.** *(Landed: `registryTransfer.ts`,
-  serialization in `RouterProvider`.)* During server render the adapter
+- **Registry match transfer.** _(Landed: `registryTransfer.ts`,
+  serialization in `RouterProvider`.)_ During server render the adapter
   serializes each settled match's state content-addressed
   (`tsr:<matchId>` keys) — the pattern `solid-query`'s provider proved.
   Still open within this bullet: promise-valued entries for matches
   pending at render time (streaming SSR). This core has no per-match
   settle promise, so it needs a dispatch-time hook; today pending matches
   are skipped and the client boot falls through to current behavior.
-- **Hydration-claiming boot.** *(Landed: the `Router` constructor.)*
+- **Hydration-claiming boot.** _(Landed: the `Router` constructor.)_
   Match synchronously, prime match state from the registry, commit
   without running loaders. Placement discovered to be load-bearing:
   committing inside the hydration render desyncs the claiming walk's
@@ -89,7 +89,7 @@ renderer) never enters `createStartHandler`, so it can change freely.
   URL-divergence reload guard) and the prefetch-pausing flag outright —
   verified on the production template: zero server-function requests at
   boot, hydration clean, single-flight unchanged.
-- **Boundary parity.** *(Already true on this line.)* The adapter's
+- **Boundary parity.** _(Already true on this line.)_ The adapter's
   boundary structure is symmetric between server and client
   (`_resolveMatchesLoadingBoundary` consults no hydration state), so
   `disableGlobalCatchBoundary` is no longer a parity workaround — it
@@ -129,7 +129,7 @@ without a native channel.
 - Match key identity: route id + params hash vs match id — needs to be
   stable across server/client and across redirects into the same route.
 - `loaderData` streaming semantics vs the existing deferred API: a
-  promise-valued registry entry makes deferred *transfer* free, but the
+  promise-valued registry entry makes deferred _transfer_ free, but the
   read-side API compatibility needs mapping.
 - Scroll restoration and `__TSR_SSR__` consumers beyond match state
   (manifest/asset injection) — inventory what else rides the script

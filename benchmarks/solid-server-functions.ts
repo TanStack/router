@@ -17,9 +17,7 @@ function resolveSolidServerFunctionPathname(url: string) {
   }
 
   const mount = parsed.pathname.slice(0, slash)
-  return mount.endsWith('/data')
-    ? parsed.pathname
-    : `${mount}/data/${id}`
+  return mount.endsWith('/data') ? parsed.pathname : `${mount}/data/${id}`
 }
 
 function createSolidServerFunctionHeaders(instance: string) {

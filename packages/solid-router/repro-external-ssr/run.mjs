@@ -50,7 +50,10 @@ await build({
   // ssr: true is required on the client build too: it makes the compiled
   // output hydratable (claim server nodes instead of creating fresh ones).
   plugins: [solid({ ssr: true, hot: false })],
-  resolve: { alias, conditions: ['browser', 'development', 'module', 'import'] },
+  resolve: {
+    alias,
+    conditions: ['browser', 'development', 'module', 'import'],
+  },
   define: { 'process.env.NODE_ENV': JSON.stringify('development') },
   build: {
     outDir: join(here, 'out/client'),
@@ -169,5 +172,7 @@ if (failures.length) {
   for (const f of failures) console.log('FAIL:', f)
   process.exitCode = 1
 } else {
-  console.log('PASS: clean hydration, no pending flash, post-hydration nav shows pending UI')
+  console.log(
+    'PASS: clean hydration, no pending flash, post-hydration nav shows pending UI',
+  )
 }
