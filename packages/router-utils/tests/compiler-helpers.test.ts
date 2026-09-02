@@ -5,6 +5,7 @@ import {
   collectIdentifiersFromNode,
   collectLocalBindingsFromStatement,
   extractModuleInfoFromAst,
+  summarizeExpression,
 } from '../src/compiler-helpers'
 import { parseAst } from '../src/ast'
 
@@ -199,7 +200,7 @@ describe('extractModuleInfoFromAst', () => {
           ],
           [
             "exported",
-            "Identifier",
+            "identifier",
           ],
           [
             "loader",
@@ -207,7 +208,7 @@ describe('extractModuleInfoFromAst', () => {
           ],
           [
             "local",
-            "Identifier",
+            "identifier",
           ],
           [
             "localNamed",
@@ -245,5 +246,73 @@ describe('extractModuleInfoFromAst', () => {
         ],
       }
     `)
+  })
+})
+
+describe('summarizeExpression', () => {
+  function summarize(code: string) {
+    return summarizeExpression(getVariableInit(code))
+  }
+
+  test('summarizes identifiers, member access, and calls', () => {
+    expect(summarize('const value = other')).toEqual({
+      type: 'identifier',
+      name: 'other',
+    })
+    expect(summarize('const value = ns.member')).toEqual({
+      type: 'member',
+      object: { type: 'identifier', name: 'ns' },
+      property: 'member',
+    })
+    expect(
+      summarize('const value = createServerFn().handler(handler)'),
+    ).toEqual({
+      type: 'call',
+      callee: {
+        type: 'member',
+        object: {
+          type: 'call',
+          callee: { type: 'identifier', name: 'createServerFn' },
+        },
+        property: 'handler',
+      },
+    })
+  })
+
+  test('drops call arguments and source positions', () => {
+    const summary = summarize('const value = factory(() => "unused")')
+
+    expect(summary).toEqual({
+      type: 'call',
+      callee: { type: 'identifier', name: 'factory' },
+    })
+    expect(summary).not.toHaveProperty('arguments')
+    expect(summary).not.toHaveProperty('loc')
+    expect(summary).not.toHaveProperty('start')
+  })
+
+  test('looks through transparent wrappers', () => {
+    const unwrapped = { type: 'identifier', name: 'other' }
+
+    expect(summarize('const value = (other)')).toEqual(unwrapped)
+    expect(summarize('const value = other as Something')).toEqual(unwrapped)
+    expect(summarize('const value = other satisfies Something')).toEqual(
+      unwrapped,
+    )
+    expect(summarize('const value = other!')).toEqual(unwrapped)
+  })
+
+  test('treats computed identifier access like static access', () => {
+    expect(summarize('const value = ns[member]')).toEqual(
+      summarize('const value = ns.member'),
+    )
+  })
+
+  test('returns null for expressions consumers cannot resolve', () => {
+    expect(summarizeExpression(null)).toBeNull()
+    expect(summarize('const value = { a: 1 }')).toBeNull()
+    expect(summarize('const value = ns["member"]')).toBeNull()
+    expect(summarize('const value = (() => other).call()')).toBeNull()
+    expect(summarize('const value = import("./x")')).toBeNull()
   })
 })
