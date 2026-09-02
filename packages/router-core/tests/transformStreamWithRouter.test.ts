@@ -113,6 +113,7 @@ function makeRouter(opts: Partial<FakeServerSsr> = {}): {
 function makeManualUpstream(): {
   stream: ReadableStream<Uint8Array>
   push: (s: string) => void
+  pushBytes: (b: Uint8Array) => void
   close: () => void
   cancelled: { value: boolean; reason: unknown }
 } {
@@ -131,6 +132,7 @@ function makeManualUpstream(): {
   return {
     stream,
     push: (s) => controllerRef!.enqueue(encoder.encode(s)),
+    pushBytes: (b) => controllerRef!.enqueue(b),
     close: () => controllerRef!.close(),
     cancelled,
   }
@@ -432,6 +434,150 @@ describe('transformStreamWithRouter — real SSR scripts', () => {
 
     await readAll(output as any)
     expect(liftCalls).toBe(1)
+  })
+
+  test('handles closing tags split across chunk boundaries byte-identically', async () => {
+    const { router, injectHtml, finishSerialization } = makeRouter({
+      liftScriptBarrier: () => {
+        injectHtml('<script>streamed()</script>')
+      },
+    })
+    const upstream = makeManualUpstream()
+    const output = transformStreamWithRouter(
+      router as any,
+      upstream.stream as any,
+    )
+
+    upstream.push('<html><body><div>con')
+    // "</div>" split mid-tag-name, plus the barrier script split so the
+    // marker only completes in a later chunk.
+    upstream.push(`tent</div><script id="${TSR_SCRIPT_BARRIER_ID.slice(0, 10)}`)
+    upstream.push(`${TSR_SCRIPT_BARRIER_ID.slice(10)}">x</scr`)
+    upstream.push('ipt><p>more</p>')
+    upstream.push('</bo')
+    upstream.push('dy></html>')
+    upstream.close()
+    finishSerialization()
+
+    const html = await readAll(output as any)
+
+    expect(html).toContain('<script>streamed()</script>')
+    // Injection lands after the LAST closing tag of the completing chunk
+    // (</p>), never mid-tag, and always before </body>.
+    expect(html.indexOf('<script>streamed()</script>')).toBeGreaterThan(
+      html.indexOf('</script>'),
+    )
+    expect(html.indexOf('<script>streamed()</script>')).toBeLessThan(
+      html.indexOf('</body>'),
+    )
+  })
+
+  test('preserves multi-byte UTF-8 sequences split across chunks', async () => {
+    const { router, finishSerialization } = makeRouter()
+    const upstream = makeManualUpstream()
+    const output = transformStreamWithRouter(
+      router as any,
+      upstream.stream as any,
+    )
+
+    const encoder = new TextEncoder()
+    // "héllo 🎉 world": 'é' is 2 bytes, '🎉' is 4 bytes. Split both
+    // sequences across chunk boundaries mid-sequence.
+    const full = '<html><body><div>héllo 🎉 wörld</div></body></html>'
+    const bytes = encoder.encode(full)
+    const cuts = [
+      '<html><body><div>h'.length + 1, // inside 'é' (byte 1 of 2)
+      '<html><body><div>héllo '.length + 2, // inside '🎉' (byte 2 of 4)
+    ]
+    let prev = 0
+    for (const cut of cuts) {
+      upstream.pushBytes(bytes.slice(prev, cut))
+      prev = cut
+    }
+    upstream.pushBytes(bytes.slice(prev))
+    upstream.close()
+    finishSerialization()
+
+    const text = await readAll(output as any)
+    expect(text).toBe(full)
+  })
+
+  test('flushes injection immediately after barrier lifts at a closing-tag boundary', async () => {
+    let liftCalls = 0
+    const { router, injectHtml, finishSerialization } = makeRouter({
+      liftScriptBarrier: () => {
+        liftCalls++
+        injectHtml('<script>right-after-lift()</script>')
+      },
+    })
+    const upstream = makeManualUpstream()
+    const output = transformStreamWithRouter(
+      router as any,
+      upstream.stream as any,
+    )
+
+    // Chunk ends exactly at the barrier script's closing tag: writing this
+    // boundary must (a) mark the marker as seen and (b) lift the barrier,
+    // with the injected HTML flushed right after the written prefix.
+    upstream.push(
+      `<html><body><main>app</main><script id="${TSR_SCRIPT_BARRIER_ID}">x</script>`,
+    )
+    await flush()
+
+    upstream.push('<section>after</section>')
+    upstream.push('</body></html>')
+    upstream.close()
+    finishSerialization()
+
+    const html = await readAll(output as any)
+
+    expect(liftCalls).toBe(1)
+    expect(html).toContain('<script>right-after-lift()</script>')
+    expect(html.indexOf(TSR_SCRIPT_BARRIER_ID)).toBeLessThan(
+      html.indexOf('<script>right-after-lift()</script>'),
+    )
+    expect(html.indexOf('<script>right-after-lift()</script>')).toBeLessThan(
+      html.indexOf('</body>'),
+    )
+    expect(html).toBe(
+      `<html><body><main>app</main><script id="${TSR_SCRIPT_BARRIER_ID}">x</script><script>right-after-lift()</script><section>after</section></body></html>`,
+    )
+  })
+
+  test('detects barrier marker arriving in the same chunk as </body>', async () => {
+    let liftCalls = 0
+    const { router, injectHtml, finishSerialization } = makeRouter({
+      liftScriptBarrier: () => {
+        liftCalls++
+        injectHtml('<script>same-chunk-lift()</script>')
+      },
+    })
+    const upstream = makeManualUpstream()
+    const output = transformStreamWithRouter(
+      router as any,
+      upstream.stream as any,
+    )
+
+    // Marker script AND </body> complete in a single chunk: the marker scan
+    // must still run on the written body prefix even though the merge state
+    // transitions to HoldingTail for this chunk.
+    upstream.push(
+      `<html><body><div>x</div><script id="${TSR_SCRIPT_BARRIER_ID}">y</script></body></html>`,
+    )
+    await flush()
+
+    upstream.close()
+    finishSerialization()
+
+    const html = await readAll(output as any)
+
+    expect(liftCalls).toBe(1)
+    expect(html.indexOf(TSR_SCRIPT_BARRIER_ID)).toBeLessThan(
+      html.indexOf('<script>same-chunk-lift()</script>'),
+    )
+    expect(html.indexOf('<script>same-chunk-lift()</script>')).toBeLessThan(
+      html.indexOf('</body>'),
+    )
   })
 })
 

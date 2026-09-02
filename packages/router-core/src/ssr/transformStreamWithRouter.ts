@@ -64,45 +64,60 @@ type MergeState = (typeof MergeState)[keyof typeof MergeState]
 // Module-level encoder (stateless, safe to reuse)
 const textEncoder = new TextEncoder()
 
+// ASCII bytes of the barrier marker; safe to search for in raw UTF-8 because
+// multi-byte sequences never contain ASCII (< 0x80) continuation bytes.
+const BARRIER_MARKER_BYTES = textEncoder.encode(TSR_SCRIPT_BARRIER_ID)
+
 const noop = () => {}
 const resolvedPromise = Promise.resolve()
 
+// Byte-level port of findHtmlBoundary operating directly on UTF-8 bytes.
+// Closing tags are pure ASCII, and no multi-byte UTF-8 sequence contains a
+// byte < 0x80, so scanning/slicing at byte positions can never corrupt text.
 // Returns -bodyEndIndex - 2 when </body> is found; otherwise returns
 // the position after the last valid closing tag, or -1 when none exists.
-function findHtmlBoundary(str: string): number {
+function findHtmlBoundaryBytes(buf: Uint8Array, len: number): number {
   let lastClosingTagEnd = -1
-  let searchFrom = str.length - MIN_CLOSING_TAG_LENGTH
+  let searchFrom = len - MIN_CLOSING_TAG_LENGTH
 
   while (searchFrom >= 0) {
-    const openSlash = str.lastIndexOf('</', searchFrom)
+    // Backwards search for "</" starting at or before searchFrom.
+    let openSlash = -1
+    for (let i = searchFrom; i >= 0; i--) {
+      if (buf[i] === 60 && buf[i + 1] === 47) {
+        openSlash = i
+        break
+      }
+    }
     if (openSlash === -1) break
 
     // Fast case-insensitive match for </body>. Negative return encodes the
-    // body start index without allocating a result object.
+    // body start index without allocating a result object. Out-of-bounds
+    // reads yield undefined, which fails every comparison below.
     if (
-      (str.charCodeAt(openSlash + 2) | 32) === 98 &&
-      (str.charCodeAt(openSlash + 3) | 32) === 111 &&
-      (str.charCodeAt(openSlash + 4) | 32) === 100 &&
-      (str.charCodeAt(openSlash + 5) | 32) === 121 &&
-      str.charCodeAt(openSlash + 6) === 62
+      ((buf[openSlash + 2] as number) | 32) === 98 &&
+      ((buf[openSlash + 3] as number) | 32) === 111 &&
+      ((buf[openSlash + 4] as number) | 32) === 100 &&
+      ((buf[openSlash + 5] as number) | 32) === 121 &&
+      buf[openSlash + 6] === 62
     ) {
       return -openSlash - 2
     }
 
     if (lastClosingTagEnd === -1) {
       let i = openSlash + 2
-      const startCode = str.charCodeAt(i)
+      const startCode = buf[i]
       if (
-        (startCode >= 97 && startCode <= 122) ||
-        (startCode >= 65 && startCode <= 90)
+        (startCode! >= 97 && startCode! <= 122) ||
+        (startCode! >= 65 && startCode! <= 90)
       ) {
         i++
-        while (i < str.length) {
-          const code = str.charCodeAt(i)
+        while (i < len) {
+          const code = buf[i]
           if (
-            (code >= 97 && code <= 122) || // a-z
-            (code >= 65 && code <= 90) || // A-Z
-            (code >= 48 && code <= 57) || // 0-9
+            (code! >= 97 && code! <= 122) || // a-z
+            (code! >= 65 && code! <= 90) || // A-Z
+            (code! >= 48 && code! <= 57) || // 0-9
             code === 95 || // _
             code === 58 || // :
             code === 46 || // .
@@ -114,7 +129,7 @@ function findHtmlBoundary(str: string): number {
           }
         }
 
-        if (str.charCodeAt(i) === 62) {
+        if (i < len && buf[i] === 62) {
           lastClosingTagEnd = i + 1
         }
       }
@@ -124,6 +139,34 @@ function findHtmlBoundary(str: string): number {
   }
 
   return lastClosingTagEnd
+}
+
+/**
+ * Search buf[from, to) for `needle` using typed-array indexOf hops to the
+ * first needle byte (memchr-backed in V8).
+ */
+function byteRangeContains(
+  buf: Uint8Array,
+  from: number,
+  to: number,
+  needle: Uint8Array,
+): boolean {
+  const n = needle.length
+  if (n === 0 || to - from < n) return false
+  const first = needle[0]!
+  let i = buf.indexOf(first, from)
+  while (i !== -1 && i <= to - n) {
+    let match = true
+    for (let j = 1; j < n; j++) {
+      if (buf[i + j] !== needle[j]) {
+        match = false
+        break
+      }
+    }
+    if (match) return true
+    i = buf.indexOf(first, i + 1)
+  }
+  return false
 }
 
 /**
@@ -417,21 +460,22 @@ function makeMainStream(
   const notifyAbort = createAbortNotifier(opts)
 
   // Single output queue: app chunks + router-injected HTML/scripts.
-  // Stored as STRINGS to avoid holding native-backed Uint8Arrays in our queue
-  // while waiting for downstream capacity. Encoding happens at enqueue time
-  // (drainPending) so the bytes live only inside the controller's internal
-  // queue, not in two places.
+  // App chunks are stored as RAW BYTES and enqueued verbatim (no
+  // decode/re-encode round trip); router HTML arrives as strings from
+  // serverSsr and is encoded once at enqueue time. This keeps native-backed
+  // Uint8Arrays only inside the controller's internal queue, not in two
+  // places.
   //
   // Uses an index pointer instead of Array.prototype.shift() (which is O(n))
   // so many small router-injected script chunks stay O(1) per chunk.
-  const pendingWrites: Array<string> = []
+  const pendingWrites: Array<string | Uint8Array> = []
   let pendingWriteHead = 0
-  let pendingWriteChars = 0
+  let pendingWriteSize = 0
 
   function clearPending() {
     pendingWrites.length = 0
     pendingWriteHead = 0
-    pendingWriteChars = 0
+    pendingWriteSize = 0
   }
 
   // Backpressure: pull() resolves drainResolve to let the read loop advance.
@@ -459,9 +503,11 @@ function makeMainStream(
       // Release reference for GC; compact when fully drained.
       pendingWrites[pendingWriteHead] = ''
       pendingWriteHead++
-      pendingWriteChars -= next.length
+      pendingWriteSize -= next.length
       try {
-        controller.enqueue(textEncoder.encode(next))
+        controller.enqueue(
+          typeof next === 'string' ? textEncoder.encode(next) : next,
+        )
       } catch (error) {
         safeError(error)
         cleanup(error)
@@ -485,19 +531,39 @@ function makeMainStream(
    * Enqueue a string chunk through the backpressure queue. Stored as a
    * string and encoded only when the downstream actually accepts the chunk
    * — keeps native-memory pressure inside the controller's queue (which
-   * honors desiredSize) rather than ours.
+   * honors desiredSize) rather than ours. Used for router-injected HTML,
+   * which arrives as strings from serverSsr.
    */
   function writeChunk(chunk: string) {
     if (cleanedUp || isDone()) return
     if (!chunk.length) return
-    if (pendingWriteChars + chunk.length > MAX_PENDING_WRITE_CHARS) {
+    if (pendingWriteSize + chunk.length > MAX_PENDING_WRITE_CHARS) {
       const err = new Error('SSR stream pending output exceeded maximum buffer')
       safeError(err)
       cleanup(err)
       return
     }
     pendingWrites.push(chunk)
-    pendingWriteChars += chunk.length
+    pendingWriteSize += chunk.length
+    drainPending()
+  }
+
+  /**
+   * Enqueue raw app bytes verbatim — no decode/encode round trip. The bytes
+   * must not alias upstream-owned buffers, which is guaranteed because all
+   * writes come from `pendingBody.slice(...)` copies.
+   */
+  function writeRawBytes(bytes: Uint8Array) {
+    if (cleanedUp || isDone()) return
+    if (!bytes.length) return
+    if (pendingWriteSize + bytes.length > MAX_PENDING_WRITE_CHARS) {
+      const err = new Error('SSR stream pending output exceeded maximum buffer')
+      safeError(err)
+      cleanup(err)
+      return
+    }
+    pendingWrites.push(bytes)
+    pendingWriteSize += bytes.length
     drainPending()
   }
 
@@ -549,8 +615,7 @@ function makeMainStream(
     }
 
     clearPendingRouterHtml()
-    leftover = ''
-    pendingTail = ''
+    resetPendingBody()
     clearPending()
 
     if (cancelReader) {
@@ -570,29 +635,122 @@ function makeMainStream(
     return readerDone
   }
 
-  const textDecoder = new TextDecoder()
+  // =====================================================================
+  // Pending body buffer: raw UTF-8 bytes not yet emitted downstream.
+  //
+  // Before </body> is seen this holds the "leftover" bytes since the last
+  // closing-tag boundary; afterwards it holds the captured tail. All app
+  // bytes stay encoded exactly once (as produced upstream) and are enqueued
+  // verbatim — the decoder/encoder round trip is gone entirely.
+  //
+  // Closing tags and the barrier marker are pure ASCII, and multi-byte
+  // UTF-8 sequences never contain bytes < 0x80, so byte-level scanning and
+  // byte-offset slicing are always text-safe.
+  // =====================================================================
+  let pendingBody = new Uint8Array(8 * 1024)
+  let pendingBodyLen = 0
+
+  // Absolute stream offset of pendingBody[0]; used to reason about which
+  // bytes have already been scanned for the barrier marker.
+  let regionStartAbs = 0
+  // Every byte at absolute offset < markerScannedAbs has been included in a
+  // barrier-marker search over a WRITTEN range (matching the previous
+  // behavior of scanning only flushed chunks).
+  let markerScannedAbs = 0
+  // Total tail bytes held while state >= HoldingTail.
+  let tailBytes = 0
+
+  function resetPendingBody() {
+    pendingBodyLen = 0
+    regionStartAbs = 0
+    markerScannedAbs = 0
+    tailBytes = 0
+  }
+
+  function ensurePendingBodyCapacity(needed: number) {
+    if (needed <= pendingBody.length) return
+    let cap = pendingBody.length * 2
+    if (cap < needed) cap = needed
+    const next = new Uint8Array(cap)
+    if (pendingBodyLen > 0) {
+      next.set(pendingBody.subarray(0, pendingBodyLen))
+    }
+    pendingBody = next
+  }
+
+  /**
+   * Append an upstream chunk to the pending body buffer. Copies immediately
+   * so upstream-owned/reused Uint8Arrays are never aliased.
+   */
+  function appendToPendingBody(value: string | Uint8Array) {
+    if (typeof value === 'string') {
+      ensurePendingBodyCapacity(pendingBodyLen + value.length * 3 + 1)
+      const res = textEncoder.encodeInto(
+        value,
+        pendingBody.subarray(pendingBodyLen),
+      )
+      pendingBodyLen += res.written
+      return
+    }
+    const len = value.byteLength
+    ensurePendingBodyCapacity(pendingBodyLen + len)
+    if (len > 0) {
+      pendingBody.set(value, pendingBodyLen)
+      pendingBodyLen += len
+    }
+  }
+
+  /**
+   * Search the written prefix [regionStartAbs, endRel) for the barrier
+   * marker. Only bytes that have actually been written downstream count as
+   * "seen" — lifting the barrier before the marker script has been fully
+   * flushed could allow injections inside the marker script tag itself.
+   */
+  function scanWrittenPrefixForMarker(endRel: number) {
+    if (streamBarrierMarkerSeen) return
+    const endAbs = regionStartAbs + endRel
+    let fromAbs = markerScannedAbs - (BARRIER_MARKER_BYTES.length - 1)
+    if (fromAbs < regionStartAbs) fromAbs = regionStartAbs
+    if (endAbs > markerScannedAbs) markerScannedAbs = endAbs
+    if (endAbs <= fromAbs) return
+    if (
+      byteRangeContains(
+        pendingBody,
+        fromAbs - regionStartAbs,
+        endRel,
+        BARRIER_MARKER_BYTES,
+      )
+    ) {
+      streamBarrierMarkerSeen = true
+    }
+  }
+
+  /**
+   * Copy out and enqueue the body prefix [0, k), then compact the buffer.
+   * `scanMarker` mirrors the previous behavior of checking the barrier
+   * marker only on chunks flushed at safe boundaries.
+   */
+  function emitBodyPrefix(k: number, scanMarker: boolean) {
+    if (k <= 0 || pendingBodyLen === 0) return
+    if (k > pendingBodyLen) k = pendingBodyLen
+    if (scanMarker && state < MergeState.HoldingTail) {
+      scanWrittenPrefixForMarker(k)
+    }
+    const out = pendingBody.slice(0, k)
+    writeRawBytes(out)
+    pendingBody.copyWithin(0, k, pendingBodyLen)
+    pendingBodyLen -= k
+    regionStartAbs += k
+  }
 
   // Router-injected scripts/HTML waiting for the next safe body boundary.
   // Keep chunks separate so flushing does not flatten a large rope string.
   const pendingRouterHtml: Array<string> = []
   let pendingRouterHtmlChars = 0
 
-  // between-chunk text buffer; keep bounded to avoid unbounded memory
-  let leftover = ''
-
-  // captured bytes from </body> onward; must stay behind router scripts.
-  let pendingTail = ''
-
   let streamBarrierLifted = false
   let streamBarrierMarkerSeen = false
   let serializationFinished = false
-
-  function noteBarrierMarker(chunk: string) {
-    if (streamBarrierMarkerSeen) return
-    if (chunk.includes(TSR_SCRIPT_BARRIER_ID)) {
-      streamBarrierMarkerSeen = true
-    }
-  }
 
   function liftBarrierAfterBoundary() {
     if (streamBarrierLifted) return
@@ -667,13 +825,6 @@ function makeMainStream(
     pendingRouterHtmlChars = 0
   }
 
-  function appendTail(chunk: string) {
-    pendingTail += chunk
-    if (pendingTail.length > MAX_TAIL_CHARS) {
-      throw new Error('SSR stream tail exceeded maximum buffer')
-    }
-  }
-
   function waitForBackpressure() {
     return !!(
       controller &&
@@ -713,20 +864,25 @@ function makeMainStream(
     drainRouterHtml()
     if (cleanedUp || isDone()) return
 
-    // Flush any remaining bytes in the TextDecoder
-    const decoderRemainder = textDecoder.decode()
-
-    if (leftover) writeChunk(leftover)
-    if (cleanedUp || isDone()) return
-    if (decoderRemainder) writeChunk(decoderRemainder)
+    // If </body> never arrived, everything still buffered is pre-tail body
+    // content ("leftover") and must precede injected router HTML.
+    if (state < MergeState.HoldingTail && pendingBodyLen > 0) {
+      const out = pendingBody.slice(0, pendingBodyLen)
+      writeRawBytes(out)
+      pendingBodyLen = 0
+      regionStartAbs += out.length
+    }
     if (cleanedUp || isDone()) return
     flushPendingRouterHtml()
     if (cleanedUp || isDone()) return
-    if (pendingTail) writeChunk(pendingTail)
+    // Captured tail bytes (from </body> onward) go last, behind scripts.
+    if (pendingBodyLen > 0) {
+      const out = pendingBody.slice(0, pendingBodyLen)
+      writeRawBytes(out)
+      pendingBodyLen = 0
+      regionStartAbs += out.length
+    }
     if (cleanedUp || isDone()) return
-
-    leftover = ''
-    pendingTail = ''
 
     state = MergeState.Draining
     closeWhenDrained = true
@@ -814,72 +970,61 @@ function makeMainStream(
 
         if (cleanedUp || isDone()) return
 
-        const text =
-          typeof value === 'string'
-            ? value
-            : textDecoder.decode(value as ArrayBufferView, { stream: true })
-
-        const chunkString = leftover ? leftover + text : text
+        // Keep app bytes encoded exactly once: append raw bytes (or encode
+        // string chunks directly into the buffer) — no streaming decode.
+        const chunkStart = regionStartAbs + pendingBodyLen
+        appendToPendingBody(value as string | Uint8Array)
+        const chunkBytes = regionStartAbs + pendingBodyLen - chunkStart
+        if (chunkBytes === 0) continue
 
         // If we already saw </body>, everything else is tail. Keep it bounded
         // and held until router scripts are ready so injection remains before </body>.
         if (state >= MergeState.HoldingTail) {
-          appendTail(chunkString)
-          leftover = ''
+          tailBytes += chunkBytes
+          if (tailBytes > MAX_TAIL_CHARS) {
+            throw new Error('SSR stream tail exceeded maximum buffer')
+          }
           continue
         }
 
-        const boundary = findHtmlBoundary(chunkString)
+        const boundary = findHtmlBoundaryBytes(pendingBody, pendingBodyLen)
         if (boundary < -1) {
           const bodyEndIndex = -boundary - 2
-          state = MergeState.HoldingTail
-          appendTail(chunkString.slice(bodyEndIndex))
-          const bodyChunk = chunkString.slice(0, bodyEndIndex)
-          writeChunk(bodyChunk)
+          // Scan/write the body prefix while still in ReadingBody so the
+          // barrier marker inside it is detected (the scan is gated on
+          // state < HoldingTail).
+          emitBodyPrefix(bodyEndIndex, true)
           if (cleanedUp || isDone()) return
-          noteBarrierMarker(bodyChunk)
+          state = MergeState.HoldingTail
+          tailBytes = pendingBodyLen
+          if (tailBytes > MAX_TAIL_CHARS) {
+            throw new Error('SSR stream tail exceeded maximum buffer')
+          }
           liftBarrierAfterBoundary()
           if (cleanedUp || isDone()) return
           flushPendingRouterHtml()
-          leftover = ''
           continue
         }
 
         const lastClosingTagEnd = boundary
 
         if (lastClosingTagEnd > 0) {
-          const safeChunk = chunkString.slice(0, lastClosingTagEnd)
-          writeChunk(safeChunk)
+          emitBodyPrefix(lastClosingTagEnd, true)
           if (cleanedUp || isDone()) return
-          noteBarrierMarker(safeChunk)
           liftBarrierAfterBoundary()
           if (cleanedUp || isDone()) return
           flushPendingRouterHtml()
 
-          leftover = chunkString.slice(lastClosingTagEnd)
-          if (leftover.length > MAX_LEFTOVER_CHARS) {
+          if (pendingBodyLen > MAX_LEFTOVER_CHARS) {
             // Ensure bounded memory even if a consumer streams long text sequences
             // without any closing tags. This may reduce injection granularity but is correct.
-            noteBarrierMarker(leftover)
-            const flushed = leftover.slice(
-              0,
-              leftover.length - MAX_LEFTOVER_CHARS,
-            )
-            writeChunk(flushed)
-            leftover = leftover.slice(-MAX_LEFTOVER_CHARS)
+            emitBodyPrefix(pendingBodyLen - MAX_LEFTOVER_CHARS, true)
           }
         } else {
           // No closing tag found; keep small tail to handle split closing tags,
           // but stream older bytes to prevent unbounded buffering.
-          const combined = chunkString
-          if (combined.length > MAX_LEFTOVER_CHARS) {
-            noteBarrierMarker(combined)
-            const flushUpto = combined.length - MAX_LEFTOVER_CHARS
-            const flushed = combined.slice(0, flushUpto)
-            writeChunk(flushed)
-            leftover = combined.slice(flushUpto)
-          } else {
-            leftover = combined
+          if (pendingBodyLen > MAX_LEFTOVER_CHARS) {
+            emitBodyPrefix(pendingBodyLen - MAX_LEFTOVER_CHARS, true)
           }
         }
       }
