@@ -17,7 +17,13 @@ import type {
 } from './Matches'
 import type { RootRouteId } from './root'
 import type { ParseRoute, RouteById, RouteIds, RoutePaths } from './routeInfo'
-import type { AnyRouter, Register, RegisteredRouter, SSROption } from './router'
+import type {
+  AnyRouter,
+  Register,
+  RegisteredRouter,
+  RouterSsrOptions,
+  SSROption,
+} from './router'
 import type { BuildLocationFn, NavigateFn } from './RouterProvider'
 import type {
   Assign,
@@ -1203,9 +1209,7 @@ type AssetFnContextOptions<
   in out TBeforeLoadFn,
   in out TLoaderDeps,
 > = {
-  ssr?: {
-    nonce?: string
-  }
+  ssr?: RouterSsrOptions
   matches: Array<
     RouteMatch<
       TRouteId,

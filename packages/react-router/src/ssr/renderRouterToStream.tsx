@@ -55,6 +55,7 @@ export const renderRouterToStream = async ({
   if (typeof ReactDOMServer.renderToReadableStream === 'function') {
     const stream = await ReactDOMServer.renderToReadableStream(children, {
       signal: request.signal,
+      importMap: router.options.ssr?.importMap,
       nonce: router.options.ssr?.nonce,
       progressiveChunkSize: Number.POSITIVE_INFINITY,
       onError: (error, info) => {
@@ -154,6 +155,7 @@ export const renderRouterToStream = async ({
 
     try {
       pipeable = ReactDOMServer.renderToPipeableStream(children, {
+        importMap: router.options.ssr?.importMap,
         nonce: router.options.ssr?.nonce,
         progressiveChunkSize: Number.POSITIVE_INFINITY,
         ...(isbot(request.headers.get('User-Agent'))
