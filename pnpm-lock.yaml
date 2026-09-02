@@ -4934,9 +4934,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      '@tanstack/solid-router-ssr-query':
-        specifier: workspace:*
-        version: link:../../../packages/solid-router-ssr-query
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start
@@ -5460,9 +5457,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      '@tanstack/solid-router-ssr-query':
-        specifier: workspace:*
-        version: link:../../../packages/solid-router-ssr-query
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start
@@ -5533,9 +5527,6 @@ importers:
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
-      '@tanstack/solid-router-ssr-query':
-        specifier: workspace:*
-        version: link:../../../packages/solid-router-ssr-query
       '@tanstack/solid-start':
         specifier: workspace:*
         version: link:../../../packages/solid-start

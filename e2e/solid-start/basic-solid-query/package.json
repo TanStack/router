@@ -17,7 +17,6 @@
     "@tanstack/solid-query-devtools": "^6.0.0-rc.1",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
-    "@tanstack/solid-router-ssr-query": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "redaxios": "^0.5.1",
     "solid-js": "^2.0.0-rc.4",
