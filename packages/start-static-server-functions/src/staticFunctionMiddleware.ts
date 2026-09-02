@@ -104,6 +104,17 @@ async function addItemToCache({
   }
 }
 
+/**
+ * Look up a prerendered result for this call.
+ *
+ * Returns `undefined` for a cache miss so the caller can fall back to invoking
+ * the server function. A miss is the normal case whenever the cache file was
+ * never written, for example when `prerender` is disabled or when the route
+ * that makes this call is not reached during the prerender pass. The request
+ * for the missing file is then answered by the application's catch-all route,
+ * which serves the HTML shell, so neither the status code nor the body can be
+ * trusted without checking.
+ */
 const fetchItem = async ({
   data,
   functionId,
@@ -114,13 +125,42 @@ const fetchItem = async ({
   const hash = jsonToFilenameSafeString(data)
   const url = await getStaticCacheUrl({ functionId, hash })
 
-  let result: any = staticClientCache?.get(url)
+  const cached = staticClientCache?.get(url)
+  if (cached !== undefined) {
+    return cached
+  }
 
-  result = await fetch(url, {
-    method: 'GET',
-  })
-    .then((r) => r.json())
-    .then((d) => fromJSON(d, { plugins: getDefaultSerovalPlugins() }))
+  let response: Response
+  try {
+    response = await fetch(url, {
+      method: 'GET',
+    })
+  } catch {
+    // The cache file could not be requested at all.
+    return undefined
+  }
+
+  if (!response.ok) {
+    return undefined
+  }
+
+  // The HTML shell is served with a 200 in some setups, so the content type is
+  // what actually distinguishes a cache hit from the fallback document.
+  if (!response.headers.get('content-type')?.includes('application/json')) {
+    return undefined
+  }
+
+  let result: any
+  try {
+    result = fromJSON(await response.json(), {
+      plugins: getDefaultSerovalPlugins(),
+    })
+  } catch {
+    // The file exists but is not a payload this build can read.
+    return undefined
+  }
+
+  staticClientCache?.set(url, result)
 
   return result
 }

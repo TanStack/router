@@ -33,3 +33,4 @@ This pattern goes as follows:
   - Initially, the prerendered page's html is served and the server function data is embedded in the html
   - When the client mounts, the embedded server function data is hydrated
   - For future client-side invocations, the server function is replaced with a fetch call to the static JSON file
+  - If no cached file exists for that key, the call falls back to invoking the server function normally. This happens when prerendering is disabled, or when the call is made from a route that the prerender pass never reached, so a static server function stays usable instead of failing
