@@ -41,6 +41,12 @@ const isAbortError = (request: Request, error: unknown) =>
   (request.signal.aborted && error === request.signal.reason) ||
   (error instanceof Error && error.name === 'AbortError')
 
+/**
+ * Renders a React router application to a streaming SSR response.
+ *
+ * @param options - The request, router, response headers, and React content to render.
+ * @returns The router-managed streaming response.
+ */
 export const renderRouterToStream = async ({
   request,
   router,
