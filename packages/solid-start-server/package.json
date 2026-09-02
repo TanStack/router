@@ -64,8 +64,8 @@
   },
   "devDependencies": {
     "@solidjs/vite-plugin": "^3.0.0-next.35",
-    "@solidjs/web": "^2.0.0-rc.4",
-    "solid-js": "^2.0.0-rc.4",
+    "@solidjs/web": "^2.0.0-rc.6",
+    "solid-js": "^2.0.0-rc.6",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "*"
