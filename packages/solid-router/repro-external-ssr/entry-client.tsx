@@ -63,6 +63,12 @@ async function main() {
   results.loaderDataVisible = (
     document.getElementById('home')?.textContent ?? ''
   ).includes('loader-data-run-1')
+  // Deferred (unawaited) loaderData field: server streamed its resolution,
+  // client <Await> must consume the transferred promise — same run number,
+  // no fallback left in the DOM.
+  results.deferredDataVisible =
+    document.getElementById('deferred')?.textContent === 'deferred-data-run-1'
+  results.deferredFallbackGone = !document.getElementById('deferred-fallback')
 
   // -- Phase 1: hydration itself --
   results.htmlAfterHydrate = root.innerHTML

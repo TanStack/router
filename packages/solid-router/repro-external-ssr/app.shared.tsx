@@ -1,7 +1,8 @@
 // Shared app definition for the external-SSR hydration repro.
 // Protocol-less external SSR: the app server-renders RouterProvider
 // directly (no RouterServer/RouterClient, no $_TSR), per the recipe:
-// memory history + `await router.load()` before render/hydrate.
+// memory history + renderToStream — the provider owns the load dispatch.
+import * as Solid from 'solid-js'
 import {
   Outlet,
   createMemoryHistory,
@@ -36,11 +37,34 @@ export function createAppRouter() {
     loader: async () => {
       loaderRuns.count++
       await new Promise((r) => setTimeout(r, 10))
-      return { message: `loader-data-run-${loaderRuns.count}` }
+      return {
+        message: `loader-data-run-${loaderRuns.count}`,
+        // Deferred value (TanStack streaming contract): the loader does NOT
+        // await this — it must transfer as a promise-valued registry field,
+        // stream its resolution, and be consumed by <Await> on the client
+        // without re-running.
+        slow: new Promise<string>((resolve) =>
+          setTimeout(() => resolve(`deferred-data-run-${loaderRuns.count}`), 30),
+        ),
+      }
     },
     component: () => {
       const data = indexRoute.useLoaderData()
-      return <main id="home">Home: {data().message}</main>
+      // Native deferred consumption — no <Await>: a memo returning the
+      // promise is an async node; reading it parks under the Loading
+      // boundary until the value lands (streamed on the server, adopted on
+      // the client).
+      const slow = Solid.createMemo(() => data().slow)
+      return (
+        <main id="home">
+          Home: {data().message}
+          <Solid.Loading
+            fallback={<span id="deferred-fallback">deferred pending</span>}
+          >
+            <span id="deferred">{slow()}</span>
+          </Solid.Loading>
+        </main>
+      )
     },
   })
 

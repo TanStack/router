@@ -36,9 +36,10 @@ await build({
 const { render } = await import(
   pathToFileURL(join(here, 'out/server/entry-server.js')).href
 )
-const { appHtml, hydrationScript } = await render()
+const { appHtml, hydrationScript, chunks } = await render()
 console.log('--- server HTML (first 400 chars):')
 console.log(appHtml.slice(0, 400))
+console.log(`--- stream chunks: ${chunks.length}`)
 
 // ---- 2. Client bundle (DOM compile, single-file IIFE) ----
 await build({
@@ -96,10 +97,13 @@ for (const key of [
   'MessageChannel',
   'MessagePort',
   'queueMicrotask',
-  // isRedirect probes `instanceof Response`; jsdom has no fetch globals.
+  // isRedirect probes `instanceof Response`, and Solid's hydration
+  // adoption trace (subFetch) swaps `window.fetch`; jsdom has no fetch
+  // globals.
   'Response',
   'Request',
   'Headers',
+  'fetch',
 ]) {
   if (dom.window[key] === undefined && globalThis[key] !== undefined) {
     dom.window[key] = globalThis[key]
@@ -136,6 +140,23 @@ if (results.loaderRunsAfterHydrate !== 0)
   )
 if (results.loaderDataVisible !== true)
   failures.push('server loader data not visible after hydration')
+if (results.deferredDataVisible !== true)
+  failures.push('deferred loaderData value not visible after hydration')
+if (results.deferredFallbackGone !== true)
+  failures.push('deferred fallback still in the DOM after hydration')
+// Real streaming, not a settled dump: the shell chunk flushes with the
+// deferred fallback (blocking loader done, deferred still in flight), and
+// the value arrives in a later chunk.
+if (chunks.length < 2)
+  failures.push(`expected multiple stream chunks, got ${chunks.length}`)
+if (!chunks[0]?.includes('deferred-fallback'))
+  failures.push('shell chunk did not contain the deferred fallback')
+if (chunks[0]?.includes('deferred-data-run-1'))
+  failures.push('deferred value leaked into the shell chunk (no streaming)')
+if (!chunks.slice(1).join('').includes('deferred-data-run-1'))
+  failures.push('deferred value never streamed in a later chunk')
+if (!chunks[0]?.includes('loader-data-run-1'))
+  failures.push('blocking loader data missing from the shell chunk')
 if (results.pendingVisibleDuringNav !== true)
   failures.push(
     'REGRESSION: pending UI did not appear on post-hydration navigation',
