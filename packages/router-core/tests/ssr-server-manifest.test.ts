@@ -104,10 +104,13 @@ function parseSerializedRouter(serialized: string): DehydratedRouter {
 }
 
 describe('attachRouterServerSsrUtils manifest dehydration', () => {
-  test('omits unmatched route assets by default', async () => {
+  test('dehydrates assets for all routes, not just the SSR matches', async () => {
     const manifest = await dehydrateManifest()
 
-    expect(manifest.routes['/posts']).toBeUndefined()
+    // Routes outside the SSR match set must be present so client-side
+    // navigations can look up and restore their assets (#8224).
+    expect(manifest.routes['/posts']?.css).toEqual(['/assets/shared.css'])
+    expect(manifest.routes['/posts']?.preloads).toEqual(['/assets/posts.js'])
     expect(manifest.routes['/']?.preloads).toEqual(['/assets/index.js'])
   })
 
@@ -315,9 +318,10 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     const dehydratedRouter = parseSerializedRouter(script!.children!)
     const dehydratedManifest = dehydratedRouter.manifest!
     const rootInlineCss = dehydratedManifest.inlineStyle
-    const allLinks = Object.values(dehydratedManifest.routes).flatMap(
-      (route) => route.css ?? [],
-    )
+    const matchedLinks = [
+      dehydratedManifest.routes.__root__,
+      dehydratedManifest.routes['/'],
+    ].flatMap((route) => route?.css ?? [])
 
     expect(rootInlineCss).toEqual({
       attrs: {
@@ -325,13 +329,19 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
       },
     })
     expect('inlineCss' in dehydratedManifest).toBe(false)
+    // Matched routes strip stylesheet links that were inlined into the page.
     expect(
-      allLinks.some((asset) =>
+      matchedLinks.some((asset) =>
         typeof asset === 'string'
           ? asset === '/assets/shared.css'
           : asset.href === '/assets/shared.css',
       ),
     ).toBe(false)
+    // Unmatched routes keep their stylesheet links so client-side
+    // navigations can re-declare them (#8224).
+    expect(dehydratedManifest.routes['/posts']?.css).toEqual([
+      '/assets/shared.css',
+    ])
     expect(dehydratedManifest.routes['/']?.preloads).toEqual([
       '/assets/index.js',
     ])
@@ -402,7 +412,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
     ])
   })
 
-  test('omits descendant assets past a terminal parent boundary', async () => {
+  test('dehydrates descendant assets past a terminal parent boundary', async () => {
     const rootRoute = new BaseRootRoute({})
     const parentRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -451,6 +461,14 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
       script!.children!,
     ).manifest!
 
-    expect(dehydratedManifest.routes[childRoute.id]).toBeUndefined()
+    // The child never rendered (its parent loader threw), but its assets
+    // are still dehydrated so a client-side navigation can restore
+    // them (#8224).
+    expect(dehydratedManifest.routes[childRoute.id]?.css).toEqual([
+      '/assets/child.css',
+    ])
+    expect(dehydratedManifest.routes[childRoute.id]?.preloads).toEqual([
+      '/assets/child.js',
+    ])
   })
 })
