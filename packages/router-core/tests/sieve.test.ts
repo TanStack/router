@@ -42,10 +42,13 @@ describe('Sieve Cache', () => {
     cache.set('b', 2)
     cache.set('c', 3)
     cache.get('a')
+    cache.get('a')
     cache.set('d', 4) // 'a' visited bit cleared, 'b' evicted, hand at 'c'
-    cache.set('e', 5) // hand resumes at 'c' (unvisited) -> 'c' evicted
-    expect(cache.get('c')).toBeUndefined()
-    expect(cache.get('a')).toBe(1)
+    cache.get('c')
+    cache.get('d')
+    cache.set('e', 5) // clears 'c' and 'd', wraps, then evicts unvisited 'a'
+    expect(cache.get('a')).toBeUndefined()
+    expect(cache.get('c')).toBe(3)
     expect(cache.get('d')).toBe(4)
     expect(cache.get('e')).toBe(5)
   })
@@ -82,10 +85,25 @@ describe('Sieve Cache', () => {
     expect(cache.get('g')).toBe(7)
   })
 
+  it('wraps after evicting newest instead of visiting its replacement', () => {
+    const cache = createSieveCache<string, number>(3)
+    cache.set('a', 1)
+    cache.set('b', 2)
+    cache.set('c', 3)
+    cache.get('a')
+    cache.get('b')
+    cache.set('d', 4) // clears 'a' and 'b', then evicts newest 'c'
+    cache.set('e', 5) // wraps and evicts oldest 'a', not replacement 'd'
+    expect(cache.get('a')).toBeUndefined()
+    expect(cache.get('b')).toBe(2)
+    expect(cache.get('c')).toBeUndefined()
+    expect(cache.get('d')).toBe(4)
+    expect(cache.get('e')).toBe(5)
+  })
+
   it('works with a capacity of one', () => {
     const cache = createSieveCache<string, number>(1)
     cache.set('a', 1)
-    expect(cache.get('a')).toBe(1)
     cache.set('b', 2)
     expect(cache.get('a')).toBeUndefined()
     expect(cache.get('b')).toBe(2)
@@ -99,45 +117,47 @@ describe('Sieve Cache', () => {
     cache.set('a', 1)
     cache.set('b', 2)
     cache.set('c', 3)
-    cache.set('a', 10)
-    expect(cache.get('a')).toBe(10)
-    expect(cache.get('b')).toBe(2)
+    cache.set('b', 20)
+    expect(cache.get('a')).toBe(1)
+    expect(cache.get('b')).toBe(20)
     expect(cache.get('c')).toBe(3)
   })
 
-  it('clears', () => {
+  it('clears entries and resets an active hand', () => {
     const cache = createSieveCache<string, number>(3)
     cache.set('a', 1)
     cache.set('b', 2)
-    cache.get('a')
+    cache.set('c', 3)
+    cache.set('d', 4)
     cache.clear()
     expect(cache.get('a')).toBeUndefined()
     expect(cache.get('b')).toBeUndefined()
+    expect(cache.get('c')).toBeUndefined()
+    expect(cache.get('d')).toBeUndefined()
     // the cache is usable again, and the hand starts over
-    cache.set('c', 3)
-    cache.set('d', 4)
     cache.set('e', 5)
     cache.set('f', 6)
-    expect(cache.get('c')).toBeUndefined()
-    expect(cache.get('d')).toBe(4)
+    cache.set('g', 7)
+    cache.set('h', 8)
+    expect(cache.get('e')).toBeUndefined()
     expect(cache.get('f')).toBe(6)
+    expect(cache.get('g')).toBe(7)
+    expect(cache.get('h')).toBe(8)
   })
 
-  it('never exceeds its capacity', () => {
+  it('keeps only its capacity during insertion churn', () => {
     const max = 8
     const cache = createSieveCache<number, number>(max)
-    const live = new Set<number>()
     for (let i = 0; i < 500; i++) {
-      const key = (i * 7) % 40
-      if (cache.get(key) === undefined) {
-        cache.set(key, key)
-      }
-      live.add(key)
-      let present = 0
-      for (const k of live) {
-        if (cache.get(k) !== undefined) present++
-      }
-      expect(present).toBeLessThanOrEqual(max)
+      cache.set(i, i)
     }
+
+    const present: Array<number> = []
+    for (let i = 0; i < 500; i++) {
+      if (cache.get(i) !== undefined) {
+        present.push(i)
+      }
+    }
+    expect(present).toEqual([492, 493, 494, 495, 496, 497, 498, 499])
   })
 })

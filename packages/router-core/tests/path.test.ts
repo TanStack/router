@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   compileDecodeCharMap,
   exactPathTest,
@@ -282,9 +282,13 @@ describe('resolvePath', () => {
 
   it('caches route-template paths without changing param syntax', () => {
     const cache = createSieveCache<string, string>(10)
+    const set = vi.spyOn(cache, 'set')
 
-    expect(resolvePath({ base: '/', to: '/{$id}', cache })).toBe('/{$id}')
-    expect(resolvePath({ base: '/', to: '/$id', cache })).toBe('/$id')
+    expect(resolvePath({ base: '/', to: '{$id}', cache })).toBe('/{$id}')
+    expect(resolvePath({ base: '/', to: '$id', cache })).toBe('/$id')
+    expect(resolvePath({ base: '/', to: '{$id}', cache })).toBe('/{$id}')
+    expect(resolvePath({ base: '/', to: '$id', cache })).toBe('/$id')
+    expect(set).toHaveBeenCalledTimes(2)
   })
 })
 
