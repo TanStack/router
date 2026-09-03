@@ -1,4 +1,3 @@
-import { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import * as Vue from 'vue'
 import { pipeToWebWritable, renderToString } from 'vue/server-renderer'
 import { isbot } from 'isbot'
@@ -15,8 +14,8 @@ const isAbortError = (request: Request, error: unknown) =>
   (error as any)?.code === 'ABORT_ERR'
 
 function prependDoctype(
-  readable: globalThis.ReadableStream,
-): NodeReadableStream<Uint8Array> {
+  readable: ReadableStream<Uint8Array>,
+): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder()
   let sentDoctype = false
   let reader: ReadableStreamDefaultReader<Uint8Array> | undefined
@@ -29,7 +28,7 @@ function prependDoctype(
     reader = undefined
   }
 
-  return new NodeReadableStream<Uint8Array>({
+  return new ReadableStream<Uint8Array>({
     start() {
       reader = readable.getReader()
     },
@@ -123,7 +122,7 @@ export const renderRouterToStream = async ({
     }
   }
 
-  const { writable, readable } = new TransformStream()
+  const { writable, readable } = new TransformStream<Uint8Array, Uint8Array>()
   const innerWriter = writable.getWriter()
   let writerDone = false
   const releaseWriter = () => {
@@ -159,7 +158,7 @@ export const renderRouterToStream = async ({
     throw err
   }
 
-  const vueWritable = new WritableStream({
+  const vueWritable = new WritableStream<Uint8Array>({
     write(chunk) {
       if (writerDone) {
         return
