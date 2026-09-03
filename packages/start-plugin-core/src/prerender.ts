@@ -86,6 +86,7 @@ export async function prerender({
     const seen = new Set<string>()
     const prerendered = new Set<string>()
     const retriesByPath = new Map<string, number>()
+    const errors: Array<unknown> = []
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
@@ -106,6 +107,16 @@ export async function prerender({
 
     await queue.start()
 
+    if (errors.length > 0) {
+      if (errors.length === 1) {
+        throw errors[0]
+      }
+      throw new AggregateError(
+        errors,
+        `Prerendering failed for ${errors.length} pages`,
+      )
+    }
+
     return Array.from(prerendered)
 
     function addCrawlPageTask(page: Page) {
@@ -113,7 +124,7 @@ export async function prerender({
 
       seen.add(page.path)
 
-      if (page.fromCrawl) {
+      if (page.fromCrawl && !startConfig.pages.includes(page)) {
         startConfig.pages.push(page)
       }
 
@@ -219,9 +230,10 @@ export async function prerender({
             )
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
             retriesByPath.set(page.path, retries + 1)
+            seen.delete(page.path)
             addCrawlPageTask(page)
           } else if (prerenderOptions.failOnError ?? true) {
-            throw error
+            errors.push(error)
           }
         }
       })
