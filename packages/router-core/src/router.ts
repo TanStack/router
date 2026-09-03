@@ -959,6 +959,11 @@ export function runRouteLifecycle(
   }
 }
 
+/** A location carrying the accumulated search `matchRoutes` resolved for it. */
+type LocationWithSearch = ParsedLocation & {
+  _search?: Record<string, unknown>
+}
+
 type LightweightRouteMatchResult = [
   matchedRoutes: ReadonlyArray<AnyRoute>,
   fullPath: string,
@@ -1566,14 +1571,14 @@ export class RouterCore<
         const parentStrictSearch = parentMatch?._strictSearch ?? undefined
 
         try {
-          const strictSearch =
-            validateSearch(route.options.validateSearch, { ...parentSearch }) ??
-            undefined
-
-          preMatchSearch = {
-            ...parentSearch,
-            ...strictSearch,
-          }
+          // The object handed to the validator becomes the match's search, so a
+          // branch allocates one object per depth instead of three.
+          preMatchSearch = { ...parentSearch }
+          const strictSearch = validateSearch(
+            route.options.validateSearch,
+            preMatchSearch,
+          ) as Record<string, any> | undefined
+          Object.assign(preMatchSearch, strictSearch)
           strictMatchSearch = { ...parentStrictSearch, ...strictSearch }
         } catch (err: any) {
           let searchParamError = err
@@ -1730,6 +1735,10 @@ export class RouterCore<
       }
     }
 
+    // Let `buildLocation` reuse this instead of re-running the branch's search
+    // validators to work out its `fromSearch`.
+    ;(next as LocationWithSearch)._search = matches[matches.length - 1]?.search
+
     return matches
   }
 
@@ -1780,16 +1789,22 @@ export class RouterCore<
     //   _includeValidateSearch: true,
     // })
 
-    // Accumulate search validation through route chain
-    const accumulatedSearch = { ...location.search }
-    for (const route of matchedRoutes) {
-      try {
-        Object.assign(
-          accumulatedSearch,
-          validateSearch(route.options.validateSearch, accumulatedSearch),
-        )
-      } catch {
-        // Ignore errors, we're not actually routing
+    // `matchRoutesInternal` stamps the accumulated, validated search onto every
+    // location it resolves, so the branch's validators only have to run here
+    // for a location that was never matched (a freshly built destination).
+    let accumulatedSearch = (location as LocationWithSearch)._search
+    if (!accumulatedSearch) {
+      // Accumulate search validation through route chain
+      accumulatedSearch = { ...location.search }
+      for (const route of matchedRoutes) {
+        try {
+          Object.assign(
+            accumulatedSearch,
+            validateSearch(route.options.validateSearch, accumulatedSearch),
+          )
+        } catch {
+          // Ignore errors, we're not actually routing
+        }
       }
     }
 
