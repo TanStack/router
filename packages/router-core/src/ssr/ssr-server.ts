@@ -505,8 +505,14 @@ export function attachRouterServerSsrUtils({
       const matches = matchesToDehydrate.map(dehydrateMatch)
 
       let manifestToDehydrate: Manifest | undefined = undefined
-      // Only currently matched routes are dehydrated. Other route assets are
-      // loaded through dynamic imports when those routes become active.
+      // All routes are dehydrated, not just the currently matched ones.
+      // HeadContent removes an outgoing route's stylesheet links on
+      // navigation and looks the incoming route's css up in this manifest.
+      // If the incoming route is missing here (e.g. it shares a chunk with
+      // an SSR'd route), nothing re-declares the stylesheet and Vite will
+      // not re-inject it (its module is already cached), so the page loses
+      // every CSS rule. Matched routes keep their stripped entries when
+      // inlineCss is enabled; unmatched routes dehydrate as-is.
       if (manifest) {
         const cacheKey = getMatchedRoutesCacheKey(matchesToDehydrate)
         const preparedManifest = getPreparedMatchedManifestRoutes(
@@ -522,7 +528,9 @@ export function attachRouterServerSsrUtils({
           ...(preparedManifest.inlineCssHrefs
             ? { inlineStyle: createInlineCssPlaceholderAsset() }
             : {}),
-          routes: preparedManifest.routes,
+          routes: preparedManifest.hasStrippedRoutes
+            ? { ...manifest.routes, ...preparedManifest.routes }
+            : manifest.routes,
         }
 
         // Merge request-scoped assets into root route (without mutating cached manifest)
