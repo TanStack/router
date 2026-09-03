@@ -20,6 +20,7 @@ import { useHydrated } from './ClientOnly'
 import type {
   ActiveOptions,
   AnyRouter,
+  BuildLocationCache,
   Constrain,
   LinkOptions,
   ParsedLocation,
@@ -513,6 +514,16 @@ export function useLinkProps<
     ],
   )
 
+  // A link whose destination never reads the current location (absolute `to`,
+  // params it supplies itself, a literal or absent `search`/`hash`/`state`)
+  // builds the same location forever, so `buildLocation` hands the previous one
+  // back and a navigation only costs the active state comparison below.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const buildCache = React.useMemo(
+    () => ({}) as BuildLocationCache,
+    [_options, router],
+  )
+
   // Derive inside the selector so `compareLinkState` can bail out. Deriving after
   // the subscription instead re-renders every link on every navigation, because
   // the comparator only sees the location, not whether this link's output moved.
@@ -521,6 +532,7 @@ export function useLinkProps<
     (location: ParsedLocation): LinkState => {
       const next = router.buildLocation({
         _fromLocation: location,
+        _buildCache: buildCache,
         ..._options,
       } as any)
 
@@ -554,7 +566,15 @@ export function useLinkProps<
         ),
       ]
     },
-    [stableActiveOptions, disabled, isHydrated, _options, router, to],
+    [
+      stableActiveOptions,
+      disabled,
+      isHydrated,
+      _options,
+      router,
+      to,
+      buildCache,
+    ],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks

@@ -576,6 +576,30 @@ export interface BuildNextOptions {
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
   _isNavigate?: boolean
+  /** @internal */
+  _buildCache?: BuildLocationCache
+}
+
+/**
+ * Caller-owned memo slot for `buildLocation`.
+ *
+ * A build that never reads the *current* location (absolute `to`, params it
+ * supplies itself, a literal or absent `search`/`hash`/`state`, no mask) always
+ * produces the same location, so `r` can be handed back until the router
+ * options or the route tree change. Anything that does read the current
+ * location clears `r` and pays the normal build every time.
+ *
+ * The cached `ParsedLocation` is shared, so callers must treat it as immutable.
+ *
+ * @internal
+ */
+export interface BuildLocationCache {
+  /** `router.options` identity `r` was built against. */
+  o?: unknown
+  /** Route tree identity `r` was built against (HMR replaces it). */
+  t?: unknown
+  /** The memoized result, absent when the build read the current location. */
+  r?: ParsedLocation
 }
 
 type NavigationEventInfo = {
@@ -1836,6 +1860,17 @@ export class RouterCore<
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
   buildLocation: BuildLocationFn = (opts) => {
+    const cache = (opts as BuildNextOptions)._buildCache
+    if (
+      cache?.r &&
+      cache.o === this.options &&
+      cache.t === this.processedTree
+    ) {
+      return cache.r
+    }
+    // A masked build resolves its own current location, so treat it as a read.
+    let readsLocation: unknown = opts.mask || this.options.routeMasks?.length
+
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
@@ -1899,10 +1934,12 @@ export class RouterCore<
       // Same with params. It can't hurt to provide as many as possible
       const fromParams = lightweightResult[3 /* params */]
 
-      const nextTo = this.resolvePathWithBase(
-        defaultedFromPath,
-        dest.to ? `${dest.to}` : '.',
-      )
+      // `resolvePath` returns an absolute `to` untouched; only a relative one
+      // reads the current location's path.
+      const to = dest.to ? `${dest.to}` : '.'
+      readsLocation ||= to.charCodeAt(0) !== 47 /* '/' */
+
+      const nextTo = this.resolvePathWithBase(defaultedFromPath, to)
 
       // Resolve the next params
       let nextParams = resolveNextParams(dest.params, fromParams)
@@ -1937,6 +1974,9 @@ export class RouterCore<
           const fn =
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
+            // `stringify` sees inherited params too, so the result can move
+            // with the current location.
+            readsLocation = true
             if (nextParams === fromParams) {
               nextParams = Object.assign(Object.create(null), nextParams)
             }
@@ -1953,17 +1993,32 @@ export class RouterCore<
         }
       }
 
-      const nextPathname = opts.leaveParams
-        ? // Keep path params uninterpolated for matchRoute/template matching.
-          nextTo
-        : decodePath(
-            interpolatePath({
-              path: nextTo,
-              params: nextParams,
-              decoder: this.pathParamsDecoder,
-              server: this.isServer,
-            }).interpolatedPath,
-          ).path
+      let nextPathname: string
+      if (opts.leaveParams) {
+        // Keep path params uninterpolated for matchRoute/template matching.
+        nextPathname = nextTo
+      } else {
+        const interpolated = interpolatePath({
+          path: nextTo,
+          params: nextParams,
+          decoder: this.pathParamsDecoder,
+          server: this.isServer,
+        })
+        nextPathname = decodePath(interpolated.interpolatedPath).path
+
+        // `usedParams` holds exactly the values that reached the pathname. Only
+        // a plain object supplying every one of them keeps the pathname
+        // location-independent; anything else inherits from the current params.
+        const spec = dest.params
+        const inherits = spec === null || typeof spec !== 'object'
+        for (const key in interpolated.usedParams) {
+          // `*` is only ever an alias of `_splat`, which is checked too.
+          if (inherits || (key !== '*' && !(key in spec))) {
+            readsLocation = true
+            break
+          }
+        }
+      }
 
       if (
         process.env.NODE_ENV !== 'production' &&
@@ -2005,6 +2060,13 @@ export class RouterCore<
         nextSearch = validatedSearch
       }
 
+      // A literal `search` object replaces the current search wholesale, so only
+      // `true`, an updater, a route middleware or validation reads what came in.
+      readsLocation ||=
+        readsCurrent(dest.search) ||
+        opts._includeValidateSearch ||
+        destRoutes.some(routeReadsSearch)
+
       nextSearch = applySearchMiddleware(
         nextSearch,
         dest,
@@ -2017,6 +2079,10 @@ export class RouterCore<
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
+
+      // Literal `hash`/`state` values are used as-is; `true` and updaters read
+      // the current ones.
+      readsLocation ||= readsCurrent(dest.hash) || readsCurrent(dest.state)
 
       // Resolve the next hash
       const hash =
@@ -2112,6 +2178,12 @@ export class RouterCore<
           params: nextParams,
         })
       }
+    }
+
+    if (cache) {
+      cache.o = this.options
+      cache.t = this.processedTree
+      cache.r = readsLocation ? undefined : next
     }
 
     return next
@@ -2833,6 +2905,20 @@ function applySearchMiddleware(
   }
 
   return applyNext(0, search)
+}
+
+/** `true` and updater functions read the current value; literals do not. */
+function readsCurrent(spec: unknown) {
+  return spec === true || typeof spec === 'function'
+}
+
+/**
+ * Conservative mirror of the middleware collection in `applySearchMiddleware`:
+ * a route that declares any of these can read the incoming search.
+ */
+function routeReadsSearch(route: AnyRoute) {
+  const o = route.options
+  return !!(o.search?.middlewares || o.preSearchFilters || o.postSearchFilters)
 }
 
 function findGlobalNotFoundRouteId(
