@@ -4966,6 +4966,121 @@ describe('Link', () => {
     },
   )
 
+  test.each([false, 'viewport', 'render'] as const)(
+    'Router.preload="%s", Link should not install intent-preload listeners',
+    async (preload) => {
+      const addEventListener = vi.spyOn(
+        HTMLAnchorElement.prototype,
+        'addEventListener',
+      )
+
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <>
+            <h1>Index Heading</h1>
+            <Link to="/">Index Link</Link>
+          </>
+        ),
+      })
+
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        defaultPreload: preload,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+      expect(indexLink).toBeInTheDocument()
+
+      // mouseenter/mouseleave/focus/blur are not delegated by Solid, so every
+      // one of them is a real listener on the anchor.
+      const types = addEventListener.mock.calls.map(([type]) => type)
+      expect(types).not.toContain('mouseenter')
+      expect(types).not.toContain('mouseleave')
+      expect(types).not.toContain('focus')
+      expect(types).not.toContain('blur')
+
+      addEventListener.mockRestore()
+    },
+  )
+
+  test('Router.preload="intent", Link installs the intent-preload listeners', async () => {
+    const addEventListener = vi.spyOn(
+      HTMLAnchorElement.prototype,
+      'addEventListener',
+    )
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link to="/">Index Link</Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'intent',
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    expect(indexLink).toBeInTheDocument()
+
+    const types = addEventListener.mock.calls.map(([type]) => type)
+    expect(types).toContain('mouseenter')
+    expect(types).toContain('mouseleave')
+
+    addEventListener.mockRestore()
+  })
+
+  test("Link.preload={false} still calls the user's own hover handlers", async () => {
+    const onMouseEnter = vi.fn()
+    const onFocus = vi.fn()
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <h1>Index Heading</h1>
+          <Link
+            to="/"
+            preload={false}
+            onMouseEnter={onMouseEnter}
+            onFocus={onFocus}
+          >
+            Index Link
+          </Link>
+        </>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      defaultPreload: 'intent',
+    })
+
+    render(() => <RouterProvider router={router} />)
+
+    const indexLink = await screen.findByRole('link', { name: 'Index Link' })
+    fireEvent.mouseEnter(indexLink)
+    fireEvent.focus(indexLink)
+
+    await waitFor(() => expect(onMouseEnter).toHaveBeenCalledTimes(1))
+    expect(onFocus).toHaveBeenCalledTimes(1)
+  })
+
   test('Router.preload="viewport", should trigger the IntersectionObserver\'s observe and disconnect methods', async () => {
     const rootRoute = createRootRoute()
     const RouteComponent = () => {

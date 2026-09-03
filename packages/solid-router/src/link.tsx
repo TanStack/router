@@ -522,13 +522,31 @@ export function useLinkProps<
 
   linkProps.ref = composedRef
   linkProps.onClick = onClick
-  linkProps.onBlur = onBlur
-  linkProps.onFocus = onFocus
-  linkProps.onMouseEnter = onMouseEnter
-  linkProps.onMouseOver = onMouseOver
-  linkProps.onMouseLeave = onMouseLeave
-  linkProps.onMouseOut = onMouseOut
-  linkProps.onTouchStart = onTouchStart
+
+  // Intent preloading is the only thing these handlers do, and each of them
+  // already bails at a `preload() !== 'intent'` gate. Handing them out anyway
+  // is not free: Solid does not delegate mouseenter/mouseleave/focus/blur, so
+  // every anchor installs four real listeners that exist only to return. On a
+  // list view — a table of rows, a calendar of spans — that is four listeners
+  // per row for no behaviour at all.
+  //
+  // So when intent preloading is off, the property resolves to whatever the
+  // user passed (or undefined), and spread()/assign() installs nothing. The
+  // getters keep this reactive: flipping `preload` back to 'intent' re-runs
+  // the consuming spread, which attaches the composed handler then.
+  const onIntent =
+    (composed: (event: any) => void, user: () => unknown) => () =>
+      preload() === 'intent' ? composed : user()
+
+  defineGetters({
+    onBlur: onIntent(onBlur, () => local.onBlur),
+    onFocus: onIntent(onFocus, () => local.onFocus),
+    onMouseEnter: onIntent(onMouseEnter, () => local.onMouseEnter),
+    onMouseOver: onIntent(onMouseOver, () => local.onMouseOver),
+    onMouseLeave: onIntent(onMouseLeave, () => local.onMouseLeave),
+    onMouseOut: onIntent(onMouseOut, () => local.onMouseOut),
+    onTouchStart: onIntent(onTouchStart, () => local.onTouchStart),
+  })
 
   defineGetters({
     href: () => hrefOption()?.href,
