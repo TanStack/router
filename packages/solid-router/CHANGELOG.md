@@ -1,5 +1,15 @@
 # @tanstack/solid-router
 
+## 2.0.0-rc.5
+
+### Patch Changes
+
+- [#8192](https://github.com/TanStack/router/pull/8192) [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b) - Bump solid-js, @solidjs/web, and @solidjs/signals to ^2.0.0-rc.6 across the monorepo. rc.6 provides the named flight-data source API (registerFlightDataSource / two-argument subscribeFlightData) that the Start single-flight integration now requires; @tanstack/solid-start's peer floor moves to rc.6 accordingly.
+
+- [#8192](https://github.com/TanStack/router/pull/8192) [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b) - New `loadFlightTarget` helper (exported from `@tanstack/solid-router/ssr/server`): the router's half of a single-flight refresh. Given the mutation request's target href, it builds a router for that location, loads it, and returns the dehydrated payload for the `tsr` flight-data slice, so server collectors can refresh router state alongside other caches on the same mutation response.
+
+- [#8213](https://github.com/TanStack/router/pull/8213) [`b445b89`](https://github.com/TanStack/router/commit/b445b892819f70e4e2650a4df7ce18e718a0ddcb) - Native SSR state transfer for Solid: router match state (loaderData, beforeLoad context, status, errors) now rides Solid's hydration registry under `tsr:` keys instead of a bespoke bootstrap script, deferred `loaderData` promises stream natively via seroval, the client primes router state from the registry in the Router constructor (before any render context, eliminating boot-time refetches and `bootLoad`-style workarounds), and `RouterProvider` owns the server-side `router.load()` dispatch so server entries no longer await it manually.
+
 ## 2.0.0-rc.4
 
 ### Patch Changes
