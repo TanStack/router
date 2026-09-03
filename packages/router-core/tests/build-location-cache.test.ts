@@ -112,6 +112,63 @@ describe('buildLocation memo (_buildCache)', () => {
     expect(second.location.href).toBe('/items/9?tab=specs#section-9')
   })
 
+  // A plain `params` object does not have to be complete: `resolveNextParams`
+  // merges it over the current location's params, so anything it leaves out is
+  // inherited. Skipping the `usedParams` check and treating every plain object
+  // as self-sufficient would memoize these links and freeze their href.
+  test('a plain `params` object that omits a needed param still follows the current location', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const postRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts/$postId',
+    })
+    const editRoute = new BaseRoute({
+      getParentRoute: () => postRoute,
+      path: '/edit',
+    })
+    const tabRoute = new BaseRoute({
+      getParentRoute: () => postRoute,
+      path: '/tab/$tab',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        postRoute.addChildren([editRoute, tabRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/posts/1'] }),
+    })
+    await router.load()
+
+    const empty: BuildLocationCache = {}
+    const partial: BuildLocationCache = {}
+    const emptyOpts = { to: '/posts/$postId/edit', params: {} }
+    const partialOpts = {
+      to: '/posts/$postId/tab/$tab',
+      params: { tab: 'stats' },
+    }
+
+    expect(buildBoth(router, empty, emptyOpts).location.href).toBe(
+      '/posts/1/edit',
+    )
+    expect(buildBoth(router, partial, partialOpts).location.href).toBe(
+      '/posts/1/tab/stats',
+    )
+
+    await router.navigate({ to: '/posts/$postId', params: { postId: '2' } })
+
+    const emptyAfter = buildBoth(router, empty, emptyOpts)
+    expect(emptyAfter.hit).toBe(false)
+    expect(emptyAfter.location.href).toBe('/posts/2/edit')
+
+    const partialAfter = buildBoth(router, partial, partialOpts)
+    expect(partialAfter.hit).toBe(false)
+    expect(partialAfter.location.href).toBe('/posts/2/tab/stats')
+  })
+
   test('inherited params (`params` omitted) follow the current location', async () => {
     const router = makeRouter('/items/1')
     await router.load()
