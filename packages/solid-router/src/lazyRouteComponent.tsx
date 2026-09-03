@@ -1,5 +1,5 @@
 import { Dynamic } from 'solid-js/web'
-import { createResource } from 'solid-js'
+import { lazy } from 'solid-js'
 import { isModuleNotFoundError } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import type { AsyncRouteComponent } from './route'
@@ -25,7 +25,7 @@ export function lazyRouteComponent<
           // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
             loadPromise = undefined
-            ;(lazyComp as any).preload = undefined
+            ;(Lazy as any).preload = undefined
           }
           comp = res[exportName ?? 'default']
           return comp
@@ -38,7 +38,7 @@ export function lazyRouteComponent<
 
     return loadPromise
   }
-  const lazyComp = function Lazy(props: any) {
+  function Lazy(props: any) {
     // Now that we're out of preload and into actual render path,
     // throw the error if it was a module not found error during preload
     if (error) {
@@ -67,10 +67,8 @@ export function lazyRouteComponent<
             sessionStorage.setItem(storageKey, '1')
             window.location.reload()
 
-            // Return empty component while we wait for window to reload
-            return {
-              default: () => null,
-            }
+            // Return no content while we wait for window to reload.
+            return null
           }
         }
       }
@@ -80,17 +78,18 @@ export function lazyRouteComponent<
     }
 
     if (!comp) {
-      const [compResource] = createResource(load, {
-        initialValue: comp,
-        ssrLoadFrom: 'initial',
-      })
-      return <Dynamic component={compResource()} {...props} />
+      return <Loadable {...props} />
     }
 
     return <Dynamic component={comp} {...props} />
   }
 
-  ;(lazyComp as any).preload = load
+  const Loadable = lazy(async () => {
+    await load()
+    return { default: Lazy }
+  })
 
-  return lazyComp as any
+  ;(Lazy as any).preload = load
+
+  return Lazy as any
 }

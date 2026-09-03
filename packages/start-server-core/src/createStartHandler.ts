@@ -16,14 +16,14 @@ import {
 import {
   attachRouterServerSsrUtils,
   bindSsrResponseToRequest,
-  disposeSsrResponseDetached,
+  disposeSsrResponse,
   getNormalizedURL,
   getOrigin,
   isSsrResponse,
   normalizeSsrResponse,
   replaceSsrResponse,
   stripSsrResponseBody,
-  waitForRequest,
+  waitForReason,
 } from '@tanstack/router-core/ssr/server'
 import {
   getStartContext,
@@ -196,31 +196,105 @@ function throwIfMayNotDefer(): never {
 }
 
 /**
- * Check if a value is a special response (Response or Redirect)
- */
-function isSpecialResponse(value: unknown): value is Response {
-  return value instanceof Response || isRedirect(value)
-}
-
-/**
  * Normalize middleware result to context shape
  */
 function handleCtxResult(result: TODO) {
-  if (isSsrResponse(result) || isSpecialResponse(result)) {
+  if (isSsrResponse(result) || result instanceof Response) {
     return { response: result }
   }
   return result
 }
 
+type StreamSsrResponse = Extract<SsrResponse, { serverSsrCleanup: 'stream' }>
+
+type ResponseBody = NonNullable<Response['body']>
+type ResponseWithBody = Response & { readonly body: ResponseBody }
+
+interface MiddlewareResponseOwnership {
+  response: ResponseWithBody
+  sourceBody: ResponseBody
+  streamResponse?: StreamSsrResponse
+}
+
+const responseBodySources = new WeakMap<Response, Response>()
+
 function disposeLateResponse(result: TODO, signal: AbortSignal): void {
   const response = handleCtxResult(result)?.response
-  if (isSsrResponse(response) || isSpecialResponse(response)) {
-    disposeSsrResponseDetached(response, signal.reason)
+  if (isSsrResponse(response)) {
+    responseBodySources.delete(response.response)
+    disposeSsrResponse(response, signal.reason)
+  } else if (response instanceof Response) {
+    responseBodySources.delete(response)
+    disposeSsrResponse(response, signal.reason)
   }
 }
 
-function isSignalAborted(signal: AbortSignal): boolean {
-  return signal.aborted
+/**
+ * Marks `response` as directly derived from the current `source`.
+ * Middleware must consume or cancel any other `clone()` or `tee()` branches.
+ */
+export function transferResponseBodyOwnership<TResponse extends Response>(
+  source: Response,
+  response: TResponse,
+): TResponse {
+  if (!source.body || !response.body) {
+    throw new Error('Response body ownership requires two response bodies')
+  }
+  responseBodySources.set(response, source)
+  return response
+}
+
+function hasResponseBody(value: unknown): value is ResponseWithBody {
+  return value instanceof Response && value.body !== null
+}
+
+function inheritsResponseOwnership(
+  ownership: MiddlewareResponseOwnership,
+  candidate: unknown,
+): candidate is ResponseWithBody {
+  return (
+    candidate === ownership.response ||
+    (hasResponseBody(candidate) &&
+      (candidate.body === ownership.response.body ||
+        responseBodySources.get(candidate) === ownership.response))
+  )
+}
+
+function disposeResponseOwnership(
+  ownership: MiddlewareResponseOwnership,
+  reason: unknown,
+): void {
+  const { response, sourceBody, streamResponse } = ownership
+  streamResponse?.dispose(reason)
+  if (!streamResponse || response.body !== sourceBody) {
+    void response.body.cancel(reason).catch(() => {})
+  }
+}
+
+function getOwnedResponse(
+  ownership: MiddlewareResponseOwnership,
+): HandlerCallbackResult {
+  const { response, sourceBody, streamResponse } = ownership
+  if (!streamResponse) {
+    return response
+  }
+  if (streamResponse.response === response && response.body === sourceBody) {
+    return streamResponse
+  }
+  if (response.body === sourceBody) {
+    return { ...streamResponse, response }
+  }
+  return {
+    ...streamResponse,
+    response,
+    dispose(reason): undefined {
+      disposeResponseOwnership(ownership, reason)
+    },
+  }
+}
+
+function createLateResponseDisposer(signal: AbortSignal) {
+  return (result: TODO) => disposeLateResponse(result, signal)
 }
 
 /**
@@ -230,92 +304,55 @@ async function executeMiddleware(
   middlewares: Array<TODO>,
   ctx: TODO,
   signal: AbortSignal,
-): Promise<{ ctx: TODO; response: HandlerCallbackResult }> {
+): Promise<HandlerCallbackResult> {
   let index = -1
-  let streamResponse:
-    | Extract<SsrResponse, { serverSsrCleanup: 'stream' }>
-    | undefined
-  let retiredStreamIdentities: WeakSet<object> | undefined
-
-  const isResponseAlias = (candidate: unknown, response: Response) =>
-    candidate === response ||
-    (candidate instanceof Response &&
-      response.body !== null &&
-      candidate.body === response.body)
+  let responseOwnership: MiddlewareResponseOwnership | undefined
+  const disposeAbandonedResult = createLateResponseDisposer(signal)
 
   const setResponse = (response: TODO) => {
-    if (isSsrResponse(response)) {
-      if (response.serverSsrCleanup === 'stream') {
-        streamResponse = response
+    const streamResponse =
+      isSsrResponse(response) && response.serverSsrCleanup === 'stream'
+        ? response
+        : undefined
+    const exposed = isSsrResponse(response) ? response.response : response
+    const current = responseOwnership
+
+    if (current && inheritsResponseOwnership(current, exposed)) {
+      responseBodySources.delete(exposed)
+      current.response = exposed
+      current.streamResponse ??= streamResponse
+    } else {
+      if (current) {
+        disposeResponseOwnership(current, 'middleware response replaced')
       }
-      ctx.response = response.response
-      return
+      if (hasResponseBody(exposed)) {
+        responseOwnership = {
+          response: exposed,
+          sourceBody: exposed.body,
+          streamResponse,
+        }
+      } else {
+        responseOwnership = undefined
+      }
     }
-
-    ctx.response = response
+    ctx.response = exposed
   }
 
-  const disposeStreamResponse = async (reason: unknown) => {
-    const response = streamResponse
-    if (!response) {
-      return
+  const reconcileCtxResponse = () => {
+    if (ctx.response !== responseOwnership?.response) {
+      setResponse(ctx.response)
     }
-
-    streamResponse = undefined
-    retiredStreamIdentities ??= new WeakSet()
-    retiredStreamIdentities.add(response.response)
-    if (response.response.body) {
-      retiredStreamIdentities.add(response.response.body)
-    }
-    const currentResponse = ctx.response
-    if (isResponseAlias(currentResponse, response.response)) {
-      ctx.response = undefined
-    }
-    await response.dispose(reason)
   }
 
-  const disposeAbandonedResult = (result: TODO) => {
-    const exposed = handleCtxResult(result)?.response
-    const response = isSsrResponse(exposed) ? exposed.response : exposed
-    if (streamResponse && isResponseAlias(response, streamResponse.response)) {
-      void disposeStreamResponse(signal.reason).catch(console.error)
-      return
-    }
-    if (
-      response instanceof Response &&
-      retiredStreamIdentities &&
-      (retiredStreamIdentities.has(response) ||
-        (response.body !== null && retiredStreamIdentities.has(response.body)))
-    ) {
-      return
-    }
-
-    disposeLateResponse(result, signal)
-  }
-
-  const getFinalResponse = async (): Promise<HandlerCallbackResult> => {
+  const getFinalResponse = (): HandlerCallbackResult => {
     const response = ctx.response
     if (!response) {
       throwRouteHandlerError()
     }
 
-    if (!streamResponse) {
-      return response
-    }
+    reconcileCtxResponse()
 
-    if (response === streamResponse.response) {
-      return streamResponse
-    }
-
-    if (
-      streamResponse.response.body !== null &&
-      response.body === streamResponse.response.body
-    ) {
-      return { ...streamResponse, response }
-    }
-
-    await disposeStreamResponse('middleware response replaced')
-    return response
+    return responseOwnership ? getOwnedResponse(responseOwnership) : response
   }
 
   let nextPromise: Promise<TODO> | undefined
@@ -327,9 +364,7 @@ async function executeMiddleware(
   }
 
   async function runNext(nextCtx?: TODO): Promise<TODO> {
-    if (signal.aborted) {
-      throw signal.reason
-    }
+    signal.throwIfAborted()
 
     // Merge context if provided using safeObjectMerge for prototype pollution prevention
     if (nextCtx) {
@@ -357,18 +392,26 @@ async function executeMiddleware(
       if (pending === nextPromise) {
         nextPromise = undefined
         result = await pending
-        if (isSignalAborted(signal)) {
-          disposeAbandonedResult(result)
+        if (signal.aborted) {
           throw signal.reason
         }
       } else {
-        result = await waitForRequest(pending, signal, disposeAbandonedResult)
+        result = await waitForReason(
+          pending,
+          signal,
+          disposeAbandonedResult,
+          disposeAbandonedResult,
+        )
       }
     } catch (err) {
-      if (isSignalAborted(signal)) {
+      reconcileCtxResponse()
+      if (signal.aborted) {
+        if (err !== signal.reason) {
+          disposeAbandonedResult(err)
+        }
         throw signal.reason
       }
-      if (isSpecialResponse(err)) {
+      if (err instanceof Response) {
         setResponse(err)
         return ctx
       }
@@ -376,6 +419,7 @@ async function executeMiddleware(
     }
 
     const normalized = handleCtxResult(result)
+    reconcileCtxResponse()
     if (normalized) {
       if (normalized.response !== undefined) {
         setResponse(normalized.response)
@@ -390,22 +434,17 @@ async function executeMiddleware(
 
   try {
     await runNext()
-    const response = await waitForRequest(
-      getFinalResponse(),
-      signal,
-      disposeAbandonedResult,
-    )
+    const response = getFinalResponse()
     if (signal.aborted) {
-      disposeAbandonedResult(response)
       throw signal.reason
     }
-    return { ctx, response }
+    return response
   } catch (err) {
-    const disposal = disposeStreamResponse(signal.aborted ? signal.reason : err)
-    if (signal.aborted) {
-      void disposal.catch(console.error)
-    } else {
-      await disposal
+    if (responseOwnership) {
+      disposeResponseOwnership(
+        responseOwnership,
+        signal.aborted ? signal.reason : err,
+      )
     }
     throw err
   }
@@ -416,7 +455,7 @@ async function executeMiddleware(
  */
 function handlerToMiddleware(
   handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any, any>,
-  mayDefer: boolean = false,
+  mayDefer: boolean,
 ): TODO {
   if (mayDefer) {
     return handler
@@ -486,11 +525,13 @@ export function createStartHandler<TRegister = Register>(
     request,
     requestOpts,
   ) => {
-    let router: AnyRouter | null = null as AnyRouter | null
-    let responseOwnsCleanup = false as boolean
+    const signal = request.signal
+    let router: AnyRouter | undefined
+    let routerPromise: Promise<AnyRouter> | undefined
+    let responseOwnsCleanup = false
 
     try {
-      request.signal.throwIfAborted()
+      signal.throwIfAborted()
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
       // during normalization paths like '//posts' are flattened to '/posts'.
       // in these cases we would prefer to redirect to the new path
@@ -502,12 +543,12 @@ export function createStartHandler<TRegister = Register>(
         return Response.redirect(url, 308)
       }
 
-      const entries = await waitForRequest(getEntries(), request.signal)
+      const entries = await waitForReason(getEntries(), signal)
       const hasStartInstance = !!entries.startEntry.startInstance
       const startOptions: AnyStartInstanceOptions =
-        (await waitForRequest(
+        (await waitForReason(
           entries.startEntry.startInstance?.getOptions(),
-          request.signal,
+          signal,
         )) || ({} as AnyStartInstanceOptions)
 
       const { hasPluginAdapters, pluginSerializationAdapters } =
@@ -538,39 +579,43 @@ export function createStartHandler<TRegister = Register>(
       )
 
       // Memoized router getter
-      const getRouter = async (): Promise<AnyRouter> => {
-        if (router) return router
+      const getRouter = (): Promise<AnyRouter> => {
+        routerPromise ??= (async () => {
+          signal.throwIfAborted()
+          const requestRouter = await waitForReason(
+            entries.routerEntry.getRouter(),
+            signal,
+          )
 
-        router = await waitForRequest(
-          entries.routerEntry.getRouter(),
-          request.signal,
-        )
+          let isShell = IS_SHELL_ENV
+          if (IS_PRERENDERING && !isShell) {
+            isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
+          }
 
-        let isShell = IS_SHELL_ENV
-        if (IS_PRERENDERING && !isShell) {
-          isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
-        }
+          const history = createMemoryHistory({
+            initialEntries: [href],
+          })
 
-        const history = createMemoryHistory({
-          initialEntries: [href],
-        })
+          requestRouter.update({
+            history,
+            isShell,
+            isPrerendering: IS_PRERENDERING,
+            origin: requestRouter.options.origin ?? origin,
+            ...{
+              defaultSsr: requestStartOptions.defaultSsr,
+              serializationAdapters: [
+                ...requestStartOptions.serializationAdapters,
+                ...(requestRouter.options.serializationAdapters || []),
+              ],
+            },
+            basepath: ROUTER_BASEPATH,
+          })
 
-        router.update({
-          history,
-          isShell,
-          isPrerendering: IS_PRERENDERING,
-          origin: router.options.origin ?? origin,
-          ...{
-            defaultSsr: requestStartOptions.defaultSsr,
-            serializationAdapters: [
-              ...requestStartOptions.serializationAdapters,
-              ...(router.options.serializationAdapters || []),
-            ],
-          },
-          basepath: ROUTER_BASEPATH,
-        })
+          router = requestRouter
+          return requestRouter
+        })()
 
-        return router
+        return routerPromise
       }
 
       // Check for server function requests first (early exit)
@@ -613,7 +658,7 @@ export function createStartHandler<TRegister = Register>(
         const middlewares = flattenedRequestMiddlewares.map(
           (d) => d.options.server,
         )
-        const { response: middlewareResponse } = await executeMiddleware(
+        const middlewareResponse = await executeMiddleware(
           [...middlewares, serverFnHandler],
           {
             request,
@@ -621,17 +666,15 @@ export function createStartHandler<TRegister = Register>(
             handlerType: 'serverFn',
             context: createNullProtoObject(requestOpts?.context),
           },
-          request.signal,
+          signal,
         )
 
-        const result = await handleRedirectResponse(
-          middlewareResponse,
+        const result = finalizeResponseForRequest(
+          await handleRedirectResponse(middlewareResponse, request, getRouter),
           request,
-          getRouter,
-          request.signal,
         )
-        bindSsrResponseToRequest(router ?? undefined, result, request.signal)
-        request.signal.throwIfAborted()
+        bindSsrResponseToRequest(router, result, signal)
+        signal.throwIfAborted()
         responseOwnsCleanup = result.serverSsrCleanup === 'stream'
         return result.response
       }
@@ -658,13 +701,13 @@ export function createStartHandler<TRegister = Register>(
           )
         }
 
-        const manifest = await waitForRequest(
+        const manifest = await waitForReason(
           resolveManifestForRequest({
             request,
             requestInlineCss: requestOpts?.inlineCss,
             getBaseManifest: () => getBaseManifest(matchedRoutes),
           }),
-          request.signal,
+          signal,
         )
 
         const earlyHints = createEarlyHintsForRequest({
@@ -686,8 +729,8 @@ export function createStartHandler<TRegister = Register>(
         // `additionalContext` is request-scoped and only read from router.options
         // during load; avoid a full router.update() and redundant location parse.
         routerInstance.options.additionalContext = { serverContext }
-        await routerInstance.load({ _signal: request.signal })
-        request.signal.throwIfAborted()
+        await routerInstance.load({ _signal: signal })
+        signal.throwIfAborted()
 
         if (routerInstance._serverResult?.type === 'redirect') {
           return normalizeSsrResponse(routerInstance._serverResult.redirect)
@@ -699,33 +742,33 @@ export function createStartHandler<TRegister = Register>(
 
         // Pass request-scoped assets to dehydrate for manifest injection
         const ctx = getStartContext({ throwIfNotFound: false })
-        await waitForRequest(
-          routerInstance.serverSsr!.dehydrate({
-            requestAssets: ctx?.requestAssets,
-          }),
-          request.signal,
-        )
-        request.signal.throwIfAborted()
+        await routerInstance.serverSsr!.dehydrate({
+          requestAssets: ctx?.requestAssets,
+          signal,
+        })
+        signal.throwIfAborted()
 
         const responseHeaders = getStartResponseHeaders({
           router: routerInstance,
         })
         earlyHints?.appendResponseHeaders(responseHeaders)
-        request.signal.throwIfAborted()
-        const response = await waitForRequest(
+        signal.throwIfAborted()
+        const disposeLate = createLateResponseDisposer(signal)
+        const response = await waitForReason(
           cb({
             request,
             router: routerInstance,
             responseHeaders,
           }),
-          request.signal,
-          (late) => disposeLateResponse(late, request.signal),
+          signal,
+          disposeLate,
+          disposeLate,
         )
         return normalizeSsrResponse(response)
       }
 
       // Main request handler
-      const requestHandlerMiddleware = async ({ context }: TODO) => {
+      const requestHandlerMiddleware = ({ context }: TODO) => {
         return runWithStartContext(
           {
             getRouter,
@@ -735,30 +778,22 @@ export function createStartHandler<TRegister = Register>(
             executedRequestMiddlewares,
             handlerType: 'router',
           },
-          async () => {
-            try {
-              return await handleServerRoutes({
-                getRouter,
-                request,
-                url,
-                executeRouter,
-                context,
-                executedRequestMiddlewares,
-              })
-            } catch (err) {
-              if (err instanceof Response) {
-                return err
-              }
-              throw err
-            }
-          },
+          () =>
+            handleServerRoutes({
+              getRouter,
+              request,
+              url,
+              executeRouter,
+              context,
+              executedRequestMiddlewares,
+            }),
         )
       }
 
       const middlewares = flattenedRequestMiddlewares.map(
         (d) => d.options.server,
       )
-      const { response: middlewareResponse } = await executeMiddleware(
+      const middlewareResponse = await executeMiddleware(
         [...middlewares, requestHandlerMiddleware],
         {
           request,
@@ -766,17 +801,15 @@ export function createStartHandler<TRegister = Register>(
           handlerType: 'router',
           context: createNullProtoObject(requestOpts?.context),
         },
-        request.signal,
+        signal,
       )
 
-      const response = await handleRedirectResponse(
-        middlewareResponse,
+      const response = finalizeResponseForRequest(
+        await handleRedirectResponse(middlewareResponse, request, getRouter),
         request,
-        getRouter,
-        request.signal,
       )
-      bindSsrResponseToRequest(router ?? undefined, response, request.signal)
-      request.signal.throwIfAborted()
+      bindSsrResponseToRequest(router, response, signal)
+      signal.throwIfAborted()
       responseOwnsCleanup = response.serverSsrCleanup === 'stream'
       return response.response
     } finally {
@@ -786,19 +819,29 @@ export function createStartHandler<TRegister = Register>(
         // Transformed streaming response bodies clean up when consumed/cancelled.
         router.serverSsr.cleanup()
       }
-      router = null
+      router = undefined
+      routerPromise = undefined
     }
   }
 
   return requestHandler(startRequestResolver)
 }
 
+function finalizeResponseForRequest(
+  response: SsrResponse,
+  request: Request,
+): SsrResponse {
+  return request.method === 'HEAD'
+    ? stripSsrResponseBody(response, 'HEAD body stripped')
+    : response
+}
+
 async function handleRedirectResponse(
   response: HandlerCallbackResult,
   request: Request,
   getRouter: () => Promise<AnyRouter>,
-  signal: AbortSignal,
 ): Promise<SsrResponse> {
+  const signal = request.signal
   signal.throwIfAborted()
   const ssrResponse = normalizeSsrResponse(response)
   if (!isRedirect(ssrResponse.response)) {
@@ -807,16 +850,13 @@ async function handleRedirectResponse(
 
   if (isResolvedRedirect(ssrResponse.response)) {
     if (request.headers.get('x-tsr-serverFn') === 'true') {
-      return waitForRequest(
-        replaceSsrResponse(
-          ssrResponse,
-          Response.json(
-            { ...ssrResponse.response.options, isSerializedRedirect: true },
-            { headers: ssrResponse.response.headers },
-          ),
-          'redirect response replaced',
+      return replaceSsrResponse(
+        ssrResponse,
+        Response.json(
+          { ...ssrResponse.response.options, isSerializedRedirect: true },
+          { headers: ssrResponse.response.headers },
         ),
-        signal,
+        'redirect response replaced',
       )
     }
     return ssrResponse
@@ -845,28 +885,22 @@ async function handleRedirectResponse(
   }
 
   signal.throwIfAborted()
-  const router = await waitForRequest(getRouter(), signal)
+  const router = await getRouter()
   signal.throwIfAborted()
   const redirect = router.resolveRedirect(ssrResponse.response)
 
   if (request.headers.get('x-tsr-serverFn') === 'true') {
-    return waitForRequest(
-      replaceSsrResponse(
-        ssrResponse,
-        Response.json(
-          { ...ssrResponse.response.options, isSerializedRedirect: true },
-          { headers: ssrResponse.response.headers },
-        ),
-        'redirect response replaced',
+    return replaceSsrResponse(
+      ssrResponse,
+      Response.json(
+        { ...ssrResponse.response.options, isSerializedRedirect: true },
+        { headers: ssrResponse.response.headers },
       ),
-      signal,
+      'redirect response replaced',
     )
   }
 
-  return waitForRequest(
-    replaceSsrResponse(ssrResponse, redirect, 'redirect response replaced'),
-    signal,
-  )
+  return replaceSsrResponse(ssrResponse, redirect, 'redirect response replaced')
 }
 
 async function handleServerRoutes({
@@ -919,7 +953,6 @@ async function handleServerRoutes({
 
   // Add handler middleware if exact match
   const server = foundRoute?.options.server
-  let isHeadFallback = false
   if (server?.handlers && isExactMatch) {
     const handlers =
       typeof server.handlers === 'function'
@@ -933,9 +966,6 @@ async function handleServerRoutes({
       requestMethod === 'HEAD'
         ? (handlers['HEAD'] ?? handlers['GET'] ?? handlers['ANY'])
         : (handlers[requestMethod] ?? handlers['ANY'])
-    isHeadFallback =
-      requestMethod === 'HEAD' && handler !== undefined && !handlers['HEAD']
-
     if (handler) {
       const mayDefer = !!foundRoute.options.component
 
@@ -959,7 +989,7 @@ async function handleServerRoutes({
   routeMiddlewares.push(((ctx: TODO) =>
     executeRouter(ctx.context, matchedRoutes)) as TODO)
 
-  const { ctx, response } = await executeMiddleware(
+  const response = await executeMiddleware(
     routeMiddlewares,
     {
       request,
@@ -970,25 +1000,6 @@ async function handleServerRoutes({
     },
     request.signal,
   )
-
-  // RFC 9110 §9.3.2: HEAD must carry the same header fields as GET but no body.
-  // Resolve any redirect before stripping so the Location header survives.
-  if (isHeadFallback) {
-    if (!ctx.response) {
-      throwRouteHandlerError()
-    }
-
-    const resolved = await handleRedirectResponse(
-      response,
-      request,
-      getRouter,
-      request.signal,
-    )
-    return waitForRequest(
-      stripSsrResponseBody(resolved, 'HEAD body stripped'),
-      request.signal,
-    )
-  }
 
   return normalizeSsrResponse(response)
 }

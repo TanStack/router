@@ -11,7 +11,8 @@ type ScriptRenderAsset = RouterManagedTag & {
 
 /**
  * Render body script tags collected from route matches and SSR manifests.
- * Should be placed near the end of the document body.
+ * During streaming SSR, `<Scripts>` marks where late hydration scripts may
+ * begin to be inserted.
  */
 export const Scripts = () => {
   const router = useRouter()
@@ -65,26 +66,26 @@ export const Scripts = () => {
   if (isServer ?? router.isServer) {
     const activeMatches = router.stores.matches.get()
     const scripts = getScripts(activeMatches)
-    return renderScripts(router, scripts)
+    const initialHydrationScripts =
+      router.serverSsr?.takeInitialHydrationScriptTags()
+    return renderScripts(
+      initialHydrationScripts
+        ? [
+            ...initialHydrationScripts.before,
+            ...scripts,
+            initialHydrationScripts.boundary,
+          ]
+        : scripts,
+    )
   }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
   const scripts = useStore(router.stores.matches, getScripts, deepEqual)
 
-  return renderScripts(router, scripts)
+  return renderScripts(scripts)
 }
 
-function renderScripts(
-  router: ReturnType<typeof useRouter>,
-  scripts: Array<ScriptRenderAsset>,
-) {
-  if ((isServer ?? router.isServer) && router.serverSsr) {
-    const serverBufferedScript = router.serverSsr.takeBufferedScripts()
-    if (serverBufferedScript) {
-      scripts.unshift(serverBufferedScript)
-    }
-  }
-
+function renderScripts(scripts: Array<ScriptRenderAsset>) {
   return (
     <>
       {scripts.map((asset, i) => (

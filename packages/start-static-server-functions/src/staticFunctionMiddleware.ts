@@ -2,7 +2,9 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import {
   createMiddleware,
+  defaultSerovalDeserializerPlugins,
   getDefaultSerovalPlugins,
+  getSerovalPlugins,
 } from '@tanstack/start-client-core'
 import { fromJSON, toJSONAsync } from 'seroval'
 
@@ -120,7 +122,11 @@ const fetchItem = async ({
     method: 'GET',
   })
     .then((r) => r.json())
-    .then((d) => fromJSON(d, { plugins: getDefaultSerovalPlugins() }))
+    .then((d) =>
+      fromJSON(d, {
+        plugins: getSerovalPlugins(defaultSerovalDeserializerPlugins),
+      }),
+    )
 
   return result
 }

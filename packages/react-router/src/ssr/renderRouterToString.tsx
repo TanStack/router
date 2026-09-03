@@ -1,4 +1,5 @@
 import ReactDOMServer from 'react-dom/server'
+import { transformHtmlStringWithRouter } from '@tanstack/router-core/ssr/server'
 import type { ReactNode } from 'react'
 import type { AnyRouter } from '@tanstack/router-core'
 
@@ -12,15 +13,12 @@ export const renderRouterToString = async ({
   children: ReactNode
 }) => {
   try {
-    let html = ReactDOMServer.renderToString(children)
-    router.serverSsr!.setRenderFinished()
+    const html = await transformHtmlStringWithRouter(
+      router,
+      ReactDOMServer.renderToString(children),
+    )
 
-    const injectedHtml = router.serverSsr!.takeBufferedHtml()
-    if (injectedHtml) {
-      html = html.replace(`</body>`, () => `${injectedHtml}</body>`)
-    }
-
-    return new Response(`<!DOCTYPE html>${html}`, {
+    return new Response(html, {
       status:
         router._serverResult?.type === 'render'
           ? router._serverResult.status

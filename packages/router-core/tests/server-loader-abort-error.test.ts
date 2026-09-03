@@ -5,21 +5,27 @@ import { createRequestHandler } from '../src/ssr/server'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 describe('loader user-thrown abort values', () => {
-  test.each(
-    ([false, true] as const).flatMap((isServer) => [
-      {
-        isServer,
-        thrownType: 'AbortSignal',
-        createThrownValue: (signal: AbortSignal) => signal,
-      },
-      {
-        isServer,
-        thrownType: 'AbortError',
-        createThrownValue: () =>
-          new DOMException('The operation was aborted.', 'AbortError'),
-      },
-    ]),
-  )(
+  test.each([
+    {
+      isServer: false,
+      thrownType: 'AbortSignal',
+      createThrownValue: (signal: AbortSignal) => signal,
+    },
+    {
+      isServer: false,
+      thrownType: 'AbortError',
+      createThrownValue: () =>
+        new DOMException('The operation was aborted.', 'AbortError'),
+    },
+    {
+      isServer: true,
+      thrownType: 'AbortError',
+      createThrownValue: () =>
+        Object.assign(new Error('The operation was aborted.'), {
+          name: 'AbortError',
+        }),
+    },
+  ])(
     'treats a user-thrown $thrownType as an ordinary route error (isServer=$isServer)',
     async ({ isServer, createThrownValue }) => {
       let matchSignal: AbortSignal | undefined
@@ -228,15 +234,17 @@ describe('loader user-thrown abort values', () => {
       path: '/work',
       loader,
     })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([route]),
-      history: createMemoryHistory({ initialEntries: ['/work'] }),
-      isServer: true,
-    })
+    const createRouter = vi.fn(() =>
+      createTestRouter({
+        routeTree: rootRoute.addChildren([route]),
+        history: createMemoryHistory({ initialEntries: ['/work'] }),
+        isServer: true,
+      }),
+    )
     const requestController = new AbortController()
     const render = vi.fn(() => new Response('must not render'))
     const handler = createRequestHandler({
-      createRouter: () => router,
+      createRouter,
       request: new Request('http://localhost/work', {
         signal: requestController.signal,
       }),
@@ -252,7 +260,36 @@ describe('loader user-thrown abort values', () => {
     requestController.abort(cancellation)
 
     await expect(response).rejects.toBe(cancellation)
+    expect(createRouter).not.toHaveBeenCalled()
     expect(loader).not.toHaveBeenCalled()
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  test('request cancellation wins after manifest lookup resolves', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const createRouter = vi.fn(() =>
+      createTestRouter({
+        routeTree: rootRoute,
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        isServer: true,
+      }),
+    )
+    const requestController = new AbortController()
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createRequestHandler({
+      createRouter,
+      request: new Request('http://localhost/', {
+        signal: requestController.signal,
+      }),
+      getRouterManifest: () => Promise.resolve({ routes: {} }),
+    })
+
+    const response = handler(render)
+    const cancellation = new Error('request disconnected')
+    queueMicrotask(() => requestController.abort(cancellation))
+
+    await expect(response).rejects.toBe(cancellation)
+    expect(createRouter).not.toHaveBeenCalled()
     expect(render).not.toHaveBeenCalled()
   })
 

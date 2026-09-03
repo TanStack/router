@@ -1,5 +1,6 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { _getRenderedMatches } from '../load-client'
+import { waitForReason } from '../await-signal'
 import { mergeHeaders } from './headers'
 import {
   attachRouterServerSsrUtils,
@@ -8,7 +9,8 @@ import {
 } from './ssr-server'
 import {
   bindSsrResponseToRequest,
-  disposeSsrResponseDetached,
+  disposeSsrResponse,
+  isSsrResponse,
 } from './handlerCallback'
 import type { HandlerCallback } from './handlerCallback'
 import type { AnyHeaders } from './headers'
@@ -19,77 +21,12 @@ export type RequestHandler<TRouter extends AnyRouter> = (
   cb: HandlerCallback<TRouter>,
 ) => Promise<Response>
 
-type RequestWaiter = ((reason: unknown) => void) | undefined
-
-const requestWaiters = new WeakMap<AbortSignal, Array<RequestWaiter>>()
-
-function removeRequestWaiter(
-  waiters: Array<RequestWaiter>,
-  index: number,
-  reject: (reason: unknown) => void,
-) {
-  if (waiters[index] !== reject) {
-    return
-  }
-  if (index !== waiters.length - 1) {
-    waiters[index] = undefined
-    return
-  }
-
-  waiters.pop()
-  while (waiters.length && waiters[waiters.length - 1] === undefined) {
-    waiters.pop()
-  }
-}
-
-export function waitForRequest<T>(
-  value: T | PromiseLike<T>,
-  signal: AbortSignal,
-  onLate?: (value: T) => void,
-): Promise<T> {
-  const promise = Promise.resolve(value)
-  if (signal.aborted) {
-    void promise.then(onLate, () => {})
-    return Promise.reject(signal.reason)
-  }
-
-  return new Promise<T>((resolve, reject) => {
-    let waiters = requestWaiters.get(signal)
-    let index: number
-    if (waiters) {
-      index = waiters.push(reject) - 1
-    } else {
-      const newWaiters: Array<RequestWaiter> = [reject]
-      waiters = newWaiters
-      index = 0
-      requestWaiters.set(signal, newWaiters)
-      signal.addEventListener(
-        'abort',
-        () => {
-          requestWaiters.delete(signal)
-          for (const rejectWaiter of newWaiters) {
-            rejectWaiter?.(signal.reason)
-          }
-          newWaiters.length = 0
-        },
-        { once: true },
-      )
+function createLateResponseDisposer(signal: AbortSignal) {
+  return (result: unknown) => {
+    if (result instanceof Response || isSsrResponse(result)) {
+      disposeSsrResponse(result, signal.reason)
     }
-    void promise.then(
-      (result) => {
-        removeRequestWaiter(waiters, index, reject)
-        if (signal.aborted) {
-          onLate?.(result)
-        } else {
-          resolve(result)
-        }
-      },
-      (error) => {
-        removeRequestWaiter(waiters, index, reject)
-        reject(error)
-      },
-    )
-  })
+  }
 }
 
 export function createRequestHandler<TRouter extends AnyRouter>({
@@ -102,14 +39,17 @@ export function createRequestHandler<TRouter extends AnyRouter>({
   getRouterManifest?: () => ServerManifest | Promise<ServerManifest>
 }): RequestHandler<TRouter> {
   return async (cb) => {
-    request.signal.throwIfAborted()
+    const signal = request.signal
+    signal.throwIfAborted()
+    const manifest = await waitForReason(getRouterManifest?.(), signal)
+    signal.throwIfAborted()
     const router = createRouter()
     let responseOwnsCleanup = false
 
     try {
       attachRouterServerSsrUtils({
         router,
-        manifest: await waitForRequest(getRouterManifest?.(), request.signal),
+        manifest,
       })
 
       // normalizing and sanitizing the pathname here for server, so we always deal with the same format during SSR.
@@ -129,40 +69,36 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       })
 
       await router.load({
-        _signal: request.signal,
+        _signal: signal,
       })
-      request.signal.throwIfAborted()
+      signal.throwIfAborted()
 
       const result = router._serverResult
       if (result?.type === 'redirect') {
         return result.redirect
       }
 
-      await waitForRequest(router.serverSsr?.dehydrate(), request.signal)
-      request.signal.throwIfAborted()
+      await router.serverSsr?.dehydrate({ signal })
+      signal.throwIfAborted()
 
       const responseHeaders = getRequestHeaders({
         router,
       })
 
-      request.signal.throwIfAborted()
-      const response = await waitForRequest(
+      signal.throwIfAborted()
+      const disposeLate = createLateResponseDisposer(signal)
+      const response = await waitForReason(
         cb({
           request,
           router,
           responseHeaders,
         }),
-        request.signal,
-        (late) => {
-          disposeSsrResponseDetached(late, request.signal.reason)
-        },
+        signal,
+        disposeLate,
+        disposeLate,
       )
-      const ssrResponse = bindSsrResponseToRequest(
-        router,
-        response,
-        request.signal,
-      )
-      request.signal.throwIfAborted()
+      const ssrResponse = bindSsrResponseToRequest(router, response, signal)
+      signal.throwIfAborted()
       responseOwnsCleanup = ssrResponse.serverSsrCleanup === 'stream'
       return ssrResponse.response
     } finally {

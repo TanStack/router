@@ -20,23 +20,30 @@ export function CatchBoundary(
           Solid.on(props.getResetKey, () => reset(), { defer: true }),
         )
 
-        return process.env.NODE_ENV !== 'production' ? (
-          renderInNonRouteComponentContext(
-            () => (
+        return (
+          // A lazy error component can suspend after the route enters its
+          // error state. Keep that suspension here so it does not render the
+          // route's pending fallback again.
+          <Solid.Suspense>
+            {process.env.NODE_ENV !== 'production' ? (
+              renderInNonRouteComponentContext(
+                () => (
+                  <Dynamic
+                    component={props.errorComponent ?? ErrorComponent}
+                    error={error}
+                    reset={reset}
+                  />
+                ),
+                'errorComponent',
+              )
+            ) : (
               <Dynamic
                 component={props.errorComponent ?? ErrorComponent}
                 error={error}
                 reset={reset}
               />
-            ),
-            'errorComponent',
-          )
-        ) : (
-          <Dynamic
-            component={props.errorComponent ?? ErrorComponent}
-            error={error}
-            reset={reset}
-          />
+            )}
+          </Solid.Suspense>
         )
       }}
     >

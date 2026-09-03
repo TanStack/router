@@ -10,6 +10,7 @@ import {
   notFound,
 } from '../src'
 import { hydrate } from '../src/ssr/client'
+import { HYDRATION_SCRIPT_BOUNDARY_SOURCE } from '../src/ssr/hydrationScripts'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { dehydrateSsrMatchId } from '../src/ssr/ssr-match-id'
 import { createTestRouter } from './routerTestUtils'
@@ -44,8 +45,9 @@ async function dehydrateToBootstrap(
     await router.load()
     await router.serverSsr!.dehydrate()
 
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    expect(scripts?.boundary.children).toBe(HYDRATION_SCRIPT_BOUNDARY_SOURCE)
+    expect(scripts?.boundary.attrs).not.toHaveProperty('id')
 
     const context: Record<string, any> = {
       document: {
@@ -55,7 +57,11 @@ async function dehydrateToBootstrap(
       },
     }
     context.self = context
-    runInNewContext(script!.children!, context)
+    for (const script of scripts!.before) {
+      expect(script.attrs?.['data-tsr-stream-part']).toBe('')
+      expect(script.children).toBeTruthy()
+      runInNewContext(script.children!, context)
+    }
 
     expect(context.$_TSR).toBeDefined()
     return context.$_TSR
@@ -699,13 +705,12 @@ describe('hydrate', () => {
       path: '/internal',
       loader: clientLoader,
     })
-    let clientRouter: AnyRouter
     const customHydrate = vi.fn((dehydrated: { rewrite?: boolean }) => {
       if (dehydrated.rewrite) {
         clientRouter.update({ rewrite })
       }
     })
-    clientRouter = createTestRouter({
+    const clientRouter: AnyRouter = createTestRouter({
       routeTree: clientRootRoute.addChildren([clientInternalRoute]),
       history: createMemoryHistory({ initialEntries: ['/public'] }),
       hydrate: customHydrate,
@@ -772,5 +777,62 @@ describe('hydrate', () => {
         data: { source: 'index head' },
       }),
     )
+  })
+})
+
+describe('createSerializationAdapter key validation', () => {
+  function createAdapter(key: string) {
+    return createSerializationAdapter({
+      key,
+      test: (value): value is string => typeof value === 'string',
+      toSerializable: (value) => value,
+      fromSerializable: (value) => value,
+    })
+  }
+
+  it('throws in development for empty or unsupported keys', () => {
+    for (const key of [
+      '',
+      'nul\0key',
+      'bad"key',
+      'back\\slash',
+      'lt<key',
+      'back\bspace',
+      'tab\tkey',
+      'form\ffeed',
+      'line\nbreak',
+      'carriage\rreturn',
+      'line\u2028separator',
+      'paragraph\u2029separator',
+      'unpaired-high-\ud800',
+      'unpaired-low-\udc00',
+      'surrogate-pair-🚀',
+    ]) {
+      expect(() => createAdapter(key)).toThrowError(
+        /createSerializationAdapter: key .* is invalid/s,
+      )
+    }
+  })
+
+  it('accepts a key that Seroval preserves verbatim', () => {
+    expect(() => createAdapter('safe-key/v1.0_$-')).not.toThrow()
+  })
+
+  it('does not inspect the key in production', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    try {
+      const options = {
+        get key(): string {
+          throw new Error('production key was inspected')
+        },
+        test: (value: unknown): value is string => typeof value === 'string',
+        toSerializable: (value: string) => value,
+        fromSerializable: (value: string) => value,
+      }
+
+      expect(createSerializationAdapter(options)).toBe(options)
+    } finally {
+      vi.unstubAllEnvs()
+    }
   })
 })

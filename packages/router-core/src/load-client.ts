@@ -5,7 +5,6 @@ import { isRedirect } from './redirect'
 import { getLocationChangeInfo, runRouteLifecycle } from './router'
 import { hydrateSsrMatchId } from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
-import type { AnySerializationAdapter } from './ssr/serializer/transformer'
 import type { TsrSsrGlobal } from './ssr/types'
 import type { ParsedLocation } from './location'
 import type { NavigateOptions } from './link'
@@ -2158,9 +2157,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
   }
   const tsr = window.$_TSR!
 
-  const adapters = router.options.serializationAdapters as
-    | Array<AnySerializationAdapter>
-    | undefined
+  const adapters = router.options.serializationAdapters
   if (adapters?.length) {
     tsr.t = new Map(
       adapters.map((adapter) => [adapter.key, adapter.fromSerializable]),

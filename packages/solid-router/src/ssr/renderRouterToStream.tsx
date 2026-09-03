@@ -2,36 +2,13 @@ import * as Solid from 'solid-js/web'
 import { isbot } from 'isbot'
 import {
   createSsrStreamResponse,
+  makeSsrSerovalPlugin,
   transformReadableStreamWithRouter,
+  waitForReason,
 } from '@tanstack/router-core/ssr/server'
-import { makeSsrSerovalPlugin } from '@tanstack/router-core'
 import type { JSXElement } from 'solid-js'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
-
-const noop = () => {}
-
-// Bot responses wait for the server renderer before streaming. If the request
-// disconnects during that wait, unblock so the pipe can abort and clean up.
-async function waitForReadyOrAbort(
-  ready: Promise<unknown>,
-  signal: AbortSignal,
-) {
-  let cleanup = noop
-  try {
-    await Promise.race([
-      ready,
-      new Promise<void>((resolve) => {
-        const onAbort = () => resolve()
-        cleanup = () => signal.removeEventListener('abort', onAbort)
-        signal.addEventListener('abort', onAbort, { once: true })
-        if (signal.aborted) resolve()
-      }),
-    ])
-  } finally {
-    cleanup()
-  }
-}
 
 export const renderRouterToStream = async ({
   request,
@@ -44,30 +21,53 @@ export const renderRouterToStream = async ({
   responseHeaders: Headers
   children: () => JSXElement
 }) => {
+  const signal = request.signal
+  if (signal.aborted) {
+    router.serverSsr?.cleanup()
+    throw signal.reason
+  }
+
+  const bot = isbot(request.headers.get('User-Agent'))
+  let stream: ReturnType<typeof Solid.renderToStream>
+  try {
+    const docType = Solid.ssr('<!DOCTYPE html>')
+    const serializationAdapters = router.options.serializationAdapters
+    const serovalPlugins = serializationAdapters?.map((adapter) =>
+      makeSsrSerovalPlugin(adapter, { didRun: false }),
+    )
+
+    stream = Solid.renderToStream(
+      () => (
+        <>
+          {docType}
+          {children()}
+        </>
+      ),
+      {
+        nonce: router.options.ssr?.nonce,
+        plugins: serovalPlugins,
+      } as any,
+    )
+  } catch (error) {
+    router.serverSsr?.cleanup()
+    throw error
+  }
+
+  if (signal.aborted) {
+    router.serverSsr?.cleanup()
+    throw signal.reason
+  }
+
+  if (bot) {
+    try {
+      await waitForReason(stream as unknown, signal)
+    } catch (error) {
+      router.serverSsr?.cleanup()
+      throw error
+    }
+  }
+
   const { writable, readable } = new TransformStream()
-
-  const docType = Solid.ssr('<!DOCTYPE html>')
-
-  const serializationAdapters =
-    (router.options as any)?.serializationAdapters ||
-    (router.options.ssr as any)?.serializationAdapters
-  const serovalPlugins = serializationAdapters?.map((adapter: any) => {
-    const plugin = makeSsrSerovalPlugin(adapter, { didRun: false })
-    return plugin
-  })
-
-  const stream = Solid.renderToStream(
-    () => (
-      <>
-        {docType}
-        {children()}
-      </>
-    ),
-    {
-      nonce: router.options.ssr?.nonce,
-      plugins: serovalPlugins,
-    } as any,
-  )
 
   // Solid's `pipeTo(w)` takes a single arg (no signal overload) and locks
   // `w` via `w.getWriter()`. To still own the lifecycle we hand Solid a
@@ -76,18 +76,8 @@ export const renderRouterToStream = async ({
   // the underlying readable (which our router transform reads from),
   // surfacing the cancel through the response pipeline.
   //
-  // RESIDUAL RISK: solid-js@1.x does NOT expose a disposal hook on
-  // `renderToStream`, and its internal write loop swallows writer
-  // rejections (`writer.write(...).catch(() => {})` in
-  // solid-js/web/dist/server.js). So aborting the inner writer stops
-  // outbound bytes but does not terminate Solid's render continuation
-  // if a Suspense/resource never resolves — those pending promise
-  // continuations remain scheduled and can retain children/context/
-  // request references via captured closures until natural completion
-  // or process exit. The request-scoped router graph itself is released
-  // by ServerSsr.cleanup() through the router stream lifecycle, so the leak
-  // is bounded to whatever the user's Suspense/resource closures capture.
-  // A hard upstream-abort guarantee would require a disposal API in solid-js.
+  // Solid does not expose a disposal handle for unresolved renderer work.
+  // See router-core's `STREAMING.md` for this accepted limitation.
   const innerWriter = writable.getWriter()
   let writerDone = false
   const releaseWriter = () => {
@@ -98,34 +88,14 @@ export const renderRouterToStream = async ({
     }
   }
   const abortSolidPipe = (reason?: unknown) => {
-    if (writerDone) return
+    if (writerDone) {
+      return
+    }
     writerDone = true
     void innerWriter
       .abort(reason)
       .catch(() => {})
       .finally(releaseWriter)
-  }
-
-  const onRequestAbort = () => {
-    abortSolidPipe(request.signal.reason)
-  }
-
-  // Wire request abort before the bot all-ready wait. Otherwise a disconnect
-  // during `await stream` can leave this callback pending forever.
-  if (request.signal.aborted) {
-    onRequestAbort()
-  } else {
-    request.signal.addEventListener('abort', onRequestAbort, { once: true })
-    router.serverSsr?.onCleanup(() => {
-      request.signal.removeEventListener('abort', onRequestAbort)
-    })
-  }
-
-  if (isbot(request.headers.get('User-Agent'))) {
-    await waitForReadyOrAbort(
-      Promise.resolve(stream as unknown),
-      request.signal,
-    )
   }
 
   const solidWritable = new WritableStream({
@@ -142,32 +112,24 @@ export const renderRouterToStream = async ({
     },
   })
 
-  if (!request.signal.aborted) {
-    try {
-      void Promise.resolve(stream.pipeTo(solidWritable) as unknown).catch(
-        (err: any) => {
-          if (
-            writerDone ||
-            err?.name === 'AbortError' ||
-            err?.code === 'ABORT_ERR'
-          )
-            return
-          console.error('Error in Solid render stream:', err)
-          abortSolidPipe(err)
-        },
-      )
-    } catch (err: any) {
-      if (err?.name !== 'AbortError' && err?.code !== 'ABORT_ERR') {
-        console.error('Error in Solid render stream:', err)
-      }
-      abortSolidPipe(err)
+  // The server export returns Promise<void>. Solid's client declaration
+  // returns void, and this file is also checked under that export condition.
+  void Promise.resolve(stream.pipeTo(solidWritable)).catch((error: unknown) => {
+    if (!writerDone) {
+      console.error('Error in Solid render stream:', error)
+      abortSolidPipe(error)
     }
-  }
+    router.serverSsr?.cleanup()
+  })
 
   const responseStream = transformReadableStreamWithRouter(
     router,
     readable as unknown as ReadableStream,
-    { signal: request.signal, onAbort: abortSolidPipe },
+    {
+      rendererSafePoint: 'record-end',
+      signal,
+      onAbort: abortSolidPipe,
+    },
   )
   return createSsrStreamResponse(
     router,

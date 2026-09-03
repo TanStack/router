@@ -31,14 +31,16 @@ async function dehydrateToBootstrap(router: AnyRouter): Promise<TsrSsrGlobal> {
     await router.load()
     await router.serverSsr!.dehydrate()
 
-    const script = router.serverSsr!.takeBufferedScripts()
-    expect(script?.children).toBeTruthy()
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    expect(scripts?.before.length).toBeGreaterThan(0)
 
     const context: Record<string, any> = {
       document: { currentScript: { remove() {} } },
     }
     context.self = context
-    runInNewContext(script!.children!, context)
+    for (const script of scripts!.before) {
+      runInNewContext(script.children!, context)
+    }
 
     expect(context.$_TSR).toBeDefined()
     return context.$_TSR
