@@ -159,6 +159,14 @@ function Script({
     )
   }
 
+  // `attrs` is rebuilt as a fresh object on every head-tag computation, so
+  // keying this effect off object identity removes and re-injects `src`
+  // scripts on every navigation that changes head tags - re-executing
+  // third-party scripts (analytics, tag managers, widgets) each time.
+  // Serialize to a stable key so the effect only re-runs when the script
+  // actually changes.
+  const attrsKey = JSON.stringify(attrs ?? null)
+
   React.useEffect(() => {
     if (dataScript) return
 
@@ -217,7 +225,8 @@ function Script({
     }
 
     return undefined
-  }, [attrs, children, dataScript])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [attrsKey, children, dataScript])
 
   // --- Server rendering ---
   if (isServer ?? router.isServer) {
