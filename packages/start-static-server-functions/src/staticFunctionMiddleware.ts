@@ -160,6 +160,21 @@ const fetchItem = async ({
     return undefined
   }
 
+  // Decoding can succeed for a payload that is not a cached result, for
+  // example a JSON asset that another build step left at this path. Such a
+  // value is truthy, so without a shape check the caller would treat it as a
+  // hit and hand back an undefined result instead of calling the server
+  // function. `addItemToCache` always writes both keys, and seroval keeps them
+  // even when the context is undefined.
+  if (
+    result === null ||
+    typeof result !== 'object' ||
+    !Object.prototype.hasOwnProperty.call(result, 'result') ||
+    !Object.prototype.hasOwnProperty.call(result, 'context')
+  ) {
+    return undefined
+  }
+
   staticClientCache?.set(url, result)
 
   return result

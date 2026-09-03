@@ -97,6 +97,35 @@ describe('staticFunctionMiddleware client on a cache miss', () => {
     expect(next).toHaveBeenCalledTimes(1)
   })
 
+  test('falls back to the server function when the payload is not a cached result', async () => {
+    // Valid seroval, but for a plain string rather than a StaticCachedResult.
+    // It decodes to a truthy value, so only a shape check can tell it apart
+    // from a real hit.
+    const payload = JSON.stringify(await toJSONAsync('not a cached result'))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse(payload)),
+    )
+
+    const { promise, next } = callClientMiddleware({ case: 'wrong-shape' })
+
+    await expect(promise).resolves.toBe(LIVE_RESULT)
+    expect(next).toHaveBeenCalledTimes(1)
+  })
+
+  test('falls back to the server function when the payload is missing context', async () => {
+    const payload = JSON.stringify(await toJSONAsync({ result: 'partial' }))
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse(payload)),
+    )
+
+    const { promise, next } = callClientMiddleware({ case: 'partial-shape' })
+
+    await expect(promise).resolves.toBe(LIVE_RESULT)
+    expect(next).toHaveBeenCalledTimes(1)
+  })
+
   test('falls back to the server function when the request fails outright', async () => {
     vi.stubGlobal(
       'fetch',
