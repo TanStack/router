@@ -1,5 +1,18 @@
 # @tanstack/solid-start
 
+## 2.0.0-rc.5
+
+### Patch Changes
+
+- [#8192](https://github.com/TanStack/router/pull/8192) [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b) - Bump solid-js, @solidjs/web, and @solidjs/signals to ^2.0.0-rc.6 across the monorepo. rc.6 provides the named flight-data source API (registerFlightDataSource / two-argument subscribeFlightData) that the Start single-flight integration now requires; @tanstack/solid-start's peer floor moves to rc.6 accordingly.
+
+- [#8192](https://github.com/TanStack/router/pull/8192) [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b) - Adopt Solid's multi-source single-flight protocol: the router's flight data (loader/match state, dehydrated data) registers under its own source id (`tsr`), so other caches' slices — e.g. solid-query's `sq` — coexist on the same mutation response instead of competing for a single consumer slot, and a user-supplied `collectFlightData` hook adds data alongside the router's rather than displacing it. Requires solid-js / @solidjs/web 2.0.0-rc.6+ (named flight-data sources).
+
+- Updated dependencies [[`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b), [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b), [`b445b89`](https://github.com/TanStack/router/commit/b445b892819f70e4e2650a4df7ce18e718a0ddcb)]:
+  - @tanstack/solid-router@2.0.0-rc.5
+  - @tanstack/solid-start-client@2.0.0-rc.5
+  - @tanstack/solid-start-server@2.0.0-rc.5
+
 ## 2.0.0-rc.4
 
 ### Patch Changes

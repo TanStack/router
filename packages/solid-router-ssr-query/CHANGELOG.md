@@ -1,5 +1,13 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-rc.5
+
+### Patch Changes
+
+- [#8192](https://github.com/TanStack/router/pull/8192) [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b) - Bump solid-js, @solidjs/web, and @solidjs/signals to ^2.0.0-rc.6 across the monorepo. rc.6 provides the named flight-data source API (registerFlightDataSource / two-argument subscribeFlightData) that the Start single-flight integration now requires; @tanstack/solid-start's peer floor moves to rc.6 accordingly.
+
+- [#8193](https://github.com/TanStack/router/pull/8193) [`5a6935f`](https://github.com/TanStack/router/commit/5a6935f2d5ba00d4fbeb9868ce0694eebddae758) - Deprecated: Solid Query's `QueryClientProvider` now carries the Router + Query SSR pairing natively (registry hydration, named single-flight sources, redirect handling via userland glue), so this integration package is no longer needed. See the README for the migration.
+
 ## 2.0.0-rc.4
 
 ### Patch Changes
