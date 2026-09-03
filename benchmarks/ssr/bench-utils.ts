@@ -37,6 +37,19 @@ function randomSegment(random: () => number) {
 
 export { createDeterministicRandom, randomSegment }
 
+// React and Vue dehydrate the router over the `$_TSR` script channel; Solid
+// ships the same payload as JSON records on the `__TSR_P` queue. Sanity
+// checks accept whichever channel the framework under test emits.
+const dehydrationMarkers = ['$_TSR', '__TSR_P'] as const
+
+export function findDehydrationMarkerIndex(body: string) {
+  for (const marker of dehydrationMarkers) {
+    const index = body.indexOf(marker)
+    if (index !== -1) return index
+  }
+  return -1
+}
+
 export async function drainResponse(response: Response) {
   const reader = response.body?.getReader()
 

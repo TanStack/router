@@ -1,6 +1,10 @@
 import { expect } from 'vitest'
 import { streamChunkCount } from './shared-data'
-import { randomSegment, runRequestLoop } from '../../bench-utils'
+import {
+  findDehydrationMarkerIndex,
+  randomSegment,
+  runRequestLoop,
+} from '../../bench-utils'
 import type { StartRequestHandler } from '../../bench-utils'
 
 export type { StartRequestHandler }
@@ -45,7 +49,7 @@ export async function assertStreamingSanity(handler: StartRequestHandler) {
   const body = await response.text()
   const loadingSmallIndexes = getMarkerIndexes(body, 'loading-small')
   const loadingBigIndexes = getMarkerIndexes(body, 'loading-big')
-  const tsrIndex = body.indexOf('$_TSR')
+  const tsrIndex = findDehydrationMarkerIndex(body)
 
   expect(response.status).toBe(200)
   expect(loadingSmallIndexes).toHaveLength(1)
