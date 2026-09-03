@@ -86,6 +86,10 @@ export async function prerender({
     const seen = new Set<string>()
     const prerendered = new Set<string>()
     const retriesByPath = new Map<string, number>()
+    // Collects rejections from queue.add() tasks (e.g. failOnError) so they
+    // can be rethrown after the queue settles, instead of becoming unhandled
+    // promise rejections that let the build exit 0 with pages missing.
+    const taskErrors: Array<unknown> = []
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
@@ -105,6 +109,13 @@ export async function prerender({
     }
 
     await queue.start()
+
+    if (taskErrors.length) {
+      throw new AggregateError(
+        taskErrors,
+        `Failed to prerender ${taskErrors.length} page(s)`,
+      )
+    }
 
     return Array.from(prerendered)
 
@@ -131,7 +142,7 @@ export async function prerender({
         ...page.prerender,
       }
 
-      queue.add(async () => {
+      const task = queue.add(async () => {
         logger.info(`Crawling: ${page.path}`)
         const retries = retriesByPath.get(page.path) || 0
 
@@ -219,11 +230,25 @@ export async function prerender({
             )
             await new Promise((resolve) => setTimeout(resolve, retryDelay))
             retriesByPath.set(page.path, retries + 1)
+            // `seen` guards addCrawlPageTask against re-queuing a page that's
+            // already in flight/queued, but that also blocked the retry
+            // itself (the path was marked seen on the first attempt). Clear
+            // it so the retry actually gets queued.
+            seen.delete(page.path)
             addCrawlPageTask(page)
           } else if (prerenderOptions.failOnError ?? true) {
             throw error
           }
         }
+      })
+
+      // `queue.add()` returns a promise that settles with the task, but
+      // nothing awaited it here, so a rejection (failOnError) became an
+      // unhandled promise rejection - the queue's own `isSettled()` doesn't
+      // care whether tasks succeeded, so `await queue.start()` below resolved
+      // and the build could exit 0 with pages missing. Collect it instead.
+      task.catch((error: unknown) => {
+        taskErrors.push(error)
       })
     }
   }
