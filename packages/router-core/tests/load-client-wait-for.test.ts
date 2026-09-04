@@ -55,7 +55,7 @@ describe('waitFor', () => {
     const remove = vi.spyOn(controller.signal, 'removeEventListener')
     const error = new Error('then getter failed')
     const value: PromiseLike<never> = {
-      get then() {
+      get then(): never {
         throw error
       },
     }
