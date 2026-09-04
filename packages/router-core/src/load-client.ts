@@ -1578,7 +1578,7 @@ function publishMatches(
   router.stores.setMatches(matches)
 }
 
-function commitMatches(
+export function commitMatches(
   router: CoordinatorRouter,
   tx: LoadTransaction,
   matches: LaneMatches<'projected'>,
