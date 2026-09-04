@@ -103,7 +103,7 @@ All 18 scenarios completed. The retained optimization adds 11–34 gzip bytes ov
 - `pnpm test:types --base=origin/main --outputStyle=stream --skipRemoteCache`: 36 affected projects passed, including supported router-core TypeScript versions.
 - `pnpm test:unit --base=origin/main --outputStyle=stream --skipRemoteCache`: 29 affected projects passed. Router-core: 108 files, 1,655 passed and 4 existing expected failures.
 - `pnpm nx run tanstack-router-e2e-react-basic-file-based:test:e2e --outputStyle=stream --skipRemoteCache -- tests/search-params.spec.ts`: all 8 Chromium tests passed.
-- `pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache -- bench tests/searchParams-parse.bench.ts --run --outputJson <output.json>`: completed on baseline and final implementations.
+- `pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache -- bench tests/searchParams-parse.bench.ts --run --outputJson /tmp/search-params-parse.json`: completed on baseline and final implementations.
 - `pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache`: all 18 scenarios completed on baseline and final implementations.
 - All Nx commands used `CI=1 NX_DAEMON=false`. Formatting and `git diff --check` passed.
 
