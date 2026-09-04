@@ -954,8 +954,10 @@ describe('Link', () => {
 
       await fireEvent.click(screen.getByTestId('switch-hash'))
 
+      // Router state is synchronously fresh; the DOM settles with the
+      // scheduler within the same turn.
       expect(router.state.location.hash).toBe('second')
-      expect(staticHash).toHaveClass('inactive')
+      await waitFor(() => expect(staticHash).toHaveClass('inactive'))
       expect(currentHash).toHaveClass('active')
 
       await waitFor(() => {
@@ -4659,7 +4661,8 @@ describe('Link', () => {
     const onPostsText = await screen.findByText('On Posts')
     expect(onPostsText).toBeInTheDocument()
 
-    expect(fromInvoicesLink).not.toBeInTheDocument()
+    // resolvedLocation settles with the scheduler just after the match swap.
+    await waitFor(() => expect(fromInvoicesLink).not.toBeInTheDocument())
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })

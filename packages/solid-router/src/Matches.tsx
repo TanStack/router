@@ -1,14 +1,12 @@
 import * as Solid from 'solid-js'
-import { replaceEqualDeep, rootRouteId } from '@tanstack/router-core'
+import { replaceEqualDeep } from '@tanstack/router-core'
 import { CatchBoundary, ErrorComponent } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { Rendered, Transitioner } from './Transitioner'
 import { nearestMatchContext } from './matchContext'
 import { SafeFragment } from './SafeFragment'
 import { Match } from './Match'
-import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type {
-  AnyRoute,
   AnyRouter,
   DeepPartial,
   Expand,
@@ -38,90 +36,16 @@ declare module '@tanstack/router-core' {
   }
 }
 
-/**
- * Select the global loading boundary for `Matches`.
- *
- * Loading UI belongs to the application, not the router. Solid 2's async
- * model never injects fallbacks the app didn't write: pending state
- * propagates through the graph to whatever boundary the app placed (or is
- * held at the root when there is none), and an unresolved `lazy()` chunk is
- * just a pending async value. The wrapper here is therefore strictly opt-in:
- * it renders only when the app configured root pending UI
- * (`pendingComponent` on the root route or `defaultPendingComponent`).
- * Nothing configured means no wrapper — pending match/chunk states propagate
- * as ordinary Solid async.
- *
- * The decision is deliberately SYMMETRIC between server and client, and
- * consults no hydration or environment state. Solid's hydration claims
- * server nodes positionally through the boundary structure, so the client
- * must render a boundary exactly where the server rendered one — a
- * client-only wrapper (even a settled one that renders its children
- * directly) desyncs node claiming and detaches the app from the server DOM.
- * The inputs below (`pendingComponent` configuration,
- * `disableGlobalCatchBoundary`, `router.ssr`) all resolve identically on the
- * server and on the hydrating client, so the trees always agree. This also
- * keeps the decision stable across the app's lifetime: it is made once per
- * `Matches` instance, so gating it on transient state (like "currently
- * hydrating") would permanently freeze the configured pending UI off for
- * every post-hydration navigation of a hydrated app.
- *
- * `router.ssr` (TanStack's `$_TSR` SSR utilities) is symmetric too:
- * `attachRouterServerSsrUtils` sets it on the server before rendering, and
- * router-core `hydrate()` (invoked by `RouterClient`, which TanStack Start
- * builds on) sets it on the client before rendering. It short-circuits the
- * wrapper exactly as before: that protocol legitimately hydrates matches in
- * pending states (`ssr: 'data-only'`), where a settled boundary is not
- * guaranteed.
- *
- * When disableGlobalCatchBoundary is true, we must NOT wrap with
- * Solid.Loading because Solid.Loading transforms STATUS_ERROR into
- * STATUS_PENDING, which prevents errors from propagating to an external
- * Errored boundary.
- */
-export function _resolveMatchesLoadingBoundary(router: AnyRouter) {
-  const pendingComponent =
-    (router.routesById[rootRouteId] as AnyRoute | undefined)?.options
-      .pendingComponent ?? router.options.defaultPendingComponent
-  return !pendingComponent ||
-    router.options.disableGlobalCatchBoundary ||
-    router.ssr
-    ? SafeFragment
-    : Solid.Loading
-}
-
 export function Matches() {
   const router = useRouter()
-
-  const ResolvedSuspense = _resolveMatchesLoadingBoundary(router)
-
-  const rootRoute: () => AnyRoute = () => router.routesById[rootRouteId]
-  const PendingComponent =
-    rootRoute().options.pendingComponent ??
-    router.options.defaultPendingComponent
 
   const OptionalWrapper = router.options.InnerWrap || SafeFragment
 
   return (
     <OptionalWrapper>
-      <ResolvedSuspense
-        fallback={
-          PendingComponent
-            ? (() => {
-                if (process.env.NODE_ENV !== 'production') {
-                  return renderInNonRouteComponentContext(
-                    () => <PendingComponent />,
-                    'pendingComponent',
-                  )
-                }
-                return <PendingComponent />
-              })()
-            : null
-        }
-      >
-        <Transitioner />
-        <MatchesInner />
-        <Rendered />
-      </ResolvedSuspense>
+      <Transitioner />
+      <MatchesInner />
+      <Rendered />
     </OptionalWrapper>
   )
 }

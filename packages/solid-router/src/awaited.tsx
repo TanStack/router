@@ -47,11 +47,15 @@ export function Await<T>(
     return true
   })
 
-  return (
-    <Solid.Loading fallback={props.fallback as any}>
-      <InnerAwait deferred={deferred} ready={ready}>
-        {props.children}
-      </InnerAwait>
-    </Solid.Loading>
+  const inner = (
+    <InnerAwait deferred={deferred} ready={ready}>
+      {props.children}
+    </InnerAwait>
   )
+
+  if (props.fallback === undefined) {
+    return inner
+  }
+
+  return <Solid.Loading fallback={props.fallback as any}>{inner}</Solid.Loading>
 }

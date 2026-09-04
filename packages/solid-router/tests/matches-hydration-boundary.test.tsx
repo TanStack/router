@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { Loading, sharedConfig } from 'solid-js'
+import { sharedConfig } from 'solid-js'
 import { cleanup, render, screen } from '@solidjs/testing-library'
 import { hydrate } from '@tanstack/router-core/ssr/client'
 import { dehydrateSsrMatchId } from '../../router-core/src/ssr/ssr-match-id'
@@ -10,8 +10,6 @@ import {
   createRoute,
   createRouter,
 } from '../src'
-import { _resolveMatchesLoadingBoundary } from '../src/Matches'
-import { SafeFragment } from '../src/SafeFragment'
 import { lazyRouteComponent } from '../src/lazyRouteComponent'
 
 afterEach(() => {
@@ -52,71 +50,28 @@ function createChunkedTestRouter(routerOptions?: Record<string, unknown>) {
   return { router, resolveIndexChunk, resolveOtherChunk }
 }
 
-describe('Matches global loading boundary', () => {
-  test('renders the wrapper only when the app configured pending UI', async () => {
-    const { router, resolveIndexChunk } = createChunkedTestRouter({
-      defaultPendingComponent: () => <div>Pending...</div>,
-    })
-    resolveIndexChunk({ default: () => <div>Index</div> })
-    await router.load()
-
-    expect(_resolveMatchesLoadingBoundary(router)).toBe(Loading)
-  })
-
-  test('renders no wrapper when nothing is configured', async () => {
-    const { router, resolveIndexChunk } = createChunkedTestRouter()
-    resolveIndexChunk({ default: () => <div>Index</div> })
-    await router.load()
-
-    expect(_resolveMatchesLoadingBoundary(router)).toBe(SafeFragment)
-  })
-
-  test('the boundary decision ignores hydration state, so hydrated apps keep their configured pending UI for later navigations', async () => {
-    const { router, resolveIndexChunk } = createChunkedTestRouter({
-      defaultPendingComponent: () => <div>Pending...</div>,
-      defaultPendingMs: 0,
-      defaultPendingMinMs: 0,
-    })
+describe('Matches pending UI (router state, no router-owned boundaries)', () => {
+  test('navigating to a route with an unresolved chunk presents the configured pending UI', async () => {
+    const { router, resolveIndexChunk, resolveOtherChunk } =
+      createChunkedTestRouter({
+        defaultPendingComponent: () => <div>Pending...</div>,
+        defaultPendingMs: 0,
+        defaultPendingMinMs: 0,
+      })
     resolveIndexChunk({ default: () => <div>Index loaded</div> })
     await router.load()
 
-    // Regression guard for the frozen-decision bug: the decision is made
-    // once per `Matches` instance, so consulting "currently hydrating" here
-    // would permanently disable the configured pending UI for every
-    // post-hydration navigation of a hydrated app. The wrapper decision must
-    // be identical whether or not a hydration pass is in flight — the
-    // matching server render contains the same boundary (see the symmetry
-    // notes on `_resolveMatchesLoadingBoundary`).
-    sharedConfig.hydrating = true
-    try {
-      expect(_resolveMatchesLoadingBoundary(router)).toBe(Loading)
-    } finally {
-      sharedConfig.hydrating = false
-    }
-    expect(_resolveMatchesLoadingBoundary(router)).toBe(Loading)
-
-    // And behaviorally: navigating to a route whose chunk is unresolved
-    // must present the configured pending UI.
     render(() => <RouterProvider router={router} />)
     expect(await screen.findByText('Index loaded')).toBeInTheDocument()
 
     router.navigate({ to: '/other' })
     expect(await screen.findByText('Pending...')).toBeInTheDocument()
+
+    resolveOtherChunk({ default: () => <div>Other loaded</div> })
+    expect(await screen.findByText('Other loaded')).toBeInTheDocument()
   })
 
-  test('disableGlobalCatchBoundary always skips, even with configured pending UI', () => {
-    const rootRoute = createRootRoute({})
-    const router = createRouter({
-      routeTree: rootRoute,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-      disableGlobalCatchBoundary: true,
-      defaultPendingComponent: () => <div>Pending...</div>,
-    })
-
-    expect(_resolveMatchesLoadingBoundary(router)).toBe(SafeFragment)
-  })
-
-  test('the $_TSR stream protocol (Start / RouterClient) still skips via router.ssr, even with pending data-only matches', async () => {
+  test('the $_TSR stream protocol (Start / RouterClient) hydrates pending data-only matches without errors', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const rootRoute = createRootRoute({})
     const reportRoute = createRoute({
@@ -155,14 +110,9 @@ describe('Matches global loading boundary', () => {
     await hydrate(router)
 
     expect(router.ssr).toBeTruthy()
-    // The data-only match hydrates as pending — a legitimate protocol state
-    // where a settled boundary is not guaranteed, so the wrapper is skipped.
-    // `attachRouterServerSsrUtils` sets `router.ssr` on the server too, so
-    // the skip is symmetric with the server-rendered tree.
     expect(
       router.state.matches.some((match) => match.status === 'pending'),
     ).toBe(true)
-    expect(_resolveMatchesLoadingBoundary(router)).toBe(SafeFragment)
     expect(error).not.toHaveBeenCalled()
   })
 
@@ -172,8 +122,6 @@ describe('Matches global loading boundary', () => {
 
     const { container } = render(() => <RouterProvider router={router} />)
 
-    // No implicit fallback: pending chunk state propagates as ordinary
-    // Solid async, so nothing is presented until the chunk resolves.
     expect(container.textContent).toBe('')
 
     resolveIndexChunk({ default: () => <div>Index loaded</div> })
