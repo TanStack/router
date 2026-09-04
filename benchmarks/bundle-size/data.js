@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788548397112,
+  "lastUpdate": 1788554783748,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,102 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "fpellet@ensc.fr",
-            "name": "Flo",
-            "username": "Sheraff"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "493148bc5378b7f9de1544d87f6aaa425c12eb34",
-          "message": "fix(router-core): wildcard nodes respect DFS priority like other nodes in route matching (#7273)",
-          "timestamp": "2026-04-27T09:55:20+02:00",
-          "tree_id": "ef89b098d909e7e512f8834688f3aea2c92eb9a9",
-          "url": "https://github.com/TanStack/router/commit/493148bc5378b7f9de1544d87f6aaa425c12eb34"
-        },
-        "date": 1777276669704,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89400,
-            "unit": "bytes",
-            "extra": "raw=281268; brotli=77651"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92977,
-            "unit": "bytes",
-            "extra": "raw=293055; brotli=80891"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36399,
-            "unit": "bytes",
-            "extra": "raw=109514; brotli=32739"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41243,
-            "unit": "bytes",
-            "extra": "raw=124068; brotli=37025"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54577,
-            "unit": "bytes",
-            "extra": "raw=155742; brotli=49028"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59847,
-            "unit": "bytes",
-            "extra": "raw=172310; brotli=53582"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104367,
-            "unit": "bytes",
-            "extra": "raw=330586; brotli=90172"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107871,
-            "unit": "bytes",
-            "extra": "raw=341165; brotli=93165"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 103887,
-            "unit": "bytes",
-            "extra": "raw=333597; brotli=89209"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 107272,
-            "unit": "bytes",
-            "extra": "raw=344549; brotli=92033"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50738,
-            "unit": "bytes",
-            "extra": "raw=156441; brotli=44725"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56661,
-            "unit": "bytes",
-            "extra": "raw=173755; brotli=49882"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -23528,6 +23432,138 @@ window.BENCHMARK_DATA = {
             "value": 71072,
             "unit": "bytes",
             "extra": "raw=206112; brotli=63189; initial_gzip=70945"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "50eafcaebbbedb6fde3b2816de7a0ace8cde4832",
+          "message": "perf(router-core): gate JSON.parse attempts behind jsonStart guard in parseSearchWith (#8142)\n\n* perf(router-core): gate JSON.parse attempts behind jsonStart guard in parseSearchWith\n\n* test(router-core): strengthen search parsing regression coverage\n\n* chore(router-core): add search parsing changeset and refresh measurements\n\n* docs: use a shell-safe parsing benchmark output path\n\n* chore: keep search parsing measurements out of the PR",
+          "timestamp": "2026-09-04T22:43:10+02:00",
+          "tree_id": "8e1b4385e7cade5af8cc729a9f71fa6c24273ec9",
+          "url": "https://github.com/TanStack/router/commit/50eafcaebbbedb6fde3b2816de7a0ace8cde4832"
+        },
+        "date": 1788554782048,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85769,
+            "unit": "bytes",
+            "extra": "raw=268345; brotli=74653; initial_gzip=85630"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89363,
+            "unit": "bytes",
+            "extra": "raw=280338; brotli=77834; initial_gzip=89222"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 33922,
+            "unit": "bytes",
+            "extra": "raw=98438; brotli=30623; initial_gzip=33794"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 38863,
+            "unit": "bytes",
+            "extra": "raw=113428; brotli=34958; initial_gzip=38739"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50631,
+            "unit": "bytes",
+            "extra": "raw=141481; brotli=45718; initial_gzip=50505"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56391,
+            "unit": "bytes",
+            "extra": "raw=160126; brotli=50683; initial_gzip=56265"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 98991,
+            "unit": "bytes",
+            "extra": "raw=311628; brotli=85765; initial_gzip=98852"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106508,
+            "unit": "bytes",
+            "extra": "raw=338763; brotli=92387; initial_gzip=106368"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99725,
+            "unit": "bytes",
+            "extra": "raw=313017; brotli=86401; initial_gzip=98870"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102224,
+            "unit": "bytes",
+            "extra": "raw=321594; brotli=88578; initial_gzip=102086"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102353,
+            "unit": "bytes",
+            "extra": "raw=322203; brotli=88239; initial_gzip=102178"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102765,
+            "unit": "bytes",
+            "extra": "raw=323162; brotli=88671; initial_gzip=102596"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105753,
+            "unit": "bytes",
+            "extra": "raw=332534; brotli=91170; initial_gzip=105578"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47071,
+            "unit": "bytes",
+            "extra": "raw=140532; brotli=41826; initial_gzip=46944"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50235,
+            "unit": "bytes",
+            "extra": "raw=148172; brotli=44758; initial_gzip=47023"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52278,
+            "unit": "bytes",
+            "extra": "raw=156287; brotli=46334; initial_gzip=52149"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67179,
+            "unit": "bytes",
+            "extra": "raw=193557; brotli=59751; initial_gzip=67053"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71089,
+            "unit": "bytes",
+            "extra": "raw=206162; brotli=63165; initial_gzip=70963"
           }
         ]
       }
