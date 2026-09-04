@@ -113,14 +113,20 @@ describe('Search Params serialization and deserialization', () => {
   test('parse skips JSON.parse for strings that cannot begin valid JSON', () => {
     const parseSpy = vi.spyOn(JSON, 'parse')
     try {
-      expect(
-        defaultParseSearch('?empty=&filter=foo&tab=specs&sort=newest'),
-      ).toEqual({ empty: '', filter: 'foo', tab: 'specs', sort: 'newest' })
-      expect(defaultParseSearch('?file=.env&path=/products')).toEqual({
+      const parse = parseSearchWith(JSON.parse)
+      expect(parse('?empty=&filter=foo&tab=specs&sort=newest')).toEqual({
+        empty: '',
+        filter: 'foo',
+        tab: 'specs',
+        sort: 'newest',
+      })
+      expect(parse('?file=.env&path=/products')).toEqual({
         file: '.env',
         path: '/products',
       })
       expect(parseSpy).not.toHaveBeenCalled()
+      expect(parse('?value=%7B%7D')).toEqual({ value: {} })
+      expect(parseSpy).toHaveBeenCalledExactlyOnceWith('{}')
     } finally {
       parseSpy.mockRestore()
     }
@@ -144,6 +150,75 @@ describe('Search Params serialization and deserialization', () => {
     expect(parse('?foo=bar&filter=available')).toEqual({
       foo: 'BAR',
       filter: 'AVAILABLE',
+    })
+  })
+
+  test.each([
+    ['null', null],
+    [' true ', true],
+    ['\tfalse', false],
+    ['\nnull', null],
+    ['\r1', 1],
+    ['1e2', 100],
+    ['-0', -0],
+    ['0.0', 0],
+    ['"雪"', '雪'],
+    [' {"nested":[true,null]} ', { nested: [true, null] }],
+    [' [1,"two"] ', [1, 'two']],
+    ['', ''],
+    [' \t\r\n', ' \t\r\n'],
+    ['favorite', 'favorite'],
+    ['nullish', 'nullish'],
+    ['travel', 'travel'],
+    ['true_value', 'true_value'],
+    ['{', '{'],
+    ['[', '['],
+    ['"', '"'],
+    ['-', '-'],
+    ['01', '01'],
+    ['1e', '1e'],
+    ['+1', '+1'],
+    ['雪', '雪'],
+    ['\u00a0null', '\u00a0null'],
+    ['\ufefftrue', '\ufefftrue'],
+  ])(
+    'parses decoded value %j without changing fallback behavior',
+    (value, expected) => {
+      const search = new URLSearchParams({ value }).toString()
+      expect(defaultParseSearch(search)).toEqual({ value: expected })
+      expect(defaultParseSearch(`?${search}`)).toEqual({ value: expected })
+    },
+  )
+
+  test('custom parsers receive every string, preserve failures, and skip decoded non-strings', () => {
+    const parser = vi.fn((value: string) => {
+      if (value === 'invalid') {
+        throw new Error('not parseable')
+      }
+      return { parsed: value }
+    })
+    const parse = parseSearchWith(parser)
+    expect(
+      parse(
+        '?empty=&word=hello&bad=invalid&json=null&n=1&b=true&tag=foo&tag=%7B%7D',
+      ),
+    ).toEqual({
+      empty: { parsed: '' },
+      word: { parsed: 'hello' },
+      bad: 'invalid',
+      json: { parsed: 'null' },
+      n: 1,
+      b: true,
+      tag: ['foo', '{}'],
+    })
+    expect(parser.mock.calls).toEqual([[''], ['hello'], ['invalid'], ['null']])
+  })
+
+  test('preserves repeated JSON-looking values as decoded arrays', () => {
+    expect(
+      defaultParseSearch('?value=null&value=%7B%7D&value=%5B%5D&value=1'),
+    ).toEqual({
+      value: ['null', '{}', '[]', 1],
     })
   })
 
