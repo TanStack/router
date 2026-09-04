@@ -244,8 +244,10 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Includes the post-render resolvedLocation/status idle update.
-    expect(updates).toBe(3)
+    // Writes coalesce through the scheduler, so the pending publish and the
+    // swap land in one settle, plus the post-render resolvedLocation/status
+    // idle update.
+    expect(updates).toBe(2)
   })
 
   test('navigate, w/ preloaded & sync loaders', async () => {
@@ -261,8 +263,10 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    // Includes the post-render resolvedLocation/status idle update.
-    expect(updates).toBe(3)
+    // Writes coalesce through the scheduler, so the pending publish and the
+    // swap land in one settle, plus the post-render resolvedLocation/status
+    // idle update.
+    expect(updates).toBe(2)
   })
 
   test('navigate, w/ previous navigation & async loader', async () => {
@@ -278,7 +282,10 @@ describe("Store doesn't update *too many* times during navigation", () => {
     // This number should be as small as possible to minimize the amount of work
     // that needs to be done during a navigation.
     // Any change that increases this number should be investigated.
-    expect(updates).toBe(3)
+    // Writes coalesce through the scheduler, so the pending publish and the
+    // swap land in one settle, plus the post-render resolvedLocation/status
+    // idle update.
+    expect(updates).toBe(2)
   })
 
   test('preload a preloaded route w/ async loader', async () => {
