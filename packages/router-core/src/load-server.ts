@@ -5,7 +5,11 @@ import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './load-client'
 import { waitForReason } from './await-signal'
-import { getLocationChangeInfo, runRouteLifecycle } from './router'
+import {
+  getLocationChangeInfo,
+  lifecycleEnd,
+  runRouteLifecycle,
+} from './router'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
@@ -859,6 +863,7 @@ export async function loadServerRoute(
   router.updateLatestLocation()
   const next = router.latestLocation
   const previous = router._committed
+  const previousEnd = router._lifecycleEnd
   let result: ServerLoadResult
   try {
     const canonical = router.buildLocation({
@@ -894,17 +899,19 @@ export async function loadServerRoute(
   }
 
   router._serverResult = result
+  let nextEnd = 0
   router.batch(() => {
     router.stores.location.set(next)
     router.stores.status.set('idle')
     if (result.type === 'render') {
+      router._committed = result.matches
+      nextEnd = router._lifecycleEnd = lifecycleEnd(result.matches)
       router.stores.setMatches(result.matches)
       router.stores.resolvedLocation.set(next)
     }
   })
   if (result.type === 'render') {
-    router._committed = result.matches
-    runRouteLifecycle(router, previous, result.matches)
+    runRouteLifecycle(router, previous, result.matches, previousEnd, nextEnd)
   }
   router._commitPromise?.resolve()
   router._commitPromise = undefined

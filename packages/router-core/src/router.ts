@@ -928,13 +928,27 @@ export function _getUserHistoryState({
   return state
 }
 
+export function lifecycleEnd(matches: Array<AnyRouteMatch>) {
+  const boundary = matches.findIndex(
+    (match) =>
+      match.status === 'error' ||
+      match.status === 'notFound' ||
+      match._notFound,
+  )
+  return boundary < 0 ? matches.length : boundary + 1
+}
+
 /** Run route lifecycle callbacks in leave/enter/stay phases. */
 export function runRouteLifecycle(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   matches: Array<AnyRouteMatch>,
+  previousEnd: number,
+  nextEnd: number,
   owner?: LoadTransaction,
 ): void {
+  previous = previous.slice(0, previousEnd)
+  matches = matches.slice(0, nextEnd)
   for (const match of previous) {
     if (owner && router._tx !== owner) {
       return
@@ -1080,6 +1094,8 @@ export class RouterCore<
   _cache = new Map<string, AnyRouteMatch>()
   /** Accepted semantic lane, excluding temporary pending presentation. */
   _committed: Array<AnyRouteMatch> = []
+  // Foreground lifecycle membership survives invalidation/background statuses.
+  _lifecycleEnd = 0
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
