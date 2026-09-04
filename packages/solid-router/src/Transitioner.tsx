@@ -1,6 +1,8 @@
 import * as Solid from 'solid-js'
 import { getLocationChangeInfo, trimPathRight } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import type { AnyRouteMatch } from '@tanstack/router-core'
 
 function getResolvedLocation(router: ReturnType<typeof useRouter>) {
   const resolvedLocation = router.stores.resolvedLocation.get()
@@ -16,21 +18,56 @@ function getResolvedLocation(router: ReturnType<typeof useRouter>) {
 export function Transitioner() {
   const router = useRouter()
 
-  // No server early-return here: Solid 2 derives hydration keys from the
-  // reactive owner tree, so the server must register the same `onSettled`
-  // slot as the client or every key after this component shifts by one.
-  // The callback itself never runs on the server.
-  router.startTransition = async (fn) => {
-    const result = Solid.runWithOwner(null, fn)
-    try {
-      Solid.flush()
-    } catch {
-      // Solid auto-flushes when this is called from a reactive context.
+  type Ack = [
+    expected: Array<AnyRouteMatch>,
+    resolve: (rendered: boolean) => void,
+  ]
+  const acks: Array<Ack> = []
+  let committed: Array<AnyRouteMatch> | undefined
+
+  const isCommitted = (expected: Array<AnyRouteMatch>) =>
+    !!committed &&
+    committed.length === expected.length &&
+    expected.every((match, index) => committed![index] === match)
+
+  // Ack when the commit's transition settles (the atomic swap), not when the
+  // flush parks it; superseded or rolled-back commits resolve false.
+  router.startTransition = (fn, expectedMatches) => {
+    if (isServer ?? router.isServer) {
+      fn()
+      return Promise.resolve(true)
     }
-    await result
-    await new Promise<void>((resolve) => queueMicrotask(resolve))
-    return true
+    return new Promise((resolve) => {
+      const ack: Ack = [expectedMatches, resolve]
+      acks.push(ack)
+      Solid.runWithOwner(null, fn)
+      try {
+        Solid.flush()
+      } catch {
+        // Solid auto-flushes when this is called from a reactive context.
+      }
+      // A commit that changed nothing produces no settlement to observe.
+      if (acks.includes(ack) && isCommitted(expectedMatches)) {
+        acks.splice(acks.indexOf(ack), 1)
+        resolve(true)
+      }
+    })
   }
+
+  // No server early-return here or below: Solid 2 derives hydration keys
+  // from the reactive owner tree, so the server must register the same slots
+  // as the client. The callbacks themselves never run on the server.
+  Solid.createEffect(
+    () => router.stores.matches.get(),
+    (current) => {
+      committed = current
+      if (acks.length) {
+        for (const [expected, resolve] of acks.splice(0)) {
+          resolve(isCommitted(expected))
+        }
+      }
+    },
+  )
 
   Solid.onSettled(() => {
     const unsub = router.history.subscribe(() => {
