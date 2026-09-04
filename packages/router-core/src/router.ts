@@ -938,6 +938,19 @@ export function lifecycleEnd(matches: Array<AnyRouteMatch>) {
   return boundary < 0 ? matches.length : boundary + 1
 }
 
+function hasLifecycleMatch(
+  matches: Array<AnyRouteMatch>,
+  end: number,
+  routeId: string,
+) {
+  for (let index = 0; index < end; index++) {
+    if (matches[index]!.routeId === routeId) {
+      return true
+    }
+  }
+  return false
+}
+
 /** Run route lifecycle callbacks in leave/enter/stay phases. */
 export function runRouteLifecycle(
   router: AnyRouter,
@@ -947,27 +960,24 @@ export function runRouteLifecycle(
   nextEnd: number,
   owner?: LoadTransaction,
 ): void {
-  previous = previous.slice(0, previousEnd)
-  matches = matches.slice(0, nextEnd)
-  for (const match of previous) {
+  for (let index = 0; index < previousEnd; index++) {
     if (owner && router._tx !== owner) {
       return
     }
-    if (!matches.some((candidate) => candidate.routeId === match.routeId)) {
+    const match = previous[index]!
+    if (!hasLifecycleMatch(matches, nextEnd, match.routeId)) {
       ;(router.routesById as Record<string, AnyRoute>)[
         match.routeId
       ]!.options.onLeave?.(match)
     }
   }
-  for (const match of matches) {
+  for (let index = 0; index < nextEnd; index++) {
     if (owner && router._tx !== owner) {
       return
     }
-    const route = (router.routesById as Record<string, AnyRoute>)[
-      match.routeId
-    ]!
-    route.options[
-      previous.some((candidate) => candidate.routeId === match.routeId)
+    const match = matches[index]!
+    ;(router.routesById as Record<string, AnyRoute>)[match.routeId]!.options[
+      hasLifecycleMatch(previous, previousEnd, match.routeId)
         ? 'onStay'
         : 'onEnter'
     ]?.(match)
