@@ -1,5 +1,14 @@
 # @tanstack/react-router
 
+## 1.170.32
+
+### Patch Changes
+
+- [#8130](https://github.com/TanStack/router/pull/8130) [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b) - preserve context during reloads
+
+- Updated dependencies [[`fa65287`](https://github.com/TanStack/router/commit/fa652872812c9433ba8b9d9a285e51b535e7367c), [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b)]:
+  - @tanstack/router-core@1.171.27
+
 ## 1.170.31
 
 ### Patch Changes

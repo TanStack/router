@@ -107,11 +107,7 @@ export class RouteApi<
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-      structuralSharing: opts?.structuralSharing,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts) => {
@@ -119,21 +115,11 @@ export class RouteApi<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useSearch({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useParams({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
@@ -261,11 +247,7 @@ export class Route<
   }
 
   useMatch: UseMatchRoute<TId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-      structuralSharing: opts?.structuralSharing,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TId> = (opts?) => {
@@ -273,21 +255,11 @@ export class Route<
   }
 
   useSearch: UseSearchRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useSearch({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<TId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useParams({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TId> = (opts) => {
@@ -532,11 +504,7 @@ export class RootRoute<
   }
 
   useMatch: UseMatchRoute<RootRouteId> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.id,
-      structuralSharing: opts?.structuralSharing,
-    } as any) as any
+    return useMatch({ ...opts, from: this.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<RootRouteId> = (opts) => {
@@ -544,21 +512,11 @@ export class RootRoute<
   }
 
   useSearch: UseSearchRoute<RootRouteId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useSearch({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.id } as any)
   }
 
   useParams: UseParamsRoute<RootRouteId> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useParams({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<RootRouteId> = (opts) => {

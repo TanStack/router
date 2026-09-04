@@ -17,7 +17,7 @@ title: TanStack Query Integration
 
 The TanStack query integration is a separate package that you need to install:
 
-<!-- ::start:tabs variant="package-manager" mode="dev-install" -->
+<!-- ::start:tabs variant="package-manager" -->
 
 react: @tanstack/react-router-ssr-query
 solid: @tanstack/solid-router-ssr-query
