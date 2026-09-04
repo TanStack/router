@@ -944,11 +944,11 @@ export function runRouteLifecycle(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   matches: Array<AnyRouteMatch>,
-  previousEnd: number,
+  previousEnd: number | undefined,
   nextEnd: number,
   owner?: LoadTransaction,
 ): void {
-  // Zero means the full branch; copy only when a fallback limits membership.
+  // Zero or undefined means the full branch; copy only at a fallback.
   if (previousEnd) {
     previous = previous.slice(0, previousEnd)
   }
@@ -1101,8 +1101,8 @@ export class RouterCore<
   /** Accepted semantic lane, excluding temporary pending presentation. */
   _committed: Array<AnyRouteMatch> = []
   // Foreground lifecycle boundary survives invalidation/background statuses.
-  // Zero means the whole branch participates.
-  _lifecycleEnd = 0
+  // Zero or undefined means the whole branch participates.
+  declare _lifecycleEnd?: number
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
