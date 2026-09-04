@@ -24,6 +24,7 @@ export const defaultStringifySearch = stringifySearchWith(
  * @link https://tanstack.com/router/latest/docs/framework/react/guide/custom-search-param-serialization
  */
 export function parseSearchWith(parser: (str: string) => any) {
+  const isJsonParser = parser === JSON.parse
   return (searchStr: string): AnySchema => {
     if (searchStr[0] === '?') {
       searchStr = searchStr.substring(1)
@@ -35,6 +36,10 @@ export function parseSearchWith(parser: (str: string) => any) {
     for (const key in query) {
       const value = query[key]
       if (typeof value === 'string') {
+        // Skip JSON.parse when the value cannot begin valid JSON.
+        if (isJsonParser && !jsonStart.test(value)) {
+          continue
+        }
         try {
           query[key] = parser(value)
         } catch (_err) {
