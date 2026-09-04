@@ -1,5 +1,9 @@
 import { makeLevelData } from './shared-data'
-import { randomSegment, runRequestLoop } from '../../bench-utils'
+import {
+  findDehydrationMarkerIndex,
+  randomSegment,
+  runRequestLoop,
+} from '../../bench-utils'
 import type { StartRequestHandler } from '../../bench-utils'
 
 export type { StartRequestHandler }
@@ -54,7 +58,7 @@ export async function assertLoadersSanity(handler: StartRequestHandler) {
     throw new Error('Expected setup response to include the leaf loader item')
   }
 
-  if (!body.includes('$_TSR')) {
+  if (findDehydrationMarkerIndex(body) === -1) {
     throw new Error('Expected setup response to include the dehydration marker')
   }
 }
