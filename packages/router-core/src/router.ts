@@ -929,26 +929,14 @@ export function _getUserHistoryState({
 }
 
 export function lifecycleEnd(matches: Array<AnyRouteMatch>) {
-  const boundary = matches.findIndex(
-    (match) =>
-      match.status === 'error' ||
-      match.status === 'notFound' ||
-      match._notFound,
+  return (
+    matches.findIndex(
+      (match) =>
+        match.status === 'error' ||
+        match.status === 'notFound' ||
+        match._notFound,
+    ) + 1
   )
-  return boundary < 0 ? matches.length : boundary + 1
-}
-
-function hasLifecycleMatch(
-  matches: Array<AnyRouteMatch>,
-  end: number,
-  routeId: string,
-) {
-  for (let index = 0; index < end; index++) {
-    if (matches[index]!.routeId === routeId) {
-      return true
-    }
-  }
-  return false
 }
 
 /** Run route lifecycle callbacks in leave/enter/stay phases. */
@@ -960,24 +948,32 @@ export function runRouteLifecycle(
   nextEnd: number,
   owner?: LoadTransaction,
 ): void {
-  for (let index = 0; index < previousEnd; index++) {
+  // Zero means the full branch; copy only when a fallback limits membership.
+  if (previousEnd) {
+    previous = previous.slice(0, previousEnd)
+  }
+  if (nextEnd) {
+    matches = matches.slice(0, nextEnd)
+  }
+  for (const match of previous) {
     if (owner && router._tx !== owner) {
       return
     }
-    const match = previous[index]!
-    if (!hasLifecycleMatch(matches, nextEnd, match.routeId)) {
+    if (!matches.some((candidate) => candidate.routeId === match.routeId)) {
       ;(router.routesById as Record<string, AnyRoute>)[
         match.routeId
       ]!.options.onLeave?.(match)
     }
   }
-  for (let index = 0; index < nextEnd; index++) {
+  for (const match of matches) {
     if (owner && router._tx !== owner) {
       return
     }
-    const match = matches[index]!
-    ;(router.routesById as Record<string, AnyRoute>)[match.routeId]!.options[
-      hasLifecycleMatch(previous, previousEnd, match.routeId)
+    const route = (router.routesById as Record<string, AnyRoute>)[
+      match.routeId
+    ]!
+    route.options[
+      previous.some((candidate) => candidate.routeId === match.routeId)
         ? 'onStay'
         : 'onEnter'
     ]?.(match)
@@ -1104,7 +1100,8 @@ export class RouterCore<
   _cache = new Map<string, AnyRouteMatch>()
   /** Accepted semantic lane, excluding temporary pending presentation. */
   _committed: Array<AnyRouteMatch> = []
-  // Foreground lifecycle membership survives invalidation/background statuses.
+  // Foreground lifecycle boundary survives invalidation/background statuses.
+  // Zero means the whole branch participates.
   _lifecycleEnd = 0
 
   // Must build in constructor
