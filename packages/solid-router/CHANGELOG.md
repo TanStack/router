@@ -1,5 +1,15 @@
 # @tanstack/solid-router
 
+## 2.0.0-rc.6
+
+### Patch Changes
+
+- [#8236](https://github.com/TanStack/router/pull/8236) [`cc25e82`](https://github.com/TanStack/router/commit/cc25e8227829a938aa3ff7b67648a45f84f9df31) - Remove all router-owned `Loading` boundaries from `Matches`, `Match`, and `Outlet`, and only install one in `Await` when a `fallback` is provided. Async reads in route components are no longer caught by an invisible router boundary, so Solid's implicit transitions hold the previous view — live and interactive — until the new route settles, then swap atomically. `pendingComponent` is presented through router pending state (`pendingMs`/`pendingMinMs`) as before; loading boundaries are now exclusively user-provided.
+
+- [#8236](https://github.com/TanStack/router/pull/8236) [`cc25e82`](https://github.com/TanStack/router/commit/cc25e8227829a938aa3ff7b67648a45f84f9df31) - Resolve the `router.startTransition` render acknowledgement when the commit's transition actually settles instead of immediately after flush. View transitions, `onRendered` (scroll restoration), pending minimum-display timing, and `status: 'idle'` now observe the committed swap instead of firing against held DOM; superseded or rolled-back commits acknowledge `false` instead of leaking. Synchronous navigations still acknowledge within the same flush.
+
+- [#8236](https://github.com/TanStack/router/pull/8236) [`cc25e82`](https://github.com/TanStack/router/commit/cc25e8227829a938aa3ff7b67648a45f84f9df31) - Stop force-flushing Solid's scheduler on every router-core batch. Store writes now coalesce through the scheduler (one settle per navigation instead of 3-5 full synchronous flushes) while reads stay synchronously fresh via a shadow value in the store bridge.
+
 ## 2.0.0-rc.5
 
 ### Patch Changes
