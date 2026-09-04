@@ -1655,16 +1655,19 @@ function commitMatches(
   runRouteLifecycle(router, previous, matches, tx)
 }
 
+/**
+ * Resolve once the router has settled on a transaction other than `owner`.
+ * Each transaction's completion follows its current successor, so all waiters
+ * share the same chain instead of polling every successor independently.
+ */
 async function awaitCurrent(
   router: CoordinatorRouter,
   owner?: LoadTransaction,
 ): Promise<void> {
   let current = router._tx
   while (current && current !== owner) {
+    owner = current
     await current[5 /* done */]
-    if (router._tx === current) {
-      return
-    }
     current = router._tx
   }
 }
@@ -1974,7 +1977,7 @@ export async function loadClientRoute(
     location,
     matches,
     Date.now(),
-    done,
+    done.then(() => awaitCurrent(router, tx)),
   ]
   if (process.env.NODE_ENV !== 'production' && rematerialize) {
     tx[6 /* refresh */] = [handoff]
@@ -2021,8 +2024,7 @@ export async function loadClientRoute(
   }
   // Let explicit synchronous loads publish ready pending work before paint.
   settle?.(run())
-  await done
-  await awaitCurrent(router, tx)
+  await tx[5 /* done */]
 }
 
 export async function refreshClientRoute(
