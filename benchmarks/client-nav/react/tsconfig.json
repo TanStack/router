@@ -12,6 +12,7 @@
     "../jsdom.ts",
     "setup.ts",
     "vite.config.ts",
-    "../vitest.setup.ts"
+    "../vitest.setup.ts",
+    "../ready-routes.tsx"
   ]
 }
