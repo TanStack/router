@@ -1578,7 +1578,7 @@ function publishMatches(
   router.stores.setMatches(matches)
 }
 
-function commitMatches(
+export function commitMatches(
   router: CoordinatorRouter,
   tx: LoadTransaction,
   matches: LaneMatches<'projected'>,
@@ -1641,10 +1641,14 @@ function commitMatches(
   tx[3 /* matches */] = []
   router._cache = cached
   publishMatches(router, matches)
+  // Retained cache objects keep their leases; only departing owners need handoff.
+  const previousMatches = [...previousCached.values(), ...previous]
   transferMatchResources(
     router,
-    [...previousCached.values(), ...previous],
-    [...matches, ...cached.values()],
+    previousMatches.filter(
+      (match: WorkMatch) => match._flight && cached.get(match.id) !== match,
+    ),
+    matches,
   )
   if (process.env.NODE_ENV !== 'production') {
     const handoff = tx[6 /* refresh */]?.[0 /* handoff */]
