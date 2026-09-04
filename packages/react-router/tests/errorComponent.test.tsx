@@ -422,6 +422,93 @@ test('errorComponent receives primitive errors thrown from beforeLoad', async ()
   expect(screen.queryByText('About route content')).not.toBeInTheDocument()
 })
 
+const falsyThrownValues = [
+  { label: 'undefined', value: undefined },
+  { label: 'null', value: null },
+  { label: 'an empty string', value: '' },
+]
+
+test.each(falsyThrownValues)(
+  'errorComponent is rendered when $label is thrown from the route component',
+  async ({ value }) => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        throw value
+      },
+      errorComponent: ({ error }) => (
+        <div>
+          <div>route errorComponent</div>
+          <div data-testid="thrown-value">{String(error)}</div>
+        </div>
+      ),
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('route errorComponent')).toBeInTheDocument()
+    expect(screen.getByTestId('thrown-value').textContent).toBe(String(value))
+  },
+)
+
+test.each(falsyThrownValues)(
+  'errorComponent is rendered when $label is thrown from the route loader',
+  async ({ value }) => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      loader: () => {
+        throw value
+      },
+      component: function Home() {
+        return <div>Index route content</div>
+      },
+      errorComponent: () => <div>route errorComponent</div>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('route errorComponent')).toBeInTheDocument()
+    expect(screen.queryByText('Index route content')).not.toBeInTheDocument()
+  },
+)
+
+test.each(falsyThrownValues)(
+  'the global catch boundary is rendered when $label is thrown and no errorComponent is configured',
+  async ({ value }) => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: function Home() {
+        throw value
+      },
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText('Something went wrong!')).toBeInTheDocument()
+  },
+)
+
 test.each(['beforeLoad', 'loader'] as const)(
   'a Promise synchronously thrown from %s renders the route error UI',
   async (hook) => {
