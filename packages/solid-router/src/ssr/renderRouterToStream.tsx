@@ -1,4 +1,5 @@
 import * as Solid from '@solidjs/web'
+import { createHydrationSerializer } from '@solidjs/web/serialization'
 import { isbot } from 'isbot'
 import {
   createSsrStreamResponse,
@@ -9,8 +10,13 @@ import clientAssetsManifest from './clientAssetsManifest'
 import type { ReadableStream } from 'node:stream/web'
 import type { AnyRouter } from '@tanstack/router-core'
 import type { JSX } from '@solidjs/web'
+import type { HydrationSerializerOptions } from '@solidjs/web/serialization'
 
 const noop = () => {}
+
+function deferHydrationPayload(payload: string) {
+  return `(self.$_TSR=self.$_TSR||{buffer:[]},self.$_TSR.p?self.$_TSR.p(()=>{${payload}}):self.$_TSR.buffer.push(()=>{${payload}}))`
+}
 
 // Bot responses wait for the server renderer before streaming. If the request
 // disconnects during that wait, unblock so the pipe can abort and clean up.
@@ -52,14 +58,32 @@ export const renderRouterToStream = async ({
   const serializationAdapters =
     (router.options as any)?.serializationAdapters ||
     (router.options.ssr as any)?.serializationAdapters
+  const trackPlugins = { didRun: false }
   const serovalPlugins = serializationAdapters?.map((adapter: any) => {
-    const plugin = makeSsrSerovalPlugin(adapter, { didRun: false })
+    const plugin = makeSsrSerovalPlugin(adapter, trackPlugins)
     return plugin
   })
 
   const stream = Solid.renderToStream(() => children, {
     nonce: router.options.ssr?.nonce,
     plugins: serovalPlugins,
+    // Once an adapter runs, preserve serializer reference order by deferring
+    // that payload and every payload after it behind the router's barrier.
+    ...(serovalPlugins
+      ? {
+          serializer: (options: HydrationSerializerOptions) =>
+            createHydrationSerializer({
+              ...options,
+              onData: (payload) => {
+                options.onData(
+                  trackPlugins.didRun
+                    ? deferHydrationPayload(payload)
+                    : payload,
+                )
+              },
+            }),
+        }
+      : {}),
     // Prefer the bundler-provided client-assets bridge (module-keyed, the
     // shape Solid resolves lazy() assets from); the router's route-keyed
     // manifest is a last resort that cannot answer lazy module lookups.
