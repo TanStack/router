@@ -3,6 +3,32 @@ import { expect, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute, notFound } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
+test('an explicitly targeted not-found owner remains lifecycle-active', async () => {
+  const onEnter = vi.fn()
+  const rootRoute = new BaseRootRoute({
+    beforeLoad: () => {
+      throw notFound({ routeId: '/child' })
+    },
+  })
+  const childRoute = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/child',
+    notFoundComponent: () => null,
+    onEnter,
+  })
+  const history = createMemoryHistory({ initialEntries: ['/child'] })
+  const router = createTestRouter({
+    routeTree: rootRoute.addChildren([childRoute]),
+    history,
+  })
+  try {
+    await router.load()
+    expect(onEnter).toHaveBeenCalledOnce()
+  } finally {
+    history.destroy()
+  }
+})
+
 test.each(['client', 'server'] as const)(
   '%s lifecycle follows the active branch through fallback transitions',
   async (environment) => {
