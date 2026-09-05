@@ -1,6 +1,7 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
+import { resetScrollStateKey } from '../src/history'
 import { createTestRouter } from './routerTestUtils'
 import type { ParsedLocation } from '../src'
 
@@ -38,6 +39,7 @@ function getLocation(
   return {
     ...router.latestLocation,
     href: pathname,
+    publicHref: pathname,
     pathname,
   }
 }
@@ -327,5 +329,67 @@ describe('setupScrollRestoration', () => {
     emitNavigation(router, 'onRendered', source, destination)
 
     expect(getElement).not.toHaveBeenCalled()
+  })
+
+  test('preserves a pending page reset through a same-path URL patch', () => {
+    const windowScrollTo = vi.fn()
+    vi.stubGlobal('scrollTo', windowScrollTo)
+
+    const router = createRouter({
+      scrollRestoration: true,
+      getScrollRestorationKey: (location) => location.pathname,
+    })
+    const source = getLocation(router, '/unit-overlap-source')
+    const destination = getLocation(router, '/unit-overlap-destination')
+
+    router._scroll.next = true
+    const pendingPatch = {
+      ...getLocation(router, '/unit-overlap-destination'),
+      href: '/unit-overlap-destination?color=blue',
+      searchStr: '?color=blue',
+      search: { color: 'blue' },
+      state: {
+        ...destination.state,
+        [resetScrollStateKey]: true,
+      },
+    }
+    router._scroll.next = false
+
+    emitNavigation(router, 'onRendered', source, pendingPatch)
+
+    expect(windowScrollTo).toHaveBeenCalledWith({
+      top: 0,
+      left: 0,
+      behavior: undefined,
+    })
+  })
+
+  test('commits same-path URL patches with inherited pending reset state', () => {
+    const destinationPath = '/unit-overlap-destination'
+    const patchedHref = `${destinationPath}?color=blue`
+    const router = createRouter()
+    const unsubscribe = router.history.subscribe(() => {})
+    const destination = getLocation(router, destinationPath)
+    router.latestLocation = destination
+    router._scroll.next = true
+    router._scroll.pending = true
+
+    try {
+      void router.commitLocation({
+        ...destination,
+        href: patchedHref,
+        publicHref: patchedHref,
+        searchStr: '?color=blue',
+        search: { color: 'blue' },
+        state: { ...destination.state },
+        replace: true,
+        resetScroll: false,
+      } as any)
+
+      expect(router.history.location.state[resetScrollStateKey]).toBe(true)
+      expect(router._scroll.next).toBe(true)
+    } finally {
+      unsubscribe()
+    }
   })
 })
