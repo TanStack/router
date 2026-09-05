@@ -779,6 +779,15 @@ export function createStartHandler<TRegister = Register>(
       request.signal.throwIfAborted()
       responseOwnsCleanup = response.serverSsrCleanup === 'stream'
       return response.response
+    } catch (err) {
+      // classify a client disconnect as 499 instead of an unhandled 500
+      if (request.signal.aborted && err === request.signal.reason) {
+        return new Response(null, {
+          status: 499,
+          statusText: 'Client Closed Request',
+        })
+      }
+      throw err
     } finally {
       if (router?.serverSsr && !responseOwnsCleanup) {
         // Clean up router SSR state if it was set up but won't be cleaned up by the callback
