@@ -20,6 +20,8 @@ await assertAssetsScenario(handler)
 
 beforeEach(async () => {
   await waitForTask()
+  global.gc?.()
+  await waitForTask()
 })
 
 describe('ssr', () => {
