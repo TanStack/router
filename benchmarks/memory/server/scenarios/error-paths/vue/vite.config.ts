@@ -23,6 +23,7 @@ export default defineConfig({
     minify: false,
   },
   test: {
+    isolate: true,
     // Keep lazily-compiled code alive for the whole run: the pinned
     // collections age code fast enough for V8 to flush unused bytecode,
     // and the mid-measurement recompile injects a multi-MB allocation

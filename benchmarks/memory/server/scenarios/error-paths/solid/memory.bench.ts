@@ -4,8 +4,8 @@ import { workloadGroup } from './setup'
 
 await workloadGroup.sanity()
 
+const workload = workloadGroup.workloads[0]!
+
 describe('memory', () => {
-  for (const workload of workloadGroup.workloads) {
-    bench(workload.name, workload.run, memoryBenchOptions)
-  }
+  bench(workload.name, workload.run, memoryBenchOptions)
 })
