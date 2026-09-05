@@ -7,6 +7,8 @@
 
 ## Work and validation
 
+- Start bug fixes with a failing regression test that uses only public APIs to reproduce and assert user- or developer-visible behavior. Do not manufacture bugs by mutating internals. Establish whether real usage can reach the failing state before adding runtime handling; simplify handling of states proven unreachable.
+- During debugging/prototyping, keep fixes aligned with the PR's intended architecture. If making a test pass requires another flag, counter, copied deadline, or duplicate completion authority, stop and consolidate state and ownership. Remove superseded paths instead of accumulating patches and bundle growth.
 - Use Node from `.nvmrc` and pnpm from root `package.json`. Install at the root with `CI=1 pnpm install --frozen-lockfile`.
 - For sandbox-blocked registry/store access, escalate the same command; report the blocker if unavailable. Do not change stores, delete dependencies/lockfiles, use `--force`/`--ignore-scripts`, or weaken workspace trust/build policies to bypass it.
 - Never manually edit `pnpm-lock.yaml` or any `routeTree.gen.ts`. Regenerate the lockfile with `pnpm install --no-frozen-lockfile` after intentional dependency changes; regenerate route trees through app builds/dev servers or the generator fixture harness.
