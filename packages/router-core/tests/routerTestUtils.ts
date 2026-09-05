@@ -1,11 +1,14 @@
 import { batch, createAtom } from '@tanstack/store'
+import { createMemoryHistory } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import {
   RouterCore,
+  BaseRootRoute,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
 } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
+import type { interpolatePath } from '../src/path'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRouter,
@@ -47,6 +50,31 @@ export function createTestRouter<
   >,
 ) {
   return new RouterCore(options, getStoreConfig)
+}
+
+export function createTestPathInterpolator() {
+  const router = createTestRouter({
+    routeTree: new BaseRootRoute({}),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    scrollRestoration: false,
+  })
+  router.history.destroy()
+  const interpolate = router['interpolatePath']
+
+  return (options: Parameters<typeof interpolatePath>[0]): string => {
+    router.isServer = options.server ?? false
+    router.pathParamsDecoder = options.decoder
+    // Support both sides of the factory-to-method benchmark comparison.
+    const args =
+      interpolate.length === 1
+        ? [options]
+        : [options.path || '/', options.params]
+    const result = Reflect.apply(interpolate, router, args)
+    if (typeof result !== 'string') {
+      throw new Error('Expected an interpolated pathname')
+    }
+    return result
+  }
 }
 
 /** Materialize the request-local server result as the HTTP response users see. */

@@ -94,28 +94,16 @@ function resolveIsActive(
   activeOptions: ActiveOptions | undefined,
   basepath: string,
   isHydrated: boolean,
-  isExternal: boolean,
 ): boolean {
-  if (isExternal) {
+  const currentPath = removeTrailingSlash(location.pathname, basepath)
+  const nextPath = removeTrailingSlash(next.pathname, basepath)
+  if (
+    currentPath !== nextPath &&
+    (activeOptions?.exact ||
+      !currentPath.startsWith(nextPath) ||
+      currentPath[nextPath.length] !== '/')
+  ) {
     return false
-  }
-  if (activeOptions?.exact) {
-    const testExact = exactPathTest(location.pathname, next.pathname, basepath)
-    if (!testExact) {
-      return false
-    }
-  } else {
-    const currentPathSplit = removeTrailingSlash(location.pathname, basepath)
-    const nextPathSplit = removeTrailingSlash(next.pathname, basepath)
-
-    const pathIsFuzzyEqual =
-      currentPathSplit.startsWith(nextPathSplit) &&
-      (currentPathSplit.length === nextPathSplit.length ||
-        currentPathSplit[nextPathSplit.length] === '/')
-
-    if (!pathIsFuzzyEqual) {
-      return false
-    }
   }
 
   if (activeOptions?.includeSearch ?? true) {
@@ -523,14 +511,14 @@ export function useLinkProps<
       return [
         hrefOption?.href,
         externalLink,
-        resolveIsActive(
-          location,
-          next,
-          stableActiveOptions,
-          router.basepath,
-          isHydrated,
-          externalLink !== undefined,
-        ),
+        !externalLink &&
+          resolveIsActive(
+            location,
+            next,
+            stableActiveOptions,
+            router.basepath,
+            isHydrated,
+          ),
       ]
     },
     [stableActiveOptions, disabled, isHydrated, _options, router, to],
@@ -543,18 +531,10 @@ export function useLinkProps<
     compareLinkState,
   )
 
-  const resolvedProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
-    : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
-  const stateClassName = resolvedProps.className
-  const resolvedClassName = className
-    ? stateClassName
-      ? `${className} ${stateClassName}`
-      : className
-    : stateClassName
-  const stateStyle = resolvedProps.style
-  const resolvedStyle =
-    style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle
+  const resolvedProps: React.HTMLAttributes<HTMLAnchorElement> =
+    functionalUpdate(isActive ? activeProps : inactiveProps, {}) ??
+    (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
+  const { className: stateClassName, style: stateStyle } = resolvedProps
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const hasRenderFetched = React.useRef(false)
@@ -704,8 +684,12 @@ export function useLinkProps<
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
     target,
-    ...(resolvedStyle && { style: resolvedStyle }),
-    ...(resolvedClassName && { className: resolvedClassName }),
+    ...(style && {
+      style: stateStyle ? { ...style, ...stateStyle } : style,
+    }),
+    ...(className && {
+      className: className + (stateClassName ? ' ' + stateClassName : ''),
+    }),
     ...(disabled && STATIC_DISABLED_PROPS),
     ...(isActive && STATIC_ACTIVE_PROPS),
   }
