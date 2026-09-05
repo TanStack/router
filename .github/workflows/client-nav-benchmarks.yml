@@ -68,6 +68,20 @@ jobs:
           pnpm nx run
           @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
 
+      - name: Add diagnostic measurement markers
+        working-directory: benchmarks/ssr
+        run: |
+          node --input-type=module <<'JS'
+          import fs from 'node:fs';
+          const file = new URL('./analysis.mjs', import.meta.resolve('@codspeed/vitest-plugin'));
+          let source = fs.readFileSync(file, 'utf8');
+          if (!source.includes("InstrumentHooks.startBenchmark();")) { throw new Error("Missing instrumentation marker") }
+          source = source.replace("InstrumentHooks.startBenchmark();", "process.stdout.write(\"GC_MEASURE_BEGIN\\n\"); InstrumentHooks.startBenchmark();");
+          if (!source.includes("InstrumentHooks.stopBenchmark();")) { throw new Error("Missing instrumentation marker") }
+          source = source.replace("InstrumentHooks.stopBenchmark();", "InstrumentHooks.stopBenchmark(); process.stdout.write(\"GC_MEASURE_END\\n\");");
+          fs.writeFileSync(file, source);
+          JS
+
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         uses: CodSpeedHQ/action@4296e51e7041e24dadb86d1d6e8b9320d223dbe8 # v5.0.3
         timeout-minutes: 20

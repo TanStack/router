@@ -15,6 +15,7 @@ export function cpuSimulationExecArgv() {
       '--no-maglev',
       '--no-minor-gc-task',
       '--no-incremental-marking-task',
+      '--trace-gc',
     ]
   }
   return []
