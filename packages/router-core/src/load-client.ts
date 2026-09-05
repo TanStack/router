@@ -2,7 +2,11 @@
 // can rewrite relative imports for both ESM and CJS.
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
-import { getLocationChangeInfo, runRouteLifecycle } from './router'
+import {
+  getLocationChangeInfo,
+  lifecycleEnd,
+  runRouteLifecycle,
+} from './router'
 import { hydrateSsrMatchId } from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { AnySerializationAdapter } from './ssr/serializer/transformer'
@@ -288,7 +292,8 @@ export function waitFor<T>(
     signal.addEventListener('abort', abort, { once: true })
     Promise.resolve(value)
       .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', abort))
+      // Both settlement callbacks return normally, so this chain fulfills.
+      .then(() => signal.removeEventListener('abort', abort))
   })
 }
 
@@ -859,11 +864,9 @@ function createLoaderTask(
   if (!loaded) {
     match.isFetching = false
   }
-  const loaderOutcome = reloadFailure
-    ? Promise.resolve(reloadFailure)
-    : !blocking
-      ? Promise.resolve<LoaderOutcome>([SUCCESS, match.loaderData])
-      : loadResource(
+  const outcome =
+    !reloadFailure && blocking
+      ? loadResource(
           router,
           lane,
           match,
@@ -871,41 +874,42 @@ function createLoaderTask(
           loader,
           semanticParent,
           options,
+        ).then((result) => {
+          settleInto(match, result, preload)
+          if (result[0 /* kind */] === SUCCESS) {
+            // A settled generation can outlive its lane without keeping unresolved
+            // navigation work alive.
+            if (routeLoader && !options[0 /* controller */].signal.aborted) {
+              cacheLoaderMatch(router, match, plannedCacheMatch)
+            }
+            // A route is renderable only after both its data and normal component
+            // chunk are ready. Its loader data is already available to descendants.
+            if (index >= retainedEnd) {
+              match.status = 'pending'
+            }
+          }
+          return result
+        })
+      : Promise.resolve<LoaderOutcome>(
+          reloadFailure ?? [SUCCESS, match.loaderData],
         )
-  const outcome = loaderOutcome.then((result) => {
-    if (blocking) {
-      settleInto(match, result, preload)
-      if (result[0 /* kind */] === SUCCESS) {
-        // A settled generation can outlive its lane without keeping unresolved
-        // navigation work alive.
-        if (routeLoader && !options[0 /* controller */].signal.aborted) {
-          cacheLoaderMatch(router, match, plannedCacheMatch)
-        }
-        // A route is renderable only after both its data and normal component
-        // chunk are ready. Its loader data is already available to descendants.
-        if (index >= retainedEnd) {
-          match.status = 'pending'
-        }
-      }
-    }
-    return result
-  })
 
-  const chunkOutcome = waitFor(
-    Promise.resolve().then(() => loadRouteChunk(route, undefined, onLazyReady)),
-    options[0 /* controller */].signal,
-  ).then(
-    () => undefined,
-    (cause): IndexedOutcome | undefined =>
-      lane[1 /* matches */].some(
-        (candidate, candidateIndex) =>
-          candidateIndex <= index &&
-          (candidate.status === 'error' ||
-            candidate.status === 'notFound' ||
-            candidate._notFound),
-      )
-        ? undefined
-        : [index, normalizeLaneError(router, lane, route, cause, options)],
+  // The async wrapper catches synchronous preload failures without deferring work.
+  const chunkOutcome = (async (): Promise<undefined> => {
+    const chunk = loadRouteChunk(route, undefined, onLazyReady)
+    if (chunk) {
+      await waitFor(chunk, options[0 /* controller */].signal)
+    }
+  })().catch((cause): IndexedOutcome | undefined =>
+    lane[1 /* matches */].some(
+      (candidate, candidateIndex) =>
+        candidateIndex <= index &&
+        (candidate.status === 'error' ||
+          candidate.status === 'notFound' ||
+          candidate._notFound),
+    )
+      ? undefined
+      : [index, normalizeLaneError(router, lane, route, cause, options)],
   )
   const chunkFailure = chunkOutcome.then((failure) =>
     outcome.then((result) => {
@@ -1308,15 +1312,16 @@ async function executeClientLane(
       if (
         committed?.id !== match.id ||
         committed.status !== 'success' ||
-        committed._notFound ||
         match.preload ||
         visible?.id !== match.id ||
-        visible.status !== 'success' ||
-        visible._notFound
+        visible.status !== 'success'
       ) {
         break
       }
       retainedEnd++
+      if (committed._notFound || visible._notFound) {
+        break
+      }
     }
     const tasks: Array<LoaderTask> = []
     const start = options[6 /* resolvedPrefix */] ?? 0
@@ -1578,13 +1583,14 @@ function publishMatches(
   router.stores.setMatches(matches)
 }
 
-function commitMatches(
+export function commitMatches(
   router: CoordinatorRouter,
   tx: LoadTransaction,
   matches: LaneMatches<'projected'>,
   resolvedPrefix?: number,
 ): void {
   const previous = router._committed
+  const previousEnd = router._lifecycleEnd
   const previousCached = router._cache
   for (const match of matches) {
     match.preload = false
@@ -1640,11 +1646,17 @@ function commitMatches(
   // The lane becomes committed before publication can synchronously reenter.
   tx[3 /* matches */] = []
   router._cache = cached
+  // Publish lifecycle membership with its branch before observers can reenter.
+  const nextEnd = (router._lifecycleEnd = lifecycleEnd(matches))
   publishMatches(router, matches)
+  // Retained cache objects keep their leases; only departing owners need handoff.
+  const previousMatches = [...previousCached.values(), ...previous]
   transferMatchResources(
     router,
-    [...previousCached.values(), ...previous],
-    [...matches, ...cached.values()],
+    previousMatches.filter(
+      (match: WorkMatch) => match._flight && cached.get(match.id) !== match,
+    ),
+    matches,
   )
   if (process.env.NODE_ENV !== 'production') {
     const handoff = tx[6 /* refresh */]?.[0 /* handoff */]
@@ -1652,19 +1664,22 @@ function commitMatches(
       handoff[1 /* finish */]()
     }
   }
-  runRouteLifecycle(router, previous, matches, tx)
+  runRouteLifecycle(router, previous, matches, previousEnd, nextEnd, tx)
 }
 
+/**
+ * Resolve once the router has settled on a transaction other than `owner`.
+ * Each transaction's completion follows its current successor, so all waiters
+ * share the same chain instead of polling every successor independently.
+ */
 async function awaitCurrent(
   router: CoordinatorRouter,
   owner?: LoadTransaction,
 ): Promise<void> {
   let current = router._tx
   while (current && current !== owner) {
+    owner = current
     await current[5 /* done */]
-    if (router._tx === current) {
-      return
-    }
     current = router._tx
   }
 }
@@ -1974,7 +1989,7 @@ export async function loadClientRoute(
     location,
     matches,
     Date.now(),
-    done,
+    done.then(() => awaitCurrent(router, tx)),
   ]
   if (process.env.NODE_ENV !== 'production' && rematerialize) {
     tx[6 /* refresh */] = [handoff]
@@ -2021,8 +2036,7 @@ export async function loadClientRoute(
   }
   // Let explicit synchronous loads publish ready pending work before paint.
   settle?.(run())
-  await done
-  await awaitCurrent(router, tx)
+  await tx[5 /* done */]
 }
 
 export async function refreshClientRoute(
@@ -2512,6 +2526,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     },
   ]
   router._committed = committedMatches
+  router._lifecycleEnd = lifecycleEnd(committedMatches)
   router._handoff = handoff
   router._preflight = undefined
   router.batch(() => {

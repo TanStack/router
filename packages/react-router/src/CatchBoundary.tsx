@@ -9,29 +9,30 @@ export class CatchBoundary extends React.Component<{
   getResetKey: () => unknown
   children: React.ReactNode
   errorComponent?: ErrorRouteComponent
-  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
+  onCatch?: (error: unknown, errorInfo: ErrorInfo) => void
 }> {
-  state = { error: null } as { error: Error | null; resetKey?: unknown }
+  // Wrapping caught values keeps every possible thrown value truthy.
+  state = { error: 0 } as { error: [unknown] | 0; resetKey?: unknown }
 
   static getDerivedStateFromProps(
     props: { getResetKey: () => unknown },
-    state: { resetKey?: unknown; error: Error | null },
+    state: { resetKey?: unknown; error: [unknown] | 0 },
   ) {
     const resetKey = props.getResetKey()
 
     if (state.error && state.resetKey !== resetKey) {
-      return { resetKey, error: null }
+      return { resetKey, error: 0 }
     }
 
     return { resetKey }
   }
-  static getDerivedStateFromError(error: Error) {
-    return { error }
+  static getDerivedStateFromError(error: unknown) {
+    return { error: [error] }
   }
   reset = () => {
-    this.setState({ error: null })
+    this.setState({ error: 0 })
   }
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: unknown, errorInfo: ErrorInfo) {
     this.props.onCatch?.(error, errorInfo)
   }
   render() {
@@ -40,7 +41,7 @@ export class CatchBoundary extends React.Component<{
       const element = React.createElement(
         this.props.errorComponent ?? ErrorComponent,
         {
-          error,
+          error: error[0],
           reset: this.reset,
         },
       )
@@ -54,7 +55,7 @@ export class CatchBoundary extends React.Component<{
   }
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: unknown }) {
   const [show, setShow] = React.useState(process.env.NODE_ENV !== 'production')
 
   return (
@@ -88,7 +89,9 @@ export function ErrorComponent({ error }: { error: any }) {
               overflow: 'auto',
             }}
           >
-            {error.message ? <code>{error.message}</code> : null}
+            {(error as { message?: string } | null)?.message ? (
+              <code>{(error as { message: string }).message}</code>
+            ) : null}
           </pre>
         </div>
       ) : null}
