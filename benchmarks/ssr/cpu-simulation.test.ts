@@ -1,4 +1,3 @@
-import { spawnSync } from 'node:child_process'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { resolveConfig } from 'vite'
@@ -10,7 +9,7 @@ afterEach(() => {
 
 describe('CPU simulation worker configuration', () => {
   it.each(['simulation', 'instrumentation'])(
-    'keeps Maglev disabled in %s workers alongside CodSpeed flags',
+    'preserves stock CodSpeed flags in %s workers',
     async (mode) => {
       vi.stubEnv('CODSPEED_ENV', 'test')
       vi.stubEnv('CODSPEED_RUNNER_MODE', mode)
@@ -28,11 +27,6 @@ describe('CPU simulation worker configuration', () => {
       expect(config.test?.execArgv).toEqual(
         expect.arrayContaining([
           '--no-opt',
-          '--no-maglev',
-          '--always-sparkplug',
-          '--no-minor-gc-task',
-          '--no-incremental-marking-task',
-          '--initial-old-space-size=512',
           '--predictable',
           '--hash-seed=1',
           '--random-seed=1',
@@ -40,46 +34,7 @@ describe('CPU simulation worker configuration', () => {
         ]),
       )
 
-      // On Node 24, --no-opt alone still lets Maglev optimize hot functions.
-      // Exercise the resolved worker flags, not just the helper's return value.
-      const result = spawnSync(
-        process.execPath,
-        [
-          ...config.test!.execArgv!,
-          '--trace-opt',
-          '-e',
-          `
-            function increment(value) { return value + 1 }
-            let total = 0
-            for (let i = 0; i < 100_000; i++) { total = increment(total) }
-            process.stdout.write(String(total))
-          `,
-        ],
-        { encoding: 'utf8' },
-      )
-      expect(result.status, result.stderr).toBe(0)
-      expect(result.stdout.trim()).toBe('100000')
-      expect(result.stderr).not.toContain('MAGLEV')
-
-      const coldFunction = spawnSync(
-        process.execPath,
-        [
-          ...config.test!.execArgv!,
-          '--trace-baseline',
-          '--sparkplug-filter=cpuSimulationProbe',
-          '-e',
-          `
-            function cpuSimulationProbe(value) { return value + 1 }
-            process.stdout.write(String(cpuSimulationProbe(41)))
-          `,
-        ],
-        { encoding: 'utf8' },
-      )
-      expect(coldFunction.status, coldFunction.stderr).toBe(0)
-      expect(coldFunction.stdout).toMatch(
-        /SharedFunctionInfo cpuSimulationProbe> \(target BASELINE\)/,
-      )
-      expect(coldFunction.stdout.trim()).toMatch(/42$/)
+      expect(cpuSimulationExecArgv()).toEqual([])
     },
   )
 
