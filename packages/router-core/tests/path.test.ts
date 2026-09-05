@@ -3,6 +3,7 @@ import {
   compileDecodeCharMap,
   exactPathTest,
   interpolatePath,
+  interpolatePathname,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
@@ -186,6 +187,58 @@ describe.each([false, true])(
         }).usedParams,
       ).toEqual({ _splat: 'docs/guide', '*': 'docs/guide' })
     })
+
+    it.each([
+      {
+        params: { id: 'one two', _splat: 'docs/file name' },
+        path: '/root/prefixone%20twosuffix/files/docs/file%20name.txt',
+        used: {
+          id: 'one two',
+          _splat: 'docs/file name',
+          '*': 'docs/file name',
+        },
+        missing: false,
+      },
+      {
+        params: { id: '', language: '', _splat: '' },
+        path: '/root/prefixsuffix//files/.txt',
+        used: { id: '', language: '', _splat: '', '*': '' },
+        missing: true,
+      },
+      {
+        params: {},
+        path: '/root/prefixundefinedsuffix/files/.txt',
+        used: { id: undefined, _splat: undefined, '*': undefined },
+        missing: true,
+      },
+    ])(
+      'keeps mixed segment metadata in one pass for $params',
+      ({ params, path, used, missing }) => {
+        const template = '/root/prefix{$id}suffix/{-$language}/files/{$}.txt'
+        const usedParams: Record<string, unknown> = Object.create(null)
+        const keys: Array<string> = []
+        const metadata = { isMissingParams: false }
+        expect(
+          interpolatePathname(
+            template,
+            params,
+            undefined,
+            usedParams,
+            keys,
+            server,
+            metadata,
+          ),
+        ).toBe(path)
+        expect(keys).toEqual(['id', 'language', '_splat'])
+        expect(usedParams).toEqual(used)
+        expect(metadata.isMissingParams).toBe(missing)
+        expect(interpolatePath({ path: template, params, server })).toEqual({
+          interpolatedPath: path,
+          usedParams: used,
+          isMissingParams: missing,
+        })
+      },
+    )
 
     it.each([
       {
