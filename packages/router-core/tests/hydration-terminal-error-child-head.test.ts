@@ -1,7 +1,7 @@
 import { runInNewContext } from 'node:vm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, notFound } from '../src'
 import { hydrate } from '../src/ssr/client'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { createTestRouter } from './routerTestUtils'
@@ -172,4 +172,60 @@ describe('hydrated terminal error prefix', () => {
     )
     expect(committedApp?.meta).toEqual([{ title: 'App error title' }])
   })
+  it.each(['error', 'notFound'] as const)(
+    'preserves hydrated %s lifecycle membership through invalidation',
+    async (fallback) => {
+      let failed = true
+      const childEnter = vi.fn()
+      const childStay = vi.fn()
+      const childLeave = vi.fn()
+      const setup = (isServer: boolean) => {
+        const rootRoute = new BaseRootRoute({})
+        const appRoute = new BaseRoute({
+          getParentRoute: () => rootRoute,
+          path: '/app',
+          errorComponent: () => null,
+          notFoundComponent: () => null,
+          beforeLoad: () => {
+            if (failed) {
+              throw fallback === 'error' ? new Error('unavailable') : notFound()
+            }
+          },
+        })
+        const childRoute = new BaseRoute({
+          getParentRoute: () => appRoute,
+          path: 'child',
+          onEnter: childEnter,
+          onStay: childStay,
+          onLeave: childLeave,
+        })
+        return createTestRouter({
+          routeTree: rootRoute.addChildren([
+            appRoute.addChildren([childRoute]),
+          ]),
+          history: createMemoryHistory({ initialEntries: ['/app/child'] }),
+          isServer,
+        })
+      }
+      const server = setup(true)
+      const client = setup(false)
+      try {
+        mockWindow.$_TSR = await dehydrateToBootstrap(server)
+        await hydrate(client)
+        expect(client.state.matches).toHaveLength(3)
+        await client.invalidate()
+        expect(childEnter).not.toHaveBeenCalled()
+        expect(childStay).not.toHaveBeenCalled()
+        expect(childLeave).not.toHaveBeenCalled()
+        failed = false
+        await client.invalidate()
+        expect(childEnter).toHaveBeenCalledOnce()
+        expect(childStay).not.toHaveBeenCalled()
+        expect(childLeave).not.toHaveBeenCalled()
+      } finally {
+        server.history.destroy()
+        client.history.destroy()
+      }
+    },
+  )
 })
