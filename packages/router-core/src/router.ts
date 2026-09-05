@@ -8,6 +8,7 @@ import {
   findLast,
   functionalUpdate,
   hasKeys,
+  isAbsoluteUrl,
   isDangerousProtocol,
   last,
   nullReplaceEqualDeep,
@@ -2265,14 +2266,7 @@ export class RouterCore<
     publicHref,
     ...rest
   }) => {
-    let hrefIsUrl = false
-
-    if (href) {
-      try {
-        new URL(`${href}`)
-        hrefIsUrl = true
-      } catch {}
-    }
+    const hrefIsUrl = !!href && isAbsoluteUrl(`${href}`)
 
     if (hrefIsUrl && !reloadDocument) {
       reloadDocument = true
