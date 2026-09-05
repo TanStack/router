@@ -365,10 +365,10 @@ export function useLinkProps<
 
     return {
       ...propsSafeToSpread,
+      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       ...resolvedActiveProps,
       ...resolvedInactiveProps,
       href: hrefOption,
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       disabled: !!linkDisabled,
       target,
       ...(resolvedStyle && { style: resolvedStyle }),

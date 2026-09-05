@@ -1,7 +1,13 @@
 import * as Solid from 'solid-js'
 import { createStore } from 'solid-js/store'
 import { afterEach, expect, test, vi } from 'vitest'
-import { cleanup, render, screen, waitFor } from '@solidjs/testing-library'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@solidjs/testing-library'
 import {
   Link,
   Outlet,
@@ -44,6 +50,47 @@ function renderLinks(Links: Solid.Component) {
   return router
 }
 
+test.each([true, false])(
+  'selected state props override base props (active: %s)',
+  async (active) => {
+    const baseClick = vi.fn()
+    const selectedClick = vi.fn((event: MouseEvent) => event.preventDefault())
+    const unusedClick = vi.fn()
+    const selectedRef = vi.fn()
+    const stateProps = {
+      ref: selectedRef,
+      title: 'state title',
+      onClick: selectedClick,
+      class: 'state-class',
+      style: { color: 'blue' },
+    }
+    renderLinks(() => (
+      <Link
+        to={active ? '/target' : '/'}
+        target="_blank"
+        title="base title"
+        onClick={baseClick}
+        class="base"
+        style={{ color: 'red', 'margin-top': '2px' }}
+        activeProps={active ? stateProps : { onClick: unusedClick }}
+        inactiveProps={active ? { onClick: unusedClick } : stateProps}
+      >
+        Override
+      </Link>
+    ))
+    const link = await screen.findByRole('link', { name: 'Override' })
+    expect(selectedRef).toHaveBeenCalledOnce()
+    expect(selectedRef.mock.calls[0]?.[0]).toBe(link)
+    expect(link).toHaveAttribute('title', 'state title')
+    expect(link).toHaveClass('base', 'state-class')
+    expect(link.style).toMatchObject({ color: 'blue', marginTop: '2px' })
+    fireEvent.click(link)
+    expect(selectedClick).toHaveBeenCalledOnce()
+    expect(baseClick).not.toHaveBeenCalled()
+    expect(unusedClick).not.toHaveBeenCalled()
+  },
+)
+
 test('tracks additions to an initially empty state-only style store', async () => {
   const [style, setStyle] = createStore<Solid.JSX.CSSProperties>({})
   renderLinks(() => (
@@ -72,7 +119,6 @@ test('merges only the selected state and tracks reactive style properties', asyn
     class: stateClass(),
     style: stateStyle,
     title: 'selected',
-    href: '/state-href',
   }))
   const inactive = vi.fn(() => ({
     class: 'idle',

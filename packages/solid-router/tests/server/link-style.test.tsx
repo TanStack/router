@@ -1,6 +1,12 @@
 import { JSDOM } from 'jsdom'
 import { expect, test, vi } from 'vitest'
-import { Link, createRootRoute, createRoute, createRouter } from '../../src'
+import {
+  Link,
+  createRootRoute,
+  createRoute,
+  createRouter,
+  useLinkProps,
+} from '../../src'
 import {
   RouterServer,
   createRequestHandler,
@@ -8,37 +14,48 @@ import {
 } from '../../src/ssr/server'
 
 test('preserves selected state props and styling during SSR', async () => {
+  const activeRef = vi.fn()
+  const inactiveRef = vi.fn()
+  let resolvedActiveRef: unknown
+  let resolvedInactiveRef: unknown
   const active = vi.fn(() => ({
     class: 'selected',
     style: { color: 'blue' },
     title: 'selected',
+    ref: activeRef,
   }))
   const unused = vi.fn(() => ({ class: 'unused' }))
   const root = createRootRoute({
-    component: () => (
-      <>
-        <Link
-          to="/"
-          class="base"
-          style={{ color: 'red', 'margin-top': '2px' }}
-          activeProps={active}
-          inactiveProps={unused}
-        >
-          Active
-        </Link>
-        <Link
-          to="/other"
-          activeProps={unused}
-          inactiveProps={{ class: 'idle', 'data-state': 'idle' }}
-        >
-          Inactive
-        </Link>
-        <Link to="/">Default</Link>
-        <Link to="/" activeProps={{}}>
-          Empty
-        </Link>
-      </>
-    ),
+    component: () => {
+      const activeProps = useLinkProps({
+        to: '/',
+        class: 'base',
+        style: { color: 'red', 'margin-top': '2px' },
+        activeProps: active,
+        inactiveProps: unused,
+      })
+      const inactiveProps = useLinkProps({
+        to: '/other',
+        activeProps: unused,
+        inactiveProps: {
+          class: 'idle',
+          'data-state': 'idle',
+          ref: inactiveRef,
+        },
+      })
+      resolvedActiveRef = activeProps.ref
+      resolvedInactiveRef = inactiveProps.ref
+      return (
+        <>
+          <a {...activeProps}>Active</a>
+          <a {...inactiveProps}>Inactive</a>
+          <Link to="/">Default</Link>
+          <Link to="/" activeProps={{}}>
+            Empty
+          </Link>
+        </>
+      )
+    },
   })
   const routeTree = root.addChildren([
     createRoute({ getParentRoute: () => root, path: '/' }),
@@ -63,8 +80,10 @@ test('preserves selected state props and styling during SSR', async () => {
     expect(links[0]!.style.color).toBe('blue')
     expect(links[0]!.style.marginTop).toBe('2px')
     expect(links[0]!.getAttribute('title')).toBe('selected')
+    expect(resolvedActiveRef).toBe(activeRef)
     expect([...links[1]!.classList]).toEqual(['idle'])
     expect(links[1]!.getAttribute('data-state')).toBe('idle')
+    expect(resolvedInactiveRef).toBe(inactiveRef)
     expect([...links[2]!.classList]).toEqual(['active'])
     expect([...links[3]!.classList]).toEqual([])
     expect(active).toHaveBeenCalled()
