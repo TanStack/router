@@ -504,6 +504,73 @@ export function isModuleNotFoundError(error: any): boolean {
   )
 }
 
+/**
+ * Builds a key for sessionStorage that is used to guard against a reload loop.
+ * If we reload for a module that 404's, don't reload again if it still isn't
+ * found.
+ *
+ * The key is unique per import name, and cleared after successfully loading the
+ * module so we can reload again if a future deploy 404's a module with the same
+ * import name.
+ */
+export function getModuleNotFoundReloadKey(importer: () => unknown): string {
+  return `tanstack_router_reload:${Function.prototype.toString.call(importer)}`
+}
+
+let moduleNotFoundReloadPending = false
+
+/**
+ * Returns true once a reload for a missing module has been started in this
+ * document.
+ *
+ * `window.location.reload()` only schedules the navigation, so the page keeps
+ * rendering until it lands. The sessionStorage key is spent by then, so a
+ * render in that window would fall through to the error. Callers check this to
+ * keep waiting instead of surfacing an error the incoming document discards.
+ */
+export function isModuleNotFoundReloadPending(): boolean {
+  return moduleNotFoundReloadPending
+}
+
+/**
+ * Returns true if we should reload for a module not found error, i.e. we aren't
+ * in a reload loop. Also sets the session storage.
+ *
+ * Wrap in try catch to prevent an error if SessionStorage isn't available, for
+ * example on the server or in a sandboxed iframe. In these cases, we degrade to
+ * not reloading which is preferable to a potential reload loop beacuse there is
+ * no sessionStorage.
+ */
+export function shouldReloadForModuleNotFound(
+  importer: () => unknown,
+): boolean {
+  try {
+    const key = getModuleNotFoundReloadKey(importer)
+    if (sessionStorage.getItem(key)) return false
+
+    sessionStorage.setItem(key, '1')
+    moduleNotFoundReloadPending = true
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Clear a reload key from SessionStorage
+ *
+ * Future deploys can 404 a module with the same import name as a module that
+ * was already successfully loaded. Call this function after a successful load
+ * to clear the key so we can reload if that happens.
+ */
+export function clearModuleNotFoundReload(importer: () => unknown): void {
+  try {
+    sessionStorage.removeItem(getModuleNotFoundReloadKey(importer))
+  } catch {
+    // Storage is absent or refused; there is nothing recorded to clear.
+  }
+}
+
 export function isPromise<T>(
   value: Promise<Awaited<T>> | T,
 ): value is Promise<Awaited<T>> {
