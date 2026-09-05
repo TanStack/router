@@ -39,6 +39,7 @@ env:
   NX_CLOUD_ACCESS_TOKEN: ${{ secrets.NX_CLOUD_ACCESS_TOKEN }}
   SERVER_PRESET: 'node-server'
   NX_NO_CLOUD: true
+  CODSPEED_PROFILER_ENABLED: true
 
 jobs:
   benchmarks:
