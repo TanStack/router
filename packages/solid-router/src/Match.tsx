@@ -117,7 +117,7 @@ export const Match = (props: { routeId: string }) => {
             component={routeErrorComponent() ? CatchBoundary : SafeFragment}
             getResetKey={currentMatch}
             errorComponent={routeErrorComponent() as any}
-            onCatch={(error: unknown) => {
+            onCatch={(error: Error) => {
               // Forward not found errors (we don't want to show the error component for these)
               const notFoundError = getNotFound(error)
               if (notFoundError) {
@@ -241,6 +241,17 @@ export const MatchInner = (): any => {
       <Solid.Match when={currentMatch().status === 'error'}>
         {(_) => {
           if (isServer ?? router.isServer) {
+            // Match Solid.ErrorBoundary's normalization without changing router state.
+            const thrown = currentMatch().error
+            const error =
+              thrown instanceof Error
+                ? thrown
+                : new Error(
+                    typeof thrown === 'string' ? thrown : 'Unknown error',
+                    {
+                      cause: thrown,
+                    },
+                  )
             const RouteErrorComponent =
               (route.options.errorComponent ??
                 router.options.defaultErrorComponent) ||
@@ -250,7 +261,7 @@ export const MatchInner = (): any => {
               renderInNonRouteComponentContext(
                 () => (
                   <RouteErrorComponent
-                    error={currentMatch().error}
+                    error={error}
                     info={{
                       componentStack: '',
                     }}
@@ -260,7 +271,7 @@ export const MatchInner = (): any => {
               )
             ) : (
               <RouteErrorComponent
-                error={currentMatch().error}
+                error={error}
                 info={{
                   componentStack: '',
                 }}

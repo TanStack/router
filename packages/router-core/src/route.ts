@@ -1298,7 +1298,7 @@ export interface UpdatableRouteOptions<
   postSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  onCatch?: (error: unknown) => void
+  onCatch?: (error: ErrorBoundaryTypes['error']) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -1601,7 +1601,14 @@ export type ErrorRouteProps = {
   reset: () => void
 }
 
-export type ErrorComponentProps<TError = unknown> = {
+export interface DefaultErrorBoundaryTypes {
+  error: unknown
+}
+
+/** Frameworks can specialize the error exposed by boundary components and callbacks. */
+export interface ErrorBoundaryTypes extends DefaultErrorBoundaryTypes {}
+
+export type ErrorComponentProps<TError = ErrorBoundaryTypes['error']> = {
   error: TError
   info?: { componentStack: string }
   reset: () => void

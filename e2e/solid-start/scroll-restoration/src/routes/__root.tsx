@@ -52,11 +52,7 @@ export const Route = createRootRoute({
     ],
   }),
   errorComponent: (props) => {
-    return (
-      <p>
-        {props.error instanceof Error ? props.error.stack : String(props.error)}
-      </p>
-    )
+    return <p>{props.error.stack}</p>
   },
   notFoundComponent: () => <NotFound />,
   component: RootComponent,

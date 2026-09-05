@@ -48,11 +48,7 @@ export const Route = createRootRoute({
       { rel: 'icon', href: '/favicon.ico' },
     ],
   }),
-  errorComponent: (props) => (
-    <p>
-      {props.error instanceof Error ? props.error.stack : String(props.error)}
-    </p>
-  ),
+  errorComponent: (props) => <p>{props.error.stack}</p>,
   notFoundComponent: () => <NotFound />,
   component: RootComponent,
 })

@@ -49,7 +49,7 @@ export const Route = createFileRoute('/_authed')({
     }
   },
   errorComponent: ({ error }) => {
-    if (error instanceof Error && error.message === 'Not authenticated') {
+    if (error.message === 'Not authenticated') {
       return <Login />
     }
 

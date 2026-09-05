@@ -11,8 +11,8 @@ The `ErrorComponent` component accepts the following props:
 
 ### `props.error` prop
 
-- Type: `unknown`
-- The error that was thrown by the component's children
+- Type: `unknown` in React and Vue; `Error` in Solid
+- The caught error. Solid normalizes non-`Error` values, including SSR loader errors, into an `Error` with the original value in `cause`.
 
 ### `props.info` prop
 

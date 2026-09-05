@@ -1,17 +1,29 @@
 import { expectTypeOf, test } from 'vitest'
-import { createRootRoute, createRouter } from '../src'
+import { CatchBoundary, createRootRoute, createRouter } from '../src'
 import type { ErrorComponentProps } from '../src'
 
-test('only boundary errors default to unknown', () => {
-  expectTypeOf<ErrorComponentProps['error']>().toEqualTypeOf<unknown>()
-  expectTypeOf<ErrorComponentProps<Error>['error']>().toEqualTypeOf<Error>()
+test('Solid boundary errors default to Error', () => {
+  expectTypeOf<ErrorComponentProps['error']>().toEqualTypeOf<Error>()
+  expectTypeOf<ErrorComponentProps<unknown>['error']>().toEqualTypeOf<unknown>()
+  ;<CatchBoundary
+    getResetKey={() => 0}
+    onCatch={(error) => {
+      expectTypeOf(error).toEqualTypeOf<Error>()
+    }}
+    errorComponent={({ error }) => {
+      expectTypeOf(error).toEqualTypeOf<Error>()
+      return null
+    }}
+  >
+    <div />
+  </CatchBoundary>
   const routeTree = createRootRoute({
     errorComponent: ({ error }) => {
-      expectTypeOf(error).toEqualTypeOf<unknown>()
+      expectTypeOf(error).toEqualTypeOf<Error>()
       return null
     },
     onCatch: (error) => {
-      expectTypeOf(error).toEqualTypeOf<unknown>()
+      expectTypeOf(error).toEqualTypeOf<Error>()
     },
     onError: (error) => {
       expectTypeOf(error).toBeAny()
@@ -20,11 +32,11 @@ test('only boundary errors default to unknown', () => {
   createRouter({
     routeTree,
     defaultErrorComponent: ({ error }) => {
-      expectTypeOf(error).toEqualTypeOf<unknown>()
+      expectTypeOf(error).toEqualTypeOf<Error>()
       return null
     },
     defaultOnCatch: (error) => {
-      expectTypeOf(error).toEqualTypeOf<unknown>()
+      expectTypeOf(error).toEqualTypeOf<Error>()
     },
   })
 })

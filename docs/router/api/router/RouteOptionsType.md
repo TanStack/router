@@ -295,7 +295,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 ### `onCatch` property
 
-- Type: `(error: unknown) => void`
+- Type: `(error: unknown) => void` in React and Vue; `(error: Error) => void` in Solid
 - Optional - Defaults to `routerOptions.defaultOnCatch`
 - A function that will be called when errors are caught when the route encounters an error.
 

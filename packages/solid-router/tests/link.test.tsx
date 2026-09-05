@@ -3699,9 +3699,7 @@ describe('Link', () => {
 
   test('when navigating from /invoices to ./invoiceId and the current route is /posts/$postId/details', async () => {
     const rootRoute = createRootRoute({
-      errorComponent: ({ error }) => (
-        <div>{error instanceof Error ? error.message : String(error)}</div>
-      ),
+      errorComponent: (err) => <div>{err.error.message}</div>,
     })
 
     const indexRoute = createRoute({
@@ -5799,9 +5797,7 @@ describe('search middleware', () => {
 
   test('search middlewares work', async () => {
     const rootRoute = createRootRoute({
-      errorComponent: ({ error }) => (
-        <div>{error instanceof Error ? error.stack : String(error)}</div>
-      ),
+      errorComponent: (error) => <div>{error.error.stack}</div>,
       validateSearch: (input) => {
         return {
           root: input.root as string | undefined,
