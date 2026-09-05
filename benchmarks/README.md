@@ -21,21 +21,24 @@ keeps minor GC tied to allocation pressure instead of scheduled foreground
 tasks. Both flags follow the fixes in
 [CodSpeed's Node 24 support](https://github.com/CodSpeedHQ/codspeed-node/commit/e3224e7872).
 
-Incremental marking can also schedule tasks with wall-clock completion deadlines
-in predictable mode. `--no-incremental-marking-task` keeps marking driven by
-allocations while retaining garbage collection. See
-[V8's task completion policy](https://github.com/nodejs/node/blob/v24.8.0/deps/v8/src/heap/incremental-marking.cc#L735).
+`--initial-old-space-size=512` fixes the initial/minimum old-generation
+allocation budget at 512 MiB. Removing only this override after worker isolation
+left two Vue SSR scenarios with same-commit spreads above 2% in five full-suite
+repetitions. The paired default-heap comparison with stock incremental-marking
+tasks also exceeded 2%. Runtime comparisons and tested alternatives are recorded in
+[PR #8248](https://github.com/TanStack/router/pull/8248).
 
-`--initial-old-space-size=512` fixes the initial old-generation budget at 512 MiB.
-This avoids growing from V8's small initial budget during warmup, which left
-allocation-heavy SSR scenarios sensitive to GC state. V8 also uses this as the
-minimum budget for automatic full collections. Minor collections and allocation
-work stay measured, and CodSpeed still explicitly collects before measurement.
-The existing 4096 MiB maximum remains; the flag does not preallocate 512 MiB or
-cap the benchmark's allocation work. In three identical-commit CI runs,
-the 18 targeted SSR measurements stayed within 0.26%, compared with outliers over
-4% without this flag. Disabling incremental marking entirely was also tested
-and rejected because it introduced larger outliers.
+This is a GC-policy tradeoff. Minor collections and allocation work remain
+measured, and CodSpeed still explicitly collects before measurement. However,
+V8 can skip automatic full collections below this old-generation budget, so the
+benchmark can omit some eventual full-GC CPU cost from increased object
+retention. Repeatability does not establish representative production GC
+frequency. The flag does not preallocate 512 MiB; the existing 4096 MiB maximum
+remains. See [V8's initial/minimum heap configuration](https://github.com/nodejs/node/blob/v24.8.0/deps/v8/src/heap/heap.cc#L5071).
+
+The configuration preserves CodSpeed's incremental-marking task settings; the
+additional `--no-incremental-marking-task` from the initial stabilization proposal
+has been removed.
 
 The flags are intentionally absent from ordinary Vitest timing and walltime runs.
 The regression test in `ssr/cpu-simulation.test.ts` merges the real CodSpeed
