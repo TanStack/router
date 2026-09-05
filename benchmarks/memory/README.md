@@ -51,6 +51,9 @@ same workload through the Flame profiler.
   only honors tinybench's `setup`/`teardown` options; the CodSpeed runner
   does the exact opposite. Client benches therefore register **both** — in
   any given mode exactly one pair runs.
+- CI builds through Nx before instrumentation, then `run.ts` replaces itself
+  with Vitest. This removes Nx/pnpm from the tracked process tree and applies
+  CodSpeed's predictable flags to the coordinator as well as its workers.
 - Worker flags live in `runtime.ts` and apply only to the CodSpeed memory
   instrument. They supplement the integration's predictable execution flags.
   Disabling machine-code generation and bytecode flushing keeps compiler allocations
@@ -200,13 +203,12 @@ once to install the memory executor, and sudo; **uploads results to the
 CodSpeed dashboard** — local runs do not affect PR baselines):
 
 ```bash
-WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-server:test:perf:react
-WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-server:test:perf:solid
-WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-server:test:perf:vue
-WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:react
-WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:solid
-WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:vue
+pnpm nx run @benchmarks/memory-client:build:react
+NODE_ENV=production WITH_INSTRUMENTATION=1 codspeed run --mode memory -- node benchmarks/memory/run.ts client react
 ```
+
+Replace `client` with `server`, or `react` with `solid`/`vue`, to run another
+group. Build the matching target first.
 
 Run only memory jobs on an experiment branch:
 

@@ -1,12 +1,14 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": {
+    "allowImportingTsExtensions": true,
     "types": ["node", "vite/client", "vitest/globals"]
   },
   "include": [
     "bench-utils.ts",
     "scenarios/*/shared.ts",
     "../runtime.ts",
+    "../run.ts",
     "*.test.ts",
     "vitest.unit.config.ts",
     "vitest.setup.ts"
