@@ -99,3 +99,38 @@ test('a synchronous component preload failure is caught and can be retried', asy
   expect(router.state.matches.at(-1)?.status).toBe('success')
   expect(preload).toHaveBeenCalledOnce()
 })
+
+test('a synchronous loader failure takes precedence over a synchronous component preload failure', async () => {
+  const loaderError = new Error('Loader failed')
+  const chunkError = new Error('Component preload failed')
+  const loader = vi.fn(() => {
+    throw loaderError
+  })
+  const preload = vi.fn(() => {
+    throw chunkError
+  })
+  const root = new BaseRootRoute({})
+  const route = new BaseRoute({
+    getParentRoute: () => root,
+    path: '/route',
+    loader,
+    component: Object.assign(() => null, { preload }),
+    errorComponent: () => null,
+  })
+  const history = createMemoryHistory({ initialEntries: ['/route'] })
+  const router = createTestRouter({
+    routeTree: root.addChildren([route]),
+    history,
+  })
+  try {
+    await router.load()
+    expect(loader).toHaveBeenCalledOnce()
+    expect(preload).toHaveBeenCalledOnce()
+    expect(router.state.matches.at(-1)).toMatchObject({
+      status: 'error',
+      error: loaderError,
+    })
+  } finally {
+    history.destroy()
+  }
+})

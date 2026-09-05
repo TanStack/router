@@ -11,6 +11,7 @@ export type ReadyRouteMode =
   | 'async'
   | 'deferred'
   | 'chunks'
+  | 'async-chunks'
   | 'mixed'
 
 export async function createBenchmark(mode: ReadyRouteMode, depth: number) {
@@ -22,19 +23,19 @@ export async function createBenchmark(mode: ReadyRouteMode, depth: number) {
   let preloadCalls = 0
   let navigations = 0
   const cached = ['cached', 'chunks', 'mixed'].includes(mode)
+  const chunked = ['chunks', 'async-chunks', 'mixed'].includes(mode)
   for (let index = 0; index < depth - 1; index++) {
     const ancestor = parent
     const component = Object.assign(() => null, {
-      preload:
-        mode === 'chunks' || mode === 'mixed'
-          ? () => {
-              preloadCalls++
-              if (mode === 'chunks' || navigations % 5 === 0) {
-                return new Promise<void>((resolve) => queueMicrotask(resolve))
-              }
-              return undefined
+      preload: chunked
+        ? () => {
+            preloadCalls++
+            if (mode !== 'mixed' || navigations % 5 === 0) {
+              return new Promise<void>((resolve) => queueMicrotask(resolve))
             }
-          : undefined,
+            return undefined
+          }
+        : undefined,
     })
     const route = new BaseRoute({
       getParentRoute: () => ancestor,
@@ -49,7 +50,7 @@ export async function createBenchmark(mode: ReadyRouteMode, depth: number) {
                   const value = ++loaderCalls
                   setTimeout(() => resolve(value), 0)
                 })
-            : mode === 'async'
+            : mode === 'async' || mode === 'async-chunks'
               ? async () => ++loaderCalls
               : () => ++loaderCalls,
       staleTime: cached ? Infinity : 0,
@@ -91,8 +92,7 @@ export async function createBenchmark(mode: ReadyRouteMode, depth: number) {
       matches.length !== depth ||
       matches.some((match) => match.status !== 'success') ||
       loaderCalls !== expectedCalls ||
-      ((mode === 'chunks' || mode === 'mixed') &&
-        preloadCalls !== (navigations + 1) * (depth - 1))
+      (chunked && preloadCalls !== (navigations + 1) * (depth - 1))
     ) {
       throw new Error(
         `Invalid ${mode}/${depth} workload: ${JSON.stringify({ navigations, loaderCalls, expectedCalls, preloadCalls })}`,

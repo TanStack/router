@@ -8,6 +8,7 @@ for (const mode of [
   'async',
   'deferred',
   'chunks',
+  'async-chunks',
   'mixed',
 ] as const) {
   for (const depth of [2, 8]) {
