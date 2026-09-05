@@ -66,6 +66,5 @@ jobs:
           run: >-
             WITH_INSTRUMENTATION=1
             pnpm nx run
-            @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
+            @benchmarks/memory-server:test:perf:control
             --excludeTaskDependencies
-            -- --config ./control/vite.config.ts

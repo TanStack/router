@@ -282,6 +282,14 @@
           "^production",
           "{workspaceRoot}/benchmarks/memory/runtime.ts"
         ]
+      },
+      "test:perf:control": {
+        "executor": "nx:run-commands",
+        "cache": false,
+        "options": {
+          "command": "NODE_ENV=production vitest bench --config ./control/vite.config.ts",
+          "cwd": "benchmarks/memory/server"
+        }
       }
     }
   }
