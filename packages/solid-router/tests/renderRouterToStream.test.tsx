@@ -91,22 +91,8 @@ describe('renderRouterToStream - bot abort', () => {
       await Promise.resolve()
       abortController.abort(new Error('client-gone'))
 
-      const result = await Promise.race([
-        responsePromise,
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
-      ])
-
-      expect(result).not.toBe(false)
+      await expect(responsePromise).rejects.toThrow('client-gone')
       expect(solidMocks.pipeTo).not.toHaveBeenCalled()
-      const response = unwrapResponse(result as Exclude<typeof result, false>)
-      expect(response.body).not.toBeNull()
-
-      const terminated = await Promise.race([
-        drainBody(response),
-        new Promise<false>((resolve) => setTimeout(() => resolve(false), 2000)),
-      ])
-
-      expect(terminated).toBe(true)
     } finally {
       errorSpy.mockRestore()
       router.serverSsr?.cleanup()

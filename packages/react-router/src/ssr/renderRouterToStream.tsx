@@ -66,6 +66,11 @@ export const renderRouterToStream = async ({
 
     if (isbot(request.headers.get('User-Agent'))) {
       await waitForReadyOrAbort(stream.allReady, request.signal)
+
+      if (request.signal.aborted) {
+        stream.cancel().catch(() => {})
+        throw request.signal.reason ?? new Error('Request aborted')
+      }
     }
 
     const responseStream = transformReadableStreamWithRouter(
