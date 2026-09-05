@@ -1,4 +1,5 @@
-import { bench, describe } from 'vitest'
+import { setImmediate as waitForTask } from 'node:timers/promises'
+import { beforeEach, bench, describe } from 'vitest'
 import {
   assertAssetsScenario,
   assetsBenchOptions,
@@ -16,6 +17,10 @@ const { default: handler } = (await import(
 }
 
 await assertAssetsScenario(handler)
+
+beforeEach(async () => {
+  await waitForTask()
+})
 
 describe('ssr', () => {
   bench(
