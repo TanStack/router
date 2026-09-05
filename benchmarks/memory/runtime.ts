@@ -7,7 +7,7 @@ export function memoryExecArgv() {
     return []
   }
 
-  // Keep code generation out of native allocation measurements and minor GC
+  // Keep machine-code generation out of native allocation measurements and minor GC
   // tied to allocations instead of tasks.
   return [
     '--jitless',

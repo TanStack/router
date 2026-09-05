@@ -52,7 +52,7 @@ same workload through the Flame profiler.
   any given mode exactly one pair runs.
 - Worker flags live in `runtime.ts` and apply only to the CodSpeed memory
   instrument. They supplement the integration's predictable execution flags.
-  Disabling code generation and bytecode flushing keeps compiler allocations
+  Disabling machine-code generation and bytecode flushing keeps compiler allocations
   out of the signal. Minor GC follows allocations, and a fixed initial
   old-generation budget reduces sensitivity to startup heap policy.
 - Do not force GC inside a measured request loop or poll `heapUsed` to choose
@@ -209,7 +209,7 @@ gh workflow run client-nav-benchmarks.yml --ref <experiment-branch> -f memory-on
 ```
 
 Repeat at the same commit, using distinct branch names if runs should overlap
-(the workflow cancels older runs on the same ref). Compare all 48 fresh memory
+(the workflow serializes runs on the same ref). Compare all 48 fresh memory
 results: 18 client and 30 server. Exclude inherited CodSpeed results and failed
 or incomplete repetitions. For each workload, calculate
 `100 * (max / min - 1)` across runs for peak bytes, allocated bytes, and
