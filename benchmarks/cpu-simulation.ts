@@ -15,6 +15,7 @@ export function cpuSimulationExecArgv() {
       '--no-maglev',
       '--no-minor-gc-task',
       '--no-incremental-marking-task',
+      '--initial-old-space-size=512',
     ]
   }
   return []
