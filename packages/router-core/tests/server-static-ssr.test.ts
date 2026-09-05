@@ -58,7 +58,7 @@ test.each(['false', 'data-only', 'default'] as const)(
   },
 )
 
-test.each(['return', 'throw'] as const)(
+test.each(['return', 'throw', 'microtask throw'] as const)(
   'request cancellation wins when an SSR callback aborts then %ss',
   async (mode) => {
     const controller = new AbortController()
@@ -68,8 +68,12 @@ test.each(['return', 'throw'] as const)(
     const onError = vi.fn()
     const root = new BaseRootRoute({
       ssr: () => {
-        controller.abort(cancellation)
-        if (mode === 'throw') {
+        if (mode === 'microtask throw') {
+          queueMicrotask(() => controller.abort(cancellation))
+        } else {
+          controller.abort(cancellation)
+        }
+        if (mode !== 'return') {
           throw new Error('obsolete policy error')
         }
         return true

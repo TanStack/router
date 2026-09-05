@@ -7,7 +7,14 @@ import type { AnyRoute } from '../src'
 
 // Use the same cases on both implementations. Allocation counts are collected
 // outside the timed loop so async-hooks instrumentation cannot bias timings.
-for (const mode of ['none', 'sync', 'async', 'mixed', 'chunks'] as const) {
+for (const mode of [
+  'none',
+  'sync',
+  'async',
+  'mixed',
+  'chunks',
+  'blocking',
+] as const) {
   const root = new BaseRootRoute({})
   let chunkCalls = 0
   let parent: AnyRoute = root
@@ -18,20 +25,28 @@ for (const mode of ['none', 'sync', 'async', 'mixed', 'chunks'] as const) {
       getParentRoute: () => parentRoute,
       path: `level${index}`,
       beforeLoad:
-        mode === 'none' || mode === 'chunks'
+        mode === 'none' || mode === 'chunks' || mode === 'blocking'
           ? undefined
           : () =>
               mode === 'async' || (mode === 'mixed' && index % 4 === 0)
                 ? Promise.resolve(value)
                 : value,
       component:
-        mode === 'chunks'
+        mode === 'chunks' || mode === 'blocking'
           ? (Object.assign(() => null, {
               preload: () => {
                 chunkCalls++
                 return Promise.resolve()
               },
             }) as any)
+          : undefined,
+      shouldReload: mode === 'blocking' ? true : undefined,
+      loader:
+        mode === 'blocking'
+          ? {
+              handler: () => Promise.resolve(value),
+              staleReloadMode: 'blocking',
+            }
           : undefined,
     })
     parent.addChildren([child])
@@ -52,8 +67,11 @@ for (const mode of ['none', 'sync', 'async', 'mixed', 'chunks'] as const) {
   expect(
     router.state.matches.every((match) => match.status === 'success'),
   ).toBe(true)
-  if (mode === 'chunks') {
+  if (mode === 'chunks' || mode === 'blocking') {
     expect(chunkCalls).toBe(16)
+    if (mode === 'blocking') {
+      expect(router.state.matches[8]!.loaderData).toEqual({ level7: 7 })
+    }
   } else if (mode !== 'none') {
     expect(router.state.matches[8]!.context).toMatchObject({
       level0: 0,

@@ -203,6 +203,7 @@ test.each(['throw', 'reject'] as const)(
           },
         }) as any,
         notFoundComponent: (() => null) as any,
+        loader: control === 'navigate' ? () => 'obsolete data' : undefined,
         onError,
       })
       const current = new BaseRoute({
