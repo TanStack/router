@@ -9,7 +9,13 @@ export function cpuSimulationExecArgv() {
     // Maglev can still compile and inline hot functions between measured runs.
     // V8 renamed --scavenge-task in Node 20; CodSpeed's old flag is omitted.
     // Keep minor GC tied to allocations instead of scheduled foreground tasks.
-    return ['--no-maglev', '--no-minor-gc-task']
+    // Incremental marking tasks also use wall-clock completion deadlines in
+    // predictable mode. Allocation-triggered marking can still run normally.
+    return [
+      '--no-maglev',
+      '--no-minor-gc-task',
+      '--no-incremental-marking-task',
+    ]
   }
   return []
 }

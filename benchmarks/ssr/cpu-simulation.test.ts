@@ -30,6 +30,7 @@ describe('CPU simulation worker configuration', () => {
           '--no-opt',
           '--no-maglev',
           '--no-minor-gc-task',
+          '--no-incremental-marking-task',
           '--predictable',
           '--hash-seed=1',
           '--random-seed=1',

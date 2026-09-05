@@ -18,7 +18,12 @@ keeps minor GC tied to allocation pressure instead of scheduled foreground
 tasks. Both flags follow the fixes in
 [CodSpeed's Node 24 support](https://github.com/CodSpeedHQ/codspeed-node/commit/e3224e7872).
 
-The flag is intentionally absent from ordinary Vitest timing and walltime runs.
+Incremental marking can also schedule tasks with wall-clock completion deadlines
+in predictable mode. `--no-incremental-marking-task` keeps marking driven by
+allocations while retaining garbage collection. See
+[V8's task completion policy](https://github.com/nodejs/node/blob/v24.8.0/deps/v8/src/heap/incremental-marking.cc#L735).
+
+The flags are intentionally absent from ordinary Vitest timing and walltime runs.
 The regression test in `ssr/cpu-simulation.test.ts` merges the real CodSpeed
 plugin configuration and checks the resulting Node worker's optimization trace.
 
