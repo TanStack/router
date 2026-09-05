@@ -29,6 +29,7 @@ describe('CPU simulation worker configuration', () => {
         expect.arrayContaining([
           '--no-opt',
           '--no-maglev',
+          '--no-minor-gc-task',
           '--predictable',
           '--hash-seed=1',
           '--random-seed=1',

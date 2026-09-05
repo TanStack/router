@@ -12,7 +12,10 @@ only during CPU simulation, including the legacy `instrumentation` mode.
 The pinned CodSpeed integration supplies `--no-opt`. In Node 24 this is an alias
 for `--no-turbofan`, so Maglev can still optimize and inline hot functions. The
 additional `--no-maglev` keeps the optimizing compiler out of the simulation.
-This follows the Maglev fix in
+The integration also omits the old `--no-scavenge-task` flag on Node 20 and
+newer, where V8 renamed it to `--no-minor-gc-task`. Supplying the renamed flag
+keeps minor GC tied to allocation pressure instead of scheduled foreground
+tasks. Both flags follow the fixes in
 [CodSpeed's Node 24 support](https://github.com/CodSpeedHQ/codspeed-node/commit/e3224e7872).
 
 The flag is intentionally absent from ordinary Vitest timing and walltime runs.
