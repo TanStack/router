@@ -1,320 +1,176 @@
 # Ready-route promise overhead
 
-This proposal removes redundant promise work from client navigation. It keeps
-asynchronous chunk invocation, waits for real chunk promises, and preserves
-cancellation and error handling.
+The final proposal retains the immediate async chunk wrapper. The accepted
+tradeoff is smaller code and fewer promises, with an uncertain incremental
+runtime effect that leans approximately 1–2% slower in pending-work cases.
+No additional speedup is claimed for choosing this wrapper.
 
-The production changes are confined to `packages/router-core/src/load-client.ts`:
+Production changes are confined to `packages/router-core/src/load-client.ts`:
 
-1. Remove the `finally` adoption work after `waitFor`'s native resolve/reject
-   callbacks. Both callbacks return normally, so the cleanup chain fulfills even
-   when the returned wait rejects.
-2. Attach the loader settlement continuation only when a blocking loader actually
-   runs. Ready data and already-normalized reload failures need no such callback.
-3. Add a cancellable chunk wait only when `loadRouteChunk` returns a promise.
-   Keep the deferred call and common error normalization.
+1. Use `then` for cleanup after `waitFor`'s native resolve/reject callbacks, which
+   return normally even when the public wait rejects.
+2. Attach loader settlement work only when a blocking loader actually runs.
+3. Start chunk loading in an immediate async wrapper and await `waitFor` only
+   when a real chunk promise exists. Synchronous preload exceptions become
+   rejected promises handled by the existing error normalization.
 
-Baseline production implementation: `2f9150309bc472f4a75cbe98adcdb50c76b12c7a`.
-Test/benchmark commits `985a611a46` and `1ef2d676d8` precede the implementation.
-The baseline worktree contains the same fixtures and regression tests.
+Navigation from inside component preload is undefined behavior; the test that
+asserted it was removed. External cancellation, synchronous exceptions, loader
+error precedence, parent snapshots, and pending-component readiness remain
+covered. The wrapper changes preload invocation order relative to scheduled
+loader callbacks; both remain in the parallel loading phase.
 
-## Measurement protocol
+## Final implementation versus unoptimized main
 
-- Apple M3 Max, arm64, macOS; Node 25.8.1 and Chromium 149.0.7827.55.
-  Production, minified client bundles.
-- Each sample group runs in a fresh Node process, or a fresh Chromium process
-  with production React. Each process loads only one implementation.
-- Twelve independent pairs per primary case, balanced AB/BA order. Three warmup
-  batches precede three measured batches. Node calibrates batches to roughly
-  350 ms; browser batches contain 3,000 navigations.
-- Navigation loops contain no assertions, testing-library calls, jsdom, fake
-  timers, or per-navigation Playwright RPC. Untimed checks after every batch
-  verify the final state and exact loader/preload counts. React also verifies
-  rendered events, DOM data/params, and the single warmed lazy import.
-- Timed batches drain remaining microtasks before stopping the clock. Browser
-  measurements cover navigation completion and React commits, **not paint or
-  click-to-frame latency**.
-- Report paired geometric mean ratios and 95% bootstrap intervals from 10,000
-  resamples of independent pairs. Within-process batches are not treated as
-  independent observations. CPU time is a secondary Node metric.
-- Byte-identical A/A controls measure false-positive behavior. A second cached
-  Node run reverses the implementation labels. All measured runs are retained;
-  no outliers or unfavorable cases are discarded.
-- Promise/listener counts run separately, in processes that never produce timing
-  samples. `async_hooks` changes Promise execution and must not contaminate the
-  latency comparison. Counts describe instrumented PROMISE resources, not heap
-  bytes or a direct production GC measurement.
-- Cases cover eager routes, cached loaders, synchronous loaders, fulfilled async
-  loaders, always-pending chunks, an 80% ready / 20% pending chunk mix, and
-  timer-delayed loaders. Depth includes the root match. Browser lazy routes use
-  the actual `lazyRouteComponent` API after its first import.
+Baseline production commit: `2f9150309bc472f4a75cbe98adcdb50c76b12c7a`.
+The accepted wrapper is identical to the previously measured candidate; its
+saved patch and source bundle hashes make that comparison reproducible.
 
-The earlier jsdom-based percentage claim is withdrawn: its paired samples were
-inconsistent and drifted over time. The measurements below supersede it. Small
-positive percentages are not sufficient proof: the controls themselves can show
-an apparent improvement. These are single-machine, V8-family results; they do
-not establish a universal application speedup or a cross-engine result.
+| Eight-match cached workload                                       |   Before |    After |  Improvement | 95% paired bootstrap interval |
+| ----------------------------------------------------------------- | -------: | -------: | -----------: | ----------------------------: |
+| Production Chromium, warmed lazy component, navigation completion | 63.71 µs | 61.10 µs |        4.08% |                3.37% to 4.83% |
+| Node CPU time per navigation                                      | 46.31 µs | 43.65 µs |        5.80% |                4.34% to 7.07% |
+| Node wall time per navigation                                     | 42.08 µs | 42.42 µs | Inconclusive |               -8.05% to 7.51% |
 
-## Validation
+The Node wall-time run includes a large outlier; no observations are discarded.
+Its arithmetic means and paired geometric mean ratio differ, so no wall-time
+speedup is claimed. Chromium's 12 pairs all favored the final implementation,
+with a 1.30% baseline coefficient of variation.
 
-Before implementation, router-core has 1,674 passing unit tests and 4 expected
-failures; react-router has 1,037 passing unit tests and 1 skip. Both packages pass
-their TypeScript 5.6–7.0 suites and lint. All 14 Vitest benchmark cases execute
-successfully, and the baseline full bundle run completes all 18 scenarios.
+Separate diagnostics observe 20,101 → 13,701 PROMISE resources over 100 cached
+eight-match navigations, including the same fixed harness overhead. That is
+**64 fewer PROMISE resources and eight fewer abort-listener registrations per
+navigation** versus main. These counts come from instrumented processes and do
+not measure heap bytes or production GC cost.
 
-The initial implementation passed the same unit counts, TypeScript suites, and
-lint targets with `--skipNxCache`. The React browser fixture passes its type check,
-and the production React basic e2e suite passes all 24 Chromium tests. All 14
-Vitest benchmark cases pass again.
+## Immediate wrapper versus the initial PR
 
-New regression cases exercise cached parents observed immediately by child
-loaders, errors selected by `onError`, cached data waiting for new chunks,
-chunk rejection, synchronous preload throws and retries, external navigation while a component chunk is pending, late chunk rejection
-after cancellation, abort-listener cleanup,
-and thenables with a throwing `then` getter.
+Comparison implementation: `2a4a3fa6704e78fbb22a702d9216129326e04ad5`.
+Test-only commit `1cfb377ea7` supplies identical fixtures to both variants.
+Positive percentages below mean slower, except where explicitly marked faster.
 
-## Runtime results
+| Eight-match workload                   | Initial PR → final wrapper |            Observed change |                 95% interval |
+| -------------------------------------- | -------------------------: | -------------------------: | ---------------------------: |
+| Cached loaders, components ready       |           39.36 → 38.67 µs |               1.69% faster | 0.60% slower to 5.53% faster |
+| Cached loaders, pending components     |           41.74 → 42.57 µs |               1.97% slower | 1.11% faster to 6.02% slower |
+| Async loaders, pending components      |           94.55 → 95.93 µs |               1.44% slower |        0.30% to 2.41% slower |
+| Same async case, reversed-label repeat |           92.37 → 93.41 µs | approximately 1.04% slower |  Inconclusive; includes zero |
 
-Positive percentages mean faster. Times are microseconds per navigation (except
-`waitFor`, which is per wait); intervals are paired bootstrap 95% intervals.
+The first three cases use six fresh-process pairs; the reverse-label repeat
+uses twelve. Every non-root component creates a new preload promise on every
+navigation and resolves it in a microtask. The combined case also reruns its
+async loaders every navigation, returning immediately fulfilled promises. There
+is no network wait in these cases: they expose scheduling overhead, not a claim
+that real page loads become 1–2% slower.
 
-| Node case                                  |  Before |   After | Improvement |     95% interval |
-| ------------------------------------------ | ------: | ------: | ----------: | ---------------: |
-| No loaders, 2 matches                      |   21.48 |   20.69 |       3.64% |   2.18% to 4.88% |
-| Cached loaders, 8 matches                  |   40.91 |   38.76 |       5.25% |   3.75% to 6.61% |
-| Cached loaders, reversed-label replication |   39.53 |   37.35 |       5.52% |   4.55% to 6.52% |
-| Synchronous loaders, 8 matches             |   92.79 |   92.33 |       0.58% |  -2.01% to 3.12% |
-| Fulfilled async loaders, 8 matches         |   93.76 |   89.41 |       4.61% |   1.19% to 8.22% |
-| Always-pending chunks, 8 matches           |   40.76 |   40.20 |       1.36% |   0.19% to 2.42% |
-| 80% ready / 20% pending chunks, 8 matches  |   40.89 |   38.61 |       5.52% |   3.97% to 6.99% |
-| Timer-delayed loaders, 8 matches           | 1571.73 | 1554.56 |       1.15% |  -6.51% to 9.04% |
-| Direct fulfilled `waitFor`                 |   0.251 |   0.193 |      23.10% | 21.29% to 24.87% |
+Both combined-workload comparisons lean slower, but the noisier repeat does not
+establish a reproducible regression. The ready-route gain is also inconclusive.
+The wrapper removes one further PROMISE resource per match in all three cases.
+It reduces raw JavaScript by 26 bytes in every measured bundle; incremental gzip
+deltas range from -11 to 0 bytes, including -9 bytes for React Router minimal and
+0 bytes for React Router full. This tradeoff was explicitly accepted.
 
-The cached Node case improves by 5.25% in the primary run and 5.52% with labels
-reversed. CPU improvements also replicate: 5.15% and 5.09%. Baseline wall-time
-coefficients of variation are 2.23% and 2.53%. The replication's individual pairs
-all favor the change (3.11%–8.47%).
+## Full bundle comparison against main
 
-| Production React in Chromium                     | Before | After | Improvement |   95% interval |
-| ------------------------------------------------ | -----: | ----: | ----------: | -------------: |
-| Eager, cached loaders, 2 matches                 |  30.50 | 29.93 |       1.84% | 0.67% to 3.12% |
-| Warmed lazy component, cached loaders, 8 matches |  63.02 | 59.91 |       4.93% | 4.20% to 5.74% |
+All emitted JavaScript is counted, including lazy chunks. Byte deltas are final
+minus baseline. JavaScript file counts are unchanged.
 
-The deeper browser case has a 1.16% baseline coefficient of variation and all
-12 pairs favor the change (3.27%–8.02%). This independent production React
-measurement supports the cached core result. The shallow browser effect is too
-close to control noise to claim a speedup.
+| Scenario                         | Gzip before | Gzip final | Gzip delta | Initial gzip delta | Raw delta | Brotli delta |
+| -------------------------------- | ----------: | ---------: | ---------: | -----------------: | --------: | -----------: |
+| react-router.minimal             |      85,772 |     85,766 |         -6 |                 -2 |       -30 |          +37 |
+| react-router.full                |      89,362 |     89,365 |         +3 |                 +2 |       -30 |          -70 |
+| solid-router.minimal             |      33,926 |     33,927 |         +1 |                 +2 |       -30 |         -101 |
+| solid-router.full                |      38,868 |     38,871 |         +3 |                 +0 |       -30 |          +76 |
+| vue-router.minimal               |      50,635 |     50,631 |         -4 |                 -2 |       -30 |          +13 |
+| vue-router.full                  |      56,396 |     56,393 |         -3 |                 -1 |       -30 |          -35 |
+| react-start.minimal              |      99,000 |     98,992 |         -8 |                 -6 |       -30 |          +36 |
+| react-start.query-integration    |     106,513 |    106,508 |         -5 |                 -2 |       -30 |         -104 |
+| react-start.deferred-hydration   |      99,743 |     99,731 |        -12 |                 -4 |       -30 |          -96 |
+| react-start.full                 |     102,230 |    102,225 |         -5 |                 -5 |       -30 |          -61 |
+| react-start.rsbuild.minimal      |     102,351 |    102,344 |         -7 |                 -7 |       -31 |          +10 |
+| react-start.rsbuild.minimal-iife |     102,762 |    102,756 |         -6 |                 -6 |       -31 |          -69 |
+| react-start.rsbuild.full         |     105,749 |    105,741 |         -8 |                 -8 |       -31 |         +162 |
+| solid-start.minimal              |      47,074 |     47,078 |         +4 |                 +1 |       -30 |          +26 |
+| solid-start.deferred-hydration   |      50,241 |     50,238 |         -3 |                 -2 |       -30 |           -2 |
+| solid-start.full                 |      52,282 |     52,281 |         -1 |                 -2 |       -30 |           +2 |
+| vue-start.minimal                |      67,186 |     67,185 |         -1 |                 +0 |       -30 |          -31 |
+| vue-start.full                   |      71,095 |     71,095 |         +0 |                 +0 |       -30 |          -29 |
 
-| Byte-identical A/A control      | Apparent improvement |    95% interval |
-| ------------------------------- | -------------------: | --------------: |
-| Node cached, 8 matches          |                2.07% |  0.20% to 3.92% |
-| Chromium eager, 2 matches       |                1.00% |  0.30% to 1.74% |
-| Chromium warmed lazy, 8 matches |               -0.22% | -0.88% to 0.35% |
+React Router minimal is 6 gzip bytes smaller than main; React Router full is
+3 bytes larger. Across all 18 scenarios the gzip delta ranges from -12 to +4
+bytes. The retained wrapper never increases gzip relative to the initial PR.
+Complete per-file metrics are preserved in `results/preload-scheduling/bundles.json`.
 
-The first two controls produce false-positive intervals despite identical code.
-Consequently, the defensible headline is **about 5% lower navigation-completion
-cost in the measured deeply cached routes**, supported by reversed-label
-replication and production Chromium. No speedup is claimed for shallow React,
-synchronous loaders, or always-pending chunks. Timer-delayed loads are too noisy
-to resolve a change: their 13.8% baseline wall-time variation and 42.6% CPU
-variation make that row a smoke test only. No tail-latency claim is made.
+## Measurement protocol and limitations
 
-## Work removed
+Measurements use an Apple M3 Max, Node 25.8.1, and Chromium 149.0.7827.55, with
+minified production client bundles. Each group runs in a fresh process/browser
+loading one implementation, using balanced AB/BA order. Three warmup batches
+precede three measured batches. Node calibrates batches to roughly 350 ms;
+Chromium uses 3,000 navigations per batch. Timing includes final promise cleanup
+jobs and excludes assertions, test-library calls, fake timers, jsdom, and
+per-navigation Playwright RPC.
 
-Separately instrumented counts over 100 navigations/waits, including the same
-fixed harness overhead in both variants:
+Untimed checks after every batch verify state and exact loader/preload counts.
+React additionally checks rendered-event counts, DOM data/params, and one warmed
+lazy import. Bootstrap intervals use 10,000 resamples of independent pairs;
+within-process batches are not treated as independent observations. Allocation
+hooks run in separate processes that never contribute timing samples.
 
-| Case                             | PROMISE resources before → after | Abort listener registrations before → after |
-| -------------------------------- | -------------------------------: | ------------------------------------------: |
-| No loaders, 2 matches            |                    8,101 → 6,701 |                                     200 → 0 |
-| Cached loaders, 8 matches        |                  20,101 → 14,501 |                                     800 → 0 |
-| Synchronous loaders, 8 matches   |                  27,801 → 20,801 |                                 1,500 → 700 |
-| Always-pending chunks, 8 matches |                  21,501 → 18,001 |                                   800 → 700 |
-| Mixed chunks, 8 matches          |                  20,381 → 15,201 |                                   800 → 140 |
-| Direct `waitFor`                 |                        804 → 504 |                                   100 → 100 |
+These are single-machine V8-family results, covering navigation completion and
+React commits, not paint latency or a universal application speedup. Earlier
+byte-identical controls showed apparent gains of 2.07% in Node cached routes and
+1.00% in shallow Chromium routes; the deep Chromium control was -0.22%
+[-0.88%, 0.35%]. Consequently, small positive percentages alone are insufficient
+proof. The earlier jsdom percentage claim remains withdrawn.
 
-Thus a cached navigation with eight matches removes 56 PROMISE resources and
-eight abort-listener registrations in this diagnostic. Pending chunks continue
-to register their cancellation listeners. The timing claim comes from the
-uninstrumented runs, not these counts.
+The initial implementation's broader workload matrix, controls, reversed-label
+replication, and independent hunk measurements remain in the raw data and the
+[initial report](https://github.com/TanStack/router/blob/06afabb02cab1545ee10953788b94264adfb0af6/RESULT-optimization-ready-route-promises.md).
+Those initial-version measurements are not substituted for final-version results.
 
-## Independent hunk attribution
+## Validation and reproduction
 
-Each hunk was also bundled alone against the same baseline and measured in six
-fresh-process pairs of the cached eight-match case. These exploratory timings
-are not additive and are not substituted for the full-candidate replications.
+The final implementation is checked with the repository's `pnpm test:eslint`,
+`pnpm test:types`, and `pnpm test:unit` commands, plus the production React basic
+Chromium e2e suite and all 18 bundle scenarios. The local React basic example is
+also exercised with its development server. Focused core/React unit counts are
+1,673 and 1,037 passing tests, plus four expected failures and one skip.
 
-| Hunk alone                    | Cached time change |    95% interval | PROMISE resources removed per navigation | React minimal gzip delta |
-| ----------------------------- | -----------------: | --------------: | ---------------------------------------: | -----------------------: |
-| `waitFor` cleanup             |       0.64% faster | -1.90% to 2.63% |                                       24 |                     -2 B |
-| Conditional loader settlement |       1.22% faster |  0.37% to 2.09% |                                        8 |                     -7 B |
-| Conditional chunk wait        |       7.45% faster |  5.03% to 9.81% |                                       48 |                    +10 B |
-| All three                     |       5.25% faster |  3.75% to 6.61% |                                       56 |                     +3 B |
+The earlier PR CI run (`2a4a3fa670`) passed correctness checks but CodSpeed flagged
+seven memory regressions alongside a warning about different runtime environments.
+Those memory flags remain unresolved; local latency results do not establish that
+they are harmless.
 
-The cleanup hunk also accounts for the separately measured 23.10% direct-wait
-improvement. Cleanup and settlement reduce gzip size as well as redundant work;
-the chunk hunk provides the main ready-route improvement. Removing its wait also
-removes work affected by the cleanup hunk, explaining overlapping promise counts.
-All three are retained. The final composition is unchanged from the full
-candidate used for the primary and replication runs.
+Raw final-version samples, hashes, counts, per-file bundle metrics, and the
+accepted patch are in
+[`results/preload-scheduling`](scripts/benchmarks/ready-routes/results/preload-scheduling).
+`incremental-reverse.json` preserves reversed labels: positive output from
+`summarize.mjs` for that file favors the initial PR. The samples are unchanged;
+only the retention decision metadata changed when the tradeoff was accepted.
 
-## Reproduction and raw data
-
-The committed JSON files in
-[`scripts/benchmarks/ready-routes/results`](scripts/benchmarks/ready-routes/results)
-contain every measured batch, variant bundle SHA-256 hashes, controls, and the
-reversed-label replication. `core-reverse.json` preserves the original labels;
-`core-replication.json` contains the same observations relabeled before/after for
-the summary command. Use only one of these when combining observations.
-
-Create a separate baseline worktree at test-only commit `1ef2d676d8`, install with
-the same lockfile, and keep the final implementation in the candidate worktree.
-Run the commands sequentially on an otherwise idle machine:
+To reproduce the incremental comparison, create two worktrees at `1cfb377ea7`,
+install using the same lockfile, and apply `immediate.patch` to the candidate:
 
 ```sh
-node scripts/benchmarks/ready-routes/compare.mjs --base /path/to/baseline --candidate . --output /tmp/ready-core --pairs 12
-node scripts/benchmarks/ready-routes/compare.mjs --base /path/to/baseline --candidate . --output /tmp/ready-core-control --cases cached:8 --pairs 12 --control
-node scripts/benchmarks/ready-routes/compare.mjs --base . --candidate /path/to/baseline --output /tmp/ready-core-reverse --cases cached:8 --pairs 12
-node scripts/benchmarks/ready-routes/browser.mjs --base /path/to/baseline --candidate . --output /tmp/ready-browser --pairs 12 --iterations 3000
-node scripts/benchmarks/ready-routes/browser.mjs --base /path/to/baseline --candidate . --output /tmp/ready-browser-control --pairs 12 --iterations 3000 --control
-node scripts/benchmarks/ready-routes/summarize.mjs /tmp/ready-core/samples.json /tmp/ready-browser/samples.json
+node scripts/benchmarks/ready-routes/compare.mjs --base /path/to/initial-pr --candidate /path/to/final --output /tmp/ready-core --cases cached:8,chunks:8,async-chunks:8 --pairs 6
+node scripts/benchmarks/ready-routes/compare.mjs --base /path/to/final --candidate /path/to/initial-pr --output /tmp/ready-reverse --cases async-chunks:8 --pairs 12
+node scripts/benchmarks/ready-routes/summarize.mjs /tmp/ready-core/samples.json /tmp/ready-reverse/samples.json
 ```
 
-The browser script requires the repository's Playwright Chromium installation.
-For hunk attribution, apply only the selected hunk to a copy of baseline
-`load-client.ts` and pass that file using `--candidate-source /path/to/hunk.ts`.
-The source override applies only to that module during bundling.
-
-Run allocation diagnostics in separate processes, after timing is finished:
+For main-to-final core results, override baseline `load-client.ts` with the file
+from `2f9150309b` using `--base-source`, and use `--cases cached:8 --pairs 12`.
+For Chromium, use that original baseline implementation with the identical
+`ready-routes.tsx` fixture:
 
 ```sh
-node scripts/benchmarks/ready-routes/allocations.mjs /tmp/ready-core/base.mjs cached 8
+node scripts/benchmarks/ready-routes/browser.mjs --base /path/to/main-with-fixtures --candidate /path/to/final --output /tmp/ready-browser --cases lazy:8 --pairs 12 --iterations 3000
 node scripts/benchmarks/ready-routes/allocations.mjs /tmp/ready-core/candidate.mjs cached 8
 ```
 
-For bundle size, run this in each worktree and save each `current.json` before
-running the other version:
+Run diagnostics separately from timing, and run one Nx invocation at a time.
+The full bundle command in each worktree is:
 
 ```sh
-CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache > /tmp/ready-bundle.log 2>&1
-pnpm benchmark:bundle-size:diff --baseline /path/to/baseline-current.json
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache
 ```
-
-## Full bundle comparison
-
-All 18 scenarios were rebuilt in both worktrees using the repository's actual
-production bundle benchmark. Values below count **all emitted JavaScript**,
-including lazy chunks. Byte deltas are after minus before.
-
-| Scenario                         | Gzip before | Gzip after | Gzip delta | Initial gzip delta | Raw delta | Brotli delta |
-| -------------------------------- | ----------: | ---------: | ---------: | -----------------: | --------: | -----------: |
-| react-router.minimal             |      85,772 |     85,775 |         +3 |                 +3 |        -4 |          +12 |
-| react-router.full                |      89,362 |     89,365 |         +3 |                 +2 |        -4 |          +72 |
-| solid-router.minimal             |      33,926 |     33,928 |         +2 |                 +4 |        -4 |          -32 |
-| solid-router.full                |      38,868 |     38,876 |         +8 |                 +6 |        -4 |          +76 |
-| vue-router.minimal               |      50,635 |     50,640 |         +5 |                 +4 |        -4 |          -24 |
-| vue-router.full                  |      56,396 |     56,394 |         -2 |                 +1 |        -4 |          +28 |
-| react-start.minimal              |      99,000 |     98,996 |         -4 |                 +0 |        -4 |           -2 |
-| react-start.query-integration    |     106,513 |    106,513 |         +0 |                 +1 |        -4 |          -69 |
-| react-start.deferred-hydration   |      99,743 |     99,742 |         -1 |                 +0 |        -4 |         -108 |
-| react-start.full                 |     102,230 |    102,231 |         +1 |                 +1 |        -4 |          +37 |
-| react-start.rsbuild.minimal      |     102,351 |    102,350 |         -1 |                 -1 |        -5 |           -1 |
-| react-start.rsbuild.minimal-iife |     102,762 |    102,761 |         -1 |                 -1 |        -5 |          -35 |
-| react-start.rsbuild.full         |     105,749 |    105,748 |         -1 |                 -1 |        -5 |         +159 |
-| solid-start.minimal              |      47,074 |     47,082 |         +8 |                 +4 |        -4 |          +65 |
-| solid-start.deferred-hydration   |      50,241 |     50,241 |         +0 |                 +1 |        -4 |          +23 |
-| solid-start.full                 |      52,282 |     52,282 |         +0 |                 +1 |        -4 |          -20 |
-| vue-start.minimal                |      67,186 |     67,189 |         +3 |                 +3 |        -4 |          -37 |
-| vue-start.full                   |      71,095 |     71,098 |         +3 |                 +4 |        -4 |          -44 |
-
-React Router adds 3 gzip bytes in both scenarios while raw JavaScript shrinks by
-4 bytes. Across all scenarios, gzip changes range from -4 to +8 bytes; the
-largest proportional increase is 0.021% (Solid Router full). JavaScript file
-counts are unchanged. Brotli compression is more sensitive to the changed code
-layout: its largest increase is 159 bytes in React Start rsbuild full; its
-largest decrease is 108 bytes in React Start deferred hydration. Complete
-per-file metrics are included in `results/bundles.json`.
-
-This is a small, explicit exception to strict zero bundle growth: approximately
-5% lower completion cost in the validated cached cases for 3 gzip bytes in React
-Router and no more than 8 gzip bytes in any measured scenario. No dependency or
-new runtime helper is added. The tradeoff does not rely on a claimed universal
-speedup or on the noisy shallow-navigation results.
-
-Validation commands (run one Nx invocation at a time):
-
-```sh
-CI=1 NX_DAEMON=false pnpm nx run-many --targets=test:unit,test:types,test:eslint --projects=@tanstack/router-core,@tanstack/react-router --outputStyle=stream --skipRemoteCache --skipNxCache
-CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav:test:types:react --outputStyle=stream --skipRemoteCache
-CI=1 NX_DAEMON=false pnpm nx run tanstack-router-e2e-react-basic:test:e2e --outputStyle=stream --skipRemoteCache
-CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache --skipNxCache -- bench tests/ready-routes.bench.ts
-```
-
-## Follow-up: undefined navigation inside component preload
-
-Navigation initiated from inside a component preload is undefined behavior.
-The two parameterized cases asserting that behavior were removed. They had not
-required a dedicated production branch, so deleting them alone made no runtime
-logic redundant. A supported simultaneous synchronous loader/preload failure
-test was added instead, verifying that the loader error retains precedence.
-The benchmark fixture also now includes async loaders combined with pending
-component chunks (`async-chunks`).
-
-An immediate async wrapper was investigated as an alternative to the deferred
-chunk invocation. It conditionally awaited `waitFor` and used the same error
-normalization. It passed the existing core/React unit, type, and lint checks.
-Separately instrumented counts confirmed one fewer PROMISE resource per match
-in cached, pending-chunk, and combined async-loader/pending-chunk workloads.
-Its 18-scenario bundle run reduced raw JS by 26 bytes everywhere; gzip deltas
-relative to the current PR ranged from -11 to 0 bytes, including -9 bytes for
-React Router minimal and 0 bytes for React Router full.
-
-However, a fresh-process comparison against the current PR did **not** establish
-an additional runtime benefit:
-
-| Immediate wrapper vs current PR              | Pairs |     Time improvement | 95% paired bootstrap interval |
-| -------------------------------------------- | ----: | -------------------: | ----------------------------: |
-| Cached loaders, 8 matches                    |     6 |               +1.69% |              -0.60% to +5.53% |
-| Pending chunks, cached loaders, 8 matches    |     6 |               -1.97% |              -6.02% to +1.11% |
-| Async loaders plus pending chunks, 8 matches |     6 |               -1.44% |              -2.41% to -0.30% |
-| Combined workload, reversed-label repeat     |    12 | approximately -1.04% |   Inconclusive; includes zero |
-
-The combined workload leaned slower in both comparisons, but the noisier repeat
-could not establish a regression. This is a reason to avoid claiming a win, not
-proof of a slowdown. The candidate also retained a 4.08% Chromium gain relative
-to unoptimized main [3.37%, 4.83%], which does not establish an improvement over
-the current PR. Its main-to-candidate Node wall-time comparison was inconclusive
-because of a large outlier; all observations are retained. Node CPU time favored
-the candidate over main by 5.80% [4.34%, 7.07%].
-
-**Decision: discard the scheduling change.** The small byte saving and lower
-promise count do not justify changing invocation timing without a convincing
-runtime result, particularly with the combined pending workload leaning slower.
-The production implementation and its original performance/bundle conclusions
-remain unchanged. The unsupported test is removed regardless of this decision.
-
-All experimental samples, allocation counts, per-file bundle metrics, and the
-reproducible candidate patch are preserved under
-[`results/preload-scheduling`](scripts/benchmarks/ready-routes/results/preload-scheduling).
-They are explicitly marked as a discarded candidate. `incremental-reverse.json`
-preserves reversed implementation labels; positive values from `summarize.mjs`
-for that file favor the existing PR, not the experiment.
-
-To reproduce the comparison, use test-only commit `1cfb377ea7` in both worktrees,
-apply `immediate.patch` only to the candidate, then run `compare.mjs` with
-`--cases cached:8,chunks:8,async-chunks:8 --pairs 6`. Repeat the combined case with
-the base/candidate worktrees swapped and `--pairs 12`. The experiment's
-main-to-candidate core comparison uses `--base-source` with `load-client.ts` from
-`2f9150309b`; the browser comparison uses that original baseline worktree.
-
-After removing the unsupported cases and adding the precedence case, uncached
-checks pass with 1,673 router-core and 1,037 react-router unit tests, plus four
-expected failures and one skip. TypeScript and lint suites pass again, as do all
-24 Chromium e2e tests and all 16 Vitest benchmark cases. Rebuilding all 18 bundle
-scenarios after discarding the experiment reproduces the current PR sizes exactly
-for gzip, initial gzip, raw JavaScript, and Brotli.
-
-The earlier PR CI run (`2a4a3fa670`) passed correctness checks but CodSpeed flagged
-seven memory regressions and warned about different runtime environments. Those
-memory results remain unresolved; the local latency measurements are not evidence
-that the CI memory flags are harmless.

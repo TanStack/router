@@ -311,7 +311,7 @@
       ]
     }
   ],
-  "retained": false,
+  "retained": true,
   "run": "incremental-core",
   "baselineProductionCommit": "2a4a3fa6704e78fbb22a702d9216129326e04ad5",
   "fixtureCommit": "1cfb377ea7",

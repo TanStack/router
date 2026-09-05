@@ -201,7 +201,7 @@
       ]
     }
   ],
-  "retained": false,
+  "retained": true,
   "run": "final-core",
   "baselineProductionCommit": "2f9150309bc472f4a75cbe98adcdb50c76b12c7a",
   "fixtureCommit": "1cfb377ea7",
