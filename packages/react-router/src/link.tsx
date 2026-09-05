@@ -75,13 +75,12 @@ function resolveExternalLink(
     }
     return hrefOption.href
   }
-  if (isSafeInternal(to)) {
-    return undefined
-  }
-  if (typeof to !== 'string' || to.indexOf(':') === -1) {
-    return undefined
-  }
-  if (isAbsoluteUrl(to)) {
+  if (
+    !isSafeInternal(to) &&
+    typeof to === 'string' &&
+    to.indexOf(':') > -1 &&
+    isAbsoluteUrl(to)
+  ) {
     // Block dangerous protocols like javascript:, blob:, data:
     if (isDangerousProtocol(to, protocolAllowlist)) {
       if (process.env.NODE_ENV !== 'production') {
@@ -227,35 +226,34 @@ export function useLinkProps<
       typeof to === 'string' &&
       !safeInternal &&
       // Quick checks to avoid URL parsing in common internal-like cases
-      to.indexOf(':') > -1
+      to.indexOf(':') > -1 &&
+      isAbsoluteUrl(to)
     ) {
-      if (isAbsoluteUrl(to)) {
-        if (isDangerousProtocol(to, router.protocolAllowlist)) {
-          if (process.env.NODE_ENV !== 'production') {
-            console.warn(`Blocked Link with dangerous protocol: ${to}`)
-          }
-          return {
-            ...propsSafeToSpread,
-            ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-            href: undefined,
-            ...(children && { children }),
-            ...(target && { target }),
-            ...(disabled && { disabled }),
-            ...(style && { style }),
-            ...(className && { className }),
-          }
+      if (isDangerousProtocol(to, router.protocolAllowlist)) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
-
         return {
           ...propsSafeToSpread,
           ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-          href: to,
+          href: undefined,
           ...(children && { children }),
           ...(target && { target }),
           ...(disabled && { disabled }),
           ...(style && { style }),
           ...(className && { className }),
         }
+      }
+
+      return {
+        ...propsSafeToSpread,
+        ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
+        href: to,
+        ...(children && { children }),
+        ...(target && { target }),
+        ...(disabled && { disabled }),
+        ...(style && { style }),
+        ...(className && { className }),
       }
     }
 
@@ -291,19 +289,20 @@ export function useLinkProps<
         return hrefOption.href
       }
 
-      if (safeInternal) return undefined
-
       // Only attempt URL parsing when it looks like an absolute URL.
-      if (typeof to === 'string' && to.indexOf(':') > -1) {
-        if (isAbsoluteUrl(to)) {
-          if (isDangerousProtocol(to, router.protocolAllowlist)) {
-            if (process.env.NODE_ENV !== 'production') {
-              console.warn(`Blocked Link with dangerous protocol: ${to}`)
-            }
-            return undefined
+      if (
+        !safeInternal &&
+        typeof to === 'string' &&
+        to.indexOf(':') > -1 &&
+        isAbsoluteUrl(to)
+      ) {
+        if (isDangerousProtocol(to, router.protocolAllowlist)) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn(`Blocked Link with dangerous protocol: ${to}`)
           }
-          return to
+          return undefined
         }
+        return to
       }
 
       return undefined
