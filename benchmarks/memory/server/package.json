@@ -289,7 +289,8 @@
           "^production",
           "{workspaceRoot}/eslint.config.js",
           "dependentTaskOutputs",
-          "{workspaceRoot}/benchmarks/memory/*.ts"
+          "{workspaceRoot}/benchmarks/memory/*.ts",
+          "{workspaceRoot}/benchmarks/memory/client/scenarios/*/*/memory.bench.ts"
         ]
       }
     }

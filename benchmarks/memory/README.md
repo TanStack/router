@@ -43,10 +43,11 @@ same workload through the Flame profiler.
   after a forced GC. Under plain `vitest bench` the suites only smoke-test:
   timing output is meaningless; real numbers come from CodSpeed.
 - Under CodSpeed the bench fn runs several warmup invocations plus the
-  measured one **on the same mount**, so bench fns must be idempotent and
-  module-level counters/LCGs are used where ids must never repeat across
-  invocations.
-- Plain `vitest bench` never runs suite hooks (`beforeAll`/`afterAll`) and
+  measured one. Client suite hooks mount a fresh app before each invocation
+  and tear it down afterward, outside the measurement window. This prevents
+  warmup navigation history and caches from changing the starting state.
+  Module-level counters/LCGs keep generated URLs unique across invocations.
+- Plain `vitest bench` never runs suite hooks (`beforeEach`/`afterEach`) and
   only honors tinybench's `setup`/`teardown` options; the CodSpeed runner
   does the exact opposite. Client benches therefore register **both** — in
   any given mode exactly one pair runs.
@@ -59,7 +60,7 @@ same workload through the Flame profiler.
 - Before each CodSpeed invocation, a setup hook yields to the event loop,
   outside the measurement marker and before CodSpeed forces GC. Promise-only
   warmup chains can keep WeakRef targets alive through a collection in the same
-  job. The hook leaves live router and application state mounted.
+  job. Client app setup also runs before the forced GC.
 - Do not force GC inside a measured request loop or poll `heapUsed` to choose
   how much work to do. Both introduce allocator activity from the harness into
   the measurement. Footprint scenarios run exactly one large request per
