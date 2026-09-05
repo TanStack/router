@@ -222,6 +222,8 @@ interface InterpolatePathOptions {
    * For testing only, in development mode we use the router.isServer value
    */
   server?: boolean
+  /** @internal Include absent optional parameters when tracking dependencies. */
+  trackOptionalParams?: boolean
 }
 
 type InterPolatePathResult = {
@@ -400,7 +402,12 @@ export function interpolatePath({
       const valueRaw = params[key]
 
       // Check if optional parameter is missing or undefined
-      if (valueRaw == null) continue
+      if (valueRaw == null) {
+        if (rest.trackOptionalParams) {
+          usedParams[key] = valueRaw
+        }
+        continue
+      }
 
       usedParams[key] = valueRaw
 

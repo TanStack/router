@@ -20,6 +20,7 @@ import { useHydrated } from './ClientOnly'
 import type {
   ActiveOptions,
   AnyRouter,
+  BuildLocationCache,
   Constrain,
   LinkOptions,
   ParsedLocation,
@@ -496,6 +497,8 @@ export function useLinkProps<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const stableActiveOptions = useValueStable(activeOptions)
   // eslint-disable-next-line react-hooks/rules-of-hooks
+  const buildCache = React.useMemo<BuildLocationCache>(() => ({}), [])
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const _options = React.useMemo(
     () => options,
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -521,6 +524,7 @@ export function useLinkProps<
     (location: ParsedLocation): LinkState => {
       const next = router.buildLocation({
         _fromLocation: location,
+        _buildCache: buildCache,
         ..._options,
       } as any)
 
@@ -554,7 +558,15 @@ export function useLinkProps<
         ),
       ]
     },
-    [stableActiveOptions, disabled, isHydrated, _options, router, to],
+    [
+      stableActiveOptions,
+      disabled,
+      isHydrated,
+      _options,
+      router,
+      to,
+      buildCache,
+    ],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
