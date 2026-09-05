@@ -928,13 +928,33 @@ export function _getUserHistoryState({
   return state
 }
 
+export function lifecycleEnd(matches: Array<AnyRouteMatch>) {
+  return (
+    matches.findIndex(
+      (match) =>
+        match.status === 'error' ||
+        match.status === 'notFound' ||
+        match._notFound,
+    ) + 1
+  )
+}
+
 /** Run route lifecycle callbacks in leave/enter/stay phases. */
 export function runRouteLifecycle(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   matches: Array<AnyRouteMatch>,
+  previousEnd: number | undefined,
+  nextEnd: number,
   owner?: LoadTransaction,
 ): void {
+  // Zero or undefined means the full branch; copy only at a fallback.
+  if (previousEnd) {
+    previous = previous.slice(0, previousEnd)
+  }
+  if (nextEnd) {
+    matches = matches.slice(0, nextEnd)
+  }
   for (const match of previous) {
     if (owner && router._tx !== owner) {
       return
@@ -1015,6 +1035,11 @@ export interface RouterCore<
   in out TDehydrated extends Record<string, any> = Record<string, any>,
 > {
   shouldViewTransition?: boolean | ViewTransitionOptions
+  /**
+   * Foreground lifecycle boundary survives invalidation/background statuses.
+   * Zero or undefined means the whole branch participates.
+   */
+  _lifecycleEnd?: number
   /** Current client load transaction and owner of navigation writes. */
   _tx?: LoadTransaction
   /** Joinable in-flight loader generations keyed by match ID. */

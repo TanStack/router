@@ -2,7 +2,11 @@
 // can rewrite relative imports for both ESM and CJS.
 import { isNotFound } from './not-found'
 import { isRedirect } from './redirect'
-import { getLocationChangeInfo, runRouteLifecycle } from './router'
+import {
+  getLocationChangeInfo,
+  lifecycleEnd,
+  runRouteLifecycle,
+} from './router'
 import { hydrateSsrMatchId } from './ssr/ssr-match-id'
 import type { GLOBAL_SEROVAL, GLOBAL_TSR } from './ssr/constants'
 import type { AnySerializationAdapter } from './ssr/serializer/transformer'
@@ -1586,6 +1590,7 @@ export function commitMatches(
   resolvedPrefix?: number,
 ): void {
   const previous = router._committed
+  const previousEnd = router._lifecycleEnd
   const previousCached = router._cache
   for (const match of matches) {
     match.preload = false
@@ -1641,6 +1646,8 @@ export function commitMatches(
   // The lane becomes committed before publication can synchronously reenter.
   tx[3 /* matches */] = []
   router._cache = cached
+  // Publish lifecycle membership with its branch before observers can reenter.
+  const nextEnd = (router._lifecycleEnd = lifecycleEnd(matches))
   publishMatches(router, matches)
   // Retained cache objects keep their leases; only departing owners need handoff.
   const previousMatches = [...previousCached.values(), ...previous]
@@ -1657,7 +1664,7 @@ export function commitMatches(
       handoff[1 /* finish */]()
     }
   }
-  runRouteLifecycle(router, previous, matches, tx)
+  runRouteLifecycle(router, previous, matches, previousEnd, nextEnd, tx)
 }
 
 /**
@@ -2519,6 +2526,7 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     },
   ]
   router._committed = committedMatches
+  router._lifecycleEnd = lifecycleEnd(committedMatches)
   router._handoff = handoff
   router._preflight = undefined
   router.batch(() => {

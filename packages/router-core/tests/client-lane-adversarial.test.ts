@@ -365,9 +365,8 @@ describe('adversarial client lane ownership', () => {
 
   test('keeps a hidden child matched without projecting it below a parent error', async () => {
     const parentError = new Error('parent failed')
-    const childHead = vi.fn(() => ({
-      meta: [{ title: 'unreachable child' }],
-    }))
+    const parentOnEnter = vi.fn()
+    const childHead = vi.fn()
     const childOnEnter = vi.fn()
 
     const rootRoute = new BaseRootRoute({})
@@ -378,6 +377,7 @@ describe('adversarial client lane ownership', () => {
         throw parentError
       },
       errorComponent: () => null,
+      onEnter: parentOnEnter,
     })
     const childRoute = new BaseRoute({
       getParentRoute: () => parentRoute,
@@ -407,7 +407,8 @@ describe('adversarial client lane ownership', () => {
       error: parentError,
     })
     expect(childHead).not.toHaveBeenCalled()
-    expect(childOnEnter).toHaveBeenCalledTimes(1)
+    expect(childOnEnter).not.toHaveBeenCalled()
+    expect(parentOnEnter).toHaveBeenCalledOnce()
   })
 
   test('a redirect aborts the discarded loader generation', async () => {
