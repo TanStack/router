@@ -2736,13 +2736,13 @@ function applySearchMiddleware(
   destRoutes: ReadonlyArray<AnyRoute>,
   includeValidateSearch: boolean | undefined,
 ) {
-  const middlewares = [] as Array<SearchMiddleware<any>>
+  let middlewares: Array<SearchMiddleware<any>> | undefined
 
   for (const route of destRoutes) {
     const routeOptions = route.options
     if ('search' in routeOptions) {
       if (routeOptions.search?.middlewares) {
-        middlewares.push(...routeOptions.search.middlewares)
+        ;(middlewares ||= []).push(...routeOptions.search.middlewares)
       }
     }
     // TODO remove preSearchFilters and postSearchFilters in v2
@@ -2764,7 +2764,7 @@ function applySearchMiddleware(
             )
           : result
       }
-      middlewares.push(legacyMiddleware)
+      ;(middlewares ||= []).push(legacyMiddleware)
     }
 
     const routeValidateSearch = routeOptions.validateSearch
@@ -2788,9 +2788,17 @@ function applySearchMiddleware(
         return result
       }
 
-      middlewares.push(validate)
+      ;(middlewares ||= []).push(validate)
     }
   }
+
+  if (!middlewares?.length) {
+    if (!dest.search) {
+      return !isServer && !hasKeys(search) ? search : {}
+    }
+    return dest.search === true ? search : functionalUpdate(dest.search, search)
+  }
+  const middlewareList = middlewares
 
   const applyNext = (
     index: number,
@@ -2798,7 +2806,7 @@ function applySearchMiddleware(
     meta?: SearchMiddlewareMeta,
   ): any => {
     // no more middlewares left, return the current search
-    if (index >= middlewares.length) {
+    if (index >= middlewareList.length) {
       if (!dest.search) {
         return {}
       }
@@ -2823,7 +2831,11 @@ function applySearchMiddleware(
       return applyNext(index + 1, newSearch, meta)
     }
 
-    return (middlewares[index]! as any)({ search: currentSearch, next, meta })
+    return (middlewareList[index]! as any)({
+      search: currentSearch,
+      next,
+      meta,
+    })
   }
 
   return applyNext(0, search)
@@ -2859,8 +2871,11 @@ function resolveNextParams(
   if ((spec ?? true) === true) {
     return base
   }
+  if (typeof spec !== 'function') {
+    return Object.assign(Object.create(null), base, spec)
+  }
   const next = Object.assign(Object.create(null), base)
-  return Object.assign(next, functionalUpdate(spec as any, next))
+  return Object.assign(next, spec(next))
 }
 
 function extractStrictParams(
