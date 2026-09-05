@@ -81,19 +81,12 @@ export function ErrorComponent({ error }: { error: unknown }) {
               overflow: 'auto',
             }}
           >
-            <code>{getErrorMessage(error)}</code>
+            {(error as { message?: string } | null)?.message ? (
+              <code>{(error as { message: string }).message}</code>
+            ) : null}
           </pre>
         </div>
       ) : null}
     </div>
   )
-}
-
-function getErrorMessage(error: unknown) {
-  try {
-    return String((error as { message?: unknown } | null)?.message ?? error)
-  } catch {
-    // The thrown value may not support property access or string conversion.
-    return ''
-  }
 }

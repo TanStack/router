@@ -313,38 +313,20 @@ test.each([
 test.each([
   [new Error('Error message'), 'Error message'],
   [{ message: 'Serialized message' }, 'Serialized message'],
-  [{ message: 0 }, '0'],
-  [{ message: { detail: 'nested' } }, '[object Object]'],
-  ['Thrown string', 'Thrown string'],
-  [false, 'false'],
-  [0, '0'],
-  [0n, '0'],
-  ['', ''],
-  [null, 'null'],
-  [undefined, 'undefined'],
-  [NaN, 'NaN'],
-  [Symbol('error'), 'Symbol(error)'],
+  [{ message: 0 }, undefined],
+  ['Thrown string', undefined],
+  [false, undefined],
+  [0, undefined],
+  [0n, undefined],
+  ['', undefined],
+  [null, undefined],
+  [undefined, undefined],
+  [NaN, undefined],
+  [Symbol('error'), undefined],
+  [Object.create(null), undefined],
 ])('default error details render %s', (error, expected) => {
   const { container } = render(() => <ErrorComponent error={error} />)
 
   expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
   expect(container.querySelector('code')?.textContent).toBe(expected)
-})
-
-test.each([
-  Object.create(null),
-  {
-    toString() {
-      throw new Error('Cannot stringify')
-    },
-  },
-  {
-    get message() {
-      throw new Error('Cannot read message')
-    },
-  },
-])('default error UI survives an unprintable thrown value', (error) => {
-  const { container } = render(() => <ErrorComponent error={error} />)
-  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
-  expect(container.querySelector('code')?.textContent).toBe('')
 })

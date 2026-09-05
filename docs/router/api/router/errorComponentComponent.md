@@ -27,6 +27,6 @@ The `ErrorComponent` component accepts the following props:
 
 ## ErrorComponent returns
 
-- Displays the thrown value's `message`, or its string representation when no message exists. If reading or formatting the value throws, the error notice still renders without details.
+- Displays an error notice, with details when the thrown value has a nonempty `message`. Values without a message still display the error notice.
 - The error message can be toggled by clicking the "Show Error" button.
 - By default, the error message will be shown in development.

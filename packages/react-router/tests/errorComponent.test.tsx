@@ -938,17 +938,17 @@ describe('notFoundComponent is rendered when an error is thrown in params.parse'
 test.each([
   [new Error('Error message'), 'Error message'],
   [{ message: 'Serialized message' }, 'Serialized message'],
-  [{ message: 0 }, '0'],
-  [{ message: { detail: 'nested' } }, '[object Object]'],
-  ['Thrown string', 'Thrown string'],
-  [false, 'false'],
-  [0, '0'],
-  [0n, '0'],
-  ['', ''],
-  [null, 'null'],
-  [undefined, 'undefined'],
-  [NaN, 'NaN'],
-  [Symbol('error'), 'Symbol(error)'],
+  [{ message: 0 }, undefined],
+  ['Thrown string', undefined],
+  [false, undefined],
+  [0, undefined],
+  [0n, undefined],
+  ['', undefined],
+  [null, undefined],
+  [undefined, undefined],
+  [NaN, undefined],
+  [Symbol('error'), undefined],
+  [Object.create(null), undefined],
 ])('default error details render %s', (error, expected) => {
   const { container } = render(<ErrorComponent error={error} />)
 
@@ -1000,20 +1000,49 @@ test.each([false, 0, -0, 0n, '', null, undefined, NaN])(
   },
 )
 
-test.each([
-  Object.create(null),
-  {
-    toString() {
-      throw new Error('Cannot stringify')
-    },
-  },
-  {
-    get message() {
-      throw new Error('Cannot read message')
-    },
-  },
-])('default error UI survives an unprintable thrown value', (error) => {
-  const { container } = render(<ErrorComponent error={error} />)
-  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
-  expect(container.querySelector('code')?.textContent).toBe('')
+test('CatchBoundary tracks reset keys while healthy', () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  let resetKey: unknown
+  let shouldThrow = false
+
+  function Child() {
+    if (shouldThrow) {
+      throw null
+    }
+    return <div>Healthy child</div>
+  }
+
+  function App() {
+    return (
+      <CatchBoundary
+        getResetKey={() => resetKey}
+        errorComponent={() => <div>Caught error</div>}
+      >
+        <Child />
+      </CatchBoundary>
+    )
+  }
+
+  const { rerender } = render(<App />)
+  expect(screen.getByText('Healthy child')).toBeInTheDocument()
+
+  resetKey = {}
+  rerender(<App />)
+  expect(screen.getByText('Healthy child')).toBeInTheDocument()
+
+  shouldThrow = true
+  rerender(<App />)
+  expect(screen.getByText('Caught error')).toBeInTheDocument()
+
+  shouldThrow = false
+  rerender(<App />)
+  expect(screen.getByText('Caught error')).toBeInTheDocument()
+
+  resetKey = undefined
+  rerender(<App />)
+  expect(screen.getByText('Healthy child')).toBeInTheDocument()
+
+  shouldThrow = true
+  rerender(<App />)
+  expect(screen.getByText('Caught error')).toBeInTheDocument()
 })
