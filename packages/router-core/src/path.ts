@@ -1,5 +1,6 @@
 import { isServer } from '@tanstack/router-core/isServer'
 import { last } from './utils'
+import { createSieveCache } from './sieve-cache'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
@@ -222,6 +223,73 @@ interface InterpolatePathOptions {
    * For testing only, in development mode we use the router.isServer value
    */
   server?: boolean
+}
+
+/** @internal */
+export function createPathInterpolator() {
+  type Plan = {
+    path: string
+    keys: Array<string>
+    paths: SieveCache<string, string>
+  }
+  const plans = createSieveCache<string, Plan>(32)
+  let previousPlan: Plan | undefined
+  let previousDecoder: InterpolatePathOptions['decoder']
+
+  return (options: InterpolatePathOptions): string => {
+    const { path, params, decoder } = options
+    if (!path || path === '/') {
+      return '/'
+    }
+    if (!path.includes('$')) {
+      return path
+    }
+
+    if (decoder !== previousDecoder) {
+      previousDecoder = decoder
+      previousPlan = undefined
+      plans.clear()
+    }
+
+    let plan = previousPlan?.path === path ? previousPlan : plans.get(path)
+    if (!plan) {
+      const keys: Array<string> = []
+      let cursor = 0
+      let segment
+      while (cursor < path.length) {
+        segment = parseSegment(path, cursor, segment)
+        cursor = segment[5] + 1
+        if (
+          segment[0] === SEGMENT_TYPE_PARAM ||
+          segment[0] === SEGMENT_TYPE_OPTIONAL_PARAM
+        ) {
+          keys.push(path.substring(segment[2], segment[3]))
+        } else if (segment[0] === SEGMENT_TYPE_WILDCARD) {
+          keys.push('_splat')
+        }
+      }
+      plan = { path, keys, paths: createSieveCache<string, string>(128) }
+      plans.set(path, plan)
+    }
+    previousPlan = plan
+
+    let key = ''
+    for (const name of plan.keys) {
+      const value = params[name]
+      if (typeof value !== 'string') {
+        return interpolatePath(options).interpolatedPath
+      }
+      key = plan.keys.length === 1 ? value : key + `${value.length}:${value}`
+    }
+
+    const cached = plan.paths.get(key)
+    if (cached !== undefined) {
+      return cached
+    }
+    const interpolated = interpolatePath(options).interpolatedPath
+    plan.paths.set(key, interpolated)
+    return interpolated
+  }
 }
 
 type InterPolatePathResult = {
