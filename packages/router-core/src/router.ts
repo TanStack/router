@@ -1035,6 +1035,11 @@ export interface RouterCore<
   in out TDehydrated extends Record<string, any> = Record<string, any>,
 > {
   shouldViewTransition?: boolean | ViewTransitionOptions
+  /**
+   * Foreground lifecycle boundary survives invalidation/background statuses.
+   * Zero or undefined means the whole branch participates.
+   */
+  _lifecycleEnd?: number
   /** Current client load transaction and owner of navigation writes. */
   _tx?: LoadTransaction
   /** Joinable in-flight loader generations keyed by match ID. */
@@ -1100,9 +1105,6 @@ export class RouterCore<
   _cache = new Map<string, AnyRouteMatch>()
   /** Accepted semantic lane, excluding temporary pending presentation. */
   _committed: Array<AnyRouteMatch> = []
-  // Foreground lifecycle boundary survives invalidation/background statuses.
-  // Zero or undefined means the whole branch participates.
-  declare _lifecycleEnd?: number
 
   // Must build in constructor
   stores!: RouterStores<TRouteTree>
