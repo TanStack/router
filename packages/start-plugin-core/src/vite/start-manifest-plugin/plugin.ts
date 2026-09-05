@@ -24,6 +24,7 @@ export function startManifestPlugin(opts: {
 }): PluginOption {
   let clientBuild: NormalizedClientBuild | undefined
   let cssCodeSplitDisabledFileName: string | undefined
+  let devClientRuntime: string | undefined
 
   return [
     {
@@ -32,6 +33,12 @@ export function startManifestPlugin(opts: {
         return environment.name === START_ENVIRONMENT_NAMES.client
       },
       enforce: 'post',
+      configureServer(server) {
+        devClientRuntime = server.environments[START_ENVIRONMENT_NAMES.client]
+          .bundledDev
+          ? joinURL(server.config.base, 'bundledDevClient.mjs')
+          : undefined
+      },
       generateBundle(_options, bundle) {
         if (this.environment.name !== START_ENVIRONMENT_NAMES.client) {
           throw new Error(
@@ -58,11 +65,11 @@ export function startManifestPlugin(opts: {
         })
 
         if (this.environment.name !== START_ENVIRONMENT_NAMES.server) {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
         if (this.environment.config.command === 'serve') {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
         const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
@@ -135,15 +142,23 @@ function getAssetFileNameByName(
   return undefined
 }
 
-function getEmptyStartManifestModule(clientEntry: string) {
-  return `export const tsrStartManifest = () => ({
-      routes: {
-        __root__: {
-          preloads: ['${clientEntry}'],
-          scripts: [{ attrs: { type: 'module', async: true, src: '${clientEntry}' } }],
-        },
+function getEmptyStartManifestModule(
+  clientEntry: string,
+  clientRuntime?: string,
+) {
+  const entries = clientRuntime ? [clientRuntime, clientEntry] : [clientEntry]
+
+  return `export const tsrStartManifest = () => (${serializeStartManifest({
+    routes: {
+      [rootRouteId]: {
+        preloads: entries,
+        // Bundled-dev entries need the separate runtime to execute first.
+        scripts: entries.map((src) => ({
+          attrs: { type: 'module', async: !clientRuntime, src },
+        })),
       },
-    })`
+    },
+  })})`
 }
 
 function getDevClientEntry(opts: { basePath: string; bundledDev: boolean }) {

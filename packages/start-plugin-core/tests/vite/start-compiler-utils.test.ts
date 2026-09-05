@@ -4,7 +4,8 @@ import {
   decodeViteDevServerModuleSpecifier,
 } from '../../src/vite/start-compiler-plugin/module-specifier'
 import { mergeHotUpdateModules } from '../../src/vite/start-compiler-plugin/hot-update'
-import type { EnvironmentModuleNode } from 'vite'
+import { startCompilerPlugin } from '../../src/vite/start-compiler-plugin/plugin'
+import type { EnvironmentModuleNode, Plugin } from 'vite'
 
 describe('Vite dev server module specifiers', () => {
   test('encodes app files as root-relative dev server paths', () => {
@@ -68,4 +69,32 @@ describe('mergeHotUpdateModules', () => {
       provider,
     ])
   })
+})
+
+test('bundled dev does not require a Vite context in the client hotUpdate hook', () => {
+  const plugins = startCompilerPlugin({
+    framework: 'react',
+    environments: [{ name: 'client', type: 'client' }],
+    providerEnvName: 'ssr',
+  }) as Array<Plugin>
+  const plugin = plugins.find(
+    (item) => item.name === 'tanstack-start-core::server-fn:client',
+  )!
+
+  if (
+    typeof plugin.configResolved !== 'function' ||
+    typeof plugin.hotUpdate !== 'function'
+  ) {
+    throw new Error('Expected compiler configuration and hotUpdate hooks')
+  }
+
+  Reflect.apply(plugin.configResolved, undefined, [
+    { root: '/app', experimental: { bundledDev: true } },
+  ])
+
+  expect(
+    Reflect.apply(plugin.hotUpdate, undefined, [
+      { type: 'update', file: '/app/src/route.tsx', modules: [] },
+    ]),
+  ).toBeUndefined()
 })

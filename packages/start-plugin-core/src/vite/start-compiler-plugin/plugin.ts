@@ -396,6 +396,11 @@ export function startCompilerPlugin(
       },
 
       hotUpdate(ctx) {
+        if (bundledDev && environment.name === VITE_ENVIRONMENT_NAMES.client) {
+          // Bundled dev invalidates compiler state through watchChange, not Vite's module graph.
+          return
+        }
+
         const compiler = compilers.get(this.environment.name)
         const idsToInvalidate = new Set<string>()
         const transitiveCompilerImportersToInvalidate = new Set<string>()

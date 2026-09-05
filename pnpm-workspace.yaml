@@ -67,6 +67,8 @@ overrides:
   '@types/react-dom': 'catalog:'
   eslint: 'catalog:'
   vite: 'catalog:'
+  # Vite 8.2.2's bundled-dev runtime predates rolldown/rolldown#10772.
+  vite@8.2.2>rolldown: 1.2.4
   '@types/node': 'catalog:'
   '@playwright/test': 'catalog:'
   '@tanstack/query-core': 'catalog:'

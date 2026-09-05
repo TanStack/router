@@ -1,6 +1,7 @@
 import { isRunnableDevEnvironment } from 'vite'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
+import { ensureLatestClientBuild } from './bundled-dev'
 import {
   CSS_MODULES_REGEX,
   collectDevStyles,
@@ -123,15 +124,8 @@ export function devServerPlugin({
               `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
             )
           }
-          const clientEnv = viteDevServer.environments[
-            VITE_ENVIRONMENT_NAMES.client
-          ] as
-            | {
-                devEngine?: {
-                  ensureLatestBuildOutput?: () => Promise<void>
-                }
-              }
-            | undefined
+          const clientEnv =
+            viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client]
 
           const installMiddleware = installDevServerMiddleware
           if (installMiddleware === false) {
@@ -177,7 +171,7 @@ export function devServerPlugin({
                * }
                */
               if (viteDevServer.config.experimental.bundledDev) {
-                await clientEnv?.devEngine?.ensureLatestBuildOutput?.()
+                await ensureLatestClientBuild(clientEnv)
                 serverEnv.moduleGraph.invalidateAll()
                 serverRunner.clearCache()
               }
