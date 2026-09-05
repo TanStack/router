@@ -101,7 +101,12 @@ export function createWorkloadGroup(
     })
 
   return {
-    sanity: () => assertStreamingPeakSanity(handler),
+    sanity: async () => {
+      // Import the route chunks before checking streaming. Cold disk I/O can
+      // otherwise outlast the deferred payload and collapse the first response.
+      await run()
+      await assertStreamingPeakSanity(handler)
+    },
     workloads: [
       {
         name: `mem server streaming-peak chunked (${framework})`,
