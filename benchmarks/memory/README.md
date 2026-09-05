@@ -56,6 +56,10 @@ same workload through the Flame profiler.
   out of the signal. GC follows allocation thresholds without incremental
   marking or minor-GC tasks; a fixed initial old-generation budget reduces
   sensitivity to startup heap policy.
+- Before each CodSpeed invocation, a setup hook yields to the event loop,
+  outside the measurement marker and before CodSpeed forces GC. Promise-only
+  warmup chains can keep WeakRef targets alive through a collection in the same
+  job. The hook leaves live router and application state mounted.
 - Do not force GC inside a measured request loop or poll `heapUsed` to choose
   how much work to do. Both introduce allocator activity from the harness into
   the measurement. Footprint scenarios run exactly one large request per

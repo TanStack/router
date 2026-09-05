@@ -3,7 +3,7 @@ import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
-import { memoryExecArgv } from '../../../../runtime'
+import { memoryConfig } from '../../../../runtime'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -29,10 +29,9 @@ export default defineConfig({
     },
   },
   test: {
-    execArgv: memoryExecArgv(),
+    ...memoryConfig('client'),
     name: '@benchmarks/memory-client loader-data-retention (vue)',
     watch: false,
     environment: 'jsdom',
-    setupFiles: ['../../../vitest.setup.ts'],
   },
 })

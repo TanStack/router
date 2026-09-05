@@ -275,7 +275,7 @@
           "^production",
           "{workspaceRoot}/eslint.config.js",
           "dependentTaskOutputs",
-          "{workspaceRoot}/benchmarks/memory/runtime.ts"
+          "{workspaceRoot}/benchmarks/memory/*.ts"
         ]
       },
       "test:unit": {
@@ -289,7 +289,7 @@
           "^production",
           "{workspaceRoot}/eslint.config.js",
           "dependentTaskOutputs",
-          "{workspaceRoot}/benchmarks/memory/runtime.ts"
+          "{workspaceRoot}/benchmarks/memory/*.ts"
         ]
       }
     }

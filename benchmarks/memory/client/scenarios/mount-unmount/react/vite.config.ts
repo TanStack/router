@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import react from '@vitejs/plugin-react'
-import { memoryExecArgv } from '../../../../runtime'
+import { memoryConfig } from '../../../../runtime'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -27,10 +27,9 @@ export default defineConfig({
     },
   },
   test: {
-    execArgv: memoryExecArgv(),
+    ...memoryConfig('client'),
     name: '@benchmarks/memory-client mount-unmount (react)',
     watch: false,
     environment: 'jsdom',
-    setupFiles: ['../../../vitest.setup.ts'],
   },
 })
