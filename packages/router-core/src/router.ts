@@ -6,6 +6,7 @@ import {
 import { isServer, loadServerRoute } from '@tanstack/router-core/isServer'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
+  createNull,
   decodePath,
   deepEqual,
   encodePathLikeUrl,
@@ -29,8 +30,7 @@ import {
 } from './new-process-route-tree'
 import {
   compileDecodeCharMap,
-  createPathInterpolator,
-  interpolatePath,
+  interpolatePathname,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -1016,6 +1016,12 @@ type LightweightRouteMatchCacheEntry = [
   result: LightweightRouteMatchResult,
 ]
 
+type InterpolationPlan = [
+  keys: Array<string>,
+  paths: SieveCache<string, string>,
+  decoder: ((encoded: string) => string) | undefined,
+]
+
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption = 'never',
@@ -1156,7 +1162,7 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: SieveCache<string, string>
-  private interpolatePath = createPathInterpolator()
+  private pathCache = createSieveCache<string, InterpolationPlan>(32)
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
     ParsedLocation,
@@ -1665,12 +1671,23 @@ export class RouterCore<
         searchError ??= cause
       }
       // Match identity must only use the raw params captured from the URL.
-      const { interpolatedPath, usedParams } = interpolatePath({
-        path: route.fullPath,
-        params: rawParams,
-        decoder: this.pathParamsDecoder,
-        server: this.isServer,
-      })
+      const usedParams: Record<string, unknown> = createNull()
+      const interpolatedPath =
+        isServer === undefined
+          ? interpolatePathname(
+              route.fullPath,
+              rawParams,
+              this.pathParamsDecoder,
+              usedParams,
+              undefined,
+              this.isServer,
+            )
+          : interpolatePathname(
+              route.fullPath,
+              rawParams,
+              this.pathParamsDecoder,
+              usedParams,
+            )
 
       // Seed planning from the accepted same-ID cache generation first, then
       // from the committed generation for this route. Presentation stores are
@@ -1881,6 +1898,71 @@ export class RouterCore<
     return result
   }
 
+  private interpolatePath(
+    path: string,
+    params: Record<string, unknown>,
+  ): string {
+    const decoder = this.pathParamsDecoder
+    let plan = this.pathCache.get(path)
+    let interpolated: string | undefined
+    if (!plan || plan[2] !== decoder) {
+      const keys: Array<string> = []
+      interpolated =
+        isServer === undefined
+          ? interpolatePathname(
+              path,
+              params,
+              decoder,
+              undefined,
+              keys,
+              this.isServer,
+            )
+          : interpolatePathname(path, params, decoder, undefined, keys)
+      plan = [keys, createSieveCache<string, string>(128), decoder]
+      this.pathCache.set(path, plan)
+    }
+    const [keys, paths] = plan
+    let key = ''
+    for (const name of keys) {
+      const value = params[name]
+      if (typeof value !== 'string') {
+        return (
+          interpolated ||
+          (isServer === undefined
+            ? interpolatePathname(
+                path,
+                params,
+                decoder,
+                undefined,
+                undefined,
+                this.isServer,
+              )
+            : interpolatePathname(path, params, decoder))
+        )
+      }
+      key = keys.length === 1 ? value : key + value.length + ':' + value
+    }
+    const cached = paths.get(key)
+    if (cached) {
+      return cached
+    }
+    paths.set(
+      key,
+      (interpolated ||=
+        isServer === undefined
+          ? interpolatePathname(
+              path,
+              params,
+              decoder,
+              undefined,
+              undefined,
+              this.isServer,
+            )
+          : interpolatePathname(path, params, decoder)),
+    )
+    return interpolated
+  }
+
   /**
    * Build the next ParsedLocation from navigation options without committing.
    * Resolves `to`/`from`, params/search/hash/state, applies search validation
@@ -1991,7 +2073,7 @@ export class RouterCore<
             route.options.params?.stringify ?? route.options.stringifyParams
           if (fn) {
             if (nextParams === fromParams) {
-              nextParams = Object.assign(Object.create(null), nextParams)
+              nextParams = Object.assign(createNull(), nextParams)
             }
             try {
               Object.assign(nextParams, fn(nextParams))
@@ -2013,12 +2095,9 @@ export class RouterCore<
             // A splat can produce a path like "//evil.example".
             // Normalize it to "/evil.example" to keep it on the current origin.
             normalizeProtocolRelative(
-              this.interpolatePath({
-                path: nextTo,
-                params: nextParams,
-                decoder: this.pathParamsDecoder,
-                server: this.isServer,
-              }),
+              nextTo.includes('$')
+                ? this.interpolatePath(nextTo, nextParams)
+                : nextTo,
             ),
           )
 
@@ -2158,7 +2237,7 @@ export class RouterCore<
         this.processedTree,
       )
       if (match) {
-        const params = Object.assign(Object.create(null), match.rawParams)
+        const params = Object.assign(createNull(), match.rawParams)
         const { from: _from, params: maskParams, ...maskProps } = match.route
 
         // If mask has a params function, call it with the matched params as context
