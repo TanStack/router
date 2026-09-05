@@ -15,6 +15,14 @@ import type {
 } from './route'
 
 declare module '@tanstack/router-core' {
+  export interface RouterSsrOptionsExtensions {
+    importMap?: {
+      imports?: Record<string, string>
+      integrity?: Record<string, string>
+      scopes?: Record<string, Record<string, string>>
+    }
+  }
+
   export interface RouterOptionsExtensions {
     /**
      * The default `component` a route should use if no component is provided.

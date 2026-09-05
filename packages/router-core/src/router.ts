@@ -165,6 +165,12 @@ export interface DefaultRouterOptionsExtensions {}
 
 export interface RouterOptionsExtensions extends DefaultRouterOptionsExtensions {}
 
+export interface RouterSsrOptionsExtensions {}
+
+export interface RouterSsrOptions extends RouterSsrOptionsExtensions {
+  nonce?: string
+}
+
 export type SSROption = boolean | 'data-only'
 
 export interface RouterOptions<
@@ -514,9 +520,7 @@ export interface RouterOptions<
    */
   rewrite?: LocationRewrite
   origin?: string
-  ssr?: {
-    nonce?: string
-  }
+  ssr?: RouterSsrOptions
 }
 
 export type LocationRewrite = {
