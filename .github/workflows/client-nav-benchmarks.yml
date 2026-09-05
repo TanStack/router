@@ -20,9 +20,14 @@ on:
       - 'packages/**'
       - 'benchmarks/**'
   workflow_dispatch:
+    inputs:
+      cpu-only:
+        description: Run only CPU simulation benchmarks
+        type: boolean
+        default: false
 
 concurrency:
-  group: client-nav-benchmarks-${{ github.ref }}
+  group: client-nav-benchmarks-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
   cancel-in-progress: false
   queue: single
 
@@ -45,20 +50,7 @@ jobs:
           - react
           - solid
           - vue
-        benchmark:
-          - client-nav
-          - ssr
-          - memory-server
-          - memory-client
-        include:
-          - benchmark: client-nav
-            mode: simulation
-          - benchmark: ssr
-            mode: simulation
-          - benchmark: memory-server
-            mode: memory
-          - benchmark: memory-client
-            mode: memory
+        benchmark: ${{ fromJSON(inputs.cpu-only && '["client-nav", "ssr"]' || '["client-nav", "ssr", "memory-server", "memory-client"]') }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -80,7 +72,7 @@ jobs:
         uses: CodSpeedHQ/action@4296e51e7041e24dadb86d1d6e8b9320d223dbe8 # v5.0.3
         timeout-minutes: 20
         with:
-          mode: ${{ matrix.mode }}
+          mode: ${{ startsWith(matrix.benchmark, 'memory-') && 'memory' || 'simulation' }}
           run: >-
             WITH_INSTRUMENTATION=1
             pnpm nx run
