@@ -269,7 +269,14 @@
         "options": {
           "command": "tsc -p ./tsconfig.json --noEmit",
           "cwd": "benchmarks/memory/server"
-        }
+        },
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/eslint.config.js",
+          "dependentTaskOutputs",
+          "{workspaceRoot}/benchmarks/memory/runtime.ts"
+        ]
       },
       "test:unit": {
         "executor": "nx:run-commands",
@@ -280,6 +287,8 @@
         "inputs": [
           "default",
           "^production",
+          "{workspaceRoot}/eslint.config.js",
+          "dependentTaskOutputs",
           "{workspaceRoot}/benchmarks/memory/runtime.ts"
         ]
       }
