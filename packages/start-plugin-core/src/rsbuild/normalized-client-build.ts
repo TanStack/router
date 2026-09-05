@@ -12,6 +12,15 @@ type RspackCompilation = Rspack.Compilation
 type RspackCompilationChunk = Rspack.Chunk
 type RspackModule = Rspack.Module
 
+const backslashRegex = /\\/g
+
+/**
+ * Convert an OS native path to the POSIX form used by the generated route tree.
+ */
+function toPosixPath(filePath: string): string {
+  return filePath.replace(backslashRegex, '/')
+}
+
 /**
  * Extract route file paths from rspack module identifiers.
  *
@@ -42,7 +51,14 @@ function getRouteFilePathsFromModules(
     if (!new URLSearchParams(query).has(tsrSplit)) continue
 
     const nameForCondition = mod.nameForCondition()
-    const routeFilePath = nameForCondition ?? resourcePart.slice(0, queryIndex)
+
+    // rspack reports module paths using the OS separator, while the generated route
+    // tree records every route `filePath` with POSIX separators. Normalize before the
+    // path becomes a manifest key, otherwise no route matches its chunk on Windows and
+    // every route loses its stylesheets and preloads.
+    const routeFilePath = toPosixPath(
+      nameForCondition ?? resourcePart.slice(0, queryIndex),
+    )
 
     if (seen?.has(routeFilePath)) continue
 
