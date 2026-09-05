@@ -295,6 +295,28 @@ describe('resolvePath', () => {
 describe.each([{ server: true }, { server: false }])(
   'interpolatePath (server: $server)',
   ({ server }) => {
+    it.each(['/files/$', '/files/prefix{$}suffix'])(
+      'tracks splat dependencies without changing normal aliases: %s',
+      (path) => {
+        const options = { path, params: { _splat: 'a/b' }, server }
+        const normal = interpolatePath(options)
+        const tracked = interpolatePath({ ...options, trackParams: true })
+        expect(normal.usedParams).toEqual({ _splat: 'a/b', '*': 'a/b' })
+        expect(tracked.usedParams).toEqual({ _splat: 'a/b' })
+        expect(tracked.interpolatedPath).toBe(normal.interpolatedPath)
+      },
+    )
+
+    it('includes absent optional dependencies only when tracking is requested', () => {
+      const options = { path: '/items/{-$id}', params: {}, server }
+      expect(interpolatePath(options).usedParams).toEqual({})
+      expect(
+        interpolatePath({ ...options, trackParams: true }).usedParams,
+      ).toEqual({
+        id: undefined,
+      })
+    })
+
     describe('regular usage', () => {
       it.each([
         {
