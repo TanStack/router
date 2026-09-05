@@ -138,15 +138,17 @@ function useLinkPropsImpl(
             router,
           )
 
-    const { resolvedProps, resolvedClassName, resolvedStyle } =
-      resolveStyleProps(options, isActive)
+    const { resolvedProps, resolvedClass, resolvedStyle } = resolveStyleProps(
+      options,
+      isActive,
+    )
 
     const result = combineResultProps({
       href,
       options,
       isActive,
       resolvedProps,
-      resolvedClassName,
+      resolvedClass,
       resolvedStyle,
     })
 
@@ -420,7 +422,7 @@ function useLinkPropsImpl(
       return getExternalLinkProps(options, router, ref, staticEventHandlers)
     }
 
-    const { resolvedProps, resolvedClassName, resolvedStyle } =
+    const { resolvedProps, resolvedClass, resolvedStyle } =
       resolvedStyleProps.value
     return combineResultProps({
       href: href.value,
@@ -429,7 +431,7 @@ function useLinkPropsImpl(
       staticEventHandlers,
       isActive: isActive.value,
       resolvedProps,
-      resolvedClassName,
+      resolvedClass,
       resolvedStyle,
     })
   })
@@ -446,12 +448,12 @@ function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
     (typeof props === 'function' ? props() : props) || EMPTY_OBJECT
   const baseClass = options.class
   const stateClass = resolvedProps.class
-  const resolvedClassName = baseClass
+  const resolvedClass = baseClass
     ? stateClass
-      ? `${baseClass} ${stateClass}`
-      : `${baseClass}`
+      ? [baseClass, stateClass]
+      : baseClass
     : stateClass
-      ? `${stateClass}`
+      ? stateClass
       : undefined
 
   const baseStyle = options.style
@@ -467,7 +469,7 @@ function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
   }
   return {
     resolvedProps,
-    resolvedClassName,
+    resolvedClass,
     resolvedStyle,
   }
 }
@@ -480,7 +482,7 @@ function combineResultProps({
   options,
   isActive,
   resolvedProps,
-  resolvedClassName,
+  resolvedClass,
   resolvedStyle,
   ref,
   staticEventHandlers,
@@ -490,7 +492,7 @@ function combineResultProps({
   options: AnyLinkPropsOptions
   isActive: boolean
   resolvedProps: StyledProps
-  resolvedClassName?: string
+  resolvedClass?: StyledProps['class']
   resolvedStyle?: Record<string, string | number>
   ref?: Vue.VNodeRef | undefined
   staticEventHandlers?: LinkEventHandlers
@@ -508,8 +510,8 @@ function combineResultProps({
     result.style = resolvedStyle
   }
 
-  if (resolvedClassName) {
-    result.class = resolvedClassName
+  if (resolvedClass) {
+    result.class = resolvedClass
   }
 
   if (disabled) {
@@ -931,8 +933,8 @@ const LinkImpl = Vue.defineComponent({
         )
       }
 
-      // Return the component with props and children
-      return Vue.h(Component, linkProps, slotContent)
+      // Vue normalizes class bindings in place; preserve the cached bindings.
+      return Vue.h(Component, { ...linkProps }, slotContent)
     }
   },
 })
