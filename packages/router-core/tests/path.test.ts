@@ -172,6 +172,38 @@ describe.each([false, true])(
         }).usedParams,
       ).toEqual({ _splat: 'docs/guide', '*': 'docs/guide' })
     })
+
+    it('tracks a splat that was empty when the template was first used', () => {
+      const interpolate = createPathInterpolator()
+      for (const _splat of ['', 'docs/guide', '', 'docs/reference']) {
+        const options = {
+          path: '/files/prefix{$}suffix',
+          params: { _splat },
+          server,
+        }
+        expect(interpolate(options)).toBe(
+          interpolatePath(options).interpolatedPath,
+        )
+      }
+    })
+
+    it('does not retain incomplete metadata when the first interpolation throws', () => {
+      const interpolate = createPathInterpolator()
+      const options = { path: '/$first/$second', server }
+
+      expect(() =>
+        interpolate({
+          ...options,
+          params: { first: '\uD800', second: 'one' },
+        }),
+      ).toThrow(URIError)
+
+      for (const second of ['two', 'three', 'two']) {
+        expect(
+          interpolate({ ...options, params: { first: 'valid', second } }),
+        ).toBe(`/valid/${second}`)
+      }
+    })
   },
 )
 
