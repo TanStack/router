@@ -11,15 +11,12 @@ export function cpuSimulationExecArgv() {
     // near Sparkplug's later tier-up/batch-compilation thresholds.
     // V8 renamed --scavenge-task in Node 20; CodSpeed's old flag is omitted.
     // Keep minor GC tied to allocations instead of scheduled foreground tasks.
-    // Incremental marking tasks also use wall-clock completion deadlines in
-    // predictable mode. Allocation-triggered marking can still run normally.
     // Start with a fixed old-generation budget rather than growing from V8's
     // small initial heap during warmup. Allocation-triggered GC stays enabled.
     return [
       '--no-maglev',
       '--always-sparkplug',
       '--no-minor-gc-task',
-      '--no-incremental-marking-task',
       '--initial-old-space-size=512',
     ]
   }
