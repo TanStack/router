@@ -25,7 +25,7 @@ export function createLinkPerformanceConfig(
       conditions: [server ? 'node' : 'browser', 'production'],
     },
     ssr: {
-      noExternal: true,
+      noExternal: process.env.VITEST ? undefined : true,
       resolve: {
         conditions: ['node', 'production'],
       },
@@ -41,6 +41,13 @@ export function createLinkPerformanceConfig(
         fileName: 'app',
       },
       rolldownOptions: {
+        platform: 'node',
+        external: [
+          'node:module',
+          'module',
+          /^react(?:\/|$)/,
+          /^react-dom(?:\/|$)/,
+        ],
         output: { entryFileNames: 'app.js' },
       },
     },
@@ -49,6 +56,11 @@ export function createLinkPerformanceConfig(
       watch: false,
       environment: server ? 'node' : 'jsdom',
       setupFiles: server ? [] : ['../vitest.setup.ts'],
+      server: {
+        deps: {
+          external: [/\/link-performance\/dist\//],
+        },
+      },
       include: [],
       passWithNoTests: !enabled,
       benchmark: {

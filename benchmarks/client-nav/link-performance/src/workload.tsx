@@ -299,6 +299,7 @@ function RootLayout() {
           <Link
             key={stateIndex}
             {...sourceOptions(context.caseId, stateIndex)}
+            replace
             preload={false}
             resetScroll={false}
             hashScrollIntoView={false}

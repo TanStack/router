@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, bench, describe } from 'vitest'
-import { JSDOM } from 'jsdom'
-import { benchOptions } from '../scenarios/links/shared'
-import { LINK_CASES, NAVIGATION_STATES, assertScenario } from './cases'
+import { LINK_CASES } from './cases'
+import { createSsrScenario, samplingOptions } from './scenario'
 import type * as App from './src/ssr'
 
 const appUrl = new URL('./dist/ssr/app.js', import.meta.url).href
@@ -12,43 +11,21 @@ if (app.serverEnvironment !== true) {
 
 for (const { id, label } of LINK_CASES) {
   describe(label, () => {
-    let html = ''
-    let state = 0
-
-    function assertHtml() {
-      const dom = new JSDOM(html)
+    const scenario = createSsrScenario(app, id)
+    function finish() {
       try {
-        assertScenario(id, state, dom.window.document)
+        scenario.check()
       } finally {
-        dom.window.close()
+        scenario.teardown()
       }
     }
+    beforeEach(scenario.setup)
+    afterEach(finish)
 
-    async function prepare() {
-      for (const nextState of NAVIGATION_STATES) {
-        state = nextState
-        html = await app.renderScenario(id, state, true)
-        assertHtml()
-      }
-    }
-
-    beforeEach(prepare)
-    afterEach(assertHtml)
-
-    bench(
-      `SSR Links: ${id}`,
-      async () => {
-        for (const nextState of NAVIGATION_STATES) {
-          state = nextState
-          html = await app.renderScenario(id, state)
-        }
-      },
-      {
-        ...benchOptions,
-        time: 3_000,
-        setup: prepare,
-        teardown: assertHtml,
-      },
-    )
+    bench(`SSR Links: ${id}`, scenario.batch, {
+      ...samplingOptions,
+      setup: scenario.setup,
+      teardown: finish,
+    })
   })
 }

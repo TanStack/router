@@ -49,6 +49,14 @@
         "cwd": "benchmarks/client-nav"
       }
     },
+    "test:perf:stable": {
+      "executor": "nx:run-commands",
+      "cache": false,
+      "dependsOn": ["build:client", "build:ssr"],
+      "options": {
+        "command": "NODE_ENV=production node --import=@swc-node/register/esm-register benchmarks/client-nav/link-performance/stable-runner.ts"
+      }
+    },
     "test:unit": {
       "executor": "nx:run-commands",
       "dependsOn": [],
