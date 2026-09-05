@@ -32,7 +32,6 @@ describe('CPU simulation worker configuration', () => {
           '--always-sparkplug',
           '--no-minor-gc-task',
           '--no-incremental-marking-task',
-          '--initial-old-space-size=512',
           '--predictable',
           '--hash-seed=1',
           '--random-seed=1',
