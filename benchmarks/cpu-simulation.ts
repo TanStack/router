@@ -15,6 +15,9 @@ export function cpuSimulationExecArgv() {
     // small initial heap during warmup. Allocation-triggered GC stays enabled.
     return [
       '--no-maglev',
+      '--trace-baseline',
+      '--trace-gc',
+      '--trace-incremental-marking',
       '--no-minor-gc-task',
       '--no-incremental-marking-task',
       '--initial-old-space-size=512',
