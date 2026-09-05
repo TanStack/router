@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788634189471,
+  "lastUpdate": 1788634686908,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,102 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "dor3382@gmail.com",
-            "name": "Dor Alagem",
-            "username": "DORI2001"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "761fcc0c96dd96721b533a1fd9e2c972f222ef94",
-          "message": "fix(start-plugin-core): sort server fn manifest entries for deterministic build output (#7287)\n\nCo-authored-by: Dor Alagem <doralagem@MacBook-Pro-sl-Dor.local>\nCo-authored-by: autofix-ci[bot] <114827586+autofix-ci[bot]@users.noreply.github.com>\nCo-authored-by: Manuel Schiller <meisterpink@gmail.com>",
-          "timestamp": "2026-04-30T21:46:30+02:00",
-          "tree_id": "3fa7f67e0260ba269366ced99b41c08411a89361",
-          "url": "https://github.com/TanStack/router/commit/761fcc0c96dd96721b533a1fd9e2c972f222ef94"
-        },
-        "date": 1777578538916,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89245,
-            "unit": "bytes",
-            "extra": "raw=280511; brotli=77521"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92857,
-            "unit": "bytes",
-            "extra": "raw=292296; brotli=80600"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36234,
-            "unit": "bytes",
-            "extra": "raw=108799; brotli=32577"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41065,
-            "unit": "bytes",
-            "extra": "raw=123353; brotli=36910"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54430,
-            "unit": "bytes",
-            "extra": "raw=155022; brotli=48879"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59678,
-            "unit": "bytes",
-            "extra": "raw=171585; brotli=53437"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104203,
-            "unit": "bytes",
-            "extra": "raw=329827; brotli=90077"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107712,
-            "unit": "bytes",
-            "extra": "raw=340406; brotli=93141"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 101714,
-            "unit": "bytes",
-            "extra": "raw=324065; brotli=87508"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105097,
-            "unit": "bytes",
-            "extra": "raw=334748; brotli=90403"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50584,
-            "unit": "bytes",
-            "extra": "raw=155726; brotli=44648"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56520,
-            "unit": "bytes",
-            "extra": "raw=173040; brotli=49670"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -23635,6 +23539,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/af2f9d1c44a4b4d5966e7be5d1b4b1a6f4336223"
         },
         "date": 1788634188432,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85778,
+            "unit": "bytes",
+            "extra": "raw=268333; brotli=74674; initial_gzip=85638"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89367,
+            "unit": "bytes",
+            "extra": "raw=280326; brotli=77721; initial_gzip=89231"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 33930,
+            "unit": "bytes",
+            "extra": "raw=98429; brotli=30609; initial_gzip=33801"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 38868,
+            "unit": "bytes",
+            "extra": "raw=113419; brotli=34988; initial_gzip=38745"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50633,
+            "unit": "bytes",
+            "extra": "raw=141460; brotli=45689; initial_gzip=50505"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56393,
+            "unit": "bytes",
+            "extra": "raw=160106; brotli=50727; initial_gzip=56266"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 98999,
+            "unit": "bytes",
+            "extra": "raw=311616; brotli=85746; initial_gzip=98860"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106515,
+            "unit": "bytes",
+            "extra": "raw=338751; brotli=92365; initial_gzip=106376"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99738,
+            "unit": "bytes",
+            "extra": "raw=313005; brotli=86540; initial_gzip=98879"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102231,
+            "unit": "bytes",
+            "extra": "raw=321582; brotli=88529; initial_gzip=102091"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102350,
+            "unit": "bytes",
+            "extra": "raw=322190; brotli=88380; initial_gzip=102175"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102766,
+            "unit": "bytes",
+            "extra": "raw=323149; brotli=88763; initial_gzip=102597"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105751,
+            "unit": "bytes",
+            "extra": "raw=332521; brotli=91146; initial_gzip=105576"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47080,
+            "unit": "bytes",
+            "extra": "raw=140523; brotli=41897; initial_gzip=46951"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50243,
+            "unit": "bytes",
+            "extra": "raw=148163; brotli=44763; initial_gzip=47030"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52283,
+            "unit": "bytes",
+            "extra": "raw=156278; brotli=46312; initial_gzip=52155"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67180,
+            "unit": "bytes",
+            "extra": "raw=193536; brotli=59738; initial_gzip=67053"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71090,
+            "unit": "bytes",
+            "extra": "raw=206142; brotli=63138; initial_gzip=70963"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "09da9325752518b4703e06bcf7424ad367ed3ca1",
+          "message": "test: stabilize CPU simulation with isolated SSR workers and explicit V8 settings (#8248)\n\n* test: disable Maglev in CPU simulation benchmarks\n\n* test: track shared CPU simulation flags in benchmark checks\n\n* test: disable scheduled minor GC in CPU simulation\n\n* test: keep incremental marking allocation-driven in CPU simulation\n\n* test: release streamed benchmark data on counted task turns\n\n* test: fix the initial heap budget for CPU simulation\n\n* test: use eager baseline compilation in CPU simulation\n\n* test: isolate each SSR workload in a fresh benchmark worker\n\n* test: remove unnecessary marking override after runtime comparisons\n\n* test: simplify benchmark setup after review",
+          "timestamp": "2026-09-05T20:54:53+02:00",
+          "tree_id": "55b6163e8b5cfed56f01106daa4e4961d8955b67",
+          "url": "https://github.com/TanStack/router/commit/09da9325752518b4703e06bcf7424ad367ed3ca1"
+        },
+        "date": 1788634684812,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
