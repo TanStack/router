@@ -543,32 +543,18 @@ export function useLinkProps<
     compareLinkState,
   )
 
-  // Get the active props
-  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
+  const resolvedProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
     ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
-    : STATIC_EMPTY_OBJECT
-
-  // Get the inactive props
-  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive
-      ? STATIC_EMPTY_OBJECT
-      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
-
-  const resolvedClassName = [
-    className,
-    resolvedActiveProps.className,
-    resolvedInactiveProps.className,
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  const resolvedStyle = (style ||
-    resolvedActiveProps.style ||
-    resolvedInactiveProps.style) && {
-    ...style,
-    ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style,
-  }
+    : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
+  const stateClassName = resolvedProps.className
+  const resolvedClassName = className
+    ? stateClassName
+      ? `${className} ${stateClassName}`
+      : className
+    : stateClassName
+  const stateStyle = resolvedProps.style
+  const resolvedStyle =
+    style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const hasRenderFetched = React.useRef(false)
@@ -707,8 +693,7 @@ export function useLinkProps<
 
   return {
     ...propsSafeToSpread,
-    ...resolvedActiveProps,
-    ...resolvedInactiveProps,
+    ...resolvedProps,
     href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),

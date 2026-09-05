@@ -7963,3 +7963,57 @@ describe('explicit-undefined params are not collapsed into an empty object', () 
     )
   })
 })
+
+test('reuses unmodified Link styles and merges active styles', async () => {
+  const baseStyle = { color: 'red', marginTop: 2 }
+  let renderedStyle: React.CSSProperties | undefined
+  function StyledLink() {
+    const props = useLinkProps({
+      to: '/target',
+      style: baseStyle,
+      className: 'base',
+      activeProps: () => ({
+        className: 'selected',
+        style: { color: 'blue' },
+      }),
+      inactiveProps: () => ({ className: 'unselected' }),
+    })
+    renderedStyle = props.style
+    return <a {...props}>Styled target</a>
+  }
+  const rootRoute = createRootRoute({
+    component: () => (
+      <>
+        <StyledLink />
+        <Outlet />
+      </>
+    ),
+  })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+  })
+  const targetRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/target',
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, targetRoute]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  render(<RouterProvider router={router} />)
+
+  const link = await screen.findByRole('link', { name: 'Styled target' })
+  expect(renderedStyle).toBe(baseStyle)
+  expect(link).toHaveClass('base', 'unselected')
+
+  await act(() => router.navigate({ to: '/target' }))
+
+  expect(renderedStyle).toEqual({ color: 'blue', marginTop: 2 })
+  expect(link).toHaveClass('base', 'selected')
+
+  await act(() => router.navigate({ to: '/' }))
+
+  expect(renderedStyle).toBe(baseStyle)
+  expect(link).toHaveClass('base', 'unselected')
+})
