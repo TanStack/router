@@ -62,7 +62,7 @@ function compareLinkState(a: LinkState, b: LinkState) {
 
 function resolveExternalLink(
   hrefOption: { href: string; external?: boolean } | undefined,
-  to: unknown,
+  to: string | undefined,
   protocolAllowlist: AnyRouter['protocolAllowlist'],
 ): string | undefined {
   if (hrefOption?.external) {
@@ -75,14 +75,9 @@ function resolveExternalLink(
     }
     return hrefOption.href
   }
-  if (
-    !isSafeInternal(to) &&
-    typeof to === 'string' &&
-    to.indexOf(':') > -1 &&
-    isAbsoluteUrl(to)
-  ) {
+  if (!isSafeInternal(to) && isAbsoluteUrl(to)) {
     // Block dangerous protocols like javascript:, blob:, data:
-    if (isDangerousProtocol(to, protocolAllowlist)) {
+    if (isDangerousProtocol(to!, protocolAllowlist)) {
       if (process.env.NODE_ENV !== 'production') {
         console.warn(`Blocked Link with dangerous protocol: ${to}`)
       }
@@ -169,7 +164,7 @@ export function useLinkProps<
     activeProps,
     inactiveProps,
     activeOptions,
-    to,
+    to: toOption,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
     preloadIntentProximity: _preloadIntentProximity,
@@ -203,6 +198,7 @@ export function useLinkProps<
     _fromLocation,
     ...propsSafeToSpread
   } = options
+  const to = toOption as string | undefined
 
   // ==========================================================================
   // SERVER EARLY RETURN
@@ -222,14 +218,8 @@ export function useLinkProps<
 
     // If `to` is obviously an absolute URL, treat as external and avoid
     // computing the internal location via `buildLocation`.
-    if (
-      typeof to === 'string' &&
-      !safeInternal &&
-      // Quick checks to avoid URL parsing in common internal-like cases
-      to.indexOf(':') > -1 &&
-      isAbsoluteUrl(to)
-    ) {
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
+    if (!safeInternal && isAbsoluteUrl(to)) {
+      if (isDangerousProtocol(to!, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
@@ -289,14 +279,8 @@ export function useLinkProps<
         return hrefOption.href
       }
 
-      // Only attempt URL parsing when it looks like an absolute URL.
-      if (
-        !safeInternal &&
-        typeof to === 'string' &&
-        to.indexOf(':') > -1 &&
-        isAbsoluteUrl(to)
-      ) {
-        if (isDangerousProtocol(to, router.protocolAllowlist)) {
+      if (!safeInternal && isAbsoluteUrl(to)) {
+        if (isDangerousProtocol(to!, router.protocolAllowlist)) {
           if (process.env.NODE_ENV !== 'production') {
             console.warn(`Blocked Link with dangerous protocol: ${to}`)
           }

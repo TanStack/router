@@ -176,14 +176,9 @@ export function useLinkProps<
       return _href.href
     }
     const to = options.to
-    if (
-      !isSafeInternal(to) &&
-      typeof to === 'string' &&
-      to.indexOf(':') > -1 &&
-      isAbsoluteUrl(to)
-    ) {
+    if (!isSafeInternal(to) && isAbsoluteUrl(to)) {
       // Block dangerous protocols like javascript:, blob:, data:
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
+      if (isDangerousProtocol(to!, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }

@@ -3,14 +3,15 @@ import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
 /** @internal */
-export function isAbsoluteUrl(url: string): boolean {
+export function isAbsoluteUrl(url: string | undefined): boolean {
+  // Both URL APIs stringify undefined and reject it without a base URL.
   if (URL.canParse) {
-    return URL.canParse(url)
+    return URL.canParse(url!)
   }
 
   // Older browsers do not support URL.canParse.
   try {
-    new URL(url)
+    new URL(url!)
     return true
   } catch {
     return false
