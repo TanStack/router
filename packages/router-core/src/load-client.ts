@@ -429,15 +429,16 @@ async function contextualize(
     }
     try {
       setFetching(router, match, 'beforeLoad', options[0 /* controller */])
-      const result = await waitFor(
-        beforeLoad({
-          ...common,
-          search: match.search,
-          context: match.context,
-          ...router.options.additionalContext,
-        }),
-        signal,
-      )
+      const value = beforeLoad({
+        ...common,
+        search: match.search,
+        context: match.context,
+        ...router.options.additionalContext,
+      })
+      // Keep the cancellation checkpoint without wrapping synchronous context.
+      const result = await (typeof value?.then === 'function'
+        ? waitFor(value, signal)
+        : value)
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
       }

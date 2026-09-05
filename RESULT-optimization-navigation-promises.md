@@ -5,7 +5,86 @@ committed separately in `4d5896442d` and `d65e90ec19`.
 Before/after measurements use identical benchmark files and
 flags, temporarily restoring only the implementation under test in this worktree.
 
-## Retained changes
+## Standard-Promise follow-up
+
+The supported hook contract assumes ordinary Promises; custom stateful `then`
+getters do not constrain this optimization. Those tests were removed. Native and
+foreign Promise coverage remains, including cancellation before settlement and a
+late rejection. An `undefined` hook-return benchmark was added.
+
+Client `beforeLoad` now detects Promise results before calling `waitFor`.
+Synchronous context skips the wrapper and abort listener but still crosses an
+`await`, allowing queued replacement navigation to cancel stale work. Server
+`beforeLoad` already awaits directly, so this follow-up changes only the client.
+
+Compared with the initial PR (`220dbd9505`), the same nine-match harness reports:
+
+| Hook distribution            | Initial PR | Follow-up | Fewer Promise resources |
+| ---------------------------- | ---------: | --------: | ----------------------: |
+| Eight synchronous objects    |        159 |       135 |                      24 |
+| Eight undefined returns      |        159 |       135 |                      24 |
+| Mixed: six sync, two Promise |        159 |       141 |                      18 |
+| Eight Promises               |        159 |       159 |                       0 |
+
+Each synchronous hook also avoids one abort listener registration and removal.
+Controller allocation remains unchanged. Against the original production
+baseline, the synchronous-object case saves **52 Promise resources** per
+navigation, including the earlier chunk/completion changes.
+
+The shared `isPromise` helper variant added 35 gzip bytes to React Router
+minimal. The retained inline guard adds 13 bytes to the initial PR instead.
+The complete patch is now **85,821 → 85,828 gzip bytes (+7 B)** in React Router
+minimal. Across all 18 scenarios the complete patch adds **7–16 gzip bytes**.
+This is a small size tradeoff for removing the synchronous hook wait scaffolding.
+JS file counts are unchanged. Full measurements are in
+`navigation-standard-final`; the initial-PR comparison is `navigation-standard-inline`.
+
+Fresh timing comparisons use the test-only commit `c069c4beca` as BEFORE and the
+same source with the client guard as AFTER. Raw results are
+`/tmp/router-navigation-investigation/standard-before.json` and `standard-after.json`.
+Several means have high RME or large outliers, including unchanged control paths;
+these timings are diagnostic only. CI CPU simulation is the performance criterion,
+and CodSpeed memory results are excluded.
+
+| Case                | Before mean ms | After mean ms | Before / after RME | Before / after median ms |
+| ------------------- | -------------: | ------------: | -----------------: | -----------------------: |
+| none beforeLoad     |         0.2701 |        0.2573 |      3.46% / 1.32% |          0.2470 / 0.2400 |
+| sync beforeLoad     |         0.3343 |        0.2962 |      8.89% / 8.68% |          0.2973 / 0.2714 |
+| void beforeLoad     |         0.2942 |        0.2707 |      1.00% / 0.91% |          0.2795 / 0.2594 |
+| async beforeLoad    |         0.3404 |        0.3238 |     16.79% / 9.85% |          0.2910 / 0.2897 |
+| mixed beforeLoad    |         0.3039 |        0.2891 |      0.95% / 0.89% |          0.2886 / 0.2765 |
+| chunks beforeLoad   |         0.2725 |        0.3127 |     0.99% / 18.07% |          0.2595 / 0.2633 |
+| blocking beforeLoad |         1.0469 |        0.8812 |     25.64% / 4.56% |          0.7606 / 0.7544 |
+
+<details>
+<summary>Follow-up timing distribution</summary>
+
+| Case                         |     Hz |  SD ms | p99 ms | p999 ms | Samples |
+| ---------------------------- | -----: | -----: | -----: | ------: | ------: |
+| none beforeLoad (Before)     | 3701.8 | 0.3556 | 0.5220 |  2.2237 |    5553 |
+| none beforeLoad (After)      | 3886.3 | 0.1327 | 0.8483 |  1.7761 |    5830 |
+| sync beforeLoad (Before)     | 2991.5 | 1.0154 | 1.1645 |  1.8701 |    4488 |
+| sync beforeLoad (After)      | 3375.7 | 0.9331 | 1.0310 |  1.2777 |    5064 |
+| void beforeLoad (Before)     | 3399.2 | 0.1067 | 1.0191 |  1.7078 |    5099 |
+| void beforeLoad (After)      | 3694.3 | 0.0941 | 1.0325 |  1.2072 |    5542 |
+| async beforeLoad (Before)    | 2937.3 | 1.9359 | 1.3031 |  1.9019 |    4406 |
+| async beforeLoad (After)     | 3088.3 | 1.1084 | 1.0832 |  1.8670 |    4638 |
+| mixed beforeLoad (Before)    | 3290.3 | 0.1033 | 1.0402 |  1.5141 |    4936 |
+| mixed beforeLoad (After)     | 3458.5 | 0.0948 | 1.0727 |  1.3303 |    5188 |
+| chunks beforeLoad (Before)   | 3669.2 | 0.1025 | 1.1019 |  1.4850 |    5504 |
+| chunks beforeLoad (After)    | 3197.8 | 2.0485 | 1.2917 |  2.0227 |    5051 |
+| blocking beforeLoad (Before) |  955.2 | 5.1849 | 8.1289 | 10.1187 |    1433 |
+| blocking beforeLoad (After)  | 1134.8 | 0.8455 | 6.7124 |  8.6870 |    1703 |
+
+</details>
+
+Follow-up validation: 1,712 core tests passed with four existing expected
+failures; core types passed on TypeScript 5.6–7, and ESLint passed with the same
+26 existing warnings. All 33 Chromium redirect tests passed again.
+The lower unit-test count reflects removal of the custom
+thenable/getter cases and addition of two pending-Promise cancellation tests.
+
+## Initial PR changes (`220dbd9505`)
 
 - **Client chunk readiness:** combine the chunk task and its nested loader-outcome
   continuations into one async task. Catch only component-loading failures; await
@@ -18,11 +97,11 @@ flags, temporarily restoring only the implementation under test in this worktree
   become rejected Promises so queued request cancellation still wins before
   context/error hooks run.
 
-Client `beforeLoad`, `waitFor`, controller ownership, and public types stay
-unchanged. The final patch reduces Promise allocation without assuming that an
-apparently synchronous hook result can safely skip the existing wait boundary.
+The initial PR left client `beforeLoad`, `waitFor`, controller ownership, and
+public types unchanged. The standard-Promise follow-up below also optimizes
+client `beforeLoad` while retaining its cancellation checkpoint.
 
-## Allocation results
+## Initial PR allocation results
 
 Counts are Promise resources reported by `async_hooks` around one operation;
 absolute counts include harness awaits. Each lane has a root plus eight nested
@@ -55,20 +134,20 @@ ownership change is not part of this patch.
 
 ## Candidate attribution and rejected ideas
 
-| Independent client candidate                              | React minimal gzip delta | Decision                                  |
-| --------------------------------------------------------- | -----------------------: | ----------------------------------------- |
-| Skip awaiting synchronous beforeLoad results              |                     +7 B | Rejected: three regression tests fail     |
-| Move chunk catch inside the async function only           |                     -2 B | Superseded by consolidated readiness task |
-| Consolidate chunk and loader readiness                    |                     -5 B | Retained                                  |
-| Remove completion's empty then                            |                     -5 B | Retained                                  |
-| Skip Promise.all for synchronous head/scripts             |                    +18 B | Left out to limit bundle growth           |
-| Clean up abort listeners in existing settlement callbacks |                     +2 B | Rejected: direct waits slowed down        |
+| Independent client candidate                              | React minimal gzip delta | Decision                                         |
+| --------------------------------------------------------- | -----------------------: | ------------------------------------------------ |
+| Skip awaiting synchronous beforeLoad results              |                     +7 B | Rejected: queued replacement starts stale loader |
+| Move chunk catch inside the async function only           |                     -2 B | Superseded by consolidated readiness task        |
+| Consolidate chunk and loader readiness                    |                     -5 B | Retained                                         |
+| Remove completion's empty then                            |                     -5 B | Retained                                         |
+| Skip Promise.all for synchronous head/scripts             |                    +18 B | Left out to limit bundle growth                  |
+| Clean up abort listeners in existing settlement callbacks |                     +2 B | Rejected: direct waits slowed down               |
 
-The beforeLoad guard reads a custom `then` getter twice: once to detect it and
-again during assimilation. A stateful getter resolves incorrectly on both client
-and server. Removing the client await also lets a hook that queues a replacement
-navigation schedule stale loader work before cancellation. All three regressions
-pass with the original hook waiting behavior retained.
+Removing the client await lets a hook that queues a replacement navigation
+schedule stale loader work before cancellation. The original investigation also
+flagged custom stateful `then` getters; those are outside the agreed standard-
+Promise contract and are no longer a reason to reject the guard. The follow-up
+keeps the await while bypassing the cancellable wrapper for synchronous results.
 
 The listener-cleanup candidate removed one Promise per wait but added callback
 work. In the same 80-wait harness, mean times regressed by 3.1% for plain values,
@@ -76,9 +155,9 @@ work. In the same 80-wait harness, mean times regressed by 3.1% for plain values
 was removed despite reducing allocations. Direct-wait benchmark coverage remains
 available for future alternatives.
 
-## Bundle results
+## Initial PR bundle results
 
-The final composition is **85,821 → 85,815 gzip bytes** in React Router minimal
+The initial PR composition is **85,821 → 85,815 gzip bytes** in React Router minimal
 (**-6 B**). Initial gzip is **85,681 → 85,676 B**; raw JS is **268,520 → 268,523 B**;
 Brotli is **74,720 → 74,698 B**. Its two-file JS split is unchanged.
 
@@ -107,7 +186,7 @@ changes are not additive, so independent hunk results must not be summed.
 | vue-start.minimal                |         67241 |        67238 |         -3 |                  0 |        +3 |           -9 |
 | vue-start.full                   |         71150 |        71147 |         -3 |                 -4 |        +3 |          -57 |
 
-## Timing results and limits
+## Initial PR timing results and limits
 
 All times below are milliseconds per batch of ten navigations or server loads.
 These are warm in-process microbenchmarks, not browser latency measurements.
@@ -179,7 +258,7 @@ Timing JSON and logs are in `/tmp/router-navigation-investigation/`, with final
 client results named `client-final-before` / `client-final-after` and final
 server results `server-before` / `server-final`.
 
-## Validation
+## Initial PR validation
 
 - Before: 1,717 core tests passed, four existing expected failures; the additional
   queued SSR cancellation test also passed separately on the original source.
