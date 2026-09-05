@@ -240,7 +240,9 @@ function encodeParam(
 
   if (key === '_splat') {
     // Early return if value only contains URL-safe characters (performance optimization)
-    if (/^[a-zA-Z0-9\-._~!/]*$/.test(value)) return value
+    if (!value || /^[a-zA-Z0-9\-._~!/]*$/.test(value)) {
+      return value
+    }
     // the splat/catch-all routes shouldn't have the '/' encoded out
     // Use encodeURIComponent for each segment to properly encode spaces,
     // plus signs, and other special characters that encodeURI leaves unencoded
@@ -263,20 +265,21 @@ export function interpolatePath(
   options: InterpolatePathOptions,
 ): InterPolatePathResult {
   const { path, params, decoder, server } = options
-  const usedParams: Record<string, unknown> = Object.create(null)
-  let isMissingParams = false
-  const interpolatedPath = interpolatePathname(
-    path || '/',
+  const result: InterPolatePathResult = {
+    interpolatedPath: path || '/',
+    usedParams: Object.create(null),
+    isMissingParams: false,
+  }
+  result.interpolatedPath = interpolatePathname(
+    result.interpolatedPath,
     params,
     decoder,
-    usedParams,
+    result.usedParams,
     undefined,
     server,
-    () => {
-      isMissingParams = true
-    },
+    result,
   )
-  return { interpolatedPath, usedParams, isMissingParams }
+  return result
 }
 
 /**
@@ -290,7 +293,7 @@ export function interpolatePathname(
   usedParams?: Record<string, unknown>,
   keys?: Array<string>,
   server?: boolean,
-  onMissing?: () => void,
+  metadata?: { isMissingParams: boolean },
 ): string {
   if (!path.includes('$')) {
     return path
@@ -329,9 +332,8 @@ export function interpolatePathname(
           const key = splat ? '_splat' : part.substring(1)
           const value = params[key]
           keys?.push(key)
-          if (onMissing && !(splat ? value : key in params)) {
-            onMissing()
-            onMissing = undefined
+          if (metadata && (splat ? !value : !(key in params))) {
+            metadata.isMissingParams = true
           }
           if (usedParams) {
             usedParams[key] = value
@@ -376,34 +378,50 @@ export function interpolatePathname(
       continue
     }
 
-    const splat = kind === SEGMENT_TYPE_WILDCARD
-    const optional = kind === SEGMENT_TYPE_OPTIONAL_PARAM
-    const key = splat ? '_splat' : path.substring(segment[2], segment[3])
-    const valueRaw = params[key]
+    const prefixEnd = segment[1]
+    const suffixStart = segment[4]
+    const key =
+      kind === SEGMENT_TYPE_WILDCARD
+        ? '_splat'
+        : path.substring(segment[2], segment[3])
+    let paramValue = params[key]
     keys?.push(key)
-    if (onMissing && !(splat ? valueRaw : optional || key in params)) {
-      onMissing()
-      onMissing = undefined
-    }
-    if (optional && valueRaw == null) {
-      continue
-    }
-    if (usedParams) {
-      usedParams[key] = valueRaw
-      if (splat) {
+
+    if (kind === SEGMENT_TYPE_WILDCARD) {
+      if (usedParams) {
+        usedParams[key] = paramValue
         // TODO: Deprecate *
-        usedParams['*'] = valueRaw
+        usedParams['*'] = paramValue
+      }
+      if (!paramValue) {
+        if (metadata) {
+          metadata.isMissingParams = true
+        }
+        // A missing wildcard keeps its affixes, but omits a bare segment.
+        if (prefixEnd === start && suffixStart === end) {
+          continue
+        }
+        paramValue = ''
+      }
+    } else {
+      // Named parameters: $id or {-$id}.
+      if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
+        if (paramValue == null) {
+          continue
+        }
+      } else if (metadata && !(key in params)) {
+        metadata.isMissingParams = true
+      }
+      if (usedParams) {
+        usedParams[key] = paramValue
       }
     }
 
-    const prefix = path.substring(start, segment[1])
-    const suffix = path.substring(segment[4], end)
-    const emptySplat = splat && !valueRaw
-    if (emptySplat && !prefix && !suffix) {
-      continue
-    }
-    const value = emptySplat ? '' : encodeParam(key, valueRaw, decoder)
-    joined += '/' + prefix + value + suffix
+    joined +=
+      '/' +
+      path.substring(start, prefixEnd) +
+      encodeParam(key, paramValue, decoder) +
+      path.substring(suffixStart, end)
   }
 
   if (path.endsWith('/')) {
