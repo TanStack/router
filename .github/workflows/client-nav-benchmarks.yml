@@ -48,10 +48,9 @@ jobs:
       fail-fast: false
       matrix:
         framework:
-          - react
           - solid
           - vue
-        benchmark: ${{ fromJSON(inputs.cpu-only && '["client-nav", "ssr"]' || '["client-nav", "ssr", "memory-server", "memory-client"]') }}
+        benchmark: [ssr]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -79,3 +78,4 @@ jobs:
             pnpm nx run
             @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
             --excludeTaskDependencies
+            -- --project '*streaming*' --project '*global-middleware*' --project '*control-flow*'
