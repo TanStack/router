@@ -138,19 +138,14 @@ function useLinkPropsImpl(
             router,
           )
 
-    const {
-      resolvedActiveProps,
-      resolvedInactiveProps,
-      resolvedClassName,
-      resolvedStyle,
-    } = resolveStyleProps(options, isActive)
+    const { resolvedProps, resolvedClassName, resolvedStyle } =
+      resolveStyleProps(options, isActive)
 
     const result = combineResultProps({
       href,
       options,
       isActive,
-      resolvedActiveProps,
-      resolvedInactiveProps,
+      resolvedProps,
       resolvedClassName,
       resolvedStyle,
     })
@@ -425,20 +420,15 @@ function useLinkPropsImpl(
       return getExternalLinkProps(options, router, ref, staticEventHandlers)
     }
 
-    const {
-      resolvedActiveProps,
-      resolvedInactiveProps,
-      resolvedClassName,
-      resolvedStyle,
-    } = resolvedStyleProps.value
+    const { resolvedProps, resolvedClassName, resolvedStyle } =
+      resolvedStyleProps.value
     return combineResultProps({
       href: href.value,
       options,
       ref,
       staticEventHandlers,
       isActive: isActive.value,
-      resolvedActiveProps,
-      resolvedInactiveProps,
+      resolvedProps,
       resolvedClassName,
       resolvedStyle,
     })
@@ -449,58 +439,47 @@ function useLinkPropsImpl(
 }
 
 function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
-  const activeProps = options.activeProps || (() => ({ class: 'active' }))
-  const resolvedActiveProps: StyledProps = (isActive
-    ? typeof activeProps === 'function'
-      ? activeProps()
-      : activeProps
-    : {}) || { class: undefined, style: undefined }
+  const props =
+    (isActive ? options.activeProps : options.inactiveProps) ||
+    (isActive ? STATIC_ACTIVE_PROPS : EMPTY_OBJECT)
+  const resolvedProps: StyledProps =
+    (typeof props === 'function' ? props() : props) || EMPTY_OBJECT
+  const baseClass = options.class
+  const stateClass = resolvedProps.class
+  const resolvedClassName = baseClass
+    ? stateClass
+      ? `${baseClass} ${stateClass}`
+      : `${baseClass}`
+    : stateClass
+      ? `${stateClass}`
+      : undefined
 
-  const inactiveProps = options.inactiveProps || (() => ({}))
-
-  const resolvedInactiveProps: StyledProps = (isActive
-    ? {}
-    : typeof inactiveProps === 'function'
-      ? inactiveProps()
-      : inactiveProps) || { class: undefined, style: undefined }
-
-  const classes = [
-    options.class,
-    resolvedActiveProps?.class,
-    resolvedInactiveProps?.class,
-  ].filter(Boolean)
-  const resolvedClassName = classes.length ? classes.join(' ') : undefined
-
-  const result: Record<string, string | number> = {}
-
-  // Merge styles from all sources
-  if (options.style) {
-    Object.assign(result, options.style)
+  const baseStyle = options.style
+  const stateStyle = resolvedProps.style
+  let resolvedStyle: Record<string, string | number> | undefined
+  if (baseStyle || stateStyle) {
+    // Keep a snapshot of reactive styles rather than returning their proxy.
+    const style: Record<string, string | number> = {}
+    Object.assign(style, baseStyle, stateStyle)
+    if (hasKeys(style)) {
+      resolvedStyle = style
+    }
   }
-
-  if (resolvedActiveProps?.style) {
-    Object.assign(result, resolvedActiveProps.style)
-  }
-
-  if (resolvedInactiveProps?.style) {
-    Object.assign(result, resolvedInactiveProps.style)
-  }
-
-  const resolvedStyle = hasKeys(result) ? result : undefined
   return {
-    resolvedActiveProps,
-    resolvedInactiveProps,
+    resolvedProps,
     resolvedClassName,
     resolvedStyle,
   }
 }
 
+const STATIC_ACTIVE_PROPS = { class: 'active' }
+const EMPTY_OBJECT = {}
+
 function combineResultProps({
   href,
   options,
   isActive,
-  resolvedActiveProps,
-  resolvedInactiveProps,
+  resolvedProps,
   resolvedClassName,
   resolvedStyle,
   ref,
@@ -510,8 +489,7 @@ function combineResultProps({
   href: string | undefined
   options: AnyLinkPropsOptions
   isActive: boolean
-  resolvedActiveProps: StyledProps
-  resolvedInactiveProps: StyledProps
+  resolvedProps: StyledProps
   resolvedClassName?: string
   resolvedStyle?: Record<string, string | number>
   ref?: Vue.VNodeRef | undefined
@@ -544,15 +522,9 @@ function combineResultProps({
     result['aria-current'] = 'page'
   }
 
-  for (const key of Object.keys(resolvedActiveProps)) {
+  for (const key of Object.keys(resolvedProps)) {
     if (key !== 'class' && key !== 'style') {
-      result[key] = resolvedActiveProps[key]
-    }
-  }
-
-  for (const key of Object.keys(resolvedInactiveProps)) {
-    if (key !== 'class' && key !== 'style') {
-      result[key] = resolvedInactiveProps[key]
+      result[key] = resolvedProps[key]
     }
   }
 

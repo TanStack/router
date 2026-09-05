@@ -442,20 +442,26 @@ export function useLinkProps<
       }
     }
 
-    // Active and inactive props are mutually exclusive.
-    const stateProps: ResolvedLinkStateProps = active
-      ? (functionalUpdate(local.activeProps as any, {}) ?? EMPTY_OBJECT)
-      : functionalUpdate(local.inactiveProps, {})
-    const style = {
-      ...local.style,
-      ...stateProps.style,
-    }
-    const className = [local.class, stateProps.class].filter(Boolean).join(' ')
+    const stateProps: ResolvedLinkStateProps =
+      functionalUpdate(active ? local.activeProps : local.inactiveProps, {}) ??
+      EMPTY_OBJECT
+    const baseStyle = local.style
+    const stateStyle = stateProps.style
+    // Snapshot reactive style properties so in-place updates remain observable.
+    const style =
+      baseStyle || stateStyle ? { ...baseStyle, ...stateStyle } : undefined
+    const baseClass = local.class
+    const stateClass = stateProps.class
+    const className = baseClass
+      ? stateClass
+        ? `${baseClass} ${stateClass}`
+        : baseClass
+      : stateClass
 
     return {
       ...stateProps,
       ...base,
-      ...(hasKeys(style) ? { style } : undefined),
+      ...(style && hasKeys(style) ? { style } : undefined),
       ...(className ? { class: className } : undefined),
       ...(active && STATIC_ACTIVE_ATTRIBUTES),
     } as ResolvedLinkStateProps
