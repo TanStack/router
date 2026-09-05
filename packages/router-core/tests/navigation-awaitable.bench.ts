@@ -10,6 +10,7 @@ import type { AnyRoute } from '../src'
 for (const mode of [
   'none',
   'sync',
+  'void',
   'async',
   'mixed',
   'chunks',
@@ -30,7 +31,9 @@ for (const mode of [
           : () =>
               mode === 'async' || (mode === 'mixed' && index % 4 === 0)
                 ? Promise.resolve(value)
-                : value,
+                : mode === 'void'
+                  ? undefined
+                  : value,
       component:
         mode === 'chunks' || mode === 'blocking'
           ? (Object.assign(() => null, {
@@ -72,7 +75,7 @@ for (const mode of [
     if (mode === 'blocking') {
       expect(router.state.matches[8]!.loaderData).toEqual({ level7: 7 })
     }
-  } else if (mode !== 'none') {
+  } else if (mode !== 'none' && mode !== 'void') {
     expect(router.state.matches[8]!.context).toMatchObject({
       level0: 0,
       level7: 7,

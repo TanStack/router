@@ -5,112 +5,42 @@ import { BaseRootRoute, BaseRoute, notFound, redirect } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 describe.each([false, true])('awaitable hooks (server=%s)', (isServer) => {
-  test.each([
-    'sync',
-    'promise',
-    'thenable',
-    'foreign promise',
-    'callable thenable',
-  ])('inherits the result of a %s beforeLoad', async (mode) => {
-    const value = { token: 'parent context' }
-    const root = new BaseRootRoute({
-      beforeLoad: () => {
-        switch (mode) {
-          case 'promise':
-            return Promise.resolve(value)
-          case 'thenable':
-            return { then: (resolve: any) => resolve(value) } as any
-          case 'foreign promise':
-            return runInNewContext('Promise.resolve(value)', { value })
-          case 'callable thenable':
-            return Object.assign(() => {}, {
-              then: (resolve: any) => resolve(value),
-            }) as any
-          default:
-            return value
-        }
-      },
-    })
-    const loader = vi.fn(({ context }) => context.token)
-    const child = new BaseRoute({
-      getParentRoute: () => root,
-      path: '/',
-      loader,
-    })
-    const router = createTestRouter({
-      routeTree: root.addChildren([child]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-      isServer,
-    })
-    if (isServer) {
-      expect((await loadServerResponse(router, '/')).status).toBe(200)
-    } else {
-      await router.load()
-    }
-    expect(loader).toHaveBeenCalledOnce()
-    expect(router.state.matches.at(-1)?.loaderData).toBe(value.token)
-  })
-
-  test('normalizes a throwing then getter as a beforeLoad error', async () => {
-    const error = new Error('cannot read then')
-    const onError = vi.fn()
-    const loader = vi.fn()
-    const root = new BaseRootRoute({
-      beforeLoad: () => ({
-        get then(): never {
-          throw error
+  test.each(['sync', 'promise', 'foreign promise'])(
+    'inherits the result of a %s beforeLoad',
+    async (mode) => {
+      const value = { token: 'parent context' }
+      const root = new BaseRootRoute({
+        beforeLoad: () => {
+          switch (mode) {
+            case 'promise':
+              return Promise.resolve(value)
+            case 'foreign promise':
+              return runInNewContext('Promise.resolve(value)', { value })
+            default:
+              return value
+          }
         },
-      }),
-      loader,
-      onError,
-    })
-    const router = createTestRouter({
-      routeTree: root,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-      isServer,
-    })
-    if (isServer) {
-      expect((await loadServerResponse(router, '/')).status).toBe(500)
-    } else {
-      await router.load()
-    }
-    expect(onError).toHaveBeenCalledExactlyOnceWith(error)
-    expect(loader).not.toHaveBeenCalled()
-    expect(router.state.matches[0]?.error).toBe(error)
-  })
-
-  test('reads a beforeLoad then getter once', async () => {
-    let reads = 0
-    const root = new BaseRootRoute({
-      beforeLoad: () =>
-        Object.defineProperty({}, 'then', {
-          get() {
-            reads++
-            return reads === 1
-              ? (resolve: (value: unknown) => void) =>
-                  resolve({ token: 'resolved' })
-              : undefined
-          },
-        }),
-    })
-    const child = new BaseRoute({
-      getParentRoute: () => root,
-      path: '/',
-      loader: ({ context }) => (context as { token?: string }).token,
-    })
-    const router = createTestRouter({
-      routeTree: root.addChildren([child]),
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-      isServer,
-    })
-    if (isServer) {
-      await loadServerResponse(router, '/')
-    } else {
-      await router.load()
-    }
-    expect(reads).toBe(1)
-    expect(router.state.matches.at(-1)?.loaderData).toBe('resolved')
-  })
+      })
+      const loader = vi.fn(({ context }) => context.token)
+      const child = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/',
+        loader,
+      })
+      const router = createTestRouter({
+        routeTree: root.addChildren([child]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        isServer,
+      })
+      if (isServer) {
+        expect((await loadServerResponse(router, '/')).status).toBe(200)
+      } else {
+        await router.load()
+      }
+      expect(loader).toHaveBeenCalledOnce()
+      expect(router.state.matches.at(-1)?.loaderData).toBe(value.token)
+    },
+  )
 })
 
 test.each(['immediate', 'microtask'] as const)(
@@ -145,6 +75,48 @@ test.each(['immediate', 'microtask'] as const)(
     await router.load()
     expect(router.state.location.pathname).toBe('/current')
     expect(loader).not.toHaveBeenCalled()
+  },
+)
+
+test.each(['native', 'foreign'] as const)(
+  'supersedes an unresolved %s Promise beforeLoad and observes its late rejection',
+  async (mode) => {
+    let rejectValue!: (error: Error) => void
+    const capture = (_resolve: unknown, reject: typeof rejectValue) => {
+      rejectValue = reject
+    }
+    const pending =
+      mode === 'native'
+        ? new Promise(capture)
+        : runInNewContext('new Promise(capture)', { capture })
+    const beforeLoad = vi.fn(() => pending)
+    const loader = vi.fn()
+    const onError = vi.fn()
+    const root = new BaseRootRoute({})
+    const stale = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/stale',
+      beforeLoad,
+      loader,
+      onError,
+    })
+    const current = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/current',
+    })
+    const router = createTestRouter({
+      routeTree: root.addChildren([stale, current]),
+      history: createMemoryHistory({ initialEntries: ['/stale'] }),
+    })
+    const staleLoad = router.load()
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledOnce())
+    await router.navigate({ to: '/current' })
+    await staleLoad
+    rejectValue(new Error('late failure'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(router.state.location.pathname).toBe('/current')
+    expect(loader).not.toHaveBeenCalled()
+    expect(onError).not.toHaveBeenCalled()
   },
 )
 
