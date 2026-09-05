@@ -3,7 +3,6 @@ import { last } from './utils'
 import { createSieveCache } from './sieve-cache'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
-  SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
   parseSegment,
@@ -223,26 +222,22 @@ interface InterpolatePathOptions {
    * For testing only, in development mode we use the router.isServer value
    */
   server?: boolean
+  /** @internal Collect parameter names during the first interpolation. */
+  _keys?: Array<string>
 }
 
 /** @internal */
 export function createPathInterpolator() {
-  type Plan = {
-    path: string
-    keys: Array<string>
-    paths: SieveCache<string, string>
-  }
+  type Plan = [keys: Array<string>, paths: SieveCache<string, string>]
   const plans = createSieveCache<string, Plan>(32)
   let previousPlan: Plan | undefined
+  let previousPath: string | undefined
   let previousDecoder: InterpolatePathOptions['decoder']
 
   return (options: InterpolatePathOptions): string => {
     const { path, params, decoder } = options
-    if (!path || path === '/') {
-      return '/'
-    }
-    if (!path.includes('$')) {
-      return path
+    if (!path?.includes('$')) {
+      return path || '/'
     }
 
     if (decoder !== previousDecoder) {
@@ -251,43 +246,36 @@ export function createPathInterpolator() {
       plans.clear()
     }
 
-    let plan = previousPlan?.path === path ? previousPlan : plans.get(path)
+    let plan = previousPath === path ? previousPlan : plans.get(path)
+    let interpolated: string | undefined
     if (!plan) {
       const keys: Array<string> = []
-      let cursor = 0
-      let segment
-      while (cursor < path.length) {
-        segment = parseSegment(path, cursor, segment)
-        cursor = segment[5] + 1
-        if (
-          segment[0] === SEGMENT_TYPE_PARAM ||
-          segment[0] === SEGMENT_TYPE_OPTIONAL_PARAM
-        ) {
-          keys.push(path.substring(segment[2], segment[3]))
-        } else if (segment[0] === SEGMENT_TYPE_WILDCARD) {
-          keys.push('_splat')
-        }
-      }
-      plan = { path, keys, paths: createSieveCache<string, string>(128) }
+      interpolated = interpolatePath({
+        ...options,
+        _keys: keys,
+      }).interpolatedPath
+      plan = [keys, createSieveCache<string, string>(128)]
       plans.set(path, plan)
     }
     previousPlan = plan
+    previousPath = path
 
+    const [keys, paths] = plan
     let key = ''
-    for (const name of plan.keys) {
+    for (const name of keys) {
       const value = params[name]
       if (typeof value !== 'string') {
-        return interpolatePath(options).interpolatedPath
+        return interpolated ?? interpolatePath(options).interpolatedPath
       }
-      key = plan.keys.length === 1 ? value : key + `${value.length}:${value}`
+      key = keys.length === 1 ? value : key + `${value.length}:${value}`
     }
 
-    const cached = plan.paths.get(key)
+    const cached = paths.get(key)
     if (cached !== undefined) {
       return cached
     }
-    const interpolated = interpolatePath(options).interpolatedPath
-    plan.paths.set(key, interpolated)
+    interpolated ??= interpolatePath(options).interpolatedPath
+    paths.set(key, interpolated)
     return interpolated
   }
 }
@@ -327,26 +315,20 @@ function encodeParam(
  * - Encodes params safely (configurable allowed characters)
  * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
  */
-export function interpolatePath({
-  path,
-  params,
-  decoder,
-  // `server` is marked @internal and stripped from .d.ts by `stripInternal`.
-  // We avoid destructuring it in the function signature so the emitted
-  // declaration doesn't reference a property that no longer exists.
-  ...rest
-}: InterpolatePathOptions): InterPolatePathResult {
+export function interpolatePath(
+  options: InterpolatePathOptions,
+): InterPolatePathResult {
+  const { path, params, decoder } = options
   // Tracking if any params are missing in the `params` object
   // when interpolating the path
   let isMissingParams = false
   const usedParams: Record<string, unknown> = Object.create(null)
 
-  if (!path || path === '/')
-    return { interpolatedPath: '/', usedParams, isMissingParams }
-  if (!path.includes('$'))
-    return { interpolatedPath: path, usedParams, isMissingParams }
+  if (!path?.includes('$')) {
+    return { interpolatedPath: path || '/', usedParams, isMissingParams }
+  }
 
-  if (isServer ?? rest.server) {
+  if (isServer ?? options.server) {
     // Fast path for common templates like `/posts/$id` or `/files/$`.
     // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
     // handled by the general parser below.
@@ -371,6 +353,7 @@ export function interpolatePath({
         // `$id` or `$` (splat). '$' code is 36
         if (part.charCodeAt(0) === 36) {
           if (part.length === 1) {
+            options._keys?.push('_splat')
             const splat = params._splat
             usedParams._splat = splat
             // TODO: Deprecate *
@@ -385,6 +368,7 @@ export function interpolatePath({
             joined += '/' + value
           } else {
             const key = part.substring(1)
+            options._keys?.push(key)
             if (!isMissingParams && !(key in params)) {
               isMissingParams = true
             }
@@ -424,60 +408,39 @@ export function interpolatePath({
       continue
     }
 
-    if (kind === SEGMENT_TYPE_WILDCARD) {
-      const splat = params._splat
-      usedParams._splat = splat
+    const splat = kind === SEGMENT_TYPE_WILDCARD
+    const optional = kind === SEGMENT_TYPE_OPTIONAL_PARAM
+    const key = splat ? '_splat' : path.substring(segment[2], segment[3])
+    options._keys?.push(key)
+    if (!splat && !optional && !isMissingParams && !(key in params)) {
+      isMissingParams = true
+    }
+    const valueRaw = params[key]
+    if (optional && valueRaw == null) {
+      continue
+    }
+    usedParams[key] = valueRaw
+
+    const prefix = path.substring(start, segment[1])
+    const suffix = path.substring(segment[4], end)
+    if (splat) {
       // TODO: Deprecate *
-      usedParams['*'] = splat
-
-      const prefix = path.substring(start, segment[1])
-      const suffix = path.substring(segment[4], end)
-
-      // Check if _splat parameter is missing. _splat could be missing if undefined or an empty string or some other falsy value.
-      if (!splat) {
+      usedParams['*'] = valueRaw
+      if (!valueRaw) {
         isMissingParams = true
-        // For missing splat parameters, just return the prefix and suffix without the wildcard
-        // If there is a prefix or suffix, return them joined, otherwise omit the segment
+        // Missing splats retain their prefix/suffix, but not an empty segment.
         if (prefix || suffix) {
           joined += '/' + prefix + suffix
         }
         continue
       }
-
-      const value = encodeParam('_splat', params, decoder)
-      joined += '/' + prefix + value + suffix
-      continue
     }
-
-    if (kind === SEGMENT_TYPE_PARAM) {
-      const key = path.substring(segment[2], segment[3])
-      if (!isMissingParams && !(key in params)) {
-        isMissingParams = true
-      }
-      usedParams[key] = params[key]
-
-      const prefix = path.substring(start, segment[1])
-      const suffix = path.substring(segment[4], end)
-      const value = encodeParam(key, params, decoder) ?? 'undefined'
-      joined += '/' + prefix + value + suffix
-      continue
-    }
-
-    if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-      const key = path.substring(segment[2], segment[3])
-      const valueRaw = params[key]
-
-      // Check if optional parameter is missing or undefined
-      if (valueRaw == null) continue
-
-      usedParams[key] = valueRaw
-
-      const prefix = path.substring(start, segment[1])
-      const suffix = path.substring(segment[4], end)
-      const value = encodeParam(key, params, decoder) ?? ''
-      joined += '/' + prefix + value + suffix
-      continue
-    }
+    const value = encodeParam(key, params, decoder)
+    joined +=
+      '/' +
+      prefix +
+      (splat ? value : (value ?? (optional ? '' : 'undefined'))) +
+      suffix
   }
 
   if (path.endsWith('/')) joined += '/'
