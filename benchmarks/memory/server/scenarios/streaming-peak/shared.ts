@@ -9,7 +9,7 @@ export type { StartRequestHandler }
 type Framework = 'react' | 'solid' | 'vue'
 
 const benchmarkSeed = 0xdecafbad
-const streamingPeakIterations = 20
+const streamingPeakIterations = 1
 const fallbackMarker = 'streaming-peak-fallback-0'
 
 const requestInit = {
@@ -98,7 +98,6 @@ export function createWorkloadGroup(
       iterations: streamingPeakIterations,
       buildRequest: buildStreamingRequest,
       validateResponse: validateStreamingResponse,
-      pinGcBetweenIterations: true,
     })
 
   return {

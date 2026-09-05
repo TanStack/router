@@ -17,17 +17,6 @@ export type RunSequentialRequestLoopOptions =
     iterations?: number
     buildRequest: (random: () => number, index: number) => Request
     validateResponse?: (response: Response, request: Request) => void
-    // Whether V8 collects iteration i's garbage before iteration i+1
-    // allocates its payload is not reproducible run to run — the measured
-    // peak flips by a whole payload depending on GC timing, which shifts
-    // with runner hardware. Forcing a collection between iterations pins
-    // the GC points so peak deterministically measures the largest
-    // single-iteration footprint plus any reachable accumulation.
-    // Accumulation signals stay visible: leaked or cached objects are
-    // still referenced, so a forced collection cannot reclaim them — it
-    // only removes floating garbage, whose collection timing is the
-    // dominant cross-run noise source.
-    pinGcBetweenIterations?: boolean
   }
 
 export const memoryBenchOptions = {
@@ -75,12 +64,7 @@ export async function runSequentialRequestLoop(
   handler: StartRequestHandler,
   options: RunSequentialRequestLoopOptions,
 ) {
-  const {
-    iterations = 10,
-    buildRequest,
-    validateResponse,
-    pinGcBetweenIterations = false,
-  } = options
+  const { iterations = 10, buildRequest, validateResponse } = options
   const random =
     options.seed !== undefined
       ? createDeterministicRandom(options.seed)
@@ -102,30 +86,12 @@ export async function runSequentialRequestLoop(
     validate(response, request)
 
     await drainResponse(response)
-
-    if (pinGcBetweenIterations) {
-      await settleAndPinGc()
-    }
   }
 }
 
-// Allow trailing stream/renderer teardown to finish before each collection.
-// The work is fixed; heap-size readings must not decide how many collections
-// a measured workload performs.
-const settleTurnsBeforeGc = 16
-
-export async function settleAndPinGc() {
-  for (let turn = 0; turn < settleTurnsBeforeGc; turn++) {
+// Cancellation can leave deferred loaders and renderer teardown queued.
+export async function settle() {
+  for (let turn = 0; turn < 16; turn++) {
     await new Promise<void>((resolve) => setTimeout(resolve, 0))
   }
-
-  const gc = (globalThis as { gc?: () => void }).gc
-
-  if (!gc) {
-    return
-  }
-
-  gc()
-  await new Promise<void>((resolve) => setTimeout(resolve, 0))
-  gc()
 }

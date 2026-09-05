@@ -208,7 +208,6 @@ export async function createWorkloadGroup(
     runSequentialRequestLoop(handler, {
       seed: benchmarkSeed,
       iterations: serverFnChurnIterations,
-      pinGcBetweenIterations: true,
       buildRequest: (_random, index) => {
         const fixtureIndex = Math.floor(index / 2) % fixtureCount
 

@@ -6,10 +6,9 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-it('drains each response before collecting and starting the next request', async () => {
+it('drains each response before starting the next request', async () => {
   vi.useFakeTimers()
   const events: Array<string> = []
-  vi.stubGlobal('gc', () => events.push('gc'))
   let index = 0
   const run = runSequentialRequestLoop(
     {
@@ -33,21 +32,11 @@ it('drains each response before collecting and starting the next request', async
       seed: 1,
       iterations: 2,
       buildRequest: () => new Request('http://localhost/'),
-      pinGcBetweenIterations: true,
     },
   )
   await vi.runAllTimersAsync()
   await run
-  expect(events).toEqual([
-    'fetch 0',
-    'body 0',
-    'gc',
-    'gc',
-    'fetch 1',
-    'body 1',
-    'gc',
-    'gc',
-  ])
+  expect(events).toEqual(['fetch 0', 'body 0', 'fetch 1', 'body 1'])
 })
 
 it('releases a failed response reader and does not start another request', async () => {

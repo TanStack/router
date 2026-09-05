@@ -1,4 +1,4 @@
-import { settleAndPinGc } from '#memory-server/bench-utils'
+import { settle } from '#memory-server/bench-utils'
 import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 export type { StartRequestHandler }
@@ -96,7 +96,7 @@ async function readShellBeforeDeferred(
   const reader = response.body.getReader()
   let text = ''
 
-  while (true) {
+  for (;;) {
     const result = await reader.read()
     const value = result.value
 
@@ -184,12 +184,9 @@ async function cancelReader(
   await reader.cancel()
 }
 
-// Post-abort settlement barrier. Settles renderer teardown across a fixed
-// number of event-loop turns, then (under CodSpeed) pins a collection point
-// after every aborted request, so the measured peak cannot drift with how
-// much floating garbage the previous iterations happened to leave behind.
+// Let deferred loaders and renderer teardown finish after cancellation.
 async function drainCancellation() {
-  await settleAndPinGc()
+  await settle()
 }
 
 async function assertAbortedRequestsSanity(
