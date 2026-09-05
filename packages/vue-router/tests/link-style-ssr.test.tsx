@@ -12,7 +12,7 @@ import {
 
 test('preserves selected state props and styling during SSR', async () => {
   const active = vi.fn(() => ({
-    class: 'selected',
+    class: ['selected', [{ 'active-object': true, hidden: false }]],
     style: { color: 'blue' },
     title: 'selected',
   }))
@@ -36,7 +36,7 @@ test('preserves selected state props and styling during SSR', async () => {
           {
             to: '/other',
             activeProps: unused,
-            inactiveProps: { class: 'idle', 'data-state': 'idle' },
+            inactiveProps: { class: { idle: true }, 'data-state': 'idle' },
           },
           () => 'Inactive',
         ),
@@ -62,7 +62,11 @@ test('preserves selected state props and styling during SSR', async () => {
     container.innerHTML = html
     const links = container.querySelectorAll('a')
     expect(links).toHaveLength(4)
-    expect(links[0]!.className).toBe('base selected')
+    expect([...links[0]!.classList]).toEqual([
+      'base',
+      'selected',
+      'active-object',
+    ])
     expect(links[0]!.style.color).toBe('blue')
     expect(links[0]!.style.marginTop).toBe('2px')
     expect(links[0]!.getAttribute('title')).toBe('selected')

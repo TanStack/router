@@ -427,12 +427,12 @@ export function useLinkProps<
 
     return {
       ...propsSafeToSpread,
-      ...resolvedActiveProps,
-      ...resolvedInactiveProps,
       href: hrefOption?.href,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       disabled: !!disabled,
       target,
+      ...resolvedActiveProps,
+      ...resolvedInactiveProps,
       ...(resolvedStyle && { style: resolvedStyle }),
       ...(resolvedClassName && { className: resolvedClassName }),
       ...(disabled && STATIC_DISABLED_PROPS),
@@ -673,7 +673,6 @@ export function useLinkProps<
 
   return {
     ...propsSafeToSpread,
-    ...resolvedProps,
     href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
@@ -684,6 +683,7 @@ export function useLinkProps<
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
     target,
+    ...resolvedProps,
     ...(style && {
       style: stateStyle ? { ...style, ...stateStyle } : style,
     }),
