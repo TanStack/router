@@ -118,6 +118,60 @@ describe.each([false, true])(
         '/users/123',
       )
     })
+
+    it('tracks optional params that were absent when the template was first used', () => {
+      const interpolate = createPathInterpolator()
+      const path = '/posts/{-$category}/$id'
+      const inputs = [
+        { id: 'one' },
+        { id: 'one', category: 'news' },
+        { id: 'one', category: undefined },
+        { id: 'one', category: '' },
+        { id: 'one', category: 'updates' },
+      ]
+
+      for (const params of [...inputs, ...inputs]) {
+        const options = { path, params, server }
+        expect(interpolate(options)).toBe(
+          interpolatePath(options).interpolatedPath,
+        )
+      }
+    })
+
+    it('uses the canonical splat value instead of its legacy alias', () => {
+      const interpolate = createPathInterpolator()
+      const decoder = vi.fn(compileDecodeCharMap(['@']))
+      const options = {
+        path: '/files/$',
+        params: { _splat: 'docs/@guide', '*': 'ignored' },
+        decoder,
+        server,
+      }
+
+      expect(interpolate(options)).toBe('/files/docs/@guide')
+      decoder.mockClear()
+      expect(
+        interpolate({
+          ...options,
+          params: { _splat: 'docs/@guide', '*': 'changed' },
+        }),
+      ).toBe('/files/docs/@guide')
+      expect(decoder).not.toHaveBeenCalled()
+    })
+
+    it('keeps public usedParams unchanged for missing optionals and splats', () => {
+      expect(
+        interpolatePath({ path: '/posts/{-$category}', params: {}, server })
+          .usedParams,
+      ).toEqual({})
+      expect(
+        interpolatePath({
+          path: '/files/$',
+          params: { _splat: 'docs/guide' },
+          server,
+        }).usedParams,
+      ).toEqual({ _splat: 'docs/guide', '*': 'docs/guide' })
+    })
   },
 )
 
