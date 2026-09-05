@@ -49,7 +49,9 @@ export function RouterContextProvider<
   // registry priming in the Router constructor plus Transitioner's
   // settled-time load.
   const ready = Solid.createMemo(() =>
-    isServer && !router._serverResult ? router.load().then(() => true) : true,
+    (isServer ?? router.isServer) && !router._serverResult
+      ? router.load().then(() => true)
+      : true,
   )
 
   const OptionalWrapper = router.options.Wrap || SafeFragment
@@ -65,7 +67,7 @@ export function RouterContextProvider<
             // live. Runs after the load gate so matches are committed. The
             // client half — the hydration-claiming boot — runs at router
             // creation, outside the render.
-            if (isServer) {
+            if (isServer ?? router.isServer) {
               serializeMatchTransfer(router)
             }
             return children()
