@@ -12,6 +12,9 @@ only during CPU simulation, including the legacy `instrumentation` mode.
 The pinned CodSpeed integration supplies `--no-opt`. In Node 24 this is an alias
 for `--no-turbofan`, so Maglev can still optimize and inline hot functions. The
 additional `--no-maglev` keeps the optimizing compiler out of the simulation.
+`--always-sparkplug` compiles baseline code on first use, so warmup does not leave
+functions approaching a later tier-up or batch-compilation threshold. The worker
+regression test checks that even a once-called function receives baseline code.
 The integration also omits the old `--no-scavenge-task` flag on Node 20 and
 newer, where V8 renamed it to `--no-minor-gc-task`. Supplying the renamed flag
 keeps minor GC tied to allocation pressure instead of scheduled foreground
@@ -25,9 +28,11 @@ allocations while retaining garbage collection. See
 
 `--initial-old-space-size=512` fixes the initial old-generation budget at 512 MiB.
 This avoids growing from V8's small initial budget during warmup, which left
-allocation-heavy SSR scenarios sensitive to GC state. It retains allocation-driven
-collection and CodSpeed's existing 4096 MiB maximum; it does not preallocate 512
-MiB or cap the benchmark's allocation work. In three identical-commit CI runs,
+allocation-heavy SSR scenarios sensitive to GC state. V8 also uses this as the
+minimum budget for automatic full collections. Minor collections and allocation
+work stay measured, and CodSpeed still explicitly collects before measurement.
+The existing 4096 MiB maximum remains; the flag does not preallocate 512 MiB or
+cap the benchmark's allocation work. In three identical-commit CI runs,
 the 18 targeted SSR measurements stayed within 0.26%, compared with outliers over
 4% without this flag. Disabling incremental marking entirely was also tested
 and rejected because it introduced larger outliers.

@@ -29,6 +29,7 @@ describe('CPU simulation worker configuration', () => {
         expect.arrayContaining([
           '--no-opt',
           '--no-maglev',
+          '--always-sparkplug',
           '--no-minor-gc-task',
           '--no-incremental-marking-task',
           '--initial-old-space-size=512',
@@ -59,6 +60,26 @@ describe('CPU simulation worker configuration', () => {
       expect(result.status, result.stderr).toBe(0)
       expect(result.stdout.trim()).toBe('100000')
       expect(result.stderr).not.toContain('MAGLEV')
+
+      const coldFunction = spawnSync(
+        process.execPath,
+        [
+          ...config.test!.execArgv!,
+          '--trace-baseline',
+          '--sparkplug-filter=cpuSimulationProbe',
+          '-e',
+          `
+            function cpuSimulationProbe(value) { return value + 1 }
+            process.stdout.write(String(cpuSimulationProbe(41)))
+          `,
+        ],
+        { encoding: 'utf8' },
+      )
+      expect(coldFunction.status, coldFunction.stderr).toBe(0)
+      expect(coldFunction.stdout).toMatch(
+        /SharedFunctionInfo cpuSimulationProbe> \(target BASELINE\)/,
+      )
+      expect(coldFunction.stdout.trim()).toMatch(/42$/)
     },
   )
 
