@@ -845,7 +845,24 @@ async function executeServerLane(
       signal,
     )
     signal?.throwIfAborted()
-    router.serverSsr?.onCleanup(abortLane)
+    // Deferred loader work can outlive this lane, and the request signal above
+    // only covers one way a response ends. SSR cleanup covers them all:
+    //
+    // - client disconnected                          -> abort (work may be pending)
+    // - serialization or lifetime timeout             -> abort (a deferred value hung)
+    // - body disposed server-side (HEAD strip,
+    //   middleware replaced the response)            -> abort (never delivered)
+    // - plain response / `hydrate: false`: the
+    //   loader data was never dehydrated              -> abort (never consumed)
+    // - stream completed: every dehydrated value
+    //   already settled                               -> nothing left to abort
+    //
+    // `settled` is false in exactly the first four cases.
+    router.serverSsr?.onCleanup((settled) => {
+      if (!settled) {
+        abortLane()
+      }
+    })
     return { type: 'render', status: terminal.status, matches: lane.matches }
   } finally {
     signal?.removeEventListener('abort', abortLane)

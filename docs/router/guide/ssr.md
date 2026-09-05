@@ -156,6 +156,8 @@ export async function render({ request }: { request: Request }) {
 
 using `renderRouterToString`
 
+React and Solid use their native synchronous string renderers. Suspended components render their Suspense fallback without waiting for the component to resolve. The router still finishes serializing hydration data before returning the response. Use `renderRouterToStream` when you need the server to render suspended content after it resolves.
+
 <!-- ::start:framework -->
 
 # React
@@ -257,6 +259,9 @@ This pattern can be useful for pages that have slow or high-latency data fetchin
 
 > [!NOTE]
 > This streaming pattern is all automatic as long as you are using either `defaultStreamHandler` or `renderRouterToStream`.
+
+> [!IMPORTANT]
+> Render [`<Scripts />`](./document-head-management.md#scripts) inside `<body>` of your root route. It emits the route scripts and marks where the router inserts streamed hydration data. Without it the response still completes, but the page cannot hydrate.
 
 using `defaultStreamHandler`
 

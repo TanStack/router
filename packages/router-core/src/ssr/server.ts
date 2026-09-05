@@ -5,7 +5,7 @@ export {
   createSsrStreamResponse,
   defineHandlerCallback,
   disposeSsrResponse,
-  disposeSsrResponseDetached,
+  getSsrStatus,
   isSsrResponse,
   normalizeSsrResponse,
   replaceSsrResponse,
@@ -18,7 +18,7 @@ export type {
 } from './handlerCallback'
 export {
   transformPipeableStreamWithRouter,
-  transformStreamWithRouter,
+  transformHtmlStringWithRouter,
   transformReadableStreamWithRouter,
 } from './transformStreamWithRouter'
 export type { TransformStreamWithRouterOptions } from './transformStreamWithRouter'
@@ -27,3 +27,6 @@ export {
   getNormalizedURL,
   getOrigin,
 } from './ssr-server'
+export { defaultSerovalDeserializerPlugins } from './serializer/seroval-plugins'
+export { createRawStreamRPCPlugin } from './serializer/RawStreamRPCPlugin'
+export { makeSsrSerovalPlugin } from './serializer/makeSsrSerovalPlugin'
