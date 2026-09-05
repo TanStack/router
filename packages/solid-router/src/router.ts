@@ -110,7 +110,7 @@ export class Router<
     // claiming walk. Inert without entries: an SPA page has no registry, and
     // a Start app transfers through its own channel (`router.serverSsr`),
     // so the first missing entry falls through to unchanged behavior.
-    if (!isServer) {
+    if (!(isServer ?? this.isServer)) {
       primeRouterFromRegistry(this)
     }
   }
