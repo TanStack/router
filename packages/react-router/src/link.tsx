@@ -427,10 +427,11 @@ export function useLinkProps<
 
     return {
       ...propsSafeToSpread,
+      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       ...resolvedActiveProps,
       ...resolvedInactiveProps,
+      // State props can override element props, but not routing options.
       href: hrefOption?.href,
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       disabled: !!disabled,
       target,
       ...(resolvedStyle && { style: resolvedStyle }),
@@ -673,8 +674,6 @@ export function useLinkProps<
 
   return {
     ...propsSafeToSpread,
-    ...resolvedProps,
-    href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers(onClick, handleClick),
     onBlur: composeHandlers(onBlur, handleLeave),
@@ -682,6 +681,9 @@ export function useLinkProps<
     onMouseEnter: composeHandlers(onMouseEnter, enqueuePreload),
     onMouseLeave: composeHandlers(onMouseLeave, handleLeave),
     onTouchStart: composeHandlers(onTouchStart, handleTouchStart),
+    ...resolvedProps,
+    // State props can override element props, but not routing options.
+    href,
     disabled: !!disabled,
     target,
     ...(style && {
