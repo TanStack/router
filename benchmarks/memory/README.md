@@ -53,8 +53,9 @@ same workload through the Flame profiler.
 - Worker flags live in `runtime.ts` and apply only to the CodSpeed memory
   instrument. They supplement the integration's predictable execution flags.
   Disabling machine-code generation and bytecode flushing keeps compiler allocations
-  out of the signal. Minor GC follows allocations, and a fixed initial
-  old-generation budget reduces sensitivity to startup heap policy.
+  out of the signal. GC follows allocation thresholds without incremental
+  marking or minor-GC tasks; a fixed initial old-generation budget reduces
+  sensitivity to startup heap policy.
 - Do not force GC inside a measured request loop or poll `heapUsed` to choose
   how much work to do. Both introduce allocator activity from the harness into
   the measurement. Footprint scenarios run exactly one large request per
