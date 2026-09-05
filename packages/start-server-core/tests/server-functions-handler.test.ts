@@ -103,4 +103,19 @@ describe('handleServerAction', () => {
 
     await expect(callHandler(STALE_SERVER_FN_ID)).rejects.toBe(resolverFailure)
   })
+
+  it('does not treat an inherited marker as a missing id', async () => {
+    // Only the resolver sets the marker, and it sets it on the error itself.
+    // Honouring an inherited one would answer 404 for an unrelated failure.
+    class InheritsMarker extends Error {}
+    ;(InheritsMarker.prototype as unknown as Record<string, unknown>)[
+      SERVER_FN_NOT_FOUND
+    ] = true
+    const resolverFailure = new InheritsMarker('Server function module export')
+    resolverMocks.getServerFnById.mockImplementationOnce(() => {
+      throw resolverFailure
+    })
+
+    await expect(callHandler(STALE_SERVER_FN_ID)).rejects.toBe(resolverFailure)
+  })
 })

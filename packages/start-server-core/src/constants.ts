@@ -16,11 +16,17 @@ export const HEADERS = {
  */
 export const SERVER_FN_NOT_FOUND = 'tssServerFnNotFound'
 
-/** Whether `error` is the resolver's "no such server function id" signal. */
+/**
+ * Whether `error` is the resolver's "no such server function id" signal.
+ *
+ * The marker has to be the error's own property: inheriting it would let an
+ * unrelated resolver failure be answered with `404` instead of surfacing.
+ */
 export function isServerFnNotFound(error: unknown): boolean {
   return (
     typeof error === 'object' &&
     error !== null &&
+    Object.prototype.hasOwnProperty.call(error, SERVER_FN_NOT_FOUND) &&
     (error as Record<string, unknown>)[SERVER_FN_NOT_FOUND] === true
   )
 }
