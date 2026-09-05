@@ -314,9 +314,7 @@ Error boundary wrapping `Solid.ErrorBoundary`:
 import { CatchBoundary } from '@tanstack/solid-router'
 ;<CatchBoundary
   getResetKey={() => 'widget'}
-  errorComponent={({ error }) => (
-    <div>Error: {error instanceof Error ? error.message : String(error)}</div>
-  )}
+  errorComponent={({ error }) => <div>{String(error)}</div>}
 >
   <RiskyWidget />
 </CatchBoundary>
