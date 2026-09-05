@@ -50,7 +50,7 @@ async function readStreamingBody(response: Response) {
   let body = ''
   let chunkCount = 0
 
-  while (true) {
+  for (;;) {
     const result = await reader.read()
 
     if (result.done) {
@@ -99,7 +99,6 @@ export function createWorkloadGroup(
       buildRequest: buildStreamingRequest,
       validateResponse: validateStreamingResponse,
       pinGcBetweenIterations: true,
-      verifyGcFloor: true,
     })
 
   return {

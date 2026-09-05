@@ -5,6 +5,7 @@
   },
   "include": [
     "bench-utils.ts",
+    "scenarios/*/shared.ts",
     "../runtime.ts",
     "*.test.ts",
     "vitest.unit.config.ts"
