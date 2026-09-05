@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import react from '@vitejs/plugin-react'
+import { memoryExecArgv } from '../../../../runtime'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -26,6 +27,7 @@ export default defineConfig({
     },
   },
   test: {
+    execArgv: memoryExecArgv(),
     name: '@benchmarks/memory-client loader-data-retention (react)',
     watch: false,
     environment: 'jsdom',

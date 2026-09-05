@@ -237,7 +237,7 @@
         }
       },
       "test:types": {
-        "executor": "nx:noop",
+        "executor": "nx:run-commands",
         "dependsOn": [
           {
             "projects": [
@@ -265,6 +265,22 @@
             ],
             "target": "test:types:ssr"
           }
+        ],
+        "options": {
+          "command": "tsc -p ./tsconfig.json --noEmit",
+          "cwd": "benchmarks/memory/server"
+        }
+      },
+      "test:unit": {
+        "executor": "nx:run-commands",
+        "options": {
+          "command": "vitest run --config ./vitest.unit.config.ts",
+          "cwd": "benchmarks/memory/server"
+        },
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/benchmarks/memory/runtime.ts"
         ]
       }
     }

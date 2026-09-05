@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import solid from 'vite-plugin-solid'
+import { memoryExecArgv } from '../../../../runtime'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -27,6 +28,7 @@ export default defineConfig({
     // and the mid-measurement recompile injects a multi-MB allocation
     // burst at a run-dependent time.
     execArgv: [
+      ...memoryExecArgv(),
       '--no-flush-bytecode',
       // Pre-size the V8 heap so no space has to grow mid-measurement:
       // heap-growth events allocate several MB at a run-dependent moment,

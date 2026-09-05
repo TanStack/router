@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import vue from '@vitejs/plugin-vue'
 import vueJsx from '@vitejs/plugin-vue-jsx'
+import { memoryExecArgv } from '../../../../runtime'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -28,6 +29,7 @@ export default defineConfig({
     },
   },
   test: {
+    execArgv: memoryExecArgv(),
     name: '@benchmarks/memory-client mount-unmount (vue)',
     watch: false,
     environment: 'jsdom',
