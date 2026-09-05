@@ -9,6 +9,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useLinkProps,
 } from '../src'
 
 const disposers: Array<() => void> = []
@@ -37,6 +38,85 @@ function renderLinks(Links: Vue.Component) {
   render(Vue.h(RouterProvider, { router }))
   return router
 }
+
+test('preserves object and nested-array class bindings across state updates', async () => {
+  const activeClass = Vue.reactive({ selected: true, removed: false })
+  const inactiveClass = Vue.reactive({ idle: true })
+  const router = renderLinks(() =>
+    Vue.h(
+      Link,
+      {
+        to: '/target',
+        class: ['base', { decorated: true }],
+        activeProps: () => ({
+          class: ['active-state', [undefined, activeClass, ['nested']]],
+        }),
+        inactiveProps: { class: inactiveClass },
+      },
+      () => 'Class bindings',
+    ),
+  )
+  const link = await screen.findByRole('link', { name: 'Class bindings' })
+  expect([...link.classList]).toEqual([
+    'base',
+    'decorated',
+    'active-state',
+    'selected',
+    'nested',
+  ])
+  activeClass.selected = false
+  activeClass.removed = true
+  await waitFor(() => {
+    expect(link).not.toHaveClass('selected')
+    expect(link).toHaveClass('removed', 'nested')
+  })
+  await router.navigate({ to: '/' })
+  await waitFor(() => {
+    expect([...link.classList]).toEqual(['base', 'decorated', 'idle'])
+  })
+  inactiveClass.idle = false
+  await waitFor(() =>
+    expect([...link.classList]).toEqual(['base', 'decorated']),
+  )
+})
+
+test.each([false, true])(
+  'useLinkProps retains class values rather than strings (with base: %s)',
+  async (withBase) => {
+    const baseClass = ['base', { decorated: true }]
+    const stateClass = { selected: true }
+    let binding: unknown
+    const HookLink = Vue.defineComponent({
+      setup() {
+        const props = useLinkProps({
+          to: '/target',
+          class: withBase ? baseClass : undefined,
+          activeProps: { class: stateClass },
+        })
+        return () => {
+          const resolved = Vue.unref(props)
+          binding = resolved.class
+          return Vue.h('a', { ...resolved }, 'Hook classes')
+        }
+      },
+    })
+    renderLinks(HookLink)
+    await screen.findByRole('link', { name: 'Hook classes' })
+    if (withBase) {
+      expect(binding).toEqual([baseClass, stateClass])
+    } else {
+      expect(binding).toBe(stateClass)
+    }
+  },
+)
+
+test('omits the class binding when neither source provides a class', async () => {
+  renderLinks(() =>
+    Vue.h(Link, { to: '/target', activeProps: {} }, () => 'No classes'),
+  )
+  const link = await screen.findByRole('link', { name: 'No classes' })
+  expect(link).not.toHaveAttribute('class')
+})
 
 test('tracks additions to an initially empty state-only style proxy', async () => {
   const style = Vue.reactive<Vue.CSSProperties>({})

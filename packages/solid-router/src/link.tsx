@@ -459,8 +459,8 @@ export function useLinkProps<
       : stateClass
 
     return {
-      ...stateProps,
       ...base,
+      ...stateProps,
       ...(style && hasKeys(style) ? { style } : undefined),
       ...(className ? { class: className } : undefined),
       ...(active && STATIC_ACTIVE_ATTRIBUTES),
