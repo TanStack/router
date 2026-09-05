@@ -7,6 +7,7 @@
     "bench-utils.ts",
     "bench-utils.test.ts",
     "cpu-simulation.test.ts",
+    "scenarios/streaming/shared-data.ts",
     "vitest.unit.config.ts"
   ]
 }
