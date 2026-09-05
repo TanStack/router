@@ -29,6 +29,7 @@ import {
 } from './new-process-route-tree'
 import {
   compileDecodeCharMap,
+  createPathInterpolator,
   interpolatePath,
   resolvePath,
   trimPath,
@@ -1155,6 +1156,7 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: SieveCache<string, string>
+  private interpolatePath = createPathInterpolator()
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
     ParsedLocation,
@@ -2011,12 +2013,12 @@ export class RouterCore<
             // A splat can produce a path like "//evil.example".
             // Normalize it to "/evil.example" to keep it on the current origin.
             normalizeProtocolRelative(
-              interpolatePath({
+              this.interpolatePath({
                 path: nextTo,
                 params: nextParams,
                 decoder: this.pathParamsDecoder,
                 server: this.isServer,
-              }).interpolatedPath,
+              }),
             ),
           )
 
