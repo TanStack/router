@@ -23,16 +23,7 @@ export default defineConfig({
     minify: false,
   },
   test: {
-    // Keep lazily-compiled code alive for the whole run: the pinned
-    // collections age code fast enough for V8 to flush unused bytecode,
-    // and the mid-measurement recompile injects a multi-MB allocation
-    // burst at a run-dependent time.
-    execArgv: [
-      ...memoryExecArgv(),
-      '--no-flush-bytecode',
-      '--min-semi-space-size=16',
-      '--max-semi-space-size=16',
-    ],
+    execArgv: memoryExecArgv(),
     name: '@benchmarks/memory-server serialization-payload (solid)',
     watch: false,
     environment: 'node',

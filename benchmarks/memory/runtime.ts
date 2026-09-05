@@ -7,11 +7,11 @@ export function memoryExecArgv() {
     return []
   }
 
-  // Node 24 still enables Maglev under CodSpeed's --no-opt. Compile baseline
-  // code eagerly and keep minor GC tied to allocations instead of tasks.
+  // Keep code generation out of native allocation measurements and minor GC
+  // tied to allocations instead of tasks.
   return [
-    '--no-maglev',
-    '--always-sparkplug',
+    '--jitless',
+    '--no-flush-bytecode',
     '--no-minor-gc-task',
     '--initial-old-space-size=512',
   ]
