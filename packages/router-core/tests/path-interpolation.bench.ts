@@ -68,6 +68,12 @@ for (const { inputs } of scenarios) {
     input.server = false
   }
 }
+scenarios.push(
+  ...scenarios.map(({ name, inputs }) => ({
+    name: `server ${name}`,
+    inputs: inputs.map((input) => ({ ...input, server: true })),
+  })),
+)
 
 describe.each(scenarios)('$name', ({ inputs }) => {
   const interpolate = createPathInterpolator()
@@ -87,6 +93,25 @@ describe.each(scenarios)('$name', ({ inputs }) => {
       let length = 0
       for (const input of inputs) {
         length += interpolate(input).length
+      }
+      checksum = length
+    },
+    {
+      time: 1500,
+      warmupTime: 500,
+      throws: true,
+      teardown: () => {
+        expect(checksum).toBe(expected)
+      },
+    },
+  )
+
+  bench(
+    'uncached interpolation batch',
+    () => {
+      let length = 0
+      for (const input of inputs) {
+        length += interpolatePath(input).interpolatedPath.length
       }
       checksum = length
     },
