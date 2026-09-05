@@ -7,6 +7,7 @@ import {
   exactPathTest,
   functionalUpdate,
   hasKeys,
+  isAbsoluteUrl,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
@@ -178,8 +179,7 @@ export function useLinkProps<
     const safeInternal = isSafeInternal(to)
     if (safeInternal) return undefined
     if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
-    try {
-      new URL(to as any)
+    if (isAbsoluteUrl(to)) {
       // Block dangerous protocols like javascript:, blob:, data:
       if (isDangerousProtocol(to, router.protocolAllowlist)) {
         if (process.env.NODE_ENV !== 'production') {
@@ -188,7 +188,7 @@ export function useLinkProps<
         return undefined
       }
       return to
-    } catch {}
+    }
     return undefined
   })
 

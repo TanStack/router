@@ -7,6 +7,7 @@ import {
   exactPathTest,
   functionalUpdate,
   hasKeys,
+  isAbsoluteUrl,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
@@ -80,8 +81,7 @@ function resolveExternalLink(
   if (typeof to !== 'string' || to.indexOf(':') === -1) {
     return undefined
   }
-  try {
-    new URL(to)
+  if (isAbsoluteUrl(to)) {
     // Block dangerous protocols like javascript:, blob:, data:
     if (isDangerousProtocol(to, protocolAllowlist)) {
       if (process.env.NODE_ENV !== 'production') {
@@ -90,7 +90,7 @@ function resolveExternalLink(
       return undefined
     }
     return to
-  } catch {}
+  }
   return undefined
 }
 
@@ -226,11 +226,10 @@ export function useLinkProps<
     if (
       typeof to === 'string' &&
       !safeInternal &&
-      // Quick checks to avoid `new URL` in common internal-like cases
+      // Quick checks to avoid URL parsing in common internal-like cases
       to.indexOf(':') > -1
     ) {
-      try {
-        new URL(to)
+      if (isAbsoluteUrl(to)) {
         if (isDangerousProtocol(to, router.protocolAllowlist)) {
           if (process.env.NODE_ENV !== 'production') {
             console.warn(`Blocked Link with dangerous protocol: ${to}`)
@@ -257,8 +256,6 @@ export function useLinkProps<
           ...(style && { style }),
           ...(className && { className }),
         }
-      } catch {
-        // Not an absolute URL
       }
     }
 
@@ -298,8 +295,7 @@ export function useLinkProps<
 
       // Only attempt URL parsing when it looks like an absolute URL.
       if (typeof to === 'string' && to.indexOf(':') > -1) {
-        try {
-          new URL(to)
+        if (isAbsoluteUrl(to)) {
           if (isDangerousProtocol(to, router.protocolAllowlist)) {
             if (process.env.NODE_ENV !== 'production') {
               console.warn(`Blocked Link with dangerous protocol: ${to}`)
@@ -307,7 +303,7 @@ export function useLinkProps<
             return undefined
           }
           return to
-        } catch {}
+        }
       }
 
       return undefined

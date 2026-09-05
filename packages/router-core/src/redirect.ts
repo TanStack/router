@@ -1,3 +1,4 @@
+import { isAbsoluteUrl } from './utils'
 import type { NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
 
@@ -110,11 +111,12 @@ export function redirect<
 ): Redirect<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> {
   opts.statusCode = opts.statusCode || opts.code || 307
 
-  if (!opts.reloadDocument && typeof opts.href === 'string') {
-    try {
-      new URL(opts.href)
-      opts.reloadDocument = true
-    } catch {}
+  if (
+    !opts.reloadDocument &&
+    typeof opts.href === 'string' &&
+    isAbsoluteUrl(opts.href)
+  ) {
+    opts.reloadDocument = true
   }
 
   const headers = new Headers(opts.headers)
