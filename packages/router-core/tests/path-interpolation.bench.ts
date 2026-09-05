@@ -1,11 +1,10 @@
 import { bench, describe, expect } from 'vitest'
-import {
-  compileDecodeCharMap,
-  createPathInterpolator,
-  interpolatePath,
-} from '../src/path'
+import { createMemoryHistory } from '@tanstack/history'
+import { BaseRootRoute } from '../src'
+import { compileDecodeCharMap, interpolatePath } from '../src/path'
+import { createTestRouter } from './routerTestUtils'
 
-type Options = Parameters<ReturnType<typeof createPathInterpolator>>[0]
+type Options = Parameters<typeof interpolatePath>[0]
 
 const scenarios: Array<{ name: string; inputs: Array<Options> }> = [
   {
@@ -59,6 +58,26 @@ const scenarios: Array<{ name: string; inputs: Array<Options> }> = [
       }
     }),
   },
+  {
+    name: 'missing required and splat params',
+    inputs: Array.from({ length: 200 }, (_, index) => {
+      switch (index % 5) {
+        case 0:
+          return { path: '/$first/$second', params: { second: 'two' } }
+        case 1:
+          return {
+            path: '/$first/$second',
+            params: { first: undefined, second: 'two' },
+          }
+        case 2:
+          return { path: '/$first/{-$second}', params: {} }
+        case 3:
+          return { path: '/files/$', params: {} }
+        default:
+          return { path: '/files/prefix{$}suffix', params: { _splat: '' } }
+      }
+    }),
+  },
 ]
 
 const decoder = compileDecodeCharMap(['@', '+'])
@@ -76,23 +95,41 @@ scenarios.push(
 )
 
 describe.each(scenarios)('$name', ({ inputs }) => {
-  const interpolate = createPathInterpolator()
+  const router = createTestRouter({
+    routeTree: new BaseRootRoute({}),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+    isServer: inputs[0]?.server,
+    scrollRestoration: false,
+  })
+  router.pathParamsDecoder = decoder
+  router.history.destroy()
+  const interpolate = router['interpolatePath']
+  const calls = inputs
+    .filter((input) => input.path?.includes('$'))
+    .map((input) => ({
+      args:
+        interpolate.length === 1 ? [input] : [input.path || '/', input.params],
+      expected: interpolatePath(input).interpolatedPath,
+    }))
   let checksum = 0
-  const expected = inputs.reduce((sum, input) => {
-    const result = interpolatePath(input).interpolatedPath
-    expect(interpolate(input)).toBe(result)
-    return sum + result.length
+  const expected = inputs.reduce(
+    (sum, input) => sum + interpolatePath(input).interpolatedPath.length,
+    0,
+  )
+  const cachedExpected = calls.reduce((sum, call) => {
+    expect(Reflect.apply(interpolate, router, call.args)).toBe(call.expected)
+    return sum + call.expected.length
   }, 0)
-  for (const input of inputs) {
-    expect(interpolate(input)).toBe(interpolatePath(input).interpolatedPath)
+  for (const call of calls) {
+    expect(Reflect.apply(interpolate, router, call.args)).toBe(call.expected)
   }
 
   bench(
     'shared interpolation batch',
     () => {
       let length = 0
-      for (const input of inputs) {
-        length += interpolate(input).length
+      for (const call of calls) {
+        length += Reflect.apply(interpolate, router, call.args).length
       }
       checksum = length
     },
@@ -101,7 +138,7 @@ describe.each(scenarios)('$name', ({ inputs }) => {
       warmupTime: 500,
       throws: true,
       teardown: () => {
-        expect(checksum).toBe(expected)
+        expect(checksum).toBe(cachedExpected)
       },
     },
   )
