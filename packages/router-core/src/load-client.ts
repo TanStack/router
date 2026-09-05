@@ -1308,15 +1308,16 @@ async function executeClientLane(
       if (
         committed?.id !== match.id ||
         committed.status !== 'success' ||
-        committed._notFound ||
         match.preload ||
         visible?.id !== match.id ||
-        visible.status !== 'success' ||
-        visible._notFound
+        visible.status !== 'success'
       ) {
         break
       }
       retainedEnd++
+      if (committed._notFound || visible._notFound) {
+        break
+      }
     }
     const tasks: Array<LoaderTask> = []
     const start = options[6 /* resolvedPrefix */] ?? 0
