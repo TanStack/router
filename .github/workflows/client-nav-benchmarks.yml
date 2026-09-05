@@ -20,6 +20,11 @@ on:
       - 'packages/**'
       - 'benchmarks/**'
   workflow_dispatch:
+    inputs:
+      memory-only:
+        description: Run only the memory benchmarks
+        type: boolean
+        default: false
 
 concurrency:
   group: client-nav-benchmarks-${{ github.ref }}
@@ -45,11 +50,7 @@ jobs:
           - react
           - solid
           - vue
-        benchmark:
-          - client-nav
-          - ssr
-          - memory-server
-          - memory-client
+        benchmark: ${{ fromJSON(inputs.memory-only && '["memory-server", "memory-client"]' || '["client-nav", "ssr", "memory-server", "memory-client"]') }}
         include:
           - benchmark: client-nav
             mode: simulation
