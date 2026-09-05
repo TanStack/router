@@ -48,7 +48,7 @@ catalog:
   publint: ^0.3.16
   redaxios: ^0.5.1
   rimraf: ^6.1.2
-  vite: ^8.0.14
+  vite: ^8.2.2
   vitest: ^4.1.4
   '@types/node': 25.0.9
   '@playwright/test': ^1.61.0
