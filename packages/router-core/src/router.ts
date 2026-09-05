@@ -2092,6 +2092,7 @@ export class RouterCore<
         dest,
         destRoutes,
         opts._includeValidateSearch,
+        this.isServer,
       )
 
       // Replace the equal deep
@@ -2816,6 +2817,7 @@ function applySearchMiddleware(
   dest: BuildNextOptions,
   destRoutes: ReadonlyArray<AnyRoute>,
   includeValidateSearch: boolean | undefined,
+  server: boolean,
 ) {
   let middlewares: Array<SearchMiddleware<any>> | undefined
 
@@ -2875,7 +2877,7 @@ function applySearchMiddleware(
 
   if (!middlewares?.length) {
     if (!dest.search) {
-      return !isServer && !hasKeys(search) ? search : {}
+      return !server && !hasKeys(search) ? search : {}
     }
     return dest.search === true ? search : functionalUpdate(dest.search, search)
   }

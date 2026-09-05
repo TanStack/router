@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { isServer as serverEnvironment } from '@tanstack/router-core/isServer'
 import * as pathUtils from '../src/path'
+import * as utils from '../src/utils'
 import {
   BaseRootRoute,
   BaseRoute,
@@ -303,6 +304,57 @@ describe('buildLocation - params function receives parsed params', () => {
 })
 
 describe('buildLocation - search params', () => {
+  test.each([
+    { isServer: false, withMiddleware: false },
+    { isServer: true, withMiddleware: false },
+    { isServer: false, withMiddleware: true },
+    { isServer: true, withMiddleware: true },
+  ])(
+    'uses the router mode for empty-search reuse (server: $isServer, middleware: $withMiddleware)',
+    ({ isServer, withMiddleware }) => {
+      expect(serverEnvironment).toBeUndefined()
+      const rootRoute = new BaseRootRoute({
+        search: {
+          middlewares: withMiddleware
+            ? [({ search, next }) => next(search)]
+            : [],
+        },
+      })
+      const route = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+      })
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([route]),
+        history,
+        isServer,
+      })
+      const inherited = router.buildLocation({ to: '/', search: true })
+      const share = vi.spyOn(utils, 'nullReplaceEqualDeep')
+      try {
+        const cleared = router.buildLocation({ to: '/' })
+        const searchBeforeSharing = share.mock.calls.find(
+          ([previous]) => previous === inherited.search,
+        )?.[1]
+        expect(searchBeforeSharing).toEqual({})
+        if (!isServer && !withMiddleware) {
+          expect(searchBeforeSharing).toBe(inherited.search)
+        } else {
+          expect(searchBeforeSharing).not.toBe(inherited.search)
+        }
+        expect(cleared.search).toBe(inherited.search)
+        expect(cleared.searchStr).toBe('')
+        expect(router.buildLocation({ to: '/', search: true }).search).toBe(
+          inherited.search,
+        )
+      } finally {
+        share.mockRestore()
+        history.destroy()
+      }
+    },
+  )
+
   test('preserves structural sharing when clearing an already empty search', () => {
     const rootRoute = new BaseRootRoute({})
     const route = new BaseRoute({
