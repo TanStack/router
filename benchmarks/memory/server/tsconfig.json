@@ -5,6 +5,7 @@
   },
   "include": [
     "bench-utils.ts",
+    "control/*.ts",
     "scenarios/*/shared.ts",
     "../runtime.ts",
     "*.test.ts",

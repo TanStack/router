@@ -46,11 +46,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        framework:
-          - react
-          - solid
-          - vue
-        benchmark: ${{ fromJSON(inputs.memory-only && '["memory-server", "memory-client"]' || '["client-nav", "ssr", "memory-server", "memory-client"]') }}
+        framework: [react]
+        benchmark: [memory-server]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -60,13 +57,6 @@ jobs:
 
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
-
-      # Run the build outside of the CodSpeed action to avoid being slowed by intrumentation overhead.
-      # (and then run the task itself with --excludeTaskDependencies)
-      - name: Prepare ${{ matrix.benchmark }}:${{ matrix.framework }} benchmark
-        run: >-
-          pnpm nx run
-          @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         uses: CodSpeedHQ/action@4296e51e7041e24dadb86d1d6e8b9320d223dbe8 # v5.0.3
@@ -78,3 +68,4 @@ jobs:
             pnpm nx run
             @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
             --excludeTaskDependencies
+            -- --config ./control/vite.config.ts
