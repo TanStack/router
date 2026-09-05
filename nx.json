@@ -101,6 +101,7 @@
         "default",
         "^production",
         "{workspaceRoot}/benchmarks/ssr/bench-utils.ts",
+        "{workspaceRoot}/benchmarks/cpu-simulation.ts",
         "dependentTaskOutputs"
       ]
     },

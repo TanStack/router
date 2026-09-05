@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config'
 import solid from 'vite-plugin-solid'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
+import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -38,6 +39,7 @@ export default defineConfig({
     conditions: ['solid', 'browser'],
   },
   test: {
+    execArgv: cpuSimulationExecArgv(),
     name: '@benchmarks/client-nav route-tree-scale (solid)',
     watch: false,
     environment: 'jsdom',
