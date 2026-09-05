@@ -37,7 +37,7 @@ function makeRouter(initialEntry = '/items/1') {
 /**
  * Build `opts` with and without a memo slot and assert the memo did not change
  * the answer. Returns whether the pathname cache reused its previous entry,
- * which happens only for location-independent pathnames, so both
+ * which happens while the template and effective params are unchanged, so both
  * the fast path and the correctness of the classification are pinned.
  */
 function buildBoth(
@@ -399,7 +399,7 @@ describe('buildLocation memo (_buildCache)', () => {
     expect(second.location.href).toBe('/items/9b')
   })
 
-  test('an explicit mask stays correct (memo disabled)', async () => {
+  test('an explicit mask keeps resolving while the main pathname hits', async () => {
     const router = makeRouter('/items/1')
     await router.load()
     const cache: BuildLocationCache = {}
@@ -415,11 +415,11 @@ describe('buildLocation memo (_buildCache)', () => {
 
     await router.navigate({ to: '/items/$id', params: { id: '2' } })
     const second = buildBoth(router, cache, opts)
-    expect(second.hit).toBe(false)
+    expect(second.hit).toBe(true)
     expect(second.location.maskedLocation?.href).toBe('/items/2/detail')
   })
 
-  test('routeMasks disable the memo and keep resolving per navigation', async () => {
+  test('routeMasks keep resolving on main pathname cache hits', async () => {
     const rootRoute = new BaseRootRoute({})
     const indexRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -458,17 +458,17 @@ describe('buildLocation memo (_buildCache)', () => {
 
     await router.navigate({ to: '/items/$id', params: { id: '2' } })
     const second = buildBoth(router, cache, opts)
-    expect(second.hit).toBe(false)
+    expect(second.hit).toBe(true)
     expect(second.location.maskedLocation?.href).toBe('/items/9')
 
     // Clearing only the option can leave the processed mask tree in place.
     router.update({ routeMasks: [] })
     const cleared = buildBoth(router, cache, opts)
-    expect(cleared.hit).toBe(false)
+    expect(cleared.hit).toBe(true)
     expect(cleared.location.maskedLocation?.href).toBe('/items/9')
   })
 
-  test('the memo is invalidated when router options change', async () => {
+  test('unrelated router options preserve the pathname and apply the new basepath', async () => {
     const router = makeRouter('/items/1')
     await router.load()
     const cache: BuildLocationCache = {}
@@ -477,7 +477,7 @@ describe('buildLocation memo (_buildCache)', () => {
     expect(buildBoth(router, cache, opts).location.href).toBe('/items/9')
     router.update({ ...router.options, basepath: '/app' })
     const second = buildBoth(router, cache, opts)
-    expect(second.hit).toBe(false)
+    expect(second.hit).toBe(true)
     expect(second.location.href).toBe('/app/items/9')
   })
 

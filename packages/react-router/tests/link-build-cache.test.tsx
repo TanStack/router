@@ -256,3 +256,104 @@ test('hash-only navigation updates href and active state on cache hits', async (
   expect(href()).toBe('/items/9#two')
   expect(screen.getByTestId('fixed').className).not.toContain('active')
 })
+
+test.each([
+  ['supplied', { id: 'fixed' }, '/optional/fixed'],
+  ['absent', { id: undefined }, '/optional'],
+  ['inherited', {}, '/optional/1'],
+] as const)(
+  'an optional link with %s params hits on search-only changes',
+  async (_, params, expectedHref) => {
+    const { router, hits } = setup(() => (
+      <Link to="/optional/{-$id}" params={params} data-testid="link">
+        optional
+      </Link>
+    ))
+    await router.navigate({ to: '/items/$id', params: { id: '1' } })
+    await mount(router)
+    expect(href()).toBe(expectedHref)
+    const before = hits()
+    await act(() =>
+      router.navigate({
+        to: '/items/$id',
+        params: { id: '1' },
+        search: { page: 2 },
+      } as any),
+    )
+    expect(href()).toBe(expectedHref)
+    expect(hits()).toBeGreaterThan(before)
+  },
+)
+
+test('search and hash prop changes preserve the pathname cache', async () => {
+  function Links() {
+    const [page, setPage] = React.useState(1)
+    return (
+      <>
+        <button onClick={() => setPage(2)}>change search</button>
+        <Link
+          to="/optional/{-$id}"
+          params={{ id: 'fixed' }}
+          search={{ page } as any}
+          hash={`section-${page}`}
+          data-testid="link"
+        >
+          optional
+        </Link>
+      </>
+    )
+  }
+  const { router, hits } = setup(() => <Links />)
+  await mount(router)
+  expect(href()).toBe('/optional/fixed?page=1#section-1')
+  const before = hits()
+  fireEvent.click(screen.getByText('change search'))
+  expect(href()).toBe('/optional/fixed?page=2#section-2')
+  expect(hits()).toBeGreaterThan(before)
+})
+
+test('a suspended option transition cannot change the committed link pathname', async () => {
+  let release!: () => void
+  const pending = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  let waiting = true
+  let suspended = false
+  function Suspend({ id }: { id: string }) {
+    if (id === '2' && waiting) {
+      suspended = true
+      throw pending
+    }
+    return null
+  }
+  function Links() {
+    const [id, setId] = React.useState('1')
+    return (
+      <>
+        <button onClick={() => React.startTransition(() => setId('2'))}>
+          transition
+        </button>
+        <React.Suspense fallback={<span>loading</span>}>
+          <Link to="/optional/{-$id}" params={{ id }} data-testid="link">
+            optional
+          </Link>
+          <Suspend id={id} />
+        </React.Suspense>
+      </>
+    )
+  }
+  const { router } = setup(() => <Links />)
+  await mount(router)
+  expect(href()).toBe('/optional/1')
+  fireEvent.click(screen.getByText('transition'))
+  expect(suspended).toBe(true)
+  expect(href()).toBe('/optional/1')
+  await act(() => router.navigate({ to: '/items/$id', params: { id: '3' } }))
+  expect(href()).toBe('/optional/1')
+  await act(async () => {
+    waiting = false
+    release()
+    await pending
+  })
+  expect(href()).toBe('/optional/2')
+})

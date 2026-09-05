@@ -149,7 +149,12 @@ test('a newly installed params stringifier invalidates a cache hit', async () =>
   expect(router.buildLocation({ ...options, _buildCache: cache }).href).toBe(
     '/items/x9',
   )
-  expect(cache.value).toBeUndefined()
+  const nextEntry = cache.value
+  expect(nextEntry).toBeDefined()
+  expect(router.buildLocation({ ...options, _buildCache: cache }).href).toBe(
+    '/items/x9',
+  )
+  expect(cache.value).toBe(nextEntry)
 })
 
 test('a link cache cannot bypass navigation validation or template matching', async () => {
@@ -269,25 +274,241 @@ test('a mutating serializer does not accumulate mutations in a pathname cache', 
   )
 })
 
-test.each(['/items/$*', '/items/$*/$'])(
-  'a parameter named star in %s is not mistaken for the splat alias',
-  async (path) => {
-    const root = new BaseRootRoute({})
-    const route = new BaseRoute({ getParentRoute: () => root, path })
-    const router = createTestRouter({
-      routeTree: root.addChildren([route]),
-      history: createMemoryHistory({ initialEntries: ['/items/1/tail'] }),
-    })
+// Cache eligibility follows the effective values, including absent optionals.
+test.each([
+  [
+    'explicit optional',
+    { to: '/optional/{-$id}', params: { id: 'fixed' } },
+    '/optional/fixed',
+  ],
+  [
+    'explicit undefined optional',
+    { to: '/optional/{-$id}', params: { id: undefined } },
+    '/optional',
+  ],
+  [
+    'explicit null optional',
+    { to: '/optional/{-$id}', params: { id: null } },
+    '/optional',
+  ],
+  ['inherited optional', { to: '/optional/{-$id}' }, '/optional/1'],
+  [
+    'partially inherited optional',
+    { to: '/optional/{-$id}', params: {} },
+    '/optional/1',
+  ],
+  ['params true', { to: '/optional/{-$id}', params: true }, '/optional/1'],
+  ['params false', { to: '/optional/{-$id}', params: false }, '/optional'],
+  [
+    'params updater',
+    { to: '/optional/{-$id}', params: (p: any) => ({ id: p.id }) },
+    '/optional/1',
+  ],
+  [
+    'relative with from',
+    { from: '/items/$id', to: '.', params: { id: 'fixed' } },
+    '/items/fixed',
+  ],
+  ['relative inherited', { to: '.' }, '/items/1'],
+  ['concrete pathname', { to: '/items/1' }, '/items/1'],
+])(
+  '%s hits across search/hash-only navigation',
+  async (_, options, pathname) => {
+    const { router } = setup()
     await router.load()
-    const options = { to: path, params: { _splat: 'tail' } }
-    const cache = {}
-    router.buildLocation({ ...options, _buildCache: cache } as any)
+    await router.navigate({ to: '/items/$id', params: { id: '1' } })
+    const cache: import('../src').BuildLocationCache = {}
+    const build = () =>
+      router.buildLocation({ ...options, _buildCache: cache } as any)
+    expect(build().pathname).toBe(pathname)
+    const entry = cache.value
+    expect(entry).toBeDefined()
     await router.navigate({
-      to: path,
-      params: { '*': '2', _splat: 'tail' },
+      to: '/items/$id',
+      params: { id: '1' },
+      search: { page: 2 },
+      hash: 'new',
     } as any)
-    expect(
-      router.buildLocation({ ...options, _buildCache: cache } as any),
-    ).toEqual(router.buildLocation(options as any))
+    expect(build()).toEqual(router.buildLocation(options as any))
+    expect(cache.value).toBe(entry)
   },
 )
+
+test('an absent inherited optional hits until its dependency appears, then hits again', async () => {
+  const { router } = setup()
+  await router.load()
+  const cache: import('../src').BuildLocationCache = {}
+  const options = { to: '/optional/{-$id}', params: {}, _buildCache: cache }
+  expect(router.buildLocation(options).pathname).toBe('/optional')
+  const absent = cache.value
+  await router.navigate({ to: '/', search: { page: 2 } } as any)
+  expect(router.buildLocation(options).pathname).toBe('/optional')
+  expect(cache.value).toBe(absent)
+  await router.navigate({ to: '/items/$id', params: { id: '2' } })
+  expect(router.buildLocation(options).pathname).toBe('/optional/2')
+  expect(cache.value).not.toBe(absent)
+  const present = cache.value
+  router.buildLocation(options)
+  expect(cache.value).toBe(present)
+  await router.navigate({ to: '/' })
+  expect(router.buildLocation(options).pathname).toBe('/optional')
+  expect(cache.value).not.toBe(present)
+})
+
+test('a stringifier runs on cache hits and invalidates only when its output changes', async () => {
+  const { router, optional } = setup()
+  let calls = 0
+  let prefix = 'a'
+  optional.options.params = {
+    stringify: (params: any) => {
+      calls++
+      return { id: prefix + params.id }
+    },
+  }
+  await router.load()
+  const cache: import('../src').BuildLocationCache = {}
+  const options = {
+    to: '/optional/{-$id}',
+    params: { id: '1' },
+    _buildCache: cache,
+  }
+  expect(router.buildLocation(options).pathname).toBe('/optional/a1')
+  const first = cache.value
+  expect(router.buildLocation(options).pathname).toBe('/optional/a1')
+  expect(cache.value).toBe(first)
+  expect(calls).toBe(2)
+  prefix = 'b'
+  expect(router.buildLocation(options).pathname).toBe('/optional/b1')
+  expect(cache.value).not.toBe(first)
+  expect(calls).toBe(3)
+})
+
+test.each(['/optional/pre{-$id}suf', '/optional/{-$id}/more/{-$other}'])(
+  'optional dependency tracking preserves prefixes, suffixes and multiple params in %s',
+  async (path) => {
+    const root = new BaseRootRoute({})
+    const index = new BaseRoute({ getParentRoute: () => root, path: '/' })
+    const route = new BaseRoute({ getParentRoute: () => root, path })
+    const router = createTestRouter({
+      routeTree: root.addChildren([index, route]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+    const cache: import('../src').BuildLocationCache = {}
+    for (const params of [
+      {},
+      { id: 'a', other: 'b' },
+      { id: undefined, other: 'b' },
+      { id: 'a', other: undefined },
+      {},
+    ]) {
+      const options = { to: path, params }
+      expect(
+        router.buildLocation({ ...options, _buildCache: cache } as any),
+      ).toEqual(router.buildLocation(options as any))
+      const entry = cache.value
+      expect(
+        router.buildLocation({ ...options, _buildCache: cache } as any),
+      ).toEqual(router.buildLocation(options as any))
+      expect(cache.value).toBe(entry)
+    }
+  },
+)
+
+test('a frozen non-path getter still runs before URL rewriting on late hits', async () => {
+  const { router } = setup()
+  let locale = 'en'
+  const params = Object.freeze({
+    id: '1',
+    get other() {
+      locale = locale === 'en' ? 'fr' : 'en'
+      return 'unused'
+    },
+  })
+  router.update({
+    rewrite: {
+      output: ({ url }) => {
+        url.pathname = `/${locale}${url.pathname}`
+        return url
+      },
+    },
+  })
+  await router.load()
+  const cache: import('../src').BuildLocationCache = {}
+  const options = { to: '/items/$id', params, _buildCache: cache }
+  expect(router.buildLocation(options).publicHref).toBe('/fr/items/1')
+  const entry = cache.value
+  expect(router.buildLocation(options).publicHref).toBe('/en/items/1')
+  expect(cache.value).toBe(entry)
+})
+
+test('equivalent relative parent destinations hit across sibling source routes', async () => {
+  const root = new BaseRootRoute({})
+  const parent = new BaseRoute({
+    getParentRoute: () => root,
+    path: '/items/$id',
+  })
+  const a = new BaseRoute({ getParentRoute: () => parent, path: '/a' })
+  const b = new BaseRoute({ getParentRoute: () => parent, path: '/b' })
+  const router = createTestRouter({
+    routeTree: root.addChildren([parent.addChildren([a, b])]),
+    history: createMemoryHistory({ initialEntries: ['/items/1/a'] }),
+  })
+  await router.load()
+  const cache: import('../src').BuildLocationCache = {}
+  const options = { to: '..', _buildCache: cache }
+  expect(router.buildLocation(options).pathname).toBe('/items/1')
+  const entry = cache.value
+  await router.navigate({ to: '/items/$id/b', params: { id: '1' } })
+  expect(router.buildLocation(options).pathname).toBe('/items/1')
+  expect(cache.value).toBe(entry)
+})
+
+test('path resolution and interpolation settings are cache dependencies', async () => {
+  const { router } = setup()
+  await router.load()
+  const cache: import('../src').BuildLocationCache = {}
+  const options = { to: '/items/$id', params: { id: 'a@b' } }
+  router.buildLocation({ ...options, _buildCache: cache })
+  let entry = cache.value
+  router.update({ defaultPendingMs: 42 })
+  expect(router.buildLocation({ ...options, _buildCache: cache })).toEqual(
+    router.buildLocation(options),
+  )
+  expect(cache.value).toBe(entry)
+  router.update({ trailingSlash: 'always' } as any)
+  expect(router.buildLocation({ ...options, _buildCache: cache })).toEqual(
+    router.buildLocation(options),
+  )
+  expect(cache.value).not.toBe(entry)
+  entry = cache.value
+  router.update({ pathParamsAllowedCharacters: ['@'] })
+  expect(router.buildLocation({ ...options, _buildCache: cache })).toEqual(
+    router.buildLocation(options),
+  )
+  expect(cache.value).not.toBe(entry)
+})
+
+test('braced splats track _splat with prefixes, suffixes and absent values', async () => {
+  const root = new BaseRootRoute({})
+  const index = new BaseRoute({ getParentRoute: () => root, path: '/' })
+  const route = new BaseRoute({
+    getParentRoute: () => root,
+    path: '/files/prefix{$}.txt',
+  })
+  const router = createTestRouter({
+    routeTree: root.addChildren([index, route]),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+  await router.load()
+  const cache: import('../src').BuildLocationCache = {}
+  for (const _splat of [undefined, 'a/b', 'space here', '', undefined]) {
+    const options = { to: '/files/prefix{$}.txt', params: { _splat } }
+    expect(router.buildLocation({ ...options, _buildCache: cache })).toEqual(
+      router.buildLocation(options),
+    )
+    const entry = cache.value
+    router.buildLocation({ ...options, _buildCache: cache })
+    expect(cache.value).toBe(entry)
+  }
+})
