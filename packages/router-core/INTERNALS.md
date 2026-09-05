@@ -339,6 +339,12 @@ uses the active preload entry as its additional authority.
 
 `beforeLoad` context is not a cache.
 
+Client `beforeLoad` results still pass through Promise assimilation and a
+cancellable wait. A synchronous-looking result can have a custom `then` getter,
+and a hook can queue a replacement navigation before its loader is planned.
+Avoid probing `then` and then assimilating the same value again, or removing
+that scheduling boundary without accounting for both behaviors.
+
 A completed client preload never stores reusable `beforeLoad` output. When its
 loader data enters the route cache, the merged context is discarded; the
 same-ID route-local `_ctx` may remain reusable. A later navigation rebuilds the

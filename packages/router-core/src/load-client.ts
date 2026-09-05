@@ -894,38 +894,39 @@ function createLoaderTask(
           reloadFailure ?? [SUCCESS, match.loaderData],
         )
 
-  // The async wrapper catches synchronous preload failures without deferring work.
-  const chunkOutcome = (async (): Promise<undefined> => {
-    const chunk = loadRouteChunk(route, undefined, onLazyReady)
-    if (chunk) {
-      await waitFor(chunk, options[0 /* controller */].signal)
-    }
-  })().catch((cause): IndexedOutcome | undefined =>
-    lane[1 /* matches */].some(
-      (candidate, candidateIndex) =>
-        candidateIndex <= index &&
-        (candidate.status === 'error' ||
-          candidate.status === 'notFound' ||
-          candidate._notFound),
-    )
-      ? undefined
-      : [index, normalizeLaneError(router, lane, route, cause, options)],
-  )
-  const chunkFailure = chunkOutcome.then((failure) =>
-    outcome.then((result) => {
-      if (
-        blocking &&
-        !failure &&
-        result[0 /* kind */] === SUCCESS &&
-        match.status === 'pending' &&
-        !options[0 /* controller */].signal.aborted
-      ) {
-        match.status = 'success'
-        onReady?.()
+  // Keep thrown preloads and rejected chunks in the same task promise.
+  const chunkFailure = (async (): Promise<IndexedOutcome | undefined> => {
+    let failure: IndexedOutcome | undefined
+    try {
+      const chunk = loadRouteChunk(route, undefined, onLazyReady)
+      if (chunk) {
+        await waitFor(chunk, options[0 /* controller */].signal)
       }
-      return failure
-    }),
-  )
+    } catch (cause) {
+      failure = lane[1 /* matches */].some(
+        (candidate, candidateIndex) =>
+          candidateIndex <= index &&
+          (candidate.status === 'error' ||
+            candidate.status === 'notFound' ||
+            candidate._notFound),
+      )
+        ? undefined
+        : [index, normalizeLaneError(router, lane, route, cause, options)]
+    }
+    // Readiness requires both the component chunk and loader data.
+    const result = await outcome
+    if (
+      blocking &&
+      !failure &&
+      result[0 /* kind */] === SUCCESS &&
+      match.status === 'pending' &&
+      !options[0 /* controller */].signal.aborted
+    ) {
+      match.status = 'success'
+      onReady?.()
+    }
+    return failure
+  })()
   tasks.push([index, outcome, chunkFailure])
   if (!background) {
     return outcome.then((result) => getParentSnapshot(match, result))
@@ -1982,7 +1983,7 @@ export async function loadClientRoute(
     )
   const done = opts?.sync
     ? new Promise<void>((resolve) => (settle = resolve))
-    : Promise.resolve().then(run).then()
+    : Promise.resolve().then(run)
   const tx: LoadTransaction = [
     controller,
     redirects,
