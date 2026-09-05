@@ -1,7 +1,11 @@
 import { bench, describe, expect } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute } from '../src'
-import { compileDecodeCharMap, interpolatePath } from '../src/path'
+import {
+  compileDecodeCharMap,
+  interpolatePath,
+  interpolatePathname,
+} from '../src/path'
 import { createTestRouter } from './routerTestUtils'
 
 type Options = Parameters<typeof interpolatePath>[0]
@@ -78,6 +82,17 @@ const scenarios: Array<{ name: string; inputs: Array<Options> }> = [
       }
     }),
   },
+  {
+    name: 'affixed mixed segments',
+    inputs: Array.from({ length: 200 }, (_, index) => ({
+      path: '/root/prefix{$id}suffix/{-$language}/files/{$}.txt',
+      params: {
+        id: `item ${index % 40}`,
+        language: index % 2 ? 'en' : undefined,
+        _splat: index % 3 ? `docs/file ${index % 20}` : '',
+      },
+    })),
+  },
 ]
 
 const decoder = compileDecodeCharMap(['@', '+'])
@@ -139,6 +154,32 @@ describe.each(scenarios)('$name', ({ inputs }) => {
       throws: true,
       teardown: () => {
         expect(checksum).toBe(cachedExpected)
+      },
+    },
+  )
+
+  bench(
+    'pathname-only interpolation batch',
+    () => {
+      let length = 0
+      for (const input of inputs) {
+        length += interpolatePathname(
+          input.path || '/',
+          input.params,
+          input.decoder,
+          undefined,
+          undefined,
+          input.server,
+        ).length
+      }
+      checksum = length
+    },
+    {
+      time: 1500,
+      warmupTime: 500,
+      throws: true,
+      teardown: () => {
+        expect(checksum).toBe(expected)
       },
     },
   )
