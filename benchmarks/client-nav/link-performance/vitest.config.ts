@@ -6,6 +6,6 @@ export default defineConfig({
   test: {
     watch: false,
     environment: 'node',
-    include: ['config.test.ts'],
+    include: ['*.test.ts'],
   },
 })
