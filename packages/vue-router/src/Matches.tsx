@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
 import { useStore } from '@tanstack/vue-store'
-import { CatchBoundary } from './CatchBoundary'
+import { CatchBoundary, getErrorMessage } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
 import { routeIdContext } from './matchContext'
@@ -76,12 +76,7 @@ const errorComponentFn: ErrorRouteComponentType = (
 ) => {
   return Vue.h('div', { class: 'error' }, [
     Vue.h('h1', null, 'Error'),
-    Vue.h(
-      'p',
-      null,
-      (props.error as { message?: string } | null)?.message ||
-        String(props.error),
-    ),
+    Vue.h('p', null, getErrorMessage(props.error)),
     Vue.h('button', { onClick: props.reset }, 'Try Again'),
   ])
 }

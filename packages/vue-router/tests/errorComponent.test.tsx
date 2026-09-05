@@ -1,8 +1,11 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import { defineComponent, ref } from 'vue'
 import { createControlledPromise } from '@tanstack/router-core'
 
 import {
+  CatchBoundary,
+  ErrorComponent,
   Link,
   Outlet,
   RouterProvider,
@@ -307,3 +310,83 @@ test.each([
     expect(Object.is(caught, thrown)).toBe(true)
   },
 )
+
+test.each([
+  [new Error('Error message'), 'Error message'],
+  [{ message: 'Serialized message' }, 'Serialized message'],
+  [{ message: 0 }, '0'],
+  [{ message: { detail: 'nested' } }, '[object Object]'],
+  ['Thrown string', 'Thrown string'],
+  [false, 'false'],
+  [0, '0'],
+  [0n, '0'],
+  ['', ''],
+  [null, 'null'],
+  [undefined, 'undefined'],
+  [NaN, 'NaN'],
+  [Symbol('error'), 'Symbol(error)'],
+])('default error details render %s', (error, expected) => {
+  const { container } = render(<ErrorComponent error={error} />)
+
+  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
+  expect(container.querySelector('code')?.textContent).toBe(expected)
+})
+
+test.each([false, 0, -0, 0n, '', null, undefined, NaN, { message: 'object' }])(
+  'CatchBoundary retains the original value and resets after throwing %s',
+  async (thrown) => {
+    const shouldThrow = ref(true)
+    const resetKey = ref(0)
+    const onCatch = vi.fn()
+    const Child = defineComponent(() => () => {
+      if (shouldThrow.value) {
+        throw thrown
+      }
+      return <div>Recovered child</div>
+    })
+    const App = defineComponent(() => () => (
+      <CatchBoundary
+        getResetKey={() => resetKey.value}
+        onCatch={onCatch}
+        errorComponent={({ error, reset }: ErrorComponentProps) => (
+          <button onClick={reset}>
+            {Object.is(error, thrown) ? 'Reset' : 'Wrong value'}
+          </button>
+        )}
+        children={<Child />}
+      />
+    ))
+
+    render(<App />)
+    await screen.findByText('Reset')
+    shouldThrow.value = false
+    await fireEvent.click(screen.getByText('Reset'))
+    expect(await screen.findByText('Recovered child')).toBeInTheDocument()
+
+    shouldThrow.value = true
+    await screen.findByText('Reset')
+    shouldThrow.value = false
+    resetKey.value++
+    expect(await screen.findByText('Recovered child')).toBeInTheDocument()
+    expect(onCatch).toHaveBeenCalledTimes(2)
+    expect(onCatch).toHaveBeenLastCalledWith(thrown)
+  },
+)
+
+test.each([
+  Object.create(null),
+  {
+    toString() {
+      throw new Error('Cannot stringify')
+    },
+  },
+  {
+    get message() {
+      throw new Error('Cannot read message')
+    },
+  },
+])('default error UI survives an unprintable thrown value', (error) => {
+  const { container } = render(<ErrorComponent error={error} />)
+  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
+  expect(container.querySelector('code')?.textContent).toBe('')
+})

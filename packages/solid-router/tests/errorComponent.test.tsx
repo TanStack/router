@@ -4,6 +4,7 @@ import { createControlledPromise } from '@tanstack/router-core'
 
 import {
   CatchBoundary,
+  ErrorComponent,
   Link,
   Outlet,
   RouterProvider,
@@ -307,4 +308,43 @@ test.each([
   expect(screen.queryByText('Wrong value')).not.toBeInTheDocument()
   expect(caught).toBeInstanceOf(Error)
   expect(Object.is((caught as Error).cause, thrown)).toBe(true)
+})
+
+test.each([
+  [new Error('Error message'), 'Error message'],
+  [{ message: 'Serialized message' }, 'Serialized message'],
+  [{ message: 0 }, '0'],
+  [{ message: { detail: 'nested' } }, '[object Object]'],
+  ['Thrown string', 'Thrown string'],
+  [false, 'false'],
+  [0, '0'],
+  [0n, '0'],
+  ['', ''],
+  [null, 'null'],
+  [undefined, 'undefined'],
+  [NaN, 'NaN'],
+  [Symbol('error'), 'Symbol(error)'],
+])('default error details render %s', (error, expected) => {
+  const { container } = render(() => <ErrorComponent error={error} />)
+
+  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
+  expect(container.querySelector('code')?.textContent).toBe(expected)
+})
+
+test.each([
+  Object.create(null),
+  {
+    toString() {
+      throw new Error('Cannot stringify')
+    },
+  },
+  {
+    get message() {
+      throw new Error('Cannot read message')
+    },
+  },
+])('default error UI survives an unprintable thrown value', (error) => {
+  const { container } = render(() => <ErrorComponent error={error} />)
+  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
+  expect(container.querySelector('code')?.textContent).toBe('')
 })

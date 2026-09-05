@@ -3,6 +3,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
   CatchBoundary,
+  ErrorComponent,
   HeadContent,
   Link,
   Outlet,
@@ -932,4 +933,87 @@ describe('notFoundComponent is rendered when an error is thrown in params.parse'
     expect(rootLoader).toHaveBeenCalledTimes(2)
     expect(notFoundComponent).toBeInTheDocument()
   })
+})
+
+test.each([
+  [new Error('Error message'), 'Error message'],
+  [{ message: 'Serialized message' }, 'Serialized message'],
+  [{ message: 0 }, '0'],
+  [{ message: { detail: 'nested' } }, '[object Object]'],
+  ['Thrown string', 'Thrown string'],
+  [false, 'false'],
+  [0, '0'],
+  [0n, '0'],
+  ['', ''],
+  [null, 'null'],
+  [undefined, 'undefined'],
+  [NaN, 'NaN'],
+  [Symbol('error'), 'Symbol(error)'],
+])('default error details render %s', (error, expected) => {
+  const { container } = render(<ErrorComponent error={error} />)
+
+  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
+  expect(container.querySelector('code')?.textContent).toBe(expected)
+})
+
+test.each([false, 0, -0, 0n, '', null, undefined, NaN])(
+  'CatchBoundary resets after throwing %s',
+  (thrown) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let shouldThrow = true
+    let resetKey = 0
+    const onCatch = vi.fn()
+
+    function Child() {
+      if (shouldThrow) {
+        throw thrown
+      }
+      return <div>Recovered child</div>
+    }
+
+    function App() {
+      return (
+        <CatchBoundary
+          getResetKey={() => resetKey}
+          onCatch={onCatch}
+          errorComponent={({ reset }) => <button onClick={reset}>Reset</button>}
+        >
+          <Child />
+        </CatchBoundary>
+      )
+    }
+
+    const { rerender } = render(<App />)
+    shouldThrow = false
+    rerender(<App />)
+    expect(screen.queryByText('Recovered child')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Reset'))
+    expect(screen.getByText('Recovered child')).toBeInTheDocument()
+
+    shouldThrow = true
+    rerender(<App />)
+    shouldThrow = false
+    resetKey++
+    rerender(<App />)
+    expect(screen.getByText('Recovered child')).toBeInTheDocument()
+    expect(onCatch).toHaveBeenCalledTimes(2)
+  },
+)
+
+test.each([
+  Object.create(null),
+  {
+    toString() {
+      throw new Error('Cannot stringify')
+    },
+  },
+  {
+    get message() {
+      throw new Error('Cannot read message')
+    },
+  },
+])('default error UI survives an unprintable thrown value', (error) => {
+  const { container } = render(<ErrorComponent error={error} />)
+  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
+  expect(container.querySelector('code')?.textContent).toBe('')
 })

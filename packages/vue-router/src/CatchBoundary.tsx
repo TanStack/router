@@ -139,18 +139,19 @@ export const ErrorComponent = Vue.defineComponent({
                     overflow: 'auto',
                   },
                 },
-                [
-                  (props.error as { message?: string } | null)?.message
-                    ? Vue.h(
-                        'code',
-                        {},
-                        (props.error as { message: string }).message,
-                      )
-                    : null,
-                ],
+                [Vue.h('code', {}, getErrorMessage(props.error))],
               ),
             ])
           : null,
       ])
   },
 })
+
+export function getErrorMessage(error: unknown) {
+  try {
+    return String((error as { message?: unknown } | null)?.message ?? error)
+  } catch {
+    // The thrown value may not support property access or string conversion.
+    return ''
+  }
+}

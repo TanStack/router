@@ -111,46 +111,49 @@ test('warns when Outlet is rendered inside an errorComponent', async () => {
   expect(warn).toHaveBeenCalledWith(outletWarning('errorComponent'))
 })
 
-test('warns with the current component after a fallback transition', async () => {
-  const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-  const pending = createControlledPromise<void>()
-  const FallbackComponent = (props: { error?: unknown }) => (
-    <>
-      <span>{props.error ? 'Error route' : 'Pending route'}</span>
-      <Outlet />
-    </>
-  )
-  const rootRoute = createRootRoute({ component: Outlet })
-  const indexRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/',
-    component: () => <span>Index route</span>,
-  })
-  const transitionRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/transition',
-    loader: () => pending,
-    pendingMs: 0,
-    pendingComponent: FallbackComponent,
-    errorComponent: FallbackComponent,
-  })
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([indexRoute, transitionRoute]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
-  })
+test.each([new Error('Loader failed'), false, 0, '', null, undefined])(
+  'warns with the current component after a fallback transition with %s',
+  async (error) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const pending = createControlledPromise<void>()
+    const FallbackComponent = (props: { error?: unknown }) => (
+      <>
+        <span>{'error' in props ? 'Error route' : 'Pending route'}</span>
+        <Outlet />
+      </>
+    )
+    const rootRoute = createRootRoute({ component: Outlet })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <span>Index route</span>,
+    })
+    const transitionRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/transition',
+      loader: () => pending,
+      pendingMs: 0,
+      pendingComponent: FallbackComponent,
+      errorComponent: FallbackComponent,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, transitionRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
 
-  render(<RouterProvider router={router} />)
-  await screen.findByText('Index route')
+    render(<RouterProvider router={router} />)
+    await screen.findByText('Index route')
 
-  const navigation = router.navigate({ to: '/transition' })
-  expect(await screen.findByText('Pending route')).toBeInTheDocument()
-  pending.reject(new Error('Loader failed'))
-  await navigation
+    const navigation = router.navigate({ to: '/transition' })
+    expect(await screen.findByText('Pending route')).toBeInTheDocument()
+    pending.reject(error)
+    await navigation
 
-  expect(await screen.findByText('Error route')).toBeInTheDocument()
-  expect(warn).toHaveBeenCalledWith(outletWarning('pendingComponent'))
-  expect(warn).toHaveBeenCalledWith(outletWarning('errorComponent'))
-})
+    expect(await screen.findByText('Error route')).toBeInTheDocument()
+    expect(warn).toHaveBeenCalledWith(outletWarning('pendingComponent'))
+    expect(warn).toHaveBeenCalledWith(outletWarning('errorComponent'))
+  },
+)
 
 test('warns when Outlet is rendered inside a notFoundComponent', async () => {
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})

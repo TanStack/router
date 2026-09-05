@@ -3,7 +3,7 @@ id: errorComponentComponent
 title: ErrorComponent component
 ---
 
-The `ErrorComponent` component is a component that renders an error message and optionally the error's message.
+The `ErrorComponent` component renders an error notice and optional details about the thrown value.
 
 ## ErrorComponent props
 
@@ -11,7 +11,7 @@ The `ErrorComponent` component accepts the following props:
 
 ### `props.error` prop
 
-- Type: `TError` (defaults to `Error`)
+- Type: `unknown`
 - The error that was thrown by the component's children
 
 ### `props.info` prop
@@ -27,6 +27,6 @@ The `ErrorComponent` component accepts the following props:
 
 ## ErrorComponent returns
 
-- Returns a formatted error message with the error's message if it exists.
+- Displays the thrown value's `message`, or its string representation when no message exists. If reading or formatting the value throws, the error notice still renders without details.
 - The error message can be toggled by clicking the "Show Error" button.
 - By default, the error message will be shown in development.

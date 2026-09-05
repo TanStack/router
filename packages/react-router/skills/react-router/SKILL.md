@@ -346,7 +346,9 @@ import { CatchBoundary } from '@tanstack/react-router'
 ;<CatchBoundary
   getResetKey={() => 'widget'}
   onCatch={(error) => console.error(error)}
-  errorComponent={({ error }) => <div>Error: {error.message}</div>}
+  errorComponent={({ error }) => (
+    <div>Error: {error instanceof Error ? error.message : String(error)}</div>
+  )}
 >
   <RiskyWidget />
 </CatchBoundary>

@@ -584,6 +584,10 @@ The `routeOptions.errorComponent` option is a component that is rendered when an
 - `error` - The unknown value that was thrown
 - `reset` - A function to reset the internal `CatchBoundary`
 
+`ErrorComponentProps` defaults its `error` property to `unknown`. Narrow the value before accessing properties such as `message`. `ErrorComponentProps<MyError>` can describe an error after you have narrowed it; it does not restrict what a route can throw. This applies to boundary components and `onCatch` callbacks, including `defaultOnCatch`; it does not change the `onError` callback.
+
+React and Vue boundaries pass through the caught value, including falsy values. Solid wraps non-`Error` throws in an `Error` whose `cause` contains the original value.
+
 ```tsx
 // src/routes/posts.tsx
 export const Route = createFileRoute('/posts')({
