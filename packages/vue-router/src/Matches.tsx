@@ -76,7 +76,12 @@ const errorComponentFn: ErrorRouteComponentType = (
 ) => {
   return Vue.h('div', { class: 'error' }, [
     Vue.h('h1', null, 'Error'),
-    Vue.h('p', null, props.error.message || String(props.error)),
+    Vue.h(
+      'p',
+      null,
+      (props.error as { message?: string } | null)?.message ||
+        String(props.error),
+    ),
     Vue.h('button', { onClick: props.reset }, 'Try Again'),
   ])
 }
@@ -105,11 +110,11 @@ const MatchesInner = Vue.defineComponent({
         errorComponent: errorComponentFn,
         onCatch:
           process.env.NODE_ENV !== 'production'
-            ? (error: Error) => {
+            ? (error: unknown) => {
                 console.warn(
                   `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
                 )
-                console.warn(`Warning: ${error.message || error.toString()}`)
+                console.warn('Warning:', error)
               }
             : undefined,
         children: childElement,

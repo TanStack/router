@@ -28,7 +28,7 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
-import { createLRUCache } from './lru-cache'
+import { createSieveCache } from './sieve-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
@@ -48,7 +48,7 @@ import {
   rewriteBasepath,
 } from './rewrite'
 import { createRouterStores } from './stores'
-import type { LRUCache } from './lru-cache'
+import type { SieveCache } from './sieve-cache'
 import type {
   ProcessRouteTreeResult,
   ProcessedTree,
@@ -1001,7 +1001,7 @@ declare global {
     | {
         routeTree: AnyRoute
         processRouteTreeResult: ProcessRouteTreeResult<AnyRoute>
-        resolvePathCache: LRUCache<string, string>
+        resolvePathCache: SieveCache<string, string>
       }
     | undefined
 }
@@ -1105,7 +1105,7 @@ export class RouterCore<
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
-  resolvePathCache!: LRUCache<string, string>
+  resolvePathCache!: SieveCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
     ParsedLocation,
@@ -1236,7 +1236,7 @@ export class RouterCore<
         this.resolvePathCache = cached.resolvePathCache
         processRouteTreeResult = cached.processRouteTreeResult as any
       } else {
-        this.resolvePathCache = createLRUCache(1000)
+        this.resolvePathCache = createSieveCache(1000)
         processRouteTreeResult = this.buildRouteTree()
         // only cache if nothing else is cached yet
         if (
