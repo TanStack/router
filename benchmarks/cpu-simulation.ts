@@ -11,13 +11,10 @@ export function cpuSimulationExecArgv() {
     // near Sparkplug's later tier-up/batch-compilation thresholds.
     // V8 renamed --scavenge-task in Node 20; CodSpeed's old flag is omitted.
     // Keep minor GC tied to allocations instead of scheduled foreground tasks.
-    // Start with a fixed old-generation budget rather than growing from V8's
-    // small initial heap during warmup. Allocation-triggered GC stays enabled.
     return [
       '--no-maglev',
       '--always-sparkplug',
       '--no-minor-gc-task',
-      '--initial-old-space-size=512',
     ]
   }
   return []
