@@ -23,6 +23,15 @@ in predictable mode. `--no-incremental-marking-task` keeps marking driven by
 allocations while retaining garbage collection. See
 [V8's task completion policy](https://github.com/nodejs/node/blob/v24.8.0/deps/v8/src/heap/incremental-marking.cc#L735).
 
+`--initial-old-space-size=512` fixes the initial old-generation budget at 512 MiB.
+This avoids growing from V8's small initial budget during warmup, which left
+allocation-heavy SSR scenarios sensitive to GC state. It retains allocation-driven
+collection and CodSpeed's existing 4096 MiB maximum; it does not preallocate 512
+MiB or cap the benchmark's allocation work. In three identical-commit CI runs,
+the 18 targeted SSR measurements stayed within 0.26%, compared with outliers over
+4% without this flag. Disabling incremental marking entirely was also tested
+and rejected because it introduced larger outliers.
+
 The flags are intentionally absent from ordinary Vitest timing and walltime runs.
 The regression test in `ssr/cpu-simulation.test.ts` merges the real CodSpeed
 plugin configuration and checks the resulting Node worker's optimization trace.
@@ -30,6 +39,14 @@ plugin configuration and checks the resulting Node worker's optimization trace.
 Changing simulation compiler settings changes the measurement baseline. Compare
 repeatability within each configuration before interpreting performance changes
 between configurations as router improvements or regressions.
+
+## Streaming workload
+
+Deferred payloads in the SSR streaming scenario resolve after two task turns on
+Node. A real 1 ms timer lets elapsed host time decide which concurrent requests
+resolve together. Counted turns preserve the initial loading render and deferred
+payloads; the existing HTML assertions check both. Browser execution keeps the
+timer fallback.
 
 ## Repeatability checks
 
