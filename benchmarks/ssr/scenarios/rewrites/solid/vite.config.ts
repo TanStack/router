@@ -27,6 +27,7 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
+    isolate: true,
     name: '@benchmarks/ssr rewrites (solid)',
     watch: false,
     environment: 'node',

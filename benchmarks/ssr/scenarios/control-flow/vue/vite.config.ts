@@ -24,6 +24,7 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
+    isolate: true,
     name: '@benchmarks/ssr control-flow (vue)',
     watch: false,
     environment: 'node',

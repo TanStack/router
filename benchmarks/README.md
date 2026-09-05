@@ -45,6 +45,22 @@ Changing simulation compiler settings changes the measurement baseline. Compare
 repeatability within each configuration before interpreting performance changes
 between configurations as router improvements or regressions.
 
+## Worker isolation
+
+Keep one SSR workload in each `speed*.bench.ts` file. These projects explicitly
+enable Vitest isolation; CodSpeed uses the forks pool, so every file receives a
+fresh worker. Multiple workloads in one file share the worker's runtime state,
+even though CodSpeed collects before each measurement. Later control cases
+remained noisy after the runtime flag corrections. Running the React plain
+dehydration and linked-CSS controls alone reduced their observed three-run spreads
+to 0.09% and 0.02% respectively.
+
+Variant files keep their workload names, request counts, concurrency, payloads
+and assertions. CodSpeed includes the file path in a benchmark's identity, so
+moved variants start a new history. The first workload keeps `speed.bench.ts`;
+the additional variants have descriptive file names alongside it. Type-check
+includes cover all of these files.
+
 ## Streaming workload
 
 Deferred payloads in the SSR streaming scenario resolve after two task turns on

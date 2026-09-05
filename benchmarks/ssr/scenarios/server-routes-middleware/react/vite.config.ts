@@ -24,6 +24,7 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
+    isolate: true,
     name: '@benchmarks/ssr server-routes-middleware (react)',
     watch: false,
     environment: 'node',

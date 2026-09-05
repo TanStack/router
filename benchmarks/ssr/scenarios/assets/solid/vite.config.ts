@@ -29,6 +29,7 @@ export default defineConfig({
   },
   test: {
     execArgv: cpuSimulationExecArgv(),
+    isolate: true,
     name: '@benchmarks/ssr assets (solid)',
     watch: false,
     environment: 'node',
