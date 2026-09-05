@@ -125,14 +125,7 @@
         "options": {
           "command": "vitest run --config ./vitest.unit.config.ts",
           "cwd": "benchmarks/ssr"
-        },
-        "inputs": [
-          "default",
-          "^production",
-          "{workspaceRoot}/eslint.config.js",
-          "{workspaceRoot}/benchmarks/cpu-simulation.ts",
-          "dependentTaskOutputs"
-        ]
+        }
       },
       "test:perf:react": {
         "executor": "nx:run-commands",

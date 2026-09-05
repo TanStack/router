@@ -41,8 +41,6 @@ additional `--no-incremental-marking-task` from the initial stabilization propos
 has been removed.
 
 The flags are intentionally absent from ordinary Vitest timing and walltime runs.
-The regression test in `ssr/cpu-simulation.test.ts` merges the real CodSpeed
-plugin configuration and checks the resulting Node worker's optimization trace.
 
 Changing simulation compiler settings changes the measurement baseline. Compare
 repeatability within each configuration before interpreting performance changes
@@ -69,20 +67,21 @@ includes cover all of these files.
 Deferred payloads in the SSR streaming scenario resolve after two task turns on
 Node. A real 1 ms timer lets elapsed host time decide which concurrent requests
 resolve together. Counted turns preserve the initial loading render and deferred
-payloads; the existing HTML assertions check both. Browser execution keeps the
-timer fallback.
+payloads; the existing HTML assertions check both. These benchmarks execute in
+Node and use `setImmediate` directly.
 
 ## Repeatability checks
 
-The existing `Benchmarks` workflow accepts a `cpu-only` input for manual runs:
+Dispatch the existing `Benchmarks` workflow against an unchanged branch:
 
 ```sh
-gh workflow run client-nav-benchmarks.yml --ref <branch> -f cpu-only=true
+gh workflow run client-nav-benchmarks.yml --ref <branch>
 ```
 
-Repeat this against the same commit. Manual workflow runs have separate
-concurrency groups so one repetition does not replace another queued run.
-Check that every repetition has all expected CPU results (currently 132), rather
-than inherited results from an earlier run. Compare each benchmark's minimum and maximum across
-repetitions; keep input data, navigation/request counts, builds, dependencies and
-Node version fixed when testing runtime configuration changes.
+Wait for each workflow run to finish before dispatching the next repetition at
+the same commit. The workflow also runs memory benchmarks; exclude those results
+when assessing CPU repeatability. Check that every repetition has all expected
+CPU results (currently 132), rather than inherited results from an earlier run.
+Compare each benchmark's minimum and maximum across repetitions; keep input data,
+navigation/request counts, builds, dependencies and Node version fixed when
+testing runtime configuration changes.

@@ -14,19 +14,11 @@ const alphabet = 'abcdefghijklmnopqrstuvwxyz0123456789'
 export const streamChunkCount = 96
 export const streamChunkLength = 192
 
-function scheduleTask(callback: () => void) {
-  if (typeof setImmediate === 'function') {
-    setImmediate(callback)
-  } else {
-    setTimeout(callback, 0)
-  }
-}
-
 export function sleep0() {
   // Give SSR a render turn before resolving deferred values. Counted turns
   // avoid grouping concurrent requests by wall-clock timer expiration.
   return new Promise<void>((resolve) => {
-    scheduleTask(() => scheduleTask(resolve))
+    setImmediate(() => setImmediate(resolve))
   })
 }
 

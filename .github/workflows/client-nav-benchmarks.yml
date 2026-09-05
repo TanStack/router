@@ -20,14 +20,9 @@ on:
       - 'packages/**'
       - 'benchmarks/**'
   workflow_dispatch:
-    inputs:
-      cpu-only:
-        description: Run only CPU simulation benchmarks
-        type: boolean
-        default: false
 
 concurrency:
-  group: client-nav-benchmarks-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
+  group: client-nav-benchmarks-${{ github.ref }}
   cancel-in-progress: false
   queue: single
 
@@ -50,11 +45,21 @@ jobs:
           - react
           - solid
           - vue
-        benchmark: ${{ fromJSON(inputs.cpu-only && '["client-nav", "ssr"]' || '["client-nav", "ssr", "memory-server", "memory-client"]') }}
+        benchmark:
+          - client-nav
+          - ssr
+          - memory-server
+          - memory-client
+        include:
+          - benchmark: client-nav
+            mode: simulation
+          - benchmark: ssr
+            mode: simulation
+          - benchmark: memory-server
+            mode: memory
+          - benchmark: memory-client
+            mode: memory
     runs-on: ubuntu-latest
-    env:
-      BENCHMARK_PROJECT: '@benchmarks/${{ matrix.benchmark }}'
-      BENCHMARK_FRAMEWORK: ${{ matrix.framework }}
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -69,15 +74,15 @@ jobs:
       - name: Prepare ${{ matrix.benchmark }}:${{ matrix.framework }} benchmark
         run: >-
           pnpm nx run
-          "${BENCHMARK_PROJECT}:build:${BENCHMARK_FRAMEWORK}"
+          @benchmarks/${{ matrix.benchmark }}:build:${{ matrix.framework }}
 
       - name: Run ${{ matrix.benchmark }}:${{ matrix.framework }} CodSpeed benchmark
         uses: CodSpeedHQ/action@4296e51e7041e24dadb86d1d6e8b9320d223dbe8 # v5.0.3
         timeout-minutes: 20
         with:
-          mode: ${{ startsWith(matrix.benchmark, 'memory-') && 'memory' || 'simulation' }}
+          mode: ${{ matrix.mode }}
           run: >-
             WITH_INSTRUMENTATION=1
             pnpm nx run
-            "${BENCHMARK_PROJECT}:test:perf:${BENCHMARK_FRAMEWORK}"
+            @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
             --excludeTaskDependencies
