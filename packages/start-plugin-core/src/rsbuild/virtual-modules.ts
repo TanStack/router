@@ -1,4 +1,5 @@
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
+import { joinURL } from 'ufo'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'
@@ -227,15 +228,8 @@ export interface RegisterVirtualModulesOptions {
   providerEnvName: string
   ssrIsProvider: boolean
   serializationAdapters: Array<SerializationAdapterConfig> | undefined
-  /**
-   * Get the URL at which the rsbuild dev server serves the client entry JS.
-   * Called lazily inside modifyRspackConfig when getConfig() is available.
-   * Example return: '/assets/js/index.js'
-   */
-  getDevClientEntryUrl: (publicBase: string) => string
   /** Whether RSC virtual modules should be registered. */
   rscEnabled?: boolean | undefined
-  scriptFormat: ScriptFormat
 }
 
 /**
@@ -280,6 +274,22 @@ export function registerVirtualModules(
     !opts.rscEnabled &&
     opts.providerEnvName !== RSBUILD_ENVIRONMENT_NAMES.server
   const hasSerializationAdapters = Boolean(opts.serializationAdapters?.length)
+
+  function getScriptFormat(): ScriptFormat {
+    return api.getNormalizedConfig({
+      environment: RSBUILD_ENVIRONMENT_NAMES.client,
+    }).output.module === false
+      ? 'iife'
+      : 'module'
+  }
+
+  function getDevClientEntryUrl(assetBase: string): string {
+    const clientConfig = api.getNormalizedConfig({
+      environment: RSBUILD_ENVIRONMENT_NAMES.client,
+    })
+
+    return joinURL(assetBase, clientConfig.output.distPath.js, 'index.js')
+  }
 
   function isProviderEnvironment(environmentName: string): boolean {
     return environmentName === opts.providerEnvName
@@ -371,21 +381,23 @@ export function registerVirtualModules(
     const { resolvedStartConfig, startConfig } = opts.getConfig()
     const isServerEnv = environmentName === RSBUILD_ENVIRONMENT_NAMES.server
     const isClientEnv = environmentName === RSBUILD_ENVIRONMENT_NAMES.client
+    const assetBase = isDev
+      ? resolvedStartConfig.basePaths.assetBase.dev
+      : resolvedStartConfig.basePaths.assetBase.build
+    const scriptFormat = getScriptFormat()
     const content: Record<string, string> = {}
 
     // Manifest — only meaningful for server env
     if (isServerEnv) {
-      const devClientEntryUrl = opts.getDevClientEntryUrl(
-        resolvedStartConfig.basePaths.publicBase,
-      )
+      const devClientEntryUrl = getDevClientEntryUrl(assetBase)
       content[paths.manifest] = isDev
-        ? generateManifestModuleDev(devClientEntryUrl, opts.scriptFormat)
+        ? generateManifestModuleDev(devClientEntryUrl, scriptFormat)
         : generateManifestModuleBuild(
             clientBuild,
-            resolvedStartConfig.basePaths.publicBase,
+            assetBase,
             devClientEntryUrl,
             startConfig.server.build.inlineCss,
-            opts.scriptFormat,
+            scriptFormat,
           )
     } else {
       content[paths.manifest] = 'export default {}'
@@ -525,17 +537,18 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
 
     generateManifestContent(newClientBuild: NormalizedClientBuild): string {
       const { resolvedStartConfig, startConfig } = opts.getConfig()
-      const devClientEntryUrl = opts.getDevClientEntryUrl(
-        resolvedStartConfig.basePaths.publicBase,
-      )
+      const assetBase = isDev
+        ? resolvedStartConfig.basePaths.assetBase.dev
+        : resolvedStartConfig.basePaths.assetBase.build
+      const devClientEntryUrl = getDevClientEntryUrl(assetBase)
       return generateManifestModuleBuild(
         newClientBuild,
-        resolvedStartConfig.basePaths.publicBase,
+        assetBase,
         devClientEntryUrl,
         !isDev
           ? startConfig.server.build.inlineCss
           : { enabled: false, transformAssets: false },
-        opts.scriptFormat,
+        getScriptFormat(),
       )
     },
 
@@ -545,11 +558,13 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       const { resolvedStartConfig, startConfig } = opts.getConfig()
       return serializeStartManifestData(
         newClientBuild,
-        resolvedStartConfig.basePaths.publicBase,
+        isDev
+          ? resolvedStartConfig.basePaths.assetBase.dev
+          : resolvedStartConfig.basePaths.assetBase.build,
         !isDev
           ? startConfig.server.build.inlineCss
           : { enabled: false, transformAssets: false },
-        opts.scriptFormat,
+        getScriptFormat(),
       )
     },
 
@@ -564,9 +579,9 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
           }
         )[DEV_START_MANIFEST_GLOBAL] = buildStartManifestData(
           clientBuild,
-          resolvedStartConfig.basePaths.publicBase,
+          resolvedStartConfig.basePaths.assetBase.dev,
           { enabled: false, transformAssets: false },
-          opts.scriptFormat,
+          getScriptFormat(),
         )
       }
     },

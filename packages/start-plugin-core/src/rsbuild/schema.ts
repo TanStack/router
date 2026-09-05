@@ -6,20 +6,12 @@ import {
 import type { CompileStartFrameworkOptions } from '../types'
 import type { InlineCssInputOptions } from '../schema'
 
-export const rsbuildClientOutputSchema = z.enum(['module', 'iife'])
-
 export const tanstackStartRsbuildOptionsSchema =
   tanstackStartOptionsObjectSchema
     .extend({
       rsbuild: z
         .object({
           installDevServerMiddleware: z.boolean().optional(),
-          client: z
-            .object({
-              output: rsbuildClientOutputSchema.optional().default('module'),
-            })
-            .optional()
-            .prefault({}),
         })
         .optional(),
     })
@@ -42,9 +34,6 @@ export type TanStackStartRsbuildInputConfig = z.input<
 > & {
   rsbuild?: {
     installDevServerMiddleware?: boolean
-    client?: {
-      output?: z.input<typeof rsbuildClientOutputSchema>
-    }
   }
   server?: {
     build?: {
