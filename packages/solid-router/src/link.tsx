@@ -4,7 +4,6 @@ import { mergeRefs } from '@solid-primitives/refs'
 
 import {
   deepEqual,
-  exactPathTest,
   functionalUpdate,
   hasKeys,
   isAbsoluteUrl,
@@ -204,29 +203,15 @@ export function useLinkProps<
     const current = currentLocation()
     const nextLocation = next()
 
-    if (activeOptions?.exact) {
-      const testExact = exactPathTest(
-        current.pathname,
-        nextLocation.pathname,
-        router.basepath,
-      )
-      if (!testExact) {
-        return false
-      }
-    } else {
-      const currentPath = removeTrailingSlash(current.pathname, router.basepath)
-      const nextPath = removeTrailingSlash(
-        nextLocation.pathname,
-        router.basepath,
-      )
-
-      const pathIsFuzzyEqual =
-        currentPath.startsWith(nextPath) &&
-        (currentPath.length === nextPath.length ||
-          currentPath[nextPath.length] === '/')
-      if (!pathIsFuzzyEqual) {
-        return false
-      }
+    const currentPath = removeTrailingSlash(current.pathname, router.basepath)
+    const nextPath = removeTrailingSlash(nextLocation.pathname, router.basepath)
+    if (
+      currentPath !== nextPath &&
+      (activeOptions?.exact ||
+        !currentPath.startsWith(nextPath) ||
+        currentPath[nextPath.length] !== '/')
+    ) {
+      return false
     }
 
     if (activeOptions?.includeSearch ?? true) {
@@ -431,26 +416,26 @@ export function useLinkProps<
       }
     }
 
-    const activeProps: ResolvedLinkStateProps = active
-      ? (functionalUpdate(local.activeProps as any, {}) ?? EMPTY_OBJECT)
-      : EMPTY_OBJECT
-    const inactiveProps: ResolvedLinkStateProps = active
-      ? EMPTY_OBJECT
-      : functionalUpdate(local.inactiveProps, {})
-    const style = {
-      ...local.style,
-      ...activeProps.style,
-      ...inactiveProps.style,
-    }
-    const className = [local.class, activeProps.class, inactiveProps.class]
-      .filter(Boolean)
-      .join(' ')
+    const stateProps: ResolvedLinkStateProps =
+      functionalUpdate(active ? local.activeProps : local.inactiveProps, {}) ??
+      EMPTY_OBJECT
+    const baseStyle = local.style
+    const stateStyle = stateProps.style
+    // Snapshot reactive style properties so in-place updates remain observable.
+    const style =
+      baseStyle || stateStyle ? { ...baseStyle, ...stateStyle } : undefined
+    const baseClass = local.class
+    const stateClass = stateProps.class
+    const className = baseClass
+      ? stateClass
+        ? `${baseClass} ${stateClass}`
+        : baseClass
+      : stateClass
 
     return {
-      ...activeProps,
-      ...inactiveProps,
+      ...stateProps,
       ...base,
-      ...(hasKeys(style) ? { style } : undefined),
+      ...(style && hasKeys(style) ? { style } : undefined),
       ...(className ? { class: className } : undefined),
       ...(active && STATIC_ACTIVE_ATTRIBUTES),
     } as ResolvedLinkStateProps
