@@ -98,3 +98,19 @@ Use `react`, `solid`, or `vue` for `<framework>`. The baseline projects use `@be
 - Server-function loops must include `sec-fetch-site: same-origin` so the default CSRF middleware accepts the request.
 - Loops that expect non-200 responses pass a custom `validateResponse` to `runRequestLoop`.
 - Bench loops must build deterministic requests from the seeded random helper and consume response bodies through `runRequestLoop` or `runSsrRequestLoop`.
+
+## Optional React Link workloads
+
+The [opt-in Link suite](../client-nav/README.md#opt-in-react-link-performance-suite)
+adds focused standalone React Router SSR coverage for params/updaters,
+inheritance, search middlewares, optional/splat segments, encoding, masks,
+rewrites, and active props. Each timed batch creates four fresh routers and
+renders their Links to HTML; it does not measure Start HTTP/streaming overhead.
+
+```bash
+TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:ssr --outputStyle=stream --skipRemoteCache -- --run
+```
+
+These cases are excluded from this directory's aggregate projects and normal
+CodSpeed dependency graph. The flag must be explicitly enabled when invoking
+the dedicated target.
