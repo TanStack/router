@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { type RequestHandler } from '@tanstack/react-start/server'
+import type { Register } from '@tanstack/react-start'
+import type { RequestHandler } from '@tanstack/react-start/server'
 import type { TypeOnlySecret } from '../violations/type-only.server'
 
 type TypeOnlyStatus = TypeOnlySecret & {
-  requestHandler?: RequestHandler<Record<string, never>>
+  requestHandler?: RequestHandler<Register>
 }
 
 const status: TypeOnlyStatus = {
