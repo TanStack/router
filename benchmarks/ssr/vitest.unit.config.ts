@@ -4,6 +4,6 @@ export default defineConfig({
   test: {
     name: '@benchmarks/ssr unit',
     environment: 'node',
-    include: ['bench-utils.test.ts'],
+    include: ['bench-utils.test.ts', 'cpu-simulation.test.ts'],
   },
 })

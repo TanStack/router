@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
 import solid from 'vite-plugin-solid'
+import { cpuSimulationExecArgv } from '../../../../cpu-simulation'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -25,6 +26,7 @@ export default defineConfig({
     minify: false,
   },
   test: {
+    execArgv: cpuSimulationExecArgv(),
     name: '@benchmarks/ssr rewrites (solid)',
     watch: false,
     environment: 'node',
