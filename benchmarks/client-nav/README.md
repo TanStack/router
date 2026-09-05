@@ -115,3 +115,54 @@ Typecheck benchmark sources (baseline + scenarios):
 ```bash
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav:test:types --outputStyle=stream --skipRemoteCache
 ```
+
+## Opt-in React Link performance suite
+
+`link-performance/` contains additional client-navigation and SSR workloads for
+focused Link work. They are **not included** in the regular client-nav/SSR
+aggregate projects or their CodSpeed build dependencies. Benchmark discovery
+also requires `TSR_LINK_PERF=1`; without it, no extended benchmark files or app
+bundles are imported.
+
+```bash
+TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run
+TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:ssr --outputStyle=stream --skipRemoteCache -- --run
+
+# Select a feature and save the normal Vitest JSON report.
+TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run -t "updater|optional|splat" --outputJson /tmp/link-perf.json
+```
+
+The cases cover repeated versus unique destination params, updater functions,
+relative/inherited values, search middleware chains, param stringification,
+optional and splat segments, encoding, masks, basepath/rewrites, and active
+props with structured search. These exercise different costs: cache hits and
+misses, parameter cloning, callbacks, middleware traversal, URI encoding,
+building masked/public locations, active-state comparisons, and prop merging.
+Existing preload, mount, and route-tree-scale scenarios remain responsible for
+those separate workloads.
+
+- **Client:** 200 persistent measured Links, four control Links, and eight
+  completed navigations per timed batch. The existing client harness checks
+  hrefs and active state during its untimed warm-up lap.
+- **SSR:** four fresh-router requests per timed batch, each rendering 200
+  measured Links through `RouterProvider` and `renderToString`. Router creation,
+  `router.load()`, rendering, and history cleanup are included. This isolates
+  Router SSR Link work, not Start HTTP handling, dehydration, or streaming.
+  HTML assertions run outside the timed batch.
+- Both use the same code-based workload definitions, production JSX/library
+  builds, 50 warm-up iterations, and three-second measurement windows. The
+  client and server bundles assert their resolved `isServer` environment.
+
+Run the gate tests and typecheck separately:
+
+```bash
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:unit --outputStyle=stream --skipRemoteCache
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:types --outputStyle=stream --skipRemoteCache
+```
+
+For before/after comparisons, use identical benchmark files and dependencies
+on both refs, build each ref through its Nx targets, and alternate fresh
+Vitest processes. Report the actual refs, per-case means and relative margins
+of error; rerun noisy or borderline results with `-t` rather than interpreting
+a small difference as a proven speedup. Client and SSR times have different
+batch units and should not be compared directly.
