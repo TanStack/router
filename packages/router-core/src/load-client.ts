@@ -288,7 +288,8 @@ export function waitFor<T>(
     signal.addEventListener('abort', abort, { once: true })
     Promise.resolve(value)
       .then(resolve, reject)
-      .finally(() => signal.removeEventListener('abort', abort))
+      // Both settlement callbacks return normally, so this chain fulfills.
+      .then(() => signal.removeEventListener('abort', abort))
   })
 }
 
@@ -859,11 +860,9 @@ function createLoaderTask(
   if (!loaded) {
     match.isFetching = false
   }
-  const loaderOutcome = reloadFailure
-    ? Promise.resolve(reloadFailure)
-    : !blocking
-      ? Promise.resolve<LoaderOutcome>([SUCCESS, match.loaderData])
-      : loadResource(
+  const outcome =
+    !reloadFailure && blocking
+      ? loadResource(
           router,
           lane,
           match,
@@ -871,41 +870,42 @@ function createLoaderTask(
           loader,
           semanticParent,
           options,
+        ).then((result) => {
+          settleInto(match, result, preload)
+          if (result[0 /* kind */] === SUCCESS) {
+            // A settled generation can outlive its lane without keeping unresolved
+            // navigation work alive.
+            if (routeLoader && !options[0 /* controller */].signal.aborted) {
+              cacheLoaderMatch(router, match, plannedCacheMatch)
+            }
+            // A route is renderable only after both its data and normal component
+            // chunk are ready. Its loader data is already available to descendants.
+            if (index >= retainedEnd) {
+              match.status = 'pending'
+            }
+          }
+          return result
+        })
+      : Promise.resolve<LoaderOutcome>(
+          reloadFailure ?? [SUCCESS, match.loaderData],
         )
-  const outcome = loaderOutcome.then((result) => {
-    if (blocking) {
-      settleInto(match, result, preload)
-      if (result[0 /* kind */] === SUCCESS) {
-        // A settled generation can outlive its lane without keeping unresolved
-        // navigation work alive.
-        if (routeLoader && !options[0 /* controller */].signal.aborted) {
-          cacheLoaderMatch(router, match, plannedCacheMatch)
-        }
-        // A route is renderable only after both its data and normal component
-        // chunk are ready. Its loader data is already available to descendants.
-        if (index >= retainedEnd) {
-          match.status = 'pending'
-        }
-      }
-    }
-    return result
-  })
 
-  const chunkOutcome = waitFor(
-    Promise.resolve().then(() => loadRouteChunk(route, undefined, onLazyReady)),
-    options[0 /* controller */].signal,
-  ).then(
-    () => undefined,
-    (cause): IndexedOutcome | undefined =>
-      lane[1 /* matches */].some(
-        (candidate, candidateIndex) =>
-          candidateIndex <= index &&
-          (candidate.status === 'error' ||
-            candidate.status === 'notFound' ||
-            candidate._notFound),
-      )
-        ? undefined
-        : [index, normalizeLaneError(router, lane, route, cause, options)],
+  // The async wrapper catches synchronous preload failures without deferring work.
+  const chunkOutcome = (async (): Promise<undefined> => {
+    const chunk = loadRouteChunk(route, undefined, onLazyReady)
+    if (chunk) {
+      await waitFor(chunk, options[0 /* controller */].signal)
+    }
+  })().catch((cause): IndexedOutcome | undefined =>
+    lane[1 /* matches */].some(
+      (candidate, candidateIndex) =>
+        candidateIndex <= index &&
+        (candidate.status === 'error' ||
+          candidate.status === 'notFound' ||
+          candidate._notFound),
+    )
+      ? undefined
+      : [index, normalizeLaneError(router, lane, route, cause, options)],
   )
   const chunkFailure = chunkOutcome.then((failure) =>
     outcome.then((result) => {
@@ -1308,15 +1308,16 @@ async function executeClientLane(
       if (
         committed?.id !== match.id ||
         committed.status !== 'success' ||
-        committed._notFound ||
         match.preload ||
         visible?.id !== match.id ||
-        visible.status !== 'success' ||
-        visible._notFound
+        visible.status !== 'success'
       ) {
         break
       }
       retainedEnd++
+      if (committed._notFound || visible._notFound) {
+        break
+      }
     }
     const tasks: Array<LoaderTask> = []
     const start = options[6 /* resolvedPrefix */] ?? 0

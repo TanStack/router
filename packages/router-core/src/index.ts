@@ -163,6 +163,8 @@ export type {
   DefaultSearchValidator,
   ErrorRouteProps,
   ErrorComponentProps,
+  DefaultErrorBoundaryTypes,
+  ErrorBoundaryTypes,
   NotFoundRouteProps,
   ResolveParams,
   ParseParamsFn,

@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds",
-    "test:unit": "node --test ../../scripts/benchmarks/bundle-size/pr-report.test.mjs"
+    "test:unit": "node --test ../../scripts/benchmarks/bundle-size/pr-report.test.mjs ../../scripts/benchmarks/bundle-size/run.test.mjs"
   },
   "nx": {
     "targets": {
@@ -27,11 +27,11 @@
         ]
       },
       "test:unit": {
+        "dependsOn": [],
         "inputs": [
           "default",
           "^production",
-          "{workspaceRoot}/scripts/benchmarks/bundle-size/pr-report.mjs",
-          "{workspaceRoot}/scripts/benchmarks/bundle-size/pr-report.test.mjs"
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/*.mjs"
         ]
       }
     }
