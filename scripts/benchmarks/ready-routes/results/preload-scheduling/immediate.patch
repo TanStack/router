@@ -1,0 +1,45 @@
+diff --git a/packages/router-core/src/load-client.ts b/packages/router-core/src/load-client.ts
+index 5f05354d99..3f451446fa 100644
+--- a/packages/router-core/src/load-client.ts
++++ b/packages/router-core/src/load-client.ts
+@@ -890,24 +890,23 @@ function createLoaderTask(
+           reloadFailure ?? [SUCCESS, match.loaderData],
+         )
+ 
+-  const chunkOutcome = Promise.resolve()
+-    .then(() => {
+-      const chunk = loadRouteChunk(route, undefined, onLazyReady)
+-      return chunk && waitFor(chunk, options[0 /* controller */].signal)
+-    })
+-    .then(
+-      () => undefined,
+-      (cause): IndexedOutcome | undefined =>
+-        lane[1 /* matches */].some(
+-          (candidate, candidateIndex) =>
+-            candidateIndex <= index &&
+-            (candidate.status === 'error' ||
+-              candidate.status === 'notFound' ||
+-              candidate._notFound),
+-        )
+-          ? undefined
+-          : [index, normalizeLaneError(router, lane, route, cause, options)],
++  // The async wrapper catches synchronous preload failures without deferring work.
++  const chunkOutcome = (async (): Promise<undefined> => {
++    const chunk = loadRouteChunk(route, undefined, onLazyReady)
++    if (chunk) {
++      await waitFor(chunk, options[0 /* controller */].signal)
++    }
++  })().catch((cause): IndexedOutcome | undefined =>
++    lane[1 /* matches */].some(
++      (candidate, candidateIndex) =>
++        candidateIndex <= index &&
++        (candidate.status === 'error' ||
++          candidate.status === 'notFound' ||
++          candidate._notFound),
+     )
++      ? undefined
++      : [index, normalizeLaneError(router, lane, route, cause, options)],
++  )
+   const chunkFailure = chunkOutcome.then((failure) =>
+     outcome.then((result) => {
+       if (

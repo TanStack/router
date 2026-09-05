@@ -1,0 +1,48 @@
+{
+  "base": [
+    {
+      "mode": "cached",
+      "depth": 8,
+      "operations": 100,
+      "promises": 14501,
+      "abortListeners": 0
+    },
+    {
+      "mode": "chunks",
+      "depth": 8,
+      "operations": 100,
+      "promises": 18001,
+      "abortListeners": 700
+    },
+    {
+      "mode": "async-chunks",
+      "depth": 8,
+      "operations": 100,
+      "promises": 25701,
+      "abortListeners": 1400
+    }
+  ],
+  "candidate": [
+    {
+      "mode": "cached",
+      "depth": 8,
+      "operations": 100,
+      "promises": 13701,
+      "abortListeners": 0
+    },
+    {
+      "mode": "chunks",
+      "depth": 8,
+      "operations": 100,
+      "promises": 17201,
+      "abortListeners": 700
+    },
+    {
+      "mode": "async-chunks",
+      "depth": 8,
+      "operations": 100,
+      "promises": 24901,
+      "abortListeners": 1400
+    }
+  ]
+}

@@ -62,15 +62,15 @@ failures; react-router has 1,037 passing unit tests and 1 skip. Both packages pa
 their TypeScript 5.6–7.0 suites and lint. All 14 Vitest benchmark cases execute
 successfully, and the baseline full bundle run completes all 18 scenarios.
 
-After implementation, the same unit counts, TypeScript suites, and lint targets
-pass again with `--skipNxCache`. The React browser fixture passes its type check,
+The initial implementation passed the same unit counts, TypeScript suites, and
+lint targets with `--skipNxCache`. The React browser fixture passes its type check,
 and the production React basic e2e suite passes all 24 Chromium tests. All 14
 Vitest benchmark cases pass again.
 
 New regression cases exercise cached parents observed immediately by child
 loaders, errors selected by `onError`, cached data waiting for new chunks,
-chunk rejection, synchronous preload throws and retries, superseding navigation
-inside preload, late chunk rejection after cancellation, abort-listener cleanup,
+chunk rejection, synchronous preload throws and retries, external navigation while a component chunk is pending, late chunk rejection
+after cancellation, abort-listener cleanup,
 and thenables with a throwing `then` getter.
 
 ## Runtime results
@@ -249,3 +249,72 @@ CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav:test:types:react --outpu
 CI=1 NX_DAEMON=false pnpm nx run tanstack-router-e2e-react-basic:test:e2e --outputStyle=stream --skipRemoteCache
 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache --skipNxCache -- bench tests/ready-routes.bench.ts
 ```
+
+## Follow-up: undefined navigation inside component preload
+
+Navigation initiated from inside a component preload is undefined behavior.
+The two parameterized cases asserting that behavior were removed. They had not
+required a dedicated production branch, so deleting them alone made no runtime
+logic redundant. A supported simultaneous synchronous loader/preload failure
+test was added instead, verifying that the loader error retains precedence.
+The benchmark fixture also now includes async loaders combined with pending
+component chunks (`async-chunks`).
+
+An immediate async wrapper was investigated as an alternative to the deferred
+chunk invocation. It conditionally awaited `waitFor` and used the same error
+normalization. It passed the existing core/React unit, type, and lint checks.
+Separately instrumented counts confirmed one fewer PROMISE resource per match
+in cached, pending-chunk, and combined async-loader/pending-chunk workloads.
+Its 18-scenario bundle run reduced raw JS by 26 bytes everywhere; gzip deltas
+relative to the current PR ranged from -11 to 0 bytes, including -9 bytes for
+React Router minimal and 0 bytes for React Router full.
+
+However, a fresh-process comparison against the current PR did **not** establish
+an additional runtime benefit:
+
+| Immediate wrapper vs current PR              | Pairs |     Time improvement | 95% paired bootstrap interval |
+| -------------------------------------------- | ----: | -------------------: | ----------------------------: |
+| Cached loaders, 8 matches                    |     6 |               +1.69% |              -0.60% to +5.53% |
+| Pending chunks, cached loaders, 8 matches    |     6 |               -1.97% |              -6.02% to +1.11% |
+| Async loaders plus pending chunks, 8 matches |     6 |               -1.44% |              -2.41% to -0.30% |
+| Combined workload, reversed-label repeat     |    12 | approximately -1.04% |   Inconclusive; includes zero |
+
+The combined workload leaned slower in both comparisons, but the noisier repeat
+could not establish a regression. This is a reason to avoid claiming a win, not
+proof of a slowdown. The candidate also retained a 4.08% Chromium gain relative
+to unoptimized main [3.37%, 4.83%], which does not establish an improvement over
+the current PR. Its main-to-candidate Node wall-time comparison was inconclusive
+because of a large outlier; all observations are retained. Node CPU time favored
+the candidate over main by 5.80% [4.34%, 7.07%].
+
+**Decision: discard the scheduling change.** The small byte saving and lower
+promise count do not justify changing invocation timing without a convincing
+runtime result, particularly with the combined pending workload leaning slower.
+The production implementation and its original performance/bundle conclusions
+remain unchanged. The unsupported test is removed regardless of this decision.
+
+All experimental samples, allocation counts, per-file bundle metrics, and the
+reproducible candidate patch are preserved under
+[`results/preload-scheduling`](scripts/benchmarks/ready-routes/results/preload-scheduling).
+They are explicitly marked as a discarded candidate. `incremental-reverse.json`
+preserves reversed implementation labels; positive values from `summarize.mjs`
+for that file favor the existing PR, not the experiment.
+
+To reproduce the comparison, use test-only commit `1cfb377ea7` in both worktrees,
+apply `immediate.patch` only to the candidate, then run `compare.mjs` with
+`--cases cached:8,chunks:8,async-chunks:8 --pairs 6`. Repeat the combined case with
+the base/candidate worktrees swapped and `--pairs 12`. The experiment's
+main-to-candidate core comparison uses `--base-source` with `load-client.ts` from
+`2f9150309b`; the browser comparison uses that original baseline worktree.
+
+After removing the unsupported cases and adding the precedence case, uncached
+checks pass with 1,673 router-core and 1,037 react-router unit tests, plus four
+expected failures and one skip. TypeScript and lint suites pass again, as do all
+24 Chromium e2e tests and all 16 Vitest benchmark cases. Rebuilding all 18 bundle
+scenarios after discarding the experiment reproduces the current PR sizes exactly
+for gzip, initial gzip, raw JavaScript, and Brotli.
+
+The earlier PR CI run (`2a4a3fa670`) passed correctness checks but CodSpeed flagged
+seven memory regressions and warned about different runtime environments. Those
+memory results remain unresolved; the local latency measurements are not evidence
+that the CI memory flags are harmless.
