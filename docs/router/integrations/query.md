@@ -152,7 +152,7 @@ Preload critical data in the route `loader` to avoid waterfalls and loading flas
 
 <!-- ::start:framework -->
 
-# React
+# Blocking `query` in loader
 
 ```tsx title="src/routes/posts.tsx"
 import { queryOptions, useSuspenseQuery, useQuery } from '@tanstack/react-query'
@@ -165,7 +165,12 @@ const postsQuery = queryOptions({
 
 export const Route = createFileRoute('/posts')({
   // Ensure the data is in the cache before render
-  loader: ({ context }) => context.queryClient.ensureQueryData(postsQuery),
+  loader: ({ context }) =>
+    context.queryClient.query({ 
+      ...postsQuery, 
+      // returns data from cache immediately, otherwise executes a fetch
+      staleTime: 'static' 
+    }),
   component: PostsPage,
 })
 
@@ -180,15 +185,15 @@ function PostsPage() {
 
 ### Prefetching and streaming
 
-You can also prefetch with `fetchQuery` or `ensureQueryData` in a loader without consuming the data in a component. If you return the promise directly from the loader, it will be awaited and thus block the SSR request until the query finishes. If you don't await the promise nor return it, the query will be started on the server and will be streamed to the client without blocking the SSR request.
+You can also prefetch with `query` in a loader without consuming the data in a component. If you return the promise directly from the loader, it will be awaited and thus block the SSR request until the query finishes. If you don't await the promise nor return it, the query will be started on the server and will be streamed to the client without blocking the SSR request.
 
 <!-- ::start:framework -->
 
-# React
+# Non-blocking `query` in loader
 
 ```tsx title="src/routes/users.$id.tsx"
 import { createFileRoute } from '@tanstack/react-router'
-import { queryOptions, useQuery } from '@tanstack/react-query'
+import { noop, queryOptions, useQuery } from '@tanstack/react-query'
 
 const userQuery = (id: string) =>
   queryOptions({
@@ -197,14 +202,17 @@ const userQuery = (id: string) =>
   })
 
 export const Route = createFileRoute('/user/$id')({
-  loader: ({ params }) => {
-    // do not await this nor return the promise, just kick off the query to stream it to the client
-    context.queryClient.fetchQuery(userQuery(params.id))
+  loader: ({ context, params }) => {
+    // Do not await this nor return the promise, just kick off the query to stream it to the client
+    void context.queryClient.query(userQuery(params.id)).catch(noop)
   },
 })
 ```
 
 <!-- ::end:framework -->
+
+> [!NOTE]
+> Previous versions of this guide used `queryClient.ensureQueryData` and `queryClient.prefetchQuery`. These methods are now deprecated in TanStack Query in favor of `queryClient.query`. See the TanStack Query [v5 migration guide](https://tanstack.com/query/latest/docs/framework/react/guides/migrating-to-v5#imperative-queryclient-methods) for more details.
 
 ## Redirect handling
 

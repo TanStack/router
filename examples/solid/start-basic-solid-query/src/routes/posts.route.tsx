@@ -4,7 +4,10 @@ import { postsQueryOptions } from '../utils/posts'
 
 export const Route = createFileRoute('/posts')({
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(postsQueryOptions())
+    await context.queryClient.query({
+      ...postsQueryOptions(),
+      staleTime: 'static',
+    })
   },
   head: () => ({
     meta: [{ title: 'Posts' }],
