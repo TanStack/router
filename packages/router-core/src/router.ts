@@ -2092,7 +2092,7 @@ export class RouterCore<
         dest,
         destRoutes,
         opts._includeValidateSearch,
-        this.isServer,
+        isServer ?? this.isServer,
       )
 
       // Replace the equal deep
@@ -2877,7 +2877,7 @@ function applySearchMiddleware(
 
   if (!middlewares?.length) {
     if (!dest.search) {
-      return !server && !hasKeys(search) ? search : {}
+      return !(isServer ?? server) && !hasKeys(search) ? search : {}
     }
     return dest.search === true ? search : functionalUpdate(dest.search, search)
   }
