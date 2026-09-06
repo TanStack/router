@@ -60,7 +60,10 @@ export type HydrationStrategy<
   _t?: TWhen
   readonly '~types'?: HydrationStrategyTypes<TWhen, TCanPrefetch>
   _d?: () => boolean
-  _s?: (context: HydrationRuntimeContext) => void | (() => void)
+  _s?: ((context: HydrationRuntimeContext) => void | (() => void)) & {
+    /** Normalized timeout for an equivalent built-in idle setup. */
+    _i?: number
+  }
   _o?: (id: string) => void
   _a?: () => HydrationMarkerAttributes | undefined
 }

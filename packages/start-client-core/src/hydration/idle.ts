@@ -1,4 +1,7 @@
-import type { HydrationPrefetchStrategy } from './types'
+import type {
+  HydrationPrefetchStrategy,
+  HydrationRuntimeContext,
+} from './types'
 
 const idleType = 'idle'
 
@@ -11,25 +14,25 @@ export function idle(
 ): HydrationPrefetchStrategy<typeof idleType> {
   const timeout = options.timeout ?? 2000
 
-  return {
-    _t: idleType,
-    _s: ({ gate, prefetch }) => {
-      const schedule = globalThis as unknown as {
-        requestIdleCallback?: (
-          callback: IdleRequestCallback,
-          options?: IdleRequestOptions,
-        ) => number
-        cancelIdleCallback?: (handle: number) => void
-      }
-      const callback = prefetch ?? gate!.resolve
+  const setup = ({ gate, prefetch }: HydrationRuntimeContext) => {
+    const schedule = globalThis as unknown as {
+      requestIdleCallback?: (
+        callback: IdleRequestCallback,
+        options?: IdleRequestOptions,
+      ) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+    const callback = prefetch ?? gate!.resolve
 
-      if (schedule.requestIdleCallback) {
-        const handle = schedule.requestIdleCallback(callback, { timeout })
-        return () => schedule.cancelIdleCallback?.(handle)
-      }
+    if (schedule.requestIdleCallback) {
+      const handle = schedule.requestIdleCallback(callback, { timeout })
+      return () => schedule.cancelIdleCallback?.(handle)
+    }
 
-      const timeoutId = globalThis.setTimeout(callback, timeout)
-      return () => globalThis.clearTimeout(timeoutId)
-    },
+    const timeoutId = globalThis.setTimeout(callback, timeout)
+    return () => globalThis.clearTimeout(timeoutId)
   }
+  setup._i = timeout
+
+  return { _t: idleType, _s: setup }
 }
