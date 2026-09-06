@@ -2,4 +2,4 @@
 '@tanstack/react-start-rsc': patch
 ---
 
-Defer RSC stream decoding until render so unused server components do not load client JavaScript or CSS during navigation or hydration.
+Defer RSC stream decoding until render so unused server components do not load client JavaScript or CSS during navigation or hydration. Preserve Vite development stylesheet ownership during HMR.
