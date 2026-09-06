@@ -1097,8 +1097,6 @@ export class RouterCore<
     // True until the current PUSH/REPLACE renders, so its hash owns window scroll.
     hash?: boolean
     restoring?: boolean
-    restoration?: boolean
-    reset?: boolean
     trackedScrollTargets?: Set<Document | Element>
     history?: RouterHistory
     historyCleanup?: () => void

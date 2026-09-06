@@ -141,6 +141,70 @@ describe('setupScrollRestoration', () => {
     expect(history.destroy).toBe(originalDestroy)
   })
 
+  test.each([false, true])(
+    'reattaches after cleanup with scrollRestoration=%s',
+    (scrollRestoration) => {
+      const getKey = vi.fn((location: ParsedLocation) => location.href)
+      const router = createRouter({
+        scrollRestoration,
+        getScrollRestorationKey: getKey,
+      })
+      const cleanup = router._scroll.historyCleanup!
+
+      router.history.destroy()
+      setupScrollRestoration(router)
+      setupScrollRestoration(router)
+      cleanup()
+
+      expect(
+        [...router.subscribers].filter(
+          (subscriber) => subscriber.eventType === 'onRendered',
+        ),
+      ).toHaveLength(1)
+      expect(
+        [...router.subscribers].filter(
+          (subscriber) => subscriber.eventType === 'onBeforeLoad',
+        ),
+      ).toHaveLength(scrollRestoration ? 1 : 0)
+
+      window.dispatchEvent(new Event('pagehide'))
+      expect(getKey).toHaveBeenCalledTimes(scrollRestoration ? 1 : 0)
+      router.history.destroy()
+      getKey.mockClear()
+      window.dispatchEvent(new Event('pagehide'))
+      expect(getKey).not.toHaveBeenCalled()
+      expect(router.subscribers.size).toBe(0)
+    },
+  )
+
+  test('releases the wrapper and registry when the original destroy throws', () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const nativeDestroy = history.destroy
+    const originalDestroy = vi
+      .fn(function (this: RouterHistory) {
+        nativeDestroy.call(this)
+      })
+      .mockImplementationOnce(() => {
+        throw new Error('destroy failed')
+      })
+    history.destroy = originalDestroy
+    const router = createRouter({ history, scrollRestoration: true })
+    const otherRouter = createRouter({ history, scrollRestoration: true })
+    const wrapper = history.destroy
+
+    expect(() => history.destroy()).toThrow('destroy failed')
+    expect(history.destroy).toBe(originalDestroy)
+    expect(router.subscribers.size).toBe(0)
+    expect(otherRouter.subscribers.size).toBe(0)
+
+    setupScrollRestoration(router)
+    expect(history.destroy).not.toBe(wrapper)
+    expect(history.destroy).not.toBe(originalDestroy)
+    history.destroy()
+    expect(history.destroy).toBe(originalDestroy)
+    expect(router.subscribers.size).toBe(0)
+  })
+
   test('cleans only the routers still attached to each shared history', () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
     const otherHistory = createMemoryHistory({ initialEntries: ['/'] })
@@ -299,7 +363,7 @@ describe('setupScrollRestoration', () => {
     const router = createRouter({ scrollRestoration: true })
 
     expect(router._scroll.restoring).toBe(true)
-    expect(router._scroll.restoration).toBe(true)
+    expect(router._scroll.captureCleanup).toEqual(expect.any(Function))
     expect(window.history.scrollRestoration).toBe('manual')
     expect(
       windowAddEventListener.mock.calls.some(([event]) => event === 'pagehide'),
@@ -387,8 +451,8 @@ describe('setupScrollRestoration', () => {
       )
 
       expect(router._scroll.restoring).toBeUndefined()
-      expect(router._scroll.restoration).toBeUndefined()
-      expect(router._scroll.reset).toBe(true)
+      expect(router._scroll.captureCleanup).toBeUndefined()
+      expect(router._scroll.renderedCleanup).toEqual(expect.any(Function))
       expect(window.history.scrollRestoration).toBe('auto')
       expect(
         windowAddEventListener.mock.calls.some(

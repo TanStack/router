@@ -87,12 +87,7 @@ function getScrollHistoryState(history: RouterHistory) {
       }
     } finally {
       currentState.callbacks.clear()
-      if (history.destroy === currentState.wrapper) {
-        history.destroy = currentState.originalDestroy
-      }
-      if (scrollHistoryRegistry.get(history) === currentState) {
-        scrollHistoryRegistry.delete(history)
-      }
+      releaseScrollHistoryState(history, currentState)
       currentState.originalDestroy.call(history)
     }
   }
@@ -105,10 +100,6 @@ function releaseScrollHistoryState(
   history: RouterHistory,
   state: ScrollHistoryState,
 ) {
-  if (state.destroying || state.callbacks.size > 0) {
-    return
-  }
-
   if (history.destroy === state.wrapper) {
     history.destroy = state.originalDestroy
   }
@@ -275,11 +266,11 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       scroll.renderedCleanup?.()
       scroll.renderedCleanup = undefined
       trackedScrollTargets.clear()
-      scroll.restoration = undefined
-      scroll.reset = undefined
       scroll.history = undefined
       scroll.historyCleanup = undefined
-      releaseScrollHistoryState(history, historyState)
+      if (!historyState.destroying && !historyState.callbacks.size) {
+        releaseScrollHistoryState(history, historyState)
+      }
     }
     historyState.callbacks.add(cleanup)
     scroll.history = history
@@ -287,8 +278,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   }
 
   const shouldAttach = scroll.restoring
-  if (shouldAttach && !scroll.restoration) {
-    scroll.restoration = true
+  if (shouldAttach && !scroll.captureCleanup) {
     ignoreScroll = false
 
     window.history.scrollRestoration = 'manual'
@@ -322,11 +312,9 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     }
   }
 
-  if (scroll.reset) {
+  if (scroll.renderedCleanup) {
     return
   }
-
-  scroll.reset = true
 
   // Restore destination scroll after the new route has rendered.
   const unsubscribeRendered = router.subscribe('onRendered', (event) => {
