@@ -34,9 +34,14 @@ export default defineConfig({
   plugins: [
     tanstackStart({
       prerender: {
-        routes: ['/blog', '/blog/posts/*'],
+        enabled: true,
+        // Crawl links from prerendered pages to discover and prerender
+        // dynamic routes such as individual blog posts.
         crawlLinks: true,
       },
+      // List the entry pages to prerender. Additional paths are discovered
+      // automatically via `crawlLinks` above and merged with this list.
+      pages: [{ path: '/blog' }],
     }),
   ],
 })
@@ -54,9 +59,14 @@ export default defineConfig({
     pluginReact(),
     tanstackStart({
       prerender: {
-        routes: ['/blog', '/blog/posts/*'],
+        enabled: true,
+        // Crawl links from prerendered pages to discover and prerender
+        // dynamic routes such as individual blog posts.
         crawlLinks: true,
       },
+      // List the entry pages to prerender. Additional paths are discovered
+      // automatically via `crawlLinks` above and merged with this list.
+      pages: [{ path: '/blog' }],
     }),
   ],
 })
@@ -423,9 +433,14 @@ export default defineConfig({
   plugins: [
     tanstackStart({
       prerender: {
-        routes: ['/blog', '/blog/posts/*'],
+        enabled: true,
+        // Crawl links from prerendered pages to discover and prerender
+        // dynamic routes such as individual blog posts.
         crawlLinks: true,
       },
+      // List the entry pages to prerender. Additional paths are discovered
+      // automatically via `crawlLinks` above and merged with this list.
+      pages: [{ path: '/blog' }],
     }),
   ],
 })
@@ -443,9 +458,14 @@ export default defineConfig({
     pluginReact(),
     tanstackStart({
       prerender: {
-        routes: ['/blog', '/blog/posts/*'],
+        enabled: true,
+        // Crawl links from prerendered pages to discover and prerender
+        // dynamic routes such as individual blog posts.
         crawlLinks: true,
       },
+      // List the entry pages to prerender. Additional paths are discovered
+      // automatically via `crawlLinks` above and merged with this list.
+      pages: [{ path: '/blog' }],
     }),
   ],
 })
