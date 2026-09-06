@@ -46,7 +46,8 @@ export function createDevClientEntryPlugin(opts: {
   plugin.transform = {
     handler(code, id) {
       if (id === clientEntryPath) {
-        // The wrapper imports this module to start hydration, even in sideEffects:false packages.
+        // Hydration startup is inherently side-effectful even when its package
+        // declares sideEffects:false; retain this with either bundling mode.
         return { code, map: null, moduleSideEffects: true }
       }
       return undefined

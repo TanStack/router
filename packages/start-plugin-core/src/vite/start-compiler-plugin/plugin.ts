@@ -36,7 +36,14 @@ import type {
   GenerateFunctionIdFnOptional,
   ServerFn,
 } from '../../start-compiler/types'
-import type { Environment, EnvironmentModuleNode, PluginOption } from 'vite'
+import type {
+  DevEnvironment,
+  Environment,
+  EnvironmentModuleNode,
+  HotUpdateOptions,
+  Plugin,
+  PluginOption,
+} from 'vite'
 
 // Re-export from shared constants for backwards compatibility
 export { SERVER_FN_LOOKUP }
@@ -66,7 +73,8 @@ export async function loadViteModuleFromEnvironment(
   opts: ViteModuleLoadOptions,
 ): Promise<string | undefined> {
   if (environment.mode === 'build' || environment.config.isBundled) {
-    // Bundled dev must stay in Rolldown's lifecycle, not Vite's separate container.
+    // Bundled modules belong to the active Rolldown lifecycle. This is the
+    // supported load hook, not the separate container from vitejs/vite#22968.
     const loaded = await opts.load({ id })
     return loaded?.code ?? ''
   }
@@ -285,9 +293,10 @@ export function startCompilerPlugin(
       compilerTransforms,
       compilerPlugins,
     })
-    return {
+    const plugin = {
       name: `tanstack-start-core::server-fn:${environment.name}`,
       enforce: 'pre',
+      perEnvironmentWatchChangeDuringDev: true,
       applyToEnvironment(env) {
         return env.name === environment.name
       },
@@ -307,9 +316,23 @@ export function startCompilerPlugin(
           compilers.delete(this.environment.name)
         }
       },
-      watchChange(id) {
+      async watchChange(id): Promise<void> {
         if (bundledDev && this.environment.mode === 'dev') {
-          compilers.get(this.environment.name)?.invalidateModule(id)
+          if (environment.type === 'server') {
+            // Workaround (https://github.com/vitejs/vite/discussions/22746,
+            // Phase 4): bundled dev skips Vite's SSR hotUpdate dispatch.
+            // Reuse our targeted invalidation on edits until Vite dispatches it.
+            await plugin.hotUpdate.call(
+              { environment: this.environment },
+              {
+                modules: Array.from(
+                  this.environment.moduleGraph.getModulesByFile(id) ?? [],
+                ),
+              },
+            )
+          } else {
+            compilers.get(this.environment.name)?.invalidateModule(id)
+          }
         }
       },
       transform: {
@@ -396,9 +419,14 @@ export function startCompilerPlugin(
         },
       },
 
-      hotUpdate(ctx) {
+      hotUpdate(
+        this: { environment: DevEnvironment },
+        ctx: Pick<HotUpdateOptions, 'modules'>,
+      ) {
         if (bundledDev && environment.name === VITE_ENVIRONMENT_NAMES.client) {
-          // Bundled dev invalidates compiler state through watchChange, not Vite's module graph.
+          // Workaround (https://github.com/vitejs/vite/issues/23314): bundled
+          // hotUpdate lacks Vite's context/module nodes. watchChange handles
+          // invalidation until Vite's adapter in vitejs/vite#22956 is released.
           return
         }
 
@@ -488,7 +516,8 @@ export function startCompilerPlugin(
 
         return finishHotUpdate()
       },
-    }
+    } satisfies Plugin
+    return plugin
   }
 
   return [

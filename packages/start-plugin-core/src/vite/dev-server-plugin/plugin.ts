@@ -34,8 +34,9 @@ export function devServerPlugin({
           command === 'serve' &&
           userConfig.experimental?.bundledDev
         ) {
-          // ponytail: eager compilation keeps SSR CSS/assets available until
-          // vitejs/vite#22991 exposes the lazy client graph.
+          // Workaround (https://github.com/vitejs/vite/issues/22991): SSR needs
+          // CSS/assets before a browser can trigger lazy compilation. Remove
+          // this override when Vite can resolve/compile lazy entries for SSR.
           return {
             environments: {
               [VITE_ENVIRONMENT_NAMES.client]: {
@@ -62,6 +63,9 @@ export function devServerPlugin({
           isBundledDev &&
           this.environment.name === VITE_ENVIRONMENT_NAMES.client
         ) {
+          // Workaround (https://github.com/vitejs/vite/issues/22968): the
+          // regular client moduleGraph starts a second plugin lifecycle.
+          // Use this snapshot until Vite exposes its bundled graph to SSR.
           bundledClientStyles = captureBundledDevStyles(this)
         }
       },
@@ -146,8 +150,9 @@ export function devServerPlugin({
         }
 
         if (viteDevServer.config.experimental.bundledDev) {
-          // Vite's bundled dev client watches sources separately, but Start still
-          // needs the SSR environment's module graph to see route/server edits.
+          // Workaround (https://github.com/vitejs/vite/discussions/22746,
+          // Phase 4): bundled dev omits the root from Vite's watcher, but our
+          // SSR environment is still unbundled. Remove when Vite watches it.
           viteDevServer.watcher.add(viteDevServer.config.root)
         }
 
@@ -209,8 +214,6 @@ export function devServerPlugin({
                */
               if (viteDevServer.config.experimental.bundledDev) {
                 await ensureLatestClientBuild(clientEnv)
-                serverEnv.moduleGraph.invalidateAll()
-                serverRunner.clearCache()
               }
 
               const serverEntry = await serverRunner.import(ENTRY_POINTS.server)

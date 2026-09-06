@@ -604,6 +604,47 @@ test.describe('react-start hmr', () => {
     await restoreRouteFiles()
   })
 
+  test('reuses SSR evaluations and transforms across unchanged requests', async ({
+    request,
+  }) => {
+    test.skip(
+      process.env.E2E_TOOLCHAIN === 'rsbuild',
+      'Vite module cache probe',
+    )
+
+    expect((await request.get('/child')).ok()).toBeTruthy()
+    const before = await (await request.get('/__test/ssr-cache')).json()
+    expect(before.root.exports).toBeGreaterThan(0)
+    expect(before.root.transform).toBeGreaterThan(0)
+    expect(before.child.exports).toBeGreaterThan(0)
+    expect(before.child.transform).toBeGreaterThan(0)
+
+    for (const url of ['/', '/child', '/']) {
+      expect((await request.get(url)).ok()).toBeTruthy()
+      expect(await (await request.get('/__test/ssr-cache')).json()).toEqual(
+        before,
+      )
+    }
+  })
+
+  test('refreshes an edited bundled SSR route without evicting an unrelated route', async ({
+    request,
+  }) => {
+    test.skip(!isViteBundledDev, 'Bundled-dev SSR invalidation')
+
+    expect((await request.get('/child')).ok()).toBeTruthy()
+    const before = await (await request.get('/__test/ssr-cache')).json()
+    await replaceRouteText('child', "crumb: 'Child'", "crumb: 'Child Updated'")
+    await expect
+      .poll(async () => await (await request.get('/child')).text())
+      .toContain('Child Updated')
+
+    const after = await (await request.get('/__test/ssr-cache')).json()
+    expect(after.root).toEqual(before.root)
+    expect(after.child.exports).not.toBe(before.child.exports)
+    expect(after.child.transform).not.toBe(before.child.transform)
+  })
+
   test('preserves local state for code-split route component HMR', async ({
     page,
   }) => {

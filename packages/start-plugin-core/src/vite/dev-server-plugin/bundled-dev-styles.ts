@@ -6,6 +6,8 @@ export function captureBundledDevStyles(context: {
   getModuleIds: () => Iterable<string>
   getModuleInfo: (id: string) => { code?: string | null } | null
 }): ReadonlyMap<string, string> {
+  // Workaround (https://github.com/vitejs/vite/issues/22991): replace this
+  // generated-code extraction with Vite's SSR stylesheet/output mapping.
   const styles = new Map<string, string>()
 
   for (const id of context.getModuleIds()) {
@@ -39,9 +41,9 @@ export async function loadBundledDevStyles(
     }
   }
 
-  // Cold lazy routes may not be bundled yet, and getModuleInfo can still contain
-  // unresolved asset placeholders. Inline SSR transforms handle both without
-  // starting the regular client plugin container or executing client JavaScript.
+  // Workaround (https://github.com/vitejs/vite/issues/22991): SSR-only styles
+  // may be absent from the client snapshot, and getModuleInfo can still contain
+  // asset placeholders. Replace this fallback with Vite's SSR output mapping.
   // Keep Vue's &lang.css suffix last so Vite still recognizes a CSS request.
   const inlineUrl = url.includes('?')
     ? url.replace('?', '?inline&')

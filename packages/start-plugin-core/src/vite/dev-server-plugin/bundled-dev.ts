@@ -1,5 +1,9 @@
 export async function ensureLatestClientBuild(environment: unknown) {
-  // Vite 8.2 moved the engine from the environment into bundledDev.
+  // PRIVATE-API WORKAROUND (https://github.com/vitejs/vite/issues/22991).
+  // Vite has no supported SSR API to refresh/await bundled client output.
+  // generateBundle observes full builds, but does not trigger regeneration
+  // after HMR patches. Replace this entire helper when that API is available.
+  // Vite <8.2 kept the engine on the environment; 8.2 moved it into bundledDev.
   const bundledDev =
     environment &&
     typeof environment === 'object' &&

@@ -34,6 +34,9 @@ export function startManifestPlugin(opts: {
       },
       enforce: 'post',
       configureServer(server) {
+        // Workaround (https://github.com/vitejs/vite/issues/22991): custom
+        // SSR HTML must include Vite's separate bundled-dev runtime. Replace
+        // the hardcoded filename when Vite exposes its SSR entry/output API.
         devClientRuntime = server.environments[START_ENVIRONMENT_NAMES.client]
           .bundledDev
           ? joinURL(server.config.base, 'bundledDevClient.mjs')
@@ -163,6 +166,8 @@ function getEmptyStartManifestModule(
 
 function getDevClientEntry(opts: { basePath: string; bundledDev: boolean }) {
   if (opts.bundledDev) {
+    // Workaround (https://github.com/vitejs/vite/issues/22991): Vite currently
+    // fixes bundled entry filenames. Use its module-to-URL API when available.
     return joinURL(opts.basePath, 'assets', 'index.js')
   }
 
