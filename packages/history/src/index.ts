@@ -394,6 +394,10 @@ export function createBrowserHistory(opts?: {
   }
 
   const onPushPopEvent = async () => {
+    // Same-document traversals do not fire beforeunload, so consume their
+    // exemption here instead of carrying it into a later document navigation.
+    ignoreNextBeforeUnload = false
+
     if (ignoreNextPop) {
       ignoreNextPop = false
       return
@@ -483,13 +487,17 @@ export function createBrowserHistory(opts?: {
     pushState: (href, state) => queueHistoryAction(true, href, state),
     replaceState: (href, state) => queueHistoryAction(false, href, state),
     back: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
-      ignoreNextBeforeUnload = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       return win.history.back()
     },
     forward: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
-      ignoreNextBeforeUnload = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       win.history.forward()
     },
     go: (n) => {
