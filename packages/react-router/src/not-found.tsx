@@ -9,7 +9,7 @@ import type { NotFoundError } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => React.ReactElement
-  onCatch?: (error: Error, errorInfo: ErrorInfo) => void
+  onCatch?: (error: NotFoundError, errorInfo: ErrorInfo) => void
   children: React.ReactNode
 }) {
   const router = useRouter()

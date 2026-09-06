@@ -15,11 +15,11 @@
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
     "express": "^5.2.1",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "vue": "^3.5.25"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
+    "@playwright/test": "^1.61.0",
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/express": "^5.0.6",
@@ -28,7 +28,8 @@
     "srvx": "^0.11.9",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.20.3",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5"

@@ -56,8 +56,9 @@ export function useRouterState<
 
   // During SSR we render exactly once and do not need reactivity.
   // Avoid subscribing to the store (and any structural sharing work) on the server.
-  const _isServer = isServer ?? router.isServer
-  if (_isServer) {
+  // The expression must stay inlined in the `if` so bundlers fold the
+  // browser-build constant `isServer = false` and drop this server block.
+  if (isServer ?? router.isServer) {
     const state = router.stores.__store.get() as RouterState<
       TRouter['routeTree']
     >

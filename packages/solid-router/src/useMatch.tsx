@@ -28,9 +28,12 @@ export interface UseMatchBaseOptions<
 export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
-  opts?: UseMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
-) => Solid.Accessor<UseMatchResult<TRouter, TFrom, true, TSelected>>
+  opts?: UseMatchBaseOptions<TRouter, TFrom, true, TThrow, TSelected>,
+) => Solid.Accessor<
+  ThrowOrOptional<UseMatchResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export type UseMatchOptions<
   TRouter extends AnyRouter,
@@ -70,16 +73,15 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatch = opts.from
-    ? undefined
-    : Solid.useContext(nearestMatchContext)
+  const contextMatch = Solid.useContext(nearestMatchContext)
+  const nearestMatch = opts.from ? undefined : contextMatch
 
   const match = () => {
     if (opts.from) {
-      return router.stores.getRouteMatchStore(opts.from).get()
+      return router.stores.getMatchStore(opts.from).get()
     }
 
-    return nearestMatch?.match()
+    return nearestMatch?.[1 /* match */]()
   }
 
   Solid.createEffect(() => {
@@ -87,15 +89,7 @@ export function useMatch<
       return
     }
 
-    const hasPendingMatch = opts.from
-      ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
-      : (nearestMatch?.hasPending() ?? false)
-
-    if (
-      !hasPendingMatch &&
-      !router.stores.isTransitioning.get() &&
-      (opts.shouldThrow ?? true)
-    ) {
+    if (opts.shouldThrow ?? true) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
           `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
@@ -110,17 +104,6 @@ export function useMatch<
     const selectedMatch = match()
 
     if (selectedMatch === undefined) {
-      const hasPendingMatch = opts.from
-        ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
-        : (nearestMatch?.hasPending() ?? false)
-
-      if (
-        prev !== undefined &&
-        (hasPendingMatch || router.stores.isTransitioning.get())
-      ) {
-        return prev
-      }
-
       return undefined
     }
 

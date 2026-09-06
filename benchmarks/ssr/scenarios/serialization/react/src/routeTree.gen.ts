@@ -9,17 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RichIdRouteImport } from './routes/rich.$id'
 import { Route as PlainIdRouteImport } from './routes/plain.$id'
+import { Route as RichIdRouteImport } from './routes/rich.$id'
 
-const RichIdRoute = RichIdRouteImport.update({
-  id: '/rich/$id',
-  path: '/rich/$id',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const PlainIdRoute = PlainIdRouteImport.update({
   id: '/plain/$id',
   path: '/plain/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RichIdRoute = RichIdRouteImport.update({
+  id: '/rich/$id',
+  path: '/rich/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -51,18 +51,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/rich/$id': {
-      id: '/rich/$id'
-      path: '/rich/$id'
-      fullPath: '/rich/$id'
-      preLoaderRoute: typeof RichIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/plain/$id': {
       id: '/plain/$id'
       path: '/plain/$id'
       fullPath: '/plain/$id'
       preLoaderRoute: typeof PlainIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rich/$id': {
+      id: '/rich/$id'
+      path: '/rich/$id'
+      fullPath: '/rich/$id'
+      preLoaderRoute: typeof RichIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

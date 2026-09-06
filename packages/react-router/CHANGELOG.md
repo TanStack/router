@@ -1,5 +1,168 @@
 # @tanstack/react-router
 
+## 1.170.32
+
+### Patch Changes
+
+- [#8130](https://github.com/TanStack/router/pull/8130) [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b) - preserve context during reloads
+
+- Updated dependencies [[`fa65287`](https://github.com/TanStack/router/commit/fa652872812c9433ba8b9d9a285e51b535e7367c), [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b)]:
+  - @tanstack/router-core@1.171.27
+
+## 1.170.31
+
+### Patch Changes
+
+- Updated dependencies [[`3e016ac`](https://github.com/TanStack/router/commit/3e016ac84ffec8119f0c25cfdd1fb17e5292bd34)]:
+  - @tanstack/router-core@1.171.26
+
+## 1.170.30
+
+### Patch Changes
+
+- [#8084](https://github.com/TanStack/router/pull/8084) [`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175) - preserve pending UI across retained routes
+
+- [#8068](https://github.com/TanStack/router/pull/8068) [`f75cada`](https://github.com/TanStack/router/commit/f75cada01707e51fb9650dd301bc04f8b2265a2a) - direct export of CatchBoundary class component, remove function wrapper
+
+- Updated dependencies [[`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175), [`63d2cc9`](https://github.com/TanStack/router/commit/63d2cc9155ff5374112f7d067d0b278bafeb8486)]:
+  - @tanstack/router-core@1.171.25
+
+## 1.170.29
+
+### Patch Changes
+
+- [#8073](https://github.com/TanStack/router/pull/8073) [`0fdf9ff`](https://github.com/TanStack/router/commit/0fdf9ff16fc532de9fc131d18df167ebd8038720) - inline isCtrlKey inside Link component for byte shaving
+
+- Updated dependencies [[`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2), [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e), [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff)]:
+  - @tanstack/router-core@1.171.24
+
+## 1.170.28
+
+### Patch Changes
+
+- [#8055](https://github.com/TanStack/router/pull/8055) [`0c25a7b`](https://github.com/TanStack/router/commit/0c25a7b43b5331ee6ebf94d50e9793002783adab) - Avoid wrapping root components that may render the HTML document in a Suspense boundary during SSR and hydration.
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
+- Updated dependencies [[`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90)]:
+  - @tanstack/router-core@1.171.23
+
+## 1.170.27
+
+### Patch Changes
+
+- [#8047](https://github.com/TanStack/router/pull/8047) [`b0817f5`](https://github.com/TanStack/router/commit/b0817f50cc639ae50b6c30cd11c5adbf7eed028c) - useMatchRoute w/ React Compiler
+
+## 1.170.26
+
+### Patch Changes
+
+- [#8045](https://github.com/TanStack/router/pull/8045) [`f500760`](https://github.com/TanStack/router/commit/f5007607d62e932b8df19de866cdc6bddcff8db3) - Warn when an Outlet is rendered inside a pending, error, or not-found component.
+
+- [#8043](https://github.com/TanStack/router/pull/8043) [`1aafca9`](https://github.com/TanStack/router/commit/1aafca9b45d24f8f0dba78e716fc9582346c6ca1) - remove the undocumented Link `isTransitioning` state and `data-transitioning` attribute
+
+- [#8044](https://github.com/TanStack/router/pull/8044) [`aa10b65`](https://github.com/TanStack/router/commit/aa10b6589eeda215f5a60ea0af95a3101d8c414e) - Apply `preloadDelay` to viewport link preloading and cancel pending preloads when links leave the viewport.
+
+- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13)]:
+  - @tanstack/router-core@1.171.22
+
+## 1.170.25
+
+### Patch Changes
+
+- Updated dependencies [[`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05)]:
+  - @tanstack/router-core@1.171.21
+
+## 1.170.24
+
+### Patch Changes
+
+- Updated dependencies [[`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246), [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a)]:
+  - @tanstack/router-core@1.171.20
+
+## 1.170.23
+
+### Patch Changes
+
+- [#7952](https://github.com/TanStack/router/pull/7952) [`95dec51`](https://github.com/TanStack/router/commit/95dec51018d01483949c6f1fe3094b019ccf3b4f) - bail out of `Link` re-renders when the resolved href and active state are unchanged
+
+## 1.170.22
+
+### Patch Changes
+
+- [#7992](https://github.com/TanStack/router/pull/7992) [`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9) - retain mounted UI during revalidation
+
+- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
+  - @tanstack/router-core@1.171.19
+
+## 1.170.21
+
+### Patch Changes
+
+- [#7961](https://github.com/TanStack/router/pull/7961) [`697ebb6`](https://github.com/TanStack/router/commit/697ebb6ddbd433d052b6b4707938a5c595865d58) - Prevent a blank frame before zero-delay initial pending UI by using a
+  component-scoped React transition for match publication. Pending timing,
+  boundary selection, and rendered matches continue to come from the router
+  core.
+
+- [#7970](https://github.com/TanStack/router/pull/7970) [`2435885`](https://github.com/TanStack/router/commit/2435885fa8b5e31c8c4b74d93920919f27316ebf) - createFileRoute does not rely on FileRoute class
+
+- [#7971](https://github.com/TanStack/router/pull/7971) [`86bf510`](https://github.com/TanStack/router/commit/86bf510c2923afb76804223bd04afc2a809b33e7) - clean intersection observer options in link component
+
+- [#7967](https://github.com/TanStack/router/pull/7967) [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c) - Preserve path params in their raw string form while matching routes so structured values returned by `params.parse` produce stable match IDs and do not reuse stale loader data.
+
+  `RouterCore.getMatchedRoutes()` now returns `[matchedRoutes, rawParams, foundRoute]` instead of an object.
+
+- Updated dependencies [[`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
+  - @tanstack/router-core@1.171.18
+  - @tanstack/history@1.162.1
+
+## 1.170.20
+
+### Patch Changes
+
+- Updated dependencies [[`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5)]:
+  - @tanstack/router-core@1.171.17
+
+## 1.170.19
+
+### Patch Changes
+
+- [#7805](https://github.com/TanStack/router/pull/7805) [`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd) - Rewrite match loading around a lane-based scheduler that tracks each navigation, preload, and background reload as an ordered unit of work. This fixes pending/redirect/retry state leaking between overlapping navigations, restores correct SSR status codes for redirects, errors, and not-found responses, and closes hydration gaps where the client re-ran work the server had already completed.
+  - Invalidation now retires matching active preloads so older speculative loader results cannot become fresh cache data after invalidation.
+  - Route `headers()` now only runs on the server, matching the documented behavior — it is no longer invoked during client-side asset projection.
+  - The documented default `gcTime` and `preloadGcTime` now match the existing runtime default of 5 minutes (`300_000`).
+
+  **Removed / changed exported internals**
+  - `RouterState` no longer includes `loadedAt`, `isTransitioning`, `statusCode`, or `redirect`. Use `match.updatedAt` in place of `loadedAt`; subscribe to `router.state.status` / `router.state.isLoading` in place of `isTransitioning`; server response status and redirect handling are now internal to the server loader and are no longer exposed on `router.state`.
+  - `RouteMatch.fetchCount` has been removed, with no replacement — it was purely informational.
+  - `RouteMatch.status` no longer includes `'redirected'` (it remains `'pending' | 'success' | 'error' | 'notFound'`) — redirected matches are dropped from the match list instead of being rendered.
+  - `RouteMatch.globalNotFound` has been renamed and privatized to the internal `_notFound` field. Use `match.status === 'notFound'` instead.
+  - The exported React, Solid, and Vue `Match` components now accept `routeId` instead of `matchId`.
+  - The exported `RouterStores` adapter contract now uses route-keyed presentation stores: `matchesId` is replaced by `ids`, `matchStores` by `byRoute`, and `getRouteMatchStore()` by `getMatchStore()`. The separate `loadedAt`, `isLoading`, `isTransitioning`, `statusCode`, and `redirect` stores have been removed, along with the pending/cache stores and their setters. `StoreConfig.init` has also been removed. Read application-facing state from `router.state`; preload and cache coordination are now internal.
+  - Removed `RouterCore` members `getMatch()`, `updateMatch()`, `cancelMatch()`, and `cancelMatches()` — read matches from `router.state.matches` (e.g. `router.state.matches.find((m) => m.id === id)`); there is no replacement for mutating or cancelling an individual in-flight match from outside the router.
+  - Removed `RouterCore.hasNotFoundMatch()` — use `router.state.matches.some((m) => m.status === 'notFound')`.
+  - Removed `RouterCore.looseRoutesById` — use `routesById`.
+  - Removed `RouterCore.isPrerendering()`, `RouterCore.isViewTransitionTypesSupported`, and `RouterCore.viewTransitionPromise`, with no replacement.
+  - Removed `RouterCore.getParsedLocationHref()` and `RouterCore.clearExpiredCache()`, with no replacement — expired cache entries are now reconciled automatically as part of match commit.
+  - Removed `RouterCore.latestLoadPromise` and `RouterCore.beforeLoad()`, with no replacement.
+  - `RouterCore.commitLocationPromise` and `RouterCore.pendingBuiltLocation` have been replaced by the internal `_commitPromise` and `_pendingLocation` fields.
+  - Removed the exported `GetMatchFn` and `UpdateMatchFn` types, along with the methods they typed.
+  - Removed the standalone `getMatchedRoutes()` export from `@tanstack/router-core` — use the `router.getMatchedRoutes()` instance method instead.
+  - `RouterCore.loadRouteChunk()` no longer accepts an array of component types as its second argument. One-argument usage is unchanged; the optional second argument is now `'errorComponent'`, `'notFoundComponent'`, or `false` for internal boundary loading.
+  - Removed `Redirect.redirectHandled`, which was internal redirect bookkeeping.
+  - `MatchRoutesOpts.preload` and `MatchRoutesOpts.dest` have been removed.
+  - `StartTransitionFn` is now `(fn, expected) => Promise<boolean>` (previously `(fn) => void`). This only affects custom framework adapters that implement `startTransition`.
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+
+## 1.170.18
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+
 ## 1.170.17
 
 ### Patch Changes

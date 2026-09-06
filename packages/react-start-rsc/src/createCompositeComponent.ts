@@ -1,6 +1,5 @@
 import { createElement } from 'react'
 import { renderToReadableStream } from 'virtual:tanstack-rsc-runtime'
-import { getRequest } from '@tanstack/start-server-core'
 import { getStartContext } from '@tanstack/start-storage-context'
 import { sanitizeSlotArgs } from './slotUsageSanitizer'
 import { ReplayableStream } from './ReplayableStream'
@@ -99,7 +98,7 @@ export async function createCompositeComponent<TComp>(
 
   // SSR path: buffer stream for replay, pre-decode for synchronous rendering
   if (isRouterRequest && ssrHandler) {
-    const signal = getRequest().signal
+    const signal = ctx.request.signal
     const stream = new ReplayableStream(flightStream, { signal })
 
     // Pre-decode during loader phase for synchronous SSR rendering

@@ -1,5 +1,191 @@
 # @tanstack/start-plugin-core
 
+## 1.171.39
+
+### Patch Changes
+
+- [#8135](https://github.com/TanStack/router/pull/8135) [`a0041bb`](https://github.com/TanStack/router/commit/a0041bb36e700b3263b894e4d1573d924383b56b) - Migrate the Rsbuild client chunk configuration to the v2 `splitChunks` option while preserving async-only chunk splitting.
+
+- Updated dependencies [[`fa65287`](https://github.com/TanStack/router/commit/fa652872812c9433ba8b9d9a285e51b535e7367c), [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b)]:
+  - @tanstack/router-core@1.171.27
+  - @tanstack/router-generator@1.167.33
+  - @tanstack/router-plugin@1.168.35
+  - @tanstack/start-server-core@1.169.31
+
+## 1.171.38
+
+### Patch Changes
+
+- Updated dependencies [[`3e016ac`](https://github.com/TanStack/router/commit/3e016ac84ffec8119f0c25cfdd1fb17e5292bd34)]:
+  - @tanstack/router-core@1.171.26
+  - @tanstack/router-generator@1.167.32
+  - @tanstack/router-plugin@1.168.34
+  - @tanstack/start-server-core@1.169.30
+
+## 1.171.37
+
+### Patch Changes
+
+- Updated dependencies [[`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175), [`63d2cc9`](https://github.com/TanStack/router/commit/63d2cc9155ff5374112f7d067d0b278bafeb8486)]:
+  - @tanstack/router-core@1.171.25
+  - @tanstack/router-generator@1.167.31
+  - @tanstack/router-plugin@1.168.33
+  - @tanstack/start-server-core@1.169.29
+
+## 1.171.36
+
+### Patch Changes
+
+- Updated dependencies [[`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2), [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e), [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff)]:
+  - @tanstack/router-core@1.171.24
+  - @tanstack/router-generator@1.167.30
+  - @tanstack/router-plugin@1.168.32
+  - @tanstack/start-server-core@1.169.28
+
+## 1.171.35
+
+### Patch Changes
+
+- Updated dependencies [[`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90)]:
+  - @tanstack/router-core@1.171.23
+  - @tanstack/router-generator@1.167.29
+  - @tanstack/router-plugin@1.168.31
+  - @tanstack/start-server-core@1.169.27
+
+## 1.171.34
+
+### Patch Changes
+
+- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13)]:
+  - @tanstack/router-core@1.171.22
+  - @tanstack/router-generator@1.167.28
+  - @tanstack/router-plugin@1.168.30
+  - @tanstack/start-server-core@1.169.26
+
+## 1.171.33
+
+### Patch Changes
+
+- Updated dependencies [[`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05)]:
+  - @tanstack/router-core@1.171.21
+  - @tanstack/router-generator@1.167.27
+  - @tanstack/router-plugin@1.168.29
+  - @tanstack/start-server-core@1.169.25
+
+## 1.171.32
+
+### Patch Changes
+
+- Updated dependencies [[`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246), [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a)]:
+  - @tanstack/router-core@1.171.20
+  - @tanstack/router-generator@1.167.26
+  - @tanstack/router-plugin@1.168.28
+  - @tanstack/start-server-core@1.169.24
+
+## 1.171.31
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-server-core@1.169.23
+  - @tanstack/router-generator@1.167.25
+
+## 1.171.30
+
+### Patch Changes
+
+- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
+  - @tanstack/router-core@1.171.19
+  - @tanstack/router-generator@1.167.25
+  - @tanstack/router-plugin@1.168.27
+  - @tanstack/start-server-core@1.169.22
+
+## 1.171.29
+
+### Patch Changes
+
+- Updated dependencies [[`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
+  - @tanstack/router-core@1.171.18
+  - @tanstack/start-server-core@1.169.21
+  - @tanstack/router-generator@1.167.24
+  - @tanstack/router-plugin@1.168.26
+
+## 1.171.28
+
+### Patch Changes
+
+- [#7962](https://github.com/TanStack/router/pull/7962) [`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5) - Update Seroval dependencies to version 1.6.2.
+
+- Updated dependencies [[`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5)]:
+  - @tanstack/router-core@1.171.17
+  - @tanstack/start-server-core@1.169.20
+  - @tanstack/router-generator@1.167.23
+  - @tanstack/router-plugin@1.168.25
+
+## 1.171.27
+
+### Patch Changes
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+  - @tanstack/router-generator@1.167.22
+  - @tanstack/router-plugin@1.168.24
+  - @tanstack/start-server-core@1.169.19
+
+## 1.171.26
+
+### Patch Changes
+
+- [#7944](https://github.com/TanStack/router/pull/7944) [`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162) - Use focused server entrypoints for shared constants and handler helpers so build tooling and framework renderers do not traverse the full Start server barrel.
+
+- Updated dependencies [[`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162)]:
+  - @tanstack/start-server-core@1.169.18
+
+## 1.171.25
+
+### Patch Changes
+
+- [#7590](https://github.com/TanStack/router/pull/7590) [`7592555`](https://github.com/TanStack/router/commit/7592555b86c968efbc8c817ac0cf6fdae60aabe0) - Fix Rsbuild SSR asset URLs for `?url` imports by aligning server public asset paths with the client build.
+
+## 1.171.24
+
+### Patch Changes
+
+- Updated dependencies [[`49f6863`](https://github.com/TanStack/router/commit/49f686324574ea65851317cbba084eb386a911c6)]:
+  - @tanstack/router-plugin@1.168.23
+
+## 1.171.23
+
+### Patch Changes
+
+- [#7844](https://github.com/TanStack/router/pull/7844) [`ffdd64e`](https://github.com/TanStack/router/commit/ffdd64e842acacbc9d368a4803a9e474e9f0c0ff) - Preserve exact Vite-resolved module IDs, including virtual prefixes and query variants, when the Start compiler recursively loads imports. Clean IDs only for file-oriented diagnostics and invalidation, and preserve existing query strings when adding compiler-owned lookup flags, so virtual modules such as import-protection mocks reach their plugin load hooks unchanged.
+
+## 1.171.22
+
+### Patch Changes
+
+- Updated dependencies [[`78dd1a6`](https://github.com/TanStack/router/commit/78dd1a645dc1a9e9f4f649d9aff12005044d4fcc)]:
+  - @tanstack/router-generator@1.167.21
+  - @tanstack/router-plugin@1.168.22
+
+## 1.171.21
+
+### Patch Changes
+
+- Updated dependencies [[`e56a677`](https://github.com/TanStack/router/commit/e56a67742da9021b009b8db0cdc8bfe99878c25b)]:
+  - @tanstack/router-generator@1.167.20
+  - @tanstack/router-plugin@1.168.21
+
+## 1.171.20
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+  - @tanstack/router-generator@1.167.19
+  - @tanstack/router-plugin@1.168.20
+  - @tanstack/start-server-core@1.169.17
+
 ## 1.171.19
 
 ### Patch Changes

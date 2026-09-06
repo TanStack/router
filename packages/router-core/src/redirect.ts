@@ -1,6 +1,6 @@
+import { isAbsoluteUrl } from './utils'
 import type { NavigateOptions } from './link'
 import type { AnyRouter, RegisteredRouter } from './router'
-import type { ParsedLocation } from './location'
 
 export type AnyRedirect = Redirect<any, any, any, any, any>
 
@@ -14,14 +14,7 @@ export type Redirect<
   TMaskFrom extends string = TFrom,
   TMaskTo extends string = '.',
 > = Response & {
-  options: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo> & {
-    /**
-     * @internal
-     * A **trusted** built location that can be used to redirect to.
-     */
-    _builtLocation?: ParsedLocation
-  }
-  redirectHandled?: boolean
+  options: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 }
 
 export type RedirectOptions<
@@ -51,11 +44,6 @@ export type RedirectOptions<
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RedirectType#headers-property)
    */
   headers?: HeadersInit
-  /**
-   * @internal
-   * A **trusted** built location that can be used to redirect to.
-   */
-  _builtLocation?: ParsedLocation
 } & NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>
 
 export type ResolvedRedirect<
@@ -124,14 +112,11 @@ export function redirect<
   opts.statusCode = opts.statusCode || opts.code || 307
 
   if (
-    !opts._builtLocation &&
     !opts.reloadDocument &&
-    typeof opts.href === 'string'
+    typeof opts.href === 'string' &&
+    isAbsoluteUrl(opts.href)
   ) {
-    try {
-      new URL(opts.href)
-      opts.reloadDocument = true
-    } catch {}
+    opts.reloadDocument = true
   }
 
   const headers = new Headers(opts.headers)

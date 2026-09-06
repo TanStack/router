@@ -7,7 +7,7 @@ import {
   SEGMENT_TYPE_WILDCARD,
   parseSegment,
 } from './new-process-route-tree'
-import type { LRUCache } from './lru-cache'
+import type { SieveCache } from './sieve-cache'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
@@ -99,7 +99,7 @@ interface ResolvePathOptions {
   base: string
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
-  cache?: LRUCache<string, string>
+  cache?: SieveCache<string, string>
 }
 
 /**
@@ -112,13 +112,25 @@ export function resolvePath({
   trailingSlash = 'never',
   cache,
 }: ResolvePathOptions) {
-  const isAbsolute = to.startsWith('/')
-  const isBase = !isAbsolute && to === '.'
+  if (to.includes('//')) {
+    to = cleanPath(to)
+  }
 
+  if (to.startsWith('/')) {
+    if (to.length === 1 || trailingSlash === 'preserve') {
+      return to
+    }
+    if (trailingSlash === 'always') {
+      return to.endsWith('/') ? to : `${to}/`
+    }
+    return to.endsWith('/') ? to.slice(0, -1) : to
+  }
+
+  const isBase = to === '.'
   let key
   if (cache) {
     // `trailingSlash` is static per router, so it doesn't need to be part of the cache key
-    key = isAbsolute ? to : isBase ? base : base + '\0' + to
+    key = isBase ? base : base + '\0' + to
     const cached = cache.get(key)
     if (cached) return cached
   }
@@ -126,9 +138,10 @@ export function resolvePath({
   let baseSegments: Array<string>
   if (isBase) {
     baseSegments = base.split('/')
-  } else if (isAbsolute) {
-    baseSegments = to.split('/')
   } else {
+    if (base.includes('//')) {
+      base = cleanPath(base)
+    }
     baseSegments = base.split('/')
     while (baseSegments.length > 1 && last(baseSegments) === '') {
       baseSegments.pop()
@@ -148,7 +161,11 @@ export function resolvePath({
           // ignore inter-slashes
         }
       } else if (value === '..') {
-        baseSegments.pop()
+        if (baseSegments.length > 1) {
+          baseSegments.pop()
+        } else {
+          baseSegments = ['']
+        }
       } else if (value === '.') {
         // ignore
       } else {
@@ -167,7 +184,8 @@ export function resolvePath({
     }
   }
 
-  const result = cleanPath(baseSegments.join('/')) || '/'
+  const joined = baseSegments.join('/')
+  const result = (isBase ? cleanPath(joined) : joined) || '/'
   if (key && cache) cache.set(key, result)
   return result
 }

@@ -302,6 +302,17 @@ describe('matchRoute', () => {
     expect(router.matchRoute({ to: '/' })).toEqual({})
   })
 
+  it('does not exactly match the root route at an unknown URL', async () => {
+    const router = createTestRouter({
+      routeTree: new BaseRootRoute({}),
+      history: createMemoryHistory({ initialEntries: ['/missing'] }),
+    })
+
+    await router.load()
+
+    expect(router.matchRoute({ to: '/' })).toBe(false)
+  })
+
   it('matches encoded params without corrupting fuzzy remainders', async () => {
     const rootRoute = new BaseRootRoute({})
     const itemRoute = new BaseRoute({
@@ -571,6 +582,32 @@ describe('matchRoute', () => {
         { fuzzy: true },
       ),
     ).toEqual({ invoiceId: 123, '**': 'details' })
+  })
+
+  it('does not exactly match an ancestor of an unknown path', async () => {
+    const router = createInvoiceRouter('/invoices/123/details')
+
+    await router.load()
+
+    expect(
+      router.matchRoute({
+        to: '/invoices/$invoiceId',
+        params: { invoiceId: 123 },
+      }),
+    ).toBe(false)
+  })
+
+  it('preserves the trailing slash in a fuzzy remainder', async () => {
+    const router = createInvoiceRouter('/invoices/123/details/')
+
+    await router.load()
+
+    expect(
+      router.matchRoute(
+        { to: '/invoices/$invoiceId', params: { invoiceId: 123 } },
+        { fuzzy: true },
+      ),
+    ).toEqual({ invoiceId: 123, '**': 'details/' })
   })
 
   it('keeps search matching behavior', async () => {

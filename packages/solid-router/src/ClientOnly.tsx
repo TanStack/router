@@ -59,7 +59,9 @@ export function ClientOnly(props: ClientOnlyProps) {
 let globalHydrated = false
 
 export function useHydrated(): Solid.Accessor<boolean> {
-  const [hydrated, setHydrated] = Solid.createSignal(globalHydrated)
+  const [hydrated, setHydrated] = Solid.createSignal(
+    globalHydrated && !Solid.sharedConfig.context,
+  )
 
   Solid.onMount(() => {
     globalHydrated = true

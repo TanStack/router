@@ -282,46 +282,40 @@ export const BaseTanStackRouterDevtoolsPanel =
     const [history, setHistory] = createSignal<Array<AnyRouteMatch>>([])
     const [hasHistoryOverflowed, setHasHistoryOverflowed] = createSignal(false)
 
-    let pendingMatches: Accessor<Array<AnyRouteMatch>>
-    let cachedMatches: Accessor<Array<AnyRouteMatch>>
-    // subscribable implementation
-    if ('subscribe' in router().stores.pendingMatches) {
-      const [_pendingMatches, setPending] = createSignal<Array<AnyRouteMatch>>(
-        [],
-      )
-      pendingMatches = _pendingMatches
-
-      const [_cachedMatches, setCached] = createSignal<Array<AnyRouteMatch>>([])
-      cachedMatches = _cachedMatches
-
-      type Subscribe = (fn: () => void) => { unsubscribe: () => void }
-      createEffect(() => {
-        const pendingMatchesStore = router().stores.pendingMatches
-        setPending(pendingMatchesStore.get())
-        const subscription = (
-          (pendingMatchesStore as any).subscribe as Subscribe
-        )(() => {
-          setPending(pendingMatchesStore.get())
-        })
-        onCleanup(() => subscription.unsubscribe())
-      })
-
-      createEffect(() => {
-        const cachedMatchesStore = router().stores.cachedMatches
-        setCached(cachedMatchesStore.get())
-        const subscription = (
-          (cachedMatchesStore as any).subscribe as Subscribe
-        )(() => {
-          setCached(cachedMatchesStore.get())
-        })
-        onCleanup(() => subscription.unsubscribe())
-      })
+    const pendingMatches = () => {
+      const matches = routerState().matches
+      return matches.some((match: AnyRouteMatch) => match.status === 'pending')
+        ? matches
+        : []
     }
-    // signal implementation
-    else {
-      pendingMatches = () => router().stores.pendingMatches.get()
-      cachedMatches = () => router().stores.cachedMatches.get()
-    }
+    let cache = router()._cache
+    let cacheMatches = [...cache.values()]
+    const [cachedMatches, setCachedMatches] = createSignal(cacheMatches)
+
+    createEffect(() => {
+      const refreshCache = () => {
+        const next = router()._cache
+        let valuesChanged = next.size !== cacheMatches.length
+        if (!valuesChanged) {
+          let index = 0
+          for (const match of next.values()) {
+            if (match !== cacheMatches[index++]) {
+              valuesChanged = true
+              break
+            }
+          }
+        }
+
+        if (next !== cache || valuesChanged) {
+          cache = next
+          cacheMatches = [...next.values()]
+          setCachedMatches(cacheMatches)
+        }
+      }
+      refreshCache()
+      const interval = setInterval(refreshCache, 500)
+      onCleanup(() => clearInterval(interval))
+    })
 
     createEffect(() => {
       const matches = routerState().matches
@@ -392,7 +386,6 @@ export const BaseTanStackRouterDevtoolsPanel =
                 'stores',
                 'basepath',
                 'subscribers',
-                'latestLoadPromise',
                 '_scroll',
                 'tempLocationKey',
                 'latestLocation',
@@ -719,7 +712,9 @@ export const BaseTanStackRouterDevtoolsPanel =
                 <div class={styles().matchDetailsInfoLabel}>
                   <div>State:</div>
                   <div class={styles().matchDetailsInfo}>
-                    {pendingMatches().find((d) => d.id === activeMatch()?.id)
+                    {pendingMatches().find(
+                      (d: AnyRouteMatch) => d.id === activeMatch()?.id,
+                    )
                       ? 'Pending'
                       : routerState().matches.find(
                             (d: any) => d.id === activeMatch()?.id,
