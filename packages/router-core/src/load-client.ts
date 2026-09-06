@@ -248,14 +248,14 @@ type CoordinatorRouter = AnyRouter & {
 type LoaderTask = [
   index: number,
   outcome: Promise<LoaderOutcome>,
-  chunkFailure: Promise<IndexedOutcome | undefined>,
+  chunkFailure: Promise<IndexedOutcome | undefined | void>,
   candidate?: WorkMatch,
 ]
 
 type BackgroundLoaderTask = [
   index: number,
   outcome: Promise<LoaderOutcome>,
-  chunkFailure: Promise<IndexedOutcome | undefined>,
+  chunkFailure: Promise<IndexedOutcome | undefined | void>,
   candidate: WorkMatch,
 ]
 
@@ -435,7 +435,8 @@ async function contextualize(
         context: match.context,
         ...router.options.additionalContext,
       })
-      // Keep the cancellation checkpoint without wrapping synchronous context.
+      // Always await to give a queued replacement navigation one microtask to
+      // kick in before checking cancellation, even for synchronous context.
       const result = await (typeof value?.then === 'function'
         ? waitFor(value, signal)
         : value)
@@ -896,29 +897,32 @@ function createLoaderTask(
         )
 
   // Keep thrown preloads and rejected chunks in the same task promise.
-  const chunkFailure = (async (): Promise<IndexedOutcome | undefined> => {
-    let failure: IndexedOutcome | undefined
+  const chunkFailure = (async (): Promise<IndexedOutcome | void> => {
     try {
       const chunk = loadRouteChunk(route, undefined, onLazyReady)
       if (chunk) {
         await waitFor(chunk, options[0 /* controller */].signal)
       }
     } catch (cause) {
-      failure = lane[1 /* matches */].some(
-        (candidate, candidateIndex) =>
-          candidateIndex <= index &&
-          (candidate.status === 'error' ||
-            candidate.status === 'notFound' ||
-            candidate._notFound),
-      )
-        ? undefined
-        : [index, normalizeLaneError(router, lane, route, cause, options)]
+      if (
+        !lane[1 /* matches */].some(
+          (candidate, candidateIndex) =>
+            candidateIndex <= index &&
+            (candidate.status === 'error' ||
+              candidate.status === 'notFound' ||
+              candidate._notFound),
+        )
+      ) {
+        return [
+          index,
+          normalizeLaneError(router, lane, route, cause, options),
+        ] satisfies IndexedOutcome
+      }
     }
     // Readiness requires both the component chunk and loader data.
     const result = await outcome
     if (
       blocking &&
-      !failure &&
       result[0 /* kind */] === SUCCESS &&
       match.status === 'pending' &&
       !options[0 /* controller */].signal.aborted
@@ -926,7 +930,6 @@ function createLoaderTask(
       match.status = 'success'
       onReady?.()
     }
-    return failure
   })()
   tasks.push([index, outcome, chunkFailure])
   if (!background) {
