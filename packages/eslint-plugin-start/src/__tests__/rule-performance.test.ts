@@ -107,6 +107,7 @@ function createLint(files: Record<string, string>) {
             languageOptions: {
               parser: RuleTester.getDefaultConfig().languageOptions?.parser,
               parserOptions: {
+                disallowAutomaticSingleRunInference: true,
                 projectService: true,
                 tsconfigRootDir: directory,
               },
