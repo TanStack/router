@@ -63,9 +63,14 @@ describe('normalizeRspackClientBuild', () => {
     expect(manifest.inlineCss).toBeUndefined()
   })
 
-  test.each([false, true])(
-    'captures inline CSS according to the resolved config (%s)',
-    (enabled) => {
+  test.each([
+    { action: 'build', enabled: false, captureCss: false },
+    { action: 'build', enabled: true, captureCss: true },
+    { action: 'dev', enabled: false, captureCss: false },
+    { action: 'dev', enabled: true, captureCss: false },
+  ])(
+    'captures inline CSS according to the action and resolved config ($action, $enabled)',
+    ({ action, enabled, captureCss }) => {
       const readCss = vi.fn(() =>
         Buffer.from('.card{background:url(./dot.svg)}'),
       )
@@ -75,7 +80,7 @@ describe('normalizeRspackClientBuild', () => {
         startConfig: { server: { build: { inlineCss: { enabled } } } },
       }))
       const { getClientBuild } = registerClientBuildCapture(
-        { processAssets } as unknown as RsbuildPluginAPI,
+        { context: { action }, processAssets } as unknown as RsbuildPluginAPI,
         getConfig as unknown as GetConfigFn,
       )
 
@@ -84,26 +89,28 @@ describe('normalizeRspackClientBuild', () => {
       expect(options).toEqual({ stage: 'report', environments: ['client'] })
       capture({ compilation } as Parameters<typeof capture>[0])
 
+      const clientBuild = getClientBuild()!
       const manifest = buildStartManifest({
-        clientBuild: getClientBuild()!,
+        clientBuild,
         routeTreeRoutes: {
           __root__: {},
           '/posts': { filePath: '/routes/posts.tsx' },
         },
         basePath: '/assets',
-        inlineCss: { enabled, transformAssets: false },
+        inlineCss: { enabled: captureCss, transformAssets: false },
       })
 
-      expect(getAssets).toHaveBeenCalledTimes(enabled ? 1 : 0)
-      expect(readCss).toHaveBeenCalledTimes(enabled ? 2 : 0)
+      expect(getAssets).toHaveBeenCalledTimes(captureCss ? 1 : 0)
+      expect(readCss).toHaveBeenCalledTimes(captureCss ? 2 : 0)
       expect(manifest.routes.__root__?.css).toEqual(['/assets/root.css'])
       expect(manifest.routes['/posts']?.css).toEqual(['/assets/posts.css'])
-      if (enabled) {
+      if (captureCss) {
         expect(manifest.inlineCss?.styles).toEqual({
           '/assets/root.css': '.card{background:url(/assets/dot.svg)}',
           '/assets/posts.css': '.card{background:url(/assets/dot.svg)}',
         })
       } else {
+        expect(clientBuild.cssContentByFileName).toBeUndefined()
         expect(manifest.inlineCss).toBeUndefined()
       }
     },

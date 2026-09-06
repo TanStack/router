@@ -354,7 +354,8 @@ export function registerClientBuildCapture(
     (context: ProcessAssetsContext) => {
       clientBuild = normalizeRspackClientBuild(
         context.compilation,
-        getConfig().startConfig.server.build.inlineCss.enabled,
+        api.context.action !== 'dev' &&
+          getConfig().startConfig.server.build.inlineCss.enabled,
       )
     },
   )
