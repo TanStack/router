@@ -50,8 +50,8 @@ export function RouterContextProvider<
 }
 
 /**
- * Top-level component that renders the active route matches and provides the
- * router to the React tree via context.
+ * Renders the current match presentation and provides the router to the React
+ * tree via context.
  *
  * Accepts the same options as `createRouter` via props to update the router
  * instance after creation.

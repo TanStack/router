@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, Outlet, createFileRoute } from '@tanstack/react-router'
 
 import { fetchPosts } from '~/utils/posts'
@@ -16,9 +17,16 @@ export const Route = createFileRoute('/posts')({
 
 function PostsComponent() {
   const posts = Route.useLoaderData()
+  const [hydrationCount, setHydrationCount] = useState(0)
 
   return (
     <div className="p-2 flex gap-2">
+      <button
+        data-testid="posts-parent-hydration-counter"
+        onClick={() => setHydrationCount((count) => count + 1)}
+      >
+        Parent hydration count: {hydrationCount}
+      </button>
       <ul className="list-disc pl-4">
         {[...posts, { id: 'i-do-not-exist', title: 'Non-existent Post' }].map(
           (post) => {

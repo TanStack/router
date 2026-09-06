@@ -1,10 +1,12 @@
+import type { RouterHistory } from '@tanstack/history'
 import { RouterProvider, createRouter } from '@tanstack/react-router'
 import { createRoot } from 'react-dom/client'
 import { routeTree } from './routeTree.gen'
 
-export function createTestRouter() {
+export function createTestRouter(history: RouterHistory) {
   return createRouter({
     routeTree,
+    history,
     scrollRestoration: true,
     // Key the scroll-restoration cache by pathname instead of the default
     // random per-entry location key: with push navigations the default mints
@@ -20,8 +22,8 @@ declare module '@tanstack/react-router' {
   }
 }
 
-export function mountTestApp(container: HTMLElement) {
-  const router = createTestRouter()
+export function mountTestApp(container: HTMLElement, history: RouterHistory) {
+  const router = createTestRouter(history)
 
   // The scenario intentionally throws loader errors every lap; keep React 19's
   // default per-caught-error console reporting out of the measured loop.

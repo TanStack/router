@@ -6,14 +6,15 @@ import {
   getStylesheetHref,
 } from '../manifest'
 import { decodePath } from '../utils'
-import { createLRUCache } from '../lru-cache'
+import { createSieveCache } from '../sieve-cache'
 import { rootRouteId } from '../root'
+import { _getRenderedMatches } from '../load-client'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
-import type { LRUCache } from '../lru-cache'
+import type { SieveCache } from '../sieve-cache'
 import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter, ServerSsr } from '../router'
@@ -51,7 +52,7 @@ export function dehydrateMatch(match: AnyRouteMatch): DehydratedMatch {
       dehydratedMatch[shorthand] = match[key]
     }
   }
-  if (match.globalNotFound) {
+  if (match._notFound) {
     dehydratedMatch.g = true
   }
   return dehydratedMatch
@@ -174,15 +175,15 @@ type PreparedMatchedManifestRoutes = {
   inlineCss?: string
 }
 
-type ManifestLRU = LRUCache<string, PreparedMatchedManifestRoutes>
+type ManifestCache = SieveCache<string, PreparedMatchedManifestRoutes>
 
 const MANIFEST_CACHE_SIZE = 100
-const manifestCaches = new WeakMap<ServerManifest, ManifestLRU>()
+const manifestCaches = new WeakMap<ServerManifest, ManifestCache>()
 
-function getManifestCache(manifest: ServerManifest): ManifestLRU {
+function getManifestCache(manifest: ServerManifest): ManifestCache {
   const cache = manifestCaches.get(manifest)
   if (cache) return cache
-  const newCache = createLRUCache<string, PreparedMatchedManifestRoutes>(
+  const newCache = createSieveCache<string, PreparedMatchedManifestRoutes>(
     MANIFEST_CACHE_SIZE,
   )
   manifestCaches.set(manifest, newCache)
@@ -389,7 +390,7 @@ export function attachRouterServerSsrUtils({
       if (!manifest) return manifest
 
       const requestAssets = getRequestAssets?.()
-      const matches = router.stores.matches.get()
+      const matches = _getRenderedMatches(router.stores.matches.get())
       const hasAssets = hasRequestAssets(requestAssets)
 
       if (!hasAssets && !manifest.inlineCss) {
@@ -495,8 +496,9 @@ export function attachRouterServerSsrUtils({
 
         invariant()
       }
-      let matchesToDehydrate = router.stores.matches.get()
-      if (router.isShell()) {
+      let matchesToDehydrate = _getRenderedMatches(router.stores.matches.get())
+      const isShell = router.isShell()
+      if (isShell) {
         // In SPA mode we only want to dehydrate the root match
         matchesToDehydrate = matchesToDehydrate.slice(0, 1)
       }
@@ -540,11 +542,10 @@ export function attachRouterServerSsrUtils({
         manifest: manifestToDehydrate,
         matches,
       }
-      const lastMatchId = matchesToDehydrate[matchesToDehydrate.length - 1]?.id
-      if (lastMatchId) {
-        dehydratedRouter.lastMatchId = dehydrateSsrMatchId(lastMatchId)
-      }
       const dehydratedData = await router.options.dehydrate?.()
+      if (cleanupStarted) {
+        return
+      }
       if (dehydratedData) {
         dehydratedRouter.dehydratedData = dehydratedData
       }

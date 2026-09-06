@@ -9,13 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as ValidParamRouteImport } from './routes/$validParam'
-import { Route as UserNameRouteImport } from './routes/$user-name'
 import { Route as R123RouteImport } from './routes/$123'
+import { Route as UserNameRouteImport } from './routes/$user-name'
+import { Route as ValidParamRouteImport } from './routes/$validParam'
 
-const ValidParamRoute = ValidParamRouteImport.update({
-  id: '/$validParam',
-  path: '/$validParam',
+const R123Route = R123RouteImport.update({
+  id: '/$123',
+  path: '/$123',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UserNameRoute = UserNameRouteImport.update({
@@ -23,9 +23,9 @@ const UserNameRoute = UserNameRouteImport.update({
   path: '/$user-name',
   getParentRoute: () => rootRouteImport,
 } as any)
-const R123Route = R123RouteImport.update({
-  id: '/$123',
-  path: '/$123',
+const ValidParamRoute = ValidParamRouteImport.update({
+  id: '/$validParam',
+  path: '/$validParam',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -61,11 +61,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/$validParam': {
-      id: '/$validParam'
-      path: '/$validParam'
-      fullPath: '/$validParam'
-      preLoaderRoute: typeof ValidParamRouteImport
+    '/$123': {
+      id: '/$123'
+      path: '/$123'
+      fullPath: '/$123'
+      preLoaderRoute: typeof R123RouteImport
       parentRoute: typeof rootRouteImport
     }
     '/$user-name': {
@@ -75,11 +75,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UserNameRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/$123': {
-      id: '/$123'
-      path: '/$123'
-      fullPath: '/$123'
-      preLoaderRoute: typeof R123RouteImport
+    '/$validParam': {
+      id: '/$validParam'
+      path: '/$validParam'
+      fullPath: '/$validParam'
+      preLoaderRoute: typeof ValidParamRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

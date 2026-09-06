@@ -7,7 +7,7 @@ import type { ErrorComponentProps, NotFoundError } from '@tanstack/router-core'
 
 export function CatchNotFound(props: {
   fallback?: (error: NotFoundError) => Vue.VNode
-  onCatch?: (error: Error) => void
+  onCatch?: (error: NotFoundError) => void
   children: Vue.VNode
 }) {
   const router = useRouter()
@@ -16,7 +16,7 @@ export function CatchNotFound(props: {
     router.stores.location,
     (location) => location.pathname,
   )
-  const status = useStore(router.stores.status, (value) => value)
+  const status = useStore(router.stores.status)
 
   // Create a function that returns a VNode to match the SyncRouteComponent signature
   const errorComponentFn = (componentProps: ErrorComponentProps) => {
@@ -37,7 +37,7 @@ export function CatchNotFound(props: {
 
   return Vue.h(CatchBoundary, {
     getResetKey: () => `not-found-${pathname.value}-${status.value}`,
-    onCatch: (error: Error) => {
+    onCatch: (error: unknown) => {
       if (isNotFound(error)) {
         if (props.onCatch) {
           props.onCatch(error)

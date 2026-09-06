@@ -9,79 +9,24 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as SharedCRouteImport } from './routes/shared-c'
-import { Route as SharedBRouteImport } from './routes/shared-b'
-import { Route as SharedARouteImport } from './routes/shared-a'
-import { Route as R6RouteImport } from './routes/r6'
-import { Route as R5RouteImport } from './routes/r5'
-import { Route as R4RouteImport } from './routes/r4'
-import { Route as R3RouteImport } from './routes/r3'
-import { Route as R2RouteImport } from './routes/r2'
-import { Route as R1RouteImport } from './routes/r1'
-import { Route as LazyCssStaticRouteImport } from './routes/lazy-css-static'
-import { Route as LazyCssLazyRouteImport } from './routes/lazy-css-lazy'
-import { Route as BRouteImport } from './routes/b'
-import { Route as ARouteImport } from './routes/a'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ARouteImport } from './routes/a'
+import { Route as BRouteImport } from './routes/b'
+import { Route as LazyCssLazyRouteImport } from './routes/lazy-css-lazy'
+import { Route as LazyCssStaticRouteImport } from './routes/lazy-css-static'
+import { Route as R1RouteImport } from './routes/r1'
+import { Route as R2RouteImport } from './routes/r2'
+import { Route as R3RouteImport } from './routes/r3'
+import { Route as R4RouteImport } from './routes/r4'
+import { Route as R5RouteImport } from './routes/r5'
+import { Route as R6RouteImport } from './routes/r6'
+import { Route as SharedARouteImport } from './routes/shared-a'
+import { Route as SharedBRouteImport } from './routes/shared-b'
+import { Route as SharedCRouteImport } from './routes/shared-c'
 
-const SharedCRoute = SharedCRouteImport.update({
-  id: '/shared-c',
-  path: '/shared-c',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SharedBRoute = SharedBRouteImport.update({
-  id: '/shared-b',
-  path: '/shared-b',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SharedARoute = SharedARouteImport.update({
-  id: '/shared-a',
-  path: '/shared-a',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R6Route = R6RouteImport.update({
-  id: '/r6',
-  path: '/r6',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R5Route = R5RouteImport.update({
-  id: '/r5',
-  path: '/r5',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R4Route = R4RouteImport.update({
-  id: '/r4',
-  path: '/r4',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R3Route = R3RouteImport.update({
-  id: '/r3',
-  path: '/r3',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R2Route = R2RouteImport.update({
-  id: '/r2',
-  path: '/r2',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R1Route = R1RouteImport.update({
-  id: '/r1',
-  path: '/r1',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LazyCssStaticRoute = LazyCssStaticRouteImport.update({
-  id: '/lazy-css-static',
-  path: '/lazy-css-static',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LazyCssLazyRoute = LazyCssLazyRouteImport.update({
-  id: '/lazy-css-lazy',
-  path: '/lazy-css-lazy',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const BRoute = BRouteImport.update({
-  id: '/b',
-  path: '/b',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ARoute = ARouteImport.update({
@@ -89,9 +34,64 @@ const ARoute = ARouteImport.update({
   path: '/a',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const BRoute = BRouteImport.update({
+  id: '/b',
+  path: '/b',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LazyCssLazyRoute = LazyCssLazyRouteImport.update({
+  id: '/lazy-css-lazy',
+  path: '/lazy-css-lazy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LazyCssStaticRoute = LazyCssStaticRouteImport.update({
+  id: '/lazy-css-static',
+  path: '/lazy-css-static',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R1Route = R1RouteImport.update({
+  id: '/r1',
+  path: '/r1',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R2Route = R2RouteImport.update({
+  id: '/r2',
+  path: '/r2',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R3Route = R3RouteImport.update({
+  id: '/r3',
+  path: '/r3',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R4Route = R4RouteImport.update({
+  id: '/r4',
+  path: '/r4',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R5Route = R5RouteImport.update({
+  id: '/r5',
+  path: '/r5',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R6Route = R6RouteImport.update({
+  id: '/r6',
+  path: '/r6',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedARoute = SharedARouteImport.update({
+  id: '/shared-a',
+  path: '/shared-a',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedBRoute = SharedBRouteImport.update({
+  id: '/shared-b',
+  path: '/shared-b',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SharedCRoute = SharedCRouteImport.update({
+  id: '/shared-c',
+  path: '/shared-c',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -214,88 +214,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/shared-c': {
-      id: '/shared-c'
-      path: '/shared-c'
-      fullPath: '/shared-c'
-      preLoaderRoute: typeof SharedCRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shared-b': {
-      id: '/shared-b'
-      path: '/shared-b'
-      fullPath: '/shared-b'
-      preLoaderRoute: typeof SharedBRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shared-a': {
-      id: '/shared-a'
-      path: '/shared-a'
-      fullPath: '/shared-a'
-      preLoaderRoute: typeof SharedARouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/r6': {
-      id: '/r6'
-      path: '/r6'
-      fullPath: '/r6'
-      preLoaderRoute: typeof R6RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/r5': {
-      id: '/r5'
-      path: '/r5'
-      fullPath: '/r5'
-      preLoaderRoute: typeof R5RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/r4': {
-      id: '/r4'
-      path: '/r4'
-      fullPath: '/r4'
-      preLoaderRoute: typeof R4RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/r3': {
-      id: '/r3'
-      path: '/r3'
-      fullPath: '/r3'
-      preLoaderRoute: typeof R3RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/r2': {
-      id: '/r2'
-      path: '/r2'
-      fullPath: '/r2'
-      preLoaderRoute: typeof R2RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/r1': {
-      id: '/r1'
-      path: '/r1'
-      fullPath: '/r1'
-      preLoaderRoute: typeof R1RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lazy-css-static': {
-      id: '/lazy-css-static'
-      path: '/lazy-css-static'
-      fullPath: '/lazy-css-static'
-      preLoaderRoute: typeof LazyCssStaticRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/lazy-css-lazy': {
-      id: '/lazy-css-lazy'
-      path: '/lazy-css-lazy'
-      fullPath: '/lazy-css-lazy'
-      preLoaderRoute: typeof LazyCssLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/b': {
-      id: '/b'
-      path: '/b'
-      fullPath: '/b'
-      preLoaderRoute: typeof BRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/a': {
@@ -305,11 +228,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ARouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/b': {
+      id: '/b'
+      path: '/b'
+      fullPath: '/b'
+      preLoaderRoute: typeof BRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lazy-css-lazy': {
+      id: '/lazy-css-lazy'
+      path: '/lazy-css-lazy'
+      fullPath: '/lazy-css-lazy'
+      preLoaderRoute: typeof LazyCssLazyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lazy-css-static': {
+      id: '/lazy-css-static'
+      path: '/lazy-css-static'
+      fullPath: '/lazy-css-static'
+      preLoaderRoute: typeof LazyCssStaticRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r1': {
+      id: '/r1'
+      path: '/r1'
+      fullPath: '/r1'
+      preLoaderRoute: typeof R1RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r2': {
+      id: '/r2'
+      path: '/r2'
+      fullPath: '/r2'
+      preLoaderRoute: typeof R2RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r3': {
+      id: '/r3'
+      path: '/r3'
+      fullPath: '/r3'
+      preLoaderRoute: typeof R3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r4': {
+      id: '/r4'
+      path: '/r4'
+      fullPath: '/r4'
+      preLoaderRoute: typeof R4RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r5': {
+      id: '/r5'
+      path: '/r5'
+      fullPath: '/r5'
+      preLoaderRoute: typeof R5RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/r6': {
+      id: '/r6'
+      path: '/r6'
+      fullPath: '/r6'
+      preLoaderRoute: typeof R6RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shared-a': {
+      id: '/shared-a'
+      path: '/shared-a'
+      fullPath: '/shared-a'
+      preLoaderRoute: typeof SharedARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shared-b': {
+      id: '/shared-b'
+      path: '/shared-b'
+      fullPath: '/shared-b'
+      preLoaderRoute: typeof SharedBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shared-c': {
+      id: '/shared-c'
+      path: '/shared-c'
+      fullPath: '/shared-c'
+      preLoaderRoute: typeof SharedCRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
