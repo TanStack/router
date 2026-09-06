@@ -54,11 +54,14 @@ export function createFileRoute<
   TFullPath extends RouteConstraints['TFullPath'] =
     FileRoutesByPath[TFilePath]['fullPath'],
 >(
+  // eslint-disable-next-line unused-imports/no-unused-vars
   path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-    silent: true,
-  }).createRoute
+  return (options) => {
+    const route = createRoute(options as any)
+    ;(route as any).isRoot = false
+    return route as any
+  }
 }
 
 /** 
@@ -215,11 +218,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useMatch: UseMatchRoute<TRoute['id']> = (opts) => {
-    return useMatch({
-      select: opts?.select,
-      from: this.options.id,
-      structuralSharing: opts?.structuralSharing,
-    } as any) as any
+    return useMatch({ ...opts, from: this.options.id } as any) as any
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
@@ -227,21 +226,11 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useSearch({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.options.id,
-    } as any) as any
+    return useSearch({ ...opts, from: this.options.id } as any)
   }
 
   useParams: UseParamsRoute<TRoute['id']> = (opts) => {
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
-    return useParams({
-      select: opts?.select,
-      structuralSharing: opts?.structuralSharing,
-      from: this.options.id,
-    } as any) as any
+    return useParams({ ...opts, from: this.options.id } as any)
   }
 
   useLoaderDeps: UseLoaderDepsRoute<TRoute['id']> = (opts) => {

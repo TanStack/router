@@ -112,7 +112,10 @@ export const renderRouterToStream = async ({
       }
 
       return new Response(`<!DOCTYPE html>${fullHtml}`, {
-        status: router.stores.statusCode.get(),
+        status:
+          router._serverResult?.type === 'render'
+            ? router._serverResult.status
+            : 200,
         headers: responseHeaders,
       })
     } finally {
@@ -211,13 +214,16 @@ export const renderRouterToStream = async ({
   const responseStream = transformReadableStreamWithRouter(
     router,
     doctypedStream,
-    { onAbort: abortVuePipe },
+    { signal: request.signal, onAbort: abortVuePipe },
   )
 
   return createSsrStreamResponse(
     router,
     new Response(responseStream as any, {
-      status: router.stores.statusCode.get(),
+      status:
+        router._serverResult?.type === 'render'
+          ? router._serverResult.status
+          : 200,
       headers: responseHeaders,
     }),
   )

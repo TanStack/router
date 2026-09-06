@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/start-server-core",
-  "version": "1.169.15",
+  "version": "1.169.31",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -29,12 +29,12 @@
     "test:unit": "vitest",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
-    "test:types:ts60": "tsc",
+    "test:types:ts60": "tsc6",
+    "test:types:ts70": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
@@ -65,6 +65,18 @@
         "default": "./dist/esm/request-response.js"
       }
     },
+    "./constants": {
+      "import": {
+        "types": "./dist/esm/constants.d.ts",
+        "default": "./dist/esm/constants.js"
+      }
+    },
+    "./virtual-modules": {
+      "import": {
+        "types": "./dist/esm/virtual-modules.d.ts",
+        "default": "./dist/esm/virtual-modules.js"
+      }
+    },
     "./package.json": "./package.json"
   },
   "imports": {
@@ -93,12 +105,18 @@
     "@tanstack/start-storage-context": "workspace:*",
     "fetchdts": "^0.1.6",
     "h3-v2": "npm:h3@2.0.1-rc.20",
-    "seroval": "^1.5.4"
+    "seroval": "^1.6.2"
   },
   "devDependencies": {
     "@standard-schema/spec": "^1.0.0",
     "cookie-es": "^3.0.0",
     "vite": "*",
-    "@types/node": ">=20"
+    "@types/node": ">=20",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   }
 }

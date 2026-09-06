@@ -73,7 +73,7 @@ declare module '@tanstack/router-core' {
      * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#defaultoncatch-property)
      * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#handling-errors-with-routeoptionsoncatch)
      */
-    defaultOnCatch?: (error: Error, errorInfo: React.ErrorInfo) => void
+    defaultOnCatch?: (error: unknown, errorInfo: React.ErrorInfo) => void
   }
 }
 

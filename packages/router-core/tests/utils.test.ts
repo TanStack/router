@@ -547,46 +547,45 @@ describe('decodePath', () => {
   })
 
   describe('open redirect prevention', () => {
-    it('should strip CR (%0d) to prevent open redirect', () => {
-      // /%0d/google.com/ decodes to /\r/google.com/ which becomes //google.com/
-      // This must be sanitized to prevent protocol-relative URL interpretation
+    it('should keep CR (%0d) encoded to prevent open redirect', () => {
+      // %0d stays encoded — no decoding, no stripping, no path mismatch
+      // Output is uppercase hex per RFC 3986
       const result = decodePath('/%0d/google.com/')
-      expect(result.path).toBe('/google.com/')
+      expect(result.path).toBe('/%0D/google.com/')
       expect(result.path).not.toMatch(/^\/\//)
-      expect(result.handledProtocolRelativeURL).toBe(true)
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
-    it('should strip LF (%0a) to prevent open redirect', () => {
+    it('should keep LF (%0a) encoded to prevent open redirect', () => {
       const result = decodePath('/%0a/evil.com/')
-      expect(result.path).toBe('/evil.com/')
+      expect(result.path).toBe('/%0A/evil.com/')
       expect(result.path).not.toMatch(/^\/\//)
-      expect(result.handledProtocolRelativeURL).toBe(true)
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
-    it('should strip CRLF (%0d%0a) to prevent open redirect', () => {
+    it('should keep CRLF (%0d%0a) encoded to prevent open redirect', () => {
       const result = decodePath('/%0d%0a/evil.com/')
-      expect(result.path).toBe('/evil.com/')
+      expect(result.path).toBe('/%0D%0A/evil.com/')
       expect(result.path).not.toMatch(/^\/\//)
-      expect(result.handledProtocolRelativeURL).toBe(true)
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
-    it('should strip multiple control characters to prevent open redirect', () => {
+    it('should keep multiple control characters encoded', () => {
       const result = decodePath('/%0d%0d%0d/evil.com/')
-      expect(result.path).toBe('/evil.com/')
+      expect(result.path).toBe('/%0D%0D%0D/evil.com/')
       expect(result.path).not.toMatch(/^\/\//)
-      expect(result.handledProtocolRelativeURL).toBe(true)
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
-    it('should strip null bytes and other control characters', () => {
+    it('should keep null bytes encoded', () => {
       const result = decodePath('/%00/test/')
-      expect(result.path).toBe('/test/')
-      expect(result.handledProtocolRelativeURL).toBe(true)
+      expect(result.path).toBe('/%00/test/')
+      expect(result.handledProtocolRelativeURL).toBe(false)
     })
 
     it('should collapse leading double slashes to prevent protocol-relative URLs', () => {
-      // After stripping control chars, ensure we don't end up with //evil.com
-      const result = decodePath('/%0d%0a/evil.com/path')
-      // Should resolve to localhost, not evil.com
+      // Direct // input should still be collapsed as defense-in-depth
+      const result = decodePath('//evil.com/path')
       const url = new URL(result.path, 'http://localhost:3000')
       expect(url.origin).toBe('http://localhost:3000')
       expect(result.handledProtocolRelativeURL).toBe(true)
@@ -606,6 +605,34 @@ describe('decodePath', () => {
       const result = decodePath('//')
       expect(result.path).toBe('/')
       expect(result.handledProtocolRelativeURL).toBe(true)
+    })
+  })
+
+  describe('WHATWG path percent-encode set preserved', () => {
+    it('should keep curly braces encoded', () => {
+      const result = decodePath('/%7B%7Bapp_name%7D%7D/Makefile')
+      expect(result.path).toBe('/%7B%7Bapp_name%7D%7D/Makefile')
+    })
+
+    it('should keep angle brackets encoded', () => {
+      expect(decodePath('/%3Ctest%3E').path).toBe('/%3Ctest%3E')
+    })
+
+    it('should keep double quotes encoded', () => {
+      expect(decodePath('/foo%22bar').path).toBe('/foo%22bar')
+    })
+
+    it('should keep backticks encoded', () => {
+      expect(decodePath('/back%60tick').path).toBe('/back%60tick')
+    })
+
+    it('should decode space (handled by encodePathLikeUrl for outgoing URLs)', () => {
+      expect(decodePath('/file%20name').path).toBe('/file name')
+    })
+
+    it('should still decode safe characters', () => {
+      // Regular letters/unicode should still be decoded
+      expect(decodePath('/%D1%88%D0%B5%D0%BB%D0%BB%D1%8B').path).toBe('/шеллы')
     })
   })
 })
@@ -922,6 +949,53 @@ describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
         },
       ]
       expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('preserves identity of unchanged nested subtrees when one leaf changes', () => {
+      const prev = {
+        search: { q: 'hello', f: 'live' },
+        params: { username: 'elonmusk', tweetId: '123' },
+        loaderData: {
+          user: { id: '44196397', name: 'Elon' },
+          tabs: ['a', 'b'],
+        },
+      }
+      const next = {
+        search: { q: 'hello', f: 'live' },
+        params: { username: 'elonmusk', tweetId: '123' },
+        loaderData: {
+          user: { id: '44196397', name: 'Musk' },
+          tabs: ['a', 'b'],
+        },
+      }
+      const result = replaceEqualDeep(prev, next)
+      // user.name changed -> top object is new, but every unchanged subtree
+      // (including the array) keeps its previous reference for cheap memo checks.
+      expect(result).not.toBe(prev)
+      expect(result.search).toBe(prev.search)
+      expect(result.params).toBe(prev.params)
+      expect(result.loaderData.tabs).toBe(prev.loaderData.tabs)
+      expect(result.loaderData.user).not.toBe(prev.loaderData.user)
+      expect(result.loaderData.user.name).toBe('Musk')
+    })
+
+    it('bails to next for a nested object carrying a non-enumerable prop', () => {
+      const prevInner: Record<string, number> = { a: 1 }
+      Object.defineProperty(prevInner, 'hidden', {
+        value: 2,
+        enumerable: false,
+      })
+      const nextInner: Record<string, number> = { a: 1 }
+      Object.defineProperty(nextInner, 'hidden', {
+        value: 2,
+        enumerable: false,
+      })
+      const prev = { shared: { x: 1 }, inner: prevInner }
+      const next = { shared: { x: 1 }, inner: nextInner }
+      const result = replaceEqualDeep(prev, next)
+      // inner is not clone-friendly -> returns nextInner; sibling subtree shared.
+      expect(result.inner).toBe(nextInner)
+      expect(result.shared).toBe(prev.shared)
     })
   })
 })

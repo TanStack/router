@@ -53,12 +53,12 @@ const documentRequestInit = {
     accept: 'text/html',
   },
 } satisfies RequestInit
-const serverFnGetLoopIterations = 100
-const serverFnPostLoopIterations = 150
-const serverFnRedirectLoopIterations = 125
-const serverFnNotFoundLoopIterations = 200
-const serverFnSendContextLoopIterations = 175
-const serverFnDocumentSsrLoopIterations = 45
+const serverFnGetLoopTotalRequests = 112
+const serverFnPostLoopTotalRequests = 160
+const serverFnRedirectLoopTotalRequests = 128
+const serverFnNotFoundLoopTotalRequests = 208
+const serverFnSendContextLoopTotalRequests = 176
+const serverFnDocumentSsrLoopTotalRequests = 48
 
 export const serverFnBenchOptions = {
   warmupIterations: 100,
@@ -456,7 +456,8 @@ export function runServerFnGetRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnGetLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnGetLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildGetRequest(context.urls, context.getQueries, index),
   })
@@ -468,7 +469,8 @@ export function runServerFnPostRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnPostLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnPostLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildPostRequest(context.urls, context.bodies, index),
   })
@@ -480,7 +482,8 @@ export function runServerFnRedirectRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnRedirectLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnRedirectLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildRedirectRequest(context.urls, context.bodies, index),
     validateResponse: validateRedirectResponse,
@@ -493,7 +496,8 @@ export function runServerFnNotFoundRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnNotFoundLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnNotFoundLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildNotFoundRequest(context.urls, context.bodies, index),
     validateResponse: (response) =>
@@ -507,7 +511,8 @@ export function runServerFnSendContextRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnSendContextLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnSendContextLoopTotalRequests,
     buildRequest: (_random, index) =>
       buildContextRequest(context.urls, context.contextBodies, index),
     validateResponse: (response) =>
@@ -520,7 +525,8 @@ export function runServerFnDocumentSsrRequestLoop(
 ) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: serverFnDocumentSsrLoopIterations,
+    concurrency: 16,
+    totalRequests: serverFnDocumentSsrLoopTotalRequests,
     buildRequest: buildSsrCallRequest,
     validateResponse: validateDocumentResponse,
   })

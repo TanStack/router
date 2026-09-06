@@ -94,7 +94,7 @@
       ]
     },
     {
-      "label": "Routing",
+      "label": "Core Routing",
       "children": [
         {
           "label": "Routing Concepts",
@@ -123,6 +123,10 @@
         {
           "label": "File Naming Conventions",
           "to": "routing/file-naming-conventions"
+        },
+        {
+          "label": "URL Rewrites",
+          "to": "guide/url-rewrites"
         }
       ],
       "frameworks": [
@@ -137,31 +141,20 @@
       ]
     },
     {
-      "label": "Guides",
+      "label": "Navigation & URL State",
+      "collapsible": true,
       "children": [
-        {
-          "label": "Code Splitting",
-          "to": "guide/code-splitting"
-        },
-        {
-          "label": "Automatic Code Splitting",
-          "to": "guide/automatic-code-splitting"
-        },
-        {
-          "label": "Creating a Router",
-          "to": "guide/creating-a-router"
-        },
-        {
-          "label": "Outlets",
-          "to": "guide/outlets"
-        },
         {
           "label": "Navigation",
           "to": "guide/navigation"
         },
         {
-          "label": "Router Events",
-          "to": "guide/router-events"
+          "label": "Link Options",
+          "to": "guide/link-options"
+        },
+        {
+          "label": "Custom Links",
+          "to": "guide/custom-link"
         },
         {
           "label": "Path Params",
@@ -172,12 +165,52 @@
           "to": "guide/search-params"
         },
         {
-          "label": "Link Options",
-          "to": "guide/link-options"
+          "label": "Custom Search Param Serialization",
+          "to": "guide/custom-search-param-serialization"
         },
         {
-          "label": "Custom Links",
-          "to": "guide/custom-link"
+          "label": "Route Masking",
+          "to": "guide/route-masking"
+        },
+        {
+          "label": "Navigation Blocking",
+          "to": "guide/navigation-blocking"
+        },
+        {
+          "label": "History Types",
+          "to": "guide/history-types"
+        },
+        {
+          "label": "Scroll Restoration",
+          "to": "guide/scroll-restoration"
+        },
+        {
+          "label": "Internationalization",
+          "to": "guide/internationalization-i18n"
+        }
+      ],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": []
+        },
+        {
+          "label": "solid",
+          "children": []
+        }
+      ]
+    },
+    {
+      "label": "Data & Rendering",
+      "collapsible": true,
+      "children": [
+        {
+          "label": "Code Splitting",
+          "to": "guide/code-splitting"
+        },
+        {
+          "label": "Automatic Code Splitting",
+          "to": "guide/automatic-code-splitting"
         },
         {
           "label": "Data Loading",
@@ -196,14 +229,6 @@
           "to": "guide/data-mutations"
         },
         {
-          "label": "Type Safety",
-          "to": "guide/type-safety"
-        },
-        {
-          "label": "Type Utilities",
-          "to": "guide/type-utilities"
-        },
-        {
           "label": "Preloading",
           "to": "guide/preloading"
         },
@@ -212,20 +237,48 @@
           "to": "guide/document-head-management"
         },
         {
-          "label": "Route Masking",
-          "to": "guide/route-masking"
+          "label": "SSR",
+          "to": "guide/ssr"
         },
         {
-          "label": "Navigation Blocking",
-          "to": "guide/navigation-blocking"
+          "label": "Render Optimizations",
+          "to": "guide/render-optimizations"
+        }
+      ],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": []
         },
         {
-          "label": "Custom Search Param Serialization",
-          "to": "guide/custom-search-param-serialization"
+          "label": "solid",
+          "children": []
+        }
+      ]
+    },
+    {
+      "label": "Router Configuration",
+      "collapsible": true,
+      "children": [
+        {
+          "label": "Creating a Router",
+          "to": "guide/creating-a-router"
         },
         {
-          "label": "History Types",
-          "to": "guide/history-types"
+          "label": "Outlets",
+          "to": "guide/outlets"
+        },
+        {
+          "label": "Router Events",
+          "to": "guide/router-events"
+        },
+        {
+          "label": "Type Safety",
+          "to": "guide/type-safety"
+        },
+        {
+          "label": "Type Utilities",
+          "to": "guide/type-utilities"
         },
         {
           "label": "Router Context",
@@ -240,20 +293,8 @@
           "to": "guide/authenticated-routes"
         },
         {
-          "label": "Scroll Restoration",
-          "to": "guide/scroll-restoration"
-        },
-        {
           "label": "Static Route Data",
           "to": "guide/static-route-data"
-        },
-        {
-          "label": "SSR",
-          "to": "guide/ssr"
-        },
-        {
-          "label": "Render Optimizations",
-          "to": "guide/render-optimizations"
         }
       ],
       "frameworks": [

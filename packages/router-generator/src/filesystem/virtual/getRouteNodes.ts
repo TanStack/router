@@ -3,7 +3,7 @@ import {
   cleanPath,
   createLiteralRoutePathSegmentMetadata,
   createRoutePathSegmentMetadata,
-  determineInitialRoutePath,
+  determineInitialRoutePathFromExplicitPath,
   joinRoutePathSegmentMetadata,
   removeExt,
   removeLeadingSlash,
@@ -156,7 +156,9 @@ export async function getRouteNodesRecursive(
           routePath: routePathPrefix,
           originalRoutePath: originalRoutePathPrefix,
         } = node.pathPrefix
-          ? determineInitialRoutePath(removeLeadingSlash(node.pathPrefix))
+          ? determineInitialRoutePathFromExplicitPath(
+              removeLeadingSlash(node.pathPrefix),
+            )
           : { routePath: '', originalRoutePath: '' }
         const { routeNodes, physicalDirectories } = await getRouteNodesPhysical(
           {
@@ -240,7 +242,9 @@ export async function getRouteNodesRecursive(
           const {
             routePath: escapedSegment,
             originalRoutePath: originalSegment,
-          } = determineInitialRoutePath(removeLeadingSlash(lastSegment))
+          } = determineInitialRoutePathFromExplicitPath(
+            removeLeadingSlash(lastSegment),
+          )
           const routePath = `${parentRoutePath}${escapedSegment}`
           const originalRoutePath = `${parentOriginalRoutePath}${originalSegment}`
           const routePathSegmentMetadata =
@@ -305,7 +309,9 @@ export async function getRouteNodesRecursive(
           const {
             routePath: escapedSegment,
             originalRoutePath: originalSegment,
-          } = determineInitialRoutePath(removeLeadingSlash(lastSegment))
+          } = determineInitialRoutePathFromExplicitPath(
+            removeLeadingSlash(lastSegment),
+          )
           const routePath = `${parentRoutePath}${escapedSegment}`
           // Store the original path with brackets for escape detection
           const originalRoutePath = `${parentOriginalRoutePath}${originalSegment}`

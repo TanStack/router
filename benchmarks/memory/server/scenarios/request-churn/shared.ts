@@ -10,7 +10,7 @@ export type { StartRequestHandler }
 type Framework = 'react' | 'solid' | 'vue'
 
 const benchmarkSeed = 0xdecafbad
-const requestChurnIterations = 200
+const requestChurnIterations = 40
 const itemPageMarker = 'data-bench="request-churn-item"'
 // Module-level so CodSpeed warmups and measurement never replay URLs.
 const benchmarkRandom = createDeterministicRandom(benchmarkSeed)
@@ -74,7 +74,7 @@ export function createWorkloadGroup(
     sanity: () => assertRequestChurnSanity(handler),
     workloads: [
       {
-        name: `mem request-churn (${framework})`,
+        name: `mem server request-churn (${framework})`,
         run,
       },
     ],

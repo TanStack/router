@@ -298,7 +298,7 @@ npm install srvx
 
 ```json
     "build": "rsbuild build",
-    "start": "srvx --prod -s dist/client dist/server/index.js"
+    "start": "srvx --prod -s ../client dist/server/index.js"
 ```
 
 Express or any other custom Node.js server works too, as long as it serves the client assets and calls the server entry's `fetch` handler for dynamic requests.

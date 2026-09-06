@@ -48,7 +48,7 @@ export async function drainResponse(response: Response) {
   }
 
   try {
-    while (true) {
+    for (;;) {
       const result = await reader.read()
 
       if (result.done) {
@@ -86,5 +86,12 @@ export async function runSequentialRequestLoop(
     validate(response, request)
 
     await drainResponse(response)
+  }
+}
+
+// Cancellation can leave deferred loaders and renderer teardown queued.
+export async function settle() {
+  for (let turn = 0; turn < 16; turn++) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 0))
   }
 }
