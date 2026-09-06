@@ -1,5 +1,13 @@
 # @tanstack/history
 
+## 1.162.2
+
+### Patch Changes
+
+- [#8264](https://github.com/TanStack/router/pull/8264) [`9035abc`](https://github.com/TanStack/router/commit/9035abc41163d83409ef582f7743a3c7be57dd93) - Respect `ignoreBlocker` during `go()` navigation, including document unload warnings. Preserve beforeunload warnings during back and forward navigation unless `ignoreBlocker` is requested, and clear the bypass after same-document traversal so later document navigation still warns about unsaved changes.
+
+  Restore the original browser history entry when forward or multi-entry navigation is blocked.
+
 ## 1.162.1
 
 ### Patch Changes
