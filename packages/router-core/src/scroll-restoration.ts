@@ -219,7 +219,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       }
       trackedScrollTargets.clear()
     })
-    addEventListener('pagehide', () => {
+    window.addEventListener('pagehide', () => {
       snapshotCurrentScrollTargets(
         getKey(
           router.stores.resolvedLocation.get() ?? router.stores.location.get(),
