@@ -148,13 +148,14 @@ const allCreateRouteFns = [
  * AND at least one non-split property. Only locally-declared module-level
  * bindings are candidates (not imports — bundlers dedupe those).
  */
-export function computeSharedBindings(opts: {
-  code: string
-  filename?: string
-  codeSplitGroupings: CodeSplitGroupings
-}): Set<string> {
-  const ast = parseAst(opts)
-
+export function computeSharedBindings(
+  opts: {
+    code: string
+    filename?: string
+    codeSplitGroupings: CodeSplitGroupings
+  },
+  ast = parseAst(opts),
+): Set<string> {
   // Early bailout: collect all module-level locally-declared binding names.
   // This is a cheap loop over program.body (no traversal). If the file has
   // no local bindings (aside from `Route`), nothing can be shared — skip
@@ -365,10 +366,10 @@ export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions &
     CompileCodeSplitReferenceRouteOptions & {
       compilerPlugins?: Array<CodeSplitCompilerPlugin>
+      sourceMaps?: boolean
     },
+  ast = parseAst(opts),
 ): GeneratorResult | null {
-  const ast = parseAst(opts)
-
   const refIdents = findReferencedIdentifiers(ast)
 
   const knownExportedIdents = new Set<string>()
@@ -857,7 +858,7 @@ export function compileCodeSplitReferenceRoute(
   }
 
   const result = generateFromAst(ast, {
-    sourceMaps: true,
+    sourceMaps: opts.sourceMaps ?? true,
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
@@ -880,6 +881,7 @@ export function compileCodeSplitVirtualRoute(
     filename: string
     sharedBindings?: Set<string>
     compilerPlugins?: Array<CodeSplitCompilerPlugin>
+    sourceMaps?: boolean
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -1284,7 +1286,7 @@ export function compileCodeSplitVirtualRoute(
   }
 
   const result = generateFromAst(ast, {
-    sourceMaps: true,
+    sourceMaps: opts.sourceMaps ?? true,
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
@@ -1306,6 +1308,7 @@ export function compileCodeSplitSharedRoute(
   opts: ParseAstOptions & {
     sharedBindings: Set<string>
     filename: string
+    sourceMaps?: boolean
   },
 ): GeneratorResult {
   const ast = parseAst(opts)
@@ -1375,7 +1378,7 @@ export function compileCodeSplitSharedRoute(
   }
 
   const result = generateFromAst(ast, {
-    sourceMaps: true,
+    sourceMaps: opts.sourceMaps ?? true,
     sourceFileName: opts.filename,
     filename: opts.filename,
   })
@@ -1392,11 +1395,12 @@ export function compileCodeSplitSharedRoute(
  * This function should read get the options from by searching for the key `codeSplitGroupings`
  * on createFileRoute and return it's values if it exists, else return undefined
  */
-export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
+export function detectCodeSplitGroupingsFromRoute(
+  opts: ParseAstOptions,
+  ast = parseAst(opts),
+): {
   groupings: CodeSplitGroupings | undefined
 } {
-  const ast = parseAst(opts)
-
   let codeSplitGroupings: CodeSplitGroupings | undefined = undefined
 
   babel.traverse(ast, {
