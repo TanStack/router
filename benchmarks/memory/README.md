@@ -52,11 +52,8 @@ same workload through the Flame profiler.
   does the exact opposite. Client benches therefore register **both** — in
   any given mode exactly one pair runs.
 - Worker flags live in `runtime.ts` and apply only to the CodSpeed memory
-  instrument. They supplement the integration's predictable execution flags.
-  Disabling machine-code generation and bytecode flushing keeps compiler allocations
-  out of the signal. GC follows allocation thresholds without incremental
-  marking or minor-GC tasks; a fixed initial old-generation budget reduces
-  sensitivity to startup heap policy.
+  instrument. They supplement the integration's predictable execution flags;
+  the retained overrides are described below.
 - Before each CodSpeed invocation, a setup hook yields to the event loop,
   outside the measurement marker and before CodSpeed forces GC. Promise-only
   warmup chains can keep WeakRef targets alive through a collection in the same
@@ -69,6 +66,40 @@ same workload through the Flame profiler.
   allocator history cannot contaminate the next case.
 - Keep each bench under **~1.5M allocations** (instrument overhead grows past
   2M); this is the main constraint when tuning iteration counts.
+
+## Worker settings
+
+All scenarios use [`memoryConfig`](./runtime.ts). It adds these flags only in
+memory mode:
+
+- `--no-flush-bytecode`
+- `--no-minor-gc-task`
+- `--no-incremental-marking`
+- `--initial-old-space-size=512`
+
+`--jitless` was removed after repeated CI comparisons. Ten unchanged-commit
+repetitions with these four flags kept all 48 peak-memory results within 1%
+(worst spread: 0.834%). With JIT enabled, all 16 subsets of the four flags were
+tested. Removing bytecode, minor-GC-task, incremental-marking, or heap-budget
+overrides from this profile produced worst client peak spreads of 6.616%, 2.714%,
+2.109%, and 10.669%, respectively. Smaller combinations also exceeded 1% in at
+least one tracked metric. This supports retaining the four-flag profile; it does
+not establish that every override is required in every individual scenario.
+
+A server-only heap-budget profile initially passed five repetitions, but further
+confirmation produced a 24.46% server peak outlier. That configuration was
+rejected. Allocated bytes and allocation counts remain imperfectly repeatable:
+a client confirmation with the retained four flags showed a 6.77% allocated-byte
+spread and a 5.91% allocation-count spread. Client peaks remained within 0.834%
+across all 15 observations with the retained profile. Experiment details and CI runs are recorded in
+[PR #8260](https://github.com/TanStack/router/pull/8260).
+
+These settings trade production GC behavior for repeatable regression signals.
+They suppress bytecode reclamation and change collection scheduling. The 512 MiB
+initial/minimum old-generation allocation budget can postpone automatic full
+collections. This does not preallocate 512 MiB, and the smallest sufficient budget
+was not determined. Results describe this controlled worker profile, not a
+production application's absolute memory footprint.
 
 ## Bench shapes and signals
 
@@ -220,3 +251,7 @@ results: 18 client and 30 server. Exclude inherited CodSpeed results and failed
 or incomplete repetitions. For each workload, calculate
 `100 * (max / min - 1)` across runs for peak bytes, allocated bytes, and
 allocation counts; aggregate averages hide unstable cases.
+
+Observed spreads below 1% establish repeatability in the tested sample, not a
+bound on future runs. Changes to worker flags or workload lifecycles establish
+new measurement baselines.
