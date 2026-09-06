@@ -166,10 +166,17 @@ export const handleServerAction = async ({
       }
 
       if (!isServerFn) {
-        return unwrapped
-      }
-
-      if (unwrapped instanceof Response) {
+        // Non-RPC callers, such as a native form submission that posts to
+        // `serverFn.url` or a direct HTTP request, get the handler's own
+        // Response (including a redirect) untouched. Any other value still
+        // has to be serialized: returning it raw lets a plain JS value escape
+        // to the HTTP layer, which then fails the request with "you forgot to
+        // return a response from your server route handler" instead of
+        // delivering the result.
+        if (unwrapped instanceof Response) {
+          return unwrapped
+        }
+      } else if (unwrapped instanceof Response) {
         if (isRedirect(unwrapped)) {
           return unwrapped
         }
