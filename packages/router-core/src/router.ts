@@ -1099,6 +1099,11 @@ export class RouterCore<
     restoring?: boolean
     restoration?: boolean
     reset?: boolean
+    trackedScrollTargets?: Set<Document | Element>
+    history?: RouterHistory
+    historyCleanup?: () => void
+    captureCleanup?: () => void
+    renderedCleanup?: () => void
   } = { next: true }
   subscribers = new Set<RouterListener<RouterEvent>>()
   /** Accepted off-screen loader generations keyed by match ID. */
@@ -1218,10 +1223,14 @@ export class RouterCore<
         this.options.pathParamsAllowedCharacters,
       )
 
+    let historyChanged = false
     if (
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
+      if (this.history) {
+        this._scroll.historyCleanup?.()
+      }
       if (!this.options.history) {
         if (!(isServer ?? this.isServer)) {
           this.history = createBrowserHistory() as TRouterHistory
@@ -1229,6 +1238,7 @@ export class RouterCore<
       } else {
         this.history = this.options.history
       }
+      historyChanged = true
     }
 
     this.origin = this.options.origin
@@ -1288,6 +1298,8 @@ export class RouterCore<
       if (!(isServer ?? this.isServer)) {
         setupScrollRestoration(this)
       }
+    } else if (historyChanged && !(isServer ?? this.isServer)) {
+      setupScrollRestoration(this)
     }
 
     const nextBasepath = this.options.basepath ?? '/'

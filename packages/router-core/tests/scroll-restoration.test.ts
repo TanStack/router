@@ -1,11 +1,15 @@
 import { createMemoryHistory } from '@tanstack/history'
+import type { RouterHistory } from '@tanstack/history'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, setupScrollRestoration } from '../src'
 import { createTestRouter } from './routerTestUtils'
 import type { ParsedLocation } from '../src'
 
+const testHistories = new Set<RouterHistory>()
+
 function createRouter(
   options: {
+    history?: ReturnType<typeof createMemoryHistory>
     scrollRestoration?: boolean
     scrollToTopSelectors?: Array<string | (() => Element | null | undefined)>
     getScrollRestorationKey?: (location: ParsedLocation) => string
@@ -17,14 +21,21 @@ function createRouter(
     path: '/',
   })
 
+  const history =
+    options.history ?? createMemoryHistory({ initialEntries: ['/'] })
+  testHistories.add(history)
   return createTestRouter({
     routeTree: rootRoute.addChildren([indexRoute]),
-    history: createMemoryHistory({ initialEntries: ['/'] }),
+    history,
     ...options,
   })
 }
 
 afterEach(() => {
+  for (const history of testHistories) {
+    history.destroy()
+  }
+  testHistories.clear()
   document.body.replaceChildren()
   window.sessionStorage.clear()
   vi.restoreAllMocks()
@@ -59,6 +70,225 @@ function emitNavigation(
 }
 
 describe('setupScrollRestoration', () => {
+  test('cleans up listeners and subscriptions when the history is destroyed', () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const originalDestroy = history.destroy
+    const documentRemoveEventListener = vi.spyOn(
+      document,
+      'removeEventListener',
+    )
+    const windowRemoveEventListener = vi.spyOn(window, 'removeEventListener')
+    const scrollTo = vi.fn()
+    vi.stubGlobal('scrollTo', scrollTo)
+    const getKey = vi.fn((location: ParsedLocation) => location.href)
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+
+    const router = createRouter({
+      history,
+      scrollRestoration: true,
+      getScrollRestorationKey: getKey,
+    })
+    history.destroy()
+    document.dispatchEvent(new Event('scroll'))
+    window.dispatchEvent(new Event('pagehide'))
+    emitNavigation(
+      router,
+      'onBeforeLoad',
+      router.latestLocation,
+      getLocation(router, '/destroyed'),
+    )
+    emitNavigation(
+      router,
+      'onRendered',
+      router.latestLocation,
+      getLocation(router, '/destroyed'),
+    )
+
+    expect(history.destroy).toBe(originalDestroy)
+    expect(getKey).not.toHaveBeenCalled()
+    expect(setItem).not.toHaveBeenCalled()
+    expect(scrollTo).not.toHaveBeenCalled()
+    expect(
+      [...router.subscribers].filter(
+        (subscriber) =>
+          subscriber.eventType === 'onBeforeLoad' ||
+          subscriber.eventType === 'onRendered',
+      ),
+    ).toHaveLength(0)
+    expect(getKey).not.toHaveBeenCalled()
+    expect(setItem).not.toHaveBeenCalled()
+    expect(documentRemoveEventListener).toHaveBeenCalledWith(
+      'scroll',
+      expect.any(Function),
+      true,
+    )
+    expect(windowRemoveEventListener).toHaveBeenCalledWith(
+      'pagehide',
+      expect.any(Function),
+    )
+  })
+
+  test('shares one history destroy wrapper across routers', () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const originalDestroy = history.destroy
+
+    createRouter({ history, scrollRestoration: true })
+    const wrapper = history.destroy
+    createRouter({ history, scrollRestoration: true })
+
+    expect(history.destroy).toBe(wrapper)
+    history.destroy()
+    expect(history.destroy).toBe(originalDestroy)
+  })
+
+  test('cleans only the routers still attached to each shared history', () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const otherHistory = createMemoryHistory({ initialEntries: ['/'] })
+    testHistories.add(otherHistory)
+    const getKeyA = vi.fn((location: ParsedLocation) => `a:${location.href}`)
+    const getKeyB = vi.fn((location: ParsedLocation) => `b:${location.href}`)
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    const routerA = createRouter({
+      history,
+      scrollRestoration: true,
+      getScrollRestorationKey: getKeyA,
+    })
+    createRouter({
+      history,
+      scrollRestoration: true,
+      getScrollRestorationKey: getKeyB,
+    })
+
+    routerA.update({ history: otherHistory })
+    getKeyA.mockClear()
+    getKeyB.mockClear()
+    setItem.mockClear()
+    history.destroy()
+    window.dispatchEvent(new Event('pagehide'))
+
+    expect(getKeyA).toHaveBeenCalledOnce()
+    expect(getKeyB).not.toHaveBeenCalled()
+    expect(setItem).toHaveBeenCalledOnce()
+    otherHistory.destroy()
+  })
+
+  test('composes external destroy wrappers across detach and reattach', () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const nativeDestroy = history.destroy
+    const originalDestroy = vi.fn(function (this: RouterHistory) {
+      nativeDestroy.call(this)
+    })
+    history.destroy = originalDestroy
+    const router = createRouter({ history, scrollRestoration: true })
+    const retainedWrapper = history.destroy
+    const replacement = createMemoryHistory({ initialEntries: ['/'] })
+    testHistories.add(replacement)
+
+    const externalDestroy = vi.fn(function (this: RouterHistory) {
+      retainedWrapper.call(this)
+    })
+    history.destroy = externalDestroy
+    router.update({ history: replacement })
+    originalDestroy.mockClear()
+    history.destroy()
+
+    expect(externalDestroy).toHaveBeenCalledOnce()
+    expect(originalDestroy).toHaveBeenCalledOnce()
+    expect(originalDestroy.mock.instances[0]).toBe(history)
+
+    createRouter({ history, scrollRestoration: true })
+    originalDestroy.mockClear()
+    history.destroy()
+    expect(originalDestroy).toHaveBeenCalledOnce()
+    expect(originalDestroy.mock.instances[0]).toBe(history)
+  })
+
+  test('cleans the old attachment when replacing history', () => {
+    const oldHistory = createMemoryHistory({ initialEntries: ['/'] })
+    const newHistory = createMemoryHistory({ initialEntries: ['/'] })
+    testHistories.add(newHistory)
+    const oldDestroy = oldHistory.destroy
+    const newDestroy = newHistory.destroy
+    const router = createRouter({
+      history: oldHistory,
+      scrollRestoration: true,
+    })
+
+    router.update({ history: newHistory })
+    oldHistory.destroy()
+
+    expect(oldHistory.destroy).toBe(oldDestroy)
+    expect(newHistory.destroy).not.toBe(newDestroy)
+    newHistory.destroy()
+  })
+
+  test('keeps one rendered subscription and tracked target set when enabling later', () => {
+    const router = createRouter({ scrollRestoration: false })
+    const trackedScrollTargets = router._scroll.trackedScrollTargets
+
+    setupScrollRestoration(router, true)
+    setupScrollRestoration(router, true)
+
+    expect(router._scroll.trackedScrollTargets).toBe(trackedScrollTargets)
+    expect(
+      [...router.subscribers].filter(
+        (subscriber) => subscriber.eventType === 'onRendered',
+      ),
+    ).toHaveLength(1)
+    router.history.destroy()
+  })
+
+  test('preserves forced restoration through history replacement', () => {
+    const firstHistory = createMemoryHistory({ initialEntries: ['/'] })
+    const secondHistory = createMemoryHistory({ initialEntries: ['/'] })
+    testHistories.add(secondHistory)
+    const element = document.createElement('div')
+    element.id = 'unit-forced-replacement-element'
+    element.dataset.scrollRestorationId = element.id
+    document.body.append(element)
+    const router = createRouter({
+      history: firstHistory,
+      scrollRestoration: false,
+      getScrollRestorationKey: (location) => location.pathname,
+    })
+
+    setupScrollRestoration(router, true)
+    router.update({ history: secondHistory })
+    const source = getLocation(router, '/forced-source')
+    const destination = getLocation(router, '/forced-destination')
+    element.scrollTop = 120
+    element.dispatchEvent(new Event('scroll', { bubbles: true }))
+    emitNavigation(router, 'onBeforeLoad', source, destination)
+    element.scrollTop = 0
+    vi.stubGlobal('scrollTo', vi.fn())
+    emitNavigation(router, 'onRendered', destination, source)
+
+    expect(router._scroll.restoring).toBe(true)
+    expect(element.scrollTop).toBe(120)
+  })
+
+  test('removes reset-only rendered work when its history is destroyed', () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createRouter({ history, scrollRestoration: false })
+    const scrollTo = vi.fn()
+    vi.stubGlobal('scrollTo', scrollTo)
+
+    history.destroy()
+    emitNavigation(
+      router,
+      'onRendered',
+      getLocation(router, '/from'),
+      getLocation(router, '/to'),
+    )
+
+    expect(scrollTo).not.toHaveBeenCalled()
+    expect(
+      [...router.subscribers].filter(
+        (subscriber) => subscriber.eventType === 'onRendered',
+      ),
+    ).toHaveLength(0)
+  })
+
   test('sets up scroll restoration when scrollRestoration is true', () => {
     const windowAddEventListener = vi.spyOn(window, 'addEventListener')
     const documentAddEventListener = vi.spyOn(document, 'addEventListener')
