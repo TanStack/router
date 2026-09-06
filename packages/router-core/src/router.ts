@@ -577,6 +577,33 @@ export interface BuildNextOptions {
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
   _isNavigate?: boolean
+  /** @internal */
+  _buildCache?: BuildLocationCache
+}
+
+/**
+ * Caller-owned pathname cache for immutable link options. All parameters,
+ * including absent optional ones, are dependencies. Callbacks still run.
+ * @internal
+ */
+export interface BuildLocationCache {
+  value?: {
+    decoder: unknown
+    trailingSlash: unknown
+    tree: unknown
+    to: unknown
+    from: string | undefined
+    template: string
+    route: AnyRoute | undefined
+    routes: ReadonlyArray<AnyRoute>
+    params: Record<string, unknown>
+    pathname: string
+    input: unknown
+    // The immutable input has no enumerable accessors, including non-path keys.
+    plain: boolean
+    // Every interpolation dependency is an own primitive input value.
+    constant: boolean
+  }
 }
 
 type NavigationEventInfo = {
@@ -1866,6 +1893,7 @@ export class RouterCore<
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
       } = {},
+      cache?: BuildLocationCache,
     ): ParsedLocation => {
       if (dest.href) {
         const parsed = parseHref(dest.href, {} as ParsedHistoryState)
@@ -1884,128 +1912,216 @@ export class RouterCore<
       const currentLocation =
         dest._fromLocation || this._pendingLocation || this.latestLocation
 
-      // Use lightweight matching - only computes what buildLocation needs
-      // (fullPath, search, params) without creating full match objects
+      // Current-location matching and callbacks retain their normal semantics.
       const lightweightResult = this.matchRoutesLightweight(currentLocation)
-
-      // check that from path exists in the current route tree
-      // do this check only on navigations during test or development
-      if (
-        process.env.NODE_ENV !== 'production' &&
-        dest.from &&
-        dest._isNavigate
-      ) {
-        const [allFromMatches] = this.getMatchedRoutes(dest.from)
-
-        const matchedFrom = findLast(
-          lightweightResult[0 /* matchedRoutes */],
-          (d) => {
-            return comparePaths(d.fullPath, dest.from!)
-          },
-        )
-
-        const matchedCurrent = findLast(allFromMatches, (d) => {
-          return comparePaths(d.fullPath, lightweightResult[1 /* fullPath */])
-        })
-
-        // for from to be invalid it shouldn't just be unmatched to currentLocation
-        // but the currentLocation should also be unmatched to from
-        if (!matchedFrom && !matchedCurrent) {
-          console.warn(`Could not find match for from: ${dest.from}`)
-        }
-      }
-
+      const fromSearch = lightweightResult[2 /* search */]
+      const fromParams = lightweightResult[3 /* params */]
       const defaultedFromPath =
         dest.unsafeRelative === 'path'
           ? currentLocation.pathname
           : (dest.from ?? lightweightResult[1 /* fullPath */])
-
-      // From search should always use the current location
-      const fromSearch = lightweightResult[2 /* search */]
-      // Same with params. It can't hurt to provide as many as possible
-      const fromParams = lightweightResult[3 /* params */]
-
-      const nextTo = this.resolvePathWithBase(
-        defaultedFromPath,
-        dest.to ? `${dest.to}` : '.',
-      )
-
-      // Resolve the next params
-      let nextParams = resolveNextParams(dest.params, fromParams)
-
-      const destRoute = this.routesByPath[
-        trimPathRight(nextTo) as keyof typeof this.routesByPath
-      ] as AnyRoute | undefined
-
-      let destRoutes: ReadonlyArray<AnyRoute>
-      if (destRoute) {
-        destRoutes = this.getRouteBranch(destRoute)
-      } else if (nextTo.includes('$')) {
-        // Route templates must match routesByPath exactly. A miss here is a
-        // typed destination mismatch, not a concrete URL to route-match.
-        destRoutes = []
-      } else {
-        const [matchedRoutes, rawParams, foundRoute] =
-          this.getMatchedRoutes(nextTo)
-        destRoutes = matchedRoutes
-
-        if (
-          this.options.notFoundRoute &&
-          (!foundRoute || (foundRoute.path !== '/' && rawParams['**']))
-        ) {
-          destRoutes = [...destRoutes, this.options.notFoundRoute]
-        }
+      const from =
+        cache && !(typeof dest.to === 'string' && dest.to.startsWith('/'))
+          ? defaultedFromPath
+          : undefined
+      let entry = cache?.value
+      if (
+        entry &&
+        (entry.decoder !== this.pathParamsDecoder ||
+          entry.tree !== this.processedTree)
+      ) {
+        entry = undefined
       }
+      let nextPathname: string
+      let destRoutes: ReadonlyArray<AnyRoute>
+      // Plain params can be compared before merging. Callbacks still take the
+      // ordinary path below, where their resolved output may also hit the cache.
+      if (
+        entry?.route &&
+        entry.to === dest.to &&
+        entry.from === from &&
+        entry.trailingSlash === this.options.trailingSlash &&
+        entry.input === dest.params &&
+        entry.plain &&
+        !dest.href &&
+        !opts.leaveParams &&
+        !opts._isNavigate &&
+        typeof dest.params !== 'function' &&
+        !entry.routes.some(routeHasParamsStringify) &&
+        (entry.constant ||
+          equalPathParams(
+            entry.params,
+            dest.params,
+            dest.params === false || dest.params === null
+              ? undefined
+              : fromParams,
+          ))
+      ) {
+        nextPathname = entry.pathname
+        destRoutes = entry.routes
+      } else {
+        // check that from path exists in the current route tree
+        // do this check only on navigations during test or development
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          dest.from &&
+          dest._isNavigate
+        ) {
+          const [allFromMatches] = this.getMatchedRoutes(dest.from)
 
-      // If there are any params, we need to stringify them
-      if (destRoutes.length && hasKeys(nextParams)) {
-        for (const route of destRoutes) {
-          const fn =
-            route.options.params?.stringify ?? route.options.stringifyParams
-          if (fn) {
-            if (nextParams === fromParams) {
-              nextParams = Object.assign(Object.create(null), nextParams)
-            }
-            try {
-              Object.assign(nextParams, fn(nextParams))
-            } catch {
-              // Ignore errors here. When a paired parseParams is defined,
-              // extractStrictParams will re-throw during route matching,
-              // storing the error on the match and allowing the route's
-              // errorComponent to render. If no parseParams is defined,
-              // the stringify error is silently dropped.
+          const matchedFrom = findLast(
+            lightweightResult[0 /* matchedRoutes */],
+            (d) => {
+              return comparePaths(d.fullPath, dest.from!)
+            },
+          )
+
+          const matchedCurrent = findLast(allFromMatches, (d) => {
+            return comparePaths(d.fullPath, lightweightResult[1 /* fullPath */])
+          })
+
+          // for from to be invalid it shouldn't just be unmatched to currentLocation
+          // but the currentLocation should also be unmatched to from
+          if (!matchedFrom && !matchedCurrent) {
+            console.warn(`Could not find match for from: ${dest.from}`)
+          }
+        }
+
+        const nextTo = this.resolvePathWithBase(
+          defaultedFromPath,
+          dest.to ? `${dest.to}` : '.',
+        )
+
+        // Resolve the next params
+        let nextParams = resolveNextParams(dest.params, fromParams)
+
+        const destRoute = this.routesByPath[
+          trimPathRight(nextTo) as keyof typeof this.routesByPath
+        ] as AnyRoute | undefined
+
+        if (destRoute) {
+          destRoutes = this.getRouteBranch(destRoute)
+        } else if (nextTo.includes('$')) {
+          // Route templates must match routesByPath exactly. A miss here is a
+          // typed destination mismatch, not a concrete URL to route-match.
+          destRoutes = []
+        } else {
+          const [matchedRoutes, rawParams, foundRoute] =
+            this.getMatchedRoutes(nextTo)
+          destRoutes = matchedRoutes
+
+          if (
+            this.options.notFoundRoute &&
+            (!foundRoute || (foundRoute.path !== '/' && rawParams['**']))
+          ) {
+            destRoutes = [...destRoutes, this.options.notFoundRoute]
+          }
+        }
+
+        // If there are any params, we need to stringify them
+        if (destRoutes.length && hasKeys(nextParams)) {
+          for (const route of destRoutes) {
+            const fn =
+              route.options.params?.stringify ?? route.options.stringifyParams
+            if (fn) {
+              if (nextParams === fromParams) {
+                nextParams = Object.assign(Object.create(null), nextParams)
+              }
+              try {
+                Object.assign(nextParams, fn(nextParams))
+              } catch {
+                // Ignore errors here. When a paired parseParams is defined,
+                // extractStrictParams will re-throw during route matching,
+                // storing the error on the match and allowing the route's
+                // errorComponent to render. If no parseParams is defined,
+                // the stringify error is silently dropped.
+              }
             }
           }
         }
-      }
 
-      const nextPathname = opts.leaveParams
-        ? // Keep path params uninterpolated for matchRoute/template matching.
-          nextTo
-        : decodePath(
-            interpolatePath({
-              path: nextTo,
-              params: nextParams,
-              decoder: this.pathParamsDecoder,
-              server: this.isServer,
-            }).interpolatedPath,
-          ).path
-
-      if (
-        process.env.NODE_ENV !== 'production' &&
-        destRoute &&
-        !opts.leaveParams
-      ) {
-        try {
-          const foundRoute = this.getMatchedRoutes(nextPathname)[2]
-          if (foundRoute?.id !== destRoute.id) {
-            console.warn(
-              `Generated path "${nextPathname}" for route "${destRoute.id}" matched route "${foundRoute?.id}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.`,
+        const hit =
+          !opts.leaveParams &&
+          entry &&
+          entry.decoder === this.pathParamsDecoder &&
+          entry.template === nextTo &&
+          equalPathParams(entry.params, nextParams)
+        if (hit) {
+          nextPathname = entry!.pathname
+          entry!.to = dest.to
+          entry!.from = from
+          entry!.trailingSlash = this.options.trailingSlash
+          entry!.route = destRoute
+          entry!.routes = destRoutes
+          if (entry!.input !== dest.params) {
+            entry!.input = dest.params
+            entry!.plain = hasDataParams(dest.params)
+            entry!.constant = equalPathParams(
+              entry!.params,
+              dest.params,
+              undefined,
+              true,
             )
           }
-        } catch {
-          // Ignore roundtrip validation errors. The generated location will be
-          // handled by the normal navigation flow.
+        } else if (opts.leaveParams) {
+          nextPathname = nextTo
+        } else {
+          const interpolationOptions: Parameters<typeof interpolatePath>[0] = {
+            path: nextTo,
+            params: nextParams,
+            decoder: this.pathParamsDecoder,
+            server: this.isServer,
+          }
+          if (cache) {
+            interpolationOptions.trackOptionalParams = true
+          }
+          const interpolated = interpolatePath(interpolationOptions)
+          nextPathname = decodePath(interpolated.interpolatedPath).path
+          if (cache) {
+            // "*" is the deprecated alias for _splat, not a separate dependency.
+            delete interpolated.usedParams['*']
+            cache.value = {
+              decoder: this.pathParamsDecoder,
+              trailingSlash: this.options.trailingSlash,
+              tree: this.processedTree,
+              to: dest.to,
+              from,
+              template: nextTo,
+              route: destRoute,
+              routes: destRoutes,
+              params: interpolated.usedParams,
+              pathname: nextPathname,
+              input: dest.params,
+              plain:
+                entry && entry.input === dest.params
+                  ? entry.plain
+                  : hasDataParams(dest.params),
+              constant: equalPathParams(
+                interpolated.usedParams,
+                dest.params,
+                undefined,
+                true,
+              ),
+            }
+          }
+        }
+
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          destRoute &&
+          !opts.leaveParams
+        ) {
+          try {
+            const foundRoute = this.getMatchedRoutes(nextPathname)[2]
+            if (foundRoute?.id !== destRoute.id) {
+              console.warn(
+                `Generated path "${nextPathname}" for route "${destRoute.id}" matched route "${foundRoute?.id}" instead. This can happen when multiple route templates resolve to the same URL. Use the route template that matches the intended route, or adjust params.stringify if it changed the target path.`,
+              )
+            }
+          } catch {
+            // Ignore roundtrip validation errors. The generated location will be
+            // handled by the normal navigation flow.
+          }
         }
       }
 
@@ -2112,7 +2228,7 @@ export class RouterCore<
       }
     }
 
-    const next = build(opts)
+    const next = build(opts, opts._buildCache)
 
     if (opts.mask) {
       next.maskedLocation = build({
@@ -2852,6 +2968,57 @@ function applySearchMiddleware(
   }
 
   return applyNext(0, search)
+}
+
+function routeHasParamsStringify(route: AnyRoute) {
+  return !!(route.options.params?.stringify || route.options.stringifyParams)
+}
+
+// Inspect once per immutable params object, including keys outside the path:
+// their getters can have effects needed by later search/URL callbacks.
+function hasDataParams(params: unknown) {
+  if (params && typeof params === 'object') {
+    for (const key of Reflect.ownKeys(params)) {
+      const descriptor = Object.getOwnPropertyDescriptor(params, key)!
+      if (descriptor.enumerable && !('value' in descriptor)) {
+        return false
+      }
+    }
+  }
+  return true
+}
+
+/** Compare exactly the values interpolation reads, without allocating a merge. */
+function equalPathParams(
+  previous: Record<string, unknown>,
+  params: unknown,
+  inherited?: Record<string, unknown>,
+  requireOwn = false,
+) {
+  for (const key in previous) {
+    const descriptor = params
+      ? Object.getOwnPropertyDescriptor(params, key)
+      : undefined
+    if (requireOwn && !descriptor?.enumerable) {
+      return false
+    }
+    let value = inherited?.[key]
+    if (descriptor?.enumerable) {
+      // Accessors must run through resolveNextParams before checking a hit.
+      if (!('value' in descriptor)) {
+        return false
+      }
+      value = descriptor.value
+    }
+    if (
+      value !== previous[key] ||
+      (value !== null && typeof value === 'object') ||
+      typeof value === 'function'
+    ) {
+      return false
+    }
+  }
+  return true
 }
 
 function findGlobalNotFoundRouteId(
