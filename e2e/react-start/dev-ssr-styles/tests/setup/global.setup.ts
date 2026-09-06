@@ -32,6 +32,10 @@ export default async function setup() {
   const baseURL = `http://localhost:${port}`
 
   await waitForServer(baseURL)
+  if (viteBundledDev) {
+    // Keep the bundled client cold so SSR styles are tested before JavaScript runs.
+    return
+  }
   await preOptimizeDevServer({
     baseURL,
     readyTestId: 'home-heading',

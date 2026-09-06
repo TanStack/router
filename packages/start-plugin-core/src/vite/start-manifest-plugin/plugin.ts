@@ -24,6 +24,7 @@ export function startManifestPlugin(opts: {
 }): PluginOption {
   let clientBuild: NormalizedClientBuild | undefined
   let cssCodeSplitDisabledFileName: string | undefined
+  let devClientRuntime: string | undefined
 
   return [
     {
@@ -32,6 +33,15 @@ export function startManifestPlugin(opts: {
         return environment.name === START_ENVIRONMENT_NAMES.client
       },
       enforce: 'post',
+      configureServer(server) {
+        // Workaround (https://github.com/vitejs/vite/issues/22991): custom
+        // SSR HTML must include Vite's separate bundled-dev runtime. Replace
+        // the hardcoded filename when Vite exposes its SSR entry/output API.
+        devClientRuntime = server.environments[START_ENVIRONMENT_NAMES.client]
+          .bundledDev
+          ? joinURL(server.config.base, 'bundledDevClient.mjs')
+          : undefined
+      },
       generateBundle(_options, bundle) {
         if (this.environment.name !== START_ENVIRONMENT_NAMES.client) {
           throw new Error(
@@ -58,11 +68,11 @@ export function startManifestPlugin(opts: {
         })
 
         if (this.environment.name !== START_ENVIRONMENT_NAMES.server) {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
         if (this.environment.config.command === 'serve') {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devClientRuntime)
         }
 
         const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
@@ -135,8 +145,12 @@ function getAssetFileNameByName(
   return undefined
 }
 
-function getEmptyStartManifestModule(clientEntry: string) {
-  return `export const tsrStartManifest = () => ({
+function getEmptyStartManifestModule(
+  clientEntry: string,
+  clientRuntime?: string,
+) {
+  if (!clientRuntime) {
+    return `export const tsrStartManifest = () => ({
       routes: {
         __root__: {
           preloads: ['${clientEntry}'],
@@ -144,10 +158,26 @@ function getEmptyStartManifestModule(clientEntry: string) {
         },
       },
     })`
+  }
+  const entries = [clientRuntime, clientEntry]
+
+  return `export const tsrStartManifest = () => (${serializeStartManifest({
+    routes: {
+      [rootRouteId]: {
+        preloads: entries,
+        // Bundled-dev entries need the separate runtime to execute first.
+        scripts: entries.map((src) => ({
+          attrs: { type: 'module', async: false, src },
+        })),
+      },
+    },
+  })})`
 }
 
 function getDevClientEntry(opts: { basePath: string; bundledDev: boolean }) {
   if (opts.bundledDev) {
+    // Workaround (https://github.com/vitejs/vite/issues/22991): Vite currently
+    // fixes bundled entry filenames. Use its module-to-URL API when available.
     return joinURL(opts.basePath, 'assets', 'index.js')
   }
 

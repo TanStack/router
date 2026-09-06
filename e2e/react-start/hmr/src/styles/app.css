@@ -1,6 +1,4 @@
-@import 'tailwindcss' source('../');
-
-@theme {
+:root {
   --font-sans: 'Sora', 'Inter', ui-sans-serif, system-ui, sans-serif;
   --font-display: 'Space Grotesk', 'Sora', ui-sans-serif, system-ui, sans-serif;
   --color-ink: #102033;
@@ -14,74 +12,192 @@
 
 @layer base {
   html {
-    @apply bg-[var(--color-night)] text-[var(--color-ink)] antialiased;
+    background: var(--color-night);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
 
   body {
-    @apply m-0 min-h-screen bg-[radial-gradient(circle_at_top_left,_rgba(255,255,255,0.82),_transparent_32%),linear-gradient(160deg,_#f6f0e4_0%,_#ecdfc4_42%,_#d9ecef_100%)];
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(
+        circle at top left,
+        rgba(255, 255, 255, 0.82),
+        transparent 32%
+      ),
+      linear-gradient(160deg, #f6f0e4 0%, #ecdfc4 42%, #d9ecef 100%);
   }
 
   * {
-    @apply box-border;
+    box-sizing: border-box;
   }
 
   button,
   input {
     font: inherit;
   }
+
+  .hidden {
+    display: none;
+  }
 }
 
 @layer components {
   .hmr-shell {
-    @apply min-h-screen;
+    min-height: 100vh;
   }
 
   .hmr-page {
-    @apply mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    width: 100%;
+    max-width: 80rem;
+    min-height: 100vh;
+    margin-inline: auto;
+    padding: 1.5rem clamp(1rem, 3vw, 2rem);
   }
 
   .hmr-hero {
-    @apply relative overflow-hidden rounded-[2rem] border border-white/60 bg-white/80 p-6 shadow-[0_24px_80px_rgba(16,32,51,0.14)] backdrop-blur md:p-8;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 2rem;
+    padding: clamp(1.5rem, 3vw, 2rem);
+    background: rgba(255, 255, 255, 0.8);
+    box-shadow: 0 24px 80px rgba(16, 32, 51, 0.14);
+    backdrop-filter: blur(8px);
   }
 
   .hmr-hero::after {
     content: '';
-    @apply pointer-events-none absolute inset-y-0 right-0 w-1/3 bg-[radial-gradient(circle_at_center,_rgba(255,122,89,0.24),_transparent_70%)];
+    pointer-events: none;
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    width: 33.333%;
+    background: radial-gradient(
+      circle at center,
+      rgba(255, 122, 89, 0.24),
+      transparent 70%
+    );
   }
 
   .hmr-nav-grid {
-    @apply grid gap-3 sm:grid-cols-2 xl:grid-cols-3;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+    gap: 0.75rem;
   }
 
   .hmr-nav-link {
-    @apply flex min-h-20 flex-col justify-between rounded-2xl border border-white/70 bg-white/70 px-4 py-3 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--color-reef)] hover:bg-white;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 5rem;
+    border: 1px solid rgba(255, 255, 255, 0.7);
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.7);
+    color: inherit;
+    text-align: left;
+    text-decoration: none;
+    box-shadow: 0 1px 3px rgba(16, 32, 51, 0.1);
+  }
+
+  .hmr-nav-link:hover,
+  .hmr-nav-link[aria-current='page'] {
+    border-color: var(--color-reef);
+    background: white;
   }
 
   .hmr-card {
-    @apply rounded-[1.75rem] border border-white/65 bg-white/82 p-5 shadow-[0_18px_50px_rgba(16,32,51,0.12)] backdrop-blur;
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    border-radius: 1.75rem;
+    padding: 1.25rem;
+    background: rgba(255, 255, 255, 0.82);
+    box-shadow: 0 18px 50px rgba(16, 32, 51, 0.12);
+    backdrop-filter: blur(8px);
   }
 
   .hmr-label {
-    @apply text-xs font-semibold uppercase tracking-[0.24em] text-[var(--color-lagoon)];
+    color: var(--color-lagoon);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
   }
 
   .hmr-kbd {
-    @apply inline-flex items-center rounded-full bg-[var(--color-night)] px-2.5 py-1 text-xs font-semibold tracking-wide text-white;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 9999px;
+    padding: 0.25rem 0.625rem;
+    background: var(--color-night);
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.025em;
   }
 
   .hmr-button {
-    @apply inline-flex items-center justify-center rounded-full bg-[var(--color-night)] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[rgba(16,32,51,0.18)] transition hover:-translate-y-0.5 hover:bg-[var(--color-lagoon)] focus:outline-none focus:ring-2 focus:ring-[var(--color-coral)] focus:ring-offset-2 focus:ring-offset-white;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 0;
+    border-radius: 9999px;
+    padding: 0.5rem 1rem;
+    background: var(--color-night);
+    color: white;
+    font-size: 0.875rem;
+    font-weight: 600;
+    box-shadow: 0 10px 15px rgba(16, 32, 51, 0.18);
+    cursor: pointer;
+  }
+
+  .hmr-button:hover {
+    background: var(--color-lagoon);
+  }
+
+  .hmr-button:focus-visible {
+    outline: 2px solid var(--color-coral);
+    outline-offset: 2px;
   }
 
   .hmr-input {
-    @apply w-full rounded-2xl border border-[var(--color-sand)] bg-white/90 px-4 py-3 text-sm text-[var(--color-ink)] shadow-inner shadow-[rgba(16,32,51,0.04)] outline-none transition placeholder:text-slate-400 focus:border-[var(--color-reef)] focus:ring-4 focus:ring-[rgba(47,143,157,0.14)];
+    width: 100%;
+    border: 1px solid var(--color-sand);
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--color-ink);
+    font-size: 0.875rem;
+    box-shadow: inset 0 2px 4px rgba(16, 32, 51, 0.04);
+  }
+
+  .hmr-input:focus {
+    border-color: var(--color-reef);
+    outline: 2px solid var(--color-reef);
+    outline-offset: 2px;
   }
 
   .hmr-stat {
-    @apply rounded-2xl border border-[var(--color-sand)] bg-[var(--color-mist)] px-4 py-3;
+    border: 1px solid var(--color-sand);
+    border-radius: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-mist);
   }
 
   .hmr-marker {
-    @apply inline-flex items-center rounded-full border border-[var(--color-coral)]/30 bg-[rgba(255,122,89,0.12)] px-3 py-1 text-sm font-semibold text-[var(--color-coral)];
+    display: inline-flex;
+    align-items: center;
+    border: 1px solid rgba(255, 122, 89, 0.3);
+    border-radius: 9999px;
+    padding: 0.25rem 0.75rem;
+    background: rgba(255, 122, 89, 0.12);
+    color: var(--color-coral);
+    font-size: 0.875rem;
+    font-weight: 600;
   }
 }

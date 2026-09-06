@@ -6,7 +6,7 @@ import path from 'node:path'
 import type { ModuleNode, ViteDevServer } from 'vite'
 
 // CSS file extensions supported by Vite
-const CSS_FILE_REGEX =
+export const CSS_FILE_REGEX =
   /\.(css|less|sass|scss|styl|stylus|pcss|postcss|sss)(?:$|\?)/
 // CSS modules file pattern - exported for use in plugin hook filters
 // Note: allow query/hash suffix since Vite ids often include them.
@@ -51,7 +51,7 @@ function hasCssSideEffectFreeParam(url: string): boolean {
  * Resolve a file path to a Vite dev server URL.
  * Files within the root directory use relative paths, files outside use /@fs prefix.
  */
-function resolveDevUrl(rootDirectory: string, filePath: string): string {
+export function resolveDevUrl(rootDirectory: string, filePath: string): string {
   const normalizedPath = filePath.replace(/\\/g, '/')
   const relativePath = path.posix.relative(
     rootDirectory.replace(/\\/g, '/'),
@@ -257,11 +257,14 @@ async function fetchCssFromModule(
  * We locate that JSON string literal and run `JSON.parse` on it to reverse the
  * escaping (\\n, \\t, \\", \\\\, \\uXXXX, etc.).
  */
-export function extractCssFromCode(code: string): string | undefined {
-  const startIdx = code.indexOf(VITE_CSS_MARKER)
+export function extractCssFromCode(
+  code: string,
+  marker = VITE_CSS_MARKER,
+): string | undefined {
+  const startIdx = code.indexOf(marker)
   if (startIdx === -1) return undefined
 
-  const valueStart = startIdx + VITE_CSS_MARKER.length
+  const valueStart = startIdx + marker.length
   // Vite emits `const __vite__css = ${JSON.stringify(cssContent)}` which always
   // produces double-quoted JSON string literals.
   if (code.charCodeAt(valueStart) !== 34) return undefined
