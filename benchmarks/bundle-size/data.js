@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788685471518,
+  "lastUpdate": 1788693293017,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,102 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "manuel.schiller@caligano.de",
-            "name": "Manuel Schiller",
-            "username": "schiller-manuel"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "96818b8ba5ead6f1f027094841330182aff415b2",
-          "message": "fix(router-plugin): isolate route metadata per plugin instance (#7313)",
-          "timestamp": "2026-05-01T21:03:21+02:00",
-          "tree_id": "55082a85633c8dfd735323c05c7b5b97794fe317",
-          "url": "https://github.com/TanStack/router/commit/96818b8ba5ead6f1f027094841330182aff415b2"
-        },
-        "date": 1777662359075,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89245,
-            "unit": "bytes",
-            "extra": "raw=280511; brotli=77521"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92857,
-            "unit": "bytes",
-            "extra": "raw=292296; brotli=80600"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36234,
-            "unit": "bytes",
-            "extra": "raw=108799; brotli=32577"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41065,
-            "unit": "bytes",
-            "extra": "raw=123353; brotli=36910"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54430,
-            "unit": "bytes",
-            "extra": "raw=155022; brotli=48879"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59678,
-            "unit": "bytes",
-            "extra": "raw=171585; brotli=53437"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104203,
-            "unit": "bytes",
-            "extra": "raw=329827; brotli=90077"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107712,
-            "unit": "bytes",
-            "extra": "raw=340406; brotli=93141"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 101714,
-            "unit": "bytes",
-            "extra": "raw=324065; brotli=87508"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105097,
-            "unit": "bytes",
-            "extra": "raw=334748; brotli=90403"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50584,
-            "unit": "bytes",
-            "extra": "raw=155726; brotli=44648"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56520,
-            "unit": "bytes",
-            "extra": "raw=173040; brotli=49670"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -23815,6 +23719,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/08eff50c447a154a3373909009e9e4375cea17ce"
         },
         "date": 1788685470519,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85821,
+            "unit": "bytes",
+            "extra": "raw=268520; brotli=74720; initial_gzip=85681"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89398,
+            "unit": "bytes",
+            "extra": "raw=280473; brotli=77831; initial_gzip=89259"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 33985,
+            "unit": "bytes",
+            "extra": "raw=98614; brotli=30653; initial_gzip=33858"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 38927,
+            "unit": "bytes",
+            "extra": "raw=113604; brotli=35002; initial_gzip=38799"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50706,
+            "unit": "bytes",
+            "extra": "raw=141669; brotli=45797; initial_gzip=50579"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56457,
+            "unit": "bytes",
+            "extra": "raw=160312; brotli=50785; initial_gzip=56330"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99042,
+            "unit": "bytes",
+            "extra": "raw=311798; brotli=85856; initial_gzip=98903"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106541,
+            "unit": "bytes",
+            "extra": "raw=338934; brotli=92366; initial_gzip=106404"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99781,
+            "unit": "bytes",
+            "extra": "raw=313187; brotli=86562; initial_gzip=98921"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102282,
+            "unit": "bytes",
+            "extra": "raw=321728; brotli=88621; initial_gzip=102143"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102417,
+            "unit": "bytes",
+            "extra": "raw=322338; brotli=88264; initial_gzip=102242"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102830,
+            "unit": "bytes",
+            "extra": "raw=323297; brotli=88652; initial_gzip=102661"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105819,
+            "unit": "bytes",
+            "extra": "raw=332669; brotli=91172; initial_gzip=105644"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47143,
+            "unit": "bytes",
+            "extra": "raw=140730; brotli=41924; initial_gzip=47014"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50295,
+            "unit": "bytes",
+            "extra": "raw=148368; brotli=44799; initial_gzip=47084"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52342,
+            "unit": "bytes",
+            "extra": "raw=156485; brotli=46402; initial_gzip=52215"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67241,
+            "unit": "bytes",
+            "extra": "raw=193764; brotli=59816; initial_gzip=67113"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71150,
+            "unit": "bytes",
+            "extra": "raw=206364; brotli=63251; initial_gzip=71024"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e16faec455237f4e4acbe4bec034378209c26765",
+          "message": "test: reduce memory benchmark variance and simplify the harness (#8260)\n\n* ci: allow memory-only benchmark experiments\n\n* test: apply Node compiler and GC corrections to memory workers\n\n* test: replace adaptive memory GC polling with fixed work\n\n* test: control the memory worker old-generation GC budget\n\n* test: measure natural churn and single-request memory footprints\n\n* test: isolate memory error-path workers\n\n* test: remove code generation from memory measurements\n\n* test: make aborted memory requests follow cancellation\n\n* test: simplify memory cancellation helpers\n\n* test: remove incremental marking from memory measurements\n\n* test: track shared memory runtime in type-check cache\n\n* test: separate memory warmups with an event-loop turn\n\n* test: reset client memory apps between benchmark invocations\n\n* chore: remove stale memory benchmark guidance\n\n* test: control the memory benchmark coordinator runtime\n\n* revert: keep the better-tested memory benchmark runtime\n\n* test: restore JIT in memory benchmark workers\n\n* docs: record memory worker flag removal evidence\n\n* test: remove added memory unit tests and restore workflow",
+          "timestamp": "2026-09-06T13:11:27+02:00",
+          "tree_id": "87bb35377f56bac9f41eeb6be2bcafd233f6acdd",
+          "url": "https://github.com/TanStack/router/commit/e16faec455237f4e4acbe4bec034378209c26765"
+        },
+        "date": 1788693291134,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
