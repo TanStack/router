@@ -1793,6 +1793,51 @@ describe('buildLocation - basepath', () => {
 })
 
 describe('buildLocation - params edge cases', () => {
+  test('isolates mutating params updaters while preserving inherit and clear modes', () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/{-$userId}',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/users/123'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([userRoute]),
+      history,
+    })
+    const updater = vi.fn((params: { userId?: string }) => {
+      expect(Object.getPrototypeOf(params)).toBeNull()
+      expect(params).toEqual({ userId: '123' })
+      params.userId = '456'
+      return params
+    })
+
+    try {
+      for (let i = 0; i < 2; i++) {
+        expect(
+          router.buildLocation({
+            to: '/users/{-$userId}',
+            params: updater,
+          }).pathname,
+        ).toBe('/users/456')
+      }
+      expect(updater).toHaveBeenCalledTimes(2)
+      expect(updater.mock.calls[0]![0]).not.toBe(updater.mock.calls[1]![0])
+      expect(router.buildLocation({ to: '/users/{-$userId}' }).pathname).toBe(
+        '/users/123',
+      )
+      expect(
+        router.buildLocation({ to: '/users/{-$userId}', params: true })
+          .pathname,
+      ).toBe('/users/123')
+      expect(
+        router.buildLocation({ to: '/users/{-$userId}', params: false })
+          .pathname,
+      ).toBe('/users')
+    } finally {
+      history.destroy()
+    }
+  })
+
   test('copies static param getters once without mutating inherited params', () => {
     const rootRoute = new BaseRootRoute({})
     const userRoute = new BaseRoute({
