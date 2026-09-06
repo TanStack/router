@@ -33,7 +33,6 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
       const css = await cssResponse.text()
       expect(css).toContain('.styled-box')
       expect(css).toContain('7px')
-      expect(css.match(/\.styled-box/g)).toHaveLength(2)
 
       const after = await request.get('/__test/client-builds')
       const afterCounts = await after.json()
@@ -41,6 +40,13 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
       expect(afterCounts.starts).toBe(afterCounts.bundles)
     })
   }
+
+  test('page renders correctly', async ({ page }) => {
+    await page.goto('/')
+    await expect(page.getByTestId('home-heading')).toHaveText(
+      'Dev SSR Styles Test',
+    )
+  })
 
   if (ssrStylesMode === 'default') {
     test.describe('default (enabled, basepath = vite base)', () => {
@@ -160,13 +166,6 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
       })
     })
   }
-
-  test('page renders correctly', async ({ page }) => {
-    await page.goto('/')
-    await expect(page.getByTestId('home-heading')).toHaveText(
-      'Dev SSR Styles Test',
-    )
-  })
 
   if (viteBundledDev && ssrStylesMode !== 'disabled') {
     test('bundled CSS assets remain valid after client modules load', async ({

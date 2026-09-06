@@ -1,12 +1,10 @@
 import { describe, expect, test, vi } from 'vitest'
 import {
   captureBundledDevStyles,
+  collectBundledDevStyles,
   loadBundledDevStyles,
 } from '../../src/vite/dev-server-plugin/bundled-dev-styles'
-import {
-  CSS_FILE_REGEX,
-  collectDevStyles,
-} from '../../src/vite/dev-server-plugin/dev-styles'
+import { CSS_FILE_REGEX } from '../../src/vite/dev-server-plugin/dev-styles'
 import { devServerPlugin } from '../../src/vite/dev-server-plugin/plugin'
 import type { EnvironmentModuleNode, Plugin } from 'vite'
 
@@ -280,16 +278,13 @@ test('discovers SFC styles from SSR without duplicating CSS imports or loading i
   }
   css.importedModules.add(importedCss)
   const environment = createEnvironment([entry, css, importedCss, ...inlineCss])
-  const loadCssContents = vi.fn(async () => '.box[data-v-test] {}')
-
   expect(
-    await collectDevStyles({
+    await collectBundledDevStyles({
       serverEnvironment: environment,
       rootDirectory: '/app',
       entries: ['/app/entry.ts'],
-      loadCssContents,
+      styles: new Map([[css.id!, '.box[data-v-test] {}']]),
     }),
   ).toContain('.box[data-v-test] {}')
-  expect(loadCssContents).toHaveBeenCalledExactlyOnceWith(css.url)
   expect(environment.transformRequest).not.toHaveBeenCalled()
 })

@@ -4,9 +4,13 @@ import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { ensureLatestClientBuild } from './bundled-dev'
 import {
   captureBundledDevStyles,
-  loadBundledDevStyles,
+  collectBundledDevStyles,
 } from './bundled-dev-styles'
-import { collectDevStyles, fetchCssFromModule } from './dev-styles'
+import {
+  CSS_MODULES_REGEX,
+  collectDevStyles,
+  normalizeCssModuleCacheKey,
+} from './dev-styles'
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
 import type { GetConfigFn } from '../../types'
 
@@ -22,6 +26,7 @@ export function devServerPlugin({
   let isTest = false
   let isBundledDev = false
   let bundledClientStyles: ReadonlyMap<string, string> = new Map()
+  const cssModulesCache: Record<string, string> = {}
 
   return [
     {
@@ -57,6 +62,14 @@ export function devServerPlugin({
         isBundledDev =
           config.command === 'serve' && !!config.experimental.bundledDev
       },
+      transform: {
+        filter: { id: CSS_MODULES_REGEX },
+        handler(code, id) {
+          if (!isBundledDev) {
+            cssModulesCache[normalizeCssModuleCacheKey(id)] = code
+          }
+        },
+      },
       generateBundle() {
         if (
           devSsrStylesEnabled &&
@@ -89,12 +102,10 @@ export function devServerPlugin({
             }
 
             try {
-              const serverEnvironment =
-                viteDevServer.environments[VITE_ENVIRONMENT_NAMES.server]
-              const clientEnvironment =
-                viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client]
               if (isBundledDev) {
-                await ensureLatestClientBuild(clientEnvironment)
+                await ensureLatestClientBuild(
+                  viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client],
+                )
               }
               const styles = bundledClientStyles
 
@@ -123,15 +134,21 @@ export function devServerPlugin({
 
               const css =
                 entries.length > 0
-                  ? await collectDevStyles({
-                      serverEnvironment,
-                      rootDirectory: viteDevServer.config.root,
-                      entries,
-                      loadCssContents: (url) =>
-                        isBundledDev
-                          ? loadBundledDevStyles(serverEnvironment, url, styles)
-                          : fetchCssFromModule(clientEnvironment, url),
-                    })
+                  ? isBundledDev
+                    ? await collectBundledDevStyles({
+                        serverEnvironment:
+                          viteDevServer.environments[
+                            VITE_ENVIRONMENT_NAMES.server
+                          ],
+                        rootDirectory: viteDevServer.config.root,
+                        entries,
+                        styles,
+                      })
+                    : await collectDevStyles({
+                        viteDevServer,
+                        entries,
+                        cssModulesCache,
+                      })
                   : undefined
 
               res.setHeader('Content-Type', 'text/css')

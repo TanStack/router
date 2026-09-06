@@ -135,13 +135,20 @@ test('bundled dev does not require a Vite context in the client hotUpdate hook',
     throw new Error('Expected compiler configuration and hotUpdate hooks')
   }
 
+  expect(plugin.perEnvironmentWatchChangeDuringDev).toBe(false)
   Reflect.apply(plugin.configResolved, undefined, [
     { root: '/app', experimental: { bundledDev: true } },
   ])
+  expect(plugin.perEnvironmentWatchChangeDuringDev).toBe(true)
 
   expect(
     Reflect.apply(plugin.hotUpdate, undefined, [
       { type: 'update', file: '/app/src/route.tsx', modules: [] },
     ]),
   ).toBeUndefined()
+
+  Reflect.apply(plugin.configResolved, undefined, [
+    { root: '/app', experimental: { bundledDev: false } },
+  ])
+  expect(plugin.perEnvironmentWatchChangeDuringDev).toBe(false)
 })

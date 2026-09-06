@@ -296,7 +296,9 @@ export function startCompilerPlugin(
     const plugin = {
       name: `tanstack-start-core::server-fn:${environment.name}`,
       enforce: 'pre',
-      perEnvironmentWatchChangeDuringDev: true,
+      get perEnvironmentWatchChangeDuringDev() {
+        return bundledDev
+      },
       applyToEnvironment(env) {
         return env.name === environment.name
       },

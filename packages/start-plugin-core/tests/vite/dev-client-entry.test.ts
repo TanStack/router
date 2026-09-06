@@ -26,6 +26,7 @@ test.each(['react', 'solid', 'vue'] as const)(
       environment: {
         config: {
           command: 'serve',
+          isBundled: true,
           consumer: 'client',
           server: { hmr: true },
         },
@@ -46,6 +47,17 @@ test.each(['react', 'solid', 'vue'] as const)(
         'export const value = 1',
         '/other.ts',
       ]),
+    ).toBeUndefined()
+
+    context.environment.config.isBundled = false
+    expect(
+      Reflect.apply(transform, context, ['hydrateRoot(document)', entry]),
+    ).toBeUndefined()
+
+    context.environment.config.isBundled = true
+    context.environment.config.command = 'build'
+    expect(
+      Reflect.apply(transform, context, ['hydrateRoot(document)', entry]),
     ).toBeUndefined()
   },
 )

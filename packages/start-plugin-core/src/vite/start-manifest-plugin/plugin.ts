@@ -149,7 +149,17 @@ function getEmptyStartManifestModule(
   clientEntry: string,
   clientRuntime?: string,
 ) {
-  const entries = clientRuntime ? [clientRuntime, clientEntry] : [clientEntry]
+  if (!clientRuntime) {
+    return `export const tsrStartManifest = () => ({
+      routes: {
+        __root__: {
+          preloads: ['${clientEntry}'],
+          scripts: [{ attrs: { type: 'module', async: true, src: '${clientEntry}' } }],
+        },
+      },
+    })`
+  }
+  const entries = [clientRuntime, clientEntry]
 
   return `export const tsrStartManifest = () => (${serializeStartManifest({
     routes: {
@@ -157,7 +167,7 @@ function getEmptyStartManifestModule(
         preloads: entries,
         // Bundled-dev entries need the separate runtime to execute first.
         scripts: entries.map((src) => ({
-          attrs: { type: 'module', async: !clientRuntime, src },
+          attrs: { type: 'module', async: false, src },
         })),
       },
     },

@@ -1,6 +1,71 @@
 import { appendIdQueryFlag } from '../module-id'
-import { CSS_FILE_REGEX, extractCssFromCode } from './dev-styles'
-import type { DevStylesEnvironment } from './dev-styles'
+import { CSS_FILE_REGEX, extractCssFromCode, resolveDevUrl } from './dev-styles'
+import type { DevEnvironment, EnvironmentModuleNode } from 'vite'
+
+type DevStylesEnvironment = Pick<DevEnvironment, 'transformRequest'> & {
+  moduleGraph: Pick<DevEnvironment['moduleGraph'], 'getModuleByUrl'>
+}
+
+export async function collectBundledDevStyles(options: {
+  serverEnvironment: DevStylesEnvironment
+  rootDirectory: string
+  entries: Array<string>
+  styles: ReadonlyMap<string, string>
+}): Promise<string | undefined> {
+  const { serverEnvironment, rootDirectory, entries, styles } = options
+  const entryNodes = await Promise.all(
+    entries.map(async (entry) => {
+      const url = resolveDevUrl(rootDirectory, entry)
+      const node = await serverEnvironment.moduleGraph.getModuleByUrl(url)
+      if (node?.transformResult) {
+        return node
+      }
+      await serverEnvironment.transformRequest(url)
+      return serverEnvironment.moduleGraph.getModuleByUrl(url)
+    }),
+  )
+  const stack = entryNodes.reverse()
+  const visited = new Set<EnvironmentModuleNode>()
+  const urls: Array<string> = []
+
+  while (stack.length > 0) {
+    const node = stack.pop()
+    if (!node || visited.has(node)) {
+      continue
+    }
+    visited.add(node)
+    if (CSS_FILE_REGEX.test(node.url)) {
+      const query = new URLSearchParams(node.url.split('?')[1])
+      if (
+        !['url', 'inline', 'raw', 'inline-css'].some((flag) => query.has(flag))
+      ) {
+        urls.push(node.url)
+      }
+      // The compiled parent CSS already contains its @imports.
+      continue
+    }
+    const dependencies = await Promise.all(
+      (node.transformResult?.deps ?? []).map((url) =>
+        serverEnvironment.moduleGraph.getModuleByUrl(url),
+      ),
+    )
+    dependencies.push(...node.importedModules)
+    stack.push(...dependencies.reverse())
+  }
+
+  const contents = await Promise.all(
+    urls.map((url) => loadBundledDevStyles(serverEnvironment, url, styles)),
+  )
+  const parts: Array<string> = []
+  for (let i = 0; i < urls.length; i++) {
+    const css = contents[i]
+    if (css) {
+      const url = urls[i]!.replace(/\/\*/g, '/\\*').replace(/\*\//g, '*\\/')
+      parts.push(`\n/* ${url} */\n${css}`)
+    }
+  }
+  return parts.length > 0 ? parts.join('\n') : undefined
+}
 
 export function captureBundledDevStyles(context: {
   getModuleIds: () => Iterable<string>

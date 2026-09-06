@@ -45,9 +45,13 @@ export function createDevClientEntryPlugin(opts: {
 
   plugin.transform = {
     handler(code, id) {
-      if (id === clientEntryPath) {
+      if (
+        this.environment.config.command === 'serve' &&
+        this.environment.config.isBundled &&
+        id === clientEntryPath
+      ) {
         // Hydration startup is inherently side-effectful even when its package
-        // declares sideEffects:false; retain this with either bundling mode.
+        // declares sideEffects:false; the bundled dev wrapper must retain it.
         return { code, map: null, moduleSideEffects: true }
       }
       return undefined
