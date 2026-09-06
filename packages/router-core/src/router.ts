@@ -752,6 +752,7 @@ export type GetMatchRoutesFn = (pathname: string) => [
   /** exhaustive params, still in their string form */
   rawParams: Record<string, string>,
   foundRoute: AnyRoute | undefined,
+  routeMatchData: ReadonlyArray<Record<string, string> | undefined> | undefined,
 ]
 
 export type EmitFn = (routerEvent: RouterEvent) => void
@@ -1533,9 +1534,9 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const [initialMatchedRoutes, rawParams, foundRoute] = this.getMatchedRoutes(
-      next.pathname,
-    )
+    const [initialMatchedRoutes, allRawParams, foundRoute, routeMatchData] =
+      this.getMatchedRoutes(next.pathname)
+    const rawParams: Record<string, string> = Object.create(null)
     let matchedRoutes = initialMatchedRoutes
     let isGlobalNotFound = false
 
@@ -1543,7 +1544,7 @@ export class RouterCore<
     if (
       // If we found a route, and it's not an index route and we have left over path
       foundRoute
-        ? foundRoute.path !== '/' && rawParams['**']
+        ? foundRoute.path !== '/' && allRawParams['**']
         : // Or if we didn't find a route and we have left over path
           trimPathRight(next.pathname)
     ) {
@@ -1638,6 +1639,7 @@ export class RouterCore<
         searchError ??= cause
       }
       // Match identity must only use the raw params captured from the URL.
+      Object.assign(rawParams, routeMatchData?.[index])
       const { interpolatedPath, usedParams } = interpolatePath({
         path: route.fullPath,
         params: rawParams,
@@ -1665,7 +1667,8 @@ export class RouterCore<
 
       // Carry parsed ancestors forward without mutating the raw route params.
       strictParams =
-        existingMatch?._strictParams ?? Object.assign(usedParams, strictParams)
+        existingMatch?._strictParams ??
+        Object.assign(usedParams, strictParams, routeMatchData?.[index])
 
       let paramsError: unknown
 
@@ -1773,6 +1776,7 @@ export class RouterCore<
       match?.branch || [this.routesById[rootRouteId]!],
       rawParams,
       match?.route,
+      match?.routeParams,
     ]
   }
 
@@ -2636,31 +2640,61 @@ export class RouterCore<
       ? this.latestLocation
       : this.stores.resolvedLocation.get() || this.stores.location.get()
 
-    const match = findSingleMatch(
-      next.pathname,
-      opts?.caseSensitive ?? false,
-      opts?.fuzzy ?? false,
-      baseLocation.pathname,
-      this.processedTree,
-    )
-
-    if (!match) {
+    const destinationPath = trimPathRight(next.pathname)
+    const fuzzy = opts?.fuzzy
+    let pathMatch
+    try {
+      pathMatch = findSingleMatch(
+        destinationPath,
+        opts?.caseSensitive ?? false,
+        fuzzy ?? false,
+        fuzzy ? baseLocation.pathname : trimPathRight(baseLocation.pathname),
+        this.processedTree,
+      )
+    } catch (error) {
+      if (error instanceof URIError) {
+        return false
+      }
+      throw error
+    }
+    if (!pathMatch) {
+      return false
+    }
+    const committedLocation = this.stores.resolvedLocation.get()
+    const routeMatches =
+      this._committed.length &&
+      committedLocation?.pathname === baseLocation.pathname
+        ? this._committed
+        : this.matchRoutes(baseLocation)
+    const destinationMatch = fuzzy
+      ? routeMatches.find(
+          (match) => trimPathRight(match.fullPath) === destinationPath,
+        )
+      : last(routeMatches)
+    if (
+      !destinationMatch ||
+      (!fuzzy &&
+        trimPathRight(destinationMatch.fullPath) !== destinationPath) ||
+      destinationMatch.paramsError
+    ) {
       return false
     }
 
-    if (location.params) {
-      if (!deepEqual(match.rawParams, location.params, { partial: true })) {
-        return false
-      }
+    const params = Object.assign(
+      Object.create(null),
+      destinationMatch._strictParams,
+    )
+
+    if (pathMatch.rawParams['**'] !== undefined) {
+      params['**'] = pathMatch.rawParams['**']
     }
 
-    if (opts?.includeSearch ?? true) {
-      return deepEqual(baseLocation.search, next.search, { partial: true })
-        ? match.rawParams
-        : false
-    }
-
-    return match.rawParams
+    return (!location.params ||
+      deepEqual(params, location.params, { partial: true })) &&
+      (!(opts?.includeSearch ?? true) ||
+        deepEqual(baseLocation.search, next.search, { partial: true }))
+      ? params
+      : false
   }
 
   ssr?: {
