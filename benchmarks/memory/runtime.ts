@@ -10,7 +10,6 @@ export function memoryExecArgv() {
   // Keep machine-code generation out of native allocation measurements and GC
   // tied to allocations instead of event-loop tasks and marking time budgets.
   return [
-    '--jitless',
     '--no-flush-bytecode',
     '--no-minor-gc-task',
     '--no-incremental-marking',
