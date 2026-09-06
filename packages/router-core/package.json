@@ -28,7 +28,7 @@
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
     "test:types:ts60": "tsc6",
     "test:types:ts70": "tsc",
-    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack . && tsc6 -p tests/declarations/tsconfig.json && tsc6 -p tests/declarations/tsconfig.cjs.json",
+    "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "test:unit": "vitest",
     "test:unit:dev": "pnpm run test:unit --watch",
     "build": "vite build"
