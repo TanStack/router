@@ -364,6 +364,7 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
 export function compileCodeSplitReferenceRoute(
   opts: ParseAstOptions &
     CompileCodeSplitReferenceRouteOptions & {
+      isProduction?: boolean
       compilerPlugins?: Array<CodeSplitCompilerPlugin>
     },
 ): GeneratorResult | null {
@@ -847,8 +848,8 @@ export function compileCodeSplitReferenceRoute(
     )
     console.warn(warningMessage)
 
-    // append this warning to the file using a template
-    if (process.env.NODE_ENV !== 'production') {
+    // The bundler's production mode can differ from the host NODE_ENV.
+    if (!(opts.isProduction ?? process.env.NODE_ENV === 'production')) {
       const warningTemplate = template.statement(
         `console.warn(${JSON.stringify(warningMessage)})`,
       )()
