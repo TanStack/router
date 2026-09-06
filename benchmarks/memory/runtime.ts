@@ -7,10 +7,9 @@ export function memoryExecArgv() {
     return []
   }
 
-  // Keep machine-code generation out of native allocation measurements and GC
-  // tied to allocations instead of event-loop tasks and marking time budgets.
+  // Limit variation from GC scheduling and bytecode reclamation; keep a
+  // fixed initial old-generation budget.
   return [
-    '--jitless',
     '--no-flush-bytecode',
     '--no-minor-gc-task',
     '--no-incremental-marking',
@@ -23,7 +22,7 @@ export function memoryConfig(side: 'client' | 'server') {
   return {
     execArgv,
     setupFiles:
-      side === 'client' || execArgv.length
+      side === 'client' || isMemoryInstrumented()
         ? [fileURLToPath(new URL(`./${side}/vitest.setup.ts`, import.meta.url))]
         : [],
   }
