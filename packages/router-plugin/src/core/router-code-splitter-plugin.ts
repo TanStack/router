@@ -186,6 +186,7 @@ export function createRouterCodeSplitterPlugin(
       targetFramework: userConfig.target,
       filename: id,
       id,
+      isProduction,
       deleteNodes: userConfig.codeSplittingOptions?.deleteNodes
         ? new Set(userConfig.codeSplittingOptions.deleteNodes)
         : undefined,
@@ -332,13 +333,13 @@ export function createRouterCodeSplitterPlugin(
       },
 
       rspack(compiler) {
-        isProduction = compiler.options.mode === 'production'
+        isProduction = (compiler.options.mode ?? 'production') === 'production'
         ROOT = process.cwd()
         initUserConfig()
       },
 
       webpack(compiler) {
-        isProduction = compiler.options.mode === 'production'
+        isProduction = (compiler.options.mode ?? 'production') === 'production'
         ROOT = process.cwd()
         initUserConfig()
       },
