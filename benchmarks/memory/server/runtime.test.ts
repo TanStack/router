@@ -9,41 +9,46 @@ afterEach(() => {
 })
 
 describe('memory worker configuration', () => {
-  it('preserves CodSpeed instrumentation flags in a runnable worker', async () => {
-    vi.stubEnv('CODSPEED_ENV', 'test')
-    vi.stubEnv('CODSPEED_RUNNER_MODE', 'memory')
+  it.each(['client', 'server'] as const)(
+    'preserves CodSpeed instrumentation flags in a runnable %s worker',
+    async (side) => {
+      vi.stubEnv('CODSPEED_ENV', 'test')
+      vi.stubEnv('CODSPEED_RUNNER_MODE', 'memory')
 
-    const config = await resolveConfig(
-      {
-        configFile: false,
-        plugins: [codspeedPlugin()],
-        test: memoryConfig('server'),
-      },
-      'serve',
-      'benchmark',
-    )
-    const flags = config.test!.execArgv!
-    expect(flags).toContain('--expose-gc')
-    expect(flags).toContain('--predictable')
-    expect(flags).toContain('--hash-seed=1')
-    expect(config.test!.setupFiles).toEqual([
-      expect.stringMatching(/\/memory\/server\/vitest\.setup\.ts$/),
-    ])
+      const config = await resolveConfig(
+        {
+          configFile: false,
+          plugins: [codspeedPlugin()],
+          test: memoryConfig(side),
+        },
+        'serve',
+        'benchmark',
+      )
+      const flags = config.test!.execArgv!
+      expect(flags).toContain('--expose-gc')
+      expect(flags).toContain('--predictable')
+      expect(flags).toContain('--hash-seed=1')
+      expect(flags).toEqual(expect.arrayContaining(memoryExecArgv(side)))
+      expect(config.test!.setupFiles).toEqual([
+        expect.stringContaining(`/memory/${side}/vitest.setup.ts`),
+      ])
 
-    const output = execFileSync(
-      process.execPath,
-      [...flags, '--eval', 'console.log(typeof global.gc)'],
-      { encoding: 'utf8' },
-    )
-    expect(output.trim()).toBe('function')
-  })
+      const output = execFileSync(
+        process.execPath,
+        [...flags, '--eval', 'console.log(typeof global.gc)'],
+        { encoding: 'utf8' },
+      )
+      expect(output.trim()).toBe('function')
+    },
+  )
 
   it.each([undefined, 'simulation', 'instrumentation', 'walltime'])(
     'does not change %s workers',
     (mode) => {
       vi.stubEnv('CODSPEED_ENV', 'test')
       vi.stubEnv('CODSPEED_RUNNER_MODE', mode)
-      expect(memoryExecArgv()).toEqual([])
+      expect(memoryExecArgv('client')).toEqual([])
+      expect(memoryExecArgv('server')).toEqual([])
       expect(memoryConfig('server')).toEqual({ execArgv: [], setupFiles: [] })
     },
   )
@@ -55,7 +60,7 @@ describe('memory worker configuration', () => {
     const output = execFileSync(
       process.execPath,
       [
-        ...memoryExecArgv(),
+        ...memoryExecArgv('client'),
         '--expose-gc',
         '--input-type=module',
         '--eval',

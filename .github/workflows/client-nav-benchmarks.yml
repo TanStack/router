@@ -27,7 +27,7 @@ on:
         default: false
 
 concurrency:
-  group: client-nav-benchmarks-${{ github.ref }}
+  group: client-nav-benchmarks-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.ref }}
   cancel-in-progress: false
   queue: single
 
