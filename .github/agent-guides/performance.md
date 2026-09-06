@@ -1,6 +1,6 @@
 # Performance review
 
-Use this procedure for Router/Start performance audits and changes to runtime, memory, build, type-inference, or shipped-byte cost. Keep the requested scope; discovery does not authorize another fix or publication.
+Use this procedure for Router/Start performance audits and changes to runtime lifetimes, hydration/RSC, HMR, dependencies, chunk caching, build, type-inference, or shipped-byte cost. Select checks for the changed mechanism; this is not a requirement to audit unrelated surfaces. Keep the requested scope; discovery does not authorize another fix or publication.
 
 Select the existing workload for [client navigation](../../benchmarks/client-nav/README.md), [Start SSR](../../benchmarks/ssr/README.md), or [memory](../../benchmarks/memory/README.md). Compare identical baseline/candidate workloads and add coverage when existing scenarios miss the changed mechanism. There is no aggregate build-CPU benchmark in that set: use the build-tool checks below. For hydration, RPC, paint, or real HTTP behavior, use the affected browser/app workload and the browser/server measurement procedure. For inference cost, use the TypeScript procedure.
 
@@ -9,7 +9,7 @@ Select the existing workload for [client navigation](../../benchmarks/client-nav
 1. Pin the source revision and name the workload, metric, owning layer, and success condition. Reuse repository fixtures and installed tools. Attribute cost to code, configuration, a dependency, the toolchain, or the harness before choosing a fix; avoid speculative caches, indexes, concurrency, or dependency changes.
 2. For multi-surface audits, keep a local coverage row per independently testable requirement: owner, source paths/revision, executed check, evidence, and unresolved boundary. Distinguish inventory/source review, executed mechanism, diagnostic control, verified implementation, and measured user impact. A checked package list does not establish exhaustive path coverage.
 3. Establish a supported trigger and baseline before editing. Diagnostic counters must not create the work they claim to observe. Change one variable per control, check equivalent behavior, then run the same protocol on the final implementation. Use profiles or operation counts to explain timing, not a source-level suspicion as proof of a slowdown.
-4. Independently inspect each material finding against its owning source and actual check. Promote proven regressions into existing behavioral tests or stable operation/artifact bounds; avoid noisy elapsed-time assertions. Preserve request isolation, side-effect ordering, required waits, and intentional cache/replay lifetimes.
+4. Independently inspect each material finding against its owning source and actual check. Promote proven regressions into existing behavioral tests or stable operation/artifact bounds; avoid noisy elapsed-time assertions. Assert the effect that exposed the bug: execution count, requests, retained resources, or intermediate failure, as well as final output. Preserve request isolation, side-effect ordering, required waits, and intentional cache/replay lifetimes.
 5. Before completion, reconcile every coverage row with the original request. Report findings, rejected candidates, and remaining unverified or blocked surfaces. A diagnostic control is not a production fix; unavailable browser metrics, failed watch integration, or source-only adapter review remain explicit gaps.
 
 ### Finding capture
@@ -17,6 +17,8 @@ Select the existing workload for [client navigation](../../benchmarks/client-nav
 Keep non-blocking discoveries in the task's local evidence document. Give each a stable repository/symptom identity, supported trigger, expected/actual behavior, owning source/revision, measurement and limits, existing issue/PR, disposition, next check, and acceptance condition. Label unverified symptoms as observations. Search existing records and open/closed upstream work before creating a duplicate; distinguish an associated PR from a merged and currently verified fix.
 
 Retain the reason when a finding is rejected or excluded by the user's scope. Capture unrelated evidence without fixing it, adding it to the active task, or posting externally. Resume the current work. A blocker or changed correctness risk must be reported rather than parked. Keep private task evidence and machine paths out of public guidance and PRs.
+
+Git history identifies where the responsible code changed. Establishing when the bug began requires reproducing behavior with that revision's dependencies and configuration; otherwise report the code origin and the earliest verified failing revision separately.
 
 ## Comparison provenance
 
@@ -47,14 +49,34 @@ Reference: Webpack's [build-performance](https://webpack.js.org/guides/build-per
 
 For Start metadata changes, trace normalized indexes, asset text, CSS content, and other metadata from producer to actual consumers before retaining or removing them. Test the consuming feature both disabled and enabled, including inline CSS, and preserve full manifest/output behavior in Vite and Rsbuild.
 
+### HMR and watch lifetimes
+
+- Verify the fixture's framework refresh integration before attributing a failure to Router or the compiler. Exercise repeated component, route-option, server-function, and CSS edits where affected; check visible changes and intentional state preservation. A window sentinel or document-request count must distinguish hot updates from a full reload; allow reloads only for transitions whose contract requires them.
+- For route deletion or configuration replacement, capture generated source, errors, and emitted assets from the same compilation. Check the first affected compilation as well as eventual recovery. Replace configuration while generation is pending, then dispatch later file events; only the current generator should write, and metadata for deleted routes must be removed. One final successful build can hide an earlier stale build or duplicate work.
+- Restore source edits through the existing HMR helper after failures. Await the expected source/build/browser state instead of adding fixed sleeps or manual reloads that hide broken updates.
+
+### Dependency upgrades
+
+Compare the same consumer on the existing and candidate dependency stacks. Record actual resolved versions, required companion runtimes, and supported peer contracts from matching upstream sources; a passing fixture does not override a documented compatibility requirement. Keep upgrade effects separate from application configuration changes.
+
+For a failure on both stacks, investigate the existing integration or fixture before calling it an upgrade regression. For a candidate-only failure, reduce a matched old/new reproduction, check upstream issues, and identify the owning layer before adding a workaround. Preserve evidence for an upstream fix; external publication requires authorization. Do not relax checks or dependency policy to make an upgrade pass.
+
+### Chunk caching and deployment recovery
+
+Measure cold-load bytes, request count, and loading time separately from downloads after unchanged and edited deployments. Use real HTTP cache headers and record cache state. Inspect resolved module paths before assigning vendor groups; workspace-linked packages may not match a `node_modules` rule. Treat chunk layout as application/framework policy unless the plugin contract explicitly owns it.
+
+Keep an old page open across deployment, then navigate to a previously unloaded route. Cover retained and removed old hashed assets. For chunk recovery, verify preload does not reload the page, navigation can recover through the bounded reload policy, a persistently missing chunk reaches the error UI without a loop, and unrelated errors do not trigger recovery. Reloading the page between deployments does not exercise this boundary.
+
 ## Runtime and lifecycle checks
 
 - For optional features, measure disabled/idle work as well as enabled work. Gate unnecessary allocation, subscriptions, scans, and decoding before setup where safe; a handler that immediately returns still has registration cost. Preserve user handlers and off/on/off transitions.
-- For listeners, subscriptions, observers, timers, caches, and patched globals, name the owner and cleanup path. Test overlapping instances, both disposal orders, replacement, and events after disposal. Verify which owner receives subsequent work, not just whether cleanup ran. Apply this to scroll restoration across router lifetimes as well as framework unmounts.
+- For listeners, subscriptions, observers, timers, caches, and patched globals, name the creator, update owner, lifetime, and cleanup path. Start pending work or populate retained state before testing cancellation, failure, replacement, and disposal. Test overlapping instances, both disposal orders, and events after disposal. Verify which owner receives subsequent work, not just whether cleanup ran. Apply this to scroll restoration across router lifetimes as well as framework unmounts; a component unmount does not necessarily end a shared history's lifetime.
 - For native history wrappers or teardown, exercise two histories sharing one window, destroy them in both orders, and dispatch later native updates. A surviving history must keep receiving updates; destroying the second must not restore a wrapper owned by the already-destroyed first history.
-- For hydration changes, cover initial SSR hydration, CSR, later-mounted boundaries, unrelated ancestor updates, intentional option changes, and disposal. Define which event starts or resets a deadline; test inline/equivalent strategy values and browsers with and without the relevant scheduling API. Preserve intentional pending-UI waits and loader/context ordering.
+- For hydration changes, cover initial SSR hydration, CSR, later-mounted boundaries, unrelated ancestor updates, intentional option changes, and disposal. Define which event starts or resets a deadline; test inline/equivalent strategy values and browsers with and without the relevant scheduling API. Queue a real interaction while loading is pending before cancelling or removing the boundary; check obsolete replay records are released while surviving nested boundaries and successful replay still work. Preserve intentional pending-UI waits and loader/context ordering.
 - For head, Scripts, Asset, or injected-code changes, assert execution counts through attribute/content combinations, hydration, navigation, and removal. Final markup can hide duplicate side effects; distinguish elements, fetch attempts, transferred bytes, and executions.
 - For repeated scans or recursive transforms, exercise increasing input sizes and supported empty, deep, wide, shared-reference, and cyclic inputs. Count work separately from elapsed time; preserve ordering, identity, and serialization behavior before retaining a faster implementation.
+
+Before adding a cache or index, check existing subtree APIs, adjacency data, and reuse within the current transform or request. Measure work at its real frequency: per root, file, project, route, or render. Preserve AST mutation ownership and complete diagnostic messages, locations, and ordering. A persistent cache also needs an owner, invalidation on edits/deletion/configuration changes, and a measured retention bound; fewer visits alone does not justify longer-lived state.
 
 ### Router devtools
 
@@ -66,6 +88,9 @@ For Start metadata changes, trace normalized indexes, asset text, CSS content, a
 
 - For diagnostic slot previews and recursive payload transforms, validate supported shared-reference, deep, and cyclic inputs before timing them. Traversal state must actually bound repeated work; any reuse must preserve the consumer's serialization contract.
 - Gate development diagnostics before constructing payloads, then measure their development cost. Treat replay needed by SSR and later serialization as a required lifetime until evidence shows retention beyond it; validate cancellation and request cleanup before calling it a leak.
+- For asset decoding/preloading, return both rendered and unused RSC values through the supported server-function path. Check client navigation and cold/warm SSR, using fresh browser contexts against a reused server. Verify unused values do not load client JS or apply CSS, and later rendering still loads dependencies. Cover streams with and without serialized asset metadata and both renderable and composite components.
+- For stylesheet changes, identify whether the framework renderer or bundler creates, updates, and removes each link. Prefer the existing owner's lifecycle over competing resource registration. Check repeated edits and property removal using computed styles and bounded link counts; visible correctness alone can conceal stale stylesheets. A Vite-specific ownership fix must preserve Rsbuild behavior.
+- For deferred rendering or refresh, delay stylesheet delivery and verify content is styled when revealed, existing content remains visible while replacement is pending, and hydration reports no mismatch. Check production Vite and Rsbuild, including JavaScript-disabled SSR. Keep browser-only resource handling from making streamed SSR content depend on JavaScript.
 
 ## Browser and server measurements
 

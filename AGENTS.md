@@ -25,6 +25,12 @@ CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipR
 - Run one Nx command at a time. For a ~20-second startup/graph stall, stop, run `pnpm nx reset`, and retry once, then escalate. Do not apply that timeout to running tests.
 - For code changes, run affected packages' `test:unit`, `test:types`, and `test:eslint` where available, including affected consumers; use `test:e2e` for browser/app behavior and `test:build` for exports/build changes. Root `pnpm test` includes the full e2e suite. Published-code changes require `pnpm changeset`.
 
+## Review and handoff
+
+- For PR work, read the current base/head, CI failures, human and automated review comments, and related work before editing. Evaluate concrete nitpicks against source and conventions as well as correctness findings; retain the reason for accepting or rejecting material feedback.
+- For interacting PRs, record the tested revisions, check each independently where supported, and exercise their combined behavior in an isolated checkout. Rerun affected checks after integration repairs; a clean textual merge does not prove compatibility. When superseding PRs, account for their retained fixes/tests and preserve contributor credit; closing originals requires authorization.
+- Explain the supported trigger, consequence, cause, resulting behavior, and material tradeoffs in the handoff. Keep PR descriptions focused on the problem and resulting behavior, following the required template without adding a validation narrative. Keep detailed test receipts in the handoff, distinguish local checks from remote CI, and leave contributor attestations to the contributor.
+
 ## Runtime rules
 
 - Import `isServer` from `@tanstack/router-core/isServer`. Conditional exports select: `development` → `undefined`; server (`workerd`, `worker`, `deno`, `node`, `bun`) → `true` except `NODE_ENV=test` → `undefined`; browser/fallback → `false`. `development` wins; `NODE_ENV=development` alone does not select it.
@@ -36,5 +42,5 @@ CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipR
 
 ## Performance and final bundle pass
 
-- For performance audits or changes to runtime lifecycles, memory, build, type inference, or shipped bytes, follow the [performance review guide](.github/agent-guides/performance.md). It owns workload selection, lifecycle checks, Webpack/build checks, and evidence capture; keep diagnostic controls and measured user impact distinct.
+- For performance audits, runtime lifecycles, hydration/RSC, HMR, dependency upgrades, chunk caching, build, type inference, or shipped bytes, follow the [performance review guide](.github/agent-guides/performance.md). It owns workload selection, lifecycle checks, Webpack/build checks, and evidence capture; keep diagnostic controls and measured user impact distinct.
 - **Last phase for every change affecting emitted client JavaScript**, including core/build transforms: complete the full [bundle-size-optimization skill](skills/bundle-size-optimization/SKILL.md) after correctness and performance validation. The full workflow is mandatory within the accepted change scope.
