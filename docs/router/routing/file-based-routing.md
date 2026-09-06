@@ -12,7 +12,7 @@ File-based routing is a way to configure your routes using the filesystem. Inste
 - **Organization**: Routes are organized in a way that mirrors the URL structure of your application.
 - **Scalability**: As your application grows, file-based routing makes it easy to add new routes and maintain existing ones.
 - **Code-Splitting**: File-based routing allows TanStack Router to automatically code-split your routes for better performance.
-- **Type-Safety**: File-based routing raises the ceiling on type-safety by generating managing type linkages for your routes, which can otherwise be a tedious process via code-based routing.
+- **Type-Safety**: File-based routing raises the ceiling on type-safety by generating and managing type linkages for your routes, which can otherwise be a tedious process via code-based routing.
 - **Consistency**: File-based routing enforces a consistent structure for your routes, making it easier to maintain and update your application and move from one project to another.
 
 ## `/`s or `.`s?
@@ -80,7 +80,7 @@ See the example below:
 
 ## Mixed Flat and Directory Routes
 
-It's extremely likely that a 100% directory or flat route structure won't be the best fit for your project, which is why TanStack Router allows you to mix both flat and directory routes together to create a route tree that uses the best of both worlds where it makes sense:
+It's extremely likely that a 100% directory or flat route structure won't be the best fit for your project, which is why TanStack Router allows you to mix both flat and directory routes together to create a route tree that uses the best of both worlds where it makes sense.
 
 See the example below:
 

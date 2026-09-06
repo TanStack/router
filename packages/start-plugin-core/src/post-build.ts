@@ -1,4 +1,4 @@
-import { HEADERS } from '@tanstack/start-server-core'
+import { HEADERS } from '@tanstack/start-server-core/constants'
 import { buildSitemap } from './build-sitemap'
 import type { TanStackStartOutputConfig } from './schema'
 

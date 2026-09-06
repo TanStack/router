@@ -9,12 +9,13 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
   }
 }

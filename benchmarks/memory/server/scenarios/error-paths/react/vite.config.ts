@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
 import react from '@vitejs/plugin-react'
+import { memoryConfig } from '../../../../runtime'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 
@@ -22,6 +23,8 @@ export default defineConfig({
     minify: false,
   },
   test: {
+    isolate: true,
+    ...memoryConfig('server'),
     name: '@benchmarks/memory-server error-paths (react)',
     watch: false,
     environment: 'node',

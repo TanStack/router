@@ -1,10 +1,11 @@
 import * as Solid from 'solid-js'
 import { Dynamic } from 'solid-js/web'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 
 export function CatchBoundary(
   props: {
-    getResetKey: () => number | string
+    getResetKey: () => unknown
     children: Solid.JSX.Element
     errorComponent?: ErrorRouteComponent
     onCatch?: (error: Error) => void
@@ -16,10 +17,21 @@ export function CatchBoundary(
         props.onCatch?.(error)
 
         Solid.createEffect(
-          Solid.on([props.getResetKey], () => reset(), { defer: true }),
+          Solid.on(props.getResetKey, () => reset(), { defer: true }),
         )
 
-        return (
+        return process.env.NODE_ENV !== 'production' ? (
+          renderInNonRouteComponentContext(
+            () => (
+              <Dynamic
+                component={props.errorComponent ?? ErrorComponent}
+                error={error}
+                reset={reset}
+              />
+            ),
+            'errorComponent',
+          )
+        ) : (
           <Dynamic
             component={props.errorComponent ?? ErrorComponent}
             error={error}
@@ -33,7 +45,7 @@ export function CatchBoundary(
   )
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: Error }) {
   const [show, setShow] = Solid.createSignal(
     process.env.NODE_ENV !== 'production',
   )

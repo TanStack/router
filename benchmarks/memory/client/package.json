@@ -30,11 +30,14 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "@types/jsdom": "28.0.0",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "jsdom": "29.1.1",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11",
-    "vitest": "^4.1.4"
+    "vitest": "catalog:"
   },
   "nx": {
     "targets": {
@@ -228,7 +231,7 @@
         }
       },
       "test:types": {
-        "executor": "nx:noop",
+        "executor": "nx:run-commands",
         "dependsOn": [
           {
             "projects": [
@@ -253,6 +256,17 @@
             ],
             "target": "test:types:client"
           }
+        ],
+        "options": {
+          "command": "tsc -p ./tsconfig.json --noEmit",
+          "cwd": "benchmarks/memory/client"
+        },
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/eslint.config.js",
+          "dependentTaskOutputs",
+          "{workspaceRoot}/benchmarks/memory/*.ts"
         ]
       }
     }

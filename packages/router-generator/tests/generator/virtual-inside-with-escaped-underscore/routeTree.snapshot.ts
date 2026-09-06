@@ -10,18 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as NestedCallbackRouteImport } from './routes/nested/callback'
-import { Route as NestedAuthRouteImport } from './routes/nested/auth'
 import { Route as NestedHomeRouteImport } from './routes/nested/home'
+import { Route as NestedAuthRouteImport } from './routes/nested/auth'
+import { Route as NestedCallbackRouteImport } from './routes/nested/callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NestedCallbackRoute = NestedCallbackRouteImport.update({
-  id: '/nested/_callback',
-  path: '/nested/_callback',
+const NestedHomeRoute = NestedHomeRouteImport.update({
+  id: '/nested/',
+  path: '/nested/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NestedAuthRoute = NestedAuthRouteImport.update({
@@ -29,9 +29,9 @@ const NestedAuthRoute = NestedAuthRouteImport.update({
   path: '/nested/_auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NestedHomeRoute = NestedHomeRouteImport.update({
-  id: '/nested/',
-  path: '/nested/',
+const NestedCallbackRoute = NestedCallbackRouteImport.update({
+  id: '/nested/_callback',
+  path: '/nested/_callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -78,11 +78,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/nested/_callback': {
-      id: '/nested/_callback'
-      path: '/nested/_callback'
-      fullPath: '/nested/_callback'
-      preLoaderRoute: typeof NestedCallbackRouteImport
+    '/nested/': {
+      id: '/nested/'
+      path: '/nested'
+      fullPath: '/nested/'
+      preLoaderRoute: typeof NestedHomeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/nested/_auth': {
@@ -92,11 +92,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NestedAuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/nested/': {
-      id: '/nested/'
-      path: '/nested'
-      fullPath: '/nested/'
-      preLoaderRoute: typeof NestedHomeRouteImport
+    '/nested/_callback': {
+      id: '/nested/_callback'
+      path: '/nested/_callback'
+      fullPath: '/nested/_callback'
+      preLoaderRoute: typeof NestedCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
