@@ -101,7 +101,7 @@ export function createHistory(opts: {
   getLength: () => number
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
-  go: (n: number) => void
+  go: (n: number, ignoreBlocker: boolean) => void
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
@@ -204,7 +204,7 @@ export function createHistory(opts: {
     go: (index, navigateOpts) => {
       tryNavigation({
         task: () => {
-          opts.go(index)
+          opts.go(index, navigateOpts?.ignoreBlocker ?? false)
           handleIndexChange({ type: 'GO', index })
         },
         navigateOpts,
@@ -322,6 +322,9 @@ export function createBrowserHistory(opts?: {
 
   let nextPopIsGo = false
   let ignoreNextPop = false
+  // TODO: An ignored traversal past a history boundary emits neither popstate
+  // nor beforeunload, leaving these bypasses active for a later navigation.
+  // The History API provides no completion signal for such no-op traversals.
   let skipBlockerNextPop = false
   let ignoreNextBeforeUnload = false
 
@@ -394,6 +397,10 @@ export function createBrowserHistory(opts?: {
   }
 
   const onPushPopEvent = async () => {
+    // Same-document traversals do not fire beforeunload, so consume their
+    // exemption here instead of carrying it into a later document navigation.
+    ignoreNextBeforeUnload = false
+
     if (ignoreNextPop) {
       ignoreNextPop = false
       return
@@ -430,7 +437,7 @@ export function createBrowserHistory(opts?: {
           })
           if (isBlocked) {
             ignoreNextPop = true
-            win.history.go(1)
+            win.history.go(-delta)
             history.notify(notify)
             return
           }
@@ -483,17 +490,25 @@ export function createBrowserHistory(opts?: {
     pushState: (href, state) => queueHistoryAction(true, href, state),
     replaceState: (href, state) => queueHistoryAction(false, href, state),
     back: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
-      ignoreNextBeforeUnload = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       return win.history.back()
     },
     forward: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
-      ignoreNextBeforeUnload = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       win.history.forward()
     },
-    go: (n) => {
+    go: (n, ignoreBlocker) => {
       nextPopIsGo = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       win.history.go(n)
     },
     createHref: (href) => createHref(href),

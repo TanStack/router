@@ -141,7 +141,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultOnCatch` property
 
-- Type: `(error: Error, errorInfo: ErrorInfo) => void`
+- Type: `(error: unknown, errorInfo: ErrorInfo) => void`
 - Optional
 - The default `onCatch` handler for errors caught by the Router ErrorBoundary
 

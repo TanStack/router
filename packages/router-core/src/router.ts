@@ -8,6 +8,7 @@ import {
   findLast,
   functionalUpdate,
   hasKeys,
+  isAbsoluteUrl,
   isDangerousProtocol,
   last,
   nullReplaceEqualDeep,
@@ -28,7 +29,7 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
-import { createLRUCache } from './lru-cache'
+import { createSieveCache } from './sieve-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
@@ -48,7 +49,7 @@ import {
   rewriteBasepath,
 } from './rewrite'
 import { createRouterStores } from './stores'
-import type { LRUCache } from './lru-cache'
+import type { SieveCache } from './sieve-cache'
 import type {
   ProcessRouteTreeResult,
   ProcessedTree,
@@ -927,13 +928,33 @@ export function _getUserHistoryState({
   return state
 }
 
+export function lifecycleEnd(matches: Array<AnyRouteMatch>) {
+  return (
+    matches.findIndex(
+      (match) =>
+        match.status === 'error' ||
+        match.status === 'notFound' ||
+        match._notFound,
+    ) + 1
+  )
+}
+
 /** Run route lifecycle callbacks in leave/enter/stay phases. */
 export function runRouteLifecycle(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   matches: Array<AnyRouteMatch>,
+  previousEnd: number | undefined,
+  nextEnd: number,
   owner?: LoadTransaction,
 ): void {
+  // Zero or undefined means the full branch; copy only at a fallback.
+  if (previousEnd) {
+    previous = previous.slice(0, previousEnd)
+  }
+  if (nextEnd) {
+    matches = matches.slice(0, nextEnd)
+  }
   for (const match of previous) {
     if (owner && router._tx !== owner) {
       return
@@ -1001,7 +1022,7 @@ declare global {
     | {
         routeTree: AnyRoute
         processRouteTreeResult: ProcessRouteTreeResult<AnyRoute>
-        resolvePathCache: LRUCache<string, string>
+        resolvePathCache: SieveCache<string, string>
       }
     | undefined
 }
@@ -1014,6 +1035,11 @@ export interface RouterCore<
   in out TDehydrated extends Record<string, any> = Record<string, any>,
 > {
   shouldViewTransition?: boolean | ViewTransitionOptions
+  /**
+   * Foreground lifecycle boundary survives invalidation/background statuses.
+   * Zero or undefined means the whole branch participates.
+   */
+  _lifecycleEnd?: number
   /** Current client load transaction and owner of navigation writes. */
   _tx?: LoadTransaction
   /** Joinable in-flight loader generations keyed by match ID. */
@@ -1105,7 +1131,7 @@ export class RouterCore<
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
-  resolvePathCache!: LRUCache<string, string>
+  resolvePathCache!: SieveCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
     ParsedLocation,
@@ -1236,7 +1262,7 @@ export class RouterCore<
         this.resolvePathCache = cached.resolvePathCache
         processRouteTreeResult = cached.processRouteTreeResult as any
       } else {
-        this.resolvePathCache = createLRUCache(1000)
+        this.resolvePathCache = createSieveCache(1000)
         processRouteTreeResult = this.buildRouteTree()
         // only cache if nothing else is cached yet
         if (
@@ -2265,14 +2291,7 @@ export class RouterCore<
     publicHref,
     ...rest
   }) => {
-    let hrefIsUrl = false
-
-    if (href) {
-      try {
-        new URL(`${href}`)
-        hrefIsUrl = true
-      } catch {}
-    }
+    const hrefIsUrl = !!href && isAbsoluteUrl(`${href}`)
 
     if (hrefIsUrl && !reloadDocument) {
       reloadDocument = true

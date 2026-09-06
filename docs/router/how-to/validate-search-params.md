@@ -36,7 +36,7 @@ export const Route = createFileRoute('/products')({
     return (
       <div className="error">
         <h2>Invalid Search Parameters</h2>
-        <p>{error.message}</p>
+        <p>{error instanceof Error ? error.message : String(error)}</p>
         <button
           onClick={() => router.navigate({ to: '/products', search: {} })}
         >
@@ -302,7 +302,7 @@ export const Route = createFileRoute('/search')({
     return (
       <div className="error">
         <h2>Invalid Search Parameters</h2>
-        <p>{error.message}</p>
+        <p>{error instanceof Error ? error.message : String(error)}</p>
         <button onClick={() => router.navigate({ to: '/search', search: {} })}>
           Reset Search
         </button>
