@@ -60,12 +60,13 @@ type ViteModuleLoadOptions = {
   error: (message: string) => never
 }
 
-async function loadViteModuleFromEnvironment(
+export async function loadViteModuleFromEnvironment(
   environment: Environment,
   id: string,
   opts: ViteModuleLoadOptions,
 ): Promise<string | undefined> {
-  if (environment.mode === 'build') {
+  if (environment.mode === 'build' || environment.config.isBundled) {
+    // Bundled dev must stay in Rolldown's lifecycle, not Vite's separate container.
     const loaded = await opts.load({ id })
     return loaded?.code ?? ''
   }
@@ -598,8 +599,13 @@ export function startCompilerPlugin(
                     )
                   }
 
-                  await this.environment.transformRequest(
-                    `${absPath}?${SERVER_FN_LOOKUP}`,
+                  await loadViteModuleFromEnvironment(
+                    this.environment,
+                    appendIdQueryFlag(absPath, SERVER_FN_LOOKUP),
+                    {
+                      load: (options) => this.load(options),
+                      error: (message) => this.error(message),
+                    },
                   )
 
                   // Re-check after lazy compilation

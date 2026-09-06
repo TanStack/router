@@ -3,10 +3,10 @@ import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { ensureLatestClientBuild } from './bundled-dev'
 import {
-  CSS_MODULES_REGEX,
-  collectDevStyles,
-  normalizeCssModuleCacheKey,
-} from './dev-styles'
+  captureBundledDevStyles,
+  loadBundledDevStyles,
+} from './bundled-dev-styles'
+import { collectDevStyles, fetchCssFromModule } from './dev-styles'
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
 import type { GetConfigFn } from '../../types'
 
@@ -20,26 +20,50 @@ export function devServerPlugin({
   installDevServerMiddleware: boolean | undefined
 }): PluginOption {
   let isTest = false
-
-  // Cache CSS modules content during transform hook.
-  // For CSS modules, the transform hook receives the raw CSS content before
-  // Vite wraps it in JS. We capture this to use during SSR style collection.
-  const cssModulesCache: Record<string, string> = {}
+  let isBundledDev = false
+  let bundledClientStyles: ReadonlyMap<string, string> = new Map()
 
   return [
     {
       name: 'tanstack-start-core:dev-server',
-      config(_userConfig, { mode }) {
+      config(userConfig, { mode, command }) {
         isTest = isTest ? isTest : mode === 'test'
+        if (
+          !isTest &&
+          devSsrStylesEnabled &&
+          command === 'serve' &&
+          userConfig.experimental?.bundledDev
+        ) {
+          // ponytail: eager compilation keeps SSR CSS/assets available until
+          // vitejs/vite#22991 exposes the lazy client graph.
+          return {
+            environments: {
+              [VITE_ENVIRONMENT_NAMES.client]: {
+                build: {
+                  rolldownOptions: {
+                    experimental: {
+                      devMode: { lazy: false },
+                    },
+                  },
+                },
+              },
+            },
+          }
+        }
+        return undefined
       },
-      // Capture CSS modules content during transform
-      transform: {
-        filter: {
-          id: CSS_MODULES_REGEX,
-        },
-        handler(code, id) {
-          cssModulesCache[normalizeCssModuleCacheKey(id)] = code
-        },
+      configResolved(config) {
+        isBundledDev =
+          config.command === 'serve' && !!config.experimental.bundledDev
+      },
+      generateBundle() {
+        if (
+          devSsrStylesEnabled &&
+          isBundledDev &&
+          this.environment.name === VITE_ENVIRONMENT_NAMES.client
+        ) {
+          bundledClientStyles = captureBundledDevStyles(this)
+        }
       },
       configureServer(viteDevServer) {
         if (isTest) {
@@ -61,6 +85,15 @@ export function devServerPlugin({
             }
 
             try {
+              const serverEnvironment =
+                viteDevServer.environments[VITE_ENVIRONMENT_NAMES.server]
+              const clientEnvironment =
+                viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client]
+              if (isBundledDev) {
+                await ensureLatestClientBuild(clientEnvironment)
+              }
+              const styles = bundledClientStyles
+
               // Parse route IDs from query param
               const urlObj = new URL(url, 'http://localhost')
               const routesParam = urlObj.searchParams.get('routes')
@@ -87,9 +120,13 @@ export function devServerPlugin({
               const css =
                 entries.length > 0
                   ? await collectDevStyles({
-                      viteDevServer,
+                      serverEnvironment,
+                      rootDirectory: viteDevServer.config.root,
                       entries,
-                      cssModulesCache,
+                      loadCssContents: (url) =>
+                        isBundledDev
+                          ? loadBundledDevStyles(serverEnvironment, url, styles)
+                          : fetchCssFromModule(clientEnvironment, url),
                     })
                   : undefined
 

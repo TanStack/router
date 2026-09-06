@@ -1,11 +1,58 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 import {
   createViteDevServerFnModuleSpecifierEncoder,
   decodeViteDevServerModuleSpecifier,
 } from '../../src/vite/start-compiler-plugin/module-specifier'
 import { mergeHotUpdateModules } from '../../src/vite/start-compiler-plugin/hot-update'
-import { startCompilerPlugin } from '../../src/vite/start-compiler-plugin/plugin'
+import {
+  loadViteModuleFromEnvironment,
+  startCompilerPlugin,
+} from '../../src/vite/start-compiler-plugin/plugin'
 import type { EnvironmentModuleNode, Plugin } from 'vite'
+
+test.each([
+  { mode: 'build', isBundled: true },
+  { mode: 'dev', isBundled: true },
+  { mode: 'dev', isBundled: false },
+])(
+  'loads compiler dependencies through the correct lifecycle: %j',
+  async ({ mode, isBundled }) => {
+    const transformRequest = vi.fn(async () => null)
+    const environment = {
+      mode,
+      config: { isBundled },
+      transformRequest,
+    }
+    const load = vi.fn(async () => ({ code: 'export const value = 1' }))
+    const result = await Reflect.apply(
+      loadViteModuleFromEnvironment,
+      undefined,
+      [
+        environment,
+        '/app/module.ts',
+        {
+          devId: '/app/module.ts?tss-serverfn-lookup',
+          load,
+          error(message: string) {
+            throw new Error(message)
+          },
+        },
+      ],
+    )
+
+    if (isBundled) {
+      expect(result).toBe('export const value = 1')
+      expect(load).toHaveBeenCalledExactlyOnceWith({ id: '/app/module.ts' })
+      expect(transformRequest).not.toHaveBeenCalled()
+    } else {
+      expect(result).toBeUndefined()
+      expect(transformRequest).toHaveBeenCalledExactlyOnceWith(
+        '/app/module.ts?tss-serverfn-lookup',
+      )
+      expect(load).not.toHaveBeenCalled()
+    }
+  },
+)
 
 describe('Vite dev server module specifiers', () => {
   test('encodes app files as root-relative dev server paths', () => {
