@@ -129,6 +129,7 @@ for (const [direction, delta] of [
     page,
   }) => {
     await prepareSameDocumentTraversal(page, delta)
+    const originalUrl = page.url()
 
     await page
       .getByRole('button', { name: `History ${direction}`, exact: true })
@@ -143,6 +144,14 @@ for (const [direction, delta] of [
     await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
       'Unsaved draft',
     )
+    await page.getByRole('button', { name: 'Stay here' }).click()
+    await expect(
+      page.getByText('Blocker status: idle', { exact: true }),
+    ).toBeVisible()
+    await expect(page).toHaveURL(originalUrl)
+    await expect(
+      page.getByText(`Step ${delta < 0 ? -delta : 0}`, { exact: true }),
+    ).toBeVisible()
   })
 }
 

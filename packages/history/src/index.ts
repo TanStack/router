@@ -322,6 +322,9 @@ export function createBrowserHistory(opts?: {
 
   let nextPopIsGo = false
   let ignoreNextPop = false
+  // TODO: An ignored traversal past a history boundary emits neither popstate
+  // nor beforeunload, leaving these bypasses active for a later navigation.
+  // The History API provides no completion signal for such no-op traversals.
   let skipBlockerNextPop = false
   let ignoreNextBeforeUnload = false
 
@@ -434,7 +437,7 @@ export function createBrowserHistory(opts?: {
           })
           if (isBlocked) {
             ignoreNextPop = true
-            win.history.go(1)
+            win.history.go(-delta)
             history.notify(notify)
             return
           }

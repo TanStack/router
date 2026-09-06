@@ -18,7 +18,7 @@ function HistoryBlocking() {
   const { step } = Route.useSearch()
   const [draft, setDraft] = React.useState('')
   const [ignoreBlocker, setIgnoreBlocker] = React.useState(false)
-  const { status } = useBlocker({
+  const { status, reset } = useBlocker({
     shouldBlockFn: () => draft.length > 0,
     enableBeforeUnload: draft.length > 0,
     withResolver: true,
@@ -45,6 +45,7 @@ function HistoryBlocking() {
       </label>
       <p>{draft ? 'Unsaved changes' : 'No changes'}</p>
       <p>Blocker status: {status}</p>
+      {status === 'blocked' && <button onClick={reset}>Stay here</button>}
       <Link to="/history-blocking" search={{ step: step + 1 }}>
         Add history entry
       </Link>
