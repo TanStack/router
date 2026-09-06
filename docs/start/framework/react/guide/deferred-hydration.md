@@ -440,6 +440,10 @@ Strategy options:
 | `interaction` | `{ events?: supported event or readonly array of supported events }`.                   |
 | `condition`   | Boolean or boolean-returning function.                                                  |
 
+Recreating `idle()` with the same timeout during a parent render preserves the
+pending hydration schedule. Changing the timeout or switching strategies replaces
+that schedule.
+
 Supported interaction events are `auxclick`, `click`, `contextmenu`,
 `dblclick`, `focusin`, `keydown`, `keyup`, `mousedown`, `mouseenter`,
 `mouseover`, `mouseup`, `pointerdown`, `pointerenter`, `pointerover`, and
