@@ -577,6 +577,22 @@ export interface BuildNextOptions {
   _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
   _isNavigate?: boolean
+  /** @internal */
+  _buildCache?: BuildLocationCache
+}
+
+/**
+ * Caller-owned interpolation cache. Resolved parameter values, including
+ * absent optional ones, are dependencies. Parameter callbacks always run.
+ * @internal
+ */
+export interface BuildLocationCache {
+  value?: [
+    template: string,
+    decoder: unknown,
+    params: Record<string, unknown>,
+    pathname: string,
+  ]
 }
 
 type NavigationEventInfo = {
@@ -1866,6 +1882,7 @@ export class RouterCore<
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
       } = {},
+      cache?: BuildLocationCache,
     ): ParsedLocation => {
       if (dest.href) {
         const parsed = parseHref(dest.href, {} as ParsedHistoryState)
@@ -1980,16 +1997,23 @@ export class RouterCore<
       }
 
       const nextPathname = opts.leaveParams
-        ? // Keep path params uninterpolated for matchRoute/template matching.
-          nextTo
-        : decodePath(
-            interpolatePath({
-              path: nextTo,
-              params: nextParams,
-              decoder: this.pathParamsDecoder,
-              server: this.isServer,
-            }).interpolatedPath,
-          ).path
+        ? nextTo
+        : cache
+          ? getCachedPathname(
+              nextTo,
+              nextParams,
+              this.pathParamsDecoder,
+              this.isServer,
+              cache,
+            )
+          : decodePath(
+              interpolatePath({
+                path: nextTo,
+                params: nextParams,
+                decoder: this.pathParamsDecoder,
+                server: this.isServer,
+              }).interpolatedPath,
+            ).path
 
       if (
         process.env.NODE_ENV !== 'production' &&
@@ -2112,7 +2136,7 @@ export class RouterCore<
       }
     }
 
-    const next = build(opts)
+    const next = build(opts, opts._buildCache)
 
     if (opts.mask) {
       next.maskedLocation = build({
@@ -2852,6 +2876,47 @@ function applySearchMiddleware(
   }
 
   return applyNext(0, search)
+}
+
+function getCachedPathname(
+  path: string,
+  params: Record<string, unknown>,
+  decoder: Parameters<typeof interpolatePath>[0]['decoder'],
+  server: boolean,
+  cache: BuildLocationCache,
+) {
+  const entry = cache.value
+  if (
+    entry &&
+    entry[0 /* template */] === path &&
+    entry[1 /* decoder */] === decoder &&
+    equalPathParams(entry[2 /* params */], params)
+  ) {
+    return entry[3 /* pathname */]
+  }
+  const interpolated = interpolatePath({
+    path,
+    params,
+    decoder,
+    server,
+    trackParams: true,
+  })
+  const pathname = decodePath(interpolated.interpolatedPath).path
+  cache.value = [path, decoder, interpolated.usedParams, pathname]
+  return pathname
+}
+
+// Params have already been resolved and passed through route stringifiers.
+function equalPathParams(
+  previous: Record<string, unknown>,
+  params: Record<string, unknown>,
+) {
+  for (const key in previous) {
+    if (previous[key] !== params[key]) {
+      return false
+    }
+  }
+  return true
 }
 
 function findGlobalNotFoundRouteId(
