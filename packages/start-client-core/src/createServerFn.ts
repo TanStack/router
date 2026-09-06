@@ -37,6 +37,7 @@ export interface ServerFnOptions<
 > {
   method?: TMethod
   strict?: TStrict
+  id?: string
 }
 
 export type ServerFnStrictInput<TStrict extends ServerFnStrict> =
@@ -502,6 +503,7 @@ export type ServerFnBaseOptions<
 > = {
   method: TMethod
   strict?: TStrict
+  id?: string
   middleware?: Constrain<
     TMiddlewares,
     ReadonlyArray<AnyFunctionMiddleware | AnyRequestMiddleware>

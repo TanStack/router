@@ -45,6 +45,22 @@ test('invoking a server function with custom response status code', async ({
   await requestPromise
 })
 
+test('invokes a server function with a manual id', async ({ page }) => {
+  await page.goto('/manual-id')
+
+  const responsePromise = page.waitForResponse((response) =>
+    response.url().includes('/_serverFn/manual-id-hello'),
+  )
+
+  await page.getByTestId('invoke-manual-id-server-fn').click()
+
+  const response = await responsePromise
+  expect(response.status()).toBe(200)
+  await expect(page.getByTestId('manual-id-result')).toHaveText(
+    'manual id response',
+  )
+})
+
 test('Consistent server function returns both on client and server for GET and POST calls', async ({
   page,
 }) => {
