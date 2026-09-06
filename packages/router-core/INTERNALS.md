@@ -339,6 +339,11 @@ uses the active preload entry as its additional authority.
 
 `beforeLoad` context is not a cache.
 
+Client `beforeLoad` only installs a cancellable wait for Promise results.
+Synchronous context still crosses an `await` before the cancellation check:
+a hook can queue a replacement navigation before its loader is planned.
+Promise detection assumes ordinary Promise behavior.
+
 A completed client preload never stores reusable `beforeLoad` output. When its
 loader data enters the route cache, the merged context is discarded; the
 same-ID route-local `_ctx` may remain reusable. A later navigation rebuilds the

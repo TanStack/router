@@ -248,14 +248,14 @@ type CoordinatorRouter = AnyRouter & {
 type LoaderTask = [
   index: number,
   outcome: Promise<LoaderOutcome>,
-  chunkFailure: Promise<IndexedOutcome | undefined>,
+  chunkFailure: Promise<IndexedOutcome | undefined | void>,
   candidate?: WorkMatch,
 ]
 
 type BackgroundLoaderTask = [
   index: number,
   outcome: Promise<LoaderOutcome>,
-  chunkFailure: Promise<IndexedOutcome | undefined>,
+  chunkFailure: Promise<IndexedOutcome | undefined | void>,
   candidate: WorkMatch,
 ]
 
@@ -429,15 +429,17 @@ async function contextualize(
     }
     try {
       setFetching(router, match, 'beforeLoad', options[0 /* controller */])
-      const result = await waitFor(
-        beforeLoad({
-          ...common,
-          search: match.search,
-          context: match.context,
-          ...router.options.additionalContext,
-        }),
-        signal,
-      )
+      const value = beforeLoad({
+        ...common,
+        search: match.search,
+        context: match.context,
+        ...router.options.additionalContext,
+      })
+      // Always await to give a queued replacement navigation one microtask to
+      // kick in before checking cancellation, even for synchronous context.
+      const result = await (typeof value?.then === 'function'
+        ? waitFor(value, signal)
+        : value)
       if (signal.aborted) {
         return [index, CANCELED_OUTCOME]
       }
@@ -894,38 +896,41 @@ function createLoaderTask(
           reloadFailure ?? [SUCCESS, match.loaderData],
         )
 
-  // The async wrapper catches synchronous preload failures without deferring work.
-  const chunkOutcome = (async (): Promise<undefined> => {
-    const chunk = loadRouteChunk(route, undefined, onLazyReady)
-    if (chunk) {
-      await waitFor(chunk, options[0 /* controller */].signal)
-    }
-  })().catch((cause): IndexedOutcome | undefined =>
-    lane[1 /* matches */].some(
-      (candidate, candidateIndex) =>
-        candidateIndex <= index &&
-        (candidate.status === 'error' ||
-          candidate.status === 'notFound' ||
-          candidate._notFound),
-    )
-      ? undefined
-      : [index, normalizeLaneError(router, lane, route, cause, options)],
-  )
-  const chunkFailure = chunkOutcome.then((failure) =>
-    outcome.then((result) => {
-      if (
-        blocking &&
-        !failure &&
-        result[0 /* kind */] === SUCCESS &&
-        match.status === 'pending' &&
-        !options[0 /* controller */].signal.aborted
-      ) {
-        match.status = 'success'
-        onReady?.()
+  // Keep thrown preloads and rejected chunks in the same task promise.
+  const chunkFailure = (async (): Promise<IndexedOutcome | void> => {
+    try {
+      const chunk = loadRouteChunk(route, undefined, onLazyReady)
+      if (chunk) {
+        await waitFor(chunk, options[0 /* controller */].signal)
       }
-      return failure
-    }),
-  )
+    } catch (cause) {
+      if (
+        !lane[1 /* matches */].some(
+          (candidate, candidateIndex) =>
+            candidateIndex <= index &&
+            (candidate.status === 'error' ||
+              candidate.status === 'notFound' ||
+              candidate._notFound),
+        )
+      ) {
+        return [
+          index,
+          normalizeLaneError(router, lane, route, cause, options),
+        ] satisfies IndexedOutcome
+      }
+    }
+    // Readiness requires both the component chunk and loader data.
+    const result = await outcome
+    if (
+      blocking &&
+      result[0 /* kind */] === SUCCESS &&
+      match.status === 'pending' &&
+      !options[0 /* controller */].signal.aborted
+    ) {
+      match.status = 'success'
+      onReady?.()
+    }
+  })()
   tasks.push([index, outcome, chunkFailure])
   if (!background) {
     return outcome.then((result) => getParentSnapshot(match, result))
@@ -1982,7 +1987,7 @@ export async function loadClientRoute(
     )
   const done = opts?.sync
     ? new Promise<void>((resolve) => (settle = resolve))
-    : Promise.resolve().then(run).then()
+    : Promise.resolve().then(run)
   const tx: LoadTransaction = [
     controller,
     redirects,
