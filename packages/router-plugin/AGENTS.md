@@ -5,3 +5,4 @@
 - Route HMR rebuilds indexes, clears `resolvePathCache`, replaces lazy-chunk ownership, and refreshes active routes while preserving Fast Refresh component identities. Keep these steps coordinated when adding derived state.
 - For code-splitting changes, add inputs under `tests/code-splitter/test-files/<framework>/`. Regenerate and review reference, virtual, and shared snapshots for every grouping in [`tests/code-splitter.test.ts`](tests/code-splitter.test.ts).
 - Check [`tests/constants.ts`](tests/constants.ts) for framework coverage: the snapshot matrix currently covers React and Solid only. Validate affected Vue behavior in Vue router e2e apps.
+- For transform/build performance, source maps, production diagnostics, shared module state, or Webpack/Rspack behavior, follow the [build-tool checks](../../.github/agent-guides/performance.md#build-tool-checks). Snapshot output and Vite results do not establish actual Webpack loader, mode, cache, or chunk behavior.

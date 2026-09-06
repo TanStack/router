@@ -1,6 +1,6 @@
 ---
 name: bundle-size-optimization
-description: Use when working in this repository on JS bundle size, gzip regressions, benchmark scenarios, source attribution, treeshaking, dead code elimination, or Rolldown annotations.
+description: Use when working in this repository on JS bundle size, gzip regressions, benchmark scenarios, source attribution, treeshaking, dead code elimination, or bundler annotations, including Webpack.
 ---
 
 # Bundle Size Optimization
@@ -9,6 +9,10 @@ description: Use when working in this repository on JS bundle size, gzip regress
 
 Optimize measured client bundles, not source text. The source of truth is `@benchmarks/bundle-size:build`, `benchmarks/bundle-size/results/current.json`, and emitted JS in `benchmarks/bundle-size/dist/`.
 Use `benchmark:bundle-size:run` for local iterations. It uses the same measurement script and builds the selected packages through Nx.
+
+The full measurement, attribution, and regression workflow applies within the accepted change scope. Optimize that change without acquiring unrelated work; larger architectural changes require matching user authority. Preserve others' edits and obtain explicit authorization for commits/pushes. Baseline comparison does not require committing or stashing the working implementation.
+
+For audits, comparison provenance, build-time cost, and adapter-specific verification, follow the [performance review guide](../../.github/agent-guides/performance.md). The official runner does not include Webpack: changes affecting that adapter or shared splitting/DCE also require its real-consumer checks. Do not substitute a Vite/Rsbuild result for Webpack evidence.
 
 ## Commands
 
@@ -115,22 +119,22 @@ After each candidate, run focused perf benchmarks before bundle measurement. Rej
 
 When done optimizing:
 
-1. Spawn 5 subagents to review the optimization diff against existing tests. Ask each to identify missing unit test cases that could fail with the current changes or newly uncovered edge cases, and missing performance benchmarks that could hide regressions.
+1. Review the optimization diff against existing tests for missing behavior cases, newly uncovered edge cases, and performance coverage. Use independent reviewers for bounded questions when the task permits and the host supports them; reconcile their findings against source and checks. Without reviewers, perform a separate review pass and state that independence was not verified.
 2. If a possible regression is unclear, ask the user or explore the codebase until the expected behavior is clear.
-3. Use their input to add focused unit tests and benchmarks.
-4. Commit only the tests/benchmarks/supporting test-script changes.
-5. Stash the implementation changes.
-6. Run tests, performance benchmarks, and the relevant bundle-size measurement, then write BEFORE results to `RESULT-optimization-{topic}.md`.
-7. Pop the implementation changes.
-8. Run the same tests, performance benchmarks, and bundle-size measurement, then append AFTER results to the same file.
-9. When reviewing benchmark output, consider statistical quality: standard deviation, margin of error, variance/noise, sample count, and percentiles. Re-run or narrow conclusions when results are noisy.
-10. Compare BEFORE and AFTER. If anything regressed, iterate until green or revert the regression.
+3. Use the review findings to add focused unit tests and benchmarks.
+4. Prepare isolated baseline and candidate worktrees/snapshots with the same tests and benchmark harness, differing only in the implementation under comparison. Build each snapshot's dependencies through Nx; use separate results/dist paths and preserve the working checkout.
+5. Run tests, performance benchmarks, and the relevant bundle-size measurement on the baseline, then write BEFORE results and revision/environment details to local `RESULT-optimization-{topic}.md`.
+6. Run the same checks on the candidate, then append AFTER results to the same file. Keep raw outputs and identify skipped/cached checks. Publish task evidence only when requested.
+7. When reviewing benchmark output, consider statistical quality: standard deviation, margin of error, variance/noise, sample count, and percentiles. Re-run or narrow conclusions when results are noisy.
+8. Compare BEFORE and AFTER. If anything regressed, iterate within the accepted scope or revert the task-owned regression. Recheck the final composed implementation after changes.
 
 Useful patterns: remove prod-only strings, remove unused exports, flatten wrappers, inline one-use helpers, avoid duplicate literals, improve treeshaking boundaries, simplify branches after preserving behavior.
 
 ## DCE And Annotations
 
 Rolldown removes code only when unused and side-effect-free. Property reads may trigger getters; storage/global access can observe or throw.
+
+Validate annotation support and emitted effects with the installed bundler/minifier. For Webpack, use the [shipped-graph checks](../../.github/agent-guides/performance.md#build-tool-checks), including unused-import removal, required CSS/global effects, and one-time initialization across eager/lazy chunks.
 
 | Annotation                                | Valid                                                                       | Unsafe                                                                             |
 | ----------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
