@@ -2,7 +2,6 @@ import { isServer } from '@tanstack/router-core/isServer'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
-/** @internal */
 export function isAbsoluteUrl(url: string | undefined): boolean {
   // Both URL APIs stringify undefined and reject it without a base URL.
   if (URL.canParse) {
