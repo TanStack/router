@@ -94,28 +94,16 @@ function resolveIsActive(
   activeOptions: ActiveOptions | undefined,
   basepath: string,
   isHydrated: boolean,
-  isExternal: boolean,
 ): boolean {
-  if (isExternal) {
+  const currentPath = removeTrailingSlash(location.pathname, basepath)
+  const nextPath = removeTrailingSlash(next.pathname, basepath)
+  if (
+    currentPath !== nextPath &&
+    (activeOptions?.exact ||
+      !currentPath.startsWith(nextPath) ||
+      currentPath[nextPath.length] !== '/')
+  ) {
     return false
-  }
-  if (activeOptions?.exact) {
-    const testExact = exactPathTest(location.pathname, next.pathname, basepath)
-    if (!testExact) {
-      return false
-    }
-  } else {
-    const currentPathSplit = removeTrailingSlash(location.pathname, basepath)
-    const nextPathSplit = removeTrailingSlash(next.pathname, basepath)
-
-    const pathIsFuzzyEqual =
-      currentPathSplit.startsWith(nextPathSplit) &&
-      (currentPathSplit.length === nextPathSplit.length ||
-        currentPathSplit[nextPathSplit.length] === '/')
-
-    if (!pathIsFuzzyEqual) {
-      return false
-    }
   }
 
   if (activeOptions?.includeSearch ?? true) {
@@ -439,12 +427,12 @@ export function useLinkProps<
 
     return {
       ...propsSafeToSpread,
-      ...resolvedActiveProps,
-      ...resolvedInactiveProps,
       href: hrefOption?.href,
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
       disabled: !!disabled,
       target,
+      ...resolvedActiveProps,
+      ...resolvedInactiveProps,
       ...(resolvedStyle && { style: resolvedStyle }),
       ...(resolvedClassName && { className: resolvedClassName }),
       ...(disabled && STATIC_DISABLED_PROPS),
@@ -523,14 +511,14 @@ export function useLinkProps<
       return [
         hrefOption?.href,
         externalLink,
-        resolveIsActive(
-          location,
-          next,
-          stableActiveOptions,
-          router.basepath,
-          isHydrated,
-          externalLink !== undefined,
-        ),
+        !externalLink &&
+          resolveIsActive(
+            location,
+            next,
+            stableActiveOptions,
+            router.basepath,
+            isHydrated,
+          ),
       ]
     },
     [stableActiveOptions, disabled, isHydrated, _options, router, to],
@@ -543,32 +531,10 @@ export function useLinkProps<
     compareLinkState,
   )
 
-  // Get the active props
-  const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> = isActive
-    ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
-    : STATIC_EMPTY_OBJECT
-
-  // Get the inactive props
-  const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-    isActive
-      ? STATIC_EMPTY_OBJECT
-      : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
-
-  const resolvedClassName = [
-    className,
-    resolvedActiveProps.className,
-    resolvedInactiveProps.className,
-  ]
-    .filter(Boolean)
-    .join(' ')
-
-  const resolvedStyle = (style ||
-    resolvedActiveProps.style ||
-    resolvedInactiveProps.style) && {
-    ...style,
-    ...resolvedActiveProps.style,
-    ...resolvedInactiveProps.style,
-  }
+  const resolvedProps: React.HTMLAttributes<HTMLAnchorElement> =
+    functionalUpdate(isActive ? activeProps : inactiveProps, {}) ??
+    (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
+  const { className: stateClassName, style: stateStyle } = resolvedProps
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const hasRenderFetched = React.useRef(false)
@@ -707,8 +673,6 @@ export function useLinkProps<
 
   return {
     ...propsSafeToSpread,
-    ...resolvedActiveProps,
-    ...resolvedInactiveProps,
     href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers([onClick, handleClick]),
@@ -719,8 +683,13 @@ export function useLinkProps<
     onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
     disabled: !!disabled,
     target,
-    ...(resolvedStyle && { style: resolvedStyle }),
-    ...(resolvedClassName && { className: resolvedClassName }),
+    ...resolvedProps,
+    ...(style && {
+      style: stateStyle ? { ...style, ...stateStyle } : style,
+    }),
+    ...(className && {
+      className: className + (stateClassName ? ' ' + stateClassName : ''),
+    }),
     ...(disabled && STATIC_DISABLED_PROPS),
     ...(isActive && STATIC_ACTIVE_PROPS),
   }

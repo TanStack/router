@@ -3,6 +3,7 @@ import {
   compileDecodeCharMap,
   exactPathTest,
   interpolatePath,
+  interpolatePathname,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
@@ -16,7 +17,309 @@ import {
   processRouteTree,
 } from '../src/new-process-route-tree'
 import { createSieveCache } from '../src/sieve-cache'
+import { createTestPathInterpolator as createPathInterpolator } from './routerTestUtils'
 import type { SegmentKind } from '../src/new-process-route-tree'
+
+describe.each([false, true])(
+  'shared pathname interpolation (server: %s)',
+  (server) => {
+    it.each([
+      { path: '/', params: {} },
+      { path: '/users/', params: {} },
+      { path: '/users/$id', params: { id: '123' } },
+      { path: '/users/$id', params: { id: 0 } },
+      { path: '/users/$id', params: {} },
+      { path: '/users/$id', params: { id: 'a/b?#@+' } },
+      { path: '/users/$id', params: { id: 'cafe\u0301' } },
+      { path: '/users/{$id}.json', params: { id: '123' } },
+      { path: '/posts/{-$category}', params: {} },
+      { path: '/posts/{-$category}', params: { category: undefined } },
+      { path: '/posts/{-$category}', params: { category: '' } },
+      { path: '/posts/{-$category}', params: { category: 'news' } },
+      {
+        path: '/posts/prefix{-$category}suffix',
+        params: { category: 'news' },
+      },
+      { path: '/files/$', params: { _splat: 'a b/c+d' } },
+      { path: '/files/prefix{$}suffix', params: { _splat: 'a/b' } },
+      { path: '/files/$', params: { _splat: '' } },
+      { path: '/$id/$id/', params: { id: '123' } },
+    ])('matches interpolation for $path with $params', ({ path, params }) => {
+      const interpolate = createPathInterpolator()
+      const options = { path, params, server }
+      const expected = interpolatePath(options).interpolatedPath
+
+      expect(interpolate(options)).toBe(expected)
+      expect(interpolate({ ...options, params: { ...params } })).toBe(expected)
+    })
+
+    it('shares results across equivalent params without retaining unrelated params', () => {
+      const interpolate = createPathInterpolator()
+      const decoder = vi.fn(compileDecodeCharMap(['@']))
+      const options = {
+        path: '/users/$id',
+        params: { id: '@one', unrelated: 'first' },
+        decoder,
+        server,
+      }
+      expect(interpolate(options)).toBe('/users/@one')
+      expect(decoder).toHaveBeenCalledOnce()
+
+      expect(
+        interpolate({
+          ...options,
+          params: { id: '@one', unrelated: 'second' },
+        }),
+      ).toBe('/users/@one')
+      expect(decoder).toHaveBeenCalledOnce()
+
+      const anotherRouter = createPathInterpolator()
+      expect(anotherRouter(options)).toBe('/users/@one')
+      expect(decoder).toHaveBeenCalledTimes(2)
+    })
+
+    it('invalidates results when allowed-character decoding changes', () => {
+      const interpolate = createPathInterpolator()
+      const options = {
+        path: '/users/$id',
+        params: { id: '@+' },
+        server,
+      }
+      expect(
+        interpolate({ ...options, decoder: compileDecodeCharMap(['@']) }),
+      ).toBe('/users/@%2B')
+      expect(
+        interpolate({ ...options, decoder: compileDecodeCharMap(['+']) }),
+      ).toBe('/users/%40+')
+      expect(interpolate(options)).toBe('/users/%40%2B')
+    })
+
+    it('refreshes each cached template when its decoder changes', () => {
+      const interpolate = createPathInterpolator()
+      const allowAt = compileDecodeCharMap(['@'])
+      const allowPlus = compileDecodeCharMap(['+'])
+      for (const decoder of [allowAt, allowPlus, undefined, allowAt]) {
+        for (const path of ['/users/$id', '/teams/$id']) {
+          const options = { path, params: { id: '@+' }, decoder, server }
+          expect(interpolate(options)).toBe(
+            interpolatePath(options).interpolatedPath,
+          )
+        }
+      }
+    })
+
+    it('does not confuse parameter boundaries in shared cache keys', () => {
+      const interpolate = createPathInterpolator()
+      const options = { path: '/$first/$second', server }
+      const first = { first: 'a:b', second: 'c' }
+      const second = { first: 'a', second: 'b:c' }
+
+      expect(interpolate({ ...options, params: first })).toBe('/a%3Ab/c')
+      expect(interpolate({ ...options, params: second })).toBe('/a/b%3Ac')
+      expect(interpolate({ ...options, params: first })).toBe('/a%3Ab/c')
+    })
+
+    it('keeps templates separate when parameter values are equal', () => {
+      const interpolate = createPathInterpolator()
+      const params = { id: '123' }
+
+      expect(interpolate({ path: '/users/$id', params, server })).toBe(
+        '/users/123',
+      )
+      expect(interpolate({ path: '/posts/$id', params, server })).toBe(
+        '/posts/123',
+      )
+      expect(interpolate({ path: '/users/$id', params, server })).toBe(
+        '/users/123',
+      )
+    })
+
+    it('tracks optional params that were absent when the template was first used', () => {
+      const interpolate = createPathInterpolator()
+      const path = '/posts/{-$category}/$id'
+      const inputs = [
+        { id: 'one' },
+        { id: 'one', category: 'news' },
+        { id: 'one', category: undefined },
+        { id: 'one', category: '' },
+        { id: 'one', category: 'updates' },
+      ]
+
+      for (const params of [...inputs, ...inputs]) {
+        const options = { path, params, server }
+        expect(interpolate(options)).toBe(
+          interpolatePath(options).interpolatedPath,
+        )
+      }
+    })
+
+    it('uses the canonical splat value instead of its legacy alias', () => {
+      const interpolate = createPathInterpolator()
+      const decoder = vi.fn(compileDecodeCharMap(['@']))
+      const options = {
+        path: '/files/$',
+        params: { _splat: 'docs/@guide', '*': 'ignored' },
+        decoder,
+        server,
+      }
+
+      expect(interpolate(options)).toBe('/files/docs/@guide')
+      decoder.mockClear()
+      expect(
+        interpolate({
+          ...options,
+          params: { _splat: 'docs/@guide', '*': 'changed' },
+        }),
+      ).toBe('/files/docs/@guide')
+      expect(decoder).not.toHaveBeenCalled()
+    })
+
+    it('keeps public usedParams unchanged for missing optionals and splats', () => {
+      expect(
+        interpolatePath({ path: '/posts/{-$category}', params: {}, server })
+          .usedParams,
+      ).toEqual({})
+      expect(
+        interpolatePath({
+          path: '/files/$',
+          params: { _splat: 'docs/guide' },
+          server,
+        }).usedParams,
+      ).toEqual({ _splat: 'docs/guide', '*': 'docs/guide' })
+    })
+
+    it.each([
+      {
+        params: { id: 'one two', _splat: 'docs/file name' },
+        path: '/root/prefixone%20twosuffix/files/docs/file%20name.txt',
+        used: {
+          id: 'one two',
+          _splat: 'docs/file name',
+          '*': 'docs/file name',
+        },
+        missing: false,
+      },
+      {
+        params: { id: '', language: '', _splat: '' },
+        path: '/root/prefixsuffix//files/.txt',
+        used: { id: '', language: '', _splat: '', '*': '' },
+        missing: true,
+      },
+      {
+        params: {},
+        path: '/root/prefixundefinedsuffix/files/.txt',
+        used: { id: undefined, _splat: undefined, '*': undefined },
+        missing: true,
+      },
+    ])(
+      'keeps mixed segment metadata in one pass for $params',
+      ({ params, path, used, missing }) => {
+        const template = '/root/prefix{$id}suffix/{-$language}/files/{$}.txt'
+        const usedParams: Record<string, unknown> = Object.create(null)
+        const keys: Array<string> = []
+        const metadata = { isMissingParams: false }
+        expect(
+          interpolatePathname(
+            template,
+            params,
+            undefined,
+            usedParams,
+            keys,
+            server,
+            metadata,
+          ),
+        ).toBe(path)
+        expect(keys).toEqual(['id', 'language', '_splat'])
+        expect(usedParams).toEqual(used)
+        expect(metadata.isMissingParams).toBe(missing)
+        expect(interpolatePath({ path: template, params, server })).toEqual({
+          interpolatedPath: path,
+          usedParams: used,
+          isMissingParams: missing,
+        })
+      },
+    )
+
+    it.each([
+      {
+        path: '/$first/$second',
+        params: { second: 'two' },
+        pathname: '/undefined/two',
+        usedParams: { first: undefined, second: 'two' },
+        missing: true,
+      },
+      {
+        path: '/$first/$second',
+        params: { first: undefined, second: 'two' },
+        pathname: '/undefined/two',
+        usedParams: { first: undefined, second: 'two' },
+        missing: false,
+      },
+      {
+        path: '/{-$first}/$second',
+        params: { second: 'two' },
+        pathname: '/two',
+        usedParams: { second: 'two' },
+        missing: false,
+      },
+      {
+        path: '/$first/{-$second}',
+        params: {},
+        pathname: '/undefined',
+        usedParams: { first: undefined },
+        missing: true,
+      },
+      {
+        path: '/$first/prefix{$}suffix',
+        params: { first: 'one' },
+        pathname: '/one/prefixsuffix',
+        usedParams: { first: 'one', _splat: undefined, '*': undefined },
+        missing: true,
+      },
+    ])(
+      'preserves missing-param metadata for $path with $params',
+      ({ path, params, pathname, usedParams, missing }) => {
+        expect(interpolatePath({ path, params, server })).toEqual({
+          interpolatedPath: pathname,
+          usedParams,
+          isMissingParams: missing,
+        })
+      },
+    )
+
+    it('tracks a splat that was empty when the template was first used', () => {
+      const interpolate = createPathInterpolator()
+      for (const _splat of ['', 'docs/guide', '', 'docs/reference']) {
+        const options = {
+          path: '/files/prefix{$}suffix',
+          params: { _splat },
+          server,
+        }
+        expect(interpolate(options)).toBe(
+          interpolatePath(options).interpolatedPath,
+        )
+      }
+    })
+
+    it('does not retain incomplete metadata when the first interpolation throws', () => {
+      const interpolate = createPathInterpolator()
+      const options = { path: '/$first/$second', server }
+
+      expect(() =>
+        interpolate({
+          ...options,
+          params: { first: '\uD800', second: 'one' },
+        }),
+      ).toThrow(URIError)
+
+      for (const second of ['two', 'three', 'two']) {
+        expect(
+          interpolate({ ...options, params: { first: 'valid', second } }),
+        ).toBe(`/valid/${second}`)
+      }
+    })
+  },
+)
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
   'removeTrailingSlash with basepath $basepath',

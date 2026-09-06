@@ -1,5 +1,8 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
+import { isServer as serverEnvironment } from '@tanstack/router-core/isServer'
+import * as pathUtils from '../src/path'
+import * as utils from '../src/utils'
 import {
   BaseRootRoute,
   BaseRoute,
@@ -22,6 +25,73 @@ test('_getUserHistoryState removes volatile router bookkeeping but keeps mask pa
       user: 'state',
     } as any),
   ).toEqual({ user: 'state', __tempLocation: {}, __tempKey: 'temp-key' })
+})
+
+test.each([false, true])(
+  'forwards the development server override when router.isServer is %s',
+  (isServer) => {
+    expect(serverEnvironment).toBeUndefined()
+    const rootRoute = new BaseRootRoute({})
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/items/$id',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([route]),
+      history: createMemoryHistory({ initialEntries: ['/items/one'] }),
+      isServer,
+    })
+    const interpolate = vi.spyOn(pathUtils, 'interpolatePathname')
+    try {
+      const matches = router.matchRoutes('/items/one', {})
+      expect(matches.at(-1)?.pathname).toBe('/items/one')
+      const call = interpolate.mock.calls.find(
+        ([path]) => path === '/items/$id',
+      )
+      expect(call).toHaveLength(6)
+      expect(call?.[5]).toBe(isServer)
+    } finally {
+      interpolate.mockRestore()
+    }
+  },
+)
+
+test('keeps interpolation caches router-local and follows decoder changes', () => {
+  const rootRoute = new BaseRootRoute({})
+  const route = new BaseRoute({
+    getParentRoute: () => rootRoute,
+    path: '/items/$id',
+  })
+  const routeTree = rootRoute.addChildren([route])
+  const makeRouter = () =>
+    createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+  const router = makeRouter()
+  const decoder = vi.fn(pathUtils.compileDecodeCharMap(['@']))
+  router.pathParamsDecoder = decoder
+
+  expect(
+    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
+  ).toBe('/items/@one')
+  decoder.mockClear()
+  expect(
+    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
+  ).toBe('/items/@one')
+  expect(decoder).not.toHaveBeenCalled()
+
+  const other = makeRouter()
+  other.pathParamsDecoder = decoder
+  expect(
+    other.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
+  ).toBe('/items/@one')
+  expect(decoder).toHaveBeenCalledOnce()
+
+  router.pathParamsDecoder = pathUtils.compileDecodeCharMap(['+'])
+  expect(
+    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
+  ).toBe('/items/%40one')
 })
 
 describe('buildLocation - params function receives parsed params', () => {
@@ -234,6 +304,76 @@ describe('buildLocation - params function receives parsed params', () => {
 })
 
 describe('buildLocation - search params', () => {
+  test.each([
+    { isServer: false, withMiddleware: false },
+    { isServer: true, withMiddleware: false },
+    { isServer: false, withMiddleware: true },
+    { isServer: true, withMiddleware: true },
+  ])(
+    'uses the router mode for empty-search reuse (server: $isServer, middleware: $withMiddleware)',
+    ({ isServer, withMiddleware }) => {
+      expect(serverEnvironment).toBeUndefined()
+      const rootRoute = new BaseRootRoute({
+        search: {
+          middlewares: withMiddleware
+            ? [({ search, next }) => next(search)]
+            : [],
+        },
+      })
+      const route = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+      })
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([route]),
+        history,
+        isServer,
+      })
+      const inherited = router.buildLocation({ to: '/', search: true })
+      const share = vi.spyOn(utils, 'nullReplaceEqualDeep')
+      try {
+        const cleared = router.buildLocation({ to: '/' })
+        const searchBeforeSharing = share.mock.calls.find(
+          ([previous]) => previous === inherited.search,
+        )?.[1]
+        expect(searchBeforeSharing).toEqual({})
+        if (!isServer && !withMiddleware) {
+          expect(searchBeforeSharing).toBe(inherited.search)
+        } else {
+          expect(searchBeforeSharing).not.toBe(inherited.search)
+        }
+        expect(cleared.search).toBe(inherited.search)
+        expect(cleared.searchStr).toBe('')
+        expect(router.buildLocation({ to: '/', search: true }).search).toBe(
+          inherited.search,
+        )
+      } finally {
+        share.mockRestore()
+        history.destroy()
+      }
+    },
+  )
+
+  test('preserves structural sharing when clearing an already empty search', () => {
+    const rootRoute = new BaseRootRoute({})
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([route]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const inherited = router.buildLocation({ to: '/', search: true })
+    const cleared = router.buildLocation({ to: '/' })
+
+    expect(cleared.search).toBe(inherited.search)
+    expect(cleared.search).toEqual({})
+    expect(cleared.searchStr).toBe('')
+  })
+
   test('only applies route validation when requested', async () => {
     const events: Array<string> = []
     const validateSearch = vi.fn((search: Record<string, unknown>) => {
@@ -1653,6 +1793,77 @@ describe('buildLocation - basepath', () => {
 })
 
 describe('buildLocation - params edge cases', () => {
+  test('isolates mutating params updaters while preserving inherit and clear modes', () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/{-$userId}',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/users/123'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([userRoute]),
+      history,
+    })
+    const updater = vi.fn((params: { userId?: string }) => {
+      expect(Object.getPrototypeOf(params)).toBeNull()
+      expect(params).toEqual({ userId: '123' })
+      params.userId = '456'
+      return params
+    })
+
+    try {
+      for (let i = 0; i < 2; i++) {
+        expect(
+          router.buildLocation({
+            to: '/users/{-$userId}',
+            params: updater,
+          }).pathname,
+        ).toBe('/users/456')
+      }
+      expect(updater).toHaveBeenCalledTimes(2)
+      expect(updater.mock.calls[0]![0]).not.toBe(updater.mock.calls[1]![0])
+      expect(router.buildLocation({ to: '/users/{-$userId}' }).pathname).toBe(
+        '/users/123',
+      )
+      expect(
+        router.buildLocation({ to: '/users/{-$userId}', params: true })
+          .pathname,
+      ).toBe('/users/123')
+      expect(
+        router.buildLocation({ to: '/users/{-$userId}', params: false })
+          .pathname,
+      ).toBe('/users')
+    } finally {
+      history.destroy()
+    }
+  })
+
+  test('copies static param getters once without mutating inherited params', () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/$userId',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([userRoute]),
+      history: createMemoryHistory({ initialEntries: ['/users/123'] }),
+    })
+    const getUserId = vi.fn(() => '456')
+    const params = {
+      get userId() {
+        return getUserId()
+      },
+    }
+
+    expect(
+      router.buildLocation({ to: '/users/$userId', params }).pathname,
+    ).toBe('/users/456')
+    expect(getUserId).toHaveBeenCalledOnce()
+    expect(
+      router.buildLocation({ to: '/users/$userId', params: true }).pathname,
+    ).toBe('/users/123')
+  })
+
   test('params: true should preserve current params', async () => {
     const rootRoute = new BaseRootRoute({})
     const userRoute = new BaseRoute({
