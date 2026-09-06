@@ -543,7 +543,7 @@ export function findLast<T>(
 /**
  * Re-encode characters that are unsafe in URL paths.
  * Includes ASCII control characters (0x00-0x1F, 0x7F) and a subset of the
- * WHATWG URL "path percent-encode set" (", <, >, `, {, }).
+ * WHATWG URL "path percent-encode set" (", <, >, ^, `, {, }).
  *
  * Space (0x20) is intentionally excluded — decodeURI decodes %20 to space
  * and the router stores decoded spaces in location.pathname. The existing
@@ -554,7 +554,7 @@ export function findLast<T>(
  * interpret the URL, preventing infinite redirect loops and path mismatches.
  */
 // eslint-disable-next-line no-control-regex
-const PATH_UNSAFE_RE = /[\x00-\x1f\x7f"<>`{}]/g
+const PATH_UNSAFE_RE = /[\x00-\x1f\x7f"<>^`{}]/g
 
 function sanitizePathSegment(segment: string): string {
   return segment.replace(
