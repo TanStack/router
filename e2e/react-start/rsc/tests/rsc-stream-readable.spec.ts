@@ -109,8 +109,7 @@ test.describe('RSC Stream Readable Tests - Streaming RSCs via ReadableStream', (
     const notifications = page
       .getByTestId('notification-list')
       .locator('[data-testid^="notification-notif_"]')
-    const count = await notifications.count()
-    expect(count).toBe(7)
+    await expect(notifications).toHaveCount(7)
 
     // Verify first notification has required content
     const firstNotification = notifications.first()
