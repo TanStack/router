@@ -6,7 +6,12 @@ import {
   collectDevStyles,
   normalizeCssModuleCacheKey,
 } from './dev-styles'
-import type { Connect, DevEnvironment, PluginOption } from 'vite'
+import type {
+  Connect,
+  DevEnvironment,
+  PluginOption,
+  RunnableDevEnvironment,
+} from 'vite'
 import type { GetConfigFn } from '../../types'
 
 export function devServerPlugin({
@@ -144,16 +149,20 @@ export function devServerPlugin({
             }
 
             // do not install middleware if SSR env in case another plugin already did
-            if (
-              !isRunnableDevEnvironment(serverEnv) ||
-              // do not check via `isFetchableDevEnvironment` since nitro does implement the `FetchableDevEnvironment` interface but not via inheritance (which this helper checks)
-              'dispatchFetch' in serverEnv
-            ) {
+            // do not check via `isFetchableDevEnvironment` since nitro does implement the `FetchableDevEnvironment` interface but not via inheritance (which this helper checks)
+            if ('dispatchFetch' in serverEnv) {
+              return
+            }
+
+            if (!isRunnableEnvironment(serverEnv)) {
+              viteDevServer.config.logger.warn(
+                `[tanstack-start] the "${VITE_ENVIRONMENT_NAMES.server}" environment is neither runnable nor fetchable, so the dev server middleware was not installed and requests will not be server rendered. If another plugin serves them, set \`installDevServerMiddleware: false\` to silence this warning.`,
+              )
               return
             }
           }
 
-          if (!isRunnableDevEnvironment(serverEnv)) {
+          if (!isRunnableEnvironment(serverEnv)) {
             throw new Error(
               'cannot install vite dev server middleware for TanStack Start since the SSR environment is not a RunnableDevEnvironment',
             )
@@ -253,6 +262,22 @@ export function devServerPlugin({
       },
     },
   ]
+}
+
+/**
+ * `isRunnableDevEnvironment` is an `instanceof` check against the copy of vite this
+ * package resolves. When the dev server is created by a different copy of vite - Vite+,
+ * or a workspace that ends up with a duplicated vite install - that check is false even
+ * though the environment is a runnable one, so fall back to a structural check.
+ * This is the same reason the `dispatchFetch` check above does not go through
+ * `isFetchableDevEnvironment`.
+ * @param environment
+ * @returns
+ */
+function isRunnableEnvironment(
+  environment: DevEnvironment,
+): environment is RunnableDevEnvironment {
+  return isRunnableDevEnvironment(environment) || 'runner' in environment
 }
 
 /**
