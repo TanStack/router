@@ -6,6 +6,7 @@ import {
   retainSearchParams,
   stripSearchParams,
 } from '../src'
+import { resetScrollStateKey } from '../src/history'
 import type { SearchMiddleware } from '../src'
 import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
@@ -17,6 +18,7 @@ test('_getUserHistoryState removes volatile router bookkeeping but keeps mask pa
       __TSR_key: 'key',
       __TSR_index: 1,
       __hashScrollIntoViewOptions: true,
+      [resetScrollStateKey]: true,
       __tempLocation: {} as any,
       __tempKey: 'temp-key',
       user: 'state',
