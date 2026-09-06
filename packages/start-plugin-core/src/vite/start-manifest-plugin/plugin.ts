@@ -39,7 +39,10 @@ export function startManifestPlugin(opts: {
           )
         }
 
-        clientBuild = normalizeViteClientBuild(bundle)
+        clientBuild = normalizeViteClientBuild(
+          bundle,
+          opts.getConfig().startConfig.server.build.inlineCss.enabled,
+        )
         cssCodeSplitDisabledFileName = getAssetFileNameByName(
           bundle,
           'style.css',
