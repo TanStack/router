@@ -6,4 +6,5 @@
 - Use the same `E2E_PORT_KEY`-aware key throughout config, app, and dummy-server setup/teardown. Clean only that key's port files, before allocation, when `TEST_WORKER_INDEX === undefined`; worker config reloads must not remap a running server's port.
 - For new browser tests, reuse the local error-checking fixture. The shared `test` from `@tanstack/router-e2e-utils` fails on unexpected `console.error`, including hydration errors; allow only expected errors with `whitelistErrors`.
 - HMR/watch tests edit real app sources. Reuse existing edit/restore helpers such as `createHmrFileEditor`, restore edits in teardown even after failures, and preserve the suites' single-worker and Nx `parallelism: false` settings.
+- For HMR, hydration/RSC assets, or deployment-cache tests, use the [performance-review skill](../skills/performance-review/SKILL.md) to select the applicable checks. They define repeated-edit, cancellation, warm-server, stylesheet-readiness, and old-tab cases that a successful initial render misses.
 - `@tanstack/router-e2e-utils:test:unit` is a placeholder. Validate helper changes through consuming e2e projects.

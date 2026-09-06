@@ -2,24 +2,27 @@
 
 ## Scope
 
+- Read [CONTRIBUTING.md](CONTRIBUTING.md) before analyzing or changing this repository; its contribution and PR requirements apply.
 - Read applicable nested `AGENTS.md` files before editing or testing a subtree.
 - Shared routing belongs in `packages/router-core`; check React, Solid, and Vue bindings for shared changes. Shared Start runtime/build logic lives in `packages/start-*-core`.
+- Keep scratch checkouts outside the workspace's project-discovery tree to avoid duplicate Nx projects. Use separate benchmark results and build-output directories for independent comparisons.
 
-## Work and validation
+## Build and test constraints
 
-- Start bug fixes with a failing regression test that uses only public APIs to reproduce and assert user- or developer-visible behavior. Do not manufacture bugs by mutating internals. Establish whether real usage can reach the failing state before adding runtime handling; simplify handling of states proven unreachable.
-- During debugging/prototyping, keep fixes aligned with the PR's intended architecture. If making a test pass requires another flag, counter, copied deadline, or duplicate completion authority, stop and consolidate state and ownership. Remove superseded paths instead of accumulating patches and bundle growth.
+- Regression coverage must establish a supported public trigger and observable failure. Tests that directly mutate internals do not establish that an application can reach the failing state.
+- Diagnostic counters and profiles may observe that supported path without changing its behavior. A diagnostic control proves only the measured mechanism; verify the final implementation through public behavior or the supported compiler-plugin boundary.
+- For asynchronous setup and cleanup, identify the authoritative state and lifetime before adding flags, timers, or completion callbacks. Preserve intentional ownership transfers and remove obsolete paths when replacing an implementation.
 - Use Node from `.nvmrc` and pnpm from root `package.json`. Install at the root with `CI=1 pnpm install --frozen-lockfile`.
-- For sandbox-blocked registry/store access, escalate the same command; report the blocker if unavailable. Do not change stores, delete dependencies/lockfiles, use `--force`/`--ignore-scripts`, or weaken workspace trust/build policies to bypass it.
+- Diagnose registry, store, and network failures separately from dependency incompatibilities. Preserve the lockfile and workspace trust/build policies when troubleshooting installation; bypassing scripts or policies changes the environment being tested.
 - Never manually edit `pnpm-lock.yaml` or any `routeTree.gen.ts`. Regenerate the lockfile with `pnpm install --no-frozen-lockfile` after intentional dependency changes; regenerate route trees through app builds/dev servers or the generator fixture harness.
-- Always use control-flow braces. Run `pnpm format` before validation.
+- Always use control-flow braces. Format changed files with the repository's Prettier configuration; root `pnpm format` writes across the checkout.
 - Use Nx: workspace imports consume built packages, so direct runners can test stale dependencies. Inspect resolved targets; some are inferred.
 
 ```sh
 CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipRemoteCache
 ```
 
-- Run one Nx command at a time. For a ~20-second startup/graph stall, stop, run `pnpm nx reset`, and retry once, then escalate. Do not apply that timeout to running tests.
+- Avoid overlapping Nx invocations that write to the same build outputs. If project-graph startup stalls, inspect logs and running processes before using `pnpm nx reset`; quiet output from running tests or benchmarks is not evidence of a graph stall.
 - For code changes, run affected packages' `test:unit`, `test:types`, and `test:eslint` where available, including affected consumers; use `test:e2e` for browser/app behavior and `test:build` for exports/build changes. Root `pnpm test` includes the full e2e suite. Published-code changes require `pnpm changeset`.
 
 ## Runtime rules
@@ -33,5 +36,5 @@ CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipR
 
 ## Performance and final bundle pass
 
-- For runtime/memory changes, compare identical baseline/candidate workloads using the relevant [benchmark guide](benchmarks/AGENTS.md): client navigation, Start SSR, or memory. Add coverage for unmeasured mechanisms.
-- **Last phase for every change affecting emitted client JavaScript**, including core/build transforms: complete the full [bundle-size-optimization skill](.agents/skills/bundle-size-optimization/SKILL.md) after correctness and performance validation. The full workflow is mandatory.
+- For performance audits, runtime lifecycles, hydration/RSC, HMR, dependency upgrades, chunk caching, build, or type-inference cost, use the [performance-review skill](skills/performance-review/SKILL.md). It selects the relevant measurements and regression checks.
+- **Last phase for every change affecting emitted client JavaScript**, including core/build transforms: complete the full [bundle-size-optimization skill](skills/bundle-size-optimization/SKILL.md) after correctness and performance validation. Apply the workflow to the affected code and its consumers.
