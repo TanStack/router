@@ -239,16 +239,16 @@ WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/mem
 WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:vue
 ```
 
-Run only memory jobs on an experiment branch:
+Run the benchmark workflow on an experiment branch:
 
 ```bash
-gh workflow run client-nav-benchmarks.yml --ref <experiment-branch> -f memory-only=true
+gh workflow run client-nav-benchmarks.yml --ref <experiment-branch>
 ```
 
 Repeat at the same commit, using distinct branch names if runs should overlap
 (the workflow serializes runs on the same ref). Compare all 48 fresh memory
-results: 18 client and 30 server. Exclude inherited CodSpeed results and failed
-or incomplete repetitions. For each workload, calculate
+results: 18 client and 30 server. Exclude CPU simulation results, inherited
+CodSpeed results, and failed or incomplete repetitions. For each workload, calculate
 `100 * (max / min - 1)` across runs for peak bytes, allocated bytes, and
 allocation counts; aggregate averages hide unstable cases.
 
