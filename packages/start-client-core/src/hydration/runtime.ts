@@ -1,4 +1,5 @@
 import { hydrateIdAttribute, hydrateWhenAttribute } from './constants'
+import { replayEventsByGateId } from './replay'
 import type {
   HydrationPrefetchStrategy,
   HydrationPrefetchWaitReason,
@@ -74,7 +75,10 @@ export function getOrCreateGate(
   return gate
 }
 
-export function releaseGate(gate: HydrationGateRecord) {
+export function releaseGate(
+  gate: HydrationGateRecord,
+  marker?: Element | null,
+) {
   resolvedGateIds.delete(gate.id)
   gate.consumers--
   if (gate.consumers > 0) return
@@ -82,6 +86,16 @@ export function releaseGate(gate: HydrationGateRecord) {
     gateRegistry.delete(gate.id)
     fallbackHtmlByGateId.delete(gate.id)
     gate.resolveListeners.clear()
+    replayEventsByGateId.delete(gate.id)
+    if (marker && replayEventsByGateId.size) {
+      // Nested markers can queue events before their gates are registered.
+      marker.querySelectorAll(hydrateIdSelector).forEach((childMarker) => {
+        const id = childMarker.getAttribute(hydrateIdAttribute)
+        if (id) {
+          replayEventsByGateId.delete(id)
+        }
+      })
+    }
   }
 }
 

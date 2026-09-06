@@ -272,7 +272,7 @@ export function GenericHydrate(props: InternalHydrateProps) {
       controller.abort.abort()
       controller.listeners.clear()
       cleanup()
-      releaseGate(gate)
+      releaseGate(gate, markerElement)
     })
 
     removeResolveListener = onGateResolve(gate, () => {
