@@ -2,6 +2,7 @@ import path from 'node:path'
 import fs from 'node:fs'
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
+import { getViolationArtifactName } from './violations.utils'
 import type { Violation } from './violations.utils'
 import type { Page } from '@playwright/test'
 
@@ -37,7 +38,7 @@ function normalizeKeyPath(value: string): string {
 async function readViolations(
   type: 'build' | 'dev' | 'dev.cold' | 'dev.warm',
 ): Promise<Array<Violation>> {
-  const filename = `violations.${type}.json`
+  const filename = getViolationArtifactName(type)
   const violationsPath = path.resolve(import.meta.dirname, '..', filename)
   const mod = await import(violationsPath, {
     with: { type: 'json' },
@@ -161,7 +162,8 @@ test('client-only violations route loads in mock mode', async ({ page }) => {
 })
 
 for (const mode of ['build', 'dev'] as const) {
-  test(`violations.${mode}.json is written during ${mode}`, async () => {
+  const artifactName = getViolationArtifactName(mode)
+  test(`${artifactName} is written during ${mode}`, async () => {
     const violations = await readViolations(mode)
     expect(violations.length).toBeGreaterThan(0)
   })
@@ -204,7 +206,7 @@ test('build log does not contain mock-edge missing export warnings', () => {
   const buildLogPath = path.resolve(
     import.meta.dirname,
     '..',
-    'webserver-build.log',
+    process.env.E2E_BUILD_LOG ?? 'webserver-build.log',
   )
 
   if (!fs.existsSync(buildLogPath)) {

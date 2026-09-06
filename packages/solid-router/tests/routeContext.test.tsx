@@ -133,7 +133,7 @@ describe('context function', () => {
     })
 
     test('when loader deps change', async () => {
-      const mockContextFn = vi.fn()
+      let generation = 0
 
       const rootRoute = createRootRoute()
       const indexRoute = createRoute({
@@ -145,14 +145,21 @@ describe('context function', () => {
         path: '/',
         loaderDeps: ({ search }) => ({ foo: search.foo }),
         context: ({ deps }) => {
-          mockContextFn(deps)
+          return {
+            generation: ++generation,
+            deps: JSON.stringify(deps),
+          }
         },
         component: () => {
           const navigate = indexRoute.useNavigate()
+          const context = indexRoute.useRouteContext()
           return (
             <div>
               <h1>Index page</h1>
               <h2>search: {JSON.stringify(indexRoute.useSearch()())}</h2>
+              <h3>
+                context: {context().generation}:{context().deps}
+              </h3>
               <button
                 onClick={() => {
                   navigate({ search: (p: any) => ({ ...p, foo: 'foo-1' }) })
@@ -200,44 +207,37 @@ describe('context function', () => {
 
       await findByText('Index page')
       await findByText(`search: ${JSON.stringify({})}`)
-
-      expect(mockContextFn).toHaveBeenCalledOnce()
-      expect(mockContextFn).toHaveBeenCalledWith({})
-      mockContextFn.mockClear()
+      await findByText('context: 1:{}')
 
       await clickButton('foo-1')
       await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
-      expect(mockContextFn).toHaveBeenCalledOnce()
-      expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-1' })
+      await findByText('context: 2:{"foo":"foo-1"}')
 
-      mockContextFn.mockClear()
       await clickButton('foo-1')
       await findByText(`search: ${JSON.stringify({ foo: 'foo-1' })}`)
-      expect(mockContextFn).not.toHaveBeenCalled()
+      await findByText('context: 2:{"foo":"foo-1"}')
 
       await clickButton('bar-1')
       await findByText(
         `search: ${JSON.stringify({ foo: 'foo-1', bar: 'bar-1' })}`,
       )
-      expect(mockContextFn).not.toHaveBeenCalled()
+      await findByText('context: 2:{"foo":"foo-1"}')
 
       await clickButton('foo-2')
       await findByText(
         `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-1' })}`,
       )
-      expect(mockContextFn).toHaveBeenCalledWith({ foo: 'foo-2' })
-      mockContextFn.mockClear()
+      await findByText('context: 3:{"foo":"foo-2"}')
 
       await clickButton('bar-2')
       await findByText(
         `search: ${JSON.stringify({ foo: 'foo-2', bar: 'bar-2' })}`,
       )
-      expect(mockContextFn).not.toHaveBeenCalled()
+      await findByText('context: 3:{"foo":"foo-2"}')
 
       await clickButton('clear')
       await findByText(`search: ${JSON.stringify({})}`)
-      expect(mockContextFn).toHaveBeenCalledOnce()
-      expect(mockContextFn).toHaveBeenCalledWith({})
+      await findByText('context: 4:{}')
     })
   })
 

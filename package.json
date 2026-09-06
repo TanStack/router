@@ -5,9 +5,9 @@
     "type": "git",
     "url": "git+https://github.com/TanStack/router.git"
   },
-  "packageManager": "pnpm@11.9.0",
+  "packageManager": "pnpm@11.21.0",
   "engines": {
-    "pnpm": ">=11.9.0"
+    "pnpm": ">=11.21.0"
   },
   "type": "module",
   "scripts": {
@@ -23,6 +23,7 @@
     "test:types": "nx affected --target=test:types --exclude=examples/**",
     "test:e2e": "nx run-many --target=test:e2e",
     "benchmark:bundle-size": "nx run @benchmarks/bundle-size:build",
+    "benchmark:bundle-size:run": "node scripts/benchmarks/bundle-size/run.mjs",
     "benchmark:bundle-size:query": "node scripts/benchmarks/bundle-size/query.mjs",
     "benchmark:bundle-size:diff": "node scripts/benchmarks/bundle-size/diff.mjs",
     "benchmark:bundle-size:history": "node scripts/benchmarks/bundle-size/history.mjs",
@@ -44,7 +45,7 @@
     "format": "prettier --experimental-cli --ignore-unknown '**/*' --write",
     "changeset": "changeset",
     "changeset:publish": "changeset publish",
-    "changeset:version": "changeset version && node scripts/update-example-deps.mjs && pnpm install --no-frozen-lockfile && pnpm format",
+    "changeset:version": "changeset version && node scripts/update-example-deps.mjs && pnpm install --lockfile-only --ignore-scripts --no-frozen-lockfile && pnpm format",
     "gpt-generate": "node gpt/generate.js",
     "set-ts-version": "node scripts/set-ts-version.js",
     "labeler-generate": "node scripts/generate-labeler-config.ts",
@@ -61,45 +62,25 @@
     ]
   },
   "devDependencies": {
-    "@arethetypeswrong/cli": "^0.18.4",
     "@changesets/changelog-github": "^0.7.0",
     "@changesets/cli": "^2.30.0",
-    "@eslint-react/eslint-plugin": "^1.26.2",
     "@nx/devkit": "22.7.5",
     "@playwright/test": "catalog:",
-    "@swc-node/core": "^1.14.1",
     "@swc-node/register": "^1.11.1",
     "@tanstack/eslint-config": "0.4.0",
-    "@tanstack/query-core": "catalog:",
-    "@tanstack/react-query": "catalog:",
-    "@tanstack/solid-query": "catalog:",
-    "@tanstack/vite-config": "0.5.2",
-    "@tanstack/vue-query": "catalog:",
     "@types/node": "catalog:",
-    "@types/react": "catalog:",
-    "@types/react-dom": "catalog:",
-    "@vitest/browser": "^4.1.4",
-    "@vitest/ui": "^4.1.4",
     "eslint": "catalog:",
-    "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-unused-imports": "^4.1.4",
-    "jsdom": "^25.0.1",
     "markdown-link-extractor": "^4.0.3",
     "nx": "22.7.5",
     "prettier": "^3.8.0",
-    "publint": "^0.3.16",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "redaxios": "^0.5.1",
-    "rimraf": "^6.1.2",
     "tinyglobby": "^0.2.15",
-    "typescript": "^6.0.2",
-    "typescript55": "npm:typescript@5.5",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "catalog:",
+    "@typescript/native": "npm:typescript@^7.0.2",
     "typescript56": "npm:typescript@5.6",
     "typescript57": "npm:typescript@5.7",
     "typescript58": "npm:typescript@5.8",
-    "typescript59": "npm:typescript@5.9",
-    "vite": "catalog:",
-    "vitest": "^4.1.4"
+    "typescript59": "npm:typescript@5.9"
   }
 }

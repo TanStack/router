@@ -13,9 +13,9 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/arktype-adapter": "^1.167.0",
     "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-router": "^1.170.16",
-    "@tanstack/solid-router-devtools": "^1.167.0",
-    "@tanstack/router-plugin": "^1.168.18",
+    "@tanstack/solid-router": "^1.170.30",
+    "@tanstack/solid-router-devtools": "^1.167.1",
+    "@tanstack/router-plugin": "^1.168.35",
     "@tanstack/valibot-adapter": "^1.167.0",
     "@tanstack/zod-adapter": "^1.167.0",
     "arktype": "^2.1.7",
@@ -28,7 +28,10 @@
     "@testing-library/jest-dom": "^6.6.3",
     "@solidjs/testing-library": "^0.8.10",
     "vite-plugin-solid": "^2.11.11",
-    "typescript": "^6.0.2",
-    "vite": "^8.0.14"
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "jsdom": "^27.0.0",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
+    "vite": "^8.0.14",
+    "vitest": "catalog:"
   }
 }

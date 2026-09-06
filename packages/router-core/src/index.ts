@@ -103,6 +103,7 @@ export {
   resolveManifestCssLink,
 } from './manifest'
 export { isMatch } from './Matches'
+export { _getAssetMatches, _getRenderedMatches } from './load-client'
 export type {
   AnyMatchAndValue,
   FindValueByIndex,
@@ -162,6 +163,8 @@ export type {
   DefaultSearchValidator,
   ErrorRouteProps,
   ErrorComponentProps,
+  DefaultErrorBoundaryTypes,
+  ErrorBoundaryTypes,
   NotFoundRouteProps,
   ResolveParams,
   ParseParamsFn,
@@ -242,7 +245,6 @@ export {
   SearchParamError,
   PathParamError,
   getInitialRouterState,
-  getMatchedRoutes,
   trailingSlashOptions,
 } from './router'
 
@@ -274,9 +276,7 @@ export type {
   InjectedHtmlEntry,
   EmitFn,
   LoadFn,
-  GetMatchFn,
   SubscribeFn,
-  UpdateMatchFn,
   CommitLocationFn,
   GetMatchRoutesFn,
   MatchRoutesFn,
@@ -320,6 +320,7 @@ export {
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
   isDangerousProtocol,
+  isAbsoluteUrl,
   buildDevStylesUrl,
 } from './utils'
 export type {

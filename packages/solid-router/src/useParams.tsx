@@ -33,15 +33,18 @@ export type UseParamsOptions<
 export type UseParamsRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
   opts?: UseParamsBaseOptions<
     TRouter,
     TFrom,
     /* TStrict */ true,
-    /* TThrow */ true,
+    TThrow,
     TSelected
   >,
-) => Accessor<UseParamsResult<TRouter, TFrom, true, TSelected>>
+) => Accessor<
+  ThrowOrOptional<UseParamsResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export function useParams<
   TRouter extends AnyRouter = RegisteredRouter,

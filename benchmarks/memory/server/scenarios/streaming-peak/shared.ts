@@ -9,7 +9,7 @@ export type { StartRequestHandler }
 type Framework = 'react' | 'solid' | 'vue'
 
 const benchmarkSeed = 0xdecafbad
-const streamingPeakIterations = 20
+const streamingPeakIterations = 1
 const fallbackMarker = 'streaming-peak-fallback-0'
 
 const requestInit = {
@@ -50,7 +50,7 @@ async function readStreamingBody(response: Response) {
   let body = ''
   let chunkCount = 0
 
-  while (true) {
+  for (;;) {
     const result = await reader.read()
 
     if (result.done) {
@@ -101,10 +101,15 @@ export function createWorkloadGroup(
     })
 
   return {
-    sanity: () => assertStreamingPeakSanity(handler),
+    sanity: async () => {
+      // Import the route chunks before checking streaming. Cold disk I/O can
+      // otherwise outlast the deferred payload and collapse the first response.
+      await run()
+      await assertStreamingPeakSanity(handler)
+    },
     workloads: [
       {
-        name: `mem streaming-peak chunked (${framework})`,
+        name: `mem server streaming-peak chunked (${framework})`,
         run,
       },
     ],

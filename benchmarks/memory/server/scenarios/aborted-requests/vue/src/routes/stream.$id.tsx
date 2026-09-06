@@ -1,74 +1,17 @@
+import { createServerOnlyFn } from '@tanstack/vue-start'
+import { getRequest } from '@tanstack/vue-start/server'
 import { Await, createFileRoute } from '@tanstack/vue-router'
 import { Suspense } from 'vue'
-import {
-  makeAbortedRequestRecords,
-  type DeferredRecord,
-  type RecordGroup,
-} from '../../../deferred-records'
+import { makeDeferredRecords } from '../../../deferred-records'
+import type { DeferredRecord } from '../../../deferred-records'
 
-const alphaDelayMs = 50
-const betaDelayMs = 75
-const abortProbeAlphaDelayMs = 500
-const abortProbeBetaDelayMs = 750
-
-function isAbortProbeId(id: string) {
-  return id === 'sanity-mid-stream' || id.startsWith('abort-')
-}
-
-function getDelay(id: string, group: RecordGroup) {
-  if (isAbortProbeId(id)) {
-    return group === 'alpha' ? abortProbeAlphaDelayMs : abortProbeBetaDelayMs
-  }
-
-  return group === 'alpha' ? alphaDelayMs : betaDelayMs
-}
-
-function resolveAfterDelay<T>(
-  delayMs: number,
-  signal: AbortSignal,
-  value: () => T,
-  abortedValue: () => T,
-) {
-  return new Promise<T>((resolve) => {
-    if (signal.aborted) {
-      resolve(abortedValue())
-      return
-    }
-
-    const timeoutId = setTimeout(() => {
-      signal.removeEventListener('abort', onAbort)
-      resolve(value())
-    }, delayMs)
-
-    const onAbort = () => {
-      clearTimeout(timeoutId)
-      resolve(abortedValue())
-    }
-
-    signal.addEventListener('abort', onAbort, { once: true })
-  })
-}
-
-function makeDeferredRecords(
-  id: string,
-  group: RecordGroup,
-  signal: AbortSignal,
-) {
-  const delayMs = getDelay(id, group)
-
-  return resolveAfterDelay(
-    delayMs,
-    signal,
-    () => makeAbortedRequestRecords(id, group),
-    () => [],
-  )
-}
+const getRequestSignal = createServerOnlyFn(() => getRequest().signal)
 
 export const Route = createFileRoute('/stream/$id')({
-  loader: ({ params, abortController }) => ({
+  loader: ({ params }) => ({
     eager: `eager-${params.id}`,
-    alpha: makeDeferredRecords(params.id, 'alpha', abortController.signal),
-    beta: makeDeferredRecords(params.id, 'beta', abortController.signal),
+    alpha: makeDeferredRecords(params.id, 'alpha', getRequestSignal()),
+    beta: makeDeferredRecords(params.id, 'beta', getRequestSignal()),
   }),
   component: StreamComponent,
 })
