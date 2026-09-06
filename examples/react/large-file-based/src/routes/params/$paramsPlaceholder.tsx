@@ -24,7 +24,10 @@ const paramsQueryOptions = queryOptions({
 export const Route = createFileRoute('/params/$paramsPlaceholder')({
   component: ParamsComponent,
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(paramsQueryOptions),
+    opts.context.queryClient.query({
+      ...paramsQueryOptions,
+      staleTime: 'static',
+    }),
 })
 
 function ParamsComponent() {

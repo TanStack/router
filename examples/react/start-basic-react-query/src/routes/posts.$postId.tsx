@@ -6,9 +6,10 @@ import { NotFound } from '~/components/NotFound'
 
 export const Route = createFileRoute('/posts/$postId')({
   loader: async ({ params: { postId }, context }) => {
-    const data = await context.queryClient.ensureQueryData(
-      postQueryOptions(postId),
-    )
+    const data = await context.queryClient.query({
+      ...postQueryOptions(postId),
+      staleTime: 'static',
+    })
 
     return {
       title: data.title,

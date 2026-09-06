@@ -24,9 +24,10 @@ export const Route = createFileRoute('/dashboard/invoices/$invoiceId')({
       })
       .parse(search),
   loader: (opts) =>
-    opts.context.queryClient.ensureQueryData(
-      invoiceQueryOptions(opts.params.invoiceId),
-    ),
+    opts.context.queryClient.query({
+      ...invoiceQueryOptions(opts.params.invoiceId),
+      staleTime: 'static',
+    }),
   component: InvoiceComponent,
 })
 
