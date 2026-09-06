@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useDeferredValue } from 'react'
 import ReactDOM from 'react-dom'
 
 import { SlotProvider } from './SlotContext'
@@ -39,10 +39,12 @@ function CompositeRenderInner({
   getTree,
   path,
   slotProps,
+  cssHrefs,
 }: {
   getTree: () => unknown
   path: Array<string>
   slotProps?: Record<string, unknown>
+  cssHrefs?: ReadonlySet<string>
 }): React.ReactNode {
   let tree: unknown = getTree()
 
@@ -58,6 +60,12 @@ function CompositeRenderInner({
 
   return (
     <SlotProvider implementations={implementations} strict={strict}>
+      {/* Browser-only: SSR already preinitializes styles, and a managed link
+          would make streamed content require JavaScript to reveal it. */}
+      {typeof document !== 'undefined' &&
+        Array.from(cssHrefs ?? [], (href) => (
+          <link key={href} rel="stylesheet" href={href} precedence="high" />
+        ))}
       {tree as React.ReactNode}
     </SlotProvider>
   )
@@ -93,6 +101,7 @@ function CompositeRenderComponent({
           getTree={getTree}
           path={path}
           slotProps={slotProps}
+          cssHrefs={cssHrefs}
         />
       </Suspense>
     </>
@@ -125,7 +134,9 @@ function CompositeRenderComponent({
 export function CompositeComponent<TComp extends AnyCompositeComponent>(
   props: CompositeComponentProps<TComp>,
 ): TComp['~types']['return'] {
-  const { src, ...slotProps } = props
+  const { src: nextSrc, ...slotProps } = props
+  // Keep the current tree visible while a refreshed stream is decoding.
+  const src = useDeferredValue(nextSrc)
 
   const stream = src[SERVER_COMPONENT_STREAM]
 

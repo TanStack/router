@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useDeferredValue } from 'react'
 import ReactDOM from 'react-dom'
 
 import {
@@ -17,9 +17,11 @@ function EmptyFallback() {
 function RscNodeRenderInner({
   getTree,
   path,
+  cssHrefs,
 }: {
   getTree: () => unknown
   path: Array<string>
+  cssHrefs?: ReadonlySet<string>
 }): React.ReactNode {
   let tree: unknown = getTree()
 
@@ -31,15 +33,30 @@ function RscNodeRenderInner({
 
   if (tree === null || tree === undefined) return null
 
-  // No SlotProvider - just return the tree directly
-  return tree as React.ReactNode
+  return (
+    <>
+      {/* Browser-only: SSR already preinitializes styles, and a managed link
+          would make streamed content require JavaScript to reveal it. */}
+      {typeof document !== 'undefined' &&
+        Array.from(cssHrefs ?? [], (href) => (
+          <link key={href} rel="stylesheet" href={href} precedence="high" />
+        ))}
+      {tree as React.ReactNode}
+    </>
+  )
 }
 
 /**
  * Renders a renderable RSC proxy without slot support.
  * Used internally by the renderable proxy's $$typeof/type masquerade.
  */
-export function RscNodeRenderer({ data }: { data: any }): React.ReactNode {
+export function RscNodeRenderer({
+  data: nextData,
+}: {
+  data: any
+}): React.ReactNode {
+  // Keep the current tree visible while a refreshed stream is decoding.
+  const data = useDeferredValue(nextData)
   const cssHrefs = data[SERVER_COMPONENT_CSS_HREFS] as
     | ReadonlySet<string>
     | undefined
@@ -69,7 +86,7 @@ export function RscNodeRenderer({ data }: { data: any }): React.ReactNode {
   return (
     <>
       <Suspense fallback={<EmptyFallback />}>
-        <RscNodeRenderInner getTree={getTree} path={path} />
+        <RscNodeRenderInner getTree={getTree} path={path} cssHrefs={cssHrefs} />
       </Suspense>
     </>
   )
