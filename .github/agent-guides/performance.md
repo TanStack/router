@@ -1,32 +1,16 @@
-# Performance review
+# Performance checks
 
-Use this procedure for Router/Start performance audits and changes to runtime lifetimes, hydration/RSC, HMR, dependencies, chunk caching, build, type-inference, or shipped-byte cost. Select checks for the changed mechanism; this is not a requirement to audit unrelated surfaces. Keep the requested scope; discovery does not authorize another fix or publication.
+Reference for the [performance-review skill](../../skills/performance-review/SKILL.md). Read the sections relevant to the changed mechanism and affected consumers; the skill defines the investigation procedure.
 
 Select the existing workload for [client navigation](../../benchmarks/client-nav/README.md), [Start SSR](../../benchmarks/ssr/README.md), or [memory](../../benchmarks/memory/README.md). Compare identical baseline/candidate workloads and add coverage when existing scenarios miss the changed mechanism. There is no aggregate build-CPU benchmark in that set: use the build-tool checks below. For hydration, RPC, paint, or real HTTP behavior, use the affected browser/app workload and the browser/server measurement procedure. For inference cost, use the TypeScript procedure.
 
-## Evidence and coverage
+## Comparable measurements
 
-1. Pin the source revision and name the workload, metric, owning layer, and success condition. Reuse repository fixtures and installed tools. Attribute cost to code, configuration, a dependency, the toolchain, or the harness before choosing a fix; avoid speculative caches, indexes, concurrency, or dependency changes.
-2. For multi-surface audits, keep a local coverage row per independently testable requirement: owner, source paths/revision, executed check, evidence, and unresolved boundary. Distinguish inventory/source review, executed mechanism, diagnostic control, verified implementation, and measured user impact. A checked package list does not establish exhaustive path coverage.
-3. Establish a supported trigger and baseline before editing. Diagnostic counters must not create the work they claim to observe. Change one variable per control, check equivalent behavior, then run the same protocol on the final implementation. Use profiles or operation counts to explain timing, not a source-level suspicion as proof of a slowdown.
-4. Independently inspect each material finding against its owning source and actual check. Promote proven regressions into existing behavioral tests or stable operation/artifact bounds; avoid noisy elapsed-time assertions. Assert the effect that exposed the bug: execution count, requests, retained resources, or intermediate failure, as well as final output. Preserve request isolation, side-effect ordering, required waits, and intentional cache/replay lifetimes.
-5. Before completion, reconcile every coverage row with the original request. Report findings, rejected candidates, and remaining unverified or blocked surfaces. A diagnostic control is not a production fix; unavailable browser metrics, failed watch integration, or source-only adapter review remain explicit gaps.
+Compare the intended baseline and candidate implementations with the same benchmark source, workload, runtime/tool versions, framework, adapter, build mode, cache state, and runner settings. Keep scenario selections and measurement flags identical. Use separate results/dist directories and avoid unrelated active builds during timing runs.
 
-### Finding capture
+Check the benchmark's actual base, environment warnings, skipped cases, baseline substitutions, and cached results before comparing implementations. A successful job may reuse earlier measurements or skip the affected scenario. Plain memory smoke runs do not supply CodSpeed memory metrics.
 
-Keep non-blocking discoveries in the task's local evidence document. Give each a stable repository/symptom identity, supported trigger, expected/actual behavior, owning source/revision, measurement and limits, existing issue/PR, disposition, next check, and acceptance condition. Label unverified symptoms as observations. Search existing records and open/closed upstream work before creating a duplicate; distinguish an associated PR from a merged and currently verified fix.
-
-Retain the reason when a finding is rejected or excluded by the user's scope. Capture unrelated evidence without fixing it, adding it to the active task, or posting externally. Resume the current work. A blocker or changed correctness risk must be reported rather than parked. Keep private task evidence and machine paths out of public guidance and PRs.
-
-Git history identifies where the responsible code changed. Establishing when the bug began requires reproducing behavior with that revision's dependencies and configuration; otherwise report the code origin and the earliest verified failing revision separately.
-
-## Comparison provenance
-
-Record baseline/candidate revisions, benchmark source and workload, runtime/tool versions, framework, adapter, build mode, cache state, runner mode, command, raw outputs, aggregation, and noise. Keep scenario selections and measurement flags identical. Use separate results/dist directories for concurrent tasks; avoid timing against unrelated active builds when possible and report remaining contention.
-
-Separate three conclusions: the benchmark executed, its results are comparable, and the change caused the difference. Check the report's actual base, environment warnings, skipped cases, baseline substitutions, and logs/output artifacts. A successful job or cached result is not fresh execution evidence. Plain memory smoke runs do not supply CodSpeed memory metrics.
-
-Report operation counts, retained bytes, CPU, elapsed time, throughput, initial payload, and later loading cost separately. Do not convert fewer calls into an unmeasured speedup, raw-byte changes into gzip savings, or a larger RSS sample into a leak. Read sample count, variance/error, and relevant percentiles together; narrow or rerun noisy cases before making a comparative claim.
+Measure operation counts, retained bytes, CPU, elapsed time, throughput, initial payload, and later loading cost separately. Fewer calls do not necessarily reduce elapsed time, raw-byte reductions may increase gzip size, and a larger RSS sample alone does not establish a leak. Use sample count, variance/error, and relevant percentiles to distinguish a change from measurement noise; narrow or rerun noisy cases.
 
 ## Build-tool checks
 
@@ -59,11 +43,11 @@ For Start metadata changes, trace normalized indexes, asset text, CSS content, a
 
 Compare the same consumer on the existing and candidate dependency stacks. Record actual resolved versions, required companion runtimes, and supported peer contracts from matching upstream sources; a passing fixture does not override a documented compatibility requirement. Keep upgrade effects separate from application configuration changes.
 
-For a failure on both stacks, investigate the existing integration or fixture before calling it an upgrade regression. For a candidate-only failure, reduce a matched old/new reproduction, check upstream issues, and identify the owning layer before adding a workaround. Preserve evidence for an upstream fix; external publication requires authorization. Do not relax checks or dependency policy to make an upgrade pass.
+For a failure on both stacks, investigate the existing integration or fixture before calling it an upgrade regression. For a candidate-only failure, reduce a matched old/new reproduction, check upstream issues, and identify the owning layer before adding a workaround. Do not relax checks or dependency policy to make an upgrade pass.
 
 ### Chunk caching and deployment recovery
 
-Measure cold-load bytes, request count, and loading time separately from downloads after unchanged and edited deployments. Use real HTTP cache headers and record cache state. Inspect resolved module paths before assigning vendor groups; workspace-linked packages may not match a `node_modules` rule. Treat chunk layout as application/framework policy unless the plugin contract explicitly owns it.
+Measure cold-load bytes, request count, and loading time separately from downloads after unchanged and edited deployments. Use real HTTP cache headers and control cache state. Inspect resolved module paths before assigning vendor groups; workspace-linked packages may not match a `node_modules` rule. Treat chunk layout as application/framework policy unless the plugin contract explicitly owns it.
 
 Keep an old page open across deployment, then navigate to a previously unloaded route. Cover retained and removed old hashed assets. For chunk recovery, verify preload does not reload the page, navigation can recover through the bounded reload policy, a persistently missing chunk reaches the error UI without a loop, and unrelated errors do not trigger recovery. Reloading the page between deployments does not exercise this boundary.
 
@@ -100,8 +84,8 @@ For changed hydration/RPC/streaming behavior, exercise real HTTP/browser consump
 
 ## TypeScript cost
 
-Use the repository typecheck/project-reference setup and a representative consumer route tree at increasing sizes. Keep TypeScript version, compiler configuration, fixture, and cold/warm state identical between implementations. Preserve inference assertions and record check time, compiler work, and memory where the installed compiler exposes them; report unavailable measurements. Do not pass individual source files to `tsc` and thereby bypass project configuration. A passing typecheck does not establish unchanged compiler/editor performance.
+Use the repository typecheck/project-reference setup and a representative consumer route tree at increasing sizes. Keep TypeScript version, compiler configuration, fixture, and cold/warm state identical between implementations. Preserve inference assertions and measure check time, compiler work, and memory where the installed compiler exposes them. Do not pass individual source files to `tsc` and thereby bypass project configuration. A passing typecheck does not establish unchanged compiler/editor performance.
 
 ## Reviewing changes to this guidance
 
-Check that a representative task reaches the right procedure, an unrelated task does not, and a failed or unavailable check remains explicit. For behavioral validation, replay bounded tasks with the guidance revision and record the host/tools, selected checks, actions, result, and human corrections. Link and text checks prove document structure only; skill availability or reviewer count does not prove the agent applied the procedure or made fewer mistakes.
+When updating this guide, check that its triggers lead to the relevant procedures and that linked commands, fixtures, and references remain valid. Walk through an applicable change, an unrelated change, and a failed or unavailable check to identify missing instructions. Formatting and link checks alone do not establish that the procedures work.

@@ -10,9 +10,9 @@ description: Use when working in this repository on JS bundle size, gzip regress
 Optimize measured client bundles, not source text. The source of truth is `@benchmarks/bundle-size:build`, `benchmarks/bundle-size/results/current.json`, and emitted JS in `benchmarks/bundle-size/dist/`.
 Use `benchmark:bundle-size:run` for local iterations. It uses the same measurement script and builds the selected packages through Nx.
 
-The full measurement, attribution, and regression workflow applies within the accepted change scope. Optimize that change without acquiring unrelated work; larger architectural changes require matching user authority. Preserve others' edits and obtain explicit authorization for commits/pushes. Baseline comparison does not require committing or stashing the working implementation.
+Apply the measurement, attribution, and regression workflow to the affected code and consumers. Compare baseline and candidate in isolated builds with identical workloads and separate outputs; a separate worktree is one way to do this.
 
-For audits, comparison provenance, build-time cost, and adapter-specific verification, follow the [performance review guide](../../.github/agent-guides/performance.md). The official runner does not include Webpack: changes affecting that adapter or shared splitting/DCE also require its real-consumer checks. Do not substitute a Vite/Rsbuild result for Webpack evidence.
+For audits, comparable measurements, build-time cost, and adapter-specific verification, use the [performance-review skill](../performance-review/SKILL.md) for the investigation and its applicable reference checks. Reuse completed checks for the same implementation and workload when continuing into bundle measurement. The official runner does not include Webpack: changes affecting that adapter or shared splitting/DCE also require its real-consumer checks. Do not substitute a Vite/Rsbuild result for Webpack evidence.
 
 ## Commands
 
@@ -38,12 +38,11 @@ For named results, pass `--current benchmarks/bundle-size/results/runs/<name>/cu
 
 ## Rules
 
-- Run one Nx command at a time.
+- Avoid concurrent measurements or builds that share output directories; use Nx's task graph to coordinate package dependencies.
 - Use the runner instead of shell chains for environment variables, redirection, exit codes, log tails, and result queries.
-- For agent runs, use `pnpm --silent benchmark:bundle-size:run ...` to omit the package-manager command echo.
 - The runner sets `CI=1` and `NX_DAEMON=false`. It saves full output in `tests.log` and `measure.log` beside `current.json`.
 - If a step fails, the runner stops and prints at most 40 log lines, limited to 8,000 characters. Read the reported log for more detail.
-- Quiet stdout does not indicate an Nx hang. Inspect the reported log for progress before applying the Nx reset/retry guardrail.
+- Quiet stdout does not indicate an Nx hang. Inspect the reported log for progress before resetting Nx.
 - Use `--test-projects` for the packages that changed. Pass unit-test file selectors and flags after `--`.
 - The runner does not select tests automatically. Keep type tests, performance benchmarks, and e2e tests separate.
 - Keep baseline and candidate scenario selections and measurement flags identical. Use a new `--name` for each retained snapshot.
@@ -51,18 +50,14 @@ For named results, pass `--current benchmarks/bundle-size/results/runs/<name>/cu
 - Track `gzipBytes` first; also inspect `initialGzipBytes`, `rawBytes`, `brotliBytes`, `jsFiles`, and per-file `files`.
 - Dist paths use `scenarioDir`/`outDir`, not metric ids: `react-router.minimal` maps to `dist/react-router-minimal/`.
 - For tiny changes, measure after each candidate; gzip can move opposite raw bytes.
-- To compare a base commit, measure the same scenario in a separate worktree. Pass its saved `current.json` path to `--baseline`.
+- To compare a base commit, measure the same scenario in an isolated build, such as a separate worktree. Pass its saved `current.json` path to `--baseline`.
 - Use history for prior patterns and baselines, not source attribution. It is commit-level data.
 - Runtime performance and security may never be sacrificed for bundle size.
-- Do not stop after the first verified win. Keep iterating through reasonable local, emitted-JS, and algorithmic candidates until measured regressions, readability, or risk rule out the remaining paths.
 - When inlining helpers or simplifying non-obvious logic, preserve readability with a short comment explaining the meaning/invariant, not the mechanics.
 - Before inlining or deleting a helper/function, use the TypeScript language-service script to check references: `pnpm ts:symbol-references -- --project <package>/tsconfig.json --file <decl-file> --symbol <name>`. If the helper is used elsewhere, inlining one use is usually not worth it for bundle size unless measurement proves otherwise. If no references remain, delete the helper and verify with the script.
 - Run unit/types tests for the package being modified plus relevant e2e tests under `e2e/`.
-- Continue optimizing until further reductions would make code unreadable/unmaintainable, or no more reductions remain. A user-provided byte target is not required.
-- Be willing to make large, risky architectural or algorithmic changes, but only within the runtime, security, readability, maintainability, and test constraints above.
-- If you are unsure whether to land a passing change because runtime semantics might change, add unit/e2e tests and/or ask clarifying questions. If codebase exploration can answer the question, explore instead. For each question, provide your recommended answer.
+- Evaluate candidates against correctness, measured benefit, readability, and maintenance cost. Resolve uncertain runtime behavior through source review and focused tests before retaining a change.
 - If runtime performance implications are unclear, add a focused Vitest benchmark (`*.bench.ts`) comparing candidate implementations across realistic and edge-case inputs, like `packages/router-core/tests/closing-tag-detection.bench.ts`; verify implementations produce identical results before `bench()` cases.
-- If you learn a reusable bundle-size pattern, hit a tooling gap, or lack analysis capability, ask the user before updating this skill or the benchmark scripts.
 
 ## Benchmark Rules
 
@@ -71,10 +66,10 @@ For named results, pass `--current benchmarks/bundle-size/results/runs/<name>/cu
 - If a change can affect several package families, pick the smallest scenario that imports the shared code for quick iteration, then spot-check the next most likely affected family before finalizing.
 - Before finalizing, run the full bundle-size benchmark without `--scenario` and compare all scenarios. Look for outliers/anomalies even when the targeted scenario improved.
 - Benchmark the changed mechanism directly, not just the public API around it.
-- Confirm the affected code survives into the measured scenario. If stock scenarios omit an optional feature such as deferred hydration or RSC, add a focused supported consumer and report its cost separately; unchanged stock totals do not establish zero cost for that feature.
-- For runtime/vendor chunk layout changes, follow the [chunk caching and deployment checks](../../.github/agent-guides/performance.md#chunk-caching-and-deployment-recovery). Report cold-load cost separately from repeat-deployment savings; a favorable transfer result does not establish faster loading.
+- Confirm the affected code survives into the measured scenario. If stock scenarios omit an optional feature such as deferred hydration or RSC, add a focused supported consumer and measure its cost separately; unchanged stock totals do not establish zero cost for that feature.
+- For runtime/vendor chunk layout changes, follow the [chunk caching and deployment checks](../../.github/agent-guides/performance.md#chunk-caching-and-deployment-recovery). Measure cold-load cost separately from repeat-deployment savings; a favorable transfer result does not establish faster loading.
 - Keep broad realistic scenarios as smoke/regression coverage; use focused cases for proof.
-- Compare baseline and current with the same benchmark file. Use a separate worktree when only implementation should differ.
+- Compare baseline and current with the same benchmark file; isolate the builds so only the implementation differs.
 - Run noisy benchmark families separately with `-t <pattern>`; all-in-one suites can perturb tiny operations.
 - For branchy fast paths, include best-case, worst-case, and expected mixed distributions.
 - Batch ultra-fast operations inside one benchmark iteration when single calls are dominated by timer/outlier noise.
@@ -90,7 +85,7 @@ Before calling an optimization final, prove which exact production hunks should 
 1. Snapshot the unoptimized baseline and the full candidate metrics.
 2. Split the production diff into logical hunks or dependent hunk groups. Include syntax-only and readability-only edits if they can affect emitted code.
 3. Benchmark each independent hunk alone against the same baseline. Benchmark relevant combinations when hunks only matter together or interact.
-4. For each hunk/group, record bundle metrics and focused performance results when runtime cost could change.
+4. For each hunk/group, measure bundle metrics and runtime performance where affected.
 5. Keep only changes that improve bundle size or performance, or are required for correctness/tests/style and do not regress measured results. Revert neutral or harmful optimization-only changes.
 6. Rebuild and remeasure the final composed version. It must not be larger or slower than the pre-attribution candidate unless the retained change is explicitly required for correctness or style.
 
@@ -121,14 +116,14 @@ After each candidate, run focused perf benchmarks before bundle measurement. Rej
 
 When done optimizing:
 
-1. Review the optimization diff against existing tests for missing behavior cases, newly uncovered edge cases, and performance coverage. Use independent reviewers for bounded questions when the task permits and the host supports them; reconcile their findings against source and checks. Without reviewers, perform a separate review pass and state that independence was not verified.
-2. If a possible regression is unclear, ask the user or explore the codebase until the expected behavior is clear.
+1. Review the optimization diff against existing tests for missing behavior cases, newly uncovered edge cases, and performance coverage. Verify review findings against source and executable checks.
+2. Resolve uncertain behavior from the relevant APIs, implementation, and tests before accepting the optimization.
 3. Use the review findings to add focused unit tests and benchmarks.
 4. Prepare isolated baseline and candidate worktrees/snapshots with the same tests and benchmark harness, differing only in the implementation under comparison. Build each snapshot's dependencies through Nx; use separate results/dist paths and preserve the working checkout.
-5. Run tests, performance benchmarks, and the relevant bundle-size measurement on the baseline, then write BEFORE results and revision/environment details to local `RESULT-optimization-{topic}.md`.
-6. Run the same checks on the candidate, then append AFTER results to the same file. Keep raw outputs and identify skipped/cached checks. Publish task evidence only when requested.
+5. Run tests, performance benchmarks, and the relevant bundle-size measurement on the baseline.
+6. Run the same checks on the candidate and compare against the baseline. Confirm that skipped or cached checks have not omitted the changed behavior.
 7. When reviewing benchmark output, consider statistical quality: standard deviation, margin of error, variance/noise, sample count, and percentiles. Re-run or narrow conclusions when results are noisy.
-8. Compare BEFORE and AFTER. If anything regressed, iterate within the accepted scope or revert the task-owned regression. Recheck the final composed implementation after changes.
+8. Compare baseline and candidate results. Investigate regressions and recheck the final composed implementation after changes.
 
 Useful patterns: remove prod-only strings, remove unused exports, flatten wrappers, inline one-use helpers, avoid duplicate literals, improve treeshaking boundaries, simplify branches after preserving behavior.
 
