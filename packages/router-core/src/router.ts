@@ -2884,6 +2884,24 @@ function validateSearch(validateSearch: AnyValidator, input: unknown): unknown {
   return {}
 }
 
+function resolveNextParams(
+  spec: unknown,
+  base: Record<string, unknown>,
+): Record<string, unknown> {
+  if (spec === undefined || spec === true) {
+    return base
+  }
+  const next = Object.create(null)
+  if (spec === false || spec === null) {
+    return next
+  }
+  if (typeof spec === 'function') {
+    Object.assign(next, base)
+    return Object.assign(next, spec(next))
+  }
+  return Object.assign(next, base, spec)
+}
+
 function applySearchMiddleware(
   search: any,
   dest: BuildNextOptions,
@@ -3001,20 +3019,6 @@ function findGlobalNotFoundRouteId(
     }
   }
   return rootRouteId
-}
-
-function resolveNextParams(
-  spec: unknown,
-  base: Record<string, unknown>,
-): Record<string, unknown> {
-  if (spec === false || spec === null) {
-    return Object.create(null)
-  }
-  if ((spec ?? true) === true) {
-    return base
-  }
-  const next = Object.assign(Object.create(null), base)
-  return Object.assign(next, functionalUpdate(spec as any, next))
 }
 
 function extractStrictParams(
