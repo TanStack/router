@@ -1,21 +1,44 @@
 import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
-async function prepareDocumentTraversal(
-  page: Page,
-  direction: 'back' | 'forward',
-) {
-  if (direction === 'back') {
-    await page.goto('/')
+async function prepareDocumentTraversal(page: Page, delta: number) {
+  if (delta < 0) {
+    for (let i = 0; i < Math.abs(delta); i++) {
+      await page.goto(`/?entry=${i}`)
+    }
     await page.goto('/history-blocking')
   } else {
     await page.goto('/history-blocking')
-    await page.goto('/')
-    await page.goBack()
+    for (let i = 0; i < delta; i++) {
+      await page.goto(`/?entry=${i}`)
+    }
+    for (let i = 0; i < delta; i++) {
+      await page.goBack()
+    }
   }
   await expect(
     page.getByRole('heading', { name: 'History blocking' }),
   ).toBeVisible()
+  await page.getByLabel('Draft', { exact: true }).fill('Unsaved draft')
+  await expect(page.getByText('Unsaved changes', { exact: true })).toBeVisible()
+}
+
+async function prepareSameDocumentTraversal(page: Page, delta: number) {
+  await page.goto('/history-blocking')
+  for (let step = 1; step <= Math.abs(delta); step++) {
+    await page.getByRole('link', { name: 'Add history entry' }).click()
+    await expect(page.getByText(`Step ${step}`, { exact: true })).toBeVisible()
+  }
+  if (delta > 0) {
+    for (let step = delta - 1; step >= 0; step--) {
+      await page
+        .getByRole('button', { name: 'History back', exact: true })
+        .click()
+      await expect(
+        page.getByText(`Step ${step}`, { exact: true }),
+      ).toBeVisible()
+    }
+  }
   await page.getByLabel('Draft', { exact: true }).fill('Unsaved draft')
   await expect(page.getByText('Unsaved changes', { exact: true })).toBeVisible()
 }
@@ -29,11 +52,18 @@ function dismissUnloadDialogs(page: Page) {
   return dialogs
 }
 
-for (const direction of ['back', 'forward'] as const) {
+for (const [direction, delta] of [
+  ['back', -1],
+  ['forward', 1],
+  ['go(-1)', -1],
+  ['go(1)', 1],
+  ['go(-2)', -2],
+  ['go(2)', 2],
+] as const) {
   test(`history ${direction} to another document warns before losing edits`, async ({
     page,
   }) => {
-    await prepareDocumentTraversal(page, direction)
+    await prepareDocumentTraversal(page, delta)
     const dialogs = dismissUnloadDialogs(page)
     const originalUrl = page.url()
 
@@ -51,7 +81,7 @@ for (const direction of ['back', 'forward'] as const) {
   test(`history ${direction} can explicitly bypass a document unload warning`, async ({
     page,
   }) => {
-    await prepareDocumentTraversal(page, direction)
+    await prepareDocumentTraversal(page, delta)
     await page.getByLabel('Ignore blockers').check()
     const dialogs = dismissUnloadDialogs(page)
 
@@ -59,23 +89,14 @@ for (const direction of ['back', 'forward'] as const) {
       .getByRole('button', { name: `History ${direction}`, exact: true })
       .click()
 
-    await expect(page).toHaveURL(/\/$/)
+    await expect(page).toHaveURL(/\/\?entry=\d$/)
     expect(dialogs).toEqual([])
   })
 
   test(`ignored same-document ${direction} preserves the next document unload warning`, async ({
     page,
   }) => {
-    await page.goto('/history-blocking')
-    await page.getByRole('link', { name: 'Add history entry' }).click()
-    await expect(page.getByText('Step 1', { exact: true })).toBeVisible()
-    if (direction === 'forward') {
-      await page
-        .getByRole('button', { name: 'History back', exact: true })
-        .click()
-      await expect(page.getByText('Step 0', { exact: true })).toBeVisible()
-    }
-    await page.getByLabel('Draft', { exact: true }).fill('Unsaved draft')
+    await prepareSameDocumentTraversal(page, delta)
     await page.getByLabel('Ignore blockers').check()
     const dialogs = dismissUnloadDialogs(page)
 
@@ -84,13 +105,16 @@ for (const direction of ['back', 'forward'] as const) {
       .click()
 
     await expect(
-      page.getByText(direction === 'back' ? 'Step 0' : 'Step 1', {
+      page.getByText(`Step ${delta < 0 ? 0 : delta}`, {
         exact: true,
       }),
     ).toBeVisible()
     await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
       'Unsaved draft',
     )
+    await expect(
+      page.getByText('Blocker status: idle', { exact: true }),
+    ).toBeVisible()
     expect(dialogs).toEqual([])
 
     await page.getByRole('link', { name: 'Leave document' }).click()
@@ -99,5 +123,55 @@ for (const direction of ['back', 'forward'] as const) {
     await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
       'Unsaved draft',
     )
+  })
+
+  test(`same-document ${direction} still checks blockers by default`, async ({
+    page,
+  }) => {
+    await prepareSameDocumentTraversal(page, delta)
+
+    await page
+      .getByRole('button', { name: `History ${direction}`, exact: true })
+      .click()
+
+    await expect(
+      page.getByText('Blocker status: blocked', { exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByText(`Step ${delta < 0 ? -delta : 0}`, { exact: true }),
+    ).toBeVisible()
+    await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
+      'Unsaved draft',
+    )
+  })
+}
+
+for (const ignoreBlocker of [false, true]) {
+  test(`history go(0) ${ignoreBlocker ? 'can bypass' : 'preserves'} the reload warning`, async ({
+    page,
+  }) => {
+    await page.goto('/history-blocking')
+    await page.getByLabel('Draft', { exact: true }).fill('Unsaved draft')
+    await expect(
+      page.getByText('Unsaved changes', { exact: true }),
+    ).toBeVisible()
+    if (ignoreBlocker) {
+      await page.getByLabel('Ignore blockers').check()
+    }
+    const dialogs = dismissUnloadDialogs(page)
+
+    await page
+      .getByRole('button', { name: 'History go(0)', exact: true })
+      .click()
+
+    if (ignoreBlocker) {
+      await expect(page.getByLabel('Draft', { exact: true })).toHaveValue('')
+      expect(dialogs).toEqual([])
+    } else {
+      await expect.poll(() => dialogs).toEqual(['beforeunload'])
+      await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
+        'Unsaved draft',
+      )
+    }
   })
 }

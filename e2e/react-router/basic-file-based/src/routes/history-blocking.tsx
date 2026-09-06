@@ -45,7 +45,7 @@ function HistoryBlocking() {
       </label>
       <p>{draft ? 'Unsaved changes' : 'No changes'}</p>
       <p>Blocker status: {status}</p>
-      <Link to="/history-blocking" search={{ step: 1 }}>
+      <Link to="/history-blocking" search={{ step: step + 1 }}>
         Add history entry
       </Link>
       <button
@@ -66,6 +66,19 @@ function HistoryBlocking() {
       >
         History forward
       </button>
+      {[-2, -1, 0, 1, 2].map((delta) => (
+        <button
+          key={delta}
+          onClick={() =>
+            router.history.go(
+              delta,
+              ignoreBlocker ? { ignoreBlocker: true } : undefined,
+            )
+          }
+        >
+          History go({delta})
+        </button>
+      ))}
       <a href="/">Leave document</a>
     </div>
   )
