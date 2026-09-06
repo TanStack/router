@@ -1,8 +1,7 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "allowImportingTsExtensions": true,
     "types": ["node"]
   },
-  "include": ["runtime.ts", "run.ts"]
+  "include": ["runtime.ts"]
 }

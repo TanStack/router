@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'node:url'
-import { isMemoryInstrumented } from './turn.ts'
+import { isMemoryInstrumented } from './turn'
 
 /** Worker settings for the CodSpeed memory instrument. */
 export function memoryExecArgv() {
@@ -16,14 +16,6 @@ export function memoryExecArgv() {
     '--no-incremental-marking',
     '--initial-old-space-size=512',
   ]
-}
-
-export function memoryCoordinatorExecArgv() {
-  // Vite's lexer needs WebAssembly, which --jitless disables. Compile the
-  // coordinator's baseline code eagerly; the benchmark workers stay jitless.
-  return memoryExecArgv().flatMap((flag) =>
-    flag === '--jitless' ? ['--no-maglev', '--always-sparkplug'] : [flag],
-  )
 }
 
 export function memoryConfig(side: 'client' | 'server') {

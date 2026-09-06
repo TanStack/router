@@ -61,8 +61,8 @@ jobs:
       - name: Setup Tools
         uses: TanStack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
 
-      # Build outside instrumentation. Memory runs launch Vitest directly;
-      # CPU runs skip the task dependencies already built here.
+      # Run the build outside of the CodSpeed action to avoid being slowed by intrumentation overhead.
+      # (and then run the task itself with --excludeTaskDependencies)
       - name: Prepare ${{ matrix.benchmark }}:${{ matrix.framework }} benchmark
         run: >-
           pnpm nx run
@@ -74,8 +74,7 @@ jobs:
         with:
           mode: ${{ startsWith(matrix.benchmark, 'memory-') && 'memory' || 'simulation' }}
           run: >-
-            ${{
-              startsWith(matrix.benchmark, 'memory-') &&
-              format('NODE_ENV=production WITH_INSTRUMENTATION=1 node benchmarks/memory/run.ts {0} {1}', matrix.benchmark == 'memory-client' && 'client' || 'server', matrix.framework) ||
-              format('WITH_INSTRUMENTATION=1 pnpm nx run @benchmarks/{0}:test:perf:{1} --excludeTaskDependencies', matrix.benchmark, matrix.framework)
-            }}
+            WITH_INSTRUMENTATION=1
+            pnpm nx run
+            @benchmarks/${{ matrix.benchmark }}:test:perf:${{ matrix.framework }}
+            --excludeTaskDependencies
