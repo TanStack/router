@@ -1,6 +1,7 @@
 import { isServer } from '@tanstack/router-core/isServer'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
+import type { RouterHistory } from '@tanstack/history'
 
 export type ScrollRestorationEntry = { scrollX: number; scrollY: number }
 
@@ -55,6 +56,58 @@ function persistScrollRestorationCache() {
 
 const scrollRestorationCache = /* @__PURE__ */ createScrollRestorationCache()
 const scrollRestorationIdAttribute = 'data-scroll-restoration-id'
+
+type ScrollHistoryState = {
+  callbacks: Set<() => void>
+  release: () => void
+}
+
+const scrollHistoryRegistry = new WeakMap<RouterHistory, ScrollHistoryState>()
+// Router histories share the browser's scroll restoration setting.
+let scrollRestorationOwners = 0
+let previousScrollRestoration: ScrollRestoration
+
+function getScrollHistoryState(history: RouterHistory) {
+  const existing = scrollHistoryRegistry.get(history)
+  if (existing) {
+    return existing
+  }
+
+  const originalDestroy = history.destroy
+  const callbacks = new Set<() => void>()
+  let destroying = false
+  const state: ScrollHistoryState = {
+    callbacks,
+    release: () => {
+      if (destroying || callbacks.size) {
+        return
+      }
+      if (history.destroy === wrapper) {
+        history.destroy = originalDestroy
+      }
+      // An external wrapper may retain this generation after reattachment.
+      if (scrollHistoryRegistry.get(history) === state) {
+        scrollHistoryRegistry.delete(history)
+      }
+    },
+  }
+  const wrapper = () => {
+    destroying = true
+    try {
+      for (const callback of [...callbacks]) {
+        callback()
+      }
+    } finally {
+      callbacks.clear()
+      destroying = false
+      state.release()
+      originalDestroy.call(history)
+    }
+  }
+  history.destroy = wrapper
+  scrollHistoryRegistry.set(history, state)
+  return state
+}
 
 /**
  * The default `getKey` function for `useScrollRestoration`.
@@ -178,7 +231,9 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 
   const getKey =
     router.options.getScrollRestorationKey || defaultGetScrollRestorationKey
-  const trackedScrollTargets = new Set<Document | Element>()
+  const trackedScrollTargets = (scroll.trackedScrollTargets ??= new Set<
+    Document | Element
+  >())
 
   // Snapshot the current page's tracked scroll targets before navigation or unload.
   const snapshotCurrentScrollTargets = (restoreKey: string) => {
@@ -197,46 +252,80 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     }
   }
 
-  if (shouldSetupScrollRestoration && !scroll.restoration) {
-    scroll.restoration = true
+  const history = router.history
+  if (scroll.history !== history) {
+    const historyState = getScrollHistoryState(history)
+    let cleanedUp = false
+    const cleanup = () => {
+      if (cleanedUp) {
+        return
+      }
+      cleanedUp = true
+      historyState.callbacks.delete(cleanup)
+      scroll.captureCleanup?.()
+      scroll.captureCleanup = undefined
+      scroll.renderedCleanup?.()
+      scroll.renderedCleanup = undefined
+      trackedScrollTargets.clear()
+      scroll.history = undefined
+      scroll.historyCleanup = undefined
+      historyState.release()
+    }
+    historyState.callbacks.add(cleanup)
+    scroll.history = history
+    scroll.historyCleanup = cleanup
+  }
+
+  const shouldAttach = scroll.restoring
+  if (shouldAttach && !scroll.captureCleanup) {
     ignoreScroll = false
 
-    history.scrollRestoration = 'manual'
+    if (scrollRestorationOwners++ === 0) {
+      previousScrollRestoration = window.history.scrollRestoration
+    }
+    window.history.scrollRestoration = 'manual'
 
-    document.addEventListener(
-      'scroll',
-      (event) => {
-        if (ignoreScroll) {
-          return
-        }
-        trackedScrollTargets.add(event.target as Document | Element)
-      },
-      true,
-    )
-    router.subscribe('onBeforeLoad', (event) => {
+    const onScroll = (event: Event) => {
+      if (ignoreScroll) {
+        return
+      }
+      trackedScrollTargets.add(event.target as Document | Element)
+    }
+    document.addEventListener('scroll', onScroll, true)
+    const unsubscribeBeforeLoad = router.subscribe('onBeforeLoad', (event) => {
       if (event.fromLocation) {
         snapshotCurrentScrollTargets(getKey(event.fromLocation))
       }
       trackedScrollTargets.clear()
     })
-    addEventListener('pagehide', () => {
+    const onPageHide = () => {
       snapshotCurrentScrollTargets(
         getKey(
           router.stores.resolvedLocation.get() ?? router.stores.location.get(),
         ),
       )
       persistScrollRestorationCache()
-    })
+    }
+    window.addEventListener('pagehide', onPageHide)
+    scroll.captureCleanup = () => {
+      document.removeEventListener('scroll', onScroll, true)
+      window.removeEventListener('pagehide', onPageHide)
+      unsubscribeBeforeLoad()
+      if (
+        --scrollRestorationOwners === 0 &&
+        window.history.scrollRestoration === 'manual'
+      ) {
+        window.history.scrollRestoration = previousScrollRestoration
+      }
+    }
   }
 
-  if (scroll.reset) {
+  if (scroll.renderedCleanup) {
     return
   }
 
-  scroll.reset = true
-
   // Restore destination scroll after the new route has rendered.
-  router.subscribe('onRendered', (event) => {
+  const unsubscribeRendered = router.subscribe('onRendered', (event) => {
     const behavior = router.options.scrollRestorationBehavior
     const scrollToTopSelectors = router.options.scrollToTopSelectors
     const shouldResetScroll = scroll.next
@@ -364,4 +453,5 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       ignoreScroll = false
     }
   })
+  router._scroll.renderedCleanup = unsubscribeRendered
 }
