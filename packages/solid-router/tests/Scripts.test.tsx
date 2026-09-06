@@ -54,6 +54,33 @@ afterEach(() => {
 })
 
 describe('ssr scripts', () => {
+  test.each([undefined, '', 'window.inlineRan = true'])(
+    'mounts one external script with children %j and removes it on unmount',
+    async (children) => {
+      const rootRoute = createRootRoute({
+        scripts: () => [{ src: '/external-script.js', children }],
+        component: Scripts,
+      })
+      const router = createRouter({
+        routeTree: rootRoute,
+        history: createMemoryHistory(),
+      })
+      await router.load()
+
+      const { unmount } = render(() => <RouterProvider router={router} />)
+      const scripts = document.querySelectorAll(
+        'script[src="/external-script.js"]',
+      )
+      expect(scripts).toHaveLength(1)
+      expect(scripts[0]?.textContent).toBe('')
+
+      unmount()
+      expect(
+        document.querySelectorAll('script[src="/external-script.js"]'),
+      ).toHaveLength(0)
+    },
+  )
+
   test('updates route data scripts after client navigation', async () => {
     const rootRoute = createRootRoute({
       component: () => (
