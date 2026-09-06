@@ -18,6 +18,7 @@ import {
   buildRouteBranch,
   findFlatMatch,
   findRouteMatch,
+  findSingleMatch,
   processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
@@ -1130,7 +1131,7 @@ export class RouterCore<
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
-  processedTree!: ProcessedTree<TRouteTree, any>
+  processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: SieveCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
@@ -2641,16 +2642,22 @@ export class RouterCore<
 
     const destinationPath = trimPathRight(next.pathname)
     const fuzzy = opts?.fuzzy
-    const pathMatch = findRouteMatch(
-      trimPathRight(baseLocation.pathname),
-      this.processedTree,
-      true,
-    )
-    if (
-      !fuzzy &&
-      (pathMatch?.rawParams['**'] !== undefined ||
-        (!pathMatch && baseLocation.pathname !== '/'))
-    ) {
+    let pathMatch
+    try {
+      pathMatch = findSingleMatch(
+        destinationPath,
+        opts?.caseSensitive ?? false,
+        fuzzy ?? false,
+        fuzzy ? baseLocation.pathname : trimPathRight(baseLocation.pathname),
+        this.processedTree,
+      )
+    } catch (error) {
+      if (error instanceof URIError) {
+        return false
+      }
+      throw error
+    }
+    if (!pathMatch) {
       return false
     }
     const committedLocation = this.stores.resolvedLocation.get()
@@ -2678,26 +2685,8 @@ export class RouterCore<
       destinationMatch._strictParams,
     )
 
-    try {
-      const currentPathname = baseLocation.pathname
-      const matchedPathname = trimPathRight(
-        decodeURI(destinationMatch.pathname),
-      )
-      if (opts?.caseSensitive && !currentPathname.startsWith(matchedPathname)) {
-        return false
-      }
-
-      if (fuzzy) {
-        const remainder = currentPathname.slice(matchedPathname.length)
-        if (remainder) {
-          params['**'] =
-            remainder === '/'
-              ? '/'
-              : decodeURIComponent(remainder.replace(/^\/+/, ''))
-        }
-      }
-    } catch {
-      return false
+    if (pathMatch.rawParams['**'] !== undefined) {
+      params['**'] = pathMatch.rawParams['**']
     }
 
     return (!location.params ||

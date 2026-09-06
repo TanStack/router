@@ -311,6 +311,9 @@ describe('matchRoute', () => {
     await router.load()
 
     expect(router.matchRoute({ to: '/' })).toBe(false)
+    expect(router.matchRoute({ to: '/' }, { fuzzy: true })).toEqual({
+      '**': 'missing',
+    })
   })
 
   it('matches encoded params without corrupting fuzzy remainders', async () => {
@@ -450,6 +453,15 @@ describe('matchRoute', () => {
         to: '/orgs/$id/projects/$id',
         params: { id: 'child:two' },
       }),
+    ).toEqual({ id: 'child:two' })
+    expect(
+      router.matchRoute(
+        {
+          to: '/orgs/$id/projects/$id',
+          params: { id: 'child:two' },
+        },
+        { caseSensitive: true },
+      ),
     ).toEqual({ id: 'child:two' })
     expect(childParserParams).toContainEqual({ id: 'two' })
   })
