@@ -267,6 +267,77 @@ describe('setupScrollRestoration', () => {
     expect(originalDestroy.mock.instances[0]).toBe(history)
   })
 
+  test('cleans mixed shared owners after one moves to another history', () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const replacement = createMemoryHistory({ initialEntries: ['/'] })
+    testHistories.add(replacement)
+    const originalDestroy = history.destroy
+    const resetOnly = createRouter({ history, scrollRestoration: false })
+    const getKey = vi.fn((location: ParsedLocation) => location.href)
+    const restoring = createRouter({
+      history,
+      scrollRestoration: true,
+      getScrollRestorationKey: getKey,
+    })
+    const staleCleanup = restoring._scroll.historyCleanup!
+
+    restoring.update({ history: replacement })
+    staleCleanup()
+    history.destroy()
+
+    expect(history.destroy).toBe(originalDestroy)
+    expect(resetOnly.subscribers.size).toBe(0)
+    expect(restoring.subscribers.size).toBe(2)
+    window.dispatchEvent(new Event('pagehide'))
+    expect(getKey).toHaveBeenCalledOnce()
+
+    replacement.destroy()
+    getKey.mockClear()
+    window.dispatchEvent(new Event('pagehide'))
+    expect(getKey).not.toHaveBeenCalled()
+    expect(restoring.subscribers.size).toBe(0)
+  })
+
+  test.each([false, true])(
+    'preserves external destroy wrappers over repeated generations with throwing=%s',
+    (throwFirst) => {
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+      const nativeDestroy = history.destroy
+      const originalDestroy = vi.fn(function (this: RouterHistory) {
+        nativeDestroy.call(this)
+      })
+      if (throwFirst) {
+        originalDestroy.mockImplementationOnce(function (this: RouterHistory) {
+          nativeDestroy.call(this)
+          throw new Error('destroy failed')
+        })
+      }
+      history.destroy = originalDestroy
+      const router = createRouter({ history, scrollRestoration: true })
+      const firstWrapper = history.destroy
+      const externalDestroy = vi.fn(function (this: RouterHistory) {
+        firstWrapper.call(this)
+      })
+      history.destroy = externalDestroy
+
+      for (let generation = 0; generation < 3; generation++) {
+        if (throwFirst && generation === 0) {
+          expect(() => history.destroy()).toThrow('destroy failed')
+        } else {
+          history.destroy()
+        }
+        expect(history.destroy).toBe(externalDestroy)
+        expect(originalDestroy).toHaveBeenCalledTimes(generation + 1)
+        expect(externalDestroy).toHaveBeenCalledTimes(generation + 1)
+        expect(originalDestroy.mock.instances[generation]).toBe(history)
+        expect(router.subscribers.size).toBe(0)
+        if (generation < 2) {
+          setupScrollRestoration(router)
+        }
+      }
+    },
+  )
+
   test('cleans the old attachment when replacing history', () => {
     const oldHistory = createMemoryHistory({ initialEntries: ['/'] })
     const newHistory = createMemoryHistory({ initialEntries: ['/'] })

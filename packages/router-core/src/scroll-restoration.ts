@@ -58,54 +58,52 @@ const scrollRestorationCache = /* @__PURE__ */ createScrollRestorationCache()
 const scrollRestorationIdAttribute = 'data-scroll-restoration-id'
 
 type ScrollHistoryState = {
-  originalDestroy: RouterHistory['destroy']
-  wrapper: RouterHistory['destroy']
   callbacks: Set<() => void>
-  destroying?: boolean
+  release: () => void
 }
 
 const scrollHistoryRegistry = new WeakMap<RouterHistory, ScrollHistoryState>()
 
 function getScrollHistoryState(history: RouterHistory) {
-  let state = scrollHistoryRegistry.get(history)
-  if (state) {
-    return state
+  const existing = scrollHistoryRegistry.get(history)
+  if (existing) {
+    return existing
   }
 
   const originalDestroy = history.destroy
-  state = {
-    originalDestroy,
-    wrapper: () => {},
-    callbacks: new Set(),
+  const callbacks = new Set<() => void>()
+  let destroying = false
+  const state: ScrollHistoryState = {
+    callbacks,
+    release: () => {
+      if (destroying || callbacks.size) {
+        return
+      }
+      if (history.destroy === wrapper) {
+        history.destroy = originalDestroy
+      }
+      // An external wrapper may retain this generation after reattachment.
+      if (scrollHistoryRegistry.get(history) === state) {
+        scrollHistoryRegistry.delete(history)
+      }
+    },
   }
-  const currentState = state
-  state.wrapper = function () {
-    currentState.destroying = true
+  const wrapper = () => {
+    destroying = true
     try {
-      for (const callback of [...currentState.callbacks]) {
+      for (const callback of [...callbacks]) {
         callback()
       }
     } finally {
-      currentState.callbacks.clear()
-      releaseScrollHistoryState(history, currentState)
-      currentState.originalDestroy.call(history)
+      callbacks.clear()
+      destroying = false
+      state.release()
+      originalDestroy.call(history)
     }
   }
-  history.destroy = state.wrapper
+  history.destroy = wrapper
   scrollHistoryRegistry.set(history, state)
   return state
-}
-
-function releaseScrollHistoryState(
-  history: RouterHistory,
-  state: ScrollHistoryState,
-) {
-  if (history.destroy === state.wrapper) {
-    history.destroy = state.originalDestroy
-  }
-  if (scrollHistoryRegistry.get(history) === state) {
-    scrollHistoryRegistry.delete(history)
-  }
 }
 
 /**
@@ -230,9 +228,9 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 
   const getKey =
     router.options.getScrollRestorationKey || defaultGetScrollRestorationKey
-  const trackedScrollTargets =
-    router._scroll.trackedScrollTargets ??
-    (router._scroll.trackedScrollTargets = new Set<Document | Element>())
+  const trackedScrollTargets = (scroll.trackedScrollTargets ??= new Set<
+    Document | Element
+  >())
 
   // Snapshot the current page's tracked scroll targets before navigation or unload.
   const snapshotCurrentScrollTargets = (restoreKey: string) => {
@@ -268,9 +266,7 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       trackedScrollTargets.clear()
       scroll.history = undefined
       scroll.historyCleanup = undefined
-      if (!historyState.destroying && !historyState.callbacks.size) {
-        releaseScrollHistoryState(history, historyState)
-      }
+      historyState.release()
     }
     historyState.callbacks.add(cleanup)
     scroll.history = history
