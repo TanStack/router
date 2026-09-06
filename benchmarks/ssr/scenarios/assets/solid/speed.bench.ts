@@ -3,9 +3,8 @@ import {
   assertAssetsScenario,
   assetsBenchOptions,
   runAssetsInlineLoop,
-  runAssetsLinkedControlLoop,
-  type StartRequestHandler,
 } from '../shared'
+import type { StartRequestHandler } from '../shared'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 
@@ -21,11 +20,6 @@ describe('ssr', () => {
   bench(
     'ssr assets inline-css cdn (solid)',
     () => runAssetsInlineLoop(handler),
-    assetsBenchOptions,
-  )
-  bench(
-    'ssr assets linked-css control (solid)',
-    () => runAssetsLinkedControlLoop(handler),
     assetsBenchOptions,
   )
 })

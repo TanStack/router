@@ -1,3 +1,4 @@
+import { settle } from '#memory-server/bench-utils'
 import type { StartRequestHandler } from '#memory-server/bench-utils'
 
 export type { StartRequestHandler }
@@ -5,16 +6,7 @@ export type { StartRequestHandler }
 type Framework = 'react' | 'solid' | 'vue'
 
 type AbortedRequestReadMode = 'first-chunk' | 'shell-before-deferred'
-type AbortedRequestCancelMode = 'plain' | 'swallow-abort-error'
-type AbortedRequestDrainMode = 'microtasks' | 'tasks'
-
-type AbortedRequestMode = {
-  readMode: AbortedRequestReadMode
-  cancelMode: AbortedRequestCancelMode
-  drainMode: AbortedRequestDrainMode
-}
-
-const abortedRequestIterations = 100
+const abortedRequestIterations = 40
 let abortedRequestCounter = 0
 const eagerMarker = 'data-bench="aborted-requests-eager"'
 const alphaFallbackMarker = 'data-bench="aborted-requests-alpha-fallback"'
@@ -25,22 +17,10 @@ const betaFirstRecord = (id: string) => `deferred-beta-${id}-0`
 const betaLastRecord = (id: string) => `deferred-beta-${id}-19`
 
 const textDecoder = new TextDecoder()
-const abortedRequestModes: Record<Framework, AbortedRequestMode> = {
-  react: {
-    readMode: 'first-chunk',
-    cancelMode: 'plain',
-    drainMode: 'microtasks',
-  },
-  solid: {
-    readMode: 'first-chunk',
-    cancelMode: 'plain',
-    drainMode: 'tasks',
-  },
-  vue: {
-    readMode: 'shell-before-deferred',
-    cancelMode: 'swallow-abort-error',
-    drainMode: 'tasks',
-  },
+const abortedRequestModes: Record<Framework, AbortedRequestReadMode> = {
+  react: 'first-chunk',
+  solid: 'first-chunk',
+  vue: 'shell-before-deferred',
 }
 
 const documentRequestInit = {
@@ -100,7 +80,7 @@ async function readShellBeforeDeferred(
   const reader = response.body.getReader()
   let text = ''
 
-  while (true) {
+  for (;;) {
     const result = await reader.read()
     const value = result.value
 
@@ -141,10 +121,10 @@ async function readShellBeforeDeferred(
 async function readSanityStream(
   response: Response,
   request: Request,
-  mode: AbortedRequestMode,
+  mode: AbortedRequestReadMode,
   id: string,
 ) {
-  if (mode.readMode === 'shell-before-deferred') {
+  if (mode === 'shell-before-deferred') {
     return readShellBeforeDeferred(response, request, id)
   }
 
@@ -169,37 +149,19 @@ function readLoopStream(
   return readFirstChunk(response, request)
 }
 
-async function cancelReader(
-  reader: ReadableStreamDefaultReader<Uint8Array>,
-  mode: AbortedRequestCancelMode,
-) {
-  if (mode === 'swallow-abort-error') {
-    try {
-      await reader.cancel()
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        throw error
-      }
+async function cancelReader(reader: ReadableStreamDefaultReader<Uint8Array>) {
+  try {
+    await reader.cancel()
+  } catch (error) {
+    if (!(error instanceof DOMException && error.name === 'AbortError')) {
+      throw error
     }
-
-    return
-  }
-
-  await reader.cancel()
-}
-
-async function drainCancellation(mode: AbortedRequestDrainMode) {
-  await Promise.resolve()
-  await Promise.resolve()
-
-  if (mode === 'tasks') {
-    await new Promise((resolve) => setTimeout(resolve, 0))
   }
 }
 
 async function assertAbortedRequestsSanity(
   handler: StartRequestHandler,
-  mode: AbortedRequestMode,
+  mode: AbortedRequestReadMode,
 ) {
   const fullId = 'sanity-full'
   const fullRequest = buildStreamRequest(fullId)
@@ -232,13 +194,13 @@ async function assertAbortedRequestsSanity(
   // reader.cancel() is the response-stream cancellation path if the handler
   // does not observe Request.signal for this in-process request.
   controller.abort()
-  await cancelReader(reader, mode.cancelMode)
-  await drainCancellation(mode.drainMode)
+  await cancelReader(reader)
+  await settle()
 }
 
 async function runAbortedRequestLoop(
   handler: StartRequestHandler,
-  mode: AbortedRequestMode,
+  mode: AbortedRequestReadMode,
 ) {
   for (let index = 0; index < abortedRequestIterations; index++) {
     const controller = new AbortController()
@@ -247,15 +209,10 @@ async function runAbortedRequestLoop(
     const response = await handler.fetch(request)
     validateDocumentResponse(response, request)
 
-    const { reader } = await readLoopStream(
-      mode.readMode,
-      response,
-      request,
-      id,
-    )
+    const { reader } = await readLoopStream(mode, response, request, id)
     controller.abort()
-    await cancelReader(reader, mode.cancelMode)
-    await drainCancellation(mode.drainMode)
+    await cancelReader(reader)
+    await settle()
   }
 }
 
@@ -270,7 +227,7 @@ export function createWorkloadGroup(
     sanity: () => assertAbortedRequestsSanity(handler, mode),
     workloads: [
       {
-        name: `mem aborted-requests (${framework})`,
+        name: `mem server aborted-requests (${framework})`,
         run,
       },
     ],

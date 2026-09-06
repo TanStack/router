@@ -6,7 +6,7 @@ export type { StartRequestHandler }
 type Framework = 'react' | 'solid' | 'vue'
 
 const benchmarkSeed = 0x5eed_0005
-const peakLargePageIterations = 20
+const peakLargePageIterations = 1
 const peakLargePageUrl = 'http://localhost/l1/l2/l3/l4/l5/l6/l7/l8'
 const levelEightMarker = 'data-bench="peak-large-page-level-8"'
 
@@ -60,7 +60,7 @@ export function createWorkloadGroup(
     sanity: () => assertPeakLargePageSanity(handler),
     workloads: [
       {
-        name: `mem peak-large-page (${framework})`,
+        name: `mem server peak-large-page (${framework})`,
         run,
       },
     ],

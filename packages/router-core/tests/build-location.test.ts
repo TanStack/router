@@ -6,7 +6,23 @@ import {
   retainSearchParams,
   stripSearchParams,
 } from '../src'
+import type { SearchMiddleware } from '../src'
+import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
+
+test('_getUserHistoryState removes volatile router bookkeeping but keeps mask payloads', () => {
+  expect(
+    _getUserHistoryState({
+      key: 'legacy-key',
+      __TSR_key: 'key',
+      __TSR_index: 1,
+      __hashScrollIntoViewOptions: true,
+      __tempLocation: {} as any,
+      __tempKey: 'temp-key',
+      user: 'state',
+    } as any),
+  ).toEqual({ user: 'state', __tempLocation: {}, __tempKey: 'temp-key' })
+})
 
 describe('buildLocation - params function receives parsed params', () => {
   test('prev params should contain parsed params from route params.parse', async () => {
@@ -218,6 +234,67 @@ describe('buildLocation - params function receives parsed params', () => {
 })
 
 describe('buildLocation - search params', () => {
+  test('only applies route validation when requested', async () => {
+    const events: Array<string> = []
+    const validateSearch = vi.fn((search: Record<string, unknown>) => {
+      events.push('validate')
+      return { ...search, validated: true }
+    })
+    const middleware = vi.fn<SearchMiddleware<{ validated: boolean }>>(
+      ({ search, next }) => {
+        events.push('middleware:before')
+        const result = next(search)
+        events.push('middleware:after')
+        return { ...result, middleware: true }
+      },
+    )
+    const rootRoute = new BaseRootRoute({
+      validateSearch,
+      search: { middlewares: [middleware] },
+    })
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+
+    router.buildLocation({ to: '/' })
+    validateSearch.mockClear()
+    middleware.mockClear()
+    events.length = 0
+
+    const unvalidated = router.buildLocation({
+      to: '/',
+      search: { explicit: true },
+    })
+    expect(validateSearch).not.toHaveBeenCalled()
+    expect(middleware).toHaveBeenCalledOnce()
+    expect(events).toEqual(['middleware:before', 'middleware:after'])
+    expect(unvalidated.search).toEqual({ explicit: true, middleware: true })
+
+    events.length = 0
+    const validated = router.buildLocation({
+      to: '/',
+      search: { explicit: true },
+      _includeValidateSearch: true,
+    })
+    expect(validateSearch).toHaveBeenCalledOnce()
+    expect(events).toEqual([
+      'middleware:before',
+      'validate',
+      'middleware:after',
+    ])
+    expect(validated.search).toEqual({
+      explicit: true,
+      middleware: true,
+      validated: true,
+    })
+  })
+
   test('retainSearchParams should preserve current search over defaults during navigation', async () => {
     const rootRoute = new BaseRootRoute({
       validateSearch: (search: Record<string, unknown>) => ({
@@ -1122,6 +1199,66 @@ describe('buildLocation - state', () => {
     })
 
     expect(location.state).toEqual({})
+    expect(location.state).not.toBe(router.state.location.state)
+  })
+
+  test('no state option replaces an already-empty custom state', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/posts'] }),
+    })
+    await router.load()
+
+    const emptyState = {}
+    const location = router.buildLocation({
+      to: '/posts',
+      _fromLocation: {
+        ...router.state.location,
+        state: emptyState,
+      },
+    } as any)
+
+    expect(location.state).toEqual({})
+    expect(location.state).not.toBe(emptyState)
+  })
+
+  test('explicit state structurally shares unchanged nested values', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/posts'] })
+    history.replace('/posts', {
+      user: { id: 1, name: 'Test' },
+      count: 1,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history,
+    })
+    await router.load()
+
+    const currentState = router.state.location.state as any
+    const location = router.buildLocation({
+      to: '/posts',
+      state: {
+        user: { id: 1, name: 'Test' },
+        count: 2,
+      } as any,
+    })
+
+    expect(location.state).toEqual({
+      user: { id: 1, name: 'Test' },
+      count: 2,
+    })
+    expect((location.state as any).user).toBe(currentState.user)
+    expect(location.state).not.toBe(currentState)
   })
 
   test('state can contain complex nested objects', async () => {
@@ -1283,6 +1420,64 @@ describe('buildLocation - relative paths', () => {
     })
 
     expect(location.pathname).toBe('/a/d')
+  })
+
+  test('unsafe path-relative navigation ignores repeated slash segments', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const aRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/a',
+    })
+    const bRoute = new BaseRoute({
+      getParentRoute: () => aRoute,
+      path: '/b',
+    })
+    const cRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/c',
+    })
+    const routeTree = rootRoute.addChildren([
+      aRoute.addChildren([bRoute]),
+      cRoute,
+    ])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/a//b'] }),
+    })
+
+    await router.load()
+
+    expect(
+      router.buildLocation({
+        to: '../../c',
+        unsafeRelative: 'path',
+      }).pathname,
+    ).toBe('/c')
+  })
+
+  test('over-root traversal stays rooted for javascript-like segments', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+
+    const routeTree = rootRoute.addChildren([indexRoute])
+
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    await router.load()
+
+    const location = router.buildLocation({
+      to: '../javascript:alert(1)',
+    })
+
+    expect(location.pathname).toBe('/javascript:alert(1)')
+    expect(location.href).toBe('/javascript:alert(1)')
+    expect(location.publicHref).toBe('/javascript:alert(1)')
   })
 
   test('. should stay on current route', async () => {
@@ -1571,6 +1766,37 @@ describe('buildLocation - params edge cases', () => {
     // Without stringify, this would be '/users/42'
     // With stringify, it should be padded to 6 digits
     expect(location.pathname).toBe('/users/000042')
+  })
+
+  test('params.stringify should not mutate current params', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/$userId',
+      params: {
+        parse: ({ userId }: { userId: string }) => ({
+          userId: parseInt(userId, 10),
+        }),
+        stringify: (params: { userId: number }) => {
+          const userId = params.userId
+          params.userId = 999
+          return { userId: String(userId).padStart(6, '0') }
+        },
+      },
+    })
+
+    const routeTree = rootRoute.addChildren([userRoute])
+    const router = createTestRouter({
+      routeTree,
+      history: createMemoryHistory({ initialEntries: ['/users/000123'] }),
+    })
+
+    await router.load()
+
+    expect(router.buildLocation({ to: '/users/$userId' }).pathname).toBe(
+      '/users/000123',
+    )
+    expect(router.state.matches.at(-1)?.params).toEqual({ userId: 123 })
   })
 
   test('params.stringify should run for params.parse route templates', async () => {
@@ -1920,6 +2146,28 @@ describe('buildLocation - location output structure', () => {
 
     expect(location.searchStr).toBe('')
     expect(location.href).toBe('/posts')
+  })
+
+  test('href options are not mutated', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const options = Object.freeze({ href: '/posts?page=1#section' })
+
+    const location = router.buildLocation(options as any)
+
+    expect(location).toMatchObject({
+      pathname: '/posts',
+      search: { page: 1 },
+      hash: 'section',
+    })
+    expect(options).toEqual({ href: '/posts?page=1#section' })
   })
 })
 

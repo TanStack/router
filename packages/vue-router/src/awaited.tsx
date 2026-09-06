@@ -9,7 +9,7 @@ export type AwaitOptions<T> = {
 
 export function useAwaited<T>({
   promise: _promise,
-}: AwaitOptions<T>): [T, DeferredPromise<T>] {
+}: AwaitOptions<T>): [data: T, promise: DeferredPromise<T>] {
   const promise = defer(_promise)
 
   if (promise[TSR_DEFERRED_PROMISE].status === 'pending') {

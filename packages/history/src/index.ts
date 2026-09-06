@@ -101,7 +101,7 @@ export function createHistory(opts: {
   getLength: () => number
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
-  go: (n: number) => void
+  go: (n: number, ignoreBlocker: boolean) => void
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
@@ -204,7 +204,7 @@ export function createHistory(opts: {
     go: (index, navigateOpts) => {
       tryNavigation({
         task: () => {
-          opts.go(index)
+          opts.go(index, navigateOpts?.ignoreBlocker ?? false)
           handleIndexChange({ type: 'GO', index })
         },
         navigateOpts,
@@ -322,6 +322,9 @@ export function createBrowserHistory(opts?: {
 
   let nextPopIsGo = false
   let ignoreNextPop = false
+  // TODO: An ignored traversal past a history boundary emits neither popstate
+  // nor beforeunload, leaving these bypasses active for a later navigation.
+  // The History API provides no completion signal for such no-op traversals.
   let skipBlockerNextPop = false
   let ignoreNextBeforeUnload = false
 
@@ -329,18 +332,14 @@ export function createBrowserHistory(opts?: {
 
   let next:
     | undefined
-    | {
-        // This is the latest location that we were attempting to push/replace
-        href: string
-        // This is the latest state that we were attempting to push/replace
-        state: any
-        // This is the latest type that we were attempting to push/replace
-        isPush: boolean
-      }
-
-  // We need to track the current scheduled update to prevent
-  // multiple updates from being scheduled at the same time.
-  let scheduled: undefined | boolean
+    | [
+        // The latest location that we were attempting to push/replace
+        href: string,
+        // The latest state that we were attempting to push/replace
+        state: any,
+        // Whether any queued update needs to push rather than replace
+        isPush: boolean,
+      ]
 
   // This function flushes the next update to the browser history
   const flush = () => {
@@ -352,30 +351,30 @@ export function createBrowserHistory(opts?: {
     history._ignoreSubscribers = true
 
     // Update the browser history
-    ;(next.isPush ? win.history.pushState : win.history.replaceState)(
-      next.state,
+    ;(next[2 /* is push */] ? win.history.pushState : win.history.replaceState)(
+      next[1 /* state */],
       '',
-      next.href,
+      next[0 /* href */],
     )
 
     // Stop ignoring subscriber updates
     history._ignoreSubscribers = false
 
-    // Reset the nextIsPush flag and clear the scheduled update
+    // Clear the queued action after it reaches browser history.
     next = undefined
-    scheduled = false
     rollbackLocation = undefined
   }
 
   // This function queues up a call to update the browser history
   const queueHistoryAction = (
-    type: 'push' | 'replace',
+    isPush: boolean,
     destHref: string,
     state: any,
   ) => {
     const href = createHref(destHref)
+    const hasPendingAction = !!next
 
-    if (!scheduled) {
+    if (!hasPendingAction) {
       rollbackLocation = currentLocation
     }
 
@@ -383,15 +382,10 @@ export function createBrowserHistory(opts?: {
     currentLocation = parseHref(destHref, state)
 
     // Keep track of the next location we need to flush to the URL
-    next = {
-      href,
-      state,
-      isPush: next?.isPush || type === 'push',
-    }
+    next = [href, state, next?.[2 /* is push */] || isPush]
 
-    if (!scheduled) {
+    if (!hasPendingAction) {
       // Schedule an update to the browser history
-      scheduled = true
       queueMicrotask(() => flush())
     }
   }
@@ -403,6 +397,10 @@ export function createBrowserHistory(opts?: {
   }
 
   const onPushPopEvent = async () => {
+    // Same-document traversals do not fire beforeunload, so consume their
+    // exemption here instead of carrying it into a later document navigation.
+    ignoreNextBeforeUnload = false
+
     if (ignoreNextPop) {
       ignoreNextPop = false
       return
@@ -439,7 +437,7 @@ export function createBrowserHistory(opts?: {
           })
           if (isBlocked) {
             ignoreNextPop = true
-            win.history.go(1)
+            win.history.go(-delta)
             history.notify(notify)
             return
           }
@@ -489,20 +487,28 @@ export function createBrowserHistory(opts?: {
   const history = createHistory({
     getLocation,
     getLength: () => win.history.length,
-    pushState: (href, state) => queueHistoryAction('push', href, state),
-    replaceState: (href, state) => queueHistoryAction('replace', href, state),
+    pushState: (href, state) => queueHistoryAction(true, href, state),
+    replaceState: (href, state) => queueHistoryAction(false, href, state),
     back: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
-      ignoreNextBeforeUnload = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       return win.history.back()
     },
     forward: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
-      ignoreNextBeforeUnload = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       win.history.forward()
     },
-    go: (n) => {
+    go: (n, ignoreBlocker) => {
       nextPopIsGo = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       win.history.go(n)
     },
     createHref: (href) => createHref(href),
