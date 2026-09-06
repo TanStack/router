@@ -13,7 +13,7 @@ export default mergeConfig(
     srcDir: './src/default-entry',
     exclude: ['./src/default-entry/client.tsx'],
     entry: ['./src/default-entry/server.ts'],
-    externalDeps: ['@tanstack/vue-start/server'],
+    externalDeps: ['@tanstack/vue-start/server', '@tanstack/router-core'],
     outDir: './dist/default-entry',
     cjs: false,
   }),
