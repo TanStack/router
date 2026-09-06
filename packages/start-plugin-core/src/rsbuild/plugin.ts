@@ -366,7 +366,7 @@ export function tanStackStartRsbuild(
       // ---------------------------------------------------------------
       // 4. Client build stats capture via processAssets
       // ---------------------------------------------------------------
-      const { getClientBuild } = registerClientBuildCapture(api)
+      const { getClientBuild } = registerClientBuildCapture(api, getConfig)
 
       // ---------------------------------------------------------------
       // 4b. Server manifest module generation (build only)
