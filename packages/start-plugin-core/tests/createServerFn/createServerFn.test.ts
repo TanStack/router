@@ -457,6 +457,64 @@ describe('createServerFn compiles correctly', async () => {
     )
   })
 
+  test('keeps query-bearing virtual module identities distinct', async () => {
+    const publicFactoryId = '\0virtual:server-fn-factory?variant=public'
+    const implementationFactoryId =
+      '\0virtual:server-fn-factory?variant=implementation'
+    const virtualModules: Record<string, string> = {
+      [publicFactoryId]: `
+        import { createIssueServerFn } from 'virtual:server-fn-factory?variant=implementation'
+        export { createIssueServerFn }
+      `,
+      [implementationFactoryId]: `
+        import { createServerFn } from '@tanstack/react-start'
+        export const createIssueServerFn = createServerFn
+      `,
+    }
+    const loadedIds: Array<string> = []
+
+    const compiler = new StartCompiler({
+      env: 'client',
+      ...getDefaultTestOptions('client'),
+      mode: 'build',
+      loadModule: async (id) => {
+        loadedIds.push(id)
+        const code = virtualModules[id]
+        if (code) {
+          compiler.ingestModule({ code, id })
+        }
+      },
+      lookupKinds: new Set(['ServerFn']),
+      lookupConfigurations: [
+        {
+          libName: '@tanstack/react-start',
+          rootExport: 'createServerFn',
+          kind: 'Root',
+        },
+      ],
+      getKnownServerFns: () => ({}),
+      resolveId: async (source) => {
+        if (source.startsWith('virtual:server-fn-factory?')) {
+          return `\0${source}`
+        }
+
+        return null
+      },
+    })
+
+    const result = await compiler.compile({
+      id: '/test/src/test.ts',
+      code: `
+        import { createIssueServerFn } from 'virtual:server-fn-factory?variant=public'
+        const issueServerFn = createIssueServerFn().handler(async () => 'ok')
+      `,
+    })
+
+    expect(result).not.toBeNull()
+    expect(result!.code).toContain('createClientRpc')
+    expect(loadedIds).toEqual([publicFactoryId, implementationFactoryId])
+  })
+
   test('should resolve local named re-exports of createServerFn', async () => {
     const code = `
       import { createFooServerFn } from './factory'

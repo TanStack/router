@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-router",
-  "version": "1.170.16",
+  "version": "1.170.29",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -87,7 +87,14 @@
     "combinate": "^1.1.11",
     "vite": "*",
     "vue": "^3.5.25",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@vitest/ui": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "vue": "^3.3.0"

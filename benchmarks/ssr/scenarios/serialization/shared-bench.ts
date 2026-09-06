@@ -5,8 +5,8 @@ import type { StartRequestHandler } from '../../bench-utils'
 export type { StartRequestHandler }
 
 const benchmarkSeed = 0xdecafbad
-const richSerializationLoopIterations = 30
-const plainSerializationLoopIterations = 30
+const richSerializationLoopTotalRequests = 32
+const plainSerializationLoopTotalRequests = 32
 
 const requestInit = {
   method: 'GET',
@@ -89,7 +89,8 @@ export const serializationBenchOptions = {
 export function runRichSerializationLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: richSerializationLoopIterations,
+    concurrency: 16,
+    totalRequests: richSerializationLoopTotalRequests,
     buildRequest: (random, index) =>
       buildSerializationRequest('rich', random, index),
   })
@@ -98,7 +99,8 @@ export function runRichSerializationLoop(handler: StartRequestHandler) {
 export function runPlainSerializationLoop(handler: StartRequestHandler) {
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
-    iterations: plainSerializationLoopIterations,
+    concurrency: 16,
+    totalRequests: plainSerializationLoopTotalRequests,
     buildRequest: (random, index) =>
       buildSerializationRequest('plain', random, index),
   })

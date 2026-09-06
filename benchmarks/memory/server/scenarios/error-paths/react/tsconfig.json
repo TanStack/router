@@ -7,7 +7,7 @@
     "types": ["node", "vite/client", "vitest/globals"]
   },
   "include": [
-    "memory.bench.ts",
+    "memory*.bench.ts",
     "memory.flame.ts",
     "setup.ts",
     "vite.config.ts",

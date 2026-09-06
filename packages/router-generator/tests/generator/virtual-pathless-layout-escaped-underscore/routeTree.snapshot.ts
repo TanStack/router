@@ -9,34 +9,30 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as layoutRouteImport } from './routes/layout'
-import { Route as fooRouteImport } from './routes/foo'
-import { Route as escapedRouteImport } from './routes/escaped'
 import { Route as doubleRouteImport } from './routes/double'
-import { Route as rootIdRouteImport } from './routes/root-id'
-import { Route as nestedLayoutRouteImport } from './routes/nested-layout'
-import { Route as innerLayoutRouteImport } from './routes/inner-layout'
-import { Route as escapedBarRouteImport } from './routes/escaped-bar'
-import { Route as barRouteImport } from './routes/bar'
+import { Route as escapedRouteImport } from './routes/escaped'
+import { Route as fooRouteImport } from './routes/foo'
+import { Route as layoutRouteImport } from './routes/layout'
 import { Route as doubleBarRouteImport } from './routes/double-bar'
+import { Route as barRouteImport } from './routes/bar'
+import { Route as escapedBarRouteImport } from './routes/escaped-bar'
+import { Route as innerLayoutRouteImport } from './routes/inner-layout'
+import { Route as nestedLayoutRouteImport } from './routes/nested-layout'
 import { Route as rootIndexRouteImport } from './routes/root-index'
-import { Route as bazRouteImport } from './routes/baz'
-import { Route as nestedIdRouteImport } from './routes/nested-id'
-import { Route as escapedIdRouteImport } from './routes/escaped-id'
-import { Route as doubleIdRouteImport } from './routes/double-id'
-import { Route as trailIndexRouteImport } from './routes/trail-index'
-import { Route as nestedIndexRouteImport } from './routes/nested-index'
-import { Route as escapedIndexRouteImport } from './routes/escaped-index'
+import { Route as rootIdRouteImport } from './routes/root-id'
 import { Route as doubleIndexRouteImport } from './routes/double-index'
+import { Route as doubleIdRouteImport } from './routes/double-id'
+import { Route as escapedIndexRouteImport } from './routes/escaped-index'
+import { Route as escapedIdRouteImport } from './routes/escaped-id'
+import { Route as nestedIndexRouteImport } from './routes/nested-index'
+import { Route as nestedIdRouteImport } from './routes/nested-id'
+import { Route as bazRouteImport } from './routes/baz'
+import { Route as trailIndexRouteImport } from './routes/trail-index'
 import { Route as deepIndexRouteImport } from './routes/deep-index'
 
-const layoutRoute = layoutRouteImport.update({
-  id: '/_layout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const fooRoute = fooRouteImport.update({
-  id: '/_foo',
-  path: '/_foo',
+const doubleRoute = doubleRouteImport.update({
+  id: '/__double',
+  path: '/__double',
   getParentRoute: () => rootRouteImport,
 } as any)
 const escapedRoute = escapedRouteImport.update({
@@ -44,27 +40,18 @@ const escapedRoute = escapedRouteImport.update({
   path: '/_escaped',
   getParentRoute: () => rootRouteImport,
 } as any)
-const doubleRoute = doubleRouteImport.update({
-  id: '/__double',
-  path: '/__double',
+const fooRoute = fooRouteImport.update({
+  id: '/_foo',
+  path: '/_foo',
   getParentRoute: () => rootRouteImport,
 } as any)
-const rootIdRoute = rootIdRouteImport.update({
-  id: '/_root-index/$id',
-  path: '/_root-index/$id',
+const layoutRoute = layoutRouteImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const nestedLayoutRoute = nestedLayoutRouteImport.update({
-  id: '/_nested',
-  getParentRoute: () => layoutRoute,
-} as any)
-const innerLayoutRoute = innerLayoutRouteImport.update({
-  id: '/_inner',
-  getParentRoute: () => layoutRoute,
-} as any)
-const escapedBarRoute = escapedBarRouteImport.update({
-  id: '/_escaped-bar',
-  path: '/_escaped-bar',
+const doubleBarRoute = doubleBarRouteImport.update({
+  id: '/__double-bar',
+  path: '/__double-bar',
   getParentRoute: () => layoutRoute,
 } as any)
 const barRoute = barRouteImport.update({
@@ -72,9 +59,17 @@ const barRoute = barRouteImport.update({
   path: '/_bar',
   getParentRoute: () => layoutRoute,
 } as any)
-const doubleBarRoute = doubleBarRouteImport.update({
-  id: '/__double-bar',
-  path: '/__double-bar',
+const escapedBarRoute = escapedBarRouteImport.update({
+  id: '/_escaped-bar',
+  path: '/_escaped-bar',
+  getParentRoute: () => layoutRoute,
+} as any)
+const innerLayoutRoute = innerLayoutRouteImport.update({
+  id: '/_inner',
+  getParentRoute: () => layoutRoute,
+} as any)
+const nestedLayoutRoute = nestedLayoutRouteImport.update({
+  id: '/_nested',
   getParentRoute: () => layoutRoute,
 } as any)
 const rootIndexRoute = rootIndexRouteImport.update({
@@ -82,19 +77,14 @@ const rootIndexRoute = rootIndexRouteImport.update({
   path: '/_root-index/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const bazRoute = bazRouteImport.update({
-  id: '/_baz',
-  path: '/_baz',
-  getParentRoute: () => nestedLayoutRoute,
+const rootIdRoute = rootIdRouteImport.update({
+  id: '/_root-index/$id',
+  path: '/_root-index/$id',
+  getParentRoute: () => rootRouteImport,
 } as any)
-const nestedIdRoute = nestedIdRouteImport.update({
-  id: '/_nested-index/$id',
-  path: '/_nested-index/$id',
-  getParentRoute: () => layoutRoute,
-} as any)
-const escapedIdRoute = escapedIdRouteImport.update({
-  id: '/_escaped-index/$id',
-  path: '/_escaped-index/$id',
+const doubleIndexRoute = doubleIndexRouteImport.update({
+  id: '/__double-index/',
+  path: '/__double-index/',
   getParentRoute: () => layoutRoute,
 } as any)
 const doubleIdRoute = doubleIdRouteImport.update({
@@ -102,9 +92,14 @@ const doubleIdRoute = doubleIdRouteImport.update({
   path: '/__double-index/$id',
   getParentRoute: () => layoutRoute,
 } as any)
-const trailIndexRoute = trailIndexRouteImport.update({
-  id: '/trail_/',
-  path: '/trail_/',
+const escapedIndexRoute = escapedIndexRouteImport.update({
+  id: '/_escaped-index/',
+  path: '/_escaped-index/',
+  getParentRoute: () => layoutRoute,
+} as any)
+const escapedIdRoute = escapedIdRouteImport.update({
+  id: '/_escaped-index/$id',
+  path: '/_escaped-index/$id',
   getParentRoute: () => layoutRoute,
 } as any)
 const nestedIndexRoute = nestedIndexRouteImport.update({
@@ -112,14 +107,19 @@ const nestedIndexRoute = nestedIndexRouteImport.update({
   path: '/_nested-index/',
   getParentRoute: () => layoutRoute,
 } as any)
-const escapedIndexRoute = escapedIndexRouteImport.update({
-  id: '/_escaped-index/',
-  path: '/_escaped-index/',
+const nestedIdRoute = nestedIdRouteImport.update({
+  id: '/_nested-index/$id',
+  path: '/_nested-index/$id',
   getParentRoute: () => layoutRoute,
 } as any)
-const doubleIndexRoute = doubleIndexRouteImport.update({
-  id: '/__double-index/',
-  path: '/__double-index/',
+const bazRoute = bazRouteImport.update({
+  id: '/_baz',
+  path: '/_baz',
+  getParentRoute: () => nestedLayoutRoute,
+} as any)
+const trailIndexRoute = trailIndexRouteImport.update({
+  id: '/trail_/',
+  path: '/trail_/',
   getParentRoute: () => layoutRoute,
 } as any)
 const deepIndexRoute = deepIndexRouteImport.update({
@@ -267,18 +267,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_layout': {
-      id: '/_layout'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof layoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_foo': {
-      id: '/_foo'
-      path: '/_foo'
-      fullPath: '/_foo'
-      preLoaderRoute: typeof fooRouteImport
+    '/__double': {
+      id: '/__double'
+      path: '/__double'
+      fullPath: '/__double'
+      preLoaderRoute: typeof doubleRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_escaped': {
@@ -288,39 +281,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof escapedRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/__double': {
-      id: '/__double'
-      path: '/__double'
-      fullPath: '/__double'
-      preLoaderRoute: typeof doubleRouteImport
+    '/_foo': {
+      id: '/_foo'
+      path: '/_foo'
+      fullPath: '/_foo'
+      preLoaderRoute: typeof fooRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_root-index/$id': {
-      id: '/_root-index/$id'
-      path: '/_root-index/$id'
-      fullPath: '/_root-index/$id'
-      preLoaderRoute: typeof rootIdRouteImport
+    '/_layout': {
+      id: '/_layout'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof layoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_layout/_nested': {
-      id: '/_layout/_nested'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof nestedLayoutRouteImport
-      parentRoute: typeof layoutRoute
-    }
-    '/_layout/_inner': {
-      id: '/_layout/_inner'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof innerLayoutRouteImport
-      parentRoute: typeof layoutRoute
-    }
-    '/_layout/_escaped-bar': {
-      id: '/_layout/_escaped-bar'
-      path: '/_escaped-bar'
-      fullPath: '/_escaped-bar'
-      preLoaderRoute: typeof escapedBarRouteImport
+    '/_layout/__double-bar': {
+      id: '/_layout/__double-bar'
+      path: '/__double-bar'
+      fullPath: '/__double-bar'
+      preLoaderRoute: typeof doubleBarRouteImport
       parentRoute: typeof layoutRoute
     }
     '/_layout/_bar': {
@@ -330,11 +309,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof barRouteImport
       parentRoute: typeof layoutRoute
     }
-    '/_layout/__double-bar': {
-      id: '/_layout/__double-bar'
-      path: '/__double-bar'
-      fullPath: '/__double-bar'
-      preLoaderRoute: typeof doubleBarRouteImport
+    '/_layout/_escaped-bar': {
+      id: '/_layout/_escaped-bar'
+      path: '/_escaped-bar'
+      fullPath: '/_escaped-bar'
+      preLoaderRoute: typeof escapedBarRouteImport
+      parentRoute: typeof layoutRoute
+    }
+    '/_layout/_inner': {
+      id: '/_layout/_inner'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof innerLayoutRouteImport
+      parentRoute: typeof layoutRoute
+    }
+    '/_layout/_nested': {
+      id: '/_layout/_nested'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof nestedLayoutRouteImport
       parentRoute: typeof layoutRoute
     }
     '/_root-index/': {
@@ -344,25 +337,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof rootIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_layout/_nested/_baz': {
-      id: '/_layout/_nested/_baz'
-      path: '/_baz'
-      fullPath: '/_baz'
-      preLoaderRoute: typeof bazRouteImport
-      parentRoute: typeof nestedLayoutRoute
+    '/_root-index/$id': {
+      id: '/_root-index/$id'
+      path: '/_root-index/$id'
+      fullPath: '/_root-index/$id'
+      preLoaderRoute: typeof rootIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_layout/_nested-index/$id': {
-      id: '/_layout/_nested-index/$id'
-      path: '/_nested-index/$id'
-      fullPath: '/_nested-index/$id'
-      preLoaderRoute: typeof nestedIdRouteImport
-      parentRoute: typeof layoutRoute
-    }
-    '/_layout/_escaped-index/$id': {
-      id: '/_layout/_escaped-index/$id'
-      path: '/_escaped-index/$id'
-      fullPath: '/_escaped-index/$id'
-      preLoaderRoute: typeof escapedIdRouteImport
+    '/_layout/__double-index/': {
+      id: '/_layout/__double-index/'
+      path: '/__double-index'
+      fullPath: '/__double-index/'
+      preLoaderRoute: typeof doubleIndexRouteImport
       parentRoute: typeof layoutRoute
     }
     '/_layout/__double-index/$id': {
@@ -372,11 +358,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof doubleIdRouteImport
       parentRoute: typeof layoutRoute
     }
-    '/_layout/trail_/': {
-      id: '/_layout/trail_/'
-      path: '/trail_'
-      fullPath: '/trail_/'
-      preLoaderRoute: typeof trailIndexRouteImport
+    '/_layout/_escaped-index/': {
+      id: '/_layout/_escaped-index/'
+      path: '/_escaped-index'
+      fullPath: '/_escaped-index/'
+      preLoaderRoute: typeof escapedIndexRouteImport
+      parentRoute: typeof layoutRoute
+    }
+    '/_layout/_escaped-index/$id': {
+      id: '/_layout/_escaped-index/$id'
+      path: '/_escaped-index/$id'
+      fullPath: '/_escaped-index/$id'
+      preLoaderRoute: typeof escapedIdRouteImport
       parentRoute: typeof layoutRoute
     }
     '/_layout/_nested-index/': {
@@ -386,18 +379,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof nestedIndexRouteImport
       parentRoute: typeof layoutRoute
     }
-    '/_layout/_escaped-index/': {
-      id: '/_layout/_escaped-index/'
-      path: '/_escaped-index'
-      fullPath: '/_escaped-index/'
-      preLoaderRoute: typeof escapedIndexRouteImport
+    '/_layout/_nested-index/$id': {
+      id: '/_layout/_nested-index/$id'
+      path: '/_nested-index/$id'
+      fullPath: '/_nested-index/$id'
+      preLoaderRoute: typeof nestedIdRouteImport
       parentRoute: typeof layoutRoute
     }
-    '/_layout/__double-index/': {
-      id: '/_layout/__double-index/'
-      path: '/__double-index'
-      fullPath: '/__double-index/'
-      preLoaderRoute: typeof doubleIndexRouteImport
+    '/_layout/_nested/_baz': {
+      id: '/_layout/_nested/_baz'
+      path: '/_baz'
+      fullPath: '/_baz'
+      preLoaderRoute: typeof bazRouteImport
+      parentRoute: typeof nestedLayoutRoute
+    }
+    '/_layout/trail_/': {
+      id: '/_layout/trail_/'
+      path: '/trail_'
+      fullPath: '/trail_/'
+      preLoaderRoute: typeof trailIndexRouteImport
       parentRoute: typeof layoutRoute
     }
     '/_layout/_inner/_deep-index/': {

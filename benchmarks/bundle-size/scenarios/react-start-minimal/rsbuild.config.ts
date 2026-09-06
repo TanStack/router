@@ -16,7 +16,7 @@ const startOptions = clientOutput
 
 export default defineConfig({
   logLevel: 'silent',
-  plugins: [pluginReact({ splitChunks: false }), tanstackStart(startOptions)],
+  plugins: [pluginReact(), tanstackStart(startOptions)],
   output: {
     distPath: {
       root: outDir,

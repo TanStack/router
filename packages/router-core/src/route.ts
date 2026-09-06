@@ -55,7 +55,7 @@ export type AnyContext = {}
 
 export interface RouteContext {}
 
-export type PreloadableObj = { preload?: () => Promise<void> }
+export type PreloadableObj = { preload?: () => Promise<void> | undefined }
 
 export type RoutePathOptions<TCustomId, TPath> =
   | {
@@ -700,10 +700,6 @@ export interface Route<
     THandlers
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
-  /** @internal */
-  _componentsPromise?: Promise<void>
-  /** @internal */
-  _componentsLoaded?: boolean
   lazyFn?: () => Promise<
     LazyRoute<
       Route<
@@ -729,9 +725,7 @@ export interface Route<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
-  /** @internal */
-  _lazyLoaded?: boolean
+  _lazy?: Promise<void> | true
   rank: number
   to: TrimPathRight<TFullPath>
   init: (opts: { originalIndex: number }) => void
@@ -1304,7 +1298,7 @@ export interface UpdatableRouteOptions<
   postSearchFilters?: Array<
     SearchFilter<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
   >
-  onCatch?: (error: Error) => void
+  onCatch?: (error: ErrorBoundaryTypes['error']) => void
   onError?: (err: any) => void
   // These functions are called as route matches are loaded, stick around and leave the active
   // matches
@@ -1607,7 +1601,14 @@ export type ErrorRouteProps = {
   reset: () => void
 }
 
-export type ErrorComponentProps<TError = Error> = {
+export interface DefaultErrorBoundaryTypes {
+  error: unknown
+}
+
+/** Frameworks can specialize the error exposed by boundary components and callbacks. */
+export interface ErrorBoundaryTypes extends DefaultErrorBoundaryTypes {}
+
+export type ErrorComponentProps<TError = ErrorBoundaryTypes['error']> = {
   error: TError
   info?: { componentStack: string }
   reset: () => void
@@ -1711,10 +1712,7 @@ export class BaseRoute<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
-  /** @internal */
-  _componentsPromise?: Promise<void>
-
+  _lazy?: Promise<void> | true
   constructor(
     options?: RouteOptions<
       TRegister,

@@ -65,6 +65,14 @@ const SCENARIOS = [
     case: 'minimal',
   },
   {
+    id: 'react-start.query-integration',
+    dir: 'react-start-query-integration',
+    framework: 'react',
+    packageName: '@tanstack/react-start',
+    buildProjects: ['@tanstack/react-router-ssr-query'],
+    case: 'query-integration',
+  },
+  {
     id: 'react-start.deferred-hydration',
     dir: 'react-start-deferred-hydration',
     framework: 'react',
@@ -491,6 +499,10 @@ function getPackageBuildProjects(scenarios) {
   for (const scenario of scenarios) {
     projects.add(scenario.packageName)
 
+    for (const project of scenario.buildProjects || []) {
+      projects.add(project)
+    }
+
     if (scenario.packageName.endsWith('-router')) {
       projects.add('@tanstack/router-plugin')
     }
@@ -548,8 +560,6 @@ async function buildViteScenario({ root, outDir, sourcemap }) {
     build: {
       outDir,
       emptyOutDir: true,
-      target: 'es2022',
-      minify: 'esbuild',
       sourcemap: sourcemap ? 'hidden' : false,
       reportCompressedSize: false,
       manifest: true,

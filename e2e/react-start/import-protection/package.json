@@ -11,10 +11,7 @@
     "build": "pnpm build:vite",
     "build:vite": "vite build && tsc --noEmit",
     "build:rsbuild": "rsbuild build && tsc --noEmit",
-    "start": "node server.js",
-    "test:e2e:mockMode": "rm -rf node_modules/.vite; rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:errorMode": "rm -rf node_modules/.vite; rm -rf port*.txt; BEHAVIOR=error playwright test --project=chromium",
-    "test:e2e": "pnpm run test:e2e:mockMode && pnpm run test:e2e:errorMode"
+    "start": "node server.js"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -24,8 +21,8 @@
     "react-tweet": "^3.3.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
-    "@rsbuild/core": "^2.0.11",
+    "@playwright/test": "^1.61.0",
+    "@rsbuild/core": "^2.1.0",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/router-e2e-utils": "workspace:^",
     "@types/node": "^22.10.2",
@@ -33,7 +30,8 @@
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
     "srvx": "^0.11.9",
-    "typescript": "^6.0.2",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
   },
   "nx": {
@@ -57,6 +55,7 @@
           "toolchain": "vite",
           "mode": "ssr",
           "env": {
+            "E2E_BUILD_LOG": "webserver-build.vite-ssr.log",
             "E2E_VITE_BUNDLED_DEV": "false"
           }
         },
@@ -65,12 +64,16 @@
           "mode": "ssr",
           "name": "bundled-dev",
           "env": {
+            "E2E_BUILD_LOG": "webserver-build.vite-ssr-bundled-dev.log",
             "E2E_VITE_BUNDLED_DEV": "true"
           }
         },
         {
           "toolchain": "rsbuild",
-          "mode": "ssr"
+          "mode": "ssr",
+          "env": {
+            "E2E_BUILD_LOG": "webserver-build.rsbuild-ssr.log"
+          }
         }
       ]
     }
