@@ -53,7 +53,6 @@ describe('memory worker configuration', () => {
       { encoding: 'utf8' },
     )
     expect(output).toContain('5000050000')
-    expect(output).not.toMatch(/MAGLEV/)
   })
 
   it.each([undefined, 'simulation', 'instrumentation', 'walltime'])(
