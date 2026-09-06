@@ -70,6 +70,78 @@ function emitNavigation(
 }
 
 describe('setupScrollRestoration', () => {
+  test.each(['auto', 'manual'] as const)(
+    'restores browser scroll restoration to %s after the last owner is destroyed',
+    (previous) => {
+      window.history.scrollRestoration = previous
+      const router = createRouter({ scrollRestoration: true })
+      setupScrollRestoration(router)
+
+      router.history.destroy()
+      router.history.destroy()
+
+      expect(window.history.scrollRestoration).toBe(previous)
+    },
+  )
+
+  test.each([false, true])(
+    'keeps manual restoration until both distinct histories are destroyed, reverse=%s',
+    (reverse) => {
+      window.history.scrollRestoration = 'auto'
+      const first = createRouter({ scrollRestoration: true })
+      const second = createRouter({ scrollRestoration: true })
+      const histories = [first.history, second.history]
+      if (reverse) {
+        histories.reverse()
+      }
+
+      histories[0]!.destroy()
+      expect(window.history.scrollRestoration).toBe('manual')
+      histories[1]!.destroy()
+      expect(window.history.scrollRestoration).toBe('auto')
+    },
+  )
+
+  test('retains browser restoration ownership across shared history replacement', () => {
+    window.history.scrollRestoration = 'auto'
+    const history = createMemoryHistory()
+    const replacement = createMemoryHistory()
+    testHistories.add(replacement)
+    const first = createRouter({ history, scrollRestoration: true })
+    createRouter({ history, scrollRestoration: true })
+
+    first.update({ history: replacement })
+    history.destroy()
+    expect(window.history.scrollRestoration).toBe('manual')
+    replacement.destroy()
+    expect(window.history.scrollRestoration).toBe('auto')
+  })
+
+  test('only counts restoration owners, including forced restoration', () => {
+    window.history.scrollRestoration = 'auto'
+    const router = createRouter({ scrollRestoration: false })
+    const resetOnly = createRouter({ scrollRestoration: false })
+    expect(window.history.scrollRestoration).toBe('auto')
+
+    setupScrollRestoration(router, true)
+    expect(window.history.scrollRestoration).toBe('manual')
+
+    router.history.destroy()
+    expect(window.history.scrollRestoration).toBe('auto')
+    resetOnly.history.destroy()
+    expect(window.history.scrollRestoration).toBe('auto')
+  })
+
+  test('preserves a browser restoration setting changed externally', () => {
+    window.history.scrollRestoration = 'manual'
+    const router = createRouter({ scrollRestoration: true })
+
+    window.history.scrollRestoration = 'auto'
+    router.history.destroy()
+
+    expect(window.history.scrollRestoration).toBe('auto')
+  })
+
   test('cleans up listeners and subscriptions when the history is destroyed', () => {
     const history = createMemoryHistory({ initialEntries: ['/'] })
     const originalDestroy = history.destroy

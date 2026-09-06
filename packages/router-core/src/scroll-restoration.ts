@@ -63,6 +63,9 @@ type ScrollHistoryState = {
 }
 
 const scrollHistoryRegistry = new WeakMap<RouterHistory, ScrollHistoryState>()
+// Router histories share the browser's scroll restoration setting.
+let scrollRestorationOwners = 0
+let previousScrollRestoration: ScrollRestoration
 
 function getScrollHistoryState(history: RouterHistory) {
   const existing = scrollHistoryRegistry.get(history)
@@ -277,6 +280,9 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   if (shouldAttach && !scroll.captureCleanup) {
     ignoreScroll = false
 
+    if (scrollRestorationOwners++ === 0) {
+      previousScrollRestoration = window.history.scrollRestoration
+    }
     window.history.scrollRestoration = 'manual'
 
     const onScroll = (event: Event) => {
@@ -305,6 +311,12 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       document.removeEventListener('scroll', onScroll, true)
       window.removeEventListener('pagehide', onPageHide)
       unsubscribeBeforeLoad()
+      if (
+        --scrollRestorationOwners === 0 &&
+        window.history.scrollRestoration === 'manual'
+      ) {
+        window.history.scrollRestoration = previousScrollRestoration
+      }
     }
   }
 
