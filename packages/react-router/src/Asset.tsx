@@ -172,15 +172,9 @@ function Script({
 
     if (attrs?.src) {
       // Anchors resolve relative URLs and preserve invalid URLs without throwing.
-      // Relative srcs (./...) stay relative when the document base is not http,
-      // so iframe/embedded deployments keep their URLs (PR 7572's fix).
       const link = document.createElement('a')
       link.href = attrs.src
-      const base = document.baseURI || window.location.href
-      const normSrc =
-        attrs.src.startsWith('./') && !base.startsWith('http')
-          ? attrs.src
-          : link.href
+      const normSrc = link.href
       for (const el of document.scripts) {
         if (el.src === normSrc) {
           return
