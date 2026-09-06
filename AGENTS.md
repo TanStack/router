@@ -36,6 +36,5 @@ CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipR
 
 ## Performance and final bundle pass
 
-- For audits and performance changes, follow the [evidence and coverage procedure](.github/agent-guides/performance.md). Keep source review, executed checks, diagnostic controls, and measured user impact distinct; retain unresolved coverage and unrelated findings without expanding the task.
-- For runtime, memory, build, or type-inference cost changes, select the relevant [benchmark guide](benchmarks/AGENTS.md). Compare identical baseline/candidate workloads and add coverage when existing scenarios miss the changed mechanism.
+- For performance audits or changes to runtime lifecycles, memory, build, type inference, or shipped bytes, follow the [performance review guide](.github/agent-guides/performance.md). It owns workload selection, lifecycle checks, Webpack/build checks, and evidence capture; keep diagnostic controls and measured user impact distinct.
 - **Last phase for every change affecting emitted client JavaScript**, including core/build transforms: complete the full [bundle-size-optimization skill](skills/bundle-size-optimization/SKILL.md) after correctness and performance validation. The full workflow is mandatory within the accepted change scope.

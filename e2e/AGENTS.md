@@ -7,4 +7,3 @@
 - For new browser tests, reuse the local error-checking fixture. The shared `test` from `@tanstack/router-e2e-utils` fails on unexpected `console.error`, including hydration errors; allow only expected errors with `whitelistErrors`.
 - HMR/watch tests edit real app sources. Reuse existing edit/restore helpers such as `createHmrFileEditor`, restore edits in teardown even after failures, and preserve the suites' single-worker and Nx `parallelism: false` settings.
 - `@tanstack/router-e2e-utils:test:unit` is a placeholder. Validate helper changes through consuming e2e projects.
-- Before reusing a CPU benchmark as a browser/SSR fixture, verify framework bootstrap, actual hydration, native scheduling, response consumption, and cleanup against a working app. Correct and rerun harness failures before attributing them to Router/Start; see [browser and server measurements](../.github/agent-guides/performance.md#browser-and-server-measurements).

@@ -2,6 +2,8 @@
 
 Use this procedure for Router/Start performance audits and changes to runtime, memory, build, type-inference, or shipped-byte cost. Keep the requested scope; discovery does not authorize another fix or publication.
 
+Select the existing workload for [client navigation](../../benchmarks/client-nav/README.md), [Start SSR](../../benchmarks/ssr/README.md), or [memory](../../benchmarks/memory/README.md). Compare identical baseline/candidate workloads and add coverage when existing scenarios miss the changed mechanism. There is no aggregate build-CPU benchmark in that set: use the build-tool checks below. For hydration, RPC, paint, or real HTTP behavior, use the affected browser/app workload and the browser/server measurement procedure. For inference cost, use the TypeScript procedure.
+
 ## Evidence and coverage
 
 1. Pin the source revision and name the workload, metric, owning layer, and success condition. Reuse repository fixtures and installed tools. Attribute cost to code, configuration, a dependency, the toolchain, or the harness before choosing a fix; avoid speculative caches, indexes, concurrency, or dependency changes.
@@ -26,7 +28,7 @@ Report operation counts, retained bytes, CPU, elapsed time, throughput, initial 
 
 ## Build-tool checks
 
-Use the actual adapter and installed compiler version. The official bundle runner covers Vite and explicit Rsbuild scenarios; a Webpack change also needs a real `@tanstack/router-plugin/webpack` consumer. Start's Vite/Rsbuild adapters, direct Rspack, and Router's Webpack adapter are distinct validation surfaces. Inspect existing E2E project scripts/configuration to select executable targets rather than assuming an aggregate benchmark exists.
+Use the actual adapter and installed compiler version. For transform/build performance, source maps, production diagnostics, shared module state, or Webpack/Rspack behavior, exercise the affected adapter. The official bundle runner covers Vite and explicit Rsbuild scenarios; changes affecting Webpack or shared splitting/DCE also need a real `@tanstack/router-plugin/webpack` consumer. Start's Vite/Rsbuild adapters, direct Rspack, and Router's Webpack adapter are distinct validation surfaces. Snapshot output and Vite results do not establish actual Webpack loader, mode, cache, or chunk behavior. Inspect existing E2E project scripts/configuration to select executable targets rather than assuming an aggregate benchmark exists.
 
 For the changed mechanism, cover these boundaries:
 
@@ -42,6 +44,28 @@ For the changed mechanism, cover these boundaries:
 Use the same fixture/configuration for baseline and candidate; vary one option deliberately when isolating a cause. Validate annotation and loader behavior from the installed dependency source or matching official documentation. A snapshot or one-shot build cannot establish watch/HMR correctness. Restore fixture edits and close owned watchers/compilers after failures. An environment failure such as `EMFILE` is a coverage blocker, not a library performance finding.
 
 Reference: Webpack's [build-performance](https://webpack.js.org/guides/build-performance/), [mode](https://webpack.js.org/configuration/mode/), and [tree-shaking](https://webpack.js.org/guides/tree-shaking/) documentation.
+
+For Start metadata changes, trace normalized indexes, asset text, CSS content, and other metadata from producer to actual consumers before retaining or removing them. Test the consuming feature both disabled and enabled, including inline CSS, and preserve full manifest/output behavior in Vite and Rsbuild.
+
+## Runtime and lifecycle checks
+
+- For optional features, measure disabled/idle work as well as enabled work. Gate unnecessary allocation, subscriptions, scans, and decoding before setup where safe; a handler that immediately returns still has registration cost. Preserve user handlers and off/on/off transitions.
+- For listeners, subscriptions, observers, timers, caches, and patched globals, name the owner and cleanup path. Test overlapping instances, both disposal orders, replacement, and events after disposal. Verify which owner receives subsequent work, not just whether cleanup ran. Apply this to scroll restoration across router lifetimes as well as framework unmounts.
+- For native history wrappers or teardown, exercise two histories sharing one window, destroy them in both orders, and dispatch later native updates. A surviving history must keep receiving updates; destroying the second must not restore a wrapper owned by the already-destroyed first history.
+- For hydration changes, cover initial SSR hydration, CSR, later-mounted boundaries, unrelated ancestor updates, intentional option changes, and disposal. Define which event starts or resets a deadline; test inline/equivalent strategy values and browsers with and without the relevant scheduling API. Preserve intentional pending-UI waits and loader/context ordering.
+- For head, Scripts, Asset, or injected-code changes, assert execution counts through attribute/content combinations, hydration, navigation, and removal. Final markup can hide duplicate side effects; distinguish elements, fetch attempts, transferred bytes, and executions.
+- For repeated scans or recursive transforms, exercise increasing input sizes and supported empty, deep, wide, shared-reference, and cyclic inputs. Count work separately from elapsed time; preserve ordering, identity, and serialization behavior before retaining a faster implementation.
+
+### Router devtools
+
+- Measure closed-panel setup and idle callbacks with large route/cache state as well as open-panel interactions. Development-only code still has a user-visible cost; distinguish default development exports from explicit production opt-ins.
+- Count style-factory and template-processing work separately from inserted CSS. Before reusing styles, preserve document/shadow-root ownership, theme updates, HMR, and target disposal; stylesheet deduplication alone does not prove the construction work is absent.
+- For React/Solid/Vue wrappers, replace router A with B while mounted, navigate each, then unmount and update again. Only the current router should drive the panel, and unmounted wrappers should receive no further work. Test floating and standalone wrappers when both are affected.
+
+### React Start RSC
+
+- For diagnostic slot previews and recursive payload transforms, validate supported shared-reference, deep, and cyclic inputs before timing them. Traversal state must actually bound repeated work; any reuse must preserve the consumer's serialization contract.
+- Gate development diagnostics before constructing payloads, then measure their development cost. Treat replay needed by SSR and later serialization as a required lifetime until evidence shows retention beyond it; validate cancellation and request cleanup before calling it a leak.
 
 ## Browser and server measurements
 
