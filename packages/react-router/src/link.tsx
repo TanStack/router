@@ -711,12 +711,12 @@ export function useLinkProps<
     ...resolvedInactiveProps,
     href,
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-    onClick: composeHandlers([onClick, handleClick]),
-    onBlur: composeHandlers([onBlur, handleLeave]),
-    onFocus: composeHandlers([onFocus, enqueuePreload]),
-    onMouseEnter: composeHandlers([onMouseEnter, enqueuePreload]),
-    onMouseLeave: composeHandlers([onMouseLeave, handleLeave]),
-    onTouchStart: composeHandlers([onTouchStart, handleTouchStart]),
+    onClick: composeHandlers(onClick, handleClick),
+    onBlur: composeHandlers(onBlur, handleLeave),
+    onFocus: composeHandlers(onFocus, enqueuePreload),
+    onMouseEnter: composeHandlers(onMouseEnter, enqueuePreload),
+    onMouseLeave: composeHandlers(onMouseLeave, handleLeave),
+    onTouchStart: composeHandlers(onTouchStart, handleTouchStart),
     disabled: !!disabled,
     target,
     ...(resolvedStyle && { style: resolvedStyle }),
@@ -737,15 +737,28 @@ const cancelPreload = (eventTarget: object) => {
   timeoutMap.delete(eventTarget)
 }
 
-const composeHandlers =
-  (handlers: Array<undefined | React.EventHandler<any>>) =>
-  (e: React.SyntheticEvent) => {
-    for (const handler of handlers) {
-      if (!handler) continue
-      if (e.defaultPrevented) return
-      handler(e)
+export const composeHandlers = (
+  first: React.EventHandler<any> | undefined,
+  second: React.EventHandler<any>,
+) => {
+  if (!first) {
+    return second
+  }
+
+  return (event: React.SyntheticEvent) => {
+    if (event.defaultPrevented) {
+      return
+    }
+
+    first(event)
+
+    // The user handler may call preventDefault, so re-read the event after it
+    // runs instead of relying on the value checked above.
+    if (!event.defaultPrevented) {
+      second(event)
     }
   }
+}
 
 function getHrefOption(
   publicHref: string,
