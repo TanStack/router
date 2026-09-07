@@ -3099,7 +3099,7 @@ importers:
         specifier: ^2.0.0
         version: 2.0.0(@rsbuild/core@2.1.1)(@rspack/core@2.1.1(@swc/helpers@0.5.23))
       '@tanstack/router-e2e-utils':
-        specifier: workspace:*
+        specifier: workspace:^
         version: link:../../e2e-utils
       '@types/node':
         specifier: 25.0.9

@@ -1,4 +1,5 @@
 import {
+  ClientOnly,
   HeadContent,
   Link,
   Scripts,
@@ -30,6 +31,9 @@ function RootDocument({ children }: { children: ReactNode }) {
           </nav>
           {children}
         </div>
+        <ClientOnly>
+          <span data-testid="hydrated" hidden />
+        </ClientOnly>
         <Scripts />
       </body>
     </html>

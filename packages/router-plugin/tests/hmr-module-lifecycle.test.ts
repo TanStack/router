@@ -1,43 +1,62 @@
+// @vitest-environment jsdom
+
 import { transformFromAstSync } from '@babel/core'
 import * as t from '@babel/types'
 import { describe, expect, it, vi } from 'vitest'
+import { createMemoryHistory } from '../../history/src'
+import {
+  createRootRoute,
+  createRoute as createChildRoute,
+} from '../../react-router/src/route'
+import { createRouter as createReactRouter } from '../../react-router/src/router'
 import { createRouteHmrStatement } from '../src/core/hmr'
+import type { AnyRoute } from '@tanstack/router-core'
 
-function createRoute(loader = () => 'initial') {
-  return {
-    id: '/posts',
-    options: { loader },
-    update: vi.fn(),
-  }
+vi.mock('@tanstack/router-core/isServer', async (importOriginal) => ({
+  ...(await importOriginal()),
+  isServer: undefined,
+}))
+
+function createRoute(root: boolean, value = 'initial') {
+  const parent = createRootRoute({})
+  return root
+    ? createRootRoute({ loader: () => value })
+    : createChildRoute({
+        getParentRoute: () => parent,
+        path: '/posts',
+        loader: () => value,
+      })
 }
 
-function createRouter(route: ReturnType<typeof createRoute>) {
+function createRouter(route: AnyRoute) {
+  const root = route.isRoot ? route : route.options.getParentRoute!()
+  if (root !== route) {
+    root.addChildren([route])
+  }
+  const router = createReactRouter({
+    routeTree: root,
+    history: createMemoryHistory(),
+    isServer: false,
+  })
+  return router as typeof router & { _refreshRoute: () => Promise<void> }
+}
+
+function createHot() {
   return {
-    routesById: { '/posts': route },
-    buildRouteTree: vi.fn(() => ({})),
-    setRoutes: vi.fn(),
-    _replaceRouteChunk: vi.fn(),
-    _refreshRoute: vi.fn(),
-    resolvePathCache: new Map(),
+    data: {} as Record<string, unknown>,
+    accept: vi.fn(),
+    dispose: vi.fn(),
   }
 }
 
 describe.each(['vite', 'webpack'] as const)(
   '%s HMR module lifecycle',
   (hmrStyle) => {
-    function evaluate(
-      route: ReturnType<typeof createRoute>,
-      router: ReturnType<typeof createRouter>,
-      hot: {
-        data: Record<string, unknown>
-        accept: ReturnType<typeof vi.fn>
-        dispose: ReturnType<typeof vi.fn>
-      },
-    ) {
+    function evaluate(route: AnyRoute, hot: ReturnType<typeof createHot>) {
       const statements = createRouteHmrStatement([], {
         hmrStyle,
         targetFramework: 'react',
-        routeId: '/posts',
+        routeId: route.isRoot ? '/__root' : '/posts',
       })
       const code = transformFromAstSync(
         t.file(t.program(statements)),
@@ -47,55 +66,103 @@ describe.each(['vite', 'webpack'] as const)(
           configFile: false,
         },
       )!.code!
-      const run = new Function(
+      new Function(
         'window',
         'Route',
         'hotContext',
         code
           .replaceAll('import.meta.webpackHot', 'hotContext')
           .replaceAll('import.meta.hot', 'hotContext'),
-      )
-      run({ __TSR_ROUTER__: router }, route, hot)
+      )(window, route, hot)
     }
 
-    it('does not patch a same-id route owned by another router on first import', () => {
-      const foreignRoute = createRoute(() => 'foreign')
-      const incomingRoute = createRoute(() => 'incoming')
-      const router = createRouter(foreignRoute)
-      const hot = { data: {}, accept: vi.fn(), dispose: vi.fn() }
-
-      evaluate(incomingRoute, router, hot)
-
-      expect(foreignRoute.options.loader()).toBe('foreign')
-      expect(incomingRoute.options.loader()).toBe('incoming')
-      expect(foreignRoute.update).not.toHaveBeenCalled()
-      expect(router.setRoutes).not.toHaveBeenCalled()
-      expect(router._refreshRoute).not.toHaveBeenCalled()
-      expect(hot.accept).toHaveBeenCalledOnce()
-    })
-
-    it('updates the live route on a later hot evaluation', () => {
-      const liveRoute = createRoute()
-      const router = createRouter(liveRoute)
-      const hot = { data: {}, accept: vi.fn(), dispose: vi.fn() }
-      evaluate(liveRoute, router, hot)
-
+    function dispose(hot: ReturnType<typeof createHot>) {
       if (hmrStyle === 'webpack') {
-        const disposedData = {}
-        hot.dispose.mock.calls[0]![0](disposedData)
-        hot.data = disposedData
+        const data = {}
+        hot.dispose.mock.calls.at(-1)![0](data)
+        hot.data = data
       }
-      const replacement = createRoute(() => 'updated')
-      evaluate(replacement, router, hot)
+    }
 
-      expect(liveRoute.options.loader()).toBe('updated')
-      expect(liveRoute.update).toHaveBeenCalledOnce()
-      expect(router.setRoutes).toHaveBeenCalledOnce()
-      expect(router._refreshRoute).toHaveBeenCalledOnce()
-      if (hmrStyle === 'vite') {
-        hot.accept.mock.calls[0]![0]({ Route: replacement })
-        expect(liveRoute.update).toHaveBeenCalledOnce()
-      }
+    it.each([false, true])(
+      'does not patch a foreign route on first import (root: %s)',
+      (root) => {
+        const foreign = createRoute(root, 'foreign')
+        const foreignLoader = foreign.options.loader
+        const foreignRouter = createRouter(foreign)
+        const update = vi.spyOn(foreign, 'update')
+        const incoming = createRoute(root, 'incoming')
+        const hot = createHot()
+
+        evaluate(incoming, hot)
+
+        expect(foreign.options.loader).toBe(foreignLoader)
+        expect(update).not.toHaveBeenCalled()
+        expect(foreignRouter.routesById[foreign.id]).toBe(foreign)
+        expect(incoming.options.loader).not.toBe(foreign.options.loader)
+        expect(hot.accept).toHaveBeenCalledOnce()
+      },
+    )
+
+    it('can attach a router after a module was hot-replaced while unused', () => {
+      const foreign = createRoute(false, 'foreign')
+      const foreignLoader = foreign.options.loader
+      createRouter(foreign)
+      const hot = createHot()
+      evaluate(createRoute(false), hot)
+      dispose(hot)
+      const mounted = createRoute(false, 'mounted')
+      evaluate(mounted, hot)
+      expect(foreign.options.loader).toBe(foreignLoader)
+
+      const owner = createRouter(mounted)
+      vi.spyOn(owner, '_refreshRoute').mockResolvedValue(undefined)
+      dispose(hot)
+      const replacement = createRoute(false, 'updated')
+      const loader = replacement.options.loader
+      evaluate(replacement, hot)
+      expect(mounted.options.loader).toBe(loader)
     })
+
+    it.each([false, true])(
+      'updates only the owning router across repeated hot evaluations (root: %s)',
+      (root) => {
+        const original = createRoute(root)
+        const hot = createHot()
+        // Route modules execute before their router is constructed.
+        evaluate(original, hot)
+        const owner = createRouter(original)
+        const ownerUpdate = vi.spyOn(original, 'update')
+        const refresh = vi
+          .spyOn(owner, '_refreshRoute')
+          .mockResolvedValue(undefined)
+        const foreign = createRoute(root, 'foreign')
+        const foreignLoader = foreign.options.loader
+        const other = createRouter(foreign)
+        const foreignUpdate = vi.spyOn(foreign, 'update')
+        const foreignRefresh = vi.spyOn(other, '_refreshRoute')
+        expect(window.__TSR_ROUTER__).toBe(other)
+
+        for (const value of ['updated', 'updated again']) {
+          const accept = hot.accept.mock.calls.at(-1)![0]
+          dispose(hot)
+          const replacement = createRoute(root, value)
+          const loader = replacement.options.loader
+          evaluate(replacement, hot)
+          if (hmrStyle === 'vite') {
+            accept({ Route: replacement })
+          }
+          expect(original.options.loader).toBe(loader)
+          expect(replacement.id).toBe(original.id)
+          expect(replacement.parentRoute).toBe(original.parentRoute)
+          expect(owner.routesById[original.id]).toBe(original)
+          expect(foreign.options.loader).toBe(foreignLoader)
+        }
+        expect(ownerUpdate).toHaveBeenCalledTimes(2)
+        expect(refresh).toHaveBeenCalledTimes(2)
+        expect(foreignUpdate).not.toHaveBeenCalled()
+        expect(foreignRefresh).not.toHaveBeenCalled()
+      },
+    )
   },
 )

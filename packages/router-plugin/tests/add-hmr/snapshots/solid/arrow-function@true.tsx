@@ -9,8 +9,14 @@ export const Route = createFileRoute('/posts')({
 if (import.meta.hot) {
   const hot = import.meta.hot;
   const hotData = hot.data ??= {};
-  const handleRouteUpdate = function handleRouteUpdate(routeId, newRoute) {
-    const router = window.__TSR_ROUTER__;
+  const previousRoute = hotData['tsr-route'];
+  hotData['tsr-route'] = Route;
+  const handleRouteUpdate = function handleRouteUpdate(routeId, newRoute, previousRoute) {
+    const router = previousRoute._hmrRouter;
+    if (!router) {
+      return;
+    }
+    ;
     const oldRoute = router.routesById[routeId];
     if (!oldRoute) {
       return;
@@ -47,6 +53,10 @@ if (import.meta.hot) {
     router.resolvePathCache.clear();
     void router._refreshRoute?.();
     function syncHotRouteExport(liveRoute) {
+      Object.defineProperty(newRoute, "_hmrRouter", {
+        value: router,
+        configurable: true
+      });
       newRoute.options = liveRoute.options;
       newRoute.parentRoute = liveRoute.parentRoute;
       newRoute._path = liveRoute._path;
@@ -59,11 +69,8 @@ if (import.meta.hot) {
   if (initialRouteId) {
     hotData['tsr-route-id'] = initialRouteId;
   }
-  const isHotReevaluation = hotData['tsr-route-initialized'] === true;
-  hotData['tsr-route-initialized'] = true;
-  const existingRoute = isHotReevaluation && typeof window !== 'undefined' && initialRouteId ? window.__TSR_ROUTER__?.routesById?.[initialRouteId] : undefined;
-  if (initialRouteId && existingRoute && existingRoute !== Route) {
-    handleRouteUpdate(initialRouteId, Route);
+  if (previousRoute && initialRouteId && previousRoute !== Route) {
+    handleRouteUpdate(initialRouteId, Route, previousRoute);
     hotData['tsr-route-update-handled'] = Route;
   }
   hot.accept(newModule => {
@@ -76,7 +83,7 @@ if (import.meta.hot) {
         delete hotData['tsr-route-update-handled'];
         return;
       }
-      handleRouteUpdate(routeId, newModule.Route);
+      handleRouteUpdate(routeId, newModule.Route, Route);
     }
   });
 }

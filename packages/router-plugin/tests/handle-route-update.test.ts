@@ -31,11 +31,15 @@ const getStoreConfig: GetStoreConfig = () => ({
   batch: (fn) => fn(),
 })
 
-const getHandleRouteUpdate = () => {
-  return new Function(`return ${getHandleRouteUpdateCode([])}`)() as (
+const getHandleRouteUpdate = (router: RouterCore<any, any, any, any, any>) => {
+  const update = new Function(`return ${getHandleRouteUpdateCode([])}`)() as (
     routeId: string,
     newRoute: AnyRoute,
+    previousRoute: AnyRoute,
   ) => void
+  return (routeId: string, newRoute: AnyRoute) => {
+    update(routeId, newRoute, router.routesById[routeId]!)
+  }
 }
 
 function asAnyRoute<TRoute>(route: TRoute): TRoute & AnyRoute {
@@ -75,7 +79,7 @@ function createTestRouter<TRouteTree>(routeTree: TRouteTree) {
     {
       routeTree: asAnyRoute(routeTree),
       history: createTestHistory() as any,
-      isServer: true,
+      isServer: false,
     },
     getStoreConfig,
   )
@@ -133,7 +137,7 @@ function runHandleRouteUpdate<TRoute>(
 ) {
   const restoreWindow = withWindowRouter(router)
   try {
-    getHandleRouteUpdate()(routeId, asAnyRoute(newRoute))
+    getHandleRouteUpdate(router)(routeId, asAnyRoute(newRoute))
   } finally {
     restoreWindow()
   }
@@ -178,7 +182,7 @@ describe('handleRouteUpdate', () => {
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(
+      getHandleRouteUpdate(router)(
         pathlessRoute.id,
         asAnyRoute(new BaseRoute({} as any)),
       )
@@ -212,7 +216,7 @@ describe('handleRouteUpdate', () => {
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(
+      getHandleRouteUpdate(router)(
         parentRoute.id,
         asAnyRoute(new BaseRoute({} as any)),
       )
@@ -244,7 +248,7 @@ describe('handleRouteUpdate', () => {
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(
+      getHandleRouteUpdate(router)(
         itemRoute.id,
         asAnyRoute(
           new BaseRoute({
@@ -275,7 +279,7 @@ describe('handleRouteUpdate', () => {
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(itemRoute.id, asAnyRoute(newRoute))
+      getHandleRouteUpdate(router)(itemRoute.id, asAnyRoute(newRoute))
     } finally {
       restoreWindow()
     }
@@ -355,7 +359,10 @@ describe('handleRouteUpdate', () => {
 
     const restoreWindow = withWindowRouter(router)
     try {
-      getHandleRouteUpdate()(hotRoute.id, asAnyRoute(new BaseRoute({} as any)))
+      getHandleRouteUpdate(router)(
+        hotRoute.id,
+        asAnyRoute(new BaseRoute({} as any)),
+      )
       await vi.waitFor(() => {
         expect(router.state.matches.map((match) => match.routeId)).toEqual([
           rootRoute.id,
