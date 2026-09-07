@@ -13,7 +13,7 @@ import {
   renderRouterToString,
 } from '../../src/ssr/server'
 
-test('preserves selected state props and styling during SSR', async () => {
+test('preserves routing options, selected state props, and styling during SSR', async () => {
   const activeRef = vi.fn()
   const inactiveRef = vi.fn()
   let resolvedActiveRef: unknown
@@ -23,12 +23,24 @@ test('preserves selected state props and styling during SSR', async () => {
     style: { color: 'blue' },
     title: 'selected',
     ref: activeRef,
+    href: '/state-active',
+    target: '_self',
+    disabled: true,
   }))
+  const inactive = {
+    class: 'idle',
+    'data-state': 'idle',
+    ref: inactiveRef,
+    href: '/state-inactive',
+    target: '_self',
+    disabled: true,
+  }
   const unused = vi.fn(() => ({ class: 'unused' }))
   const root = createRootRoute({
     component: () => {
       const activeProps = useLinkProps({
         to: '/',
+        target: '_blank',
         class: 'base',
         style: { color: 'red', 'margin-top': '2px' },
         activeProps: active,
@@ -36,12 +48,9 @@ test('preserves selected state props and styling during SSR', async () => {
       })
       const inactiveProps = useLinkProps({
         to: '/other',
+        target: '_blank',
         activeProps: unused,
-        inactiveProps: {
-          class: 'idle',
-          'data-state': 'idle',
-          ref: inactiveRef,
-        },
+        inactiveProps: inactive,
       })
       resolvedActiveRef = activeProps.ref
       resolvedInactiveRef = inactiveProps.ref
@@ -80,9 +89,15 @@ test('preserves selected state props and styling during SSR', async () => {
     expect(links[0]!.style.color).toBe('blue')
     expect(links[0]!.style.marginTop).toBe('2px')
     expect(links[0]!.getAttribute('title')).toBe('selected')
+    expect(links[0]!.getAttribute('href')).toBe('/')
+    expect(links[0]!.getAttribute('target')).toBe('_blank')
+    expect(links[0]!.hasAttribute('disabled')).toBe(false)
     expect(resolvedActiveRef).toBe(activeRef)
     expect([...links[1]!.classList]).toEqual(['idle'])
     expect(links[1]!.getAttribute('data-state')).toBe('idle')
+    expect(links[1]!.getAttribute('href')).toBe('/other')
+    expect(links[1]!.getAttribute('target')).toBe('_blank')
+    expect(links[1]!.hasAttribute('disabled')).toBe(false)
     expect(resolvedInactiveRef).toBe(inactiveRef)
     expect([...links[2]!.classList]).toEqual(['active'])
     expect([...links[3]!.classList]).toEqual([])

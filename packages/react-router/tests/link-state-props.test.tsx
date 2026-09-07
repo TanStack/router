@@ -6,8 +6,8 @@ import { afterEach, expect, test, vi } from 'vitest'
 import {
   Link,
   RouterContextProvider,
-  createLink,
   RouterProvider,
+  createLink,
   createMemoryHistory,
   createRootRoute,
   createRoute,

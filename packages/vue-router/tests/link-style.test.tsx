@@ -170,7 +170,7 @@ test('merges only the selected state and tracks reactive style properties', asyn
     marginTop: '2px',
     backgroundColor: 'white',
   })
-  expect(link).toHaveAttribute('href', '/state-href')
+  expect(link).toHaveAttribute('href', '/target')
   expect(inactive).not.toHaveBeenCalled()
 
   base.color = 'blue'
