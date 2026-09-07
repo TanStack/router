@@ -2668,13 +2668,13 @@ async function documentNavigation(
 
   // Check blockers for external URLs unless ignoreBlocker is true
   if (!ignoreBlocker) {
-    const blockers = router.history.getBlockers?.() ?? []
+    const blockers = router.history._getBlockers()
     for (const blocker of blockers) {
       if (blocker?.blockerFn) {
         const shouldBlock = await blocker.blockerFn({
-          currentLocation: router.latestLocation,
-          nextLocation: router.latestLocation, // External URLs don't have a next location in our router
-          action: 'PUSH',
+          currentLocation: router.history.location,
+          nextLocation: router.history.location, // External URLs don't have a next location in our router
+          action: replace ? 'REPLACE' : 'PUSH',
         })
         if (shouldBlock) {
           return

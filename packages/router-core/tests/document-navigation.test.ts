@@ -1,8 +1,9 @@
-import { createMemoryHistory } from '@tanstack/history'
+import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { BaseRootRoute, BaseRoute, redirect } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import { createTestRouter } from './routerTestUtils'
+import type { RouterHistory } from '@tanstack/history'
 import type { LocationRewrite } from '../src'
 
 const externalHref = 'https://admin.example.com/dashboard'
@@ -10,6 +11,7 @@ const externalHref = 'https://admin.example.com/dashboard'
 function setupRouter({
   isServer = false,
   basepath,
+  history = createMemoryHistory({ initialEntries: ['/'] }),
   rewrite = {
     output: ({ url }) => {
       if (url.pathname === '/admin') {
@@ -21,6 +23,7 @@ function setupRouter({
 }: {
   isServer?: boolean
   basepath?: string
+  history?: RouterHistory
   rewrite?: LocationRewrite
 } = {}) {
   const rootRoute = new BaseRootRoute()
@@ -30,7 +33,6 @@ function setupRouter({
     new BaseRoute({ getParentRoute: () => rootRoute, path: '/local' }),
     new BaseRoute({ getParentRoute: () => rootRoute, path: '/admin', loader }),
   ])
-  const history = createMemoryHistory({ initialEntries: ['/'] })
   const router = createTestRouter({
     routeTree,
     history,
@@ -226,30 +228,59 @@ describe('document navigation', () => {
     },
   )
 
-  test.each([false, true])(
-    'preserves optional document blockers and ignoreBlocker (reloadDocument=%s)',
-    async (reloadDocument) => {
-      const { router, history, windowLocation } = setupRouter()
-      const blockerFn = vi.fn(async () => true)
-      Object.assign(history, { getBlockers: () => [{ blockerFn }] })
+  describe.each(['memory', 'browser'] as const)(
+    '%s history blockers',
+    (kind) => {
+      test.each([
+        { reloadDocument: false, replace: false },
+        { reloadDocument: false, replace: true },
+        { reloadDocument: true, replace: false },
+        { reloadDocument: true, replace: true },
+      ])(
+        'respects registered blockers and ignoreBlocker (reloadDocument=$reloadDocument, replace=$replace)',
+        async ({ reloadDocument, replace }) => {
+          const history =
+            kind === 'browser'
+              ? createBrowserHistory()
+              : createMemoryHistory({ initialEntries: ['/'] })
+          try {
+            const { router, windowLocation } = setupRouter({ history })
+            const blockerFn = vi.fn(async () => true)
+            history.block({ blockerFn, enableBeforeUnload: false })
+            const location = history.location
 
-      await router.navigate({ to: '/admin', reloadDocument, replace: true })
+            await router.navigate({ to: '/admin', reloadDocument, replace })
 
-      expect(blockerFn).toHaveBeenCalledTimes(1)
-      expect(windowLocation.href).toBe('')
-      expect(windowLocation.replace).not.toHaveBeenCalled()
-      expect(history.location.href).toBe('/')
+            expect(blockerFn).toHaveBeenCalledExactlyOnceWith({
+              currentLocation: location,
+              nextLocation: location,
+              action: replace ? 'REPLACE' : 'PUSH',
+            })
+            expect(windowLocation.href).toBe('')
+            expect(windowLocation.replace).not.toHaveBeenCalled()
+            expect(history.location).toBe(location)
 
-      await router.navigate({
-        to: '/admin',
-        reloadDocument,
-        replace: true,
-        ignoreBlocker: true,
-      })
+            await router.navigate({
+              to: '/admin',
+              reloadDocument,
+              replace,
+              ignoreBlocker: true,
+            })
 
-      expect(blockerFn).toHaveBeenCalledTimes(1)
-      expect(windowLocation.replace).toHaveBeenCalledWith(externalHref)
-      expect(history.location.href).toBe('/')
+            expect(blockerFn).toHaveBeenCalledTimes(1)
+            if (replace) {
+              expect(windowLocation.replace).toHaveBeenCalledWith(externalHref)
+              expect(windowLocation.href).toBe('')
+            } else {
+              expect(windowLocation.href).toBe(externalHref)
+              expect(windowLocation.replace).not.toHaveBeenCalled()
+            }
+            expect(history.location).toBe(location)
+          } finally {
+            history.destroy()
+          }
+        },
+      )
     },
   )
 
