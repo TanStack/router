@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1788780525388,
+  "lastUpdate": 1788809915516,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,102 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "tannerlinsley@gmail.com",
-            "name": "Tanner Linsley",
-            "username": "tannerlinsley"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "35261948496a4899c1718032b574a9f89374077a",
-          "message": "docs(skills): address 8 agent failure modes from user feedback (#7314)\n\n* docs(skills): address 8 agent failure modes from external feedback\n\nAdds new start-core/auth-server-primitives skill (sessions, cookies,\nOAuth+PKCE, password-reset enumeration defense, CSRF, rate limiting,\nsession rotation) and updates 8 existing skills + matching docs to fix\npatterns where agents produce insecure or wrong-framework output.\n\nSkill changes:\n- new: start-core/auth-server-primitives (server half of auth)\n- router-core/auth-and-guards: route guard != RPC guard\n- start-core/server-functions: wrong import path, RPC auth required,\n  Cache-Control public is a cross-tenant leak, wrong-framework patterns\n- start-core/middleware: wrong import path, sendContext shape vs access\n  (3-layer wrong/still-wrong/correct), authMiddleware framing\n- start-core/execution-model: file markers (server-only/client-only),\n  module-level process.env is undefined under Worker SSR\n- start-core/deployment: cloudflare env-at-request-time\n- router-core/ssr: wrong file structures (next.js, react-router-dom)\n- router-core/type-safety: wrong-framework imports + structures\n\nDocs updated to mirror each skill change so source-of-truth and the\nintent-indexed skill stay in sync. New authentication-server-primitives\nguide is the long-form companion to the new skill.\n\nintent validate: 30 skill files pass (was 29).\n\n* ci: apply automated fixes\n\n* docs(skills): address coderabbit review feedback\n\n- Fix internal docs links to use correct relative paths instead of an\n  absolute /start/latest/... URL and missing one ../ segment\n- Remove blank line inside auth-and-guards blockquote (markdownlint MD028)\n- Restore overload pattern in type-safety ValidateNavigateOptions and\n  ValidateRedirectOptions examples; the casts I had introduced stripped\n  generic context and contradicted the skill's own no-cast rule\n- Add db.sessions.revokeAllForUser before create in login rotation\n  snippets so the example matches the prose\n- Soften useServerFn guidance: it's required only when the server\n  function throws redirect/notFound; plain-data calls work directly and\n  via useMutation/useQuery\n\n* ci: apply automated fixes\n\n* docs(skills): compress type-safety to stay under 500-line cap\n\nPrettier's autofix expanded my single-line overload signatures across\nmultiple lines, pushing the file over the 500-line limit. Drop the\nredundant fetchOrRedirect example (same pattern as useDelayedNavigate)\nand describe ValidateRedirectOptions usage in prose instead.\n\n* docs(skills): CSRF origin check should compare full origin, not host alone\n\nComparing only new URL(origin).host against APP_HOST silently accepts a\nmismatched scheme — http://example.com would pass a check meant for\nhttps://example.com. Compare the full origin (scheme + host + port)\nagainst APP_ORIGIN instead. Same fix in skill and docs.\n\n* docs(skills): make useDelayedNavigate callback truly return void\n\nThe callback returned the result of setTimeout (a timer handle), not\nvoid as the public overload's return type implied. Wrap in a block so\nthe example matches the declared return type.\n\nSkipped the related nitpick to add a separate redirect example — the\nexisting prose already describes the same overload pattern, and a\nduplicate example would push the file close to the 500-line cap that\nprettier autofix has been bumping us against.\n\n* docs(skills): fix two real bugs in auth-server-primitives examples\n\n1. Cookie parser truncated values containing '='. Signed cookies, JWTs,\n   and base64-padded values all use '='. Use indexOf to split on the\n   FIRST '=' only.\n\n2. Login example short-circuited verifyPasswordHash on user-not-found,\n   contradicting the prose's \"same time, same error\" claim — the\n   no-user branch returned instantly while wrong-password spent ~100ms\n   hashing, leaking account existence over the wire. Always verify\n   against a hash; use a precomputed DUMMY_PASSWORD_HASH when the user\n   is missing, then combine with the user-exists bit for the final ok.\n\nSame fixes in the SKILL.md and the docs companion.\n\n* docs(skills): address manuel's review on react-specific guides\n\n- middleware.md, server-functions.md: drop cross-framework <framework>\n  placeholders; this is the React-specific guide, just say\n  @tanstack/react-start\n- execution-model.md: drop the same trailing line about solid-start /\n  vue-start paths\n- hosting.md: remove the Cloudflare env-handling subsection — the\n  general per-request rule lives in environment-variables.md and\n  doesn't need to be repeated under a specific host\n- environment-variables.md: mention the cloudflare:workers env binding\n  as the canonical Cloudflare way to read env (including module scope),\n  per Manuel's link to the Cloudflare docs\n- deployment skill: same upgrade — show the cloudflare:workers env\n  pattern alongside the per-request handler approach\n\n* docs(skills): drop redundant server-only marker in session example\n\nThe file already imports from @tanstack/react-start/server, which is\non import protection's default client-deny specifier list. The\nside-effect marker is redundant — drop it. Same fix in skill and docs.\n\n* docs(skills): drop wrong-import-path mistakes — TS already catches them\n\nManuel pointed out that TypeScript catches both common wrong paths:\n'@tanstack/react-router' has no exported member createServerFn /\ncreateMiddleware, and '@tanstack/start' is \"Cannot find module\". Skill\nspace is precious; the items don't earn their slot if tsc handles them.\n\nRemoved:\n- Common Mistake \"Wrong import path\" from server-functions and\n  middleware skills (renumbered the remaining mistakes)\n- The matching top-of-file CRITICAL line in both skills\n- The \"Import path\" callouts in the middleware and server-functions\n  docs\n\n---------\n\nCo-authored-by: autofix-ci[bot] <114827586+autofix-ci[bot]@users.noreply.github.com>",
-          "timestamp": "2026-05-02T23:11:30-06:00",
-          "tree_id": "47fc6055ac4999fc97fdf7308209bae4f58b4cef",
-          "url": "https://github.com/TanStack/router/commit/35261948496a4899c1718032b574a9f89374077a"
-        },
-        "date": 1777785229907,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89245,
-            "unit": "bytes",
-            "extra": "raw=280511; brotli=77521"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92857,
-            "unit": "bytes",
-            "extra": "raw=292296; brotli=80600"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36234,
-            "unit": "bytes",
-            "extra": "raw=108799; brotli=32577"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41065,
-            "unit": "bytes",
-            "extra": "raw=123353; brotli=36910"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54430,
-            "unit": "bytes",
-            "extra": "raw=155022; brotli=48879"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59678,
-            "unit": "bytes",
-            "extra": "raw=171585; brotli=53437"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104203,
-            "unit": "bytes",
-            "extra": "raw=329827; brotli=90077"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107712,
-            "unit": "bytes",
-            "extra": "raw=340406; brotli=93141"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 101714,
-            "unit": "bytes",
-            "extra": "raw=324065; brotli=87508"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105097,
-            "unit": "bytes",
-            "extra": "raw=334748; brotli=90403"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50584,
-            "unit": "bytes",
-            "extra": "raw=155726; brotli=44648"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56520,
-            "unit": "bytes",
-            "extra": "raw=173040; brotli=49670"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -23995,6 +23899,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/aee42c6b641d8e919bfed9e0f04bb1b72092f3a6"
         },
         "date": 1788780524127,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85843,
+            "unit": "bytes",
+            "extra": "raw=268575; brotli=74742; initial_gzip=85706"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89417,
+            "unit": "bytes",
+            "extra": "raw=280528; brotli=77949; initial_gzip=89277"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34008,
+            "unit": "bytes",
+            "extra": "raw=98679; brotli=30648; initial_gzip=33883"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 38946,
+            "unit": "bytes",
+            "extra": "raw=113669; brotli=35071; initial_gzip=38820"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50735,
+            "unit": "bytes",
+            "extra": "raw=141734; brotli=45824; initial_gzip=50609"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56480,
+            "unit": "bytes",
+            "extra": "raw=160377; brotli=50805; initial_gzip=56352"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99066,
+            "unit": "bytes",
+            "extra": "raw=311853; brotli=85854; initial_gzip=98928"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106561,
+            "unit": "bytes",
+            "extra": "raw=338989; brotli=92339; initial_gzip=106425"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99805,
+            "unit": "bytes",
+            "extra": "raw=313242; brotli=86535; initial_gzip=98947"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102304,
+            "unit": "bytes",
+            "extra": "raw=321783; brotli=88614; initial_gzip=102165"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102429,
+            "unit": "bytes",
+            "extra": "raw=322395; brotli=88407; initial_gzip=102254"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102844,
+            "unit": "bytes",
+            "extra": "raw=323354; brotli=88724; initial_gzip=102675"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105832,
+            "unit": "bytes",
+            "extra": "raw=332726; brotli=91229; initial_gzip=105657"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47174,
+            "unit": "bytes",
+            "extra": "raw=140795; brotli=41938; initial_gzip=47045"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50327,
+            "unit": "bytes",
+            "extra": "raw=148433; brotli=44887; initial_gzip=47117"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52368,
+            "unit": "bytes",
+            "extra": "raw=156550; brotli=46434; initial_gzip=52239"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67266,
+            "unit": "bytes",
+            "extra": "raw=193829; brotli=59851; initial_gzip=67140"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71173,
+            "unit": "bytes",
+            "extra": "raw=206429; brotli=63306; initial_gzip=71047"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "me@florianpellet.com",
+            "name": "Flo",
+            "username": "Sheraff"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0f40695fbe0f5aa5f12c2072f38c2c71a3b7ef94",
+          "message": "test: cover existing navigation and redirect behavior (#8286)",
+          "timestamp": "2026-09-07T21:35:15+02:00",
+          "tree_id": "bf802e3c928b84474a156812dcec5f6f482e0fd0",
+          "url": "https://github.com/TanStack/router/commit/0f40695fbe0f5aa5f12c2072f38c2c71a3b7ef94"
+        },
+        "date": 1788809913538,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
