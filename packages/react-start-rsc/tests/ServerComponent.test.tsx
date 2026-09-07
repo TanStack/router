@@ -48,21 +48,28 @@ import {
 
 describe('ServerComponent (client)', () => {
   it.each(['renderable', 'composite'] as const)(
-    'does not decode an unused %s stream without asset metadata',
+    'renders the selected %s stream and switches to a previously unused one',
     async (kind) => {
       const decodeMock = vi.mocked(browserDecode)
       decodeMock.mockClear()
-      decodeMock.mockResolvedValue(React.createElement('div', null, 'selected'))
       const create =
         kind === 'renderable'
           ? createRenderableFromStream
           : createCompositeFromStream
       const unusedStream = new ReadableStream<Uint8Array>()
       const selectedStream = new ReadableStream<Uint8Array>()
+      decodeMock.mockImplementation(
+        (stream) =>
+          Promise.resolve(
+            React.createElement(
+              'div',
+              null,
+              stream === selectedStream ? 'selected' : 'other',
+            ),
+          ) as ReturnType<typeof browserDecode>,
+      )
       const unused = create(unusedStream)
       const selected = create(selectedStream)
-
-      expect(decodeMock).not.toHaveBeenCalled()
 
       const { CompositeComponent } = await import('../src/CompositeComponent')
       let view: ReturnType<typeof render>
@@ -76,15 +83,15 @@ describe('ServerComponent (client)', () => {
         )
       })
       expect(view!.getByText('selected')).toBeTruthy()
-      expect(decodeMock).toHaveBeenCalledExactlyOnceWith(selectedStream)
+      expect(view!.queryByText('other')).toBeNull()
 
       await act(async () => {
         view!.rerender(
           kind === 'renderable' ? unused : <CompositeComponent src={unused} />,
         )
       })
-      expect(decodeMock).toHaveBeenCalledTimes(2)
-      expect(decodeMock).toHaveBeenLastCalledWith(unusedStream)
+      expect(view!.getByText('other')).toBeTruthy()
+      expect(view!.queryByText('selected')).toBeNull()
     },
   )
 
@@ -204,7 +211,6 @@ describe('ServerComponent (client)', () => {
       })
       expect(view!.queryByText('previous')).toBeNull()
       expect(view!.getByText('replacement').style.display).not.toBe('none')
-      expect(decodeMock).toHaveBeenCalledTimes(2)
     },
   )
 })

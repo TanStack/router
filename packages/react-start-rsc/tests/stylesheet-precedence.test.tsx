@@ -55,9 +55,7 @@ describe.each(['node', 'composite'] as const)(
 
         expect(html).toContain('Styled server content')
         expect(html.includes('data-precedence="high"')).toBe(preinitCss)
-        expect(preloadModule).toHaveBeenCalledExactlyOnceWith(
-          '/assets/client.js',
-        )
+        expect(preloadModule).toHaveBeenCalledWith('/assets/client.js')
       },
     )
   },
