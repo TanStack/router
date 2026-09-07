@@ -1,6 +1,6 @@
 import { bench, describe, expect } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute } from '../src'
+import { BaseRootRoute, BaseRoute } from '../src'
 import { compileDecodeCharMap, interpolatePath } from '../src/path'
 import { createTestRouter } from './routerTestUtils'
 import type { PathInterpolationTestOptions } from './routerTestUtils'
@@ -8,6 +8,7 @@ import type { PathInterpolationTestOptions } from './routerTestUtils'
 const scenarios: Array<{
   name: string
   inputs: Array<PathInterpolationTestOptions>
+  register?: boolean
 }> = [
   {
     name: 'single-param shared hits',
@@ -34,7 +35,22 @@ const scenarios: Array<{
     })),
   },
   {
-    name: 'template eviction',
+    name: '64-template working set',
+    inputs: Array.from({ length: 64 }, (_, index) => ({
+      path: `/section-${index}/$id`,
+      params: { id: 'item one' },
+    })),
+  },
+  {
+    name: '256-template working set',
+    inputs: Array.from({ length: 256 }, (_, index) => ({
+      path: `/section-${index}/$id`,
+      params: { id: 'item one' },
+    })),
+  },
+  {
+    name: 'unregistered template eviction',
+    register: false,
     inputs: Array.from({ length: 64 }, (_, index) => ({
       path: `/section-${index}/$id`,
       params: { id: 'item one' },
@@ -101,15 +117,23 @@ for (const { inputs } of scenarios) {
   }
 }
 scenarios.push(
-  ...scenarios.map(({ name, inputs }) => ({
+  ...scenarios.map(({ name, inputs, register }) => ({
     name: `server ${name}`,
     inputs: inputs.map((input) => ({ ...input, server: true })),
+    register,
   })),
 )
 
-describe.each(scenarios)('$name', ({ inputs }) => {
+describe.each(scenarios)('$name', ({ inputs, register = true }) => {
+  const root = new BaseRootRoute({})
+  const routes = new Map(
+    [...new Set(inputs.map((input) => input.path || '/'))].map((path) => [
+      path,
+      new BaseRoute({ getParentRoute: () => root, path }),
+    ]),
+  )
   const router = createTestRouter({
-    routeTree: new BaseRootRoute({}),
+    routeTree: register ? root.addChildren([...routes.values()]) : root,
     history: createMemoryHistory({ initialEntries: ['/'] }),
     isServer: inputs[0]?.server,
     scrollRestoration: false,
@@ -121,6 +145,7 @@ describe.each(scenarios)('$name', ({ inputs }) => {
     .map((input) => ({
       path: input.path || '/',
       params: input.params,
+      route: register ? routes.get(input.path || '/') : undefined,
       expected: interpolatePath(
         input.path,
         input.params,
@@ -145,13 +170,13 @@ describe.each(scenarios)('$name', ({ inputs }) => {
     0,
   )
   const cachedExpected = calls.reduce((sum, call) => {
-    expect(router['interpolatePath'](call.path, call.params)).toBe(
+    expect(router['interpolatePath'](call.path, call.params, call.route)).toBe(
       call.expected,
     )
     return sum + call.expected.length
   }, 0)
   for (const call of calls) {
-    expect(router['interpolatePath'](call.path, call.params)).toBe(
+    expect(router['interpolatePath'](call.path, call.params, call.route)).toBe(
       call.expected,
     )
   }
@@ -161,7 +186,11 @@ describe.each(scenarios)('$name', ({ inputs }) => {
     () => {
       let length = 0
       for (const call of calls) {
-        length += router['interpolatePath'](call.path, call.params).length
+        length += router['interpolatePath'](
+          call.path,
+          call.params,
+          call.route,
+        ).length
       }
       checksum = length
     },

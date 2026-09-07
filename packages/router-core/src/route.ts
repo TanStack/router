@@ -4,6 +4,7 @@ import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
+import type { InterpolationPlan } from './path'
 import type { NotFoundError } from './not-found'
 import type { RedirectFnRoute } from './redirect'
 import type { NavigateOptions, ParsePathParams } from './link'
@@ -726,6 +727,10 @@ export interface Route<
   >
   /** @internal */
   _lazy?: Promise<void> | true
+  /** @internal */
+  _branch?: ReadonlyArray<AnyRoute>
+  /** @internal */
+  _pathCache?: InterpolationPlan
   rank: number
   to: TrimPathRight<TFullPath>
   init: (opts: { originalIndex: number }) => void
@@ -1713,6 +1718,10 @@ export class BaseRoute<
   >
   /** @internal */
   _lazy?: Promise<void> | true
+  /** @internal */
+  _branch?: ReadonlyArray<AnyRoute>
+  /** @internal */
+  _pathCache?: InterpolationPlan
   constructor(
     options?: RouteOptions<
       TRegister,
@@ -1764,6 +1773,8 @@ export class BaseRoute<
 
   init = (opts: { originalIndex: number }): void => {
     this.originalIndex = opts.originalIndex
+    // Rebuilding a tree can change the ancestors of an existing route.
+    this._branch = undefined
 
     const options = this.options as
       | (RouteOptions<
