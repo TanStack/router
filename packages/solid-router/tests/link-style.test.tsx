@@ -51,7 +51,7 @@ function renderLinks(Links: Solid.Component) {
 }
 
 test.each([true, false])(
-  'selected state props override base props (active: %s)',
+  'selected state props override element props but not routing options (active: %s)',
   async (active) => {
     const baseClick = vi.fn()
     const selectedClick = vi.fn((event: MouseEvent) => event.preventDefault())
@@ -63,6 +63,9 @@ test.each([true, false])(
       onClick: selectedClick,
       class: 'state-class',
       style: { color: 'blue' },
+      href: '/state-href',
+      target: '_self',
+      disabled: true,
     }
     renderLinks(() => (
       <Link
@@ -82,6 +85,9 @@ test.each([true, false])(
     expect(selectedRef).toHaveBeenCalledOnce()
     expect(selectedRef.mock.calls[0]?.[0]).toBe(link)
     expect(link).toHaveAttribute('title', 'state title')
+    expect(link).toHaveAttribute('href', active ? '/target' : '/')
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).not.toHaveAttribute('disabled')
     expect(link).toHaveClass('base', 'state-class')
     expect(link.style).toMatchObject({ color: 'blue', marginTop: '2px' })
     fireEvent.click(link)
