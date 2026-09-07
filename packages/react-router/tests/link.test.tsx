@@ -1,4 +1,5 @@
 import React from 'react'
+import { renderToString } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 import {
   act,
@@ -16,6 +17,7 @@ import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Link,
   Outlet,
+  RouterContextProvider,
   RouterProvider,
   createBrowserHistory,
   createHashHistory,
@@ -241,6 +243,7 @@ describe('Link', () => {
     expect(window.location.pathname).toBe('/')
 
     expect(postsLink).not.toBeDisabled()
+    expect(postsLink).not.toHaveAttribute('disabled')
     expect(postsLink).toHaveAttribute('aria-disabled', 'true')
 
     fireEvent.click(postsLink)
@@ -7865,6 +7868,122 @@ describe('protocolAllowlist', () => {
     expect(consoleWarn).toHaveBeenCalledWith(
       'Blocked Link with dangerous protocol: intent://example.com#Intent;scheme=https;end',
     )
+  })
+})
+
+describe('masked and custom history hrefs', () => {
+  test.each([
+    { output: '/mask', href: '/formatted/mask', formatted: true },
+    {
+      output: 'https://other.example/mask',
+      href: 'https://other.example/mask',
+      formatted: false,
+    },
+  ])(
+    'validates the final masked href $output on server and client',
+    async ({ output, href, formatted }) => {
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      for (const isServer of [true, false]) {
+        const formatHref = vi.fn((path: string) => '/formatted' + path)
+        const customHistory = createBrowserHistory({ createHref: formatHref })
+        const targetLoader = vi.fn(() => 'target')
+        const rootRoute = createRootRoute()
+        const targetRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/target',
+          loader: targetLoader,
+        })
+        const router = createRouter({
+          isServer,
+          routeTree: rootRoute.addChildren([targetRoute]),
+          history: customHistory,
+          rewrite: {
+            output: ({ url }) =>
+              url.pathname === '/mask' && output !== '/mask'
+                ? new URL(output)
+                : url,
+          },
+        })
+        try {
+          await router.load()
+          formatHref.mockClear()
+          const element = (
+            <RouterContextProvider router={router}>
+              <Link
+                to="/target"
+                mask={{ to: '/mask' }}
+                preload="intent"
+                preloadDelay={0}
+              >
+                {({ isActive }) => String(isActive)}
+              </Link>
+            </RouterContextProvider>
+          )
+          let container: HTMLElement
+          if (isServer) {
+            container = document.createElement('div')
+            container.innerHTML = renderToString(element)
+          } else {
+            container = render(element).container
+          }
+          const link = container.querySelector('a')!
+          expect(link.getAttribute('href')).toBe(href)
+          expect(link).toHaveTextContent('false')
+          expect(link).not.toHaveAttribute('aria-current')
+          if (formatted) {
+            expect(formatHref).toHaveBeenCalledWith('/mask')
+          } else {
+            expect(formatHref).not.toHaveBeenCalled()
+            if (!isServer) {
+              let intercepted = false
+              document.addEventListener(
+                'click',
+                (event) => {
+                  intercepted = event.defaultPrevented
+                  event.preventDefault()
+                },
+                { once: true },
+              )
+              fireEvent.click(link)
+              expect(intercepted).toBe(false)
+              fireEvent.mouseOver(link)
+              await act(() => sleep(10))
+              expect(targetLoader).not.toHaveBeenCalled()
+            }
+          }
+        } finally {
+          cleanup()
+          customHistory.destroy()
+        }
+      }
+    },
+  )
+
+  test('does not transform a direct HTTPS link through custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'https://other.example/',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link data-testid="direct-https-link" to="https://intended.example/" />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    try {
+      render(<RouterProvider router={router} />)
+      const link = await screen.findByTestId('direct-https-link')
+
+      expect(link).toHaveAttribute('href', 'https://intended.example/')
+      expect(fireEvent.click(link)).toBe(true)
+    } finally {
+      customHistory.destroy()
+    }
   })
 })
 
