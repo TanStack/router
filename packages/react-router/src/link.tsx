@@ -363,11 +363,15 @@ export function useLinkProps<
       return out
     })()
 
+    const blockedLink = !disabled && !hrefOption
+
     return {
       ...propsSafeToSpread,
+      ...(blockedLink ? resolvedActiveProps : STATIC_EMPTY_OBJECT),
+      ...(blockedLink ? resolvedInactiveProps : STATIC_EMPTY_OBJECT),
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      ...resolvedActiveProps,
-      ...resolvedInactiveProps,
+      ...(!blockedLink ? resolvedActiveProps : STATIC_EMPTY_OBJECT),
+      ...(!blockedLink ? resolvedInactiveProps : STATIC_EMPTY_OBJECT),
       href: hrefOption,
       disabled: !!linkDisabled,
       target,
@@ -560,6 +564,8 @@ export function useLinkProps<
     }
   }
 
+  const blockedLink = isActive === undefined
+
   // Only one state contributes props, so resolve and merge it once.
   const resolvedStateProps: React.HTMLAttributes<HTMLAnchorElement> =
     functionalUpdate(isActive ? (activeProps as any) : inactiveProps, {}) ??
@@ -619,8 +625,7 @@ export function useLinkProps<
 
   return {
     ...propsSafeToSpread,
-    ...resolvedStateProps,
-    href,
+    ...(blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers(onClick, handleClick),
     onBlur: composeHandlers(onBlur, handleLeave),
@@ -628,6 +633,8 @@ export function useLinkProps<
     onMouseEnter: composeHandlers(onMouseEnter, enqueuePreload),
     onMouseLeave: composeHandlers(onMouseLeave, handleLeave),
     onTouchStart: composeHandlers(onTouchStart, handleTouchStart),
+    ...(!blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
+    href,
     disabled: !!linkDisabled,
     target,
     ...(resolvedStyle && { style: resolvedStyle }),
