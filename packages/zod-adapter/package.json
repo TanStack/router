@@ -68,9 +68,17 @@
     "@testing-library/react": "^16.2.0",
     "@tanstack/react-router": "workspace:*",
     "zod": "^3.24.2",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "vite": "*"
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "vite": "*",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "jsdom": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "zod": "^3.23.8",

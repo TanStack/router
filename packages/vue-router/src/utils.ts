@@ -31,9 +31,8 @@ export const usePrevious = (fn: () => boolean) => {
  * When the intersection changes, the callback will be called with the `IntersectionObserverEntry`.
  *
  * @param ref - The ref to observe
- * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
- * @param disabled - Whether observation is disabled
  * @param callback - The callback to call when the intersection changes
+ * @param disabled - Whether observation is disabled
  * @returns The IntersectionObserver instance
  * @example
  * ```tsx
@@ -42,7 +41,6 @@ export const usePrevious = (fn: () => boolean) => {
  * useIntersectionObserver(
  *  ref,
  *  (entry) => { doSomething(entry) },
- *  { rootMargin: '10px' },
  *  () => false
  * )
  * return <div ref={ref} />
@@ -50,8 +48,7 @@ export const usePrevious = (fn: () => boolean) => {
  */
 export function useIntersectionObserver<T extends Element>(
   ref: Vue.Ref<T | null>,
-  callback: (entry: IntersectionObserverEntry | undefined) => void,
-  intersectionObserverOptions: IntersectionObserverInit = {},
+  callback: (entry?: IntersectionObserverEntry) => void,
   disabled: () => boolean,
 ): Vue.Ref<IntersectionObserver | null> {
   const isIntersectionObserverAvailable =
@@ -61,13 +58,17 @@ export function useIntersectionObserver<T extends Element>(
   // Use watchEffect with cleanup to properly manage the observer lifecycle
   Vue.watchEffect((onCleanup) => {
     const r = ref.value
-    if (!r || !isIntersectionObserverAvailable || disabled()) {
+    if (disabled() || !r || !isIntersectionObserverAvailable) {
+      onCleanup(() => callback())
       return
     }
 
-    const observer = new IntersectionObserver(([entry]) => {
-      callback(entry)
-    }, intersectionObserverOptions)
+    const observer = new IntersectionObserver(
+      (entries) => {
+        callback(entries.pop())
+      },
+      { rootMargin: '100px' },
+    )
 
     observerRef.value = observer
     observer.observe(r)
@@ -75,6 +76,7 @@ export function useIntersectionObserver<T extends Element>(
     onCleanup(() => {
       observer.disconnect()
       observerRef.value = null
+      callback()
     })
   })
 

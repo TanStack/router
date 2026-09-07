@@ -48,12 +48,16 @@ import type { RouterHistory } from '../src'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
+let ioCallback: IntersectionObserverCallback
 let history: RouterHistory
 
 beforeEach(() => {
   const io = getIntersectionObserverMock({
     observe: ioObserveMock,
     disconnect: ioDisconnectMock,
+    onCreate: (callback) => {
+      ioCallback = callback
+    },
   })
   vi.stubGlobal('IntersectionObserver', io)
   history = createBrowserHistory()
@@ -61,6 +65,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   history.destroy()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
@@ -5117,6 +5122,241 @@ describe('Link', () => {
     })
     expect(ioObserveMock).toBeCalledTimes(2) // it should not observe again
     expect(ioDisconnectMock).toBeCalledTimes(1) // it should not disconnect again
+  })
+
+  test('Link.preload="viewport" should respect preloadDelay', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/about" preload="viewport" preloadDelay={50}>
+            Viewport Link
+          </Link>
+          <Link to="/about" preload="intent" preloadDelay={50}>
+            Intent Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+
+    const viewportLink = await screen.findByRole('link', {
+      name: 'Viewport Link',
+    })
+    const intentLink = await screen.findByRole('link', { name: 'Intent Link' })
+    vi.useFakeTimers()
+
+    ioCallback([], {} as IntersectionObserver)
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    fireEvent.mouseLeave(viewportLink)
+
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(49)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+
+    fireEvent.mouseEnter(intentLink)
+    fireEvent.mouseLeave(intentLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+  })
+
+  test('Link.preload="viewport" should cancel and use new link options after they change', async () => {
+    const rootRoute = createRootRoute()
+    const RouteComponent = () => {
+      const [to, setTo] = React.useState<'/about' | '/other'>('/about')
+      const [preload, setPreload] = React.useState<
+        'viewport' | 'intent' | false
+      >('viewport')
+      return (
+        <>
+          <button
+            onClick={() =>
+              setTo((current) => (current === '/about' ? '/other' : '/about'))
+            }
+          >
+            Change destination
+          </button>
+          <button onClick={() => setPreload('intent')}>Use intent</button>
+          <button onClick={() => setPreload(false)}>Disable preload</button>
+          <Link to={to} preload={preload} preloadDelay={50}>
+            Viewport Link
+          </Link>
+        </>
+      )
+    }
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: RouteComponent,
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const otherRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/other',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute, otherRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(<RouterProvider router={router} />)
+
+    const viewportLink = await screen.findByRole('link', {
+      name: 'Viewport Link',
+    })
+    const initialIoCallback = ioCallback
+    vi.useFakeTimers()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Change destination' }))
+    expect(viewportLink).toHaveAttribute('href', '/other')
+    expect(ioCallback).not.toBe(initialIoCallback)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Change destination' }))
+    expect(viewportLink).toHaveAttribute('href', '/about')
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(1)
+    expect(preloadRouteSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ to: '/about' }),
+    )
+
+    preloadRouteSpy.mockClear()
+    fireEvent.click(screen.getByRole('button', { name: 'Use intent' }))
+    fireEvent.mouseEnter(viewportLink)
+    fireEvent.click(screen.getByRole('button', { name: 'Disable preload' }))
+    fireEvent.mouseLeave(viewportLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {

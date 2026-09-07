@@ -66,9 +66,8 @@ export function usePrevious<T>(value: T): T | null {
  * When the intersection changes, the callback will be called with the `IntersectionObserverEntry`.
  *
  * @param ref - The ref to observe
- * @param intersectionObserverOptions - The options to pass to the IntersectionObserver
- * @param disabled - Whether observation is disabled
  * @param callback - The callback to call when the intersection changes
+ * @param disabled - Whether observation is disabled
  * @returns The IntersectionObserver instance
  * @example
  * ```tsx
@@ -77,7 +76,6 @@ export function usePrevious<T>(value: T): T | null {
  * useIntersectionObserver(
  *  ref,
  *  (entry) => { doSomething(entry) },
- *  { rootMargin: '10px' },
  *  false
  * )
  * return <div ref={ref} />
@@ -85,8 +83,7 @@ export function usePrevious<T>(value: T): T | null {
  */
 export function useIntersectionObserver<T extends Element>(
   ref: React.RefObject<T | null>,
-  callback: (entry: IntersectionObserverEntry | undefined) => void,
-  intersectionObserverOptions: IntersectionObserverInit = {},
+  callback: (entry?: IntersectionObserverEntry) => void,
   disabled?: boolean,
 ) {
   React.useEffect(() => {
@@ -95,19 +92,23 @@ export function useIntersectionObserver<T extends Element>(
       disabled ||
       typeof IntersectionObserver !== 'function'
     ) {
-      return
+      return () => callback()
     }
 
-    const observer = new IntersectionObserver(([entry]) => {
-      callback(entry)
-    }, intersectionObserverOptions)
+    const observer = new IntersectionObserver(
+      (entries) => {
+        callback(entries.pop())
+      },
+      { rootMargin: '100px' },
+    )
 
     observer.observe(ref.current)
 
     return () => {
       observer.disconnect()
+      callback()
     }
-  }, [callback, disabled, intersectionObserverOptions, ref])
+  }, [callback, disabled, ref])
 }
 
 /**

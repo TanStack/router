@@ -1,4 +1,3 @@
-import React from 'react'
 import { createRouter } from '@tanstack/solid-router'
 
 // Import the generated route tree

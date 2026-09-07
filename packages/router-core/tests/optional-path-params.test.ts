@@ -169,6 +169,30 @@ describe('Optional Path Parameters', () => {
           { type: SEGMENT_TYPE_OPTIONAL_PARAM, value: 'day' },
         ],
       },
+      {
+        name: 'unclosed optional param is static',
+        to: '/{-$slug',
+        expected: [
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '{-$slug' },
+        ],
+      },
+      {
+        name: 'empty optional param is static',
+        to: '/{-$}',
+        expected: [
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: '{-$}' },
+        ],
+      },
+      {
+        name: 'unmatched closing brace is static',
+        to: '/foo}bar$',
+        expected: [
+          { type: SEGMENT_TYPE_PATHNAME, value: '' },
+          { type: SEGMENT_TYPE_PATHNAME, value: 'foo}bar$' },
+        ],
+      },
     ] satisfies ParsePathnameTestScheme)('$name', ({ to, expected }) => {
       const result = parsePathname(to)
       expect(result).toEqual(expected)

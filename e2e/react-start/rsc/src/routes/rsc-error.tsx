@@ -81,7 +81,7 @@ export const Route = createFileRoute('/rsc-error')({
   component: RscErrorComponent,
 })
 
-function RouteErrorComponent({ error }: { error: Error }) {
+function RouteErrorComponent({ error }: { error: unknown }) {
   return (
     <div style={pageStyles.container}>
       <h1 data-testid="rsc-error-title" style={pageStyles.title}>
@@ -122,7 +122,7 @@ function RouteErrorComponent({ error }: { error: Error }) {
               style={{ margin: 0, color: '#991b1b' }}
               data-testid="error-message"
             >
-              {error.message}
+              {error instanceof Error ? error.message : String(error)}
             </h2>
           </div>
         </div>

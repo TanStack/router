@@ -5,7 +5,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 const outDir = process.env.E2E_DIST_DIR ?? 'dist-rsbuild-ssr'
 
 export default defineConfig({
-  plugins: [pluginReact({ splitChunks: false }), tanstackStart()],
+  plugins: [pluginReact(), tanstackStart()],
   output: {
     distPath: {
       root: outDir,

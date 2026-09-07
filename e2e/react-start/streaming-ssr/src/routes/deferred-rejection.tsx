@@ -14,7 +14,9 @@ export const Route = createFileRoute('/deferred-rejection')({
     }
   },
   errorComponent: ({ error }) => (
-    <div data-testid="deferred-error-boundary">{error.message}</div>
+    <div data-testid="deferred-error-boundary">
+      {error instanceof Error ? error.message : String(error)}
+    </div>
   ),
   component: DeferredRejection,
 })

@@ -1,5 +1,6 @@
 import * as Vue from 'vue'
 import { DefaultGlobalNotFound } from './not-found'
+import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { AnyRoute, AnyRouter } from '@tanstack/router-core'
 
 /**
@@ -17,7 +18,13 @@ export function renderRouteNotFound(
 ): Vue.VNode {
   if (!route.options.notFoundComponent) {
     if (router.options.defaultNotFoundComponent) {
-      return Vue.h(router.options.defaultNotFoundComponent, data)
+      return process.env.NODE_ENV !== 'production'
+        ? renderInNonRouteComponentContext(
+            router.options.defaultNotFoundComponent,
+            data,
+            'notFoundComponent',
+          )
+        : Vue.h(router.options.defaultNotFoundComponent, data)
     }
 
     if (process.env.NODE_ENV !== 'production') {
@@ -31,5 +38,11 @@ export function renderRouteNotFound(
     return Vue.h(DefaultGlobalNotFound)
   }
 
-  return Vue.h(route.options.notFoundComponent, data)
+  return process.env.NODE_ENV !== 'production'
+    ? renderInNonRouteComponentContext(
+        route.options.notFoundComponent,
+        data,
+        'notFoundComponent',
+      )
+    : Vue.h(route.options.notFoundComponent, data)
 }

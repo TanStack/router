@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/nitro-v2-vite-plugin",
-  "version": "1.155.0",
+  "version": "1.155.1",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -65,5 +65,12 @@
   },
   "peerDependencies": {
     "vite": ">=7.0.0"
+  },
+  "devDependencies": {
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   }
 }

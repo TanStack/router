@@ -1,5 +1,11 @@
 # @tanstack/router-ssr-query-core
 
+## 1.169.2
+
+### Patch Changes
+
+- [#8175](https://github.com/TanStack/router/pull/8175) [`79e3533`](https://github.com/TanStack/router/commit/79e35335b4bb1c3b5e2275a8df5181aa05036628) - Dehydrate only queries for SSR transport, preserve pending-query promises, batch render-time query streaming, and clean up request-owned QueryClient resources.
+
 ## 1.169.1
 
 ### Patch Changes

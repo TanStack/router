@@ -73,7 +73,11 @@ test('#6371: initial search defaults produce one live canonical loader', async (
     ),
     errorComponent: ({ error }) => {
       errorComponentRendered(error)
-      return <div data-testid="about-error">{error.message}</div>
+      return (
+        <div data-testid="about-error">
+          {error instanceof Error ? error.message : String(error)}
+        </div>
+      )
     },
   })
   const history = createMemoryHistory({ initialEntries: ['/about'] })

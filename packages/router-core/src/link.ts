@@ -677,9 +677,9 @@ export interface LinkOptionsProps {
    */
   preload?: false | 'intent' | 'viewport' | 'render'
   /**
-   * When the intent preload strategy is set, this delays focus and hover
-   * preloading by this many milliseconds. Touch intent preloads immediately.
-   * If focus or hover exits before this delay, the preload will be cancelled.
+   * Delays focus, hover, and viewport preloading by this many milliseconds.
+   * Touch intent preloads immediately. If focus or hover ends, or the link
+   * leaves the viewport before this delay, the preload will be cancelled.
    */
   preloadDelay?: number
   /**

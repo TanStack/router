@@ -16,7 +16,7 @@
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-start": "workspace:^",
     "@tanstack/virtual-file-routes": "workspace:^",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "solid-js": "^1.9.10",
     "tailwind-merge": "^3.6.0",
     "zod": "^4.4.3"

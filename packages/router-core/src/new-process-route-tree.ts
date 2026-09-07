@@ -1,7 +1,7 @@
 import { invariant } from './invariant'
-import { createLRUCache } from './lru-cache'
+import { createSieveCache } from './sieve-cache'
 import { last } from './utils'
-import type { LRUCache } from './lru-cache'
+import type { SieveCache } from './sieve-cache'
 
 export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
@@ -26,18 +26,6 @@ type ExtendedSegmentKind =
   | SegmentKind
   | typeof SEGMENT_TYPE_INDEX
   | typeof SEGMENT_TYPE_PATHLESS
-
-function getOpenAndCloseBraces(
-  part: string,
-): [openBrace: number, closeBrace: number] | null {
-  const openBrace = part.indexOf('{')
-  if (openBrace === -1) return null
-  const closeBrace = part.indexOf('}', openBrace)
-  if (closeBrace === -1) return null
-  const afterOpen = openBrace + 1
-  if (afterOpen >= part.length) return null
-  return [openBrace, closeBrace]
-}
 
 type ParsedSegment = Uint16Array & {
   /** segment type (0 = pathname, 1 = param, 2 = wildcard, 3 = optional param) */
@@ -116,9 +104,13 @@ export function parseSegment(
     return output as ParsedSegment
   }
 
-  const braces = getOpenAndCloseBraces(part)
-  if (braces) {
-    const [openBrace, closeBrace] = braces
+  const openBrace = part.indexOf('{')
+  let closeBrace
+  if (
+    openBrace !== -1 &&
+    openBrace + 1 < part.length &&
+    (closeBrace = part.indexOf('}', openBrace)) !== -1
+  ) {
     const firstChar = part.charCodeAt(openBrace + 1)
 
     // Check for {-$...} (optional param)
@@ -245,20 +237,13 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_PARAM:
         case SEGMENT_TYPE_OPTIONAL_PARAM:
         case SEGMENT_TYPE_WILDCARD: {
-          const prefix_raw = path.substring(start, segment[1])
-          const suffix_raw = path.substring(segment[4], end)
-          const actuallyCaseSensitive =
-            caseSensitive && !!(prefix_raw || suffix_raw)
-          const prefix = !prefix_raw
-            ? undefined
-            : actuallyCaseSensitive
-              ? prefix_raw
-              : prefix_raw.toLowerCase()
-          const suffix = !suffix_raw
-            ? undefined
-            : actuallyCaseSensitive
-              ? suffix_raw
-              : suffix_raw.toLowerCase()
+          let prefix = path.substring(start, segment[1])
+          let suffix = path.substring(segment[4], end)
+          const actuallyCaseSensitive = caseSensitive && !!(prefix || suffix)
+          if (!caseSensitive) {
+            prefix = prefix.toLowerCase()
+            suffix = suffix.toLowerCase()
+          }
           const siblings =
             kind === SEGMENT_TYPE_PARAM
               ? node.dynamic
@@ -365,15 +350,15 @@ function parseSegments<TRouteLike extends RouteLike>(
 
 function sortDynamic(
   a: {
-    prefix?: string
-    suffix?: string
+    prefix: string
+    suffix: string
     caseSensitive: boolean
     parse: null | ((params: Record<string, string>) => unknown)
     priority: number
   },
   b: {
-    prefix?: string
-    suffix?: string
+    prefix: string
+    suffix: string
     caseSensitive: boolean
     parse: null | ((params: Record<string, string>) => unknown)
     priority: number
@@ -434,8 +419,8 @@ function createDynamicNode<T extends RouteLike>(
     | typeof SEGMENT_TYPE_OPTIONAL_PARAM,
   fullPath: string,
   caseSensitive: boolean,
-  prefix?: string,
-  suffix?: string,
+  prefix: string,
+  suffix: string,
 ): DynamicSegmentNode<T> {
   return {
     kind,
@@ -470,8 +455,8 @@ type DynamicSegmentNode<T extends RouteLike> = SegmentNode<T> & {
     | typeof SEGMENT_TYPE_PARAM
     | typeof SEGMENT_TYPE_WILDCARD
     | typeof SEGMENT_TYPE_OPTIONAL_PARAM
-  prefix?: string
-  suffix?: string
+  prefix: string
+  suffix: string
   caseSensitive: boolean
 }
 
@@ -550,11 +535,11 @@ export type ProcessedTree<
   /** a mini route tree generated from the flat `routeMasks` list */
   masksTree: AnySegmentNode<TFlat> | null
   /** @deprecated keep until v2 so that `router.matchRoute` can keep not caring about the actual route tree */
-  singleCache: LRUCache<string, AnySegmentNode<TSingle>>
+  singleCache: SieveCache<string, AnySegmentNode<TSingle>>
   /** a cache of route matches from the `segmentTree` */
-  matchCache: LRUCache<string, RouteMatch<TTree> | null>
+  matchCache: SieveCache<string, RouteMatch<TTree> | null>
   /** a cache of route matches from the `masksTree` */
-  flatCache: LRUCache<string, ReturnType<typeof findMatch<TFlat>>> | null
+  flatCache: SieveCache<string, ReturnType<typeof findMatch<TFlat>>> | null
 }
 
 export function processRouteMasks<
@@ -573,7 +558,7 @@ export function processRouteMasks<
     nodes.sort(sortDynamic)
   }
   processedTree.masksTree = segmentTree
-  processedTree.flatCache = createLRUCache<
+  processedTree.flatCache = createSieveCache<
     string,
     ReturnType<typeof findMatch<TRouteLike>>
   >(1000)
@@ -590,7 +575,7 @@ export function findFlatMatch<T extends Extract<RouteLike, { from: string }>>(
 ) {
   path ||= '/'
   const cached = processedTree.flatCache!.get(path)
-  if (cached) return cached
+  if (cached !== undefined) return cached
   const result = findMatch(path, processedTree.masksTree!)
   processedTree.flatCache!.set(path, result)
   return result
@@ -736,8 +721,8 @@ export function processRouteTree<
   }
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
-    singleCache: createLRUCache<string, AnySegmentNode<any>>(1000),
-    matchCache: createLRUCache<string, RouteMatch<TRouteLike> | null>(1000),
+    singleCache: createSieveCache<string, AnySegmentNode<any>>(1000),
+    matchCache: createSieveCache<string, RouteMatch<TRouteLike> | null>(1000),
     flatCache: null,
     masksTree: null,
   }
@@ -826,12 +811,12 @@ function extractParams<T extends RouteLike>(
     if (node.kind === SEGMENT_TYPE_PARAM) {
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[segmentCount]!
-      const preLength = node.prefix?.length ?? 0
+      const preLength = node.prefix.length
       // we can't rely on the presence of prefix/suffix to know whether it's curly-braced or not, because `/{$param}/` is valid, but has no prefix/suffix
       const isCurlyBraced = nodePart.charCodeAt(preLength) === 123 // '{'
       // param name is extracted at match-time so that tree nodes that are identical except for param name can share the same node
       if (isCurlyBraced) {
-        const sufLength = node.suffix?.length ?? 0
+        const sufLength = node.suffix.length
         const name = nodePart.substring(
           preLength + 2,
           nodePart.length - sufLength - 1,
@@ -850,8 +835,8 @@ function extractParams<T extends RouteLike>(
       }
       nodeParts ??= leaf.node.fullPath.split('/')
       const nodePart = nodeParts[segmentCount]!
-      const preLength = node.prefix?.length ?? 0
-      const sufLength = node.suffix?.length ?? 0
+      const preLength = node.prefix.length
+      const sufLength = node.suffix.length
       const name = nodePart.substring(
         preLength + 3,
         nodePart.length - sufLength - 1,
@@ -864,8 +849,8 @@ function extractParams<T extends RouteLike>(
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
       const value = path.substring(
-        currentPathIndex + (n.prefix?.length ?? 0),
-        path.length - (n.suffix?.length ?? 0),
+        currentPathIndex + n.prefix.length,
+        path.length - n.suffix.length,
       )
       const splat = decodeURIComponent(value)
       // TODO: Deprecate *
@@ -1069,9 +1054,17 @@ function getNodeMatch<T extends RouteLike>(
         }
         if (suffix) {
           if (isBeyondPath) continue
-          const end = parts.slice(index).join('/').slice(-suffix.length)
-          const casePart = segment.caseSensitive ? end : end.toLowerCase()
-          if (casePart !== suffix) continue
+          const end = parts.slice(index).join('/')
+          const suffixPart = end.slice(-suffix.length)
+          const casePart = segment.caseSensitive
+            ? suffixPart
+            : suffixPart.toLowerCase()
+          if (
+            casePart !== suffix ||
+            end.length - suffix.length < prefix.length
+          ) {
+            continue
+          }
         }
         // wildcard matches consume the rest of the URL and cannot have children
         stack.push({
@@ -1114,7 +1107,13 @@ function getNodeMatch<T extends RouteLike>(
               ? part!
               : (lowerPart ??= part!.toLowerCase())
             if (prefix && !casePart.startsWith(prefix)) continue
-            if (suffix && !casePart.endsWith(suffix)) continue
+            if (
+              suffix &&
+              casePart.indexOf(suffix, casePart.length - suffix.length) <
+                prefix.length
+            ) {
+              continue
+            }
           }
           stack.push({
             node: segment,
@@ -1140,7 +1139,13 @@ function getNodeMatch<T extends RouteLike>(
             ? part
             : (lowerPart ??= part.toLowerCase())
           if (prefix && !casePart.startsWith(prefix)) continue
-          if (suffix && !casePart.endsWith(suffix)) continue
+          if (
+            suffix &&
+            casePart.indexOf(suffix, casePart.length - suffix.length) <
+              prefix.length
+          ) {
+            continue
+          }
         }
         stack.push({
           node: segment,

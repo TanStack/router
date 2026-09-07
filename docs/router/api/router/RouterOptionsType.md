@@ -59,7 +59,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 - Type: `number`
 - Optional
 - Defaults to `50`
-- The delay in milliseconds that a route must be hovered over or touched before it is preloaded.
+- The delay in milliseconds before intent focus/hover and viewport preloading. Touch intent preloads immediately.
 
 ### `defaultComponent` property
 
@@ -141,7 +141,7 @@ The `RouterOptions` type accepts an object with the following properties and met
 
 ### `defaultOnCatch` property
 
-- Type: `(error: Error, errorInfo: ErrorInfo) => void`
+- Type: `(error: unknown, errorInfo: ErrorInfo) => void`
 - Optional
 - The default `onCatch` handler for errors caught by the Router ErrorBoundary
 

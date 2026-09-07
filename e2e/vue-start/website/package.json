@@ -15,7 +15,7 @@
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "tailwind-merge": "^3.6.0",
     "vue": "^3.5.25",
     "zod": "^4.4.3"

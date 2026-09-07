@@ -22,9 +22,10 @@ export function lazyRouteComponent<
       error = undefined
       loadPromise = importer()
         .then((res) => {
-          // Keep browser preload behavior unchanged; SSR can reuse the import.
+          // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
             loadPromise = undefined
+            ;(lazyComp as any).preload = undefined
           }
           comp = res[exportName ?? 'default']
           return comp
@@ -37,7 +38,6 @@ export function lazyRouteComponent<
 
     return loadPromise
   }
-
   const lazyComp = function Lazy(props: any) {
     // Now that we're out of preload and into actual render path,
     // throw the error if it was a module not found error during preload

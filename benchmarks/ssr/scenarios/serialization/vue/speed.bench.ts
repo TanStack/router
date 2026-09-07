@@ -1,11 +1,10 @@
 import { bench, describe } from 'vitest'
 import {
   assertSerializationScenario,
-  runPlainSerializationLoop,
   runRichSerializationLoop,
   serializationBenchOptions,
-  type StartRequestHandler,
 } from '../shared-bench'
+import type { StartRequestHandler } from '../shared-bench'
 
 const appModuleUrl = new URL('./dist/server/server.js', import.meta.url).href
 
@@ -21,12 +20,6 @@ describe('ssr', () => {
   bench(
     'ssr dehydrate rich types (vue)',
     () => runRichSerializationLoop(handler),
-    serializationBenchOptions,
-  )
-
-  bench(
-    'ssr dehydrate plain control (vue)',
-    () => runPlainSerializationLoop(handler),
     serializationBenchOptions,
   )
 })

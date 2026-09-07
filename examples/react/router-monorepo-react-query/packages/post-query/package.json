@@ -9,7 +9,7 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",
-    "redaxios": "^0.5.1",
+    "redaxios": "catalog:",
     "zod": "^4.4.3"
   },
   "devDependencies": {

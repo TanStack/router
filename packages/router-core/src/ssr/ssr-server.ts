@@ -6,7 +6,7 @@ import {
   getStylesheetHref,
 } from '../manifest'
 import { decodePath } from '../utils'
-import { createLRUCache } from '../lru-cache'
+import { createSieveCache } from '../sieve-cache'
 import { rootRouteId } from '../root'
 import { _getRenderedMatches } from '../load-client'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
@@ -14,7 +14,7 @@ import { GLOBAL_TSR, TSR_SCRIPT_BARRIER_ID } from './constants'
 import { dehydrateSsrMatchId } from './ssr-match-id'
 import { defaultSerovalPlugins } from './serializer/seroval-plugins'
 import { makeSsrSerovalPlugin } from './serializer/transformer'
-import type { LRUCache } from '../lru-cache'
+import type { SieveCache } from '../sieve-cache'
 import type { DehydratedMatch, DehydratedRouter } from './types'
 import type { AnySerializationAdapter } from './serializer/transformer'
 import type { AnyRouter, ServerSsr } from '../router'
@@ -175,15 +175,15 @@ type PreparedMatchedManifestRoutes = {
   inlineCss?: string
 }
 
-type ManifestLRU = LRUCache<string, PreparedMatchedManifestRoutes>
+type ManifestCache = SieveCache<string, PreparedMatchedManifestRoutes>
 
 const MANIFEST_CACHE_SIZE = 100
-const manifestCaches = new WeakMap<ServerManifest, ManifestLRU>()
+const manifestCaches = new WeakMap<ServerManifest, ManifestCache>()
 
-function getManifestCache(manifest: ServerManifest): ManifestLRU {
+function getManifestCache(manifest: ServerManifest): ManifestCache {
   const cache = manifestCaches.get(manifest)
   if (cache) return cache
-  const newCache = createLRUCache<string, PreparedMatchedManifestRoutes>(
+  const newCache = createSieveCache<string, PreparedMatchedManifestRoutes>(
     MANIFEST_CACHE_SIZE,
   )
   manifestCaches.set(manifest, newCache)

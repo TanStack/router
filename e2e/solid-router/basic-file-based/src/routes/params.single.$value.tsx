@@ -1,6 +1,4 @@
-import { createFileRoute } from '@tanstack/solid-router'
-import * as React from 'react'
-import { Link } from '@tanstack/solid-router'
+import { Link, createFileRoute } from '@tanstack/solid-router'
 
 export const Route = createFileRoute('/params/single/$value')({
   component: RouteComponent,

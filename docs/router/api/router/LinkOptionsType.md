@@ -42,7 +42,7 @@ The `LinkOptions` object accepts/contains the following properties:
 
 - Type: `number`
 - Optional
-- Delay focus and hover intent preloading by this many milliseconds. Touch intent preloads immediately. If focus or hover exits before the delay, the preload will be cancelled.
+- Delay focus, hover, and viewport preloading by this many milliseconds. Touch intent preloads immediately. If focus or hover ends, or the link leaves the viewport before the delay, the preload will be cancelled.
 
 ### `disabled`
 

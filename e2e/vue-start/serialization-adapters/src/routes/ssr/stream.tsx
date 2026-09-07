@@ -13,7 +13,9 @@ export const Route = createFileRoute('/ssr/stream')({
     }
   },
 
-  errorComponent: (e) => <div>{e.error.message} </div>,
+  errorComponent: (e) => (
+    <div>{e.error instanceof Error ? e.error.message : String(e.error)} </div>
+  ),
   component: RouteComponent,
 })
 

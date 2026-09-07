@@ -30,17 +30,17 @@
     "build": "vite build && tsc --noEmit"
   },
   "type": "module",
-  "types": "dist/esm/src/index.d.ts",
+  "types": "dist/esm/index.d.ts",
   "main": "dist/cjs/index.cjs",
   "module": "dist/esm/index.js",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/esm/src/index.d.ts",
+        "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"
       },
       "require": {
-        "types": "./dist/cjs/src/index.d.cts",
+        "types": "./dist/cjs/index.d.cts",
         "default": "./dist/cjs/index.cjs"
       }
     },
@@ -58,7 +58,12 @@
   "devDependencies": {
     "@typescript-eslint/rule-tester": "^8.44.1",
     "eslint": "^9.22.0",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.2",
+    "@tanstack/vite-config": "catalog:",
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:",
+    "publint": "catalog:",
+    "rimraf": "catalog:"
   },
   "peerDependencies": {
     "eslint": "^8.57.0 || ^9.0.0 || ^10.0.0",

@@ -1,5 +1,85 @@
 # @tanstack/router-core
 
+## 1.171.28
+
+### Patch Changes
+
+- [#8222](https://github.com/TanStack/router/pull/8222) [`edf0e16`](https://github.com/TanStack/router/commit/edf0e16ebfe82ec6e8f68f403a1fda8de9e28889) - Make each load transaction's completion follow its current successor so a burst of back-to-back loads wakes each superseded waiter once instead of once per successor. Previously every superseded `load()` re-polled the current transaction on each later completion, which was quadratic in microtask work.
+
+- [#8165](https://github.com/TanStack/router/pull/8165) [`2f20c00`](https://github.com/TanStack/router/commit/2f20c00224c5ba63467551914e0c37012588c4c2) - Exclude structural descendants below error and not-found boundaries from route lifecycle callbacks. Preserve lifecycle membership through invalidation, hydration, background reloads, and superseded navigation publication.
+
+- [#8209](https://github.com/TanStack/router/pull/8209) [`28a5e45`](https://github.com/TanStack/router/commit/28a5e4504e4ea5cb1480667a4bea2588a53e110f) - Preserve falsy thrown values in React and Vue error boundaries. Type React and Vue boundary error components and `onCatch` callbacks as `unknown`. Solid boundary errors remain typed as `Error`; SSR now wraps non-`Error` loader errors to match Solid’s native boundary behavior, preserving the original value in `cause`. Router state and loader `onError` values are unchanged.
+
+  When upgrading React or Vue, narrow boundary errors (for example, with `error instanceof Error`) before reading `message` or `stack`. `ErrorComponentProps<TError>` remains available for values narrowed to a specific error type. Route `onError` types are unchanged.
+
+- [#8207](https://github.com/TanStack/router/pull/8207) [`08eff50`](https://github.com/TanStack/router/commit/08eff50c447a154a3373909009e9e4375cea17ce) - Fix consumer typechecking with `skipLibCheck: false` by omitting the internal beforeLoad context field from published dehydrated match declarations.
+
+  Retain the exported `isAbsoluteUrl` declaration used by framework bindings so the package entry point does not reference a stripped symbol.
+
+- [#8259](https://github.com/TanStack/router/pull/8259) [`216c0c4`](https://github.com/TanStack/router/commit/216c0c48036fd1a33163b70dcabfed2b893808b0) - Reduce Promise allocations during client navigation and static server SSR policy resolution. Skip cancellable waits for synchronous beforeLoad results while preserving navigation cancellation.
+
+- [#8240](https://github.com/TanStack/router/pull/8240) [`2f91503`](https://github.com/TanStack/router/commit/2f9150309bc472f4a75cbe98adcdb50c76b12c7a) - Avoid quadratic resource handoff scans when navigating with many cached route matches.
+
+- [#8161](https://github.com/TanStack/router/pull/8161) [`f0b5eda`](https://github.com/TanStack/router/commit/f0b5eda544606686a8a8d675a686ca1366428b96) - Retain successful not-found matches as terminal shared boundaries during client navigation, preserving route context while the destination loads.
+
+- [#8142](https://github.com/TanStack/router/pull/8142) [`50eafca`](https://github.com/TanStack/router/commit/50eafcaebbbedb6fde3b2816de7a0ace8cde4832) - Avoid unnecessary JSON.parse calls for search parameter values that cannot begin valid JSON, while preserving custom parser behavior.
+
+- [#8251](https://github.com/TanStack/router/pull/8251) [`0497cae`](https://github.com/TanStack/router/commit/0497caeef3ff7e1c1c6080eca38bca24e7ec320b) - Use URL.canParse for absolute URL checks in links, navigation, redirects, and build configuration. Preserve a URL constructor fallback for older browsers.
+
+- [#8230](https://github.com/TanStack/router/pull/8230) [`ee28348`](https://github.com/TanStack/router/commit/ee283480dfa51150a2e0b096a6eff94a89ff8b3f) - Replace the internal LRU cache behind path resolution, route matching and the SSR manifest lookup with a smaller SIEVE cache whose hits no longer relink a list, and fix an eviction edge case in the old implementation.
+
+- [#8244](https://github.com/TanStack/router/pull/8244) [`c18e690`](https://github.com/TanStack/router/commit/c18e69081475a7c98f9d40bd0fe6da78ccb84598) - Reduce promise allocations during client navigation when loader data and route components are already available.
+
+- Updated dependencies [[`9035abc`](https://github.com/TanStack/router/commit/9035abc41163d83409ef582f7743a3c7be57dd93)]:
+  - @tanstack/history@1.162.2
+
+## 1.171.27
+
+### Patch Changes
+
+- [#8132](https://github.com/TanStack/router/pull/8132) [`fa65287`](https://github.com/TanStack/router/commit/fa652872812c9433ba8b9d9a285e51b535e7367c) - Build client preload locations on demand and remove the prebuilt-location argument used by framework links.
+
+- [#8130](https://github.com/TanStack/router/pull/8130) [`cb281d7`](https://github.com/TanStack/router/commit/cb281d70c1f5fe780f9d07bc500ea3a284a4e04b) - preserve context during reloads
+
+## 1.171.26
+
+### Patch Changes
+
+- [#8117](https://github.com/TanStack/router/pull/8117) [`3e016ac`](https://github.com/TanStack/router/commit/3e016ac84ffec8119f0c25cfdd1fb17e5292bd34) - optimize buildLocation path resolution https://github.com/TanStack/router/pull/8108
+  skip building search validation when disabled https://github.com/TanStack/router/pull/8112
+  skip location state sharing when impossible https://github.com/TanStack/router/pull/8110
+  fix cache hits for mask resolution when entry is null https://github.com/TanStack/router/pull/8111
+
+## 1.171.25
+
+### Patch Changes
+
+- [#8084](https://github.com/TanStack/router/pull/8084) [`5d3785d`](https://github.com/TanStack/router/commit/5d3785dcc366b66b1c261b5d01e66af778ff1175) - preserve pending UI across retained routes
+
+- [#8092](https://github.com/TanStack/router/pull/8092) [`63d2cc9`](https://github.com/TanStack/router/commit/63d2cc9155ff5374112f7d067d0b278bafeb8486) - Render route errors when redirect target construction fails and let successor transactions own navigation and HMR presentation.
+
+## 1.171.24
+
+### Patch Changes
+
+- [#8071](https://github.com/TanStack/router/pull/8071) [`4c89b15`](https://github.com/TanStack/router/commit/4c89b15dd2b46491ee5e57985559bae8e31d62c2) - inline getOpenAndCloseBraces in parseSegment for byte shaving
+
+- [#8069](https://github.com/TanStack/router/pull/8069) [`cf6ab17`](https://github.com/TanStack/router/commit/cf6ab178b39e7628bf784759f384e0f4230e6d9e) - inline isFunction utility fn for byte shaving
+
+- [#8070](https://github.com/TanStack/router/pull/8070) [`bdaf73a`](https://github.com/TanStack/router/commit/bdaf73a4063ee2b02e3c9cc105ad10ce82a5a0ff) - inline buildWithMatches inside buildLocation for byte shaving
+
+## 1.171.23
+
+### Patch Changes
+
+- [#8054](https://github.com/TanStack/router/pull/8054) [`31882c7`](https://github.com/TanStack/router/commit/31882c7fa87debef236228831655cb112c20ce90) - Reuse resolved lazy route components when revisiting code-split routes, preventing unnecessary pending UI.
+
+## 1.171.22
+
+### Patch Changes
+
+- [#8039](https://github.com/TanStack/router/pull/8039) [`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13) - load-client can cache settles abandonned loader work without preload authority
+
 ## 1.171.21
 
 ### Patch Changes

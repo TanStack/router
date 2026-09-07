@@ -684,7 +684,7 @@ test.describe('react-start hmr', () => {
     await expect(page.getByTestId('child')).toHaveText('child')
   })
 
-  test('rolls back a failed route refresh and accepts the next HMR update', async ({
+  test('publishes a failed route refresh and accepts the next HMR update', async ({
     page,
   }) => {
     await page.goto('/child')
@@ -712,7 +712,7 @@ test.describe('react-start hmr', () => {
       },
     )
 
-    await expect(page.getByTestId('crumb-/child')).toHaveText('Child')
+    await expect(page.getByTestId('crumb-/child')).toHaveText('Child Failed')
     await expect(page.getByTestId('root-message')).toHaveValue(
       'preserved through failure',
     )

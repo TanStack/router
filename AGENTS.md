@@ -1,5 +1,9 @@
 # AGENTS.md
 
+Read and follow [`CONTRIBUTING.md`](./CONTRIBUTING.md) before analyzing or
+changing this repository. Its contribution and pull request requirements apply
+to AI-assisted work.
+
 ## Project overview
 
 TanStack Router is a type-safe router with built-in caching and URL state management for React and Solid applications. This monorepo contains two main products:

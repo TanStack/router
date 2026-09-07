@@ -92,6 +92,29 @@ describe('buildLocation - route masks', () => {
     expect(location.pathname).toBe('/photos/123/modal')
   })
 
+  test('should prefer an explicit mask over a configured route mask', () => {
+    const routeMasks: Array<RouteMask<any>> = [
+      {
+        routeTree: null as any,
+        from: '/photos/$photoId/modal',
+        to: '/photos/$photoId',
+        params: () => {
+          throw new Error('Configured mask should not be applied')
+        },
+      },
+    ]
+    const router = setup(routeMasks)
+
+    const location = router.buildLocation({
+      to: '/photos/$photoId/modal',
+      params: { photoId: '123' },
+      mask: { to: '/posts' },
+    })
+
+    expect(location.pathname).toBe('/photos/123/modal')
+    expect(location.maskedLocation?.pathname).toBe('/posts')
+  })
+
   test('should set params to {} when maskParams is false', () => {
     const routeMasks: Array<RouteMask<any>> = [
       {
