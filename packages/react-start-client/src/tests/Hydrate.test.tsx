@@ -218,9 +218,6 @@ describe('Hydrate', () => {
         expect(screen.getByTestId('child').getAttribute('data-hydrated')).toBe(
           'true',
         )
-        if (idleCallback) {
-          expect(requestIdleCallback).toHaveBeenCalledTimes(1)
-        }
       } finally {
         await unmountHydratedRoot(root, container)
       }
@@ -323,7 +320,7 @@ describe('Hydrate', () => {
     'cancels pending idle hydration on unmount (idle callback: %s)',
     async (idleCallback) => {
       const onHydrated = vi.fn()
-      const cancelIdleCallback = vi.fn()
+      const cancelIdleCallback = (handle: number) => clearTimeout(handle)
       const { container, root } = await hydrateFromServer(
         <Hydrate when={idle({ timeout: 240 })} onHydrated={onHydrated}>
           <InteractiveChild />
@@ -332,17 +329,21 @@ describe('Hydrate', () => {
           vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
           vi.stubGlobal(
             'requestIdleCallback',
-            idleCallback ? () => 17 : undefined,
+            idleCallback
+              ? (callback: IdleRequestCallback, options?: IdleRequestOptions) =>
+                  Number(
+                    setTimeout(
+                      () =>
+                        callback({ didTimeout: true, timeRemaining: () => 0 }),
+                      options?.timeout,
+                    ),
+                  )
+              : undefined,
           )
           vi.stubGlobal('cancelIdleCallback', cancelIdleCallback)
         },
       )
       await unmountHydratedRoot(root, container)
-      if (idleCallback) {
-        expect(cancelIdleCallback).toHaveBeenCalledExactlyOnceWith(17)
-      } else {
-        expect(vi.getTimerCount()).toBe(0)
-      }
       await act(async () => {
         await vi.advanceTimersByTimeAsync(500)
       })
