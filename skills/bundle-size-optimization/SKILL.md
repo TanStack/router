@@ -67,7 +67,7 @@ For named results, pass `--current benchmarks/bundle-size/results/runs/<name>/cu
 - Before finalizing, run the full bundle-size benchmark without `--scenario` and compare all scenarios. Look for outliers/anomalies even when the targeted scenario improved.
 - Benchmark the changed mechanism directly, not just the public API around it.
 - Confirm the affected code survives into the measured scenario. If stock scenarios omit an optional feature such as deferred hydration or RSC, add a focused supported consumer and measure its cost separately; unchanged stock totals do not establish zero cost for that feature.
-- For runtime/vendor chunk layout changes, follow the [chunk caching and deployment checks](../../.github/agent-guides/performance.md#chunk-caching-and-deployment-recovery). Measure cold-load cost separately from repeat-deployment savings; a favorable transfer result does not establish faster loading.
+- For runtime/vendor chunk layout changes, follow the [chunk caching and deployment checks](../performance-review/references/checks.md#chunk-caching-and-deployment-recovery). Measure cold-load cost separately from repeat-deployment savings; a favorable transfer result does not establish faster loading.
 - Keep broad realistic scenarios as smoke/regression coverage; use focused cases for proof.
 - Compare baseline and current with the same benchmark file; isolate the builds so only the implementation differs.
 - Run noisy benchmark families separately with `-t <pattern>`; all-in-one suites can perturb tiny operations.
@@ -131,7 +131,7 @@ Useful patterns: remove prod-only strings, remove unused exports, flatten wrappe
 
 Rolldown removes code only when unused and side-effect-free. Property reads may trigger getters; storage/global access can observe or throw.
 
-Validate annotation support and emitted effects with the installed bundler/minifier. For Webpack, use the [shipped-graph checks](../../.github/agent-guides/performance.md#build-tool-checks), including unused-import removal, required CSS/global effects, and one-time initialization across eager/lazy chunks.
+Validate annotation support and emitted effects with the installed bundler/minifier. For Webpack, use the [shipped-graph checks](../performance-review/references/checks.md#build-tool-checks), including unused-import removal, required CSS/global effects, and one-time initialization across eager/lazy chunks.
 
 | Annotation                                | Valid                                                                       | Unsafe                                                                             |
 | ----------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |

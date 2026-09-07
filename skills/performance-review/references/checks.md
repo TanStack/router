@@ -1,8 +1,8 @@
 # Performance checks
 
-Reference for the [performance-review skill](../../skills/performance-review/SKILL.md). Read the sections relevant to the changed mechanism and affected consumers; the skill defines the investigation procedure.
+Reference for the [performance-review skill](../SKILL.md). Read the sections relevant to the changed mechanism and affected consumers; the skill defines the investigation procedure.
 
-Select the existing workload for [client navigation](../../benchmarks/client-nav/README.md), [Start SSR](../../benchmarks/ssr/README.md), or [memory](../../benchmarks/memory/README.md). Compare identical baseline/candidate workloads and add coverage when existing scenarios miss the changed mechanism. There is no aggregate build-CPU benchmark in that set: use the build-tool checks below. For hydration, RPC, paint, or real HTTP behavior, use the affected browser/app workload and the browser/server measurement procedure. For inference cost, use the TypeScript procedure.
+Select the existing workload for [client navigation](../../../benchmarks/client-nav/README.md), [Start SSR](../../../benchmarks/ssr/README.md), or [memory](../../../benchmarks/memory/README.md). Compare identical baseline/candidate workloads and add coverage when existing scenarios miss the changed mechanism. There is no aggregate build-CPU benchmark in that set: use the build-tool checks below. For hydration, RPC, paint, or real HTTP behavior, use the affected browser/app workload and the browser/server measurement procedure. For inference cost, use the TypeScript procedure.
 
 ## Comparable measurements
 
