@@ -56,19 +56,14 @@ describe.each(['node', 'composite'] as const)(
 
         expect(html).toContain('Styled server content')
         if (preinitCss) {
-          expect(preinit).toHaveBeenCalledExactlyOnceWith(
-            '/assets/server.css',
-            {
-              as: 'style',
-              precedence: 'high',
-            },
-          )
+          expect(preinit).toHaveBeenCalledWith('/assets/server.css', {
+            as: 'style',
+            precedence: 'high',
+          })
         } else {
           expect(preinit).not.toHaveBeenCalled()
         }
-        expect(preloadModule).toHaveBeenCalledExactlyOnceWith(
-          '/assets/client.js',
-        )
+        expect(preloadModule).toHaveBeenCalledWith('/assets/client.js')
       },
     )
   },

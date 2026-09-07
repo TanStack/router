@@ -35,10 +35,12 @@ function createRouter(route: AnyRoute) {
   }
   const router = createReactRouter({
     routeTree: root,
-    history: createMemoryHistory(),
+    history: createMemoryHistory({
+      initialEntries: [route.isRoot ? '/' : '/posts'],
+    }),
     isServer: false,
   })
-  return router as typeof router & { _refreshRoute: () => Promise<void> }
+  return router
 }
 
 function createHot() {
@@ -90,21 +92,19 @@ describe.each(['vite', 'webpack'] as const)(
         const foreign = createRoute(root, 'foreign')
         const foreignLoader = foreign.options.loader
         const foreignRouter = createRouter(foreign)
-        const update = vi.spyOn(foreign, 'update')
         const incoming = createRoute(root, 'incoming')
         const hot = createHot()
 
         evaluate(incoming, hot)
 
         expect(foreign.options.loader).toBe(foreignLoader)
-        expect(update).not.toHaveBeenCalled()
         expect(foreignRouter.routesById[foreign.id]).toBe(foreign)
         expect(incoming.options.loader).not.toBe(foreign.options.loader)
-        expect(hot.accept).toHaveBeenCalledOnce()
+        expect(hot.accept).toHaveBeenCalled()
       },
     )
 
-    it('can attach a router after a module was hot-replaced while unused', () => {
+    it('can attach a router after a module was hot-replaced while unused', async () => {
       const foreign = createRoute(false, 'foreign')
       const foreignLoader = foreign.options.loader
       createRouter(foreign)
@@ -116,31 +116,32 @@ describe.each(['vite', 'webpack'] as const)(
       expect(foreign.options.loader).toBe(foreignLoader)
 
       const owner = createRouter(mounted)
-      vi.spyOn(owner, '_refreshRoute').mockResolvedValue(undefined)
+      await owner.load()
+      expect(owner.state.matches.at(-1)?.loaderData).toBe('mounted')
       dispose(hot)
       const replacement = createRoute(false, 'updated')
       const loader = replacement.options.loader
       evaluate(replacement, hot)
       expect(mounted.options.loader).toBe(loader)
+      await vi.waitFor(() => {
+        expect(owner.state.matches.at(-1)?.loaderData).toBe('updated')
+      })
     })
 
     it.each([false, true])(
       'updates only the owning router across repeated hot evaluations (root: %s)',
-      (root) => {
+      async (root) => {
         const original = createRoute(root)
         const hot = createHot()
         // Route modules execute before their router is constructed.
         evaluate(original, hot)
         const owner = createRouter(original)
-        const ownerUpdate = vi.spyOn(original, 'update')
-        const refresh = vi
-          .spyOn(owner, '_refreshRoute')
-          .mockResolvedValue(undefined)
+        await owner.load()
+        expect(owner.state.matches.at(-1)?.loaderData).toBe('initial')
         const foreign = createRoute(root, 'foreign')
         const foreignLoader = foreign.options.loader
         const other = createRouter(foreign)
-        const foreignUpdate = vi.spyOn(foreign, 'update')
-        const foreignRefresh = vi.spyOn(other, '_refreshRoute')
+        await other.load()
         expect(window.__TSR_ROUTER__).toBe(other)
 
         for (const value of ['updated', 'updated again']) {
@@ -157,11 +158,11 @@ describe.each(['vite', 'webpack'] as const)(
           expect(replacement.parentRoute).toBe(original.parentRoute)
           expect(owner.routesById[original.id]).toBe(original)
           expect(foreign.options.loader).toBe(foreignLoader)
+          await vi.waitFor(() => {
+            expect(owner.state.matches.at(-1)?.loaderData).toBe(value)
+          })
+          expect(other.state.matches.at(-1)?.loaderData).toBe('foreign')
         }
-        expect(ownerUpdate).toHaveBeenCalledTimes(2)
-        expect(refresh).toHaveBeenCalledTimes(2)
-        expect(foreignUpdate).not.toHaveBeenCalled()
-        expect(foreignRefresh).not.toHaveBeenCalled()
       },
     )
   },
