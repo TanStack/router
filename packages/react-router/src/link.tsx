@@ -745,19 +745,11 @@ export const composeHandlers = (
     return second
   }
 
-  return (event: React.SyntheticEvent) => {
-    if (event.defaultPrevented) {
-      return
-    }
-
-    first(event)
-
-    // The user handler may call preventDefault, so re-read the event after it
-    // runs instead of relying on the value checked above.
-    if (!event.defaultPrevented) {
-      second(event)
-    }
-  }
+  // The first guard skips user handlers for already-prevented events; the second
+  // lets user handlers prevent the internal handler from running.
+  return (event: React.SyntheticEvent) =>
+    event.defaultPrevented ||
+    (first(event), event.defaultPrevented || second(event))
 }
 
 function getHrefOption(
