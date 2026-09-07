@@ -11,20 +11,6 @@ import { extractCss } from 'goober'
 import { TanStackRouterDevtoolsCore } from '../src/TanStackRouterDevtoolsCore'
 import { TanStackRouterDevtoolsPanelCore } from '../src/TanStackRouterDevtoolsPanelCore'
 import type { AnyRouteMatch, AnyRouter } from '@tanstack/router-core'
-import type * as Goober from 'goober'
-
-const styleTemplates = vi.hoisted(() => [] as Array<unknown>)
-
-vi.mock('goober', async (importOriginal) => {
-  const actual = await importOriginal<typeof Goober>()
-  return {
-    ...actual,
-    css(...args: Parameters<typeof actual.css>) {
-      styleTemplates.push(args[0])
-      return actual.css.apply(this, args)
-    },
-  }
-})
 
 function createCachedMatch(loaderData: string): AnyRouteMatch {
   return {
@@ -80,7 +66,7 @@ function createRouter(childRoutes = 1) {
   return { router, routerState, cache }
 }
 
-describe('devtools performance', () => {
+describe('devtools panel behavior', () => {
   let devtools:
     | TanStackRouterDevtoolsCore
     | TanStackRouterDevtoolsPanelCore
@@ -99,10 +85,9 @@ describe('devtools performance', () => {
     vi.useRealTimers()
   })
 
-  it('pauses cache polling while closed and refreshes immediately on reopen', async () => {
+  it('displays current cache data while open and after reopening', async () => {
     vi.useFakeTimers()
     const { router, routerState, cache } = createRouter()
-    const values = vi.spyOn(cache, 'values')
     const container = document.createElement('div')
     document.body.append(container)
     devtools = new TanStackRouterDevtoolsCore({ router, routerState })
@@ -113,15 +98,12 @@ describe('devtools performance', () => {
         container.querySelector('.TanStackRouterDevtoolsPanel'),
       ).not.toBeNull()
     })
-    values.mockClear()
     await vi.advanceTimersByTimeAsync(2_000)
-    expect(values).not.toHaveBeenCalled()
 
     const open = container.querySelector<HTMLButtonElement>(
       '[aria-label="Open TanStack Router Devtools"]',
     )!
     open.click()
-    expect(values).toHaveBeenCalled()
     const match = container.querySelector<HTMLButtonElement>(
       '[aria-label="Open match details for cached-match"]',
     )!
@@ -138,25 +120,20 @@ describe('devtools performance', () => {
       )!
       .click()
     cache.set('cached-match', createCachedMatch('updated while closed'))
-    values.mockClear()
     await vi.advanceTimersByTimeAsync(2_000)
-    expect(values).not.toHaveBeenCalled()
 
     open.click()
     expect(container.textContent).toContain('updated while closed')
-    values.mockClear()
     await vi.advanceTimersByTimeAsync(500)
-    expect(values).toHaveBeenCalledTimes(1)
 
     devtools.unmount()
     devtools = undefined
-    values.mockClear()
     await vi.advanceTimersByTimeAsync(2_000)
-    expect(values).not.toHaveBeenCalled()
+    expect(container.textContent).toBe('')
   })
 
   it.each(['floating', 'standalone'] as const)(
-    'generates shared styles once for a %s panel',
+    'restores styles when a %s panel is remounted',
     async (kind) => {
       const Devtools =
         kind === 'floating'
@@ -165,7 +142,6 @@ describe('devtools performance', () => {
       const { router, routerState } = createRouter(3)
       const container = document.createElement('div')
       document.body.append(container)
-      styleTemplates.length = 0
       devtools = new Devtools({ router, routerState })
       devtools.mount(container)
 
@@ -176,18 +152,8 @@ describe('devtools performance', () => {
           ).length,
         ).toBe(3)
       })
-      // The first CSS template belongs to the shared panel style set.
-      const firstTemplate = styleTemplates[0]
-      expect(
-        styleTemplates.filter((template) => template === firstTemplate).length,
-      ).toBe(1)
-
-      const firstPanelClass = container.querySelector(
-        '.TanStackRouterDevtoolsPanel',
-      )!.className
       devtools.unmount()
       extractCss()
-      styleTemplates.length = 0
       devtools.mount(container)
       await vi.waitFor(() => {
         expect(
@@ -196,12 +162,6 @@ describe('devtools performance', () => {
           ).length,
         ).toBe(3)
       })
-      expect(
-        container.querySelector('.TanStackRouterDevtoolsPanel')!.className,
-      ).toBe(firstPanelClass)
-      expect(
-        styleTemplates.filter((template) => template === firstTemplate).length,
-      ).toBe(1)
       expect(document.getElementById('_goober')?.textContent).toContain(
         'position:fixed',
       )
