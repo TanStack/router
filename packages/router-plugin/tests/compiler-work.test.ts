@@ -104,6 +104,8 @@ describe('compiler source maps', () => {
           expect(result!.code).toBe(baseline!.code)
           if (inputSourceMap != null) {
             expect(result!.map).toEqual(baseline!.map)
+          } else {
+            expect(result!.map).toBeNull()
           }
         }
       }
