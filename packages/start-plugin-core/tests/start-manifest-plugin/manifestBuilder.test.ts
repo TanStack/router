@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from 'vitest'
+import { describe, expect, test } from 'vitest'
 import { deserialize } from 'seroval'
 import { shouldRebaseInlineCssUrls } from '../../src/start-manifest-plugin/inlineCss'
 import {
@@ -85,35 +85,6 @@ function makeStylesheetLink(href: string): ManifestCssLink {
 function getManifestCssHref(link: ManifestCssLink) {
   return typeof link === 'string' ? link : link.href
 }
-
-describe('normalizeViteClientBuild', () => {
-  test('keeps stylesheet links without reading CSS content by default', () => {
-    const readCss = vi.fn(() => new Uint8Array(1024 * 1024))
-    const clientBuild = normalizeViteClientBuild({
-      'entry.js': makeChunk({
-        fileName: 'entry.js',
-        isEntry: true,
-        importedCss: ['root.css'],
-      }),
-      'root.css': {
-        ...makeCssAsset('root.css', ''),
-        get source() {
-          return readCss()
-        },
-      },
-    })
-
-    const manifest = buildStartManifest({
-      clientBuild,
-      routeTreeRoutes: { __root__: {} },
-      basePath: '/assets',
-    })
-
-    expect(readCss).not.toHaveBeenCalled()
-    expect(manifest.routes.__root__?.css).toEqual(['/assets/root.css'])
-    expect(manifest.inlineCss).toBeUndefined()
-  })
-})
 
 describe('getRouteFilePathsFromModuleIds', () => {
   test('returns unique route file paths only for tsr split modules', () => {

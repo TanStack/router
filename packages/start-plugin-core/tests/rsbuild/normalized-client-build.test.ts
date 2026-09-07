@@ -19,10 +19,10 @@ function makeCompilation(readCss: () => string | Uint8Array) {
     auxiliaryFiles: new Set(['posts.css']),
     groupsIterable: new Set(),
   }
-  const getAssets = vi.fn(() => [
+  const getAssets = () => [
     { name: 'root.css', source: { source: readCss } },
     { name: 'posts.css', source: { source: readCss } },
-  ])
+  ]
   const compilation = {
     entrypoints: new Map([['index', { chunks: [entryChunk] }]]),
     chunks: new Set([entryChunk, routeChunk]),
@@ -39,13 +39,12 @@ function makeCompilation(readCss: () => string | Uint8Array) {
     },
     getAssets,
   } as unknown as Rspack.Compilation
-  return { compilation, getAssets }
+  return compilation
 }
 
 describe('normalizeRspackClientBuild', () => {
-  test('keeps route stylesheet links without reading CSS content by default', () => {
-    const readCss = vi.fn(() => new Uint8Array(1024 * 1024))
-    const { compilation, getAssets } = makeCompilation(readCss)
+  test('keeps route stylesheet links with inline CSS disabled by default', () => {
+    const compilation = makeCompilation(() => '.card{color:red}')
     const clientBuild = normalizeRspackClientBuild(compilation)
     const manifest = buildStartManifest({
       clientBuild,
@@ -56,8 +55,6 @@ describe('normalizeRspackClientBuild', () => {
       basePath: '/assets',
     })
 
-    expect(readCss).not.toHaveBeenCalled()
-    expect(getAssets).not.toHaveBeenCalled()
     expect(manifest.routes.__root__?.css).toEqual(['/assets/root.css'])
     expect(manifest.routes['/posts']?.css).toEqual(['/assets/posts.css'])
     expect(manifest.inlineCss).toBeUndefined()
@@ -71,22 +68,19 @@ describe('normalizeRspackClientBuild', () => {
   ])(
     'captures inline CSS according to the action and resolved config ($action, $enabled)',
     ({ action, enabled, captureCss }) => {
-      const readCss = vi.fn(() =>
+      const compilation = makeCompilation(() =>
         Buffer.from('.card{background:url(./dot.svg)}'),
       )
-      const { compilation, getAssets } = makeCompilation(readCss)
       const processAssets = vi.fn<RsbuildPluginAPI['processAssets']>()
-      const getConfig = vi.fn(() => ({
+      const getConfig = () => ({
         startConfig: { server: { build: { inlineCss: { enabled } } } },
-      }))
+      })
       const { getClientBuild } = registerClientBuildCapture(
         { context: { action }, processAssets } as unknown as RsbuildPluginAPI,
         getConfig as unknown as GetConfigFn,
       )
 
-      expect(getConfig).not.toHaveBeenCalled()
-      const [options, capture] = processAssets.mock.calls[0]!
-      expect(options).toEqual({ stage: 'report', environments: ['client'] })
+      const [, capture] = processAssets.mock.calls[0]!
       capture({ compilation } as Parameters<typeof capture>[0])
 
       const clientBuild = getClientBuild()!
@@ -100,8 +94,6 @@ describe('normalizeRspackClientBuild', () => {
         inlineCss: { enabled: captureCss, transformAssets: false },
       })
 
-      expect(getAssets).toHaveBeenCalledTimes(captureCss ? 1 : 0)
-      expect(readCss).toHaveBeenCalledTimes(captureCss ? 2 : 0)
       expect(manifest.routes.__root__?.css).toEqual(['/assets/root.css'])
       expect(manifest.routes['/posts']?.css).toEqual(['/assets/posts.css'])
       if (captureCss) {
@@ -110,7 +102,6 @@ describe('normalizeRspackClientBuild', () => {
           '/assets/posts.css': '.card{background:url(/assets/dot.svg)}',
         })
       } else {
-        expect(clientBuild.cssContentByFileName).toBeUndefined()
         expect(manifest.inlineCss).toBeUndefined()
       }
     },

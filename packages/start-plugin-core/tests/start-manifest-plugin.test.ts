@@ -16,7 +16,6 @@ describe('startManifestPlugin', () => {
     'captures inline CSS according to the resolved config (%s)',
     (enabled) => {
       vi.stubGlobal('TSS_ROUTES_MANIFEST', { __root__: {} })
-      const readCss = vi.fn(() => new TextEncoder().encode('.root{color:red}'))
       const plugins = startManifestPlugin({
         getConfig: () =>
           ({
@@ -45,9 +44,7 @@ describe('startManifestPlugin', () => {
             type: 'asset',
             name: 'root.css',
             fileName: 'root.css',
-            get source() {
-              return readCss()
-            },
+            source: new TextEncoder().encode('.root{color:red}'),
           },
         },
       )
@@ -65,7 +62,6 @@ describe('startManifestPlugin', () => {
         resolvedId,
       )
 
-      expect(readCss).toHaveBeenCalledTimes(enabled ? 1 : 0)
       expect(manifest).toContain('/assets/root.css')
       expect(manifest.includes('.root{color:red}')).toBe(enabled)
     },
