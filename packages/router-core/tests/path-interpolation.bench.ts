@@ -1,16 +1,14 @@
 import { bench, describe, expect } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute } from '../src'
-import {
-  compileDecodeCharMap,
-  interpolatePath,
-  interpolatePathname,
-} from '../src/path'
+import { compileDecodeCharMap, interpolatePath } from '../src/path'
 import { createTestRouter } from './routerTestUtils'
+import type { PathInterpolationTestOptions } from './routerTestUtils'
 
-type Options = Parameters<typeof interpolatePath>[0]
-
-const scenarios: Array<{ name: string; inputs: Array<Options> }> = [
+const scenarios: Array<{
+  name: string
+  inputs: Array<PathInterpolationTestOptions>
+}> = [
   {
     name: 'single-param shared hits',
     inputs: Array.from({ length: 200 }, (_, index) => ({
@@ -118,25 +116,44 @@ describe.each(scenarios)('$name', ({ inputs }) => {
   })
   router.pathParamsDecoder = decoder
   router.history.destroy()
-  const interpolate = router['interpolatePath']
   const calls = inputs
     .filter((input) => input.path?.includes('$'))
     .map((input) => ({
-      args:
-        interpolate.length === 1 ? [input] : [input.path || '/', input.params],
-      expected: interpolatePath(input).interpolatedPath,
+      path: input.path || '/',
+      params: input.params,
+      expected: interpolatePath(
+        input.path,
+        input.params,
+        input.decoder,
+        undefined,
+        undefined,
+        input.server,
+      ),
     }))
   let checksum = 0
   const expected = inputs.reduce(
-    (sum, input) => sum + interpolatePath(input).interpolatedPath.length,
+    (sum, input) =>
+      sum +
+      interpolatePath(
+        input.path,
+        input.params,
+        input.decoder,
+        undefined,
+        undefined,
+        input.server,
+      ).length,
     0,
   )
   const cachedExpected = calls.reduce((sum, call) => {
-    expect(Reflect.apply(interpolate, router, call.args)).toBe(call.expected)
+    expect(router['interpolatePath'](call.path, call.params)).toBe(
+      call.expected,
+    )
     return sum + call.expected.length
   }, 0)
   for (const call of calls) {
-    expect(Reflect.apply(interpolate, router, call.args)).toBe(call.expected)
+    expect(router['interpolatePath'](call.path, call.params)).toBe(
+      call.expected,
+    )
   }
 
   bench(
@@ -144,7 +161,7 @@ describe.each(scenarios)('$name', ({ inputs }) => {
     () => {
       let length = 0
       for (const call of calls) {
-        length += Reflect.apply(interpolate, router, call.args).length
+        length += router['interpolatePath'](call.path, call.params).length
       }
       checksum = length
     },
@@ -163,8 +180,8 @@ describe.each(scenarios)('$name', ({ inputs }) => {
     () => {
       let length = 0
       for (const input of inputs) {
-        length += interpolatePathname(
-          input.path || '/',
+        length += interpolatePath(
+          input.path,
           input.params,
           input.decoder,
           undefined,
@@ -185,11 +202,19 @@ describe.each(scenarios)('$name', ({ inputs }) => {
   )
 
   bench(
-    'uncached interpolation batch',
+    'metadata-enabled interpolation batch',
     () => {
       let length = 0
       for (const input of inputs) {
-        length += interpolatePath(input).interpolatedPath.length
+        length += interpolatePath(
+          input.path,
+          input.params,
+          input.decoder,
+          Object.create(null),
+          undefined,
+          input.server,
+          { isMissingParams: false },
+        ).length
       }
       checksum = length
     },

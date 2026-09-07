@@ -40,7 +40,7 @@ test.each([false, true])(
       history: createMemoryHistory({ initialEntries: ['/items/one'] }),
       isServer,
     })
-    const interpolate = vi.spyOn(pathUtils, 'interpolatePathname')
+    const interpolate = vi.spyOn(pathUtils, 'interpolatePath')
     try {
       const matches = router.matchRoutes('/items/one', {})
       expect(matches.at(-1)?.pathname).toBe('/items/one')

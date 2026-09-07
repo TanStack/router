@@ -208,31 +208,10 @@ export function compileDecodeCharMap(
     encoded.replace(regex, (match) => charMap.get(match) ?? match)
 }
 
-interface InterpolatePathOptions {
-  path?: string
-  params: Record<string, unknown>
-  /**
-   * A function that decodes a path parameter value.
-   * Obtained from `compileDecodeCharMap(pathParamsAllowedCharacters)`.
-   */
-  decoder?: (encoded: string) => string
-  /**
-   * @internal
-   * For testing only, in development mode we use the router.isServer value
-   */
-  server?: boolean
-}
-
-type InterPolatePathResult = {
-  interpolatedPath: string
-  usedParams: Record<string, unknown>
-  isMissingParams: boolean // true if any params were not available when being looked up in the params object
-}
-
 function encodeParam(
   key: string,
   value: unknown,
-  decoder: InterpolatePathOptions['decoder'],
+  decoder: ((encoded: string) => string) | undefined,
 ): string {
   if (typeof value !== 'string') {
     return '' + (value ?? undefined)
@@ -256,47 +235,23 @@ function encodeParam(
 }
 
 /**
- * Interpolate params and wildcards into a route path template.
+ * Interpolate params and wildcards into a route pathname.
  *
  * - Encodes params safely (configurable allowed characters)
  * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
+ * - Collects optional metadata in the same pass without allocating it for callers
  */
 export function interpolatePath(
-  options: InterpolatePathOptions,
-): InterPolatePathResult {
-  const { path, params, decoder, server } = options
-  const result: InterPolatePathResult = {
-    interpolatedPath: path || '/',
-    usedParams: Object.create(null),
-    isMissingParams: false,
-  }
-  result.interpolatedPath = interpolatePathname(
-    result.interpolatedPath,
-    params,
-    decoder,
-    result.usedParams,
-    undefined,
-    server,
-    result,
-  )
-  return result
-}
-
-/**
- * @internal
- * Optional metadata is collected in the same pass as the pathname.
- */
-export function interpolatePathname(
-  path: string,
+  path: string | undefined,
   params: Record<string, unknown>,
-  decoder: InterpolatePathOptions['decoder'],
+  decoder?: (encoded: string) => string,
   usedParams?: Record<string, unknown>,
   keys?: Array<string>,
   server?: boolean,
   metadata?: { isMissingParams: boolean },
 ): string {
-  if (!path.includes('$')) {
-    return path
+  if (!path?.includes('$')) {
+    return path || '/'
   }
 
   if (isServer ?? server) {
@@ -431,10 +386,7 @@ export function interpolatePathname(
   return joined || '/'
 }
 
-function encodePathParam(
-  value: string,
-  decoder?: InterpolatePathOptions['decoder'],
-) {
+function encodePathParam(value: string, decoder?: (encoded: string) => string) {
   const encoded = encodeURIComponent(value)
   return decoder?.(encoded) ?? encoded
 }

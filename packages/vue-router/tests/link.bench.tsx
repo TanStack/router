@@ -37,10 +37,7 @@ const createRouterRenderer = (routesCount: number) => (children: Vue.VNode) => {
 const InterpolatePathLink = Vue.defineComponent({
   props: ['to', 'params'],
   setup(props, { slots }) {
-    const href = interpolatePath({
-      path: props.to,
-      params: props.params,
-    }).interpolatedPath
+    const href = interpolatePath(props.to, props.params)
 
     return () => Vue.h('a', { href }, slots.default?.())
   },
