@@ -39,6 +39,7 @@ import {
   useRouterState,
   useSearch,
 } from '../src'
+import { composeHandlers } from '../src/link'
 import {
   getIntersectionObserverMock,
   getSearchParamsFromURI,
@@ -73,6 +74,71 @@ afterEach(() => {
 })
 
 const WAIT_TIME = 300
+
+describe('composeHandlers', () => {
+  const createEvent = (defaultPrevented = false) => {
+    const event = {
+      defaultPrevented,
+      preventDefault() {
+        event.defaultPrevented = true
+      },
+    }
+
+    return event as unknown as React.SyntheticEvent
+  }
+
+  test('returns the internal handler directly when no user handler is supplied', () => {
+    const second = vi.fn()
+    const handler = composeHandlers(undefined, second)
+
+    expect(handler).toBe(second)
+  })
+
+  test('preserves an already-prevented event when a user handler is supplied', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const handler = composeHandlers(first, second)
+
+    handler(createEvent(true))
+
+    expect(first).not.toHaveBeenCalled()
+    expect(second).not.toHaveBeenCalled()
+  })
+
+  test('calls the internal handler when the user handler does not prevent the event', () => {
+    const first = vi.fn()
+    const second = vi.fn()
+    const handler = composeHandlers(first, second)
+    const event = createEvent()
+
+    handler(event)
+
+    expect(first).toHaveBeenCalledWith(event)
+    expect(second).toHaveBeenCalledWith(event)
+  })
+
+  test('does not call the internal handler when the user handler prevents the event', () => {
+    const first = vi.fn((event: React.SyntheticEvent) => event.preventDefault())
+    const second = vi.fn()
+    const handler = composeHandlers(first, second)
+    const event = createEvent()
+
+    handler(event)
+
+    expect(first).toHaveBeenCalledWith(event)
+    expect(second).not.toHaveBeenCalled()
+  })
+
+  test('calls the internal handler directly for an already-prevented event without a user handler', () => {
+    const second = vi.fn()
+    const handler = composeHandlers(undefined, second)
+    const event = createEvent(true)
+
+    handler(event)
+
+    expect(second).toHaveBeenCalledWith(event)
+  })
+})
 
 describe('Link', () => {
   test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
