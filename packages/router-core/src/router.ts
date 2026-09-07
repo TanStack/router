@@ -2154,6 +2154,14 @@ export class RouterCore<
     ignoreBlocker,
     ...next
   }) => {
+    const nextLocation = next.maskedLocation ?? next
+    if (nextLocation.external && !(isServer ?? this.isServer)) {
+      return documentNavigation(this, nextLocation.publicHref, {
+        replace: next.replace,
+        ignoreBlocker,
+      })
+    }
+
     let historyAction: HistoryAction | undefined
     const isSameLocation =
       trimPathRight(this.latestLocation.href) === trimPathRight(next.href) &&
@@ -2313,42 +2321,7 @@ export class RouterCore<
       // otherwise use href directly (which may already include basepath)
       const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
 
-      // Block dangerous protocols like javascript:, blob:, data:
-      // These could execute arbitrary code if passed to window.location
-      if (isDangerousProtocol(reloadHref, this.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(
-            `Blocked navigation to dangerous protocol: ${reloadHref}`,
-          )
-        }
-        return
-      }
-
-      // Check blockers for external URLs unless ignoreBlocker is true
-      if (!rest.ignoreBlocker) {
-        // Cast to access internal getBlockers method
-        const historyWithBlockers = this.history as any
-        const blockers = historyWithBlockers.getBlockers?.() ?? []
-        for (const blocker of blockers) {
-          if (blocker?.blockerFn) {
-            const shouldBlock = await blocker.blockerFn({
-              currentLocation: this.latestLocation,
-              nextLocation: this.latestLocation, // External URLs don't have a next location in our router
-              action: 'PUSH',
-            })
-            if (shouldBlock) {
-              return
-            }
-          }
-        }
-      }
-
-      if (rest.replace) {
-        window.location.replace(reloadHref)
-      } else {
-        window.location.href = reloadHref
-      }
-      return
+      return documentNavigation(this, reloadHref, rest)
     }
 
     return this.buildAndCommitLocation({
@@ -2670,6 +2643,48 @@ export class RouterCore<
   serverSsr?: ServerSsr
 
   serverSsrLifecycle?: RouterSsrLifecycle
+}
+
+async function documentNavigation(
+  router: AnyRouter,
+  href: string,
+  {
+    replace,
+    ignoreBlocker,
+  }: Pick<CommitLocationOptions, 'replace' | 'ignoreBlocker'>,
+) {
+  // Block dangerous protocols like javascript:, blob:, data:
+  // These could execute arbitrary code if passed to window.location
+  if (isDangerousProtocol(href, router.protocolAllowlist)) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`Blocked navigation to dangerous protocol: ${href}`)
+    }
+    return
+  }
+
+  // Check blockers for external URLs unless ignoreBlocker is true
+  if (!ignoreBlocker) {
+    const blockers = router.history.getBlockers?.() ?? []
+    for (const blocker of blockers) {
+      if (blocker?.blockerFn) {
+        const shouldBlock = await blocker.blockerFn({
+          currentLocation: router.latestLocation,
+          nextLocation: router.latestLocation, // External URLs don't have a next location in our router
+          action: 'PUSH',
+        })
+        if (shouldBlock) {
+          return
+        }
+      }
+    }
+  }
+
+  if (replace) {
+    window.location.replace(href)
+  } else {
+    window.location.href = href
+  }
+  return
 }
 
 /**

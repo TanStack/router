@@ -1,0 +1,210 @@
+import { createMemoryHistory } from '@tanstack/history'
+import { afterEach, describe, expect, test, vi } from 'vitest'
+import { BaseRootRoute, BaseRoute } from '../src'
+import { createTestRouter } from './routerTestUtils'
+import type { LocationRewrite } from '../src'
+
+const externalHref = 'https://admin.example.com/dashboard'
+
+function setupRouter({
+  isServer = false,
+  basepath,
+  rewrite = {
+    output: ({ url }) => {
+      if (url.pathname === '/admin') {
+        return new URL(externalHref + url.search + url.hash)
+      }
+      return url
+    },
+  },
+}: {
+  isServer?: boolean
+  basepath?: string
+  rewrite?: LocationRewrite
+} = {}) {
+  const rootRoute = new BaseRootRoute()
+  const loader = vi.fn(() => 'admin')
+  const routeTree = rootRoute.addChildren([
+    new BaseRoute({ getParentRoute: () => rootRoute, path: '/' }),
+    new BaseRoute({ getParentRoute: () => rootRoute, path: '/local' }),
+    new BaseRoute({ getParentRoute: () => rootRoute, path: '/admin', loader }),
+  ])
+  const history = createMemoryHistory({ initialEntries: ['/'] })
+  const router = createTestRouter({
+    routeTree,
+    history,
+    origin: 'https://example.com',
+    isServer,
+    basepath,
+    rewrite,
+  })
+  const windowLocation = { href: '', replace: vi.fn() }
+  vi.stubGlobal('window', { location: windowLocation })
+
+  return { router, history, windowLocation, loader }
+}
+
+afterEach(() => {
+  vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+describe('document navigation', () => {
+  test.each([false, true])(
+    'navigates to the final cross-origin output (replace=%s)',
+    async (replace) => {
+      const { router, history, windowLocation, loader } = setupRouter()
+      const push = vi.spyOn(history, 'push')
+      const replaceHistory = vi.spyOn(history, 'replace')
+      const location = router.state.location
+
+      await router.navigate({
+        to: '/admin',
+        search: { page: 2 },
+        hash: 'details',
+        replace,
+      })
+
+      const href = `${externalHref}?page=2#details`
+      if (replace) {
+        expect(windowLocation.replace).toHaveBeenCalledWith(href)
+        expect(windowLocation.href).toBe('')
+      } else {
+        expect(windowLocation.href).toBe(href)
+        expect(windowLocation.replace).not.toHaveBeenCalled()
+      }
+      expect(push).not.toHaveBeenCalled()
+      expect(replaceHistory).not.toHaveBeenCalled()
+      expect(loader).not.toHaveBeenCalled()
+      expect(router.state.location).toBe(location)
+      expect(router._commitPromise).toBeUndefined()
+    },
+  )
+
+  test('commits an external public mask without rebuilding the location', async () => {
+    const { router, history, windowLocation } = setupRouter()
+    const location = router.buildLocation({
+      to: '/local',
+      mask: { to: '/admin', hash: 'masked' },
+    })
+    const buildLocation = vi.spyOn(router, 'buildLocation')
+    const navigate = vi.spyOn(router, 'navigate')
+
+    await router.commitLocation({ ...location, replace: true })
+
+    expect(windowLocation.replace).toHaveBeenCalledWith(
+      `${externalHref}#masked`,
+    )
+    expect(history.location.href).toBe('/')
+    expect(buildLocation).not.toHaveBeenCalled()
+    expect(navigate).not.toHaveBeenCalled()
+  })
+
+  test('uses history for a same-origin mask of an external output', async () => {
+    const { router, history, windowLocation } = setupRouter()
+    await router.load()
+
+    await router.navigate({ to: '/admin', mask: { to: '/local' } })
+
+    expect(history.location.href).toBe('/local')
+    expect(router.state.location.pathname).toBe('/admin')
+    expect(router.state.location.maskedLocation?.pathname).toBe('/local')
+    expect(windowLocation.href).toBe('')
+    expect(windowLocation.replace).not.toHaveBeenCalled()
+  })
+
+  test('keeps server commits in memory history', async () => {
+    const { router, history } = setupRouter({ isServer: true })
+    vi.stubGlobal('window', undefined)
+
+    await router.navigate({ to: '/admin' })
+
+    expect(history.location.href).toBe(externalHref)
+  })
+
+  test.each([
+    {
+      href: 'https://other.example/a%2fb?value=a+b&value=a%20b#raw%2f',
+      publicHref: '/ignored',
+    },
+    {
+      href: '../target?value=a+b&value=a%20b#raw%2f',
+      reloadDocument: true,
+    },
+  ])('preserves a raw document href: $href', async (options) => {
+    const output = vi.fn(({ url }) => url)
+    const { router, windowLocation } = setupRouter({
+      basepath: '/app',
+      rewrite: { output },
+    })
+    const buildLocation = vi.spyOn(router, 'buildLocation')
+
+    await router.navigate(options)
+
+    expect(windowLocation.href).toBe(options.href)
+    expect(buildLocation).not.toHaveBeenCalled()
+    expect(output).not.toHaveBeenCalled()
+  })
+
+  test.each([undefined, 'https://public.example/prepared'])(
+    'preserves explicit reload publicHref precedence (%s)',
+    async (publicHref) => {
+      const { router, windowLocation } = setupRouter()
+      const buildLocation = vi.spyOn(router, 'buildLocation')
+
+      await router.navigate({
+        to: '/admin',
+        href: '/admin',
+        publicHref,
+        reloadDocument: true,
+      })
+
+      expect(windowLocation.href).toBe(publicHref ?? externalHref)
+      expect(buildLocation).toHaveBeenCalledTimes(1)
+    },
+  )
+
+  test.each([false, true])(
+    'preserves optional document blockers and ignoreBlocker (reloadDocument=%s)',
+    async (reloadDocument) => {
+      const { router, history, windowLocation } = setupRouter()
+      const blockerFn = vi.fn(async () => true)
+      Object.assign(history, { getBlockers: () => [{ blockerFn }] })
+
+      await router.navigate({ to: '/admin', reloadDocument, replace: true })
+
+      expect(blockerFn).toHaveBeenCalledTimes(1)
+      expect(windowLocation.href).toBe('')
+      expect(windowLocation.replace).not.toHaveBeenCalled()
+      expect(history.location.href).toBe('/')
+
+      await router.navigate({
+        to: '/admin',
+        reloadDocument,
+        replace: true,
+        ignoreBlocker: true,
+      })
+
+      expect(blockerFn).toHaveBeenCalledTimes(1)
+      expect(windowLocation.replace).toHaveBeenCalledWith(externalHref)
+      expect(history.location.href).toBe('/')
+    },
+  )
+
+  test('validates the protocol of an external output before navigating', async () => {
+    const href = 'javascript:alert(1)'
+    const { router, history, windowLocation } = setupRouter({
+      rewrite: { output: () => new URL(href) },
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    await router.navigate({ to: '/admin' })
+
+    expect(windowLocation.href).toBe('')
+    expect(windowLocation.replace).not.toHaveBeenCalled()
+    expect(history.location.href).toBe('/')
+    expect(warn).toHaveBeenCalledWith(
+      `Blocked navigation to dangerous protocol: ${href}`,
+    )
+  })
+})
