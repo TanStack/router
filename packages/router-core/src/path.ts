@@ -208,6 +208,13 @@ export function compileDecodeCharMap(
     encoded.replace(regex, (match) => charMap.get(match) ?? match)
 }
 
+export type InterpolationPlan = [
+  keys: Array<string>,
+  paths: SieveCache<string | undefined, string>,
+  decoder: ((encoded: string) => string) | undefined,
+  path: string,
+]
+
 function encodeParam(
   key: string,
   value: unknown,
