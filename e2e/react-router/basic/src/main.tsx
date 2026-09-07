@@ -106,52 +106,6 @@ function IndexComponent() {
   )
 }
 
-const adminHref = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}/`
-
-const adminRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/admin',
-})
-
-const documentNavigationRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: '/document-navigation',
-  component: () => (
-    <div>
-      <button onClick={() => router.navigate({ to: '/admin' })}>
-        Navigate to admin
-      </button>
-      <button onClick={() => router.navigate({ to: '/admin', replace: true })}>
-        Replace with admin
-      </button>
-      <button
-        onClick={() => router.navigate({ to: '/admin', reloadDocument: true })}
-      >
-        Reload admin
-      </button>
-      <button
-        onClick={() =>
-          router.navigate({
-            href: `${adminHref}?value=a+b&value=a%20b#raw%2f`,
-          })
-        }
-      >
-        Navigate to absolute href
-      </button>
-      <button
-        onClick={() =>
-          router.navigate({
-            href: '../?value=a+b&value=a%20b#raw%2f',
-            reloadDocument: true,
-          })
-        }
-      >
-        Reload relative href
-      </button>
-    </div>
-  ),
-})
-
 export const postsRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'posts',
@@ -456,8 +410,6 @@ const paramsPsWildcardSplatSuffixRoute = createRoute({
 })
 
 const routeTree = rootRoute.addChildren([
-  adminRoute,
-  documentNavigationRoute,
   postsRoute.addChildren([postRoute, postsIndexRoute]),
   layoutRoute.addChildren([
     layout2Route.addChildren([layoutARoute, layoutBRoute]),
@@ -486,17 +438,6 @@ const router = createRouter({
   defaultPreload: 'intent',
   defaultStaleTime: 5000,
   scrollRestoration: true,
-  rewrite:
-    window.location.pathname === '/document-navigation'
-      ? {
-          output: ({ url }) => {
-            if (url.pathname === '/admin') {
-              return new URL(adminHref)
-            }
-            return url
-          },
-        }
-      : undefined,
 })
 
 // Register things for typesafety

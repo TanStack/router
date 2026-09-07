@@ -1,6 +1,7 @@
 import { createMemoryHistory } from '@tanstack/history'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, redirect } from '../src'
+import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import { createTestRouter } from './routerTestUtils'
 import type { LocationRewrite } from '../src'
 
@@ -47,6 +48,67 @@ function setupRouter({
 afterEach(() => {
   vi.restoreAllMocks()
   vi.unstubAllGlobals()
+})
+
+describe('SSR redirects to cross-origin rewrites', () => {
+  test.each([
+    { hook: 'beforeLoad', statusCode: undefined },
+    { hook: 'beforeLoad', statusCode: 308 },
+    { hook: 'loader', statusCode: undefined },
+    { hook: 'loader', statusCode: 308 },
+  ] as const)(
+    'returns the rewritten HTTP redirect from $hook (statusCode=$statusCode)',
+    async ({ hook, statusCode }) => {
+      const rootRoute = new BaseRootRoute()
+      const throwRedirect = vi.fn(() => {
+        throw redirect({
+          to: '/admin',
+          search: { page: 2 },
+          hash: 'details',
+          statusCode,
+        })
+      })
+      const destinationLoader = vi.fn(() => 'admin')
+      const router = createTestRouter({
+        isServer: true,
+        routeTree: rootRoute.addChildren([
+          new BaseRoute({
+            getParentRoute: () => rootRoute,
+            path: '/redirecting',
+            [hook]: throwRedirect,
+          }),
+          new BaseRoute({
+            getParentRoute: () => rootRoute,
+            path: '/admin',
+            loader: destinationLoader,
+          }),
+        ]),
+        rewrite: {
+          output: ({ url }) => {
+            if (url.pathname === '/admin') {
+              return new URL(externalHref + url.search + url.hash)
+            }
+            return url
+          },
+        },
+      })
+      const render = vi.fn(() => new Response('rendered HTML'))
+      vi.stubGlobal('window', undefined)
+
+      const response = await createRequestHandler({
+        createRouter: () => router,
+        request: new Request('https://example.com/redirecting'),
+      })(render)
+
+      expect(throwRedirect).toHaveBeenCalledOnce()
+      expect(response.status).toBe(statusCode ?? 307)
+      expect(response.headers.get('Location')).toBe(
+        `${externalHref}?page=2#details`,
+      )
+      expect(render).not.toHaveBeenCalled()
+      expect(destinationLoader).not.toHaveBeenCalled()
+    },
+  )
 })
 
 describe('document navigation', () => {

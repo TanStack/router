@@ -2312,6 +2312,10 @@ export class RouterCore<
       // be a complete path (possibly with basepath)
       if (to !== undefined || !href) {
         const location = this.buildLocation({ to, ...rest } as any)
+        /*
+         * TODO: Explicit reloads ignore maskedLocation; use the mask's public URL
+         * consistently with commitLocation in a follow-up.
+         */
         // Use publicHref which contains the path (origin-stripped is fine for reload)
         href = href ?? location.publicHref
         publicHref = publicHref ?? location.publicHref
