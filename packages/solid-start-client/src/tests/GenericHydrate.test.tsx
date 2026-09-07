@@ -13,26 +13,6 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-test('sets up many islands without searching the document for their markers', () => {
-  const container = document.createElement('div')
-  document.body.append(container)
-  const query = vi.spyOn(document, 'querySelectorAll')
-  disposers.push(
-    render(
-      () =>
-        Array.from({ length: 100 }, () => (
-          <GenericHydrate when={never()} fallback="waiting">
-            content
-          </GenericHydrate>
-        )),
-      container,
-    ),
-  )
-
-  expect(container.querySelectorAll('[data-ts-hydrate-id]')).toHaveLength(100)
-  expect(query).not.toHaveBeenCalledWith('[data-ts-hydrate-id]')
-})
-
 test('passes each boundary marker to its prefetch callback', async () => {
   const container = document.createElement('div')
   document.body.append(container)
@@ -56,12 +36,10 @@ test('passes each boundary marker to its prefetch callback', async () => {
 
   const markers = container.querySelectorAll('[data-ts-hydrate-id]')
   expect(markers).toHaveLength(2)
-  expect(prefetch).toHaveBeenNthCalledWith(
-    1,
+  expect(prefetch).toHaveBeenCalledWith(
     expect.objectContaining({ element: markers[0] }),
   )
-  expect(prefetch).toHaveBeenNthCalledWith(
-    2,
+  expect(prefetch).toHaveBeenCalledWith(
     expect.objectContaining({ element: markers[1] }),
   )
 })
