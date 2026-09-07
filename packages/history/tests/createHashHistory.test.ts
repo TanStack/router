@@ -1,8 +1,30 @@
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 
 import { createHashHistory } from '../src'
 
 describe('createHashHistory', () => {
+  test.each(['/route\x01'])(
+    'keeps logical control data stable after reading the browser URL again: %j',
+    (href) => {
+      const originalHref = window.location.href
+      window.history.replaceState(null, '', '/shell')
+      const history = createHashHistory()
+      let reloaded: ReturnType<typeof createHashHistory> | undefined
+      try {
+        history.push(href)
+        history.flush()
+        const location = history.location
+        history.destroy()
+        reloaded = createHashHistory()
+        expect(reloaded.location).toEqual(location)
+      } finally {
+        history.destroy()
+        reloaded?.destroy()
+        window.history.replaceState(null, '', originalHref)
+      }
+    },
+  )
+
   describe('parseLocation', () => {
     describe.each([
       ['/', { pathname: '/', search: '' }, 'neither search params nor hash'],
