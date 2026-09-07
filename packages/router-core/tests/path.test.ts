@@ -3,7 +3,6 @@ import {
   compileDecodeCharMap,
   exactPathTest,
   interpolatePath,
-  interpolatePathname,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
@@ -24,34 +23,84 @@ describe.each([false, true])(
   'shared pathname interpolation (server: %s)',
   (server) => {
     it.each([
-      { path: '/', params: {} },
-      { path: '/users/', params: {} },
-      { path: '/users/$id', params: { id: '123' } },
-      { path: '/users/$id', params: { id: 0 } },
-      { path: '/users/$id', params: {} },
-      { path: '/users/$id', params: { id: 'a/b?#@+' } },
-      { path: '/users/$id', params: { id: 'cafe\u0301' } },
-      { path: '/users/{$id}.json', params: { id: '123' } },
-      { path: '/posts/{-$category}', params: {} },
-      { path: '/posts/{-$category}', params: { category: undefined } },
-      { path: '/posts/{-$category}', params: { category: '' } },
-      { path: '/posts/{-$category}', params: { category: 'news' } },
+      { path: '/', params: {}, expected: '/' },
+      { path: '/users/', params: {}, expected: '/users/' },
+      { path: '/users/$id', params: { id: '123' }, expected: '/users/123' },
+      { path: '/users/$id', params: { id: 0 }, expected: '/users/0' },
+      { path: '/users/$id', params: {}, expected: '/users/undefined' },
+      {
+        path: '/users/$id',
+        params: { id: 'a/b?#@+' },
+        expected: '/users/a%2Fb%3F%23%40%2B',
+      },
+      {
+        path: '/users/$id',
+        params: { id: 'cafe\u0301' },
+        expected: '/users/cafe%CC%81',
+      },
+      {
+        path: '/users/{$id}.json',
+        params: { id: '123' },
+        expected: '/users/123.json',
+      },
+      { path: '/posts/{-$category}', params: {}, expected: '/posts' },
+      {
+        path: '/posts/{-$category}',
+        params: { category: undefined },
+        expected: '/posts',
+      },
+      {
+        path: '/posts/{-$category}',
+        params: { category: '' },
+        expected: '/posts/',
+      },
+      {
+        path: '/posts/{-$category}',
+        params: { category: 'news' },
+        expected: '/posts/news',
+      },
       {
         path: '/posts/prefix{-$category}suffix',
         params: { category: 'news' },
+        expected: '/posts/prefixnewssuffix',
       },
-      { path: '/files/$', params: { _splat: 'a b/c+d' } },
-      { path: '/files/prefix{$}suffix', params: { _splat: 'a/b' } },
-      { path: '/files/$', params: { _splat: '' } },
-      { path: '/$id/$id/', params: { id: '123' } },
-    ])('matches interpolation for $path with $params', ({ path, params }) => {
-      const interpolate = createPathInterpolator()
-      const options = { path, params, server }
-      const expected = interpolatePath(options).interpolatedPath
-
-      expect(interpolate(options)).toBe(expected)
-      expect(interpolate({ ...options, params: { ...params } })).toBe(expected)
-    })
+      {
+        path: '/files/$',
+        params: { _splat: 'a b/c+d' },
+        expected: '/files/a%20b/c%2Bd',
+      },
+      {
+        path: '/files/prefix{$}suffix',
+        params: { _splat: 'a/b' },
+        expected: '/files/prefixa/bsuffix',
+      },
+      { path: '/files/$', params: { _splat: '' }, expected: '/files' },
+      {
+        path: '/$id/$id/',
+        params: { id: '123' },
+        expected: '/123/123/',
+      },
+    ])(
+      'interpolates and caches $path with $params',
+      ({ path, params, expected }) => {
+        const interpolate = createPathInterpolator()
+        const options = { path, params, server }
+        expect(
+          interpolatePath(
+            path,
+            params,
+            undefined,
+            undefined,
+            undefined,
+            server,
+          ),
+        ).toBe(expected)
+        expect(interpolate(options)).toBe(expected)
+        expect(interpolate({ ...options, params: { ...params } })).toBe(
+          expected,
+        )
+      },
+    )
 
     it('shares results across equivalent params without retaining unrelated params', () => {
       const interpolate = createPathInterpolator()
@@ -98,12 +147,16 @@ describe.each([false, true])(
       const interpolate = createPathInterpolator()
       const allowAt = compileDecodeCharMap(['@'])
       const allowPlus = compileDecodeCharMap(['+'])
-      for (const decoder of [allowAt, allowPlus, undefined, allowAt]) {
-        for (const path of ['/users/$id', '/teams/$id']) {
+      for (const [decoder, encoded] of [
+        [allowAt, '@%2B'],
+        [allowPlus, '%40+'],
+        [undefined, '%40%2B'],
+        [allowAt, '@%2B'],
+      ] as const) {
+        for (const prefix of ['/users/', '/teams/']) {
+          const path = prefix + '$id'
           const options = { path, params: { id: '@+' }, decoder, server }
-          expect(interpolate(options)).toBe(
-            interpolatePath(options).interpolatedPath,
-          )
+          expect(interpolate(options)).toBe(prefix + encoded)
         }
       }
     })
@@ -138,18 +191,25 @@ describe.each([false, true])(
       const interpolate = createPathInterpolator()
       const path = '/posts/{-$category}/$id'
       const inputs = [
-        { id: 'one' },
-        { id: 'one', category: 'news' },
-        { id: 'one', category: undefined },
-        { id: 'one', category: '' },
-        { id: 'one', category: 'updates' },
+        { params: { id: 'one' }, expected: '/posts/one' },
+        {
+          params: { id: 'one', category: 'news' },
+          expected: '/posts/news/one',
+        },
+        {
+          params: { id: 'one', category: undefined },
+          expected: '/posts/one',
+        },
+        { params: { id: 'one', category: '' }, expected: '/posts//one' },
+        {
+          params: { id: 'one', category: 'updates' },
+          expected: '/posts/updates/one',
+        },
       ]
 
-      for (const params of [...inputs, ...inputs]) {
+      for (const { params, expected } of [...inputs, ...inputs]) {
         const options = { path, params, server }
-        expect(interpolate(options)).toBe(
-          interpolatePath(options).interpolatedPath,
-        )
+        expect(interpolate(options)).toBe(expected)
       }
     })
 
@@ -174,18 +234,30 @@ describe.each([false, true])(
       expect(decoder).not.toHaveBeenCalled()
     })
 
-    it('keeps public usedParams unchanged for missing optionals and splats', () => {
-      expect(
-        interpolatePath({ path: '/posts/{-$category}', params: {}, server })
-          .usedParams,
-      ).toEqual({})
-      expect(
-        interpolatePath({
-          path: '/files/$',
-          params: { _splat: 'docs/guide' },
-          server,
-        }).usedParams,
-      ).toEqual({ _splat: 'docs/guide', '*': 'docs/guide' })
+    it('collects used params for splats but not missing optionals', () => {
+      const usedParams: Record<string, unknown> = Object.create(null)
+      interpolatePath(
+        '/posts/{-$category}',
+        {},
+        undefined,
+        usedParams,
+        undefined,
+        server,
+      )
+      expect(usedParams).toEqual({})
+      interpolatePath(
+        '/files/$',
+        { _splat: 'docs/guide' },
+        undefined,
+        usedParams,
+        undefined,
+        server,
+      )
+      expect(usedParams).toEqual({
+        _splat: 'docs/guide',
+        '*': 'docs/guide',
+      })
+      expect(Object.getPrototypeOf(usedParams)).toBeNull()
     })
 
     it.each([
@@ -219,7 +291,7 @@ describe.each([false, true])(
         const keys: Array<string> = []
         const metadata = { isMissingParams: false }
         expect(
-          interpolatePathname(
+          interpolatePath(
             template,
             params,
             undefined,
@@ -232,11 +304,16 @@ describe.each([false, true])(
         expect(keys).toEqual(['id', 'language', '_splat'])
         expect(usedParams).toEqual(used)
         expect(metadata.isMissingParams).toBe(missing)
-        expect(interpolatePath({ path: template, params, server })).toEqual({
-          interpolatedPath: path,
-          usedParams: used,
-          isMissingParams: missing,
-        })
+        expect(
+          interpolatePath(
+            template,
+            params,
+            undefined,
+            undefined,
+            undefined,
+            server,
+          ),
+        ).toBe(path)
       },
     )
 
@@ -279,11 +356,21 @@ describe.each([false, true])(
     ])(
       'preserves missing-param metadata for $path with $params',
       ({ path, params, pathname, usedParams, missing }) => {
-        expect(interpolatePath({ path, params, server })).toEqual({
-          interpolatedPath: pathname,
-          usedParams,
-          isMissingParams: missing,
-        })
+        const collectedParams: Record<string, unknown> = Object.create(null)
+        const metadata = { isMissingParams: false }
+        expect(
+          interpolatePath(
+            path,
+            params,
+            undefined,
+            collectedParams,
+            undefined,
+            server,
+            metadata,
+          ),
+        ).toBe(pathname)
+        expect(collectedParams).toEqual(usedParams)
+        expect(metadata.isMissingParams).toBe(missing)
       },
     )
 
@@ -295,9 +382,7 @@ describe.each([false, true])(
           params: { _splat },
           server,
         }
-        expect(interpolate(options)).toBe(
-          interpolatePath(options).interpolatedPath,
-        )
+        expect(interpolate(options)).toBe(`/files/prefix${_splat}suffix`)
       }
     })
 
@@ -598,6 +683,77 @@ describe('resolvePath', () => {
 describe.each([{ server: true }, { server: false }])(
   'interpolatePath (server: $server)',
   ({ server }) => {
+    it.each([
+      { path: undefined, expected: '/' },
+      { path: '', expected: '/' },
+      { path: '/', expected: '/' },
+      { path: '/about/', expected: '/about/' },
+    ])('preserves static and empty paths: $path', ({ path, expected }) => {
+      const params = {
+        get unused() {
+          throw new Error('Static paths must not read params')
+        },
+      }
+      const decoder = vi.fn()
+      const usedParams: Record<string, unknown> = Object.create(null)
+      const keys: Array<string> = []
+      const metadata = { isMissingParams: false }
+      expect(
+        interpolatePath(
+          path,
+          params,
+          decoder,
+          usedParams,
+          keys,
+          server,
+          metadata,
+        ),
+      ).toBe(expected)
+      expect(usedParams).toEqual({})
+      expect(keys).toEqual([])
+      expect(metadata.isMissingParams).toBe(false)
+      expect(decoder).not.toHaveBeenCalled()
+    })
+
+    it.each([
+      {
+        path: '/users/$id',
+        params: {},
+        expected: '/users/undefined',
+        missing: true,
+      },
+      {
+        path: '/users/$id',
+        params: { id: 'one' },
+        expected: '/users/one',
+        missing: false,
+      },
+      {
+        path: '/posts/{-$category}',
+        params: {},
+        expected: '/posts',
+        missing: false,
+      },
+      { path: '/files/$', params: {}, expected: '/files', missing: true },
+    ])(
+      'collects only missing status for $path',
+      ({ path, params, expected, missing }) => {
+        const metadata = { isMissingParams: false }
+        expect(
+          interpolatePath(
+            path,
+            params,
+            undefined,
+            undefined,
+            undefined,
+            server,
+            metadata,
+          ),
+        ).toBe(expected)
+        expect(metadata.isMissingParams).toBe(missing)
+      },
+    )
+
     describe('regular usage', () => {
       it.each([
         {
@@ -704,12 +860,7 @@ describe.each([{ server: true }, { server: false }])(
         },
       ])('$name', ({ path, params, decoder, result }) => {
         expect(
-          interpolatePath({
-            path,
-            params,
-            decoder,
-            server,
-          }).interpolatedPath,
+          interpolatePath(path, params, decoder, undefined, undefined, server),
         ).toBe(result)
       })
     })
@@ -740,11 +891,14 @@ describe.each([{ server: true }, { server: false }])(
         'should preserve trailing slash for $path',
         ({ path, params, result }) => {
           expect(
-            interpolatePath({
+            interpolatePath(
               path,
               params,
+              undefined,
+              undefined,
+              undefined,
               server,
-            }).interpolatedPath,
+            ),
           ).toBe(result)
         },
       )
@@ -784,11 +938,7 @@ describe.each([{ server: true }, { server: false }])(
         },
       ])('$name', ({ to, params, result }) => {
         expect(
-          interpolatePath({
-            path: to,
-            params,
-            server,
-          }).interpolatedPath,
+          interpolatePath(to, params, undefined, undefined, undefined, server),
         ).toBe(result)
       })
     })
@@ -851,11 +1001,14 @@ describe.each([{ server: true }, { server: false }])(
         },
       ])('$name', ({ path, params, result }) => {
         expect(
-          interpolatePath({
+          interpolatePath(
             path,
             params,
+            undefined,
+            undefined,
+            undefined,
             server,
-          }).interpolatedPath,
+          ),
         ).toBe(result)
       })
     })
@@ -900,11 +1053,7 @@ describe.each([{ server: true }, { server: false }])(
         },
       ])('$name', ({ to, params, result }) => {
         expect(
-          interpolatePath({
-            path: to,
-            params,
-            server,
-          }).interpolatedPath,
+          interpolatePath(to, params, undefined, undefined, undefined, server),
         ).toBe(result)
       })
     })
@@ -952,13 +1101,18 @@ describe.each([{ server: true }, { server: false }])(
           expectedResult: '/hello',
         },
       ])('$name', ({ path, params, expectedResult }) => {
-        const result = interpolatePath({
+        const metadata = { isMissingParams: false }
+        const result = interpolatePath(
           path,
           params,
+          undefined,
+          undefined,
+          undefined,
           server,
-        })
-        expect(result.interpolatedPath).toBe(expectedResult)
-        expect(result.isMissingParams).toBe(true)
+          metadata,
+        )
+        expect(result).toBe(expectedResult)
+        expect(metadata.isMissingParams).toBe(true)
       })
     })
 
@@ -979,11 +1133,14 @@ describe.each([{ server: true }, { server: false }])(
             trailingSlash,
           })
           const nextParams = { _splat: '' }
-          const interpolatedNextTo = interpolatePath({
-            path: nextTo,
-            params: nextParams,
+          const interpolatedNextTo = interpolatePath(
+            nextTo,
+            nextParams,
+            undefined,
+            undefined,
+            undefined,
             server,
-          }).interpolatedPath
+          )
           expect(interpolatedNextTo).toBe(`/splat${tail}`)
         },
       )

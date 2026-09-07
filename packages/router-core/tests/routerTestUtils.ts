@@ -52,6 +52,13 @@ export function createTestRouter<
   return new RouterCore(options, getStoreConfig)
 }
 
+export type PathInterpolationTestOptions = {
+  path?: string
+  params: Record<string, unknown>
+  decoder?: Parameters<typeof interpolatePath>[2]
+  server?: boolean
+}
+
 export function createTestPathInterpolator() {
   const router = createTestRouter({
     routeTree: new BaseRootRoute({}),
@@ -59,21 +66,10 @@ export function createTestPathInterpolator() {
     scrollRestoration: false,
   })
   router.history.destroy()
-  const interpolate = router['interpolatePath']
-
-  return (options: Parameters<typeof interpolatePath>[0]): string => {
+  return (options: PathInterpolationTestOptions): string => {
     router.isServer = options.server ?? false
     router.pathParamsDecoder = options.decoder
-    // Support both sides of the factory-to-method benchmark comparison.
-    const args =
-      interpolate.length === 1
-        ? [options]
-        : [options.path || '/', options.params]
-    const result = Reflect.apply(interpolate, router, args)
-    if (typeof result !== 'string') {
-      throw new Error('Expected an interpolated pathname')
-    }
-    return result
+    return router['interpolatePath'](options.path || '/', options.params)
   }
 }
 

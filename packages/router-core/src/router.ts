@@ -30,7 +30,7 @@ import {
 } from './new-process-route-tree'
 import {
   compileDecodeCharMap,
-  interpolatePathname,
+  interpolatePath,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -1674,7 +1674,7 @@ export class RouterCore<
       const usedParams: Record<string, unknown> = createNull()
       const interpolatedPath =
         isServer === undefined
-          ? interpolatePathname(
+          ? interpolatePath(
               route.fullPath,
               rawParams,
               this.pathParamsDecoder,
@@ -1682,7 +1682,7 @@ export class RouterCore<
               undefined,
               this.isServer,
             )
-          : interpolatePathname(
+          : interpolatePath(
               route.fullPath,
               rawParams,
               this.pathParamsDecoder,
@@ -1909,7 +1909,7 @@ export class RouterCore<
       const keys: Array<string> = []
       interpolated =
         isServer === undefined
-          ? interpolatePathname(
+          ? interpolatePath(
               path,
               params,
               decoder,
@@ -1917,7 +1917,7 @@ export class RouterCore<
               keys,
               this.isServer,
             )
-          : interpolatePathname(path, params, decoder, undefined, keys)
+          : interpolatePath(path, params, decoder, undefined, keys)
       plan = [keys, createSieveCache<string, string>(128), decoder]
       this.pathCache.set(path, plan)
     }
@@ -1929,7 +1929,7 @@ export class RouterCore<
         return (
           interpolated ||
           (isServer === undefined
-            ? interpolatePathname(
+            ? interpolatePath(
                 path,
                 params,
                 decoder,
@@ -1937,7 +1937,7 @@ export class RouterCore<
                 undefined,
                 this.isServer,
               )
-            : interpolatePathname(path, params, decoder))
+            : interpolatePath(path, params, decoder))
         )
       }
       key = keys.length === 1 ? value : key + value.length + ':' + value
@@ -1950,7 +1950,7 @@ export class RouterCore<
       key,
       (interpolated ||=
         isServer === undefined
-          ? interpolatePathname(
+          ? interpolatePath(
               path,
               params,
               decoder,
@@ -1958,7 +1958,7 @@ export class RouterCore<
               undefined,
               this.isServer,
             )
-          : interpolatePathname(path, params, decoder)),
+          : interpolatePath(path, params, decoder)),
     )
     return interpolated
   }
