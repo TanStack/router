@@ -435,6 +435,10 @@ export function useLinkProps<
     return {
       ...base,
       ...stateProps,
+      // State props can override element props, but not routing options.
+      href: base.href,
+      disabled: base.disabled,
+      target: base.target,
       ...(style && hasKeys(style) ? { style } : undefined),
       ...(className ? { class: className } : undefined),
       ...(active && STATIC_ACTIVE_ATTRIBUTES),
