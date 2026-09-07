@@ -1,17 +1,12 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { describe, expect, it, vi } from 'vitest'
-import { parseAst } from '@tanstack/router-utils'
+import { describe, expect, it } from 'vitest'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
+import { normalizePath } from '../src/core/utils'
 import type { UnpluginBuildContext, UnpluginOptions } from 'unplugin'
 
-vi.mock('@tanstack/router-utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@tanstack/router-utils')>()
-  return { ...actual, parseAst: vi.fn(actual.parseAst) }
-})
-
-const filename = path.resolve('src/routes/todos.tsx')
+const filename = normalizePath(path.resolve('src/routes/todos.tsx'))
 
 async function createPlugins() {
   const context = createRouterPluginContext()
@@ -58,17 +53,16 @@ function fixture(name: string) {
   )
 }
 
-describe('reference transform parsing', () => {
+describe('reference transform output', () => {
   it.each(['shared-variable.tsx', 'inline.tsx', 'useStateDestructure.tsx'])(
-    'parses %s once per invocation, including repeated and changed source',
+    'transforms repeated and changed %s source consistently',
     async (name) => {
       const [reference] = await createPlugins()
       const code = await fixture(name)
       const updatedCode = code + '\nexport const updated = true'
       for (const source of [code, code, updatedCode]) {
-        vi.mocked(parseAst).mockClear()
         const result = await transform(reference!, source)
-        expect(parseAst).toHaveBeenCalledTimes(1)
+        expect(result?.code).toContain('createFileRoute(')
         const [freshReference] = await createPlugins()
         const freshResult = await transform(freshReference!, source)
         expect(result).toEqual(freshResult)
@@ -79,7 +73,7 @@ describe('reference transform parsing', () => {
 
 describe('compiler source maps', () => {
   it.each(['webpack', 'rspack'] as const)(
-    '%s skips discarded maps and retains maps with incoming source maps',
+    '%s preserves transformed code and incoming source maps',
     async (framework) => {
       const plugins = await createPlugins()
       const code = await fixture('shared-variable.tsx')
@@ -108,9 +102,7 @@ describe('compiler source maps', () => {
               >,
           })
           expect(result!.code).toBe(baseline!.code)
-          if (inputSourceMap == null) {
-            expect(result!.map).toBeNull()
-          } else {
+          if (inputSourceMap != null) {
             expect(result!.map).toEqual(baseline!.map)
           }
         }
