@@ -126,7 +126,7 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
-    "chokidar": "^5.0.0",
+    "chokidar": "catalog:",
     "unplugin": "^3.3.0",
     "zod": "catalog:"
   },
