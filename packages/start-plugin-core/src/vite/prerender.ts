@@ -222,6 +222,13 @@ async function importWithCacheBust(path: string) {
 }
 
 function getRouteOptionsEntryName(input: unknown): string | undefined {
+  if (Array.isArray(input)) {
+    if (input.length !== 1 || typeof input[0] !== 'string') {
+      throw new Error('Unable to resolve Vite route-options entry point')
+    }
+    input = input[0]
+  }
+
   if (typeof input === 'string') {
     return basename(input, extname(input))
   }
