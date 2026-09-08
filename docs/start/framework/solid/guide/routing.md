@@ -198,6 +198,29 @@ To create a route, create a new file that corresponds to the path of the route y
 | `/posts/:postId` | `posts/$postId.tsx` | Dynamic Route  |
 | `/rest/*`        | `rest/$.tsx`        | Wildcard Route |
 
+> [!WARNING]
+> When creating layout routes manually like `posts.tsx` above, the router's file generation will automatically scaffold a standard component _without_ an `<Outlet />`.
+> 
+> Because this file is intended to be a layout for its child routes (`posts/index.tsx`, `posts/$postId.tsx`), **you must manually update the generated component to include an `<Outlet />`**, otherwise your nested routes will not render!
+> 
+> ```tsx
+> // src/routes/posts.tsx
+> import { Outlet, createFileRoute } from '@tanstack/solid-router'
+> 
+> export const Route = createFileRoute('/posts')({
+>   component: PostsLayout,
+> })
+> 
+> function PostsLayout() {
+>   return (
+>     <div class="p-2">
+>       <h2>Posts Layout</h2>
+>       <Outlet />
+>     </div>
+>   )
+> }
+> ```
+
 ## Defining Routes
 
 To define a route, use the `createFileRoute` function to export the route as the `Route` variable.
