@@ -1,5 +1,11 @@
 # @tanstack/solid-router
 
+## 2.0.0-rc.7
+
+### Patch Changes
+
+- [#8254](https://github.com/TanStack/router/pull/8254) [`a09b50c`](https://github.com/TanStack/router/commit/a09b50cac19250236455cce0ce76e2551a0afe59) - Fall back to the router instance's server flag during development SSR. This prevents router construction from entering client hydration on the server and restores provider-owned loading and match-state serialization.
+
 ## 2.0.0-rc.6
 
 ### Patch Changes
