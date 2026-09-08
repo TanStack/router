@@ -303,6 +303,45 @@ describe('buildLocation - params function receives parsed params', () => {
 })
 
 describe('buildLocation - search params', () => {
+  test('collects updated middleware options from the whole route branch', () => {
+    const rootRoute = new BaseRootRoute({
+      search: {
+        middlewares: [({ search, next }) => next({ ...search, root: true })],
+      },
+    })
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      search: {
+        middlewares: [
+          ({ search, next }) => ({ ...next(search), value: 'initial' }),
+        ],
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([route]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const buildSearch = () =>
+      router.buildLocation({ to: '/', search: true }).search
+
+    expect(buildSearch()).toEqual({ root: true, value: 'initial' })
+
+    route.update({
+      search: {
+        middlewares: [
+          ({ search, next }) => ({ ...next(search), value: 'updated' }),
+        ],
+      },
+    })
+    expect(buildSearch()).toEqual({ root: true, value: 'updated' })
+
+    route.update({ search: { middlewares: [] } })
+    expect(buildSearch()).toEqual({ root: true })
+    rootRoute.update({ search: { middlewares: [] } })
+    expect(buildSearch()).toEqual({})
+  })
+
   test('only applies route validation when requested', async () => {
     const events: Array<string> = []
     const validateSearch = vi.fn((search: Record<string, unknown>) => {

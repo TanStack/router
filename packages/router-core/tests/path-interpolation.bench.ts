@@ -156,7 +156,7 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
           undefined,
           input.server,
         ),
-      ).path,
+      ),
     }))
   let checksum = 0
   const expected = inputs.reduce(
