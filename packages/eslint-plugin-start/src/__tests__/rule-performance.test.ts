@@ -3,9 +3,72 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { RuleTester } from '@typescript-eslint/rule-tester'
 import { TSESLint } from '@typescript-eslint/utils'
-import { afterEach, assert, expect, test } from 'vitest'
+import { afterEach, assert, expect, test, vi } from 'vitest'
 import { rule as serverRule } from '../rules/no-client-code-in-server-component/no-client-code-in-server-component.rule'
 import { rule as asyncRule } from '../rules/no-async-client-component/no-async-client-component.rule'
+import * as contextAnalyzer from '../rules/no-async-client-component/context-analyzer'
+import type * as violationDetector from '../rules/no-client-code-in-server-component/violation-detector'
+import type * as renderGraphBuilder from '../rules/no-async-client-component/render-graph-builder'
+import type * as ts from 'typescript'
+
+const counts = vi.hoisted(() => ({ detectorNodes: 0, edgeReads: 0, builds: 0 }))
+
+// Count work in the real detector and graph builder, without timing assertions.
+vi.mock(
+  '../rules/no-client-code-in-server-component/violation-detector',
+  async (importOriginal) => {
+    const original = await importOriginal<typeof violationDetector>()
+    return {
+      ...original,
+      createViolationDetector(
+        tsLib: typeof ts,
+        options: Parameters<typeof original.createViolationDetector>[1],
+      ) {
+        return original.createViolationDetector(
+          {
+            ...tsLib,
+            forEachChild(node, cbNode, cbNodes) {
+              counts.detectorNodes++
+              return tsLib.forEachChild(node, cbNode, cbNodes)
+            },
+          },
+          options,
+        )
+      },
+    }
+  },
+)
+
+vi.mock(
+  '../rules/no-async-client-component/render-graph-builder',
+  async (importOriginal) => {
+    const original = await importOriginal<typeof renderGraphBuilder>()
+    return {
+      ...original,
+      createRenderGraphBuilder(
+        ...args: Parameters<typeof original.createRenderGraphBuilder>
+      ) {
+        const builder = original.createRenderGraphBuilder(...args)
+        const graph = builder.getGraph()
+        graph.edges = new Proxy(graph.edges, {
+          get(target, key, receiver) {
+            if (typeof key === 'string' && /^\d+$/.test(key)) {
+              counts.edgeReads++
+            }
+            return Reflect.get(target, key, receiver)
+          },
+        })
+        return {
+          ...builder,
+          build() {
+            counts.builds++
+            return builder.build()
+          },
+        }
+      },
+    }
+  },
+)
 
 const directories: Array<string> = []
 afterEach(() => {
@@ -30,6 +93,9 @@ function createLint(files: Record<string, string>) {
   )
   const linter = new TSESLint.Linter({ cwd: directory })
   return (rule: TSESLint.AnyRuleModule, names = Object.keys(files)) => {
+    counts.detectorNodes = 0
+    counts.edgeReads = 0
+    counts.builds = 0
     const messages = names.flatMap((name) => {
       const code = files[name]
       assert.isDefined(code)
@@ -54,58 +120,76 @@ function createLint(files: Record<string, string>) {
       )
     })
     expect(messages.filter((message) => message.fatal)).toEqual([])
-    return { messages }
+    return { ...counts, messages }
   }
 }
 
 test.each(['callback', 'jsx'])(
-  'reports violations in each server %s without reporting unrelated client code',
+  'direct %s checks scale with server roots without rescanning unrelated code',
   (kind) => {
-    const outside =
-      'function Client() { useEffect(); return <button onClick={() => {}} /> }'
-    const roots = Array.from({ length: 3 }, (_, i) => {
-      const jsx = `<button onClick={() => {}}>${i}</button>`
-      return kind === 'callback'
-        ? `createCompositeComponent(({ value = window.location }) => ${jsx});`
-        : `renderServerComponent(${jsx});`
-    })
-    const result = createLint({ 'roots.tsx': [outside, ...roots].join('\n') })(
-      serverRule,
+    function lintRoots(count: number) {
+      const outside = `function Client() { useEffect(); return <button onClick={() => {}} /> }`
+      const roots = Array.from({ length: count }, (_, i) => {
+        const jsx = `<button onClick={() => {}}>${i}</button>`
+        return kind === 'callback'
+          ? `createCompositeComponent(({ value = window.location }) => ${jsx});`
+          : `renderServerComponent(${jsx});`
+      })
+      return createLint({ 'roots.tsx': [outside, ...roots].join('\n') })(
+        serverRule,
+      )
+    }
+
+    const small = lintRoots(8)
+    const large = lintRoots(32)
+    expect(small.messages).toHaveLength(8)
+    expect(large.messages.map((message) => message.messageId)).toEqual(
+      Array(32).fill('eventHandlerInServerComponent'),
     )
-    expect(result.messages.map((message) => message.messageId)).toEqual([
-      'eventHandlerInServerComponent',
-      'eventHandlerInServerComponent',
-      'eventHandlerInServerComponent',
-    ])
+    expect(large.detectorNodes).toBeGreaterThan(0)
+    expect(large.detectorNodes).toBeLessThanOrEqual(small.detectorNodes * 5)
   },
 )
 
-test('reports the same diagnostics when linting separate routes again', () => {
-  const files = Object.fromEntries(
-    ['first', 'second'].map((name) => [
-      `${name}.tsx`,
-      `
-        function Page() { return <Panel /> }
-        function Panel() { return <Leaf /> }
-        async function Leaf() { return <span /> }
-        export const Route = createFileRoute('/${name}')({ component: Page });
-      `,
-    ]),
-  )
-  const lint = createLint(files)
-  const first = lint(asyncRule)
-  expect(first.messages.map((message) => message.messageId)).toEqual([
-    'asyncClientComponentUsage',
-    'asyncClientComponentDefinition',
-    'asyncClientComponentUsage',
-    'asyncClientComponentDefinition',
-  ])
-  expect(lint(asyncRule).messages).toEqual(first.messages)
+test('slicing separate route graphs scales with reachable edges and reuses cached analysis', () => {
+  function lintRoutes(count: number) {
+    const files = Object.fromEntries(
+      Array.from({ length: count }, (_, i) => [
+        `route-${i}.tsx`,
+        `
+          function Page() { return <Panel /> }
+          function Panel() { return <Leaf /> }
+          async function Leaf() { return <span /> }
+          export const Route = createFileRoute('/${i}')({ component: Page });
+        `,
+      ]),
+    )
+    const lint = createLint(files)
+    const cold = lint(asyncRule)
+    const warm = lint(asyncRule)
+    expect(warm.messages).toEqual(cold.messages)
+    expect(cold.builds).toBe(1)
+    expect(warm.builds).toBe(0)
+    expect(warm.edgeReads).toBe(0)
+    expect(cold.messages.map((message) => message.messageId)).toEqual(
+      Array.from({ length: count }, () => [
+        'asyncClientComponentUsage',
+        'asyncClientComponentDefinition',
+      ]).flat(),
+    )
+    return cold
+  }
+
+  const small = lintRoutes(8)
+  const large = lintRoutes(32)
+  expect(large.edgeReads).toBeGreaterThan(0)
+  expect(large.edgeReads).toBeLessThanOrEqual(small.edgeReads * 5)
 })
 
 test.each([false, true])(
-  'reports diagnostics through duplicate edges, diamonds, and cycles (unreachable edges: %s)',
+  'slicing preserves JSX edge order through duplicate edges, diamonds, and cycles (unreachable edges: %s)',
   (unreachableEdges) => {
+    const analyze = vi.spyOn(contextAnalyzer, 'analyzeContext')
     const lint = createLint({
       'route.tsx': `
       function Page() { return <><Left /><Right /><Left /></> }
@@ -129,6 +213,19 @@ test.each([false, true])(
       'asyncClientComponentUsage',
       'asyncClientComponentUsage',
       'asyncClientComponentDefinition',
+    ])
+    const [call] = analyze.mock.calls
+    assert.isDefined(call)
+    const [graph] = call
+    expect(
+      graph.edges.map((edge) => [edge.fromComponent, edge.toComponent]),
+    ).toEqual([
+      ['Page', 'Left'],
+      ['Page', 'Right'],
+      ['Page', 'Left'],
+      ['Left', 'Leaf'],
+      ['Right', 'Leaf'],
+      ['Leaf', 'Page'],
     ])
   },
 )
