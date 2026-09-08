@@ -79,12 +79,15 @@ function resolveMetadataLoader(): string {
   return resolve(currentDir, metadataLoaderFilename)
 }
 
-function readServerFnBuildInfo(
-  module: Rspack.Module,
-): Record<string, ServerFn> | null {
-  const result = serverFnBuildInfoSchema.safeParse(
-    module.buildInfo[SERVER_FN_BUILD_INFO_FIELD],
-  )
+export function readServerFnBuildInfo(module: {
+  buildInfo: Record<string, unknown>
+}): Record<string, ServerFn> | null {
+  const metadata = module.buildInfo[SERVER_FN_BUILD_INFO_FIELD]
+  if (metadata === undefined) {
+    return null
+  }
+
+  const result = serverFnBuildInfoSchema.safeParse(metadata)
   if (!result.success) {
     return null
   }

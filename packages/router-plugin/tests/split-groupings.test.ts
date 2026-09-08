@@ -6,6 +6,10 @@ describe('splitGroupingsSchema', () => {
   it.each([
     { name: 'no groups', input: [] },
     { name: 'an empty group', input: [[]] },
+    {
+      name: 'empty groups between nodes',
+      input: [[], ['loader'], [], ['component'], []],
+    },
     { name: 'default groups', input: defaultCodeSplitGroupings },
     {
       name: 'all nodes in one group',
@@ -40,6 +44,27 @@ describe('splitGroupingsSchema', () => {
     {
       name: 'across groups',
       input: [['component'], ['component', 'loader']],
+    },
+    {
+      name: 'after every valid node',
+      input: [
+        [
+          'loader',
+          'component',
+          'pendingComponent',
+          'errorComponent',
+          'notFoundComponent',
+        ],
+        [],
+        ['loader'],
+      ],
+    },
+    {
+      name: 'multiple times',
+      input: [
+        ['component', 'component'],
+        ['loader', 'loader'],
+      ],
     },
   ])('rejects duplicate nodes $name', ({ input }) => {
     const result = splitGroupingsSchema.safeParse(input)

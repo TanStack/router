@@ -29,18 +29,20 @@ export const splitGroupingsSchema = z.compile(
       },
     )
     .superRefine((val, ctx) => {
-      const flattened = val.flat()
-      const unique = [...new Set(flattened)]
-
-      // Elements must be unique,
-      // ie. this shouldn't be allows [['component'], ['component', 'loader']]
-      if (unique.length !== flattened.length) {
-        ctx.addIssue({
-          code: 'custom',
-          message:
-            "  Split groupings must be unique and not repeated. i.e. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]." +
-            `\n  You input was: ${JSON.stringify(val)}.`,
-        })
+      const seen = new Set<string>()
+      for (const group of val) {
+        for (const node of group) {
+          if (seen.has(node)) {
+            ctx.addIssue({
+              code: 'custom',
+              message:
+                "  Split groupings must be unique and not repeated. i.e. i.e. [['component'], ['pendingComponent'], ['errorComponent', 'notFoundComponent']]." +
+                `\n  You input was: ${JSON.stringify(val)}.`,
+            })
+            return
+          }
+          seen.add(node)
+        }
       }
     }),
 )
