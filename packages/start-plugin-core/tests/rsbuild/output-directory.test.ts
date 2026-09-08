@@ -80,6 +80,7 @@ describe('createRsbuildEnvironmentPlan client output', () => {
     serverOutputDirectory: 'dist/server',
     publicBase: '/_build/',
     serverFnProviderEnv: 'ssr',
+    separatePrerenderRouteOptions: false,
   }
 
   test('sets client output.module from scriptFormat', () => {
