@@ -32,6 +32,21 @@ test.beforeEach(async ({ page }) => {
   await page.goto('/anchor')
 })
 
+test('slash and backslash fragment data selects the matching anchor', async ({
+  page,
+}) => {
+  const link = page.getByRole('link', { name: 'Fragment with slashes' })
+  const heading = page.getByRole('heading', { name: 'Fragment with slashes' })
+  await link.click()
+  await expect(page).toHaveURL(/#\/\\section$/)
+  await expect(link).toHaveClass(activeClass)
+  await expect(heading).toBeInViewport()
+
+  await page.reload()
+  await expect(link).toHaveClass(activeClass)
+  await expect(heading).toBeInViewport()
+})
+
 // Testing the `Link` component with the `hashScrollIntoView` prop
 test('Navigating via anchor `Link` with default hash scrolling behavior', async ({
   page,
