@@ -27,7 +27,7 @@ test('_getUserHistoryState removes volatile router bookkeeping but keeps mask pa
 })
 
 test.each([false, true])(
-  'forwards the development server override when router.isServer is %s',
+  'interpolates matches from raw params when router.isServer is %s',
   (isServer) => {
     expect(serverEnvironment).toBeUndefined()
     const rootRoute = new BaseRootRoute({})
@@ -47,8 +47,10 @@ test.each([false, true])(
       const call = interpolate.mock.calls.find(
         ([path]) => path === '/items/$id',
       )
-      expect(call).toHaveLength(6)
-      expect(call?.[5]).toBe(isServer)
+      expect(call).toHaveLength(5)
+      expect(call?.[1]).toBe(route._interpolation)
+      expect(call?.[2]).toEqual({ id: 'one' })
+      expect(matches.at(-1)?._strictParams).toEqual({ id: 'one' })
     } finally {
       interpolate.mockRestore()
     }

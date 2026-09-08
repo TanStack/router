@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import * as pathUtils from '../src/path'
+import * as routeTreeUtils from '../src/new-process-route-tree'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRoute, AnyRouter } from '../src'
@@ -138,16 +139,20 @@ test('keeps different route objects independent and resets derived caches when r
   }
   expect(firstTree.item._branch).not.toBe(secondTree.item._branch)
   expect(firstTree.item._pathCache).not.toBe(secondTree.item._pathCache)
+  expect(firstTree.item._interpolation).not.toBe(secondTree.item._interpolation)
 
   const previousResolve = first.resolvePathCache
   const previousFallback = first['unmatchedPathCache']
   const previousBranch = firstTree.item._branch
   const previousPlan = firstTree.item._pathCache
+  const previousInterpolation = firstTree.item._interpolation
   first.setRoutes(first.buildRouteTree())
   expect(first.resolvePathCache).not.toBe(previousResolve)
   expect(first['unmatchedPathCache']).not.toBe(previousFallback)
   expect(firstTree.item._branch).toBeUndefined()
   expect(firstTree.item._pathCache).toBe(previousPlan)
+  expect(firstTree.item._interpolation).not.toBe(previousInterpolation)
+  expect(firstTree.item._interpolation).toEqual(previousInterpolation)
   expect(
     first.buildLocation({ to: '/items/$id', params: { id: 'one' } }).href,
   ).toBe('/items/one')
@@ -204,6 +209,7 @@ test('refreshes branches and path plans when an existing route is reparented', (
   ).toBe('/left/child/one%20two')
   expect(child._branch).toEqual([root, left, child])
   const plan = child._pathCache
+  const previousInterpolation = child._interpolation
 
   parent = right
   left.addChildren([])
@@ -211,12 +217,37 @@ test('refreshes branches and path plans when an existing route is reparented', (
   router.setRoutes(router.buildRouteTree())
   expect(child._branch).toBeUndefined()
   expect(child._pathCache).toBe(plan)
+  expect(child._interpolation).not.toBe(previousInterpolation)
+  expect(child.fullPath).toBe('/right/child/$id')
+  expect(child._interpolation?.[0]).toBe('/right/child')
+  const parse = vi.spyOn(routeTreeUtils, 'parseSegment')
   expect(
     router.buildLocation({ to: '/right/child/$id', params: { id: 'one two' } })
       .href,
   ).toBe('/right/child/one%20two')
   expect(child._branch).toEqual([root, right, child])
   expect(child._pathCache).not.toBe(plan)
+  expect(parse).not.toHaveBeenCalled()
+})
+
+test('uses updated callbacks with rebuilt segments in development', () => {
+  vi.stubEnv('NODE_ENV', 'development')
+  const { routeTree, item } = createRoutes()
+  const router = createTestRouter({ routeTree, history: history() })
+  expect(
+    router.buildLocation({ to: '/items/$id', params: { id: 'one' } }).href,
+  ).toBe('/items/one')
+  const prepared = item._interpolation
+  item.options.params = {
+    stringify: ({ id }) => ({ id: `updated ${id}` }),
+  }
+  router.setRoutes(router.buildRouteTree())
+  expect(item._interpolation).not.toBe(prepared)
+  const parse = vi.spyOn(routeTreeUtils, 'parseSegment')
+  expect(
+    router.buildLocation({ to: '/items/$id', params: { id: 'one' } }).href,
+  ).toBe('/items/updated%20one')
+  expect(parse).not.toHaveBeenCalled()
 })
 
 test('keeps the 128-result bound within each route', () => {
@@ -275,6 +306,28 @@ test('isolates decoder and trailing-slash variants on the same server route', ()
   ).toBe('/items/@%2B')
 })
 
+test('reuses unregistered template segments across values and decoder changes', () => {
+  const { routeTree } = createRoutes()
+  const router = createTestRouter({ routeTree, history: history() })
+  const parse = vi.spyOn(pathUtils, 'parseInterpolationPath')
+  for (const decoder of [
+    undefined,
+    pathUtils.compileDecodeCharMap(['@']),
+    pathUtils.compileDecodeCharMap(['+']),
+  ]) {
+    router.pathParamsDecoder = decoder
+    for (let id = 0; id < 140; id++) {
+      expect(
+        router.buildLocation({
+          to: '/unregistered/$id',
+          params: { id: String(id) },
+        }).pathname,
+      ).toBe(`/unregistered/${id}`)
+    }
+  }
+  expect(parse).toHaveBeenCalledOnce()
+})
+
 test('retains a bounded fallback for unregistered mask templates', () => {
   const { routeTree } = createRoutes()
   const router = createTestRouter({ routeTree, history: history() })
@@ -286,6 +339,7 @@ test('retains a bounded fallback for unregistered mask templates', () => {
       params: { id: '@one' },
       mask: { to: '/pretty/$id', params: { id: '@one' } },
     })
+
   expect(build().maskedLocation?.pathname).toBe('/pretty/@one')
   decoder.mockClear()
   expect(build().maskedLocation?.pathname).toBe('/pretty/@one')

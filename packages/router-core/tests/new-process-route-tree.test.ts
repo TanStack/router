@@ -1651,6 +1651,14 @@ describe('findRouteMatch', () => {
                     "pathless": null,
                     "priority": 0,
                     "route": {
+                      "_interpolation": [
+                        [
+                          1,
+                          "foo",
+                          "/",
+                          "",
+                        ],
+                      ],
                       "fullPath": "/$foo/",
                       "id": "/$foo/_layout/",
                       "options": {},
@@ -1667,14 +1675,39 @@ describe('findRouteMatch', () => {
                   "pathless": null,
                   "priority": 0,
                   "route": {
+                    "_interpolation": [
+                      [
+                        1,
+                        "foo",
+                        "/",
+                        "",
+                      ],
+                    ],
                     "children": [
                       {
+                        "_interpolation": [
+                          [
+                            1,
+                            "foo",
+                            "/",
+                            "",
+                          ],
+                          "/bar",
+                        ],
                         "fullPath": "/$foo/bar",
                         "id": "/$foo/_layout/bar",
                         "options": {},
                         "path": "bar",
                       },
                       {
+                        "_interpolation": [
+                          [
+                            1,
+                            "foo",
+                            "/",
+                            "",
+                          ],
+                        ],
                         "fullPath": "/$foo/",
                         "id": "/$foo/_layout/",
                         "options": {},
@@ -1704,6 +1737,15 @@ describe('findRouteMatch', () => {
                       "pathless": null,
                       "priority": 0,
                       "route": {
+                        "_interpolation": [
+                          [
+                            1,
+                            "foo",
+                            "/",
+                            "",
+                          ],
+                          "/bar",
+                        ],
                         "fullPath": "/$foo/bar",
                         "id": "/$foo/_layout/bar",
                         "options": {},
@@ -1734,6 +1776,15 @@ describe('findRouteMatch', () => {
                   "pathless": null,
                   "priority": 0,
                   "route": {
+                    "_interpolation": [
+                      [
+                        1,
+                        "foo",
+                        "/",
+                        "",
+                      ],
+                      "/hello",
+                    ],
                     "fullPath": "/$foo/hello",
                     "id": "/$foo/hello",
                     "options": {},
@@ -1761,6 +1812,7 @@ describe('findRouteMatch', () => {
             "pathless": null,
             "priority": 0,
             "route": {
+              "_interpolation": undefined,
               "fullPath": "/",
               "id": "/",
               "options": {},

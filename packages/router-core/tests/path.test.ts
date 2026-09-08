@@ -2,7 +2,6 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   compileDecodeCharMap,
   exactPathTest,
-  interpolatePath,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
@@ -16,7 +15,10 @@ import {
   processRouteTree,
 } from '../src/new-process-route-tree'
 import { createSieveCache } from '../src/sieve-cache'
-import { createTestPathInterpolator as createPathInterpolator } from './routerTestUtils'
+import {
+  createTestPathInterpolator as createPathInterpolator,
+  interpolateTestPath as interpolatePath,
+} from './routerTestUtils'
 import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe.each([false, true])(
@@ -88,14 +90,7 @@ describe.each([false, true])(
         const interpolate = createPathInterpolator()
         const options = { path, params, server }
         expect(
-          interpolatePath(
-            path,
-            params,
-            undefined,
-            undefined,
-            undefined,
-            server,
-          ),
+          interpolatePath(path, params, undefined, undefined, undefined),
         ).toBe(expected)
         expect(interpolate(options)).toBe(normalized ?? expected)
         expect(interpolate({ ...options, params: { ...params } })).toBe(
@@ -276,7 +271,6 @@ describe.each([false, true])(
         undefined,
         usedParams,
         undefined,
-        server,
       )
       expect(usedParams).toEqual({})
       interpolatePath(
@@ -285,7 +279,6 @@ describe.each([false, true])(
         undefined,
         usedParams,
         undefined,
-        server,
       )
       expect(usedParams).toEqual({
         _splat: 'docs/guide',
@@ -331,7 +324,6 @@ describe.each([false, true])(
             undefined,
             usedParams,
             keys,
-            server,
             metadata,
           ),
         ).toBe(path)
@@ -339,14 +331,7 @@ describe.each([false, true])(
         expect(usedParams).toEqual(used)
         expect(metadata.isMissingParams).toBe(missing)
         expect(
-          interpolatePath(
-            template,
-            params,
-            undefined,
-            undefined,
-            undefined,
-            server,
-          ),
+          interpolatePath(template, params, undefined, undefined, undefined),
         ).toBe(path)
       },
     )
@@ -399,7 +384,6 @@ describe.each([false, true])(
             undefined,
             collectedParams,
             undefined,
-            server,
             metadata,
           ),
         ).toBe(pathname)
@@ -717,12 +701,29 @@ describe('resolvePath', () => {
 describe.each([{ server: true }, { server: false }])(
   'interpolatePath (server: $server)',
   ({ server }) => {
+    it.each(['value', '', undefined])(
+      'stops interpolation at a bare splat with value %s',
+      (_splat) => {
+        const params = {
+          _splat,
+          get ignored() {
+            throw new Error('A bare splat consumes the rest of the template')
+          },
+        }
+        const used: Record<string, unknown> = Object.create(null)
+        const keys: Array<string> = []
+        expect(
+          interpolatePath('/files/$/$ignored', params, undefined, used, keys),
+        ).toBe(_splat ? '/files/value' : '/files')
+        expect(keys).toEqual(['_splat'])
+        expect(used).toEqual({ _splat, '*': _splat })
+      },
+    )
+
     it.each([
-      { path: undefined, expected: '/' },
-      { path: '', expected: '/' },
       { path: '/', expected: '/' },
       { path: '/about/', expected: '/about/' },
-    ])('preserves static and empty paths: $path', ({ path, expected }) => {
+    ])('preserves static paths: $path', ({ path, expected }) => {
       const params = {
         get unused() {
           throw new Error('Static paths must not read params')
@@ -733,15 +734,7 @@ describe.each([{ server: true }, { server: false }])(
       const keys: Array<string> = []
       const metadata = { isMissingParams: false }
       expect(
-        interpolatePath(
-          path,
-          params,
-          decoder,
-          usedParams,
-          keys,
-          server,
-          metadata,
-        ),
+        interpolatePath(path, params, decoder, usedParams, keys, metadata),
       ).toBe(expected)
       expect(usedParams).toEqual({})
       expect(keys).toEqual([])
@@ -780,7 +773,6 @@ describe.each([{ server: true }, { server: false }])(
             undefined,
             undefined,
             undefined,
-            server,
             metadata,
           ),
         ).toBe(expected)
@@ -894,7 +886,7 @@ describe.each([{ server: true }, { server: false }])(
         },
       ])('$name', ({ path, params, decoder, result }) => {
         expect(
-          interpolatePath(path, params, decoder, undefined, undefined, server),
+          interpolatePath(path, params, decoder, undefined, undefined),
         ).toBe(result)
       })
     })
@@ -925,14 +917,7 @@ describe.each([{ server: true }, { server: false }])(
         'should preserve trailing slash for $path',
         ({ path, params, result }) => {
           expect(
-            interpolatePath(
-              path,
-              params,
-              undefined,
-              undefined,
-              undefined,
-              server,
-            ),
+            interpolatePath(path, params, undefined, undefined, undefined),
           ).toBe(result)
         },
       )
@@ -972,7 +957,7 @@ describe.each([{ server: true }, { server: false }])(
         },
       ])('$name', ({ to, params, result }) => {
         expect(
-          interpolatePath(to, params, undefined, undefined, undefined, server),
+          interpolatePath(to, params, undefined, undefined, undefined),
         ).toBe(result)
       })
     })
@@ -1035,14 +1020,7 @@ describe.each([{ server: true }, { server: false }])(
         },
       ])('$name', ({ path, params, result }) => {
         expect(
-          interpolatePath(
-            path,
-            params,
-            undefined,
-            undefined,
-            undefined,
-            server,
-          ),
+          interpolatePath(path, params, undefined, undefined, undefined),
         ).toBe(result)
       })
     })
@@ -1087,7 +1065,7 @@ describe.each([{ server: true }, { server: false }])(
         },
       ])('$name', ({ to, params, result }) => {
         expect(
-          interpolatePath(to, params, undefined, undefined, undefined, server),
+          interpolatePath(to, params, undefined, undefined, undefined),
         ).toBe(result)
       })
     })
@@ -1142,7 +1120,6 @@ describe.each([{ server: true }, { server: false }])(
           undefined,
           undefined,
           undefined,
-          server,
           metadata,
         )
         expect(result).toBe(expectedResult)
@@ -1173,7 +1150,6 @@ describe.each([{ server: true }, { server: false }])(
             undefined,
             undefined,
             undefined,
-            server,
           )
           expect(interpolatedNextTo).toBe(`/splat${tail}`)
         },

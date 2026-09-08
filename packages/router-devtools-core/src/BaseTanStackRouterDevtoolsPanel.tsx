@@ -1,5 +1,6 @@
 import { clsx as cx } from 'clsx'
 import {
+  getRouteSegments,
   hasKeys,
   interpolatePath,
   rootRouteId,
@@ -180,15 +181,17 @@ function RouteComp({
     const allParams = Object.assign({}, ...matches().map((m) => m.params))
 
     const metadata = { isMissingParams: false }
-    const pathname = interpolatePath(
-      route.fullPath,
-      allParams,
-      router().pathParamsDecoder,
-      undefined,
-      undefined,
-      undefined,
-      metadata,
-    )
+    const segments = getRouteSegments(route)
+    const pathname = segments
+      ? interpolatePath(
+          route.fullPath,
+          segments,
+          allParams,
+          router().pathParamsDecoder,
+          undefined,
+          metadata,
+        )
+      : route.fullPath
 
     return metadata.isMissingParams ? undefined : pathname
   })

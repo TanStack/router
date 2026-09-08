@@ -31,6 +31,7 @@ import {
 import {
   compileDecodeCharMap,
   interpolatePath,
+  parseInterpolationPath,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -1659,22 +1660,15 @@ export class RouterCore<
       }
       // Match identity must only use the raw params captured from the URL.
       const usedParams: Record<string, unknown> = createNull()
-      const interpolatedPath =
-        isServer === undefined
-          ? interpolatePath(
-              route.fullPath,
-              rawParams,
-              this.pathParamsDecoder,
-              usedParams,
-              undefined,
-              this.isServer,
-            )
-          : interpolatePath(
-              route.fullPath,
-              rawParams,
-              this.pathParamsDecoder,
-              usedParams,
-            )
+      const interpolatedPath = route._interpolation
+        ? interpolatePath(
+            route.fullPath,
+            route._interpolation,
+            rawParams,
+            this.pathParamsDecoder,
+            usedParams,
+          )
+        : route.fullPath
 
       // Seed planning from the accepted same-ID cache generation first, then
       // from the committed generation for this route. Presentation stores are
@@ -1890,25 +1884,22 @@ export class RouterCore<
   ): string {
     const decoder = this.pathParamsDecoder
     let plan = route ? route._pathCache : this.unmatchedPathCache.get(path)
-    let interpolated: string | undefined
     if (!plan || plan[2] !== decoder || plan[3] !== path) {
+      const segments =
+        route?._interpolation ??
+        (plan?.[3] === path ? plan[4] : parseInterpolationPath(path))
       const keys: Array<string> = []
-      interpolated =
-        isServer === undefined
-          ? interpolatePath(
-              path,
-              params,
-              decoder,
-              undefined,
-              keys,
-              this.isServer,
-            )
-          : interpolatePath(path, params, decoder, undefined, keys)
+      for (const segment of segments) {
+        if (typeof segment !== 'string') {
+          keys.push(segment[1])
+        }
+      }
       plan = [
         keys,
         createSieveCache<string | undefined, string>(128),
         decoder,
         path,
+        segments,
       ]
       if (route) {
         route._pathCache = plan
@@ -1925,19 +1916,7 @@ export class RouterCore<
       const value = params[name]
       if (typeof value !== 'string' && value !== undefined) {
         return normalizeProtocolRelative(
-          decodePath(
-            interpolated ||
-              (isServer === undefined
-                ? interpolatePath(
-                    path,
-                    params,
-                    decoder,
-                    undefined,
-                    undefined,
-                    this.isServer,
-                  )
-                : interpolatePath(path, params, decoder)),
-          ),
+          decodePath(interpolatePath(path, plan[4], params, decoder)),
         )
       }
       key = keys.length === 1 ? value : key! + value?.length + ':' + value
@@ -1947,20 +1926,8 @@ export class RouterCore<
       return cached
     }
     // Cache canonical pathnames, not the encoded interpolation output.
-    interpolated = normalizeProtocolRelative(
-      decodePath(
-        interpolated ||
-          (isServer === undefined
-            ? interpolatePath(
-                path,
-                params,
-                decoder,
-                undefined,
-                undefined,
-                this.isServer,
-              )
-            : interpolatePath(path, params, decoder)),
-      ),
+    const interpolated = normalizeProtocolRelative(
+      decodePath(interpolatePath(path, plan[4], params, decoder)),
     )
     paths.set(key, interpolated)
     return interpolated

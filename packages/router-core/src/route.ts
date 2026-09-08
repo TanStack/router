@@ -4,7 +4,7 @@ import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
-import type { InterpolationPlan } from './path'
+import type { InterpolationPlan, RouteInterpolation } from './path'
 import type { NotFoundError } from './not-found'
 import type { RedirectFnRoute } from './redirect'
 import type { NavigateOptions, ParsePathParams } from './link'
@@ -731,6 +731,8 @@ export interface Route<
   _branch?: ReadonlyArray<AnyRoute>
   /** @internal */
   _pathCache?: InterpolationPlan
+  /** @internal */
+  _interpolation?: RouteInterpolation
   rank: number
   to: TrimPathRight<TFullPath>
   init: (opts: { originalIndex: number }) => void
@@ -1722,6 +1724,8 @@ export class BaseRoute<
   _branch?: ReadonlyArray<AnyRoute>
   /** @internal */
   _pathCache?: InterpolationPlan
+  /** @internal */
+  _interpolation?: RouteInterpolation
   constructor(
     options?: RouteOptions<
       TRegister,
