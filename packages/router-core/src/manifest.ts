@@ -150,15 +150,21 @@ export type RouterManagedTag =
  * `alternate` legitimately repeat and must not be collapsed.
  */
 const UNIQUE_LINK_RELS = new Set<string>(['canonical'])
+const LINK_REL_TOKEN_SEPARATOR = /[\t\n\f\r ]+/
 
 function uniqueLinkRelKey(tag: RouterManagedTag): string | undefined {
   if (tag.tag !== 'link') {
     return undefined
   }
   const rel = tag.attrs?.rel
-  return typeof rel === 'string' && UNIQUE_LINK_RELS.has(rel)
-    ? `link:${rel}`
-    : undefined
+  const uniqueRel =
+    typeof rel === 'string'
+      ? rel
+          .toLowerCase()
+          .split(LINK_REL_TOKEN_SEPARATOR)
+          .find((token) => UNIQUE_LINK_RELS.has(token))
+      : undefined
+  return uniqueRel === undefined ? undefined : `link:${uniqueRel}`
 }
 
 export function appendUniqueUserTags(
