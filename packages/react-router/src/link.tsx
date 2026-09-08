@@ -853,8 +853,7 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
     const { _asChild, ...rest } = props
-    // eslint-disable-next-line prefer-const -- The rest binding is reassigned below.
-    let { type: _type, ...linkProps } = useLinkProps(rest as any, ref)
+    const linkProps = useLinkProps(rest as any, ref)
 
     const children =
       typeof rest.children === 'function'
@@ -866,10 +865,11 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
     if (!_asChild) {
       // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
       // @ts-expect-error
-      const { disabled: _, ...rest } = linkProps
-      linkProps = rest
+      const { type: _type, disabled: _, ...anchorProps } = linkProps
+      return React.createElement('a', anchorProps, children)
     }
-    return React.createElement(_asChild || 'a', linkProps, children)
+    const { type: _type, ...customProps } = linkProps
+    return React.createElement(_asChild, customProps, children)
   },
 ) as any
 
