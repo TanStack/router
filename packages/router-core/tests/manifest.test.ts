@@ -114,4 +114,78 @@ describe('appendUniqueUserTags', () => {
 
     expect(target).toEqual([tag, tag])
   })
+
+  it('keeps only the last canonical link so a child route overrides its parent (#6719)', () => {
+    const parentCanonical: RouterManagedTag = {
+      tag: 'link',
+      attrs: {
+        rel: 'canonical',
+        href: 'https://example.com/',
+      },
+    }
+    const childCanonical: RouterManagedTag = {
+      tag: 'link',
+      attrs: {
+        rel: 'canonical',
+        href: 'https://example.com/blog',
+      },
+    }
+    const target: Array<RouterManagedTag> = []
+
+    // Matches are ordered parent-first, so the child's canonical is appended last.
+    appendUniqueUserTags(target, [parentCanonical, childCanonical])
+
+    expect(target).toEqual([childCanonical])
+  })
+
+  it('does not deduplicate non-unique link rels such as stylesheet by rel (#6719)', () => {
+    const firstStylesheet: RouterManagedTag = {
+      tag: 'link',
+      attrs: {
+        rel: 'stylesheet',
+        href: '/a.css',
+      },
+    }
+    const secondStylesheet: RouterManagedTag = {
+      tag: 'link',
+      attrs: {
+        rel: 'stylesheet',
+        href: '/b.css',
+      },
+    }
+    const target: Array<RouterManagedTag> = []
+
+    appendUniqueUserTags(target, [firstStylesheet, secondStylesheet])
+
+    expect(target).toEqual([firstStylesheet, secondStylesheet])
+  })
+
+  it('overrides canonical while preserving repeatable links in the same call (#6719)', () => {
+    const stylesheet: RouterManagedTag = {
+      tag: 'link',
+      attrs: { rel: 'stylesheet', href: '/app.css' },
+    }
+    const parentCanonical: RouterManagedTag = {
+      tag: 'link',
+      attrs: { rel: 'canonical', href: 'https://example.com/' },
+    }
+    const preload: RouterManagedTag = {
+      tag: 'link',
+      attrs: { rel: 'preload', href: '/font.woff2', as: 'font' },
+    }
+    const childCanonical: RouterManagedTag = {
+      tag: 'link',
+      attrs: { rel: 'canonical', href: 'https://example.com/blog' },
+    }
+    const target: Array<RouterManagedTag> = []
+
+    appendUniqueUserTags(target, [
+      stylesheet,
+      parentCanonical,
+      preload,
+      childCanonical,
+    ])
+
+    expect(target).toEqual([stylesheet, preload, childCanonical])
+  })
 })
