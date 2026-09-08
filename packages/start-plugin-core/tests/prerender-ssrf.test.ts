@@ -109,7 +109,7 @@ describe('prerender public sinks', () => {
     },
   )
 
-  it.each(['https://attacker.test/leak'])(
+  it.each(['https://attacker.test/leak', '//attacker.test/leak'])(
     'does not request raw redirect target %j',
     async (location) => {
       const request = vi.fn(

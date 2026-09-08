@@ -40,7 +40,7 @@ export async function prerenderWithVite({
     },
     request(path, options) {
       const url = new URL(path, baseUrl)
-      return fetch(new Request(url, options))
+      return fetch(new Request(url, { ...options, redirect: 'manual' }))
     },
     close() {
       return previewServer.close()
