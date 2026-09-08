@@ -2911,9 +2911,8 @@ function resolveNextParams(
   return Object.assign(next, base, spec)
 }
 
-function applySearchMiddleware(
-  search: any,
-  dest: BuildNextOptions,
+// Keep this separate from recursive execution to limit JIT compiler memory.
+function getSearchMiddlewares(
   destRoutes: ReadonlyArray<AnyRoute>,
   includeValidateSearch: boolean | undefined,
 ) {
@@ -2973,6 +2972,16 @@ function applySearchMiddleware(
     }
   }
 
+  return middlewares
+}
+
+function applySearchMiddleware(
+  search: any,
+  dest: BuildNextOptions,
+  destRoutes: ReadonlyArray<AnyRoute>,
+  includeValidateSearch: boolean | undefined,
+) {
+  const middlewares = getSearchMiddlewares(destRoutes, includeValidateSearch)
   const applyNext = (
     index: number,
     currentSearch: any,
