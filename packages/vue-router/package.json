@@ -77,17 +77,17 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/vue-store": "^0.9.3",
     "@vue/runtime-dom": "^3.5.25",
-    "isbot": "^5.1.22"
+    "isbot": "catalog:"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "catalog:",
     "@testing-library/vue": "^8.1.0",
     "@types/node": ">=20",
-    "@vitejs/plugin-vue-jsx": "^4.1.2",
-    "combinate": "^1.1.11",
+    "@vitejs/plugin-vue-jsx": "catalog:",
+    "combinate": "catalog:",
     "vite": "*",
-    "vue": "^3.5.25",
-    "zod": "^4.4.3",
+    "vue": "catalog:",
+    "zod": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

@@ -18,18 +18,45 @@ catalogs:
     '@eslint-react/eslint-plugin':
       specifier: ^1.26.2
       version: 1.26.2
+    '@rsbuild/core':
+      specifier: ^2.1.0
+      version: 2.1.1
     '@tanstack/vite-config':
       specifier: 0.5.2
       version: 0.5.2
+    '@testing-library/jest-dom':
+      specifier: ^6.6.3
+      version: 6.6.3
+    '@testing-library/react':
+      specifier: ^16.2.0
+      version: 16.3.0
+    '@vitejs/plugin-react':
+      specifier: ^4.3.4
+      version: 4.7.0
+    '@vitejs/plugin-vue-jsx':
+      specifier: ^4.1.2
+      version: 4.2.0
     '@vitest/ui':
       specifier: ^4.1.4
       version: 4.1.4
+    chokidar:
+      specifier: ^5.0.0
+      version: 5.0.0
+    combinate:
+      specifier: ^1.1.11
+      version: 1.1.11
     eslint-plugin-react-hooks:
       specifier: ^5.1.0
       version: 5.1.0
+    isbot:
+      specifier: ^5.1.22
+      version: 5.1.28
     jsdom:
       specifier: ^25.0.1
       version: 25.0.1
+    pathe:
+      specifier: ^2.0.3
+      version: 2.0.3
     publint:
       specifier: ^0.3.16
       version: 0.3.17
@@ -42,9 +69,15 @@ catalogs:
     tinyglobby:
       specifier: ^0.2.17
       version: 0.2.17
+    vite-plugin-solid:
+      specifier: 2.11.10
+      version: 2.11.10
     vitest:
       specifier: ^4.1.4
       version: 4.1.4
+    vue:
+      specifier: ^3.5.25
+      version: 3.5.25
     zod:
       specifier: ^4.5.4
       version: 4.5.4
@@ -13492,11 +13525,11 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
-        specifier: ^6.6.3
+        specifier: 'catalog:'
         version: 6.6.3
       '@testing-library/react':
-        specifier: ^16.2.0
-        version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 'catalog:'
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.9
@@ -13544,7 +13577,7 @@ importers:
         specifier: ^8.23.0
         version: 8.23.0(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)
       combinate:
-        specifier: ^1.1.11
+        specifier: 'catalog:'
         version: 1.1.11
       eslint:
         specifier: ^9.22.0
@@ -13626,7 +13659,7 @@ importers:
         specifier: ^2.13.4
         version: 2.13.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(@rspack/core@2.1.1(@swc/helpers@0.5.23))(mysql2@3.15.3)(rolldown@1.0.2)(srvx@0.11.22)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(webpack@5.110.3)
       pathe:
-        specifier: ^2.0.3
+        specifier: 'catalog:'
         version: 2.0.3
       vite:
         specifier: ^8.0.14
@@ -13660,7 +13693,7 @@ importers:
         specifier: workspace:*
         version: link:../router-core
       isbot:
-        specifier: ^5.1.22
+        specifier: 'catalog:'
         version: 5.1.28
     devDependencies:
       '@arethetypeswrong/cli':
@@ -13676,11 +13709,11 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
-        specifier: ^6.6.3
+        specifier: 'catalog:'
         version: 6.6.3
       '@testing-library/react':
-        specifier: ^16.2.0
-        version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 'catalog:'
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -13691,10 +13724,10 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.7.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       combinate:
-        specifier: ^1.1.11
+        specifier: 'catalog:'
         version: 1.1.11
       eslint-plugin-react-hooks:
         specifier: 'catalog:'
@@ -13721,8 +13754,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: 'catalog:'
+        version: 4.5.4
 
   packages/react-router-devtools:
     dependencies:
@@ -13755,8 +13788,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.7.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       eslint-plugin-react-hooks:
         specifier: 'catalog:'
         version: 5.1.0(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))
@@ -13813,8 +13846,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.6.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.7.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       eslint-plugin-react-hooks:
         specifier: 'catalog:'
         version: 5.1.0(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))
@@ -13867,7 +13900,7 @@ importers:
         specifier: workspace:*
         version: link:../start-server-core
       pathe:
-        specifier: ^2.0.3
+        specifier: 'catalog:'
         version: 2.0.3
       vite:
         specifier: ^8.0.14
@@ -13880,7 +13913,7 @@ importers:
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@rsbuild/core':
-        specifier: ^2.1.0
+        specifier: 'catalog:'
         version: 2.1.1
       '@tanstack/vite-config':
         specifier: 'catalog:'
@@ -13938,8 +13971,8 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/react':
-        specifier: ^16.2.0
-        version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 'catalog:'
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
@@ -13950,8 +13983,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.7.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       eslint-plugin-react-hooks:
         specifier: 'catalog:'
         version: 5.1.0(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))
@@ -14001,7 +14034,7 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       pathe:
-        specifier: ^2.0.3
+        specifier: 'catalog:'
         version: 2.0.3
     devDependencies:
       '@arethetypeswrong/cli':
@@ -14017,7 +14050,7 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/react':
-        specifier: ^16.2.0
+        specifier: 'catalog:'
         version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/react':
         specifier: ^19.2.8
@@ -14026,7 +14059,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
+        specifier: 'catalog:'
         version: 4.7.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.28.2)(jiti@2.7.0)(sass@1.97.2)(terser@5.51.2)(tsx@4.20.3)(yaml@2.9.0))
       '@vitejs/plugin-rsc':
         specifier: ^0.5.30
@@ -14087,8 +14120,8 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.7.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       eslint-plugin-react-hooks:
         specifier: 'catalog:'
         version: 5.1.0(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))
@@ -14123,7 +14156,7 @@ importers:
         specifier: workspace:*
         version: link:../router-generator
       chokidar:
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.0
       yargs:
         specifier: ^17.7.2
@@ -14228,8 +14261,8 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
-        specifier: ^4.3.4
-        version: 4.3.4(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        specifier: 'catalog:'
+        version: 4.7.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       eslint-plugin-react-hooks:
         specifier: 'catalog:'
         version: 5.1.0(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))
@@ -14274,7 +14307,7 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
-        specifier: ^6.6.3
+        specifier: 'catalog:'
         version: 6.6.3
       jsdom:
         specifier: 'catalog:'
@@ -14292,7 +14325,7 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
-        specifier: ^2.11.10
+        specifier: 'catalog:'
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: 'catalog:'
@@ -14380,7 +14413,7 @@ importers:
         specifier: workspace:*
         version: link:../router-utils
       chokidar:
-        specifier: ^5.0.0
+        specifier: 'catalog:'
         version: 5.0.0
       unplugin:
         specifier: ^3.3.0
@@ -14399,7 +14432,7 @@ importers:
         specifier: 'catalog:'
         version: 0.18.4
       '@rsbuild/core':
-        specifier: ^2.1.0
+        specifier: 'catalog:'
         version: 2.1.1
       '@tanstack/vite-config':
         specifier: 'catalog:'
@@ -14492,7 +14525,7 @@ importers:
         specifier: ^8.0.4
         version: 8.0.4
       pathe:
-        specifier: ^2.0.3
+        specifier: 'catalog:'
         version: 2.0.3
       tinyglobby:
         specifier: 'catalog:'
@@ -14563,7 +14596,7 @@ importers:
         specifier: workspace:*
         version: link:../router-core
       isbot:
-        specifier: ^5.1.22
+        specifier: 'catalog:'
         version: 5.1.28
     devDependencies:
       '@arethetypeswrong/cli':
@@ -14576,13 +14609,13 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
-        specifier: ^6.6.3
+        specifier: 'catalog:'
         version: 6.6.3
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
       combinate:
-        specifier: ^1.1.11
+        specifier: 'catalog:'
         version: 1.1.11
       jsdom:
         specifier: 'catalog:'
@@ -14600,14 +14633,14 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
-        specifier: ^2.11.10
+        specifier: 'catalog:'
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: 'catalog:'
+        version: 4.5.4
 
   packages/solid-router-devtools:
     dependencies:
@@ -14643,7 +14676,7 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
-        specifier: ^2.11.10
+        specifier: 'catalog:'
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: 'catalog:'
@@ -14689,7 +14722,7 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
-        specifier: ^2.11.10
+        specifier: 'catalog:'
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: 'catalog:'
@@ -14716,7 +14749,7 @@ importers:
         specifier: workspace:*
         version: link:../start-server-core
       pathe:
-        specifier: ^2.0.3
+        specifier: 'catalog:'
         version: 2.0.3
       solid-js:
         specifier: 1.9.12
@@ -14729,7 +14762,7 @@ importers:
         specifier: 'catalog:'
         version: 1.26.2(@typescript/typescript6@6.0.2)(eslint@9.22.0(jiti@2.7.0)(supports-color@10.2.2))(supports-color@10.2.2)(ts-api-utils@2.4.0(@typescript/typescript6@6.0.2))
       '@rsbuild/core':
-        specifier: ^2.1.0
+        specifier: 'catalog:'
         version: 2.1.1
       '@tanstack/router-utils':
         specifier: workspace:*
@@ -14781,7 +14814,7 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
-        specifier: ^6.6.3
+        specifier: 'catalog:'
         version: 6.6.3
       jsdom:
         specifier: 'catalog:'
@@ -14796,7 +14829,7 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
-        specifier: ^2.11.10
+        specifier: 'catalog:'
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: 'catalog:'
@@ -14842,7 +14875,7 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vite-plugin-solid:
-        specifier: ^2.11.10
+        specifier: 'catalog:'
         version: 2.11.10(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
         specifier: 'catalog:'
@@ -14945,7 +14978,7 @@ importers:
         specifier: ^1.33.0
         version: 1.33.0
       pathe:
-        specifier: ^2.0.3
+        specifier: 'catalog:'
         version: 2.0.3
       picomatch:
         specifier: ^4.0.7
@@ -14979,7 +15012,7 @@ importers:
         specifier: 'catalog:'
         version: 0.18.4
       '@rsbuild/core':
-        specifier: ^2.1.0
+        specifier: 'catalog:'
         version: 2.1.1
       '@tanstack/vite-config':
         specifier: 'catalog:'
@@ -15147,11 +15180,11 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
-        specifier: ^6.6.3
+        specifier: 'catalog:'
         version: 6.6.3
       '@testing-library/react':
-        specifier: ^16.2.0
-        version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 'catalog:'
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.9
@@ -15217,12 +15250,12 @@ importers:
         version: link:../router-core
       '@tanstack/vue-store':
         specifier: ^0.9.3
-        version: 0.9.3(vue@3.5.25(typescript@7.0.2))
+        version: 0.9.3(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vue/runtime-dom':
         specifier: ^3.5.25
         version: 3.5.25
       isbot:
-        specifier: ^5.1.22
+        specifier: 'catalog:'
         version: 5.1.28
     devDependencies:
       '@arethetypeswrong/cli':
@@ -15232,22 +15265,22 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
-        specifier: ^6.6.3
+        specifier: 'catalog:'
         version: 6.6.3
       '@testing-library/vue':
         specifier: ^8.1.0
-        version: 8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(typescript@7.0.2))
+        version: 8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@types/node':
         specifier: 25.0.9
         version: 25.0.9
       '@vitejs/plugin-vue-jsx':
-        specifier: ^4.1.2
-        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+        specifier: 'catalog:'
+        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitest/ui':
         specifier: 'catalog:'
         version: 4.1.4(vitest@4.1.4)
       combinate:
-        specifier: ^1.1.11
+        specifier: 'catalog:'
         version: 1.1.11
       jsdom:
         specifier: 'catalog:'
@@ -15265,11 +15298,11 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
-        specifier: ^3.5.25
-        version: 3.5.25(typescript@7.0.2)
+        specifier: 'catalog:'
+        version: 3.5.25(@typescript/typescript6@6.0.2)
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: 'catalog:'
+        version: 4.5.4
 
   packages/vue-router-devtools:
     dependencies:
@@ -15296,8 +15329,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       '@vitejs/plugin-vue-jsx':
-        specifier: ^4.1.2
-        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+        specifier: 'catalog:'
+        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       publint:
         specifier: 'catalog:'
         version: 0.3.17
@@ -15308,8 +15341,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
-        specifier: ^3.5.13
-        version: 3.5.25(typescript@7.0.2)
+        specifier: 'catalog:'
+        version: 3.5.25(@typescript/typescript6@6.0.2)
 
   packages/vue-router-ssr-query:
     dependencies:
@@ -15321,7 +15354,7 @@ importers:
         version: link:../router-ssr-query-core
       '@tanstack/vue-query':
         specifier: ^5.102.0
-        version: 5.102.0(vue@3.5.25(typescript@7.0.2))
+        version: 5.102.0(vue@3.5.25(@typescript/typescript6@6.0.2))
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15333,8 +15366,8 @@ importers:
         specifier: workspace:*
         version: link:../vue-router
       '@vitejs/plugin-vue-jsx':
-        specifier: ^4.1.2
-        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+        specifier: 'catalog:'
+        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       publint:
         specifier: 'catalog:'
         version: 0.3.17
@@ -15348,8 +15381,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@29.1.1(@noble/hashes@2.0.1))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
-        specifier: ^3.5.25
-        version: 3.5.25(typescript@7.0.2)
+        specifier: 'catalog:'
+        version: 3.5.25(@typescript/typescript6@6.0.2)
 
   packages/vue-start:
     dependencies:
@@ -15372,14 +15405,14 @@ importers:
         specifier: workspace:*
         version: link:../vue-start-server
       pathe:
-        specifier: ^2.0.3
+        specifier: 'catalog:'
         version: 2.0.3
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
         version: 0.18.4
       '@rsbuild/core':
-        specifier: ^2.1.0
+        specifier: 'catalog:'
         version: 2.1.1
       '@tanstack/router-utils':
         specifier: workspace:*
@@ -15391,8 +15424,8 @@ importers:
         specifier: 25.0.9
         version: 25.0.9
       '@vitejs/plugin-vue-jsx':
-        specifier: ^4.1.2
-        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+        specifier: 'catalog:'
+        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -15409,8 +15442,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
-        specifier: ^3.5.25
-        version: 3.5.25(typescript@7.0.2)
+        specifier: 'catalog:'
+        version: 3.5.25(@typescript/typescript6@6.0.2)
 
   packages/vue-start-client:
     dependencies:
@@ -15431,8 +15464,8 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@vitejs/plugin-vue-jsx':
-        specifier: ^4.1.2
-        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+        specifier: 'catalog:'
+        version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       jsdom:
         specifier: 'catalog:'
         version: 25.0.1(supports-color@10.2.2)
@@ -15449,8 +15482,8 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
-        specifier: ^3.5.25
-        version: 3.5.25(typescript@7.0.2)
+        specifier: 'catalog:'
+        version: 3.5.25(@typescript/typescript6@6.0.2)
 
   packages/vue-start-server:
     dependencies:
@@ -15474,7 +15507,7 @@ importers:
         specifier: npm:typescript@^7.0.2
         version: typescript@7.0.2
       '@vitejs/plugin-vue-jsx':
-        specifier: ^4.1.2
+        specifier: 'catalog:'
         version: 4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       jsdom:
         specifier: 'catalog:'
@@ -15495,7 +15528,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vue:
-        specifier: ^3.5.25
+        specifier: 'catalog:'
         version: 3.5.25(@typescript/typescript6@6.0.2)
 
   packages/zod-adapter:
@@ -15510,11 +15543,11 @@ importers:
         specifier: 'catalog:'
         version: 0.5.2(@types/node@25.0.9)(@typescript/typescript6@6.0.2)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@testing-library/jest-dom':
-        specifier: ^6.6.3
+        specifier: 'catalog:'
         version: 6.6.3
       '@testing-library/react':
-        specifier: ^16.2.0
-        version: 16.2.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        specifier: 'catalog:'
+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@19.2.3(@types/react@19.2.9))(@types/react@19.2.9)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       '@types/react':
         specifier: ^19.2.8
         version: 19.2.9
@@ -15664,12 +15697,6 @@ packages:
 
   '@babel/helper-create-class-features-plugin@7.27.1':
     resolution: {integrity: sha512-QwGAmuvM17btKU5VqXfb+Giw4JcN0hjuufz3DYnpeVDvZLAObloM77bhMXiqry3Iio+Ai4phVRDwl6WU10+r5A==}
-    engines: {node: '>=6.9.0'}
-    peerDependencies:
-      '@babel/core': ^7.0.0
-
-  '@babel/helper-create-class-features-plugin@7.28.5':
-    resolution: {integrity: sha512-q3WC4JfdODypvxArsJQROfupPBq9+lMwjKq7C33GhbFYJsufD0yd/ziwD+hJucLeWsnFPWZjsU2DNFqBPE7jwQ==}
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0
@@ -15838,20 +15865,8 @@ packages:
     peerDependencies:
       '@babel/core': ^7.0.0-0
 
-  '@babel/plugin-transform-react-jsx-self@7.25.9':
-    resolution: {integrity: sha512-y8quW6p0WHkEhmErnfe58r7x0A70uKphQm8Sp8cV7tjNQwK56sNVK0M73LK3WuYmsuyrftut4xAkjjgU0twaMg==}
-    engines: {node: '>=6.9.0'}
-    peerDependencies:
-      '@babel/core': ^7.0.0-0
-
   '@babel/plugin-transform-react-jsx-self@7.27.1':
     resolution: {integrity: sha512-6UzkCs+ejGdZ5mFFC/OCUrv028ab2fp1znZmCZjAOBKiBK2jXD1O+BPSfX8X2qjJ75fZBMSnQn3Rq2mrBJK2mw==}
-    engines: {node: '>=6.9.0'}
-    peerDependencies:
-      '@babel/core': ^7.0.0-0
-
-  '@babel/plugin-transform-react-jsx-source@7.25.9':
-    resolution: {integrity: sha512-+iqjT8xmXhhYv4/uiYd8FNQsraMFZIfxVSqxxVSZP0WbbSAWvBXAul0m/zu+7Vv4O/3WtApy9pmaTMiumEZgfg==}
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0-0
@@ -15864,12 +15879,6 @@ packages:
 
   '@babel/plugin-transform-typescript@7.27.1':
     resolution: {integrity: sha512-Q5sT5+O4QUebHdbwKedFBEwRLb02zJ7r4A5Gg2hUoLuU3FjdMcyqcywqUrLCaDsFCxzokf7u9kuy7qz51YUuAg==}
-    engines: {node: '>=6.9.0'}
-    peerDependencies:
-      '@babel/core': ^7.0.0-0
-
-  '@babel/plugin-transform-typescript@7.28.5':
-    resolution: {integrity: sha512-x2Qa+v/CuEoX7Dr31iAfr0IhInrVOWZU/2vJMJ00FOR/2nM0BcBEclpaf9sWCDc+v5e9dMrhSH8/atq/kX7+bA==}
     engines: {node: '>=6.9.0'}
     peerDependencies:
       '@babel/core': ^7.0.0-0
@@ -20175,12 +20184,6 @@ packages:
       vite:
         optional: true
 
-  '@rolldown/pluginutils@1.0.0':
-    resolution: {integrity: sha512-aKs/3GSWyV0mrhNmt/96/Z3yczC3yvrzYATCiCXQebBsGyYzjNdUphRVLeJQ67ySKVXRfMxt2lm12pmXvbPFQQ==}
-
-  '@rolldown/pluginutils@1.0.0-beta.19':
-    resolution: {integrity: sha512-3FL3mnMbPu0muGOCaKAhhFEYmqv9eTfPSJRJmANrCwtgK8VuxpsZDGK+m0LYAGoyO8+0j5uRe4PeyPDK1yA/hA==}
-
   '@rolldown/pluginutils@1.0.0-beta.27':
     resolution: {integrity: sha512-+d0F4MKMCbeVUJwG96uQ4SgAznZNSq93I3V+9NHA4OpvqG8mRCpGdKmK8l/dl02h2CCDHwW2FqilnTyDcAnqjA==}
 
@@ -22205,18 +22208,6 @@ packages:
     resolution: {integrity: sha512-m1QFg+U+3yPOnP1xSYJ73UIRxLOXdts1JOhiOiyPYqEsALgrXFFINvgUaD6R6iNvaBFAjHllBCbkfx4FuOdpaA==}
     engines: {node: '>=20'}
     hasBin: true
-
-  '@vitejs/plugin-react@4.3.4':
-    resolution: {integrity: sha512-SCCPBJtYLdE8PX/7ZQAs1QAZ8Jqwih+0VBLum1EGqmCCQal+MIUqLCzj3ZUy8ufbC0cAM4LRlSTm7IQJwWT4ug==}
-    engines: {node: ^14.18.0 || >=16.0.0}
-    peerDependencies:
-      vite: ^8.0.14
-
-  '@vitejs/plugin-react@4.6.0':
-    resolution: {integrity: sha512-5Kgff+m8e2PB+9j51eGHEpn5kUzRKH2Ry0qGoe8ItJg7pqnkPrYPkDQZGgGmTa0EGarHrkjLvOdU3b1fzI8otQ==}
-    engines: {node: ^14.18.0 || >=16.0.0}
-    peerDependencies:
-      vite: ^8.0.14
 
   '@vitejs/plugin-react@4.7.0':
     resolution: {integrity: sha512-gUu9hwfWvvEDBBmgtAowQCojwZmJ5mcLn3aufeCsitijs3+f2NsrPtlAWIR6OPiqljl96GVCUbLe0HyqIpVaoA==}
@@ -27107,10 +27098,6 @@ packages:
     resolution: {integrity: sha512-bYXfxuIVt49+VrmqxUNxjDSbFCUmG85IxH2yc7h5sddlUrVvosOTgOphMvWtBSz39VYZByTBRAE6uKAsHoz0gg==}
     hasBin: true
 
-  react-refresh@0.14.2:
-    resolution: {integrity: sha512-jCvmsr+1IUSMUyzOkRcvnVbX3ZYC6g9TDrDbFuFmRDq7PD4yaGbLKNQL6k2jnArV8hjYxh7hVhAZB6s9HDGpZA==}
-    engines: {node: '>=0.10.0'}
-
   react-refresh@0.17.0:
     resolution: {integrity: sha512-z6F7K9bV85EfseRCp2bzrpyQ0Gkw1uLoCel9XBVWPg/TjRj94SkJzUTGfOa4bs7iJvBWtQG0Wq7wnI0syw3EBQ==}
     engines: {node: '>=0.10.0'}
@@ -29647,19 +29634,6 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@babel/helper-create-class-features-plugin@7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)':
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/helper-annotate-as-pure': 7.27.3
-      '@babel/helper-member-expression-to-functions': 7.28.5(supports-color@10.2.2)
-      '@babel/helper-optimise-call-expression': 7.27.1
-      '@babel/helper-replace-supers': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
-      '@babel/helper-skip-transparent-expression-wrappers': 7.27.1(supports-color@10.2.2)
-      '@babel/traverse': 7.29.8(supports-color@10.2.2)
-      semver: 6.3.1
-    transitivePeerDependencies:
-      - supports-color
-
   '@babel/helper-create-class-features-plugin@7.28.6(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
       '@babel/core': 7.29.7(supports-color@10.2.2)
@@ -29888,17 +29862,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@babel/plugin-transform-react-jsx-self@7.25.9(@babel/core@7.29.7(supports-color@10.2.2))':
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/helper-plugin-utils': 7.28.6
-
   '@babel/plugin-transform-react-jsx-self@7.27.1(@babel/core@7.29.7(supports-color@10.2.2))':
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/helper-plugin-utils': 7.28.6
-
-  '@babel/plugin-transform-react-jsx-source@7.25.9(@babel/core@7.29.7(supports-color@10.2.2))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@10.2.2)
       '@babel/helper-plugin-utils': 7.28.6
@@ -29925,17 +29889,6 @@ snapshots:
       '@babel/helper-annotate-as-pure': 7.27.3
       '@babel/helper-create-class-features-plugin': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
       '@babel/helper-plugin-utils': 7.27.1
-      '@babel/helper-skip-transparent-expression-wrappers': 7.27.1(supports-color@10.2.2)
-      '@babel/plugin-syntax-typescript': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))
-    transitivePeerDependencies:
-      - supports-color
-
-  '@babel/plugin-transform-typescript@7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)':
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/helper-annotate-as-pure': 7.27.3
-      '@babel/helper-create-class-features-plugin': 7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
-      '@babel/helper-plugin-utils': 7.28.6
       '@babel/helper-skip-transparent-expression-wrappers': 7.27.1(supports-color@10.2.2)
       '@babel/plugin-syntax-typescript': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))
     transitivePeerDependencies:
@@ -29981,7 +29934,7 @@ snapshots:
       '@babel/helper-validator-option': 7.27.1
       '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))
       '@babel/plugin-transform-modules-commonjs': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
-      '@babel/plugin-transform-typescript': 7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -34160,10 +34113,6 @@ snapshots:
       vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
     optional: true
 
-  '@rolldown/pluginutils@1.0.0': {}
-
-  '@rolldown/pluginutils@1.0.0-beta.19': {}
-
   '@rolldown/pluginutils@1.0.0-beta.27': {}
 
   '@rolldown/pluginutils@1.0.0-rc.2': {}
@@ -35445,11 +35394,11 @@ snapshots:
       vue: 3.5.25(typescript@7.0.2)
       vue-demi: 0.14.10(vue@3.5.25(typescript@7.0.2))
 
-  '@tanstack/vue-store@0.9.3(vue@3.5.25(typescript@7.0.2))':
+  '@tanstack/vue-store@0.9.3(vue@3.5.25(@typescript/typescript6@6.0.2))':
     dependencies:
       '@tanstack/store': 0.9.3
-      vue: 3.5.25(typescript@7.0.2)
-      vue-demi: 0.14.10(vue@3.5.25(typescript@7.0.2))
+      vue: 3.5.25(@typescript/typescript6@6.0.2)
+      vue-demi: 0.14.10(vue@3.5.25(@typescript/typescript6@6.0.2))
 
   '@tanstack/vue-virtual@3.13.13(vue@3.5.25(typescript@5.9.3))':
     dependencies:
@@ -35508,12 +35457,12 @@ snapshots:
       '@types/react': 19.2.9
       '@types/react-dom': 19.2.3(@types/react@19.2.9)
 
-  '@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(typescript@7.0.2))':
+  '@testing-library/vue@8.1.0(@vue/compiler-sfc@3.5.25)(vue@3.5.25(@typescript/typescript6@6.0.2))':
     dependencies:
       '@babel/runtime': 7.26.7
       '@testing-library/dom': 9.3.4
       '@vue/test-utils': 2.4.6
-      vue: 3.5.25(typescript@7.0.2)
+      vue: 3.5.25(@typescript/typescript6@6.0.2)
     optionalDependencies:
       '@vue/compiler-sfc': 3.5.25
 
@@ -36396,23 +36345,12 @@ snapshots:
       - rollup
       - supports-color
 
-  '@vitejs/plugin-react@4.3.4(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))':
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/plugin-transform-react-jsx-self': 7.25.9(@babel/core@7.29.7(supports-color@10.2.2))
-      '@babel/plugin-transform-react-jsx-source': 7.25.9(@babel/core@7.29.7(supports-color@10.2.2))
-      '@types/babel__core': 7.20.5
-      react-refresh: 0.14.2
-      vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - supports-color
-
-  '@vitejs/plugin-react@4.6.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))':
+  '@vitejs/plugin-react@4.7.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@10.2.2)
       '@babel/plugin-transform-react-jsx-self': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))
       '@babel/plugin-transform-react-jsx-source': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))
-      '@rolldown/pluginutils': 1.0.0-beta.19
+      '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
       vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -36478,22 +36416,11 @@ snapshots:
   '@vitejs/plugin-vue-jsx@4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))':
     dependencies:
       '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/plugin-transform-typescript': 7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
-      '@rolldown/pluginutils': 1.0.0
+      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      '@rolldown/pluginutils': 1.0.1
       '@vue/babel-plugin-jsx': 1.5.0(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
       vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vue: 3.5.25(@typescript/typescript6@6.0.2)
-    transitivePeerDependencies:
-      - supports-color
-
-  '@vitejs/plugin-vue-jsx@4.2.0(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))':
-    dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/plugin-transform-typescript': 7.28.5(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
-      '@rolldown/pluginutils': 1.0.0
-      '@vue/babel-plugin-jsx': 1.5.0(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
-      vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
-      vue: 3.5.25(typescript@7.0.2)
     transitivePeerDependencies:
       - supports-color
 
@@ -36698,8 +36625,8 @@ snapshots:
 
   '@vue/babel-plugin-jsx@1.5.0(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
-      '@babel/helper-module-imports': 7.27.1(supports-color@10.2.2)
-      '@babel/helper-plugin-utils': 7.27.1
+      '@babel/helper-module-imports': 7.29.7(supports-color@10.2.2)
+      '@babel/helper-plugin-utils': 7.28.6
       '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.29.7(supports-color@10.2.2))
       '@babel/template': 7.29.7
       '@babel/traverse': 7.29.8(supports-color@10.2.2)
@@ -36732,7 +36659,7 @@ snapshots:
     dependencies:
       '@babel/code-frame': 7.29.7
       '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/helper-module-imports': 7.27.1(supports-color@10.2.2)
+      '@babel/helper-module-imports': 7.29.7(supports-color@10.2.2)
       '@babel/helper-plugin-utils': 7.28.6
       '@babel/parser': 7.29.8
       '@vue/compiler-sfc': 3.5.25
@@ -42321,8 +42248,6 @@ snapshots:
       protobufjs: 7.5.4
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
-
-  react-refresh@0.14.2: {}
 
   react-refresh@0.17.0: {}
 

@@ -63,7 +63,7 @@
     "@tanstack/start-server-core": "workspace:*"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "@typescript/native": "npm:typescript@^7.0.2",

@@ -123,12 +123,12 @@
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
-    "chokidar": "^5.0.0",
+    "chokidar": "catalog:",
     "unplugin": "^3.3.0",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@rsbuild/core": "^2.1.0",
+    "@rsbuild/core": "catalog:",
     "@types/babel__core": "^7.20.5",
     "@types/babel__template": "^7.4.4",
     "@types/node": ">=20",
