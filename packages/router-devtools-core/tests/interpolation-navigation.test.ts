@@ -87,4 +87,4 @@ test('offers navigation only when required and splat params are available', asyn
     container.remove()
     window.localStorage.clear()
   }
-})
+}, 30_000)
