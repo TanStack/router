@@ -179,6 +179,8 @@ run. It starts a fresh process for every case and repetition, avoiding JIT
 feedback from earlier cases. Inside each process, both revisions share the
 same production React installation but have separate router/app modules and
 router instances. Initialization order alternates between repetitions.
+Built snapshots are staged under `node_modules/.cache` so the TypeScript
+harness loader does not transpile their emitted JavaScript a second time.
 
 ```bash
 # Build the baseline using these same benchmark sources in its own checkout.
