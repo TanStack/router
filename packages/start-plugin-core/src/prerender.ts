@@ -248,8 +248,7 @@ export async function prerender({
     if (isRedirectResponse(response) && maxRedirects > 0) {
       const location = response.headers.get('location')!
 
-      const isLocalPath =
-        location.startsWith('/') && !location.startsWith('//')
+      const isLocalPath = location.startsWith('/') && !location.startsWith('//')
       const isLocalUrl =
         location.startsWith('http://localhost') &&
         new URL(location).origin === 'http://localhost'
