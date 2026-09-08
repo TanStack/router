@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createFrameDecoder } from '../src/client-rpc/frame-decoder'
-import { FRAME_HEADER_SIZE, FrameType } from '../src/constants'
+import { FRAME_HEADER_SIZE, FrameType } from '../src/framed-protocol'
 
 /**
  * Helper to encode a frame for testing

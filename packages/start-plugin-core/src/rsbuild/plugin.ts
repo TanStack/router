@@ -172,6 +172,7 @@ export function tanStackStartRsbuild(
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           publicBase: resolvedStartConfig.basePaths.publicBase,
           serverFnProviderEnv,
+          serverFnTransport: startConfig.serverFns.transport,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           scriptFormat,
           rsc: rscOpts,
@@ -202,6 +203,12 @@ export function tanStackStartRsbuild(
                 }
               : {}),
             define: {
+              'process.env.TSS_SERVER_FN_TRANSPORT': JSON.stringify(
+                startConfig.serverFns.transport,
+              ),
+              'import.meta.env.TSS_SERVER_FN_TRANSPORT': JSON.stringify(
+                startConfig.serverFns.transport,
+              ),
               'process.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
               'import.meta.env.TSS_SERVER_FN_BASE':
                 JSON.stringify(serverFnBase),

@@ -6,7 +6,7 @@
  * - Raw streams (binary data as ReadableStream<Uint8Array>)
  */
 
-import { FRAME_HEADER_SIZE, FrameType } from '../constants'
+import { FRAME_HEADER_SIZE, FrameType } from '../framed-protocol'
 
 /** Cached TextDecoder for frame decoding */
 const textDecoder = new TextDecoder()

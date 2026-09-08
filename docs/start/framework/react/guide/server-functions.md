@@ -24,6 +24,35 @@ Server functions provide server capabilities (database access, environment varia
 > [!NOTE]
 > Server functions are meant to be called by your TanStack Start application. They are easy to use from your app code, and Start handles serialization across the client/server boundary. If you need an endpoint that can be called from outside your Start app, use [server routes](./server-routes) instead.
 
+## Transport Loading
+
+Configure client transport loading in your Start bundler plugin:
+
+```ts
+import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+
+export default {
+  plugins: [
+    tanstackStart({
+      serverFns: {
+        transport: 'lazy', // 'bundled' by default
+      },
+    }),
+  ],
+}
+```
+
+The same `serverFns.transport` option is available in the Rsbuild plugin. This is a build-time choice: bundled builds remove the lazy loader and its waiting logic.
+
+- **`bundled`** includes Seroval and server-function response decoding in the initial JavaScript bundle. Use it when server functions are needed on the first render. It does not introduce a separate lazy transport chunk.
+- **`lazy`** loads the serialization and response-decoding code when the first browser server-function call starts. Calls without data or middleware context can send their request while this code downloads. Calls with data or context wait for it to serialize the request. FormData without middleware context can also be sent immediately.
+
+Lazy loading applies to the codec as a whole, including framed streaming responses. It starts at invocation, without waiting for response headers. Subsequent calls reuse the loaded codec. SPA mode uses the same default, `bundled`; choose `lazy` explicitly when its first-call tradeoff fits your application.
+
+Custom `serializationAdapters` configured with `createStart` work in both modes. Lazy mode passes the configured adapters to the codec, which creates their Seroval plugins on first use for request encoding and response decoding. Adapter definitions and their dependencies remain in your application's import graph; choosing lazy transport does not defer those imports or the code needed for SSR hydration.
+
+The lazy codec avoids importing the application entry, allowing its content-hashed URL to survive unrelated application changes. Browser caching still depends on your asset cache headers. Other application imports of Seroval or serialization plugins, and custom chunking rules, can change the chunk graph and reduce the saving or cache stability.
+
 ## Same-Origin Requests
 
 Server functions are same-origin RPC endpoints for your application. Browser requests to server functions should come from the same origin, verified with Fetch Metadata (`Sec-Fetch-Site`), `Origin`, or `Referer` headers. Use server routes for public APIs or endpoints that intentionally support cross-origin requests.

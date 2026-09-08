@@ -78,7 +78,13 @@
         "default": "./dist/esm/hydration/runtime.js"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./client-rpc/codec-stub": {
+      "import": {
+        "types": "./dist/esm/client-rpc/serverFnCodec.stub.d.ts",
+        "default": "./dist/esm/client-rpc/serverFnCodec.stub.js"
+      }
+    }
   },
   "imports": {
     "#tanstack-start-entry": {
@@ -92,6 +98,10 @@
     "#tanstack-start-plugin-adapters": {
       "types": "./src/start-entry.d.ts",
       "default": "./dist/esm/empty-plugin-adapters.js"
+    },
+    "#tanstack-start-server-fn-codec": {
+      "types": "./src/client-rpc/serverFnCodec.ts",
+      "default": "./dist/esm/client-rpc/serverFnCodec.js"
     }
   },
   "sideEffects": false,
