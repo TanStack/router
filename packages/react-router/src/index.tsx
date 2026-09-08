@@ -24,6 +24,9 @@ export {
   retainSearchParams,
   stripSearchParams,
   createSerializationAdapter,
+  defaultLoadModule,
+  getLoadModule,
+  setLoadModule,
 } from '@tanstack/router-core'
 
 export type {
@@ -205,6 +208,7 @@ export type {
   RouterContextOptions,
   ControllablePromise,
   InjectedHtmlEntry,
+  LoadModuleFn,
   RouterOptions,
   RouterState,
   ListenerFn,

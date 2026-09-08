@@ -161,6 +161,30 @@ export interface RouterOptionsExtensions extends DefaultRouterOptionsExtensions 
 
 export type SSROption = boolean | 'data-only'
 
+export type LoadModuleFn = (url: string) => Promise<unknown>
+
+const LOAD_MODULE_GLOBAL = '__TANSTACK_ROUTER_LOAD_MODULE__'
+
+export function defaultLoadModule(url: string): Promise<unknown> {
+  return import(/* @vite-ignore */ url)
+}
+
+export function getLoadModule(): LoadModuleFn {
+  const loadModule = (globalThis as Record<string, unknown>)[LOAD_MODULE_GLOBAL]
+  return typeof loadModule === 'function'
+    ? (loadModule as LoadModuleFn)
+    : defaultLoadModule
+}
+
+export function setLoadModule(loadModule: LoadModuleFn | undefined): void {
+  ;(globalThis as Record<string, unknown>)[LOAD_MODULE_GLOBAL] =
+    loadModule ?? defaultLoadModule
+}
+
+if (!(globalThis as Record<string, unknown>)[LOAD_MODULE_GLOBAL]) {
+  setLoadModule(defaultLoadModule)
+}
+
 export interface RouterOptions<
   TRouteTree extends AnyRoute,
   TTrailingSlashOption extends TrailingSlashOption,
@@ -205,6 +229,12 @@ export interface RouterOptions<
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/preloading)
    */
   defaultPreload?: false | 'intent' | 'viewport' | 'render'
+  /**
+   * Load a lazy route chunk by URL. Bundlers can rewrite dynamic `import()`
+   * calls to this function so apps can intercept chunk requests (for example
+   * to attach headers). Defaults to native `import()`.
+   */
+  loadModule?: LoadModuleFn
   /**
    * The delay in milliseconds that a route must be hovered over or touched before it is preloaded.
    *
@@ -1093,6 +1123,7 @@ export class RouterCore<
       ...prevOptions,
       ...newOptions,
     }
+    setLoadModule(this.options.loadModule)
 
     this.isServer = this.options.isServer ?? typeof document === 'undefined'
 

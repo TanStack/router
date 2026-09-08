@@ -244,9 +244,13 @@ export {
   getInitialRouterState,
   getMatchedRoutes,
   trailingSlashOptions,
+  defaultLoadModule,
+  getLoadModule,
+  setLoadModule,
 } from './router'
 
 export type {
+  LoadModuleFn,
   ViewTransitionOptions,
   TrailingSlashOption,
   Register,

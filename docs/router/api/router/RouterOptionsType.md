@@ -54,6 +54,32 @@ The `RouterOptions` type accepts an object with the following properties and met
 - If `'viewport'`, routes will be preloaded by default when they are within the viewport of the browser.
 - If `'render'`, routes will be preloaded by default as soon as they are rendered in the DOM.
 
+### `loadModule` method
+
+- Type: `(url: string) => Promise<unknown>`
+- Optional
+- Defaults to native `import()`
+- Called to load a lazy route chunk by URL. Bundlers can rewrite dynamic `import()` calls to this function (or to `globalThis.__TANSTACK_ROUTER_LOAD_MODULE__`) so applications can intercept chunk requests — for example to attach custom headers or credentials.
+- `getLoadModule`, `setLoadModule`, and `defaultLoadModule` are also exported from `@tanstack/router-core` (and the framework router packages) for use outside `createRouter`.
+
+```tsx
+import { createRouter } from '@tanstack/react-router'
+
+const router = createRouter({
+  routeTree,
+  loadModule: async (url) => {
+    const response = await fetch(url, {
+      credentials: 'same-origin',
+      headers: { Authorization: 'Bearer token' },
+    })
+    if (!response.ok) {
+      throw new TypeError(`Failed to fetch dynamically imported module: ${url}`)
+    }
+    return import(/* @vite-ignore */ url)
+  },
+})
+```
+
 ### `defaultPreloadDelay` property
 
 - Type: `number`
