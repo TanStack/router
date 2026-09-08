@@ -1,7 +1,7 @@
 import { expect } from '@playwright/test'
 import { DEV_STYLES_ATTR } from '@tanstack/router-core'
 import { test } from '@tanstack/router-e2e-utils'
-import { ssrStylesMode } from '../env'
+import { ssrStylesMode, viteBundledDev } from '../env'
 
 // Whitelist errors that can occur in CI:
 // - net::ERR_NAME_NOT_RESOLVED: transient network issues
@@ -13,6 +13,33 @@ const whitelistErrors = [
 
 test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
   test.use({ whitelistErrors })
+
+  if (viteBundledDev && ssrStylesMode !== 'disabled') {
+    test('cold SSR styles do not start the regular client plugin container', async ({
+      request,
+    }) => {
+      const response = await request.get('/')
+      expect(response.ok()).toBeTruthy()
+      const html = await response.text()
+      const href = html.match(
+        /href="([^"]*@tanstack-start\/styles\.css[^"]*)"/,
+      )?.[1]
+      expect(href).toBeDefined()
+      const before = await request.get('/__test/client-builds')
+      const beforeCounts = await before.json()
+
+      const cssResponse = await request.get(href!.replaceAll('&amp;', '&'))
+      expect(cssResponse.ok()).toBeTruthy()
+      const css = await cssResponse.text()
+      expect(css).toContain('.styled-box')
+      expect(css).toContain('7px')
+
+      const after = await request.get('/__test/client-builds')
+      const afterCounts = await after.json()
+      expect(afterCounts.starts).toBe(beforeCounts.starts)
+      expect(afterCounts.starts).toBe(afterCounts.bundles)
+    })
+  }
 
   test('page renders correctly', async ({ page }) => {
     await page.goto('/')
@@ -63,6 +90,10 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
           (el) => getComputedStyle(el).backgroundColor,
         )
         expect(backgroundColor).toBe('rgb(59, 130, 246)')
+        await expect(page.getByTestId('css-module-box')).toHaveCSS(
+          'border-top-width',
+          '7px',
+        )
       })
     })
   }
@@ -127,8 +158,38 @@ test.describe(`dev.ssrStyles (mode=${ssrStylesMode})`, () => {
             (el) => getComputedStyle(el).backgroundColor,
           )
           expect(backgroundColor).toBe('rgb(59, 130, 246)')
+          await expect(page.getByTestId('css-module-box')).toHaveCSS(
+            'border-top-width',
+            '7px',
+          )
         })
       })
+    })
+  }
+
+  if (viteBundledDev && ssrStylesMode !== 'disabled') {
+    test('bundled CSS assets remain valid after client modules load', async ({
+      page,
+      request,
+    }) => {
+      await page.goto('/', { waitUntil: 'networkidle' })
+      const response = await request.get('/')
+      const html = await response.text()
+      const href = html.match(
+        /href="([^"]*@tanstack-start\/styles\.css[^"]*)"/,
+      )?.[1]
+      expect(href).toBeDefined()
+
+      const cssResponse = await request.get(href!.replaceAll('&amp;', '&'))
+      expect(cssResponse.ok()).toBeTruthy()
+      const css = await cssResponse.text()
+      expect(css).not.toContain('__VITE_ASSET__')
+      expect(css).not.toContain('__VITE_PUBLIC_ASSET__')
+      const assetUrl = css.match(/url\(["']?([^"')]+)["']?\)/)?.[1]
+      expect(assetUrl).toBeDefined()
+      const asset = await request.get(assetUrl!)
+      expect(asset.ok()).toBeTruthy()
+      expect(asset.headers()['content-type']).toContain('image/svg+xml')
     })
   }
 })

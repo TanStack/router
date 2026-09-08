@@ -1,6 +1,11 @@
 import { isRunnableDevEnvironment } from 'vite'
 import { NodeRequest, sendNodeResponse } from 'srvx/node'
 import { ENTRY_POINTS, VITE_ENVIRONMENT_NAMES } from '../../constants'
+import { ensureLatestClientBuild } from './bundled-dev'
+import {
+  captureBundledDevStyles,
+  collectBundledDevStyles,
+} from './bundled-dev-styles'
 import {
   CSS_MODULES_REGEX,
   collectDevStyles,
@@ -19,26 +24,63 @@ export function devServerPlugin({
   installDevServerMiddleware: boolean | undefined
 }): PluginOption {
   let isTest = false
-
-  // Cache CSS modules content during transform hook.
-  // For CSS modules, the transform hook receives the raw CSS content before
-  // Vite wraps it in JS. We capture this to use during SSR style collection.
+  let isBundledDev = false
+  let bundledClientStyles: ReadonlyMap<string, string> = new Map()
   const cssModulesCache: Record<string, string> = {}
 
   return [
     {
       name: 'tanstack-start-core:dev-server',
-      config(_userConfig, { mode }) {
+      config(userConfig, { mode, command }) {
         isTest = isTest ? isTest : mode === 'test'
+        if (
+          !isTest &&
+          devSsrStylesEnabled &&
+          command === 'serve' &&
+          userConfig.experimental?.bundledDev
+        ) {
+          // Workaround (https://github.com/vitejs/vite/issues/22991): SSR needs
+          // CSS/assets before a browser can trigger lazy compilation. Remove
+          // this override when Vite can resolve/compile lazy entries for SSR.
+          return {
+            environments: {
+              [VITE_ENVIRONMENT_NAMES.client]: {
+                build: {
+                  rolldownOptions: {
+                    experimental: {
+                      devMode: { lazy: false },
+                    },
+                  },
+                },
+              },
+            },
+          }
+        }
+        return undefined
       },
-      // Capture CSS modules content during transform
+      configResolved(config) {
+        isBundledDev =
+          config.command === 'serve' && !!config.experimental.bundledDev
+      },
       transform: {
-        filter: {
-          id: CSS_MODULES_REGEX,
-        },
+        filter: { id: CSS_MODULES_REGEX },
         handler(code, id) {
-          cssModulesCache[normalizeCssModuleCacheKey(id)] = code
+          if (!isBundledDev) {
+            cssModulesCache[normalizeCssModuleCacheKey(id)] = code
+          }
         },
+      },
+      generateBundle() {
+        if (
+          devSsrStylesEnabled &&
+          isBundledDev &&
+          this.environment.name === VITE_ENVIRONMENT_NAMES.client
+        ) {
+          // Workaround (https://github.com/vitejs/vite/issues/22968): the
+          // regular client moduleGraph starts a second plugin lifecycle.
+          // Use this snapshot until Vite exposes its bundled graph to SSR.
+          bundledClientStyles = captureBundledDevStyles(this)
+        }
       },
       configureServer(viteDevServer) {
         if (isTest) {
@@ -60,6 +102,13 @@ export function devServerPlugin({
             }
 
             try {
+              if (isBundledDev) {
+                await ensureLatestClientBuild(
+                  viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client],
+                )
+              }
+              const styles = bundledClientStyles
+
               // Parse route IDs from query param
               const urlObj = new URL(url, 'http://localhost')
               const routesParam = urlObj.searchParams.get('routes')
@@ -85,11 +134,21 @@ export function devServerPlugin({
 
               const css =
                 entries.length > 0
-                  ? await collectDevStyles({
-                      viteDevServer,
-                      entries,
-                      cssModulesCache,
-                    })
+                  ? isBundledDev
+                    ? await collectBundledDevStyles({
+                        serverEnvironment:
+                          viteDevServer.environments[
+                            VITE_ENVIRONMENT_NAMES.server
+                          ],
+                        rootDirectory: viteDevServer.config.root,
+                        entries,
+                        styles,
+                      })
+                    : await collectDevStyles({
+                        viteDevServer,
+                        entries,
+                        cssModulesCache,
+                      })
                   : undefined
 
               res.setHeader('Content-Type', 'text/css')
@@ -108,8 +167,9 @@ export function devServerPlugin({
         }
 
         if (viteDevServer.config.experimental.bundledDev) {
-          // Vite's bundled dev client watches sources separately, but Start still
-          // needs the SSR environment's module graph to see route/server edits.
+          // Workaround (https://github.com/vitejs/vite/discussions/22746,
+          // Phase 4): bundled dev omits the root from Vite's watcher, but our
+          // SSR environment is still unbundled. Remove when Vite watches it.
           viteDevServer.watcher.add(viteDevServer.config.root)
         }
 
@@ -123,15 +183,8 @@ export function devServerPlugin({
               `Server environment ${VITE_ENVIRONMENT_NAMES.server} not found`,
             )
           }
-          const clientEnv = viteDevServer.environments[
-            VITE_ENVIRONMENT_NAMES.client
-          ] as
-            | {
-                devEngine?: {
-                  ensureLatestBuildOutput?: () => Promise<void>
-                }
-              }
-            | undefined
+          const clientEnv =
+            viteDevServer.environments[VITE_ENVIRONMENT_NAMES.client]
 
           const installMiddleware = installDevServerMiddleware
           if (installMiddleware === false) {
@@ -177,9 +230,7 @@ export function devServerPlugin({
                * }
                */
               if (viteDevServer.config.experimental.bundledDev) {
-                await clientEnv?.devEngine?.ensureLatestBuildOutput?.()
-                serverEnv.moduleGraph.invalidateAll()
-                serverRunner.clearCache()
+                await ensureLatestClientBuild(clientEnv)
               }
 
               const serverEntry = await serverRunner.import(ENTRY_POINTS.server)

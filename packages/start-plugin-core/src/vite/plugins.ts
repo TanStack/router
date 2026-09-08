@@ -12,14 +12,17 @@ export function createDevClientEntryPlugin(opts: {
   framework: CompileStartFrameworkOptions
   getClientEntry: () => string
 }): PluginOption {
-  return createVirtualModule({
+  let clientEntryPath: string | undefined
+  const plugin = createVirtualModule({
     name: 'tanstack-start-core:dev-client-entry',
     moduleId: DEV_CLIENT_ENTRY,
     enforce: 'pre',
     async load() {
-      const clientEntry = JSON.stringify(
-        normalizePath(opts.getClientEntry()).replaceAll('\\', '/'),
+      clientEntryPath = normalizePath(opts.getClientEntry()).replaceAll(
+        '\\',
+        '/',
       )
+      const clientEntry = JSON.stringify(clientEntryPath)
 
       if (shouldInjectReactRefreshPreamble(this.environment, opts.framework)) {
         const reactRefresh = await this.resolve?.('/@react-refresh')
@@ -39,6 +42,23 @@ export function createDevClientEntryPlugin(opts: {
       return `import ${clientEntry}`
     },
   })
+
+  plugin.transform = {
+    handler(code, id) {
+      if (
+        this.environment.config.command === 'serve' &&
+        this.environment.config.isBundled &&
+        id === clientEntryPath
+      ) {
+        // Hydration startup is inherently side-effectful even when its package
+        // declares sideEffects:false; the bundled dev wrapper must retain it.
+        return { code, map: null, moduleSideEffects: true }
+      }
+      return undefined
+    },
+  }
+
+  return plugin
 }
 
 function shouldInjectReactRefreshPreamble(

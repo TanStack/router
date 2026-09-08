@@ -48,7 +48,7 @@ catalog:
   publint: ^0.3.16
   redaxios: ^0.5.1
   rimraf: ^6.1.2
-  vite: ^8.0.14
+  vite: ^8.2.2
   vitest: ^4.1.4
   '@types/node': 25.0.9
   '@playwright/test': ^1.61.0
@@ -67,6 +67,9 @@ overrides:
   '@types/react-dom': 'catalog:'
   eslint: 'catalog:'
   vite: 'catalog:'
+  # Workaround: Vite 8.2.2 embeds the runtime from before rolldown/rolldown#10772.
+  # Remove with a Vite release whose embedded runtime supports that calling convention.
+  vite@8.2.2>rolldown: 1.2.4
   '@types/node': 'catalog:'
   '@playwright/test': 'catalog:'
   '@tanstack/query-core': 'catalog:'
