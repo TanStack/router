@@ -23,6 +23,77 @@ afterEach(() => {
   }
 })
 
+test.each([false, true])(
+  'filters native and custom props without changing the hook result (server: %s)',
+  async (server) => {
+    type AnchorProps = React.ComponentPropsWithoutRef<'a'> & {
+      disabled?: boolean
+    }
+    let customProps: AnchorProps | undefined
+    let hookProps: React.ComponentPropsWithRef<'a'> | undefined
+    const customRef = React.createRef<HTMLAnchorElement>()
+    const nativeRef = React.createRef<HTMLAnchorElement>()
+    const CustomLink = createLink(
+      React.forwardRef<HTMLAnchorElement, AnchorProps>((props, ref) => {
+        customProps = props
+        return (
+          <a ref={ref} data-testid="custom">
+            {props.children}
+          </a>
+        )
+      }),
+    )
+    function Probe() {
+      hookProps = useLinkProps({
+        to: '/target',
+        type: 'text/custom',
+        disabled: true,
+      })
+      return null
+    }
+    const root = createRootRoute()
+    const router = createRouter({
+      routeTree: root.addChildren([
+        createRoute({ getParentRoute: () => root, path: '/target' }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/target'] }),
+      isServer: server,
+    })
+    disposers.push(router.history.destroy)
+    await router.load()
+    const tree = (
+      <RouterContextProvider router={router}>
+        <Link to="/target" type="text/native" disabled ref={nativeRef}>
+          Native
+        </Link>
+        <CustomLink to="/target" type="text/custom" disabled ref={customRef}>
+          {({ isActive }) => (isActive ? 'Active custom' : 'Inactive custom')}
+        </CustomLink>
+        <Probe />
+      </RouterContextProvider>
+    )
+    const container = server
+      ? document.createElement('div')
+      : render(tree).container
+    if (server) {
+      container.innerHTML = renderToString(tree)
+    }
+    const native = container.querySelector('a')!
+    const custom = container.querySelector('[data-testid="custom"]')
+    expect(native).not.toHaveAttribute('type')
+    expect(native).not.toHaveAttribute('disabled')
+    expect(native).toHaveAttribute('aria-disabled', 'true')
+    expect(custom).toHaveTextContent('Active custom')
+    expect(customProps).toMatchObject({ disabled: true })
+    expect(customProps).not.toHaveProperty('type')
+    expect(hookProps).toMatchObject({ type: 'text/custom', disabled: true })
+    if (!server) {
+      expect(nativeRef.current).toBe(native)
+      expect(customRef.current).toBe(custom)
+    }
+  },
+)
+
 test('blocked custom links keep the validated props and forwarded ref', () => {
   const CustomLink = createLink(
     React.forwardRef<
