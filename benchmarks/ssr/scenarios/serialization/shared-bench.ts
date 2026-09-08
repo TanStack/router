@@ -1,5 +1,9 @@
 import { benchPointAdapterKey, richDateIso } from './shared-data'
-import { randomSegment, runRequestLoop } from '../../bench-utils'
+import {
+  findDehydrationMarkerIndex,
+  randomSegment,
+  runRequestLoop,
+} from '../../bench-utils'
 import type { StartRequestHandler } from '../../bench-utils'
 
 export type { StartRequestHandler }
@@ -41,7 +45,7 @@ async function fetchScenarioBody(
     )
   }
 
-  if (!body.includes('$_TSR')) {
+  if (findDehydrationMarkerIndex(body) === -1) {
     throw new Error(`Expected ${route} response to include dehydration marker`)
   }
 
@@ -60,24 +64,37 @@ function assertExcludes(body: string, marker: string, label: string) {
   }
 }
 
+// Typed values leave different artifacts per dehydration channel: the
+// `$_TSR` script channel emits reconstruction code (`new Date(...)`), while
+// Solid's `__TSR_P` JSON records carry seroval node tags (Date is node type
+// 5, Map is 8) and route Errors through the `$TSR/Error` adapter.
+const scriptChannelTypedMarkers = ['new Date', 'new Map', 'new Error']
+const jsonChannelTypedMarkers = ['"t":5', '"t":8', '$TSR/Error']
+
 export async function assertSerializationScenario(
   handler: StartRequestHandler,
 ) {
   const richBody = await fetchScenarioBody(handler, 'rich')
   const plainBody = await fetchScenarioBody(handler, 'plain')
+  const typedMarkers = richBody.includes('__TSR_P')
+    ? jsonChannelTypedMarkers
+    : scriptChannelTypedMarkers
 
   assertIncludes(richBody, 'rich-sanity', 'rich')
   assertIncludes(richBody, benchPointAdapterKey, 'rich')
   assertIncludes(richBody, richDateIso, 'rich')
-  assertIncludes(richBody, 'new Date', 'rich')
-  assertIncludes(richBody, 'new Map', 'rich')
-  assertIncludes(richBody, 'new Error', 'rich')
+  for (const marker of typedMarkers) {
+    assertIncludes(richBody, marker, 'rich')
+  }
 
   assertIncludes(plainBody, 'plain-sanity', 'plain')
   assertExcludes(plainBody, benchPointAdapterKey, 'plain')
-  assertExcludes(plainBody, 'new Date', 'plain')
-  assertExcludes(plainBody, 'new Map', 'plain')
-  assertExcludes(plainBody, 'new Error', 'plain')
+  for (const marker of [
+    ...scriptChannelTypedMarkers,
+    ...jsonChannelTypedMarkers,
+  ]) {
+    assertExcludes(plainBody, marker, 'plain')
+  }
 }
 
 export const serializationBenchOptions = {

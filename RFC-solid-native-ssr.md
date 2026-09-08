@@ -74,10 +74,29 @@ renderer) never enters `createStartHandler`, so it can change freely.
   serialization in `RouterProvider`.)_ During server render the adapter
   serializes each settled match's state content-addressed
   (`tsr:<matchId>` keys) — the pattern `solid-query`'s provider proved.
-  Still open within this bullet: promise-valued entries for matches
-  pending at render time (streaming SSR). This core has no per-match
-  settle promise, so it needs a dispatch-time hook; today pending matches
-  are skipped and the client boot falls through to current behavior.
+  The promise-valued half landed where the blocking contract puts it: not
+  as whole-match entries (blocking loaders settle before publish by
+  contract, so a pending match at serialize time doesn't exist on the
+  happy path) but as _deferred `loaderData` fields_. An unawaited promise
+  in `loaderData` rides `ctx.serialize` untouched — seroval streams its
+  resolution, the shell flushes with the fallback, the value arrives in a
+  later chunk, and the hydrating client adopts the same promise from the
+  registry entry. Zero adapter code; verified by chunk-order assertions
+  in the harness. Read-side, `<Await>` is compat surface only — the
+  native consumption is a memo returning the promise read under a
+  `Loading` boundary.
+- **Provider-owned server dispatch.** _(Landed: `RouterProvider`.)_ The
+  server entry no longer calls `await router.load()` — the provider
+  detects an unloaded router (`!router._serverResult`), kicks `load()`
+  itself, and parks the render on it through an async memo gating the
+  match tree. Solid's streaming renderer awaits the park natively, so
+  blocking-loader semantics are byte-identical to the manual await; the
+  gate memo exists on both environments so hydration keys stay aligned,
+  and the client resolves it immediately (boot is the constructor priming
+  plus `Transitioner`'s settled-time load). Consequence: the bare pairing
+  requires `renderToStream` — `renderToString` is synchronous by design
+  in Solid 2 and throws on parked values. Recipes and templates use
+  `renderToStream` unconditionally.
 - **Hydration-claiming boot.** _(Landed: the `Router` constructor.)_
   Match synchronously, prime match state from the registry, commit
   without running loaders. Placement discovered to be load-bearing:
@@ -101,19 +120,104 @@ renderer) never enters `createStartHandler`, so it can change freely.
 
 `start-server-core` orchestrates through `attachRouterServerSsrUtils`,
 `dehydrate()`/`hydrate()`, and the stream handler — that contract is
-shared core and stays intact as a facade. Within it, the Solid
-`defaultStreamHandler`/`renderRouterToStream` source the transfer from the
-registry channel instead of `__TSR_SSR__` script injection wherever both
-exist; user `dehydrate`/`hydrate` hooks keep working. The flight collector
-already went through this door: `loadFlightTarget` absorbed the
-event-derivation half, and its extraction half shrinks further once match
-state is registry-addressed.
+shared core and stays intact as a facade. The flight collector already
+went through this door: `loadFlightTarget` absorbed the event-derivation
+half. Phase 2 splits into transport and payload:
 
-**Regression gate:** the three Solid Start e2e suites
-(`basic-solid-query`, `server-functions`, `server-routes` — 37 tests,
-including redirect-from-query on both mount and SSR paths, and the
-transition semantics) all run locally today and define "didn't break
-Start."
+- **2a — Solid-owned script transport.** _(Landed:
+  `renderRouterToStream`.)_ The Solid path no longer runs
+  `transformStreamWithRouter` — the 900-line HTML transform that decoded
+  every chunk, scanned for closing-tag boundaries, spliced router scripts
+  in, and held the `</body></html>` tail until serialization finished.
+  Router scripts now ride the response writer directly: the shell payload
+  was always inlined by `<Scripts />` during the render (untouched), and
+  late scripts (streamed loaderData resolutions, the end marker) write
+  straight to the sink as the serializer emits them — the same
+  after-the-shell placement Solid's own late chunks use (HTML5 parsers
+  reparent trailing content; this is Solid's production protocol). The
+  script barrier lifts when the chunk carrying the `<Scripts />` tag has
+  been written (chunks are scanned only until the marker is seen); the
+  response closes when both the render completed and serialization
+  finished, with the transform's 60s timeout and cleanup semantics
+  preserved. Zero per-chunk decode/scan/splice on the hot path.
+- **2b — payload through Solid's JSON codec.** _(Landed.)_ The parse-time
+  wall that blocked the registry route (adapter-typed values serialize as
+  `$_TSR.t.get(key)(...)` calls that evaluate before `fromSerializable`
+  implementations exist) doesn't exist on Solid's other channel: the
+  eval-free JSON codec Start's server functions already ride —
+  `createJSONSerializer` emits inert `SerovalNode` records, the client
+  decodes at runtime with `makeSerovalPlugin`-wrapped adapters. The
+  DehydratedRouter now takes that road — and, on this pre-release branch,
+  with **zero diff outside the Solid packages**: everything rides
+  Solid-side overrides of the (documented framework-only)
+  `router.serverSsr` members, installed through the existing
+  `onServerSsrAttach` lifecycle. A follow-up core-hooks PR against `main`
+  will let the overrides collapse into supported seams.
+  - **Attach seam (`solid-router`):** the `Router` constructor registers
+    an `onServerSsrAttach` listener that resolves the installer through a
+    slot (`solidSsrTransferSlot`) filled by the `ssr/server` entry module
+    — the encode half of Solid's codec must never enter the client module
+    graph (the Solid vite plugin treats it as server-only and a client
+    bundle that reaches it loses its entry emission), and the package's
+    `sideEffects` allowlist keeps bundlers from dropping the slot fill.
+    Unfilled slot (client bundle, or a server render that never imports
+    Solid's `ssr/server`) means core's script channel runs unchanged.
+  - **Server (`installSolidSsrTransfer`):** replaces `serverSsr.dehydrate`
+    with a Solid implementation that builds the DehydratedRouter the way
+    core does (rendered matches, shell slicing, `options.dehydrate()`
+    data, and a dehydrated manifest _derived_ from the public
+    `router.ssr.manifest` getter — the raw ServerManifest is closed over
+    by core's attach and unreachable from an adapter), then serializes it
+    through `createJSONSerializer` with the RPC codec's plugin recipe
+    (router adapters via `makeSerovalPlugin` + router defaults minus the
+    ReadableStream plugin Solid's codec already carries). Records ride a
+    Solid-owned mirror of core's `ScriptBuffer` as
+    `(self.__TSR_P=self.__TSR_P||[]).push({...})` data pushes —
+    `takeBufferedScripts`/`liftScriptBarrier` are overridden to serve it
+    with core's exact shell-inline tag shape (barrier id, nonce,
+    self-removal), so `<Scripts />` inlining, barrier deferral, and the
+    2a sink all work unchanged.
+    `isDehydrated`/`isSerializationFinished`/`onSerializationFinished`
+    answer from Solid-side state (core's internal flags never advance
+    since core's dehydrate never runs); `setRenderFinished`/`cleanup`
+    wrap the originals so core's render-finished listeners and teardown
+    still fire. Core's seeded `$R` scope header and `$_TSR` bootstrap are
+    drained and discarded at attach — the channel carries no executable
+    payload. Streamed loaderData promises settle through later records;
+    the serializer's `onDone` is the end-of-stream that gates the sink
+    close.
+  - **Client (synthetic `$_TSR`):** core `hydrate(router)` is unchanged —
+    it still reads `window.$_TSR` (sets `.t`, replays `.buffer`, then
+    reads `.router`). Solid installs a synthetic `$_TSR` whose lazy
+    `router` getter decodes the `__TSR_P` queue through
+    `createJSONDataTable` at that final read — after adapters are
+    finalized (`RouterClient` reads them off the router; Solid's
+    `hydrateStart` reads the adapter array off
+    `window.__TSS_START_OPTIONS__`, the same array core's `hydrateStart`
+    populates before calling `hydrate`) — and hooks the queue's `push` so
+    late records settle pending promises. The object is built from
+    decoded JSON records; no parse-time eval, no `t` map, no
+    deferred-script buffer. Two load-bearing details: the decode module
+    is loaded through a dynamic import (a static one merges it into the
+    importer's chunk — for default-entry apps the client entry itself,
+    which then registers as a dynamic-import target of Solid's own lazy
+    decode load and gets its `isEntry` stripped by the vite plugin's
+    lazy-entry normalization, breaking Start's manifest capture), so the
+    shim's install returns a promise the callers await before core
+    hydrate; and the synthetic's `h()` deletes the global (the shim has
+    no post-hydration role — late records ride the queue's hooked `push`,
+    never `$_TSR.p`), keeping `typeof window.$_TSR === 'undefined'` a
+    valid hydration-finished probe on both channels. The shim is a no-op
+    when a real `$_TSR` bootstrap exists (a document rendered by a
+    script-channel server), so React/Vue and older-server documents are
+    untouched.
+
+**Regression gate (2a + 2b, all green on a fresh build):** nine Solid Start
+e2e suites — `basic` (80), `server-functions` (29), `deferred-hydration`
+(15), `selective-ssr` (11), `scroll-restoration` (10), `basic-solid-query`
+(6), `serialization-adapters` (5), `server-routes` (2), `spa-mode` (2) —
+160 tests covering streaming order, selective SSR lanes, adapter decode,
+scroll scripts, and shell mode, plus the bare-pairing harness.
 
 ## Phase 3 — upstream
 
@@ -128,11 +232,17 @@ without a native channel.
 
 - Match key identity: route id + params hash vs match id — needs to be
   stable across server/client and across redirects into the same route.
-- `loaderData` streaming semantics vs the existing deferred API: a
-  promise-valued registry entry makes deferred _transfer_ free, but the
-  read-side API compatibility needs mapping.
-- Scroll restoration and `__TSR_SSR__` consumers beyond match state
+- ~~`loaderData` streaming semantics vs the existing deferred API~~ —
+  resolved: transfer is free (seroval streams promise fields in registry
+  entries), and the existing `<Await>`/`useAwaited` API keeps working as
+  compat while native reads (async memo under `Loading`) are the
+  documented path.
+- ~~Scroll restoration and `__TSR_SSR__` consumers beyond match state
   (manifest/asset injection) — inventory what else rides the script
-  channel before swapping it.
+  channel before swapping it~~ — resolved: the channel's only producer
+  was `dehydrate()` itself (scroll restoration rides match meta/assets;
+  the manifest is inside the DehydratedRouter). With 2b the payload
+  carries everything and the bootstrap/cross-reference seeds are gone;
+  the `scroll-restoration` suite is green on the new channel.
 - Where the SSR teardown lands for router state (the query cache got
   cancel+clear on render disposal; matches may want the same).

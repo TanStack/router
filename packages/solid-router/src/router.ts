@@ -2,6 +2,7 @@ import { RouterCore } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { getStoreFactory } from './routerStores'
 import { primeRouterFromRegistry } from './registryTransfer'
+import { solidSsrTransfer } from './ssr/solidSsrTransferSlot'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRoute,
@@ -102,6 +103,25 @@ export class Router<
     >,
   ) {
     super(options, getStoreFactory)
+    // Solid transports the Start SSR payload (DehydratedRouter) through
+    // Solid's eval-free JSON codec instead of the `$_TSR` script channel:
+    // the overrides installed at serverSsr-attach time (see
+    // routerPayloadServer) own dehydration + the buffered script channel,
+    // and the client decodes the record queue at hydrate time (see
+    // routerPayloadClient). Registration must happen at construction —
+    // before attachRouterServerSsrUtils fires the lifecycle — so the
+    // overrides are in place when Start's executeRouter (or
+    // createRequestHandler) calls dehydrate(). The installer lives behind
+    // the transfer slot (see solidSsrTransferSlot); unfilled — client
+    // bundle, or a server render without Solid's ssr/server module — the
+    // listener no-ops and core's script channel runs unchanged.
+    if (isServer) {
+      const lifecycle = (this.serverSsrLifecycle ??= {})
+      const listeners = (lifecycle.onServerSsrAttach ??= [])
+      listeners.push((serverSsr) =>
+        solidSsrTransfer.install?.(this, serverSsr),
+      )
+    }
     // The hydration-claiming boot (see registryTransfer). Router creation is
     // the client's natural pre-render moment: module code runs after the
     // document — and the registry entries the server's RouterProvider wrote —
