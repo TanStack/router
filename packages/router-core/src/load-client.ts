@@ -1607,19 +1607,17 @@ export function commitMatches(
   const cached = new Map<string, AnyRouteMatch>()
   if (process.env.NODE_ENV === 'production' || !tx[6 /* refresh */]) {
     const now = Date.now()
+    // The rendered prefix and settled descendants supersede older generations.
+    // Unsettled matches beyond a fallback must not evict a newer preload.
+    const superseded = new Set<string>()
+    for (let index = 0; index < matches.length; index++) {
+      const match = matches[index]!
+      if (index < cut || match.status === 'success') {
+        superseded.add(match.id)
+      }
+    }
     for (const match of [...previous, ...previousCached.values()]) {
-      // Rendered-prefix ids and settled successes anywhere in the lane are
-      // authoritative: retaining an older same-id generation would shadow them
-      // at the next planning pass. Unsettled beyond-boundary matches are not —
-      // they must not evict a newer same-id preload.
-      if (
-        match.status !== 'success' ||
-        matches.some(
-          (candidate, index) =>
-            candidate.id === match.id &&
-            (index < cut || candidate.status === 'success'),
-        )
-      ) {
+      if (match.status !== 'success' || superseded.has(match.id)) {
         continue
       }
       const work = match as WorkMatch

@@ -75,6 +75,47 @@ describe('redirect resolution', () => {
       expect(response.headers.get('Location')).toBe('/undefined')
     },
   )
+
+  test.each([
+    [
+      'preserves an explicit same-origin document redirect',
+      'https://victim.example/target',
+      true,
+      '/target',
+    ],
+    [
+      'document-navigates an intentional external redirect',
+      'https://other.example/target',
+      undefined,
+      'https://other.example/target',
+    ],
+  ] as const)('%s', async (_name, href, reloadDocument, expectedHref) => {
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () => redirect({ href, reloadDocument }),
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      history,
+      origin: 'https://victim.example',
+      isServer: false,
+    })
+    const windowLocation = { href: '', replace: vi.fn() }
+    vi.stubGlobal('window', { location: windowLocation })
+
+    void router.navigate({ to: '/source' })
+
+    await vi.waitFor(() => {
+      expect(windowLocation.replace).toHaveBeenCalledWith(expectedHref)
+    })
+  })
 })
 
 describe('notFound detection', () => {

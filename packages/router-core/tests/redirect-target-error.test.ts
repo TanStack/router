@@ -9,76 +9,80 @@ import {
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 describe('redirect target errors', () => {
-  test('a client redirect target error becomes the originating route error', async () => {
-    const boom = new Error('resolveRedirect failed')
-    const errorComponentGate = createControlledPromise<void>()
-    const errorComponentStarted = createControlledPromise<void>()
-    const errorComponentPreload = vi.fn(() => {
-      errorComponentStarted.resolve()
-      return errorComponentGate
-    })
-    const ErrorComponent = Object.assign(() => null, {
-      preload: errorComponentPreload,
-    })
+  test.each([false, true])(
+    'a client redirect target error becomes the originating route error (reloadDocument=%s)',
+    async (reloadDocument) => {
+      const boom = new Error('resolveRedirect failed')
+      const errorComponentGate = createControlledPromise<void>()
+      const errorComponentStarted = createControlledPromise<void>()
+      const errorComponentPreload = vi.fn(() => {
+        errorComponentStarted.resolve()
+        return errorComponentGate
+      })
+      const ErrorComponent = Object.assign(() => null, {
+        preload: errorComponentPreload,
+      })
 
-    const rootLoader = vi.fn(() => 'root data')
-    const onError = vi.fn()
-    const rootRoute = new BaseRootRoute({ loader: rootLoader })
-    const badRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/bad',
-      beforeLoad: () => {
-        throw redirect({
-          to: '/bad',
-          search: () => {
-            throw boom
-          },
-        })
-      },
-      onError,
-      errorComponent: ErrorComponent,
-    })
-    const safeLoader = vi.fn(() => 'safe data')
-    const safeRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/safe',
-      loader: safeLoader,
-    })
+      const rootLoader = vi.fn(() => 'root data')
+      const onError = vi.fn()
+      const rootRoute = new BaseRootRoute({ loader: rootLoader })
+      const badRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/bad',
+        beforeLoad: () => {
+          throw redirect({
+            to: '/bad',
+            reloadDocument,
+            search: () => {
+              throw boom
+            },
+          })
+        },
+        onError,
+        errorComponent: ErrorComponent,
+      })
+      const safeLoader = vi.fn(() => 'safe data')
+      const safeRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/safe',
+        loader: safeLoader,
+      })
 
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([badRoute, safeRoute]),
-      history: createMemoryHistory({ initialEntries: ['/bad'] }),
-    })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([badRoute, safeRoute]),
+        history: createMemoryHistory({ initialEntries: ['/bad'] }),
+      })
 
-    const load = router.load()
-    const outcome = await Promise.race([
-      load.then(() => 'load-settled' as const),
-      errorComponentStarted.then(() => 'error-preload-started' as const),
-    ])
-    expect(outcome).toBe('error-preload-started')
-    expect(rootLoader).toHaveBeenCalledOnce()
-    expect(onError).toHaveBeenCalledWith(boom)
+      const load = router.load()
+      const outcome = await Promise.race([
+        load.then(() => 'load-settled' as const),
+        errorComponentStarted.then(() => 'error-preload-started' as const),
+      ])
+      expect(outcome).toBe('error-preload-started')
+      expect(rootLoader).toHaveBeenCalledOnce()
+      expect(onError).toHaveBeenCalledWith(boom)
 
-    errorComponentGate.resolve()
-    await load
-    expect(errorComponentPreload).toHaveBeenCalledOnce()
-    expect(router.state.status).toBe('idle')
-    expect(router.state.location.pathname).toBe('/bad')
-    expect(router.state.matches.at(-1)).toMatchObject({
-      routeId: badRoute.id,
-      status: 'error',
-      error: boom,
-    })
+      errorComponentGate.resolve()
+      await load
+      expect(errorComponentPreload).toHaveBeenCalledOnce()
+      expect(router.state.status).toBe('idle')
+      expect(router.state.location.pathname).toBe('/bad')
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: badRoute.id,
+        status: 'error',
+        error: boom,
+      })
 
-    await router.navigate({ to: '/safe' })
-    expect(router.state.location.pathname).toBe('/safe')
-    expect(router.state.matches.at(-1)).toMatchObject({
-      routeId: safeRoute.id,
-      status: 'success',
-      loaderData: 'safe data',
-    })
-    expect(safeLoader).toHaveBeenCalledTimes(1)
-  })
+      await router.navigate({ to: '/safe' })
+      expect(router.state.location.pathname).toBe('/safe')
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: safeRoute.id,
+        status: 'success',
+        loaderData: 'safe data',
+      })
+      expect(safeLoader).toHaveBeenCalledTimes(1)
+    },
+  )
 
   test('a server redirect target error becomes the originating route error', async () => {
     const boom = new Error('resolveRedirect failed')
@@ -152,42 +156,46 @@ describe('redirect target errors', () => {
     })
   })
 
-  test('a loader redirect target error becomes the originating route error', async () => {
-    const boom = new Error('redirect hash failed')
-    const onError = vi.fn()
-    const rootRoute = new BaseRootRoute({})
-    const badRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/bad',
-      loader: () =>
-        redirect({
-          to: '/target',
-          hash: () => {
-            throw boom
-          },
-        }),
-      onError,
-      errorComponent: () => null,
-    })
-    const targetRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/target',
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([badRoute, targetRoute]),
-      history: createMemoryHistory({ initialEntries: ['/bad'] }),
-    })
+  test.each([false, true])(
+    'a loader redirect target error becomes the originating route error (reloadDocument=%s)',
+    async (reloadDocument) => {
+      const boom = new Error('redirect hash failed')
+      const onError = vi.fn()
+      const rootRoute = new BaseRootRoute({})
+      const badRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/bad',
+        loader: () =>
+          redirect({
+            to: '/target',
+            reloadDocument,
+            hash: () => {
+              throw boom
+            },
+          }),
+        onError,
+        errorComponent: () => null,
+      })
+      const targetRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([badRoute, targetRoute]),
+        history: createMemoryHistory({ initialEntries: ['/bad'] }),
+      })
 
-    await router.load()
+      await router.load()
 
-    expect(onError).toHaveBeenCalledWith(boom)
-    expect(router.state.location.pathname).toBe('/bad')
-    expect(router.state.matches.at(-1)).toMatchObject({
-      routeId: badRoute.id,
-      status: 'error',
-      error: boom,
-    })
-  })
+      expect(onError).toHaveBeenCalledWith(boom)
+      expect(router.state.location.pathname).toBe('/bad')
+      expect(router.state.matches.at(-1)).toMatchObject({
+        routeId: badRoute.id,
+        status: 'error',
+        error: boom,
+      })
+    },
+  )
 
   test('an internal href parse error becomes the originating route error', async () => {
     const boom = new Error('redirect search parse failed')
@@ -474,4 +482,60 @@ describe('redirect target errors', () => {
       loaderData: 2,
     })
   })
+
+  test.each([true])(
+    'document redirects materialize the mask within route error handling (throws=%s)',
+    async (throws) => {
+      const boom = new Error('mask search failed')
+      const onError = vi.fn()
+      const maskSearch = vi.fn(() => {
+        if (throws) {
+          throw boom
+        }
+        return { masked: true }
+      })
+      const rootRoute = new BaseRootRoute({})
+      const sourceRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/source',
+        loader: () =>
+          redirect({
+            to: '/target',
+            reloadDocument: true,
+            mask: { to: '/pretty', search: maskSearch },
+          }),
+        onError,
+      })
+      const targetRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+        history: createMemoryHistory({ initialEntries: ['/source'] }),
+        isServer: false,
+      })
+      const windowLocation = { replace: vi.fn() }
+      vi.stubGlobal('window', { location: windowLocation })
+      try {
+        await router.load()
+        expect(maskSearch).toHaveBeenCalledOnce()
+        if (throws) {
+          expect(onError).toHaveBeenCalledWith(boom)
+          expect(router.state.matches.at(-1)).toMatchObject({
+            status: 'error',
+            error: boom,
+          })
+          expect(windowLocation.replace).not.toHaveBeenCalled()
+        } else {
+          expect(onError).not.toHaveBeenCalled()
+          expect(windowLocation.replace).toHaveBeenCalledWith(
+            '/pretty?masked=true',
+          )
+        }
+      } finally {
+        vi.unstubAllGlobals()
+      }
+    },
+  )
 })

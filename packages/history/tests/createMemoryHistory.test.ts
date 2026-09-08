@@ -2,6 +2,24 @@ import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '../src'
 
 describe('createMemoryHistory', () => {
+  test('exposes the current blocker registry after registration and removal', () => {
+    const history = createMemoryHistory()
+    const first = { blockerFn: vi.fn(() => true) }
+    const second = { blockerFn: vi.fn(() => false) }
+
+    expect(history._getBlockers()).toEqual([])
+
+    const removeFirst = history.block(first)
+    const removeSecond = history.block(second)
+    expect(history._getBlockers()).toEqual([first, second])
+
+    removeFirst()
+    expect(history._getBlockers()).toEqual([second])
+
+    removeSecond()
+    expect(history._getBlockers()).toEqual([])
+  })
+
   test('back', () => {
     const initialEntry = '/initial'
     const history = createMemoryHistory({ initialEntries: [initialEntry] })

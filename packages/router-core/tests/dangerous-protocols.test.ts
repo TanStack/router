@@ -1,10 +1,15 @@
-import { describe, expect, it } from 'vitest'
+import { createBrowserHistory, createMemoryHistory } from '@tanstack/history'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { DEFAULT_PROTOCOL_ALLOWLIST, isDangerousProtocol } from '../src/utils'
 import { redirect } from '../src/redirect'
-import { BaseRootRoute } from '../src'
-import { createTestRouter } from './routerTestUtils'
+import { BaseRootRoute, BaseRoute } from '../src'
+import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 const defaultAllowlistSet = new Set(DEFAULT_PROTOCOL_ALLOWLIST)
+
+afterEach(() => {
+  vi.unstubAllGlobals()
+})
 
 describe('isDangerousProtocol', () => {
   describe('blocked protocols (not in default allowlist)', () => {
@@ -236,6 +241,140 @@ describe('redirect creation (no protocol validation)', () => {
   it('should allow redirects without href', () => {
     expect(() => redirect({ to: '/home' })).not.toThrow()
   })
+})
+
+describe('public navigation and redirect sinks', () => {
+  const customProtocols = [
+    'x-safari-https://example.com',
+    'googlechromes://example.com',
+    'intent://example.com#Intent;scheme=https;end',
+    'foo:bar',
+  ]
+
+  it.each(customProtocols)(
+    'document-navigates to allowlisted protocol %j',
+    async (href) => {
+      const windowLocation = { href: '', replace: vi.fn() }
+      vi.stubGlobal('window', { location: windowLocation })
+      const router = createTestRouter({
+        routeTree: new BaseRootRoute(),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        origin: 'https://victim.example',
+        protocolAllowlist: [
+          'x-safari-https:',
+          'googlechromes:',
+          'intent:',
+          'foo:',
+        ],
+        isServer: false,
+      })
+
+      await router.navigate({ href, reloadDocument: true })
+
+      expect(windowLocation.href).toBe(href)
+    },
+  )
+
+  it.each(customProtocols)(
+    'blocks unsafe document destination %j',
+    async (href) => {
+      const windowLocation = { href: '', replace: vi.fn() }
+      vi.stubGlobal('window', { location: windowLocation })
+      const router = createTestRouter({
+        routeTree: new BaseRootRoute(),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        origin: 'https://victim.example',
+        isServer: false,
+      })
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      try {
+        for (const replace of [false, true]) {
+          await router.navigate({ href, reloadDocument: true, replace })
+
+          expect(windowLocation.href).toBe('')
+          expect(windowLocation.replace).not.toHaveBeenCalled()
+          expect(router.history.location.href).toBe('/')
+          expect(warn).toHaveBeenCalledWith(
+            `Blocked navigation to dangerous protocol: ${href}`,
+          )
+        }
+      } finally {
+        warn.mockRestore()
+      }
+    },
+  )
+
+  it('uses a safe explicit Location instead of a stale external href', async () => {
+    const rootRoute = new BaseRootRoute()
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () =>
+        redirect({
+          href: 'https://other.example/ignored',
+          headers: { Location: '/safe' },
+        }),
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute]),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/source')
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('Location')).toBe('/safe')
+  })
+
+  it.each([{ blocked: false, ignoreBlocker: false, unsafe: true }])(
+    'only exempts an accepted document navigation from beforeunload: %j',
+    async ({ blocked, ignoreBlocker, unsafe }) => {
+      const browserWindow = window
+      const history = createBrowserHistory({ window: browserWindow })
+      const firstBlocker = vi.fn(async () => false)
+      const lastBlocker = vi.fn(async () => blocked)
+      history.block({ blockerFn: firstBlocker, enableBeforeUnload: true })
+      history.block({ blockerFn: lastBlocker, enableBeforeUnload: true })
+      const windowLocation = { href: '', replace: vi.fn() }
+      vi.stubGlobal('window', { location: windowLocation })
+      const router = createTestRouter({
+        routeTree: new BaseRootRoute(),
+        history,
+        origin: 'https://victim.example',
+        isServer: false,
+      })
+      const href = unsafe
+        ? 'javascript:alert(1)'
+        : 'https://other.example/target'
+
+      try {
+        await router.navigate({ href, ignoreBlocker })
+
+        const accepted = !unsafe && (ignoreBlocker || !blocked)
+        expect(windowLocation.href).toBe(accepted ? href : '')
+        expect(firstBlocker).toHaveBeenCalledTimes(
+          ignoreBlocker || unsafe ? 0 : 1,
+        )
+        expect(lastBlocker).toHaveBeenCalledTimes(
+          ignoreBlocker || unsafe ? 0 : 1,
+        )
+
+        const beforeUnload = new Event('beforeunload', { cancelable: true })
+        browserWindow.dispatchEvent(beforeUnload)
+        expect(beforeUnload.defaultPrevented).toBe(!accepted)
+
+        // The exemption must not carry over to a later navigation.
+        const nextBeforeUnload = new Event('beforeunload', {
+          cancelable: true,
+        })
+        browserWindow.dispatchEvent(nextBeforeUnload)
+        expect(nextBeforeUnload.defaultPrevented).toBe(true)
+      } finally {
+        history.destroy()
+      }
+    },
+  )
 })
 
 describe('integration test on Router', () => {
