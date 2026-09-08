@@ -98,16 +98,19 @@ export async function runPrerenderParams({
         continue
       }
 
+      const deadline =
+        prerenderParamsTimeout === undefined
+          ? undefined
+          : performance.now() + prerenderParamsTimeout
+      const abortTimeout = () => {
+        controller.abort(
+          new Error(`prerenderParams for route ${route.routePath} timed out`),
+        )
+      }
       const timeoutId =
         prerenderParamsTimeout === undefined
           ? undefined
-          : setTimeout(() => {
-              controller.abort(
-                new Error(
-                  `prerenderParams for route ${route.routePath} timed out`,
-                ),
-              )
-            }, prerenderParamsTimeout)
+          : setTimeout(abortTimeout, prerenderParamsTimeout)
 
       try {
         throwIfAborted(controller.signal)
@@ -200,6 +203,10 @@ export async function runPrerenderParams({
         let completed = false
         try {
           for (;;) {
+            // Immediately resolved iterations can prevent the timer from running.
+            if (deadline !== undefined && performance.now() >= deadline) {
+              abortTimeout()
+            }
             const entry = await abortable(controller.signal, () =>
               iterator.next(),
             )

@@ -368,6 +368,39 @@ describe('collectPrerenderParams', () => {
     }
   })
 
+  it('enforces the timeout while synchronous entries keep microtasks busy', async () => {
+    const now = vi.spyOn(performance, 'now').mockReturnValue(0)
+    const close = vi.fn()
+    const routeTree = createRouteTree({
+      '/products/$slug': {
+        *prerenderParams() {
+          try {
+            yield { params: { slug: 'first' } }
+            now.mockReturnValue(100)
+            yield { params: { slug: 'second' } }
+            yield { params: { slug: 'third' } }
+          } finally {
+            close()
+          }
+        },
+      },
+    })
+
+    try {
+      await expect(
+        collectPrerenderParams({
+          routeTree,
+          pages: [],
+          logger,
+          prerenderParamsTimeout: 100,
+        }),
+      ).rejects.toThrow('prerenderParams for route /products/$slug timed out')
+      expect(close).toHaveBeenCalledOnce()
+    } finally {
+      now.mockRestore()
+    }
+  })
+
   it('passes timeout aborts to async generators through the signal', async () => {
     vi.useFakeTimers()
     try {
