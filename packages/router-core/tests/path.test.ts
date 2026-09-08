@@ -37,6 +37,7 @@ describe.each([false, true])(
         path: '/users/$id',
         params: { id: 'cafe\u0301' },
         expected: '/users/cafe%CC%81',
+        normalized: '/users/cafe\u0301',
       },
       {
         path: '/users/{$id}.json',
@@ -68,6 +69,7 @@ describe.each([false, true])(
         path: '/files/$',
         params: { _splat: 'a b/c+d' },
         expected: '/files/a%20b/c%2Bd',
+        normalized: '/files/a b/c%2Bd',
       },
       {
         path: '/files/prefix{$}suffix',
@@ -82,7 +84,7 @@ describe.each([false, true])(
       },
     ])(
       'interpolates and caches $path with $params',
-      ({ path, params, expected }) => {
+      ({ path, params, expected, normalized }) => {
         const interpolate = createPathInterpolator()
         const options = { path, params, server }
         expect(
@@ -95,9 +97,9 @@ describe.each([false, true])(
             server,
           ),
         ).toBe(expected)
-        expect(interpolate(options)).toBe(expected)
+        expect(interpolate(options)).toBe(normalized ?? expected)
         expect(interpolate({ ...options, params: { ...params } })).toBe(
-          expected,
+          normalized ?? expected,
         )
       },
     )
@@ -125,6 +127,21 @@ describe.each([false, true])(
       const anotherRouter = createPathInterpolator()
       expect(anotherRouter(options)).toBe('/users/@one')
       expect(decoder).toHaveBeenCalledTimes(2)
+    })
+
+    it('normalizes non-string fallbacks without memoizing object coercion', () => {
+      const interpolate = createPathInterpolator()
+      const toString = vi.fn(() => 'one two')
+      const options = {
+        path: '/users/$id',
+        params: { id: { toString } },
+        server,
+      }
+      expect(interpolate(options)).toBe('/users/one two')
+      expect(toString).toHaveBeenCalledOnce()
+      toString.mockReturnValue('next value')
+      expect(interpolate(options)).toBe('/users/next value')
+      expect(toString).toHaveBeenCalledTimes(2)
     })
 
     it('invalidates results when allowed-character decoding changes', () => {
