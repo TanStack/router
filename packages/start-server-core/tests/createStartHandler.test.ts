@@ -15,11 +15,9 @@ import {
   BaseRootRoute,
   BaseRoute,
   RouterCore,
-  type AnyRouter,
-} from '@tanstack/router-core'
-import {
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
+  redirect,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
@@ -30,6 +28,7 @@ import {
   getStaticHandlerInlineCssDefault,
   resolveInlineCssForRequest,
 } from '../src/inlineCss'
+import type { AnyRouter } from '@tanstack/router-core'
 
 const startMocks = vi.hoisted(() => {
   const previousServerFnBase = process.env.TSS_SERVER_FN_BASE
@@ -39,6 +38,7 @@ const startMocks = vi.hoisted(() => {
     requestMiddleware: [] as Array<any>,
     serverFnResult: undefined as undefined | Response | object,
     router: undefined as undefined | AnyRouter,
+    routerFactory: undefined as undefined | (() => AnyRouter),
   }
 })
 
@@ -52,7 +52,7 @@ vi.mock('#tanstack-start-entry', () => ({
 }))
 
 vi.mock('#tanstack-router-entry', () => ({
-  getRouter: () => startMocks.router,
+  getRouter: () => startMocks.routerFactory?.() ?? startMocks.router,
 }))
 
 vi.mock('../src/server-functions-handler', () => ({
@@ -132,6 +132,7 @@ afterEach(() => {
   startMocks.requestMiddleware = []
   startMocks.serverFnResult = undefined
   startMocks.router = undefined
+  startMocks.routerFactory = undefined
   vi.unstubAllEnvs()
 })
 
@@ -141,6 +142,147 @@ afterAll(() => {
   } else {
     process.env.TSS_SERVER_FN_BASE = startMocks.previousServerFnBase
   }
+})
+
+describe('createStartHandler redirect safety', () => {
+  it.each(
+    [undefined, ''].flatMap((location) =>
+      ['to', 'params', 'search', 'hash'].map((option) => ({
+        location,
+        option,
+      })),
+    ),
+  )(
+    'still validates unresolved $option with Location=$location',
+    async ({ location, option }) => {
+      const factory = vi.fn(makeRouter)
+      const updater = vi.fn(() => ({}))
+      const hash = vi.fn(() => 'ignored')
+      startMocks.routerFactory = factory
+      const headers =
+        location === undefined ? undefined : { Location: location }
+      const result =
+        option === 'to'
+          ? redirect({ headers, to: 'relative' })
+          : redirect({
+              headers,
+              to: '/login',
+              params: option === 'params' ? updater : undefined,
+              search: option === 'search' ? updater : undefined,
+              hash: option === 'hash' ? hash : undefined,
+            })
+      startMocks.requestMiddleware = [createMiddleware().server(() => result)]
+      const response = await createStartHandler(() => new Response('unused'))(
+        new Request('http://localhost/'),
+        {},
+      )
+      expect(response.status).toBe(500)
+      expect(response.headers.get('Location')).toBeNull()
+      expect(factory).not.toHaveBeenCalled()
+      expect(updater).not.toHaveBeenCalled()
+      expect(hash).not.toHaveBeenCalled()
+    },
+  )
+
+  it('applies custom protocol policy to a header-only redirect with ignored options', async () => {
+    startMocks.routerFactory = () => {
+      const router = makeRouter()
+      router.update({ protocolAllowlist: [] })
+      return router
+    }
+    startMocks.requestMiddleware = [
+      createMiddleware().server(() =>
+        redirect({
+          to: 'ignored',
+          headers: { Location: 'https://other.example/login' },
+        }),
+      ),
+    ]
+    const response = await createStartHandler(() => new Response('unused'))(
+      new Request('http://localhost/'),
+      {},
+    )
+    expect(response.status).toBe(500)
+    expect(response.headers.get('Location')).toBeNull()
+  })
+
+  it.each([
+    '/login',
+    '../login',
+    '?next=https://example.com',
+    '#details',
+    '/items/a:b',
+  ])(
+    'returns an early relative redirect to %j without initializing the router',
+    async (href) => {
+      const factory = vi.fn(makeRouter)
+      startMocks.routerFactory = factory
+      startMocks.requestMiddleware = [
+        createMiddleware().server(() => redirect({ href })),
+      ]
+      const handler = createStartHandler(() => new Response('unused'))
+
+      const response = await handler(new Request('http://localhost/'), {})
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('Location')).toBe(href)
+      expect(factory).not.toHaveBeenCalled()
+    },
+  )
+
+  it('resolves route-based early redirects through the router', async () => {
+    const factory = vi.fn(() => makeRouterWithRouteWork({}))
+    startMocks.routerFactory = factory
+    startMocks.requestMiddleware = [
+      createMiddleware().server(() =>
+        redirect({
+          to: '/work',
+          search: { next: 'home' },
+        }),
+      ),
+    ]
+    const handler = createStartHandler(() => new Response('unused'))
+    const response = await handler(new Request('http://localhost/'), {})
+    expect(response.status).toBe(307)
+    expect(response.headers.get('Location')).toBe('/work?next=home')
+    expect(factory).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([{ href: '/work' }, { to: '/work' }])(
+    'preserves native form redirects for %j without the RPC header',
+    async (target) => {
+      startMocks.routerFactory = () => makeRouterWithRouteWork({})
+      startMocks.serverFnResult = redirect({
+        ...target,
+        statusCode: 303,
+        headers: {
+          'set-cookie': 'session=secret; HttpOnly',
+          ...('hash' in target ? { Location: '/work' } : undefined),
+        },
+      })
+      const handler = createStartHandler(() => new Response('unused'))
+
+      const response = await handler(
+        new Request('http://localhost/_serverFn/test', {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/x-www-form-urlencoded',
+            accept: 'text/html',
+          },
+          body: 'name=test',
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(303)
+      expect(response.headers.get('Location')).toBe('/work')
+      expect(response.headers.get('set-cookie')).toBe(
+        'session=secret; HttpOnly',
+      )
+      expect(response.headers.get('content-type')).not.toBe('application/json')
+      expect(await response.text()).toBe('')
+    },
+  )
 })
 
 describe('createStartHandler SSR cleanup ownership', () => {

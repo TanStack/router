@@ -2,6 +2,29 @@ import { describe, expect, test } from 'vitest'
 import { getNormalizedURL } from '../src/ssr/ssr-server'
 
 describe('getNormalizedURL', () => {
+  test.each(['/%2Fdocs', '/%5Cdocs', '/%00/docs'])(
+    'preserves encoded pathname data in a URL object: %s',
+    (pathname) => {
+      const input = new URL(pathname, 'https://app.example')
+      const { url, handledProtocolRelativeURL } = getNormalizedURL(input)
+      expect(url.href).toBe(input.href)
+      expect(handledProtocolRelativeURL).toBe(false)
+    },
+  )
+
+  test.each(['//other.example/path', '///other.example/path'])(
+    'keeps a request pathname %j on its original origin',
+    (pathname) => {
+      const { url, handledProtocolRelativeURL } = getNormalizedURL(
+        `https://example.com${pathname}?next=//other.example#//section`,
+      )
+      expect(url.href).toBe(
+        'https://example.com/other.example/path?next=%2F%2Fother.example#//section',
+      )
+      expect(handledProtocolRelativeURL).toBe(true)
+    },
+  )
+
   test('should return URL that is in standardized format', () => {
     const url1 = 'https://example.com/%EB%8C%80%7C/path?query=%EB%8C%80|#hash'
     const url2 = 'https://example.com/%EB%8C%80|/path?query=%EB%8C%80%7C#hash'
