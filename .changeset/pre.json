@@ -90,6 +90,7 @@
     "solid-lazy-route-components",
     "solid-match-suspend-ssr-only",
     "solid-native-ssr-transfer",
+    "solid-router-dev-ssr-detection",
     "solid-router-no-router-owned-loading-boundaries",
     "solid-router-settlement-ack",
     "solid-rsbuild-native-loader",
