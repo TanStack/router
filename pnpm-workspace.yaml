@@ -63,6 +63,11 @@ overrides:
   solid-js: 1.9.12
   react: 'catalog:'
   react-dom: 'catalog:'
+  'tanstack-react-start-e2e-issue-8180>react': 18.3.1
+  'tanstack-react-start-e2e-issue-8180>react-dom': 18.3.1
+  'tanstack-react-start-e2e-issue-8180-loader>react': 18.3.1
+  'tanstack-react-start-e2e-issue-8180-loader>react-dom': 18.3.1
+  'react-dom@18.3.1>react': 18.3.1
   '@types/react': 'catalog:'
   '@types/react-dom': 'catalog:'
   eslint: 'catalog:'
