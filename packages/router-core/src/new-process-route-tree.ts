@@ -2,6 +2,7 @@ import { invariant } from './invariant'
 import { createSieveCache } from './sieve-cache'
 import { last } from './utils'
 import type { SieveCache } from './sieve-cache'
+import type { InterpolationSegment, RouteInterpolation } from './path'
 
 export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
@@ -194,6 +195,7 @@ function parseSegments<TRouteLike extends RouteLike>(
   /** Each dynamic sibling list is recorded once, when it first needs sorting. */
   dynamicListsToSort?: Array<Array<DynamicSegmentNode<TRouteLike>>>,
   onRoute?: (route: TRouteLike) => void,
+  parentRoute?: TRouteLike,
 ) {
   onRoute?.(route)
   let cursor = start
@@ -203,6 +205,38 @@ function parseSegments<TRouteLike extends RouteLike>(
     const length = path.length
     const caseSensitive = options?.caseSensitive ?? defaultCaseSensitive
     const parseParams = options?.params?.parse ?? options?.parseParams
+    const parentInterpolation = parentRoute?._interpolation
+    let interpolation: Array<InterpolationSegment> | undefined
+    let captureSegments = true
+    let literalStart = parentInterpolation ? start - 1 : 0
+    if (onRoute) {
+      route._interpolation = undefined
+      if (path.includes('$')) {
+        interpolation = parentInterpolation?.slice() ?? []
+        const tail = interpolation.at(-1)
+        if (
+          tail &&
+          typeof tail !== 'string' &&
+          tail[0] === SEGMENT_TYPE_WILDCARD &&
+          parentRoute?.fullPath !== undefined
+        ) {
+          // A parent's wildcard consumes the child's template too.
+          interpolation[interpolation.length - 1] = [
+            tail[0],
+            tail[1],
+            tail[2],
+            tail[3] === undefined
+              ? undefined
+              : tail[3] +
+                path.substring(
+                  trimPathRight(parentRoute.fullPath).length,
+                  path.endsWith('/') ? length - 1 : length,
+                ),
+          ]
+          captureSegments = false
+        }
+      }
+    }
     while (cursor < length) {
       const segment = parseSegment(path, cursor, data)
       let nextNode: AnySegmentNode<TRouteLike>
@@ -239,6 +273,25 @@ function parseSegments<TRouteLike extends RouteLike>(
         case SEGMENT_TYPE_WILDCARD: {
           let prefix = path.substring(start, segment[1])
           let suffix = path.substring(segment[4], end)
+          if (interpolation && captureSegments) {
+            // Retain original spelling before matcher case folding.
+            if (literalStart < start - 1) {
+              interpolation.push(path.substring(literalStart, start - 1))
+            }
+            interpolation.push([
+              kind,
+              kind === SEGMENT_TYPE_WILDCARD
+                ? '_splat'
+                : path.substring(segment[2], segment[3]),
+              '/' + prefix,
+              kind === SEGMENT_TYPE_WILDCARD && segment[2] === start
+                ? undefined
+                : kind === SEGMENT_TYPE_WILDCARD && path.endsWith('/')
+                  ? suffix.slice(0, -1)
+                  : suffix,
+            ])
+            literalStart = end
+          }
           const actuallyCaseSensitive = caseSensitive && !!(prefix || suffix)
           if (!caseSensitive) {
             prefix = prefix.toLowerCase()
@@ -294,6 +347,15 @@ function parseSegments<TRouteLike extends RouteLike>(
       node = nextNode
     }
 
+    if (interpolation) {
+      const literalEnd = path.endsWith('/') ? length - 1 : length
+      if (captureSegments && literalStart < literalEnd) {
+        interpolation.push(path.substring(literalStart, literalEnd))
+      }
+      // Drop spare array capacity after retaining the complete template.
+      route._interpolation = interpolation.slice()
+    }
+
     // create pathless node
     if (
       parseParams &&
@@ -344,6 +406,7 @@ function parseSegments<TRouteLike extends RouteLike>(
         depth,
         dynamicListsToSort,
         onRoute,
+        route,
       )
     }
 }
@@ -505,6 +568,7 @@ type SegmentNode<T extends RouteLike> = {
 }
 
 type RouteLike = {
+  _interpolation?: RouteInterpolation
   id?: string
   path?: string // relative path from the parent,
   children?: Array<RouteLike> // child routes,

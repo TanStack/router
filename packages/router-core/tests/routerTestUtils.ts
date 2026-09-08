@@ -8,7 +8,7 @@ import {
   createNonReactiveReadonlyStore,
 } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
-import type { interpolatePath } from '../src/path'
+import { interpolatePath, parseInterpolationPath } from '../src/path'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRouter,
@@ -53,9 +53,9 @@ export function createTestRouter<
 }
 
 export type PathInterpolationTestOptions = {
-  path?: string
+  path: string
   params: Record<string, unknown>
-  decoder?: Parameters<typeof interpolatePath>[2]
+  decoder?: Parameters<typeof interpolatePath>[3]
   server?: boolean
 }
 
@@ -69,8 +69,27 @@ export function createTestPathInterpolator() {
   return (options: PathInterpolationTestOptions): string => {
     router.isServer = options.server ?? false
     router.pathParamsDecoder = options.decoder
-    return router['interpolatePath'](options.path || '/', options.params)
+    return router['interpolatePath'](options.path, options.params)
   }
+}
+
+export function interpolateTestPath(
+  path: string,
+  params: Record<string, unknown>,
+  decoder?: (encoded: string) => string,
+  usedParams?: Record<string, unknown>,
+  keys?: Array<string>,
+  metadata?: { isMissingParams: boolean },
+) {
+  const segments = parseInterpolationPath(path)
+  if (keys) {
+    for (const segment of segments) {
+      if (typeof segment !== 'string') {
+        keys.push(segment[1])
+      }
+    }
+  }
+  return interpolatePath(path, segments, params, decoder, usedParams, metadata)
 }
 
 /** Materialize the request-local server result as the HTTP response users see. */

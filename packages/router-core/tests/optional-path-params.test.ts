@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { interpolatePath } from '../src/path'
+import { interpolateTestPath as interpolatePath } from './routerTestUtils'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,

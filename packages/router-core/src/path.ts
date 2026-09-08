@@ -1,4 +1,3 @@
-import { isServer } from '@tanstack/router-core/isServer'
 import { last } from './utils'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
@@ -7,6 +6,8 @@ import {
   parseSegment,
 } from './new-process-route-tree'
 import type { SieveCache } from './sieve-cache'
+import type { SegmentKind } from './new-process-route-tree'
+import type { AnyRoute } from './route'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
@@ -213,7 +214,24 @@ export type InterpolationPlan = [
   paths: SieveCache<string | undefined, string>,
   decoder: ((encoded: string) => string) | undefined,
   path: string,
+  segments: RouteInterpolation,
 ]
+
+export type InterpolationSegment =
+  | string
+  | [
+      kind: Exclude<SegmentKind, typeof SEGMENT_TYPE_PATHNAME>,
+      key: string,
+      prefix: string,
+      /** Undefined for a bare splat, which discards the remaining template. */
+      suffix: string | undefined,
+    ]
+
+export type RouteInterpolation = Array<InterpolationSegment>
+
+export function getRouteSegments(route: AnyRoute) {
+  return route._interpolation
+}
 
 function encodeParam(
   key: string,
@@ -241,113 +259,69 @@ function encodeParam(
   }
 }
 
-/**
- * Interpolate params and wildcards into a route pathname.
- *
- * - Encodes params safely (configurable allowed characters)
- * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
- * - Collects optional metadata in the same pass without allocating it for callers
- */
-export function interpolatePath(
-  path: string | undefined,
-  params: Record<string, unknown>,
-  decoder?: (encoded: string) => string,
-  usedParams?: Record<string, unknown>,
-  keys?: Array<string>,
-  server?: boolean,
-  metadata?: { isMissingParams: boolean },
-): string {
-  if (!path?.includes('$')) {
-    return path || '/'
-  }
-
-  if (isServer ?? server) {
-    // Fast path for common templates like `/posts/$id` or `/files/$`.
-    // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
-    // handled by the general parser below.
-    if (path.indexOf('{') === -1) {
-      const length = path.length
-      let cursor = 0
-      let joined = ''
-
-      while (cursor < length) {
-        // Skip slashes between segments. '/' code is 47
-        while (cursor < length && path.charCodeAt(cursor) === 47) {
-          cursor++
-        }
-        if (cursor >= length) {
-          break
-        }
-
-        const start = cursor
-        let end = path.indexOf('/', cursor)
-        if (end === -1) {
-          end = length
-        }
-        cursor = end
-
-        const part = path.substring(start, end)
-
-        // `$id` or `$` (splat). '$' code is 36
-        if (part.charCodeAt(0) === 36) {
-          const splat = part.length === 1
-          const key = splat ? '_splat' : part.substring(1)
-          const value = params[key]
-          keys?.push(key)
-          if (metadata && (splat ? !value : !(key in params))) {
-            metadata.isMissingParams = true
-          }
-          if (usedParams) {
-            usedParams[key] = value
-            if (splat) {
-              // TODO: Deprecate *
-              usedParams['*'] = value
-            }
-          }
-          if (!splat || value) {
-            joined += '/' + encodeParam(key, value, decoder)
-          }
-        } else {
-          joined += '/' + part
-        }
-      }
-
-      if (path.endsWith('/')) {
-        joined += '/'
-      }
-
-      return joined || '/'
-    }
-  }
-
+/** Parse an unregistered template; registered routes are parsed with the tree. */
+export function parseInterpolationPath(path: string): RouteInterpolation {
+  path = cleanPath(path)
+  const parts: RouteInterpolation = []
+  const literalEnd = path.endsWith('/') ? path.length - 1 : path.length
   let cursor = 0
+  let literalStart = 0
   let segment
-  let joined = ''
   while (cursor < path.length) {
     const start = cursor
     segment = parseSegment(path, start, segment)
     const end = segment[5]
     cursor = end + 1
-
-    if (start === end) {
-      continue
-    }
-
     const kind = segment[0]
-
     if (kind === SEGMENT_TYPE_PATHNAME) {
-      joined += '/' + path.substring(start, end)
       continue
     }
-
-    const prefixEnd = segment[1]
-    const suffixStart = segment[4]
-    const key =
+    if (literalStart < start - 1) {
+      parts.push(path.substring(literalStart, start - 1))
+    }
+    parts.push([
+      kind,
       kind === SEGMENT_TYPE_WILDCARD
         ? '_splat'
-        : path.substring(segment[2], segment[3])
+        : path.substring(segment[2], segment[3]),
+      '/' + path.substring(start, segment[1]),
+      kind === SEGMENT_TYPE_WILDCARD && segment[2] === start
+        ? undefined
+        : path.substring(
+            segment[4],
+            kind === SEGMENT_TYPE_WILDCARD ? literalEnd : end,
+          ),
+    ])
+    literalStart = end
+  }
+  if (literalStart < literalEnd) {
+    parts.push(path.substring(literalStart, literalEnd))
+  }
+  return parts
+}
+
+/** Substitute current values into parsed segments, collecting metadata only when requested. */
+export function interpolatePath(
+  path: string,
+  segments: RouteInterpolation,
+  params: Record<string, unknown>,
+  decoder?: (encoded: string) => string,
+  usedParams?: Record<string, unknown>,
+  metadata?: { isMissingParams: boolean },
+): string {
+  const trailingSlash = path.endsWith('/') ? '/' : ''
+  let joined = ''
+  for (const part of segments) {
+    if (typeof part === 'string') {
+      joined += part
+      continue
+    }
+    const [kind, key, prefix, rawSuffix] = part
+    const suffix =
+      kind === SEGMENT_TYPE_WILDCARD && rawSuffix !== undefined
+        ? rawSuffix + trailingSlash
+        : rawSuffix
     let paramValue = params[key]
-    keys?.push(key)
 
     if (kind === SEGMENT_TYPE_WILDCARD) {
       if (usedParams) {
@@ -360,7 +334,7 @@ export function interpolatePath(
           metadata.isMissingParams = true
         }
         // A missing wildcard keeps its affixes, but omits a bare segment.
-        if (prefixEnd === start && suffixStart === end) {
+        if (prefix === '/' && !suffix) {
           continue
         }
         paramValue = ''
@@ -379,18 +353,10 @@ export function interpolatePath(
       }
     }
 
-    joined +=
-      '/' +
-      path.substring(start, prefixEnd) +
-      encodeParam(key, paramValue, decoder) +
-      path.substring(suffixStart, end)
+    joined += prefix + encodeParam(key, paramValue, decoder) + (suffix || '')
   }
 
-  if (path.endsWith('/')) {
-    joined += '/'
-  }
-
-  return joined || '/'
+  return joined + trailingSlash || '/'
 }
 
 function encodePathParam(value: string, decoder?: (encoded: string) => string) {
