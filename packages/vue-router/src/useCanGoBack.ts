@@ -1,4 +1,4 @@
-import { useStore } from '@tanstack/vue-store'
+import { useStore } from './useStore'
 import { useRouter } from './useRouter'
 
 export function useCanGoBack() {

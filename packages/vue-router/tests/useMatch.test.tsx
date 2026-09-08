@@ -10,6 +10,7 @@ import * as Vue from 'vue'
 import {
   Link,
   Outlet,
+  RouterContextProvider,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -25,6 +26,88 @@ afterEach(() => {
 })
 
 describe('useMatch', () => {
+  test.each([1, 2])(
+    'disposes %s functional-render subscriptions before rerender and unmount',
+    async (count) => {
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+      const router = createRouter({
+        routeTree: createRootRoute(),
+        history,
+        isServer: false,
+      })
+      const initial = router.matchRoutes('/', {})[0]!
+      router.stores.setMatches([{ ...initial, updatedAt: 1 }])
+      const store = router.stores.getMatchStore('__root__')
+      const subscribe = store.subscribe.bind(store)
+      const cleanups: Array<() => void> = []
+      let active = 0
+      const spy = vi
+        .spyOn(store, 'subscribe')
+        .mockImplementation((listener) => {
+          const subscription = subscribe(listener)
+          active++
+          let stopped = false
+          const unsubscribe = () => {
+            if (!stopped) {
+              stopped = true
+              active--
+              subscription.unsubscribe()
+            }
+          }
+          cleanups.push(unsubscribe)
+          return { ...subscription, unsubscribe }
+        })
+      const visible = Vue.ref(true)
+      const Probe = () => {
+        const revisions = visible.value
+          ? Array.from({ length: count }, () =>
+              useMatch({
+                from: '__root__',
+                select: (match) => match.updatedAt,
+              }),
+            )
+          : []
+        return (
+          <div>
+            {revisions.map((revision) => revision.value).join(',') || 'hidden'}
+          </div>
+        )
+      }
+      const view = render(
+        <RouterContextProvider router={router}>
+          <Probe />
+        </RouterContextProvider>,
+      )
+      try {
+        expect(active).toBe(count)
+        for (const revision of [2, 3, 4]) {
+          router.stores.setMatches([{ ...initial, updatedAt: revision }])
+          await Vue.nextTick()
+          expect(
+            view.getByText(Array(count).fill(revision).join(',')),
+          ).toBeInTheDocument()
+          expect(active).toBe(count)
+        }
+        visible.value = false
+        await Vue.nextTick()
+        expect(view.getByText('hidden')).toBeInTheDocument()
+        expect(active).toBe(0)
+        visible.value = true
+        await Vue.nextTick()
+        expect(active).toBe(count)
+        view.unmount()
+        expect(active).toBe(0)
+      } finally {
+        view.unmount()
+        for (const cleanupSubscription of cleanups) {
+          cleanupSubscription()
+        }
+        spy.mockRestore()
+        history.destroy()
+      }
+    },
+  )
+
   function setup({
     RootComponent,
     history,

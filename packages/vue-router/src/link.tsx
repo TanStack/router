@@ -9,7 +9,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { useStore } from '@tanstack/vue-store'
+import { getRenderScope, useStore } from './useStore'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
 
@@ -98,7 +98,11 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): LinkHTMLAttributes {
-  return useLinkPropsImpl(() => options as AnyLinkPropsOptions)
+  const scope = getRenderScope()
+  const getOptions = () => options as AnyLinkPropsOptions
+  return scope
+    ? scope.run(() => useLinkPropsImpl(getOptions))!
+    : useLinkPropsImpl(getOptions)
 }
 
 function useLinkPropsImpl(
