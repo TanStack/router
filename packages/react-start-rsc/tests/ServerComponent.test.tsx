@@ -70,6 +70,7 @@ describe('ServerComponent (client)', () => {
       )
       const unused = create(unusedStream)
       const selected = create(selectedStream)
+      expect(decodeMock).not.toHaveBeenCalled()
 
       const { CompositeComponent } = await import('../src/CompositeComponent')
       let view: ReturnType<typeof render>
@@ -84,6 +85,8 @@ describe('ServerComponent (client)', () => {
       })
       expect(view!.getByText('selected')).toBeTruthy()
       expect(view!.queryByText('other')).toBeNull()
+      expect(decodeMock).toHaveBeenCalledOnce()
+      expect(decodeMock.mock.calls[0]?.[0]).toBe(selectedStream)
 
       await act(async () => {
         view!.rerender(
@@ -92,6 +95,8 @@ describe('ServerComponent (client)', () => {
       })
       expect(view!.getByText('other')).toBeTruthy()
       expect(view!.queryByText('selected')).toBeNull()
+      expect(decodeMock).toHaveBeenCalledTimes(2)
+      expect(decodeMock.mock.calls[1]?.[0]).toBe(unusedStream)
     },
   )
 
@@ -210,6 +215,15 @@ describe('ServerComponent (client)', () => {
         resolveNext(React.createElement('div', null, 'replacement'))
       })
       expect(view!.queryByText('previous')).toBeNull()
+      expect(view!.getByText('replacement').style.display).not.toBe('none')
+      expect(decodeMock).toHaveBeenCalledTimes(2)
+
+      await act(async () => {
+        view!.rerender(
+          kind === 'renderable' ? next : <CompositeComponent src={next} />,
+        )
+      })
+      expect(decodeMock).toHaveBeenCalledTimes(2)
       expect(view!.getByText('replacement').style.display).not.toBe('none')
     },
   )
