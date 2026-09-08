@@ -1861,10 +1861,8 @@ export class RouterCore<
       params = lastStateMatch.params
     } else {
       // Parse params through the route chain
-      const strictParams: Record<string, unknown> = Object.assign(
-        Object.create(null),
-        rawParams,
-      )
+      // getMatchedRoutes already copied the cached raw params.
+      const strictParams: Record<string, unknown> = rawParams
       for (const route of matchedRoutes) {
         try {
           extractStrictParams(route, strictParams)
