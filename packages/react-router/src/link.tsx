@@ -423,7 +423,7 @@ export function useLinkProps<
   // the comparator only sees the location, not whether this link's output moved.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const selectLinkState = React.useCallback(
-    (location: ParsedLocation): LinkState => {
+    (liveLocation: ParsedLocation): LinkState => {
       const directExternalLink = resolveExternalLink(
         to,
         router.protocolAllowlist,
@@ -432,6 +432,14 @@ export function useLinkProps<
         return [directExternalLink ?? undefined]
       }
 
+      // React runs this selector as `getServerSnapshot` while a boundary is
+      // hydrating, so it must reproduce the server output; `stores.location`
+      // already holds the destination while the loader is in flight. The
+      // `isHydrated` flip re-runs the selection against the live location.
+      const location =
+        isHydrated || !router._hydrationLocation
+          ? liveLocation
+          : router._hydrationLocation
       const next = router.buildLocation({
         _fromLocation: location,
         ..._options,
