@@ -61,7 +61,7 @@
   },
   "dependencies": {
     "nitropack": "^2.13.4",
-    "pathe": "catalog:"
+    "pathe": "^2.0.3"
   },
   "peerDependencies": {
     "vite": ">=7.0.0"

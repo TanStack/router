@@ -67,9 +67,13 @@
     "@babel/parser": "^7.29.8",
     "@babel/types": "catalog:",
     "ansis": "^4.3.1",
+    "@babel/generator": "^7.29.8",
+    "@babel/parser": "^7.29.8",
+    "@babel/types": "catalog:",
+    "ansis": "^4.3.1",
     "babel-dead-code-elimination": "^1.0.12",
     "diff": "^8.0.4",
-    "pathe": "catalog:",
+    "pathe": "^2.0.3",
     "tinyglobby": "catalog:"
   },
   "devDependencies": {

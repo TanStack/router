@@ -120,10 +120,13 @@
     "@babel/core": "catalog:",
     "@babel/template": "^7.29.7",
     "@babel/types": "catalog:",
+    "@babel/core": "catalog:",
+    "@babel/template": "^7.29.7",
+    "@babel/types": "catalog:",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
-    "chokidar": "catalog:",
+    "chokidar": "^5.0.0",
     "unplugin": "^3.3.0",
     "zod": "catalog:"
   },
@@ -141,6 +144,8 @@
     "@types/react-dom": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
+    "rimraf": "catalog:",
+    "webpack": "^5.104.1"
     "rimraf": "catalog:",
     "webpack": "^5.104.1"
   },
