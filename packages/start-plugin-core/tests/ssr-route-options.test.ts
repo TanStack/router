@@ -44,33 +44,36 @@ describe('SSR route option pruning', () => {
     },
   )
 
-  it('removes dependencies used only by pruned route options', () => {
-    const result = compileCodeSplitReferenceRoute({
-      code: `
+  it.each([false, true])(
+    'removes dependencies used only by pruned route options (computed: %s)',
+    (computed) => {
+      const result = compileCodeSplitReferenceRoute({
+        code: `
 import { createFileRoute } from '@tanstack/react-router'
 import { readFile, readdir } from 'node:fs/promises'
 import { ClientOnlyComponent } from './client-only-component'
 
 export const Route = createFileRoute('/client-only')({
-  component: ClientOnlyComponent,
-  beforeLoad: () => readFile('before-load'),
-  loader: () => readdir('loader'),
+  ${computed ? "['component']" : 'component'}: ClientOnlyComponent,
+  ${computed ? "['beforeLoad']" : 'beforeLoad'}: () => readFile('before-load'),
+  ${computed ? "['loader']" : 'loader'}: () => readdir('loader'),
   headers: () => ({ 'x-retained': 'true' }),
 })
 `,
-      filename: 'client-only.tsx',
-      id: 'client-only.tsx',
-      addHmr: false,
-      codeSplitGroupings: [],
-      targetFramework: 'react',
-      serverSsr: false,
-      compilerPlugins: [createSsrRouteOptionPruningPlugin()],
-    })
+        filename: 'client-only.tsx',
+        id: 'client-only.tsx',
+        addHmr: false,
+        codeSplitGroupings: [],
+        targetFramework: 'react',
+        serverSsr: false,
+        compilerPlugins: [createSsrRouteOptionPruningPlugin()],
+      })
 
-    expect(result?.code).toContain('x-retained')
-    expect(result?.code).not.toContain('client-only-component')
-    expect(result?.code).not.toContain('node:fs/promises')
-  })
+      expect(result?.code).toContain('x-retained')
+      expect(result?.code).not.toContain('client-only-component')
+      expect(result?.code).not.toContain('node:fs/promises')
+    },
+  )
 
   it('preserves existing compiler plugins', () => {
     const existingPlugin: CodeSplitCompilerPlugin = { name: 'existing' }
