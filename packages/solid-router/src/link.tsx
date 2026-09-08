@@ -534,7 +534,7 @@ export function useLinkProps<
     href: () => hrefOption()?.href,
     disabled: () => !!local.disabled,
     target: () => local.target,
-    role: () => (local.disabled ? 'link' : undefined),
+    role: () => (local.disabled ? 'link' : propsSafeToSpread.role),
     'aria-disabled': () => (local.disabled ? 'true' : undefined),
     'data-status': () => (isActive() ? 'active' : undefined),
     'aria-current': () => (isActive() ? 'page' : undefined),
