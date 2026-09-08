@@ -17,6 +17,8 @@ test('passes each boundary marker to its prefetch callback', async () => {
   const container = document.createElement('div')
   document.body.append(container)
   const prefetch = vi.fn(async () => {})
+  const querySelector = vi.spyOn(document, 'querySelector')
+  const querySelectorAll = vi.spyOn(document, 'querySelectorAll')
   disposers.push(
     render(
       () => (
@@ -36,10 +38,18 @@ test('passes each boundary marker to its prefetch callback', async () => {
 
   const markers = container.querySelectorAll('[data-ts-hydrate-id]')
   expect(markers).toHaveLength(2)
+  expect(prefetch).toHaveBeenCalledTimes(2)
   expect(prefetch).toHaveBeenCalledWith(
     expect.objectContaining({ element: markers[0] }),
   )
   expect(prefetch).toHaveBeenCalledWith(
     expect.objectContaining({ element: markers[1] }),
   )
+  for (const lookup of [querySelector, querySelectorAll]) {
+    expect(
+      lookup.mock.calls.some(([selector]) =>
+        selector.includes('data-ts-hydrate-id'),
+      ),
+    ).toBe(false)
+  }
 })

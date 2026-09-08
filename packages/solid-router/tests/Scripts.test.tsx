@@ -67,14 +67,21 @@ describe('ssr scripts', () => {
       })
       await router.load()
 
+      const initialScriptCount = document.querySelectorAll('script').length
       const { unmount } = render(() => <RouterProvider router={router} />)
       const scripts = document.querySelectorAll(
         'script[src="/external-script.js"]',
       )
       expect(scripts).toHaveLength(1)
       expect(scripts[0]?.textContent).toBe('')
+      expect(document.querySelectorAll('script')).toHaveLength(
+        initialScriptCount + 1,
+      )
 
       unmount()
+      expect(document.querySelectorAll('script')).toHaveLength(
+        initialScriptCount,
+      )
       expect(
         document.querySelectorAll('script[src="/external-script.js"]'),
       ).toHaveLength(0)
