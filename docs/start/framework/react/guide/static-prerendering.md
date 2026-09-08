@@ -141,7 +141,7 @@ export default defineConfig({
 
 <!-- ::end:tabs -->
 
-By default, Start builds route options used by `prerenderParams` separately from the final server bundle so they can be used at build time without being deployed. Set `prerender.separateRouteOptionsBundle` to `false` if your deployment adapter does not support the extra build environment or if you prefer to keep those route options in the server bundle.
+By default, Start builds route options used by `prerenderParams` and `sitemap` separately from the final server bundle so they can be used at build time without being deployed. Set `prerender.separateRouteOptionsBundle` to `false` if your deployment adapter does not support the extra build environment or if you prefer to keep those route options in the server bundle.
 
 ## Automatic Static Route Discovery
 
@@ -157,7 +157,7 @@ Note: Dynamic routes can still be prerendered if they are linked from other page
 
 ## Dynamic Route Prerendering
 
-Dynamic routes can declare `prerenderParams` to generate specific parameter values at build time. Each returned entry creates one page from the route path and can override prerender options for that page.
+Dynamic routes can declare `prerenderParams` to generate specific parameter values at build time. Each returned entry creates one page from the route path and can override sitemap or prerender options for that page.
 
 ```tsx
 // src/routes/posts/$postId.tsx
@@ -167,6 +167,7 @@ export const Route = createFileRoute('/posts/$postId')({
   validateSearch: (search: Record<string, unknown>): { ref?: string } => ({
     ...(typeof search.ref === 'string' ? { ref: search.ref } : {}),
   }),
+  sitemap: { changefreq: 'weekly' },
   prerender: { retryCount: 2, crawlLinks: false },
   prerenderParams: async () => {
     const posts = await fetchPosts()
@@ -174,6 +175,7 @@ export const Route = createFileRoute('/posts/$postId')({
     return posts.map((post) => ({
       params: { postId: post.id },
       search: { ref: 'sitemap' },
+      sitemap: { lastmod: post.updatedAt, priority: 0.8 },
       prerender: { retryCount: 3 },
     }))
   },
@@ -193,7 +195,9 @@ Route-level `prerender` options provide defaults for entries returned by that ro
 
 Callbacks may return an array, a synchronous iterable, or an asynchronous iterable, directly or through a promise. Iterables are consumed as pages are queued, so an async generator can discover pages incrementally. Use the supplied `signal` to cancel pending data requests when discovery stops.
 
-Code that is only referenced by `prerenderParams` is removed from the client route bundle, so these options can import server-only data sources used to discover pages at build time.
+Code that is only referenced by `prerenderParams` or `sitemap` is removed from the client route bundle, so these options can import server-only data sources used to discover pages at build time.
+
+Route-level `sitemap` metadata provides defaults for generated pages. Each entry's `sitemap` options override those defaults, and explicit plugin `pages` options take precedence over both. Static pages also receive defaults from their matching route. Use `sitemap.exclude: true` to generate HTML without adding the page to the sitemap. The route option does not enable sitemap output; configure the top-level `sitemap` option in your Start plugin.
 
 ## Crawling Links
 

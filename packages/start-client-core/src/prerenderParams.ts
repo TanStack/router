@@ -37,6 +37,7 @@ declare module '@tanstack/router-core' {
         >
       >
     >
+    sitemap?: RouteSitemapOptions
   }
   /* eslint-enable unused-imports/no-unused-vars */
 }
@@ -59,8 +60,40 @@ type PrerenderParamsSearch<TSearch> = unknown extends TSearch
 
 export type PrerenderParamsEntry<TParams, TSearch = {}> = {
   params: TParams
+  sitemap?: RouteSitemapOptions
   prerender?: RoutePrerenderOptions
 } & PrerenderParamsSearch<TSearch>
+
+export interface RouteSitemapOptions {
+  exclude?: boolean
+  priority?: number
+  changefreq?:
+    | 'always'
+    | 'hourly'
+    | 'daily'
+    | 'weekly'
+    | 'monthly'
+    | 'yearly'
+    | 'never'
+  lastmod?: string | Date
+  alternateRefs?: Array<{
+    href: string
+    hreflang: string
+  }>
+  images?: Array<{
+    loc: string
+    caption?: string
+    title?: string
+  }>
+  news?: {
+    publication: {
+      name: string
+      language: string
+    }
+    publicationDate: string | Date
+    title: string
+  }
+}
 
 export interface RoutePrerenderOptions {
   enabled?: boolean
@@ -74,6 +107,7 @@ export interface RoutePrerenderOptions {
   onSuccess?: (opts: {
     page: {
       path: string
+      sitemap?: RouteSitemapOptions
       fromCrawl?: boolean
     }
     html: string
