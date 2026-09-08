@@ -117,15 +117,15 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@babel/core": "^7.28.5",
-    "@babel/template": "^7.27.2",
-    "@babel/types": "^7.28.5",
+    "@babel/core": "catalog:",
+    "@babel/template": "^7.29.7",
+    "@babel/types": "catalog:",
     "@tanstack/router-core": "workspace:*",
     "@tanstack/router-generator": "workspace:*",
     "@tanstack/router-utils": "workspace:*",
     "chokidar": "^5.0.0",
-    "unplugin": "^3.0.0",
-    "zod": "^4.4.3"
+    "unplugin": "^3.3.0",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@rsbuild/core": "^2.1.0",
@@ -141,7 +141,8 @@
     "@types/react-dom": "catalog:",
     "@arethetypeswrong/cli": "catalog:",
     "publint": "catalog:",
-    "rimraf": "catalog:"
+    "rimraf": "catalog:",
+    "webpack": "^5.104.1"
   },
   "peerDependencies": {
     "@rsbuild/core": ">=1.0.2 || ^2.0.0",
