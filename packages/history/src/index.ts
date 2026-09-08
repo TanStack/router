@@ -36,6 +36,7 @@ export interface RouterHistory {
   flush: () => void
   destroy: () => void
   notify: (action: SubscriberHistoryAction) => void
+  _getBlockers: () => Array<NavigationBlocker>
   _ignoreSubscribers?: boolean
 }
 
@@ -246,6 +247,7 @@ export function createHistory(opts: {
     flush: () => opts.flush?.(),
     destroy: () => opts.destroy?.(),
     notify,
+    _getBlockers: () => opts.getBlockers?.() ?? [],
   }
 }
 
