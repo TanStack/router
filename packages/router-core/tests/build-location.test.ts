@@ -8,9 +8,9 @@ import {
   retainSearchParams,
   stripSearchParams,
 } from '../src'
-import type { SearchMiddleware } from '../src'
 import { _getUserHistoryState } from '../src/router'
 import { createTestRouter } from './routerTestUtils'
+import type { SearchMiddleware } from '../src'
 
 test('_getUserHistoryState removes volatile router bookkeeping but keeps mask payloads', () => {
   expect(
@@ -1722,6 +1722,56 @@ describe('buildLocation - basepath', () => {
 })
 
 describe('buildLocation - params edge cases', () => {
+  test.each([false, true])(
+    'keeps cached raw params intact across mutating lightweight parsers (throws: %s)',
+    (throws) => {
+      const root = new BaseRootRoute({})
+      const parse = vi.fn((params: Record<string, string>) => {
+        expect(params.id).toBe('original')
+        params.id = 'parsed'
+        if (throws) {
+          throw new Error('parse failed')
+        }
+        return { id: params.id }
+      })
+      const item = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/items/$id',
+      })
+      const history = createMemoryHistory({
+        initialEntries: ['/items/original'],
+      })
+      const router = createTestRouter({
+        routeTree: root.addChildren([item]),
+        history,
+      })
+      // Isolate live lightweight parsing from the matcher's captured route gate.
+      item.options.params = { parse }
+      const update = vi.fn((params: Record<string, unknown>) => {
+        expect(params.id).toBe('parsed')
+        return { id: 'target' }
+      })
+      try {
+        for (let repeat = 0; repeat < 2; repeat++) {
+          const location = router.buildLocation({
+            to: '/items/$id',
+            _fromLocation: { ...router.latestLocation },
+            params: update,
+          })
+          expect(location.pathname).toBe('/items/target')
+          expect(router.getMatchedRoutes('/items/original')[1]).toEqual({
+            id: 'original',
+          })
+        }
+        expect(parse).toHaveBeenCalledTimes(2)
+        expect(parse.mock.calls[0]![0]).not.toBe(parse.mock.calls[1]![0])
+        expect(update).toHaveBeenCalledTimes(2)
+      } finally {
+        history.destroy()
+      }
+    },
+  )
+
   test('isolates mutating params updaters while preserving inherit and clear modes', () => {
     const rootRoute = new BaseRootRoute({})
     const userRoute = new BaseRoute({
