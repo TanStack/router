@@ -16,7 +16,7 @@
     "@tanstack/react-router-devtools": "^1.167.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "redaxios": "catalog:",
+    "redaxios": "^0.5.1",
     "tailwindcss": "^4.2.2"
   },
   "devDependencies": {

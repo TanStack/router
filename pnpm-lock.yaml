@@ -7734,7 +7734,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7786,7 +7786,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       simple-icons:
         specifier: ^14.9.0
@@ -7835,7 +7835,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7881,7 +7881,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7933,7 +7933,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -7979,7 +7979,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8025,7 +8025,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8074,7 +8074,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8126,7 +8126,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8282,7 +8282,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8334,7 +8334,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8380,7 +8380,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8475,7 +8475,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8527,7 +8527,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8582,7 +8582,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8640,7 +8640,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8692,7 +8692,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8744,7 +8744,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8790,7 +8790,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -8873,7 +8873,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -8910,7 +8910,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -9060,7 +9060,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@types/node':
@@ -9183,7 +9183,7 @@ importers:
         specifier: ^5.102.0
         version: 5.102.0(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -9226,7 +9226,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -9272,7 +9272,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@types/node':
@@ -9318,7 +9318,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@types/node':
@@ -9447,7 +9447,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -9573,7 +9573,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       zod:
         specifier: ^4.4.3
@@ -9717,7 +9717,7 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vitest:
-        specifier: 'catalog:'
+        specifier: ^4.1.4
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   examples/react/start-bare:
@@ -9845,7 +9845,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10019,7 +10019,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10132,7 +10132,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10236,7 +10236,7 @@ importers:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vitest:
-        specifier: 'catalog:'
+        specifier: ^4.1.4
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       web-vitals:
         specifier: ^5.1.0
@@ -10266,7 +10266,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       srvx:
         specifier: ^0.11.9
@@ -10345,7 +10345,7 @@ importers:
         specifier: ^2.5.1
         version: 2.5.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10495,7 +10495,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10718,7 +10718,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
     devDependencies:
       '@tailwindcss/vite':
@@ -10834,7 +10834,7 @@ importers:
         specifier: ^2.5.1
         version: 2.5.1(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwind-merge:
         specifier: ^3.6.0
@@ -10935,7 +10935,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -10984,7 +10984,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -11042,7 +11042,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -11109,7 +11109,7 @@ importers:
         specifier: ^19.2.3
         version: 19.2.3(react@19.2.3)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -11152,7 +11152,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11195,7 +11195,7 @@ importers:
         specifier: ^11.4.0
         version: 11.4.0
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       simple-icons:
         specifier: ^14.9.0
@@ -11235,7 +11235,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11278,7 +11278,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11315,7 +11315,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11349,7 +11349,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11389,7 +11389,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11435,7 +11435,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11478,7 +11478,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11573,7 +11573,7 @@ importers:
         specifier: ^3.3.2
         version: 3.3.2
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11622,7 +11622,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11665,7 +11665,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/virtual-file-routes
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11702,7 +11702,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11779,7 +11779,7 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11819,7 +11819,7 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11868,7 +11868,7 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11917,7 +11917,7 @@ importers:
         specifier: ^10.1.1
         version: 10.1.1
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -11960,7 +11960,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12000,7 +12000,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12037,7 +12037,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12102,7 +12102,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12133,7 +12133,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12274,7 +12274,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12311,7 +12311,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12354,7 +12354,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12477,7 +12477,7 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
-        specifier: 'catalog:'
+        specifier: ^4.1.4
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
 
   examples/solid/start-basic:
@@ -12492,7 +12492,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12547,7 +12547,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12774,7 +12774,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12820,7 +12820,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/start-static-server-functions
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12915,7 +12915,7 @@ importers:
         specifier: ^2.11.11
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       vitest:
-        specifier: 'catalog:'
+        specifier: ^4.1.4
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@27.0.0(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       web-vitals:
         specifier: ^5.1.0
@@ -12951,7 +12951,7 @@ importers:
         specifier: ^0.0.3
         version: 0.0.3(@clerk/clerk-react@5.59.3(react-dom@19.2.3(react@19.2.3))(react@19.2.3))(react@19.2.3)(solid-js@1.9.12)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -12997,7 +12997,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13086,7 +13086,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13172,7 +13172,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/solid-start
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13258,7 +13258,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13295,7 +13295,7 @@ importers:
         specifier: workspace:^
         version: link:../../../packages/solid-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13347,7 +13347,7 @@ importers:
         specifier: ^5.2.1
         version: 5.2.1(supports-color@10.2.2)
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       solid-js:
         specifier: 1.9.12
@@ -13381,7 +13381,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: 4.1.18
@@ -13427,7 +13427,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
@@ -13485,7 +13485,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/vue-router-devtools
       redaxios:
-        specifier: 'catalog:'
+        specifier: ^0.5.1
         version: 0.5.1
       tailwindcss:
         specifier: ^4.2.2
