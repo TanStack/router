@@ -16,5 +16,5 @@ self.$_TSR = {
   p(script) {
     !this.initialized ? this.buffer.push(script) : script()
   },
-  buffer: [],
+  buffer: self.$_TSR?.buffer || [],
 }
