@@ -75,10 +75,16 @@ const router = createRouter({
     if (!response.ok) {
       throw new TypeError(`Failed to fetch dynamically imported module: ${url}`)
     }
-    return import(/* @vite-ignore */ url)
+    const source = await response.text()
+    const objectUrl = URL.createObjectURL(
+      new Blob([source], { type: 'text/javascript' }),
+    )
+    return import(/* @vite-ignore */ objectUrl)
   },
 })
 ```
+
+`import(url)` after `fetch(url)` would be a second request and would not send those headers. Evaluating `response` through an object URL loads that file as a single module; relative imports inside the chunk resolve against the blob URL, not the original module graph.
 
 ### `defaultPreloadDelay` property
 

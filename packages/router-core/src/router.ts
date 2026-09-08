@@ -232,7 +232,9 @@ export interface RouterOptions<
   /**
    * Load a lazy route chunk by URL. Bundlers can rewrite dynamic `import()`
    * calls to this function so apps can intercept chunk requests (for example
-   * to attach headers). Defaults to native `import()`.
+   * to attach headers). Defaults to native `import()`. If you `fetch` the
+   * module, evaluate `response` (e.g. via an object URL) instead of calling
+   * `import(url)` again — that would be a second request without your headers.
    */
   loadModule?: LoadModuleFn
   /**
