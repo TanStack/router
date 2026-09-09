@@ -25,7 +25,8 @@ test('initializes routes parent-first before reading their IDs and paths', () =>
     root.addChildren([layout.addChildren([child]), sibling]),
   )
   for (const [originalIndex, init] of calls.entries()) {
-    expect(init).toHaveBeenCalledExactlyOnceWith({ originalIndex })
+    expect(init).toHaveBeenCalledExactlyOnceWith(originalIndex)
+    expect(routes[originalIndex]!.originalIndex).toBe(originalIndex)
   }
   const order = calls.map((init) => init.mock.invocationCallOrder[0]!)
   expect(order).toEqual([...order].sort((a, b) => a - b))

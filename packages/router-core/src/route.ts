@@ -735,7 +735,7 @@ export interface Route<
   _interpolation?: RouteInterpolation
   rank: number
   to: TrimPathRight<TFullPath>
-  init: (opts: { originalIndex: number }) => void
+  init: (originalIndex: number) => void
   update: (
     options: UpdatableRouteOptions<
       TParentRoute,
@@ -1775,8 +1775,8 @@ export class BaseRoute<
     THandlers
   >
 
-  init = (opts: { originalIndex: number }): void => {
-    this.originalIndex = opts.originalIndex
+  init = (originalIndex: number): void => {
+    this.originalIndex = originalIndex
     // Rebuilding a tree can change the ancestors of an existing route.
     this._branch = undefined
 
