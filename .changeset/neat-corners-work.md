@@ -6,4 +6,4 @@
 '@tanstack/start-static-server-functions': patch
 ---
 
-Update Seroval to 1.6.6 for faster string and binary serialization.
+Update Seroval to 1.6.7 for faster string and binary serialization.
