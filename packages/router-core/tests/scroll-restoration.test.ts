@@ -71,9 +71,11 @@ describe('setupScrollRestoration', () => {
     expect(router._scroll.restoring).toBe(true)
     expect(router._scroll.restoration).toBe(true)
     expect(window.history.scrollRestoration).toBe('manual')
-    expect(
-      windowAddEventListener.mock.calls.some(([event]) => event === 'pagehide'),
-    ).toBe(true)
+    const pagehideCallIndex = windowAddEventListener.mock.calls.findIndex(
+      ([event]) => event === 'pagehide',
+    )
+    expect(pagehideCallIndex).toBeGreaterThanOrEqual(0)
+    expect(windowAddEventListener.mock.contexts[pagehideCallIndex]).toBe(window)
     expect(
       documentAddEventListener.mock.calls.some(
         ([event, _listener, options]) => event === 'scroll' && options === true,
