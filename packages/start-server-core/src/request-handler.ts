@@ -1,4 +1,5 @@
 import type { OnEarlyHints, ResponseLinkHeaderOptions } from './early-hints'
+import type { Register } from '@tanstack/start-client-core'
 
 type BaseContext = {
   nonce?: string
@@ -67,22 +68,11 @@ export type RequestOptions<TRegister> = EarlyHintsOptions &
       : { context: TRequestContext & BaseContext }
     : { context?: BaseContext })
 
-// Utility type: true if T has any required keys, else false
-type HasRequired<T> = keyof T extends never
-  ? false
-  : {
-        [K in keyof T]-?: undefined extends T[K] ? never : K
-      }[keyof T] extends never
-    ? false
-    : true
+export type RequestHandlerParameters<TRegister> =
+  {} extends RequestOptions<TRegister>
+    ? [request: Request, opts?: RequestOptions<TRegister>]
+    : [request: Request, opts: RequestOptions<TRegister>]
 
-export type RequestHandler<TRegister> =
-  HasRequired<RequestOptions<TRegister>> extends true
-    ? (
-        request: Request,
-        opts: RequestOptions<TRegister>,
-      ) => Promise<Response> | Response
-    : (
-        request: Request,
-        opts?: RequestOptions<TRegister>,
-      ) => Promise<Response> | Response
+export type RequestHandler<TRegister extends Register = Register> = (
+  ...args: RequestHandlerParameters<TRegister>
+) => Promise<Response> | Response

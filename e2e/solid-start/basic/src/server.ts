@@ -4,8 +4,21 @@ import handler from '@tanstack/solid-start/server-entry'
 
 console.log("[server-entry]: using custom server entry in 'src/server.ts'")
 
+declare module '@tanstack/solid-start' {
+  interface Register {
+    server: {
+      /**
+       * This is just a test to make sure that the typing of the request context is working correctly in the custom server entry.
+       */
+      requestContext: {
+        foo: string
+      }
+    }
+  }
+}
+
 export default {
   fetch(request: Request) {
-    return handler.fetch(request)
+    return handler.fetch(request, { context: { foo: 'bar' } })
   },
 }

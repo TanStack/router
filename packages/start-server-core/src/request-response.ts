@@ -37,6 +37,7 @@ import type {
   SessionUpdate,
 } from './session'
 import type { StandardSchemaV1 } from '@standard-schema/spec'
+import type { Register } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-handler'
 
 interface StartEvent {
@@ -118,10 +119,13 @@ function attachResponseHeaders<T>(
   return value
 }
 
-export function requestHandler<TRegister = unknown>(
+export function requestHandler<TRegister extends Register = Register>(
   handler: RequestHandler<TRegister>,
 ) {
-  return (request: Request, requestOpts: any): Promise<Response> | Response => {
+  return ((
+    request: Request,
+    requestOpts?: any,
+  ): Promise<Response> | Response => {
     let h3Event: H3Event
     try {
       h3Event = new H3Event(request)
@@ -139,7 +143,7 @@ export function requestHandler<TRegister = unknown>(
       handler(request, requestOpts),
     )
     return h3_toResponse(attachResponseHeaders(response, h3Event), h3Event)
-  }
+  }) as RequestHandler<TRegister>
 }
 
 function getH3Event() {
