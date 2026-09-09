@@ -222,6 +222,8 @@ interface InterpolatePathOptions {
    * For testing only, in development mode we use the router.isServer value
    */
   server?: boolean
+  /** @internal Track dependencies, including absent optionals, without aliases. */
+  trackParams?: boolean
 }
 
 type InterPolatePathResult = {
@@ -306,7 +308,9 @@ export function interpolatePath({
             const splat = params._splat
             usedParams._splat = splat
             // TODO: Deprecate *
-            usedParams['*'] = splat
+            if (!rest.trackParams) {
+              usedParams['*'] = splat
+            }
 
             if (!splat) {
               isMissingParams = true
@@ -360,7 +364,9 @@ export function interpolatePath({
       const splat = params._splat
       usedParams._splat = splat
       // TODO: Deprecate *
-      usedParams['*'] = splat
+      if (!rest.trackParams) {
+        usedParams['*'] = splat
+      }
 
       const prefix = path.substring(start, segment[1])
       const suffix = path.substring(segment[4], end)
@@ -400,7 +406,12 @@ export function interpolatePath({
       const valueRaw = params[key]
 
       // Check if optional parameter is missing or undefined
-      if (valueRaw == null) continue
+      if (valueRaw == null) {
+        if (rest.trackParams) {
+          usedParams[key] = valueRaw
+        }
+        continue
+      }
 
       usedParams[key] = valueRaw
 

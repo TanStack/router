@@ -257,6 +257,7 @@ export type {
   RegisteredRouter,
   RouterState,
   BuildNextOptions,
+  BuildLocationCache,
   RouterListener,
   RouterEvent,
   ListenerFn,
