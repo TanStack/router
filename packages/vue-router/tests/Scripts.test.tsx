@@ -51,6 +51,11 @@ afterEach(() => {
   cleanup()
   browserHistories.splice(0).forEach((history) => history.destroy())
   window.history.replaceState(null, 'root', '/')
+  document.head
+    .querySelectorAll(
+      'script[src="vue-client-script.js"], script#vue-client-inline-script',
+    )
+    .forEach((script) => script.remove())
   delete window.$_TSR
 })
 
@@ -148,6 +153,75 @@ describe('ssr scripts', () => {
     expect(scripts.length).toBe(2)
     expect(scripts[0]!.getAttribute('src')).toBe('script.js')
     expect(scripts[1]!.getAttribute('src')).toBe('script3.js')
+  })
+
+  test('injects client script attributes into the document head', async () => {
+    const externalScript = {
+      src: 'vue-client-script.js',
+      async: true,
+      defer: false,
+      crossOrigin: 'anonymous' as const,
+    }
+    const inlineScriptOptions = {
+      id: 'vue-client-inline-script',
+      type: 'module',
+      children: 'window.__vueClientScript = true',
+    }
+    const rootRoute = createRootRoute({
+      scripts: () => [
+        externalScript,
+        externalScript,
+        inlineScriptOptions,
+        inlineScriptOptions,
+      ],
+      component: () => (
+        <>
+          <div data-testid="vue-client-script-root" />
+          <Scripts />
+        </>
+      ),
+    })
+    const indexRoute = createRoute({
+      path: '/',
+      getParentRoute: () => rootRoute,
+    })
+    const router = createRouter({
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      routeTree: rootRoute.addChildren([indexRoute]),
+      isServer: false,
+    })
+
+    await router.load()
+    render(<RouterProvider router={router} />)
+    expect(
+      await screen.findByTestId('vue-client-script-root'),
+    ).toBeInTheDocument()
+
+    const getScript = () =>
+      document.head.querySelector<HTMLScriptElement>(
+        'script[src="vue-client-script.js"]',
+      )
+    await waitFor(() => expect(getScript()).not.toBeNull())
+    expect(getScript()?.hasAttribute('async')).toBe(true)
+    expect(getScript()?.hasAttribute('defer')).toBe(false)
+    expect(getScript()?.getAttribute('crossorigin')).toBe('anonymous')
+    expect(
+      document.head.querySelectorAll('script[src="vue-client-script.js"]'),
+    ).toHaveLength(1)
+    const getInlineScript = () =>
+      document.head.querySelector<HTMLScriptElement>(
+        'script#vue-client-inline-script',
+      )
+    await waitFor(() => expect(getInlineScript()).not.toBeNull())
+    expect(getInlineScript()?.textContent).toBe(
+      'window.__vueClientScript = true',
+    )
+    expect(
+      document.head.querySelectorAll('script#vue-client-inline-script'),
+    ).toHaveLength(1)
+
+    getScript()?.remove()
+    getInlineScript()?.remove()
   })
 })
 

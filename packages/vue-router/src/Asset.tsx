@@ -10,6 +10,20 @@ interface ScriptAttrs {
   src?: string
 }
 
+function setScriptAttrs(
+  script: HTMLScriptElement,
+  attrs: ScriptAttrs | undefined,
+) {
+  if (!attrs) {
+    return
+  }
+  for (const [key, value] of Object.entries(attrs)) {
+    if (value !== undefined && value !== false) {
+      script.setAttribute(key, typeof value === 'boolean' ? '' : String(value))
+    }
+  }
+}
+
 const Title = Vue.defineComponent({
   name: 'Title',
   props: {
@@ -78,24 +92,14 @@ const Script = Vue.defineComponent({
               return attrs.src
             }
           })()
-          const existingScript = Array.from(
-            document.querySelectorAll('script[src]'),
-          ).find((el) => (el as HTMLScriptElement).src === normSrc)
-
-          if (existingScript) {
-            return
+          for (const el of document.querySelectorAll('script[src]')) {
+            if ((el as HTMLScriptElement).src === normSrc) {
+              return
+            }
           }
 
           const script = document.createElement('script')
-
-          for (const [key, value] of Object.entries(attrs)) {
-            if (value !== undefined && value !== false) {
-              script.setAttribute(
-                key,
-                typeof value === 'boolean' ? '' : String(value),
-              )
-            }
-          }
+          setScriptAttrs(script, attrs)
 
           document.head.appendChild(script)
         } else if (typeof children === 'string') {
@@ -103,36 +107,24 @@ const Script = Vue.defineComponent({
             typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
           const nonceAttr =
             typeof attrs?.nonce === 'string' ? attrs.nonce : undefined
-          const existingScript = Array.from(
-            document.querySelectorAll('script:not([src])'),
-          ).find((el) => {
-            if (!(el instanceof HTMLScriptElement)) return false
+          for (const el of document.querySelectorAll('script:not([src])')) {
+            if (!(el instanceof HTMLScriptElement)) {
+              continue
+            }
             const sType = el.getAttribute('type') ?? 'text/javascript'
             const sNonce = el.getAttribute('nonce') ?? undefined
-            return (
+            if (
               el.textContent === children &&
               sType === typeAttr &&
               sNonce === nonceAttr
-            )
-          })
-
-          if (existingScript) {
-            return
+            ) {
+              return
+            }
           }
 
           const script = document.createElement('script')
           script.textContent = children
-
-          if (attrs) {
-            for (const [key, value] of Object.entries(attrs)) {
-              if (value !== undefined && value !== false) {
-                script.setAttribute(
-                  key,
-                  typeof value === 'boolean' ? '' : String(value),
-                )
-              }
-            }
-          }
+          setScriptAttrs(script, attrs)
 
           document.head.appendChild(script)
         }
