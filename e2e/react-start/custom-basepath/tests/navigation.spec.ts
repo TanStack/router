@@ -49,16 +49,16 @@ test('client-side redirect', async ({ page, baseURL }) => {
   await page.getByTestId('link-to-throw-it').click()
   await page.waitForLoadState('networkidle')
 
-  expect(await page.getByTestId('post-view').isVisible()).toBe(true)
-  expect(page.url()).toBe(`${baseURL}/posts/1`)
+  await expect(page.getByTestId('post-view')).toBeVisible()
+  await expect(page).toHaveURL(`${baseURL}/posts/1`)
 })
 
 test('server-side redirect', async ({ page, baseURL }) => {
   await page.goto('/redirect/throw-it')
   await page.waitForLoadState('networkidle')
 
-  expect(await page.getByTestId('post-view').isVisible()).toBe(true)
-  expect(page.url()).toBe(`${baseURL}/posts/1`)
+  await expect(page.getByTestId('post-view')).toBeVisible()
+  await expect(page).toHaveURL(`${baseURL}/posts/1`)
 
   // do not follow redirects since we want to test the Location header
   // first go to the route WITHOUT the base path, this will just add the base path

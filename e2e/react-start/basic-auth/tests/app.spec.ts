@@ -38,17 +38,17 @@ test('Posts redirects to login when not authenticated', async ({ page }) => {
 
 test('Login fails with user not found', async ({ page }) => {
   await login(page, 'bad@gmail.com', 'badpassword')
-  expect(page.getByText('User not found')).toBeTruthy()
+  await expect(page.getByText('User not found')).toBeVisible()
 })
 
 test('Login fails with incorrect password', async ({ page }) => {
   await signup(page, 'test@gmail.com', 'badpassword')
-  expect(page.getByText('Incorrect password')).toBeTruthy()
+  await expect(page.getByText('Incorrect password')).toBeVisible()
 })
 
 test('Can sign up from a not found user', async ({ page }) => {
   await login(page, 'test2@gmail.com', 'badpassword', true)
-  expect(page.getByText('test@gmail.com')).toBeTruthy()
+  await expect(page.getByText('test2@gmail.com')).toBeVisible()
 })
 
 test('Navigating to post after logging in', async ({ page }) => {
