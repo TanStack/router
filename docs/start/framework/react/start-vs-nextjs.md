@@ -187,8 +187,6 @@ In Next, RSCs are the paradigm - you build around them, think about them constan
 
 We call our approach **Composite Components** - server-produced React components that the client can fetch, cache, stream, and assemble. The client owns composition; the server ships UI pieces. No new mental model. No framework-specific caching semantics. Just data flowing through tools you already understand.
 
-For the full deep-dive, see [Composite Components: Server Components with Client-Led Composition](https://tanstack.com/blog/composite-components).
-
 ## Server Functions vs Server Actions
 
 Both frameworks let you call server code from the client. The approaches differ significantly.
