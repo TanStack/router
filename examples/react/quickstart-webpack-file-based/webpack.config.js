@@ -13,6 +13,7 @@ export default ({ WEBPACK_SERVE }) => ({
   output: {
     path: path.resolve(__dirname, './dist'),
     filename: '[name].bundle.js',
+    // Match this to the public base URL where Webpack serves assets.
     publicPath: '/',
   },
   resolve: {
@@ -41,6 +42,7 @@ export default ({ WEBPACK_SERVE }) => ({
   devServer: {
     open: true,
     hot: true,
+    // Serve the app shell for direct loads and refreshes on nested routes.
     historyApiFallback: {
       rewrites: [{ from: /./, to: '/index.html' }],
     },
