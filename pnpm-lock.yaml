@@ -556,8 +556,8 @@ importers:
         specifier: 29.1.1
         version: 29.1.1(@noble/hashes@2.0.1)
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -14196,11 +14196,11 @@ importers:
         specifier: ^3.0.0
         version: 3.1.1
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
       seroval-plugins:
-        specifier: ^1.6.2
-        version: 1.6.2(seroval@1.6.2)
+        specifier: ^1.6.7
+        version: 1.6.7(seroval@1.6.7)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14893,8 +14893,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14984,8 +14984,8 @@ importers:
         specifier: ^4.0.7
         version: 4.0.7
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
       source-map:
         specifier: ^0.7.6
         version: 0.7.6
@@ -15063,8 +15063,8 @@ importers:
         specifier: npm:h3@2.0.1-rc.20
         version: h3@2.0.1-rc.20(crossws@0.4.12(srvx@0.11.22))
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15109,8 +15109,8 @@ importers:
         specifier: workspace:*
         version: link:../start-client-core
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -27562,8 +27562,8 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
-  seroval-plugins@1.6.2:
-    resolution: {integrity: sha512-TfxuUjlbBESzUOWdTkTKqvSmav0ABym+itetDXLK6mDz8SmrpdI30aF8RTXE8Bvq+tH/1yIDkvy3W0lfQb1ipQ==}
+  seroval-plugins@1.6.7:
+    resolution: {integrity: sha512-4Nk35ttD3DTDJW4hgw5StsVAPeU6qnDFnULAouw6tQ7oLTV/ICXrWpsXo2EE52eSP2joUMazbVf52mFEcADqRw==}
     engines: {node: '>=10'}
     peerDependencies:
       seroval: ^1.0
@@ -27572,8 +27572,8 @@ packages:
     resolution: {integrity: sha512-46uFvgrXTVxZcUorgSSRZ4y+ieqLLQRMlG4bnCZKW3qI6BZm7Rg4ntMW4p1mILEEBZWrFlcpp0AyIIlM6jD9iw==}
     engines: {node: '>=10'}
 
-  seroval@1.6.2:
-    resolution: {integrity: sha512-mPT+SD2TrlB6wvte1KkYOYUkubaTbd6pZ/6Kk3C9nxzrHmCZyhxOO7XGAeL7f+yLKZglzGtM9odUVvg/EhO+vQ==}
+  seroval@1.6.7:
+    resolution: {integrity: sha512-AeDcLh0yO2SFm9W71essgnSzLV9DI8ZH0x0knXn2DMnUZj728mpLbxjlbB6IqKCmqh8JA3cEqRyGoNkt584JcQ==}
     engines: {node: '>=10'}
 
   serve-index@1.9.1:
@@ -43252,13 +43252,13 @@ snapshots:
     dependencies:
       seroval: 1.5.4
 
-  seroval-plugins@1.6.2(seroval@1.6.2):
+  seroval-plugins@1.6.7(seroval@1.6.7):
     dependencies:
-      seroval: 1.6.2
+      seroval: 1.6.7
 
   seroval@1.5.4: {}
 
-  seroval@1.6.2: {}
+  seroval@1.6.7: {}
 
   serve-index@1.9.1(supports-color@10.2.2):
     dependencies:
