@@ -71,6 +71,10 @@
               "to": "framework/react/guide/routing"
             },
             {
+              "label": "Base Paths",
+              "to": "framework/react/guide/base-paths"
+            },
+            {
               "label": "Execution Model",
               "to": "framework/react/guide/execution-model"
             },
@@ -130,6 +134,10 @@
             {
               "label": "Routing",
               "to": "framework/solid/guide/routing"
+            },
+            {
+              "label": "Base Paths",
+              "to": "framework/solid/guide/base-paths"
             },
             {
               "label": "Execution Model",
