@@ -12,6 +12,8 @@ import {
 import type { JSX } from 'solid-js'
 
 test.each([
+  { to: '/', href: '/' },
+  { to: '/internal', href: '/internal' },
   { to: 'https://example.com/', href: 'https://example.com/' },
   { to: '/external', href: 'https://example.com/rewritten' },
   { to: 'javascript:blocked()', href: undefined },
@@ -44,6 +46,8 @@ test.each([
     onMouseOver: vi.fn(),
     onTouchStart: vi.fn(),
   }
+  const ref = vi.fn()
+  const callerProps = { ref, ...handlers }
   const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
   try {
     renderToString(() => (
@@ -54,7 +58,7 @@ test.each([
             href={to.startsWith('/') ? undefined : 'javascript:spoofed()'}
             target="_blank"
             title="custom link"
-            {...handlers}
+            {...callerProps}
           />
         )}
       </RouterContextProvider>
@@ -64,6 +68,11 @@ test.each([
       target: '_blank',
       title: 'custom link',
     })
+    const receivedRef = received?.ref as (element: HTMLAnchorElement) => void
+    expect(receivedRef).toBeTypeOf('function')
+    const element = {} as HTMLAnchorElement
+    receivedRef(element)
+    expect(ref).toHaveBeenCalledExactlyOnceWith(element)
     for (const name of Object.keys(handlers) as Array<keyof typeof handlers>) {
       const handler = received?.[name] as (event: Event) => void
       expect(handler).toBeTypeOf('function')
