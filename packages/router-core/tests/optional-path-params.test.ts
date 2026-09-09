@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { interpolateTestPath as interpolatePath } from './routerTestUtils'
+import {
+  interpolateTestPath as interpolatePath,
+  parseTestPathname as parsePathname,
+} from './routerTestUtils'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
   findSingleMatch,
-  parseSegment,
   processRouteTree,
 } from '../src/new-process-route-tree'
 import type { SegmentKind } from '../src/new-process-route-tree'
@@ -25,34 +27,6 @@ describe('Optional Path Parameters', () => {
   }>
 
   describe('parsePathname with optional params', () => {
-    const parsePathname = (to: string | undefined) => {
-      let cursor = 0
-      let data
-      const path = to ?? ''
-      const segments: Array<PathSegment> = []
-      while (cursor < path.length) {
-        const start = cursor
-        data = parseSegment(path, start, data)
-        const end = data[5]
-        cursor = end + 1
-        const type = data[0]
-        const value = path.substring(data[2], data[3])
-        const prefix = path.substring(start, data[1])
-        const suffix = path.substring(data[4], end)
-        const segment: PathSegment = {
-          type,
-          value,
-        }
-        if (prefix) {
-          segment.prefixSegment = prefix
-        }
-        if (suffix) {
-          segment.suffixSegment = suffix
-        }
-        segments.push(segment)
-      }
-      return segments
-    }
     it.each([
       {
         name: 'regular optional param',

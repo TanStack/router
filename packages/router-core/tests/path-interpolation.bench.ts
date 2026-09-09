@@ -1,11 +1,8 @@
 import { bench, describe, expect } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
-import {
-  compileDecodeCharMap,
-  interpolatePath,
-  parseInterpolationPath,
-} from '../src/path'
+import { compileDecodeCharMap, interpolatePath } from '../src/path'
+import { parseSegments } from '../src/new-process-route-tree'
 import { decodePath } from '../src/utils'
 import { createTestRouter, interpolateTestPath } from './routerTestUtils'
 import type { PathInterpolationTestOptions } from './routerTestUtils'
@@ -141,9 +138,9 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
     routeTree: register ? root.addChildren([...routes.values()]) : root,
     history: createMemoryHistory({ initialEntries: ['/'] }),
     isServer: inputs[0]?.server,
+    pathParamsAllowedCharacters: ['@', '+'],
     scrollRestoration: false,
   })
-  router.pathParamsDecoder = decoder
   router.history.destroy()
   const calls = inputs
     .filter((input) => input.path.includes('$'))
@@ -190,7 +187,7 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
     ...input,
     segments: register
       ? routes.get(input.path)?._interpolation
-      : parseInterpolationPath(input.path),
+      : parseSegments(false, { fullPath: input.path }, 0),
   }))
 
   bench(
@@ -257,7 +254,6 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
                 input.params,
                 input.decoder,
                 Object.create(null),
-                { isMissingParams: false },
               )
             : input.path
         ).length

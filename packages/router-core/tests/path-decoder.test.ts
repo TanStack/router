@@ -45,11 +45,10 @@ test('keeps the decoder and cached paths across provider option updates', () => 
   const plan = item._pathCache
   const compile = vi.spyOn(pathUtils, 'compileDecodeCharMap')
   const interpolate = vi.spyOn(pathUtils, 'interpolatePath')
-  for (const characters of [allowed, [...allowed], allowed]) {
+  for (let count = 0; count < 3; count++) {
     router.update({
       ...router.options,
-      context: {},
-      pathParamsAllowedCharacters: characters,
+      context: { count },
     })
     expect(build()).toBe('/items/@%2B')
     expect(router.pathParamsDecoder).toBe(decoder)
@@ -59,45 +58,39 @@ test('keeps the decoder and cached paths across provider option updates', () => 
   expect(interpolate).not.toHaveBeenCalled()
 })
 
-test('recompiles when the allowed characters change, including in-place edits', () => {
+test('requires a new router to apply changes to the original character array', () => {
   const allowed: Array<'@' | '+'> = ['@']
   const { router, build } = setup(allowed)
   const decoder = router.pathParamsDecoder
   expect(build()).toBe('/items/@%2B')
   allowed[0] = '+'
-  router.update({ ...router.options })
-  expect(build()).toBe('/items/%40+')
-  expect(router.pathParamsDecoder).not.toBe(decoder)
-  router.update({ pathParamsAllowedCharacters: ['@', '+'] })
-  expect(build()).toBe('/items/@+')
-})
-
-test('restores normal encoding when allowed characters are removed', () => {
-  const { router, build } = setup(['@'])
-  expect(build()).toBe('/items/@%2B')
-  router.update({ pathParamsAllowedCharacters: undefined })
-  expect(router.pathParamsDecoder).toBeUndefined()
-  expect(build()).toBe('/items/%40%2B')
-})
-
-test('keeps a directly assigned decoder on unrelated option updates', () => {
-  const { router, build } = setup()
-  const decoder = pathUtils.compileDecodeCharMap(['+'])
-  router.pathParamsDecoder = decoder
-  expect(build()).toBe('/items/%40+')
   router.update({ context: {} })
   expect(router.pathParamsDecoder).toBe(decoder)
-  expect(build()).toBe('/items/%40+')
+  expect(build()).toBe('/items/@%2B')
+  expect(
+    router.buildLocation({ to: '/items/$id', params: { id: 'new@+' } }).href,
+  ).toBe('/items/new@%2B')
+  expect(setup(allowed).build()).toBe('/items/%40+')
 })
 
-test('does not remember a configuration whose decoder failed to compile', () => {
+test('does not change encoding through unsupported option updates', () => {
   const { router, build } = setup(['@'])
-  vi.spyOn(pathUtils, 'compileDecodeCharMap').mockImplementationOnce(() => {
-    throw new Error('decoder compilation failed')
-  })
-  expect(() => router.update({ pathParamsAllowedCharacters: ['+'] })).toThrow(
-    'decoder compilation failed',
-  )
-  router.update({ context: {} })
-  expect(build()).toBe('/items/%40+')
+  const compile = vi.spyOn(pathUtils, 'compileDecodeCharMap')
+  expect(build()).toBe('/items/@%2B')
+  // @ts-expect-error Path encoding can only be configured at construction.
+  router.update({ pathParamsAllowedCharacters: undefined })
+  expect(
+    router.buildLocation({ to: '/items/$id', params: { id: 'new@+' } }).href,
+  ).toBe('/items/new@%2B')
+  expect(compile).not.toHaveBeenCalled()
+})
+
+test('does not create a decoder for empty or omitted allowed characters', () => {
+  const compile = vi.spyOn(pathUtils, 'compileDecodeCharMap')
+  for (const allowed of [undefined, []]) {
+    const { router, build } = setup(allowed)
+    expect(router.pathParamsDecoder).toBeUndefined()
+    expect(build()).toBe('/items/%40%2B')
+  }
+  expect(compile).not.toHaveBeenCalled()
 })

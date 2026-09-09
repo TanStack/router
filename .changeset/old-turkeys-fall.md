@@ -1,5 +1,8 @@
 ---
-"@tanstack/router-core": patch
+'@tanstack/router-core': patch
+'@tanstack/react-router': patch
+'@tanstack/solid-router': patch
+'@tanstack/vue-router': patch
 ---
 
-Reuse path-parameter decoders across router option updates when the allowed characters are unchanged, preserving warm Link paths during provider updates. Rebuild the decoder when values change and restore default encoding when the option is removed.
+Make `pathParamsAllowedCharacters` initialization-only. Configure it when creating the router; changing allowed characters requires a new router instance. Remove decoder-update bookkeeping and decoder-change checks from route-owned path caches.

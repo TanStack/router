@@ -4,21 +4,25 @@ import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
 if (process.env.TSR_LINK_PERF === '1') {
-  describe.each(['stable', 'changed', 'no-update'] as const)(
+  describe.each(['stable', 'new-router', 'no-update'] as const)(
     'path decoder: %s configuration',
     (mode) => {
-      const root = new BaseRootRoute({})
-      const item = new BaseRoute({
-        getParentRoute: () => root,
-        path: '/items/$id',
-      })
-      const router = createTestRouter({
-        routeTree: root.addChildren([item]),
-        history: createMemoryHistory({ initialEntries: ['/'] }),
-        pathParamsAllowedCharacters: ['@'],
-        scrollRestoration: false,
-      })
-      router.history.destroy()
+      const makeRouter = (allowed: ReadonlyArray<'@' | '+'>) => {
+        const root = new BaseRootRoute({})
+        const item = new BaseRoute({
+          getParentRoute: () => root,
+          path: '/items/$id',
+        })
+        const router = createTestRouter({
+          routeTree: root.addChildren([item]),
+          history: createMemoryHistory({ initialEntries: ['/'] }),
+          pathParamsAllowedCharacters: allowed,
+          scrollRestoration: false,
+        })
+        router.history.destroy()
+        return router
+      }
+      let router = makeRouter(['@'])
       const inputs = Array.from({ length: 200 }, (_, index) => ({
         to: '/items/$id',
         params: { id: `item-${index % 40}@+` },
@@ -27,12 +31,12 @@ if (process.env.TSR_LINK_PERF === '1') {
       let lastHref = ''
       const run = () => {
         count++
-        if (mode !== 'no-update') {
+        if (mode === 'new-router') {
+          router = makeRouter(count % 2 === 0 ? ['+'] : ['@'])
+        } else if (mode === 'stable') {
           router.update({
             ...router.options,
             context: { count },
-            pathParamsAllowedCharacters:
-              mode === 'changed' && count % 2 === 0 ? ['+'] : ['@'],
           })
         }
         for (const input of inputs) {
@@ -41,7 +45,7 @@ if (process.env.TSR_LINK_PERF === '1') {
       }
       const verify = () => {
         expect(lastHref).toBe(
-          mode === 'changed' && count % 2 === 0
+          mode === 'new-router' && count % 2 === 0
             ? '/items/item-39%40+'
             : '/items/item-39@%2B',
         )

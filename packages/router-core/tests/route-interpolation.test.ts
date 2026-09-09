@@ -1,11 +1,54 @@
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
-import { compileDecodeCharMap, interpolatePath, parseInterpolationPath } from '../src/path'
-import * as routeTree from '../src/new-process-route-tree'
+import {
+  compileDecodeCharMap,
+  hasMissingPathParams,
+  interpolatePath,
+} from '../src/path'
+import * as routeTreeUtils from '../src/new-process-route-tree'
 import { createTestRouter, interpolateTestPath } from './routerTestUtils'
 
 afterEach(() => vi.restoreAllMocks())
+
+test.each([
+  { path: '/static', params: {}, missing: false },
+  { path: '/$id', params: {}, missing: true },
+  { path: '/$id', params: { id: undefined }, missing: false },
+  { path: '/$id', params: { id: '' }, missing: false },
+  { path: '/{-$id}', params: {}, missing: false },
+  { path: '/pre{-$id}suffix', params: { id: null }, missing: false },
+  { path: '/files/$', params: {}, missing: true },
+  { path: '/files/$', params: { _splat: '' }, missing: true },
+  { path: '/files/{$}.txt', params: { _splat: 0 }, missing: true },
+  { path: '/files/$/ignored', params: { _splat: 'a/b' }, missing: false },
+])(
+  'preserves navigation availability for $path: $params',
+  ({ path, params, missing }) => {
+    const segments = routeTreeUtils.parseSegments(false, { fullPath: path }, 0)
+    expect(hasMissingPathParams(segments, params)).toBe(missing)
+  },
+)
+
+test('encodes splats equivalently without interpreting literal encoded separators', () => {
+  for (const allowed of [[], ['@', '+'], ['%'], ['/']]) {
+    const decoder = compileDecodeCharMap(allowed)
+    for (const value of [
+      '/a//b/',
+      'docs/a b/c+d?x#y',
+      'literal%2F/100%/caf\u00e9',
+      'folder/\u6f22\u5b57/file',
+    ]) {
+      const expected = value
+        .split('/')
+        .map((part) => decoder(encodeURIComponent(part)))
+        .join('/')
+      expect(interpolateTestPath('/files/$', { _splat: value }, decoder)).toBe(
+        `/files/${expected}`,
+      )
+    }
+  }
+})
 
 describe.each([false, true])(
   'prepared route interpolation (server: %s)',
@@ -46,10 +89,9 @@ describe.each([false, true])(
         const actualUsed = Object.create(null)
         const expectedKeys: Array<string> = []
         const actualKeys = (route._interpolation ?? []).flatMap((part) =>
-          typeof part === 'string' ? [] : [part[1]],
+          typeof part === 'string' ? [] : [part[1 /* key */]],
         )
         const expectedMeta = { isMissingParams: false }
-        const actualMeta = { isMissingParams: false }
         const decoder = compileDecodeCharMap(['@', '+'])
         const expected = interpolateTestPath(
           path,
@@ -67,13 +109,16 @@ describe.each([false, true])(
                 params,
                 decoder,
                 actualUsed,
-                actualMeta,
               )
             : path,
         ).toBe(expected)
         expect(actualUsed).toEqual(expectedUsed)
         expect(actualKeys).toEqual(expectedKeys)
-        expect(actualMeta).toEqual(expectedMeta)
+        expect(
+          route._interpolation
+            ? hasMissingPathParams(route._interpolation, params)
+            : false,
+        ).toBe(expectedMeta.isMissingParams)
       }
     })
 
@@ -120,13 +165,18 @@ test('never reparses a processed route for first use, Link misses or match metad
   const router = createTestRouter({
     routeTree: root.addChildren([route]),
     history,
+    pathParamsAllowedCharacters: ['@'],
     scrollRestoration: false,
   })
   history.destroy()
   const prepared = route._interpolation
   expect(prepared).toBeDefined()
-  const parse = vi.spyOn(routeTree, 'parseSegment')
-  parseInterpolationPath('/unregistered-control/$id')
+  const parse = vi.spyOn(routeTreeUtils, 'parseSegments')
+  routeTreeUtils.parseSegments(
+    false,
+    { fullPath: '/unregistered-control/$id' },
+    0,
+  )
   expect(parse).toHaveBeenCalled()
   parse.mockClear()
   router.buildLocation({
@@ -144,7 +194,6 @@ test('never reparses a processed route for first use, Link misses or match metad
       router.matchRoutes(`/items/Pre${id}Suffix/en`, {}).at(-1)?._strictParams,
     ).toEqual({ id: String(id), lang: 'en' })
   }
-  router.pathParamsDecoder = compileDecodeCharMap(['@'])
   expect(
     router.buildLocation({
       to: '/items/Pre{$id}Suffix/{-$lang}',
@@ -171,7 +220,7 @@ test.each([false, true])(
       scrollRestoration: false,
     })
     history.destroy()
-    const parse = vi.spyOn(routeTree, 'parseSegment')
+    const parse = vi.spyOn(routeTreeUtils, 'parseSegments')
     for (const path of [
       '/files/pre{$}.txt',
       '/files/pre{$}.txt/',
