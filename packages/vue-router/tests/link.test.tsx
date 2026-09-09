@@ -418,24 +418,26 @@ describe('Link', () => {
     const decorated = Vue.ref(false)
     const disabled = Vue.ref(false)
 
+    const RootComponent = Vue.defineComponent({
+      setup() {
+        return () =>
+          Vue.h(
+            Link as any,
+            {
+              to: to.value,
+              target: target.value,
+              disabled: disabled.value,
+              ...(decorated.value
+                ? { class: 'decorated', 'aria-label': 'Updated link' }
+                : {}),
+            },
+            { default: () => 'Dynamic link' },
+          )
+      },
+    })
+
     const rootRoute = createRootRoute({
-      component: Vue.defineComponent({
-        setup() {
-          return () =>
-            Vue.h(
-              Link as any,
-              {
-                to: to.value,
-                target: target.value,
-                disabled: disabled.value,
-                ...(decorated.value
-                  ? { class: 'decorated', 'aria-label': 'Updated link' }
-                  : {}),
-              },
-              { default: () => 'Dynamic link' },
-            )
-        },
-      }),
+      component: RootComponent,
     })
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -515,16 +517,18 @@ describe('Link', () => {
 
   test('tracks router location after an external link becomes internal', async () => {
     const to = Vue.ref('https://example.com')
+    const RootComponent = Vue.defineComponent({
+      setup() {
+        return () => (
+          <Link to={to.value as '/posts' | 'https://example.com'}>
+            Initially external
+          </Link>
+        )
+      },
+    })
+
     const rootRoute = createRootRoute({
-      component: Vue.defineComponent({
-        setup() {
-          return () => (
-            <Link to={to.value as '/posts' | 'https://example.com'}>
-              Initially external
-            </Link>
-          )
-        },
-      }),
+      component: RootComponent,
     })
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -564,21 +568,23 @@ describe('Link', () => {
     >(firstMouseEnter)
     const disabled = Vue.ref(false)
 
+    const RootComponent = Vue.defineComponent({
+      setup() {
+        return () => (
+          <Link
+            to="/posts"
+            disabled={disabled.value}
+            onClick={clickHandler.value}
+            onMouseEnter={mouseEnterHandler.value}
+          >
+            Dynamic handlers
+          </Link>
+        )
+      },
+    })
+
     const rootRoute = createRootRoute({
-      component: Vue.defineComponent({
-        setup() {
-          return () => (
-            <Link
-              to="/posts"
-              disabled={disabled.value}
-              onClick={clickHandler.value}
-              onMouseEnter={mouseEnterHandler.value}
-            >
-              Dynamic handlers
-            </Link>
-          )
-        },
-      }),
+      component: RootComponent,
     })
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -955,35 +961,48 @@ describe('Link', () => {
       const postLoader = createControlledPromise()
       let postLoadCount = 0
 
-      const rootRoute = createRootRoute({
-        component: () => {
+      const RootComponent = Vue.defineComponent({
+        setup() {
           const params = useParams({ strict: false })
-          const nextPostId = params.value.postId === '1' ? '2' : '1'
+          return () => {
+            const nextPostId = params.value.postId === '1' ? '2' : '1'
 
-          return (
-            <>
-              <Link
-                data-testid="current-post"
-                from="/posts/$postId"
-                to="."
-                params={true}
-                activeOptions={{ exact: true }}
-                activeProps={{ class: 'active' }}
-                inactiveProps={{ class: 'inactive' }}
-              >
-                Current post
-              </Link>
-              <Link
-                data-testid="switch-post"
-                from="/posts/$postId"
-                to="."
-                params={{ postId: nextPostId }}
-              >
-                Switch post
-              </Link>
-              <Outlet />
-            </>
-          )
+            return (
+              <>
+                <Link
+                  data-testid="current-post"
+                  from="/posts/$postId"
+                  to="."
+                  params={true}
+                  activeOptions={{ exact: true }}
+                  activeProps={{ class: 'active' }}
+                  inactiveProps={{ class: 'inactive' }}
+                >
+                  Current post
+                </Link>
+                <Link
+                  data-testid="switch-post"
+                  from="/posts/$postId"
+                  to="."
+                  params={{ postId: nextPostId }}
+                >
+                  Switch post
+                </Link>
+                <Outlet />
+              </>
+            )
+          }
+        },
+      })
+
+      const rootRoute = createRootRoute({
+        component: RootComponent,
+      })
+
+      const PostComponent = Vue.defineComponent({
+        setup() {
+          const params = useParams({ strict: false })
+          return () => <h1>{`Post ${params.value.postId}`}</h1>
         },
       })
 
@@ -994,10 +1013,7 @@ describe('Link', () => {
           postLoadCount += 1
           return postLoadCount === 1 ? Promise.resolve() : postLoader.promise
         },
-        component: () => {
-          const params = useParams({ strict: false })
-          return <h1>{`Post ${params.value.postId}`}</h1>
-        },
+        component: PostComponent,
       })
 
       const router = createRouter({
@@ -1034,44 +1050,57 @@ describe('Link', () => {
       const postsLoader = createControlledPromise()
       let postsLoadCount = 0
 
-      const rootRoute = createRootRoute({
-        component: () => {
+      const RootComponent = Vue.defineComponent({
+        setup() {
           const search = useSearch({ strict: false })
-          const nextPage = Number(search.value.page ?? 1) === 1 ? 2 : 1
+          return () => {
+            const nextPage = Number(search.value.page ?? 1) === 1 ? 2 : 1
 
-          return (
-            <>
-              <Link
-                data-testid="static-search"
-                to="/posts"
-                search={{ page: 1 }}
-                activeOptions={{ exact: true, includeSearch: true }}
-                activeProps={{ class: 'active' }}
-                inactiveProps={{ class: 'inactive' }}
-              >
-                Static search
-              </Link>
-              <Link
-                data-testid="current-search"
-                to="/posts"
-                search={true}
-                activeOptions={{ exact: true, includeSearch: true }}
-                activeProps={{ class: 'active' }}
-                inactiveProps={{ class: 'inactive' }}
-              >
-                Current search
-              </Link>
-              <Link
-                data-testid="switch-search"
-                from="/posts"
-                to="."
-                search={{ page: nextPage }}
-              >
-                Switch search
-              </Link>
-              <Outlet />
-            </>
-          )
+            return (
+              <>
+                <Link
+                  data-testid="static-search"
+                  to="/posts"
+                  search={{ page: 1 }}
+                  activeOptions={{ exact: true, includeSearch: true }}
+                  activeProps={{ class: 'active' }}
+                  inactiveProps={{ class: 'inactive' }}
+                >
+                  Static search
+                </Link>
+                <Link
+                  data-testid="current-search"
+                  to="/posts"
+                  search={true}
+                  activeOptions={{ exact: true, includeSearch: true }}
+                  activeProps={{ class: 'active' }}
+                  inactiveProps={{ class: 'inactive' }}
+                >
+                  Current search
+                </Link>
+                <Link
+                  data-testid="switch-search"
+                  from="/posts"
+                  to="."
+                  search={{ page: nextPage }}
+                >
+                  Switch search
+                </Link>
+                <Outlet />
+              </>
+            )
+          }
+        },
+      })
+
+      const rootRoute = createRootRoute({
+        component: RootComponent,
+      })
+
+      const PostsComponent = Vue.defineComponent({
+        setup() {
+          const search = useSearch({ strict: false })
+          return () => <h1>{`Posts ${search.value.page}`}</h1>
         },
       })
 
@@ -1086,10 +1115,7 @@ describe('Link', () => {
           postsLoadCount += 1
           return postsLoadCount === 1 ? Promise.resolve() : postsLoader.promise
         },
-        component: () => {
-          const search = useSearch({ strict: false })
-          return <h1>{`Posts ${search.value.page}`}</h1>
-        },
+        component: PostsComponent,
       })
 
       const router = createRouter({
@@ -1437,15 +1463,17 @@ describe('Link', () => {
       },
     })
 
-    const PostsComponent = () => {
-      const search = useSearch({ strict: false })
-      return (
-        <>
-          <h1>Posts</h1>
-          <span>Page: {search.value.page}</span>
-        </>
-      )
-    }
+    const PostsComponent = Vue.defineComponent({
+      setup() {
+        const search = useSearch({ strict: false })
+        return () => (
+          <>
+            <h1>Posts</h1>
+            <span>Page: {search.value.page}</span>
+          </>
+        )
+      },
+    })
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -1521,18 +1549,20 @@ describe('Link', () => {
       },
     })
 
-    const PostsComponent = () => {
-      const search = useSearch({ strict: false })
-      return (
-        <>
-          <h1>Posts</h1>
-          <span data-testid="current-page">Page: {search.value.page}</span>
-          <span data-testid="current-filter">
-            Filter: {search.value.filter}
-          </span>
-        </>
-      )
-    }
+    const PostsComponent = Vue.defineComponent({
+      setup() {
+        const search = useSearch({ strict: false })
+        return () => (
+          <>
+            <h1>Posts</h1>
+            <span data-testid="current-page">Page: {search.value.page}</span>
+            <span data-testid="current-filter">
+              Filter: {search.value.filter}
+            </span>
+          </>
+        )
+      },
+    })
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -1638,18 +1668,20 @@ describe('Link', () => {
       },
     })
 
-    const PostsComponent = () => {
-      const search = useSearch({ strict: false })
-      return (
-        <>
-          <h1>Posts</h1>
-          <span data-testid="current-page">Page: {search.value.page}</span>
-          <span data-testid="current-filter">
-            Filter: {search.value.filter}
-          </span>
-        </>
-      )
-    }
+    const PostsComponent = Vue.defineComponent({
+      setup() {
+        const search = useSearch({ strict: false })
+        return () => (
+          <>
+            <h1>Posts</h1>
+            <span data-testid="current-page">Page: {search.value.page}</span>
+            <span data-testid="current-filter">
+              Filter: {search.value.filter}
+            </span>
+          </>
+        )
+      },
+    })
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -1738,15 +1770,17 @@ describe('Link', () => {
       },
     })
 
-    const PostsComponent = () => {
-      const search = useSearch({ strict: false })
-      return (
-        <>
-          <h1>Posts</h1>
-          <span>Page: {search.value.page}</span>
-        </>
-      )
-    }
+    const PostsComponent = Vue.defineComponent({
+      setup() {
+        const search = useSearch({ strict: false })
+        return () => (
+          <>
+            <h1>Posts</h1>
+            <span>Page: {search.value.page}</span>
+          </>
+        )
+      },
+    })
 
     const ErrorComponent = () => {
       return <h1>Oops, something went wrong</h1>
@@ -1809,15 +1843,17 @@ describe('Link', () => {
       },
     })
 
-    const PostsComponent = () => {
-      const data = useLoaderData({ strict: false })
-      return (
-        <>
-          <h1>Posts</h1>
-          <span>Page: {data.value.pageDoubled}</span>
-        </>
-      )
-    }
+    const PostsComponent = Vue.defineComponent({
+      setup() {
+        const data = useLoaderData({ strict: false })
+        return () => (
+          <>
+            <h1>Posts</h1>
+            <span>Page: {data.value.pageDoubled}</span>
+          </>
+        )
+      },
+    })
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -1872,15 +1908,17 @@ describe('Link', () => {
       },
     })
 
-    const PostsComponent = () => {
-      const loader = useLoaderData({ strict: false })
-      return (
-        <>
-          <h1>Posts</h1>
-          <span>Page: {loader.value.pageDoubled}</span>
-        </>
-      )
-    }
+    const PostsComponent = Vue.defineComponent({
+      setup() {
+        const loader = useLoaderData({ strict: false })
+        return () => (
+          <>
+            <h1>Posts</h1>
+            <span>Page: {loader.value.pageDoubled}</span>
+          </>
+        )
+      },
+    })
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -2063,16 +2101,18 @@ describe('Link', () => {
       },
     })
 
-    const PostsComponent = () => {
-      const context = useRouteContext({ strict: false })
-      return (
-        <>
-          <h1>Posts</h1>
-          <span>UserId: {context.value.userId}</span>
-          <span>Username: {context.value.username}</span>
-        </>
-      )
-    }
+    const PostsComponent = Vue.defineComponent({
+      setup() {
+        const context = useRouteContext({ strict: false })
+        return () => (
+          <>
+            <h1>Posts</h1>
+            <span>UserId: {context.value.userId}</span>
+            <span>Username: {context.value.username}</span>
+          </>
+        )
+      },
+    })
 
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -2324,10 +2364,12 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return <span>Params: {params.value.postId}</span>
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => <span>Params: {params.value.postId}</span>
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -2359,14 +2401,12 @@ describe('Link', () => {
   test('keeps a relative link active when changing inherited params (issue #5655)', async () => {
     const rootRoute = createRootRoute()
 
-    const postRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/post/$postId',
-      component: () => {
+    const PostComponent = Vue.defineComponent({
+      setup() {
         const params = useParams({ strict: false })
-        const postId = Vue.computed(() => params.value.postId)
 
-        return (
+        const postId = Vue.computed(() => params.value.postId)
+        return () => (
           <>
             <Link
               data-testid="step1-link"
@@ -2391,17 +2431,22 @@ describe('Link', () => {
       },
     })
 
-    const step1Route = createRoute({
-      getParentRoute: () => postRoute,
-      path: 'step1',
-      component: () => {
+    const postRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/post/$postId',
+      component: PostComponent,
+    })
+
+    const Step1Component = Vue.defineComponent({
+      setup() {
         const params = useParams({ strict: false })
+
         const postId = Vue.computed(() => params.value.postId)
+
         const otherPostId = Vue.computed(() =>
           postId.value === '1' ? '2' : '1',
         )
-
-        return (
+        return () => (
           <>
             <span>{`Post ${postId.value} step1`}</span>
             <Link
@@ -2415,17 +2460,22 @@ describe('Link', () => {
       },
     })
 
-    const step2Route = createRoute({
+    const step1Route = createRoute({
       getParentRoute: () => postRoute,
-      path: 'step2',
-      component: () => {
+      path: 'step1',
+      component: Step1Component,
+    })
+
+    const Step2Component = Vue.defineComponent({
+      setup() {
         const params = useParams({ strict: false })
+
         const postId = Vue.computed(() => params.value.postId)
+
         const otherPostId = Vue.computed(() =>
           postId.value === '1' ? '2' : '1',
         )
-
-        return (
+        return () => (
           <>
             <span>{`Post ${postId.value} step2`}</span>
             <Link
@@ -2437,6 +2487,12 @@ describe('Link', () => {
           </>
         )
       },
+    })
+
+    const step2Route = createRoute({
+      getParentRoute: () => postRoute,
+      path: 'step2',
+      component: Step2Component,
     })
 
     const router = createRouter({
@@ -2522,15 +2578,17 @@ describe('Link', () => {
       component: PostsIndexComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Link to="/">Index</Link>
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Link to="/">Index</Link>
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -2636,14 +2694,16 @@ describe('Link', () => {
       component: PostsIndexComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span data-testid="post-param">Params: {params.value.postId}</span>
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span data-testid="post-param">Params: {params.value.postId}</span>
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -2747,15 +2807,17 @@ describe('Link', () => {
       component: PostsIndexComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Link to="/">Index</Link>
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Link to="/">Index</Link>
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -2844,15 +2906,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -2981,15 +3045,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -3176,27 +3242,31 @@ describe('Link', () => {
       component: UsersComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span data-testid="post-component">
-            Params: {params.value.postId}
-          </span>
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span data-testid="post-component">
+              Params: {params.value.postId}
+            </span>
+          </>
+        )
+      },
+    })
 
-    const UserComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span data-testid="user-component">
-            Params: {params.value.userId}
-          </span>
-        </>
-      )
-    }
+    const UserComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span data-testid="user-component">
+              Params: {params.value.userId}
+            </span>
+          </>
+        )
+      },
+    })
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
       path: '$postid',
@@ -3318,15 +3388,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -3455,15 +3527,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -3582,15 +3656,17 @@ describe('Link', () => {
       validateSearch: () => ({ page: 2 }),
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -3727,15 +3803,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -3861,15 +3939,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -4005,15 +4085,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -4063,10 +4145,12 @@ describe('Link', () => {
       ),
     })
 
-    const InvoiceComponent = () => {
-      const params = useParams({ strict: false })
-      return <span>invoiceId: {params.value.invoiceId}</span>
-    }
+    const InvoiceComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => <span>invoiceId: {params.value.invoiceId}</span>
+      },
+    })
 
     const invoiceRoute = createRoute({
       getParentRoute: () => invoicesRoute,
@@ -4132,15 +4216,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -4226,15 +4312,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -4311,15 +4399,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const search = vi.fn((prev) => ({ page: prev.postPage }))
 
@@ -4439,15 +4529,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const search = vi.fn((prev) => ({ page: prev.postPage }))
 
@@ -4539,15 +4631,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const search = vi.fn((prev) => ({ page: prev.postPage }))
 
@@ -4639,15 +4733,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const search = vi.fn((prev) => ({ page: prev.postPage }))
 
@@ -4740,15 +4836,17 @@ describe('Link', () => {
       component: PostsComponent,
     })
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const search = vi.fn((prev) => ({ page: prev.postPage }))
 
@@ -4990,10 +5088,12 @@ describe('Link', () => {
     let parseParams: any
     let stringifyParams: any
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return <div>Post: {params.value.postId}</div>
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => <div>Post: {params.value.postId}</div>
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -5052,10 +5152,12 @@ describe('Link', () => {
     let parseParams: any
     let stringifyParams: any
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return <div>Post: {params.value.postId}</div>
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => <div>Post: {params.value.postId}</div>
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -5133,10 +5235,12 @@ describe('Link', () => {
       }
     }
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return <div>Post: {params.value.postId}</div>
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => <div>Post: {params.value.postId}</div>
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -5502,16 +5606,18 @@ describe('Link', () => {
 
   test('Link.preload="render" preloads each reactive destination', async () => {
     const to = Vue.ref('/posts')
+    const RootComponent = Vue.defineComponent({
+      setup() {
+        return () => (
+          <Link to={to.value as '/posts' | '/about'} preload="render">
+            Dynamic render preload
+          </Link>
+        )
+      },
+    })
+
     const rootRoute = createRootRoute({
-      component: Vue.defineComponent({
-        setup() {
-          return () => (
-            <Link to={to.value as '/posts' | '/about'} preload="render">
-              Dynamic render preload
-            </Link>
-          )
-        },
-      }),
+      component: RootComponent,
     })
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -5543,21 +5649,23 @@ describe('Link', () => {
   test('cancels stale delayed preloads after link inputs change', async () => {
     const to = Vue.ref('/posts')
     const disabled = Vue.ref(false)
+    const RootComponent = Vue.defineComponent({
+      setup() {
+        return () => (
+          <Link
+            to={to.value as '/posts' | '/about' | 'https://example.com'}
+            preload="intent"
+            preloadDelay={50}
+            disabled={disabled.value}
+          >
+            Dynamic intent preload
+          </Link>
+        )
+      },
+    })
+
     const rootRoute = createRootRoute({
-      component: Vue.defineComponent({
-        setup() {
-          return () => (
-            <Link
-              to={to.value as '/posts' | '/about' | 'https://example.com'}
-              preload="intent"
-              preloadDelay={50}
-              disabled={disabled.value}
-            >
-              Dynamic intent preload
-            </Link>
-          )
-        },
-      }),
+      component: RootComponent,
     })
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -5837,14 +5945,16 @@ describe('Link', () => {
         loader: postsLoaderFn,
       })
 
-      const PostComponent = () => {
-        const params = useParams({ strict: false })
-        return (
-          <>
-            <span>Params: {params.value.postId}</span>
-          </>
-        )
-      }
+      const PostComponent = Vue.defineComponent({
+        setup() {
+          const params = useParams({ strict: false })
+          return () => (
+            <>
+              <span>Params: {params.value.postId}</span>
+            </>
+          )
+        },
+      })
 
       const postBeforeLoadFn = vi.fn()
       const postLoaderFn = vi.fn()
@@ -6272,12 +6382,10 @@ describe('search middleware', () => {
         ],
       },
     })
-    const indexRoute = createRoute({
-      getParentRoute: () => rootRoute,
-      path: '/',
-      component: () => {
+    const IndexComponent = Vue.defineComponent({
+      setup() {
         const search = indexRoute.useSearch()
-        return (
+        return () => (
           <>
             <h1>Index</h1>
             <div data-testid="search">{search.value.root ?? '$undefined'}</div>
@@ -6294,6 +6402,12 @@ describe('search middleware', () => {
           </>
         )
       },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
     })
 
     const PostsComponent = () => {
@@ -6377,6 +6491,21 @@ describe('search middleware', () => {
       },
     })
 
+    const PostsComponent = Vue.defineComponent({
+      setup() {
+        const search = postsRoute.useSearch()
+        return () => (
+          <>
+            <h1>Posts</h1>
+            <div data-testid="posts-search">{search.value.foo}</div>
+            <Link data-testid="posts-link-new" to="/posts/new">
+              new
+            </Link>
+          </>
+        )
+      },
+    })
+
     const postsRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: 'posts',
@@ -6391,18 +6520,7 @@ describe('search middleware', () => {
         ],
       },
 
-      component: () => {
-        const search = postsRoute.useSearch()
-        return (
-          <>
-            <h1>Posts</h1>
-            <div data-testid="posts-search">{search.value.foo}</div>
-            <Link data-testid="posts-link-new" to="/posts/new">
-              new
-            </Link>
-          </>
-        )
-      },
+      component: PostsComponent,
     })
 
     const postsNewRoute = createRoute({
@@ -6495,10 +6613,12 @@ describe('search middleware', () => {
         component: PostsComponent,
       })
 
-      const PostComponent = () => {
-        const params = useParams({ strict: false })
-        return <span>Params: {params.value.postId}</span>
-      }
+      const PostComponent = Vue.defineComponent({
+        setup() {
+          const params = useParams({ strict: false })
+          return () => <span>Params: {params.value.postId}</span>
+        },
+      })
 
       const postRoute = createRoute({
         getParentRoute: () => postsRoute,
@@ -7230,16 +7350,18 @@ describe('relative links to current route', () => {
         component: PostsComponent,
       })
 
-      const PostComponent = () => {
-        const params = useParams({ strict: false })
-        return (
-          <>
-            <span data-testid={`post-${params.value.postId}`}>
-              Params: {params.value.postId}
-            </span>
-          </>
-        )
-      }
+      const PostComponent = Vue.defineComponent({
+        setup() {
+          const params = useParams({ strict: false })
+          return () => (
+            <>
+              <span data-testid={`post-${params.value.postId}`}>
+                Params: {params.value.postId}
+              </span>
+            </>
+          )
+        },
+      })
 
       const postRoute = createRoute({
         getParentRoute: () => postsRoute,
@@ -7663,15 +7785,17 @@ describe('when on /posts/$postId and navigating to ../ with default `from` /post
     // postsRouteApi.Link is not available in Vue, so we use Link with from prop instead
     // const postsRouteApi = getRouteApi('/_layout/posts')
 
-    const PostComponent = () => {
-      const params = useParams({ strict: false })
-      return (
-        <>
-          <span>Params: {params.value.postId}</span>
-          <Outlet />
-        </>
-      )
-    }
+    const PostComponent = Vue.defineComponent({
+      setup() {
+        const params = useParams({ strict: false })
+        return () => (
+          <>
+            <span>Params: {params.value.postId}</span>
+            <Outlet />
+          </>
+        )
+      },
+    })
 
     const postRoute = createRoute({
       getParentRoute: () => postsRoute,
@@ -7937,26 +8061,27 @@ describe('encoded and unicode paths', () => {
         },
       })
 
+      const PathRouteComponent = Vue.defineComponent({
+        setup() {
+          const params = pathRoute.useParams()
+          return () => (
+            <div>
+              <h1>Path Route</h1>
+              <p>
+                params:{' '}
+                <span data-testid="params-to-validate">
+                  {JSON.stringify(params.value)}
+                </span>
+              </p>
+            </div>
+          )
+        },
+      })
       const pathRoute = createRoute({
         getParentRoute: () => rootRoute,
         path,
         component: PathRouteComponent,
       })
-
-      function PathRouteComponent() {
-        const params = pathRoute.useParams()
-        return (
-          <div>
-            <h1>Path Route</h1>
-            <p>
-              params:{' '}
-              <span data-testid="params-to-validate">
-                {JSON.stringify(params.value)}
-              </span>
-            </p>
-          </div>
-        )
-      }
 
       const router = createRouter({
         routeTree: rootRoute.addChildren([indexRoute, pathRoute]),
