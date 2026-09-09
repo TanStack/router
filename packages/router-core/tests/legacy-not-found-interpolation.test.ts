@@ -35,6 +35,7 @@ test.each([false, true])(
   (isServer) => {
     const { router, history, legacy } = setup(isServer)
     try {
+      expect(legacy.originalIndex).toBe(99999999999)
       const first = router.matchRoutes('/a/missing', {}).at(-1)!
       const second = router.matchRoutes('/b/missing', {}).at(-1)!
       expect(first.routeId).toBe(legacy.id)

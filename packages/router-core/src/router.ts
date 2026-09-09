@@ -1393,9 +1393,7 @@ export class RouterCore<
     const notFoundRoute = this.options.notFoundRoute
 
     if (notFoundRoute) {
-      notFoundRoute.init({
-        originalIndex: 99999999999,
-      })
+      notFoundRoute.init(99999999999)
       if (this.routesById[notFoundRoute.id] !== notFoundRoute) {
         // Standalone legacy fallbacks are not processed by the matching tree.
         notFoundRoute._interpolation = parseSegments(false, notFoundRoute, 0)

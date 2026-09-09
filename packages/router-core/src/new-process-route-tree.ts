@@ -619,7 +619,7 @@ export interface ProcessRouteTreeResult<
 export function processRouteTree<
   TRouteLike extends Extract<RouteLike, { fullPath: string }> & {
     id: string
-    init: (opts: { originalIndex: number }) => void
+    init: (originalIndex: number) => void
   },
 >(
   /** The root of the route tree to process. */
@@ -638,7 +638,7 @@ export function processRouteTree<
     parentNode: AnySegmentNode<TRouteLike>,
     parentInterpolation?: RouteInterpolation,
   ) {
-    route.init({ originalIndex: index })
+    route.init(index)
 
     if (route.id in routesById) {
       if (process.env.NODE_ENV !== 'production') {
