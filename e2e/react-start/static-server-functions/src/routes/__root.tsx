@@ -30,6 +30,9 @@ function RootComponent() {
         <Link to="/posts" data-testid="link-posts">
           Posts
         </Link>
+        <Link to="/raw-stream" data-testid="link-raw-stream">
+          Raw Stream
+        </Link>
       </div>
       <hr />
       <Outlet />

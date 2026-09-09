@@ -273,7 +273,6 @@ export type {
   ParseLocationFn,
   InvalidateFn,
   ControllablePromise,
-  InjectedHtmlEntry,
   EmitFn,
   LoadFn,
   SubscribeFn,
@@ -316,6 +315,7 @@ export {
   isPlainArray,
   deepEqual,
   createControlledPromise,
+  isPromise,
   isModuleNotFoundError,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
@@ -472,19 +472,10 @@ export type {
   SerializationError,
 } from './ssr/serializer/transformer'
 
-export {
-  createSerializationAdapter,
-  makeSerovalPlugin,
-  makeSsrSerovalPlugin,
-} from './ssr/serializer/transformer'
+export { createSerializationAdapter } from './ssr/serializer/transformer'
+export { makeSerovalPlugin } from './ssr/serializer/makeSerovalPlugin'
 
-export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
-
-export {
-  RawStream,
-  createRawStreamRPCPlugin,
-  createRawStreamDeserializePlugin,
-} from './ssr/serializer/RawStream'
+export { RawStream } from './ssr/serializer/RawStream'
 export type {
   OnRawStreamCallback,
   RawStreamHint,

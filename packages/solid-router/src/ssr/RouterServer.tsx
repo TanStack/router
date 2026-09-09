@@ -2,7 +2,6 @@ import {
   Hydration,
   HydrationScript,
   NoHydration,
-  ssr,
   useAssets,
 } from 'solid-js/web'
 import { MetaProvider } from '@solidjs/meta'
@@ -26,14 +25,11 @@ export function ServerHeadContent() {
   return null
 }
 
-const docType = ssr('<!DOCTYPE html>')
-
 export function RouterServer<TRouter extends AnyRouter>(props: {
   router: TRouter
 }) {
   return (
     <NoHydration>
-      {docType as any}
       <html>
         <head>
           <HydrationScript />

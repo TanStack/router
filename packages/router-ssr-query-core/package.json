@@ -66,7 +66,7 @@
     "node": ">=20.19"
   },
   "devDependencies": {
-    "@tanstack/router-core": ">=1.171.7",
+    "@tanstack/router-core": "workspace:*",
     "@tanstack/query-core": ">=5.102.0",
     "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
@@ -77,7 +77,7 @@
     "rimraf": "catalog:"
   },
   "peerDependencies": {
-    "@tanstack/router-core": ">=1.127.0",
+    "@tanstack/router-core": ">=1.171.28",
     "@tanstack/query-core": ">=5.102.0"
   }
 }

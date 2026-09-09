@@ -8,6 +8,7 @@ import {
   Link,
   Outlet,
   RouterProvider,
+  Scripts,
   createBrowserHistory,
   createControlledPromise,
   createLazyRoute,
@@ -528,6 +529,16 @@ test.each(['beforeLoad', 'loader'] as const)(
 
 test('SSR errorComponent receives primitive errors thrown from beforeLoad', async () => {
   const rootRoute = createRootRoute({
+    shellComponent: function RootDocument({ children }) {
+      return (
+        <html>
+          <body>
+            {children}
+            <Scripts />
+          </body>
+        </html>
+      )
+    },
     component: function Root() {
       return <Outlet />
     },
@@ -717,7 +728,19 @@ test('SSR renders a later fresh ancestor loader failure', async () => {
   const parentGate = createControlledPromise<void>()
   const childGate = createControlledPromise<void>()
   const childSettled = createControlledPromise<void>()
-  const rootRoute = createRootRoute({ component: Outlet })
+  const rootRoute = createRootRoute({
+    shellComponent: function RootDocument({ children }) {
+      return (
+        <html>
+          <body>
+            {children}
+            <Scripts />
+          </body>
+        </html>
+      )
+    },
+    component: Outlet,
+  })
   const parentRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/parent',
@@ -782,7 +805,10 @@ test('#4684: SSR renders head content when beforeLoad throws', async () => {
           <head>
             <HeadContent />
           </head>
-          <body>{children}</body>
+          <body>
+            {children}
+            <Scripts />
+          </body>
         </html>
       )
     },
