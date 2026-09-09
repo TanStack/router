@@ -3,8 +3,8 @@ import {
   findFlatMatch,
   findRouteMatch,
   processRouteMasks,
-  processRouteTree,
 } from '../src/new-process-route-tree'
+import { processTestRouteTree as processRouteTree } from './routerTestUtils'
 import type { AnyRoute, RouteMask } from '../src'
 
 function makeTree(routes: Array<string>) {
