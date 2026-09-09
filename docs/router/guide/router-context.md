@@ -181,7 +181,29 @@ export const Route = createFileRoute('/todos')({
   component: Todos,
   loader: ({ context }) => fetchTodosByUserId(context.user.id),
 })
+
+function Todos() {
+  const { user } = Route.useRouteContext()
+
+  return <div>Todos for {user.id}</div>
+}
 ```
+
+`Route.useRouteContext()` is bound to the route's `Route` object, so TypeScript keeps the context narrowed to everything available at that route — including values merged from parent routes and anything returned from `beforeLoad`. Use it in components rendered within this route's match, such as the route component or other components defined in the same route file.
+
+To read context from another route — for example, a shared component that needs the root auth context — use the standalone [`useRouteContext`](../api/router/useRouteContextHook.md) hook with that route's id:
+
+```tsx
+import { useRouteContext, rootRouteId } from '@tanstack/react-router'
+
+function UserBadge() {
+  const { user } = useRouteContext({ from: rootRouteId })
+
+  return <span>{user.name}</span>
+}
+```
+
+This is useful when a component needs context from a parent route instead of the nearest active match.
 
 You can even inject data fetching and mutation implementations themselves! In fact, this is highly recommended 😜
 
