@@ -7815,8 +7815,12 @@ describe('protocolAllowlist', () => {
     path: '/',
     component: () => (
       <>
-        <Link to="x-safari-https://example.com" />
         <Link
+          data-testid="custom-protocol-link"
+          to="x-safari-https://example.com"
+        />
+        <Link
+          data-testid="intent-protocol-link"
           to="intent://example.com#Intent;scheme=https;end"
           reloadDocument
         />
@@ -7849,18 +7853,18 @@ describe('protocolAllowlist', () => {
     expect(consoleWarn).not.toHaveBeenCalled()
   })
 
-  it('should fallback to relative links when protocol is not in allowlist', async () => {
+  it('should block links when protocol is not in allowlist', async () => {
     const router = createRouter({
       routeTree: rootRoute.addChildren([indexRoute]),
       history,
       protocolAllowlist: [],
     })
     render(<RouterProvider router={router} />)
-    const links = await screen.findAllByRole('link')
-    expect(links[0]).toHaveAttribute('href', '/x-safari-https:/example.com')
-    expect(links[1]).toHaveAttribute(
+    expect(
+      await screen.findByTestId('custom-protocol-link'),
+    ).not.toHaveAttribute('href')
+    expect(screen.getByTestId('intent-protocol-link')).not.toHaveAttribute(
       'href',
-      '/intent:/example.com#Intent;scheme=https;end',
     )
     expect(consoleWarn).toHaveBeenCalledWith(
       'Blocked Link with dangerous protocol: x-safari-https://example.com',
@@ -7872,6 +7876,114 @@ describe('protocolAllowlist', () => {
 })
 
 describe('masked and custom history hrefs', () => {
+  test.each([false, true])(
+    'updates a mounted link across destination types (rewrite: %s)',
+    async (rewrite) => {
+      const nextLoader = vi.fn(() => 'next page')
+      const rootRoute = createRootRoute({
+        component: function ChangingDestination() {
+          const [phase, setPhase] = React.useState(0)
+          const to =
+            phase === 0
+              ? '/target'
+              : phase === 3 || rewrite
+                ? '/next'
+                : phase === 1
+                  ? 'https://other.example/next'
+                  : 'javascript:alert(1)'
+          return (
+            <>
+              <button onClick={() => setPhase((p) => p + 1)}>
+                Change destination
+              </button>
+              <Link
+                data-testid="changing-link"
+                to={to}
+                hash={
+                  rewrite && phase === 1
+                    ? 'external'
+                    : rewrite && phase === 2
+                      ? 'blocked'
+                      : undefined
+                }
+                preload="intent"
+                preloadDelay={0}
+              >
+                {({ isActive }) => String(isActive)}
+              </Link>
+              <Outlet />
+            </>
+          )
+        },
+      })
+      const targetRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/target',
+        component: () => <p>target page</p>,
+      })
+      const nextRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/next',
+        loader: nextLoader,
+        component: () => <p>next page</p>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([targetRoute, nextRoute]),
+        history: createMemoryHistory({ initialEntries: ['/target'] }),
+        rewrite: rewrite
+          ? {
+              output: ({ url }) =>
+                url.hash === '#external'
+                  ? new URL('https://other.example/next')
+                  : url.hash === '#blocked'
+                    ? new URL('javascript:alert(1)')
+                    : url,
+            }
+          : undefined,
+      })
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+      render(<RouterProvider router={router} />)
+      const link = await screen.findByTestId('changing-link')
+      expect(link).toHaveTextContent('true')
+      expect(link).toHaveAttribute('aria-current', 'page')
+
+      const clickWasIntercepted = () => {
+        let intercepted = false
+        // Observe the router's handling, then cancel native document navigation.
+        document.addEventListener(
+          'click',
+          (event) => {
+            intercepted = event.defaultPrevented
+            event.preventDefault()
+          },
+          { once: true },
+        )
+        fireEvent.click(link)
+        return intercepted
+      }
+      for (const href of ['https://other.example/next', null]) {
+        fireEvent.click(screen.getByText('Change destination'))
+        await waitFor(() => expect(link.getAttribute('href')).toBe(href))
+        expect(link).toHaveTextContent('false')
+        expect(link).not.toHaveAttribute('aria-current')
+        expect(clickWasIntercepted()).toBe(false)
+        fireEvent.mouseOver(link)
+        await act(() => sleep(10))
+        expect(nextLoader).not.toHaveBeenCalled()
+        expect(screen.getByText('target page')).toBeInTheDocument()
+        fireEvent.mouseLeave(link)
+      }
+      fireEvent.click(screen.getByText('Change destination'))
+      await waitFor(() => expect(link).toHaveAttribute('href', '/next'))
+      fireEvent.mouseOver(link)
+      await waitFor(() => expect(nextLoader).toHaveBeenCalledTimes(1))
+      expect(clickWasIntercepted()).toBe(true)
+      expect(await screen.findByText('next page')).toBeInTheDocument()
+      await waitFor(() => expect(link).toHaveTextContent('true'))
+      expect(link).toHaveAttribute('aria-current', 'page')
+    },
+  )
+
   test.each([
     { output: '/mask', href: '/formatted/mask', formatted: true },
     {
@@ -7879,6 +7991,7 @@ describe('masked and custom history hrefs', () => {
       href: 'https://other.example/mask',
       formatted: false,
     },
+    { output: 'javascript:alert(1)', href: null, formatted: false },
   ])(
     'validates the final masked href $output on server and client',
     async ({ output, href, formatted }) => {
@@ -7959,6 +8072,191 @@ describe('masked and custom history hrefs', () => {
     },
   )
 
+  test('keeps direct-scheme links safe and inactive across SSR and client', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link data-testid="allowed-link" to="https://example.com">
+            {({ isActive }) => String(isActive)}
+          </Link>
+          <Link data-testid="dangerous-link" to="javascript:alert(1)">
+            {({ isActive }) => String(isActive)}
+          </Link>
+        </>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    await router.load()
+
+    router.isServer = true
+    const serverContainer = document.createElement('div')
+    serverContainer.innerHTML = renderToString(
+      <RouterProvider router={router} />,
+    )
+
+    router.isServer = false
+    const { container: clientContainer } = render(
+      <RouterProvider router={router} />,
+    )
+
+    const getLinkState = (container: ParentNode, testId: string) => {
+      const link = container.querySelector(`[data-testid="${testId}"]`)!
+      return {
+        href: link.getAttribute('href'),
+        active: link.getAttribute('data-status'),
+        ariaCurrent: link.getAttribute('aria-current'),
+        role: link.getAttribute('role'),
+        ariaDisabled: link.getAttribute('aria-disabled'),
+        text: link.textContent,
+      }
+    }
+
+    const serverStates = {
+      allowed: getLinkState(serverContainer, 'allowed-link'),
+      dangerous: getLinkState(serverContainer, 'dangerous-link'),
+    }
+    const clientStates = {
+      allowed: getLinkState(clientContainer, 'allowed-link'),
+      dangerous: getLinkState(clientContainer, 'dangerous-link'),
+    }
+
+    expect(clientStates).toEqual(serverStates)
+    expect(clientStates.allowed).toMatchObject({
+      href: 'https://example.com',
+      active: null,
+      ariaCurrent: null,
+      role: null,
+      ariaDisabled: null,
+      text: 'false',
+    })
+    expect(clientStates.dangerous).toMatchObject({
+      href: null,
+      active: null,
+      ariaCurrent: null,
+      role: 'link',
+      ariaDisabled: 'true',
+      text: 'false',
+    })
+  })
+
+  test('renders every internal Link on the router origin', async () => {
+    const inputs = [
+      '//evil.example',
+      '/\\evil.example',
+      '\\/evil.example',
+      ' \t/\\evil.example',
+    ]
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          {inputs.map((to, index) => (
+            <Link key={to} data-testid={`unsafe-link-${index}`} to={to} />
+          ))}
+        </>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    for (let index = 0; index < inputs.length; index++) {
+      const link = await screen.findByTestId(`unsafe-link-${index}`)
+      const href = link.getAttribute('href')
+      expect(href).not.toBeNull()
+      expect(new URL(href!, window.location.href).origin).toBe(
+        window.location.origin,
+      )
+    }
+  })
+
+  test('blocks a dangerous final href produced by an output rewrite', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="rewritten-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/safe' ? new URL('javascript:alert(1)') : url,
+      },
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('rewritten-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(fireEvent.click(link)).toBe(true)
+  })
+
+  test('normalizes protocol-relative paths from output rewrites during SSR', () => {
+    const origin = 'https://victim.example'
+    const router = createRouter({
+      routeTree: createRootRoute(),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      origin,
+      isServer: true,
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/safe'
+            ? new URL(`${origin}//evil.example/path`)
+            : url,
+      },
+    })
+
+    const html = renderToString(
+      <RouterContextProvider router={router}>
+        <Link to="/safe">Safe</Link>
+      </RouterContextProvider>,
+    )
+
+    expect(html).toContain('href="/evil.example/path"')
+    expect(html).not.toContain('href="//evil.example/path"')
+  })
+
+  test('blocks a dangerous final href produced by custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'javascript:alert(1)',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="custom-history-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('custom-history-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(fireEvent.click(link)).toBe(true)
+    customHistory.destroy()
+  })
+
   test('does not transform a direct HTTPS link through custom history', async () => {
     const customHistory = createBrowserHistory({
       createHref: () => 'https://other.example/',
@@ -7984,6 +8282,68 @@ describe('masked and custom history hrefs', () => {
     } finally {
       customHistory.destroy()
     }
+  })
+
+  test('does not intercept an external href produced by custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'https://other.example/path',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="custom-history-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('custom-history-link')
+
+    expect(link).toHaveAttribute('href', 'https://other.example/path')
+    expect(fireEvent.click(link)).toBe(true)
+    customHistory.destroy()
+  })
+
+  test('blocked links stay inactive and cannot regain an href', async () => {
+    const rootRoute = createRootRoute()
+    const safeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/safe',
+      component: () => (
+        <Link
+          data-testid="rewritten-link"
+          to="/safe"
+          hash="blocked"
+          activeProps={{ 'data-active': 'true' }}
+          inactiveProps={
+            {
+              href: 'javascript:inactive()',
+              'data-inactive': 'true',
+            } as unknown as { 'data-inactive': string }
+          }
+        />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([safeRoute]),
+      history: createMemoryHistory({ initialEntries: ['/safe'] }),
+      rewrite: {
+        output: ({ url }) =>
+          url.hash === '#blocked' ? new URL('javascript:alert(1)') : url,
+      },
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('rewritten-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(link).not.toHaveAttribute('aria-current')
+    expect(link).not.toHaveAttribute('data-active')
+    expect(link).toHaveAttribute('data-inactive', 'true')
+    expect(fireEvent.click(link)).toBe(true)
   })
 })
 
