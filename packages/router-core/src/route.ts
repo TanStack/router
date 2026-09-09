@@ -1,5 +1,5 @@
 import { invariant } from './invariant'
-import { joinPaths, trimPathLeft, trimPathRight } from './path'
+import { cleanPath, trimPathLeft, trimPathRight } from './path'
 import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
@@ -1827,23 +1827,24 @@ export class BaseRoute<
     const customId = options?.id || path
 
     // Strip the parentId prefix from the first level of children
-    let id = isRoot
+    const id = isRoot
       ? rootRouteId
-      : joinPaths([
-          this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id,
-          customId,
-        ])
+      : cleanPath(
+          (this.parentRoute.id === rootRouteId ? '' : this.parentRoute.id) +
+            '/' +
+            (customId ?? ''),
+        )
 
     if (path === rootRouteId) {
       path = '/'
     }
 
-    if (id !== rootRouteId) {
-      id = joinPaths(['/', id])
-    }
-
     const fullPath =
-      id === rootRouteId ? '/' : joinPaths([this.parentRoute.fullPath, path])
+      id === rootRouteId
+        ? '/'
+        : path === undefined
+          ? this.parentRoute.fullPath
+          : cleanPath(this.parentRoute.fullPath + '/' + path)
 
     this._path = path as TPath
     this._id = id as TId

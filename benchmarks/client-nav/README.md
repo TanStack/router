@@ -116,6 +116,24 @@ Typecheck benchmark sources (baseline + scenarios):
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav:test:types --outputStyle=stream --skipRemoteCache
 ```
 
+## Isolated route-tree construction
+
+`scenarios/route-tree-scale` measures navigation over an existing tree, not
+construction. `scenarios/mount` includes construction but also rendering and
+loading. To isolate initialization, use the core construction benchmark:
+
+```bash
+TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache -- bench tests/route-tree-construction.bench.ts --run --testNamePattern=1000.routes --outputJson /tmp/route-tree-construction.json
+```
+
+It covers 100, 1,000, and 10,000 static, dynamic, nested, or mixed routes.
+The processing-only case creates fresh route objects in an untimed
+`beforeEach`, then measures `processRouteTree` and `route.init`. A separate
+case includes route-object creation. Neither case measures first interpolation
+or navigation. Remove the name filter to run all sizes. Compare identical
+benchmark sources in separate checkouts and repeat fresh processes; a cached
+router or repeatedly initialized tree is not a construction baseline.
+
 ## Opt-in React Link performance suite
 
 `link-performance/` contains additional client-navigation and SSR workloads for
