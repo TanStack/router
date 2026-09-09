@@ -396,6 +396,12 @@ export function startCompilerPlugin(
       },
 
       hotUpdate(ctx) {
+        // Rolldown's dev engine (`experimental.bundledDev`) invokes this hook
+        // without an environment; invalidation then happens via `watchChange`.
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+        if (!this.environment) {
+          return
+        }
         const compiler = compilers.get(this.environment.name)
         const idsToInvalidate = new Set<string>()
         const transitiveCompilerImportersToInvalidate = new Set<string>()
