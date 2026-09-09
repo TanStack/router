@@ -329,7 +329,12 @@ export const Route = createFileRoute('/products')({
     }
     return { page }
   },
-  errorComponent: ({ error }) => <div>Bad search params: {error.message}</div>,
+  errorComponent: ({ error }) => (
+    <div>
+      Bad search params:{' '}
+      {error instanceof Error ? error.message : String(error)}
+    </div>
+  ),
 })
 ```
 

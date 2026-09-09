@@ -7,16 +7,14 @@ import-protection core in `src/import-protection/INTERNALS.md`.
 
 Rsbuild owns:
 
-- post-transform enforcement through `api.transform({ order: 'post' })`
+- post-transform enforcement through a Rspack post-loader
 - virtual-module transport through `VirtualModulesPlugin`
 - compilation-truth reporting in `processAssets`
 - final graph reconstruction from Rspack compilation data
-- the small build-only deferred queue for file violations that can disappear
-  from the compiled graph
 
-Shared AST analysis, rewrite logic, source extraction, usage lookup, source
-locations, trace formatting, and mock code generation are described in the
-shared internals doc.
+Shared transform-time AST analysis, rewrite logic, source extraction, usage
+lookup, source locations, trace formatting, and mock code generation are
+described in the shared internals doc.
 
 ## Mental Model
 
@@ -36,8 +34,10 @@ object:
 1. `onBeforeBuild`
 2. `onBeforeDevCompile`
 3. `modifyRspackConfig`
-4. `transform(..., { order: 'post' })`
-5. `processAssets(..., { stage: 'report' })`
+4. `processAssets(..., { stage: 'report' })`
+
+`modifyRspackConfig` installs both the virtual-modules plugin and the
+environment-scoped import-protection post-loader.
 
 ## State Model
 
@@ -45,16 +45,12 @@ Per environment, Rsbuild keeps a smaller runtime state than Vite:
 
 - `resolveCache`
 - `seenViolations`
-- `buildTransformResults`
-- `deferredFileViolations`
-- `deferredFileViolationKeys`
 
-Shared state is for virtual module transport and compiler fs access:
+Shared adapter state contains:
 
 - `virtualModules`
 - `vmPlugins`
 - `readyVmPlugins`
-- `inputFileSystems`
 - `pendingWrites`
 
 Notably absent compared to Vite:
@@ -66,7 +62,10 @@ Notably absent compared to Vite:
 
 ## Transform Phase
 
-Rsbuild enforcement runs after the Start compiler in a `post` transform.
+Rsbuild enforcement runs after the Start compiler in a Rspack loader with
+`enforce: 'post'`. The complete transform pipeline lives in
+`import-protection-loader.ts`; mutable configuration and per-environment state
+are passed through loader options.
 
 That matters because many compiler-safe imports are already stripped by the time
 import protection runs. This naturally suppresses a large class of false
@@ -76,10 +75,13 @@ The transform phase is responsible for:
 
 - self-denial for forbidden files
 - self-denial for marker-protected files in the wrong environment
+- persisting detected marker metadata in Rspack `module.buildInfo`
 - direct specifier rewrites to mock-edge modules
-- build-time transformed/original source preloading for later diagnostics
-- recording build-only deferred file violations when original unsafe usage may
-  outlive a direct compiled graph edge
+
+The transform treats the code it receives as authoritative. It does not read,
+parse, or analyze original source. Imports removed by the Start compiler are no
+longer part of this phase; imports with unsafe client/server usage remain in the
+transformed code and are checked normally.
 
 ## Virtual Module Transport
 
@@ -106,27 +108,45 @@ adapter queues them and flushes during compilation setup.
 
 It reconstructs the final view of the compilation from Rspack data by:
 
-1. building a `TransformResultProvider` from `compilation.modules`
-2. rebuilding the active compilation graph from outgoing connections
-3. reconstructing surviving specifier violations from compiled mock-edge files
-4. reporting live file violations from active edges
-5. reporting live marker violations from active edges plus original source
-6. reporting deferred file violations only when both importer and target truly
-   survived compilation
+1. snapshotting each module and its outgoing connections
+2. collecting specifier and file violations plus possible marker modules
+3. deduplicating marker modules and validating their persisted metadata
+4. returning early when no violations remain
+5. building the `ImportGraph` and diagnostic indexes only when needed
+
+Each `RspackModuleGraphNode` stores a module and its imported modules. Missing and
+errored target modules are skipped.
+Connections are not filtered by `getActiveState()` because inactive connections
+can still carry diagnostic evidence. Duplicate connections to the same target
+module collapse to one.
+
+Snapshotting does not apply source-file eligibility. Intermediate modules remain
+available for entry-to-violation traces, while the scanner applies importer and
+rule checks. Normalized resource ids are used for rules, traces, and diagnostics;
+`resourceResolveData.path` is preferred for original-source lookup.
+
+When violations exist, the adapter replays the snapshot to build `ImportGraph`;
+it does not query outgoing connections again. A clean compilation avoids entry
+traversal, graph indexes, and module-source loading.
+
+Diagnostic enrichment is lazy. The transform-result provider reads
+`module.originalSource().sourceAndMap()` when available. It gets original code
+from sourcemap `sourcesContent`, then falls back to
+`compilation.inputFileSystem.readFile()`. Results and in-flight reads are cached
+per module.
+
+Importer locations use this order:
+
+1. find unsafe usage in original code
+2. find unsafe usage in compiled code
+3. find the import statement in compiled, then original code
+
+Trace edges search compiled import statements. The adapter does not use
+`dependency.loc`, which may identify a transformed declaration rather than the
+actual import usage.
 
 This is the core Rsbuild-native replacement for Vite's `generateBundle`
 verification plus dev pending-violation flow.
-
-## Why The Deferred Queue Is Narrow
-
-Rsbuild only needs explicit build deferral for file violations whose direct edge
-may disappear after compilation.
-
-Specifier violations are rediscovered from surviving mock-edge virtual files.
-Marker violations are rediscovered from live compiled edges.
-
-Only file violations need extra bookkeeping when the final compiled graph can no
-longer show the original denied edge directly.
 
 ## Source And Compilation APIs
 
@@ -134,29 +154,43 @@ The Rsbuild adapter intentionally prefers native Rspack APIs where possible.
 
 Transform-time:
 
-- `ctx.resource`
-- `ctx.context`
-- `ctx.resolve(...)`
-- captured `compiler.inputFileSystem.readFile(...)`
+- `loaderContext.resource`
+- `loaderContext.resourcePath`
+- `loaderContext.context`
+- `loaderContext.resolve(...)`
+- `loaderContext._module.buildInfo`
+
+`_module` is a deprecated Rspack loader-context API. It is used deliberately
+because a loader invocation is bound to one exact module instance, including
+its layer. Keying modules by resource would collapse distinct modules that use
+the same resource in different layers. Do not add a resource-map fallback.
 
 Compilation-time:
 
-- `module.nameForCondition?.()`
 - `module.resourceResolveData?.resource`
-- `module.originalSource().sourceAndMap()`
+- `module.resourceResolveData?.path`
+- `module.identifier()` (normalized fallback)
+- `module.buildInfo`
+- `module.originalSource().sourceAndMap()` (confirmed diagnostics only)
 - sourcemap `sourcesContent`
-- `compilation.inputFileSystem.readFile(...)`
-
-This keeps the adapter closer to Rsbuild/Rspack truth and avoids falling back to
-Node fs when the compilation already has the needed data.
+- `compilation.inputFileSystem.readFile()` (original-source fallback)
+- `moduleGraph.getOutgoingConnectionsInOrder(module)`
+- `connection.dependency.request`
 
 ## Marker Handling
 
 Unlike Vite, Rsbuild does not introduce plugin-owned virtual marker modules for
 normal operation.
 
-The real package marker files are used as source-level markers, and the adapter
-later infers marker kind from original source while reporting compiled edges.
+The real package marker files are source-level markers. The post-loader writes
+`{ kind, source }` directly to its current `_module.buildInfo` before replacing
+a wrong-environment module. The metadata therefore stays attached to the exact
+resource-and-layer module and survives self-denial mocking and persistent-cache
+restores.
+
+`processAssets` treats non-excluded, non-file-denied imports as possible marker
+modules, then checks their `buildInfo`. It does not infer marker kind from final
+dependency requests.
 
 ## Practical Maintainer Rule
 

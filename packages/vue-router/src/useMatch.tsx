@@ -30,9 +30,12 @@ export interface UseMatchBaseOptions<
 export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
-  opts?: UseMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
-) => Vue.Ref<UseMatchResult<TRouter, TFrom, true, TSelected>>
+  opts?: UseMatchBaseOptions<TRouter, TFrom, true, TThrow, TSelected>,
+) => Vue.Ref<
+  ThrowOrOptional<UseMatchResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export type UseMatchOptions<
   TRouter extends AnyRouter,

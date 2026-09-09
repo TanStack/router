@@ -108,7 +108,7 @@ export const Match = Vue.defineComponent({
           content = CatchBoundary({
             getResetKey: () => activeMatch.value,
             errorComponent: routeErrorComponent,
-            onCatch: (error: Error) => {
+            onCatch: (error: unknown) => {
               // Forward not found errors (we don't want to show the error component for these)
               if (isNotFound(error)) {
                 error.routeId ??= routeId

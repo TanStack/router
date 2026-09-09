@@ -36,7 +36,9 @@ export interface RouterHistory {
   flush: () => void
   destroy: () => void
   notify: (action: SubscriberHistoryAction) => void
+  _getBlockers: () => Array<NavigationBlocker>
   _ignoreSubscribers?: boolean
+  _ignoreNextBeforeUnload?: (href: string) => void
 }
 
 export interface HistoryLocation extends ParsedPath {
@@ -96,12 +98,40 @@ const stateIndexKey = '__TSR_index'
 const popStateEvent = 'popstate'
 const beforeUnloadEvent = 'beforeunload'
 
+/**
+ * Turn protocol-relative inputs such as "//evil.example" into paths
+ * such as "/evil.example", keeping navigation on the current origin.
+ *
+ * For HTTP(S) URLs, WHATWG parsing ignores leading C0 controls and spaces,
+ * removes tabs/newlines, and treats backslashes as slashes, so inputs like
+ * "/\evil.example" also need normalization. This only allocates when those
+ * rules would make the input protocol-relative.
+ */
+// eslint-disable-next-line no-control-regex
+const protocolRelativePrefix = /^[\x00-\x20]*(?:[\\/][\t\n\r]*){2,}/
+
+export function normalizeProtocolRelative(url: string): string {
+  const match = protocolRelativePrefix.exec(url)
+  return match ? '/' + url.slice(match[0].length) : url
+}
+
+function normalizeHref(href: string): string {
+  // eslint-disable-next-line no-control-regex
+  if (/[\x00-\x1f\x7f]/.test(href)) {
+    // eslint-disable-next-line no-control-regex
+    href = href.replace(/[\x00-\x1f\x7f]/g, (character) =>
+      '\t\n\r'.includes(character) ? '' : encodeURIComponent(character),
+    )
+  }
+  return normalizeProtocolRelative(href)
+}
+
 export function createHistory(opts: {
   getLocation: () => HistoryLocation
   getLength: () => number
   pushState: (path: string, state: any) => void
   replaceState: (path: string, state: any) => void
-  go: (n: number) => void
+  go: (n: number, ignoreBlocker: boolean) => void
   back: (ignoreBlocker: boolean) => void
   forward: (ignoreBlocker: boolean) => void
   createHref: (path: string) => string
@@ -204,7 +234,7 @@ export function createHistory(opts: {
     go: (index, navigateOpts) => {
       tryNavigation({
         task: () => {
-          opts.go(index)
+          opts.go(index, navigateOpts?.ignoreBlocker ?? false)
           handleIndexChange({ type: 'GO', index })
         },
         navigateOpts,
@@ -246,6 +276,7 @@ export function createHistory(opts: {
     flush: () => opts.flush?.(),
     destroy: () => opts.destroy?.(),
     notify,
+    _getBlockers: () => opts.getBlockers?.() ?? [],
   }
 }
 
@@ -295,7 +326,8 @@ export function createBrowserHistory(opts?: {
   const _setBlockers = (newBlockers: Array<NavigationBlocker>) =>
     (blockers = newBlockers)
 
-  const createHref = opts?.createHref ?? ((path) => path)
+  const createHref = (path: string) =>
+    normalizeHref(opts?.createHref ? opts.createHref(path) : path)
   const parseLocation =
     opts?.parseLocation ??
     (() =>
@@ -322,6 +354,9 @@ export function createBrowserHistory(opts?: {
 
   let nextPopIsGo = false
   let ignoreNextPop = false
+  // TODO: An ignored traversal past a history boundary emits neither popstate
+  // nor beforeunload, leaving these bypasses active for a later navigation.
+  // The History API provides no completion signal for such no-op traversals.
   let skipBlockerNextPop = false
   let ignoreNextBeforeUnload = false
 
@@ -368,18 +403,24 @@ export function createBrowserHistory(opts?: {
     destHref: string,
     state: any,
   ) => {
-    const href = createHref(destHref)
+    // A formatter changes the URL space and must receive the original input.
+    // Otherwise parseHref below already produces the browser destination.
+    const href = opts?.createHref ? createHref(destHref) : undefined
     const hasPendingAction = !!next
 
     if (!hasPendingAction) {
       rollbackLocation = currentLocation
     }
 
-    // Update the location in memory
+    // Keep the optimistic location in the router's logical URL space.
     currentLocation = parseHref(destHref, state)
 
     // Keep track of the next location we need to flush to the URL
-    next = [href, state, next?.[2 /* is push */] || isPush]
+    next = [
+      href ?? currentLocation.href,
+      state,
+      next?.[2 /* is push */] || isPush,
+    ]
 
     if (!hasPendingAction) {
       // Schedule an update to the browser history
@@ -394,6 +435,10 @@ export function createBrowserHistory(opts?: {
   }
 
   const onPushPopEvent = async () => {
+    // Same-document traversals do not fire beforeunload, so consume their
+    // exemption here instead of carrying it into a later document navigation.
+    ignoreNextBeforeUnload = false
+
     if (ignoreNextPop) {
       ignoreNextPop = false
       return
@@ -430,7 +475,7 @@ export function createBrowserHistory(opts?: {
           })
           if (isBlocked) {
             ignoreNextPop = true
-            win.history.go(1)
+            win.history.go(-delta)
             history.notify(notify)
             return
           }
@@ -483,17 +528,25 @@ export function createBrowserHistory(opts?: {
     pushState: (href, state) => queueHistoryAction(true, href, state),
     replaceState: (href, state) => queueHistoryAction(false, href, state),
     back: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
-      ignoreNextBeforeUnload = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       return win.history.back()
     },
     forward: (ignoreBlocker) => {
-      if (ignoreBlocker) skipBlockerNextPop = true
-      ignoreNextBeforeUnload = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       win.history.forward()
     },
-    go: (n) => {
+    go: (n, ignoreBlocker) => {
       nextPopIsGo = true
+      if (ignoreBlocker) {
+        skipBlockerNextPop = true
+        ignoreNextBeforeUnload = true
+      }
       win.history.go(n)
     },
     createHref: (href) => createHref(href),
@@ -517,6 +570,21 @@ export function createBrowserHistory(opts?: {
     setBlockers: _setBlockers,
     notifyOnIndexChange: false,
   })
+
+  history._ignoreNextBeforeUnload = (href) => {
+    ignoreNextBeforeUnload = false
+    try {
+      href = new URL(href, win.document.baseURI).href
+      // External handlers and same-document fragments may emit neither
+      // beforeunload nor popstate, leaving an exemption for a later departure.
+      ignoreNextBeforeUnload =
+        /^https?:/.test(href) &&
+        (!href.includes('#') ||
+          href.split('#')[0] !== win.location.href.split('#')[0])
+    } catch {
+      // Invalid URLs cannot unload the document.
+    }
+  }
 
   win.addEventListener(beforeUnloadEvent, onBeforeUnload, { capture: true })
   win.addEventListener(popStateEvent, onPushPopEvent)
@@ -622,30 +690,11 @@ export function createMemoryHistory(
   })
 }
 
-/**
- * Sanitize a path to prevent open redirect vulnerabilities.
- * Removes control characters and collapses leading double slashes.
- */
-function sanitizePath(path: string): string {
-  // Remove ASCII control characters (0x00-0x1F) and DEL (0x7F)
-  // These include CR (\r = 0x0D), LF (\n = 0x0A), and other potentially dangerous characters
-  // eslint-disable-next-line no-control-regex
-  let sanitized = path.replace(/[\x00-\x1f\x7f]/g, '')
-
-  // Prevent open redirect via protocol-relative URLs (e.g. "//evil.com")
-  // Collapse leading double slashes to a single slash
-  if (sanitized.startsWith('//')) {
-    sanitized = '/' + sanitized.replace(/^\/+/, '')
-  }
-
-  return sanitized
-}
-
 export function parseHref(
   href: string,
   state: ParsedHistoryState | undefined,
 ): HistoryLocation {
-  const sanitizedHref = sanitizePath(href)
+  const sanitizedHref = normalizeHref(href)
   const hashIndex = sanitizedHref.indexOf('#')
   const searchIndex = sanitizedHref.indexOf('?')
 

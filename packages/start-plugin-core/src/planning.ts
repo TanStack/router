@@ -23,7 +23,7 @@ export interface ResolvedStartEntryPlan {
 export function normalizePublicBase(base: string | undefined): string {
   const resolvedBase = base ?? '/'
 
-  if (isFullUrl(resolvedBase)) {
+  if (URL.canParse(resolvedBase)) {
     return resolvedBase
   }
 
@@ -38,7 +38,7 @@ export function deriveRouterBasepath(opts: {
     return opts.configuredBasepath
   }
 
-  if (isFullUrl(opts.publicBase)) {
+  if (URL.canParse(opts.publicBase)) {
     return '/'
   }
 
@@ -138,14 +138,5 @@ export function resolveStartEntryPlan(opts: {
       start: startFilePath ?? opts.defaultEntryPaths.start,
       router: routerFilePath,
     },
-  }
-}
-
-function isFullUrl(str: string): boolean {
-  try {
-    new URL(str)
-    return true
-  } catch {
-    return false
   }
 }

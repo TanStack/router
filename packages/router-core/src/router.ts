@@ -1,4 +1,8 @@
-import { createBrowserHistory, parseHref } from '@tanstack/history'
+import {
+  createBrowserHistory,
+  normalizeProtocolRelative,
+  parseHref,
+} from '@tanstack/history'
 import { isServer, loadServerRoute } from '@tanstack/router-core/isServer'
 import {
   DEFAULT_PROTOCOL_ALLOWLIST,
@@ -8,10 +12,12 @@ import {
   encodePathLikeUrl,
   findLast,
   functionalUpdate,
+  getUrlScheme,
   hasKeys,
   isDangerousProtocol,
   last,
   nullReplaceEqualDeep,
+  protocolRelativePrefixRegex,
   replaceEqualDeep,
 } from './utils'
 import {
@@ -29,7 +35,7 @@ import {
   trimPath,
   trimPathRight,
 } from './path'
-import { createLRUCache } from './lru-cache'
+import { createSieveCache } from './sieve-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
@@ -49,7 +55,7 @@ import {
   rewriteBasepath,
 } from './rewrite'
 import { createRouterStores } from './stores'
-import type { LRUCache } from './lru-cache'
+import type { SieveCache } from './sieve-cache'
 import type {
   ProcessRouteTreeResult,
   ProcessedTree,
@@ -119,6 +125,19 @@ import type {
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
 import type { GetStoreConfig, RouterStores } from './stores'
+
+function isExternalUrl(url: URL, origin: string) {
+  return (
+    (url.protocol !== 'http:' && url.protocol !== 'https:') ||
+    url.origin !== origin ||
+    !!url.username ||
+    !!url.password
+  )
+}
+
+function getUrlPath(url: URL) {
+  return url.pathname + url.search + url.hash
+}
 
 export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
@@ -528,6 +547,11 @@ export interface RouterOptions<
    * This is useful for shifting data from the origin to the path (for things like subdomain routing), or other advanced use cases.
    */
   rewrite?: LocationRewrite
+  /**
+   * The origin used to resolve URLs. Pass a normalized origin, such as
+   * `https://example.com` or `http://localhost:3000`, without a path or trailing slash.
+   * Defaults to the browser origin, or `http://localhost` on the server.
+   */
   origin?: string
   ssr?: {
     nonce?: string
@@ -942,13 +966,33 @@ export function _getUserHistoryState({
   return state
 }
 
+export function lifecycleEnd(matches: Array<AnyRouteMatch>) {
+  return (
+    matches.findIndex(
+      (match) =>
+        match.status === 'error' ||
+        match.status === 'notFound' ||
+        match._notFound,
+    ) + 1
+  )
+}
+
 /** Run route lifecycle callbacks in leave/enter/stay phases. */
 export function runRouteLifecycle(
   router: AnyRouter,
   previous: Array<AnyRouteMatch>,
   matches: Array<AnyRouteMatch>,
+  previousEnd: number | undefined,
+  nextEnd: number,
   owner?: LoadTransaction,
 ): void {
+  // Zero or undefined means the full branch; copy only at a fallback.
+  if (previousEnd) {
+    previous = previous.slice(0, previousEnd)
+  }
+  if (nextEnd) {
+    matches = matches.slice(0, nextEnd)
+  }
   for (const match of previous) {
     if (owner && router._tx !== owner) {
       return
@@ -1016,7 +1060,7 @@ declare global {
     | {
         routeTree: AnyRoute
         processRouteTreeResult: ProcessRouteTreeResult<AnyRoute>
-        resolvePathCache: LRUCache<string, string>
+        resolvePathCache: SieveCache<string, string>
       }
     | undefined
 }
@@ -1029,6 +1073,11 @@ export interface RouterCore<
   in out TDehydrated extends Record<string, any> = Record<string, any>,
 > {
   shouldViewTransition?: boolean | ViewTransitionOptions
+  /**
+   * Foreground lifecycle boundary survives invalidation/background statuses.
+   * Zero or undefined means the whole branch participates.
+   */
+  _lifecycleEnd?: number
   /** Current client load transaction and owner of navigation writes. */
   _tx?: LoadTransaction
   /** Joinable in-flight loader generations keyed by match ID. */
@@ -1112,7 +1161,7 @@ export class RouterCore<
   >
   history!: TRouterHistory
   rewrite?: LocationRewrite
-  origin?: string
+  origin!: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   _pendingLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
@@ -1120,7 +1169,7 @@ export class RouterCore<
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
-  resolvePathCache!: LRUCache<string, string>
+  resolvePathCache!: SieveCache<string, string>
   private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
     ParsedLocation,
@@ -1221,7 +1270,7 @@ export class RouterCore<
       }
     }
 
-    this.origin = this.options.origin
+    this.origin = this.options.origin!
     if (!this.origin) {
       if (
         !(isServer ?? this.isServer) &&
@@ -1243,8 +1292,8 @@ export class RouterCore<
       this.routeTree = this.options.routeTree as TRouteTree
       let processRouteTreeResult: ProcessRouteTreeResult<TRouteTree>
       if (
-        (isServer ?? this.isServer) &&
         process.env.NODE_ENV !== 'development' &&
+        (isServer ?? this.isServer) &&
         globalThis.__TSR_CACHE__ &&
         globalThis.__TSR_CACHE__.routeTree === this.routeTree
       ) {
@@ -1252,12 +1301,12 @@ export class RouterCore<
         this.resolvePathCache = cached.resolvePathCache
         processRouteTreeResult = cached.processRouteTreeResult as any
       } else {
-        this.resolvePathCache = createLRUCache(1000)
+        this.resolvePathCache = createSieveCache(1000)
         processRouteTreeResult = this.buildRouteTree()
         // only cache if nothing else is cached yet
         if (
-          (isServer ?? this.isServer) &&
           process.env.NODE_ENV !== 'development' &&
+          (isServer ?? this.isServer) &&
           globalThis.__TSR_CACHE__ === undefined
         ) {
           globalThis.__TSR_CACHE__ = {
@@ -1421,14 +1470,14 @@ export class RouterCore<
         return {
           href: pathname + searchStr + hash,
           publicHref: pathname + searchStr + hash,
-          pathname: decodePath(pathname).path,
+          pathname: decodePath(pathname),
           external: false,
           searchStr,
           search: nullReplaceEqualDeep(
             previousLocation?.search,
             parsedSearch,
           ) as any,
-          hash: decodePath(hash.slice(1)).path,
+          hash: decodePath(hash.slice(1)),
           state: replaceEqualDeep(previousLocation?.state, state),
         }
       }
@@ -1450,14 +1499,16 @@ export class RouterCore<
       return {
         href: fullPath,
         publicHref: href,
-        pathname: decodePath(url.pathname).path,
-        external: !!this.rewrite && url.origin !== this.origin,
+        // An input rewrite can expose a path like "//evil.example".
+        // Normalize it to "/evil.example" to keep it on the current origin.
+        pathname: decodePath(normalizeProtocolRelative(url.pathname)),
+        external: !!this.rewrite && isExternalUrl(url, this.origin),
         searchStr,
         search: nullReplaceEqualDeep(
           previousLocation?.search,
           parsedSearch,
         ) as any,
-        hash: decodePath(url.hash.slice(1)).path,
+        hash: decodePath(url.hash.slice(1)),
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -1881,8 +1932,8 @@ export class RouterCore<
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
       if (
-        dest.from &&
         process.env.NODE_ENV !== 'production' &&
+        dest.from &&
         dest._isNavigate
       ) {
         const [allFromMatches] = this.getMatchedRoutes(dest.from)
@@ -1973,13 +2024,17 @@ export class RouterCore<
         ? // Keep path params uninterpolated for matchRoute/template matching.
           nextTo
         : decodePath(
-            interpolatePath({
-              path: nextTo,
-              params: nextParams,
-              decoder: this.pathParamsDecoder,
-              server: this.isServer,
-            }).interpolatedPath,
-          ).path
+            // A splat can produce a path like "//evil.example".
+            // Normalize it to "/evil.example" to keep it on the current origin.
+            normalizeProtocolRelative(
+              interpolatePath({
+                path: nextTo,
+                params: nextParams,
+                decoder: this.pathParamsDecoder,
+                server: this.isServer,
+              }).interpolatedPath,
+            ),
+          )
 
       if (
         process.env.NODE_ENV !== 'production' &&
@@ -2069,16 +2124,18 @@ export class RouterCore<
       if (this.rewrite) {
         // With rewrite, we need to construct URL to apply the rewrite
         const url = new URL(fullPath, this.origin)
+        const origin = url.origin
         const rewrittenUrl = executeRewriteOutput(this.rewrite, url)
-        href = url.href.replace(url.origin, '')
+        href = getUrlPath(url)
         // If rewrite changed the origin, publicHref needs full URL
         // Otherwise just use the path components
-        if (rewrittenUrl.origin !== this.origin) {
+        if (isExternalUrl(rewrittenUrl, origin)) {
           publicHref = rewrittenUrl.href
           external = true
         } else {
-          publicHref =
-            rewrittenUrl.pathname + rewrittenUrl.search + rewrittenUrl.hash
+          // A same-origin rewrite can produce a pathname like "//evil.example".
+          // Normalize it to "/evil.example" so the link stays on this origin.
+          publicHref = normalizeProtocolRelative(getUrlPath(rewrittenUrl))
         }
       } else {
         // Fast path: no rewrite, skip URL construction entirely
@@ -2144,6 +2201,14 @@ export class RouterCore<
     ignoreBlocker,
     ...next
   }) => {
+    const nextLocation = next.maskedLocation ?? next
+    if (nextLocation.external && !(isServer ?? this.isServer)) {
+      return documentNavigation(this, nextLocation.publicHref, {
+        replace: next.replace,
+        ignoreBlocker,
+      })
+    }
+
     let historyAction: HistoryAction | undefined
     const isSameLocation =
       trimPathRight(this.latestLocation.href) === trimPathRight(next.href) &&
@@ -2237,7 +2302,7 @@ export class RouterCore<
     viewTransition,
     ignoreBlocker,
     ...rest
-  }: BuildNextOptions & CommitLocationOptions = {}) => {
+  }: BuildNextOptions & CommitLocationOptions = {}): Promise<void> => {
     const location = this.buildLocation({
       ...(rest as any),
       _includeValidateSearch: true,
@@ -2281,71 +2346,26 @@ export class RouterCore<
     publicHref,
     ...rest
   }) => {
-    let hrefIsUrl = false
+    const hrefScheme = href ? getUrlScheme(href) : undefined
 
-    if (href) {
-      try {
-        new URL(`${href}`)
-        hrefIsUrl = true
-      } catch {}
-    }
-
-    if (hrefIsUrl && !reloadDocument) {
-      reloadDocument = true
-    }
-
-    if (reloadDocument) {
+    if (hrefScheme || reloadDocument) {
       // When to is provided, always build a location to get the proper publicHref
       // (this handles redirects where href might be an internal path from resolveRedirect)
       // When only href is provided (no to), use it directly as it should already
       // be a complete path (possibly with basepath)
       if (to !== undefined || !href) {
         const location = this.buildLocation({ to, ...rest } as any)
+        const publicLocation = location.maskedLocation ?? location
         // Use publicHref which contains the path (origin-stripped is fine for reload)
-        href = href ?? location.publicHref
-        publicHref = publicHref ?? location.publicHref
+        href ??= publicLocation.publicHref
+        publicHref ??= publicLocation.publicHref
       }
 
       // Use publicHref when available and href is not a full URL,
       // otherwise use href directly (which may already include basepath)
-      const reloadHref = !hrefIsUrl && publicHref ? publicHref : href
+      const reloadHref = !hrefScheme && publicHref ? publicHref : href
 
-      // Block dangerous protocols like javascript:, blob:, data:
-      // These could execute arbitrary code if passed to window.location
-      if (isDangerousProtocol(reloadHref, this.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(
-            `Blocked navigation to dangerous protocol: ${reloadHref}`,
-          )
-        }
-        return
-      }
-
-      // Check blockers for external URLs unless ignoreBlocker is true
-      if (!rest.ignoreBlocker) {
-        // Cast to access internal getBlockers method
-        const historyWithBlockers = this.history as any
-        const blockers = historyWithBlockers.getBlockers?.() ?? []
-        for (const blocker of blockers) {
-          if (blocker?.blockerFn) {
-            const shouldBlock = await blocker.blockerFn({
-              currentLocation: this.latestLocation,
-              nextLocation: this.latestLocation, // External URLs don't have a next location in our router
-              action: 'PUSH',
-            })
-            if (shouldBlock) {
-              return
-            }
-          }
-        }
-      }
-
-      if (rest.replace) {
-        window.location.replace(reloadHref)
-      } else {
-        window.location.href = reloadHref
-      }
-      return
+      return documentNavigation(this, reloadHref, rest)
     }
 
     return this.buildAndCommitLocation({
@@ -2506,41 +2526,43 @@ export class RouterCore<
   }
 
   resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
-    const locationHeader = redirect.headers.get('Location')
+    const options = redirect.options
+    let href = redirect.headers.get('Location') || options.href
 
-    if (!redirect.options.href) {
-      const location = this.buildLocation(redirect.options)
-      const href = location.publicHref || '/'
-      redirect.options.href = href
-      redirect.headers.set('Location', href)
-    } else if (locationHeader) {
-      try {
-        const url = new URL(locationHeader)
-        if (this.origin && url.origin === this.origin) {
-          const href = url.pathname + url.search + url.hash
-          redirect.options.href = href
-          redirect.headers.set('Location', href)
-        }
-      } catch {
-        // ignore invalid URLs
-      }
+    if (!href) {
+      const location = this.buildLocation(options)
+      href = (location.maskedLocation ?? location).publicHref || '/'
     }
 
+    let scheme: string | undefined
+    // Reject protocol-relative URLs such as "//evil.example", including
+    // backslash and control-character variants, before checking the protocol.
     if (
-      redirect.options.href &&
-      // Check for dangerous protocols before processing the redirect
-      isDangerousProtocol(redirect.options.href, this.protocolAllowlist)
+      protocolRelativePrefixRegex.test(href) ||
+      ((scheme = getUrlScheme(href)) && !this.protocolAllowlist.has(scheme))
     ) {
       throw new Error(
         process.env.NODE_ENV !== 'production'
-          ? `Redirect blocked: unsafe protocol in href "${redirect.options.href}". Allowed protocols: ${Array.from(this.protocolAllowlist).join(', ')}.`
+          ? `Redirect blocked: unsafe protocol in href "${href}". Allowed protocols: ${Array.from(this.protocolAllowlist).join(', ')}.`
           : 'Redirect blocked: unsafe protocol',
       )
     }
 
-    if (!redirect.headers.get('Location')) {
-      redirect.headers.set('Location', redirect.options.href)
+    if (scheme === 'http:' || scheme === 'https:') {
+      const url = new URL(href)
+      if (url.pathname.startsWith('//')) {
+        href = url.href
+      } else if (!isExternalUrl(url, this.origin)) {
+        href = getUrlPath(url)
+        scheme = undefined
+      }
     }
+    if (scheme) {
+      options.reloadDocument = true
+    }
+
+    options.href = href
+    redirect.headers.set('Location', href)
 
     return redirect
   }
@@ -2667,6 +2689,51 @@ export class RouterCore<
   serverSsr?: ServerSsr
 
   serverSsrLifecycle?: RouterSsrLifecycle
+}
+
+async function documentNavigation(
+  router: AnyRouter,
+  href: string,
+  {
+    replace,
+    ignoreBlocker,
+  }: Pick<CommitLocationOptions, 'replace' | 'ignoreBlocker'>,
+) {
+  // Block dangerous protocols like javascript:, blob:, data:
+  // These could execute arbitrary code if passed to window.location
+  if (isDangerousProtocol(href, router.protocolAllowlist)) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn(`Blocked navigation to dangerous protocol: ${href}`)
+    }
+    return
+  }
+
+  // Check blockers for external URLs unless ignoreBlocker is true
+  if (!ignoreBlocker) {
+    const blockers = router.history._getBlockers()
+    for (const blocker of blockers) {
+      if (blocker?.blockerFn) {
+        const shouldBlock = await blocker.blockerFn({
+          currentLocation: router.history.location,
+          nextLocation: router.history.location, // External URLs don't have a next location in our router
+          action: replace ? 'REPLACE' : 'PUSH',
+        })
+        if (shouldBlock) {
+          return
+        }
+      }
+    }
+  }
+
+  // All blockers have allowed this navigation (or were explicitly skipped).
+  // Avoid asking for approval again in the native beforeunload handler.
+  router.history._ignoreNextBeforeUnload?.(href)
+  if (replace) {
+    window.location.replace(href)
+  } else {
+    window.location.href = href
+  }
+  return
 }
 
 /**
