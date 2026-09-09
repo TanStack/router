@@ -23,13 +23,12 @@ function isModuleNotFoundError(error: any): boolean {
 export function lazyRouteComponent<
   T extends Record<string, any>,
   TKey extends keyof T = 'default',
+  TProps = T[TKey] extends (props: infer P) => any ? P : unknown,
 >(
   importer: () => Promise<T>,
   exportName?: TKey,
   ssr?: () => boolean,
-): T[TKey] extends (props: infer TProps) => any
-  ? AsyncRouteComponent<TProps>
-  : never {
+): AsyncRouteComponent<TProps> {
   let loadPromise: Promise<any> | undefined
   let comp: T[TKey] | T['default'] | null = null
   let error: any = null
