@@ -9,10 +9,10 @@
   "types": "./dist/index.d.ts",
   "dependencies": {
     "@router-mono-react-query/post-query": "workspace:*",
-    "@tanstack/history": "^1.162.2",
+    "@tanstack/history": "^1.162.3",
     "@tanstack/react-query": "^5.102.0",
-    "@tanstack/react-router": "^1.170.33",
-    "@tanstack/router-plugin": "^1.168.36",
+    "@tanstack/react-router": "^1.170.34",
+    "@tanstack/router-plugin": "^1.168.37",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "redaxios": "^0.5.1",

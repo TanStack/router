@@ -12,7 +12,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "@tanstack/react-query": "^5.102.0",
     "@tanstack/react-query-devtools": "^5.67.2",
-    "@tanstack/react-router": "^1.170.33",
+    "@tanstack/react-router": "^1.170.34",
     "@tanstack/react-router-devtools": "^1.167.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
