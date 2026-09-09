@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useSelector } from './useSelector'
+import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,

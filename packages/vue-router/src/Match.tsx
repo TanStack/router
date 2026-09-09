@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useSelector } from './useSelector'
+import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'

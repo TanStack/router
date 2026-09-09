@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { _getAssetMatches } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useSelector } from './useSelector'
+import { useSelector } from '@tanstack/vue-store'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'

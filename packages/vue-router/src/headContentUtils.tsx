@@ -7,7 +7,7 @@ import {
   getScriptPreloadAttrs,
   resolveManifestCssLink,
 } from '@tanstack/router-core'
-import { useSelector } from './useSelector'
+import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import type {
   AssetCrossOriginConfig,

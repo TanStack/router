@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { isNotFound } from '@tanstack/router-core'
-import { useSelector } from './useSelector'
+import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import type { ErrorComponentProps, NotFoundError } from '@tanstack/router-core'
