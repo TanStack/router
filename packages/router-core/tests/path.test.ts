@@ -12,13 +12,13 @@ import {
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
   findSingleMatch,
-  processRouteTree,
 } from '../src/new-process-route-tree'
 import { createSieveCache } from '../src/sieve-cache'
 import {
   createTestPathInterpolator as createPathInterpolator,
   interpolateTestPath as interpolatePath,
   parseTestPathname as parsePathname,
+  processTestRouteTree as processRouteTree,
 } from './routerTestUtils'
 import type { SegmentKind } from '../src/new-process-route-tree'
 

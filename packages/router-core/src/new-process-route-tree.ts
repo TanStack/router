@@ -617,14 +617,15 @@ export interface ProcessRouteTreeResult<
  * Also builds lookup maps for routes by ID and by trimmed full path.
  */
 export function processRouteTree<
-  TRouteLike extends Extract<RouteLike, { fullPath: string }> & { id: string },
+  TRouteLike extends Extract<RouteLike, { fullPath: string }> & {
+    id: string
+    init: (opts: { originalIndex: number }) => void
+  },
 >(
   /** The root of the route tree to process. */
   routeTree: TRouteLike,
   /** Whether matching should be case sensitive by default (overridden by individual route options). */
   caseSensitive: boolean = false,
-  /** Optional callback invoked for each route during processing. */
-  initRoute?: (route: TRouteLike, index: number) => void,
 ): ProcessRouteTreeResult<TRouteLike> {
   const segmentTree = createSegmentNode<TRouteLike>()
   const dynamicListsToSort: Array<Array<DynamicSegmentNode<TRouteLike>>> = []
@@ -637,7 +638,7 @@ export function processRouteTree<
     parentNode: AnySegmentNode<TRouteLike>,
     parentInterpolation?: RouteInterpolation,
   ) {
-    initRoute?.(route, index)
+    route.init({ originalIndex: index })
 
     if (route.id in routesById) {
       if (process.env.NODE_ENV !== 'production') {

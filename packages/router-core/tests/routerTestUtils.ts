@@ -14,6 +14,7 @@ import {
   SEGMENT_TYPE_WILDCARD,
   parseSegment,
   parseSegments,
+  processRouteTree,
 } from '../src/new-process-route-tree'
 import type { SegmentKind } from '../src/new-process-route-tree'
 import type { RouterHistory } from '@tanstack/history'
@@ -58,6 +59,33 @@ export function createTestRouter<
   >,
 ) {
   return new RouterCore(options, getStoreConfig)
+}
+
+type RouteTreeInput = Parameters<typeof processRouteTree>[0]
+type FixtureNode = {
+  init?: RouteTreeInput['init']
+  children?: ReadonlyArray<FixtureNode>
+}
+
+const fixtureInit = () => {}
+
+function prepareFixture<T extends FixtureNode>(
+  route: T,
+): asserts route is T & Pick<RouteTreeInput, 'init'> {
+  if (!route.init) {
+    // Raw matcher fixtures already specify their derived paths and IDs.
+    Object.defineProperty(route, 'init', { value: fixtureInit })
+  }
+  for (const child of route.children ?? []) {
+    prepareFixture(child)
+  }
+}
+
+export function processTestRouteTree<
+  TRoute extends Omit<RouteTreeInput, 'init'>,
+>(routeTree: TRoute, caseSensitive = false) {
+  prepareFixture(routeTree)
+  return processRouteTree(routeTree, caseSensitive)
 }
 
 export type PathInterpolationTestOptions = {

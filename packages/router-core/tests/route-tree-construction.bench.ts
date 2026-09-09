@@ -39,12 +39,6 @@ function createTree(count: number, shape: Shape) {
   )
 }
 
-function initialize(tree: AnyRoute) {
-  return processRouteTree(tree, false, (route, originalIndex) => {
-    route.init({ originalIndex })
-  })
-}
-
 // Keep first-use interpolation and object allocation out of the processing-only case.
 if (process.env.TSR_LINK_PERF === '1') {
   for (const count of [100, 1000, 10000]) {
@@ -52,7 +46,7 @@ if (process.env.TSR_LINK_PERF === '1') {
       `route-tree construction (${count} routes, %s)`,
       (shape) => {
         let tree = createTree(count, shape)
-        let result = initialize(tree)
+        let result = processRouteTree<AnyRoute>(tree)
         const expectedPath =
           shape === 'static'
             ? '/static-0/about'
@@ -72,7 +66,7 @@ if (process.env.TSR_LINK_PERF === '1') {
         bench(
           'processRouteTree + route.init on fresh objects',
           () => {
-            result = initialize(tree)
+            result = processRouteTree<AnyRoute>(tree)
           },
           {
             setup: (task) => {
@@ -91,7 +85,7 @@ if (process.env.TSR_LINK_PERF === '1') {
         bench(
           'route objects + processRouteTree + route.init',
           () => {
-            result = initialize(createTree(count, shape))
+            result = processRouteTree<AnyRoute>(createTree(count, shape))
           },
           {
             teardown: verify,

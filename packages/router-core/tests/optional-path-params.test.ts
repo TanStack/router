@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   interpolateTestPath as interpolatePath,
   parseTestPathname as parsePathname,
+  processTestRouteTree as processRouteTree,
 } from './routerTestUtils'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
@@ -9,7 +10,6 @@ import {
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
   findSingleMatch,
-  processRouteTree,
 } from '../src/new-process-route-tree'
 import type { SegmentKind } from '../src/new-process-route-tree'
 

@@ -4,8 +4,8 @@ import {
   findRouteMatch,
   findSingleMatch,
   processRouteMasks,
-  processRouteTree,
 } from '../src/new-process-route-tree'
+import { processTestRouteTree as processRouteTree } from './routerTestUtils'
 
 test('keeps original names when different templates share a trie prefix', () => {
   const tree = processRouteTree({

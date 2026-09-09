@@ -1374,15 +1374,7 @@ export class RouterCore<
   }
 
   buildRouteTree = (): RouteTreeCaches<TRouteTree> => {
-    const result = processRouteTree(
-      this.routeTree,
-      this.options.caseSensitive,
-      (route, i) => {
-        route.init({
-          originalIndex: i,
-        })
-      },
-    )
+    const result = processRouteTree(this.routeTree, this.options.caseSensitive)
     if (this.options.routeMasks) {
       processRouteMasks(this.options.routeMasks, result.processedTree)
     }
