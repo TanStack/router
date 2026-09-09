@@ -41,9 +41,10 @@ The `RouteOptions` type accepts an object with the following properties:
 
 ### `pendingComponent` property
 
-- Type: `RouteComponent` or `LazyRouteComponent`
+- Type: `false`, `RouteComponent`, or `LazyRouteComponent`
 - Optional - Defaults to `routerOptions.defaultPendingComponent`
 - The content to be rendered if and when the route is pending and has reached its pendingMs threshold.
+- Set to `false` to opt out of `routerOptions.defaultPendingComponent` for this route and render nothing instead.
 
 ### `notFoundComponent` property
 
