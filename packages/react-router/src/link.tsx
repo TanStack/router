@@ -565,14 +565,15 @@ export function useLinkProps<
     functionalUpdate(isActive ? (activeProps as any) : inactiveProps, {}) ??
     (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
 
-  const resolvedClassName = [className, resolvedStateProps.className]
-    .filter(Boolean)
-    .join(' ')
-
-  const resolvedStyle = (style || resolvedStateProps.style) && {
-    ...style,
-    ...resolvedStateProps.style,
-  }
+  const stateClassName = resolvedStateProps.className
+  const resolvedClassName = className
+    ? stateClassName
+      ? `${className} ${stateClassName}`
+      : className
+    : stateClassName
+  const stateStyle = resolvedStateProps.style
+  const resolvedStyle =
+    style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
