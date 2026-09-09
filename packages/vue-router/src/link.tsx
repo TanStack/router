@@ -10,7 +10,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from './useSelector'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
 
@@ -169,11 +169,11 @@ function useLinkPropsImpl(
   > =
     type.value === 'external'
       ? Vue.shallowRef(router.stores.location.get())
-      : (useStore(router.stores.location, (l) => l, {
-          equal: (prev, next) => prev.href === next.href,
+      : (useSelector(router.stores.location, (l) => l, {
+          compare: (prev, next) => prev.href === next.href,
         }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
 
-  // Links that start external skip useStore above. Subscribe if they later
+  // Links that start external skip useSelector above. Subscribe if they later
   // become internal so active state follows subsequent location changes.
   if (type.value === 'external') {
     Vue.watchEffect((onCleanup) => {

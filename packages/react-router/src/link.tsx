@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useStore } from '@tanstack/react-store'
+import { useSelector } from '@tanstack/react-store'
 import {
   deepEqual,
   exactPathTest,
@@ -537,10 +537,10 @@ export function useLinkProps<
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [href, externalLink, isActive] = useStore(
+  const [href, externalLink, isActive] = useSelector(
     router.stores.location,
     selectLinkState,
-    compareLinkState,
+    { compare: compareLinkState },
   )
 
   // Get the active props
