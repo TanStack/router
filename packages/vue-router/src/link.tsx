@@ -3,6 +3,7 @@ import {
   deepEqual,
   exactPathTest,
   hasKeys,
+  isAbsoluteUrl,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
@@ -116,12 +117,7 @@ function useLinkPropsImpl(
   // Determine if the link is external or internal
   const type = Vue.computed(() => {
     const options = getOptions()
-    try {
-      new URL(`${options.to}`)
-      return 'external'
-    } catch {
-      return 'internal'
-    }
+    return isAbsoluteUrl(`${options.to}`) ? 'external' : 'internal'
   })
 
   const ref = Vue.ref<Element | null>(null)

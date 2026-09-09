@@ -2,6 +2,21 @@ import { isServer } from '@tanstack/router-core/isServer'
 import type { RouteIds } from './routeInfo'
 import type { AnyRouter } from './router'
 
+export function isAbsoluteUrl(url: string | undefined): boolean {
+  // Both URL APIs stringify undefined and reject it without a base URL.
+  if (URL.canParse) {
+    return URL.canParse(url!)
+  }
+
+  // Older browsers do not support URL.canParse.
+  try {
+    new URL(url!)
+    return true
+  } catch {
+    return false
+  }
+}
+
 export type Awaitable<T> = T | Promise<T>
 export type NoInfer<T> = [T][T extends any ? 0 : never]
 export type IsAny<TValue, TYesResult, TNoResult = TValue> = 1 extends 0 & TValue

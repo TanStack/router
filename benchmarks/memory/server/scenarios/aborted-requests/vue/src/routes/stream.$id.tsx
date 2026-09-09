@@ -1,90 +1,17 @@
+import { createServerOnlyFn } from '@tanstack/vue-start'
+import { getRequest } from '@tanstack/vue-start/server'
 import { Await, createFileRoute } from '@tanstack/vue-router'
 import { Suspense } from 'vue'
-import {
-  makeAbortedRequestRecords,
-  type DeferredRecord,
-  type RecordGroup,
-} from '../../../deferred-records'
+import { makeDeferredRecords } from '../../../deferred-records'
+import type { DeferredRecord } from '../../../deferred-records'
 
-const alphaResolveTicks = 4
-const betaResolveTicks = 6
-const abortProbeAlphaResolveTicks = 40
-const abortProbeBetaResolveTicks = 60
-
-function isAbortProbeId(id: string) {
-  return id === 'sanity-mid-stream' || id.startsWith('abort-')
-}
-
-function getResolveTicks(id: string, group: RecordGroup) {
-  if (isAbortProbeId(id)) {
-    return group === 'alpha'
-      ? abortProbeAlphaResolveTicks
-      : abortProbeBetaResolveTicks
-  }
-
-  return group === 'alpha' ? alphaResolveTicks : betaResolveTicks
-}
-
-// One tick = one 0ms timers-phase hop. Counting event-loop turns instead of
-// milliseconds keeps the resolve/abort interleaving a pure function of the
-// event-loop schedule: a wall-clock delay races the abort differently
-// depending on runner load and instrumentation overhead, which made this
-// benchmark's single measured run swing between runs.
-function resolveAfterTicks<T>(
-  ticks: number,
-  signal: AbortSignal,
-  value: () => T,
-  abortedValue: () => T,
-) {
-  return new Promise<T>((resolve) => {
-    if (signal.aborted) {
-      resolve(abortedValue())
-      return
-    }
-
-    let remaining = ticks
-    let timeoutId: ReturnType<typeof setTimeout>
-
-    const onAbort = () => {
-      clearTimeout(timeoutId)
-      resolve(abortedValue())
-    }
-
-    const step = () => {
-      remaining -= 1
-
-      if (remaining <= 0) {
-        signal.removeEventListener('abort', onAbort)
-        resolve(value())
-        return
-      }
-
-      timeoutId = setTimeout(step, 0)
-    }
-
-    signal.addEventListener('abort', onAbort, { once: true })
-    timeoutId = setTimeout(step, 0)
-  })
-}
-
-function makeDeferredRecords(
-  id: string,
-  group: RecordGroup,
-  signal: AbortSignal,
-) {
-  return resolveAfterTicks(
-    getResolveTicks(id, group),
-    signal,
-    () => makeAbortedRequestRecords(id, group),
-    () => [],
-  )
-}
+const getRequestSignal = createServerOnlyFn(() => getRequest().signal)
 
 export const Route = createFileRoute('/stream/$id')({
-  loader: ({ params, abortController }) => ({
+  loader: ({ params }) => ({
     eager: `eager-${params.id}`,
-    alpha: makeDeferredRecords(params.id, 'alpha', abortController.signal),
-    beta: makeDeferredRecords(params.id, 'beta', abortController.signal),
+    alpha: makeDeferredRecords(params.id, 'alpha', getRequestSignal()),
+    beta: makeDeferredRecords(params.id, 'beta', getRequestSignal()),
   }),
   component: StreamComponent,
 })

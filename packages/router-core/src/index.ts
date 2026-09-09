@@ -324,6 +324,7 @@ export {
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
   isDangerousProtocol,
+  isAbsoluteUrl,
   buildDevStylesUrl,
 } from './utils'
 export type {

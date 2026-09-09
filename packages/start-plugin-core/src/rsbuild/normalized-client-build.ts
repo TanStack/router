@@ -3,7 +3,11 @@ import { tssHydrate } from '../hydration-constants'
 import { getCssAssetSource } from '../start-manifest-plugin/inlineCss'
 import { RSBUILD_ENVIRONMENT_NAMES } from './planning'
 import type { RsbuildPluginAPI, Rspack } from '@rsbuild/core'
-import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
+import type {
+  GetConfigFn,
+  NormalizedClientBuild,
+  NormalizedClientChunk,
+} from '../types'
 
 type ProcessAssetsContext = Parameters<
   Parameters<RsbuildPluginAPI['processAssets']>[1]
@@ -193,11 +197,10 @@ function computeAsyncChunkImports(
  */
 export function normalizeRspackClientBuild(
   compilation: RspackCompilation,
+  inlineCssEnabled = false,
 ): NormalizedClientBuild {
   const chunksByFileName = new Map<string, NormalizedClientChunk>()
-  const chunkFileNamesByRouteFilePath = new Map<string, Array<string>>()
-  const cssFilesBySourcePath = new Map<string, Array<string>>()
-  const cssContentByFileName = new Map<string, string>()
+  let cssContentByFileName: Map<string, string> | undefined
   let entryChunkFileName: string | undefined
 
   // Collect all initial JS file names from the main entry for computing
@@ -238,19 +241,6 @@ export function normalizeRspackClientBuild(
       }
     }
 
-    if (cssFiles.length > 0) {
-      for (const mod of modules) {
-        const sourcePath = mod.nameForCondition()
-        if (!sourcePath) continue
-
-        const existing = cssFilesBySourcePath.get(sourcePath)
-        cssFilesBySourcePath.set(
-          sourcePath,
-          existing ? appendUniqueStrings(existing, cssFiles) : cssFiles.slice(),
-        )
-      }
-    }
-
     // The entry chunk is the one named 'index' in the 'index' entrypoint
     const isEntryChunk = chunk.name === 'index' && entryChunkSet.has(chunk)
 
@@ -285,15 +275,6 @@ export function normalizeRspackClientBuild(
       if (isEntryChunk && !entryChunkFileName) {
         entryChunkFileName = file
       }
-
-      for (const routeFilePath of routeFilePaths) {
-        let chunkFileNames = chunkFileNamesByRouteFilePath.get(routeFilePath)
-        if (!chunkFileNames) {
-          chunkFileNames = []
-          chunkFileNamesByRouteFilePath.set(routeFilePath, chunkFileNames)
-        }
-        chunkFileNames.push(file)
-      }
     }
 
     for (const cssFile of cssFiles) {
@@ -310,14 +291,17 @@ export function normalizeRspackClientBuild(
     throw new Error('No entry file found in rspack client build')
   }
 
-  for (const asset of compilation.getAssets()) {
-    if (!asset.name.endsWith('.css')) {
-      continue
-    }
+  if (inlineCssEnabled) {
+    cssContentByFileName = new Map()
+    for (const asset of compilation.getAssets()) {
+      if (!asset.name.endsWith('.css')) {
+        continue
+      }
 
-    const css = getCssAssetSource(asset.source.source())
-    if (css !== undefined) {
-      cssContentByFileName.set(asset.name, css)
+      const css = getCssAssetSource(asset.source.source())
+      if (css !== undefined) {
+        cssContentByFileName.set(asset.name, css)
+      }
     }
   }
 
@@ -346,36 +330,18 @@ export function normalizeRspackClientBuild(
   return {
     entryChunkFileName,
     chunksByFileName,
-    chunkFileNamesByRouteFilePath,
-    cssFilesBySourcePath,
     cssContentByFileName,
   }
-}
-
-function appendUniqueStrings(
-  target: Array<string>,
-  source: Array<string>,
-): Array<string> {
-  const seen = new Set(target)
-  let result: Array<string> | undefined
-
-  for (const value of source) {
-    if (seen.has(value)) continue
-    seen.add(value)
-    if (!result) {
-      result = target.slice()
-    }
-    result.push(value)
-  }
-
-  return result ?? target
 }
 
 /**
  * Registers a processAssets hook to capture the client build stats
  * after compilation. Returns a getter for the captured build.
  */
-export function registerClientBuildCapture(api: RsbuildPluginAPI): {
+export function registerClientBuildCapture(
+  api: RsbuildPluginAPI,
+  getConfig: GetConfigFn,
+): {
   getClientBuild: () => NormalizedClientBuild | undefined
 } {
   let clientBuild: NormalizedClientBuild | undefined
@@ -386,7 +352,11 @@ export function registerClientBuildCapture(api: RsbuildPluginAPI): {
       environments: [RSBUILD_ENVIRONMENT_NAMES.client],
     },
     (context: ProcessAssetsContext) => {
-      clientBuild = normalizeRspackClientBuild(context.compilation)
+      clientBuild = normalizeRspackClientBuild(
+        context.compilation,
+        api.context.action !== 'dev' &&
+          getConfig().startConfig.server.build.inlineCss.enabled,
+      )
     },
   )
 

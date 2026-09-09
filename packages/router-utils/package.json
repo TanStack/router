@@ -63,14 +63,14 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@babel/generator": "^7.28.5",
-    "@babel/parser": "^7.28.5",
-    "@babel/types": "^7.28.5",
-    "ansis": "^4.1.0",
+    "@babel/generator": "^7.29.8",
+    "@babel/parser": "^7.29.8",
+    "@babel/types": "catalog:",
+    "ansis": "^4.3.1",
     "babel-dead-code-elimination": "^1.0.12",
-    "diff": "^8.0.2",
-    "pathe": "^2.0.3",
-    "tinyglobby": "^0.2.15"
+    "diff": "^8.0.4",
+    "pathe": "catalog:",
+    "tinyglobby": "catalog:"
   },
   "devDependencies": {
     "@types/babel__generator": "^7.27.0",
