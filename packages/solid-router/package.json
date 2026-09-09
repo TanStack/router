@@ -108,17 +108,17 @@
     "@solidjs/meta": "^0.29.4",
     "@tanstack/history": "workspace:*",
     "@tanstack/router-core": "workspace:*",
-    "isbot": "^5.1.22"
+    "isbot": "catalog:"
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "catalog:",
     "@types/node": ">=20",
-    "combinate": "^1.1.11",
-    "solid-js": "^1.9.10",
+    "combinate": "catalog:",
+    "solid-js": "catalog:",
     "vite": "*",
-    "vite-plugin-solid": "^2.11.10",
-    "zod": "^4.4.3",
+    "vite-plugin-solid": "catalog:",
+    "zod": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

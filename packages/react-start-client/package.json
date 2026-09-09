@@ -76,8 +76,8 @@
     "@tanstack/start-client-core": "workspace:*"
   },
   "devDependencies": {
-    "@testing-library/react": "^16.2.0",
-    "@vitejs/plugin-react": "^4.3.4",
+    "@testing-library/react": "catalog:",
+    "@vitejs/plugin-react": "catalog:",
     "vite": "*",
     "@types/node": ">=20",
     "@tanstack/vite-config": "catalog:",

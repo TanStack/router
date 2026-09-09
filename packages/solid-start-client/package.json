@@ -76,9 +76,9 @@
     "@tanstack/start-client-core": "workspace:*"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/jest-dom": "catalog:",
     "vite": "*",
-    "vite-plugin-solid": "^2.11.10",
+    "vite-plugin-solid": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",
