@@ -40,6 +40,17 @@ const postRoute = createRoute({
   path: '$postId',
 })
 
+const postEditRoute = createRoute({
+  getParentRoute: () => postRoute,
+  path: 'edit',
+  validateSearch: () => ({ editId: 0 }),
+})
+
+const postPreviewRoute = createRoute({
+  getParentRoute: () => postRoute,
+  path: 'preview',
+})
+
 const invoicesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: 'invoices',
@@ -100,7 +111,10 @@ const linesFormEditRoute = createRoute({
 })
 
 const routeTreeTuples = rootRoute.addChildren([
-  postsRoute.addChildren([postRoute, postsIndexRoute]),
+  postsRoute.addChildren([
+    postRoute.addChildren([postEditRoute, postPreviewRoute]),
+    postsIndexRoute,
+  ]),
   invoicesRoute.addChildren([
     invoicesIndexRoute,
     invoiceRoute.addChildren([
@@ -118,7 +132,13 @@ const routeTreeTuples = rootRoute.addChildren([
 ])
 
 const routeTreeObjects = rootRoute.addChildren({
-  postsRoute: postsRoute.addChildren({ postRoute, postsIndexRoute }),
+  postsRoute: postsRoute.addChildren({
+    postRoute: postRoute.addChildren({
+      postEditRoute,
+      postPreviewRoute,
+    }),
+    postsIndexRoute,
+  }),
   invoicesRoute: invoicesRoute.addChildren({
     invoicesIndexRoute,
     invoiceRoute: invoiceRoute.addChildren({
@@ -204,6 +224,8 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(DefaultRouterObjectsLink)
@@ -223,6 +245,8 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(RouterAlwaysTrailingSlashLink)
@@ -242,6 +266,8 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
       | '/posts/$postId/'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview/'
     >()
 
   expectTypeOf(RouterNeverTrailingSlashLink)
@@ -261,6 +287,8 @@ test('when navigating to the root', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(RouterPreserveTrailingSlashLink)
@@ -292,6 +320,10 @@ test('when navigating to the root', () => {
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview'
+      | '/posts/$postId/preview/'
     >()
 
   expectTypeOf(DefaultRouterLink)
@@ -453,7 +485,11 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '$postId'
+      | '$postId/edit'
+      | '$postId/preview'
       | undefined
     >()
 
@@ -474,7 +510,11 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '$postId'
+      | '$postId/edit'
+      | '$postId/preview'
       | undefined
     >()
 
@@ -495,7 +535,11 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details/$detailId/lines/form/edit/'
       | '/posts/'
       | '/posts/$postId/'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview/'
       | '$postId/'
+      | '$postId/edit/'
+      | '$postId/preview/'
       | undefined
     >()
 
@@ -516,7 +560,11 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/invoices/$invoiceId/details/$detailId/lines/form/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '$postId'
+      | '$postId/edit'
+      | '$postId/preview'
       | undefined
     >()
 
@@ -549,8 +597,16 @@ test('when navigating from a route with no params and no search to the root', ()
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview'
+      | '/posts/$postId/preview/'
       | '$postId'
       | '$postId/'
+      | '$postId/edit'
+      | '$postId/edit/'
+      | '$postId/preview'
+      | '$postId/preview/'
       | undefined
     >()
 
@@ -669,27 +725,45 @@ test('when navigating from a route with no params and no search to the current r
   expectTypeOf(Link<DefaultRouter, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | '.'>()
+    .toEqualTypeOf<
+      './$postId' | './$postId/edit' | './$postId/preview' | undefined | '.'
+    >()
 
   expectTypeOf(Link<DefaultRouterObjects, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | '.'>()
+    .toEqualTypeOf<
+      './$postId' | './$postId/edit' | './$postId/preview' | undefined | '.'
+    >()
 
   expectTypeOf(Link<RouterAlwaysTrailingSlashes, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId/' | undefined | './'>()
+    .toEqualTypeOf<
+      './$postId/' | './$postId/edit/' | './$postId/preview/' | undefined | './'
+    >()
 
   expectTypeOf(Link<RouterNeverTrailingSlashes, '/posts', '.'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId' | undefined | '.'>()
+    .toEqualTypeOf<
+      './$postId' | './$postId/edit' | './$postId/preview' | undefined | '.'
+    >()
 
   expectTypeOf(Link<RouterPreserveTrailingSlashes, '/posts/', './'>)
     .parameter(0)
     .toHaveProperty('to')
-    .toEqualTypeOf<'./$postId/' | './$postId' | undefined | './' | '.'>()
+    .toEqualTypeOf<
+      | './$postId/'
+      | './$postId'
+      | './$postId/edit'
+      | './$postId/edit/'
+      | './$postId/preview'
+      | './$postId/preview/'
+      | undefined
+      | './'
+      | '.'
+    >()
 
   expectTypeOf(Link<DefaultRouter, '/posts/', '.'>)
     .parameter(0)
@@ -784,6 +858,8 @@ test('when navigating from a route with no params and no search to the parent ro
     .toEqualTypeOf<
       | '../posts'
       | '../posts/$postId'
+      | '../posts/$postId/edit'
+      | '../posts/$postId/preview'
       | '../invoices/$invoiceId'
       | '../invoices/$invoiceId/edit'
       | '../invoices/$invoiceId/details'
@@ -802,6 +878,8 @@ test('when navigating from a route with no params and no search to the parent ro
     .toEqualTypeOf<
       | '../posts'
       | '../posts/$postId'
+      | '../posts/$postId/edit'
+      | '../posts/$postId/preview'
       | '../invoices/$invoiceId'
       | '../invoices/$invoiceId/edit'
       | '../invoices/$invoiceId/details'
@@ -820,6 +898,8 @@ test('when navigating from a route with no params and no search to the parent ro
     .toEqualTypeOf<
       | '../posts/'
       | '../posts/$postId/'
+      | '../posts/$postId/edit/'
+      | '../posts/$postId/preview/'
       | '../invoices/$invoiceId/'
       | '../invoices/$invoiceId/edit/'
       | '../invoices/$invoiceId/details/'
@@ -838,6 +918,8 @@ test('when navigating from a route with no params and no search to the parent ro
     .toEqualTypeOf<
       | '../posts'
       | '../posts/$postId'
+      | '../posts/$postId/edit'
+      | '../posts/$postId/preview'
       | '../invoices/$invoiceId'
       | '../invoices/$invoiceId/edit'
       | '../invoices/$invoiceId/details'
@@ -858,6 +940,10 @@ test('when navigating from a route with no params and no search to the parent ro
       | '../posts/'
       | '../posts/$postId'
       | '../posts/$postId/'
+      | '../posts/$postId/edit'
+      | '../posts/$postId/edit/'
+      | '../posts/$postId/preview'
+      | '../posts/$postId/preview/'
       | '../invoices/$invoiceId'
       | '../invoices/$invoiceId/'
       | '../invoices/$invoiceId/edit'
@@ -888,6 +974,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
@@ -907,6 +995,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
@@ -928,6 +1018,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/'
       | '/posts/'
       | '/posts/$postId/'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview/'
       | '/invoices/'
       | '/invoices/$invoiceId/'
       | '/invoices/$invoiceId/edit/'
@@ -947,6 +1039,8 @@ test('cannot navigate to a branch with an index', () => {
       | '/'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '/invoices'
       | '/invoices/$invoiceId'
       | '/invoices/$invoiceId/edit'
@@ -970,6 +1064,10 @@ test('cannot navigate to a branch with an index', () => {
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview'
+      | '/posts/$postId/preview/'
       | '/invoices'
       | '/invoices/'
       | '/invoices/$invoiceId'
@@ -1003,6 +1101,8 @@ test('from autocompletes to all absolute routes', () => {
     .toEqualTypeOf<
       | '/'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '/posts/'
       | '/posts'
       | '/invoices'
@@ -1023,6 +1123,8 @@ test('from autocompletes to all absolute routes', () => {
     .toEqualTypeOf<
       | '/'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '/posts/'
       | '/posts'
       | '/invoices'
@@ -1048,6 +1150,8 @@ test('from does not allow invalid routes', () => {
     .toEqualTypeOf<
       | '/'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '/posts/'
       | '/posts'
       | '/invoices'
@@ -1068,6 +1172,8 @@ test('from does not allow invalid routes', () => {
     .toEqualTypeOf<
       | '/'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
       | '/posts/'
       | '/posts'
       | '/invoices'
@@ -2054,6 +2160,20 @@ test('when navigating from a route with params to a route with an additional par
     invoiceId?: string
     detailId: string
   }>()
+})
+
+test('when resolving parent-relative to values from a union of routes', () => {
+  const DefaultRouterLink = Link<
+    DefaultRouter,
+    '/invoices/$invoiceId/details' | '/posts/$postId/preview',
+    '../'
+  >
+
+  expectTypeOf(DefaultRouterLink)
+    .parameter(0)
+    .toHaveProperty('to')
+    .toEqualTypeOf<'..' | '../..' | '../edit' | undefined>()
+
 })
 
 test('when navigating to a union of routes with params', () => {
@@ -3738,6 +3858,8 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(DefaultRouterObjectsLink)
@@ -3757,6 +3879,8 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(RouterAlwaysTrailingSlashLink)
@@ -3776,6 +3900,8 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
       | '/posts/$postId/'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview/'
     >()
 
   expectTypeOf(RouterNeverTrailingSlashLink)
@@ -3795,6 +3921,8 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(RouterPreserveTrailingSlashLink)
@@ -3826,6 +3954,10 @@ test('when passing a component with props to createLink and navigating to the ro
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview'
+      | '/posts/$postId/preview/'
     >()
 
   expectTypeOf(DefaultRouterLink)
@@ -4204,6 +4336,8 @@ test('navigation edge cases', () => {
       | '../..'
       | '../../posts'
       | '../../posts/$postId'
+      | '../../posts/$postId/edit'
+      | '../../posts/$postId/preview'
       | '../../invoices'
       | '../../invoices/$invoiceId'
       | '../../invoices/$invoiceId/edit'
@@ -4222,6 +4356,8 @@ test('navigation edge cases', () => {
       | '../../'
       | '../../posts/'
       | '../../posts/$postId/'
+      | '../../posts/$postId/edit/'
+      | '../../posts/$postId/preview/'
       | '../../invoices/'
       | '../../invoices/$invoiceId/'
       | '../../invoices/$invoiceId/edit/'
@@ -4240,6 +4376,8 @@ test('navigation edge cases', () => {
       | '../..'
       | '../../posts'
       | '../../posts/$postId'
+      | '../../posts/$postId/edit'
+      | '../../posts/$postId/preview'
       | '../../invoices'
       | '../../invoices/$invoiceId'
       | '../../invoices/$invoiceId/edit'
@@ -4261,6 +4399,10 @@ test('navigation edge cases', () => {
       | '../../'
       | '../../posts'
       | '../../posts/$postId'
+      | '../../posts/$postId/edit'
+      | '../../posts/$postId/edit/'
+      | '../../posts/$postId/preview'
+      | '../../posts/$postId/preview/'
       | '../../invoices'
       | '../../invoices/$invoiceId'
       | '../../invoices/$invoiceId/edit'
@@ -4324,6 +4466,8 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(defaultRouterObjectsLinkOptions)
@@ -4343,6 +4487,8 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(routerAlwaysTrailingSlashLinkOptions)
@@ -4362,6 +4508,8 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/edit/'
       | '/posts/'
       | '/posts/$postId/'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview/'
     >()
 
   expectTypeOf(routerNeverTrailingSlashLinkOptions)
@@ -4381,6 +4529,8 @@ test('linkOptions', () => {
       | '/invoices/$invoiceId/edit'
       | '/posts'
       | '/posts/$postId'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/preview'
     >()
 
   expectTypeOf(routerPreserveTrailingSlashLinkOptions)
@@ -4412,6 +4562,10 @@ test('linkOptions', () => {
       | '/posts/'
       | '/posts/$postId'
       | '/posts/$postId/'
+      | '/posts/$postId/edit'
+      | '/posts/$postId/edit/'
+      | '/posts/$postId/preview'
+      | '/posts/$postId/preview/'
     >()
 
   expectTypeOf(defaultRouterLinkOptions)
