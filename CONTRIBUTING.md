@@ -33,7 +33,17 @@ TanStack Router is a community project. Contributions to both TanStack Router an
 
 ## Before you start
 
-PRs that require API changes must first be proposed as an issue and receive maintainer sign-off before implementation begins.
+- Search the [open and closed issues](https://github.com/TanStack/router/issues?q=is%3Aissue) before reporting a bug. If it has not already been reported, use the [bug report template](https://github.com/TanStack/router/issues/new?template=bug_report.yml).
+- Search the [open and closed pull requests](https://github.com/TanStack/router/pulls?q=is%3Apr) before starting work to avoid duplicating an existing contribution.
+- Pull requests that require API changes must first be proposed as an issue and receive maintainer sign-off before implementation begins.
+
+## Pull request guidelines
+
+Every pull request must follow the [TanStack Router pull request template](.github/pull_request_template.md). Complete its description and checklist without removing or bypassing the required sections.
+
+- Keep each pull request focused on one change or topic. Pull requests that combine unrelated changes will be closed with a request to split them into separately reviewable contributions.
+- Write a concise description that clearly explains what changed and why. Follow the sections in the pull request template; a long, unstructured description makes a contribution harder to review.
+- Every change that affects a published package must include a changeset. Create it with `pnpm changeset`; documentation, CI, examples, and development-only changes do not require one.
 
 ## Development
 
@@ -137,5 +147,6 @@ AI tools can be useful for exploring the codebase, drafting changes, and writing
 1. **Keep the contribution in your own voice**. Review and rewrite generated code comments, issue reports, and pull request descriptions so they reflect what you actually mean.
 2. **Keep ownership of technical decisions**. Understand every change, verify its behavior with the appropriate tests and documentation, and be ready to explain it during review.
 3. **Do not paste LLM output verbatim into the codebase or a contribution**. Treat generated text and code as a draft: check its claims, adapt it to the repository, and remove anything you cannot justify. Issues or pull requests that appear to contain unreviewed LLM output may be closed without further review.
+4. **Do not mass-submit unrelated or low-quality AI-generated pull requests**. We treat that behavior as spam and may close the pull requests, block the contributor, and report the GitHub account.
 
 AI-assisted contributions follow the same standards for correctness, testing, documentation, and review as every other contribution.

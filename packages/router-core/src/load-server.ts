@@ -5,7 +5,11 @@ import { isRedirect, redirect } from './redirect'
 import { rootRouteId } from './root'
 import { loadRouteChunk } from './load-client'
 import { waitForReason } from './await-signal'
-import { getLocationChangeInfo, runRouteLifecycle } from './router'
+import {
+  getLocationChangeInfo,
+  lifecycleEnd,
+  runRouteLifecycle,
+} from './router'
 import type { ParsedLocation } from './location'
 import type { AnyRouteMatch } from './Matches'
 import type { NotFoundError } from './not-found'
@@ -151,11 +155,11 @@ function waitFor<T>(value: Promise<T>, signal?: AbortSignal): Promise<T> {
   return signal ? waitForReason(value, signal) : value
 }
 
-async function resolveSsr(
+function resolveSsr(
   router: AnyRouter,
   lane: MatchedLane,
   index: number,
-): Promise<SSROption> {
+): SSROption | Promise<SSROption> {
   const match = lane.matches[index]!
   const route = getRoute(router, match)
   const parentSsr = lane.matches[index - 1]?.ssr
@@ -199,7 +203,14 @@ async function resolveSsr(
       ssr: candidate.ssr,
     })),
   }
-  return inherit((await option(context)) ?? defaultSsr)
+  try {
+    return Promise.resolve(option(context)).then((value) =>
+      inherit(value ?? defaultSsr),
+    )
+  } catch (cause) {
+    // Functional failures keep their asynchronous cancellation checkpoint.
+    return Promise.reject(cause)
+  }
 }
 
 function stampNotFound(
@@ -228,7 +239,9 @@ async function contextualize(
     const match = lane.matches[index]!
     const route = getRoute(router, match)
     try {
-      match.ssr = await resolveSsr(router, lane, index)
+      const ssr = resolveSsr(router, lane, index)
+      // Functional policies are assimilated into a native Promise above.
+      match.ssr = ssr instanceof Promise ? await ssr : ssr
     } catch (cause) {
       signal?.throwIfAborted()
       failure = [
@@ -859,6 +872,7 @@ export async function loadServerRoute(
   router.updateLatestLocation()
   const next = router.latestLocation
   const previous = router._committed
+  const previousEnd = router._lifecycleEnd
   let result: ServerLoadResult
   try {
     const canonical = router.buildLocation({
@@ -894,17 +908,19 @@ export async function loadServerRoute(
   }
 
   router._serverResult = result
+  let nextEnd = 0
   router.batch(() => {
     router.stores.location.set(next)
     router.stores.status.set('idle')
     if (result.type === 'render') {
+      router._committed = result.matches
+      nextEnd = router._lifecycleEnd = lifecycleEnd(result.matches)
       router.stores.setMatches(result.matches)
       router.stores.resolvedLocation.set(next)
     }
   })
   if (result.type === 'render') {
-    router._committed = result.matches
-    runRouteLifecycle(router, previous, result.matches)
+    runRouteLifecycle(router, previous, result.matches, previousEnd, nextEnd)
   }
   router._commitPromise?.resolve()
   router._commitPromise = undefined

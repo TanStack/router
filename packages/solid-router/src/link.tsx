@@ -4,8 +4,8 @@ import { mergeRefs } from '@solid-primitives/refs'
 
 import {
   deepEqual,
-  exactPathTest,
   functionalUpdate,
+  getUrlScheme,
   hasKeys,
   isDangerousProtocol,
   preloadWarning,
@@ -126,6 +126,7 @@ export function useLinkProps<
     'reloadDocument',
     'unsafeRelative',
     'from',
+    'href',
   ])
 
   const currentLocation = Solid.createMemo(
@@ -152,48 +153,48 @@ export function useLinkProps<
     const publicHref = location.publicHref
     const external = location.external
 
-    if (external) {
-      return { href: publicHref, external: true }
+    const href = external
+      ? publicHref
+      : router.history.createHref(publicHref) || '/'
+    if (
+      (external || href !== publicHref) &&
+      isDangerousProtocol(href, router.protocolAllowlist)
+    ) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`Blocked Link with dangerous protocol: ${href}`)
+      }
+      return undefined
     }
 
-    return {
-      href: router.history.createHref(publicHref) || '/',
-      external: false,
-    }
+    return href
   })
 
   const externalLink = Solid.createMemo(() => {
-    const _href = hrefOption()
-    if (_href?.external) {
-      // Block dangerous protocols for external links
-      if (isDangerousProtocol(_href.href, router.protocolAllowlist)) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`Blocked Link with dangerous protocol: ${_href.href}`)
-        }
-        return undefined
-      }
-      return _href.href
-    }
     const to = options.to
-    const safeInternal = isSafeInternal(to)
-    if (safeInternal) return undefined
-    if (typeof to !== 'string' || to.indexOf(':') === -1) return undefined
-    try {
-      new URL(to as any)
-      // Block dangerous protocols like javascript:, blob:, data:
-      if (isDangerousProtocol(to, router.protocolAllowlist)) {
+    const scheme = typeof to === 'string' && getUrlScheme(to)
+    if (scheme) {
+      if (!router.protocolAllowlist.has(scheme)) {
         if (process.env.NODE_ENV !== 'production') {
           console.warn(`Blocked Link with dangerous protocol: ${to}`)
         }
-        return undefined
+        return null
       }
       return to
-    } catch {}
-    return undefined
+    }
+
+    const _href = hrefOption()
+    if (!_href && !options.disabled) {
+      return null
+    }
+    return _href && getUrlScheme(_href) ? _href : undefined
   })
 
   const preload = Solid.createMemo(() => {
-    if (options.reloadDocument || externalLink() || local.disabled) {
+    if (
+      options.reloadDocument ||
+      externalLink() !== undefined ||
+      local.disabled
+    ) {
       return false
     }
     return local.preload ?? router.options.defaultPreload
@@ -202,34 +203,27 @@ export function useLinkProps<
     local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const isActive = Solid.createMemo(() => {
-    if (externalLink()) return false
+    if (externalLink() !== undefined) {
+      return false
+    }
     const activeOptions = local.activeOptions
     const current = currentLocation()
     const nextLocation = next()
 
-    if (activeOptions?.exact) {
-      const testExact = exactPathTest(
-        current.pathname,
-        nextLocation.pathname,
-        router.basepath,
-      )
-      if (!testExact) {
-        return false
-      }
-    } else {
-      const currentPath = removeTrailingSlash(current.pathname, router.basepath)
-      const nextPath = removeTrailingSlash(
-        nextLocation.pathname,
-        router.basepath,
-      )
+    const currentPath = removeTrailingSlash(current.pathname, router.basepath)
+    const nextPath = removeTrailingSlash(nextLocation.pathname, router.basepath)
 
-      const pathIsFuzzyEqual =
-        currentPath.startsWith(nextPath) &&
-        (currentPath.length === nextPath.length ||
-          currentPath[nextPath.length] === '/')
-      if (!pathIsFuzzyEqual) {
-        return false
-      }
+    // Both modes compare normalized paths; fuzzy matches need a segment boundary.
+    if (
+      activeOptions?.exact
+        ? currentPath !== nextPath
+        : !(
+            currentPath.startsWith(nextPath) &&
+            (currentPath.length === nextPath.length ||
+              currentPath[nextPath.length] === '/')
+          )
+    ) {
+      return false
     }
 
     if (activeOptions?.includeSearch ?? true) {
@@ -308,28 +302,39 @@ export function useLinkProps<
     }
   })
 
-  if (externalLink()) {
-    return Solid.mergeProps(
-      propsSafeToSpread,
-      {
-        ref: mergeRefs(setRef, options.ref),
-        href: externalLink(),
-      },
-      Solid.splitProps(local, [
-        'target',
-        'disabled',
-        'style',
-        'class',
-        'onClick',
-        'onBlur',
-        'onFocus',
-        'onMouseEnter',
-        'onMouseLeave',
-        'onMouseOut',
-        'onMouseOver',
-        'onTouchStart',
-      ])[0],
-    ) as any
+  // SSR has no reactive destination changes or internal event handlers.
+  // Keep this guard inline so browser builds drop the entire shortcut.
+  if (isServer ?? router.isServer) {
+    const external = externalLink()
+    if (
+      external !== undefined &&
+      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
+      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
+      local.class === undefined &&
+      local.style === undefined
+    ) {
+      const disabled = local.disabled || external === null
+      return Solid.mergeProps(
+        propsSafeToSpread,
+        Solid.splitProps(local, [
+          'target',
+          'onClick',
+          'onBlur',
+          'onFocus',
+          'onMouseEnter',
+          'onMouseLeave',
+          'onMouseOut',
+          'onMouseOver',
+          'onTouchStart',
+        ])[0],
+        {
+          ref: mergeRefs(setRef, options.ref),
+          href: external ?? undefined,
+          disabled,
+          ...(disabled && STATIC_DISABLED_PROPS),
+        },
+      ) as any
+    }
   }
 
   // The click handler
@@ -343,6 +348,7 @@ export function useLinkProps<
 
     if (
       !local.disabled &&
+      externalLink() === undefined &&
       !(e.metaKey || e.altKey || e.ctrlKey || e.shiftKey) &&
       !e.defaultPrevented &&
       (!effectiveTarget || effectiveTarget === '_self') &&
@@ -410,9 +416,11 @@ export function useLinkProps<
 
   const resolvedProps = Solid.createMemo(() => {
     const active = isActive()
+    const external = externalLink()
+    const disabled = local.disabled || external === null
 
     const base = {
-      href: hrefOption()?.href,
+      href: external === null ? undefined : external || hrefOption(),
       ref: mergeRefs(setRef, options.ref),
       onClick,
       onBlur,
@@ -422,9 +430,9 @@ export function useLinkProps<
       onMouseLeave,
       onMouseOut,
       onTouchStart,
-      disabled: !!local.disabled,
+      disabled,
       target: local.target,
-      ...(local.disabled && STATIC_DISABLED_PROPS),
+      ...(disabled && STATIC_DISABLED_PROPS),
     }
 
     if (simpleStyling()) {
@@ -434,24 +442,18 @@ export function useLinkProps<
       }
     }
 
-    const activeProps: ResolvedLinkStateProps = active
+    // Active and inactive props are mutually exclusive.
+    const stateProps: ResolvedLinkStateProps = active
       ? (functionalUpdate(local.activeProps as any, {}) ?? EMPTY_OBJECT)
-      : EMPTY_OBJECT
-    const inactiveProps: ResolvedLinkStateProps = active
-      ? EMPTY_OBJECT
       : functionalUpdate(local.inactiveProps, {})
     const style = {
       ...local.style,
-      ...activeProps.style,
-      ...inactiveProps.style,
+      ...stateProps.style,
     }
-    const className = [local.class, activeProps.class, inactiveProps.class]
-      .filter(Boolean)
-      .join(' ')
+    const className = [local.class, stateProps.class].filter(Boolean).join(' ')
 
     return {
-      ...activeProps,
-      ...inactiveProps,
+      ...stateProps,
       ...base,
       ...(hasKeys(style) ? { style } : undefined),
       ...(className ? { class: className } : undefined),
@@ -662,13 +664,6 @@ export const Link: LinkComponent<'a'> = (props) => {
       {children()}
     </Dynamic>
   )
-}
-
-function isSafeInternal(to: unknown) {
-  if (typeof to !== 'string') return false
-  const zero = to.charCodeAt(0)
-  if (zero === 47) return to.charCodeAt(1) !== 47 // '/' but not '//'
-  return zero === 46 // '.', '..', './', '../'
 }
 
 export type LinkOptionsFnOptions<

@@ -118,7 +118,7 @@ export const Route = createFileRoute('/')({
 
     return (
       <div>
-        {error.message}
+        {error instanceof Error ? error.message : String(error)}
         <button
           onClick={() => {
             // Invalidate the route to reload the loader, and reset any router error boundaries

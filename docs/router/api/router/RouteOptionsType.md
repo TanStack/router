@@ -280,22 +280,26 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `(match: RouteMatch) => void`
 - Optional
 - A function that will be called when a route is matched and loaded after not being matched in the previous location.
+- Routes below an error or not-found boundary do not enter the active route lifecycle. The boundary itself remains active. A previously hidden route receives `onEnter` when a navigation makes it active again.
 
 ### `onStay` property
 
 - Type: `(match: RouteMatch) => void`
 - Optional
 - A function that will be called when a route is matched and loaded after being matched in the previous location.
+- Both navigations must include the route in the active branch, through the first error or not-found boundary.
 
 ### `onLeave` property
 
 - Type: `(match: RouteMatch) => void`
 - Optional
 - A function that will be called when a route is no longer matched after being matched in the previous location.
+- This also runs when a navigation hides a previously active route below an error or not-found boundary, even if the route remains structurally matched.
+- Background reloads update route data without dispatching these lifecycle callbacks.
 
 ### `onCatch` property
 
-- Type: `(error: Error, errorInfo: ErrorInfo) => void`
+- Type: `(error: unknown) => void` in React and Vue; `(error: Error) => void` in Solid
 - Optional - Defaults to `routerOptions.defaultOnCatch`
 - A function that will be called when errors are caught when the route encounters an error.
 
