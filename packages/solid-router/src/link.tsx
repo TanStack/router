@@ -47,11 +47,6 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
-  const shouldHydrateHash = !isServer && !!router.options.ssr
-  const hasHydrated = useHydrated()
-
-  let hasRenderFetched = false
-
   const [local, rest] = Solid.splitProps(
     Solid.mergeProps(
       {
@@ -189,6 +184,46 @@ export function useLinkProps<
     return _href && getUrlScheme(_href) ? _href : undefined
   })
 
+  // SSR has no reactive destination changes or internal event handlers.
+  // Keep this guard inline so browser builds drop the entire shortcut.
+  if (isServer ?? router.isServer) {
+    const external = externalLink()
+    if (
+      external !== undefined &&
+      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
+      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
+      local.class === undefined &&
+      local.style === undefined
+    ) {
+      const disabled = local.disabled || external === null
+      return Solid.mergeProps(
+        propsSafeToSpread,
+        Solid.splitProps(local, [
+          'target',
+          'onClick',
+          'onBlur',
+          'onFocus',
+          'onMouseEnter',
+          'onMouseLeave',
+          'onMouseOut',
+          'onMouseOver',
+          'onTouchStart',
+        ])[0],
+        {
+          ref: options.ref,
+          href: external ?? undefined,
+          disabled,
+          ...(disabled && STATIC_DISABLED_PROPS),
+        },
+      ) as any
+    }
+  }
+
+  const shouldHydrateHash = !isServer && !!router.options.ssr
+  const hasHydrated = useHydrated()
+
+  let hasRenderFetched = false
+
   const preload = Solid.createMemo(() => {
     if (
       options.reloadDocument ||
@@ -301,41 +336,6 @@ export function useLinkProps<
       hasRenderFetched = true
     }
   })
-
-  // SSR has no reactive destination changes or internal event handlers.
-  // Keep this guard inline so browser builds drop the entire shortcut.
-  if (isServer ?? router.isServer) {
-    const external = externalLink()
-    if (
-      external !== undefined &&
-      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
-      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
-      local.class === undefined &&
-      local.style === undefined
-    ) {
-      const disabled = local.disabled || external === null
-      return Solid.mergeProps(
-        propsSafeToSpread,
-        Solid.splitProps(local, [
-          'target',
-          'onClick',
-          'onBlur',
-          'onFocus',
-          'onMouseEnter',
-          'onMouseLeave',
-          'onMouseOut',
-          'onMouseOver',
-          'onTouchStart',
-        ])[0],
-        {
-          ref: mergeRefs(setRef, options.ref),
-          href: external ?? undefined,
-          disabled,
-          ...(disabled && STATIC_DISABLED_PROPS),
-        },
-      ) as any
-    }
-  }
 
   // The click handler
   const handleClick = (e: MouseEvent) => {
