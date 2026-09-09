@@ -17,6 +17,7 @@
     "@tanstack/react-start": "workspace:^",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "temporal-polyfill": "^1.0.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {

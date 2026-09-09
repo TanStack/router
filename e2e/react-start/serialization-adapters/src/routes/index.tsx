@@ -32,6 +32,14 @@ function Home() {
         >
           Nested Classes
         </Link>
+        <br />
+        <Link
+          data-testid="ssr-temporal-link"
+          to="/ssr/temporal"
+          reloadDocument={true}
+        >
+          Temporal
+        </Link>
       </div>
       <div>
         <h2>Server Functions</h2>
@@ -49,6 +57,14 @@ function Home() {
           reloadDocument={true}
         >
           Nested Classes returned from Server Function
+        </Link>
+        <br />
+        <Link
+          data-testid="server-functions-temporal-link"
+          to="/server-function/temporal"
+          reloadDocument={true}
+        >
+          Temporal returned from Server Function
         </Link>
       </div>
     </>

@@ -15,6 +15,20 @@ export type TSR_SERIALIZABLE = typeof TSR_SERIALIZABLE
 
 export type TsrSerializable = { [TSR_SERIALIZABLE]: true }
 
+// Resolve `Temporal` from `globalThis` so it degrades to `never`, not `any`,
+// for consumers whose `lib` predates or omits `ESNext.Temporal`.
+type TemporalNamespace = typeof globalThis extends { Temporal: infer TTemporal }
+  ? TTemporal
+  : Record<never, never>
+
+type TemporalInstance<TKey extends PropertyKey> =
+  TemporalNamespace extends Record<
+    TKey,
+    abstract new (...args: any) => infer TInstance
+  >
+    ? TInstance
+    : never
+
 export interface DefaultSerializable {
   number: number
   string: string
@@ -26,6 +40,14 @@ export interface DefaultSerializable {
   Uint8Array: Uint8Array
   RawStream: RawStream
   TsrSerializable: TsrSerializable
+  TemporalInstant: TemporalInstance<'Instant'>
+  TemporalDuration: TemporalInstance<'Duration'>
+  TemporalPlainDate: TemporalInstance<'PlainDate'>
+  TemporalPlainDateTime: TemporalInstance<'PlainDateTime'>
+  TemporalPlainMonthDay: TemporalInstance<'PlainMonthDay'>
+  TemporalPlainTime: TemporalInstance<'PlainTime'>
+  TemporalPlainYearMonth: TemporalInstance<'PlainYearMonth'>
+  TemporalZonedDateTime: TemporalInstance<'ZonedDateTime'>
   void: void
 }
 
