@@ -2711,7 +2711,7 @@ async function documentNavigation(
 
   // All blockers have allowed this navigation (or were explicitly skipped).
   // Avoid asking for approval again in the native beforeunload handler.
-  router.history._ignoreNextBeforeUnload?.()
+  router.history._ignoreNextBeforeUnload?.(href)
   if (replace) {
     window.location.replace(href)
   } else {

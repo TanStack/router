@@ -38,7 +38,7 @@ export interface RouterHistory {
   notify: (action: SubscriberHistoryAction) => void
   _getBlockers: () => Array<NavigationBlocker>
   _ignoreSubscribers?: boolean
-  _ignoreNextBeforeUnload?: () => void
+  _ignoreNextBeforeUnload?: (href: string) => void
 }
 
 export interface HistoryLocation extends ParsedPath {
@@ -571,8 +571,19 @@ export function createBrowserHistory(opts?: {
     notifyOnIndexChange: false,
   })
 
-  history._ignoreNextBeforeUnload = () => {
-    ignoreNextBeforeUnload = true
+  history._ignoreNextBeforeUnload = (href) => {
+    ignoreNextBeforeUnload = false
+    try {
+      const url = new URL(href, win.document.baseURI)
+      // External handlers and same-document fragments may emit neither
+      // beforeunload nor popstate, leaving an exemption for a later departure.
+      ignoreNextBeforeUnload =
+        /^https?:/.test(url.href) &&
+        (!url.href.includes('#') ||
+          url.href.split('#')[0] !== win.location.href.split('#')[0])
+    } catch {
+      // Invalid URLs cannot unload the document.
+    }
   }
 
   win.addEventListener(beforeUnloadEvent, onBeforeUnload, { capture: true })
