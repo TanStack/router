@@ -1171,6 +1171,7 @@ export class RouterCore<
   >()
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
+  declare private pathParamsDecoderKey?: string
   protocolAllowlist!: Set<string>
 
   /**
@@ -1245,10 +1246,15 @@ export class RouterCore<
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
 
-    if (this.options.pathParamsAllowedCharacters)
-      this.pathParamsDecoder = compileDecodeCharMap(
-        this.options.pathParamsAllowedCharacters,
-      )
+    const allowedCharacters = this.options.pathParamsAllowedCharacters
+    // Keep provider updates from replacing the decoder and invalidating warm paths.
+    const allowedCharactersKey = allowedCharacters?.join('')
+    if (allowedCharactersKey !== this.pathParamsDecoderKey) {
+      this.pathParamsDecoder = allowedCharacters
+        ? compileDecodeCharMap(allowedCharacters)
+        : undefined
+      this.pathParamsDecoderKey = allowedCharactersKey
+    }
 
     if (
       !this.history ||
