@@ -57,44 +57,6 @@ test.each([false, true])(
   },
 )
 
-test('shares interpolation on reused routes and follows decoder changes', () => {
-  const rootRoute = new BaseRootRoute({})
-  const route = new BaseRoute({
-    getParentRoute: () => rootRoute,
-    path: '/items/$id',
-  })
-  const routeTree = rootRoute.addChildren([route])
-  const makeRouter = () =>
-    createTestRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-  const router = makeRouter()
-  const decoder = vi.fn(pathUtils.compileDecodeCharMap(['@']))
-  router.pathParamsDecoder = decoder
-
-  expect(
-    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
-  ).toBe('/items/@one')
-  decoder.mockClear()
-  expect(
-    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
-  ).toBe('/items/@one')
-  expect(decoder).not.toHaveBeenCalled()
-
-  const other = makeRouter()
-  other.pathParamsDecoder = decoder
-  expect(
-    other.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
-  ).toBe('/items/@one')
-  expect(decoder).not.toHaveBeenCalled()
-
-  router.pathParamsDecoder = pathUtils.compileDecodeCharMap(['+'])
-  expect(
-    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
-  ).toBe('/items/%40one')
-})
-
 describe('buildLocation - params function receives parsed params', () => {
   test('prev params should contain parsed params from route params.parse', async () => {
     const rootRoute = new BaseRootRoute({})

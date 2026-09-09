@@ -25,13 +25,14 @@ import {
   findFlatMatch,
   findRouteMatch,
   findSingleMatch,
+  getParamNames,
+  parseSegments,
   processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
 import {
   compileDecodeCharMap,
   interpolatePath,
-  parseInterpolationPath,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -468,11 +469,12 @@ export interface RouterOptions<
 
   /**
    * Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+   * This is read only during initialization. Create a new router to change it.
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#pathparamsallowedcharacters-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/path-params#allowed-characters)
    */
-  pathParamsAllowedCharacters?: Array<
+  readonly pathParamsAllowedCharacters?: ReadonlyArray<
     ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
   >
 
@@ -753,12 +755,15 @@ export type UpdateFn<
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
 > = (
-  newOptions: RouterConstructorOptions<
-    TRouteTree,
-    TTrailingSlashOption,
-    TDefaultStructuralSharingOption,
-    TRouterHistory,
-    TDehydrated
+  newOptions: Omit<
+    RouterConstructorOptions<
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
+    'pathParamsAllowedCharacters'
   >,
 ) => void
 
@@ -1165,13 +1170,12 @@ export class RouterCore<
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: SieveCache<string, string>
   private unmatchedPathCache!: SieveCache<string, InterpolationPlan>
-  private lightweightCache = new WeakMap<
+  private lightweightCache!: WeakMap<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
-  >()
+  >
   isServer!: boolean
-  pathParamsDecoder?: (encoded: string) => string
-  declare private pathParamsDecoderKey?: string
+  readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
 
   /**
@@ -1188,6 +1192,11 @@ export class RouterCore<
     getStoreConfig: GetStoreConfig,
   ) {
     this.getStoreConfig = getStoreConfig
+    if (options.pathParamsAllowedCharacters?.length) {
+      this.pathParamsDecoder = compileDecodeCharMap(
+        options.pathParamsAllowedCharacters,
+      )
+    }
 
     this.update({
       defaultPreloadDelay: 50,
@@ -1245,16 +1254,6 @@ export class RouterCore<
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
-
-    const allowedCharacters = this.options.pathParamsAllowedCharacters
-    // Keep provider updates from replacing the decoder and invalidating warm paths.
-    const allowedCharactersKey = allowedCharacters?.join('')
-    if (allowedCharactersKey !== this.pathParamsDecoderKey) {
-      this.pathParamsDecoder = allowedCharacters
-        ? compileDecodeCharMap(allowedCharacters)
-        : undefined
-      this.pathParamsDecoderKey = allowedCharactersKey
-    }
 
     if (
       !this.history ||
@@ -1391,13 +1390,13 @@ export class RouterCore<
     return {
       ...result,
       resolvePathCache: createSieveCache(1000),
-      // Arbitrary templates (for example, masks) have no route object to key by.
       unmatchedPathCache: createSieveCache<string, InterpolationPlan>(32),
     }
   }
 
   setRoutes(caches: RouteTreeCaches<TRouteTree>) {
     Object.assign(this, caches)
+    this.lightweightCache = new WeakMap()
 
     const notFoundRoute = this.options.notFoundRoute
 
@@ -1405,6 +1404,10 @@ export class RouterCore<
       notFoundRoute.init({
         originalIndex: 99999999999,
       })
+      if (this.routesById[notFoundRoute.id] !== notFoundRoute) {
+        // Standalone legacy fallbacks are not processed by the matching tree.
+        notFoundRoute._interpolation = parseSegments(false, notFoundRoute, 0)
+      }
       this.routesById[notFoundRoute.id] = notFoundRoute
     }
   }
@@ -1888,22 +1891,12 @@ export class RouterCore<
     params: Record<string, unknown>,
     route?: AnyRoute,
   ): string {
-    const decoder = this.pathParamsDecoder
     let plan = route ? route._pathCache : this.unmatchedPathCache.get(path)
-    if (!plan || plan[2] !== decoder || plan[3] !== path) {
+    if (!plan || plan[1 /* path */] !== path) {
       const segments =
-        route?._interpolation ??
-        (plan?.[3] === path ? plan[4] : parseInterpolationPath(path))
-      const keys: Array<string> = []
-      for (const segment of segments) {
-        if (typeof segment !== 'string') {
-          keys.push(segment[1])
-        }
-      }
+        route?._interpolation ?? parseSegments(false, { fullPath: path }, 0)
       plan = [
-        keys,
         createSieveCache<string | undefined, string>(128),
-        decoder,
         path,
         segments,
       ]
@@ -1913,7 +1906,8 @@ export class RouterCore<
         this.unmatchedPathCache.set(path, plan)
       }
     }
-    const [keys, paths] = plan
+  const paths = plan[0 /* paths */]
+  const keys = getParamNames(plan[2 /* segments */])
     // Single-param templates use the value itself as the Map key. Compound keys
     // concatenate `<length>:<value>` tokens; undefined becomes
     // `undefined:undefined`, whose nonnumeric prefix cannot match a string token.
@@ -1922,7 +1916,14 @@ export class RouterCore<
       const value = params[name]
       if (typeof value !== 'string' && value !== undefined) {
         return normalizeProtocolRelative(
-          decodePath(interpolatePath(path, plan[4], params, decoder)),
+          decodePath(
+            interpolatePath(
+              path,
+              plan[2 /* segments */],
+              params,
+              this.pathParamsDecoder,
+            ),
+          ),
         )
       }
       key = keys.length === 1 ? value : key! + value?.length + ':' + value
@@ -1933,7 +1934,14 @@ export class RouterCore<
     }
     // Cache canonical pathnames, not the encoded interpolation output.
     const interpolated = normalizeProtocolRelative(
-      decodePath(interpolatePath(path, plan[4], params, decoder)),
+      decodePath(
+        interpolatePath(
+          path,
+          plan[2 /* segments */],
+          params,
+          this.pathParamsDecoder,
+        ),
+      ),
     )
     paths.set(key, interpolated)
     return interpolated

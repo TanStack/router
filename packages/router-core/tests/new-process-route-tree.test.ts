@@ -1622,13 +1622,15 @@ describe('findRouteMatch', () => {
       const { processedTree } = processRouteTree(tree)
       expect(processedTree.segmentTree).toMatchInlineSnapshot(`
         {
+          "caseSensitive": undefined,
+          "data": undefined,
           "depth": 0,
           "dynamic": [
             {
               "caseSensitive": false,
+              "data": undefined,
               "depth": 1,
               "dynamic": null,
-              "fullPath": "/$foo",
               "index": null,
               "kind": 1,
               "optional": null,
@@ -1636,19 +1638,36 @@ describe('findRouteMatch', () => {
               "parse": null,
               "pathless": [
                 {
+                  "caseSensitive": undefined,
+                  "data": [
+                    [
+                      1,
+                      "foo",
+                      "/",
+                      "",
+                    ],
+                  ],
                   "depth": 2,
                   "dynamic": null,
-                  "fullPath": "/$foo",
                   "index": {
+                    "caseSensitive": undefined,
+                    "data": [
+                      [
+                        1,
+                        "foo",
+                        "/",
+                        "",
+                      ],
+                    ],
                     "depth": 3,
                     "dynamic": null,
-                    "fullPath": "/$foo/",
                     "index": null,
                     "kind": 4,
                     "optional": null,
                     "parent": [Circular],
                     "parse": null,
                     "pathless": null,
+                    "prefix": undefined,
                     "priority": 0,
                     "route": {
                       "_interpolation": [
@@ -1666,6 +1685,7 @@ describe('findRouteMatch', () => {
                     },
                     "static": null,
                     "staticInsensitive": null,
+                    "suffix": undefined,
                     "wildcard": null,
                   },
                   "kind": 5,
@@ -1673,6 +1693,7 @@ describe('findRouteMatch', () => {
                   "parent": [Circular],
                   "parse": [Function],
                   "pathless": null,
+                  "prefix": undefined,
                   "priority": 0,
                   "route": {
                     "_interpolation": [
@@ -1726,15 +1747,25 @@ describe('findRouteMatch', () => {
                   "static": null,
                   "staticInsensitive": Map {
                     "bar" => {
+                      "caseSensitive": undefined,
+                      "data": [
+                        [
+                          1,
+                          "foo",
+                          "/",
+                          "",
+                        ],
+                        "/bar",
+                      ],
                       "depth": 3,
                       "dynamic": null,
-                      "fullPath": "/$foo/bar",
                       "index": null,
                       "kind": 0,
                       "optional": null,
                       "parent": [Circular],
                       "parse": null,
                       "pathless": null,
+                      "prefix": undefined,
                       "priority": 0,
                       "route": {
                         "_interpolation": [
@@ -1753,9 +1784,11 @@ describe('findRouteMatch', () => {
                       },
                       "static": null,
                       "staticInsensitive": null,
+                      "suffix": undefined,
                       "wildcard": null,
                     },
                   },
+                  "suffix": undefined,
                   "wildcard": null,
                 },
               ],
@@ -1765,15 +1798,25 @@ describe('findRouteMatch', () => {
               "static": null,
               "staticInsensitive": Map {
                 "hello" => {
+                  "caseSensitive": undefined,
+                  "data": [
+                    [
+                      1,
+                      "foo",
+                      "/",
+                      "",
+                    ],
+                    "/hello",
+                  ],
                   "depth": 2,
                   "dynamic": null,
-                  "fullPath": "/$foo/hello",
                   "index": null,
                   "kind": 0,
                   "optional": null,
                   "parent": [Circular],
                   "parse": null,
                   "pathless": null,
+                  "prefix": undefined,
                   "priority": 0,
                   "route": {
                     "_interpolation": [
@@ -1792,6 +1835,7 @@ describe('findRouteMatch', () => {
                   },
                   "static": null,
                   "staticInsensitive": null,
+                  "suffix": undefined,
                   "wildcard": null,
                 },
               },
@@ -1799,17 +1843,18 @@ describe('findRouteMatch', () => {
               "wildcard": null,
             },
           ],
-          "fullPath": "/",
           "index": {
+            "caseSensitive": undefined,
+            "data": undefined,
             "depth": 1,
             "dynamic": null,
-            "fullPath": "/",
             "index": null,
             "kind": 4,
             "optional": null,
             "parent": [Circular],
             "parse": null,
             "pathless": null,
+            "prefix": undefined,
             "priority": 0,
             "route": {
               "_interpolation": undefined,
@@ -1820,17 +1865,20 @@ describe('findRouteMatch', () => {
             },
             "static": null,
             "staticInsensitive": null,
+            "suffix": undefined,
             "wildcard": null,
           },
           "kind": 0,
           "optional": null,
-          "parent": null,
+          "parent": undefined,
           "parse": null,
           "pathless": null,
+          "prefix": undefined,
           "priority": 0,
           "route": null,
           "static": null,
           "staticInsensitive": null,
+          "suffix": undefined,
           "wildcard": null,
         }
       `)

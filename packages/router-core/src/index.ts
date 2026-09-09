@@ -133,8 +133,8 @@ export {
   exactPathTest,
   resolvePath,
   interpolatePath,
-  parseInterpolationPath,
   getRouteSegments,
+  hasMissingPathParams,
 } from './path'
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
