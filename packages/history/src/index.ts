@@ -574,13 +574,13 @@ export function createBrowserHistory(opts?: {
   history._ignoreNextBeforeUnload = (href) => {
     ignoreNextBeforeUnload = false
     try {
-      const url = new URL(href, win.document.baseURI)
+      href = new URL(href, win.document.baseURI).href
       // External handlers and same-document fragments may emit neither
       // beforeunload nor popstate, leaving an exemption for a later departure.
       ignoreNextBeforeUnload =
-        /^https?:/.test(url.href) &&
-        (!url.href.includes('#') ||
-          url.href.split('#')[0] !== win.location.href.split('#')[0])
+        /^https?:/.test(href) &&
+        (!href.includes('#') ||
+          href.split('#')[0] !== win.location.href.split('#')[0])
     } catch {
       // Invalid URLs cannot unload the document.
     }
