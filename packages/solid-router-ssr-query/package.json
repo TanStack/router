@@ -71,7 +71,7 @@
     "@tanstack/solid-router": "workspace:*",
     "eslint-plugin-solid": "^0.14.5",
     "solid-js": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "vite-plugin-solid": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

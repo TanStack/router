@@ -10,7 +10,7 @@
     "start": "NODE_ENV=production node dist/server/server.js"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-router": "^1.170.34",
     "@tanstack/react-router-devtools": "^1.167.1",
     "@tanstack/router-plugin": "^1.168.37",
@@ -27,8 +27,8 @@
     "@types/express": "^5.0.6",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.1.1",
     "tsx": "^4.20.3",
-    "vite": "^8.0.14"
+    "vite": "^8.2.2"
   }
 }

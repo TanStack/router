@@ -58,7 +58,7 @@
     "@typescript-eslint/rule-tester": "^8.23.0",
     "combinate": "catalog:",
     "eslint": "^9.22.0",
-    "vite": "*",
+    "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",

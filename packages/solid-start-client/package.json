@@ -77,7 +77,7 @@
   },
   "devDependencies": {
     "@testing-library/jest-dom": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "vite-plugin-solid": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

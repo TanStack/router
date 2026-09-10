@@ -10,7 +10,7 @@
     "test:unit": "vitest"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.3",
     "@tanstack/arktype-adapter": "^1.167.0",
     "@tanstack/react-query": "^5.102.0",
     "@tanstack/react-router": "^1.170.34",
@@ -30,11 +30,11 @@
     "@testing-library/react": "^16.2.0",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.1.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "jsdom": "^27.0.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vitest": "^4.1.4"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   }
 }

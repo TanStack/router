@@ -130,7 +130,7 @@
     "@rsbuild/core": "catalog:",
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
-    "vite": "*",
+    "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

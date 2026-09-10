@@ -11,7 +11,7 @@
     "test:types": "tsc --extendedDiagnostics"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-plugin": "^1.168.37",
     "@tanstack/solid-query": "^5.90.9",
     "@tanstack/solid-router": "^1.170.32",
@@ -24,7 +24,7 @@
   "devDependencies": {
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.11"
+    "vite": "^8.2.2",
+    "vite-plugin-solid": "^2.11.14"
   }
 }

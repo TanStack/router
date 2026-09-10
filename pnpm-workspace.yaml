@@ -39,12 +39,12 @@ catalog:
   '@arethetypeswrong/cli': ^0.18.4
   '@eslint-react/eslint-plugin': ^1.26.2
   '@rsbuild/core': ^2.1.0
-  '@tanstack/vite-config': 0.5.2
+  '@tanstack/vite-config': 0.6.0
   '@testing-library/jest-dom': ^6.6.3
   '@testing-library/react': ^16.2.0
-  '@vitejs/plugin-react': ^4.3.4
-  '@vitejs/plugin-vue-jsx': ^4.1.2
-  '@vitest/ui': ^4.1.4
+  '@vitejs/plugin-react': ^6.1.1
+  '@vitejs/plugin-vue-jsx': ^5.1.6
+  '@vitest/ui': ^4.1.11
   react: ^19.2.3
   react-dom: ^19.2.3
   '@types/react': ^19.2.8
@@ -61,9 +61,9 @@ catalog:
   rimraf: ^6.1.2
   solid-js: 1.9.12
   tinyglobby: ^0.2.17
-  vite: ^8.0.14
-  vite-plugin-solid: 2.11.10
-  vitest: ^4.1.4
+  vite: ^8.2.2
+  vite-plugin-solid: 2.11.14
+  vitest: ^4.1.11
   vue: ^3.5.25
   zod: ^4.5.4
   '@types/node': 25.0.9
@@ -73,9 +73,12 @@ catalog:
   '@tanstack/solid-query': ^5.102.0
   '@tanstack/vue-query': ^5.102.0
 
+  '@vitejs/plugin-rsc': ^0.5.34
+  '@vitejs/plugin-vue': ^6.0.8
+
 overrides:
   '@types/babel__traverse': '^7.28.0'
-  vite-plugin-dts: 4.2.3
+  vite-plugin-dts: 5.1.0
   solid-js: 'catalog:'
   react: 'catalog:'
   react-dom: 'catalog:'

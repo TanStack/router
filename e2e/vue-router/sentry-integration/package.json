@@ -13,8 +13,8 @@
   "dependencies": {
     "@sentry/vue": "^10.32.0",
     "@sentry/tracing": "^7.120.4",
-    "@sentry/vite-plugin": "^4.6.1",
-    "@tailwindcss/vite": "^4.2.2",
+    "@sentry/vite-plugin": "^5.4.0",
+    "@tailwindcss/vite": "^4.3.3",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-devtools": "workspace:^",
     "redaxios": "catalog:",
@@ -24,9 +24,9 @@
   "devDependencies": {
     "@playwright/test": "^1.61.0",
     "@tanstack/router-e2e-utils": "workspace:^",
-    "@vitejs/plugin-vue-jsx": "^5.1.5",
+    "@vitejs/plugin-vue-jsx": "^5.1.6",
     "typescript": "~5.8.3",
-    "vite": "^8.0.14",
+    "vite": "^8.2.2",
     "vue-tsc": "^3.3.8"
   }
 }

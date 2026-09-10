@@ -13,7 +13,7 @@
     "check": "prettier --write . && eslint --fix"
   },
   "dependencies": {
-    "@tailwindcss/vite": "^4.2.2",
+    "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-devtools": "^0.7.0",
     "@tanstack/react-router": "^1.170.34",
     "@tanstack/react-router-devtools": "^1.167.1",
@@ -32,13 +32,13 @@
     "@types/node": "22.10.2",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.1.1",
     "jsdom": "^27.0.0",
     "prettier": "^3.6.2",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vitest": "^4.1.4",
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11",
     "web-vitals": "^5.1.0"
   }
 }

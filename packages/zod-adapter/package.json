@@ -70,7 +70,7 @@
     "zod": "^3.24.2",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

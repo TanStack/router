@@ -22,21 +22,21 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
-    "@codspeed/vitest-plugin": "^5.5.0",
+    "@codspeed/vitest-plugin": "^5.7.1",
     "@datadog/pprof": "^5.13.2",
     "@platformatic/flame": "^1.6.0",
     "@testing-library/react": "^16.2.0",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-vue": "^6.0.5",
-    "@vitejs/plugin-vue-jsx": "^5.1.5",
+    "@vitejs/plugin-react": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@vitejs/plugin-vue-jsx": "catalog:",
     "@types/jsdom": "28.0.0",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "jsdom": "29.1.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "vite-plugin-solid": "^2.11.11",
+    "vite": "catalog:",
+    "vite-plugin-solid": "catalog:",
     "vitest": "catalog:"
   },
   "nx": {
