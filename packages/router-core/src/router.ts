@@ -1018,7 +1018,7 @@ type LightweightRouteMatchCacheEntry = [
 
 type InterpolationPlan = [
   keys: Array<string>,
-  paths: SieveCache<string, string>,
+  paths: SieveCache<string | undefined, string>,
   decoder: ((encoded: string) => string) | undefined,
 ]
 
@@ -1918,14 +1918,17 @@ export class RouterCore<
               this.isServer,
             )
           : interpolatePathname(path, params, decoder, undefined, keys)
-      plan = [keys, createSieveCache<string, string>(128), decoder]
+      plan = [keys, createSieveCache<string | undefined, string>(128), decoder]
       this.pathCache.set(path, plan)
     }
     const [keys, paths] = plan
-    let key = ''
+    // Single-param templates use the value itself as the Map key. Compound keys
+    // concatenate `<length>:<value>` tokens; undefined becomes
+    // `undefined:undefined`, whose nonnumeric prefix cannot match a string token.
+    let key: string | undefined = ''
     for (const name of keys) {
       const value = params[name]
-      if (typeof value !== 'string') {
+      if (typeof value !== 'string' && value !== undefined) {
         return (
           interpolated ||
           (isServer === undefined
@@ -1940,7 +1943,7 @@ export class RouterCore<
             : interpolatePathname(path, params, decoder))
         )
       }
-      key = keys.length === 1 ? value : key + value.length + ':' + value
+      key = keys.length === 1 ? value : key! + value?.length + ':' + value
     }
     const cached = paths.get(key)
     if (cached) {
