@@ -1,19 +1,12 @@
+import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { join } from 'node:path'
+import { test } from 'node:test'
 import { promisify } from 'node:util'
-import { expect, test } from '@playwright/test'
 
-// Exercise the public production build once, rather than rebuilding in every
-// browser/application mode. Both cases share one crawler invocation.
-test('prerender crawling keeps network requests and output files inside their boundaries', async () => {
-  test.skip(
-    (process.env.E2E_TOOLCHAIN ?? 'vite') !== 'vite' ||
-      (process.env.MODE ?? 'ssr') !== 'ssr',
-    'This test runs its own Vite prerender build',
-  )
-  test.setTimeout(120_000)
+test('prerender crawling keeps network requests and output files inside their boundaries', async (t) => {
   // Keep external package resolution available to the built SSR entry, while
   // excluding these temporary build artifacts from the app type check.
   const temporary = await mkdtemp(
@@ -48,35 +41,30 @@ test('prerender crawling keeps network requests and output files inside their bo
       maxBuffer: 10 * 1024 * 1024,
     })
 
-    await test.info().attach('prerender-build', {
-      body: build.stdout + build.stderr,
-      contentType: 'text/plain',
-    })
+    t.diagnostic(build.stdout + build.stderr)
     const clientDir = join(outDir, 'client')
     const seed = await readFile(
       join(clientDir, 'crawl-boundaries/seed/index.html'),
       'utf8',
     )
-    expect(seed).toContain(`/../../crawl-boundaries/escaped`)
-    expect(seed).toContain(`//127.0.0.1:${address.port}/external`)
-    expect(seed).toContain(`/%2F%2F127.0.0.1:${address.port}/encoded`)
-    expect(
-      await readFile(
-        join(clientDir, 'crawl-boundaries/safe/index.html'),
-        'utf8',
-      ),
-    ).toContain('crawl-boundaries:safe')
-    expect(requests).toEqual([])
+    assert.ok(seed.includes(`/../../crawl-boundaries/escaped`))
+    assert.ok(seed.includes(`//127.0.0.1:${address.port}/external`))
+    assert.ok(seed.includes(`/%2F%2F127.0.0.1:${address.port}/encoded`))
+    const safe = await readFile(
+      join(clientDir, 'crawl-boundaries/safe/index.html'),
+      'utf8',
+    )
+    assert.ok(safe.includes('crawl-boundaries:safe'))
+    assert.deepEqual(requests, [])
 
     const htmlFiles = (await readdir(temporary, { recursive: true })).filter(
       (file) => file.endsWith('.html'),
     )
-    expect(htmlFiles.length).toBeGreaterThanOrEqual(2)
+    assert.ok(htmlFiles.length >= 2)
     for (const file of htmlFiles) {
-      expect(file.split('\\').join('/')).toMatch(/^output\/client\//)
-      expect(await readFile(join(temporary, file), 'utf8')).not.toContain(
-        'external-crawl-content',
-      )
+      assert.match(file.split('\\').join('/'), /^output\/client\//)
+      const html = await readFile(join(temporary, file), 'utf8')
+      assert.ok(!html.includes('external-crawl-content'))
     }
   } finally {
     await new Promise<void>((resolve, reject) =>
