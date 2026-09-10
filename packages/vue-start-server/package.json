@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/vue-start-server",
-  "version": "1.167.37",
+  "version": "1.167.38",
   "description": "Modern and scalable routing for Vue applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -63,11 +63,11 @@
     "@tanstack/start-server-core": "workspace:*"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue-jsx": "^4.1.2",
+    "@vitejs/plugin-vue-jsx": "catalog:",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "*",
-    "vue": "^3.5.25",
+    "vue": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",
