@@ -192,11 +192,28 @@ function useLinkPropsImpl(
     })
   }
 
+  // `vnode.el` is already assigned while an instance hydrates and is null for
+  // a fresh client mount, which is the distinction needed here: only a
+  // hydrating render has to reproduce the server output.
+  const hydrating = Vue.ref(Vue.getCurrentInstance()?.vnode.el != null)
+  Vue.onMounted(() => {
+    hydrating.value = false
+  })
+
+  // A boundary that hydrates after a navigation started must still resolve
+  // against the location the server rendered with; `stores.location` already
+  // holds the destination while the loader is in flight.
+  const renderLocation = Vue.computed(() =>
+    hydrating.value
+      ? (router._hydrationLocation ?? currentLocation.value)
+      : currentLocation.value,
+  )
+
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
 
     const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
+    const opts = { _fromLocation: renderLocation.value, ...options }
     return router.buildLocation(opts)
   })
 
@@ -233,7 +250,7 @@ function useLinkPropsImpl(
       return false
     }
     return getIsActive(
-      currentLocation.value,
+      renderLocation.value,
       next.value,
       options.activeOptions,
       router,
