@@ -67,7 +67,7 @@
     "@tanstack/router-ssr-query-core": "workspace:*"
   },
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.3.4",
+    "@vitejs/plugin-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "@tanstack/react-router": "workspace:*",

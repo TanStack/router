@@ -1,5 +1,23 @@
 # @tanstack/history
 
+## 1.162.3
+
+### Patch Changes
+
+- [#8308](https://github.com/TanStack/router/pull/8308) [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8) - Validate navigation and redirect destinations, keep ambiguous relative URLs on the current origin, and constrain prerender requests and output paths. Prevent redirect headers from appearing in serialized server function response bodies.
+
+  Preserve native form HTTP redirects, route error handling and masks for document redirects, and per-navigation destinations for shared loader redirects. Avoid redundant origin parsing and reduce link styling and server-rendering work. Configured origins must already be normalized.
+
+  Keep blocked-link inactive props consistent during React hydration, honor explicit redirect Location headers before checking route options, and refresh Vue link state when destinations become internal. Reuse the protocol-relative URL check while parsing redirect schemes once.
+
+  Reduce React link bundle size by sharing pathname comparisons, state-prop selection, and element creation.
+
+  Share normalized pathname comparisons in Solid and Vue links to reduce bundle size.
+
+- [#8287](https://github.com/TanStack/router/pull/8287) [`0654c0a`](https://github.com/TanStack/router/commit/0654c0a1a427db24d9af13c1d6ad1217a588c0c9) - Use full-document navigation when an output rewrite produces a cross-origin destination, including the public URL of a route mask.
+
+  Respect registered history blockers during document navigation, passing history locations and the requested push or replace action.
+
 ## 1.162.2
 
 ### Patch Changes
