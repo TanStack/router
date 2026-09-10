@@ -68,15 +68,27 @@ export const renderRouterToStream = async ({
   router,
   responseHeaders,
   App,
+  isBot,
 }: {
   request: Request
   router: AnyRouter
   responseHeaders: Headers
   App: Component
+  /**
+   * Whether to treat the request as a bot/crawler. Bots wait for the full
+   * document before streaming. Defaults to the built-in `isbot` User-Agent
+   * check.
+   */
+  isBot?: boolean | ((request: Request) => boolean)
 }) => {
   const app = Vue.createSSRApp(App, { router })
 
-  if (isbot(request.headers.get('User-Agent'))) {
+  const isBotRequest =
+    typeof isBot === 'function'
+      ? isBot(request)
+      : (isBot ?? isbot(request.headers.get('User-Agent')))
+
+  if (isBotRequest) {
     try {
       let cleanupAbortListener: (() => void) | undefined
       const abortPromise = new Promise<never>((_, reject) => {
