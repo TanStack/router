@@ -268,7 +268,9 @@ export async function prerender({
             }
           } catch (error) {
             if (retries < (prerenderOptions.retryCount ?? 0)) {
-              const retryDelay = normalizeRetryDelay(prerenderOptions.retryDelay)
+              const retryDelay = normalizeRetryDelay(
+                prerenderOptions.retryDelay,
+              )
               logger.warn(
                 `Encountered error, retrying: ${page.path} in ${retryDelay}ms`,
               )
@@ -316,12 +318,18 @@ export async function prerender({
       requestPath: string,
       options?: RequestInit,
       maxRedirects: number = 5,
-      currentUrl = resolveInternalUrl(requestPath, routerBaseUrl, routerBaseUrl),
+      currentUrl = resolveInternalUrl(
+        requestPath,
+        routerBaseUrl,
+        routerBaseUrl,
+      ),
     ): Promise<Response> {
       const requestPathInPreview =
         currentUrl && toPreviewPath(currentUrl, routerBaseUrl)
       if (!requestPathInPreview) {
-        throw new Error(`Prerender request path must be relative: ${requestPath}`)
+        throw new Error(
+          `Prerender request path must be relative: ${requestPath}`,
+        )
       }
 
       const response = await handler.request(requestPathInPreview, {
@@ -343,7 +351,9 @@ export async function prerender({
           )
         }
 
-        logger.warn(`Skipping redirect outside the preview basepath: ${location}`)
+        logger.warn(
+          `Skipping redirect outside the preview basepath: ${location}`,
+        )
       }
 
       return response
