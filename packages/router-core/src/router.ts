@@ -1160,6 +1160,7 @@ export class RouterCore<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
   >()
+  private searchStrMemo = new WeakMap<object, string>()
   isServer!: boolean
   pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -2070,8 +2071,18 @@ export class RouterCore<
       // Replace the equal deep
       nextSearch = nullReplaceEqualDeep(fromSearch, nextSearch)
 
-      // Stringify the next search
-      const searchStr = this.options.stringifySearch(nextSearch)
+      // Stringify the next search, reusing a previously computed string when
+      // the (structurally shared) search object was serialized before
+      let searchStr: string | undefined
+      if (nextSearch !== null && typeof nextSearch === 'object') {
+        searchStr = this.searchStrMemo.get(nextSearch)
+      }
+      if (searchStr === undefined) {
+        searchStr = this.options.stringifySearch(nextSearch)
+        if (nextSearch !== null && typeof nextSearch === 'object') {
+          this.searchStrMemo.set(nextSearch, searchStr)
+        }
+      }
 
       // Resolve the next hash
       const hash =
