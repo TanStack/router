@@ -155,11 +155,11 @@ function waitFor<T>(value: Promise<T>, signal?: AbortSignal): Promise<T> {
   return signal ? waitForReason(value, signal) : value
 }
 
-async function resolveSsr(
+function resolveSsr(
   router: AnyRouter,
   lane: MatchedLane,
   index: number,
-): Promise<SSROption> {
+): SSROption | Promise<SSROption> {
   const match = lane.matches[index]!
   const route = getRoute(router, match)
   const parentSsr = lane.matches[index - 1]?.ssr
@@ -203,7 +203,14 @@ async function resolveSsr(
       ssr: candidate.ssr,
     })),
   }
-  return inherit((await option(context)) ?? defaultSsr)
+  try {
+    return Promise.resolve(option(context)).then((value) =>
+      inherit(value ?? defaultSsr),
+    )
+  } catch (cause) {
+    // Functional failures keep their asynchronous cancellation checkpoint.
+    return Promise.reject(cause)
+  }
 }
 
 function stampNotFound(
@@ -232,7 +239,9 @@ async function contextualize(
     const match = lane.matches[index]!
     const route = getRoute(router, match)
     try {
-      match.ssr = await resolveSsr(router, lane, index)
+      const ssr = resolveSsr(router, lane, index)
+      // Functional policies are assimilated into a native Promise above.
+      match.ssr = ssr instanceof Promise ? await ssr : ssr
     } catch (cause) {
       signal?.throwIfAborted()
       failure = [
