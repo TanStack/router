@@ -22,7 +22,7 @@
     "test:build": "nx affected --target=test:build --exclude=examples/**",
     "test:types": "nx affected --target=test:types --exclude=examples/**",
     "test:e2e": "nx run-many --target=test:e2e",
-    "benchmark:bundle-size": "nx run @benchmarks/bundle-size:build",
+    "benchmark:bundle-size": "node scripts/benchmarks/bundle-size/build.mjs",
     "benchmark:bundle-size:run": "node scripts/benchmarks/bundle-size/run.mjs",
     "benchmark:bundle-size:query": "node scripts/benchmarks/bundle-size/query.mjs",
     "benchmark:bundle-size:diff": "node scripts/benchmarks/bundle-size/diff.mjs",
