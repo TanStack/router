@@ -234,6 +234,25 @@ describe('buildLocation - params function receives parsed params', () => {
 })
 
 describe('buildLocation - search params', () => {
+  test('preserves structural sharing when clearing an already empty search', () => {
+    const rootRoute = new BaseRootRoute({})
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([route]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    const inherited = router.buildLocation({ to: '/', search: true })
+    const cleared = router.buildLocation({ to: '/' })
+
+    expect(cleared.search).toBe(inherited.search)
+    expect(cleared.search).toEqual({})
+    expect(cleared.searchStr).toBe('')
+  })
+
   test('only applies route validation when requested', async () => {
     const events: Array<string> = []
     const validateSearch = vi.fn((search: Record<string, unknown>) => {
@@ -1653,6 +1672,32 @@ describe('buildLocation - basepath', () => {
 })
 
 describe('buildLocation - params edge cases', () => {
+  test('copies static param getters once without mutating inherited params', () => {
+    const rootRoute = new BaseRootRoute({})
+    const userRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/users/$userId',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([userRoute]),
+      history: createMemoryHistory({ initialEntries: ['/users/123'] }),
+    })
+    const getUserId = vi.fn(() => '456')
+    const params = {
+      get userId() {
+        return getUserId()
+      },
+    }
+
+    expect(
+      router.buildLocation({ to: '/users/$userId', params }).pathname,
+    ).toBe('/users/456')
+    expect(getUserId).toHaveBeenCalledOnce()
+    expect(
+      router.buildLocation({ to: '/users/$userId', params: true }).pathname,
+    ).toBe('/users/123')
+  })
+
   test('params: true should preserve current params', async () => {
     const rootRoute = new BaseRootRoute({})
     const userRoute = new BaseRoute({
