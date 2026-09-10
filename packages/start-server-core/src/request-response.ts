@@ -218,8 +218,14 @@ export function setResponseHeaders(
   headers: TypedHeaders<ResponseHeaderMap>,
 ): void {
   const event = getH3Event()
-  for (const [name, value] of Object.entries(headers)) {
-    event.res.headers.set(name, value)
+  if (event.res.headers === headers) {
+    return
+  }
+  let previousName = ''
+  // Headers iteration groups entries by name, including separate Set-Cookie values.
+  for (const [name, value] of headers) {
+    event.res.headers[name === previousName ? 'append' : 'set'](name, value)
+    previousName = name
   }
 }
 
