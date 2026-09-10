@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789062298427,
+  "lastUpdate": 1789064088487,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,102 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "41898282+github-actions[bot]@users.noreply.github.com",
-            "name": "github-actions[bot]",
-            "username": "github-actions[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "b3f2ab809e0fee12cd2a015a5256b8c451736d34",
-          "message": "ci: Version Packages (#7409)\n\nci: changeset release\n\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>",
-          "timestamp": "2026-05-16T07:02:58+02:00",
-          "tree_id": "78da35d32e21707eae241761c6bf5b651fb4cf92",
-          "url": "https://github.com/TanStack/router/commit/b3f2ab809e0fee12cd2a015a5256b8c451736d34"
-        },
-        "date": 1778907924278,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89386,
-            "unit": "bytes",
-            "extra": "raw=280647; brotli=77673; initial_gzip=89245"
-          },
-          {
-            "name": "react-router.full",
-            "value": 92998,
-            "unit": "bytes",
-            "extra": "raw=292432; brotli=80788; initial_gzip=92858"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36363,
-            "unit": "bytes",
-            "extra": "raw=108916; brotli=32742; initial_gzip=36236"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41194,
-            "unit": "bytes",
-            "extra": "raw=123470; brotli=37009; initial_gzip=41066"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54564,
-            "unit": "bytes",
-            "extra": "raw=155147; brotli=48995; initial_gzip=54430"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59813,
-            "unit": "bytes",
-            "extra": "raw=171710; brotli=53646; initial_gzip=59680"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104419,
-            "unit": "bytes",
-            "extra": "raw=330252; brotli=90283; initial_gzip=104279"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107939,
-            "unit": "bytes",
-            "extra": "raw=340831; brotli=93378; initial_gzip=107799"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 101984,
-            "unit": "bytes",
-            "extra": "raw=324585; brotli=87773; initial_gzip=101808"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105357,
-            "unit": "bytes",
-            "extra": "raw=335268; brotli=90617; initial_gzip=105181"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50803,
-            "unit": "bytes",
-            "extra": "raw=156140; brotli=44835; initial_gzip=50671"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56728,
-            "unit": "bytes",
-            "extra": "raw=173454; brotli=49889; initial_gzip=56595"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -24571,6 +24475,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/8c43c712523fc63dc3a814f3a19617e270ce8ed1"
         },
         "date": 1789062296711,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85993,
+            "unit": "bytes",
+            "extra": "raw=268611; brotli=74966; initial_gzip=85858"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89571,
+            "unit": "bytes",
+            "extra": "raw=280586; brotli=78074; initial_gzip=89429"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34257,
+            "unit": "bytes",
+            "extra": "raw=99069; brotli=31022; initial_gzip=34127"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39204,
+            "unit": "bytes",
+            "extra": "raw=114066; brotli=35326; initial_gzip=39076"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50776,
+            "unit": "bytes",
+            "extra": "raw=141634; brotli=45950; initial_gzip=50648"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56511,
+            "unit": "bytes",
+            "extra": "raw=160280; brotli=50988; initial_gzip=56385"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99215,
+            "unit": "bytes",
+            "extra": "raw=311894; brotli=86121; initial_gzip=99075"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106741,
+            "unit": "bytes",
+            "extra": "raw=339030; brotli=92507; initial_gzip=106599"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99952,
+            "unit": "bytes",
+            "extra": "raw=313283; brotli=86764; initial_gzip=99093"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102448,
+            "unit": "bytes",
+            "extra": "raw=321849; brotli=88794; initial_gzip=102311"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102529,
+            "unit": "bytes",
+            "extra": "raw=322410; brotli=88501; initial_gzip=102354"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102943,
+            "unit": "bytes",
+            "extra": "raw=323369; brotli=88973; initial_gzip=102775"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105897,
+            "unit": "bytes",
+            "extra": "raw=332737; brotli=91341; initial_gzip=105722"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47458,
+            "unit": "bytes",
+            "extra": "raw=141191; brotli=42188; initial_gzip=47329"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50590,
+            "unit": "bytes",
+            "extra": "raw=148736; brotli=45073; initial_gzip=47402"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52620,
+            "unit": "bytes",
+            "extra": "raw=156941; brotli=46652; initial_gzip=52492"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67307,
+            "unit": "bytes",
+            "extra": "raw=193730; brotli=59972; initial_gzip=67180"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71245,
+            "unit": "bytes",
+            "extra": "raw=206330; brotli=63297; initial_gzip=71117"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "41898282+github-actions[bot]@users.noreply.github.com",
+            "name": "github-actions[bot]",
+            "username": "github-actions[bot]"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "6494e75362ff7ca4988ef41046498dea10cbc462",
+          "message": "ci: Version Packages (#8330)\n\nci: changeset release\n\nCo-authored-by: github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>",
+          "timestamp": "2026-09-10T20:11:56+02:00",
+          "tree_id": "032152fbdc28b6275c0c2be52039a10340988fff",
+          "url": "https://github.com/TanStack/router/commit/6494e75362ff7ca4988ef41046498dea10cbc462"
+        },
+        "date": 1789064086392,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
