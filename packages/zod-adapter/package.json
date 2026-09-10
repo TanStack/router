@@ -64,8 +64,8 @@
     "node": ">=20.19"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "@tanstack/react-router": "workspace:*",
     "zod": "^3.24.2",
     "react": "catalog:",

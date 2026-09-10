@@ -70,6 +70,170 @@ afterEach(() => {
 const WAIT_TIME = 300
 
 describe('Link', () => {
+  test('keeps protocol-relative Link paths on the router origin', async () => {
+    const inputs = [
+      '//evil.example',
+      '/\\evil.example',
+      '\\/evil.example',
+      ' \t/\\evil.example',
+    ]
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          {inputs.map((to, index) => (
+            <Link data-testid={`unsafe-link-${index}`} to={to} />
+          ))}
+        </>
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    for (let index = 0; index < inputs.length; index++) {
+      const link = await screen.findByTestId(`unsafe-link-${index}`)
+      const href = link.getAttribute('href')
+      expect(href).not.toBeNull()
+      expect(new URL(href!, window.location.href).origin).toBe(
+        window.location.origin,
+      )
+    }
+  })
+
+  test('blocks a dangerous final href produced by an output rewrite', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="rewritten-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/safe' ? new URL('javascript:alert(1)') : url,
+      },
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('rewritten-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
+    expect(
+      link.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    ).toBe(true)
+  })
+
+  test('blocks a dangerous final href produced by custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'javascript:alert(1)',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <Link
+          data-testid="custom-history-link"
+          to="/safe"
+          href="https://caller.example/"
+          inactiveProps={{ href: 'javascript:inactive()' }}
+        />
+      ),
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('custom-history-link')
+
+    expect(link).not.toHaveAttribute('href')
+    expect(
+      link.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    ).toBe(true)
+    customHistory.destroy()
+  })
+
+  test.each([
+    { to: '/', disabled: false },
+    { to: '/safe', disabled: false },
+    { to: '/', disabled: true },
+    { to: '/safe', disabled: true },
+  ])(
+    'keeps the validated href when applying state props: %j',
+    async (props) => {
+      const rootRoute = createRootRoute()
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => (
+          <Link
+            {...props}
+            data-testid="state-props-link"
+            activeProps={{ href: 'javascript:active()' }}
+            inactiveProps={{ href: 'javascript:inactive()' }}
+          />
+        ),
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute]),
+        history,
+      })
+
+      render(<RouterProvider router={router} />)
+      const link = await screen.findByTestId('state-props-link')
+
+      if (props.disabled) {
+        expect(link).not.toHaveAttribute('href')
+      } else {
+        expect(link).toHaveAttribute('href', props.to)
+      }
+    },
+  )
+
+  test('does not intercept an external href produced by custom history', async () => {
+    const customHistory = createBrowserHistory({
+      createHref: () => 'https://other.example/path',
+    })
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <Link data-testid="custom-history-link" to="/safe" />,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history: customHistory,
+    })
+    render(<RouterProvider router={router} />)
+    const link = await screen.findByTestId('custom-history-link')
+
+    expect(link).toHaveAttribute('href', 'https://other.example/path')
+    expect(
+      link.dispatchEvent(
+        new MouseEvent('click', { bubbles: true, cancelable: true }),
+      ),
+    ).toBe(true)
+    customHistory.destroy()
+  })
+
   // rerender doesn't exist in solid
 
   // test('when using renderHook it returns a hook with same content to prove rerender works', async () => {
@@ -449,7 +613,6 @@ describe('Link', () => {
       routeTree: rootRoute.addChildren([postsRoute, aboutRoute]),
       history,
     })
-    const navigateSpy = vi.spyOn(router, 'navigate')
 
     render(<RouterProvider router={router} />)
 
@@ -481,10 +644,13 @@ describe('Link', () => {
     to.value = 'javascript:alert(1)'
     await Vue.nextTick()
     expect(link).not.toHaveAttribute('href')
+    expect(link).toHaveAttribute('role', 'link')
+    expect(link).toHaveAttribute('aria-disabled', 'true')
 
     to.value = 'https://example.com/three'
     await Vue.nextTick()
     expect(link).toHaveAttribute('href', 'https://example.com/three')
+    expect(link).not.toHaveAttribute('aria-disabled')
 
     to.value = '/about'
     target.value = undefined
@@ -510,7 +676,7 @@ describe('Link', () => {
     expect(link).not.toHaveClass('decorated')
 
     await fireEvent.click(link)
-    expect(navigateSpy).toHaveBeenCalledOnce()
+    await waitFor(() => expect(window.location.pathname).toBe('/about'))
   })
 
   test('tracks router location after an external link becomes internal', async () => {

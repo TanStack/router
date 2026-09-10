@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/router-cli",
-  "version": "1.167.34",
+  "version": "1.167.35",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -67,7 +67,7 @@
   },
   "dependencies": {
     "@tanstack/router-generator": "workspace:*",
-    "chokidar": "^5.0.0",
+    "chokidar": "catalog:",
     "yargs": "^17.7.2"
   },
   "devDependencies": {
