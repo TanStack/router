@@ -33,7 +33,7 @@ export default defineConfig({
     dts({
       copyDtsFiles: true,
       entryRoot: './src',
-      outDir: './dist/types',
+      outDirs: './dist/types',
     }),
   ],
 })

@@ -5,6 +5,7 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "build": "vite build",
     "test:eslint": "eslint ./src",
+    "test:types": "tsc6 --noEmit",
     "test:unit": "exit 0; vitest --typecheck"
   },
   "type": "module",

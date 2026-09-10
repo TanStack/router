@@ -39,51 +39,51 @@
     "build": "vite build"
   },
   "type": "module",
-  "types": "dist/esm/src/index.d.ts",
+  "types": "dist/esm/index.d.ts",
   "exports": {
     ".": {
       "react-server": {
-        "types": "./dist/esm/src/index.rsc.d.ts",
+        "types": "./dist/esm/index.rsc.d.ts",
         "default": "./dist/esm/index.rsc.js"
       },
       "import": {
-        "types": "./dist/esm/src/index.d.ts",
+        "types": "./dist/esm/index.d.ts",
         "default": "./dist/esm/index.js"
       }
     },
     "./serialization.client": {
       "import": {
-        "types": "./dist/esm/src/serialization.client.d.ts",
+        "types": "./dist/esm/serialization.client.d.ts",
         "default": "./dist/esm/serialization.client.js"
       }
     },
     "./serialization.server": {
       "import": {
-        "types": "./dist/esm/src/serialization.server.d.ts",
+        "types": "./dist/esm/serialization.server.d.ts",
         "default": "./dist/esm/serialization.server.js"
       }
     },
     "./plugin/vite": {
       "import": {
-        "types": "./dist/esm/src/plugin/vite.d.ts",
+        "types": "./dist/esm/plugin/vite.d.ts",
         "default": "./dist/esm/plugin/vite.js"
       }
     },
     "./plugin/rscCssTransform": {
       "import": {
-        "types": "./dist/esm/src/plugin/rscCssTransform.d.ts",
+        "types": "./dist/esm/plugin/rscCssTransform.d.ts",
         "default": "./dist/esm/plugin/rscCssTransform.js"
       }
     },
     "./rsbuild/ssr-decode": {
       "import": {
-        "types": "./dist/esm/src/rsbuild/ssr-decode.d.ts",
+        "types": "./dist/esm/rsbuild/ssr-decode.d.ts",
         "default": "./dist/esm/rsbuild/ssr-decode.js"
       }
     },
     "./rsbuild/browser-decode": {
       "import": {
-        "types": "./dist/esm/src/rsbuild/browser-decode.d.ts",
+        "types": "./dist/esm/rsbuild/browser-decode.d.ts",
         "default": "./dist/esm/rsbuild/browser-decode.js"
       }
     },
