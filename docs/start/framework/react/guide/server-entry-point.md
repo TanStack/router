@@ -3,8 +3,6 @@ id: server-entry-point
 title: Server Entry Point
 ---
 
-# Server Entry Point
-
 > [!NOTE]
 > The server entry point is **optional** out of the box. If not provided, TanStack Start will automatically handle the server entry point for you using the below as a default.
 
