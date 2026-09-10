@@ -1,5 +1,13 @@
 # @tanstack/solid-router
 
+## 1.170.33
+
+### Patch Changes
+
+- [#8316](https://github.com/TanStack/router/pull/8316) [`b1c9219`](https://github.com/TanStack/router/commit/b1c92194397e57cecfab72de70e2dd8064a4f6d5) - Skip client-only hydration, preloading, observer, and event-handler setup for all server-rendered links.
+
+- [#8270](https://github.com/TanStack/router/pull/8270) [`76239a3`](https://github.com/TanStack/router/commit/76239a34b732ca19d1b16d42efb83824b1de1c69) - Avoid duplicate external script execution when a Solid script includes both `src` and children. Reuse each Solid hydration boundary's marker element instead of scanning all document markers on mount.
+
 ## 1.170.32
 
 ### Patch Changes

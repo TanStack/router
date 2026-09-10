@@ -1,4 +1,5 @@
 import { joinURL } from 'ufo'
+import { version as viteVersion } from 'vite'
 import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { rootRouteId } from '@tanstack/router-core'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../../constants'
@@ -55,17 +56,26 @@ export function startManifestPlugin(opts: {
       enforce: 'pre',
       load() {
         const { resolvedStartConfig, startConfig } = opts.getConfig()
+        const bundledDev = isClientBundledDev(this.environment)
         const clientEntry = getDevClientEntry({
           basePath: resolvedStartConfig.basePaths.publicBase,
-          bundledDev: isClientBundledDev(this.environment),
+          bundledDev,
         })
 
+        const devRuntime =
+          bundledDev && hasSeparateBundledDevRuntime()
+            ? joinURL(
+                resolvedStartConfig.basePaths.publicBase,
+                'bundledDevClient.mjs',
+              )
+            : undefined
+
         if (this.environment.name !== START_ENVIRONMENT_NAMES.server) {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devRuntime)
         }
 
         if (this.environment.config.command === 'serve') {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devRuntime)
         }
 
         const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
@@ -73,7 +83,7 @@ export function startManifestPlugin(opts: {
         // If the client bundle isn't available yet (e.g., during RSC scan builds),
         // return a dummy manifest. The real manifest will be generated in the actual build.
         if (!clientBuild) {
-          return getEmptyStartManifestModule(clientEntry)
+          return getEmptyStartManifestModule(clientEntry, devRuntime)
         }
         const startManifest = buildStartManifest({
           clientBuild,
@@ -138,12 +148,23 @@ function getAssetFileNameByName(
   return undefined
 }
 
-function getEmptyStartManifestModule(clientEntry: string) {
+function getEmptyStartManifestModule(clientEntry: string, devRuntime?: string) {
+  // Start renders its own HTML, bypassing Vite's runtime script injection.
+  // Load the runtime before evaluating the bundled entry, which uses its globals.
+  const scripts = devRuntime
+    ? [
+        {
+          attrs: { type: 'module', async: true },
+          children: `await import(${JSON.stringify(devRuntime)});\nawait import(${JSON.stringify(clientEntry)});`,
+        },
+      ]
+    : [{ attrs: { type: 'module', async: true, src: clientEntry } }]
+
   return `export const tsrStartManifest = () => ({
       routes: {
         __root__: {
           preloads: ['${clientEntry}'],
-          scripts: [{ attrs: { type: 'module', async: true, src: '${clientEntry}' } }],
+          scripts: ${JSON.stringify(scripts)},
         },
       },
     })`
@@ -162,5 +183,14 @@ function isClientBundledDev(environment: StartManifestEnvironment) {
     environment.config.command === 'serve' &&
     environment.config.environments?.[START_ENVIRONMENT_NAMES.client]
       ?.isBundled === true
+  )
+}
+
+function hasSeparateBundledDevRuntime() {
+  // Vite 8.2.1 moved the runtime out of the entry bundle. Older Vite versions
+  // still inject it there and do not serve bundledDevClient.mjs separately.
+  const [major = 0, minor = 0, patch = 0] = viteVersion.split('.').map(Number)
+  return (
+    major > 8 || (major === 8 && (minor > 2 || (minor === 2 && patch >= 1)))
   )
 }

@@ -3,6 +3,15 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../src/constants'
 import { startManifestPlugin } from '../src/vite/start-manifest-plugin/plugin'
 
+const viteVersion = vi.hoisted(() => ({ value: '8.2.2' }))
+
+vi.mock('vite', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('vite')>()),
+  get version() {
+    return viteVersion.value
+  },
+}))
+
 vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
   VIRTUAL_MODULES: {
     startManifest: 'tanstack-start-manifest:v',
@@ -10,7 +19,10 @@ vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
 }))
 
 describe('startManifestPlugin', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    viteVersion.value = '8.2.2'
+  })
 
   test.each([false, true])(
     'captures inline CSS according to the resolved config (%s)',
@@ -68,25 +80,51 @@ describe('startManifestPlugin', () => {
   )
 
   test('uses the virtual client entry during unbundled dev', () => {
-    expect(loadDevManifest({ bundledDev: false })).toContain(
-      `src: '/@id/${DEV_CLIENT_ENTRY}'`,
-    )
+    const manifest = loadDevManifest({ bundledDev: false })
+    expect(manifest.routes.__root__.scripts).toEqual([
+      {
+        attrs: { type: 'module', async: true, src: `/@id/${DEV_CLIENT_ENTRY}` },
+      },
+    ])
   })
 
-  test('uses the bundled client entry during bundled dev', () => {
-    expect(loadDevManifest({ bundledDev: true })).toContain(
-      `src: '/assets/index.js'`,
-    )
-  })
+  test.each(['8.0.0', '8.2.0'])(
+    'uses the entry with its embedded runtime on Vite %s',
+    (version) => {
+      viteVersion.value = version
+      const manifest = loadDevManifest({ bundledDev: true })
+      expect(manifest.routes.__root__.scripts).toEqual([
+        { attrs: { type: 'module', async: true, src: '/assets/index.js' } },
+      ])
+    },
+  )
+
+  test.each(['8.2.1', '8.2.2', '8.3.0', '9.0.0'])(
+    'loads the separate runtime before the bundled entry on Vite %s',
+    (version) => {
+      viteVersion.value = version
+      const manifest = loadDevManifest({ bundledDev: true, basePath: '/app/' })
+      expect(manifest.routes.__root__.scripts).toEqual([
+        {
+          attrs: { type: 'module', async: true },
+          children:
+            'await import("/app/bundledDevClient.mjs");\nawait import("/app/assets/index.js");',
+        },
+      ])
+      expect(manifest.routes.__root__.preloads).toEqual([
+        '/app/assets/index.js',
+      ])
+    },
+  )
 })
 
-function loadDevManifest(opts: { bundledDev: boolean }) {
+function loadDevManifest(opts: { bundledDev: boolean; basePath?: string }) {
   const plugins = startManifestPlugin({
     getConfig: () =>
       ({
         resolvedStartConfig: {
           basePaths: {
-            publicBase: '/',
+            publicBase: opts.basePath ?? '/',
           },
         },
       }) as any,
@@ -96,7 +134,7 @@ function loadDevManifest(opts: { bundledDev: boolean }) {
   )!
   const resolvedId = plugin.resolveId.handler(VIRTUAL_MODULES.startManifest)
 
-  return plugin.load.handler.call(
+  const code = plugin.load.handler.call(
     {
       environment: {
         name: START_ENVIRONMENT_NAMES.server,
@@ -112,4 +150,7 @@ function loadDevManifest(opts: { bundledDev: boolean }) {
     },
     resolvedId,
   )
+  return new Function(
+    code.replace('export const tsrStartManifest =', 'return'),
+  )()()
 }

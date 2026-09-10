@@ -172,3 +172,8 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
+
+patchedDependencies:
+  # Match Rolldown >=1.2.6 empty-module registration in Vite's embedded dev runtime.
+  # https://github.com/rolldown/rolldown/pull/10772
+  vite@8.2.2: patches/vite@8.2.2.patch

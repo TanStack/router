@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   cleanup,
@@ -26,18 +27,22 @@ describe('Solid Router - Optional Path Parameters', () => {
   describe('Route matching with optional parameters', () => {
     it('should match route with no optional parameters', async () => {
       const rootRoute = createRootRoute()
-      const postsRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/posts/{-$category}/{-$slug}',
-        component: () => {
+      const PostsComponent = defineComponent({
+        setup() {
           const params = postsRoute.useParams()
-          return (
+          return () => (
             <div>
               <h1>Posts</h1>
               <div data-testid="params">{JSON.stringify(params.value)}</div>
             </div>
           )
         },
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/{-$category}/{-$slug}',
+        component: PostsComponent,
       })
       window.history.replaceState({}, '', '/posts')
 
@@ -54,18 +59,22 @@ describe('Solid Router - Optional Path Parameters', () => {
 
     it('should match route with one optional parameter', async () => {
       const rootRoute = createRootRoute()
-      const postsRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/posts/{-$category}/{-$slug}',
-        component: () => {
+      const PostsComponent = defineComponent({
+        setup() {
           const params = postsRoute.useParams()
-          return (
+          return () => (
             <div>
               <h1>Posts</h1>
               <div data-testid="params">{JSON.stringify(params.value)}</div>
             </div>
           )
         },
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/{-$category}/{-$slug}',
+        component: PostsComponent,
       })
       window.history.replaceState({}, '', '/posts/tech')
 
@@ -84,18 +93,22 @@ describe('Solid Router - Optional Path Parameters', () => {
 
     it('should match route with all optional parameters', async () => {
       const rootRoute = createRootRoute()
-      const postsRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/posts/{-$category}/{-$slug}',
-        component: () => {
+      const PostsComponent = defineComponent({
+        setup() {
           const params = postsRoute.useParams()
-          return (
+          return () => (
             <div>
               <h1>Posts</h1>
               <div data-testid="params">{JSON.stringify(params.value)}</div>
             </div>
           )
         },
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/{-$category}/{-$slug}',
+        component: PostsComponent,
       })
       window.history.replaceState({}, '', '/posts/tech/hello-world')
 
@@ -123,18 +136,22 @@ describe('Solid Router - Optional Path Parameters', () => {
       'should handle mixed required and optional parameters: $path',
       async ({ path, expectedParams }) => {
         const rootRoute = createRootRoute()
-        const usersRoute = createRoute({
-          getParentRoute: () => rootRoute,
-          path: '/users/$id/{-$tab}',
-          component: () => {
+        const UsersComponent = defineComponent({
+          setup() {
             const params = usersRoute.useParams()
-            return (
+            return () => (
               <div>
                 <h1>User Profile</h1>
                 <div data-testid="params">{JSON.stringify(params.value)}</div>
               </div>
             )
           },
+        })
+
+        const usersRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/users/$id/{-$tab}',
+          component: UsersComponent,
         })
         window.history.replaceState({}, '', path)
 
@@ -195,12 +212,10 @@ describe('Solid Router - Optional Path Parameters', () => {
           },
         })
 
-        const indexRoute = createRoute({
-          getParentRoute: () => localeRoute,
-          path: '/',
-          component: () => {
+        const IndexComponent = defineComponent({
+          setup() {
             const context = indexRoute.useRouteContext()
-            return (
+            return () => (
               <div data-testid="index-content">
                 <h1 data-testid="index-title">{context.value.content.title}</h1>
                 <p data-testid="index-description">
@@ -209,6 +224,12 @@ describe('Solid Router - Optional Path Parameters', () => {
               </div>
             )
           },
+        })
+
+        const indexRoute = createRoute({
+          getParentRoute: () => localeRoute,
+          path: '/',
+          component: IndexComponent,
         })
 
         window.history.replaceState({}, '', path)
@@ -477,18 +498,22 @@ describe('Solid Router - Optional Path Parameters', () => {
         ),
       })
 
-      const postsRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/posts/{-$category}/{-$slug}',
-        component: () => {
+      const PostsComponent = defineComponent({
+        setup() {
           const params = postsRoute.useParams()
-          return (
+          return () => (
             <div>
               <h1>Posts</h1>
               <div data-testid="params">{JSON.stringify(params.value)}</div>
             </div>
           )
         },
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/{-$category}/{-$slug}',
+        component: PostsComponent,
       })
 
       const router = createRouter({
@@ -556,18 +581,22 @@ describe('Solid Router - Optional Path Parameters', () => {
         ),
       })
 
-      const filesRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/files/prefix{-$name}.txt',
-        component: () => {
+      const FilesComponent = defineComponent({
+        setup() {
           const params = filesRoute.useParams()
-          return (
+          return () => (
             <div>
               <h1>Files</h1>
               <div data-testid="params">{JSON.stringify(params.value)}</div>
             </div>
           )
         },
+      })
+
+      const filesRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/files/prefix{-$name}.txt',
+        component: FilesComponent,
       })
 
       const router = createRouter({
@@ -587,55 +616,57 @@ describe('Solid Router - Optional Path Parameters', () => {
   describe('useNavigate with optional parameters', () => {
     it('should navigate with optional parameters programmatically', async () => {
       const rootRoute = createRootRoute()
+      const Component = defineComponent({
+        setup() {
+          const navigate = useNavigate()
+
+          const params = postsRoute.useParams()
+          return () => (
+            <div>
+              <div data-testid="params">{JSON.stringify(params.value)}</div>
+              <button
+                data-testid="navigate-all"
+                onClick={() =>
+                  navigate({
+                    to: '/posts/{-$category}/{-$slug}',
+                    params: false,
+                  })
+                }
+              >
+                All Posts
+              </button>
+              <button
+                data-testid="navigate-tech"
+                onClick={() =>
+                  navigate({
+                    to: '/posts/{-$category}/{-$slug}',
+                    params: { category: 'tech', slug: undefined },
+                  })
+                }
+              >
+                Tech Posts
+              </button>
+              <button
+                data-testid="navigate-specific"
+                onClick={() =>
+                  navigate({
+                    to: '/posts/{-$category}/{-$slug}',
+                    params: { category: 'tech', slug: 'hello-world' },
+                  })
+                }
+              >
+                Specific Post
+              </button>
+            </div>
+          )
+        },
+      })
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}/{-$slug}',
         component: Component,
       })
 
-      function Component() {
-        const navigate = useNavigate()
-        const params = postsRoute.useParams()
-
-        return (
-          <div>
-            <div data-testid="params">{JSON.stringify(params.value)}</div>
-            <button
-              data-testid="navigate-all"
-              onClick={() =>
-                navigate({
-                  to: '/posts/{-$category}/{-$slug}',
-                  params: false,
-                })
-              }
-            >
-              All Posts
-            </button>
-            <button
-              data-testid="navigate-tech"
-              onClick={() =>
-                navigate({
-                  to: '/posts/{-$category}/{-$slug}',
-                  params: { category: 'tech', slug: undefined },
-                })
-              }
-            >
-              Tech Posts
-            </button>
-            <button
-              data-testid="navigate-specific"
-              onClick={() =>
-                navigate({
-                  to: '/posts/{-$category}/{-$slug}',
-                  params: { category: 'tech', slug: 'hello-world' },
-                })
-              }
-            >
-              Specific Post
-            </button>
-          </div>
-        )
-      }
       // Start at a specific post
       window.history.replaceState({}, '', '/posts/tech/hello-world')
 
@@ -667,37 +698,39 @@ describe('Solid Router - Optional Path Parameters', () => {
 
     it('should handle relative navigation with optional parameters', async () => {
       const rootRoute = createRootRoute()
+      const Component = defineComponent({
+        setup() {
+          const navigate = useNavigate()
+
+          const params = postsRoute.useParams()
+          return () => (
+            <div>
+              <h1>Posts</h1>
+              <div data-testid="params">{JSON.stringify(params.value)}</div>
+              <button
+                data-testid="add-category"
+                onClick={() =>
+                  navigate({ to: '.', params: { category: 'tech' } })
+                }
+              >
+                Add Category
+              </button>
+              <button
+                data-testid="remove-category"
+                onClick={() => navigate({ to: '.', params: false })}
+              >
+                Remove Category
+              </button>
+            </div>
+          )
+        },
+      })
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}',
         component: Component,
       })
 
-      function Component() {
-        const navigate = useNavigate()
-        const params = postsRoute.useParams()
-
-        return (
-          <div>
-            <h1>Posts</h1>
-            <div data-testid="params">{JSON.stringify(params.value)}</div>
-            <button
-              data-testid="add-category"
-              onClick={() =>
-                navigate({ to: '.', params: { category: 'tech' } })
-              }
-            >
-              Add Category
-            </button>
-            <button
-              data-testid="remove-category"
-              onClick={() => navigate({ to: '.', params: false })}
-            >
-              Remove Category
-            </button>
-          </div>
-        )
-      }
       window.history.replaceState({}, '', '/posts')
 
       const router = createRouter({
@@ -779,12 +812,10 @@ describe('Solid Router - Optional Path Parameters', () => {
       'should handle nested routes with optional parameters: $path',
       async ({ path, expected }) => {
         const rootRoute = createRootRoute()
-        const postsRoute = createRoute({
-          getParentRoute: () => rootRoute,
-          path: '/posts/{-$category}',
-          component: () => {
+        const PostsComponent = defineComponent({
+          setup() {
             const params = postsRoute.useParams()
-            return (
+            return () => (
               <div>
                 <h1>Posts Layout</h1>
                 <div data-testid="category-param">
@@ -796,12 +827,16 @@ describe('Solid Router - Optional Path Parameters', () => {
           },
         })
 
-        const postRoute = createRoute({
-          getParentRoute: () => postsRoute,
-          path: '/{-$slug}',
-          component: () => {
+        const postsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/posts/{-$category}',
+          component: PostsComponent,
+        })
+
+        const PostComponent = defineComponent({
+          setup() {
             const params = postRoute.useParams()
-            return (
+            return () => (
               <div>
                 <h2>Post Detail</h2>
                 <div data-testid="slug-param">
@@ -810,6 +845,12 @@ describe('Solid Router - Optional Path Parameters', () => {
               </div>
             )
           },
+        })
+
+        const postRoute = createRoute({
+          getParentRoute: () => postsRoute,
+          path: '/{-$slug}',
+          component: PostComponent,
         })
 
         window.history.replaceState({}, '', path)
@@ -835,6 +876,20 @@ describe('Solid Router - Optional Path Parameters', () => {
 
     it('should work with search parameters', async () => {
       const rootRoute = createRootRoute()
+      const Component = defineComponent({
+        setup() {
+          const params = postsRoute.useParams()
+
+          const search = postsRoute.useSearch()
+          return () => (
+            <div>
+              <h1>Posts</h1>
+              <div data-testid="params">{JSON.stringify(params.value)}</div>
+              <div data-testid="search">{JSON.stringify(search.value)}</div>
+            </div>
+          )
+        },
+      })
       const postsRoute = createRoute({
         getParentRoute: () => rootRoute,
         path: '/posts/{-$category}',
@@ -844,18 +899,6 @@ describe('Solid Router - Optional Path Parameters', () => {
         }),
         component: Component,
       })
-
-      function Component() {
-        const params = postsRoute.useParams()
-        const search = postsRoute.useSearch()
-        return (
-          <div>
-            <h1>Posts</h1>
-            <div data-testid="params">{JSON.stringify(params.value)}</div>
-            <div data-testid="search">{JSON.stringify(search.value)}</div>
-          </div>
-        )
-      }
 
       window.history.replaceState({}, '', '/posts/tech?page=2&sort=title')
       const router = createRouter({
@@ -889,18 +932,22 @@ describe('Solid Router - Optional Path Parameters', () => {
       'should handle multiple consecutive optional parameters: $path',
       async ({ path, expectedParams }) => {
         const rootRoute = createRootRoute()
-        const dateRoute = createRoute({
-          getParentRoute: () => rootRoute,
-          path: '/{-$year}/{-$month}/{-$day}',
-          component: () => {
+        const DateComponent = defineComponent({
+          setup() {
             const params = dateRoute.useParams()
-            return (
+            return () => (
               <div>
                 <h1>Date Route</h1>
                 <div data-testid="params">{JSON.stringify(params.value)}</div>
               </div>
             )
           },
+        })
+
+        const dateRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/{-$year}/{-$month}/{-$day}',
+          component: DateComponent,
         })
 
         window.history.replaceState({}, '', path)
@@ -950,12 +997,10 @@ describe('Solid Router - Optional Path Parameters', () => {
       'should handle routes with required param after optional param: $path',
       async ({ path, expected }) => {
         const rootRoute = createRootRoute()
-        const roomsRoute = createRoute({
-          getParentRoute: () => rootRoute,
-          path: '/{-$locale}/$rooms',
-          component: () => {
+        const RoomsComponent = defineComponent({
+          setup() {
             const params = roomsRoute.useParams()
-            return (
+            return () => (
               <div>
                 <h1>Rooms</h1>
                 <div data-testid="locale-param">
@@ -968,6 +1013,12 @@ describe('Solid Router - Optional Path Parameters', () => {
               </div>
             )
           },
+        })
+
+        const roomsRoute = createRoute({
+          getParentRoute: () => rootRoute,
+          path: '/{-$locale}/$rooms',
+          component: RoomsComponent,
         })
 
         window.history.replaceState({}, '', path)
@@ -996,14 +1047,12 @@ describe('Solid Router - Optional Path Parameters', () => {
       })
 
       const rootRoute = createRootRoute()
-      const postsRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/posts/{-$category}',
-        loader: mockLoader,
-        component: () => {
+      const PostsComponent = defineComponent({
+        setup() {
           const data = postsRoute.useLoaderData()
+
           const params = postsRoute.useParams()
-          return (
+          return () => (
             <div>
               <h1>Posts</h1>
               <div data-testid="params">{JSON.stringify(params.value)}</div>
@@ -1011,6 +1060,13 @@ describe('Solid Router - Optional Path Parameters', () => {
             </div>
           )
         },
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/{-$category}',
+        loader: mockLoader,
+        component: PostsComponent,
       })
       window.history.replaceState({}, '', '/posts')
 
@@ -1048,19 +1104,23 @@ describe('Solid Router - Optional Path Parameters', () => {
       })
 
       const rootRoute = createRootRoute()
-      const postsRoute = createRoute({
-        getParentRoute: () => rootRoute,
-        path: '/posts/{-$category}',
-        beforeLoad: mockBeforeLoad,
-        component: () => {
+      const PostsComponent = defineComponent({
+        setup() {
           const params = postsRoute.useParams()
-          return (
+          return () => (
             <div>
               <h1>Posts</h1>
               <div data-testid="params">{JSON.stringify(params.value)}</div>
             </div>
           )
         },
+      })
+
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts/{-$category}',
+        beforeLoad: mockBeforeLoad,
+        component: PostsComponent,
       })
       window.history.replaceState({}, '', '/posts/tech')
 

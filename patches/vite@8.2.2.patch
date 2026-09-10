@@ -1,0 +1,13 @@
+diff --git a/dist/client/bundledDevClient.mjs b/dist/client/bundledDevClient.mjs
+index 4c4a3f6f884795001ffbae43cd3c3d6bf84169dc..24e9246beb3821d3afe9696fc2f9af89b42808d7 100644
+--- a/dist/client/bundledDevClient.mjs
++++ b/dist/client/bundledDevClient.mjs
+@@ -289,7 +289,7 @@ var DevRuntime = class {
+ 	* @param {string} id
+ 	* @param {{ exports: any }} exportsHolder
+ 	*/
+-	registerModule(id, exportsHolder) {
++	registerModule(id, exportsHolder = { exports: {} }) {
+ 		const module = new Module(id);
+ 		module.exportsHolder = exportsHolder;
+ 		this.moduleCache.set(id, module);
