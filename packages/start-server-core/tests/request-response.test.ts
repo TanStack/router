@@ -56,6 +56,30 @@ describe('setResponseHeaders', () => {
     await handler(request, {})
   })
 
+  it('should preserve the live response headers when passed back to itself', async () => {
+    const cookies = ['session=abc123; Path=/', 'user=john; Path=/']
+    const handler = requestHandler(() => {
+      setResponseHeader('set-cookie', cookies)
+      setResponseHeader('x-custom', 'keep')
+      const headers = getResponseHeaders()
+      const entries = Array.from(headers)
+
+      setResponseHeaders(headers)
+
+      expect(getResponseHeaders()).toBe(headers)
+      expect(Array.from(headers)).toEqual(entries)
+      expect(headers.getSetCookie()).toEqual(cookies)
+      return new Response('OK')
+    })
+
+    const response = await handler(
+      new Request('http://localhost:3000/test'),
+      {},
+    )
+    expect(response.headers.getSetCookie()).toEqual(cookies)
+    expect(response.headers.get('x-custom')).toBe('keep')
+  })
+
   it('should replace existing headers with the same name', async () => {
     const handler = requestHandler(() => {
       setResponseHeaders(
