@@ -1,5 +1,8 @@
 cleanupUnusedCatalogs: true
 minimumReleaseAge: 1440
+minimumReleaseAgeExclude:
+  # Includes the bundled-dev runtime fix needed by the Vite upgrade.
+  - vite@8.3.0
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 blockExoticSubdeps: true
@@ -61,7 +64,7 @@ catalog:
   rimraf: ^6.1.2
   solid-js: 1.9.12
   tinyglobby: ^0.2.17
-  vite: ^8.2.2
+  vite: ^8.3.0
   vite-plugin-solid: 2.11.14
   vitest: ^4.1.11
   vue: ^3.5.25
@@ -172,8 +175,3 @@ allowBuilds:
 
   # protobufjs
   protobufjs: false # transitive dep
-
-patchedDependencies:
-  # Match Rolldown >=1.2.6 empty-module registration in Vite's embedded dev runtime.
-  # https://github.com/rolldown/rolldown/pull/10772
-  vite@8.2.2: patches/vite@8.2.2.patch

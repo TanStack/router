@@ -30,7 +30,7 @@
     "@vitejs/plugin-vue-jsx": "^5.1.6",
     "eslint-plugin-vue": "^9.33.0",
     "typescript": "~5.8.3",
-    "vite": "^8.2.2",
+    "vite": "^8.3.0",
     "vue-eslint-parser": "^9.4.3",
     "vue-tsc": "^3.3.8"
   }

@@ -18,7 +18,7 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "@tanstack/solid-router-devtools": "^1.167.1",
-    "vite": "^8.2.2",
+    "vite": "^8.3.0",
     "tailwindcss": "^4.2.2",
     "vite-plugin-dts": "^5.1.0",
     "@tailwindcss/vite": "^4.3.3"
