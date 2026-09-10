@@ -47,11 +47,6 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
 ): Solid.ComponentProps<'a'> {
   const router = useRouter()
-  const shouldHydrateHash = !isServer && !!router.options.ssr
-  const hasHydrated = useHydrated()
-
-  let hasRenderFetched = false
-
   const [local, rest] = Solid.splitProps(
     Solid.mergeProps(
       {
@@ -189,18 +184,8 @@ export function useLinkProps<
     return _href && getUrlScheme(_href) ? _href : undefined
   })
 
-  const preload = Solid.createMemo(() => {
-    if (
-      options.reloadDocument ||
-      externalLink() !== undefined ||
-      local.disabled
-    ) {
-      return false
-    }
-    return local.preload ?? router.options.defaultPreload
-  })
-  const preloadDelay = () =>
-    local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
+  const shouldHydrateHash = !isServer && !!router.options.ssr
+  const hasHydrated = (isServer ?? router.isServer) ? undefined : useHydrated()
 
   const isActive = Solid.createMemo(() => {
     if (externalLink() !== undefined) {
@@ -238,11 +223,97 @@ export function useLinkProps<
 
     if (activeOptions?.includeHash) {
       const currentHash =
-        shouldHydrateHash && !hasHydrated() ? '' : current.hash
+        shouldHydrateHash && !hasHydrated?.() ? '' : current.hash
       return currentHash === nextLocation.hash
     }
     return true
   })
+
+  const simpleStyling = Solid.createMemo(
+    () =>
+      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
+      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
+      local.class === undefined &&
+      local.style === undefined,
+  )
+
+  type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
+    style?: Solid.JSX.CSSProperties
+  }
+
+  const resolveLinkStateProps = (
+    base: Solid.ComponentProps<'a'> & { disabled?: boolean },
+  ) => {
+    const active = isActive()
+
+    if (simpleStyling()) {
+      return {
+        ...base,
+        ...(active && STATIC_DEFAULT_ACTIVE_ATTRIBUTES),
+      }
+    }
+
+    // Active and inactive props are mutually exclusive.
+    const stateProps: ResolvedLinkStateProps = active
+      ? (functionalUpdate(local.activeProps as any, {}) ?? EMPTY_OBJECT)
+      : functionalUpdate(local.inactiveProps, {})
+    const style = {
+      ...local.style,
+      ...stateProps.style,
+    }
+    const className = [local.class, stateProps.class].filter(Boolean).join(' ')
+
+    return {
+      ...stateProps,
+      ...base,
+      ...(hasKeys(style) ? { style } : undefined),
+      ...(className ? { class: className } : undefined),
+      ...(active && STATIC_ACTIVE_ATTRIBUTES),
+    } as ResolvedLinkStateProps
+  }
+
+  // Keep the guard inline so browser builds can drop the server return.
+  if (isServer ?? router.isServer) {
+    const external = externalLink()
+    const disabled = local.disabled || external === null
+    const props = resolveLinkStateProps({
+      onClick: local.onClick,
+      onBlur: local.onBlur,
+      onFocus: local.onFocus,
+      onMouseEnter: local.onMouseEnter,
+      onMouseLeave: local.onMouseLeave,
+      onMouseOut: local.onMouseOut,
+      onMouseOver: local.onMouseOver,
+      onTouchStart: local.onTouchStart,
+      href: external === null ? undefined : external || hrefOption(),
+      ref: options.ref,
+      disabled,
+      target: local.target,
+      ...(disabled && STATIC_DISABLED_PROPS),
+    })
+    // Avoid creating merged-prop getters for absent server event handlers.
+    for (const key of STATIC_EVENT_PROPS) {
+      if (props[key] === undefined) {
+        delete props[key]
+      }
+    }
+    return Solid.mergeProps(propsSafeToSpread, props) as any
+  }
+
+  let hasRenderFetched = false
+
+  const preload = Solid.createMemo(() => {
+    if (
+      options.reloadDocument ||
+      externalLink() !== undefined ||
+      local.disabled
+    ) {
+      return false
+    }
+    return local.preload ?? router.options.defaultPreload
+  })
+  const preloadDelay = () =>
+    local.preloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
   const doPreload = () =>
     router
@@ -302,41 +373,6 @@ export function useLinkProps<
     }
   })
 
-  // SSR has no reactive destination changes or internal event handlers.
-  // Keep this guard inline so browser builds drop the entire shortcut.
-  if (isServer ?? router.isServer) {
-    const external = externalLink()
-    if (
-      external !== undefined &&
-      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
-      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
-      local.class === undefined &&
-      local.style === undefined
-    ) {
-      const disabled = local.disabled || external === null
-      return Solid.mergeProps(
-        propsSafeToSpread,
-        Solid.splitProps(local, [
-          'target',
-          'onClick',
-          'onBlur',
-          'onFocus',
-          'onMouseEnter',
-          'onMouseLeave',
-          'onMouseOut',
-          'onMouseOver',
-          'onTouchStart',
-        ])[0],
-        {
-          ref: mergeRefs(setRef, options.ref),
-          href: external ?? undefined,
-          disabled,
-          ...(disabled && STATIC_DISABLED_PROPS),
-        },
-      ) as any
-    }
-  }
-
   // The click handler
   const handleClick = (e: MouseEvent) => {
     // Check actual element's target attribute as fallback
@@ -381,14 +417,6 @@ export function useLinkProps<
     }
   }
 
-  const simpleStyling = Solid.createMemo(
-    () =>
-      local.activeProps === STATIC_ACTIVE_PROPS_GET &&
-      local.inactiveProps === STATIC_INACTIVE_PROPS_GET &&
-      local.class === undefined &&
-      local.style === undefined,
-  )
-
   const onClick = createComposedHandler(() => local.onClick, handleClick)
   const onBlur = createComposedHandler(() => local.onBlur, handleLeave)
   const onFocus = createComposedHandler(() => local.onFocus, enqueuePreload)
@@ -410,12 +438,7 @@ export function useLinkProps<
     handleTouchStart,
   )
 
-  type ResolvedLinkStateProps = Omit<Solid.ComponentProps<'a'>, 'style'> & {
-    style?: Solid.JSX.CSSProperties
-  }
-
   const resolvedProps = Solid.createMemo(() => {
-    const active = isActive()
     const external = externalLink()
     const disabled = local.disabled || external === null
 
@@ -435,35 +458,22 @@ export function useLinkProps<
       ...(disabled && STATIC_DISABLED_PROPS),
     }
 
-    if (simpleStyling()) {
-      return {
-        ...base,
-        ...(active && STATIC_DEFAULT_ACTIVE_ATTRIBUTES),
-      }
-    }
-
-    // Active and inactive props are mutually exclusive.
-    const stateProps: ResolvedLinkStateProps = active
-      ? (functionalUpdate(local.activeProps as any, {}) ?? EMPTY_OBJECT)
-      : functionalUpdate(local.inactiveProps, {})
-    const style = {
-      ...local.style,
-      ...stateProps.style,
-    }
-    const className = [local.class, stateProps.class].filter(Boolean).join(' ')
-
-    return {
-      ...stateProps,
-      ...base,
-      ...(hasKeys(style) ? { style } : undefined),
-      ...(className ? { class: className } : undefined),
-      ...(active && STATIC_ACTIVE_ATTRIBUTES),
-    } as ResolvedLinkStateProps
+    return resolveLinkStateProps(base)
   })
 
   return Solid.mergeProps(propsSafeToSpread, resolvedProps) as any
 }
 
+const STATIC_EVENT_PROPS = [
+  'onClick',
+  'onBlur',
+  'onFocus',
+  'onMouseEnter',
+  'onMouseLeave',
+  'onMouseOut',
+  'onMouseOver',
+  'onTouchStart',
+] as const
 const STATIC_ACTIVE_PROPS = { class: 'active' }
 const STATIC_ACTIVE_PROPS_GET = () => STATIC_ACTIVE_PROPS
 const EMPTY_OBJECT = {}
@@ -474,7 +484,7 @@ const STATIC_DEFAULT_ACTIVE_ATTRIBUTES = {
   'aria-current': 'page',
 }
 const STATIC_DISABLED_PROPS = {
-  role: 'link',
+  role: 'link' as const,
   'aria-disabled': true,
 }
 const STATIC_ACTIVE_ATTRIBUTES = {
