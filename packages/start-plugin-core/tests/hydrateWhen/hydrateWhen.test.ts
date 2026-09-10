@@ -1,7 +1,7 @@
 import { readFile, readdir } from 'node:fs/promises'
-import path from 'node:path'
 import * as t from '@babel/types'
 import { generateFromAst, parseAst } from '@tanstack/router-utils'
+import path from 'pathe'
 import { describe, expect, test } from 'vitest'
 import { createHydrateCompilerPlugin } from '../../src/hydrate-when-transform'
 

@@ -17,7 +17,13 @@ afterEach(() => {
 
 for (const isServer of [true, false]) {
   test.each<[string, string | null, boolean]>([
+    ['//evil.example/path', null, false],
+    ['/\\evil.example/path', null, false],
+    ['\\/evil.example/path', null, false],
+    ['\x01 \t//evil.example/path', null, false],
+    ['javascript:blocked()', null, false],
     ['/formatted', '/formatted', true],
+    ['https://other.example/', 'https://other.example/', false],
   ] as const)(
     `validates final history href %j on ${isServer ? 'server' : 'client'}`,
     (href, expectedHref, active) => {

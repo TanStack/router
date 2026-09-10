@@ -12,7 +12,7 @@ export function Page() {
     })} prefetch={idle({
       timeout: 100
     })} fallback={<FallbackPane label="chart" />} h="0_3cf0187f82" p={_H0_preload}>
-      {<_H />}
-    </Hydrate>
+{<_H />}
+</Hydrate>
     </section>;
 }
