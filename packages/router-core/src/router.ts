@@ -1885,19 +1885,15 @@ export class RouterCore<
     if (!plan || plan[1 /* path */] !== path) {
       const segments =
         route?._interpolation ?? parseSegments(false, { fullPath: path }, 0)
-      plan = [
-        createSieveCache<string | undefined, string>(128),
-        path,
-        segments,
-      ]
+      plan = [createSieveCache<string | undefined, string>(128), path, segments]
       if (route) {
         route._pathCache = plan
       } else {
         this.unmatchedPathCache.set(path, plan)
       }
     }
-  const paths = plan[0 /* paths */]
-  const keys = getParamNames(plan[2 /* segments */])
+    const paths = plan[0 /* paths */]
+    const keys = getParamNames(plan[2 /* segments */])
     // Single-param templates use the value itself as the Map key. Compound keys
     // concatenate `<length>:<value>` tokens; undefined becomes
     // `undefined:undefined`, whose nonnumeric prefix cannot match a string token.
