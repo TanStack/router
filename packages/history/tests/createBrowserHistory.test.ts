@@ -57,7 +57,7 @@ describe('createBrowserHistory', () => {
     history.destroy()
   })
 
-  test.each(['/a\tb?q=a\nb#/\\section\r'])(
+  test.each(['/a\x00b?q=a\x01b#/\\section\x7f', '/a\tb?q=a\nb#/\\section\r'])(
     'preserves the browser interpretation of %j',
     (href) => {
       const originalHref = window.location.href
@@ -150,6 +150,36 @@ describe('createBrowserHistory', () => {
     history.destroy()
   })
 
+  test.each([
+    '//evil.com/path',
+    '///evil.com/path',
+    '/\\evil.com/path',
+    '/\\\\evil.com/path',
+    '/\\/evil.com/path',
+    '\\/evil.com/path',
+    '\\\\evil.com/path',
+    ' /\\evil.com/path',
+    '\x01//evil.com/path',
+    '/\t/evil.com/path',
+  ])('sanitizes %j before calling the native History API', async (href) => {
+    const { history, pushState } = createBrowserHistoryHarness()
+
+    history.push(href)
+    await Promise.resolve()
+
+    expect(pushState).toHaveBeenCalledOnce()
+    const pushedHref = pushState.mock.calls[0]![2]
+    const serializedUrl = new URL(pushedHref, 'https://victim.example')
+    expect(serializedUrl.origin).toBe('https://victim.example')
+    expect(serializedUrl.pathname).toBe(
+      href === '\x01//evil.com/path' ? '/%01//evil.com/path' : '/evil.com/path',
+    )
+    expect(
+      new URL(history.location.href, 'https://victim.example').origin,
+    ).toBe('https://victim.example')
+    history.destroy()
+  })
+
   test('does not exempt a normal traversal from beforeunload blockers', () => {
     const { history, window } = createBrowserHistoryHarness()
     history.block({ blockerFn: vi.fn(), enableBeforeUnload: true })
@@ -205,6 +235,32 @@ describe('createBrowserHistory', () => {
         }),
       }),
     )
+    history.destroy()
+  })
+
+  test('normalizes the final result of a custom createHref', async () => {
+    const { history, pushState, replaceState } = createBrowserHistoryHarness(
+      () => ' \t/\\evil.example/path',
+    )
+
+    expect(history.createHref('/safe')).toBe('/evil.example/path')
+
+    history.push('/safe')
+    await Promise.resolve()
+    history.replace('/safe')
+    await Promise.resolve()
+
+    expect(pushState).toHaveBeenCalledWith(
+      expect.anything(),
+      '',
+      '/evil.example/path',
+    )
+    expect(replaceState).toHaveBeenCalledWith(
+      expect.anything(),
+      '',
+      '/evil.example/path',
+    )
+    expect(history.location.href).toBe('/safe')
     history.destroy()
   })
 

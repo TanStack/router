@@ -38,8 +38,14 @@ export async function prerenderWithVite({
     getClientOutputDirectory() {
       return outputDir
     },
+    getOrigin() {
+      return baseUrl.origin
+    },
     request(path, options) {
       const url = new URL(path, baseUrl)
+      if (url.origin !== baseUrl.origin) {
+        throw new Error(`Prerender request URL must be relative: ${path}`)
+      }
       return fetch(new Request(url, options))
     },
     close() {
