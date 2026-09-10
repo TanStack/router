@@ -1,181 +1,37 @@
 # AGENTS.md
 
-Read and follow [`CONTRIBUTING.md`](./CONTRIBUTING.md) before analyzing or
-changing this repository. Its contribution and pull request requirements apply
-to AI-assisted work.
+## Scope
 
-## Project overview
+- Read applicable nested `AGENTS.md` files before editing or testing a subtree.
+- Shared routing belongs in `packages/router-core`; check React, Solid, and Vue bindings for shared changes. Shared Start runtime/build logic lives in `packages/start-*-core`.
 
-TanStack Router is a type-safe router with built-in caching and URL state management for React and Solid applications. This monorepo contains two main products:
+## Work and validation
 
-- **TanStack Router** - Core routing library with type-safe navigation, search params, and path params
-- **TanStack Start** - Full-stack framework built on top of TanStack Router
+- Start bug fixes with a failing regression test that uses only public APIs to reproduce and assert user- or developer-visible behavior. Do not manufacture bugs by mutating internals. Establish whether real usage can reach the failing state before adding runtime handling; simplify handling of states proven unreachable.
+- During debugging/prototyping, keep fixes aligned with the PR's intended architecture. If making a test pass requires another flag, counter, copied deadline, or duplicate completion authority, stop and consolidate state and ownership. Remove superseded paths instead of accumulating patches and bundle growth.
+- Use Node from `.nvmrc` and pnpm from root `package.json`. Install at the root with `CI=1 pnpm install --frozen-lockfile`.
+- For sandbox-blocked registry/store access, escalate the same command; report the blocker if unavailable. Do not change stores, delete dependencies/lockfiles, use `--force`/`--ignore-scripts`, or weaken workspace trust/build policies to bypass it.
+- Never manually edit `pnpm-lock.yaml` or any `routeTree.gen.ts`. Regenerate the lockfile with `pnpm install --no-frozen-lockfile` after intentional dependency changes; regenerate route trees through app builds/dev servers or the generator fixture harness.
+- Always use control-flow braces. Run `pnpm format` before validation.
+- Use Nx: workspace imports consume built packages, so direct runners can test stale dependencies. Inspect resolved targets; some are inferred.
 
-## Setup commands
+```sh
+CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipRemoteCache
+```
 
-- Install deps: `pnpm install`
-- Setup e2e testing: `pnpm exec playwright install`
-- Build packages: `pnpm build` (affected) or `pnpm build:all` (force all)
-- Start dev server: `pnpm dev`
-- Run tests: `pnpm test`
+- Run one Nx command at a time. For a ~20-second startup/graph stall, stop, run `pnpm nx reset`, and retry once, then escalate. Do not apply that timeout to running tests.
+- For code changes, run affected packages' `test:unit`, `test:types`, and `test:eslint` where available, including affected consumers; use `test:e2e` for browser/app behavior and `test:build` for exports/build changes. Root `pnpm test` includes the full e2e suite. Published-code changes require `pnpm changeset`.
 
-## Code style
+## Runtime rules
 
-- TypeScript strict mode with extensive type safety
-- Framework-agnostic core logic separated from React/Solid bindings
-- Type-safe routing with search params and path params
-- Use workspace protocol for internal dependencies (`workspace:*`)
-- Always use curly braces for `if`, `else`, loops, and similar control statements. Never write one-line bodies like `if (foo) x = 1`.
+- Import `isServer` from `@tanstack/router-core/isServer`. Conditional exports select: `development` → `undefined`; server (`workerd`, `worker`, `deno`, `node`, `bun`) → `true` except `NODE_ENV=test` → `undefined`; browser/fallback → `false`. `development` wins; `NODE_ENV=development` alone does not select it.
+- Keep `isServer ?? router.isServer` directly in each branch condition for dead-code elimination; negate the whole expression for client branches. Never extract it into a variable (e.g. `const serverRendering = isServer ?? router.isServer`) or helper. Without a router, inline `isServer ?? typeof window === 'undefined'` (or the existing `document` check). Keep the constant first and use `??`, never `||`.
+- **Never create UI/router reactivity on the server, including development/tests.** Branch before reactive setup; use direct reads and core non-reactive stores. Required transport listeners are allowed only with request-scoped lifetimes and cleanup.
+- Shared route definitions/build metadata must not acquire request/user data. Keep it on the request's Router, context, or QueryClient.
+- HMR can replace code while caches and pending work survive. Invalidate derived state or bypass caching in development; reject stale async results while preserving intentional HMR identities/state.
+- Gate developer diagnostics and message construction with direct `process.env.NODE_ENV !== 'production'` checks. Preserve required validation/throws in production (e.g. detailed development error, compact `invariant()` failure). `!== 'development'` also enables the guarded code in tests; preserve existing dev-server mode gates.
 
-## Dev environment tips
+## Performance and final bundle pass
 
-- This is a pnpm workspace monorepo with packages organized by functionality
-- Nx provides caching, affected testing, targeting, and parallel execution for efficiency
-- Use `pnpm nx show projects` to list all available packages
-- Target specific packages: `pnpm nx run @tanstack/react-router:test:unit`
-- Target multiple packages: `pnpm nx run-many --target=test:eslint --projects=@tanstack/history,@tanstack/router-core`
-- Run affected tests only: `pnpm nx affected --target=test:unit`
-- Exclude patterns: `pnpm nx run-many --target=test:unit --exclude="examples/**,e2e/**"`
-- Navigate to examples and run `pnpm dev` to test changes: `cd examples/react/basic && pnpm dev`
-- **Granular unit testing through Nx (recommended):**
-  - Specific files: `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx tests/Scripts.test.tsx`
-  - Test patterns: `pnpm nx run @tanstack/react-router:test:unit -- tests/ClientOnly.test.tsx -t "should render fallback"`
-  - Name patterns: `pnpm nx run @tanstack/react-router:test:unit -- -t "navigation"` (all tests with "navigation" in name)
-  - Exclude patterns: `pnpm nx run @tanstack/react-router:test:unit -- --exclude="**/*link*" tests/`
-  - List tests: `pnpm nx run @tanstack/react-router:test:unit -- list tests/link.test.tsx` (or `-- list` for all)
-- **Available test targets per package:** `test:unit`, `test:types`, `test:eslint`, `test:build`, `test:perf`, `build`
-- **Testing strategy:** Package level (nx) → File-level args via nx → Test-level args (`-t`) via nx → Pattern-level args (`--exclude`) via nx
-- **Agent execution guardrails (important):**
-  - Always prefer `pnpm nx ...` over `npx nx ...`.
-  - Prefer Nx targets over direct test runners so task dependencies (including required builds) remain in the graph.
-  - In sandbox, run Nx with `CI=1 NX_DAEMON=false pnpm nx run <project>:<target> --outputStyle=stream --skipRemoteCache`
-  - Run only one Nx command at a time.
-  - If an Nx command shows no output for ~20 seconds, stop, run `pnpm nx reset` once, and retry once.
-  - Do not loop retries indefinitely. If it still hangs or sandbox blocks graph/daemon behavior, request escalation immediately.
-
-## Testing instructions
-
-- **Critical**: Always run unit and type tests during development - do not proceed if they fail
-- **Test types:** `pnpm test:unit`, `pnpm test:types`, `pnpm test:eslint`, `pnpm test:e2e`, `pnpm test:build`
-- **Full CI suite:** `pnpm test:ci`
-- **Fix formatting:** `pnpm format`
-- **Efficient targeted testing workflow:**
-  1. **Affected only:** `pnpm nx affected --target=test:unit` (compares to main branch)
-  2. **Specific packages:** `pnpm nx run @tanstack/react-router:test:unit`
-  3. **Specific files:** `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx`
-  4. **Specific patterns:** `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx -t "preloading"`
-- **Pro tips:**
-  - Use `pnpm nx run @tanstack/react-router:test:unit -- list` to explore available tests before running
-  - Use `-t "pattern"` to focus on specific functionality during development
-  - Use `--exclude` patterns to skip unrelated tests
-  - Keep all test filtering arguments behind `pnpm nx run ... -- ...` for maximum precision while preserving task dependencies
-- **Example workflow:** `pnpm nx run @tanstack/react-router:test:unit` → `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx` → `pnpm nx run @tanstack/react-router:test:unit -- tests/link.test.tsx -t "preloading"`
-
-## PR instructions
-
-- Always run `pnpm test:eslint`, `pnpm test:types`, and `pnpm test:unit` before committing
-- Test changes in relevant example apps: `cd examples/react/basic && pnpm dev`
-- Update corresponding documentation in `docs/` directory when adding features
-- Add or update tests for any code changes
-- Use internal docs links relative to `docs/` folder (e.g., `./guide/data-loading`)
-
-## Package structure
-
-**Core packages:**
-
-- `packages/router-core/` - Framework-agnostic core router logic
-- `packages/react-router/`, `packages/solid-router/` - React/Solid bindings and components
-- `packages/history/` - Browser history management
-
-**Tooling:**
-
-- `packages/router-cli/` - CLI tools for code generation
-- `packages/router-generator/` - Route generation utilities
-- `packages/router-plugin/` - Universal bundler plugins (Vite, Webpack, ESBuild, Rspack)
-- `packages/virtual-file-routes/` - Virtual file routing system
-
-**Developer experience:**
-
-- `packages/router-devtools/`, `packages/*-router-devtools/` - Development tools
-- `packages/eslint-plugin-router/` - ESLint rules for router
-
-**Validation adapters:**
-
-- `packages/zod-adapter/`, `packages/valibot-adapter/`, `packages/arktype-adapter/`
-
-**Start framework:**
-
-- `packages/*-start/`, `packages/start-*/` - Full-stack framework packages
-
-**Examples & testing:**
-
-- `examples/react/`, `examples/solid/` - Example applications (test changes here)
-- `e2e/` - End-to-end tests (requires Playwright)
-- `docs/router/`, `docs/start/` - Documentation with React/Solid subdirectories
-
-**Dependencies:** Uses workspace protocol (`workspace:*`) - core → framework → start packages
-
-## Common development tasks
-
-**Adding new routes:**
-
-- Use file-based routing in `src/routes/` directories
-- Or use code-based routing with route definitions
-- Run route generation with CLI tools
-
-**Testing changes:**
-
-- Build packages: `pnpm build` or `pnpm dev` (watch mode)
-- Run example apps to test functionality
-- Use devtools for debugging router state
-
-**Documentation updates:**
-
-- Update relevant docs in `docs/` directory
-- Ensure examples reflect documentation changes
-- Test documentation links and references
-- Use relative links to `docs/` folder format
-
-## Framework-specific notes
-
-**React:**
-
-- Uses React Router components and hooks
-- Supports React Server Components (RSC)
-- Examples include React Query integration
-- Package: `@tanstack/react-router`
-
-**Solid:**
-
-- Uses Solid Router components and primitives
-- Supports Solid Start for full-stack applications
-- Examples include Solid Query integration
-- Package: `@tanstack/solid-router`
-
-## Environment requirements
-
-- **Node.js** - Required for development
-- **pnpm** - Package manager (required for workspace features)
-- **Playwright** - Required for e2e tests (`pnpm exec playwright install`)
-
-## Key architecture patterns
-
-- **Type Safety**: Extensive TypeScript for type-safe routing
-- **Framework Agnostic**: Core logic separated from framework bindings
-- **Plugin Architecture**: Universal bundler plugins using unplugin
-- **File-based Routing**: Support for both code-based and file-based routing
-- **Search Params**: First-class support for type-safe search parameters
-
-## Development workflow
-
-1. **Setup**: `pnpm install` and `pnpm exec playwright install`
-2. **Build**: `pnpm build:all` or `pnpm dev` for watch mode
-3. **Test**: Make changes and run relevant tests (use nx for targeted testing)
-4. **Examples**: Navigate to examples and run `pnpm dev` to test changes
-5. **Quality**: Run `pnpm test:eslint`, `pnpm test:types`, `pnpm test:unit` before committing
-
-## References
-
-- **Documentation**: https://tanstack.com/router
-- **GitHub**: https://github.com/TanStack/router
-- **Discord Community**: https://discord.com/invite/WrRKjPJ
+- For runtime/memory changes, compare identical baseline/candidate workloads using the relevant [benchmark guide](benchmarks/AGENTS.md): client navigation, Start SSR, or memory. Add coverage for unmeasured mechanisms.
+- **Last phase for every change affecting emitted client JavaScript**, including core/build transforms: complete the full [bundle-size-optimization skill](.agents/skills/bundle-size-optimization/SKILL.md) after correctness and performance validation. The full workflow is mandatory.
