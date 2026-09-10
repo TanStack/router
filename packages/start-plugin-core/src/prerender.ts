@@ -10,6 +10,7 @@ const DEFAULT_RETRY_DELAY = 500
 
 export interface PrerenderHandler {
   getClientOutputDirectory: () => string
+  getOrigin?: () => string
   request: (path: string, options?: RequestInit) => Promise<Response>
   close?: () => Promise<void>
 }
@@ -44,7 +45,10 @@ export async function prerender({
   }
 
   const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
-  const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
+  const routerBaseUrl = new URL(
+    routerBasePath,
+    handler.getOrigin?.() ?? 'http://localhost',
+  )
 
   startConfig.pages = validateAndNormalizePrerenderPages(
     startConfig.pages,
@@ -89,8 +93,6 @@ export async function prerender({
     const concurrency = startConfig.prerender?.concurrency ?? os.cpus().length
     logger.info(`Concurrency: ${concurrency}`)
     const queue = new Queue({ concurrency })
-    const routerBasePath = joinURL('/', startConfig.router.basepath ?? '')
-    const routerBaseUrl = new URL(routerBasePath, 'http://localhost')
 
     startConfig.pages = validateAndNormalizePrerenderPages(
       startConfig.pages,
@@ -189,7 +191,19 @@ export async function prerender({
           )
 
           const html = await res.text()
-          const filepath = path.join(outputDir, filename)
+          const resolvedOutputDir = path.resolve(outputDir)
+          const filepath = path.resolve(outputDir, filename.replace(/^\/+/, ''))
+          const outputPrefix = resolvedOutputDir.endsWith(path.sep)
+            ? resolvedOutputDir
+            : resolvedOutputDir + path.sep
+          if (
+            filepath !== resolvedOutputDir &&
+            !filepath.startsWith(outputPrefix)
+          ) {
+            throw new Error(
+              `Prerender output path must stay within the client output directory: ${filename}`,
+            )
+          }
 
           await fsp.mkdir(path.dirname(filepath), {
             recursive: true,
@@ -239,26 +253,36 @@ export async function prerender({
   }
 
   async function requestWithRedirects(
-    path: string,
+    requestPath: string,
     options?: RequestInit,
     maxRedirects: number = 5,
+    currentUrl = resolveInternalUrl(requestPath, routerBaseUrl, routerBaseUrl),
   ): Promise<Response> {
-    const response = await handler.request(path, options)
+    const path = currentUrl && toPreviewPath(currentUrl, routerBaseUrl)
+    if (!path) {
+      throw new Error(`Prerender request path must be relative: ${requestPath}`)
+    }
+
+    const response = await handler.request(path, {
+      ...options,
+      redirect: 'manual',
+    })
 
     if (isRedirectResponse(response) && maxRedirects > 0) {
-      const location = response.headers.get('location')!
+      const location = response.headers.get('location')!.trim()
+      const url = resolveInternalUrl(location, currentUrl, routerBaseUrl)
+      const redirectPath = url && toPreviewPath(url, routerBaseUrl)
 
-      const isLocalPath = location.startsWith('/') && !location.startsWith('//')
-      const isLocalUrl =
-        location.startsWith('http://localhost') &&
-        new URL(location).origin === 'http://localhost'
-
-      if (isLocalUrl || isLocalPath) {
-        const nextPath = location.replace('http://localhost', '')
-        return requestWithRedirects(nextPath, options, maxRedirects - 1)
+      if (url && redirectPath) {
+        return requestWithRedirects(
+          redirectPath,
+          options,
+          maxRedirects - 1,
+          url,
+        )
       }
 
-      logger.warn(`Skipping redirect to external location: ${location}`)
+      logger.warn(`Skipping redirect outside the preview basepath: ${location}`)
     }
 
     return response
@@ -266,7 +290,46 @@ export async function prerender({
 }
 
 function isRedirectResponse(res: Response) {
-  return res.status >= 300 && res.status < 400 && res.headers.get('location')
+  return (
+    [301, 302, 303, 307, 308].includes(res.status) &&
+    !!res.headers.get('location')?.trim()
+  )
+}
+
+function resolveInternalUrl(
+  href: string,
+  baseUrl: URL,
+  allowedOrigin: URL,
+): URL | undefined {
+  try {
+    const url = new URL(href, baseUrl)
+    if (
+      url.protocol !== allowedOrigin.protocol ||
+      url.origin !== allowedOrigin.origin ||
+      url.username ||
+      url.password
+    ) {
+      return undefined
+    }
+    return url
+  } catch {
+    return undefined
+  }
+}
+
+function toPreviewPath(url: URL, routerBaseUrl: URL): string | undefined {
+  const basepath = routerBaseUrl.pathname.replace(/\/$/, '')
+  if (
+    basepath &&
+    url.pathname !== basepath &&
+    !url.pathname.startsWith(basepath + '/')
+  ) {
+    return undefined
+  }
+  if (url.pathname.startsWith('//')) {
+    return url.href
+  }
+  return url.pathname + url.search
 }
 
 export function validateAndNormalizePrerenderPages(
@@ -283,15 +346,29 @@ export function validateAndNormalizePrerenderPages(
       })
     }
 
-    if (url.origin !== 'http://localhost') {
+    if (
+      url.protocol !== routerBaseUrl.protocol ||
+      url.origin !== routerBaseUrl.origin ||
+      url.username ||
+      url.password
+    ) {
       throw new Error(`prerender page path must be relative: ${page.path}`)
     }
 
     const decodedPathname = decodeURIComponent(url.pathname)
+    const normalizedPath = decodedPathname + url.search + url.hash
+    const normalizedUrl = resolveInternalUrl(
+      normalizedPath,
+      routerBaseUrl,
+      routerBaseUrl,
+    )
+    if (!normalizedUrl) {
+      throw new Error(`prerender page path must be relative: ${page.path}`)
+    }
 
     return {
       ...page,
-      path: decodedPathname + url.search + url.hash,
+      path: normalizedPath,
     }
   })
 }

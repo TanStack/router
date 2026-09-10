@@ -114,9 +114,7 @@ function Script({
           script.parentNode.removeChild(script)
         }
       })
-    }
-
-    if (typeof children === 'string') {
+    } else if (typeof children === 'string') {
       const typeAttr =
         typeof attrs?.type === 'string' ? attrs.type : 'text/javascript'
       const nonceAttr =

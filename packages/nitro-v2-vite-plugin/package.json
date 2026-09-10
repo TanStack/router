@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/nitro-v2-vite-plugin",
-  "version": "1.155.1",
+  "version": "1.155.2",
   "description": "Modern and scalable routing for React applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -60,8 +60,8 @@
     "node": ">=22.12"
   },
   "dependencies": {
-    "nitropack": "^2.13.1",
-    "pathe": "^2.0.3"
+    "nitropack": "^2.13.4",
+    "pathe": "catalog:"
   },
   "peerDependencies": {
     "vite": ">=7.0.0"
