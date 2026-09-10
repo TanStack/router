@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/solid-router'
-import { z } from 'zod'
+import * as z from 'zod'
 import { ScrollBlock } from '../-components/scroll-block'
 
 export const Route = createFileRoute('/(tests)/with-search')({

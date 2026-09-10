@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
 import { setResponseStatus } from '@tanstack/vue-start/server'
 import { defineComponent, ref } from 'vue'
-import { z } from 'zod'
+import * as z from 'zod'
 import { CustomError } from '~/CustomError'
 
 const schema = z.object({ hello: z.string() })

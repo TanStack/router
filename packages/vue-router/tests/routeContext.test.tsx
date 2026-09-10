@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { z } from 'zod'
+import * as z from 'zod'
 
 import {
   Link,

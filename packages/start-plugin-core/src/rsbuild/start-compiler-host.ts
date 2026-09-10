@@ -1,7 +1,7 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
-import { z } from 'zod'
+import * as z from 'zod'
 import { TRANSFORM_ID_REGEX } from '../constants'
 import { detectKindsInCode } from '../start-compiler/compiler'
 import { getTransformCodeFilterForEnv } from '../start-compiler/config'

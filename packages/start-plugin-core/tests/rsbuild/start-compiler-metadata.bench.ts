@@ -1,5 +1,5 @@
 import { bench, describe, expect } from 'vitest'
-import { z } from 'zod'
+import * as z from 'zod'
 import { readServerFnBuildInfo } from '../../src/rsbuild/start-compiler-host'
 import { SERVER_FN_BUILD_INFO_FIELD } from '../../src/rsbuild/start-compiler-metadata'
 import { mergeServerFnsById } from '../../src/start-compiler/host'

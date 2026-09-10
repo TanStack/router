@@ -156,7 +156,7 @@ await greetUser({ data: { name: 'John' } })
 ### Zod Validator
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 
 const createUser = createServerFn({ method: 'POST' })
   .validator(
