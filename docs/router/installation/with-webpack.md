@@ -64,6 +64,38 @@ Or, for a full webpack.config.js, you can clone our [Quickstart Webpack example]
 
 Now that you've added the plugin to your Webpack configuration, you're all set to start using file-based routing with TanStack Router.
 
+## SPA fallback and public path
+
+TanStack Router is a client-side router: the browser URL changes (e.g. to `/posts/123`), but there is only one physical HTML file on the server. Two Webpack settings make sure directly loading or refreshing the page at a nested route works:
+
+```ts title="webpack.config.ts"
+export default {
+  output: {
+    publicPath: '/',
+  },
+  devServer: {
+    historyApiFallback: {
+      rewrites: [{ from: /./, to: '/index.html' }],
+    },
+  },
+}
+```
+
+### `devServer.historyApiFallback`
+
+By default, `webpack-dev-server` only knows how to serve files that physically exist, so a direct load or refresh at a route like `/posts/123` responds with a 404. Setting `historyApiFallback` tells the dev server to answer those requests with `index.html` instead, letting the router take over once the application shell has loaded. The `rewrites` option above sends every unmatched request to `/index.html`, which covers nested paths that contain dots (the default fallback skips those).
+
+> [!NOTE]
+> `historyApiFallback` only configures the development server. In production, your hosting provider or web server needs an equivalent rewrite rule that serves `index.html` for unknown paths.
+
+### `output.publicPath`
+
+`publicPath` controls the URL prefix used for the bundles referenced from `index.html`. If it is left relative, a page served at a nested path such as `/posts/123` will try to load its scripts from `/posts/main.bundle.js` and end up with a blank screen. Setting `publicPath: '/'` makes all asset URLs absolute so they resolve correctly from any route.
+
+If you deploy the application under a subpath (e.g. `https://example.com/my-app/`), set `publicPath` to that actual public base (`'/my-app/'`), point the `historyApiFallback` rewrite at `'/my-app/index.html'`, and pass the same subpath as the [`basepath`](../api/router/RouterOptionsType.md#basepath-property) option to your router.
+
+Both of the maintained Webpack quickstart examples ([React](https://github.com/TanStack/router/tree/main/examples/react/quickstart-webpack-file-based), [Solid](https://github.com/TanStack/router/tree/main/examples/solid/quickstart-webpack-file-based)) ship with this configuration.
+
 ## Ignoring the generated route tree file
 
 If your project is configured to use a linter and/or formatter, you may want to ignore the generated route tree file. This file is managed by TanStack Router and therefore shouldn't be changed by your linter or formatter.
