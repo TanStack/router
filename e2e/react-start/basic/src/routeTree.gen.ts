@@ -29,6 +29,7 @@ import { Route as TypeOnlyReexportRouteImport } from './routes/type-only-reexpor
 import { Route as UsersRouteImport } from './routes/users'
 import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as ApiUsersRouteImport } from './routes/api.users'
+import { Route as CrawlBoundariesSplatRouteImport } from './routes/crawl-boundaries.$'
 import { Route as Issue6221DashboardRouteImport } from './routes/issue-6221.dashboard'
 import { Route as MultiCookieRedirectIndexRouteImport } from './routes/multi-cookie-redirect/index'
 import { Route as MultiCookieRedirectTargetRouteImport } from './routes/multi-cookie-redirect/target'
@@ -179,6 +180,11 @@ const LayoutLayout2Route = LayoutLayout2RouteImport.update({
 const ApiUsersRoute = ApiUsersRouteImport.update({
   id: '/api/users',
   path: '/api/users',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrawlBoundariesSplatRoute = CrawlBoundariesSplatRouteImport.update({
+  id: '/crawl-boundaries/$',
+  path: '/crawl-boundaries/$',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Issue6221DashboardRoute = Issue6221DashboardRouteImport.update({
@@ -480,6 +486,7 @@ export interface FileRoutesByFullPath {
   '/not-found/parent-boundary': typeof NotFoundParentBoundaryRouteRouteWithChildren
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/crawl-boundaries/$': typeof CrawlBoundariesSplatRoute
   '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -545,6 +552,7 @@ export interface FileRoutesByTo {
   '/type-only-reexport': typeof TypeOnlyReexportRoute
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/crawl-boundaries/$': typeof CrawlBoundariesSplatRoute
   '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -618,6 +626,7 @@ export interface FileRoutesById {
   '/specialChars/malformed': typeof SpecialCharsMalformedRouteRouteWithChildren
   '/_layout/_layout-2': typeof LayoutLayout2RouteWithChildren
   '/api/users': typeof ApiUsersRouteWithChildren
+  '/crawl-boundaries/$': typeof CrawlBoundariesSplatRoute
   '/issue-6221/dashboard': typeof Issue6221DashboardRoute
   '/multi-cookie-redirect/target': typeof MultiCookieRedirectTargetRoute
   '/not-found/via-beforeLoad': typeof NotFoundViaBeforeLoadRoute
@@ -692,6 +701,7 @@ export interface FileRouteTypes {
     | '/not-found/parent-boundary'
     | '/specialChars/malformed'
     | '/api/users'
+    | '/crawl-boundaries/$'
     | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
@@ -757,6 +767,7 @@ export interface FileRouteTypes {
     | '/type-only-reexport'
     | '/specialChars/malformed'
     | '/api/users'
+    | '/crawl-boundaries/$'
     | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
@@ -829,6 +840,7 @@ export interface FileRouteTypes {
     | '/specialChars/malformed'
     | '/_layout/_layout-2'
     | '/api/users'
+    | '/crawl-boundaries/$'
     | '/issue-6221/dashboard'
     | '/multi-cookie-redirect/target'
     | '/not-found/via-beforeLoad'
@@ -900,6 +912,7 @@ export interface RootRouteChildren {
   TypeOnlyReexportRoute: typeof TypeOnlyReexportRoute
   UsersRoute: typeof UsersRouteWithChildren
   ApiUsersRoute: typeof ApiUsersRouteWithChildren
+  CrawlBoundariesSplatRoute: typeof CrawlBoundariesSplatRoute
   Issue6221DashboardRoute: typeof Issue6221DashboardRoute
   MultiCookieRedirectTargetRoute: typeof MultiCookieRedirectTargetRoute
   RedirectTargetRoute: typeof RedirectTargetRouteWithChildren
@@ -1050,6 +1063,13 @@ declare module '@tanstack/react-router' {
       path: '/api/users'
       fullPath: '/api/users'
       preLoaderRoute: typeof ApiUsersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crawl-boundaries/$': {
+      id: '/crawl-boundaries/$'
+      path: '/crawl-boundaries/$'
+      fullPath: '/crawl-boundaries/$'
+      preLoaderRoute: typeof CrawlBoundariesSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/issue-6221/dashboard': {
@@ -1688,6 +1708,7 @@ const rootRouteChildren: RootRouteChildren = {
   TypeOnlyReexportRoute: TypeOnlyReexportRoute,
   UsersRoute: UsersRouteWithChildren,
   ApiUsersRoute: ApiUsersRouteWithChildren,
+  CrawlBoundariesSplatRoute: CrawlBoundariesSplatRoute,
   Issue6221DashboardRoute: Issue6221DashboardRoute,
   MultiCookieRedirectTargetRoute: MultiCookieRedirectTargetRoute,
   RedirectTargetRoute: RedirectTargetRouteWithChildren,
