@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, defineComponent } from 'vue'
 import {
   ErrorComponent,
   Link,
@@ -133,6 +133,20 @@ function PostErrorComponent({ error }: ErrorComponentProps) {
   return <ErrorComponent error={error} />
 }
 
+const PostComponent = defineComponent({
+  setup() {
+    const post = postRoute.useLoaderData()
+
+    return () => (
+      <div class="space-y-2">
+        <h4 class="text-xl font-bold">{post.value.title}</h4>
+        <hr class="opacity-20" />
+        <div class="text-sm">{post.value.body}</div>
+      </div>
+    )
+  },
+})
+
 const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
@@ -140,18 +154,6 @@ const postRoute = createRoute({
   loader: ({ params }) => fetchPost(params.postId),
   component: PostComponent,
 })
-
-function PostComponent() {
-  const post = postRoute.useLoaderData()
-
-  return (
-    <div class="space-y-2">
-      <h4 class="text-xl font-bold">{post.value.title}</h4>
-      <hr class="opacity-20" />
-      <div class="text-sm">{post.value.body}</div>
-    </div>
-  )
-}
 
 const layoutRoute = createRoute({
   getParentRoute: () => rootRoute,
@@ -315,14 +317,30 @@ const paramsPsNamedIndexRoute = createRoute({
   },
 })
 
+const ParamsNamedFoo = defineComponent({
+  setup() {
+    const p = paramsPsNamedFooRoute.useParams()
+    return () => (
+      <div>
+        <h3>ParamsNamedFoo</h3>
+        <div data-testid="params-output">{JSON.stringify(p.value)}</div>
+      </div>
+    )
+  },
+})
+
 const paramsPsNamedFooRoute = createRoute({
   getParentRoute: () => paramsPsNamedRoute,
   path: '/$foo',
-  component: function ParamsNamedFoo() {
-    const p = paramsPsNamedFooRoute.useParams()
-    return (
+  component: ParamsNamedFoo,
+})
+
+const ParamsNamedFooMarkdown = defineComponent({
+  setup() {
+    const p = paramsPsNamedFooPrefixRoute.useParams()
+    return () => (
       <div>
-        <h3>ParamsNamedFoo</h3>
+        <h3>ParamsNamedFooPrefix</h3>
         <div data-testid="params-output">{JSON.stringify(p.value)}</div>
       </div>
     )
@@ -332,11 +350,15 @@ const paramsPsNamedFooRoute = createRoute({
 const paramsPsNamedFooPrefixRoute = createRoute({
   getParentRoute: () => paramsPsNamedRoute,
   path: '/prefix{$foo}',
-  component: function ParamsNamedFooMarkdown() {
-    const p = paramsPsNamedFooPrefixRoute.useParams()
-    return (
+  component: ParamsNamedFooMarkdown,
+})
+
+const ParamsNamedFooSuffix = defineComponent({
+  setup() {
+    const p = paramsPsNamedFooSuffixRoute.useParams()
+    return () => (
       <div>
-        <h3>ParamsNamedFooPrefix</h3>
+        <h3>ParamsNamedFooSuffix</h3>
         <div data-testid="params-output">{JSON.stringify(p.value)}</div>
       </div>
     )
@@ -346,15 +368,7 @@ const paramsPsNamedFooPrefixRoute = createRoute({
 const paramsPsNamedFooSuffixRoute = createRoute({
   getParentRoute: () => paramsPsNamedRoute,
   path: '/{$foo}suffix',
-  component: function ParamsNamedFooSuffix() {
-    const p = paramsPsNamedFooSuffixRoute.useParams()
-    return (
-      <div>
-        <h3>ParamsNamedFooSuffix</h3>
-        <div data-testid="params-output">{JSON.stringify(p.value)}</div>
-      </div>
-    )
-  },
+  component: ParamsNamedFooSuffix,
 })
 
 const paramsPsWildcardRoute = createRoute({
@@ -370,14 +384,30 @@ const paramsPsWildcardIndexRoute = createRoute({
   },
 })
 
+const ParamsWildcardSplat = defineComponent({
+  setup() {
+    const p = paramsPsWildcardSplatRoute.useParams()
+    return () => (
+      <div>
+        <h3>ParamsWildcardSplat</h3>
+        <div data-testid="params-output">{JSON.stringify(p.value)}</div>
+      </div>
+    )
+  },
+})
+
 const paramsPsWildcardSplatRoute = createRoute({
   getParentRoute: () => paramsPsWildcardRoute,
   path: '$',
-  component: function ParamsWildcardSplat() {
-    const p = paramsPsWildcardSplatRoute.useParams()
-    return (
+  component: ParamsWildcardSplat,
+})
+
+const ParamsWildcardSplatPrefix = defineComponent({
+  setup() {
+    const p = paramsPsWildcardSplatPrefixRoute.useParams()
+    return () => (
       <div>
-        <h3>ParamsWildcardSplat</h3>
+        <h3>ParamsWildcardSplatPrefix</h3>
         <div data-testid="params-output">{JSON.stringify(p.value)}</div>
       </div>
     )
@@ -387,11 +417,15 @@ const paramsPsWildcardSplatRoute = createRoute({
 const paramsPsWildcardSplatPrefixRoute = createRoute({
   getParentRoute: () => paramsPsWildcardRoute,
   path: 'prefix{$}',
-  component: function ParamsWildcardSplatPrefix() {
-    const p = paramsPsWildcardSplatPrefixRoute.useParams()
-    return (
+  component: ParamsWildcardSplatPrefix,
+})
+
+const ParamsWildcardSplatSuffix = defineComponent({
+  setup() {
+    const p = paramsPsWildcardSplatSuffixRoute.useParams()
+    return () => (
       <div>
-        <h3>ParamsWildcardSplatPrefix</h3>
+        <h3>ParamsWildcardSplatSuffix</h3>
         <div data-testid="params-output">{JSON.stringify(p.value)}</div>
       </div>
     )
@@ -401,15 +435,7 @@ const paramsPsWildcardSplatPrefixRoute = createRoute({
 const paramsPsWildcardSplatSuffixRoute = createRoute({
   getParentRoute: () => paramsPsWildcardRoute,
   path: '{$}suffix',
-  component: function ParamsWildcardSplatSuffix() {
-    const p = paramsPsWildcardSplatSuffixRoute.useParams()
-    return (
-      <div>
-        <h3>ParamsWildcardSplatSuffix</h3>
-        <div data-testid="params-output">{JSON.stringify(p.value)}</div>
-      </div>
-    )
-  },
+  component: ParamsWildcardSplatSuffix,
 })
 
 const routeTree = rootRoute.addChildren([

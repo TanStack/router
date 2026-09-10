@@ -1,11 +1,52 @@
 import { Await, createFileRoute } from '@tanstack/vue-router'
-import { Suspense } from 'vue'
+import { Suspense, defineComponent } from 'vue'
 import {
   makeDeferredSectionPayload,
   type DeferredSectionPayload,
 } from '../../../deferred-section-data'
 
 const fallbackFlushTicks = 20
+
+const StreamComponent = defineComponent({
+  setup() {
+    const data = Route.useLoaderData()
+
+    return () => {
+      const deferredSections = [
+        { index: 0, promise: data.value.deferred0 },
+        { index: 1, promise: data.value.deferred1 },
+        { index: 2, promise: data.value.deferred2 },
+        { index: 3, promise: data.value.deferred3 },
+      ] as const
+
+      return (
+        <main data-bench="streaming-peak-page">
+          <h1>{data.value.eager}</h1>
+          {deferredSections.map(({ index, promise }) => (
+            <>
+              <p data-bench={`streaming-peak-fallback-${index}`}>
+                streaming-peak-fallback-{index}
+              </p>
+              <Suspense key={index}>
+                {{
+                  default: () => (
+                    <Await
+                      promise={promise}
+                      children={(section: DeferredSectionPayload) => (
+                        <DeferredSection section={section} />
+                      )}
+                    />
+                  ),
+                  fallback: () => null,
+                }}
+              </Suspense>
+            </>
+          ))}
+        </main>
+      )
+    }
+  },
+})
 
 export const Route = createFileRoute('/stream/$id')({
   loader: ({ params }) => ({
@@ -45,42 +86,6 @@ function afterFallbackFlush(sectionIndex: number) {
 function makeDeferredSection(id: string, sectionIndex: number) {
   return afterFallbackFlush(sectionIndex).then(() =>
     makeDeferredSectionPayload(id, sectionIndex),
-  )
-}
-
-function StreamComponent() {
-  const data = Route.useLoaderData()
-  const deferredSections = [
-    { index: 0, promise: data.value.deferred0 },
-    { index: 1, promise: data.value.deferred1 },
-    { index: 2, promise: data.value.deferred2 },
-    { index: 3, promise: data.value.deferred3 },
-  ] as const
-
-  return (
-    <main data-bench="streaming-peak-page">
-      <h1>{data.value.eager}</h1>
-      {deferredSections.map(({ index, promise }) => (
-        <>
-          <p data-bench={`streaming-peak-fallback-${index}`}>
-            streaming-peak-fallback-{index}
-          </p>
-          <Suspense key={index}>
-            {{
-              default: () => (
-                <Await
-                  promise={promise}
-                  children={(section: DeferredSectionPayload) => (
-                    <DeferredSection section={section} />
-                  )}
-                />
-              ),
-              fallback: () => null,
-            }}
-          </Suspense>
-        </>
-      ))}
-    </main>
   )
 }
 
