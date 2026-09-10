@@ -152,6 +152,23 @@ describe.each([false, true])(
       }
     })
 
+    it('caches paths with omitted optional params', () => {
+      const interpolate = createPathInterpolator()
+      const decoder = vi.fn(compileDecodeCharMap(['@']))
+      const options = {
+        path: '/{-$lang}/foo/$id',
+        params: { id: '@one' },
+        decoder,
+        server,
+      }
+
+      expect(interpolate(options)).toBe('/foo/@one')
+      expect(interpolate({ ...options, params: { id: '@one' } })).toBe(
+        '/foo/@one',
+      )
+      expect(decoder).toHaveBeenCalledOnce()
+    })
+
     it('uses the canonical splat value instead of its legacy alias', () => {
       const interpolate = createPathInterpolator()
       const decoder = vi.fn(compileDecodeCharMap(['@']))
