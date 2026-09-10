@@ -120,8 +120,6 @@ export interface NormalizedClientChunk {
 export interface NormalizedClientBuild {
   entryChunkFileName: string
   chunksByFileName: ReadonlyMap<string, NormalizedClientChunk>
-  chunkFileNamesByRouteFilePath: ReadonlyMap<string, ReadonlyArray<string>>
-  cssFilesBySourcePath: ReadonlyMap<string, ReadonlyArray<string>>
   cssContentByFileName?: ReadonlyMap<string, string>
 }
 

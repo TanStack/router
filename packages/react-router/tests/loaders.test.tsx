@@ -922,7 +922,9 @@ test('reproducer for #6388 - rapid navigation between parameterized routes shoul
       errorComponentRenderCount(error)
       return (
         <div data-testid="error-component">
-          Error Component: {error.message} | Name: {error.name}
+          Error Component:{' '}
+          {error instanceof Error ? error.message : String(error)} | Name:{' '}
+          {error instanceof Error ? error.name : typeof error}
         </div>
       )
     },

@@ -7,7 +7,7 @@ import {
   SEGMENT_TYPE_WILDCARD,
   parseSegment,
 } from './new-process-route-tree'
-import type { LRUCache } from './lru-cache'
+import type { SieveCache } from './sieve-cache'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
@@ -99,7 +99,7 @@ interface ResolvePathOptions {
   base: string
   to: string
   trailingSlash?: 'always' | 'never' | 'preserve'
-  cache?: LRUCache<string, string>
+  cache?: SieveCache<string, string>
 }
 
 /**

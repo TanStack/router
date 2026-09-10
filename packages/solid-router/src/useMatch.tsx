@@ -28,9 +28,12 @@ export interface UseMatchBaseOptions<
 export type UseMatchRoute<out TFrom> = <
   TRouter extends AnyRouter = RegisteredRouter,
   TSelected = unknown,
+  TThrow extends boolean = true,
 >(
-  opts?: UseMatchBaseOptions<TRouter, TFrom, true, true, TSelected>,
-) => Solid.Accessor<UseMatchResult<TRouter, TFrom, true, TSelected>>
+  opts?: UseMatchBaseOptions<TRouter, TFrom, true, TThrow, TSelected>,
+) => Solid.Accessor<
+  ThrowOrOptional<UseMatchResult<TRouter, TFrom, true, TSelected>, TThrow>
+>
 
 export type UseMatchOptions<
   TRouter extends AnyRouter,

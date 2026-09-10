@@ -9,7 +9,7 @@ export function H0() {
   return <>
         <Outer />
         <Hydrate when={interaction()} h="1_466696e41d">
-      {<_H />}
-    </Hydrate>
+{<_H />}
+</Hydrate>
       </>;
 }

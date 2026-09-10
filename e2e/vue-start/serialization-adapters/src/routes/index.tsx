@@ -2,7 +2,9 @@ import { Link, createFileRoute } from '@tanstack/vue-router'
 
 export const Route = createFileRoute('/')({
   component: Home,
-  errorComponent: (e) => <div>{e.error.message} </div>,
+  errorComponent: (e) => (
+    <div>{e.error instanceof Error ? e.error.message : String(e.error)} </div>
+  ),
 })
 
 function Home() {
