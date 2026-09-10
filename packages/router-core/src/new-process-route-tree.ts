@@ -816,47 +816,44 @@ function extractParams<T extends RouteLike>(
       ) {
         partIndex-- // stay on the same part
         pathIndex = currentPathIndex - 1 // undo pathIndex advancement; -1 to account for loop increment
-      } else if ('prefix' in node) {
-        const optional = node.kind === SEGMENT_TYPE_OPTIONAL_PARAM
-        const wildcard = node.kind === SEGMENT_TYPE_WILDCARD
-        const preLength = node.prefix.length
-        const sufLength = node.suffix.length
-        const name = wildcard
-          ? '_splat'
-          : template.substring(segment[2], segment[3])
-        const value = path.substring(
-          currentPathIndex + preLength,
-          (wildcard ? path.length : pathIndex) - sufLength,
-        )
-        if (!optional || value) {
-          const params = routeMatch
-            ? (routeRawParams ??= Object.create(null))
-            : rawParams
-          params[name] = rawParams[name] = decodeURIComponent(value)
-          if (wildcard) {
-            params['*'] = rawParams['*'] = params[name]
-            pathIndex = path.length
+      } else {
+        if ('prefix' in node) {
+          const optional = node.kind === SEGMENT_TYPE_OPTIONAL_PARAM
+          const wildcard = node.kind === SEGMENT_TYPE_WILDCARD
+          const preLength = node.prefix.length
+          const sufLength = node.suffix.length
+          const name = wildcard
+            ? '_splat'
+            : template.substring(segment[2], segment[3])
+          const value = path.substring(
+            currentPathIndex + preLength,
+            (wildcard ? path.length : pathIndex) - sufLength,
+          )
+          if (!optional || value) {
+            const params = routeMatch
+              ? (routeRawParams ??= Object.create(null))
+              : rawParams
+            params[name] = rawParams[name] = decodeURIComponent(value)
+            if (wildcard) {
+              params['*'] = rawParams['*'] = params[name]
+              pathIndex = path.length
+            }
           }
         }
-      }
-      if (
-        routeMatch &&
-        caseSensitive &&
-        partIndex &&
-        !(
-          node.kind === SEGMENT_TYPE_OPTIONAL_PARAM &&
-          leaf.skipped & (1 << nodeIndex)
-        )
-      ) {
-        if (node.kind === SEGMENT_TYPE_PATHNAME) {
-          caseSensitive = part === template.substring(segment[2], segment[3])
-        } else {
-          caseSensitive =
-            path.startsWith(
-              template.substring(templateStart, segment[1]),
-              currentPathIndex,
-            ) &&
-            path.endsWith(template.substring(segment[4], segment[5]), pathIndex)
+        if (routeMatch && caseSensitive && partIndex) {
+          if (node.kind === SEGMENT_TYPE_PATHNAME) {
+            caseSensitive = part === template.substring(segment[2], segment[3])
+          } else {
+            caseSensitive =
+              path.startsWith(
+                template.substring(templateStart, segment[1]),
+                currentPathIndex,
+              ) &&
+              path.endsWith(
+                template.substring(segment[4], segment[5]),
+                pathIndex,
+              )
+          }
         }
       }
     } else {
@@ -986,7 +983,6 @@ function getNodeMatch<T extends RouteLike>(
   while (stack.length) {
     const frame = stack.pop()!
     const { node, index, skipped, statics, dynamics, optionals } = frame
-    let { extract, params } = frame
 
     // Wildcard candidates are pushed speculatively as fallbacks in case a
     // higher-priority wildcard later fails params.parse. If a better wildcard
@@ -1003,8 +999,6 @@ function getNodeMatch<T extends RouteLike>(
     if (node.parse) {
       const result = validateParseParams(path, parts, frame)
       if (!result) continue
-      params = frame.params
-      extract = frame.extract
     }
 
     // In fuzzy mode, track the best partial match we've found so far
@@ -1039,14 +1033,8 @@ function getNodeMatch<T extends RouteLike>(
     // 0. Try index match
     if (isBeyondPath && node.index) {
       const indexFrame: Frame = {
+        ...frame,
         node: node.index,
-        index,
-        skipped,
-        statics,
-        dynamics,
-        optionals,
-        extract,
-        params,
       }
       if (!node.index.parse || validateParseParams(path, parts, indexFrame)) {
         // perfect match, no need to continue
@@ -1094,14 +1082,9 @@ function getNodeMatch<T extends RouteLike>(
         }
         // wildcard matches consume the rest of the URL and cannot have children
         stack.push({
+          ...frame,
           node: segment,
           index: partsLength,
-          skipped,
-          statics,
-          dynamics,
-          optionals,
-          extract,
-          params,
         })
       }
     }
@@ -1114,14 +1097,9 @@ function getNodeMatch<T extends RouteLike>(
         const segment = node.optional[i]!
         // when skipping, the node advances by 1, but the index doesn't
         stack.push({
+          ...frame,
           node: segment,
-          index,
           skipped: nextSkipped,
-          statics,
-          dynamics,
-          optionals,
-          extract,
-          params,
         }) // enqueue skipping the optional
       }
       if (!isBeyondPath) {
@@ -1142,14 +1120,10 @@ function getNodeMatch<T extends RouteLike>(
             }
           }
           stack.push({
+            ...frame,
             node: segment,
             index: index + 1,
-            skipped,
-            statics,
-            dynamics,
             optionals: optionals + segmentScore(partsLength, index),
-            extract,
-            params,
           })
         }
       }
@@ -1174,14 +1148,10 @@ function getNodeMatch<T extends RouteLike>(
           }
         }
         stack.push({
+          ...frame,
           node: segment,
           index: index + 1,
-          skipped,
-          statics,
           dynamics: dynamics + segmentScore(partsLength, index),
-          optionals,
-          extract,
-          params,
         })
       }
     }
@@ -1193,14 +1163,10 @@ function getNodeMatch<T extends RouteLike>(
       )
       if (match) {
         stack.push({
+          ...frame,
           node: match,
           index: index + 1,
-          skipped,
           statics: statics + segmentScore(partsLength, index),
-          dynamics,
-          optionals,
-          extract,
-          params,
         })
       }
     }
@@ -1210,14 +1176,10 @@ function getNodeMatch<T extends RouteLike>(
       const match = node.static.get(part!)
       if (match) {
         stack.push({
+          ...frame,
           node: match,
           index: index + 1,
-          skipped,
           statics: statics + segmentScore(partsLength, index),
-          dynamics,
-          optionals,
-          extract,
-          params,
         })
       }
     }
@@ -1227,14 +1189,8 @@ function getNodeMatch<T extends RouteLike>(
       for (let i = node.pathless.length - 1; i >= 0; i--) {
         const segment = node.pathless[i]!
         stack.push({
+          ...frame,
           node: segment,
-          index,
-          skipped,
-          statics,
-          dynamics,
-          optionals,
-          extract,
-          params,
         })
       }
     }
