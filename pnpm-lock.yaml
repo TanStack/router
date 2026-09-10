@@ -5881,7 +5881,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -5921,7 +5921,7 @@ importers:
         version: link:../../e2e-utils
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6095,7 +6095,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6141,7 +6141,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.9.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.9.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.9.3))
       typescript:
         specifier: ~5.9.0
         version: 5.9.3
@@ -6196,7 +6196,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6251,7 +6251,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6300,7 +6300,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6355,7 +6355,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6401,7 +6401,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6453,7 +6453,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))
       vite:
         specifier: ^8.0.14
         version: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
@@ -6612,7 +6612,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6630,7 +6630,7 @@ importers:
         version: 7.120.4
       '@sentry/vite-plugin':
         specifier: ^4.6.1
-        version: 4.6.1(supports-color@10.2.2)
+        version: 4.6.1(supports-color@7.2.0)
       '@sentry/vue':
         specifier: ^10.32.0
         version: 10.32.0(@tanstack/vue-router@packages+vue-router)(vue@3.5.25(typescript@5.8.3))
@@ -6661,7 +6661,7 @@ importers:
         version: link:../../e2e-utils
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6713,7 +6713,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -6862,7 +6862,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -6920,7 +6920,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -6963,7 +6963,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       rimraf:
         specifier: 'catalog:'
         version: 6.1.2
@@ -7030,7 +7030,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
         specifier: ^0.11.9
         version: 0.11.12
@@ -7070,7 +7070,7 @@ importers:
         version: typescript@7.0.2
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       sass:
         specifier: ^1.97.2
         version: 1.97.2
@@ -7198,7 +7198,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7253,7 +7253,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
@@ -7299,7 +7299,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
         specifier: ^0.11.9
         version: 0.11.12
@@ -7348,7 +7348,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
         specifier: ^0.11.9
         version: 0.11.12
@@ -7421,7 +7421,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
@@ -7494,7 +7494,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
@@ -7543,7 +7543,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -7580,7 +7580,7 @@ importers:
         version: typescript@7.0.2
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
         specifier: ^0.11.9
         version: 0.11.15
@@ -7638,7 +7638,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       combinate:
         specifier: ^1.1.11
         version: 1.1.11
@@ -7699,7 +7699,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       srvx:
         specifier: ^0.11.9
         version: 0.11.12
@@ -11146,7 +11146,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11186,7 +11186,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11229,7 +11229,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11272,7 +11272,7 @@ importers:
         specifier: ^5.102.0
         version: 5.102.0(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11309,7 +11309,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11343,7 +11343,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11383,7 +11383,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11429,7 +11429,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.102.0(solid-js@1.9.12))(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11472,7 +11472,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.102.0(solid-js@1.9.12))(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11512,7 +11512,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       compression:
         specifier: ^1.8.0
@@ -11555,7 +11555,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11613,7 +11613,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11656,7 +11656,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11696,7 +11696,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11736,7 +11736,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       solid-js:
         specifier: 1.9.12
@@ -11770,7 +11770,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11810,7 +11810,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11859,7 +11859,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.102.0(solid-js@1.9.12))(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11908,7 +11908,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.102.0(solid-js@1.9.12))(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11954,7 +11954,7 @@ importers:
         specifier: ^5.102.0
         version: 5.102.0(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -11994,7 +11994,7 @@ importers:
         specifier: ^5.102.0
         version: 5.102.0(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12031,7 +12031,7 @@ importers:
         specifier: ^5.102.0
         version: 5.102.0(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12065,7 +12065,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12096,7 +12096,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12127,7 +12127,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12167,7 +12167,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12204,7 +12204,7 @@ importers:
   examples/solid/quickstart-webpack-file-based:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12268,7 +12268,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12305,7 +12305,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12348,7 +12348,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.102.0(solid-js@1.9.12))(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12385,7 +12385,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12428,7 +12428,7 @@ importers:
         specifier: ^5.102.0
         version: 5.102.0(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12483,7 +12483,7 @@ importers:
   examples/solid/start-basic:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12512,7 +12512,7 @@ importers:
         version: typescript@7.0.2
       nitro:
         specifier: ^3.0.260311-beta
-        version: 3.0.260311-beta(@electric-sql/pglite@0.3.2)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(chokidar@5.0.0)(dotenv@17.4.2)(giget@2.0.0)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260317.0)(mysql2@3.15.3)(rollup@4.63.1)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        version: 3.0.260311-beta(@electric-sql/pglite@0.3.2)(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(chokidar@5.0.0)(dotenv@17.4.2)(giget@2.0.0)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260317.0)(mysql2@3.15.3)(rollup@4.63.1)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       tailwindcss:
         specifier: ^4.2.2
         version: 4.2.2
@@ -12538,7 +12538,7 @@ importers:
         specifier: ^7.0.0
         version: 7.0.0(@typescript/typescript6@6.0.2)(prisma@7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12590,7 +12590,7 @@ importers:
         specifier: ^0.41.1
         version: 0.41.1
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12633,7 +12633,7 @@ importers:
   examples/solid/start-basic-cloudflare:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12676,7 +12676,7 @@ importers:
   examples/solid/start-basic-netlify:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12716,7 +12716,7 @@ importers:
   examples/solid/start-basic-nitro:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12762,7 +12762,7 @@ importers:
         specifier: ^5.90.0
         version: 5.90.4(@tanstack/solid-query@5.102.0(solid-js@1.9.12))(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12808,7 +12808,7 @@ importers:
   examples/solid/start-basic-static:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12863,7 +12863,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.2.3)(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12930,7 +12930,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -12988,7 +12988,7 @@ importers:
   examples/solid/start-counter:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13034,7 +13034,7 @@ importers:
         specifier: ^0.7.0
         version: 0.7.14(csstype@3.2.3)(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13077,7 +13077,7 @@ importers:
         specifier: ^5.102.0
         version: 5.102.0(solid-js@1.9.12)
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13123,7 +13123,7 @@ importers:
   examples/solid/start-streaming-data-from-server-functions:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13163,7 +13163,7 @@ importers:
         specifier: ^2.48.1
         version: 2.48.1
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13203,7 +13203,7 @@ importers:
   examples/solid/start-tailwind-v4:
     dependencies:
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13252,7 +13252,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13289,7 +13289,7 @@ importers:
         specifier: ^4.2.2
         version: 4.2.2(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13332,7 +13332,7 @@ importers:
         specifier: workspace:*
         version: link:../../../packages/router-plugin
       '@tanstack/solid-router':
-        specifier: ^1.170.32
+        specifier: ^1.170.33
         version: link:../../../packages/solid-router
       '@tanstack/solid-router-devtools':
         specifier: workspace:^
@@ -13401,7 +13401,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -13502,7 +13502,7 @@ importers:
         version: 6.0.5(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       '@vitejs/plugin-vue-jsx':
         specifier: ^5.1.5
-        version: 5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
+        version: 5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))
       typescript:
         specifier: ~5.8.3
         version: 5.8.3
@@ -29709,6 +29709,19 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@babel/helper-create-class-features-plugin@7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)':
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/helper-annotate-as-pure': 7.27.3
+      '@babel/helper-member-expression-to-functions': 7.28.5(supports-color@7.2.0)
+      '@babel/helper-optimise-call-expression': 7.27.1
+      '@babel/helper-replace-supers': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
+      '@babel/helper-skip-transparent-expression-wrappers': 7.27.1(supports-color@7.2.0)
+      '@babel/traverse': 7.29.8(supports-color@7.2.0)
+      semver: 6.3.1
+    transitivePeerDependencies:
+      - supports-color
+
   '@babel/helper-globals@7.28.0': {}
 
   '@babel/helper-globals@7.29.7': {}
@@ -29860,6 +29873,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@babel/helper-replace-supers@7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)':
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/helper-member-expression-to-functions': 7.28.5(supports-color@7.2.0)
+      '@babel/helper-optimise-call-expression': 7.27.1
+      '@babel/traverse': 7.29.8(supports-color@7.2.0)
+    transitivePeerDependencies:
+      - supports-color
+
   '@babel/helper-skip-transparent-expression-wrappers@7.27.1(supports-color@10.2.2)':
     dependencies:
       '@babel/traverse': 7.29.8(supports-color@10.2.2)
@@ -29949,6 +29971,11 @@ snapshots:
       '@babel/core': 7.29.7(supports-color@10.2.2)
       '@babel/helper-plugin-utils': 7.28.6
 
+  '@babel/plugin-syntax-typescript@7.28.6(@babel/core@7.29.7(supports-color@7.2.0))':
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/helper-plugin-utils': 7.28.6
+
   '@babel/plugin-transform-class-properties@7.28.6(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
       '@babel/core': 7.29.7(supports-color@10.2.2)
@@ -30021,6 +30048,17 @@ snapshots:
       '@babel/helper-plugin-utils': 7.28.6
       '@babel/helper-skip-transparent-expression-wrappers': 7.27.1(supports-color@10.2.2)
       '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))
+    transitivePeerDependencies:
+      - supports-color
+
+  '@babel/plugin-transform-typescript@7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)':
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/helper-annotate-as-pure': 7.27.3
+      '@babel/helper-create-class-features-plugin': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
+      '@babel/helper-plugin-utils': 7.28.6
+      '@babel/helper-skip-transparent-expression-wrappers': 7.27.1(supports-color@7.2.0)
+      '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))
     transitivePeerDependencies:
       - supports-color
 
@@ -32004,7 +32042,7 @@ snapshots:
 
   '@img/sharp-wasm32@0.34.5':
     dependencies:
-      '@emnapi/runtime': 1.11.1
+      '@emnapi/runtime': 1.11.3
     optional: true
 
   '@img/sharp-win32-arm64@0.34.4':
@@ -32582,7 +32620,7 @@ snapshots:
       image-size: 2.0.2
       js-image-generator: 1.0.4
       parse-gitignore: 2.0.0
-      semver: 7.8.2
+      semver: 7.8.5
       tmp-promise: 3.0.3
       uuid: 11.1.0
       write-file-atomic: 5.0.1
@@ -34260,14 +34298,6 @@ snapshots:
     optional: true
 
   '@rolldown/binding-openharmony-arm64@1.0.2':
-    optional: true
-
-  '@rolldown/binding-wasm32-wasi@1.0.0-rc.9(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)':
-    dependencies:
-      '@napi-rs/wasm-runtime': 1.1.4(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
-    transitivePeerDependencies:
-      - '@emnapi/core'
-      - '@emnapi/runtime'
     optional: true
 
   '@rolldown/binding-wasm32-wasi@1.0.0-rc.9(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
@@ -36340,7 +36370,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.57.1
       debug: 4.4.3(supports-color@10.2.2)
       minimatch: 10.2.5
-      semver: 7.8.2
+      semver: 7.8.5
       tinyglobby: 0.2.17
       ts-api-utils: 2.4.0(@typescript/typescript6@6.0.2)
       typescript: '@typescript/typescript6@6.0.2'
@@ -36355,7 +36385,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.57.1
       debug: 4.4.3(supports-color@7.2.0)
       minimatch: 10.2.5
-      semver: 7.8.2
+      semver: 7.8.5
       tinyglobby: 0.2.17
       ts-api-utils: 2.4.0(@typescript/typescript6@6.0.2)
       typescript: '@typescript/typescript6@6.0.2'
@@ -36370,7 +36400,7 @@ snapshots:
       '@typescript-eslint/visitor-keys': 8.57.1
       debug: 4.4.3(supports-color@10.2.2)
       minimatch: 10.2.5
-      semver: 7.8.2
+      semver: 7.8.5
       tinyglobby: 0.2.17
       ts-api-utils: 2.4.0(typescript@5.9.3)
       typescript: 5.9.3
@@ -36738,25 +36768,49 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-vue-jsx@5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.9.3))':
+  '@vitejs/plugin-vue-jsx@5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(@typescript/typescript6@6.0.2))':
     dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))
-      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))
+      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
       '@rolldown/pluginutils': 1.0.0-rc.9
-      '@vue/babel-plugin-jsx': 2.0.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      '@vue/babel-plugin-jsx': 2.0.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
+      vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vue: 3.5.25(@typescript/typescript6@6.0.2)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@vitejs/plugin-vue-jsx@5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.8.3))':
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))
+      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
+      '@rolldown/pluginutils': 1.0.0-rc.9
+      '@vue/babel-plugin-jsx': 2.0.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
+      vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
+      vue: 3.5.25(typescript@5.8.3)
+    transitivePeerDependencies:
+      - supports-color
+
+  '@vitejs/plugin-vue-jsx@5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@5.9.3))':
+    dependencies:
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))
+      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
+      '@rolldown/pluginutils': 1.0.0-rc.9
+      '@vue/babel-plugin-jsx': 2.0.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
       vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vue: 3.5.25(typescript@5.9.3)
     transitivePeerDependencies:
       - supports-color
 
-  '@vitejs/plugin-vue-jsx@5.1.5(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))':
+  '@vitejs/plugin-vue-jsx@5.1.5(supports-color@7.2.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))(vue@3.5.25(typescript@7.0.2))':
     dependencies:
-      '@babel/core': 7.29.7(supports-color@10.2.2)
-      '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))
-      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/plugin-syntax-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))
+      '@babel/plugin-transform-typescript': 7.28.6(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
       '@rolldown/pluginutils': 1.0.0-rc.9
-      '@vue/babel-plugin-jsx': 2.0.1(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)
+      '@vue/babel-plugin-jsx': 2.0.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
       vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
       vue: 3.5.25(typescript@7.0.2)
     transitivePeerDependencies:
@@ -36945,6 +36999,22 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@vue/babel-plugin-jsx@2.0.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)':
+    dependencies:
+      '@babel/helper-module-imports': 7.27.1(supports-color@7.2.0)
+      '@babel/helper-plugin-utils': 7.27.1
+      '@babel/plugin-syntax-jsx': 7.27.1(@babel/core@7.29.7(supports-color@7.2.0))
+      '@babel/template': 7.29.7
+      '@babel/traverse': 7.29.8(supports-color@7.2.0)
+      '@babel/types': 7.29.8
+      '@vue/babel-helper-vue-transform-on': 2.0.1
+      '@vue/babel-plugin-resolve-type': 2.0.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)
+      '@vue/shared': 3.5.25
+    optionalDependencies:
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+    transitivePeerDependencies:
+      - supports-color
+
   '@vue/babel-plugin-resolve-type@1.5.0(@babel/core@7.29.7(supports-color@10.2.2))(supports-color@10.2.2)':
     dependencies:
       '@babel/code-frame': 7.29.7
@@ -36961,6 +37031,17 @@ snapshots:
       '@babel/code-frame': 7.29.7
       '@babel/core': 7.29.7(supports-color@10.2.2)
       '@babel/helper-module-imports': 7.27.1(supports-color@10.2.2)
+      '@babel/helper-plugin-utils': 7.28.6
+      '@babel/parser': 7.29.8
+      '@vue/compiler-sfc': 3.5.25
+    transitivePeerDependencies:
+      - supports-color
+
+  '@vue/babel-plugin-resolve-type@2.0.1(@babel/core@7.29.7(supports-color@7.2.0))(supports-color@7.2.0)':
+    dependencies:
+      '@babel/code-frame': 7.29.7
+      '@babel/core': 7.29.7(supports-color@7.2.0)
+      '@babel/helper-module-imports': 7.27.1(supports-color@7.2.0)
       '@babel/helper-plugin-utils': 7.28.6
       '@babel/parser': 7.29.8
       '@vue/compiler-sfc': 3.5.25
@@ -41480,60 +41561,6 @@ snapshots:
       - sqlite3
       - uploadthing
 
-  nitro@3.0.260311-beta(@electric-sql/pglite@0.3.2)(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(chokidar@5.0.0)(dotenv@17.4.2)(giget@2.0.0)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260317.0)(mysql2@3.15.3)(rollup@4.63.1)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
-    dependencies:
-      consola: 3.4.2
-      crossws: 0.4.4(srvx@0.11.22)
-      db0: 0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3)
-      env-runner: 0.1.6(miniflare@4.20260317.0)
-      h3: 2.0.1-rc.16(crossws@0.4.4(srvx@0.11.22))
-      hookable: 6.1.0
-      nf3: 0.3.11
-      ocache: 0.1.2
-      ofetch: 2.0.0-alpha.3
-      ohash: 2.0.11
-      rolldown: 1.0.0-rc.9(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
-      srvx: 0.11.22
-      unenv: 2.0.0-rc.24
-      unstorage: 2.0.0-alpha.6(@netlify/blobs@10.1.0)(chokidar@5.0.0)(db0@0.3.4(@electric-sql/pglite@0.3.2)(@libsql/client@0.15.15)(mysql2@3.15.3))(ioredis@5.11.1(supports-color@10.2.2))(lru-cache@11.5.1)(ofetch@2.0.0-alpha.3)
-    optionalDependencies:
-      dotenv: 17.4.2
-      giget: 2.0.0
-      jiti: 2.7.0
-      rollup: 4.63.1
-      vite: 8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)
-    transitivePeerDependencies:
-      - '@azure/app-configuration'
-      - '@azure/cosmos'
-      - '@azure/data-tables'
-      - '@azure/identity'
-      - '@azure/keyvault-secrets'
-      - '@azure/storage-blob'
-      - '@capacitor/preferences'
-      - '@deno/kv'
-      - '@electric-sql/pglite'
-      - '@emnapi/core'
-      - '@emnapi/runtime'
-      - '@libsql/client'
-      - '@netlify/blobs'
-      - '@planetscale/database'
-      - '@upstash/redis'
-      - '@vercel/blob'
-      - '@vercel/functions'
-      - '@vercel/kv'
-      - aws4fetch
-      - better-sqlite3
-      - chokidar
-      - drizzle-orm
-      - idb-keyval
-      - ioredis
-      - lru-cache
-      - miniflare
-      - mongodb
-      - mysql2
-      - sqlite3
-      - uploadthing
-
   nitro@3.0.260311-beta(@electric-sql/pglite@0.3.2)(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)(@libsql/client@0.15.15)(@netlify/blobs@10.1.0)(chokidar@5.0.0)(dotenv@17.4.2)(giget@2.0.0)(ioredis@5.11.1(supports-color@10.2.2))(jiti@2.7.0)(lru-cache@11.5.1)(miniflare@4.20260317.0)(mysql2@3.15.3)(rollup@4.63.1)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)):
     dependencies:
       consola: 3.4.2
@@ -42974,30 +43001,6 @@ snapshots:
       glob: 13.0.0
       package-json-from-dist: 1.0.1
 
-  rolldown@1.0.0-rc.9(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1):
-    dependencies:
-      '@oxc-project/types': 0.115.0
-      '@rolldown/pluginutils': 1.0.0-rc.9
-    optionalDependencies:
-      '@rolldown/binding-android-arm64': 1.0.0-rc.9
-      '@rolldown/binding-darwin-arm64': 1.0.0-rc.9
-      '@rolldown/binding-darwin-x64': 1.0.0-rc.9
-      '@rolldown/binding-freebsd-x64': 1.0.0-rc.9
-      '@rolldown/binding-linux-arm-gnueabihf': 1.0.0-rc.9
-      '@rolldown/binding-linux-arm64-gnu': 1.0.0-rc.9
-      '@rolldown/binding-linux-arm64-musl': 1.0.0-rc.9
-      '@rolldown/binding-linux-ppc64-gnu': 1.0.0-rc.9
-      '@rolldown/binding-linux-s390x-gnu': 1.0.0-rc.9
-      '@rolldown/binding-linux-x64-gnu': 1.0.0-rc.9
-      '@rolldown/binding-linux-x64-musl': 1.0.0-rc.9
-      '@rolldown/binding-openharmony-arm64': 1.0.0-rc.9
-      '@rolldown/binding-wasm32-wasi': 1.0.0-rc.9(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.1)
-      '@rolldown/binding-win32-arm64-msvc': 1.0.0-rc.9
-      '@rolldown/binding-win32-x64-msvc': 1.0.0-rc.9
-    transitivePeerDependencies:
-      - '@emnapi/core'
-      - '@emnapi/runtime'
-
   rolldown@1.0.0-rc.9(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3):
     dependencies:
       '@oxc-project/types': 0.115.0
@@ -43355,7 +43358,7 @@ snapshots:
     dependencies:
       '@img/colour': 1.0.0
       detect-libc: 2.1.2
-      semver: 7.8.2
+      semver: 7.8.5
     optionalDependencies:
       '@img/sharp-darwin-arm64': 0.34.5
       '@img/sharp-darwin-x64': 0.34.5
