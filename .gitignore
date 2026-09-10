@@ -66,6 +66,7 @@ nx-cloud.env
 .nx/workspace-data
 .nx/polygraph
 .nx/self-healing
+.nx/migrate-runs
 
 gpt/db.json
 

@@ -1,12 +1,12 @@
 import { dirname } from 'node:path'
 import { createNodesFromFiles, readJsonFile } from '@nx/devkit'
 import type {
-  CreateNodesContextV2,
-  CreateNodesV2,
+  CreateNodes,
+  CreateNodesContext,
   TargetConfiguration,
 } from '@nx/devkit'
 
-export const createNodesV2: CreateNodesV2 = [
+export const createNodes: CreateNodes = [
   '**/package.json',
   async (configFiles, options, context) => {
     return await createNodesFromFiles(
@@ -21,7 +21,7 @@ export const createNodesV2: CreateNodesV2 = [
 
 function createNodesInternal(
   configFilePath: string,
-  _context: CreateNodesContextV2,
+  _context: CreateNodesContext,
 ) {
   const projectConfiguration = readJsonFile<{
     name?: string
