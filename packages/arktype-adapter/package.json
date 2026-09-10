@@ -66,8 +66,8 @@
   "devDependencies": {
     "@tanstack/react-router": "workspace:*",
     "arktype": "^2.1.7",
-    "@testing-library/jest-dom": "^6.6.3",
-    "@testing-library/react": "^16.2.0",
+    "@testing-library/jest-dom": "catalog:",
+    "@testing-library/react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "vite": "*",
