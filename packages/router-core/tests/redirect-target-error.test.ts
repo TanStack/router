@@ -266,6 +266,32 @@ describe('redirect target errors', () => {
     })
   })
 
+  test('a protocol-relative redirect becomes the originating route error', async () => {
+    const onError = vi.fn()
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: () => redirect({ href: '/\\evil.example' }),
+      onError,
+      errorComponent: () => null,
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute]),
+      history: createMemoryHistory({ initialEntries: ['/source'] }),
+    })
+
+    await router.load()
+
+    const error = onError.mock.calls[0]?.[0]
+    expect(error).toEqual(
+      expect.objectContaining({
+        message: expect.stringContaining('unsafe protocol'),
+      }),
+    )
+    expect(router.state.location.pathname).toBe('/source')
+  })
+
   test('a preload does not build a document redirect target', async () => {
     const search = vi.fn(() => ({ redirected: true }))
     const rootRoute = new BaseRootRoute({})
@@ -483,7 +509,7 @@ describe('redirect target errors', () => {
     })
   })
 
-  test.each([true])(
+  test.each([false, true])(
     'document redirects materialize the mask within route error handling (throws=%s)',
     async (throws) => {
       const boom = new Error('mask search failed')
@@ -538,4 +564,72 @@ describe('redirect target errors', () => {
       }
     },
   )
+
+  test('an external rewrite does not bind a shared redirect to the preload location', async () => {
+    const loaderStarted = createControlledPromise<void>()
+    const loaderGate = createControlledPromise<ReturnType<typeof redirect>>()
+    const beforeLoad = vi.fn()
+    const sourceLoader = vi.fn(() => {
+      loaderStarted.resolve()
+      return loaderGate
+    })
+    const searchUpdater = vi.fn((search: { version?: number }) => ({
+      version: search.version,
+    }))
+    const rootRoute = new BaseRootRoute({})
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      validateSearch: (search: Record<string, unknown>) => ({
+        version: Number(search.version),
+      }),
+      beforeLoad,
+      loader: sourceLoader,
+    })
+    const targetRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute, targetRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/target'
+            ? new URL(url.pathname + url.search, 'https://other.example')
+            : url,
+      },
+    })
+    await router.load()
+    const matchRoutes = vi.spyOn(router, 'matchRoutes')
+    const navigate = vi.spyOn(router, 'navigate').mockResolvedValue()
+    const preload = router.preloadRoute({
+      to: '/source',
+      search: { version: 1 },
+    })
+    await loaderStarted
+    router.history.push('/source?version=2')
+    const navigation = router.load()
+    await vi.waitFor(() => expect(beforeLoad).toHaveBeenCalledTimes(2))
+    const rawRedirect = redirect({
+      to: '/target',
+      search: searchUpdater,
+    } as any)
+    loaderGate.resolve(rawRedirect)
+    await Promise.all([preload, navigation])
+
+    expect(sourceLoader).toHaveBeenCalledOnce()
+    expect(searchUpdater).toHaveBeenCalledTimes(2)
+    expect(navigate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        href: 'https://other.example/target?version=2',
+        reloadDocument: true,
+      }),
+    )
+    expect(
+      matchRoutes.mock.calls.every(([location]) => location !== undefined),
+    ).toBe(true)
+    expect(rawRedirect.options.href).toBeUndefined()
+    expect(rawRedirect.headers.has('Location')).toBe(false)
+  })
 })

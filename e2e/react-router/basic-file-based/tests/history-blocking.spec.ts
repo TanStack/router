@@ -184,3 +184,70 @@ for (const ignoreBlocker of [false, true]) {
     }
   })
 }
+
+for (const action of ['Navigate document', 'Replace document']) {
+  test(`${action}: invalid URLs preserve the next unload warning`, async ({
+    page,
+  }) => {
+    await page.goto('/history-blocking')
+    await page.getByLabel('Draft', { exact: true }).fill('Unsaved draft')
+    await page.getByLabel('Ignore blockers').check()
+    await page.getByLabel('Document destination').fill('https://[')
+    const dialogs = dismissUnloadDialogs(page)
+
+    await page.getByRole('button', { name: action, exact: true }).click()
+
+    await expect(page.getByRole('status')).toBeVisible()
+    expect(dialogs).toEqual([])
+    await page.getByRole('link', { name: 'Leave document' }).click()
+
+    await expect.poll(() => dialogs).toEqual(['beforeunload'])
+    await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
+      'Unsaved draft',
+    )
+  })
+
+  test(`${action}: the current fragment preserves the next unload warning`, async ({
+    page,
+  }) => {
+    await page.goto('/history-blocking?step=0#same')
+    await page.getByLabel('Draft', { exact: true }).fill('Unsaved draft')
+    await page.getByLabel('Ignore blockers').check()
+    await page.getByLabel('Document destination').fill('#same')
+    const dialogs = dismissUnloadDialogs(page)
+
+    await page.getByRole('button', { name: action, exact: true }).click()
+
+    await expect(page).toHaveURL('/history-blocking?step=0#same')
+    expect(dialogs).toEqual([])
+    await page.getByRole('link', { name: 'Leave document' }).click()
+
+    await expect.poll(() => dialogs).toEqual(['beforeunload'])
+    await expect(page.getByLabel('Draft', { exact: true })).toHaveValue(
+      'Unsaved draft',
+    )
+  })
+
+  for (const ignoreBlocker of [false, true]) {
+    test(`${action}: ${ignoreBlocker ? 'skipped' : 'accepted'} blockers need no native confirmation`, async ({
+      page,
+    }) => {
+      await page.goto('/history-blocking')
+      await page.getByLabel('Draft', { exact: true }).fill('Unsaved draft')
+      if (ignoreBlocker) {
+        await page.getByLabel('Ignore blockers').check()
+      }
+      const dialogs = dismissUnloadDialogs(page)
+
+      await page.getByRole('button', { name: action, exact: true }).click()
+      if (!ignoreBlocker) {
+        await page
+          .getByRole('button', { name: 'Continue navigation', exact: true })
+          .click()
+      }
+
+      await expect(page).toHaveURL('/')
+      expect(dialogs).toEqual([])
+    })
+  }
+}
