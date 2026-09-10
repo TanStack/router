@@ -319,8 +319,8 @@ export {
   isModuleNotFoundError,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
+  getUrlScheme,
   isDangerousProtocol,
-  isAbsoluteUrl,
   buildDevStylesUrl,
 } from './utils'
 export type {
