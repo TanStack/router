@@ -14,6 +14,20 @@ const rsbuildClientOutput: 'module' | 'iife' | undefined = (() => {
 })()
 
 export function getStartModeConfig() {
+  if (process.env.E2E_PRERENDER_CRAWL_ORIGIN) {
+    return {
+      pages: [{ path: '/crawl-boundaries/seed' }],
+      prerender: {
+        enabled: true,
+        autoStaticPathsDiscovery: false,
+        crawlLinks: true,
+        concurrency: 1,
+        retryCount: 0,
+        failOnError: false,
+      },
+    }
+  }
+
   return {
     spa: isSpaMode
       ? {

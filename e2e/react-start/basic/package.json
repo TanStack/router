@@ -14,6 +14,7 @@
     "preview": "vite preview",
     "preview:rsbuild": "rsbuild preview",
     "start": "node server.js",
+    "test:build": "node --test --test-timeout=120000 build-tests/*.test.ts",
     "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' & node -e 'import(\"./tests/setup/waitForDummyServer.ts\").then(m => m.default())'",
     "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
     "test:e2e:local": "playwright test --project=chromium"
@@ -51,6 +52,20 @@
     "zod": "^4.4.3"
   },
   "nx": {
+    "targets": {
+      "test:build": {
+        "dependsOn": [
+          "^build"
+        ],
+        "inputs": [
+          "default",
+          "^buildProduction",
+          "dependentTaskOutputs"
+        ],
+        "outputs": [],
+        "parallelism": false
+      }
+    },
     "metadata": {
       "playwrightModes": [
         {
