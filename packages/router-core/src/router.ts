@@ -23,7 +23,6 @@ import {
   buildRouteBranch,
   findFlatMatch,
   findRouteMatch,
-  findSingleMatch,
   processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
@@ -58,6 +57,7 @@ import type { SieveCache } from './sieve-cache'
 import type {
   ProcessRouteTreeResult,
   ProcessedTree,
+  RouteMatchData,
 } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -775,7 +775,7 @@ export type GetMatchRoutesFn = (pathname: string) => [
   /** exhaustive params, still in their string form */
   rawParams: Record<string, string>,
   foundRoute: AnyRoute | undefined,
-  routeMatchData: ReadonlyArray<Record<string, string> | undefined> | undefined,
+  routeMatchData: ReadonlyArray<RouteMatchData> | undefined,
 ]
 
 export type EmitFn = (routerEvent: RouterEvent) => void
@@ -1154,9 +1154,8 @@ export class RouterCore<
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
-  processedTree!: ProcessedTree<TRouteTree, any, any>
+  processedTree!: ProcessedTree<TRouteTree, any>
   resolvePathCache!: SieveCache<string, string>
-  private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
@@ -1528,15 +1527,6 @@ export class RouterCore<
     })
   }
 
-  private getRouteBranch(route: AnyRoute) {
-    let branch = this.routeBranchCache.get(route)
-    if (!branch) {
-      branch = buildRouteBranch(route)
-      this.routeBranchCache.set(route, branch)
-    }
-    return branch
-  }
-
   matchRoutes: MatchRoutesFn = (
     pathnameOrNext: string | ParsedLocation,
     locationSearchOrOpts?: AnySchema | MatchRoutesOpts,
@@ -1664,7 +1654,8 @@ export class RouterCore<
         searchError ??= cause
       }
       // Match identity must only use the raw params captured from the URL.
-      Object.assign(rawParams, routeMatchData?.[index])
+      const routeRawParams = routeMatchData?.[index]?.[0]
+      Object.assign(rawParams, routeRawParams)
       const { interpolatedPath, usedParams } = interpolatePath({
         path: route.fullPath,
         params: rawParams,
@@ -1693,7 +1684,7 @@ export class RouterCore<
       // Carry parsed ancestors forward without mutating the raw route params.
       strictParams =
         existingMatch?._strictParams ??
-        Object.assign(usedParams, strictParams, routeMatchData?.[index])
+        Object.assign(usedParams, strictParams, routeRawParams)
 
       let paramsError: unknown
 
@@ -1788,20 +1779,16 @@ export class RouterCore<
   }
 
   getMatchedRoutes: GetMatchRoutesFn = (pathname) => {
-    const rawParams: Record<string, string> = Object.create(null)
     const match = findRouteMatch(
       trimPathRight(pathname),
       this.processedTree,
       true,
     )
-    if (match) {
-      Object.assign(rawParams, match.rawParams)
-    }
     return [
       match?.branch || [this.routesById[rootRouteId]!],
-      rawParams,
+      Object.assign(Object.create(null), match?.rawParams),
       match?.route,
-      match?.routeParams,
+      match?.routeData,
     ]
   }
 
@@ -1968,7 +1955,10 @@ export class RouterCore<
 
       let destRoutes: ReadonlyArray<AnyRoute>
       if (destRoute) {
-        destRoutes = this.getRouteBranch(destRoute)
+        destRoutes = buildRouteBranch(
+          destRoute,
+          this.processedTree.routeBranchCache,
+        )
       } else if (nextTo.includes('$')) {
         // Route templates must match routesByPath exactly. A miss here is a
         // typed destination mismatch, not a concrete URL to route-match.
@@ -2645,24 +2635,11 @@ export class RouterCore<
 
     const destinationPath = trimPathRight(next.pathname)
     const fuzzy = opts?.fuzzy
-    let pathMatch
-    try {
-      pathMatch = findSingleMatch(
-        destinationPath,
-        opts?.caseSensitive ?? false,
-        fuzzy ?? false,
-        fuzzy ? baseLocation.pathname : trimPathRight(baseLocation.pathname),
-        this.processedTree,
-      )
-    } catch (error) {
-      if (error instanceof URIError) {
-        return false
-      }
-      throw error
-    }
-    if (!pathMatch) {
-      return false
-    }
+    const pathMatch = findRouteMatch(
+      trimPathRight(baseLocation.pathname),
+      this.processedTree,
+      true,
+    )
     const committedLocation = this.stores.resolvedLocation.get()
     const routeMatches =
       this._committed.length &&
@@ -2683,13 +2660,31 @@ export class RouterCore<
       return false
     }
 
+    const [, end, caseSensitive, wildcardSuffix] = pathMatch?.routeData[
+      destinationMatch.index
+    ] ?? [undefined, 1, true]
+    const currentPath = baseLocation.pathname
+    if (
+      (opts?.caseSensitive && !caseSensitive) ||
+      (!fuzzy && end < trimPathRight(currentPath).length) ||
+      (fuzzy && wildcardSuffix && end < currentPath.length)
+    ) {
+      return false
+    }
+
     const params = Object.assign(
       Object.create(null),
       destinationMatch._strictParams,
     )
 
-    if (pathMatch.rawParams['**'] !== undefined) {
-      params['**'] = pathMatch.rawParams['**']
+    if (fuzzy && currentPath.length > end && wildcardSuffix === undefined) {
+      try {
+        params['**'] = decodeURIComponent(
+          currentPath.slice(end === 1 ? 1 : end + 1) || '/',
+        )
+      } catch {
+        return false
+      }
     }
 
     return (!location.params ||

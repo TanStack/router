@@ -52,6 +52,23 @@ describe('matchRoute', () => {
     ).toBe(false)
   })
 
+  it('shares route branches without sharing mutable URL params', () => {
+    const router = createInvoiceRouter()
+    const first = router.getMatchedRoutes('/invoices/123')
+    const second = router.getMatchedRoutes('/invoices/456')
+
+    expect(first[0]).toBe(second[0])
+    expect(first[1]).toEqual({ invoiceId: '123' })
+    expect(second[1]).toEqual({ invoiceId: '456' })
+
+    first[1].invoiceId = 'changed'
+
+    expect(router.getMatchedRoutes('/invoices/123')[1]).toEqual({
+      invoiceId: '123',
+    })
+    expect(second[1]).toEqual({ invoiceId: '456' })
+  })
+
   it('does not match a lower-priority route', async () => {
     const rootRoute = new BaseRootRoute({})
     const postRoute = new BaseRoute({
@@ -694,4 +711,155 @@ describe('matchRoute', () => {
       expect(router.matchRoute({ to: '/posts' })).toEqual({})
     },
   )
+
+  it('matches a child when its optional parent segment is absent', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const localeRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/{-$locale}',
+    })
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => localeRoute,
+      path: '/posts',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([localeRoute.addChildren([postsRoute])]),
+      history: createMemoryHistory({ initialEntries: ['/posts'] }),
+    })
+
+    await router.load()
+
+    expect(router.matchRoute({ to: '/{-$locale}/posts' })).toEqual({})
+    expect(
+      router.matchRoute({ to: '/{-$locale}/posts' }, { fuzzy: true }),
+    ).toEqual({})
+  })
+
+  it.each(['/files/', '/files/a/', '/files/a/b/'])(
+    'does not treat a wildcard trailing slash as a fuzzy remainder at %s',
+    async (pathname) => {
+      const rootRoute = new BaseRootRoute({})
+      const filesRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/files/$',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([filesRoute]),
+        history: createMemoryHistory({ initialEntries: [pathname] }),
+      })
+
+      await router.load()
+
+      const match = router.matchRoute({ to: '/files/$' }, { fuzzy: true })
+      expect(match).not.toBe(false)
+      expect(match).not.toHaveProperty('**')
+    },
+  )
+
+  it.each(['%2f', '%2F', '%3a', '%3A', '%25', '%2520'])(
+    'matches encoded param %s with case-sensitive path checks',
+    async (value) => {
+      const rootRoute = new BaseRootRoute({})
+      const itemRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/items/$id',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([itemRoute]),
+        history: createMemoryHistory({ initialEntries: [`/items/${value}`] }),
+      })
+
+      await router.load()
+
+      expect(
+        router.matchRoute(
+          { to: '/items/$id', params: { id: decodeURIComponent(value) } },
+          { caseSensitive: true },
+        ),
+      ).toEqual({ id: decodeURIComponent(value) })
+    },
+  )
+
+  it('does not fuzzy match past a wildcard suffix', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fileRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/files/{$}.txt',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([fileRoute]),
+      history: createMemoryHistory({ initialEntries: ['/files/readme.txt/'] }),
+    })
+
+    await router.load()
+
+    expect(router.matchRoute({ to: '/files/{$}.txt' })).toEqual({
+      _splat: 'readme',
+      '*': 'readme',
+    })
+    expect(router.matchRoute({ to: '/files/{$}.txt' }, { fuzzy: true })).toBe(
+      false,
+    )
+  })
+
+  it.each(['/files', '/files/'])(
+    'exactly matches an empty wildcard at %s',
+    async (pathname) => {
+      const rootRoute = new BaseRootRoute({})
+      const fileRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/files/$',
+      })
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([fileRoute]),
+        history: createMemoryHistory({ initialEntries: [pathname] }),
+      })
+
+      await router.load()
+
+      expect(router.matchRoute({ to: '/files/$' })).toEqual({
+        _splat: '',
+        '*': '',
+      })
+    },
+  )
+
+  it('checks case sensitivity in a dynamic parameter suffix', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fileRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/files/{$name}.txt',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([fileRoute]),
+      history: createMemoryHistory({ initialEntries: ['/files/report.TXT'] }),
+    })
+
+    await router.load()
+
+    const destination = {
+      to: '/files/{$name}.txt',
+      params: { name: 'report' },
+    } as const
+    expect(router.matchRoute(destination)).toEqual({ name: 'report' })
+    expect(router.matchRoute(destination, { caseSensitive: true })).toBe(false)
+  })
+
+  it('checks case sensitivity in a wildcard suffix containing a slash', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const fileRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/files/{$}/edit',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([fileRoute]),
+      history: createMemoryHistory({ initialEntries: ['/files/readme/edit'] }),
+    })
+
+    await router.load()
+
+    expect(
+      router.matchRoute({ to: '/files/{$}/edit' }, { caseSensitive: true }),
+    ).toEqual({ _splat: 'readme', '*': 'readme' })
+  })
 })

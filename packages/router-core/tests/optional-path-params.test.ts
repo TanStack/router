@@ -5,10 +5,9 @@ import {
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
-  findSingleMatch,
   parseSegment,
-  processRouteTree,
 } from '../src/new-process-route-tree'
+import { findTestRouteMatch } from './routerTestUtils'
 import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe('Optional Path Parameters', () => {
@@ -373,22 +372,15 @@ describe('Optional Path Parameters', () => {
     })
   })
 
-  const { processedTree } = processRouteTree({
-    id: '__root__',
-    isRoot: true,
-    fullPath: '/',
-    path: '/',
-  })
   const matchPathname = (
     from: string,
     options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
   ) => {
-    const match = findSingleMatch(
+    const match = findTestRouteMatch(
       options.to,
       options.caseSensitive ?? false,
       options.fuzzy ?? false,
       from,
-      processedTree,
     )
     const result = match ? match.rawParams : undefined
     if (options.to && !result) return
