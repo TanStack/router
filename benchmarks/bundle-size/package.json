@@ -3,13 +3,27 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds",
-    "test:unit": "node --test ../../scripts/benchmarks/bundle-size/pr-report.test.mjs ../../scripts/benchmarks/bundle-size/run.test.mjs"
+    "build": "node ../../scripts/benchmarks/bundle-size/measure.mjs --skip-package-builds --measurements-only",
+    "test:unit": "node --test ../../scripts/benchmarks/bundle-size/pr-report.test.mjs ../../scripts/benchmarks/bundle-size/run.test.mjs ../../scripts/benchmarks/bundle-size/report.test.mjs ../../scripts/benchmarks/bundle-size/build.test.mjs"
   },
   "nx": {
     "targets": {
       "build": {
-        "cache": false,
+        "inputs": [
+          "buildProduction",
+          "^buildProduction",
+          "dependentTaskOutputs",
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/measure.mjs",
+          "{workspaceRoot}/scripts/benchmarks/bundle-size/report.mjs",
+          {
+            "runtime": "node --version"
+          }
+        ],
+        "outputs": [
+          "{projectRoot}/dist",
+          "{projectRoot}/results/measurements.json",
+          "{projectRoot}/results/benchmark-action.json"
+        ],
         "dependsOn": [
           {
             "projects": [

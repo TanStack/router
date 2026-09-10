@@ -249,7 +249,6 @@ function buildModeTargets(
   const targetGroup: Array<string> = []
   const ciDependsOnTargets: Array<{
     target: string
-    projects: 'self'
     params: 'forward'
   }> = []
 
@@ -367,7 +366,6 @@ function buildModeTargets(
         inputs: TEST_INPUTS,
         dependsOn: modeShardTargets.map((shardTargetName) => ({
           target: shardTargetName,
-          projects: 'self' as const,
           params: 'forward' as const,
         })),
         metadata: {
@@ -380,7 +378,6 @@ function buildModeTargets(
 
     ciDependsOnTargets.push({
       target: modeTargetName,
-      projects: 'self',
       params: 'forward',
     })
   }
@@ -454,7 +451,6 @@ function buildShardedTargets(
     inputs: TEST_INPUTS,
     dependsOn: targetGroup.map((shardTargetName) => ({
       target: shardTargetName,
-      projects: 'self' as const,
       params: 'forward' as const,
     })),
     metadata: {

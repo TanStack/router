@@ -8,9 +8,10 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs as parseNodeArgs } from 'node:util'
 import vm from 'node:vm'
 import { brotliCompressSync, gzipSync } from 'node:zlib'
-import { execFileSync, execSync } from 'node:child_process'
+import { execFileSync } from 'node:child_process'
 
 import { build } from 'vite'
+import { writeReport } from './report.mjs'
 
 const BENCHMARK_NAME = 'Bundle Size (gzip)'
 
@@ -166,6 +167,7 @@ function parseArgs(argv) {
       analysis: { type: 'boolean' },
       sourcemap: { type: 'boolean' },
       'skip-package-builds': { type: 'boolean' },
+      'measurements-only': { type: 'boolean' },
     },
   })
 
@@ -179,6 +181,7 @@ function parseArgs(argv) {
     analysis: values.analysis === true,
     sourcemap: values.sourcemap === true,
     skipPackageBuilds: values['skip-package-builds'] === true,
+    measurementsOnly: values['measurements-only'] === true,
   }
 }
 
@@ -473,24 +476,6 @@ async function importFromRoot(root, specifier) {
     path.join(root, 'bundle-size.config.cjs'),
   )
   return import(pathToFileURL(requireFromRoot.resolve(specifier)).href)
-}
-
-function getGitStatus() {
-  try {
-    return {
-      branch: execSync('git branch --show-current', {
-        encoding: 'utf8',
-      }).trim(),
-      dirty:
-        execSync('git status --porcelain', { encoding: 'utf8' }).trim().length >
-        0,
-    }
-  } catch {
-    return {
-      branch: '',
-      dirty: undefined,
-    }
-  }
 }
 
 function getPackageBuildProjects(scenarios) {
@@ -842,18 +827,6 @@ async function resolveBundleFiles({ outDir, scenario }) {
   }
 }
 
-function getCurrentSha(providedSha) {
-  if (providedSha) {
-    return providedSha
-  }
-
-  if (process.env.GITHUB_SHA) {
-    return process.env.GITHUB_SHA
-  }
-
-  return execSync('git rev-parse HEAD', { encoding: 'utf8' }).trim()
-}
-
 function buildCommitUrl(sha) {
   const repo = process.env.GITHUB_REPOSITORY
 
@@ -908,6 +881,15 @@ async function appendHistoryFile({ historyPath, measuredAtIso, sha, benches }) {
 async function main() {
   const args = parseArgs(process.argv.slice(2))
 
+  if (
+    args.measurementsOnly &&
+    (args.sha || args.measuredAt || args.appendHistory)
+  ) {
+    throw new Error(
+      '--measurements-only cannot be combined with report metadata or history options',
+    )
+  }
+
   const scriptDir = path.dirname(fileURLToPath(import.meta.url))
   const repoRoot = path.resolve(scriptDir, '../../../')
   const scenariosRoot = path.join(repoRoot, 'benchmarks/bundle-size/scenarios')
@@ -921,7 +903,6 @@ async function main() {
   const measuredAtIso = args.measuredAt
     ? toIsoDate(args.measuredAt)
     : new Date().toISOString()
-  const sha = getCurrentSha(args.sha)
   const startedAt = Date.now()
   const scenarios = filterScenarios(args.scenario)
   const packageBuildProjects = buildRequiredPackages({
@@ -990,12 +971,10 @@ async function main() {
   }
   const completedAt = Date.now()
 
-  const current = {
+  const measurements = {
     schemaVersion: 1,
     benchmarkName: BENCHMARK_NAME,
     measuredAt: measuredAtIso,
-    generatedAt: new Date().toISOString(),
-    sha,
     status: {
       state: 'success',
       command: `node ${path.relative(repoRoot, fileURLToPath(import.meta.url))}${args.scenario ? ` --scenario ${args.scenario}` : ''}${args.analysis ? ' --analysis' : ''}${args.sourcemap ? ' --sourcemap' : ''}${args.skipPackageBuilds ? ' --skip-package-builds' : ''}`,
@@ -1004,10 +983,6 @@ async function main() {
       packageBuildProjects,
       skipPackageBuilds: args.skipPackageBuilds,
       durationMs: completedAt - startedAt,
-      git: {
-        sha,
-        ...getGitStatus(),
-      },
     },
     metrics,
   }
@@ -1019,12 +994,12 @@ async function main() {
     extra: `raw=${metric.rawBytes}; brotli=${metric.brotliBytes}; initial_gzip=${metric.initialGzipBytes}`,
   }))
 
-  const currentPath = path.join(resultsDir, 'current.json')
+  const measurementsPath = path.join(resultsDir, 'measurements.json')
   const benchmarkActionPath = path.join(resultsDir, 'benchmark-action.json')
 
   await fsp.writeFile(
-    currentPath,
-    JSON.stringify(current, null, 2) + '\n',
+    measurementsPath,
+    JSON.stringify(measurements, null, 2) + '\n',
     'utf8',
   )
   await fsp.writeFile(
@@ -1033,17 +1008,20 @@ async function main() {
     'utf8',
   )
 
-  if (args.appendHistory) {
-    await appendHistoryFile({
-      historyPath: path.resolve(args.appendHistory),
-      measuredAtIso,
-      sha,
-      benches: benchmarkActionRows,
-    })
+  if (!args.measurementsOnly) {
+    const report = writeReport(resultsDir, { sha: args.sha })
+    if (args.appendHistory) {
+      await appendHistoryFile({
+        historyPath: path.resolve(args.appendHistory),
+        measuredAtIso,
+        sha: report.sha,
+        benches: benchmarkActionRows,
+      })
+    }
   }
 
   process.stdout.write(
-    `Measured ${metrics.length} scenarios. Wrote ${path.relative(repoRoot, currentPath)} and ${path.relative(repoRoot, benchmarkActionPath)}\n`,
+    `Measured ${metrics.length} scenarios. Wrote ${path.relative(repoRoot, measurementsPath)} and ${path.relative(repoRoot, benchmarkActionPath)}\n`,
   )
 }
 
