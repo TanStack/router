@@ -1,11 +1,18 @@
 import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/vue'
 
 import * as Vue from 'vue'
 import { z } from 'zod'
 import {
   Block,
+  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRoute,
@@ -180,7 +187,11 @@ describe('useBlocker', () => {
   test('gives correct arguments to shouldBlockFn', async () => {
     const rootRoute = createRootRoute()
 
-    const shouldBlockFn = vi.fn().mockReturnValue(true)
+    let receiver: unknown = 'not called'
+    const shouldBlockFn = vi.fn(function (this: unknown) {
+      receiver = this
+      return true
+    })
 
     const IndexComponent = () => {
       const navigate = useNavigate()
@@ -231,6 +242,7 @@ describe('useBlocker', () => {
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/')
+    expect(receiver).toBeUndefined()
 
     expect(shouldBlockFn).toHaveBeenCalledWith({
       action: 'REPLACE',
@@ -425,11 +437,336 @@ describe('useBlocker', () => {
     expect(window.location.pathname).toBe('/invoices')
   })
 
+  test('defaults only undefined hook options', async () => {
+    const rootRoute = createRootRoute()
+    const history = createMemoryHistory()
+    const block = vi.spyOn(history, 'block')
+    const results: Array<unknown> = []
+
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        results.push(
+          useBlocker({
+            shouldBlockFn: () => false,
+            enableBeforeUnload: undefined,
+            disabled: undefined,
+            withResolver: undefined,
+          }),
+          useBlocker({
+            shouldBlockFn: () => false,
+            enableBeforeUnload: null,
+            disabled: null,
+            withResolver: null,
+          } as any),
+        )
+
+        return () => <h1>Index</h1>
+      },
+    })
+
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByRole('heading', { name: 'Index' })).toBeVisible()
+    expect(results).toEqual([undefined, undefined])
+    expect(
+      block.mock.calls.map(([options]) => options.enableBeforeUnload),
+    ).toEqual([true, null])
+  })
+
+  test.each(['useBlocker', '<Block />'] as const)(
+    '%s resolver returns to idle after reset and proceed',
+    async (surface) => {
+      const history = createMemoryHistory({ initialEntries: ['/'] })
+      const renderResolver = (resolver: {
+        status: 'idle' | 'blocked'
+        reset?: () => void
+        proceed?: () => void
+      }) => (
+        <>
+          <span data-testid="blocker-status">{resolver.status}</span>
+          {resolver.status === 'blocked' && (
+            <>
+              <button onClick={() => resolver.reset?.()}>Reset blocker</button>
+              <button onClick={() => resolver.proceed?.()}>
+                Proceed blocker
+              </button>
+            </>
+          )}
+        </>
+      )
+
+      const RootComponent = Vue.defineComponent({
+        setup() {
+          const navigate = useNavigate()
+          const renderNavigation = () => (
+            <>
+              <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
+              <Outlet />
+            </>
+          )
+
+          if (surface === 'useBlocker') {
+            const blocker = useBlocker({
+              shouldBlockFn: () => true,
+              withResolver: true,
+            })
+
+            return () => (
+              <>
+                {renderResolver(blocker.value)}
+                {renderNavigation()}
+              </>
+            )
+          }
+
+          return () => (
+            <>
+              <Block
+                shouldBlockFn={() => true}
+                withResolver={true}
+                children={renderResolver}
+              />
+              {renderNavigation()}
+            </>
+          )
+        },
+      })
+
+      const rootRoute = createRootRoute({ component: RootComponent })
+      const indexRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+        component: () => <h1>Index</h1>,
+      })
+      const postsRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/posts',
+        component: () => <h1>Posts</h1>,
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+        history,
+      })
+
+      render(<RouterProvider router={router} />)
+
+      const postsButton = await screen.findByRole('button', { name: 'Posts' })
+      expect(screen.getByTestId('blocker-status')).toHaveTextContent('idle')
+
+      await fireEvent.click(postsButton)
+      await waitFor(() => {
+        expect(screen.getByTestId('blocker-status')).toHaveTextContent(
+          'blocked',
+        )
+      })
+      expect(history.location.pathname).toBe('/')
+
+      await fireEvent.click(
+        screen.getByRole('button', { name: 'Reset blocker' }),
+      )
+      await waitFor(() => {
+        expect(screen.getByTestId('blocker-status')).toHaveTextContent('idle')
+      })
+      expect(history.location.pathname).toBe('/')
+      expect(screen.getByRole('heading', { name: 'Index' })).toBeVisible()
+
+      await fireEvent.click(postsButton)
+      await waitFor(() => {
+        expect(screen.getByTestId('blocker-status')).toHaveTextContent(
+          'blocked',
+        )
+      })
+
+      await fireEvent.click(
+        screen.getByRole('button', { name: 'Proceed blocker' }),
+      )
+      expect(
+        await screen.findByRole('heading', { name: 'Posts' }),
+      ).toBeVisible()
+      expect(screen.getByTestId('blocker-status')).toHaveTextContent('idle')
+      expect(history.location.pathname).toBe('/posts')
+    },
+  )
+
+  test('<Block /> resubscribes to reactive options and cleans up in order', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const nextHistory = createMemoryHistory({ initialEntries: ['/posts'] })
+    const firstShouldBlock = vi.fn(() => false)
+    const secondShouldBlock = vi.fn(() => true)
+    const shouldBlockFn = Vue.ref(firstShouldBlock)
+    const enableBeforeUnload = Vue.ref<boolean | (() => boolean)>(true)
+    const withResolver = Vue.ref(false)
+    const events: Array<string> = []
+    let nextSubscriptionId = 0
+    const actualBlock = history.block.bind(history)
+    const block = vi.spyOn(history, 'block').mockImplementation((options) => {
+      const subscriptionId = ++nextSubscriptionId
+      events.push(`subscribe:${subscriptionId}`)
+      const unsubscribe = actualBlock(options)
+
+      return () => {
+        events.push(`unsubscribe:${subscriptionId}`)
+        unsubscribe()
+      }
+    })
+
+    const IndexComponent = Vue.defineComponent({
+      setup() {
+        return () => (
+          <>
+            <Block
+              shouldBlockFn={shouldBlockFn.value}
+              enableBeforeUnload={enableBeforeUnload.value}
+              withResolver={withResolver.value as true}
+              children={(resolver) => (
+                <>
+                  <span data-testid="reactive-blocker-status">
+                    {resolver.status}
+                  </span>
+                  {resolver.status === 'blocked' && (
+                    <>
+                      <button onClick={resolver.reset}>
+                        Reset reactive blocker
+                      </button>
+                      <button onClick={resolver.proceed}>
+                        Proceed reactive blocker
+                      </button>
+                    </>
+                  )}
+                </>
+              )}
+            />
+            <h1>Index</h1>
+          </>
+        )
+      },
+    })
+
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: IndexComponent,
+    })
+    const postsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+      component: () => <h1>Posts</h1>,
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, postsRoute]),
+      history,
+    })
+
+    const view = render(<RouterProvider router={router} />)
+    const blockerArgs = {
+      action: 'PUSH' as const,
+      currentLocation: history.location,
+      nextLocation: nextHistory.location,
+    }
+
+    expect(await screen.findByRole('heading', { name: 'Index' })).toBeVisible()
+    await waitFor(() => expect(block).toHaveBeenCalledTimes(1))
+
+    await expect(block.mock.calls[0]![0].blockerFn(blockerArgs)).resolves.toBe(
+      false,
+    )
+    expect(firstShouldBlock).toHaveBeenCalledTimes(1)
+
+    shouldBlockFn.value = secondShouldBlock
+    await waitFor(() => expect(block).toHaveBeenCalledTimes(2))
+    await expect(block.mock.calls[1]![0].blockerFn(blockerArgs)).resolves.toBe(
+      true,
+    )
+    expect(secondShouldBlock).toHaveBeenCalledTimes(1)
+
+    enableBeforeUnload.value = false
+    await waitFor(() => expect(block).toHaveBeenCalledTimes(3))
+
+    withResolver.value = true
+    await waitFor(() => expect(block).toHaveBeenCalledTimes(4))
+
+    const resetResult = block.mock.calls[3]![0].blockerFn(blockerArgs)
+    await waitFor(() => {
+      expect(screen.getByTestId('reactive-blocker-status')).toHaveTextContent(
+        'blocked',
+      )
+    })
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Reset reactive blocker' }),
+    )
+    await expect(resetResult).resolves.toBe(true)
+    await waitFor(() => {
+      expect(screen.getByTestId('reactive-blocker-status')).toHaveTextContent(
+        'idle',
+      )
+    })
+
+    const proceedResult = block.mock.calls[3]![0].blockerFn(blockerArgs)
+    await waitFor(() => {
+      expect(screen.getByTestId('reactive-blocker-status')).toHaveTextContent(
+        'blocked',
+      )
+    })
+    await fireEvent.click(
+      screen.getByRole('button', { name: 'Proceed reactive blocker' }),
+    )
+    await expect(proceedResult).resolves.toBe(false)
+    await waitFor(() => {
+      expect(screen.getByTestId('reactive-blocker-status')).toHaveTextContent(
+        'idle',
+      )
+    })
+    expect(secondShouldBlock).toHaveBeenCalledTimes(3)
+
+    expect(
+      block.mock.calls.map(([options]) => options.enableBeforeUnload),
+    ).toEqual([true, true, false, false])
+    expect(events).toEqual([
+      'subscribe:1',
+      'unsubscribe:1',
+      'subscribe:2',
+      'unsubscribe:2',
+      'subscribe:3',
+      'unsubscribe:3',
+      'subscribe:4',
+    ])
+
+    view.unmount()
+
+    expect(events).toEqual([
+      'subscribe:1',
+      'unsubscribe:1',
+      'subscribe:2',
+      'unsubscribe:2',
+      'subscribe:3',
+      'unsubscribe:3',
+      'subscribe:4',
+      'unsubscribe:4',
+    ])
+  })
+
   test('<Block /> disabled property is reactive', async () => {
     const rootRoute = createRootRoute()
 
     // Use a shared reactive ref for the disabled state
     const disabled = Vue.ref(false)
+    let receiver: unknown = 'not called'
+    const shouldBlockFn = vi.fn(function (this: unknown) {
+      receiver = this
+      return true
+    })
 
     const IndexComponent = Vue.defineComponent({
       setup() {
@@ -437,7 +774,7 @@ describe('useBlocker', () => {
 
         return () => (
           <>
-            <Block shouldBlockFn={() => true} disabled={disabled.value} />
+            <Block shouldBlockFn={shouldBlockFn} disabled={disabled.value} />
             <h1>Index</h1>
             <button onClick={() => navigate({ to: '/' })}>Index</button>
             <button onClick={() => navigate({ to: '/posts' })}>Posts</button>
@@ -472,20 +809,22 @@ describe('useBlocker', () => {
 
     let postsButton = await screen.findByRole('button', { name: 'Posts' })
 
-    fireEvent.click(postsButton)
+    await fireEvent.click(postsButton)
 
     expect(
       await screen.findByRole('heading', { name: 'Index' }),
     ).toBeInTheDocument()
 
     expect(window.location.pathname).toBe('/')
+    expect(receiver).toMatchObject({ shouldBlockFn })
 
     // Update the shared ref - Vue's reactivity will propagate the change
     disabled.value = true
+    await Vue.nextTick()
 
     postsButton = await screen.findByRole('button', { name: 'Posts' })
 
-    fireEvent.click(postsButton)
+    await fireEvent.click(postsButton)
 
     expect(
       await screen.findByRole('heading', { name: 'Posts' }),
