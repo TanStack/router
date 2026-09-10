@@ -444,6 +444,120 @@ function findHtmlBoundaryLastOpenSlashLazy(str: string): BoundaryScanResult {
   return { bodyEndIndex: -1, lastClosingTagEnd }
 }
 
+// ============================================================================
+// Byte-level variants (UTF-8 passthrough scanner): operate directly on the
+// encoded bytes so no decode/re-encode round trip is needed. Valid only
+// because closing tags are ASCII and UTF-8 continuation bytes are >= 0x80.
+// ============================================================================
+function findLastClosingTagBytes(str: string): number {
+  const buf = Buffer.from(str, 'utf8')
+  return findLastClosingTagBytesBuf(buf, buf.length)
+}
+
+function findLastClosingTagBytesBuf(buf: Uint8Array, len: number): number {
+  let i = len - 1
+
+  while (i >= 3) {
+    if (buf[i] === 62) {
+      let j = i - 1
+
+      while (j >= 1) {
+        const code = buf[j]!
+        if (
+          (code >= 97 && code <= 122) ||
+          (code >= 65 && code <= 90) ||
+          (code >= 48 && code <= 57) ||
+          code === 95 ||
+          code === 58 ||
+          code === 46 ||
+          code === 45
+        ) {
+          j--
+        } else {
+          break
+        }
+      }
+
+      const tagNameStart = j + 1
+      if (tagNameStart < i) {
+        const startCode = buf[tagNameStart]!
+        if (
+          (startCode >= 97 && startCode <= 122) ||
+          (startCode >= 65 && startCode <= 90)
+        ) {
+          if (j >= 1 && buf[j] === 47 && buf[j - 1] === 60) {
+            return i + 1
+          }
+        }
+      }
+    }
+    i--
+  }
+  return -1
+}
+
+function findHtmlBoundaryBytesEncoded(buf: Uint8Array): number {
+  const len = buf.length
+  let lastClosingTagEnd = -1
+  let searchFrom = len - MIN_CLOSING_TAG_LENGTH
+
+  while (searchFrom >= 0) {
+    let openSlash = -1
+    for (let i = searchFrom; i >= 0; i--) {
+      if (buf[i] === 60 && buf[i + 1] === 47) {
+        openSlash = i
+        break
+      }
+    }
+    if (openSlash === -1) break
+
+    if (
+      ((buf[openSlash + 2] as number) | 32) === 98 &&
+      ((buf[openSlash + 3] as number) | 32) === 111 &&
+      ((buf[openSlash + 4] as number) | 32) === 100 &&
+      ((buf[openSlash + 5] as number) | 32) === 121 &&
+      buf[openSlash + 6] === 62
+    ) {
+      return -openSlash - 2
+    }
+
+    if (lastClosingTagEnd === -1) {
+      let i = openSlash + 2
+      const startCode = buf[i]
+      if (
+        (startCode! >= 97 && startCode! <= 122) ||
+        (startCode! >= 65 && startCode! <= 90)
+      ) {
+        i++
+        while (i < len) {
+          const code = buf[i]
+          if (
+            (code! >= 97 && code! <= 122) ||
+            (code! >= 65 && code! <= 90) ||
+            (code! >= 48 && code! <= 57) ||
+            code === 95 ||
+            code === 58 ||
+            code === 46 ||
+            code === 45
+          ) {
+            i++
+          } else {
+            break
+          }
+        }
+
+        if (i < len && buf[i] === 62) {
+          lastClosingTagEnd = i + 1
+        }
+      }
+    }
+
+    searchFrom = openSlash - 1
+  }
+
+  return lastClosingTagEnd
+}
+
 // Encoded return avoids allocation: body index => -index - 2; otherwise last closing tag end.
 function findHtmlBoundaryLastOpenSlashLazyEncoded(str: string): number {
   let lastClosingTagEnd = -1
@@ -673,6 +787,57 @@ function verifyBodyImplementations() {
 verifyImplementations()
 verifyBodyImplementations()
 
+function verifyByteImplementations() {
+  const testCases = [
+    generateSmallChunk(),
+    generateMediumChunk(),
+    generateLargeChunk(),
+    generateUppercaseBodyChunk(),
+    generateLargePlainTextBodyChunk(),
+    generateWebComponentChunk(),
+    generateNoClosingTagChunk(),
+    generatePartialChunk(),
+    generateNestedChunk(),
+    '</div>',
+    '<div></div>',
+    '</my-component:nested.element>',
+    'no tags here',
+    '',
+  ]
+
+  for (const testCase of testCases) {
+    const stringResult = findHtmlBoundaryLastOpenSlashLazyEncoded(testCase)
+    const buf = Buffer.from(testCase, 'utf8')
+    const byteResult = findHtmlBoundaryBytesEncoded(buf)
+    const lastClosingString = findLastClosingTagOptimized(testCase)
+    const lastClosingBytes = findLastClosingTagBytesBuf(buf, buf.length)
+
+    if (stringResult !== byteResult) {
+      console.error('Byte mismatch for:', testCase.slice(0, 50))
+      console.error('  String:', stringResult)
+      console.error('  Byte:', byteResult)
+      throw new Error('Byte implementation mismatch!')
+    }
+    // When </body> is found the encoded result carries no closing-tag info;
+    // compare closing-tag positions only in the no-body case.
+    if (stringResult >= -1) {
+      if (lastClosingString !== stringResult) {
+        console.error('Sanity mismatch for:', testCase.slice(0, 50))
+        throw new Error('String closing-tag sanity mismatch!')
+      }
+      if (lastClosingBytes !== stringResult) {
+        console.error('Byte closing mismatch for:', testCase.slice(0, 50))
+        console.error('  String:', stringResult)
+        console.error('  Byte:', lastClosingBytes)
+        throw new Error('Byte closing-tag implementation mismatch!')
+      }
+    }
+  }
+  console.log('All byte implementations verified to produce identical results')
+}
+
+verifyByteImplementations()
+
 // ============================================================================
 // Benchmarks
 // ============================================================================
@@ -899,3 +1064,36 @@ benchBoundaryDetection(
   generateLargeChunkNoBody(),
 )
 benchBoundaryDetection('Nested Chunk Without </body>', generateNestedChunk())
+
+// ============================================================================
+// Byte-level vs string-level scanning (UTF-8 passthrough optimization)
+// ============================================================================
+
+function benchByteVsString(name: string, chunk: string) {
+  const buf = Buffer.from(chunk, 'utf8')
+
+  describe(`Byte vs String Boundary Scan - ${name}`, () => {
+    bench('string: lazy encoded boundary scan', () => {
+      findHtmlBoundaryLastOpenSlashLazyEncoded(chunk)
+    })
+
+    bench('bytes: lazy encoded boundary scan', () => {
+      findHtmlBoundaryBytesEncoded(buf)
+    })
+
+    bench('string: last closing tag', () => {
+      findLastClosingTagOptimized(chunk)
+    })
+
+    bench('bytes: last closing tag', () => {
+      findLastClosingTagBytesBuf(buf, buf.length)
+    })
+  })
+}
+
+benchByteVsString('Small Chunk (~70B)', generateSmallChunk())
+benchByteVsString('Medium Chunk (~1.5KB)', generateMediumChunk())
+benchByteVsString(
+  'Large Chunk Without </body> (~13KB)',
+  generateLargeChunkNoBody(),
+)
