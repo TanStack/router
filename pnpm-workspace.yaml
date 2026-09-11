@@ -130,6 +130,15 @@ overrides:
   '@tanstack/nitro-v2-vite-plugin': 'workspace:*'
 
 allowBuilds:
+  # Embedded PostgreSQL restores native-library symlinks for database tests.
+  '@embedded-postgres/darwin-arm64': true
+  '@embedded-postgres/darwin-x64': true
+  '@embedded-postgres/linux-arm': true
+  '@embedded-postgres/linux-arm64': true
+  '@embedded-postgres/linux-ia32': true
+  '@embedded-postgres/linux-ppc64': true
+  '@embedded-postgres/linux-x64': true
+  '@embedded-postgres/windows-x64': true
   # root dependency
   '@swc/core': true # required for TypeScript compilation
   nx: true
