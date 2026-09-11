@@ -25,6 +25,13 @@ const readWithoutGuard: typeof readServerFnBuildInfo = (module) => {
   return result.success ? result.data.serverFnsById : null
 }
 
+const readWithGuard: typeof readServerFnBuildInfo = (module) => {
+  if (module.buildInfo[SERVER_FN_BUILD_INFO_FIELD] === undefined) {
+    return null
+  }
+  return readWithoutGuard(module)
+}
+
 describe.each([0, 1, 10, 100])(
   'restore 1,000 modules with metadata on %i percent of modules',
   (percent) => {
@@ -59,12 +66,36 @@ describe.each([0, 1, 10, 100])(
     }
 
     expect(restore(readServerFnBuildInfo)).toEqual(restore(readWithoutGuard))
+    expect(restore(readServerFnBuildInfo)).toEqual(restore(readWithGuard))
 
     bench('always parse', () => {
       restore(readWithoutGuard)
     })
-    bench('skip absent metadata', () => {
+    bench('skip absent metadata, uncompiled', () => {
+      restore(readWithGuard)
+    })
+    bench('skip absent metadata, compiled', () => {
       restore(readServerFnBuildInfo)
     })
   },
 )
+
+describe.each([
+  { name: 'invalid version', metadata: { version: 2, serverFnsById: {} } },
+  {
+    name: 'invalid server function',
+    metadata: { version: 1, serverFnsById: { invalid: {} } },
+  },
+])('reject metadata: $name', ({ metadata }) => {
+  const module = { buildInfo: { [SERVER_FN_BUILD_INFO_FIELD]: metadata } }
+
+  expect(readWithGuard(module)).toBeNull()
+  expect(readServerFnBuildInfo(module)).toBeNull()
+
+  bench('uncompiled', () => {
+    readWithGuard(module)
+  })
+  bench('compiled', () => {
+    readServerFnBuildInfo(module)
+  })
+})

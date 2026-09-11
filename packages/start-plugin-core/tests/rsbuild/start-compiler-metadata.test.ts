@@ -29,6 +29,13 @@ describe('readServerFnBuildInfo', () => {
         'greeting-id': { ...serverFn, isClientReferenced: 'true' },
       },
     },
+    {
+      version: 1,
+      serverFnsById: {
+        'greeting-id': serverFn,
+        'invalid-id': { ...serverFn, filename: null },
+      },
+    },
   ])('ignores invalid cached metadata: %j', (metadata) => {
     expect(
       readServerFnBuildInfo({
@@ -76,4 +83,23 @@ describe('readServerFnBuildInfo', () => {
       expect(metadata).toEqual(original)
     },
   )
+
+  it('restores multiple entries as separate objects without unknown fields', () => {
+    const input = { ...serverFn, extra: 'discarded' }
+    const metadata = {
+      version: 1,
+      serverFnsById: { first: input, second: input },
+    }
+    const original = structuredClone(metadata)
+    const result = readServerFnBuildInfo({
+      buildInfo: { [SERVER_FN_BUILD_INFO_FIELD]: metadata },
+    })
+
+    expect(result).toEqual({ first: serverFn, second: serverFn })
+    expect(result).not.toBe(metadata.serverFnsById)
+    expect(result?.first).not.toBe(input)
+    expect(result?.second).not.toBe(input)
+    expect(result?.first).not.toBe(result?.second)
+    expect(metadata).toEqual(original)
+  })
 })

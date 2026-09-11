@@ -55,10 +55,12 @@ const serverFnSchema = z.object({
   isClientReferenced: z.boolean().optional(),
 })
 
-const serverFnBuildInfoSchema = z.object({
-  version: z.literal(1),
-  serverFnsById: z.record(z.string(), serverFnSchema),
-})
+const serverFnBuildInfoSchema = z.compile(
+  z.object({
+    version: z.literal(1),
+    serverFnsById: z.record(z.string(), serverFnSchema),
+  }),
+)
 
 /**
  * In Rsbuild dev, use file:// URLs for absolute server function paths.

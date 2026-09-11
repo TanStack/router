@@ -79,8 +79,8 @@ catalogs:
       specifier: ^3.5.25
       version: 3.5.25
     zod:
-      specifier: ^4.5.4
-      version: 4.5.4
+      specifier: ^4.6.1
+      version: 4.6.1
 
 overrides:
   '@types/babel__traverse': ^7.28.0
@@ -13755,7 +13755,7 @@ importers:
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
 
   packages/react-router-devtools:
     dependencies:
@@ -14356,7 +14356,7 @@ importers:
         version: 3.9.6
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14426,7 +14426,7 @@ importers:
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14640,7 +14640,7 @@ importers:
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
 
   packages/solid-router-devtools:
     dependencies:
@@ -15006,7 +15006,7 @@ importers:
         version: 4.0.3
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15302,7 +15302,7 @@ importers:
         version: 3.5.25(@typescript/typescript6@6.0.2)
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
 
   packages/vue-router-devtools:
     dependencies:
@@ -29434,6 +29434,9 @@ packages:
 
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
+
+  zod@4.6.1:
+    resolution: {integrity: sha512-341aRWQsve0rvronKNTqZpjmzdbUDlFuzHaI/XLg/Ej82qffDJRRfBTCuv7+9q/rMjB6LSLyEBnW4InJeMtt/Q==}
 
   zustand@5.0.12:
     resolution: {integrity: sha512-i77ae3aZq4dhMlRhJVCYgMLKuSiZAaUPAct2AksxQ+gOtimhGMdXljRT21P5BNpeT4kXlLIckvkPM029OljD7g==}
@@ -45423,6 +45426,8 @@ snapshots:
   zod@4.4.3: {}
 
   zod@4.5.4: {}
+
+  zod@4.6.1: {}
 
   zustand@5.0.12(@types/react@19.2.9)(immer@10.1.1)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3)):
     optionalDependencies:
