@@ -1,5 +1,9 @@
 import * as React from 'react'
-import { isModuleNotFoundError } from '@tanstack/router-core'
+import {
+  clearModuleNotFoundReload,
+  isModuleNotFoundError,
+  reloadForModuleNotFound,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { reactUse } from './utils'
 import type { AsyncRouteComponent } from './route'
@@ -31,6 +35,10 @@ export function lazyRouteComponent<
       error = undefined
       loadPromise = importer()
         .then((res) => {
+          // The module is present, so the deployment it belongs to is live and
+          // we may reload again if a later deploy removes a chunk with the same
+          // import name.
+          clearModuleNotFoundReload(importer)
           // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
             loadPromise = undefined
@@ -56,16 +64,11 @@ export function lazyRouteComponent<
       // successful retry cannot leave a stale reload request armed.
       if (
         isModuleNotFoundError(error) &&
-        !(isServer ?? typeof window === 'undefined') &&
-        typeof sessionStorage !== 'undefined'
+        !(isServer ?? typeof window === 'undefined')
       ) {
-        const storageKey = `tanstack_router_reload:${error.message}`
-        if (!sessionStorage.getItem(storageKey)) {
-          sessionStorage.setItem(storageKey, '1')
-          window.location.reload()
-          // Suspend forever while the document reloads.
-          throw new Promise(() => {})
-        }
+        // Suspend forever while the page reloads, so an error screen isn't
+        // shown while the page renders before the reload.
+        if (reloadForModuleNotFound(importer)) throw new Promise(() => {})
       }
       throw error
     }

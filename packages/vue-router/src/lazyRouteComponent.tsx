@@ -1,24 +1,12 @@
 import * as Vue from 'vue'
+import {
+  clearModuleNotFoundReload,
+  isModuleNotFoundError,
+  reloadForModuleNotFound,
+} from '@tanstack/router-core'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
 import type { AsyncRouteComponent } from './route'
-
-// If the load fails due to module not found, it may mean a new version of
-// the build was deployed and the user's browser is still using an old version.
-// If this happens, the old version in the user's browser would have an outdated
-// URL to the lazy module.
-// In that case, we want to attempt one window refresh to get the latest.
-function isModuleNotFoundError(error: any): boolean {
-  // chrome: "Failed to fetch dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
-  // firefox: "error loading dynamically imported module: http://localhost:5173/src/routes/posts.index.tsx?tsr-split"
-  // safari: "Importing a module script failed."
-  if (typeof error?.message !== 'string') return false
-  return (
-    error.message.startsWith('Failed to fetch dynamically imported module') ||
-    error.message.startsWith('error loading dynamically imported module') ||
-    error.message.startsWith('Importing a module script failed')
-  )
-}
 
 export function lazyRouteComponent<
   T extends Record<string, any>,
@@ -33,7 +21,6 @@ export function lazyRouteComponent<
   let loadPromise: Promise<any> | undefined
   let comp: T[TKey] | T['default'] | null = null
   let error: any = null
-  let attemptedReload = false
 
   const load = () => {
     // If we're on the server and SSR is disabled for this component
@@ -47,6 +34,9 @@ export function lazyRouteComponent<
       error = undefined
       loadPromise = importer()
         .then((res) => {
+          // The module is present, so the deployment it belongs to is live and
+          // it may spend a reload again if a later one leaves it stale.
+          clearModuleNotFoundReload(importer)
           if (typeof document !== 'undefined') {
             loadPromise = undefined
             ;(lazyComp as any).preload = undefined
@@ -97,25 +87,16 @@ export function lazyRouteComponent<
         }
       })
 
-      // Handle module not found error with reload attempt
+      // A missing module can mean that a newer deployment replaced the URL,
+      // so reload once to pick the new build up, and stay empty while that
+      // reload lands rather than surfacing an error it is about to replace.
       if (
         errorState.value &&
         isModuleNotFoundError(errorState.value) &&
-        !attemptedReload
+        typeof window !== 'undefined' &&
+        reloadForModuleNotFound(importer)
       ) {
-        if (
-          typeof window !== 'undefined' &&
-          typeof sessionStorage !== 'undefined'
-        ) {
-          // Try to reload once on module not found error
-          const storageKey = `tanstack_router_reload:${errorState.value.message}`
-          if (!sessionStorage.getItem(storageKey)) {
-            sessionStorage.setItem(storageKey, '1')
-            attemptedReload = true
-            window.location.reload()
-            return () => null // Return empty while reloading
-          }
-        }
+        return () => null
       }
 
       // If we have a non-module-not-found error, throw it

@@ -504,6 +504,54 @@ export function isModuleNotFoundError(error: any): boolean {
   )
 }
 
+let moduleNotFoundReloadPending = false
+
+/**
+ * Recover from a lazy chunk that 404s, which normally means a newer deploy
+ * replaced the URL this document was built with. Reloads once per import name
+ * so a chunk that is genuinely gone cannot loop, and reports whether the caller
+ * should keep waiting instead of surfacing the error.
+ *
+ * Keying on the import name rather than the error message matters on Safari,
+ * whose message ("Importing a module script failed.") is identical for every
+ * chunk. `clearModuleNotFoundReload` releases the key after a successful load,
+ * so a later deploy can reload again.
+ *
+ * Returns true while a reload this document started is still landing:
+ * `location.reload()` only schedules the navigation, so the page keeps
+ * rendering, and the key is already spent by then. Returns false once the
+ * reload is spent, meaning the error is real and the caller should throw it.
+ *
+ * Storage access is guarded because sessionStorage can be absent or refused
+ * (server, sandboxed iframe, blocked storage). There we degrade to not
+ * reloading, which beats a loop we have no way to detect.
+ */
+export function reloadForModuleNotFound(importer: () => unknown): boolean {
+  try {
+    const key = `tanstack_router_reload:${importer}`
+    if (!sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, '1')
+      moduleNotFoundReloadPending = true
+      location.reload()
+    }
+  } catch {
+    // Storage is absent or refused; leave the reload unspent.
+  }
+  return moduleNotFoundReloadPending
+}
+
+/**
+ * Release the reload key after a successful load, so a later deploy that 404s a
+ * chunk with the same import name can reload again.
+ */
+export function clearModuleNotFoundReload(importer: () => unknown): void {
+  try {
+    sessionStorage.removeItem(`tanstack_router_reload:${importer}`)
+  } catch {
+    // Storage is absent or refused; there is nothing recorded to clear.
+  }
+}
+
 export function isPromise<T>(
   value: Promise<Awaited<T>> | T,
 ): value is Promise<Awaited<T>> {
