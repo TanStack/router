@@ -697,8 +697,10 @@ export function parseHref(
   const sanitizedHref = normalizeHref(href)
   const hashIndex = sanitizedHref.indexOf('#')
   const searchIndex = sanitizedHref.indexOf('?')
-
-  const addedKey = createRandomKey()
+  if (!state) {
+    const key = createRandomKey()
+    state = { [stateIndexKey]: 0, key, __TSR_key: key }
+  }
 
   return {
     href: sanitizedHref,
@@ -720,7 +722,7 @@ export function parseHref(
             hashIndex === -1 ? undefined : hashIndex,
           )
         : '',
-    state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
+    state,
   }
 }
 
