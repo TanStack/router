@@ -3,8 +3,7 @@ import { createResource } from 'solid-js'
 import {
   clearModuleNotFoundReload,
   isModuleNotFoundError,
-  isModuleNotFoundReloadPending,
-  shouldReloadForModuleNotFound,
+  reloadForModuleNotFound,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import type { AsyncRouteComponent } from './route'
@@ -65,19 +64,9 @@ export function lazyRouteComponent<
         // a reload loop if there is some other issue besides an old deploy.
         // That's why we store our reload attempt in sessionStorage.
         if (error instanceof Error && typeof window !== 'undefined') {
-          if (shouldReloadForModuleNotFound(importer)) {
-            window.location.reload()
-
-            // Return empty component while we wait for window to reload
-            return {
-              default: () => null,
-            }
-          }
-
-          // The reload this document already started has not landed yet. Stay
-          // empty, so a render in that window cannot surface an error that the
-          // incoming document is about to replace.
-          if (isModuleNotFoundReloadPending()) {
+          // Stay empty while the reload lands, so a render in that window
+          // cannot surface an error the incoming document is about to replace.
+          if (reloadForModuleNotFound(importer)) {
             return {
               default: () => null,
             }

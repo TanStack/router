@@ -2,8 +2,7 @@ import * as React from 'react'
 import {
   clearModuleNotFoundReload,
   isModuleNotFoundError,
-  isModuleNotFoundReloadPending,
-  shouldReloadForModuleNotFound,
+  reloadForModuleNotFound,
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { reactUse } from './utils'
@@ -67,18 +66,9 @@ export function lazyRouteComponent<
         isModuleNotFoundError(error) &&
         !(isServer ?? typeof window === 'undefined')
       ) {
-        if (shouldReloadForModuleNotFound(importer)) {
-          window.location.reload()
-          // Suspend forever while the document reloads.
-          throw new Promise(() => {})
-        }
-
-        // The reload this document already started has not landed yet. Keep
-        // suspending, so a render in that window cannot flash an error screen
-        // that the incoming document is about to replace.
-        if (isModuleNotFoundReloadPending()) {
-          throw new Promise(() => {})
-        }
+        // Suspend forever while the page reloads, so an error screen isn't
+        // shown while the page renders before the reload.
+        if (reloadForModuleNotFound(importer)) throw new Promise(() => {})
       }
       throw error
     }

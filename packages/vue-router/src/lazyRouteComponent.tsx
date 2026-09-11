@@ -2,7 +2,7 @@ import * as Vue from 'vue'
 import {
   clearModuleNotFoundReload,
   isModuleNotFoundError,
-  shouldReloadForModuleNotFound,
+  reloadForModuleNotFound,
 } from '@tanstack/router-core'
 import { Outlet } from './Match'
 import { ClientOnly } from './ClientOnly'
@@ -21,7 +21,6 @@ export function lazyRouteComponent<
   let loadPromise: Promise<any> | undefined
   let comp: T[TKey] | T['default'] | null = null
   let error: any = null
-  let attemptedReload = false
 
   const load = () => {
     // If we're on the server and SSR is disabled for this component
@@ -88,22 +87,16 @@ export function lazyRouteComponent<
         }
       })
 
-      // Handle module not found error with reload attempt
+      // A missing module can mean that a newer deployment replaced the URL,
+      // so reload once to pick the new build up, and stay empty while that
+      // reload lands rather than surfacing an error it is about to replace.
       if (
         errorState.value &&
         isModuleNotFoundError(errorState.value) &&
-        !attemptedReload
+        typeof window !== 'undefined' &&
+        reloadForModuleNotFound(importer)
       ) {
-        // A missing module can mean that a newer deployment replaced the URL,
-        // so reload once to pick the new build up.
-        if (
-          typeof window !== 'undefined' &&
-          shouldReloadForModuleNotFound(importer)
-        ) {
-          attemptedReload = true
-          window.location.reload()
-          return () => null // Return empty while reloading
-        }
+        return () => null
       }
 
       // If we have a non-module-not-found error, throw it

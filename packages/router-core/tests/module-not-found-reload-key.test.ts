@@ -1,10 +1,4 @@
-import { beforeEach, describe, expect, test } from 'vitest'
-import {
-  clearModuleNotFoundReload,
-  getModuleNotFoundReloadKey,
-  isModuleNotFoundReloadPending,
-  shouldReloadForModuleNotFound,
-} from '../src'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 /**
  * The reload guard in every framework's `lazyRouteComponent` records, per
@@ -27,120 +21,184 @@ const importPostsBuildB = () => Promise.resolve({ chunk: './posts-g7h8i9.js' })
 const requirePostsChunk = () => Promise.resolve({ chunkId: 437 })
 const requireUsersChunk = () => Promise.resolve({ chunkId: 512 })
 
+const keyFor = (importer: () => unknown) =>
+  `tanstack_router_reload:${importer.toString()}`
+
+/**
+ * The pending flag lives for the life of the document, so each test needs a
+ * fresh module instance to observe it going from unset to set.
+ */
+async function loadGuard() {
+  vi.resetModules()
+  return await import('../src/utils')
+}
+
+let reload: ReturnType<typeof vi.fn>
+
 beforeEach(() => {
   sessionStorage.clear()
+  // jsdom refuses a real navigation, and asserting on it is the point anyway.
+  reload = vi.fn()
+  Object.defineProperty(window, 'location', {
+    configurable: true,
+    value: { ...window.location, reload },
+  })
 })
 
-describe('getModuleNotFoundReloadKey', () => {
-  test('separates modules, whatever the browser called the failure', () => {
+describe('reload key', () => {
+  test('separates modules, whatever the browser called the failure', async () => {
     // Safari reports every failed import as the bare "Importing a module
     // script failed.", so the error cannot be part of the key at all.
-    expect(getModuleNotFoundReloadKey(importPostsBuildA)).not.toBe(
-      getModuleNotFoundReloadKey(importUsersBuildA),
-    )
+    const { reloadForModuleNotFound } = await loadGuard()
+
+    reloadForModuleNotFound(importPostsBuildA)
+    reloadForModuleNotFound(importUsersBuildA)
+
+    expect(sessionStorage.getItem(keyFor(importPostsBuildA))).toBe('1')
+    expect(sessionStorage.getItem(keyFor(importUsersBuildA))).toBe('1')
+    expect(reload).toHaveBeenCalledTimes(2)
   })
 
-  test('separates modules a bundler identifies only by chunk id', () => {
-    expect(getModuleNotFoundReloadKey(requirePostsChunk)).not.toBe(
-      getModuleNotFoundReloadKey(requireUsersChunk),
-    )
+  test('separates modules a bundler identifies only by chunk id', async () => {
+    const { reloadForModuleNotFound } = await loadGuard()
+
+    reloadForModuleNotFound(requirePostsChunk)
+    reloadForModuleNotFound(requireUsersChunk)
+
+    expect(sessionStorage.getItem(keyFor(requirePostsChunk))).toBe('1')
+    expect(sessionStorage.getItem(keyFor(requireUsersChunk))).toBe('1')
   })
 
-  test('is stable for the same importer, so it still guards the loop', () => {
-    // The key has to survive the very reload it guards, or the guard reads as
-    // unspent on the next document and reloads again.
-    expect(getModuleNotFoundReloadKey(importPostsBuildA)).toBe(
-      getModuleNotFoundReloadKey(importPostsBuildA),
-    )
+  test('changes when a rebuilt chunk is named in the importer', async () => {
+    const { reloadForModuleNotFound } = await loadGuard()
+
+    reloadForModuleNotFound(importPostsBuildA)
+
+    expect(sessionStorage.getItem(keyFor(importPostsBuildB))).toBeNull()
   })
 
-  test('changes when a rebuilt chunk is named in the importer', () => {
-    expect(getModuleNotFoundReloadKey(importPostsBuildA)).not.toBe(
-      getModuleNotFoundReloadKey(importPostsBuildB),
-    )
-  })
+  test('carries the importer source verbatim, so it cannot collide', async () => {
+    const { reloadForModuleNotFound } = await loadGuard()
 
-  test('carries the importer source verbatim, so it cannot collide', () => {
-    expect(getModuleNotFoundReloadKey(importPostsBuildA)).toBe(
+    reloadForModuleNotFound(importPostsBuildA)
+
+    expect(sessionStorage.key(0)).toBe(
       `tanstack_router_reload:${importPostsBuildA.toString()}`,
     )
   })
-
-  test('keeps the documented key prefix', () => {
-    expect(getModuleNotFoundReloadKey(importPostsBuildA)).toMatch(
-      /^tanstack_router_reload:/,
-    )
-  })
 })
 
-describe('shouldReloadForModuleNotFound', () => {
-  test('grants a stale module one reload and no more', () => {
-    expect(shouldReloadForModuleNotFound(importPostsBuildA)).toBe(true)
-    expect(shouldReloadForModuleNotFound(importPostsBuildA)).toBe(false)
+describe('reloadForModuleNotFound', () => {
+  test('grants a stale module one reload and no more', async () => {
+    const { reloadForModuleNotFound } = await loadGuard()
+
+    reloadForModuleNotFound(importPostsBuildA)
+    reloadForModuleNotFound(importPostsBuildA)
+
+    // The key survives the very reload it guards, so the second document reads
+    // it as spent rather than reloading again.
+    expect(reload).toHaveBeenCalledTimes(1)
   })
 
-  test('grants each module its own', () => {
-    shouldReloadForModuleNotFound(importPostsBuildA)
+  test('grants each module its own', async () => {
+    const { reloadForModuleNotFound } = await loadGuard()
 
-    expect(shouldReloadForModuleNotFound(importUsersBuildA)).toBe(true)
+    reloadForModuleNotFound(importPostsBuildA)
+    reloadForModuleNotFound(importUsersBuildA)
+
+    expect(reload).toHaveBeenCalledTimes(2)
   })
 
-  test('grants another once the module has loaded again', () => {
+  test('grants another once the module has loaded again', async () => {
     // The deployment this one was reaching for arrived, so a later one that
     // leaves it stale again gets its own reload.
-    shouldReloadForModuleNotFound(importPostsBuildA)
-    clearModuleNotFoundReload(importPostsBuildA)
+    const { reloadForModuleNotFound, clearModuleNotFoundReload } =
+      await loadGuard()
 
-    expect(shouldReloadForModuleNotFound(importPostsBuildA)).toBe(true)
+    reloadForModuleNotFound(importPostsBuildA)
+    clearModuleNotFoundReload(importPostsBuildA)
+    reloadForModuleNotFound(importPostsBuildA)
+
+    expect(reload).toHaveBeenCalledTimes(2)
+  })
+
+  /**
+   * `window.location.reload()` only schedules the navigation. Renders keep
+   * running until it lands, and by then the key is spent, so the key alone
+   * would let one of those renders fall through to the error.
+   */
+  test('keeps the caller waiting while the reload it started lands', async () => {
+    const { reloadForModuleNotFound } = await loadGuard()
+
+    expect(reloadForModuleNotFound(importUsersBuildA)).toBe(true)
+    // Spent key, same document: still no error worth showing.
+    expect(reloadForModuleNotFound(importUsersBuildA)).toBe(true)
+  })
+
+  test('stays waiting once the key it spent is gone', async () => {
+    // The document is still on its way out; nothing that happens to storage
+    // afterwards makes the error worth showing.
+    const { reloadForModuleNotFound, clearModuleNotFoundReload } =
+      await loadGuard()
+
+    reloadForModuleNotFound(importUsersBuildA)
+    clearModuleNotFoundReload(importUsersBuildA)
+
+    expect(reloadForModuleNotFound(importPostsBuildA)).toBe(true)
+  })
+
+  test('surfaces the error in a document that never reloaded', async () => {
+    // A key left by an earlier document is spent, and this one has no reload
+    // in flight, so the error is real.
+    const { reloadForModuleNotFound } = await loadGuard()
+    sessionStorage.setItem(keyFor(importPostsBuildA), '1')
+
+    expect(reloadForModuleNotFound(importPostsBuildA)).toBe(false)
+    expect(reload).not.toHaveBeenCalled()
+  })
+
+  test('degrades to not reloading when storage is refused', async () => {
+    // A sandboxed iframe throws on access. Without storage there is no way to
+    // detect a loop, so not reloading beats risking one.
+    const { reloadForModuleNotFound } = await loadGuard()
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new Error('The operation is insecure.')
+    })
+
+    expect(reloadForModuleNotFound(importPostsBuildA)).toBe(false)
+    expect(reload).not.toHaveBeenCalled()
+
+    vi.restoreAllMocks()
   })
 })
 
 describe('clearModuleNotFoundReload', () => {
-  test('returns the reload a recovered module spent', () => {
+  test('returns the reload a recovered module spent', async () => {
     // Without this, a key that cannot change per build — a webpack chunk id —
     // would leave the module unable to reload for any later deployment.
-    const key = getModuleNotFoundReloadKey(requirePostsChunk)
-    sessionStorage.setItem(key, '1')
+    const { clearModuleNotFoundReload } = await loadGuard()
+    sessionStorage.setItem(keyFor(requirePostsChunk), '1')
 
     clearModuleNotFoundReload(requirePostsChunk)
 
-    expect(sessionStorage.getItem(key)).toBeNull()
+    expect(sessionStorage.getItem(keyFor(requirePostsChunk))).toBeNull()
   })
 
-  test('leaves other modules alone, so a broken one cannot loop', () => {
+  test('leaves other modules alone, so a broken one cannot loop', async () => {
     // A module that is genuinely missing never loads, so its entry is never
     // cleared — least of all by a healthy route loading beside it.
-    const brokenKey = getModuleNotFoundReloadKey(requireUsersChunk)
-    sessionStorage.setItem(brokenKey, '1')
+    const { clearModuleNotFoundReload } = await loadGuard()
+    sessionStorage.setItem(keyFor(requireUsersChunk), '1')
 
     clearModuleNotFoundReload(requirePostsChunk)
 
-    expect(sessionStorage.getItem(brokenKey)).toBe('1')
+    expect(sessionStorage.getItem(keyFor(requireUsersChunk))).toBe('1')
   })
 
-  test('is a no-op for a module that never reloaded', () => {
+  test('is a no-op for a module that never reloaded', async () => {
+    const { clearModuleNotFoundReload } = await loadGuard()
+
     expect(() => clearModuleNotFoundReload(importPostsBuildA)).not.toThrow()
     expect(sessionStorage.length).toBe(0)
-  })
-})
-
-describe('isModuleNotFoundReloadPending', () => {
-  /**
-   * `window.location.reload()` only schedules the navigation. Renders keep
-   * running until it lands, and by then the key is spent, so the reload guard
-   * alone would let one of those renders fall through to the error.
-   */
-  test('reports the reload the guard just started', () => {
-    expect(shouldReloadForModuleNotFound(importUsersBuildA)).toBe(true)
-
-    expect(isModuleNotFoundReloadPending()).toBe(true)
-  })
-
-  test('stays set once the key it spent is gone', () => {
-    // The document is still on its way out; nothing that happens to storage
-    // afterwards makes the error worth showing.
-    clearModuleNotFoundReload(importUsersBuildA)
-
-    expect(isModuleNotFoundReloadPending()).toBe(true)
   })
 })
