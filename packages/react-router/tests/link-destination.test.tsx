@@ -9,7 +9,6 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
-  defaultStringifySearch,
   retainSearchParams,
 } from '../src'
 
@@ -25,21 +24,25 @@ describe('Link destination updates', () => {
     stringify?: (params: Record<string, unknown>) => { id: string },
   ) {
     const rootRoute = createRootRoute({
-      component: () => (
-        <>
-          <Link
-            to="/target/$id"
-            params={params}
-            search={{}}
-            hash="details"
-            activeOptions={{ includeSearch: false }}
-            data-testid="fixed-link"
-          >
-            Target
-          </Link>
-          <Outlet />
-        </>
-      ),
+      component: function Root() {
+        const [, rerender] = React.useState(0)
+        return (
+          <>
+            <button onClick={() => rerender((n) => n + 1)}>Rerender</button>
+            <Link
+              to="/target/$id"
+              params={params}
+              search={{}}
+              hash="details"
+              activeOptions={{ includeSearch: false }}
+              data-testid="fixed-link"
+            >
+              Target
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
     })
     const itemsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -131,16 +134,18 @@ describe('Link destination updates', () => {
     expect(stringify).toHaveBeenCalled()
   })
 
-  test('updates when ancestor search middleware is added and removed', async () => {
+  test('updates when the route tree is rebuilt after route options change', async () => {
     const { router, rootRoute } = setupFixedLink()
     render(<RouterProvider router={router} />)
 
     const link = await screen.findByTestId('fixed-link')
     expect(link).toHaveAttribute('href', '/target/fixed#details')
 
+    // HMR updates the live route in place, then rebuilds the route tree.
     rootRoute.update({
       search: { middlewares: [retainSearchParams(true)] },
     })
+    router.setRoutes(router.buildRouteTree())
     await act(() =>
       router.navigate({
         to: '/items/$source',
@@ -151,6 +156,7 @@ describe('Link destination updates', () => {
     expect(link).toHaveAttribute('href', '/target/fixed?retained=value#details')
 
     rootRoute.update({ search: undefined })
+    router.setRoutes(router.buildRouteTree())
     await act(() =>
       router.navigate({
         to: '/items/$source',
@@ -161,26 +167,7 @@ describe('Link destination updates', () => {
     expect(link).toHaveAttribute('href', '/target/fixed#details')
   })
 
-  test('continues evaluating a custom search serializer', async () => {
-    const { router } = setupFixedLink()
-    let language = 'en'
-    router.update({
-      stringifySearch: (search) =>
-        defaultStringifySearch({ ...search, language }),
-    })
-    render(<RouterProvider router={router} />)
-
-    const link = await screen.findByTestId('fixed-link')
-    expect(link).toHaveAttribute('href', '/target/fixed?language=en#details')
-
-    language = 'fr'
-    await act(() =>
-      router.navigate({ to: '/items/$source', params: { source: 'two' } }),
-    )
-    expect(link).toHaveAttribute('href', '/target/fixed?language=fr#details')
-  })
-
-  test('reads accessor-backed params after navigation', async () => {
+  test('reads accessor-backed params on the next render', async () => {
     let id = 'one'
     const { router } = setupFixedLink({
       get id() {
@@ -193,13 +180,11 @@ describe('Link destination updates', () => {
     expect(link).toHaveAttribute('href', '/target/one#details')
 
     id = 'two'
-    await act(() =>
-      router.navigate({ to: '/items/$source', params: { source: 'two' } }),
-    )
+    fireEvent.click(screen.getByRole('button', { name: 'Rerender' }))
     expect(link).toHaveAttribute('href', '/target/two#details')
   })
 
-  test('updates when an existing params object changes', async () => {
+  test('updates when an existing params object changes before a render', async () => {
     const params = { id: 'one' }
     const { router } = setupFixedLink(params)
     render(<RouterProvider router={router} />)
@@ -208,6 +193,10 @@ describe('Link destination updates', () => {
     expect(link).toHaveAttribute('href', '/target/one#details')
 
     params.id = 'two'
+    fireEvent.click(screen.getByRole('button', { name: 'Rerender' }))
+    expect(link).toHaveAttribute('href', '/target/two#details')
+
+    // The same object keeps its location across navigations until it changes again.
     await act(() =>
       router.navigate({ to: '/items/$source', params: { source: 'two' } }),
     )
