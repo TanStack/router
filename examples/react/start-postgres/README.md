@@ -57,11 +57,13 @@ pnpm build
 POSTGRES_EXAMPLE_PRODUCTION=1 pnpm test:e2e
 ```
 
+Each test run starts a disposable PostgreSQL 17 server on localhost:3121, generates the client, applies migrations, and stops and removes the database afterward, including when tests fail. The runner supplies its own database URL, so tests do not need a `.env` file or a running Compose service. Keep application port 3120 and database port 3121 free. The pinned `embedded-postgres` development dependency provides the database binaries; its platform package install script restores required native-library links.
+
 The tests check persisted SSR data, reloads, server validation and database rollback. For a manual production start, export `DATABASE_URL` in the server environment and run `PORT=3120 pnpm start`. Do not assume a production Node process will load `.env`; the Prisma CLI, Vite development server, and Playwright configuration load it for their own processes.
 
 ## Deploy
 
-Use a Node-compatible host for this `pg` adapter and Nitro build. Generate the Prisma client during the build. Apply `prisma migrate deploy` once as a release step before starting compatible application instances, rather than running migrations in each request. Use a separate migration connection if your provider's pooler requires it.
+Use a Node-compatible host for this `pg` adapter and Nitro build. Generate the Prisma client during the build. Client generation and the build do not need a database URL; migrations and the running server do. Apply `prisma migrate deploy` once as a release step before starting compatible application instances, rather than running migrations in each request. Use a separate migration connection if your provider's pooler requires it.
 
 Set `DATABASE_URL` as a server secret. Never prefix it with `VITE_`, serialize it to a loader response, or commit it. Configure TLS using your provider's certificate guidance. Size the pool for the total number of processes and database connection limit. Edge runtimes may need a different supported adapter.
 

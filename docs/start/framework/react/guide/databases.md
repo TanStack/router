@@ -89,7 +89,7 @@ pnpm build
 POSTGRES_EXAMPLE_PRODUCTION=1 pnpm test:e2e
 ```
 
-The tests use a dedicated database, create unique records, and clean up only those records. They verify initial HTML contains persisted notes, data survives reload, whitespace-only titles fail server validation, and duplicate-note failure rolls back its new category.
+The test script starts an isolated PostgreSQL 17 server on localhost:3121, generates the client, applies migrations, and removes the database after the run. It supplies the test connection string automatically. Keep ports 3120 and 3121 free. The tests verify initial HTML contains persisted notes, data survives reload, whitespace-only titles fail server validation, and duplicate-note failure rolls back its new category.
 
 Also build with a harmless test credential and search client assets and any published source maps for it. Inspect response bodies too. A successful connection does not prove the credentials stayed on the server.
 

@@ -9,7 +9,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "db:dev": "prisma migrate dev",
-    "test:e2e": "playwright test"
+    "test:e2e": "node tests/run.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.0.0",
@@ -30,6 +30,7 @@
     "vite": "^8.0.14",
     "prisma": "7.0.0",
     "dotenv": "^17.2.3",
-    "@playwright/test": "^1.61.0"
+    "@playwright/test": "^1.61.0",
+    "embedded-postgres": "17.10.0-beta.17"
   }
 }
