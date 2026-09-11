@@ -54,6 +54,6 @@ For a production-mode smoke check, keep the environment variables set and run `p
 | `next-app/next.config.ts` redirect            | `src/routes/old-notes.tsx` redirect                     |
 | `next-app/app/sitemap.ts`                     | `src/routes/sitemap[.]xml.ts` server route              |
 
-The Next.js forms use Server Actions. The Start forms in this example handle client submit events and require JavaScript. A no-JavaScript form needs an explicit server-route POST implementation, including validation and CSRF protection. Replacing an Action with `createServerFn` does not preserve progressive enhancement automatically.
+The Next.js forms use Server Actions. The Start forms in this example handle client submit events and require JavaScript. For a no-JavaScript form, use a FormData-compatible server function URL or an explicit server-route POST implementation, including validation and CSRF protection. Replacing an Action with `createServerFn` does not preserve progressive enhancement automatically.
 
 The canonical origin is intentionally `https://field-notes.example` in both content modules, so local ports do not change the comparison. Replace it with your real public origin before adapting the example.

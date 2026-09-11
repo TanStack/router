@@ -57,10 +57,18 @@ function Saved() {
         {account.saved ? 'Remove article' : 'Save article'}
       </button>
       <button
-        disabled={!hydrated}
+        disabled={!hydrated || pending}
         onClick={async () => {
-          await logout()
-          await router.invalidate()
+          setPending(true)
+          setError('')
+          try {
+            await logout()
+            await router.invalidate()
+          } catch {
+            setError('Could not sign out. Try again.')
+          } finally {
+            setPending(false)
+          }
         }}
       >
         Sign out

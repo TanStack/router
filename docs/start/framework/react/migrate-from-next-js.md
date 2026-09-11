@@ -142,7 +142,7 @@ The Start function checks authorization even though the route already checks it.
 
 `useServerFn` returns a callable function. The reference keeps pending and error state in the component and reloads route data after a successful mutation. It also tests replaying the mutation after sign-out.
 
-Next.js Action forms and these Start event-handler forms have different no-JavaScript behavior. The latter require JavaScript and keep their fields disabled until hydration. If progressive enhancement is a requirement, implement an ordinary form POST with a [server route](./guide/server-routes), validation, CSRF protection, and a redirect. Do not treat `createServerFn` as a drop-in replacement for the React form Action protocol.
+Next.js Action forms and these Start event-handler forms have different no-JavaScript behavior. The latter require JavaScript and keep their fields disabled until hydration. If progressive enhancement is a requirement, use a FormData-compatible [server function URL](./guide/server-functions#progressive-enhancement) or an ordinary form POST to a [server route](./guide/server-routes). Include validation, CSRF protection, and an appropriate response or redirect. Do not treat `createServerFn` as a drop-in replacement for the React form Action protocol.
 
 ## Preserve authentication and session boundaries
 

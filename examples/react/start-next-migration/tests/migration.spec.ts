@@ -95,3 +95,53 @@ test('sessions and protected mutations survive reload but cannot run after sign-
   await page.goto('/saved')
   await expect(page).toHaveURL(/\/login$/)
 })
+
+test('Start serializes saving and signing out so their responses cannot arrive out of order', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'start', 'Start event-handler regression')
+  await page.goto('/login')
+  await page.getByLabel('Email', { exact: true }).fill('reader@example.com')
+  await page
+    .getByLabel('Password', { exact: true })
+    .fill('migration-test-password')
+  await page.getByRole('button', { name: 'Sign in', exact: true }).click()
+  await expect(page).toHaveURL(/\/saved$/)
+
+  for (const action of ['Save article', 'Sign out']) {
+    let release = () => {}
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route('**/_serverFn/**', async (route) => {
+      if (route.request().method() === 'POST') {
+        await held
+      }
+      await route.continue()
+    })
+    await page.getByRole('button', { name: action, exact: true }).click()
+    try {
+      await expect(
+        page.getByRole('button', { name: /^(Save|Remove) article$/ }),
+      ).toBeDisabled()
+      await expect(
+        page.getByRole('button', { name: 'Sign out', exact: true }),
+      ).toBeDisabled()
+    } finally {
+      release()
+    }
+    if (action === 'Save article') {
+      await expect(page.getByTestId('saved-state')).toHaveText(
+        'Keeping your URLs is saved',
+      )
+      await expect(
+        page.getByRole('button', { name: 'Sign out', exact: true }),
+      ).toBeEnabled()
+    } else {
+      await expect(page).toHaveURL(/\/login$/)
+    }
+    await page.unrouteAll({ behavior: 'wait' })
+  }
+  await page.goto('/saved')
+  await expect(page).toHaveURL(/\/login$/)
+})
