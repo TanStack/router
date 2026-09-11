@@ -1,9 +1,9 @@
-import { writeFileSync } from 'node:fs'
+import { mkdir, open } from 'node:fs/promises'
 import path from 'node:path'
 import { create } from 'xmlbuilder2'
 import { createLogger } from './utils'
-import type { TanStackStartOutputConfig } from './schema'
-import type { XMLBuilder } from 'xmlbuilder2/lib/interfaces'
+import type { Page, TanStackStartOutputConfig } from './schema'
+import type { FileHandle } from 'node:fs/promises'
 
 export type SitemapUrl = {
   loc: string
@@ -40,89 +40,74 @@ export type SitemapData = {
   urls: Array<SitemapUrl>
 }
 
-function buildSitemapJson(
-  pages: TanStackStartOutputConfig['pages'],
-  host: string,
-): SitemapData {
-  const slash = checkSlash(host)
+function pageToXml(input: Page, host: string): string {
+  const item: SitemapUrl = {
+    ...input.sitemap,
+    loc: `${host}${host.endsWith('/') ? '' : '/'}${input.path.replace(/^\/+/g, '')}`,
+    lastmod: new Date(input.sitemap?.lastmod ?? Date.now())
+      .toISOString()
+      .split('T')[0]!,
+  }
+  const sitemap = create().ele('urlset', namespaces)
+  const page = sitemap.ele('url')
+  page.ele('loc').txt(item.loc)
+  page.ele('lastmod').txt(item.lastmod)
 
-  const urls: Array<SitemapUrl> = pages
-    .filter((page) => {
-      return page.sitemap?.exclude !== true
-    })
-    .map((page) => ({
-      loc: `${host}${slash}${page.path.replace(/^\/+/g, '')}`,
-      lastmod: page.sitemap?.lastmod
-        ? new Date(page.sitemap.lastmod).toISOString().split('T')[0]!
-        : new Date().toISOString().split('T')[0]!,
-      priority: page.sitemap?.priority,
-      changefreq: page.sitemap?.changefreq,
-      alternateRefs: page.sitemap?.alternateRefs,
-      images: page.sitemap?.images,
-      news: page.sitemap?.news,
-    }))
+  if (item.priority !== undefined) {
+    page.ele('priority').txt(item.priority.toString())
+  }
+  if (item.changefreq) {
+    page.ele('changefreq').txt(item.changefreq)
+  }
 
-  return { urls }
-}
-
-function jsonToXml(sitemapData: SitemapData): string {
-  const sitemap = createXml('urlset')
-
-  for (const item of sitemapData.urls) {
-    const page = sitemap.ele('url')
-    page.ele('loc').txt(item.loc)
-    page.ele('lastmod').txt(item.lastmod)
-
-    if (item.priority !== undefined) {
-      page.ele('priority').txt(item.priority.toString())
-    }
-    if (item.changefreq) {
-      page.ele('changefreq').txt(item.changefreq)
-    }
-
-    // Add alternate references
-    if (item.alternateRefs?.length) {
-      for (const ref of item.alternateRefs) {
-        const alternateRef = page.ele('xhtml:link')
-        alternateRef.att('rel', 'alternate')
-        alternateRef.att('href', ref.href)
-        if (ref.hreflang) {
-          alternateRef.att('hreflang', ref.hreflang)
-        }
+  // Add alternate references
+  if (item.alternateRefs?.length) {
+    for (const ref of item.alternateRefs) {
+      const alternateRef = page.ele('xhtml:link')
+      alternateRef.att('rel', 'alternate')
+      alternateRef.att('href', ref.href)
+      if (ref.hreflang) {
+        alternateRef.att('hreflang', ref.hreflang)
       }
-    }
-
-    // Add images
-    if (item.images?.length) {
-      for (const image of item.images) {
-        const imageElement = page.ele('image:image')
-        imageElement.ele('image:loc').txt(image.loc)
-        if (image.title) {
-          imageElement.ele('image:title').txt(image.title)
-        }
-        if (image.caption) {
-          imageElement.ele('image:caption').txt(image.caption)
-        }
-      }
-    }
-
-    // Add news
-    if (item.news) {
-      const newsElement = page.ele('news:news')
-      const publication = newsElement.ele('news:publication')
-      publication.ele('news:name').txt(item.news.publication.name)
-      publication.ele('news:language').txt(item.news.publication.language)
-      newsElement
-        .ele('news:publication_date')
-        .txt(new Date(item.news.publicationDate).toISOString().split('T')[0]!)
-      newsElement.ele('news:title').txt(item.news.title)
     }
   }
 
-  return sitemap.end({ prettyPrint: true })
+  // Add images
+  if (item.images?.length) {
+    for (const image of item.images) {
+      const imageElement = page.ele('image:image')
+      imageElement.ele('image:loc').txt(image.loc)
+      if (image.title) {
+        imageElement.ele('image:title').txt(image.title)
+      }
+      if (image.caption) {
+        imageElement.ele('image:caption').txt(image.caption)
+      }
+    }
+  }
+
+  // Add news
+  if (item.news) {
+    const newsElement = page.ele('news:news')
+    const publication = newsElement.ele('news:publication')
+    publication.ele('news:name').txt(item.news.publication.name)
+    publication.ele('news:language').txt(item.news.publication.language)
+    newsElement
+      .ele('news:publication_date')
+      .txt(new Date(item.news.publicationDate).toISOString().split('T')[0]!)
+    newsElement.ele('news:title').txt(item.news.title)
+  }
+  return page.toString({ prettyPrint: true })
 }
 
-export function buildSitemap({
+const namespaces = {
+  xmlns: 'http://www.sitemaps.org/schemas/sitemap/0.9',
+  'xmlns:xhtml': 'http://www.w3.org/1999/xhtml',
+  'xmlns:image': 'http://www.google.com/schemas/sitemap-image/1.1',
+  'xmlns:news': 'http://www.google.com/schemas/sitemap-news/0.9',
+}
+
+export function createSitemapWriter({
   startConfig,
   publicDir,
 }: {
@@ -130,85 +115,122 @@ export function buildSitemap({
   publicDir: string
 }) {
   const logger = createLogger('sitemap')
-
-  let sitemapOptions = startConfig.sitemap
-
-  if (!sitemapOptions && startConfig.pages.length) {
-    sitemapOptions = { enabled: true, outputPath: 'sitemap.xml' }
-  }
-
-  if (!sitemapOptions?.enabled) {
+  const { sitemap } = startConfig
+  if (!sitemap?.enabled) {
     throw new Error('Sitemap is not enabled')
   }
-
-  const { host, outputPath } = sitemapOptions
-
+  const { host, outputPath } = sitemap
   if (!host) {
-    if (!startConfig.sitemap) {
-      logger.info(
-        'Hint: Pages found, but no sitemap host has been set. To enable sitemap generation, set the `sitemap.host` option.',
-      )
-      return
-    }
     throw new Error(
       'Sitemap host is not set and required to build the sitemap.',
     )
   }
-
   if (!outputPath) {
     throw new Error('Sitemap output path is not set')
   }
+  const sitemapHost = host
 
-  const { pages } = startConfig
-
-  if (!pages.length) {
-    logger.info('No pages were found to build the sitemap. Skipping...')
-    return
-  }
-
-  logger.info('Building Sitemap...')
-
-  // Build the sitemap data
-  const sitemapData = buildSitemapJson(pages, host)
-
-  // Generate output paths
   const xmlOutputPath = path.join(publicDir, outputPath)
   const pagesOutputPath = path.join(publicDir, 'pages.json')
+  let xmlFile: FileHandle | undefined
+  let pagesFile: FileHandle | undefined
+  let queue = Promise.resolve()
+  let closing: Promise<void> | undefined
+  let hasPages = false
 
-  try {
-    // Write XML sitemap
-    logger.info(`Writing sitemap XML at ${xmlOutputPath}`)
-    writeFileSync(xmlOutputPath, jsonToXml(sitemapData))
+  function write(page: Page): Promise<void> {
+    const pending = closing
+      ? Promise.reject(new Error('Sitemap writer is closed'))
+      : queue.then(async () => {
+          const json = JSON.stringify(page)
+          const xml =
+            page.sitemap?.exclude === true ? '' : pageToXml(page, sitemapHost)
+          if (!hasPages) {
+            await mkdir(path.dirname(xmlOutputPath), { recursive: true })
+            await mkdir(publicDir, { recursive: true })
+            xmlFile = await open(xmlOutputPath, 'w')
+            pagesFile = await open(pagesOutputPath, 'w')
+            const root = create({ version: '1.0', encoding: 'UTF-8' })
+              .ele('urlset', namespaces)
+              .com('This file was automatically generated by TanStack Start.')
+              .end({ prettyPrint: true })
+            await xmlFile.writeFile(root.replace('</urlset>', ''), 'utf8')
+            await pagesFile.writeFile('{"pages":[\n', 'utf8')
+          }
+          if (xml) {
+            await xmlFile!.writeFile(`${xml}\n`, 'utf8')
+          }
+          await pagesFile!.writeFile(`${hasPages ? ',\n' : ''}${json}`, 'utf8')
+          hasPages = true
+        })
+    // Requests can run concurrently; observe failures immediately while keeping
+    // the rejected queue available to subsequent writes and close().
+    void pending.catch(() => {})
+    if (!closing) {
+      queue = pending
+    }
+    return pending
+  }
 
-    // Write pages data for runtime use
-    logger.info(`Writing pages data at ${pagesOutputPath}`)
-    writeFileSync(
-      pagesOutputPath,
-      JSON.stringify(
-        {
-          pages,
-          host,
-          lastBuilt: new Date().toISOString(),
-        },
-        null,
-        2,
-      ),
-    )
-  } catch (e) {
-    logger.error(`Unable to write sitemap files`, e)
+  function close(): Promise<void> {
+    if (closing) {
+      return closing
+    }
+    closing = (async () => {
+      try {
+        await queue
+        if (hasPages) {
+          await xmlFile!.writeFile('</urlset>\n', 'utf8')
+          await pagesFile!.writeFile(
+            `\n],"host":${JSON.stringify(host)},"lastBuilt":${JSON.stringify(new Date().toISOString())}}\n`,
+            'utf8',
+          )
+          logger.info(`Wrote sitemap XML at ${xmlOutputPath}`)
+        } else {
+          logger.info('No pages were found to build the sitemap. Skipping...')
+        }
+      } finally {
+        await closeFiles()
+      }
+    })()
+    void closing.catch(() => {})
+    return closing
+  }
+
+  return { write, close }
+
+  async function closeFiles() {
+    const results = await Promise.allSettled([
+      xmlFile?.close(),
+      pagesFile?.close(),
+    ])
+    for (const result of results) {
+      if (result.status === 'rejected') {
+        throw result.reason
+      }
+    }
   }
 }
 
-function createXml(elementName: 'urlset' | 'sitemapindex'): XMLBuilder {
-  return create({ version: '1.0', encoding: 'UTF-8' })
-    .ele(elementName, {
-      xmlns: 'https://www.sitemaps.org/schemas/sitemap/0.9',
-      'xmlns:xhtml': 'http://www.w3.org/1999/xhtml',
-    })
-    .com(`This file was automatically generated by TanStack Start.`)
-}
-
-function checkSlash(host: string): string {
-  const finalChar = host.slice(-1)
-  return finalChar === '/' ? '' : '/'
+export async function buildSitemap({
+  startConfig,
+  publicDir,
+}: {
+  startConfig: TanStackStartOutputConfig
+  publicDir: string
+}) {
+  if (!startConfig.sitemap && startConfig.pages.length) {
+    createLogger('sitemap').info(
+      'Hint: Pages found, but no sitemap host has been set. To enable sitemap generation, set the `sitemap.host` option.',
+    )
+    return
+  }
+  const writer = createSitemapWriter({ startConfig, publicDir })
+  try {
+    for (const page of startConfig.pages) {
+      await writer.write(page)
+    }
+  } finally {
+    await writer.close()
+  }
 }
