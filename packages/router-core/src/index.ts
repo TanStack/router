@@ -263,6 +263,8 @@ export type {
   RouterEvents,
   MatchRoutesOpts,
   RouterOptionsExtensions,
+  RouterSsrOptions,
+  RouterSsrOptionsExtensions,
   DefaultRemountDepsFn,
   PreloadRouteFn,
   MatchRouteFn,
