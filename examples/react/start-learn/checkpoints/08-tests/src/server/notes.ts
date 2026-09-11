@@ -4,6 +4,7 @@ import {
   setResponseStatus,
 } from '@tanstack/react-start/server'
 import { z } from 'zod'
+import { noteInput } from './note-input'
 import { siteOrigin } from './site.server'
 import { db } from './db.server'
 import { requireUser } from './session.server'
@@ -41,18 +42,7 @@ export const getNote = createServerFn({ method: 'GET' })
   })
 
 export const createNote = createServerFn({ method: 'POST' })
-  .validator(
-    z.object({
-      slug: z
-        .string()
-        .min(1)
-        .max(80)
-        .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
-      title: z.string().trim().min(1).max(120),
-      body: z.string().trim().min(1).max(5000),
-      category: z.string().trim().min(1).max(40),
-    }),
-  )
+  .validator(noteInput)
   .handler(async ({ data }) => {
     const user = await requireUser()
     try {
