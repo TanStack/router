@@ -1,6 +1,7 @@
 ---
 id: authentication-overview
 title: Authentication
+description: Compare authentication options for TanStack Start and plan session management, route protection, and server-side authorization.
 ---
 
 ## Authentication vs Authorization

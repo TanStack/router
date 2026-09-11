@@ -1,6 +1,7 @@
 ---
 id: authentication
 title: Authentication
+description: Explore authentication patterns in TanStack Start, including sessions, login and logout, protected routes, and role-based access.
 ---
 
 This guide covers authentication patterns and shows how to implement your own authentication system with TanStack Start.
