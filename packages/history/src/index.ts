@@ -663,13 +663,13 @@ export function createMemoryHistory(
     getLength: () => entries.length,
     pushState: (path, state) => {
       // Removes all subsequent entries after the current index to start a new branch
+      index = index < entries.length - 1 ? index + 1 : entries.length
+      states[index] = state
+      entries[index] = path
       if (index < entries.length - 1) {
-        entries.splice(index + 1)
-        states.splice(index + 1)
+        entries.length = index + 1
+        states.length = index + 1
       }
-      states.push(state)
-      entries.push(path)
-      index = Math.max(entries.length - 1, 0)
     },
     replaceState: (path, state) => {
       states[index] = state
