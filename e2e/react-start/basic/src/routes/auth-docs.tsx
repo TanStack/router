@@ -1,4 +1,9 @@
-import { createFileRoute, Outlet, useRouter } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Outlet,
+  useHydrated,
+  useRouter,
+} from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
@@ -16,6 +21,7 @@ export const Route = createFileRoute('/auth-docs')({
 })
 
 function AuthDocs() {
+  const hydrated = useHydrated()
   const { user } = Route.useRouteContext()
   const router = useRouter()
   const login = useServerFn(loginFn)
@@ -52,18 +58,20 @@ function AuthDocs() {
   return (
     <div>
       <p data-testid="auth-docs-user">{user?.email ?? 'Signed out'}</p>
-      <form onSubmit={handleSubmit}>
-        <label>
-          Email
-          <input name="email" type="email" required />
-        </label>
-        <label>
-          Password
-          <input name="password" type="password" required />
-        </label>
-        <button type="submit" disabled={isLoading}>
-          {isLoading ? 'Logging in...' : 'Login'}
-        </button>
+      <form method="post" onSubmit={handleSubmit}>
+        <fieldset disabled={!hydrated || isLoading}>
+          <label>
+            Email
+            <input name="email" type="email" required />
+          </label>
+          <label>
+            Password
+            <input name="password" type="password" required />
+          </label>
+          <button type="submit" disabled={isLoading}>
+            {isLoading ? 'Logging in...' : 'Login'}
+          </button>
+        </fieldset>
         <p role="alert">{error}</p>
       </form>
       <button

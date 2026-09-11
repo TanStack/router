@@ -47,3 +47,25 @@ test('authentication docs pattern handles login, logout, route context, and serv
   await page.goto('/auth-docs/private')
   await expect(page).toHaveURL(/\/auth-docs$/)
 })
+
+test('the authentication form cannot submit credentials before hydration', async ({
+  browser,
+  baseURL,
+}) => {
+  const context = await browser.newContext({
+    javaScriptEnabled: false,
+    baseURL,
+  })
+  const page = await context.newPage()
+  try {
+    await page.goto('/auth-docs')
+    await expect(page.locator('form')).toHaveAttribute('method', 'post')
+    await expect(page.getByLabel('Email', { exact: true })).toBeDisabled()
+    await expect(page.getByLabel('Password', { exact: true })).toBeDisabled()
+    await expect(
+      page.getByRole('button', { name: 'Login', exact: true }),
+    ).toBeDisabled()
+  } finally {
+    await context.close()
+  }
+})

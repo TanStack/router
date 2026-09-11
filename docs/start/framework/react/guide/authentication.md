@@ -502,17 +502,18 @@ describe('Authentication Flow', () => {
 
 ### Loading States
 
-Call the function returned by `useServerFn` with `{ data }`. Track pending state in the component, handle invalid credentials, and refresh route context after a successful login. This form uses the `loginFn` from the server-functions example above.
+Call the function returned by `useServerFn` with `{ data }`. Track pending state in the component, handle invalid credentials, and refresh route context after a successful login. This form uses the `loginFn` from the server-functions example above. It requires JavaScript, so the fields stay disabled until hydration; `method="post"` also prevents credentials appearing in a native GET submission.
 
 ```tsx
 // components/LoginForm.tsx
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useRouter } from '@tanstack/react-router'
+import { useHydrated, useRouter } from '@tanstack/react-router'
 import { useServerFn } from '@tanstack/react-start'
 import { loginFn } from '../server/auth'
 
 export function LoginForm() {
+  const hydrated = useHydrated()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const login = useServerFn(loginFn)
@@ -544,23 +545,25 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <label>
-        Email
-        <input name="email" type="email" autoComplete="username" required />
-      </label>
-      <label>
-        Password
-        <input
-          name="password"
-          type="password"
-          autoComplete="current-password"
-          required
-        />
-      </label>
-      <button type="submit" disabled={isLoading}>
-        {isLoading ? 'Logging in...' : 'Login'}
-      </button>
+    <form method="post" onSubmit={handleSubmit}>
+      <fieldset disabled={!hydrated || isLoading}>
+        <label>
+          Email
+          <input name="email" type="email" autoComplete="username" required />
+        </label>
+        <label>
+          Password
+          <input
+            name="password"
+            type="password"
+            autoComplete="current-password"
+            required
+          />
+        </label>
+        <button type="submit" disabled={isLoading}>
+          {isLoading ? 'Logging in...' : 'Login'}
+        </button>
+      </fieldset>
       <p role="alert">{error}</p>
     </form>
   )
