@@ -1,0 +1,20 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Category {
+  name  String @id
+  notes Note[]
+}
+
+model Note {
+  slug         String   @id
+  title        String
+  categoryName String
+  category     Category @relation(fields: [categoryName], references: [name])
+}
