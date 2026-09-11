@@ -18,12 +18,12 @@
   },
   "devDependencies": {
     "@platformatic/flame": "latest",
-    "@vitejs/plugin-react": "^6.0.1",
-    "nitro": "^3.0.260311-beta",
+    "@vitejs/plugin-react": "^6.1.1",
+    "nitro": "3.0.260903-beta",
     "autocannon": "^8.0.0",
     "concurrently": "9.2.1",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14"
+    "vite": "^8.3.0"
   }
 }

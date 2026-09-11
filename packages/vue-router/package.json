@@ -85,7 +85,7 @@
     "@types/node": ">=20",
     "@vitejs/plugin-vue-jsx": "catalog:",
     "combinate": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "vue": "catalog:",
     "zod": "catalog:",
     "@tanstack/vite-config": "catalog:",

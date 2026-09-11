@@ -125,7 +125,7 @@
     "@tanstack/router-utils": "workspace:*",
     "@types/node": ">=20",
     "@vitejs/plugin-vue-jsx": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "vue": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

@@ -21,15 +21,15 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.18",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "22.10.2",
     "@types/react": "^19.2.2",
     "@types/react-dom": "^19.2.2",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-rsc": "^0.5.30",
-    "nitro": "^3.0.260311-beta",
+    "@vitejs/plugin-react": "^6.1.1",
+    "@vitejs/plugin-rsc": "^0.5.34",
+    "nitro": "3.0.260903-beta",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.7.2",
-    "vite": "^8.0.14"
+    "vite": "^8.3.0"
   }
 }

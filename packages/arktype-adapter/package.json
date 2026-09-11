@@ -70,7 +70,7 @@
     "@testing-library/react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "jsdom": "catalog:",

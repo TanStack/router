@@ -116,7 +116,7 @@
     "@types/node": ">=20",
     "combinate": "catalog:",
     "solid-js": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "vite-plugin-solid": "catalog:",
     "zod": "catalog:",
     "@tanstack/vite-config": "catalog:",

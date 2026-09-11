@@ -9,6 +9,10 @@ import {
 import type { Connect, DevEnvironment, PluginOption } from 'vite'
 import type { GetConfigFn } from '../../types'
 
+type BundledDevEngine = {
+  ensureLatestBuildOutput?: () => Promise<void>
+}
+
 export function devServerPlugin({
   getConfig: _getConfig,
   devSsrStylesEnabled,
@@ -127,9 +131,8 @@ export function devServerPlugin({
             VITE_ENVIRONMENT_NAMES.client
           ] as
             | {
-                devEngine?: {
-                  ensureLatestBuildOutput?: () => Promise<void>
-                }
+                devEngine?: BundledDevEngine
+                bundledDev?: { devEngine?: BundledDevEngine }
               }
             | undefined
 
@@ -177,7 +180,11 @@ export function devServerPlugin({
                * }
                */
               if (viteDevServer.config.experimental.bundledDev) {
-                await clientEnv?.devEngine?.ensureLatestBuildOutput?.()
+                // Newer Vite versions keep the engine on bundledDev. Wait for
+                // fresh client output before rendering SSR from updated sources.
+                const devEngine =
+                  clientEnv?.bundledDev?.devEngine ?? clientEnv?.devEngine
+                await devEngine?.ensureLatestBuildOutput?.()
                 serverEnv.moduleGraph.invalidateAll()
                 serverRunner.clearCache()
               }

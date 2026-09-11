@@ -19,16 +19,16 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.29.0",
-    "@tailwindcss/vite": "^4.2.2",
+    "@cloudflare/vite-plugin": "^1.54.6",
+    "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "^6.1.1",
     "tailwindcss": "^4.2.2",
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
-    "vite": "^8.0.14",
-    "wrangler": "^4.74.0"
+    "vite": "^8.3.0",
+    "wrangler": "^4.130.0"
   }
 }

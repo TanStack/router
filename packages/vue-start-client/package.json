@@ -65,7 +65,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue-jsx": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "vue": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

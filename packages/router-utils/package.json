@@ -74,7 +74,7 @@
   },
   "devDependencies": {
     "@types/babel__generator": "^7.27.0",
-    "vite": "*",
+    "vite": "catalog:",
     "@types/node": ">=20",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",

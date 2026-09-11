@@ -70,7 +70,7 @@
   },
   "devDependencies": {
     "solid-js": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "vite-plugin-solid": "catalog:",
     "@types/node": ">=20",
     "@tanstack/vite-config": "catalog:",

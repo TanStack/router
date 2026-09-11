@@ -67,7 +67,7 @@
     "@tanstack/router-plugin": "workspace:*"
   },
   "devDependencies": {
-    "vite": "*",
+    "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
     "@arethetypeswrong/cli": "catalog:",

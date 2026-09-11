@@ -106,7 +106,7 @@
     "combinate": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "vite": "*",
+    "vite": "catalog:",
     "zod": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
