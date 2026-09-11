@@ -328,6 +328,9 @@ async function getResponse(fn: () => Promise<Response>) {
     if (isNotFound(jsonPayload)) {
       throw jsonPayload
     }
+    if (!response.ok) {
+      throw new Error(JSON.stringify(jsonPayload))
+    }
     return jsonPayload
   }
 
