@@ -219,73 +219,90 @@ export function hasKeys(obj: Record<string, unknown>) {
 }
 
 export const createNull = () => Object.create(null)
+// Search and params objects use null prototypes so keys like `__proto__` stay data.
 export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
-  replaceEqualDeep(prev, next, createNull)
+  replaceEqualDeep(prev, next, true)
 
 /**
- * This function returns `prev` if `_next` is deeply equal.
+ * This function returns `prev` if `next` is deeply equal.
  * If not, it will replace any deeply equal children of `b` with those of `a`.
  * This can be used for structural sharing between immutable JSON values for example.
  * Do not use this with signals
  */
 export function replaceEqualDeep<T>(
   prev: any,
-  _next: T,
-  _makeObj = () => ({}),
+  next: T,
+  _nullProto?: boolean,
+  _depth?: number,
+): T
+export function replaceEqualDeep(
+  prev: any,
+  next: any,
+  _nullProto = false,
   _depth = 0,
-): T {
+): any {
   if (isServer) {
-    return _next
+    return next
   }
-  if (prev === _next) {
+  if (prev === next) {
     return prev
   }
 
-  if (_depth > 500) return _next
-
-  const next = _next as any
+  if (_depth > 500) return next
 
   const array = isPlainArray(prev) && isPlainArray(next)
 
   if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
 
   const prevItems = array ? prev : getEnumerableOwnKeys(prev)
-  if (!prevItems) return next
   const nextItems = array ? next : getEnumerableOwnKeys(next)
-  if (!nextItems) return next
-  const prevSize = prevItems.length
+  if (!prevItems || !nextItems) return next
   const nextSize = nextItems.length
-  const copy: any = array ? new Array(nextSize) : _makeObj()
 
-  let equalItems = 0
+  // Most calls find `next` deeply equal, so the copy waits for the first difference.
+  let copy: any
+  let equal = prevItems.length === nextSize
 
   for (let i = 0; i < nextSize; i++) {
     const key = array ? i : (nextItems[i] as any)
     const p = prev[key]
-    const n = next[key]
-
-    if (p === n) {
-      copy[key] = p
-      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
-      continue
+    let n = next[key]
+    if (p !== n && p && n && typeof p === 'object' && typeof n === 'object') {
+      n = replaceEqualDeep(p, n, _nullProto, _depth + 1)
     }
-
-    if (
-      p === null ||
-      n === null ||
-      typeof p !== 'object' ||
-      typeof n !== 'object'
-    ) {
-      copy[key] = n
-      continue
+    if (p !== n) {
+      equal = false
+      copy ??= copyItems(prev, nextItems, i, array, _nullProto)
+    } else if (equal && !array && !hasOwn.call(prev, key)) {
+      // Equal key counts can still hide a key that only `next` has (as `undefined`).
+      equal = false
     }
-
-    const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
-    copy[key] = v
-    if (v === p) equalItems++
+    if (copy) copy[key] = n
   }
 
-  return prevSize === nextSize && equalItems === prevSize ? prev : copy
+  return equal
+    ? prev
+    : (copy ?? copyItems(prev, nextItems, nextSize, array, _nullProto))
+}
+
+// Copies the first `end` entries from `prev`; they are known to be deep-equal.
+function copyItems(
+  prev: any,
+  keys: ArrayLike<any>,
+  end: number,
+  array: boolean,
+  nullProto: boolean,
+) {
+  const copy: any = array
+    ? new Array(keys.length)
+    : nullProto
+      ? Object.create(null)
+      : {}
+  for (let i = 0; i < end; i++) {
+    const key = array ? i : keys[i]
+    copy[key] = prev[key]
+  }
+  return copy
 }
 
 /**
@@ -305,17 +322,9 @@ function getEnumerableOwnKeys(o: object) {
     return false
   }
 
-  // Only check symbols if the object has any (most plain objects don't)
-  const symbols = Object.getOwnPropertySymbols(o)
-
-  // Fast path: no symbols, return enumerable string keys directly
-  if (symbols.length === 0) {
-    return keys
-  }
-
-  // Slow path: has symbols, include only enumerable ones, bail on any
-  // non-enumerable symbol so it round-trips like the string-key check above.
-  for (const symbol of symbols) {
+  // Include enumerable symbols (most plain objects have none); bail on a
+  // non-enumerable one so it round-trips like the string-key check above.
+  for (const symbol of Object.getOwnPropertySymbols(o)) {
     if (!isEnumerable.call(o, symbol)) {
       return false
     }
