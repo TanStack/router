@@ -553,6 +553,31 @@ describe('createStartHandler redirect safety', () => {
   )
 })
 
+it('keeps the request URL when server code attempts navigation', async () => {
+  const loader = vi.fn(async () => {
+    const router = startMocks.router!
+    router.history.push('/pushed')
+    router.history.replace('/replaced')
+    await router.navigate({ to: '/navigated' })
+    return 'request data'
+  })
+  const router = makeRouterWithRouteWork({ loader })
+  startMocks.router = router
+  const load = vi.spyOn(router, 'load')
+  const handler = createStartHandler(({ router: loadedRouter }) => {
+    expect(loadedRouter.state.location.pathname).toBe('/work')
+    expect(loadedRouter.history.location.pathname).toBe('/work')
+    expect(loadedRouter.history.length).toBe(1)
+    return new Response(loadedRouter.state.matches.at(-1)?.loaderData as string)
+  })
+  const response = await handler(new Request('http://localhost/work'), {})
+
+  expect(response.status).toBe(200)
+  expect(await response.text()).toBe('request data')
+  expect(loader).toHaveBeenCalledTimes(1)
+  expect(load).toHaveBeenCalledTimes(1)
+})
+
 describe('createStartHandler SSR cleanup ownership', () => {
   it('preserves serverFn stream cleanup ownership through early return', async () => {
     startMocks.requestMiddleware = []

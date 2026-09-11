@@ -690,6 +690,58 @@ export function createMemoryHistory(
   })
 }
 
+const noop = () => {}
+
+class ServerHistory implements RouterHistory {
+  declare private _subscribers?: RouterHistory['subscribers']
+
+  constructor(public location: HistoryLocation) {}
+
+  get length() {
+    return 1
+  }
+
+  // Preserve the history interface without allocating a Set for each request.
+  get subscribers() {
+    return (this._subscribers ??= new Set())
+  }
+
+  subscribe() {
+    return noop
+  }
+
+  push() {}
+  replace() {}
+  go() {}
+  back() {}
+  forward() {}
+
+  canGoBack() {
+    return false
+  }
+
+  createHref(href: string) {
+    return normalizeHref(href)
+  }
+
+  block() {
+    return noop
+  }
+
+  flush() {}
+  destroy() {}
+  notify() {}
+
+  _getBlockers(): Array<NavigationBlocker> {
+    return []
+  }
+}
+
+/** A fixed request location; server navigation is a no-op. */
+export function createServerHistory(href: string): RouterHistory {
+  return new ServerHistory(parseHref(href, undefined))
+}
+
 export function parseHref(
   href: string,
   state: ParsedHistoryState | undefined,

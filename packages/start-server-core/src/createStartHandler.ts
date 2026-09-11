@@ -1,4 +1,4 @@
-import { createMemoryHistory } from '@tanstack/history'
+import { createServerHistory } from '@tanstack/history'
 import {
   createCsrfMiddleware,
   createNullProtoObject,
@@ -551,9 +551,7 @@ export function createStartHandler<TRegister = Register>(
           isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
         }
 
-        const history = createMemoryHistory({
-          initialEntries: [href],
-        })
+        const history = createServerHistory(href)
 
         router.update({
           history,
