@@ -125,7 +125,13 @@ export function useLinkProps<
   ])
 
   const currentLocation = Solid.createMemo(
-    () => router.stores.location.get(),
+    () => {
+      const live = router.stores.location.get()
+      // A boundary that hydrates after a navigation started must still resolve
+      // against the location the server rendered with; `stores.location`
+      // already holds the destination while the loader is in flight.
+      return hasHydrated() ? live : (router._hydrationLocation ?? live)
+    },
     undefined,
     { equals: (prev, next) => prev.href === next.href },
   )
