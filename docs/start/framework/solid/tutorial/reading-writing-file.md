@@ -1,6 +1,8 @@
 ---
 id: reading-and-writing-file
 title: Building a Full Stack DevJokes App with TanStack Start
+redirect_from:
+  - /framework/solid/guide/reading-writing-file
 ---
 
 This tutorial will guide you through building a complete full-stack application using TanStack Start. You'll create a DevJokes app where users can view and add developer-themed jokes, demonstrating key concepts of TanStack Start including server functions, file-based data storage, and Solid components.
