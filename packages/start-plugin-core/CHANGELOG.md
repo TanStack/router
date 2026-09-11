@@ -1,5 +1,38 @@
 # @tanstack/start-plugin-core
 
+## 1.171.42
+
+### Patch Changes
+
+- Updated dependencies [[`d914b08`](https://github.com/TanStack/router/commit/d914b085bb4bf29ec18a531201e377c10681b661)]:
+  - @tanstack/start-server-core@1.169.34
+  - @tanstack/router-generator@1.167.35
+
+## 1.171.41
+
+### Patch Changes
+
+- [#8300](https://github.com/TanStack/router/pull/8300) [`49bcd4d`](https://github.com/TanStack/router/commit/49bcd4db743dba4a783d5533a42a0f97a5721292) - Refresh compatible build and runtime dependencies.
+
+- [#8308](https://github.com/TanStack/router/pull/8308) [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8) - Validate navigation and redirect destinations, keep ambiguous relative URLs on the current origin, and constrain prerender requests and output paths. Prevent redirect headers from appearing in serialized server function response bodies.
+
+  Preserve native form HTTP redirects, route error handling and masks for document redirects, and per-navigation destinations for shared loader redirects. Avoid redundant origin parsing and reduce link styling and server-rendering work. Configured origins must already be normalized.
+
+  Keep blocked-link inactive props consistent during React hydration, honor explicit redirect Location headers before checking route options, and refresh Vue link state when destinations become internal. Reuse the protocol-relative URL check while parsing redirect schemes once.
+
+  Reduce React link bundle size by sharing pathname comparisons, state-prop selection, and element creation.
+
+  Share normalized pathname comparisons in Solid and Vue links to reduce bundle size.
+
+- [#8261](https://github.com/TanStack/router/pull/8261) [`919c397`](https://github.com/TanStack/router/commit/919c3971493374cccc963e75b9b2a4e98ebf878a) - Avoid unused build indexes and skip CSS content capture when inline CSS is disabled in Vite and Rsbuild.
+
+- Updated dependencies [[`f9836f1`](https://github.com/TanStack/router/commit/f9836f16f0e25b0a8495f5e01e3f303b1cbc8725), [`49bcd4d`](https://github.com/TanStack/router/commit/49bcd4db743dba4a783d5533a42a0f97a5721292), [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8), [`9871c06`](https://github.com/TanStack/router/commit/9871c0625806001d6bf373524821a00303438a91), [`0654c0a`](https://github.com/TanStack/router/commit/0654c0a1a427db24d9af13c1d6ad1217a588c0c9)]:
+  - @tanstack/router-core@1.171.29
+  - @tanstack/router-plugin@1.168.37
+  - @tanstack/router-generator@1.167.35
+  - @tanstack/router-utils@1.162.3
+  - @tanstack/start-server-core@1.169.33
+
 ## 1.171.40
 
 ### Patch Changes

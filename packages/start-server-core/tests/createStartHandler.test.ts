@@ -15,9 +15,12 @@ import {
   BaseRootRoute,
   BaseRoute,
   RouterCore,
+  redirect,
+  type AnyRouter,
+} from '@tanstack/router-core'
+import {
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
-  redirect,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
@@ -28,7 +31,6 @@ import {
   getStaticHandlerInlineCssDefault,
   resolveInlineCssForRequest,
 } from '../src/inlineCss'
-import type { AnyRouter } from '@tanstack/router-core'
 
 const startMocks = vi.hoisted(() => {
   const previousServerFnBase = process.env.TSS_SERVER_FN_BASE
@@ -146,6 +148,55 @@ afterAll(() => {
 
 describe('createStartHandler redirect safety', () => {
   it.each(
+    [false, true].flatMap((rpc) =>
+      ['relative-to', 'functional-options'].flatMap((options) =>
+        ['/login', 'http://localhost/login', '//evil.example'].map((href) => ({
+          rpc,
+          options,
+          href,
+        })),
+      ),
+    ),
+  )(
+    'uses an explicit Location before ignored $options (RPC=$rpc, href=$href)',
+    async ({ rpc, options, href }) => {
+      const factory = vi.fn(makeRouter)
+      const updater = vi.fn(() => ({}))
+      const hash = vi.fn(() => 'ignored')
+      startMocks.routerFactory = factory
+      const headers = { Location: href }
+      const result =
+        options === 'relative-to'
+          ? redirect({ headers, to: 'ignored' })
+          : redirect({ headers, search: updater, params: updater, hash })
+      if (rpc) {
+        startMocks.serverFnResult = result
+      } else {
+        startMocks.requestMiddleware = [createMiddleware().server(() => result)]
+      }
+      const handler = createStartHandler(() => new Response('unused'))
+      const response = await handler(
+        new Request(`http://localhost/${rpc ? '_serverFn/test' : ''}`, {
+          headers: rpc ? { 'x-tsr-serverFn': 'true' } : undefined,
+        }),
+        {},
+      )
+      const blocked = href.startsWith('//')
+      expect(response.status).toBe(blocked ? 500 : rpc ? 200 : 307)
+      expect(response.headers.get('Location')).toBe(blocked ? null : '/login')
+      expect(factory).toHaveBeenCalledTimes(href === '/login' ? 0 : 1)
+      expect(updater).not.toHaveBeenCalled()
+      expect(hash).not.toHaveBeenCalled()
+      if (rpc && !blocked) {
+        expect(await response.json()).toMatchObject({
+          href: '/login',
+          isSerializedRedirect: true,
+        })
+      }
+    },
+  )
+
+  it.each(
     [undefined, ''].flatMap((location) =>
       ['to', 'params', 'search', 'hash'].map((option) => ({
         location,
@@ -230,6 +281,64 @@ describe('createStartHandler redirect safety', () => {
     },
   )
 
+  it('serializes an early relative server-function redirect without initializing the router', async () => {
+    const factory = vi.fn(makeRouter)
+    startMocks.routerFactory = factory
+    startMocks.serverFnResult = redirect({
+      href: '/ignored',
+      headers: { Location: '/login', 'set-cookie': 'session=secret; HttpOnly' },
+    })
+    const handler = createStartHandler(() => new Response('unused'))
+
+    const response = await handler(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Location')).toBe('/login')
+    expect(response.headers.get('set-cookie')).toBe('session=secret; HttpOnly')
+    const body = await response.json()
+    expect(body).toMatchObject({ href: '/login', isSerializedRedirect: true })
+    expect(body).not.toHaveProperty('headers')
+    expect(factory).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { href: 'https://example.com/login', protocols: [], status: 500 },
+    { href: 'myapp:login', protocols: ['myapp:'], status: 307 },
+    { href: 'myapp:login', protocols: [], status: 500 },
+  ])(
+    'uses router policy for an early redirect to $href with $protocols',
+    async ({ href, protocols, status }) => {
+      const factory = vi.fn(() => {
+        const router = makeRouter()
+        router.update({ protocolAllowlist: protocols })
+        return router
+      })
+      startMocks.routerFactory = factory
+      startMocks.requestMiddleware = [
+        createMiddleware().server(() =>
+          redirect({
+            href: '/ignored',
+            headers: { Location: href },
+          }),
+        ),
+      ]
+      const handler = createStartHandler(() => new Response('unused'))
+
+      const response = await handler(new Request('http://localhost/'), {})
+
+      expect(response.status).toBe(status)
+      expect(response.headers.get('Location')).toBe(
+        status === 307 ? href : null,
+      )
+      expect(factory).toHaveBeenCalledTimes(1)
+    },
+  )
+
   it('resolves route-based early redirects through the router', async () => {
     const factory = vi.fn(() => makeRouterWithRouteWork({}))
     startMocks.routerFactory = factory
@@ -248,7 +357,166 @@ describe('createStartHandler redirect safety', () => {
     expect(factory).toHaveBeenCalledTimes(1)
   })
 
-  it.each([{ href: '/work' }, { to: '/work' }])(
+  it.each([
+    { href: '/login', status: 307, factories: 0, location: '/login' },
+    { href: '/\\evil.example', status: 500, factories: 1, location: null },
+    {
+      href: 'http://localhost/login',
+      status: 307,
+      factories: 1,
+      location: '/login',
+    },
+  ])(
+    'validates a header-only early redirect to $href',
+    async ({ href, status, factories, location }) => {
+      const factory = vi.fn(makeRouter)
+      startMocks.routerFactory = factory
+      startMocks.requestMiddleware = [
+        createMiddleware().server(() =>
+          redirect({
+            headers: { Location: href },
+            throw: true,
+          }),
+        ),
+      ]
+      const handler = createStartHandler(() => new Response('unused'))
+      const response = await handler(new Request('http://localhost/'), {})
+      expect(response.status).toBe(status)
+      expect(response.headers.get('Location')).toBe(location)
+      expect(factory).toHaveBeenCalledTimes(factories)
+    },
+  )
+
+  it.each(
+    [
+      '//evil.example',
+      '/\\evil.example',
+      '/\\\\evil.example',
+      '/\\/evil.example',
+      '\\/evil.example',
+      '\\\\evil.example',
+    ].flatMap((href) => [false, true].map((rpc) => ({ href, rpc }))),
+  )(
+    'validates a resolved server function redirect to $href (RPC=$rpc)',
+    async ({ href, rpc }) => {
+      startMocks.router = makeRouter()
+      startMocks.serverFnResult = redirect({ href })
+      const handler = createStartHandler(() => new Response('unused'))
+
+      const response = await handler(
+        new Request('http://localhost/_serverFn/test', {
+          headers: rpc ? { 'x-tsr-serverFn': 'true' } : undefined,
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(500)
+      expect(response.headers.get('Location')).toBeNull()
+    },
+  )
+
+  it('validates a structured redirect before returning it directly', async () => {
+    startMocks.router = makeRouter()
+    startMocks.requestMiddleware = [
+      createMiddleware().server(() => redirect({ href: '/\\evil.example' })),
+    ]
+    const handler = createStartHandler(() => new Response('unused'))
+
+    const response = await handler(new Request('http://localhost/'), {})
+
+    expect(response.status).toBe(500)
+    expect(response.headers.get('Location')).toBeNull()
+  })
+
+  it('does not serialize structured redirect headers into the response body', async () => {
+    startMocks.router = makeRouter()
+    startMocks.serverFnResult = redirect({
+      href: '/safe',
+      headers: { 'set-cookie': 'session=secret; HttpOnly' },
+    })
+    const handler = createStartHandler(() => new Response('unused'))
+
+    const response = await handler(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('set-cookie')).toBe('session=secret; HttpOnly')
+    const responseText = await response.text()
+    expect(responseText).not.toContain('session=secret')
+    expect(JSON.parse(responseText)).toEqual(
+      expect.objectContaining({
+        href: '/safe',
+        statusCode: 307,
+        isSerializedRedirect: true,
+      }),
+    )
+  })
+
+  it('preserves redirect headers and caller options across RPC then native form reuse', async () => {
+    const headers = {
+      Location: '/work',
+      'set-cookie': 'session=secret; HttpOnly',
+      'content-type': 'text/plain',
+    }
+    const options = { href: '/work', statusCode: 303, headers }
+    const result = redirect(options)
+    startMocks.serverFnResult = result
+    const handler = createStartHandler(() => new Response('unused'))
+
+    const rpcResponse = await handler(
+      new Request('http://localhost/_serverFn/test', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+    expect(rpcResponse.status).toBe(200)
+    expect(rpcResponse.headers.get('content-type')).toBe('application/json')
+    expect(await rpcResponse.json()).not.toHaveProperty('headers')
+    expect(options.headers).toBe(headers)
+    expect(result.headers.get('content-type')).toBe('text/plain')
+
+    const formResponse = await handler(
+      new Request('http://localhost/_serverFn/test', {
+        method: 'POST',
+        headers: { 'content-type': 'application/x-www-form-urlencoded' },
+        body: 'name=test',
+      }),
+      {},
+    )
+    expect(formResponse.status).toBe(303)
+    expect(formResponse.headers.get('Location')).toBe('/work')
+    expect(formResponse.headers.get('set-cookie')).toBe(
+      'session=secret; HttpOnly',
+    )
+    expect(formResponse.headers.get('content-type')).toBe('text/plain')
+    expect(await formResponse.text()).toBe('')
+  })
+
+  it('does not serialize an ordinary redirect with a spoofed server function header', async () => {
+    startMocks.router = makeRouter()
+    startMocks.requestMiddleware = [
+      createMiddleware().server(() => redirect({ href: '/safe' })),
+    ]
+    const handler = createStartHandler(() => new Response('unused'))
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        headers: { 'x-tsr-serverFn': 'true' },
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(307)
+    expect(response.headers.get('Location')).toBe('/safe')
+    expect(response.headers.get('content-type')).toBeNull()
+    expect(await response.text()).toBe('')
+  })
+
+  it.each([{ href: '/work' }, { to: '/work' }, { hash: () => 'ignored' }])(
     'preserves native form redirects for %j without the RPC header',
     async (target) => {
       startMocks.routerFactory = () => makeRouterWithRouteWork({})
@@ -283,6 +551,31 @@ describe('createStartHandler redirect safety', () => {
       expect(await response.text()).toBe('')
     },
   )
+})
+
+it('keeps the request URL when server code attempts navigation', async () => {
+  const loader = vi.fn(async () => {
+    const router = startMocks.router!
+    router.history.push('/pushed')
+    router.history.replace('/replaced')
+    await router.navigate({ to: '/navigated' })
+    return 'request data'
+  })
+  const router = makeRouterWithRouteWork({ loader })
+  startMocks.router = router
+  const load = vi.spyOn(router, 'load')
+  const handler = createStartHandler(({ router: loadedRouter }) => {
+    expect(loadedRouter.state.location.pathname).toBe('/work')
+    expect(loadedRouter.history.location.pathname).toBe('/work')
+    expect(loadedRouter.history.length).toBe(1)
+    return new Response(loadedRouter.state.matches.at(-1)?.loaderData as string)
+  })
+  const response = await handler(new Request('http://localhost/work'), {})
+
+  expect(response.status).toBe(200)
+  expect(await response.text()).toBe('request data')
+  expect(loader).toHaveBeenCalledTimes(1)
+  expect(load).toHaveBeenCalledTimes(1)
 })
 
 describe('createStartHandler SSR cleanup ownership', () => {

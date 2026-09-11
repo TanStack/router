@@ -1,6 +1,6 @@
 import { queryOptions, useQuery } from '@tanstack/vue-query'
 import { Link, createFileRoute } from '@tanstack/vue-router'
-import { ref, watchEffect } from 'vue'
+import { defineComponent, ref, watchEffect } from 'vue'
 
 const doubleQueryOptions = (n: number) =>
   queryOptions({
@@ -17,6 +17,37 @@ export const Route = createFileRoute('/suspense-transition')({
   validateSearch: (search: { n?: number }) => ({ n: search.n ?? 1 }),
   component: SuspenseTransitionComponent,
   ssr: false, // Disable SSR to avoid suspense issues during initial load
+})
+
+const Result = defineComponent({
+  setup() {
+    const search = Route.useSearch()
+    const doubleQuery = useQuery(() => doubleQueryOptions(search.value.n))
+    const displayedN = ref(search.value.n)
+    const displayedDouble = ref<number | undefined>(undefined)
+    watchEffect(() => {
+      if (doubleQuery.data.value !== undefined) {
+        displayedN.value = search.value.n
+        displayedDouble.value = doubleQuery.data.value
+      }
+    })
+    return () => (
+      <div class="mt-2 border p-4">
+        <div data-testid="suspense-fallback" style={{ display: 'none' }}>
+          Loading...
+        </div>
+        <div data-testid="suspense-content">
+          <div>
+            n: <span data-testid="n-value">{displayedN.value}</span>
+          </div>
+          <div>
+            double:{' '}
+            <span data-testid="double-value">{displayedDouble.value}</span>
+          </div>
+        </div>
+      </div>
+    )
+  },
 })
 
 function SuspenseTransitionComponent() {
@@ -36,37 +67,6 @@ function SuspenseTransitionComponent() {
       </div>
 
       <Result />
-    </div>
-  )
-}
-
-function Result() {
-  const search = Route.useSearch()
-  const doubleQuery = useQuery(() => doubleQueryOptions(search.value.n))
-  const displayedN = ref(search.value.n)
-  const displayedDouble = ref<number | undefined>(undefined)
-
-  watchEffect(() => {
-    if (doubleQuery.data.value !== undefined) {
-      displayedN.value = search.value.n
-      displayedDouble.value = doubleQuery.data.value
-    }
-  })
-
-  return (
-    <div class="mt-2 border p-4">
-      <div data-testid="suspense-fallback" style={{ display: 'none' }}>
-        Loading...
-      </div>
-      <div data-testid="suspense-content">
-        <div>
-          n: <span data-testid="n-value">{displayedN.value}</span>
-        </div>
-        <div>
-          double:{' '}
-          <span data-testid="double-value">{displayedDouble.value}</span>
-        </div>
-      </div>
     </div>
   )
 }

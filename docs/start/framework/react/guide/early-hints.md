@@ -3,8 +3,6 @@ id: early-hints
 title: Early Hints
 ---
 
-# Early Hints
-
 > **Experimental:** Early Hints are experimental and subject to change.
 
 HTTP `103 Early Hints` lets your server tell the browser about important resources before the final HTML response is ready. TanStack Start can collect route assets and route `head().links`, then call your server entry so your runtime can send `103` responses.

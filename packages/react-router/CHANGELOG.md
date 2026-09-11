@@ -1,5 +1,33 @@
 # @tanstack/react-router
 
+## 1.170.35
+
+### Patch Changes
+
+- [#7824](https://github.com/TanStack/router/pull/7824) [`8c43c71`](https://github.com/TanStack/router/commit/8c43c712523fc63dc3a814f3a19617e270ce8ed1) - Upgrade TanStack Store to 0.11 and migrate router subscriptions to useSelector, preserving selector comparisons and Vue subscription cleanup.
+
+## 1.170.34
+
+### Patch Changes
+
+- [#8279](https://github.com/TanStack/router/pull/8279) [`aee42c6`](https://github.com/TanStack/router/commit/aee42c6b641d8e919bfed9e0f04bb1b72092f3a6) - Avoid allocating event-handler arrays and wrapper functions for links without user-supplied event handlers.
+
+- [#8308](https://github.com/TanStack/router/pull/8308) [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8) - Validate navigation and redirect destinations, keep ambiguous relative URLs on the current origin, and constrain prerender requests and output paths. Prevent redirect headers from appearing in serialized server function response bodies.
+
+  Preserve native form HTTP redirects, route error handling and masks for document redirects, and per-navigation destinations for shared loader redirects. Avoid redundant origin parsing and reduce link styling and server-rendering work. Configured origins must already be normalized.
+
+  Keep blocked-link inactive props consistent during React hydration, honor explicit redirect Location headers before checking route options, and refresh Vue link state when destinations become internal. Reuse the protocol-relative URL check while parsing redirect schemes once.
+
+  Reduce React link bundle size by sharing pathname comparisons, state-prop selection, and element creation.
+
+  Share normalized pathname comparisons in Solid and Vue links to reduce bundle size.
+
+- [#8311](https://github.com/TanStack/router/pull/8311) [`9aec5a7`](https://github.com/TanStack/router/commit/9aec5a7012c47e83ec23bb4763494b72a5e68bfc) - React Links resolve state props without temporary class-name arrays or unnecessary style copies.
+
+- Updated dependencies [[`f9836f1`](https://github.com/TanStack/router/commit/f9836f16f0e25b0a8495f5e01e3f303b1cbc8725), [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8), [`9871c06`](https://github.com/TanStack/router/commit/9871c0625806001d6bf373524821a00303438a91), [`0654c0a`](https://github.com/TanStack/router/commit/0654c0a1a427db24d9af13c1d6ad1217a588c0c9)]:
+  - @tanstack/router-core@1.171.29
+  - @tanstack/history@1.162.3
+
 ## 1.170.33
 
 ### Patch Changes

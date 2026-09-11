@@ -1,7 +1,28 @@
+import { defineComponent } from 'vue'
 import { useQuery } from '@tanstack/vue-query'
 import { createFileRoute } from '@tanstack/vue-router'
 import z from 'zod'
 import { makeQueryOptions } from '~/queryOptions'
+
+const RouteComponent = defineComponent({
+  setup() {
+    const loaderData = Route.useLoaderData()
+    const context = Route.useRouteContext()
+    const query = useQuery(() => context.value.queryOptions)
+    return () => (
+      <div>
+        <div>
+          loader data:{' '}
+          <div data-testid="loader-data">{loaderData.value ?? 'undefined'}</div>
+        </div>
+        <div>
+          query data:{' '}
+          <div data-testid="query-data">{query.data.value ?? 'loading...'}</div>
+        </div>
+      </div>
+    )
+  },
+})
 
 export const Route = createFileRoute('/loader-fetchQuery/$type')({
   component: RouteComponent,
@@ -24,21 +45,3 @@ export const Route = createFileRoute('/loader-fetchQuery/$type')({
   },
   ssr: 'data-only',
 })
-
-function RouteComponent() {
-  const loaderData = Route.useLoaderData()
-  const context = Route.useRouteContext()
-  const query = useQuery(context.value.queryOptions)
-  return (
-    <div>
-      <div>
-        loader data:{' '}
-        <div data-testid="loader-data">{loaderData.value ?? 'undefined'}</div>
-      </div>
-      <div>
-        query data:{' '}
-        <div data-testid="query-data">{query.data.value ?? 'loading...'}</div>
-      </div>
-    </div>
-  )
-}
