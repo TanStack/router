@@ -277,6 +277,10 @@
           "label": "react",
           "children": [
             {
+              "label": "Production Checklist",
+              "to": "framework/react/guide/production-checklist"
+            },
+            {
               "label": "Hosting",
               "to": "framework/react/guide/hosting"
             },
