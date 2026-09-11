@@ -1,0 +1,38 @@
+@font-face {
+  font-family: 'Inter';
+  src: url('@fontsource-variable/inter/files/inter-latin-wght-normal.woff2')
+    format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: optional;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: #f7f4ec;
+  color: #193347;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+main {
+  width: min(960px, calc(100% - 32px));
+  margin: 48px auto;
+}
+h1 {
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.1;
+  font-weight: 650;
+  letter-spacing: -0.04em;
+}
+img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+}
+p {
+  font-size: 1.125rem;
+  line-height: 1.6;
+  max-width: 40rem;
+}
