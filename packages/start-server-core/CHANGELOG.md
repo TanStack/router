@@ -1,5 +1,17 @@
 # @tanstack/start-server-core
 
+## 1.169.35
+
+### Patch Changes
+
+- [#8354](https://github.com/TanStack/router/pull/8354) [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244) - Use lightweight request history for SSR and make server navigation a no-op. Use redirect() to issue HTTP redirects. Server hrefs use the same normalization as browser history to handle protocol-relative URLs and control characters.
+
+- Updated dependencies [[`f021f6d`](https://github.com/TanStack/router/commit/f021f6d1c6dce6c9b54d70766f1d636d8fd9e184), [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244)]:
+  - @tanstack/history@1.162.4
+  - @tanstack/router-core@1.171.30
+  - @tanstack/start-client-core@1.170.30
+  - @tanstack/start-storage-context@1.167.32
+
 ## 1.169.34
 
 ### Patch Changes
