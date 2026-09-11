@@ -281,6 +281,10 @@
           "label": "react",
           "children": [
             {
+              "label": "Production Checklist",
+              "to": "framework/react/guide/production-checklist"
+            },
+            {
               "label": "Hosting",
               "to": "framework/react/guide/hosting"
             },
@@ -314,7 +318,7 @@
           "label": "react",
           "children": [
             {
-              "label": "Authentication Overview",
+              "label": "Choose Authentication",
               "to": "framework/react/guide/authentication-overview"
             },
             {
@@ -322,12 +326,16 @@
               "to": "framework/react/guide/authentication-server-primitives"
             },
             {
-              "label": "Authentication",
+              "label": "Implement Authentication",
               "to": "framework/react/guide/authentication"
             },
             {
               "label": "Databases",
               "to": "framework/react/guide/databases"
+            },
+            {
+              "label": "TanStack Query",
+              "to": "framework/react/guide/tanstack-query"
             }
           ]
         },
@@ -335,7 +343,7 @@
           "label": "solid",
           "children": [
             {
-              "label": "Authentication Overview",
+              "label": "Choose Authentication",
               "to": "framework/solid/guide/authentication-overview"
             },
             {
@@ -343,7 +351,7 @@
               "to": "framework/solid/guide/authentication-server-primitives"
             },
             {
-              "label": "Authentication",
+              "label": "Implement Authentication",
               "to": "framework/solid/guide/authentication"
             },
             {

@@ -1,511 +1,187 @@
 ---
 id: migrate-from-next-js
 title: Migrate from Next.js
-description: Move a basic Next.js App Router project to TanStack Start, including dependencies, build configuration, the root route, and page routes.
+description: Move a Next.js App Router application to TanStack Start while preserving routes, metadata, authentication, mutations, and deployment behavior.
 ---
 
-This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth as possible.
+This guide migrates a Next.js App Router application to TanStack Start. The [runnable before-and-after example](https://github.com/TanStack/router/tree/main/examples/react/start-next-migration) implements the same article site in both frameworks, including public articles, URL search, sign-in, a private saved-article page, and a mutation.
 
-## Step-by-Step (Basics)
+Start does not interpret Next.js route conventions or configuration. Keep your application behavior, then translate each framework boundary. If your application relies heavily on React Server Components, read the [comparison](./start-vs-nextjs) and [RSC guide](./guide/server-components) first. Start's RSC support is experimental and opt-in; the example uses ordinary route components and server functions.
 
-This step-by-step guide provides an overview of how to migrate your Next.js App Router project to TanStack Start. The goal is to help you understand the basic steps involved in the migration process so you can adapt them to your specific project needs.
+## Run the reference application
 
-### Prerequisites
-
-Before we begin, this guide assumes your project structure looks like this:
-
-```txt
-├── next.config.ts
-├── package.json
-├── postcss.config.mjs
-├── public
-│   ├── file.svg
-│   ├── globe.svg
-│   ├── next.svg
-│   ├── vercel.svg
-│   └── window.svg
-├── README.md
-├── src
-│   └── app
-│       ├── favicon.ico
-│       ├── globals.css
-│       ├── layout.tsx
-│       └── page.tsx
-└── tsconfig.json
-```
-
-Alternatively, you can follow along by cloning the following [starter template](https://github.com/nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start):
+Use Node 24 or newer and pnpm 11:
 
 ```sh
-npx gitpick nrjdalal/awesome-templates/tree/main/next.js-apps/next.js-start next.js-start-er
+git clone --depth 1 https://github.com/TanStack/router.git
+cd router
+pnpm install
+pnpm nx run @tanstack/react-start:build
+cd examples/react/start-next-migration
 ```
 
-This structure is a basic Next.js application using the App Router, which we will migrate to TanStack Start.
+Follow the example's [README](https://github.com/TanStack/router/blob/main/examples/react/start-next-migration/README.md) to set `SESSION_PASSWORD` and `DEMO_PASSWORD`. Run `pnpm dev:next` at `http://localhost:3100` and `pnpm dev` in another terminal at `http://localhost:3101`.
 
-### 1. Remove Next.js
+The example's single account is `reader@example.com`. It stores one saved-article flag in a session cookie so you can exercise a protected mutation without connecting a database. It is not a production authentication implementation. The two apps use different session formats and cookie names, so sign in separately to each.
 
-First, uninstall Next.js and remove related configuration files:
+With those ports free, run:
 
 ```sh
-npm uninstall @tailwindcss/postcss next
-rm postcss.config.* next.config.*
+pnpm exec playwright install chromium
+pnpm test:e2e
+pnpm build:next
+pnpm build
+MIGRATION_PRODUCTION=1 pnpm test:e2e
 ```
 
-### 2. Install Required Dependencies
+The same browser tests run against both apps. They check public URLs, server-rendered metadata, query filtering, redirects, missing pages, sitemap entries, sign-in errors, session persistence, private response caching, mutations, and server rejection after sign-out.
 
-TanStack Start leverages TanStack Router and supports [Vite](https://vite.dev) or [Rsbuild](https://rsbuild.dev/) as the build tool. The Vite setup below includes [Nitro](https://nitro.build/) as a deployment plugin.
+## Inventory the application before changing it
 
-<!-- ::start:tabs variant="bundler" -->
+Record your current paths and observable behavior. Include dynamic paths, query parameters, redirects, trailing slashes, locale prefixes, response status, title, description, canonical, robots directives, and sitemap membership. Keep representative HTML responses and run your existing application tests against the replacement.
 
-# Vite
+Inventory Next.js-specific code separately: `next/*` imports, `'use server'`, server-only modules, metadata exports, `generateStaticParams`, `revalidatePath`, `revalidateTag`, cache directives, route configuration, Proxy or middleware, and image/font configuration. A route that renders successfully can still have lost authentication, cache invalidation, or an important search URL.
 
-```sh
-npm i @tanstack/react-router @tanstack/react-start nitro vite @vitejs/plugin-react
+| Request                    | Required behavior                                                    |
+| -------------------------- | -------------------------------------------------------------------- |
+| `/`                        | Article list, title, description, self-referencing canonical         |
+| `/?q=metadata`             | Filtered article list; canonical remains `/`                         |
+| `/posts/keeping-your-urls` | Same article, title, description, canonical, and Open Graph title    |
+| `/posts/missing`           | HTTP 404                                                             |
+| `/old-notes`               | HTTP 308 to `/posts/keeping-your-urls`                               |
+| `/saved`                   | Signed-out users reach sign-in; private HTML is not shared-cacheable |
+| `/sitemap.xml`             | Public pages only                                                    |
+
+For your application, decide which query variants deserve indexing. Do not copy the example's canonical policy onto meaningful product filters or paginated results without checking their content.
+
+## Set up Start alongside the existing app
+
+Create a Start application using [Getting Started](./getting-started) and [Build from Scratch](./build-from-scratch). Keep the Next.js app runnable until the migrated routes pass their checks. You do not need to remove Next.js, its configuration, or its CSS tooling before you can test Start.
+
+```text
+next-app/                 # Before: Next.js App Router
+  app/
+    layout.tsx
+    page.tsx
+    posts/[slug]/page.tsx
+    actions.ts
+src/                      # After: TanStack Start
+  router.tsx
+  routes/
+    __root.tsx
+    index.tsx
+    posts.$slug.tsx
+  server/account.ts
+vite.config.ts
 ```
 
-# Rsbuild
+The Start Vite plugin generates `src/routeTree.gen.ts`. `src/router.tsx` returns a new router using that tree. The root route renders `HeadContent` in the document head and `Scripts` in the body. Merge your existing CSS, document attributes, and providers into that root.
 
-```sh
-npm i @tanstack/react-router @tanstack/react-start @rsbuild/core @rsbuild/plugin-react
-```
+The reference uses Vite and Nitro's Node output. If you use another host or build tool, follow its [hosting instructions](./guide/hosting) and test its actual build output. A Next.js deployment adapter does not become a Start adapter by changing dependencies.
 
-<!-- ::end:tabs -->
+## Preserve paths while changing route files
 
-For Tailwind CSS, install the build tool integration you want to use:
+| Next.js App Router             | Default Start route directory                  |
+| ------------------------------ | ---------------------------------------------- |
+| `app/layout.tsx`               | `src/routes/__root.tsx`                        |
+| `app/page.tsx`                 | `src/routes/index.tsx`                         |
+| `app/posts/page.tsx`           | `src/routes/posts.index.tsx`                   |
+| `app/posts/[slug]/page.tsx`    | `src/routes/posts.$slug.tsx`                   |
+| `app/docs/[...parts]/page.tsx` | `src/routes/docs.$.tsx`                        |
+| `app/api/hello/route.ts`       | `src/routes/api.hello.ts` with server handlers |
 
-<!-- ::start:tabs variant="bundler" -->
+`src/routes` is a source directory, not a URL prefix. A route for `/posts/example` uses `createFileRoute('/posts/$slug')`, not `/app/posts/$slug`.
 
-# Vite
+Nested layouts, pathless layouts, route groups, optional parameters, catch-alls, parallel routes, and intercepting routes need individual mapping. Read [routing concepts](/router/latest/docs/routing/routing-concepts) instead of mechanically renaming every file. The reference does not reproduce Next.js parallel or intercepting route behavior.
 
-```sh
-npm i -D @tailwindcss/vite tailwindcss
-```
-
-# Rsbuild
-
-```sh
-npm i -D @tailwindcss/postcss tailwindcss
-```
-
-<!-- ::end:tabs -->
-
-### 3. Update Project Configuration
-
-Now that you've installed the necessary dependencies, update your project configuration files to work with TanStack Start.
-
-<!-- ::start:tabs variant="bundler" -->
-
-# Vite
-
-```json
-{
-  "type": "module",
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "start": "node .output/server/index.mjs"
-  }
-}
-```
-
-# Rsbuild
-
-```json
-{
-  "type": "module",
-  "scripts": {
-    "dev": "rsbuild dev",
-    "build": "rsbuild build"
-  }
-}
-```
-
-<!-- ::end:tabs -->
-
-<!-- ::start:tabs variant="bundler" -->
-
-# Vite
-
-```ts title="vite.config.ts"
-import { defineConfig } from 'vite'
-import { tanstackStart } from '@tanstack/react-start/plugin/vite'
-import viteReact from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
-import { nitro } from 'nitro/vite'
-
-export default defineConfig({
-  server: {
-    port: 3000,
-  },
-  resolve: {
-    // Enables Vite to resolve imports using path aliases.
-    tsconfigPaths: true,
-  },
-  plugins: [
-    tailwindcss(),
-    tanstackStart({
-      srcDirectory: 'src', // This is the default
-      router: {
-        // Specifies the directory TanStack Router uses for your routes.
-        routesDirectory: 'app', // Defaults to "routes", relative to srcDirectory
-      },
-    }),
-    viteReact(),
-    nitro(),
-  ],
-})
-```
-
-# Rsbuild
-
-```ts title="rsbuild.config.ts"
-import { defineConfig } from '@rsbuild/core'
-import { pluginReact } from '@rsbuild/plugin-react'
-import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
-
-export default defineConfig({
-  server: {
-    port: 3000,
-  },
-  plugins: [
-    pluginReact(),
-    tanstackStart({
-      srcDirectory: 'src', // This is the default
-      router: {
-        // Specifies the directory TanStack Router uses for your routes.
-        routesDirectory: 'app', // Defaults to "routes", relative to srcDirectory
-      },
-    }),
-  ],
-})
-```
-
-```js title="postcss.config.mjs"
-export default {
-  plugins: {
-    '@tailwindcss/postcss': {},
-  },
-}
-```
-
-<!-- ::end:tabs -->
-
-By default, `routesDirectory` is set to `routes`. To maintain consistency with Next.js App Router conventions, you can set it to `app` instead.
-
-### 4. Adapt the Root Layout
-
-> TanStack Start uses a routing approach similar to Remix, with some changes to support nested structures and special features using tokens. Learn more about it at [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts) guide.
-
-Instead of `layout.tsx`, create a file named `__root.tsx` in the `src/app` directory. This file will serve as the root layout for your application.
-
-- `src/app/layout.tsx` to `src/app/__root.tsx`
+Replace `next/link` with Router's `Link`. Dynamic paths use typed `params`:
 
 ```tsx
-- import type { Metadata } from "next" // [!code --]
-import {
-  Outlet,
-  createRootRoute,
-  HeadContent,
-  Scripts,
-} from "@tanstack/react-router"
-import appCss from "./globals.css?url"
+<Link to="/posts/$slug" params={{ slug: article.slug }}>
+  {article.title}
+</Link>
+```
 
-- export const metadata: Metadata = { // [!code --]
--   title: "Create Next App", // [!code --]
--   description: "Generated by create next app", // [!code --]
-- } // [!code --]
-export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
-      },
-      { title: "TanStack Start Starter" }
-    ],
-    links: [
-      {
-        rel: 'stylesheet',
-        href: appCss,
-      },
-    ],
+Check direct requests, client navigation, back/forward, and reload for each representative path. Update your redirects and sitemap from the same route inventory.
+
+## Validate URL search state
+
+Next.js passes `searchParams` to an App Router page. Start validates URL state in the route:
+
+```tsx
+export const Route = createFileRoute('/')({
+  validateSearch: (search) => ({
+    q: typeof search.q === 'string' ? search.q : '',
   }),
-  component: RootLayout,
+  component: Articles,
 })
 
-- export default function RootLayout({ // [!code --]
--   children, // [!code --]
-- }: Readonly<{ // [!code --]
--   children: React.ReactNode // [!code --]
-- }>) { // [!code --]
--   return ( // [!code --]
--     <html lang="en"> // [!code --]
--       <body>{children}</body> // [!code --]
--     </html> // [!code --]
--   ) // [!code --]
-- } // [!code --]
-function RootLayout() {
-  return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        <Outlet />
-        <Scripts />
-      </body>
-    </html>
-  )
+function Articles() {
+  const { q } = Route.useSearch()
+  return <p>Searching for: {q}</p>
 }
 ```
 
-### 5. Adapt the Home Page
+If a loader depends on search state, declare the relevant values in `loaderDeps`. That makes those values part of the loader's dependency and cache behavior. Validate page numbers, sorting, and filters at runtime; TypeScript types alone do not validate an incoming URL. See [search parameters](/router/latest/docs/guide/search-params) and [data loading](/router/latest/docs/guide/data-loading).
 
-Instead of `page.tsx`, create an `index.tsx` file for the `/` route.
+## Move server reads into server functions
 
-- `src/app/page.tsx` to `src/app/index.tsx`
+An ordinary Start route loader can execute on the server for the initial request and in the browser during navigation. Do not move a database query, credential, or privileged SDK directly from an async Next.js Server Component into an ordinary loader.
 
-```tsx
-+ import { createFileRoute } from '@tanstack/react-router' // [!code ++]
+Put the privileged read inside a [server function](./guide/server-functions), then call it from the loader. The reference's `/saved` route calls `getAccount`, checks the result, and redirects signed-out readers. Its public article loader only reads bundled public content.
 
-- export default function Home() { // [!code --]
-+ export const Route = createFileRoute('/')({ // [!code ++]
-+   component: Home, // [!code ++]
-+ }) // [!code ++]
+Return the data the browser is allowed to see, not an entire database record. Keep connection setup and secrets on the server. For a database-backed application, preserve your schema and access layer where possible, and change the framework-facing handler around them.
 
-+ function Home() { // [!code ++]
-  return (
-    <main className="min-h-dvh w-screen flex items-center justify-center flex-col gap-y-4 p-4">
-      <img
-        className="max-w-sm w-full"
-        src="https://raw.githubusercontent.com/TanStack/tanstack.com/main/public/images/logos/splash-dark.png"
-        alt="TanStack Logo"
-      />
-      <h1>
-        <span className="line-through">Next.js</span> TanStack Start
-      </h1>
-      <a
-        className="bg-foreground text-background rounded-full px-4 py-1 hover:opacity-90"
-        href="https://tanstack.com/start/latest"
-        target="_blank"
-      >
-        Docs
-      </a>
-    </main>
-  )
-}
-```
+## Translate mutations and their invalidation
 
-### 6. Are we migrated yet?
+The reference's Next.js form calls a Server Action. That Action authorizes the session, changes the saved flag, and calls `revalidatePath('/saved')`. The Start version calls a POST server function through `useServerFn`, then awaits `router.invalidate()` to reload the active route data.
 
-Before you can run the development server, you need to create a file that will define the behavior of TanStack Router within TanStack Start.
+These invalidation APIs operate on different caches. `router.invalidate()` does not purge a CDN, clear a database cache, or revalidate all statically generated pages. If the app uses TanStack Query, invalidate the relevant query keys as well. Map each existing `revalidatePath`, tag, and cache directive to the layer that owns the replacement data.
 
-- `src/router.tsx`
+The Start function checks authorization even though the route already checks it. A caller can invoke the mutation without visiting the page. Validate every untrusted input inside the server boundary and preserve resource-level permissions.
 
-```tsx
-import { createRouter } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen'
+`useServerFn` returns a callable function. The reference keeps pending and error state in the component and reloads route data after a successful mutation. It also tests replaying the mutation after sign-out.
 
-export function getRouter() {
-  const router = createRouter({
-    routeTree,
-    scrollRestoration: true,
-  })
+Next.js Action forms and these Start event-handler forms have different no-JavaScript behavior. The latter require JavaScript and keep their fields disabled until hydration. If progressive enhancement is a requirement, use a FormData-compatible [server function URL](./guide/server-functions#progressive-enhancement) or an ordinary form POST to a [server route](./guide/server-routes). Include validation, CSRF protection, and an appropriate response or redirect. Do not treat `createServerFn` as a drop-in replacement for the React form Action protocol.
 
-  return router
-}
-```
+## Preserve authentication and session boundaries
 
-> 🧠 Here you can configure everything from the default [preloading functionality](/router/latest/docs/framework/react/guide/preloading) to [caching staleness](/router/latest/docs/framework/react/guide/data-loading).
+Follow the [authentication guide](./guide/authentication) for the route-context pattern. Check sessions on the server for private reads and mutations. A hidden button or a client route guard is not authorization.
 
-Don't worry if you see some TypeScript errors at this point; the next step will resolve them.
+The example deliberately changes from `iron-session` with Next.js `cookies()` to Start's `useSession`. Existing cookies are not assumed to be compatible. A real migration can keep its existing auth provider or session service and adapt the request boundary instead. If sessions must survive cutover or rollback, verify cookie names, domains, paths, signing/encryption formats, expiration, key rotation, and logout in both deployments.
 
-### 7. Verify the Migration
+Private pages need a cache policy that prevents another user receiving personalized HTML. The Start reference returns `Cache-Control: private, no-store` for `/saved`. Check the final response through your deployment and CDN, including after sign-in and sign-out. Do not prerender or publicly cache pages that include private account data.
 
-Run the development server:
+## Preserve metadata and search responses
 
-```sh
-npm run dev
-```
+Next.js `metadata` and `generateMetadata` become a Start route's `head` configuration. The article route derives title, description, Open Graph title, and canonical from its loader result. Keep `HeadContent` in the root document so those values appear in the response.
 
-Then, visit `http://localhost:3000`. You should see the TanStack Start welcome page with its logo and a documentation link.
+Compare HTML responses before JavaScript runs, then check the head after client navigation. Keep the public canonical origin independent of a local or preview host. Preserve locale alternates and social images where your app has them. See [SEO](./guide/seo) and [head management](/router/latest/docs/guide/document-head-management).
 
-> If you encounter issues, review the steps above and ensure that file names and paths match exactly. For a reference implementation, see the [post-migration repository](https://github.com/nrjdalal/next-to-start).
+Next.js metadata file conventions also need replacements. The reference turns `app/sitemap.ts` into a Start server route at `/sitemap.xml`. Migrate `robots.txt`, icons, manifests, and generated social images explicitly. Return real 404s for missing content and maintain intentional permanent redirects. Avoid redirecting every missing URL to the homepage.
 
-## Next Steps (Advanced)
+## Replace image and font services deliberately
 
-Now that you have migrated the basic structure of your Next.js application to TanStack Start, you can explore more advanced features and concepts.
+Start does not automatically provide the Next.js image optimizer. Preserve image dimensions, responsive sources, loading behavior, alt text, and cache policy. Plain `<img>` works for preprocessed assets; an image component such as Unpic needs a compatible image service or prepared sources to provide transformations. It does not create Next.js's image processing backend by itself. Next.js also supports its optimizer when [self-hosted](https://nextjs.org/docs/app/guides/self-hosting).
 
-### Routing Concepts
+Replace `next/font` with self-hosted font files, a package such as Fontsource, or another chosen font delivery method. CSS `@font-face` does not require Tailwind. Preserve font weights and subsets, set an appropriate `font-display`, and check layout shift and network requests. Copy public assets and update imports only after confirming their resulting URLs.
 
-| Route Example                  | Next.js                            | TanStack Start            |
-| ------------------------------ | ---------------------------------- | ------------------------- |
-| Root Layout                    | `src/app/layout.tsx`               | `src/app/__root.tsx`      |
-| `/` (Home Page)                | `src/app/page.tsx`                 | `src/app/index.tsx`       |
-| `/posts` (Static Route)        | `src/app/posts/page.tsx`           | `src/app/posts.tsx`       |
-| `/posts/[slug]` (Dynamic)      | `src/app/posts/[slug]/page.tsx`    | `src/app/posts/$slug.tsx` |
-| `/posts/[...slug]` (Catch-All) | `src/app/posts/[...slug]/page.tsx` | `src/app/posts/$.tsx`     |
-| `/api/endpoint` (API Route)    | `src/app/api/endpoint/route.ts`    | `src/app/api/endpoint.ts` |
+The reference uses text and the browser's default font. It does not claim to verify your image transformations or font loading.
 
-Learn more about the [Routing Concepts](/router/latest/docs/framework/react/routing/routing-concepts).
+## Rebuild caching and deployment behavior
 
-### Dynamic and Catch-All Routes
+List each cache separately: browser data, Router loaders, Query, server data, generated pages, and CDN responses. Define what populates it, its key, expiration, and the operation that invalidates it. Test after changing data, signing out, and deploying a new version.
 
-Retrieving dynamic route parameters in TanStack Start is straightforward.
+Next.js cache directives, revalidation, and `generateStaticParams` do not carry across automatically. Use [static prerendering](./guide/static-prerendering) only for suitable public routes, and review [ISR](./guide/isr) with your hosting provider's actual behavior. A cache header alone is not proof of equivalent regeneration or invalidation.
 
-```tsx
-- export default async function Page({ // [!code --]
--   params, // [!code --]
-- }: { // [!code --]
--   params: Promise<{ slug: string }> // [!code --]
-- }) { // [!code --]
-+ export const Route = createFileRoute('/app/posts/$slug')({ // [!code ++]
-+   component: Page, // [!code ++]
-+ }) // [!code ++]
+Move server-only environment variables into the server runtime. Audit any public variable prefix changes rather than exposing the old environment wholesale. Verify API/webhook URLs, forwarded host/protocol, cookies behind a proxy, asset paths, streaming, and runtime limits in the deployment you will use.
 
-+ function Page() { // [!code ++]
--   const { slug } = await params // [!code --]
-+   const { slug } = Route.useParams() // [!code ++]
-  return <div>My Post: {slug}</div>
-}
-```
+## Cut over with a rollback path
 
-> Note: If you've made a catch-all route (like `src/app/posts/$.tsx`), you can access the parameters via `const { _splat } = Route.useParams()`.
+1. Build both applications and run the contract checks against a staging deployment of Start. Include real representative data, authenticated sessions, and the CDN in that check.
+2. Keep the current database schema compatible with both versions during the transition. Separate destructive schema changes from the framework cutover.
+3. Preserve the public origin and paths where possible. If paths must change, deploy tested redirects and update internal links, canonicals, and sitemaps together.
+4. Record the previous deployment and routing configuration. Know how to route traffic back, and what happens to sessions and writes if you do.
+5. Monitor error rates, login and mutation failures, response status, indexing signals, and application conversion events after cutover. Compare against the baseline rather than assuming a framework change will improve search traffic.
 
-Similarly, you can access `searchParams` using `const { page, filter, sort } = Route.useSearch()`.
-
-Learn more about the [Dynamic and Catch-All Routes](/router/latest/docs/framework/react/routing/routing-concepts#dynamic-route-segments).
-
-### Links
-
-```tsx
-- import Link from "next/link" // [!code --]
-+ import { Link } from "@tanstack/react-router" // [!code ++]
-
-function Component() {
--   return <Link href="/dashboard">Dashboard</Link> // [!code --]
-+   return <Link to="/dashboard">Dashboard</Link> // [!code ++]
-}
-```
-
-Learn more about the [Links](/router/latest/docs/framework/react/guide/navigation#link-component).
-
-### Images
-
-Next.js uses the `next/image` component for optimized images. In TanStack Start, you can use the package called [Unpic](https://unpic.pics/) for similar functionality
-and almost a drop-in replacement.
-
-```tsx
-import Image from 'next/image' // [!code --]
-import { Image } from '@unpic/react' // [!code ++]
-function Component() {
-  return (
-    <Image
-      src="/path/to/image.jpg"
-      alt="Description"
-      width="600" // [!code --]
-      height="400" // [!code --]
-      width={600} // [!code ++]
-      height={400} // [!code ++]
-    />
-  )
-}
-```
-
-### Server ~Actions~ Functions
-
-```tsx
-- 'use server' // [!code --]
-+ import { createServerFn } from "@tanstack/react-start" // [!code ++]
-
-- export const create = async () => { // [!code --]
-+ export const create = createServerFn().handler(async () => { // [!code ++]
-  return true
-- } // [!code --]
-+ }) // [!code ++]
-```
-
-Learn more about the [Server Functions](./guide/server-functions).
-
-### Server Routes ~Handlers~
-
-```ts
-- export async function GET() { // [!code --]
-+ export const Route = createFileRoute('/api/hello')({ // [!code ++]
-+  server: { // [!code ++]
-+     handlers: { // [!code ++]
-+       GET: async () => { // [!code ++]
-+         return Response.json("Hello, World!")
-+       } // [!code ++]
-+    } // [!code ++]
-+  } // [!code ++]
-+ }) // [!code ++]
-```
-
-Learn more about the [Server Routes](./guide/server-routes).
-
-### Fonts
-
-```tsx
-- import { Inter } from "next/font/google" // [!code --]
-
-- const inter = Inter({ // [!code --]
--   subsets: ["latin"], // [!code --]
--   display: "swap", // [!code --]
-- }) // [!code --]
-
-- export default function Page() { // [!code --]
--   return <p className={inter.className}>Font Sans</p> // [!code --]
-- } // [!code --]
-```
-
-Instead of `next/font`, use Tailwind CSS’s CSS-first approach. Install fonts (for example, from [Fontsource](https://github.com/fontsource/fontsource)):
-
-```sh
-npm i -D @fontsource-variable/dm-sans @fontsource-variable/jetbrains-mono
-```
-
-Add the following to `src/app/globals.css`:
-
-```css
-@import 'tailwindcss' source('../');
-
-@import '@fontsource-variable/dm-sans'; /* [!code ++] */
-@import '@fontsource-variable/jetbrains-mono'; /* [!code ++] */
-
-@theme inline {
-  --font-sans: 'DM Sans Variable', sans-serif; /* [!code ++] */
-  --font-mono: 'JetBrains Mono Variable', monospace; /* [!code ++] */
-  /* ... */
-}
-
-/* ... */
-```
-
-### Fetching Data
-
-```tsx
-- export default async function Page() { // [!code --]
-+ export const Route = createFileRoute('/')({ // [!code ++]
-+   component: Page, // [!code ++]
-+   loader: async () => { // [!code ++]
-+     const res = await fetch('https://api.vercel.app/blog') // [!code ++]
-+     return res.json() // [!code ++]
-+   }, // [!code ++]
-+ }) // [!code ++]
-
-+ function Page() { // [!code ++]
--   const data = await fetch('https://api.vercel.app/blog') // [!code --]
--   const posts = await data.json() // [!code --]
-+   const posts = Route.useLoaderData() // [!code ++]
-
-  return (
-    <ul>
-      {posts.map((post) => (
-        <li key={post.id}>{post.title}</li>
-      ))}
-    </ul>
-  )
-}
-```
+Remove Next.js and its unused configuration after the migrated behavior and rollback plan are verified. Retain historical redirects and any assets still referenced by public content.
