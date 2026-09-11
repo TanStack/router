@@ -105,13 +105,15 @@ export function createTestPathInterpolator(
     routeTree: new BaseRootRoute({}),
     history: createMemoryHistory({ initialEntries: ['/'] }),
     scrollRestoration: false,
+    trailingSlash: 'preserve',
     ...options,
   })
   router.history.destroy()
   return (
     options: Pick<PathInterpolationTestOptions, 'path' | 'params'>,
   ): string => {
-    return router['interpolatePath'](options.path, options.params)
+    return router.buildLocation({ to: options.path, params: options.params })
+      .pathname
   }
 }
 

@@ -1,10 +1,14 @@
 import { bench, describe, expect } from 'vitest'
-import { createMemoryHistory } from '@tanstack/history'
+import {
+  createMemoryHistory,
+  normalizeProtocolRelative,
+} from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { compileDecodeCharMap, interpolatePath } from '../src/path'
 import { parseSegments } from '../src/new-process-route-tree'
 import { decodePath } from '../src/utils'
 import { createTestRouter, interpolateTestPath } from './routerTestUtils'
+import type { AnyRoute } from '../src'
 import type { PathInterpolationTestOptions } from './routerTestUtils'
 
 const scenarios: Array<{
@@ -142,6 +146,22 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
     scrollRestoration: false,
   })
   router.history.destroy()
+  // Mirrors how buildLocation turns a template into a canonical pathname.
+  const canonicalPathname = (
+    path: string,
+    params: Record<string, unknown>,
+    route: AnyRoute | undefined,
+  ) =>
+    normalizeProtocolRelative(
+      decodePath(
+        interpolatePath(
+          path,
+          route?._interpolation ?? parseSegments(false, { fullPath: path }, 0),
+          params,
+          router.pathParamsDecoder,
+        ),
+      ),
+    )
   const calls = inputs
     .filter((input) => input.path.includes('$'))
     .map((input) => ({
@@ -172,13 +192,13 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
     0,
   )
   const cachedExpected = calls.reduce((sum, call) => {
-    expect(router['interpolatePath'](call.path, call.params, call.route)).toBe(
+    expect(canonicalPathname(call.path, call.params, call.route)).toBe(
       call.expected,
     )
     return sum + call.expected.length
   }, 0)
   for (const call of calls) {
-    expect(router['interpolatePath'](call.path, call.params, call.route)).toBe(
+    expect(canonicalPathname(call.path, call.params, call.route)).toBe(
       call.expected,
     )
   }
@@ -191,15 +211,11 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
   }))
 
   bench(
-    'shared interpolation and normalization batch',
+    'interpolation and normalization batch',
     () => {
       let length = 0
       for (const call of calls) {
-        length += router['interpolatePath'](
-          call.path,
-          call.params,
-          call.route,
-        ).length
+        length += canonicalPathname(call.path, call.params, call.route).length
       }
       checksum = length
     },

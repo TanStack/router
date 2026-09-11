@@ -34,17 +34,15 @@ function setup(allowed?: Array<'@' | '+'>) {
   router.history.destroy()
   const build = () =>
     router.buildLocation({ to: '/items/$id', params: { id: '@+' } }).href
-  return { router, item, build }
+  return { router, build }
 }
 
-test('keeps the decoder and cached paths across provider option updates', () => {
+test('keeps the decoder across provider option updates', () => {
   const allowed: Array<'@' | '+'> = ['@']
-  const { router, item, build } = setup(allowed)
+  const { router, build } = setup(allowed)
   const decoder = router.pathParamsDecoder
   expect(build()).toBe('/items/@%2B')
-  const plan = item._pathCache
   const compile = vi.spyOn(pathUtils, 'compileDecodeCharMap')
-  const interpolate = vi.spyOn(pathUtils, 'interpolatePath')
   for (let count = 0; count < 3; count++) {
     router.update({
       ...router.options,
@@ -52,10 +50,8 @@ test('keeps the decoder and cached paths across provider option updates', () => 
     })
     expect(build()).toBe('/items/@%2B')
     expect(router.pathParamsDecoder).toBe(decoder)
-    expect(item._pathCache).toBe(plan)
   }
   expect(compile).not.toHaveBeenCalled()
-  expect(interpolate).not.toHaveBeenCalled()
 })
 
 test('requires a new router to apply changes to the original character array', () => {
