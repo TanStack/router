@@ -337,13 +337,13 @@ export function isPlainObject(o: any) {
   }
 
   // If has modified prototype
-  const prot = ctor.prototype
+  const prot = ctor?.prototype
   if (!hasObjectPrototype(prot)) {
     return false
   }
 
   // If constructor does not have an Object-specific method
-  if (!prot.hasOwnProperty('isPrototypeOf')) {
+  if (!hasOwn.call(prot, 'isPrototypeOf')) {
     return false
   }
 
