@@ -92,6 +92,14 @@
         {
           "toolchain": "rsbuild",
           "mode": "preview"
+        },
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "lazy-transport",
+          "env": {
+            "E2E_SERVER_FN_TRANSPORT": "lazy"
+          }
         }
       ]
     }

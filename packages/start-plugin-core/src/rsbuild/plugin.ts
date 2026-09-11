@@ -18,6 +18,7 @@ import {
   createRsbuildResolvedEntryAliases,
   resolveRsbuildOutputDirectory,
 } from './planning'
+import { applyServerFnCodecSplitting } from './server-fn-transport'
 import { registerStartCompilerTransforms } from './start-compiler-host'
 import { registerImportProtection } from './import-protection'
 import {
@@ -172,6 +173,7 @@ export function tanStackStartRsbuild(
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           publicBase: resolvedStartConfig.basePaths.publicBase,
           serverFnProviderEnv,
+          serverFnTransport: startConfig.serverFns.transport,
           environmentOverrides: corePluginOpts.rsbuild?.environments,
           scriptFormat,
           rsc: rscOpts,
@@ -202,6 +204,12 @@ export function tanStackStartRsbuild(
                 }
               : {}),
             define: {
+              'process.env.TSS_SERVER_FN_TRANSPORT': JSON.stringify(
+                startConfig.serverFns.transport,
+              ),
+              'import.meta.env.TSS_SERVER_FN_TRANSPORT': JSON.stringify(
+                startConfig.serverFns.transport,
+              ),
               'process.env.TSS_SERVER_FN_BASE': JSON.stringify(serverFnBase),
               'import.meta.env.TSS_SERVER_FN_BASE':
                 JSON.stringify(serverFnBase),
@@ -285,6 +293,19 @@ export function tanStackStartRsbuild(
             alias: environmentPlan.alias,
           },
         })
+      })
+
+      api.modifyRspackConfig({
+        order: 'post',
+        handler(config, { environment, isDev }) {
+          if (
+            !isDev &&
+            environment.name === RSBUILD_ENVIRONMENT_NAMES.client &&
+            getConfig().startConfig.serverFns.transport === 'lazy'
+          ) {
+            applyServerFnCodecSplitting(config)
+          }
+        },
       })
 
       // ---------------------------------------------------------------
