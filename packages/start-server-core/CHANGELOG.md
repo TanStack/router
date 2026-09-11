@@ -1,5 +1,11 @@
 # @tanstack/start-server-core
 
+## 1.169.34
+
+### Patch Changes
+
+- [#8340](https://github.com/TanStack/router/pull/8340) [`d914b08`](https://github.com/TanStack/router/commit/d914b085bb4bf29ec18a531201e377c10681b661) - Fix `setResponseHeaders` to iterate `Headers` entries, replace existing values, and preserve separate `Set-Cookie` values.
+
 ## 1.169.33
 
 ### Patch Changes

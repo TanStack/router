@@ -17,7 +17,7 @@ import {
   createRouter,
   useMatch,
 } from '../src'
-import type { RouteComponent, RouterHistory } from '../src'
+import type { AnyRoute, RouterHistory } from '../src'
 
 afterEach(() => {
   window.history.replaceState(null, 'root', '/')
@@ -29,7 +29,7 @@ describe('useMatch', () => {
     RootComponent,
     history,
   }: {
-    RootComponent: RouteComponent
+    RootComponent: NonNullable<AnyRoute['options']['component']>
     history?: RouterHistory
   }) {
     const rootRoute = createRootRoute({
@@ -64,12 +64,18 @@ describe('useMatch', () => {
     test.each([true, false, undefined])(
       'returns the match if shouldThrow = %s',
       async (shouldThrow) => {
-        function RootComponent() {
-          const match = useMatch({ from: '/posts', shouldThrow })
-          expect(match.value).toBeDefined()
-          expect(match.value!.routeId).toBe('/posts')
-          return <Outlet />
-        }
+        const RootComponent = Vue.defineComponent({
+          setup() {
+            const match = useMatch({ from: '/posts', shouldThrow })
+            return () => {
+              expect(match.value).toBeDefined()
+
+              expect(match.value!.routeId).toBe('/posts')
+
+              return <Outlet />
+            }
+          },
+        })
 
         setup({
           RootComponent,
@@ -199,12 +205,14 @@ describe('useMatch', () => {
       loader: ({ deps }) => deps.revision,
       component: ItemComponent,
     })
+    const OtherComponent = Vue.defineComponent({
+      setup: () => () => <div>Other route</div>,
+    })
+
     const otherRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/other',
-      component: Vue.defineComponent({
-        setup: () => () => <div>Other route</div>,
-      }),
+      component: OtherComponent,
     })
     const router = createRouter({
       routeTree: rootRoute.addChildren([itemRoute, otherRoute]),
@@ -238,21 +246,23 @@ describe('useMatch', () => {
   test('an outgoing component never observes its own match disappear', async () => {
     const observedRouteIds: Array<string | undefined> = []
     const rootRoute = createRootRoute({ component: () => <Outlet /> })
+    const FirstComponent = Vue.defineComponent({
+      setup() {
+        const match = useMatch({
+          from: '/first',
+          shouldThrow: false,
+        })
+        Vue.watchEffect(() => observedRouteIds.push(match.value?.routeId), {
+          flush: 'sync',
+        })
+        return () => <div>First route</div>
+      },
+    })
+
     const firstRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/first',
-      component: Vue.defineComponent({
-        setup() {
-          const match = useMatch({
-            from: '/first',
-            shouldThrow: false,
-          })
-          Vue.watchEffect(() => observedRouteIds.push(match.value?.routeId), {
-            flush: 'sync',
-          })
-          return () => <div>First route</div>
-        },
-      }),
+      component: FirstComponent,
     })
     const nextRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -277,10 +287,13 @@ describe('useMatch', () => {
     test.each([undefined, true])(
       'throws if shouldThrow = %s',
       async (shouldThrow) => {
-        function RootComponent() {
-          useMatch({ from: '/posts', shouldThrow })
-          return <Outlet />
-        }
+        const RootComponent = Vue.defineComponent({
+          setup() {
+            useMatch({ from: '/posts', shouldThrow })
+            return () => <Outlet />
+          },
+        })
+
         setup({ RootComponent })
         const postsError = await screen.findByText(
           'Invariant failed: Could not find an active match from "/posts"',
@@ -291,11 +304,17 @@ describe('useMatch', () => {
 
     describe('returns undefined if shouldThrow = false', () => {
       test('without select function', async () => {
-        function RootComponent() {
-          const match = useMatch({ from: 'posts', shouldThrow: false })
-          expect(match.value).toBeUndefined()
-          return <Outlet />
-        }
+        const RootComponent = Vue.defineComponent({
+          setup() {
+            const match = useMatch({ from: 'posts', shouldThrow: false })
+            return () => {
+              expect(match.value).toBeUndefined()
+
+              return <Outlet />
+            }
+          },
+        })
+
         setup({ RootComponent })
         expect(
           await waitFor(() => screen.findByText('IndexTitle')),
@@ -303,11 +322,21 @@ describe('useMatch', () => {
       })
       test('with select function', async () => {
         const select = vi.fn()
-        function RootComponent() {
-          const match = useMatch({ from: 'posts', shouldThrow: false, select })
-          expect(match.value).toBeUndefined()
-          return <Outlet />
-        }
+        const RootComponent = Vue.defineComponent({
+          setup() {
+            const match = useMatch({
+              from: 'posts',
+              shouldThrow: false,
+              select,
+            })
+            return () => {
+              expect(match.value).toBeUndefined()
+
+              return <Outlet />
+            }
+          },
+        })
+
         setup({ RootComponent })
         const indexTitle = await screen.findByText('IndexTitle')
         expect(indexTitle).toBeInTheDocument()

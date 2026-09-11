@@ -1,5 +1,14 @@
 # @tanstack/solid-start-client
 
+## 1.168.32
+
+### Patch Changes
+
+- [#8270](https://github.com/TanStack/router/pull/8270) [`76239a3`](https://github.com/TanStack/router/commit/76239a34b732ca19d1b16d42efb83824b1de1c69) - Avoid duplicate external script execution when a Solid script includes both `src` and children. Reuse each Solid hydration boundary's marker element instead of scanning all document markers on mount.
+
+- Updated dependencies [[`b1c9219`](https://github.com/TanStack/router/commit/b1c92194397e57cecfab72de70e2dd8064a4f6d5), [`76239a3`](https://github.com/TanStack/router/commit/76239a34b732ca19d1b16d42efb83824b1de1c69)]:
+  - @tanstack/solid-router@1.170.33
+
 ## 1.168.31
 
 ### Patch Changes
