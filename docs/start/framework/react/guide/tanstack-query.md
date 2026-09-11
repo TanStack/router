@@ -95,7 +95,7 @@ The example's existing `/deferred` route shows a separate Suspense boundary. See
 
 ## Invalidate Query after a server mutation
 
-The preference example validates the display name and writes its cookie inside a POST server function. The component calls that function through `useServerFn`, then invalidates the query that reads the cookie:
+The preference example validates the display name and writes its cookie inside a POST server function. Its `src/start.ts` enables Start's CSRF middleware for server-function requests. The component calls that function through `useServerFn`, then invalidates the query that reads the cookie:
 
 ```tsx
 const queryClient = useQueryClient()

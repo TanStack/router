@@ -41,11 +41,23 @@ test('hydration reuses SSR data and mutation invalidation refetches once', async
   expect(reads).toHaveLength(0)
 
   await page.getByLabel('Display name').fill('Ada')
+  const mutation = page.waitForRequest((request) => request.method() === 'POST')
   await page.getByRole('button', { name: 'Save name' }).click()
   await expect(page.getByTestId('reader-name')).toHaveText('Hello, Ada')
   await expect(page.getByRole('button', { name: 'Save name' })).toBeEnabled()
   await page.waitForLoadState('networkidle')
   expect(reads).toHaveLength(1)
+
+  const savedRequest = await mutation
+  const headers = await savedRequest.allHeaders()
+  delete headers['content-length']
+  headers.origin = 'https://untrusted.example'
+  headers['sec-fetch-site'] = 'cross-site'
+  const denied = await page.request.post(savedRequest.url(), {
+    headers,
+    data: savedRequest.postData() ?? '',
+  })
+  expect(denied.status()).toBe(403)
 
   await page.reload()
   await expect(page.getByTestId('reader-name')).toHaveText('Hello, Ada')
