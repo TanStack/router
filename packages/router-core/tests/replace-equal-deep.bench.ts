@@ -2,6 +2,7 @@ import { bench, describe, expect } from 'vitest'
 import {
   createNull,
   deepEqual,
+  isPlainObject,
   nullReplaceEqualDeep,
   replaceEqualDeep,
 } from '../src/utils'
@@ -12,6 +13,19 @@ const emptyNull = createNull()
 const search = { tab: 'specs', page: 2, sort: 'newest', filter: 'available' }
 const searchCopy = { ...search }
 const searchChanged = { ...search, page: 3 }
+// `?constructor=foo` decodes to an own `constructor` key on a null-proto record.
+const searchWithConstructorKey = Object.assign(createNull(), {
+  constructor: 'foo',
+  page: 2,
+})
+const searchWithConstructorKeyCopy = Object.assign(createNull(), {
+  constructor: 'foo',
+  page: 2,
+})
+class Instance {
+  a = 1
+}
+const instance = new Instance()
 const nested = {
   tab: 'specs',
   filters: { category: 'hardware', available: true },
@@ -46,10 +60,43 @@ expect(replaceEqualDeep(list, listCopy)).toBe(list)
 expect(replaceEqualDeep(list, listChanged)[3]).toBe(list[3])
 expect(replaceEqualDeep(wide, wideChanged)).toStrictEqual(wideChanged)
 expect(nullReplaceEqualDeep(emptyNull, {})).toBe(emptyNull)
+expect(
+  nullReplaceEqualDeep(searchWithConstructorKey, searchWithConstructorKeyCopy),
+).toBe(searchWithConstructorKey)
 expect(deepEqual(search, searchCopy, { partial: true })).toBe(true)
+expect(isPlainObject(search)).toBe(true)
+expect(isPlainObject(emptyNull)).toBe(true)
+expect(isPlainObject(searchWithConstructorKey)).toBe(true)
+expect(isPlainObject(instance)).toBe(false)
 
 const iterations = 1_000
 let sink: unknown
+
+describe('isPlainObject', () => {
+  bench('literal', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = isPlainObject(search)
+    }
+  })
+
+  bench('null-proto record', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = isPlainObject(emptyNull)
+    }
+  })
+
+  bench('null-proto record with a constructor key', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = isPlainObject(searchWithConstructorKey)
+    }
+  })
+
+  bench('class instance', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = isPlainObject(instance)
+    }
+  })
+})
 
 describe('replaceEqualDeep', () => {
   bench('equal empty objects', () => {
@@ -61,6 +108,15 @@ describe('replaceEqualDeep', () => {
   bench('equal empty null-proto objects', () => {
     for (let i = 0; i < iterations; i++) {
       sink = nullReplaceEqualDeep(emptyNull, createNull())
+    }
+  })
+
+  bench('equal null-proto search with a constructor key', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = nullReplaceEqualDeep(
+        searchWithConstructorKey,
+        searchWithConstructorKeyCopy,
+      )
     }
   })
 
