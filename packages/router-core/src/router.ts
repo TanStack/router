@@ -1881,7 +1881,9 @@ export class RouterCore<
   /**
    * Build the next ParsedLocation from navigation options without committing.
    * Resolves `to`/`from`, params/search/hash/state, applies search validation
-   * and middlewares, and returns a stable, stringified location object.
+   * and middlewares, and returns a stringified location object. The built
+   * `search` and `state` are not structurally shared with the current
+   * location; `parseLocation` stabilizes them once the location is committed.
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
@@ -2094,18 +2096,16 @@ export class RouterCore<
         }
         return search
       }
-      // A literal search never reads the current one.
-      let nextSearch: Record<string, unknown> = middlewares.length
+      // A literal search never reads the current one. The result is not
+      // structurally shared with the current search: `parseLocation` keeps
+      // equal nested values stable once the location is committed.
+      const nextSearch: Record<string, unknown> = middlewares.length
         ? applySearchMiddleware(middlewares, fromSearch(), dest)
         : dest.search === true
           ? fromSearch()
           : typeof dest.search === 'function'
             ? dest.search(fromSearch())
             : (dest.search as Record<string, unknown>) || EMPTY_RECORD
-
-      // Structural sharing only affects identity, so it does not make the
-      // location depend on the current one.
-      nextSearch = nullReplaceEqualDeep(lightweight[2 /* search */], nextSearch)
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
@@ -2121,18 +2121,15 @@ export class RouterCore<
       // Resolve the next hash string
       const hashStr = hash ? `#${hash}` : ''
 
-      // Resolve the next state
-      let nextState: HistoryState = EMPTY_RECORD
-      if (dest.state) {
-        nextState =
-          dest.state === true
-            ? current().state
-            : typeof dest.state === 'function'
-              ? dest.state(current().state)
-              : dest.state
-        // Identity-only, as above.
-        nextState = replaceEqualDeep(currentLocation.state, nextState)
-      }
+      // Resolve the next state. A literal state never reads the current one
+      // and, like the search, is not shared with it here.
+      const nextState: HistoryState = !dest.state
+        ? EMPTY_RECORD
+        : dest.state === true
+          ? current().state
+          : typeof dest.state === 'function'
+            ? dest.state(current().state)
+            : dest.state
 
       // Create the full path of the location
       const fullPath = `${nextPathname}${searchStr}${hashStr}`
