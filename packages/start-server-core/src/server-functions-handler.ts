@@ -14,6 +14,7 @@ import {
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
+import { isServerFnNotFound } from './constants'
 import {
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
   createMultiplexedStream,
@@ -33,6 +34,13 @@ const FORM_DATA_CONTENT_TYPES = [
 // Maximum payload size for GET requests (1MB)
 const MAX_PAYLOAD_SIZE = 1_000_000
 
+// Answer for a server function id that this build does not know about. The body
+// deliberately omits the requested id so the response never echoes back a
+// caller-supplied path segment; the id is logged server-side outside production.
+const SERVER_FN_NOT_FOUND_STATUS = 404
+const SERVER_FN_NOT_FOUND_BODY = 'Server function not found'
+const SERVER_FN_NOT_FOUND_CONTENT_TYPE = 'text/plain; charset=utf-8'
+
 export const handleServerAction = async ({
   request,
   context,
@@ -46,7 +54,30 @@ export const handleServerAction = async ({
   const methodUpper = method.toUpperCase()
   const url = new URL(request.url)
 
-  const action = await getServerFnById(serverFnId, { origin: 'client' })
+  let action: Awaited<ReturnType<typeof getServerFnById>>
+  try {
+    action = await getServerFnById(serverFnId, { origin: 'client' })
+  } catch (error) {
+    // A genuine resolution failure (module that fails to import, missing export)
+    // is a server fault and keeps escaping as it does today.
+    if (!isServerFnNotFound(error)) {
+      throw error
+    }
+
+    // An id this build does not know about is a missing resource. Outside
+    // production it almost always means the registry is stale, so keep the
+    // diagnostic; in production the same id is routine cache and crawler traffic
+    // against a previous deployment, and logging it per request is the noise
+    // this branch exists to remove.
+    if (process.env.NODE_ENV !== 'production') {
+      console.error(error)
+    }
+
+    return new Response(SERVER_FN_NOT_FOUND_BODY, {
+      status: SERVER_FN_NOT_FOUND_STATUS,
+      headers: { 'Content-Type': SERVER_FN_NOT_FOUND_CONTENT_TYPE },
+    })
+  }
 
   // Early method check: reject mismatched HTTP methods before parsing
   // the request payload (FormData, JSON, query string, etc.)

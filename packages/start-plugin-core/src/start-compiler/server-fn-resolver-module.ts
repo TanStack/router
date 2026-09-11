@@ -1,3 +1,4 @@
+import { SERVER_FN_NOT_FOUND } from '@tanstack/start-server-core/constants'
 import type { ServerFn } from './types'
 
 interface ResolverManifestEntry {
@@ -50,7 +51,13 @@ function getResolverBody(): string {
 export async function getServerFnById(id, access) {
   const serverFnInfo = manifest[id]
   if (!serverFnInfo) {
-    throw new Error('Server function info not found for ' + id)
+    // Every build mints new ids, so a cache, a crawler or a tab that has not
+    // reloaded keeps requesting ids from a previous deployment. Flagged so the
+    // request handler can answer 404; still a regular Error so the callers that
+    // are not serving an HTTP request keep the message and the stack.
+    const error = new Error('Server function info not found for ' + id)
+    error[${JSON.stringify(SERVER_FN_NOT_FOUND)}] = true
+    throw error
   }
 __CLIENT_REFERENCED_CHECK__
   const fnModule = serverFnInfo.module ?? (await serverFnInfo.importer())
