@@ -209,7 +209,6 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
 }
 
 export const hasOwn = Object.prototype.hasOwnProperty
-const isEnumerable = Object.prototype.propertyIsEnumerable
 
 export function hasKeys(obj: Record<string, unknown>) {
   for (const key in obj) {
@@ -254,9 +253,20 @@ export function replaceEqualDeep(
 
   if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
 
-  const prevItems = array ? prev : getEnumerableOwnKeys(prev)
-  const nextItems = array ? next : getEnumerableOwnKeys(next)
-  if (!prevItems || !nextItems) return next
+  const prevItems = array ? prev : Object.keys(prev)
+  const nextItems = array ? next : Object.keys(next)
+  // Non-enumerable keys, or symbol keys on `next`, make an object opaque: it passes
+  // through untouched rather than being compared or copied by its string keys only.
+  // (`getOwnPropertySymbols` is ~4x the cost of the other two, so `prev` — normally an
+  // earlier `next` — is not checked for symbols.)
+  if (
+    !array &&
+    (prevItems.length !== Object.getOwnPropertyNames(prev).length ||
+      nextItems.length !== Object.getOwnPropertyNames(next).length ||
+      Object.getOwnPropertySymbols(next).length)
+  ) {
+    return next
+  }
   const nextSize = nextItems.length
 
   // Most calls find `next` deeply equal, so the copy waits for the first difference.
@@ -303,34 +313,6 @@ function copyItems(
     copy[key] = prev[key]
   }
   return copy
-}
-
-/**
- * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
- * will return false if object has any non-enumerable properties.
- *
- * Optimized for the common case where objects have no symbol properties.
- */
-function getEnumerableOwnKeys(o: object) {
-  // `Object.keys` returns only enumerable own string keys natively (no per-key
-  // JS callback). If it has fewer entries than `getOwnPropertyNames` (all own
-  // string keys), the object has a non-enumerable own string prop and is not
-  // "clone-friendly" -> bail. This replaces an O(n) loop of
-  // `propertyIsEnumerable` calls with two native calls.
-  const keys = Object.keys(o)
-  if (keys.length !== Object.getOwnPropertyNames(o).length) {
-    return false
-  }
-
-  // Include enumerable symbols (most plain objects have none); bail on a
-  // non-enumerable one so it round-trips like the string-key check above.
-  for (const symbol of Object.getOwnPropertySymbols(o)) {
-    if (!isEnumerable.call(o, symbol)) {
-      return false
-    }
-    ;(keys as Array<string | symbol>).push(symbol)
-  }
-  return keys
 }
 
 export function isPlainObject(o: unknown): boolean {
