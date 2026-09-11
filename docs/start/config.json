@@ -324,6 +324,10 @@
             {
               "label": "Databases",
               "to": "framework/react/guide/databases"
+            },
+            {
+              "label": "TanStack Query",
+              "to": "framework/react/guide/tanstack-query"
             }
           ]
         },

@@ -6,6 +6,8 @@ title: External Data Loading
 > [!IMPORTANT]
 > This guide is geared towards external state management libraries and their integration with TanStack Router for data fetching, ssr, hydration/dehydration and streaming. If you haven't read the standard [Data Loading](./data-loading.md) guide, please do so first.
 
+For a full-stack React application, follow [TanStack Query with Start](/start/latest/docs/framework/react/guide/tanstack-query) for request-scoped SSR, hydration, and mutation invalidation with a tested example.
+
 ## To **Store** or to **Coordinate**?
 
 While Router is very capable of storing and managing most data needs out of the box, sometimes you just might want something more robust!
