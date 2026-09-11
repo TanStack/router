@@ -6,6 +6,7 @@ import {
   escapeHtml,
   hasOwn,
   isPlainArray,
+  isPlainObject,
   nullReplaceEqualDeep,
   replaceEqualDeep,
 } from '../src/utils'
@@ -450,6 +451,60 @@ describe('nullReplaceEqualDeep', () => {
   it('returns prev when a plain next equals a null-prototype prev', () => {
     const prev = Object.assign(Object.create(null), { a: 1, b: { c: 2 } })
     expect(nullReplaceEqualDeep(prev, { a: 1, b: { c: 2 } })).toBe(prev)
+  })
+})
+
+describe('isPlainObject', () => {
+  it.each([
+    ['object literal', {}],
+    ['object literal with keys', { a: 1 }],
+    ['Object.create(null)', Object.create(null)],
+    ['object inheriting from a literal', Object.create({ inherited: 1 })],
+    ['JSON.parse result', JSON.parse('{"a":1}')],
+    ['frozen literal', Object.freeze({ a: 1 })],
+    ['new Object()', new Object()],
+  ])('returns true for %s', (_name, value) => {
+    expect(isPlainObject(value)).toBe(true)
+  })
+
+  class Foo {
+    a = 1
+  }
+
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['number', 1],
+    ['string', 'a'],
+    ['boolean', true],
+    ['symbol', Symbol('s')],
+    ['function', () => {}],
+    ['empty array', []],
+    ['array', [1]],
+    ['Map', new Map()],
+    ['Set', new Set()],
+    ['Date', new Date()],
+    ['RegExp', /x/],
+    ['Promise', Promise.resolve()],
+    ['class instance', new Foo()],
+    ['Object.create(class prototype)', Object.create(Foo.prototype)],
+  ])('returns false for %s', (_name, value) => {
+    expect(isPlainObject(value)).toBe(false)
+  })
+
+  it('keeps class instances opaque for structural sharing and equality', () => {
+    const prev = new Foo()
+    const next = new Foo()
+    expect(replaceEqualDeep(prev, next)).toBe(next)
+    expect(deepEqual(prev, next)).toBe(false)
+    expect(deepEqual({ foo: prev }, { foo: prev })).toBe(true)
+  })
+
+  it('treats null-prototype and literal objects alike', () => {
+    const nullProto = Object.assign(Object.create(null), { a: 1 })
+    expect(deepEqual(nullProto, { a: 1 })).toBe(true)
+    expect(deepEqual({ a: 1 }, nullProto)).toBe(true)
+    expect(replaceEqualDeep(nullProto, { a: 1 })).toBe(nullProto)
   })
 })
 
