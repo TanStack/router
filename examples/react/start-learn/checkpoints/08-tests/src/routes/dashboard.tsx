@@ -21,7 +21,10 @@ export const Route = createFileRoute('/dashboard')({
     }
     return { user }
   },
-  loader: () => listOwnNotes(),
+  loader: {
+    staleReloadMode: 'blocking',
+    handler: () => listOwnNotes(),
+  },
   headers: () => ({ 'Cache-Control': 'private, no-store' }),
   head: () => ({ meta: [{ name: 'robots', content: 'noindex' }] }),
   component: Home,

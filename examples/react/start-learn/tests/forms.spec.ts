@@ -109,3 +109,46 @@ test('server validation rejects whitespace titles before a write', async ({
     await db.category.deleteMany({ where: { name: category } })
   }
 })
+
+test('a failed list refresh does not report a committed note as a failed save', async ({
+  page,
+}) => {
+  const slug = randomUUID()
+  const category = `refresh-${slug.slice(0, 8)}`
+  try {
+    await page.goto('/')
+    await page.getByLabel('Slug', { exact: true }).fill(slug)
+    await page.getByLabel('Title', { exact: true }).fill(`Saved ${slug}`)
+    await page.getByLabel('Category', { exact: true }).fill(category)
+    await page
+      .getByLabel('Body', { exact: true })
+      .fill('Stored before refresh fails.')
+    await page.route('**/_serverFn/**', async (route) => {
+      if (route.request().method() === 'GET') {
+        await route.abort('failed')
+      } else {
+        await route.continue()
+      }
+    })
+    await page.getByRole('button', { name: 'Create note', exact: true }).click()
+    await expect(
+      page.getByRole('heading', { name: 'Could not load notes', exact: true }),
+    ).toBeVisible()
+    await expect(
+      page.getByText('Could not save. Check your input and try again.', {
+        exact: true,
+      }),
+    ).toHaveCount(0)
+    expect(await db.note.findUnique({ where: { slug } })).toMatchObject({
+      title: `Saved ${slug}`,
+    })
+    await page.unroute('**/_serverFn/**')
+    await page.getByRole('link', { name: 'Try again', exact: true }).click()
+    await expect(
+      page.getByRole('link', { name: `Saved ${slug}`, exact: true }),
+    ).toBeVisible()
+  } finally {
+    await db.note.deleteMany({ where: { slug } })
+    await db.category.deleteMany({ where: { name: category } })
+  }
+})

@@ -15,15 +15,18 @@ export const Route = createFileRoute('/drafts/$slug')({
       })
     }
   },
-  loader: async ({ params }) => {
-    if (params.slug.length > 80) {
-      throw notFound()
-    }
-    const note = await getOwnNote({ data: params.slug })
-    if (!note) {
-      throw notFound()
-    }
-    return note
+  loader: {
+    staleReloadMode: 'blocking',
+    handler: async ({ params }) => {
+      if (params.slug.length > 80) {
+        throw notFound()
+      }
+      const note = await getOwnNote({ data: params.slug })
+      if (!note) {
+        throw notFound()
+      }
+      return note
+    },
   },
   headers: () => ({ 'Cache-Control': 'private, no-store' }),
   head: () => ({ meta: [{ name: 'robots', content: 'noindex' }] }),
