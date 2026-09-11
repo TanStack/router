@@ -213,3 +213,96 @@ test('accounts isolate drafts and mutations while publishing is explicit', async
     })
   }
 })
+
+test('switching accounts in one browser never renders the previous owner draft', async ({
+  page,
+}) => {
+  const id = randomUUID()
+  const emails = [
+    `cache-alice-${id}@example.test`,
+    `cache-bob-${id}@example.test`,
+  ]
+  const password = `course-password-${id}`
+  const slug = `cache-${id}`
+  const body = `Private body belonging only to Alice ${id}`
+  const category = `cache-${id.slice(0, 8)}`
+  try {
+    await page.goto('/login')
+    await page
+      .getByRole('button', { name: 'Create an account', exact: true })
+      .click()
+    await page.getByLabel('Name', { exact: true }).fill('Alice')
+    await page.getByLabel('Email', { exact: true }).fill(emails[0])
+    await page.getByLabel('Password', { exact: true }).fill(password)
+    await page
+      .getByRole('button', { name: 'Create account', exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/dashboard$/)
+    await page.getByLabel('Slug', { exact: true }).fill(slug)
+    await page.getByLabel('Title', { exact: true }).fill(`Alice draft ${id}`)
+    await page.getByLabel('Body', { exact: true }).fill(body)
+    await page.getByLabel('Category', { exact: true }).fill(category)
+    await page.getByRole('button', { name: 'Create note', exact: true }).click()
+    const read = page.waitForResponse(
+      (response) =>
+        response.request().method() === 'GET' &&
+        response.url().includes('_serverFn') &&
+        response.url().includes(encodeURIComponent(slug)),
+    )
+    await page
+      .getByRole('link', { name: `Alice draft ${id}`, exact: true })
+      .click()
+    await expect(page.getByText(body, { exact: true })).toBeVisible()
+    const draftIndex = await page.evaluate(
+      () => window.history.state.__TSR_index,
+    )
+    const readPath = new URL((await read).url()).pathname
+    await page.getByRole('link', { name: 'My notes', exact: true }).click()
+    await page.getByRole('button', { name: 'Sign out', exact: true }).click()
+    await expect(page).toHaveURL(/\/login$/)
+    await page
+      .getByRole('button', { name: 'Create an account', exact: true })
+      .click()
+    await page.getByLabel('Name', { exact: true }).fill('Bob')
+    await page.getByLabel('Email', { exact: true }).fill(emails[1])
+    await page.getByLabel('Password', { exact: true }).fill(password)
+    await page
+      .getByRole('button', { name: 'Create account', exact: true })
+      .click()
+    await expect(page).toHaveURL(/\/dashboard$/)
+    await page.evaluate((privateBody) => {
+      document.documentElement.dataset.privateLeak = 'no'
+      new MutationObserver(() => {
+        if (document.body.textContent?.includes(privateBody)) {
+          document.documentElement.dataset.privateLeak = 'yes'
+        }
+      }).observe(document.body, {
+        childList: true,
+        subtree: true,
+        characterData: true,
+      })
+    }, body)
+    await page.route(
+      (url) => url.pathname === readPath,
+      async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 300))
+        await route.continue()
+      },
+    )
+    await page.evaluate((index) => {
+      window.history.go(index - window.history.state.__TSR_index)
+    }, draftIndex)
+    await expect(page).toHaveURL(new RegExp(`/drafts/${slug}$`))
+    await expect(
+      page.getByRole('heading', { name: 'Note not found', exact: true }),
+    ).toBeVisible()
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-private-leak',
+      'no',
+    )
+  } finally {
+    await db.note.deleteMany({ where: { slug } })
+    await db.category.deleteMany({ where: { name: category } })
+    await db.user.deleteMany({ where: { email: { in: emails } } })
+  }
+})
