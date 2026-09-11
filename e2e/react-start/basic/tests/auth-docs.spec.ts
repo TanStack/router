@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { isSpaMode } from './utils/isSpaMode'
 
 test('authentication docs pattern handles login, logout, route context, and server authorization', async ({
   page,
@@ -31,7 +32,14 @@ test('authentication docs pattern handles login, logout, route context, and serv
   )
 
   const response = await page.reload()
-  expect(response?.headers()['cache-control']).toBe('private, no-store')
+  expect(response?.status()).toBe(200)
+  if (isSpaMode) {
+    // The shared SPA shell must not contain authenticated account data.
+    expect(await response?.text()).not.toContain('reader@example.com')
+    expect(await response?.text()).not.toContain('Private account data')
+  } else {
+    expect(response?.headers()['cache-control']).toBe('private, no-store')
+  }
   await expect(page.getByTestId('auth-docs-user')).toHaveText(
     'reader@example.com',
   )
@@ -59,12 +67,22 @@ test('the authentication form cannot submit credentials before hydration', async
   const page = await context.newPage()
   try {
     await page.goto('/auth-docs')
-    await expect(page.locator('form')).toHaveAttribute('method', 'post')
-    await expect(page.getByLabel('Email', { exact: true })).toBeDisabled()
-    await expect(page.getByLabel('Password', { exact: true })).toBeDisabled()
-    await expect(
-      page.getByRole('button', { name: 'Login', exact: true }),
-    ).toBeDisabled()
+    if (isSpaMode) {
+      // Without JavaScript, the SPA shell cannot render credential controls.
+      await expect(page.locator('form')).toHaveCount(0)
+      await expect(page.getByLabel('Email', { exact: true })).toHaveCount(0)
+      await expect(page.getByLabel('Password', { exact: true })).toHaveCount(0)
+      await expect(
+        page.getByRole('button', { name: 'Login', exact: true }),
+      ).toHaveCount(0)
+    } else {
+      await expect(page.locator('form')).toHaveAttribute('method', 'post')
+      await expect(page.getByLabel('Email', { exact: true })).toBeDisabled()
+      await expect(page.getByLabel('Password', { exact: true })).toBeDisabled()
+      await expect(
+        page.getByRole('button', { name: 'Login', exact: true }),
+      ).toBeDisabled()
+    }
   } finally {
     await context.close()
   }
