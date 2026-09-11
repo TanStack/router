@@ -1,12 +1,12 @@
 ---
 id: authentication
-title: Authentication
-description: Explore authentication patterns in TanStack Start, including sessions, login and logout, protected routes, and role-based access.
+title: Implement Authentication in SolidJS
+description: Implement sessions, sign-in, sign-out, protected routes, and server-side authorization in a TanStack Start SolidJS app.
 ---
 
-This guide covers authentication patterns and shows how to implement your own authentication system with TanStack Start.
+Implement the authentication workflow in your SolidJS app, from sessions and sign-in to protected routes and authorization.
 
-> **📋 Before You Start:** Check our [Authentication Overview](./authentication-overview.md) for all available options including partner solutions and hosted services.
+To compare libraries and hosted services, read [Choose Authentication for SolidJS Apps](./authentication-overview.md).
 
 ## Authentication Approaches
 
