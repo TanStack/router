@@ -333,9 +333,18 @@ function getEnumerableOwnKeys(o: object) {
   return keys
 }
 
-export function isPlainObject(o: any) {
-  // Literals inherit `Object`; null-prototype objects have no constructor at all.
-  return !!o && typeof o === 'object' && (o.constructor ?? Object) === Object
+export function isPlainObject(o: unknown): boolean {
+  if (!o || typeof o !== 'object') {
+    return false
+  }
+  // Literals inherit `Object`; null-prototype records have no constructor at all.
+  if ((o.constructor ?? Object) === Object) {
+    return true
+  }
+  // An own `constructor` key (`?constructor=foo`) hides the inherited one, so
+  // only the prototype can tell such a record from a class instance.
+  const proto = Object.getPrototypeOf(o)
+  return proto === null || proto.constructor === Object
 }
 
 /**

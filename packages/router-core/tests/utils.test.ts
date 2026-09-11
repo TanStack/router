@@ -10,6 +10,7 @@ import {
   nullReplaceEqualDeep,
   replaceEqualDeep,
 } from '../src/utils'
+import { decode } from '../src/qss'
 
 describe('replaceEqualDeep', () => {
   it('should return the same object if the input objects are equal', () => {
@@ -463,6 +464,12 @@ describe('isPlainObject', () => {
     ['JSON.parse result', JSON.parse('{"a":1}')],
     ['frozen literal', Object.freeze({ a: 1 })],
     ['new Object()', new Object()],
+    ['literal with an own constructor key', { constructor: 'foo' }],
+    [
+      'null-prototype object with an own constructor key',
+      Object.assign(Object.create(null), { constructor: 'foo' }),
+    ],
+    ['decoded search with a constructor key', decode('constructor=foo&page=1')],
   ])('returns true for %s', (_name, value) => {
     expect(isPlainObject(value)).toBe(true)
   })
@@ -488,8 +495,78 @@ describe('isPlainObject', () => {
     ['Promise', Promise.resolve()],
     ['class instance', new Foo()],
     ['Object.create(class prototype)', Object.create(Foo.prototype)],
+    [
+      'class instance with an own constructor key',
+      Object.assign(new Foo(), { constructor: 'foo' }),
+    ],
   ])('returns false for %s', (_name, value) => {
     expect(isPlainObject(value)).toBe(false)
+  })
+
+  it.each([
+    ['string', 'foo'],
+    ['number', 1],
+    ['boolean', false],
+    ['null', null],
+    ['undefined', undefined],
+    ['array', ['a', 'b']],
+    ['object', { nested: 1 }],
+  ])('stays plain with a %s-valued constructor key', (_name, value) => {
+    expect(isPlainObject({ constructor: value })).toBe(true)
+    expect(
+      isPlainObject(Object.assign(Object.create(null), { constructor: value })),
+    ).toBe(true)
+  })
+
+  it.each([
+    ['literal', Object.prototype],
+    ['null-prototype', null],
+  ])(
+    'treats a constructor key as data in %s search records',
+    (_name, proto) => {
+      const makeSearch = (constructor: string) =>
+        Object.assign(Object.create(proto), {
+          constructor,
+          filters: { status: 'open' },
+        })
+      const share = proto === null ? nullReplaceEqualDeep : replaceEqualDeep
+
+      const prev = makeSearch('foo')
+      const equal = makeSearch('foo')
+      const changed = makeSearch('bar')
+
+      expect(isPlainObject(prev)).toBe(true)
+      expect(deepEqual(prev, equal)).toBe(true)
+      expect(share(prev, equal)).toBe(prev)
+
+      expect(deepEqual(prev, changed)).toBe(false)
+      const result = share(prev, changed)
+      expect(result).not.toBe(prev)
+      expect(result.constructor).toBe('bar')
+      expect(result.filters).toBe(prev.filters)
+      expect(Object.getPrototypeOf(result)).toBe(proto)
+    },
+  )
+
+  it('shares decoded search records that carry a constructor key', () => {
+    const prev = decode('constructor=foo&page=1')
+    expect(prev.constructor).toBe('foo')
+
+    expect(nullReplaceEqualDeep(prev, decode('constructor=foo&page=1'))).toBe(
+      prev,
+    )
+    expect(deepEqual(prev, decode('page=1&constructor=foo'))).toBe(true)
+
+    const changed = nullReplaceEqualDeep(prev, decode('constructor=bar&page=1'))
+    expect(changed).not.toBe(prev)
+    expect(changed.constructor).toBe('bar')
+    expect(changed.page).toBe(1)
+
+    const repeated = decode('constructor=a&constructor=b')
+    expect(repeated.constructor).toStrictEqual(['a', 'b'])
+    expect(deepEqual(repeated, decode('constructor=a&constructor=b'))).toBe(
+      true,
+    )
   })
 
   it('keeps class instances opaque for structural sharing and equality', () => {
