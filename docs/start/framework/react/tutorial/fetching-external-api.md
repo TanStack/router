@@ -3,6 +3,8 @@ id: fetching-external-api
 title: Calling an external API using TanStack Start
 ---
 
+For a course that adds routing, a database, accounts, SEO, deployment, and tests to one app, see [Learn Start](./learn-start).
+
 This guide demonstrates how to integrate external API calls into your TanStack Start application using route loaders. We will use TMDB API to fetch popular movies using TanStack Start and understand how to fetch data in a TanStack Start app.
 
 The complete code for this tutorial is available on [GitHub](https://github.com/shrutikapoor08/tanstack-start-movies).
