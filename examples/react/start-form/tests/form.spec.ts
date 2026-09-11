@@ -3,6 +3,14 @@ let browserErrors: Array<string> = []
 test.beforeEach(({ page }) => {
   browserErrors = []
   page.on('pageerror', (error) => browserErrors.push(error.message))
+  page.on('console', (message) => {
+    if (
+      message.type() === 'error' &&
+      message.text().includes('Invalid hook call')
+    ) {
+      browserErrors.push(message.text())
+    }
+  })
 })
 test.afterEach(() => {
   expect(browserErrors).toEqual([])

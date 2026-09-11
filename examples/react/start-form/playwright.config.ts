@@ -6,7 +6,7 @@ export default defineConfig({
     command:
       process.env.FORM_PRODUCTION === '1'
         ? 'PORT=3150 node .output/server/index.mjs'
-        : 'pnpm dev',
+        : 'pnpm dev --force',
     url: 'http://localhost:3150',
     timeout: 120_000,
   },
