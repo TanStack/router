@@ -118,13 +118,39 @@ function withSolidServerFunctionId(request: Request, serverFnId: string) {
   // (endpoint mount + id segment). Requests that carried the id some other
   // way (e.g. an `?id=` query) are rewritten onto that canonical shape.
   if (parseServerFunctionUrl(request.url) === serverFnId) {
-    return request
+    return toNativeRequest(request)
   }
 
   const url = new URL(request.url)
   const canonicalUrl = new URL(serverFunctionUrl(serverFnId), url.origin)
   canonicalUrl.search = url.search
   return new Request(canonicalUrl, request)
+}
+
+/**
+ * Solid's server-function handler buffers every POST body through
+ * `new Request(request, { body })`. Undici implements that constructor form
+ * with private fields, so it only accepts its own `Request` instances — a
+ * host that hands us a Request *subclass* (srvx's Node adapter lazily
+ * inherits from the native prototype, for instance) passes `instanceof`
+ * but throws inside the copy, and every POST answers 400. Rebuild such
+ * requests as native ones before Solid touches them; genuine platform
+ * requests (Vite dev, Bun, Deno, workerd, Node's own) pass through as-is.
+ */
+function toNativeRequest(request: Request): Request {
+  if (Object.getPrototypeOf(request) === Request.prototype) {
+    return request
+  }
+
+  const body =
+    request.method === 'GET' || request.method === 'HEAD' ? null : request.body
+  return new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body,
+    signal: request.signal,
+    ...(body ? { duplex: 'half' } : {}),
+  } as RequestInit)
 }
 
 function serializeTanStackRedirect(result: unknown) {

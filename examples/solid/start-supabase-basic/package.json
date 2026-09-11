@@ -12,17 +12,17 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.6",
+    "@solidjs/web": "^2.0.0-rc.7",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.48.1",
     "@tanstack/solid-router": "^2.0.0-rc.7",
     "@tanstack/solid-router-devtools": "^2.0.0-rc.5",
     "@tanstack/solid-start": "^2.0.0-rc.7",
     "redaxios": "^0.5.1",
-    "solid-js": "^2.0.0-rc.6"
+    "solid-js": "^2.0.0-rc.7"
   },
   "devDependencies": {
-    "@solidjs/vite-plugin": "^3.0.0-next.35",
+    "@solidjs/vite-plugin": "^3.0.0-next.42",
     "@tailwindcss/vite": "^4.2.2",
     "@types/node": "^22.5.4",
     "tailwindcss": "^4.2.2",
