@@ -311,6 +311,7 @@ describe('ssr HeadContent', () => {
     const ssrPreload = document.createElement('link')
     ssrPreload.setAttribute('rel', 'modulepreload')
     ssrPreload.setAttribute('href', '/main.js')
+    ssrPreload.setAttribute('fetchpriority', 'low')
 
     document.head.append(ssrStylesheet, ssrPreload)
 
@@ -397,6 +398,7 @@ describe('ssr HeadContent', () => {
     const ssrPreload = document.createElement('link')
     ssrPreload.setAttribute('rel', 'modulepreload')
     ssrPreload.setAttribute('href', '/index.js')
+    ssrPreload.setAttribute('fetchpriority', 'low')
 
     document.head.append(ssrStylesheet, ssrPreload)
 
