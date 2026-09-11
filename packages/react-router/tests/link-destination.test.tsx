@@ -24,25 +24,21 @@ describe('Link destination updates', () => {
     stringify?: (params: Record<string, unknown>) => { id: string },
   ) {
     const rootRoute = createRootRoute({
-      component: function Root() {
-        const [, rerender] = React.useState(0)
-        return (
-          <>
-            <button onClick={() => rerender((n) => n + 1)}>Rerender</button>
-            <Link
-              to="/target/$id"
-              params={params}
-              search={{}}
-              hash="details"
-              activeOptions={{ includeSearch: false }}
-              data-testid="fixed-link"
-            >
-              Target
-            </Link>
-            <Outlet />
-          </>
-        )
-      },
+      component: () => (
+        <>
+          <Link
+            to="/target/$id"
+            params={params}
+            search={{}}
+            hash="details"
+            activeOptions={{ includeSearch: false }}
+            data-testid="fixed-link"
+          >
+            Target
+          </Link>
+          <Outlet />
+        </>
+      ),
     })
     const itemsRoute = createRoute({
       getParentRoute: () => rootRoute,
@@ -167,40 +163,73 @@ describe('Link destination updates', () => {
     expect(link).toHaveAttribute('href', '/target/fixed#details')
   })
 
-  test('reads accessor-backed params on the next render', async () => {
-    let id = 'one'
-    const { router } = setupFixedLink({
-      get id() {
-        return id
+  test('reuses the location for equal inline literals and rebuilds on nested changes', async () => {
+    const rootRoute = createRootRoute({
+      component: function Root() {
+        const [page, setPage] = React.useState(1)
+        const [, rerender] = React.useState(0)
+        return (
+          <>
+            <button onClick={() => rerender((n) => n + 1)}>Rerender</button>
+            <button onClick={() => setPage((n) => n + 1)}>Next page</button>
+            <Link
+              to="/items/$source"
+              params={{ source: 'one' }}
+              search={{ filters: { page }, tags: ['a'] }}
+              data-testid="nested-link"
+            >
+              Items
+            </Link>
+            <Outlet />
+          </>
+        )
       },
     })
+    const itemsRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/items/$source',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([itemsRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    const buildLocation = vi.spyOn(router, 'buildLocation')
     render(<RouterProvider router={router} />)
 
-    const link = await screen.findByTestId('fixed-link')
-    expect(link).toHaveAttribute('href', '/target/one#details')
+    const link = await screen.findByTestId('nested-link')
+    expect(link).toHaveAttribute(
+      'href',
+      '/items/one?filters=%7B%22page%22%3A1%7D&tags=%5B%22a%22%5D',
+    )
 
-    id = 'two'
+    // Fresh literals with equal contents must not produce a new options
+    // object, otherwise the router could never reuse the built location.
+    const builds = buildLocation.mock.calls.length
+    expect(builds).toBeGreaterThan(0)
     fireEvent.click(screen.getByRole('button', { name: 'Rerender' }))
-    expect(link).toHaveAttribute('href', '/target/two#details')
-  })
-
-  test('updates when an existing params object changes before a render', async () => {
-    const params = { id: 'one' }
-    const { router } = setupFixedLink(params)
-    render(<RouterProvider router={router} />)
-
-    const link = await screen.findByTestId('fixed-link')
-    expect(link).toHaveAttribute('href', '/target/one#details')
-
-    params.id = 'two'
     fireEvent.click(screen.getByRole('button', { name: 'Rerender' }))
-    expect(link).toHaveAttribute('href', '/target/two#details')
+    expect(buildLocation).toHaveBeenCalledTimes(builds)
+    expect(link).toHaveAttribute(
+      'href',
+      '/items/one?filters=%7B%22page%22%3A1%7D&tags=%5B%22a%22%5D',
+    )
 
-    // The same object keeps its location across navigations until it changes again.
+    // A nested value that changes through React state is a new object, so
+    // the cached location for the previous contents must not be served.
+    fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+    expect(link).toHaveAttribute(
+      'href',
+      '/items/one?filters=%7B%22page%22%3A2%7D&tags=%5B%22a%22%5D',
+    )
+
     await act(() =>
       router.navigate({ to: '/items/$source', params: { source: 'two' } }),
     )
-    expect(link).toHaveAttribute('href', '/target/two#details')
+    expect(link).toHaveAttribute(
+      'href',
+      '/items/one?filters=%7B%22page%22%3A2%7D&tags=%5B%22a%22%5D',
+    )
+    buildLocation.mockRestore()
   })
 
   test('updates fixed params and hash when Link props change', async () => {
