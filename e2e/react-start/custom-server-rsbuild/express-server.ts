@@ -67,7 +67,7 @@ if (DEVELOPMENT) {
   const { default: handler } =
     (await import('./dist/server/index.js')) as FetchServerEntry
   const nodeHandler = toNodeHandler(handler.fetch) as NodeHttp1Handler
-  app.use(express.static('dist/client'))
+  app.use('/static', express.static('dist/client'))
   app.use(async (req, res, next) => {
     try {
       await nodeHandler(req, res)

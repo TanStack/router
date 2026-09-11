@@ -7,7 +7,13 @@ import type {
   TanStackStartRsbuildInputConfig,
   TanStackStartRsbuildPluginCoreOptions,
 } from '@tanstack/start-plugin-core/rsbuild'
-import type { RsbuildPlugin } from '@rsbuild/core'
+import type { RsbuildConfig, RsbuildPlugin } from '@rsbuild/core'
+
+const frameworkDefaults = {
+  resolve: {
+    conditionNames: ['solid', '...'],
+  },
+} satisfies RsbuildConfig
 
 export function tanstackStart(
   options?: TanStackStartRsbuildInputConfig,
@@ -17,15 +23,6 @@ export function tanstackStart(
     defaultEntryPaths: solidStartDefaultEntryPaths,
     providerEnvironmentName: RSBUILD_ENVIRONMENT_NAMES.server,
     ssrIsProvider: true,
-    rsbuild: {
-      environments: {
-        all: {
-          resolve: {
-            conditionNames: ['solid', '...'],
-          },
-        },
-      },
-    },
   }
 
   const basePlugin = tanStackStartRsbuild(corePluginOpts, options)
@@ -33,6 +30,13 @@ export function tanstackStart(
   return {
     name: 'tanstack-solid-start-rsbuild',
     setup(api) {
+      api.modifyRsbuildConfig({
+        order: 'pre',
+        handler(userConfig, { mergeRsbuildConfig }) {
+          return mergeRsbuildConfig(frameworkDefaults, userConfig)
+        },
+      })
+
       basePlugin.setup(api)
 
       api.modifyBundlerChain(async (chain, { CHAIN_ID, target }) => {
