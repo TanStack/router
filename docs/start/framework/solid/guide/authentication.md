@@ -88,7 +88,8 @@ export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
       return null
     }
 
-    return await getUserById(userId)
+    const user = await getUserById(userId)
+    return user ? { id: user.id, email: user.email, role: user.role } : null
   },
 )
 ```
@@ -124,46 +125,58 @@ export function useAppSession() {
 
 ### 3. Authentication Context
 
-Share authentication state across your application:
+Load the current user in your root route's `beforeLoad` so the initial server render and child routes receive the same authentication state. `useServerFn` returns a callable function, not an object with `data`, `isLoading`, or `refetch`. You can call a server function directly from `beforeLoad`.
+
+Merge this pattern into your existing root route, keeping its metadata and document shell:
 
 ```tsx
-// contexts/auth.tsx
-import { createContext, useContext } from 'solid-js'
-import { useServerFn } from '@tanstack/solid-start'
+// routes/__root.tsx
+import {
+  createRootRoute,
+  HeadContent,
+  Outlet,
+  Scripts,
+} from '@tanstack/solid-router'
+import type { JSX } from 'solid-js'
 import { getCurrentUserFn } from '../server/auth'
 
-type User = {
-  id: string
-  email: string
-  role: string
-}
+export const Route = createRootRoute({
+  headers: () => ({ 'Cache-Control': 'private, no-store' }),
+  beforeLoad: async () => ({ user: await getCurrentUserFn() }),
+  component: Outlet,
+  shellComponent: RootDocument,
+})
 
-type AuthContextType = {
-  user: User | null
-  isLoading: boolean
-  refetch: () => void
-}
-
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-export function AuthProvider(props) {
-  const { data: user, isLoading, refetch } = useServerFn(getCurrentUserFn)
-
+function RootDocument({ children }: { children: JSX.Element }) {
   return (
-    <AuthContext.Provider value={{ user, isLoading, refetch }}>
-      {props.children}
-    </AuthContext.Provider>
+    <html>
+      <head>
+        <HeadContent />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
   )
 }
+```
 
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider')
-  }
-  return context
+The root includes session-specific data, so its responses use `Cache-Control: private, no-store`. Keep that policy on child routes that render this data, and do not override it with public caching at your CDN.
+
+Read that state from a descendant component:
+
+```tsx
+// components/AuthStatus.tsx
+import { Route } from '../routes/__root'
+
+export function AuthStatus() {
+  const context = Route.useRouteContext()
+  return <span>{context().user?.email ?? 'Signed out'}</span>
 }
 ```
+
+After login or logout changes the session, call `await router.invalidate()` to reload the current user and rerun route guards. Keep private-data authorization in the server function itself, even when a route already checks the user.
 
 ### 4. Route Protection
 
@@ -490,28 +503,70 @@ describe('Authentication Flow', () => {
 
 ### Loading States
 
-```tsx
-function LoginForm() {
-  const [isLoading, setIsLoading] = createSignal(false)
-  const loginMutation = useServerFn(loginFn)
+Call the function returned by `useServerFn` with `{ data }`. Track pending state in the component, handle invalid credentials, and refresh route context after a successful login. This form uses the `loginFn` from the server-functions example above. It requires JavaScript, so the fields stay disabled until hydration; `method="post"` also prevents credentials appearing in a native GET submission.
 
-  const handleSubmit = async (data: LoginData) => {
+```tsx
+// components/LoginForm.tsx
+import { createSignal } from 'solid-js'
+import { useHydrated, useRouter } from '@tanstack/solid-router'
+import { useServerFn } from '@tanstack/solid-start'
+import { loginFn } from '../server/auth'
+
+export function LoginForm() {
+  const hydrated = useHydrated()
+  const [isLoading, setIsLoading] = createSignal(false)
+  const [error, setError] = createSignal('')
+  const login = useServerFn(loginFn)
+  const router = useRouter()
+
+  const handleSubmit = async (
+    event: SubmitEvent & { currentTarget: HTMLFormElement },
+  ) => {
+    event.preventDefault()
+    const formData = new FormData(event.currentTarget)
+    const email = formData.get('email')
+    const password = formData.get('password')
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return
+    }
+
     setIsLoading(true)
+    setError('')
     try {
-      await loginMutation.mutate(data)
-    } catch (error) {
-      // Handle error
+      const result = await login({ data: { email, password } })
+      if (result?.error) {
+        setError(result.error)
+        return
+      }
+      await router.invalidate()
+    } catch {
+      setError('Login failed. Please try again.')
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      {/* Form fields */}
-      <button disabled={isLoading()}>
-        {isLoading() ? 'Logging in...' : 'Login'}
-      </button>
+    <form method="post" onSubmit={handleSubmit}>
+      <fieldset disabled={!hydrated() || isLoading()}>
+        <label>
+          Email
+          <input name="email" type="email" autocomplete="username" required />
+        </label>
+        <label>
+          Password
+          <input
+            name="password"
+            type="password"
+            autocomplete="current-password"
+            required
+          />
+        </label>
+        <button type="submit" disabled={isLoading()}>
+          {isLoading() ? 'Logging in...' : 'Login'}
+        </button>
+      </fieldset>
+      <p role="alert">{error()}</p>
     </form>
   )
 }
