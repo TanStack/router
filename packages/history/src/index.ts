@@ -684,7 +684,7 @@ export function createMemoryHistory(
     go: (n) => {
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
-    createHref: (path) => path,
+    createHref: normalizeHref,
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
   })
