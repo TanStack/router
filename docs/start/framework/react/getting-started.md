@@ -3,6 +3,7 @@ id: getting-started
 title: Getting Started
 redirect_from:
   - /framework/react/quick-start
+description: Create a TanStack Start application with TanStack Builder, the CLI, or a working example, then run it locally and start adding routes.
 ---
 
 ## Start a new project

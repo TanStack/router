@@ -1,6 +1,7 @@
 ---
 id: migrate-from-next-js
 title: Migrate from Next.js
+description: Move a basic Next.js App Router project to TanStack Start, including dependencies, build configuration, the root route, and page routes.
 ---
 
 This guide provides a step-by-step process to migrate a project from the Next.js App Router to **TanStack Start**. We respect the powerful features of Next.js and aim to make this transition as smooth as possible.
