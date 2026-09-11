@@ -35,3 +35,20 @@ test('ignores empty slots in a middleware array', () => {
   ])
   expect(0 in middlewares).toBe(false)
 })
+
+test('does not register middleware appended while reading the input', () => {
+  const first = createMiddleware({ type: 'function' })
+  const second = createMiddleware({ type: 'function' })
+  const middlewares = [first]
+  Object.defineProperty(middlewares, 0, {
+    get() {
+      middlewares.push(second)
+      return first
+    },
+  })
+
+  expect(createServerFn().middleware(middlewares).options.middleware).toEqual([
+    first,
+  ])
+  expect(middlewares).toHaveLength(2)
+})
