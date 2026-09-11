@@ -42,6 +42,8 @@ Then run the same generation, migration, and application commands above. Stop th
 3. A duplicate slug rolls back the whole transaction, including a newly created category. The interface receives a specific duplicate-slug message.
 4. After success, Router invalidation reloads the list from PostgreSQL.
 
+`src/start.ts` enables Start's CSRF middleware for server-function requests. Browser calls from the same origin work; cross-site calls are rejected. This does not replace endpoint authorization.
+
 The server-only module owns the Prisma client and a bounded connection pool. The loader calls a server function instead of importing the database into browser code. The response only includes the selected note fields. Unexpected database failures use a generic UI error rather than exposing database details.
 
 ## Verify

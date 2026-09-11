@@ -21,10 +21,23 @@ test('loader renders persisted notes and a failed write rolls back its category'
     await page.getByLabel('Slug', { exact: true }).fill(slug)
     await page.getByLabel('Title', { exact: true }).fill(`Note ${slug}`)
     await page.getByLabel('Category', { exact: true }).fill(category)
+    const mutation = page.waitForRequest(
+      (request) => request.method() === 'POST',
+    )
     await page.getByRole('button', { name: 'Create note', exact: true }).click()
     await expect(
       page.getByRole('listitem').filter({ hasText: `Note ${slug}` }),
     ).toBeVisible()
+    const savedRequest = await mutation
+    const headers = await savedRequest.allHeaders()
+    delete headers['content-length']
+    headers.origin = 'https://untrusted.example'
+    headers['sec-fetch-site'] = 'cross-site'
+    const rejected = await request.post(savedRequest.url(), {
+      headers,
+      data: savedRequest.postData() ?? '',
+    })
+    expect(rejected.status()).toBe(403)
     const response = await request.get('/')
     expect(response.status()).toBe(200)
     const html = await response.text()

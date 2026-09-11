@@ -72,7 +72,7 @@ Route loaders can run in the browser after navigation. Call a server function fr
 
 ### Validate and write atomically
 
-The POST server function validates the slug format and bounds the title and category lengths before entering a transaction. Browser input attributes are only interface feedback; the server validates again.
+The POST server function validates the slug format and bounds the title and category lengths before entering a transaction. Browser input attributes are only interface feedback; the server validates again. The example also enables Start's CSRF middleware in `src/start.ts` for server-function requests and tests that a cross-site call is rejected. CSRF protection does not replace endpoint authorization.
 
 Inside the transaction, it upserts a category and creates a note. If the unique note slug already exists, PostgreSQL rejects the insert and Prisma rolls back both operations. A newly created category does not remain behind. The handler catches Prisma's `P2002` unique-constraint error and returns a specific message. Unexpected errors reach the generic error interface instead of exposing database details.
 
