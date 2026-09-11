@@ -508,6 +508,53 @@
       ]
     },
     {
+      "label": "Learn Start",
+      "children": [],
+      "frameworks": [
+        {
+          "label": "react",
+          "children": [
+            {
+              "label": "Course overview",
+              "to": "framework/react/tutorial/learn-start"
+            },
+            {
+              "label": "1. Setup",
+              "to": "framework/react/tutorial/learn-start/setup"
+            },
+            {
+              "label": "2. Routes",
+              "to": "framework/react/tutorial/learn-start/routes"
+            },
+            {
+              "label": "3. Data",
+              "to": "framework/react/tutorial/learn-start/data"
+            },
+            {
+              "label": "4. Forms",
+              "to": "framework/react/tutorial/learn-start/forms"
+            },
+            {
+              "label": "5. Authentication",
+              "to": "framework/react/tutorial/learn-start/authentication"
+            },
+            {
+              "label": "6. SEO",
+              "to": "framework/react/tutorial/learn-start/seo"
+            },
+            {
+              "label": "7. Deployment",
+              "to": "framework/react/tutorial/learn-start/deployment"
+            },
+            {
+              "label": "8. Tests",
+              "to": "framework/react/tutorial/learn-start/tests"
+            }
+          ]
+        }
+      ]
+    },
+    {
       "label": "Tutorials",
       "children": [],
       "frameworks": [
