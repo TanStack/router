@@ -166,7 +166,7 @@ Start does not automatically provide the Next.js image optimizer. Preserve image
 
 Replace `next/font` with self-hosted font files, a package such as Fontsource, or another chosen font delivery method. CSS `@font-face` does not require Tailwind. Preserve font weights and subsets, set an appropriate `font-display`, and check layout shift and network requests. Copy public assets and update imports only after confirming their resulting URLs.
 
-The reference uses text and the browser's default font. It does not claim to verify your image transformations or font loading.
+The migration reference uses text and the browser's default font. Use the separate [Images and Fonts guide](./guide/images-and-fonts) and its runnable example to verify responsive image output and local font loading.
 
 ## Rebuild caching and deployment behavior
 
