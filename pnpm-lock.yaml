@@ -15682,6 +15682,9 @@ importers:
       prisma:
         specifier: 7.0.0
         version: 7.0.0(@types/react@19.2.9)(@typescript/typescript6@6.0.2)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+      sharp:
+        specifier: 0.35.4
+        version: 0.35.4(@types/node@25.0.9)
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'

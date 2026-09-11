@@ -16,6 +16,7 @@ import { Route as RobotsDottxtRouteImport } from './routes/robots[.]txt'
 import { Route as SitemapDottxtRouteImport } from './routes/sitemap[.]txt'
 import { Route as DraftsSlugRouteImport } from './routes/drafts.$slug'
 import { Route as NotesSlugRouteImport } from './routes/notes.$slug'
+import { Route as OldNotesSlugRouteImport } from './routes/old-notes.$slug'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const NotesSlugRoute = NotesSlugRouteImport.update({
   path: '/notes/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OldNotesSlugRoute = OldNotesSlugRouteImport.update({
+  id: '/old-notes/$slug',
+  path: '/old-notes/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.txt': typeof SitemapDottxtRoute
   '/drafts/$slug': typeof DraftsSlugRoute
   '/notes/$slug': typeof NotesSlugRoute
+  '/old-notes/$slug': typeof OldNotesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/sitemap.txt': typeof SitemapDottxtRoute
   '/drafts/$slug': typeof DraftsSlugRoute
   '/notes/$slug': typeof NotesSlugRoute
+  '/old-notes/$slug': typeof OldNotesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/sitemap.txt': typeof SitemapDottxtRoute
   '/drafts/$slug': typeof DraftsSlugRoute
   '/notes/$slug': typeof NotesSlugRoute
+  '/old-notes/$slug': typeof OldNotesSlugRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/sitemap.txt'
     | '/drafts/$slug'
     | '/notes/$slug'
+    | '/old-notes/$slug'
     | '/api/auth/$'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/sitemap.txt'
     | '/drafts/$slug'
     | '/notes/$slug'
+    | '/old-notes/$slug'
     | '/api/auth/$'
   id:
     | '__root__'
@@ -120,6 +131,7 @@ export interface FileRouteTypes {
     | '/sitemap.txt'
     | '/drafts/$slug'
     | '/notes/$slug'
+    | '/old-notes/$slug'
     | '/api/auth/$'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   SitemapDottxtRoute: typeof SitemapDottxtRoute
   DraftsSlugRoute: typeof DraftsSlugRoute
   NotesSlugRoute: typeof NotesSlugRoute
+  OldNotesSlugRoute: typeof OldNotesSlugRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
 }
 
@@ -185,6 +198,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/old-notes/$slug': {
+      id: '/old-notes/$slug'
+      path: '/old-notes/$slug'
+      fullPath: '/old-notes/$slug'
+      preLoaderRoute: typeof OldNotesSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -203,6 +223,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDottxtRoute: SitemapDottxtRoute,
   DraftsSlugRoute: DraftsSlugRoute,
   NotesSlugRoute: NotesSlugRoute,
+  OldNotesSlugRoute: OldNotesSlugRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
 }
 export const routeTree = rootRouteImport
