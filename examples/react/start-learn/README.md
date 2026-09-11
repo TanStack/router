@@ -64,3 +64,9 @@ APP_ORIGIN=http://localhost:3147 PORT=3147 node --env-file=.env checkpoints/08-t
 A host that injects environment variables can use `pnpm start:08` from the checkout, or copy the complete `.output` directory and run `node .output/server/index.mjs`. Apply migrations from the source checkout as a release step.
 
 Local production checks do not verify hosting, DNS, TLS, mail delivery, or a remote deployment. Configure verification, recovery, rate-limit storage, and trusted proxy handling for your public service before opening registration to real users. See the [deployment chapter](https://tanstack.com/start/latest/docs/framework/react/tutorial/learn-start/deployment).
+
+## SEO example
+
+Checkpoint 06 adds structured data, a shared PNG social cover, and permanent redirects alongside canonical URLs, sitemap.txt, robots.txt, and publication checks. Checkpoints 07 and 08 keep the same behavior. `pnpm social:image` regenerates the checked-in 1200 by 630 cover from `artwork/notebook.svg` using Sharp. Both artwork formats are MIT-licensed with the repository. The asset is served statically; no image-service account is required.
+
+The SEO tests run with an HTML-limited crawler, verify the actual PNG dimensions, and check that script-like note text remains data in both server HTML and client navigation. Generic CreativeWork metadata is not a promise of search-engine rich results.

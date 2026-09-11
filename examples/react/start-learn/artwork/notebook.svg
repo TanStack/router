@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+<rect width="1200" height="630" fill="#193347"/>
+<path d="M170 145 Q370 95 600 170 Q830 95 1030 145 V505 Q815 460 600 525 Q385 460 170 505Z" fill="#f7f4ec"/>
+<path d="M600 170 V525" stroke="#b5d9db" stroke-width="8"/>
+<g stroke="#719fab" stroke-width="9" fill="none">
+<path d="M240 230 Q370 200 530 248 M240 300 Q370 270 530 318 M240 370 Q370 340 490 379"/>
+<path d="M670 248 Q830 200 960 230 M670 318 Q830 270 960 300 M670 388 Q830 340 920 366"/>
+</g></svg>

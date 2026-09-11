@@ -26,6 +26,8 @@ export const Route = createFileRoute('/notes/$slug')({
       .replace(/\s+/g, ' ')
       .trim()
       .slice(0, 160)
+    const image = new URL('/images/field-notes-v1.png', loaderData.canonical)
+      .href
     return {
       meta: [
         { title },
@@ -34,6 +36,31 @@ export const Route = createFileRoute('/notes/$slug')({
         { property: 'og:description', content: description },
         { property: 'og:url', content: loaderData.canonical },
         { property: 'og:type', content: 'website' },
+        { property: 'og:image', content: image },
+        { property: 'og:image:type', content: 'image/png' },
+        { property: 'og:image:width', content: '1200' },
+        { property: 'og:image:height', content: '630' },
+        {
+          property: 'og:image:alt',
+          content: 'An open notebook on a blue background',
+        },
+        { name: 'twitter:card', content: 'summary_large_image' },
+        { name: 'twitter:title', content: title },
+        { name: 'twitter:description', content: description },
+        { name: 'twitter:image', content: image },
+        {
+          name: 'twitter:image:alt',
+          content: 'An open notebook on a blue background',
+        },
+        {
+          'script:ld+json': {
+            '@context': 'https://schema.org',
+            '@type': 'CreativeWork',
+            name: loaderData.title,
+            description,
+            url: loaderData.canonical,
+          },
+        },
       ],
       links: [{ rel: 'canonical', href: loaderData.canonical }],
     }

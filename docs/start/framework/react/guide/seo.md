@@ -7,6 +7,8 @@ description: Configure SEO in TanStack Start with page metadata, canonical URLs,
 > [!NOTE]
 > Looking to optimize for AI assistants and LLMs? See the [Generative Engine Optimization (GEO) guide](./geo).
 
+For a runnable content app, follow [SEO for Published Notes](../tutorial/learn-start/seo). Its checkpoint verifies server HTML, canonical URLs, structured data, social images, redirects, a sitemap, and private-draft exclusions.
+
 ## What is SEO, really?
 
 SEO (Search Engine Optimization) is often misunderstood as simply "showing up on Google" or a checkbox that a library can magically provide. In reality, SEO is a broad discipline focused on delivering valuable content that people need and making it easy for them to find.
@@ -129,29 +131,33 @@ export const Route = createFileRoute('/posts/$postId')({
     const post = await fetchPost(params.postId)
     return { post }
   },
-  head: ({ loaderData }) => ({
-    meta: [{ title: loaderData.post.title }],
-    scripts: [
-      {
-        type: 'application/ld+json',
-        children: JSON.stringify({
-          '@context': 'https://schema.org',
-          '@type': 'Article',
-          headline: loaderData.post.title,
-          description: loaderData.post.excerpt,
-          image: loaderData.post.coverImage,
-          author: {
-            '@type': 'Person',
-            name: loaderData.post.author.name,
+  head: ({ loaderData }) => {
+    if (!loaderData) {
+      return {}
+    }
+    const { post } = loaderData
+    return {
+      meta: [
+        { title: post.title },
+        {
+          'script:ld+json': {
+            '@context': 'https://schema.org',
+            '@type': 'Article',
+            headline: post.title,
+            description: post.excerpt,
+            image: post.coverImage,
+            author: { '@type': 'Person', name: post.author.name },
+            datePublished: post.publishedAt,
           },
-          datePublished: loaderData.post.publishedAt,
-        }),
-      },
-    ],
-  }),
+        },
+      ],
+    }
+  },
   component: PostPage,
 })
 ```
+
+Use the `script:ld+json` meta entry to let Router serialize and escape the object. A raw `JSON.stringify` string passed to a script's `children` does not escape HTML script-closing sequences in user content. Choose a schema type that matches the visible page and only include facts you actually publish. Valid structured data does not guarantee a rich result; see [Google's structured data guidelines](https://developers.google.com/search/docs/appearance/structured-data/sd-policies).
 
 ## Server-Side Rendering
 

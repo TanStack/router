@@ -25,11 +25,20 @@ The public note server function still selects only published rows. It now return
 - A title containing the note title and site name.
 - A description from the first 160 characters of the note body after whitespace normalization.
 - An absolute canonical URL.
-- Open Graph title, description, URL, and type.
+- Open Graph and Twitter titles, descriptions, and a reachable social image, plus the Open Graph URL.
+- A CreativeWork JSON-LD object describing the note.
 
-The description length is this example's editorial choice, not a search-engine requirement. A larger publishing system can give authors a separate description field. This checkpoint has no preview image, so it does not invent an Open Graph image URL.
+The description length is this example's editorial choice, not a search-engine requirement. A larger publishing system can give authors a separate description field.
 
 `HeadContent` in the root document renders these tags into the server response. They are available before hydration. React escapes title and description text, including quotes and angle brackets; do not build raw HTML strings from note content.
+
+## Add structured data and a social image
+
+The note route uses Router's `script:ld+json` meta entry with the note's actual title, description, and canonical URL. Router serializes and escapes that object, including a note containing `</script>`. Do not replace it with an unescaped HTML string. These short notes use [CreativeWork](https://schema.org/CreativeWork); the example does not invent an author or publication date and does not promise a Google rich result for that type.
+
+`public/images/field-notes-v1.png` is a shared notebook cover, not an image generated from each note's text. Open Graph and Twitter tags use its absolute URL, and Open Graph includes its 1200 by 630 pixel dimensions and alt text. The checked-in PNG needs no image server, credentials, or runtime transformation.
+
+To regenerate it after changing the original SVG, run `pnpm social:image` from the course directory. The build-time Sharp dependency writes the same cover into checkpoints 06, 07, and 08. The SVG and PNG are included under the repository's MIT license. Change the versioned filename and metadata together if you replace a cached cover. See [Images and Fonts](../../guide/images-and-fonts) for responsive page images, loading priority, and transformation services.
 
 ## Choose the public origin explicitly
 
@@ -47,6 +56,10 @@ Google supports plain-text sitemaps for page URLs. A single sitemap is limited t
 
 The sitemap excludes account pages, private drafts, and search parameters. It uses `no-store` so a response does not keep advertising a note after unpublication. The public detail query independently checks publication state and returns a real HTTP 404 for a draft, an unpublished note, or an unknown slug.
 
+## Redirect moved URLs without exposing drafts
+
+`/old-notes/your-slug` demonstrates an old URL for the same published note. It checks publication state, then returns HTTP 308 to `/notes/your-slug`. Unknown slugs and private drafts return 404. The old paths stay out of the sitemap, and the destination supplies the canonical URL. These redirects use `no-store` so the example does not retain a redirect after a publication change.
+
 ## Keep access control in the database query
 
 Private draft pages and the dashboard retain their session and ownership checks, `noindex`, and `private, no-store` responses. Robots directives do not protect private content. The auth checks from the previous chapter still run for every protected data operation.
@@ -63,6 +76,6 @@ Stop the development server and run:
 COURSE_CHECKPOINT=06-seo pnpm test:e2e
 ```
 
-The test disables JavaScript, creates one published note and one draft, checks metadata and real links, verifies sitemap exclusions, and checks unpublication. It also checks that the server HTML does not contain the configured database URL or auth secret.
+The test uses a crawler user agent with JavaScript disabled, checks every sitemap URL against its canonical, reads the PNG dimensions, and verifies redirects, metadata, structured data, draft exclusions, and unpublication. A normal browser also checks client navigation and script-like note text without executing it. The server HTML must not contain the database URL or auth secret.
 
 Next: [Build and deploy the application](./deployment).

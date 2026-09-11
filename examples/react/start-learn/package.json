@@ -28,7 +28,8 @@
     "db:migrate:08": "prisma migrate deploy --config checkpoints/08-tests/prisma.config.ts",
     "db:seed:08": "prisma db execute --file checkpoints/08-tests/prisma/seed.sql --config checkpoints/08-tests/prisma.config.ts",
     "build:08": "vite build checkpoints/08-tests && tsc -p checkpoints/08-tests",
-    "start:08": "node checkpoints/08-tests/.output/server/index.mjs"
+    "start:08": "node checkpoints/08-tests/.output/server/index.mjs",
+    "social:image": "node scripts/social-image.mjs"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",
@@ -51,6 +52,7 @@
     "vite": "^8.0.14",
     "@playwright/test": "^1.61.0",
     "prisma": "7.0.0",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "sharp": "0.35.4"
   }
 }
