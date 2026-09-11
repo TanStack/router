@@ -51,7 +51,7 @@ test('public URLs, server metadata, search, redirects, and missing pages survive
 
 test('sessions and protected mutations survive reload but cannot run after sign-out', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto('/saved')
   await expect(page).toHaveURL(/\/login$/)
   await page.getByLabel('Email', { exact: true }).fill('reader@example.com')
@@ -73,6 +73,22 @@ test('sessions and protected mutations survive reload but cannot run after sign-
   await expect(page.getByTestId('saved-state')).toHaveText(
     'Keeping your URLs is saved',
   )
+  // Keep the authenticated cookie jar while replaying a cross-site request.
+  const crossSiteHeaders = await savedRequest.allHeaders()
+  delete crossSiteHeaders.cookie
+  delete crossSiteHeaders['content-length']
+  crossSiteHeaders.origin = 'https://untrusted.example'
+  crossSiteHeaders['sec-fetch-site'] = 'cross-site'
+  const crossSite = await page.request.post(savedRequest.url(), {
+    headers: crossSiteHeaders,
+    data: savedRequest.postData() ?? '',
+  })
+  if (testInfo.project.name === 'start') {
+    expect(crossSite.status()).toBe(403)
+  } else {
+    expect(crossSite.status()).toBeGreaterThanOrEqual(400)
+  }
+
   const response = await page.reload()
   expect(response?.headers()['cache-control']).toMatch(
     process.env.MIGRATION_PRODUCTION ? /no-store/ : /no-store|no-cache/,
