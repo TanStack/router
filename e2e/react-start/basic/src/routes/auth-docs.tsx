@@ -11,6 +11,7 @@ import {
 
 export const Route = createFileRoute('/auth-docs')({
   beforeLoad: async () => ({ user: await getCurrentUserFn() }),
+  headers: () => ({ 'Cache-Control': 'private, no-store' }),
   component: AuthDocs,
 })
 

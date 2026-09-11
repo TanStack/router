@@ -30,7 +30,8 @@ test('authentication docs pattern handles login, logout, route context, and serv
     'Private account data',
   )
 
-  await page.reload()
+  const response = await page.reload()
+  expect(response?.headers()['cache-control']).toBe('private, no-store')
   await expect(page.getByTestId('auth-docs-user')).toHaveText(
     'reader@example.com',
   )

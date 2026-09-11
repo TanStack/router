@@ -140,6 +140,7 @@ import type { ReactNode } from 'react'
 import { getCurrentUserFn } from '../server/auth'
 
 export const Route = createRootRoute({
+  headers: () => ({ 'Cache-Control': 'private, no-store' }),
   beforeLoad: async () => ({ user: await getCurrentUserFn() }),
   component: Outlet,
   shellComponent: RootDocument,
@@ -159,6 +160,8 @@ function RootDocument({ children }: { children: ReactNode }) {
   )
 }
 ```
+
+The root includes session-specific data, so its responses use `Cache-Control: private, no-store`. Keep that policy on child routes that render this data, and do not override it with public caching at your CDN.
 
 Read that state from a descendant component:
 
