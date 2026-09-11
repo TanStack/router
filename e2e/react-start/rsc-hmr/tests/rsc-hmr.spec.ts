@@ -96,9 +96,34 @@ test.beforeEach(async () => {
   await routeFileEditor.restoreFiles()
 })
 
-test.afterEach(async () => {
+test.afterEach(async ({ page }) => {
   await routeFileEditor.capturePromise
-  await routeFileEditor.restoreFiles()
+  const restoredKeys = await routeFileEditor.restoreFiles()
+  for (const key of restoredKeys) {
+    switch (key) {
+      case 'coLocated':
+        await hmrExpect(page.getByTestId('co-located-marker')).toHaveText(
+          MARKERS.coLocated,
+        )
+        break
+      case 'cssModuleRoute':
+        await hmrExpect(page.getByTestId('css-module-marker')).toHaveText(
+          MARKERS.cssModule,
+        )
+        break
+      case 'cssModuleStyles':
+        await hmrExpect(page.getByTestId('css-module-marker')).toHaveCSS(
+          'color',
+          CSS_BASELINE_COLOR,
+        )
+        break
+      case 'separateFile':
+        await hmrExpect(page.getByTestId('separate-file-marker')).toHaveText(
+          MARKERS.separateFile,
+        )
+        break
+    }
+  }
 })
 
 test.describe('RSC route component HMR with a co-located server function', () => {
