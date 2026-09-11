@@ -1299,40 +1299,6 @@ describe('buildLocation - state', () => {
     expect(location.state).not.toBe(emptyState)
   })
 
-  test('explicit state structurally shares unchanged nested values', async () => {
-    const rootRoute = new BaseRootRoute({})
-    const postsRoute = new BaseRoute({
-      getParentRoute: () => rootRoute,
-      path: '/posts',
-    })
-    const history = createMemoryHistory({ initialEntries: ['/posts'] })
-    history.replace('/posts', {
-      user: { id: 1, name: 'Test' },
-      count: 1,
-    })
-    const router = createTestRouter({
-      routeTree: rootRoute.addChildren([postsRoute]),
-      history,
-    })
-    await router.load()
-
-    const currentState = router.state.location.state as any
-    const location = router.buildLocation({
-      to: '/posts',
-      state: {
-        user: { id: 1, name: 'Test' },
-        count: 2,
-      } as any,
-    })
-
-    expect(location.state).toEqual({
-      user: { id: 1, name: 'Test' },
-      count: 2,
-    })
-    expect((location.state as any).user).toBe(currentState.user)
-    expect(location.state).not.toBe(currentState)
-  })
-
   test('state can contain complex nested objects', async () => {
     const rootRoute = new BaseRootRoute({})
     const postsRoute = new BaseRoute({
@@ -1361,6 +1327,160 @@ describe('buildLocation - state', () => {
     })
 
     expect(location.state).toEqual(complexState)
+  })
+})
+
+describe('buildLocation - no structural sharing with the current location', () => {
+  function createPostsRouter(
+    history = createMemoryHistory({ initialEntries: ['/posts'] }),
+  ) {
+    const rootRoute = new BaseRootRoute({})
+    const postsRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/posts',
+    })
+    return createTestRouter({
+      routeTree: rootRoute.addChildren([postsRoute]),
+      history,
+    })
+  }
+
+  test('explicit state is returned as-is and equal nested values are shared only after navigation', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/posts'] })
+    history.replace('/posts', {
+      user: { id: 1, name: 'Test' },
+      count: 1,
+    })
+    const router = createPostsRouter(history)
+    await router.load()
+
+    const previousState = router.state.location.state as any
+    const nextState = {
+      user: { id: 1, name: 'Test' },
+      count: 2,
+    }
+    const location = router.buildLocation({
+      to: '/posts',
+      state: nextState as any,
+    })
+
+    // The built location carries the caller's object untouched.
+    expect(location.state).toBe(nextState)
+    expect((location.state as any).user).not.toBe(previousState.user)
+
+    await router.navigate({ to: '/posts', state: nextState as any })
+
+    // parseLocation still stabilizes the committed state against the
+    // previous one, which is what location selectors rely on.
+    const committedState = router.state.location.state as any
+    expect(committedState).toMatchObject({
+      user: { id: 1, name: 'Test' },
+      count: 2,
+    })
+    expect(committedState).not.toBe(previousState)
+    expect(committedState.user).toBe(previousState.user)
+    expect(nextState.user).not.toBe(previousState.user)
+  })
+
+  test('explicit search is returned as-is and equal nested values are shared only after navigation', async () => {
+    const router = createPostsRouter()
+    await router.load()
+
+    await router.navigate({
+      to: '/posts',
+      search: { page: 1, filter: { tags: ['a'] } } as any,
+    })
+    const previousSearch = router.state.location.search as any
+    expect(previousSearch).toEqual({ page: 1, filter: { tags: ['a'] } })
+
+    const nextSearch = { page: 2, filter: { tags: ['a'] } }
+    const location = router.buildLocation({
+      to: '/posts',
+      search: nextSearch as any,
+    })
+
+    expect(location.search).toBe(nextSearch)
+    expect((location.search as any).filter).not.toBe(previousSearch.filter)
+
+    await router.navigate({ to: '/posts', search: nextSearch as any })
+
+    const committedSearch = router.state.location.search as any
+    expect(committedSearch).toEqual({ page: 2, filter: { tags: ['a'] } })
+    expect(committedSearch).not.toBe(previousSearch)
+    expect(committedSearch.filter).toBe(previousSearch.filter)
+    expect(nextSearch.filter).not.toBe(previousSearch.filter)
+  })
+
+  test('navigate does not mutate a caller-supplied state object', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/posts'] })
+    const router = createPostsRouter(history)
+    await router.load()
+
+    const state = { user: { id: 1 } }
+    await router.navigate({
+      to: '/posts',
+      state: state as any,
+      hashScrollIntoView: true,
+    })
+
+    expect(state).toEqual({ user: { id: 1 } })
+    expect(Object.keys(state)).toEqual(['user'])
+    const committedState = router.state.location.state as any
+    expect(committedState).not.toBe(state)
+    expect(committedState.user).toBe(state.user)
+    expect(committedState.__hashScrollIntoViewOptions).toBe(true)
+    expect(committedState.__TSR_key).toBeTypeOf('string')
+    expect(committedState.key).toBe(committedState.__TSR_key)
+
+    // A frozen state (for example produced by an immutable store) commits
+    // without any write hitting it: in strict mode such a write would throw.
+    const frozenState = Object.freeze({ user: Object.freeze({ id: 2 }) })
+    await router.navigate({ to: '/posts', state: frozenState as any })
+
+    expect(router.state.location.state).toMatchObject({ user: { id: 2 } })
+    expect(router.state.location.state).not.toBe(frozenState)
+    expect(history.length).toBe(3)
+  })
+
+  test('an equal search in a different key order serializes in the requested order', async () => {
+    const router = createPostsRouter(
+      createMemoryHistory({ initialEntries: ['/posts?a=1&b=2'] }),
+    )
+    await router.load()
+
+    expect(router.state.location.href).toBe('/posts?a=1&b=2')
+
+    const location = router.buildLocation({
+      to: '/posts',
+      search: { b: 2, a: 1 } as any,
+    })
+
+    expect(location.search).toEqual({ a: 1, b: 2 })
+    expect(Object.keys(location.search)).toEqual(['b', 'a'])
+    expect(location.searchStr).toBe('?b=2&a=1')
+    expect(location.href).toBe('/posts?b=2&a=1')
+  })
+
+  test('navigating to an equal search in a different key order pushes a new history entry', async () => {
+    const history = createMemoryHistory({ initialEntries: ['/posts?a=1&b=2'] })
+    const router = createPostsRouter(history)
+    await router.load()
+
+    expect(history.length).toBe(1)
+
+    // Same contents and order: nothing to commit.
+    await router.navigate({ to: '/posts', search: { a: 1, b: 2 } as any })
+
+    expect(history.length).toBe(1)
+    expect(router.state.location.href).toBe('/posts?a=1&b=2')
+
+    // Same contents, different order: the URL changes, so history grows.
+    await router.navigate({ to: '/posts', search: { b: 2, a: 1 } as any })
+
+    expect(history.length).toBe(2)
+    expect(history.location.href).toBe('/posts?b=2&a=1')
+    expect(router.state.location.href).toBe('/posts?b=2&a=1')
+    expect(router.state.location.search).toEqual({ a: 1, b: 2 })
   })
 })
 
