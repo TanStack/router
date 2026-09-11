@@ -1,5 +1,4 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import * as pathUtils from '../src/path'
 import {
   compileDecodeCharMap,
   exactPathTest,
@@ -25,7 +24,7 @@ import type { SegmentKind } from '../src/new-process-route-tree'
 afterEach(() => vi.restoreAllMocks())
 
 describe.each([false, true])(
-  'shared pathname interpolation (server: %s)',
+  'pathname interpolation (server: %s)',
   (server) => {
     it.each([
       { path: '/', params: {}, expected: '/' },
@@ -88,7 +87,7 @@ describe.each([false, true])(
         expected: '/123/123/',
       },
     ])(
-      'interpolates and caches $path with $params',
+      'interpolates $path with $params',
       ({ path, params, expected, normalized }) => {
         const interpolate = createPathInterpolator({ isServer: server })
         const options = { path, params, server }
@@ -102,37 +101,7 @@ describe.each([false, true])(
       },
     )
 
-    it('shares results across equivalent params without retaining unrelated params', () => {
-      const interpolate = createPathInterpolator({
-        isServer: server,
-        pathParamsAllowedCharacters: ['@'],
-      })
-      const format = vi.spyOn(pathUtils, 'interpolatePath')
-      const options = {
-        path: '/users/$id',
-        params: { id: '@one', unrelated: 'first' },
-        server,
-      }
-      expect(interpolate(options)).toBe('/users/@one')
-      expect(format).toHaveBeenCalledOnce()
-
-      expect(
-        interpolate({
-          ...options,
-          params: { id: '@one', unrelated: 'second' },
-        }),
-      ).toBe('/users/@one')
-      expect(format).toHaveBeenCalledOnce()
-
-      const anotherRouter = createPathInterpolator({
-        isServer: server,
-        pathParamsAllowedCharacters: ['@'],
-      })
-      expect(anotherRouter(options)).toBe('/users/@one')
-      expect(format).toHaveBeenCalledTimes(2)
-    })
-
-    it('normalizes non-string fallbacks without memoizing object coercion', () => {
+    it('formats non-string values on every call', () => {
       const interpolate = createPathInterpolator({ isServer: server })
       const toString = vi.fn(() => 'one two')
       const options = {
@@ -168,7 +137,7 @@ describe.each([false, true])(
       expect(allowAt(options)).toBe('/users/@%2B')
     })
 
-    it('keeps each router template cache independent of other encodings', () => {
+    it('keeps each router encoding independent across templates', () => {
       const allowAt = createPathInterpolator({
         isServer: server,
         pathParamsAllowedCharacters: ['@'],
@@ -192,7 +161,7 @@ describe.each([false, true])(
       }
     })
 
-    it('does not confuse parameter boundaries in shared cache keys', () => {
+    it('does not confuse parameter boundaries', () => {
       const interpolate = createPathInterpolator({ isServer: server })
       const options = { path: '/$first/$second', server }
       const first = { first: 'a:b', second: 'c' }
@@ -212,7 +181,7 @@ describe.each([false, true])(
       expect(interpolate({ path: '/users/$id', params })).toBe('/users/123')
     })
 
-    it('tracks optional params that were absent when the template was first used', () => {
+    it('formats optional params from their current values', () => {
       const interpolate = createPathInterpolator({ isServer: server })
       const path = '/posts/{-$category}/$id'
       const inputs = [
@@ -238,31 +207,11 @@ describe.each([false, true])(
       }
     })
 
-    it('caches paths with omitted optional params', () => {
-      const interpolate = createPathInterpolator({
-        isServer: server,
-        pathParamsAllowedCharacters: ['@'],
-      })
-      const format = vi.spyOn(pathUtils, 'interpolatePath')
-      const options = {
-        path: '/{-$lang}/foo/$id',
-        params: { id: '@one' },
-        server,
-      }
-
-      expect(interpolate(options)).toBe('/foo/@one')
-      expect(interpolate({ ...options, params: { id: '@one' } })).toBe(
-        '/foo/@one',
-      )
-      expect(format).toHaveBeenCalledOnce()
-    })
-
     it('uses the canonical splat value instead of its legacy alias', () => {
       const interpolate = createPathInterpolator({
         isServer: server,
         pathParamsAllowedCharacters: ['@'],
       })
-      const format = vi.spyOn(pathUtils, 'interpolatePath')
       const options = {
         path: '/files/$',
         params: { _splat: 'docs/@guide', '*': 'ignored' },
@@ -270,14 +219,12 @@ describe.each([false, true])(
       }
 
       expect(interpolate(options)).toBe('/files/docs/@guide')
-      format.mockClear()
       expect(
         interpolate({
           ...options,
           params: { _splat: 'docs/@guide', '*': 'changed' },
         }),
       ).toBe('/files/docs/@guide')
-      expect(format).not.toHaveBeenCalled()
     })
 
     it('collects used params for splats but not missing optionals', () => {

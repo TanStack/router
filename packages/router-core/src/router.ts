@@ -14,6 +14,7 @@ import {
   functionalUpdate,
   getUrlScheme,
   hasKeys,
+  hasOwn,
   isDangerousProtocol,
   last,
   nullReplaceEqualDeep,
@@ -25,7 +26,6 @@ import {
   findFlatMatch,
   findRouteMatch,
   findSingleMatch,
-  getParamNames,
   parseSegments,
   processRouteMasks,
   processRouteTree,
@@ -58,7 +58,7 @@ import {
 } from './rewrite'
 import { createRouterStores } from './stores'
 import type { SieveCache } from './sieve-cache'
-import type { InterpolationPlan } from './path'
+import type { RouteInterpolation } from './path'
 import type {
   ProcessRouteTreeResult,
   ProcessedTree,
@@ -1027,7 +1027,6 @@ type LightweightRouteMatchCacheEntry = [
 type RouteTreeCaches<TRouteTree extends AnyRoute> =
   ProcessRouteTreeResult<TRouteTree> & {
     resolvePathCache: SieveCache<string, string>
-    unmatchedPathCache: SieveCache<string, InterpolationPlan>
   }
 
 export type CreateRouterFn = <
@@ -1169,11 +1168,13 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: SieveCache<string, string>
-  private unmatchedPathCache!: SieveCache<string, InterpolationPlan>
   private lightweightCache!: WeakMap<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
   >
+  // Locations built without reading the current location, keyed by the stable
+  // options object a Link owns. Links pass a new object when their values change.
+  private staticLocations!: WeakMap<object, ParsedLocation>
   isServer!: boolean
   readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1249,6 +1250,7 @@ export class RouterCore<
       ...prevOptions,
       ...newOptions,
     }
+    this.staticLocations = new WeakMap()
 
     this.isServer =
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
@@ -1382,13 +1384,13 @@ export class RouterCore<
     return {
       ...result,
       resolvePathCache: createSieveCache(1000),
-      unmatchedPathCache: createSieveCache<string, InterpolationPlan>(32),
     }
   }
 
   setRoutes(caches: RouteTreeCaches<TRouteTree>) {
     Object.assign(this, caches)
     this.lightweightCache = new WeakMap()
+    this.staticLocations = new WeakMap()
 
     const notFoundRoute = this.options.notFoundRoute
 
@@ -1876,63 +1878,6 @@ export class RouterCore<
     return result
   }
 
-  private interpolatePath(
-    path: string,
-    params: Record<string, unknown>,
-    route?: AnyRoute,
-  ): string {
-    let plan = route ? route._pathCache : this.unmatchedPathCache.get(path)
-    if (!plan || plan[1 /* path */] !== path) {
-      const segments =
-        route?._interpolation ?? parseSegments(false, { fullPath: path }, 0)
-      plan = [createSieveCache<string | undefined, string>(128), path, segments]
-      if (route) {
-        route._pathCache = plan
-      } else {
-        this.unmatchedPathCache.set(path, plan)
-      }
-    }
-    const paths = plan[0 /* paths */]
-    const keys = getParamNames(plan[2 /* segments */])
-    // Single-param templates use the value itself as the Map key. Compound keys
-    // concatenate `<length>:<value>` tokens; undefined becomes
-    // `undefined:undefined`, whose nonnumeric prefix cannot match a string token.
-    let key: string | undefined = ''
-    for (const name of keys) {
-      const value = params[name]
-      if (typeof value !== 'string' && value !== undefined) {
-        return normalizeProtocolRelative(
-          decodePath(
-            interpolatePath(
-              path,
-              plan[2 /* segments */],
-              params,
-              this.pathParamsDecoder,
-            ),
-          ),
-        )
-      }
-      key = keys.length === 1 ? value : key! + value?.length + ':' + value
-    }
-    const cached = paths.get(key)
-    if (cached) {
-      return cached
-    }
-    // Cache canonical pathnames, not the encoded interpolation output.
-    const interpolated = normalizeProtocolRelative(
-      decodePath(
-        interpolatePath(
-          path,
-          plan[2 /* segments */],
-          params,
-          this.pathParamsDecoder,
-        ),
-      ),
-    )
-    paths.set(key, interpolated)
-    return interpolated
-  }
-
   /**
    * Build the next ParsedLocation from navigation options without committing.
    * Resolves `to`/`from`, params/search/hash/state, applies search validation
@@ -1941,6 +1886,15 @@ export class RouterCore<
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
   buildLocation: BuildLocationFn = (opts) => {
+    const cached = this.staticLocations.get(opts)
+    if (cached) {
+      return cached
+    }
+
+    // Set by `current()` whenever a build reads the current location. A
+    // location built without it depends only on `opts` and the route tree.
+    let usedCurrent = false
+
     const build = (
       dest: BuildNextOptions & {
         unmaskOnReload?: boolean
@@ -1965,7 +1919,17 @@ export class RouterCore<
 
       // Use lightweight matching - only computes what buildLocation needs
       // (fullPath, search, params) without creating full match objects
-      const lightweightResult = this.matchRoutesLightweight(currentLocation)
+      const lightweight = this.matchRoutesLightweight(currentLocation)
+
+      // Value-affecting reads of the current location go through these two.
+      const current = () => {
+        usedCurrent = true
+        return currentLocation
+      }
+      const currentMatch = () => {
+        usedCurrent = true
+        return lightweight
+      }
 
       // check that from path exists in the current route tree
       // do this check only on navigations during test or development
@@ -1975,16 +1939,14 @@ export class RouterCore<
         dest._isNavigate
       ) {
         const [allFromMatches] = this.getMatchedRoutes(dest.from)
+        const [matchedRoutes, fullPath] = currentMatch()
 
-        const matchedFrom = findLast(
-          lightweightResult[0 /* matchedRoutes */],
-          (d) => {
-            return comparePaths(d.fullPath, dest.from!)
-          },
-        )
+        const matchedFrom = findLast(matchedRoutes, (d) => {
+          return comparePaths(d.fullPath, dest.from!)
+        })
 
         const matchedCurrent = findLast(allFromMatches, (d) => {
-          return comparePaths(d.fullPath, lightweightResult[1 /* fullPath */])
+          return comparePaths(d.fullPath, fullPath)
         })
 
         // for from to be invalid it shouldn't just be unmatched to currentLocation
@@ -1994,23 +1956,16 @@ export class RouterCore<
         }
       }
 
-      const defaultedFromPath =
-        dest.unsafeRelative === 'path'
-          ? currentLocation.pathname
-          : (dest.from ?? lightweightResult[1 /* fullPath */])
-
-      // From search should always use the current location
-      const fromSearch = lightweightResult[2 /* search */]
-      // Same with params. It can't hurt to provide as many as possible
-      const fromParams = lightweightResult[3 /* params */]
-
+      const to = dest.to ? `${dest.to}` : '.'
       const nextTo = this.resolvePathWithBase(
-        defaultedFromPath,
-        dest.to ? `${dest.to}` : '.',
+        // Absolute destinations resolve without a base.
+        to[0] === '/'
+          ? ''
+          : dest.unsafeRelative === 'path'
+            ? current().pathname
+            : (dest.from ?? currentMatch()[1 /* fullPath */]),
+        to,
       )
-
-      // Resolve the next params
-      let nextParams = resolveNextParams(dest.params, fromParams)
 
       const destRoute = this.routesByPath[
         trimPathRight(nextTo) as keyof typeof this.routesByPath
@@ -2036,34 +1991,62 @@ export class RouterCore<
         }
       }
 
-      // If there are any params, we need to stringify them
-      if (destRoutes.length && hasKeys(nextParams)) {
-        for (const route of destRoutes) {
-          const fn =
-            route.options.params?.stringify ?? route.options.stringifyParams
-          if (fn) {
-            if (nextParams === fromParams) {
-              nextParams = Object.assign(createNull(), nextParams)
-            }
-            try {
-              Object.assign(nextParams, fn(nextParams))
-            } catch {
-              // Ignore errors here. When a paired parseParams is defined,
-              // extractStrictParams will re-throw during route matching,
-              // storing the error on the match and allowing the route's
-              // errorComponent to render. If no parseParams is defined,
-              // the stringify error is silently dropped.
-            }
+      // One parsed template serves both trailing-slash variants.
+      const interpolation = nextTo.includes('$')
+        ? (destRoute?._interpolation ??
+          parseSegments(false, { fullPath: nextTo }, 0))
+        : undefined
+
+      let nextParams: Record<string, unknown> | undefined
+      for (const route of destRoutes) {
+        const fn =
+          route.options.params?.stringify ?? route.options.stringifyParams
+        if (fn) {
+          // Stringifiers receive the merged params, so they always see inherited ones.
+          const fromParams = currentMatch()[3 /* params */]
+          nextParams ??= resolveNextParams(dest.params, fromParams)
+          if (!hasKeys(nextParams)) {
+            break
+          }
+          if (nextParams === fromParams) {
+            nextParams = Object.assign(
+              createNull() as Record<string, unknown>,
+              nextParams,
+            )
+          }
+          try {
+            Object.assign(nextParams, fn(nextParams))
+          } catch {
+            // Ignore errors here. When a paired parseParams is defined,
+            // extractStrictParams will re-throw during route matching,
+            // storing the error on the match and allowing the route's
+            // errorComponent to render. If no parseParams is defined,
+            // the stringify error is silently dropped.
           }
         }
       }
+      nextParams ??= resolveNextParams(
+        dest.params,
+        needsInheritedParams(dest.params, interpolation)
+          ? currentMatch()[3 /* params */]
+          : EMPTY_RECORD,
+      )
 
       const nextPathname = opts.leaveParams
         ? // Keep path params uninterpolated for matchRoute/template matching.
           nextTo
-        : nextTo.includes('$')
-          ? this.interpolatePath(nextTo, nextParams, destRoute)
-          : normalizeProtocolRelative(decodePath(nextTo))
+        : normalizeProtocolRelative(
+            decodePath(
+              interpolation
+                ? interpolatePath(
+                    nextTo,
+                    interpolation,
+                    nextParams,
+                    this.pathParamsDecoder,
+                  )
+                : nextTo,
+            ),
+          )
 
       if (
         process.env.NODE_ENV !== 'production' &&
@@ -2084,36 +2067,45 @@ export class RouterCore<
       }
 
       // Resolve the next search
-      let nextSearch = fromSearch
-      if (opts._includeValidateSearch && this.options.search?.strict) {
-        const validatedSearch = {}
-        destRoutes.forEach((route) => {
-          if (route.options.validateSearch) {
-            try {
-              Object.assign(
-                validatedSearch,
-                validateSearch(route.options.validateSearch, {
-                  ...validatedSearch,
-                  ...nextSearch,
-                }),
-              )
-            } catch {
-              // ignore errors here because they are already handled in matchRoutes
-            }
-          }
-        })
-        nextSearch = validatedSearch
-      }
-
-      nextSearch = applySearchMiddleware(
-        nextSearch,
-        dest,
+      const middlewares = getSearchMiddlewares(
         destRoutes,
         opts._includeValidateSearch,
       )
+      const fromSearch = () => {
+        let search = currentMatch()[2 /* search */]
+        if (opts._includeValidateSearch && this.options.search?.strict) {
+          const validatedSearch = {}
+          destRoutes.forEach((route) => {
+            if (route.options.validateSearch) {
+              try {
+                Object.assign(
+                  validatedSearch,
+                  validateSearch(route.options.validateSearch, {
+                    ...validatedSearch,
+                    ...search,
+                  }),
+                )
+              } catch {
+                // ignore errors here because they are already handled in matchRoutes
+              }
+            }
+          })
+          search = validatedSearch
+        }
+        return search
+      }
+      // A literal search never reads the current one.
+      let nextSearch: Record<string, unknown> = middlewares.length
+        ? applySearchMiddleware(middlewares, fromSearch(), dest)
+        : dest.search === true
+          ? fromSearch()
+          : typeof dest.search === 'function'
+            ? dest.search(fromSearch())
+            : (dest.search as Record<string, unknown>) || EMPTY_RECORD
 
-      // Replace the equal deep
-      nextSearch = nullReplaceEqualDeep(fromSearch, nextSearch)
+      // Structural sharing only affects identity, so it does not make the
+      // location depend on the current one.
+      nextSearch = nullReplaceEqualDeep(lightweight[2 /* search */], nextSearch)
 
       // Stringify the next search
       const searchStr = this.options.stringifySearch(nextSearch)
@@ -2121,24 +2113,24 @@ export class RouterCore<
       // Resolve the next hash
       const hash =
         dest.hash === true
-          ? currentLocation.hash
-          : dest.hash
-            ? functionalUpdate(dest.hash, currentLocation.hash)
-            : undefined
+          ? current().hash
+          : typeof dest.hash === 'function'
+            ? dest.hash(current().hash)
+            : dest.hash || undefined
 
       // Resolve the next hash string
       const hashStr = hash ? `#${hash}` : ''
 
       // Resolve the next state
-      let nextState =
-        dest.state === true
-          ? currentLocation.state
-          : dest.state
-            ? functionalUpdate(dest.state, currentLocation.state)
-            : {}
-
-      // Replace the equal deep
+      let nextState: HistoryState = EMPTY_RECORD
       if (dest.state) {
+        nextState =
+          dest.state === true
+            ? current().state
+            : typeof dest.state === 'function'
+              ? dest.state(current().state)
+              : dest.state
+        // Identity-only, as above.
         nextState = replaceEqualDeep(currentLocation.state, nextState)
       }
 
@@ -2214,6 +2206,11 @@ export class RouterCore<
           params: nextParams,
         })
       }
+    }
+
+    // Masked locations stay out: `opts.mask` is rebuilt from the current location.
+    if (!usedCurrent && opts._fromLocation && !next.maskedLocation) {
+      this.staticLocations.set(opts, next)
     }
 
     return next
@@ -2302,8 +2299,11 @@ export class RouterCore<
         }
       }
 
-      nextHistory.state.__hashScrollIntoViewOptions =
-        hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
+      nextHistory.state = {
+        ...nextHistory.state,
+        __hashScrollIntoViewOptions:
+          hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true,
+      }
 
       this.shouldViewTransition = viewTransition
 
@@ -2878,6 +2878,30 @@ function resolveNextParams(
   return Object.assign(next, base, spec)
 }
 
+// Inherited params are read by param updaters and by template keys the
+// destination leaves open. `interpolation` is undefined without template keys.
+function needsInheritedParams(
+  spec: unknown,
+  interpolation: RouteInterpolation | undefined,
+) {
+  if (typeof spec === 'function') {
+    return true
+  }
+  if (!interpolation || spec === false || spec === null) {
+    return false
+  }
+  return (
+    spec === undefined ||
+    spec === true ||
+    interpolation.some(
+      (part) =>
+        typeof part !== 'string' && !hasOwn.call(spec, part[1 /* key */]),
+    )
+  )
+}
+
+const EMPTY_RECORD: Record<string, never> = Object.freeze({})
+
 // Keep this separate from recursive execution to limit JIT compiler memory.
 function getSearchMiddlewares(
   destRoutes: ReadonlyArray<AnyRoute>,
@@ -2943,12 +2967,10 @@ function getSearchMiddlewares(
 }
 
 function applySearchMiddleware(
+  middlewares: Array<SearchMiddleware<any>>,
   search: any,
   dest: BuildNextOptions,
-  destRoutes: ReadonlyArray<AnyRoute>,
-  includeValidateSearch: boolean | undefined,
 ) {
-  const middlewares = getSearchMiddlewares(destRoutes, includeValidateSearch)
   const applyNext = (
     index: number,
     currentSearch: any,
