@@ -568,7 +568,7 @@ Pass variables from the server down to the client:
 
 **Example**:
 
-You may use your prefered backend framework/libray, but here it is using Tanstack Start server functions:
+You may use your preferred backend framework/library, but here it is using Tanstack Start server functions:
 
 ```tsx
 const getRuntimeVar = createServerFn({ method: 'GET' }).handler(() => {
