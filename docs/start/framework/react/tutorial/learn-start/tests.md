@@ -37,6 +37,14 @@ The duplicate-slug check submits a new category with an existing slug, then quer
 
 The SEO test disables JavaScript. The deployment test starts the generated Node entry point. Development-only browser success does not prove either server HTML or production behavior.
 
+## Run validation unit tests
+
+```sh
+pnpm test:unit
+```
+
+These Vitest tests import the final checkpoint's `noteInput` schema without starting the server or database. They check trimming, invalid slugs, blank fields, and title length. The browser suite still submits invalid input through the real server function, so it can catch a handler that stops using the validator. See the [testing guide](../../guide/testing) to add these tools to another Start application.
+
 ## Keep test data separate
 
 Tests use unique record names and remove their own accounts, notes, and categories in `finally` blocks. Earlier anonymous checkpoints use `DATABASE_URL`; account checkpoints use `AUTH_DATABASE_URL`. Keep those databases separate so an earlier anonymous app cannot expose private data created later.

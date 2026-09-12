@@ -46,12 +46,15 @@ Stop the development server before running Playwright:
 
 ```sh
 pnpm exec playwright install chromium
+pnpm test:unit
 COURSE_CHECKPOINT=08-tests pnpm test:e2e
 pnpm build:08
 COURSE_PRODUCTION=1 COURSE_CHECKPOINT=08-tests pnpm test:e2e
 ```
 
 `COURSE_CHECKPOINT` starts only the selected app and runs its matching tests. Without it, tests select `01-setup`. Generate the selected database checkpoint's client before testing. Production tests require its current build.
+
+Vitest checks the final checkpoint's input schema without loading request context or connecting to PostgreSQL. The [testing guide](https://tanstack.com/start/latest/docs/framework/react/guide/testing) explains the boundary between those unit tests and the running application.
 
 The final suite checks account isolation, session renewal and expiry, protected mutations, validation and rollback, server HTML, canonical URLs, sitemap exclusions, readiness, public-asset secrets, and a copied production artifact. The artifact test uses port 3148 and is skipped in development mode. Use disposable test databases; these tests write and clean up their own fixtures.
 
