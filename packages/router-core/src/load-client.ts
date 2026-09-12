@@ -2240,6 +2240,8 @@ export async function hydrate(router: AnyRouter): Promise<void> {
     router.updateLatestLocation()
     location = router.latestLocation
     router.stores.location.set(location)
+    // Deferred boundaries hydrate against this, not the live location.
+    router._hydrationLocation = location
     candidates = router.matchRoutes(location, {
       _controller: controller,
     })

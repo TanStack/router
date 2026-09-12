@@ -1149,6 +1149,12 @@ export class RouterCore<
   origin!: string
   latestLocation!: ParsedLocation<FullSearchSchema<TRouteTree>>
   _pendingLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
+  /**
+   * The location the server rendered with, captured by `hydrate`. Boundaries
+   * that hydrate after a navigation started still render against it, because
+   * `stores.location` already holds the destination while the loader runs.
+   */
+  _hydrationLocation?: ParsedLocation<FullSearchSchema<TRouteTree>>
   basepath!: string
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
