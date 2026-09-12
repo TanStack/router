@@ -208,12 +208,6 @@ export function compileDecodeCharMap(
     encoded.replace(regex, (match) => charMap.get(match) ?? match)
 }
 
-export type InterpolationPlan = [
-  paths: SieveCache<string | undefined, string>,
-  path: string,
-  segments: RouteInterpolation,
-]
-
 export type InterpolationSegment = string | DynamicPathSegment
 
 export type RouteInterpolation = Array<InterpolationSegment> & {

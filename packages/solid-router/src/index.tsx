@@ -15,8 +15,6 @@ export {
   stringifySearchWith,
   functionalUpdate,
   replaceEqualDeep,
-  isPlainObject,
-  isPlainArray,
   deepEqual,
   createControlledPromise,
   retainSearchParams,

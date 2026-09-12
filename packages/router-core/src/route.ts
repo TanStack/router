@@ -4,7 +4,7 @@ import { notFound } from './not-found'
 import { redirect } from './redirect'
 import { rootRouteId } from './root'
 import type { LazyRoute } from './fileRoute'
-import type { InterpolationPlan, RouteInterpolation } from './path'
+import type { RouteInterpolation } from './path'
 import type { NotFoundError } from './not-found'
 import type { RedirectFnRoute } from './redirect'
 import type { NavigateOptions, ParsePathParams } from './link'
@@ -729,8 +729,6 @@ export interface Route<
   _lazy?: Promise<void> | true
   /** @internal */
   _branch?: ReadonlyArray<AnyRoute>
-  /** @internal */
-  _pathCache?: InterpolationPlan
   /** @internal */
   _interpolation?: RouteInterpolation
   rank: number
@@ -1722,8 +1720,6 @@ export class BaseRoute<
   _lazy?: Promise<void> | true
   /** @internal */
   _branch?: ReadonlyArray<AnyRoute>
-  /** @internal */
-  _pathCache?: InterpolationPlan
   /** @internal */
   _interpolation?: RouteInterpolation
   constructor(
