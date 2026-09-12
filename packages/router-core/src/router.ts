@@ -2635,8 +2635,10 @@ export class RouterCore<
 
     const destinationPath = trimPathRight(next.pathname)
     const fuzzy = opts?.fuzzy
+    const currentPath = baseLocation.pathname
+    const trimmedCurrentPath = trimPathRight(currentPath)
     const pathMatch = findRouteMatch(
-      trimPathRight(baseLocation.pathname),
+      trimmedCurrentPath,
       this.processedTree,
       true,
     )
@@ -2663,10 +2665,9 @@ export class RouterCore<
     const [, end, caseSensitive, wildcardSuffix] = pathMatch?.routeData[
       destinationMatch.index
     ] ?? [undefined, 1, true]
-    const currentPath = baseLocation.pathname
     if (
       (opts?.caseSensitive && !caseSensitive) ||
-      (!fuzzy && end < trimPathRight(currentPath).length) ||
+      (!fuzzy && end < trimmedCurrentPath.length) ||
       (fuzzy && wildcardSuffix && end < currentPath.length)
     ) {
       return false
