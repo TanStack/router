@@ -25,15 +25,5 @@
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11",
     "rimraf": "catalog:"
-  },
-  "nx": {
-    "targets": {
-      "test:e2e": {
-        "outputs": [
-          "...",
-          "{projectRoot}/count.txt"
-        ]
-      }
-    }
   }
 }

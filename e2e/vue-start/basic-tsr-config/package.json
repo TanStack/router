@@ -26,15 +26,5 @@
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "vite": "^8.0.14",
     "rimraf": "catalog:"
-  },
-  "nx": {
-    "targets": {
-      "test:e2e": {
-        "outputs": [
-          "...",
-          "{projectRoot}/count.txt"
-        ]
-      }
-    }
   }
 }
