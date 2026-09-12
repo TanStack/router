@@ -2,7 +2,7 @@
 
 import { Suspense, useDeferredValue } from 'react'
 import ReactDOM from 'react-dom'
-import { RscCssLinks } from './RscCssLinks'
+import { shouldManageRscCss } from './shouldManageRscCss'
 
 import {
   RSC_PROXY_GET_TREE,
@@ -36,7 +36,13 @@ function RscNodeRenderInner({
 
   return (
     <>
-      <RscCssLinks hrefs={cssHrefs} />
+      {/* Browser-only: SSR already preinitializes styles, and a managed link
+          would make streamed content require JavaScript to reveal it. */}
+      {typeof document !== 'undefined' &&
+        shouldManageRscCss() &&
+        Array.from(cssHrefs ?? [], (href) => (
+          <link key={href} rel="stylesheet" href={href} precedence="high" />
+        ))}
       {tree as React.ReactNode}
     </>
   )
