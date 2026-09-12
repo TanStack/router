@@ -1,6 +1,5 @@
-import { TSS_SERVER_FUNCTION } from '../constants'
+import { TSS_CLIENT_RPC, TSS_SERVER_FUNCTION } from '../constants'
 import { getStartOptions } from '../getStartOptions'
-import { registerClientRpcFactory } from './clientRpcRegistry'
 import { serverFnFetcher } from './serverFnFetcher'
 import type { ClientFnMeta } from '../constants'
 
@@ -21,6 +20,6 @@ export function createClientRpc(functionId: string) {
 }
 
 // Lets revived server function references reuse this module whenever compiled
-// stubs have already bundled it, instead of the serialization adapter
-// importing it (and the serializer) into every app.
-registerClientRpcFactory(createClientRpc)
+// stubs have bundled it, without the serialization adapter importing it (and
+// the serializer) into every app.
+;(globalThis as any)[TSS_CLIENT_RPC] = createClientRpc
