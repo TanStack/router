@@ -32,6 +32,12 @@
         "dependsOn": [
           "^build"
         ]
+      },
+      "build": {
+        "inputs": [
+          "...",
+          "{workspaceRoot}/examples/react/router-monorepo-simple/.gitignore"
+        ]
       }
     }
   }

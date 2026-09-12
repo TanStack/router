@@ -36,5 +36,16 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/.tmp",
+          "{projectRoot}/src/prisma-generated"
+        ]
+      }
+    }
   }
 }

@@ -62,7 +62,7 @@
     "test:e2e": {
       "cache": true,
       "dependsOn": ["^build", "test:e2e--*"],
-      "inputs": ["default", "^production", "dependentTaskOutputs"],
+      "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
       "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"],
       "parallelism": false
     },
@@ -117,6 +117,10 @@
         "^production",
         "{workspaceRoot}/benchmarks/ssr/bench-utils.ts",
         "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+        "{workspaceRoot}/benchmarks/ssr/scenarios/*/*.ts",
+        "{workspaceRoot}/benchmarks/memory/*.ts",
+        "{workspaceRoot}/benchmarks/memory/server/*.ts",
+        "{workspaceRoot}/benchmarks/memory/server/scenarios/*/*.ts",
         "dependentTaskOutputs"
       ]
     },

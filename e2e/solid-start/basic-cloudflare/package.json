@@ -30,5 +30,15 @@
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11",
     "wrangler": "^4.74.0"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/.wrangler/deploy"
+        ]
+      }
+    }
   }
 }
