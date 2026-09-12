@@ -200,9 +200,26 @@ function useLinkPropsFor<
   // ==========================================================================
 
   // The link's own ref: the element for the viewport observer and the key
-  // of a pending intent timer. A forwarded ref is attached alongside it.
+  // of a pending intent timer. A forwarded ref is filled alongside it by one
+  // callback, memoized on the forwarded ref so React re-attaches it (and
+  // notifies the consumer) only when their ref changes, not on every render.
+  // A cleanup returned by a consumer callback is passed through to React.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const innerRef = React.useRef<Element>(null)
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const mergedRef = React.useCallback(
+    (element: Element | null) => {
+      innerRef.current = element
+      if (typeof forwardedRef === 'function') {
+        return forwardedRef(element)
+      }
+      if (forwardedRef) {
+        forwardedRef.current = element
+      }
+      return undefined
+    },
+    [forwardedRef],
+  )
 
   const {
     activeOptions,
@@ -375,16 +392,7 @@ function useLinkPropsFor<
   }, [router, _options, preload, enqueuePreload, innerRef])
 
   const props = collectElementProps(options, host)
-  // A forwarded ref is filled alongside the link's own ref.
-  props.ref = forwardedRef
-    ? (element: Element | null) => {
-        innerRef.current = element
-        if (typeof forwardedRef === 'function') {
-          return forwardedRef(element)
-        }
-        forwardedRef.current = element
-      }
-    : innerRef
+  props.ref = forwardedRef ? mergedRef : innerRef
   // External links get no router behavior: element props pass through as given.
   if (externalLink) {
     props.href = externalLink
@@ -829,8 +837,9 @@ export const Link: LinkComponent<'a'> = React.memo(
 // A Link's output depends only on its props, the router context and the
 // location store, which React tracks for memoized components, so a parent
 // re-render with equal props can skip it. Router options are compared by
-// value: destinations are usually inline object literals. Element props are
-// compared by reference, since they may hold arbitrary (even cyclic) data.
+// value: destinations are usually inline object literals. Element props
+// (`children`, handlers, `style`, ...) are compared by reference only, since
+// they may hold arbitrary (even cyclic) data.
 function areLinkPropsEqual(
   prev: Record<string, unknown>,
   next: Record<string, unknown>,
@@ -838,12 +847,12 @@ function areLinkPropsEqual(
   let extraKeys = 0
   for (const key in next) {
     extraKeys++
+    if (prev[key] === next[key]) {
+      continue
+    }
     if (
-      prev[key] !== next[key] &&
-      !(
-        ROUTER_OPTION_KEYS.has(key) &&
-        deepEqual(prev[key], next[key], { ignoreUndefined: false })
-      )
+      !ROUTER_OPTION_KEYS.has(key) ||
+      !deepEqual(prev[key], next[key], { ignoreUndefined: false })
     ) {
       return false
     }
