@@ -5,6 +5,26 @@ import { pluginVueJsx } from '@rsbuild/plugin-vue-jsx'
 import { tanstackStart } from '@tanstack/vue-start/plugin/rsbuild'
 import { isPrerender } from './tests/utils/isPrerender'
 
+const prerenderConfiguration = {
+  enabled: true,
+  filter: (page: { path: string }) =>
+    !(process.platform === 'win32' && page.path.includes('|')) &&
+    ![
+      '/this-route-does-not-exist',
+      '/redirect',
+      '/i-do-not-exist',
+      '/posts/i-do-not-exist',
+      '/not-found',
+      '/specialChars/search',
+      '/specialChars/hash',
+      '/specialChars/malformed',
+      '/search-params', // search-param routes have dynamic content based on query params
+      '/transition',
+      '/users',
+    ].some((p) => page.path === p || page.path.startsWith(`${p}/`)),
+  maxRedirects: 100,
+}
+
 const outDir = process.env.E2E_DIST_DIR ?? 'dist'
 
 export default defineConfig({
@@ -14,7 +34,15 @@ export default defineConfig({
     }),
     pluginVue(),
     pluginVueJsx(),
-    tanstackStart(),
+    tanstackStart({
+      prerender: isPrerender ? prerenderConfiguration : undefined,
+      sitemap: isPrerender
+        ? {
+            enabled: true,
+            host: 'https://example.com',
+          }
+        : undefined,
+    }),
   ],
   source: {
     define: {

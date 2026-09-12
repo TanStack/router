@@ -27,17 +27,20 @@ export function getStartModeConfig() {
       ? {
           enabled: true,
           filter: (page: { path: string }) =>
+            // Windows cannot represent this malformed-path fixture on disk.
+            !(process.platform === 'win32' && page.path.includes('|')) &&
             ![
               '/this-route-does-not-exist',
               '/redirect',
               '/i-do-not-exist',
+              '/posts/i-do-not-exist',
               '/not-found',
               '/primitive-beforeload-error',
               '/specialChars/search',
               '/specialChars/hash',
               '/specialChars/malformed',
               '/users',
-            ].some((p) => page.path.includes(p)),
+            ].some((p) => page.path === p || page.path.startsWith(`${p}/`)),
           maxRedirects: 100,
         }
       : undefined,
@@ -46,6 +49,12 @@ export function getStartModeConfig() {
           client: {
             output: rsbuildClientOutput,
           },
+        }
+      : undefined,
+    sitemap: isPrerender
+      ? {
+          enabled: true,
+          host: 'https://example.com',
         }
       : undefined,
   }
