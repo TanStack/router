@@ -197,6 +197,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           >
             Client Only
           </Link>{' '}
+          <Link to="/loader-serialization" preload={false}>
+            Loader serialization
+          </Link>{' '}
           <Link
             to="/raw-stream"
             activeProps={{
