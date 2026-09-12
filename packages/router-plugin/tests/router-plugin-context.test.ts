@@ -90,6 +90,84 @@ function countProgramHotDeclarations(code: string) {
 }
 
 describe('router plugin context', () => {
+  describe.each(['webpack', 'rspack', 'vite'] as const)(
+    '%s browser warnings',
+    (bundler) => {
+      it.each([
+        { mode: 'production', nodeEnv: undefined },
+        { mode: 'production', nodeEnv: 'development' },
+        { mode: 'production', nodeEnv: 'production' },
+        { mode: 'development', nodeEnv: undefined },
+        { mode: 'development', nodeEnv: 'development' },
+        { mode: 'development', nodeEnv: 'production' },
+        ...(bundler === 'vite'
+          ? []
+          : ([
+              { mode: undefined, nodeEnv: undefined },
+              { mode: undefined, nodeEnv: 'development' },
+              { mode: undefined, nodeEnv: 'production' },
+              { mode: 'none', nodeEnv: undefined },
+              { mode: 'none', nodeEnv: 'development' },
+              { mode: 'none', nodeEnv: 'production' },
+            ] as const)),
+      ] as const)(
+        'uses $mode mode with NODE_ENV=$nodeEnv',
+        async ({ mode, nodeEnv }) => {
+          vi.stubEnv('NODE_ENV', nodeEnv)
+          const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+          try {
+            const routeFile = normalizePath(
+              path.join(process.cwd(), 'src/routes/exported.tsx'),
+            )
+            const context = createRouterPluginContext()
+            context.routesByFile.set(routeFile, { routeId: '/exported' })
+            const plugin = getReferencePlugin(
+              createRouterCodeSplitterPlugin(
+                { target: 'react', codeSplittingOptions: { addHmr: false } },
+                context,
+              ),
+            )
+
+            if (bundler === 'vite') {
+              await configurePlugin(
+                plugin,
+                mode === 'production' ? 'build' : 'serve',
+              )
+            } else {
+              plugin[bundler]!({ options: { mode } } as never)
+            }
+
+            const code = getCode(
+              await transformReferenceRoute(
+                plugin,
+                `import { createFileRoute } from '@tanstack/react-router'
+export function ExportedComponent() { return null }
+export const Route = createFileRoute('/exported')({
+  component: ExportedComponent,
+  errorComponent: () => null,
+})`,
+                routeFile,
+              ),
+            )
+
+            expect(code).toContain('export function ExportedComponent')
+            expect(code).toContain('?tsr-split=errorComponent')
+            expect(code?.includes('console.warn')).toBe(
+              mode === 'development' || mode === 'none',
+            )
+            expect(warn).toHaveBeenCalledExactlyOnceWith(
+              expect.stringContaining('These exports'),
+            )
+          } finally {
+            warn.mockRestore()
+            vi.unstubAllEnvs()
+          }
+        },
+      )
+    },
+  )
+
   it.each([
     { mode: 'production', production: true },
     { mode: 'development with addHmr disabled', production: false },
