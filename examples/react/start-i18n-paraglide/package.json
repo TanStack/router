@@ -27,5 +27,16 @@
     "@tailwindcss/vite": "^4.2.2",
     "tailwindcss": "^4.2.2",
     "@inlang/paraglide-js": "^2.4.0"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "outputs": [
+          "...",
+          "{projectRoot}/src/paraglide",
+          "{projectRoot}/project.inlang/cache"
+        ]
+      }
+    }
   }
 }

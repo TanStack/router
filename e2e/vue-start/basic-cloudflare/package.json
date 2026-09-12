@@ -31,5 +31,15 @@
     "@vitejs/plugin-vue": "^6.0.5",
     "@vitejs/plugin-vue-jsx": "^5.1.5",
     "wrangler": "^4.74.0"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/.wrangler/deploy"
+        ]
+      }
+    }
   }
 }
