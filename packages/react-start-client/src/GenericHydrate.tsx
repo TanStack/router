@@ -80,7 +80,9 @@ function useHydrationGate(props: InternalHydrateProps) {
   const latestRef = useLatest({
     prefetch: props.prefetch,
     preload: props.p,
+    hydrateStrategy,
   })
+  const hydrateStrategyKey = hydrateStrategy._s?._i ?? hydrateStrategy
   const gateRef = React.useRef<HydrationGateRecord | undefined>(undefined)
   const markerElementRef = React.useRef<HTMLDivElement | null>(null)
   const shouldPreserveServerHTMLRef = React.useRef<boolean | undefined>(
@@ -226,6 +228,7 @@ function useHydrationGate(props: InternalHydrateProps) {
   }, [hydrateStrategy, latestRef])
 
   useLayoutEffect(() => {
+    const hydrateStrategy = latestRef.current.hydrateStrategy
     const gate = gateRef.current!
     if (
       !shouldDeferInitialHydrationRef.current ||
@@ -310,7 +313,7 @@ function useHydrationGate(props: InternalHydrateProps) {
     }
 
     return cleanup
-  }, [hydrateStrategy, latestRef])
+  }, [hydrateStrategyKey, hydrateStrategy._t, latestRef])
 
   return {
     gate: gateRef.current,
