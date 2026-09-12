@@ -28,7 +28,12 @@ export {
   removeModuleLevelBindings,
   retainModuleLevelDeclarations,
   stripUnreferencedTopLevelExpressionStatements,
+  summarizeExpression,
   unwrapExpression,
   unwrapExportedDeclarations,
 } from './compiler-helpers'
-export type { ExtractedModuleInfo, ModuleInfoBinding } from './compiler-helpers'
+export type {
+  ExpressionSummary,
+  ExtractedModuleInfo,
+  ModuleInfoBinding,
+} from './compiler-helpers'
