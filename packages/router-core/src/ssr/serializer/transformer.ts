@@ -1,5 +1,5 @@
-import { createPlugin } from 'seroval'
 import { GLOBAL_TSR } from '../constants'
+import { createPlugin } from './createPlugin'
 import type { Plugin, PluginInfo, SerovalNode } from 'seroval'
 import type {
   RegisteredConfigType,

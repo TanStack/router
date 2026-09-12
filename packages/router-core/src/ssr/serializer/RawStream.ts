@@ -1,4 +1,5 @@
-import { createPlugin, createStream } from 'seroval'
+import { createStream } from 'seroval'
+import { createPlugin } from './createPlugin'
 import type { PluginData, PluginInfo, SerovalNode } from 'seroval'
 
 /**
