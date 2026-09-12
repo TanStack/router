@@ -194,50 +194,26 @@ function useLinkPropsFor<
   const innerRef = useForwardedRef(forwardedRef)
 
   const {
-    // custom props
-    activeProps,
-    inactiveProps,
     activeOptions,
     to: toOption,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    preloadIntentProximity: _preloadIntentProximity,
     hashScrollIntoView,
     replace,
     startTransition,
     resetScroll,
     viewTransition,
-    // element props
-    children,
-    target,
+    ignoreBlocker,
     disabled,
-    style,
-    className,
+    target,
     onClick,
     onBlur,
     onFocus,
     onMouseEnter,
     onMouseLeave,
     onTouchStart,
-    ignoreBlocker,
-    // prevent these from being returned
-    params: _params,
-    search: _search,
-    hash: _hash,
-    state: _state,
-    mask: _mask,
-    reloadDocument: _reloadDocument,
-    unsafeRelative: _unsafeRelative,
-    from: _from,
-    _fromLocation,
-    _asChild: _asChildOption,
-    type,
-    ...propsSafeToSpread
-  } = options as typeof options & { _asChild?: unknown }
+  } = options
   const to = toOption as string | undefined
-  if (host === undefined && type !== undefined) {
-    ;(propsSafeToSpread as Record<string, unknown>).type = type
-  }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
@@ -392,27 +368,13 @@ function useLinkPropsFor<
     }
   }, [doPreload, preload])
 
+  const props = collectElementProps(options, host)
+  props.ref = innerRef
+  // External links get no router behavior: element props pass through as given.
   if (externalLink) {
-    return {
-      ...propsSafeToSpread,
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      href: externalLink,
-      ...(children && { children }),
-      ...(target && { target }),
-      ...(disabled && host !== 'a' && { disabled }),
-      ...(style && { style }),
-      ...(className && { className }),
-      ...(onClick && { onClick }),
-      ...(onBlur && { onBlur }),
-      ...(onFocus && { onFocus }),
-      ...(onMouseEnter && { onMouseEnter }),
-      ...(onMouseLeave && { onMouseLeave }),
-      ...(onTouchStart && { onTouchStart }),
-    }
+    props.href = externalLink
+    return props
   }
-
-  const [resolvedStateProps, resolvedClassName, resolvedStyle] =
-    resolveStateProps(isActive, activeProps, inactiveProps, className, style)
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
@@ -456,36 +418,30 @@ function useLinkPropsFor<
     }
   }
 
-  return {
-    ...propsSafeToSpread,
-    ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-    onClick: composeHandlers(onClick, handleClick),
-    onBlur: composeHandlers(onBlur, handleLeave),
-    onFocus: composeHandlers(onFocus, enqueuePreload),
-    onMouseEnter: composeHandlers(onMouseEnter, enqueuePreload),
-    onMouseLeave: composeHandlers(onMouseLeave, handleLeave),
-    onTouchStart: composeHandlers(onTouchStart, handleTouchStart),
-    // State props override element props, `ref` and handlers, but never the
-    // routing attributes below.
-    ...resolvedStateProps,
-    href,
-    ...(host !== 'a' && { disabled: !!linkDisabled }),
-    target,
-    ...(resolvedStyle && { style: resolvedStyle }),
-    ...(resolvedClassName && { className: resolvedClassName }),
-    ...(linkDisabled && STATIC_DISABLED_PROPS),
-    ...(isActive && STATIC_ACTIVE_PROPS),
-  }
+  props.onClick = composeHandlers(onClick, handleClick)
+  props.onBlur = composeHandlers(onBlur, handleLeave)
+  props.onFocus = composeHandlers(onFocus, enqueuePreload)
+  props.onMouseEnter = composeHandlers(onMouseEnter, enqueuePreload)
+  props.onMouseLeave = composeHandlers(onMouseLeave, handleLeave)
+  props.onTouchStart = composeHandlers(onTouchStart, handleTouchStart)
+  return applyLinkState(props, options, isActive, href, linkDisabled, host)
 }
 
 const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
-// Options consumed by the router and never forwarded to the element.
-const LINK_OPTION_KEYS = /* @__PURE__ */ new Set([
-  'activeProps',
-  'inactiveProps',
-  'activeOptions',
+// Options the router consumes; they never reach the element. Every other
+// option is an element prop and passes through.
+const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'to',
+  'params',
+  'search',
+  'hash',
+  'state',
+  'mask',
+  'from',
+  'unsafeRelative',
+  '_fromLocation',
+  'reloadDocument',
   'preload',
   'preloadDelay',
   'preloadIntentProximity',
@@ -494,101 +450,100 @@ const LINK_OPTION_KEYS = /* @__PURE__ */ new Set([
   'startTransition',
   'resetScroll',
   'viewTransition',
-  'children',
-  'target',
-  'disabled',
-  'style',
-  'className',
-  'onClick',
-  'onBlur',
-  'onFocus',
-  'onMouseEnter',
-  'onMouseLeave',
-  'onTouchStart',
   'ignoreBlocker',
-  'params',
-  'search',
-  'hash',
-  'state',
-  'mask',
-  'reloadDocument',
-  'unsafeRelative',
-  'from',
-  '_fromLocation',
+  'activeProps',
+  'inactiveProps',
+  'activeOptions',
   '_asChild',
 ])
-const STATIC_DISABLED_PROPS = { role: 'link', 'aria-disabled': true } as const
-const STATIC_ACTIVE_PROPS = {
-  'data-status': 'active',
-  'aria-current': 'page',
-} as const
 
-// Only one state contributes props; merge its class and style with the base ones.
-function resolveStateProps(
+// Copies the element props. An object rest would test every key against the
+// whole exclusion list; the key set is much cheaper. `Link` hosts never render
+// `type`, and an anchor has no `disabled` attribute.
+function collectElementProps(
+  options: object,
+  host: 'a' | React.ElementType | undefined,
+): Record<string, unknown> {
+  const props: Record<string, unknown> = {}
+  for (const key in options) {
+    if (
+      ROUTER_OPTION_KEYS.has(key) ||
+      (key === 'type' && host !== undefined) ||
+      (key === 'disabled' && host === 'a')
+    ) {
+      continue
+    }
+    props[key] = (options as Record<string, unknown>)[key]
+  }
+  return props
+}
+
+// Finishes a router-controlled link: the selected state props, then the
+// routing attributes. This is the one place that defines precedence: state
+// props override element props, `ref` and handlers; `href`, `disabled`,
+// `target` and the merged class and style always win.
+function applyLinkState(
+  props: Record<string, unknown>,
+  options: {
+    activeProps?: unknown
+    inactiveProps?: unknown
+    className?: string
+    style?: React.CSSProperties
+    target?: string
+  },
   isActive: boolean | undefined,
-  activeProps: unknown,
-  inactiveProps: unknown,
-  className: string | undefined,
-  style: React.CSSProperties | undefined,
-): [
-  stateProps: React.HTMLAttributes<HTMLAnchorElement>,
-  className: string | undefined,
-  style: React.CSSProperties | undefined,
-] {
+  href: string | undefined,
+  linkDisabled: boolean,
+  host: 'a' | React.ElementType | undefined,
+): React.ComponentPropsWithRef<'a'> {
+  const { activeProps, inactiveProps, className, style, target } = options
   const stateProps: React.HTMLAttributes<HTMLAnchorElement> =
     functionalUpdate((isActive ? activeProps : inactiveProps) as any, {}) ??
     (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
-  const stateClassName = stateProps.className
+  Object.assign(props, stateProps)
+  props.href = href
+  if (host !== 'a') {
+    props.disabled = linkDisabled
+  }
+  props.target = target
+  // Merge class and style with the state's. Assign only when one side gave a
+  // value, so links without them do not carry `undefined` keys.
   const stateStyle = stateProps.style
-  return [
-    stateProps,
-    className
+  if (style !== undefined || stateStyle !== undefined) {
+    props.style =
+      style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle
+  }
+  const stateClassName = stateProps.className
+  if (className !== undefined || stateClassName !== undefined) {
+    props.className = className
       ? stateClassName
         ? `${className} ${stateClassName}`
         : className
-      : stateClassName,
-    style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle,
-  ]
+      : stateClassName
+  }
+  if (linkDisabled) {
+    props.role = 'link'
+    props['aria-disabled'] = true
+  }
+  if (isActive) {
+    props['data-status'] = 'active'
+    props['aria-current'] = 'page'
+  }
+  return props
 }
 
-// Server render of a Link: static props only. This reads the few options it
-// needs directly and splits the element props with a key set. V8 checks every
-// key of an object rest against the whole exclusion list, which made that
-// split the most expensive part of rendering a Link on the server. Only
-// server bundles keep this function and the key sets.
+// Server render of a Link: static props only, no hooks. Only server bundles
+// keep this function; the `isServer` check that calls it folds away on the client.
 function getServerLinkProps(
   router: AnyRouter,
   options: any,
   forwardedRef: React.ForwardedRef<Element> | undefined,
   host: 'a' | React.ElementType | undefined,
 ): React.ComponentPropsWithRef<'a'> {
-  const {
-    to,
-    disabled,
-    activeProps,
-    inactiveProps,
-    activeOptions,
-    children,
-    target,
-    style,
-    className,
-  } = options as {
+  const { to, disabled, activeOptions } = options as {
     to: string | undefined
     disabled: boolean | undefined
-    activeProps: unknown
-    inactiveProps: unknown
     activeOptions: ActiveOptions | undefined
-    children: ReactNode
-    target: string | undefined
-    style: React.CSSProperties | undefined
-    className: string | undefined
-  }
-  // `Link` additionally never renders a `type` attribute.
-  const props: Record<string, unknown> = {}
-  for (const key in options) {
-    if (!LINK_OPTION_KEYS.has(key) && (key !== 'type' || host === undefined)) {
-      props[key] = options[key]
-    }
   }
 
   const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
@@ -607,26 +562,10 @@ function getServerLinkProps(
     directExternalLink ??
     (hrefOption && getUrlScheme(hrefOption) ? hrefOption : undefined)
 
-  // Assignments below mirror the client's spread order, so props keep the
-  // same precedence and the rendered attribute order stays identical.
+  const props = collectElementProps(options, host)
+  props.ref = forwardedRef
   if (externalLink) {
-    props.ref = forwardedRef
     props.href = externalLink
-    if (children) {
-      props.children = children
-    }
-    if (target) {
-      props.target = target
-    }
-    if (disabled && host !== 'a') {
-      props.disabled = disabled
-    }
-    if (style) {
-      props.style = style
-    }
-    if (className) {
-      props.className = className
-    }
     return props
   }
 
@@ -642,33 +581,14 @@ function getServerLinkProps(
       router.basepath,
       false,
     )
-  const [resolvedStateProps, resolvedClassName, resolvedStyle] =
-    resolveStateProps(isActive, activeProps, inactiveProps, className, style)
-
-  // State props override element props and `ref`, but never the routing
-  // attributes assigned below.
-  props.ref = forwardedRef
-  Object.assign(props, resolvedStateProps)
-  props.href = hrefOption
-  if (host !== 'a') {
-    props.disabled = !!linkDisabled
-  }
-  props.target = target
-  if (resolvedStyle) {
-    props.style = resolvedStyle
-  }
-  if (resolvedClassName) {
-    props.className = resolvedClassName
-  }
-  if (linkDisabled) {
-    props.role = 'link'
-    props['aria-disabled'] = true
-  }
-  if (isActive) {
-    props['data-status'] = 'active'
-    props['aria-current'] = 'page'
-  }
-  return props
+  return applyLinkState(
+    props,
+    options,
+    isActive,
+    hrefOption,
+    linkDisabled,
+    host,
+  )
 }
 
 const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
