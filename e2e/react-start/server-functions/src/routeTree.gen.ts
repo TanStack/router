@@ -18,6 +18,7 @@ import { Route as EnvOnlyRouteImport } from './routes/env-only'
 import { Route as FormdataContextRouteImport } from './routes/formdata-context'
 import { Route as HeadersRouteImport } from './routes/headers'
 import { Route as IsomorphicFnsRouteImport } from './routes/isomorphic-fns'
+import { Route as ManualIdRouteImport } from './routes/manual-id'
 import { Route as MultipartRouteImport } from './routes/multipart'
 import { Route as RawResponseRouteImport } from './routes/raw-response'
 import { Route as ReturnNullRouteImport } from './routes/return-null'
@@ -97,6 +98,11 @@ const HeadersRoute = HeadersRouteImport.update({
 const IsomorphicFnsRoute = IsomorphicFnsRouteImport.update({
   id: '/isomorphic-fns',
   path: '/isomorphic-fns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManualIdRoute = ManualIdRouteImport.update({
+  id: '/manual-id',
+  path: '/manual-id',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MultipartRoute = MultipartRouteImport.update({
@@ -295,6 +301,7 @@ export interface FileRoutesByFullPath {
   '/formdata-context': typeof FormdataContextRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
+  '/manual-id': typeof ManualIdRoute
   '/multipart': typeof MultipartRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
@@ -341,6 +348,7 @@ export interface FileRoutesByTo {
   '/formdata-context': typeof FormdataContextRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
+  '/manual-id': typeof ManualIdRoute
   '/multipart': typeof MultipartRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
@@ -388,6 +396,7 @@ export interface FileRoutesById {
   '/formdata-context': typeof FormdataContextRoute
   '/headers': typeof HeadersRoute
   '/isomorphic-fns': typeof IsomorphicFnsRoute
+  '/manual-id': typeof ManualIdRoute
   '/multipart': typeof MultipartRoute
   '/raw-response': typeof RawResponseRoute
   '/return-null': typeof ReturnNullRoute
@@ -436,6 +445,7 @@ export interface FileRouteTypes {
     | '/formdata-context'
     | '/headers'
     | '/isomorphic-fns'
+    | '/manual-id'
     | '/multipart'
     | '/raw-response'
     | '/return-null'
@@ -482,6 +492,7 @@ export interface FileRouteTypes {
     | '/formdata-context'
     | '/headers'
     | '/isomorphic-fns'
+    | '/manual-id'
     | '/multipart'
     | '/raw-response'
     | '/return-null'
@@ -528,6 +539,7 @@ export interface FileRouteTypes {
     | '/formdata-context'
     | '/headers'
     | '/isomorphic-fns'
+    | '/manual-id'
     | '/multipart'
     | '/raw-response'
     | '/return-null'
@@ -575,6 +587,7 @@ export interface RootRouteChildren {
   FormdataContextRoute: typeof FormdataContextRoute
   HeadersRoute: typeof HeadersRoute
   IsomorphicFnsRoute: typeof IsomorphicFnsRoute
+  ManualIdRoute: typeof ManualIdRoute
   MultipartRoute: typeof MultipartRoute
   RawResponseRoute: typeof RawResponseRoute
   ReturnNullRoute: typeof ReturnNullRoute
@@ -675,6 +688,13 @@ declare module '@tanstack/react-router' {
       path: '/isomorphic-fns'
       fullPath: '/isomorphic-fns'
       preLoaderRoute: typeof IsomorphicFnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/manual-id': {
+      id: '/manual-id'
+      path: '/manual-id'
+      fullPath: '/manual-id'
+      preLoaderRoute: typeof ManualIdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/multipart': {
@@ -935,6 +955,7 @@ const rootRouteChildren: RootRouteChildren = {
   FormdataContextRoute: FormdataContextRoute,
   HeadersRoute: HeadersRoute,
   IsomorphicFnsRoute: IsomorphicFnsRoute,
+  ManualIdRoute: ManualIdRoute,
   MultipartRoute: MultipartRoute,
   RawResponseRoute: RawResponseRoute,
   ReturnNullRoute: ReturnNullRoute,
