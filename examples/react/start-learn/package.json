@@ -6,7 +6,7 @@
     "dev": "vite checkpoints/01-setup --port 3140",
     "build": "vite build checkpoints/01-setup && tsc -p checkpoints/01-setup",
     "start": "node checkpoints/01-setup/.output/server/index.mjs",
-    "test:e2e": "playwright test",
+    "test:e2e": "node tests/run.mjs",
     "db:generate:03": "prisma generate --config checkpoints/03-data/prisma.config.ts",
     "db:migrate:03": "prisma migrate deploy --config checkpoints/03-data/prisma.config.ts",
     "db:seed:03": "prisma db execute --file checkpoints/03-data/prisma/seed.sql --config checkpoints/03-data/prisma.config.ts",
@@ -29,30 +29,52 @@
     "db:seed:08": "prisma db execute --file checkpoints/08-tests/prisma/seed.sql --config checkpoints/08-tests/prisma.config.ts",
     "build:08": "vite build checkpoints/08-tests && tsc -p checkpoints/08-tests",
     "start:08": "node checkpoints/08-tests/.output/server/index.mjs",
-    "test:unit": "vitest run"
+    "test:unit": "vitest run",
+    "test:docs": "node tests/check-docs.mjs"
   },
   "dependencies": {
-    "@tanstack/react-router": "workspace:^",
-    "@tanstack/react-start": "workspace:^",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "@better-auth/prisma-adapter": "1.6.19",
     "@prisma/adapter-pg": "7.0.0",
     "@prisma/client": "7.0.0",
-    "zod": "^4.4.3",
+    "@tanstack/react-router": "workspace:^",
+    "@tanstack/react-start": "workspace:^",
     "better-auth": "1.6.19",
-    "@better-auth/prisma-adapter": "1.6.19"
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.0",
     "@types/node": "^22.5.4",
     "@types/react": "^19.0.8",
     "@types/react-dom": "^19.0.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "dotenv": "^17.2.3",
+    "embedded-postgres": "17.10.0-beta.17",
     "nitro": "^3.0.260311-beta",
+    "prisma": "7.0.0",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
-    "@playwright/test": "^1.61.0",
-    "prisma": "7.0.0",
-    "dotenv": "^17.2.3",
     "vitest": "catalog:"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "inputs": [
+          "default",
+          "^production",
+          "dependentTaskOutputs",
+          "{workspaceRoot}/docs/start/framework/react/tutorial/learn-start/**/*.md",
+          "{workspaceRoot}/docs/start/framework/react/tutorial/learn-start.md",
+          "{workspaceRoot}/docs/start/framework/react/guide/testing.md",
+          {
+            "env": "COURSE_CHECKPOINT"
+          },
+          {
+            "env": "COURSE_PRODUCTION"
+          }
+        ]
+      }
+    }
   }
 }

@@ -8,20 +8,16 @@ Run the earlier checks against one complete application. The [working checkpoint
 
 ## Prepare the final checkpoint
 
-Keep the account database and secret. Set `APP_ORIGIN` in `.env` to `http://localhost:3147` for manual development, then run:
+Run these commands from `examples/react/start-learn`:
 
 ```sh
-pnpm db:generate:08
-pnpm db:migrate:08
-pnpm db:seed:08
+pnpm exec playwright install chromium
 COURSE_CHECKPOINT=08-tests pnpm test:e2e
-pnpm build:08
-COURSE_PRODUCTION=1 COURSE_CHECKPOINT=08-tests pnpm test:e2e
 ```
 
-Run these commands from `examples/react/start-learn`. Install Playwright's Chromium browser with `pnpm exec playwright install chromium` if it is not already installed. Stop any manually started checkpoint server before running tests; Playwright owns the server for each test run.
+The runner prepares an isolated database and auth secret, generates the client, applies migrations and seeds, builds and typechecks the checkpoint, then tests development and production servers. Stop any manually started checkpoint server first; Playwright owns its port during the run.
 
-The schema is unchanged from the account chapter. The seed adds public sample notes if they are absent. Use a disposable local or test database, not a production database. Tests create and remove temporary records, and they deliberately alter their test accounts' session expiry times.
+The schema is unchanged from the account chapter. Tests create temporary records and deliberately alter their test accounts' session expiry times. For manual development, follow the example README to configure your own database and set `APP_ORIGIN` to `http://localhost:3147`.
 
 ## Check boundaries, not only button clicks
 
@@ -47,13 +43,13 @@ These Vitest tests import the final checkpoint's `noteInput` schema without star
 
 ## Keep test data separate
 
-Tests use unique record names and remove their own accounts, notes, and categories in `finally` blocks. Earlier anonymous checkpoints use `DATABASE_URL`; account checkpoints use `AUTH_DATABASE_URL`. Keep those databases separate so an earlier anonymous app cannot expose private data created later.
+The course test runner supplies an isolated PostgreSQL server and a separate database for each database checkpoint, then removes them after the run. It overrides database and auth settings rather than using your `.env`. Tests also use unique record names and remove their own accounts, notes, and categories in `finally` blocks. Earlier anonymous checkpoints use `DATABASE_URL`; account checkpoints use `AUTH_DATABASE_URL`. Keep those databases separate so an earlier anonymous app cannot expose private data created later.
 
 Do not point a test suite at a hosted customer database. If a test fails before cleanup completes, use its unique record prefix to inspect and remove its fixtures from the test database.
 
 ## Run an earlier checkpoint independently
 
-`COURSE_CHECKPOINT` selects one server and its matching test files. It does not start every chapter's app.
+Without a selector, `pnpm test:e2e` builds, typechecks, and tests all eight checkpoints in development and production. `COURSE_CHECKPOINT` selects one server and its matching test files. Add `COURSE_PRODUCTION=0` or `COURSE_PRODUCTION=1` to run only one mode.
 
 | Checkpoint          | Port | Test command                                        |
 | ------------------- | ---- | --------------------------------------------------- |
@@ -66,7 +62,7 @@ Do not point a test suite at a hosted customer database. If a test fails before 
 | `07-deployment`     | 3146 | `COURSE_CHECKPOINT=07-deployment pnpm test:e2e`     |
 | `08-tests`          | 3147 | `COURSE_CHECKPOINT=08-tests pnpm test:e2e`          |
 
-Before testing a database chapter, run its client generation and migration commands. Before adding `COURSE_PRODUCTION=1`, build that checkpoint. For example, checkpoint 04 uses `pnpm exec vite build checkpoints/04-forms` followed by `pnpm exec tsc -p checkpoints/04-forms`.
+The runner generates the selected Prisma client, applies migrations and seeds to its temporary database, and builds before testing. Stop any manually started course servers so their ports are available.
 
 The deployment artifact check also uses port 3148 for its temporary server. It runs only in production mode, so the development suite reports that check as skipped.
 

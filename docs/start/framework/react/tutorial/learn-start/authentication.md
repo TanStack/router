@@ -56,7 +56,18 @@ Create a note from **My notes**. Its body is visible at its private draft URL, b
 
 Private pages use `noindex` and `private, no-store`. Neither directive replaces authorization. The database query is what prevents another account from reading the draft.
 
-The private dashboard and draft loaders use `staleReloadMode: 'blocking'`. This prevents a previously visited private page from rendering cached data while a different account's request is checked. HTTP cache headers do not clear Router's in-memory loader data. Sign-in and sign-out invalidate the router so these loaders request the current account's data.
+The private dashboard uses this loader, which CI checks against the runnable checkpoint:
+
+<!-- tested-source: private-loader -->
+
+```tsx
+loader: {
+  staleReloadMode: 'blocking',
+  handler: () => listOwnNotes(),
+},
+```
+
+The draft loader also uses `staleReloadMode: 'blocking'`. This prevents a previously visited private page from rendering cached data while a different account's request is checked. HTTP cache headers do not clear Router's in-memory loader data. Sign-in and sign-out invalidate the router so these loaders request the current account's data.
 
 Create, publish, unpublish, and sign-out controls share pending state. This prevents overlapping actions while the route data refreshes. Sign-out clears the session through the auth client, invalidates route data, and returns to the login page.
 
