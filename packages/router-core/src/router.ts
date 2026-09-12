@@ -1861,10 +1861,8 @@ export class RouterCore<
       params = lastStateMatch.params
     } else {
       // Parse params through the route chain
-      const strictParams: Record<string, unknown> = Object.assign(
-        Object.create(null),
-        rawParams,
-      )
+      // getMatchedRoutes already copied the cached raw params.
+      const strictParams: Record<string, unknown> = rawParams
       for (const route of matchedRoutes) {
         try {
           extractStrictParams(route, strictParams)
@@ -1926,8 +1924,32 @@ export class RouterCore<
     for (const name of keys) {
       const value = params[name]
       if (typeof value !== 'string' && value !== undefined) {
-        return (
-          interpolated ||
+        return normalizeProtocolRelative(
+          decodePath(
+            interpolated ||
+              (isServer === undefined
+                ? interpolatePath(
+                    path,
+                    params,
+                    decoder,
+                    undefined,
+                    undefined,
+                    this.isServer,
+                  )
+                : interpolatePath(path, params, decoder)),
+          ),
+        )
+      }
+      key = keys.length === 1 ? value : key! + value?.length + ':' + value
+    }
+    const cached = paths.get(key)
+    if (cached) {
+      return cached
+    }
+    // Cache canonical pathnames, not the encoded interpolation output.
+    interpolated = normalizeProtocolRelative(
+      decodePath(
+        interpolated ||
           (isServer === undefined
             ? interpolatePath(
                 path,
@@ -1937,29 +1959,10 @@ export class RouterCore<
                 undefined,
                 this.isServer,
               )
-            : interpolatePath(path, params, decoder))
-        )
-      }
-      key = keys.length === 1 ? value : key! + value?.length + ':' + value
-    }
-    const cached = paths.get(key)
-    if (cached) {
-      return cached
-    }
-    paths.set(
-      key,
-      (interpolated ||=
-        isServer === undefined
-          ? interpolatePath(
-              path,
-              params,
-              decoder,
-              undefined,
-              undefined,
-              this.isServer,
-            )
-          : interpolatePath(path, params, decoder)),
+            : interpolatePath(path, params, decoder)),
+      ),
     )
+    paths.set(key, interpolated)
     return interpolated
   }
 
@@ -2091,15 +2094,9 @@ export class RouterCore<
       const nextPathname = opts.leaveParams
         ? // Keep path params uninterpolated for matchRoute/template matching.
           nextTo
-        : decodePath(
-            // A splat can produce a path like "//evil.example".
-            // Normalize it to "/evil.example" to keep it on the current origin.
-            normalizeProtocolRelative(
-              nextTo.includes('$')
-                ? this.interpolatePath(nextTo, nextParams, destRoute)
-                : nextTo,
-            ),
-          )
+        : nextTo.includes('$')
+          ? this.interpolatePath(nextTo, nextParams, destRoute)
+          : normalizeProtocolRelative(decodePath(nextTo))
 
       if (
         process.env.NODE_ENV !== 'production' &&
@@ -2914,9 +2911,8 @@ function resolveNextParams(
   return Object.assign(next, base, spec)
 }
 
-function applySearchMiddleware(
-  search: any,
-  dest: BuildNextOptions,
+// Keep this separate from recursive execution to limit JIT compiler memory.
+function getSearchMiddlewares(
   destRoutes: ReadonlyArray<AnyRoute>,
   includeValidateSearch: boolean | undefined,
 ) {
@@ -2976,6 +2972,16 @@ function applySearchMiddleware(
     }
   }
 
+  return middlewares
+}
+
+function applySearchMiddleware(
+  search: any,
+  dest: BuildNextOptions,
+  destRoutes: ReadonlyArray<AnyRoute>,
+  includeValidateSearch: boolean | undefined,
+) {
+  const middlewares = getSearchMiddlewares(destRoutes, includeValidateSearch)
   const applyNext = (
     index: number,
     currentSearch: any,

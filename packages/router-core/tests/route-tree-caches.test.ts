@@ -37,6 +37,33 @@ function history() {
   return result
 }
 
+test.each([false, true])(
+  'caches the canonical pathname without changing hrefs (server: %s)',
+  (isServer) => {
+    const { routeTree, item } = createRoutes()
+    const router = createTestRouter({ routeTree, history: history(), isServer })
+    for (const [id, pathname, href] of [
+      ['one two', '/items/one two', '/items/one%20two'],
+      ['caf\u00e9', '/items/caf\u00e9', '/items/caf%C3%A9'],
+      ['a/b', '/items/a%2Fb', '/items/a%2Fb'],
+      ['%2F', '/items/%252F', '/items/%252F'],
+      ['a\\b', '/items/a%5Cb', '/items/a%5Cb'],
+      ['a?b#c', '/items/a%3Fb%23c', '/items/a%3Fb%23c'],
+      ['a\tb', '/items/a%09b', '/items/a%09b'],
+    ] as const) {
+      for (let repeat = 0; repeat < 2; repeat++) {
+        const result = router.buildLocation({
+          to: '/items/$id',
+          params: { id },
+        })
+        expect(result.pathname).toBe(pathname)
+        expect(result.href).toBe(href)
+        expect(item._pathCache?.[1].get(id)).toBe(pathname)
+      }
+    }
+  },
+)
+
 test('reuses route caches after server request cleanup without sharing match state', async () => {
   const { routeTree, item, root } = createRoutes()
   const routers: Array<AnyRouter> = []

@@ -2,6 +2,7 @@ import { bench, describe, expect } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { compileDecodeCharMap, interpolatePath } from '../src/path'
+import { decodePath } from '../src/utils'
 import { createTestRouter } from './routerTestUtils'
 import type { PathInterpolationTestOptions } from './routerTestUtils'
 
@@ -146,13 +147,15 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
       path: input.path || '/',
       params: input.params,
       route: register ? routes.get(input.path || '/') : undefined,
-      expected: interpolatePath(
-        input.path,
-        input.params,
-        input.decoder,
-        undefined,
-        undefined,
-        input.server,
+      expected: decodePath(
+        interpolatePath(
+          input.path,
+          input.params,
+          input.decoder,
+          undefined,
+          undefined,
+          input.server,
+        ),
       ),
     }))
   let checksum = 0
@@ -182,7 +185,7 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
   }
 
   bench(
-    'shared interpolation batch',
+    'shared interpolation and normalization batch',
     () => {
       let length = 0
       for (const call of calls) {
