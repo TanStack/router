@@ -2,8 +2,9 @@ import { bench, describe, expect } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { compileDecodeCharMap, interpolatePath } from '../src/path'
+import { parseSegments } from '../src/new-process-route-tree'
 import { decodePath } from '../src/utils'
-import { createTestRouter } from './routerTestUtils'
+import { createTestRouter, interpolateTestPath } from './routerTestUtils'
 import type { PathInterpolationTestOptions } from './routerTestUtils'
 
 const scenarios: Array<{
@@ -128,7 +129,7 @@ scenarios.push(
 describe.each(scenarios)('$name', ({ inputs, register = true }) => {
   const root = new BaseRootRoute({})
   const routes = new Map(
-    [...new Set(inputs.map((input) => input.path || '/'))].map((path) => [
+    [...new Set(inputs.map((input) => input.path))].map((path) => [
       path,
       new BaseRoute({ getParentRoute: () => root, path }),
     ]),
@@ -137,24 +138,23 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
     routeTree: register ? root.addChildren([...routes.values()]) : root,
     history: createMemoryHistory({ initialEntries: ['/'] }),
     isServer: inputs[0]?.server,
+    pathParamsAllowedCharacters: ['@', '+'],
     scrollRestoration: false,
   })
-  router.pathParamsDecoder = decoder
   router.history.destroy()
   const calls = inputs
-    .filter((input) => input.path?.includes('$'))
+    .filter((input) => input.path.includes('$'))
     .map((input) => ({
-      path: input.path || '/',
+      path: input.path,
       params: input.params,
-      route: register ? routes.get(input.path || '/') : undefined,
+      route: register ? routes.get(input.path) : undefined,
       expected: decodePath(
-        interpolatePath(
+        interpolateTestPath(
           input.path,
           input.params,
           input.decoder,
           undefined,
           undefined,
-          input.server,
         ),
       ),
     }))
@@ -162,13 +162,12 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
   const expected = inputs.reduce(
     (sum, input) =>
       sum +
-      interpolatePath(
+      interpolateTestPath(
         input.path,
         input.params,
         input.decoder,
         undefined,
         undefined,
-        input.server,
       ).length,
     0,
   )
@@ -183,6 +182,13 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
       call.expected,
     )
   }
+
+  const preparedInputs = inputs.map((input) => ({
+    ...input,
+    segments: register
+      ? routes.get(input.path)?._interpolation
+      : parseSegments(false, { fullPath: input.path }, 0),
+  }))
 
   bench(
     'shared interpolation and normalization batch',
@@ -208,17 +214,19 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
   )
 
   bench(
-    'pathname-only interpolation batch',
+    'prepared pathname interpolation batch',
     () => {
       let length = 0
-      for (const input of inputs) {
-        length += interpolatePath(
-          input.path,
-          input.params,
-          input.decoder,
-          undefined,
-          undefined,
-          input.server,
+      for (const input of preparedInputs) {
+        length += (
+          input.segments
+            ? interpolatePath(
+                input.path,
+                input.segments,
+                input.params,
+                input.decoder,
+              )
+            : input.path
         ).length
       }
       checksum = length
@@ -234,18 +242,20 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
   )
 
   bench(
-    'metadata-enabled interpolation batch',
+    'prepared metadata interpolation batch',
     () => {
       let length = 0
-      for (const input of inputs) {
-        length += interpolatePath(
-          input.path,
-          input.params,
-          input.decoder,
-          Object.create(null),
-          undefined,
-          input.server,
-          { isMissingParams: false },
+      for (const input of preparedInputs) {
+        length += (
+          input.segments
+            ? interpolatePath(
+                input.path,
+                input.segments,
+                input.params,
+                input.decoder,
+                Object.create(null),
+              )
+            : input.path
         ).length
       }
       checksum = length

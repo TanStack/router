@@ -27,7 +27,7 @@ test('_getUserHistoryState removes volatile router bookkeeping but keeps mask pa
 })
 
 test.each([false, true])(
-  'forwards the development server override when router.isServer is %s',
+  'interpolates matches from raw params when router.isServer is %s',
   (isServer) => {
     expect(serverEnvironment).toBeUndefined()
     const rootRoute = new BaseRootRoute({})
@@ -47,51 +47,15 @@ test.each([false, true])(
       const call = interpolate.mock.calls.find(
         ([path]) => path === '/items/$id',
       )
-      expect(call).toHaveLength(6)
-      expect(call?.[5]).toBe(isServer)
+      expect(call).toHaveLength(5)
+      expect(call?.[1]).toBe(route._interpolation)
+      expect(call?.[2]).toEqual({ id: 'one' })
+      expect(matches.at(-1)?._strictParams).toEqual({ id: 'one' })
     } finally {
       interpolate.mockRestore()
     }
   },
 )
-
-test('shares interpolation on reused routes and follows decoder changes', () => {
-  const rootRoute = new BaseRootRoute({})
-  const route = new BaseRoute({
-    getParentRoute: () => rootRoute,
-    path: '/items/$id',
-  })
-  const routeTree = rootRoute.addChildren([route])
-  const makeRouter = () =>
-    createTestRouter({
-      routeTree,
-      history: createMemoryHistory({ initialEntries: ['/'] }),
-    })
-  const router = makeRouter()
-  const decoder = vi.fn(pathUtils.compileDecodeCharMap(['@']))
-  router.pathParamsDecoder = decoder
-
-  expect(
-    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
-  ).toBe('/items/@one')
-  decoder.mockClear()
-  expect(
-    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
-  ).toBe('/items/@one')
-  expect(decoder).not.toHaveBeenCalled()
-
-  const other = makeRouter()
-  other.pathParamsDecoder = decoder
-  expect(
-    other.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
-  ).toBe('/items/@one')
-  expect(decoder).not.toHaveBeenCalled()
-
-  router.pathParamsDecoder = pathUtils.compileDecodeCharMap(['+'])
-  expect(
-    router.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
-  ).toBe('/items/%40one')
-})
 
 describe('buildLocation - params function receives parsed params', () => {
   test('prev params should contain parsed params from route params.parse', async () => {

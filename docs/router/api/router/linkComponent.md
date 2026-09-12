@@ -43,7 +43,7 @@ By default, param values with characters such as `@` will be encoded in the URL:
 <Link to="/$username" params={{ username: '@foo' }} />
 ```
 
-To opt-out, update the [pathParamsAllowedCharacters](../router/RouterOptionsType#pathparamsallowedcharacters-property) config on the router
+To opt out, set [pathParamsAllowedCharacters](../router/RouterOptionsType#pathparamsallowedcharacters-property) when creating the router. This setting cannot be changed on an existing router instance.
 
 ```tsx
 import { createRouter } from '@tanstack/react-router'

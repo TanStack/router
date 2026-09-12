@@ -1,5 +1,6 @@
 import { render } from '@solidjs/testing-library'
 import { bench, describe } from 'vitest'
+import { getRouteSegments } from '@tanstack/router-core'
 import {
   Link,
   RouterProvider,
@@ -42,7 +43,12 @@ const InterpolatePathLink = ({
   to: string
   params: Record<string, number>
 }>) => {
-  const href = interpolatePath(to, params)
+  const router = useRouter()
+  const href = interpolatePath(
+    to,
+    getRouteSegments(router.routesByPath[to])!,
+    params,
+  )
   return <a href={href}>{children}</a>
 }
 

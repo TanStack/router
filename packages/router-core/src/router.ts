@@ -25,6 +25,8 @@ import {
   findFlatMatch,
   findRouteMatch,
   findSingleMatch,
+  getParamNames,
+  parseSegments,
   processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
@@ -467,11 +469,12 @@ export interface RouterOptions<
 
   /**
    * Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+   * This is read only during initialization. Create a new router to change it.
    *
    * @link [API Docs](https://tanstack.com/router/latest/docs/framework/react/api/router/RouterOptionsType#pathparamsallowedcharacters-property)
    * @link [Guide](https://tanstack.com/router/latest/docs/framework/react/guide/path-params#allowed-characters)
    */
-  pathParamsAllowedCharacters?: Array<
+  readonly pathParamsAllowedCharacters?: ReadonlyArray<
     ';' | ':' | '@' | '&' | '=' | '+' | '$' | ','
   >
 
@@ -752,12 +755,15 @@ export type UpdateFn<
   TRouterHistory extends RouterHistory,
   TDehydrated extends Record<string, any>,
 > = (
-  newOptions: RouterConstructorOptions<
-    TRouteTree,
-    TTrailingSlashOption,
-    TDefaultStructuralSharingOption,
-    TRouterHistory,
-    TDehydrated
+  newOptions: Omit<
+    RouterConstructorOptions<
+      TRouteTree,
+      TTrailingSlashOption,
+      TDefaultStructuralSharingOption,
+      TRouterHistory,
+      TDehydrated
+    >,
+    'pathParamsAllowedCharacters'
   >,
 ) => void
 
@@ -1164,12 +1170,12 @@ export class RouterCore<
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: SieveCache<string, string>
   private unmatchedPathCache!: SieveCache<string, InterpolationPlan>
-  private lightweightCache = new WeakMap<
+  private lightweightCache!: WeakMap<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
-  >()
+  >
   isServer!: boolean
-  pathParamsDecoder?: (encoded: string) => string
+  readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
 
   /**
@@ -1186,6 +1192,11 @@ export class RouterCore<
     getStoreConfig: GetStoreConfig,
   ) {
     this.getStoreConfig = getStoreConfig
+    if (options.pathParamsAllowedCharacters?.length) {
+      this.pathParamsDecoder = compileDecodeCharMap(
+        options.pathParamsAllowedCharacters,
+      )
+    }
 
     this.update({
       defaultPreloadDelay: 50,
@@ -1243,11 +1254,6 @@ export class RouterCore<
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
-
-    if (this.options.pathParamsAllowedCharacters)
-      this.pathParamsDecoder = compileDecodeCharMap(
-        this.options.pathParamsAllowedCharacters,
-      )
 
     if (
       !this.history ||
@@ -1368,15 +1374,7 @@ export class RouterCore<
   }
 
   buildRouteTree = (): RouteTreeCaches<TRouteTree> => {
-    const result = processRouteTree(
-      this.routeTree,
-      this.options.caseSensitive,
-      (route, i) => {
-        route.init({
-          originalIndex: i,
-        })
-      },
-    )
+    const result = processRouteTree(this.routeTree, this.options.caseSensitive)
     if (this.options.routeMasks) {
       processRouteMasks(this.options.routeMasks, result.processedTree)
     }
@@ -1384,20 +1382,22 @@ export class RouterCore<
     return {
       ...result,
       resolvePathCache: createSieveCache(1000),
-      // Arbitrary templates (for example, masks) have no route object to key by.
       unmatchedPathCache: createSieveCache<string, InterpolationPlan>(32),
     }
   }
 
   setRoutes(caches: RouteTreeCaches<TRouteTree>) {
     Object.assign(this, caches)
+    this.lightweightCache = new WeakMap()
 
     const notFoundRoute = this.options.notFoundRoute
 
     if (notFoundRoute) {
-      notFoundRoute.init({
-        originalIndex: 99999999999,
-      })
+      notFoundRoute.init(99999999999)
+      if (this.routesById[notFoundRoute.id] !== notFoundRoute) {
+        // Standalone legacy fallbacks are not processed by the matching tree.
+        notFoundRoute._interpolation = parseSegments(false, notFoundRoute, 0)
+      }
       this.routesById[notFoundRoute.id] = notFoundRoute
     }
   }
@@ -1659,22 +1659,15 @@ export class RouterCore<
       }
       // Match identity must only use the raw params captured from the URL.
       const usedParams: Record<string, unknown> = createNull()
-      const interpolatedPath =
-        isServer === undefined
-          ? interpolatePath(
-              route.fullPath,
-              rawParams,
-              this.pathParamsDecoder,
-              usedParams,
-              undefined,
-              this.isServer,
-            )
-          : interpolatePath(
-              route.fullPath,
-              rawParams,
-              this.pathParamsDecoder,
-              usedParams,
-            )
+      const interpolatedPath = route._interpolation
+        ? interpolatePath(
+            route.fullPath,
+            route._interpolation,
+            rawParams,
+            this.pathParamsDecoder,
+            usedParams,
+          )
+        : route.fullPath
 
       // Seed planning from the accepted same-ID cache generation first, then
       // from the committed generation for this route. Presentation stores are
@@ -1888,35 +1881,19 @@ export class RouterCore<
     params: Record<string, unknown>,
     route?: AnyRoute,
   ): string {
-    const decoder = this.pathParamsDecoder
     let plan = route ? route._pathCache : this.unmatchedPathCache.get(path)
-    let interpolated: string | undefined
-    if (!plan || plan[2] !== decoder || plan[3] !== path) {
-      const keys: Array<string> = []
-      interpolated =
-        isServer === undefined
-          ? interpolatePath(
-              path,
-              params,
-              decoder,
-              undefined,
-              keys,
-              this.isServer,
-            )
-          : interpolatePath(path, params, decoder, undefined, keys)
-      plan = [
-        keys,
-        createSieveCache<string | undefined, string>(128),
-        decoder,
-        path,
-      ]
+    if (!plan || plan[1 /* path */] !== path) {
+      const segments =
+        route?._interpolation ?? parseSegments(false, { fullPath: path }, 0)
+      plan = [createSieveCache<string | undefined, string>(128), path, segments]
       if (route) {
         route._pathCache = plan
       } else {
         this.unmatchedPathCache.set(path, plan)
       }
     }
-    const [keys, paths] = plan
+    const paths = plan[0 /* paths */]
+    const keys = getParamNames(plan[2 /* segments */])
     // Single-param templates use the value itself as the Map key. Compound keys
     // concatenate `<length>:<value>` tokens; undefined becomes
     // `undefined:undefined`, whose nonnumeric prefix cannot match a string token.
@@ -1926,17 +1903,12 @@ export class RouterCore<
       if (typeof value !== 'string' && value !== undefined) {
         return normalizeProtocolRelative(
           decodePath(
-            interpolated ||
-              (isServer === undefined
-                ? interpolatePath(
-                    path,
-                    params,
-                    decoder,
-                    undefined,
-                    undefined,
-                    this.isServer,
-                  )
-                : interpolatePath(path, params, decoder)),
+            interpolatePath(
+              path,
+              plan[2 /* segments */],
+              params,
+              this.pathParamsDecoder,
+            ),
           ),
         )
       }
@@ -1947,19 +1919,14 @@ export class RouterCore<
       return cached
     }
     // Cache canonical pathnames, not the encoded interpolation output.
-    interpolated = normalizeProtocolRelative(
+    const interpolated = normalizeProtocolRelative(
       decodePath(
-        interpolated ||
-          (isServer === undefined
-            ? interpolatePath(
-                path,
-                params,
-                decoder,
-                undefined,
-                undefined,
-                this.isServer,
-              )
-            : interpolatePath(path, params, decoder)),
+        interpolatePath(
+          path,
+          plan[2 /* segments */],
+          params,
+          this.pathParamsDecoder,
+        ),
       ),
     )
     paths.set(key, interpolated)
