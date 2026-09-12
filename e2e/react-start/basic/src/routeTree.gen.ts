@@ -15,6 +15,8 @@ import { Route as AsyncScriptsRouteImport } from './routes/async-scripts'
 import { Route as AuthDocsRouteImport } from './routes/auth-docs'
 import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as DeferredRouteImport } from './routes/deferred'
+import { Route as ExecutionLocalRouteImport } from './routes/execution-local'
+import { Route as ExecutionRpcRouteImport } from './routes/execution-rpc'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
@@ -111,6 +113,16 @@ const ClientOnlyRoute = ClientOnlyRouteImport.update({
 const DeferredRoute = DeferredRouteImport.update({
   id: '/deferred',
   path: '/deferred',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExecutionLocalRoute = ExecutionLocalRouteImport.update({
+  id: '/execution-local',
+  path: '/execution-local',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExecutionRpcRoute = ExecutionRpcRouteImport.update({
+  id: '/execution-rpc',
+  path: '/execution-rpc',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InlineScriptsRoute = InlineScriptsRouteImport.update({
@@ -479,6 +491,8 @@ export interface FileRoutesByFullPath {
   '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/execution-local': typeof ExecutionLocalRoute
+  '/execution-rpc': typeof ExecutionRpcRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
@@ -551,6 +565,8 @@ export interface FileRoutesByTo {
   '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/execution-local': typeof ExecutionLocalRoute
+  '/execution-rpc': typeof ExecutionRpcRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
@@ -620,6 +636,8 @@ export interface FileRoutesById {
   '/auth-docs': typeof AuthDocsRouteWithChildren
   '/client-only': typeof ClientOnlyRoute
   '/deferred': typeof DeferredRoute
+  '/execution-local': typeof ExecutionLocalRoute
+  '/execution-rpc': typeof ExecutionRpcRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
@@ -697,6 +715,8 @@ export interface FileRouteTypes {
     | '/auth-docs'
     | '/client-only'
     | '/deferred'
+    | '/execution-local'
+    | '/execution-rpc'
     | '/inline-scripts'
     | '/links'
     | '/plain-ts-type-assertion'
@@ -769,6 +789,8 @@ export interface FileRouteTypes {
     | '/auth-docs'
     | '/client-only'
     | '/deferred'
+    | '/execution-local'
+    | '/execution-rpc'
     | '/inline-scripts'
     | '/links'
     | '/plain-ts-type-assertion'
@@ -837,6 +859,8 @@ export interface FileRouteTypes {
     | '/auth-docs'
     | '/client-only'
     | '/deferred'
+    | '/execution-local'
+    | '/execution-rpc'
     | '/inline-scripts'
     | '/links'
     | '/plain-ts-type-assertion'
@@ -914,6 +938,8 @@ export interface RootRouteChildren {
   AuthDocsRoute: typeof AuthDocsRouteWithChildren
   ClientOnlyRoute: typeof ClientOnlyRoute
   DeferredRoute: typeof DeferredRoute
+  ExecutionLocalRoute: typeof ExecutionLocalRoute
+  ExecutionRpcRoute: typeof ExecutionRpcRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PlainTsTypeAssertionRoute: typeof PlainTsTypeAssertionRoute
@@ -977,6 +1003,20 @@ declare module '@tanstack/react-router' {
       path: '/deferred'
       fullPath: '/deferred'
       preLoaderRoute: typeof DeferredRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/execution-local': {
+      id: '/execution-local'
+      path: '/execution-local'
+      fullPath: '/execution-local'
+      preLoaderRoute: typeof ExecutionLocalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/execution-rpc': {
+      id: '/execution-rpc'
+      path: '/execution-rpc'
+      fullPath: '/execution-rpc'
+      preLoaderRoute: typeof ExecutionRpcRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inline-scripts': {
@@ -1729,6 +1769,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuthDocsRoute: AuthDocsRouteWithChildren,
   ClientOnlyRoute: ClientOnlyRoute,
   DeferredRoute: DeferredRoute,
+  ExecutionLocalRoute: ExecutionLocalRoute,
+  ExecutionRpcRoute: ExecutionRpcRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PlainTsTypeAssertionRoute: PlainTsTypeAssertionRoute,
