@@ -70,6 +70,38 @@ describe('createMemoryHistory', () => {
     expect(history.location.pathname).toBe('/b')
   })
 
+  test('discards forward entries and their state when pushing a new branch', () => {
+    const initialEntries = ['/']
+    const history = createMemoryHistory({ initialEntries })
+    history.push('/kept', { marker: 'kept' })
+    const keptState = history.location.state
+    history.push('/discarded-first', { marker: 'discarded-first' })
+    history.push('/discarded-last', { marker: 'discarded-last' })
+    history.go(-2)
+    history.push('/new', { marker: 'new' })
+
+    expect(initialEntries).toEqual(['/', '/kept', '/new'])
+    expect(history.length).toBe(3)
+    expect(history.location.pathname).toBe('/new')
+    expect(history.location.state).toMatchObject({
+      __TSR_index: 2,
+      marker: 'new',
+    })
+    const newState = history.location.state
+
+    history.forward()
+    expect(history.location.pathname).toBe('/new')
+    expect(history.location.state).toBe(newState)
+
+    history.back()
+    expect(history.location.pathname).toBe('/kept')
+    expect(history.location.state).toBe(keptState)
+
+    history.forward()
+    expect(history.location.pathname).toBe('/new')
+    expect(history.location.state).toBe(newState)
+  })
+
   test('length', () => {
     const history = createMemoryHistory()
     expect(history.length).toBe(1)

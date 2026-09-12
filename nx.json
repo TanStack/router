@@ -94,6 +94,21 @@
         "dependentTaskOutputs"
       ]
     },
+    "test:types:client": {
+      "cache": true,
+      "inputs": [
+        "default",
+        "^production",
+        "{workspaceRoot}/benchmarks/client-nav/*.{ts,json}",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/*.ts",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/*/*.ts",
+        "{workspaceRoot}/benchmarks/memory/*.ts",
+        "{workspaceRoot}/benchmarks/memory/client/*.{ts,json}",
+        "{workspaceRoot}/benchmarks/memory/client/scenarios/*/*.ts",
+        "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+        "dependentTaskOutputs"
+      ]
+    },
     "test:types:ssr": {
       "cache": true,
       "dependsOn": ["^build", "build"],
