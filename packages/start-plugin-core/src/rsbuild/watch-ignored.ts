@@ -20,5 +20,5 @@ export function addWorkspaceWatchIgnored(
     return [...ignored, ...directories]
   }
   const original = ignored ?? /[\\/](?:\.git|node_modules)[\\/]/
-  return new RegExp(`${original.source}|${workspace.source}`)
+  return new RegExp(`${original.source}|${workspace.source}`, original.flags)
 }
