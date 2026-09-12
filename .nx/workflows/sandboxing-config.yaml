@@ -69,6 +69,19 @@ task-exclusions:
     exclude-reads:
       - packages/router-generator/tests/generator/file-modification/routes/[(]test[)]/initiallyEmpty.tsx
       - packages/router-generator/tests/generator/file-modification/routes/[(]test[)]/initiallyEmpty.lazy.tsx
+  # Mutable counters are scratch state, not artifacts to replay from cache.
+  - project: tanstack-react-start-e2e-basic-tsr-config
+    target: test:e2e
+    exclude-writes:
+      - e2e/react-start/basic-tsr-config/count.txt
+  - project: tanstack-solid-start-e2e-basic-tsr-config
+    target: test:e2e
+    exclude-writes:
+      - e2e/solid-start/basic-tsr-config/count.txt
+  - project: tanstack-vue-start-e2e-basic-tsr-config
+    target: test:e2e
+    exclude-writes:
+      - e2e/vue-start/basic-tsr-config/count.txt
   # Paraglide downloads compiler plugins from the URLs in settings.json.
   # Ignore warm-cache reads; the settings remain inputs and cache files outputs.
   - project: tanstack-react-start-e2e-i18n-paraglide
@@ -79,3 +92,27 @@ task-exclusions:
     target: build
     exclude-reads:
       - e2e/react-router/i18n-paraglide/project.inlang/cache/plugins/*
+  - project: tanstack-react-start-e2e-i18n-paraglide
+    target: test:e2e
+    exclude-reads:
+      - e2e/react-start/i18n-paraglide/project.inlang/cache/plugins/*
+  - project: tanstack-router-e2e-react-i18n-paraglide
+    target: test:e2e
+    exclude-reads:
+      - e2e/react-router/i18n-paraglide/project.inlang/cache/plugins/*
+  - project: tanstack-router-i18n-paraglide
+    target: build
+    exclude-reads:
+      - examples/react/i18n-paraglide/project.inlang/cache/plugins/*
+  - project: tanstack-start-i18n-paraglide
+    target: build
+    exclude-reads:
+      - examples/react/start-i18n-paraglide/project.inlang/cache/plugins/*
+  - project: tanstack-router-solid-i18n-paraglide
+    target: build
+    exclude-reads:
+      - examples/solid/i18n-paraglide/project.inlang/cache/plugins/*
+  - project: tanstack-solid-start-i18n-paraglide
+    target: build
+    exclude-reads:
+      - examples/solid/start-i18n-paraglide/project.inlang/cache/plugins/*
