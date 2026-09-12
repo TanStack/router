@@ -23,7 +23,6 @@ import {
   buildRouteBranch,
   findFlatMatch,
   findRouteMatch,
-  findSingleMatch,
   processRouteMasks,
   processRouteTree,
 } from './new-process-route-tree'
@@ -58,6 +57,7 @@ import type { SieveCache } from './sieve-cache'
 import type {
   ProcessRouteTreeResult,
   ProcessedTree,
+  RouteMatchData,
 } from './new-process-route-tree'
 import type { SearchParser, SearchSerializer } from './searchParams'
 import type { AnyRedirect, ResolvedRedirect } from './redirect'
@@ -775,6 +775,7 @@ export type GetMatchRoutesFn = (pathname: string) => [
   /** exhaustive params, still in their string form */
   rawParams: Record<string, string>,
   foundRoute: AnyRoute | undefined,
+  routeMatchData: ReadonlyArray<RouteMatchData> | undefined,
 ]
 
 export type EmitFn = (routerEvent: RouterEvent) => void
@@ -1153,9 +1154,8 @@ export class RouterCore<
   routeTree!: TRouteTree
   routesById!: RoutesById<TRouteTree>
   routesByPath!: RoutesByPath<TRouteTree>
-  processedTree!: ProcessedTree<TRouteTree, any, any>
+  processedTree!: ProcessedTree<TRouteTree, any>
   resolvePathCache!: SieveCache<string, string>
-  private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
   private lightweightCache = new WeakMap<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
@@ -1527,15 +1527,6 @@ export class RouterCore<
     })
   }
 
-  private getRouteBranch(route: AnyRoute) {
-    let branch = this.routeBranchCache.get(route)
-    if (!branch) {
-      branch = buildRouteBranch(route)
-      this.routeBranchCache.set(route, branch)
-    }
-    return branch
-  }
-
   matchRoutes: MatchRoutesFn = (
     pathnameOrNext: string | ParsedLocation,
     locationSearchOrOpts?: AnySchema | MatchRoutesOpts,
@@ -1558,9 +1549,9 @@ export class RouterCore<
     next: ParsedLocation,
     opts?: MatchRoutesOpts,
   ): Array<AnyRouteMatch> {
-    const [initialMatchedRoutes, rawParams, foundRoute] = this.getMatchedRoutes(
-      next.pathname,
-    )
+    const [initialMatchedRoutes, allRawParams, foundRoute, routeMatchData] =
+      this.getMatchedRoutes(next.pathname)
+    const rawParams: Record<string, string> = Object.create(null)
     let matchedRoutes = initialMatchedRoutes
     let isGlobalNotFound = false
 
@@ -1568,7 +1559,7 @@ export class RouterCore<
     if (
       // If we found a route, and it's not an index route and we have left over path
       foundRoute
-        ? foundRoute.path !== '/' && rawParams['**']
+        ? foundRoute.path !== '/' && allRawParams['**']
         : // Or if we didn't find a route and we have left over path
           trimPathRight(next.pathname)
     ) {
@@ -1663,6 +1654,8 @@ export class RouterCore<
         searchError ??= cause
       }
       // Match identity must only use the raw params captured from the URL.
+      const routeRawParams = routeMatchData?.[index]?.[0]
+      Object.assign(rawParams, routeRawParams)
       const { interpolatedPath, usedParams } = interpolatePath({
         path: route.fullPath,
         params: rawParams,
@@ -1690,7 +1683,8 @@ export class RouterCore<
 
       // Carry parsed ancestors forward without mutating the raw route params.
       strictParams =
-        existingMatch?._strictParams ?? Object.assign(usedParams, strictParams)
+        existingMatch?._strictParams ??
+        Object.assign(usedParams, strictParams, routeRawParams)
 
       let paramsError: unknown
 
@@ -1785,19 +1779,16 @@ export class RouterCore<
   }
 
   getMatchedRoutes: GetMatchRoutesFn = (pathname) => {
-    const rawParams: Record<string, string> = Object.create(null)
     const match = findRouteMatch(
       trimPathRight(pathname),
       this.processedTree,
       true,
     )
-    if (match) {
-      Object.assign(rawParams, match.rawParams)
-    }
     return [
       match?.branch || [this.routesById[rootRouteId]!],
-      rawParams,
+      Object.assign(Object.create(null), match?.rawParams),
       match?.route,
+      match?.routeData,
     ]
   }
 
@@ -1964,7 +1955,10 @@ export class RouterCore<
 
       let destRoutes: ReadonlyArray<AnyRoute>
       if (destRoute) {
-        destRoutes = this.getRouteBranch(destRoute)
+        destRoutes = buildRouteBranch(
+          destRoute,
+          this.processedTree.routeBranchCache,
+        )
       } else if (nextTo.includes('$')) {
         // Route templates must match routesByPath exactly. A miss here is a
         // typed destination mismatch, not a concrete URL to route-match.
@@ -2651,31 +2645,67 @@ export class RouterCore<
       ? this.latestLocation
       : this.stores.resolvedLocation.get() || this.stores.location.get()
 
-    const match = findSingleMatch(
-      next.pathname,
-      opts?.caseSensitive ?? false,
-      opts?.fuzzy ?? false,
-      baseLocation.pathname,
+    const destinationPath = trimPathRight(next.pathname)
+    const fuzzy = opts?.fuzzy
+    const currentPath = baseLocation.pathname
+    const trimmedCurrentPath = trimPathRight(currentPath)
+    const pathMatch = findRouteMatch(
+      trimmedCurrentPath,
       this.processedTree,
+      true,
     )
-
-    if (!match) {
+    const committedLocation = this.stores.resolvedLocation.get()
+    const routeMatches =
+      this._committed.length &&
+      committedLocation?.pathname === baseLocation.pathname
+        ? this._committed
+        : this.matchRoutes(baseLocation)
+    const destinationMatch = fuzzy
+      ? routeMatches.find(
+          (match) => trimPathRight(match.fullPath) === destinationPath,
+        )
+      : last(routeMatches)
+    if (
+      !destinationMatch ||
+      (!fuzzy &&
+        trimPathRight(destinationMatch.fullPath) !== destinationPath) ||
+      destinationMatch.paramsError
+    ) {
       return false
     }
 
-    if (location.params) {
-      if (!deepEqual(match.rawParams, location.params, { partial: true })) {
+    const [, end, caseSensitive, wildcardSuffix] = pathMatch?.routeData[
+      destinationMatch.index
+    ] ?? [undefined, 1, true]
+    if (
+      (opts?.caseSensitive && !caseSensitive) ||
+      (!fuzzy && end < trimmedCurrentPath.length) ||
+      (fuzzy && wildcardSuffix && end < currentPath.length)
+    ) {
+      return false
+    }
+
+    const params = Object.assign(
+      Object.create(null),
+      destinationMatch._strictParams,
+    )
+
+    if (fuzzy && currentPath.length > end && wildcardSuffix === undefined) {
+      try {
+        params['**'] = decodeURIComponent(
+          currentPath.slice(end === 1 ? 1 : end + 1) || '/',
+        )
+      } catch {
         return false
       }
     }
 
-    if (opts?.includeSearch ?? true) {
-      return deepEqual(baseLocation.search, next.search, { partial: true })
-        ? match.rawParams
-        : false
-    }
-
-    return match.rawParams
+    return (!location.params ||
+      deepEqual(params, location.params, { partial: true })) &&
+      (!(opts?.includeSearch ?? true) ||
+        deepEqual(baseLocation.search, next.search, { partial: true }))
+      ? params
+      : false
   }
 
   ssr?: {
