@@ -139,7 +139,58 @@ export function useLinkProps<
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   forwardedRef?: React.ForwardedRef<Element>,
 ): React.ComponentPropsWithRef<'a'> {
+  return useLinkPropsFor(options, forwardedRef)
+}
+
+// `host` is what the props are rendered on: `'a'` for `Link`, the component
+// given to `createLink`, or `undefined` for the public hook. `Link` never
+// renders `type` and an anchor never receives `disabled`, so those are left
+// out here rather than copied away from the result in the component.
+function useLinkPropsFor<
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  forwardedRef: React.ForwardedRef<Element> | undefined,
+  host?: 'a' | React.ElementType,
+): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
+
+  // ==========================================================================
+  // SERVER EARLY RETURN
+  // On the server, we return static props without any event handlers,
+  // effects, or client-side interactivity.
+  //
+  // For SSR parity (to avoid hydration errors), we still compute the link's
+  // active status on the server, but we avoid creating any router-state
+  // subscriptions by reading from the location store directly.
+  //
+  // Note: `location.hash` is not available on the server.
+  // ==========================================================================
+  // The expression must stay inlined in the `if` so bundlers fold the
+  // browser-build constant `isServer = false` and drop this server block,
+  // together with `getServerLinkProps` and the key sets only it references.
+  if (isServer ?? router.isServer) {
+    return getServerLinkProps(router, options, forwardedRef, host)
+  }
+
+  // ==========================================================================
+  // CLIENT-ONLY CODE
+  // Everything below this point only runs on the client. The `isServer` check
+  // above is a compile-time constant that bundlers use for dead code elimination,
+  // so this entire section is removed from server bundles.
+  //
+  // We disable the rules-of-hooks lint rule because these hooks appear after
+  // an early return. This is safe because:
+  // 1. `isServer` is a compile-time constant from conditional exports
+  // 2. In server bundles, this code is completely eliminated by the bundler
+  // 3. In client bundles, `isServer` is `false`, so the early return never executes
+  // ==========================================================================
+
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const innerRef = useForwardedRef(forwardedRef)
 
   const {
@@ -179,98 +230,14 @@ export function useLinkProps<
     unsafeRelative: _unsafeRelative,
     from: _from,
     _fromLocation,
+    _asChild: _asChildOption,
+    type,
     ...propsSafeToSpread
-  } = options
+  } = options as typeof options & { _asChild?: unknown }
   const to = toOption as string | undefined
-
-  // ==========================================================================
-  // SERVER EARLY RETURN
-  // On the server, we return static props without any event handlers,
-  // effects, or client-side interactivity.
-  //
-  // For SSR parity (to avoid hydration errors), we still compute the link's
-  // active status on the server, but we avoid creating any router-state
-  // subscriptions by reading from the location store directly.
-  //
-  // Note: `location.hash` is not available on the server.
-  // ==========================================================================
-  // The expression must stay inlined in the `if` so bundlers fold the
-  // browser-build constant `isServer = false` and drop this server block.
-  if (isServer ?? router.isServer) {
-    const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
-
-    // Direct-scheme links need no route resolution. Blocked links still use
-    // the shared inactive-prop merge so their server and client markup agree.
-    const next =
-      directExternalLink === undefined
-        ? router.buildLocation(options as any)
-        : undefined
-
-    const hrefOption = next
-      ? getHrefOption(next, router, disabled)
-      : (directExternalLink ?? undefined)
-    const linkDisabled = disabled || !hrefOption
-
-    const externalLink =
-      directExternalLink ??
-      (hrefOption && getUrlScheme(hrefOption) ? hrefOption : undefined)
-
-    if (externalLink) {
-      return {
-        ...propsSafeToSpread,
-        ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-        href: externalLink,
-        ...(children && { children }),
-        ...(target && { target }),
-        ...(disabled && { disabled }),
-        ...(style && { style }),
-        ...(className && { className }),
-      }
-    }
-
-    const blockedLink = !disabled && !hrefOption
-    // Hash is not available on the server, so it never counts as hydrated.
-    const isActive =
-      !!next &&
-      !blockedLink &&
-      resolveIsActive(
-        router.stores.location.get(),
-        next,
-        activeOptions,
-        router.basepath,
-        false,
-      )
-    const [resolvedStateProps, resolvedClassName, resolvedStyle] =
-      resolveStateProps(isActive, activeProps, inactiveProps, className, style)
-
-    return {
-      ...propsSafeToSpread,
-      // State props may override `ref`, but not on a blocked link (spread first).
-      ...(blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
-      ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      ...(!blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
-      href: hrefOption,
-      disabled: !!linkDisabled,
-      target,
-      ...(resolvedStyle && { style: resolvedStyle }),
-      ...(resolvedClassName && { className: resolvedClassName }),
-      ...(linkDisabled && STATIC_DISABLED_PROPS),
-      ...(isActive && STATIC_ACTIVE_PROPS),
-    }
+  if (host === undefined && type !== undefined) {
+    ;(propsSafeToSpread as Record<string, unknown>).type = type
   }
-
-  // ==========================================================================
-  // CLIENT-ONLY CODE
-  // Everything below this point only runs on the client. The `isServer` check
-  // above is a compile-time constant that bundlers use for dead code elimination,
-  // so this entire section is removed from server bundles.
-  //
-  // We disable the rules-of-hooks lint rule because these hooks appear after
-  // an early return. This is safe because:
-  // 1. `isServer` is a compile-time constant from conditional exports
-  // 2. In server bundles, this code is completely eliminated by the bundler
-  // 3. In client bundles, `isServer` is `false`, so the early return never executes
-  // ==========================================================================
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
@@ -432,7 +399,7 @@ export function useLinkProps<
       href: externalLink,
       ...(children && { children }),
       ...(target && { target }),
-      ...(disabled && { disabled }),
+      ...(disabled && host !== 'a' && { disabled }),
       ...(style && { style }),
       ...(className && { className }),
       ...(onClick && { onClick }),
@@ -504,7 +471,7 @@ export function useLinkProps<
     onTouchStart: composeHandlers(onTouchStart, handleTouchStart),
     ...(!blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
     href,
-    disabled: !!linkDisabled,
+    ...(host !== 'a' && { disabled: !!linkDisabled }),
     target,
     ...(resolvedStyle && { style: resolvedStyle }),
     ...(resolvedClassName && { className: resolvedClassName }),
@@ -515,8 +482,48 @@ export function useLinkProps<
 
 const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
-const STATIC_DISABLED_PROPS = { role: 'link', 'aria-disabled': true }
-const STATIC_ACTIVE_PROPS = { 'data-status': 'active', 'aria-current': 'page' }
+// Options consumed by the router and never forwarded to the element.
+const LINK_OPTION_KEYS = /* @__PURE__ */ new Set([
+  'activeProps',
+  'inactiveProps',
+  'activeOptions',
+  'to',
+  'preload',
+  'preloadDelay',
+  'preloadIntentProximity',
+  'hashScrollIntoView',
+  'replace',
+  'startTransition',
+  'resetScroll',
+  'viewTransition',
+  'children',
+  'target',
+  'disabled',
+  'style',
+  'className',
+  'onClick',
+  'onBlur',
+  'onFocus',
+  'onMouseEnter',
+  'onMouseLeave',
+  'onTouchStart',
+  'ignoreBlocker',
+  'params',
+  'search',
+  'hash',
+  'state',
+  'mask',
+  'reloadDocument',
+  'unsafeRelative',
+  'from',
+  '_fromLocation',
+  '_asChild',
+])
+const STATIC_DISABLED_PROPS = { role: 'link', 'aria-disabled': true } as const
+const STATIC_ACTIVE_PROPS = {
+  'data-status': 'active',
+  'aria-current': 'page',
+} as const
 
 // Only one state contributes props; merge its class and style with the base ones.
 function resolveStateProps(
@@ -544,6 +551,130 @@ function resolveStateProps(
       : stateClassName,
     style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle,
   ]
+}
+
+// Server render of a Link: static props only. This reads the few options it
+// needs directly and splits the element props with a key set. V8 checks every
+// key of an object rest against the whole exclusion list, which made that
+// split the most expensive part of rendering a Link on the server. Only
+// server bundles keep this function and the key sets.
+function getServerLinkProps(
+  router: AnyRouter,
+  options: any,
+  forwardedRef: React.ForwardedRef<Element> | undefined,
+  host: 'a' | React.ElementType | undefined,
+): React.ComponentPropsWithRef<'a'> {
+  const {
+    to,
+    disabled,
+    activeProps,
+    inactiveProps,
+    activeOptions,
+    children,
+    target,
+    style,
+    className,
+  } = options as {
+    to: string | undefined
+    disabled: boolean | undefined
+    activeProps: unknown
+    inactiveProps: unknown
+    activeOptions: ActiveOptions | undefined
+    children: ReactNode
+    target: string | undefined
+    style: React.CSSProperties | undefined
+    className: string | undefined
+  }
+  // `Link` additionally never renders a `type` attribute.
+  const props: Record<string, unknown> = {}
+  for (const key in options) {
+    if (!LINK_OPTION_KEYS.has(key) && (key !== 'type' || host === undefined)) {
+      props[key] = options[key]
+    }
+  }
+
+  const directExternalLink = resolveExternalLink(to, router.protocolAllowlist)
+
+  // Direct-scheme links need no route resolution. Blocked links still use
+  // the shared inactive-prop merge so their server and client markup agree.
+  const next =
+    directExternalLink === undefined ? router.buildLocation(options) : undefined
+
+  const hrefOption = next
+    ? getHrefOption(next, router, disabled)
+    : (directExternalLink ?? undefined)
+  const linkDisabled = disabled || !hrefOption
+
+  const externalLink =
+    directExternalLink ??
+    (hrefOption && getUrlScheme(hrefOption) ? hrefOption : undefined)
+
+  // Assignments below mirror the client's spread order, so props keep the
+  // same precedence and the rendered attribute order stays identical.
+  if (externalLink) {
+    props.ref = forwardedRef
+    props.href = externalLink
+    if (children) {
+      props.children = children
+    }
+    if (target) {
+      props.target = target
+    }
+    if (disabled && host !== 'a') {
+      props.disabled = disabled
+    }
+    if (style) {
+      props.style = style
+    }
+    if (className) {
+      props.className = className
+    }
+    return props
+  }
+
+  const blockedLink = !disabled && !hrefOption
+  // Hash is not available on the server, so it never counts as hydrated.
+  const isActive =
+    !!next &&
+    !blockedLink &&
+    resolveIsActive(
+      router.stores.location.get(),
+      next,
+      activeOptions,
+      router.basepath,
+      false,
+    )
+  const [resolvedStateProps, resolvedClassName, resolvedStyle] =
+    resolveStateProps(isActive, activeProps, inactiveProps, className, style)
+
+  // State props may override `ref`, but not on a blocked link (assigned first).
+  if (blockedLink) {
+    Object.assign(props, resolvedStateProps)
+    props.ref = forwardedRef
+  } else {
+    props.ref = forwardedRef
+    Object.assign(props, resolvedStateProps)
+  }
+  props.href = hrefOption
+  if (host !== 'a') {
+    props.disabled = !!linkDisabled
+  }
+  props.target = target
+  if (resolvedStyle) {
+    props.style = resolvedStyle
+  }
+  if (resolvedClassName) {
+    props.className = resolvedClassName
+  }
+  if (linkDisabled) {
+    props.role = 'link'
+    props['aria-disabled'] = true
+  }
+  if (isActive) {
+    props['data-status'] = 'active'
+    props['aria-current'] = 'page'
+  }
+  return props
 }
 
 const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
@@ -749,24 +880,17 @@ export function createLink<const TComp>(
  */
 export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
   (props, ref) => {
-    const { _asChild, ...rest } = props
-    const linkProps = useLinkProps(rest as any, ref)
+    const host = props._asChild || 'a'
+    const linkProps = useLinkPropsFor(props as any, ref, host)
 
     const children =
-      typeof rest.children === 'function'
-        ? rest.children({
+      typeof props.children === 'function'
+        ? props.children({
             isActive: (linkProps as any)['data-status'] === 'active',
           })
-        : rest.children
+        : props.children
 
-    if (!_asChild) {
-      // the ReturnType of useLinkProps returns the correct type for a <a> element, not a general component that has a disabled prop
-      // @ts-expect-error
-      const { type: _type, disabled: _, ...anchorProps } = linkProps
-      return React.createElement('a', anchorProps, children)
-    }
-    const { type: _type, ...customProps } = linkProps
-    return React.createElement(_asChild, customProps, children)
+    return React.createElement(host, linkProps, children)
   },
 ) as any
 
