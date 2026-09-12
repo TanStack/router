@@ -519,15 +519,16 @@ export function isModuleNotFoundError(error: any): boolean {
     return true
   }
 
-  if (typeof error?.message !== 'string') {
+  const message = error?.message
+  if (typeof message !== 'string') {
     return false
   }
 
   return (
-    error.message.startsWith('Failed to fetch dynamically imported module') ||
-    error.message.startsWith('error loading dynamically imported module') ||
-    error.message.startsWith('Importing a module script failed') ||
-    /^Loading chunk .+ failed\./.test(error.message)
+    message.startsWith('Failed to fetch dynamically imported module') ||
+    message.startsWith('error loading dynamically imported module') ||
+    message.startsWith('Importing a module script failed') ||
+    /^Loading chunk .+ failed\./.test(message)
   )
 }
 
