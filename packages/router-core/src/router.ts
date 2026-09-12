@@ -1174,7 +1174,9 @@ export class RouterCore<
   >
   // Locations built without reading the current location, keyed by the stable
   // options object a Link owns. Links pass a new object when their values change.
-  private staticLocations!: WeakMap<object, ParsedLocation>
+  // Client only: server renders never repeat an options object, so server
+  // bundles fold `isServer` and drop the cache entirely.
+  private staticLocations: WeakMap<object, ParsedLocation> | undefined
   isServer!: boolean
   readonly pathParamsDecoder?: (encoded: string) => string
   protocolAllowlist!: Set<string>
@@ -1250,10 +1252,13 @@ export class RouterCore<
       ...prevOptions,
       ...newOptions,
     }
-    this.staticLocations = new WeakMap()
 
     this.isServer =
       this.options.isServer ?? isServer ?? typeof document === 'undefined'
+    // `isServer` is a per-bundle constant, so server builds drop the cache.
+    if (!(isServer ?? this.isServer)) {
+      this.staticLocations = new WeakMap()
+    }
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
 
@@ -1390,7 +1395,9 @@ export class RouterCore<
   setRoutes(caches: RouteTreeCaches<TRouteTree>) {
     Object.assign(this, caches)
     this.lightweightCache = new WeakMap()
-    this.staticLocations = new WeakMap()
+    if (!(isServer ?? this.isServer)) {
+      this.staticLocations = new WeakMap()
+    }
 
     const notFoundRoute = this.options.notFoundRoute
 
@@ -1888,9 +1895,11 @@ export class RouterCore<
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/RouterType#buildlocation-method
    */
   buildLocation: BuildLocationFn = (opts) => {
-    const cached = this.staticLocations.get(opts)
-    if (cached) {
-      return cached
+    if (!(isServer ?? this.isServer)) {
+      const cached = this.staticLocations!.get(opts)
+      if (cached) {
+        return cached
+      }
     }
 
     // Set by `current()` whenever a build reads the current location. A
@@ -2206,8 +2215,13 @@ export class RouterCore<
     }
 
     // Masked locations stay out: `opts.mask` is rebuilt from the current location.
-    if (!usedCurrent && opts._fromLocation && !next.maskedLocation) {
-      this.staticLocations.set(opts, next)
+    if (
+      !(isServer ?? this.isServer) &&
+      !usedCurrent &&
+      opts._fromLocation &&
+      !next.maskedLocation
+    ) {
+      this.staticLocations!.set(opts, next)
     }
 
     return next

@@ -708,11 +708,12 @@ export function decodePath(path: string) {
  * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
  */
 export function encodePathLikeUrl(path: string): string {
-  // Encode whitespace and non-ASCII characters that browsers encode in URLs
-
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
-  // eslint-disable-next-line no-control-regex
-  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  // Encode whitespace and non-ASCII characters that browsers encode in URLs.
+  // The test uses one character class: it matches the same code units as the
+  // replacement pattern below and is cheaper than the alternation.
+  if (!/[\s\u0080-\uFFFF]/.test(path)) {
+    return path
+  }
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
   return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)
