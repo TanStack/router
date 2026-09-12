@@ -57,56 +57,52 @@ function persistScrollRestorationCache() {
 const scrollRestorationCache = /* @__PURE__ */ createScrollRestorationCache()
 const scrollRestorationIdAttribute = 'data-scroll-restoration-id'
 
-type ScrollHistoryState = {
-  callbacks: Set<() => void>
-  release: () => void
+type HistoryDestroyHook = {
+  listeners: Set<() => void>
+  restore: () => void
 }
 
-const scrollHistoryRegistry = new WeakMap<RouterHistory, ScrollHistoryState>()
+const historyDestroyHooks = new WeakMap<RouterHistory, HistoryDestroyHook>()
 // Router histories share the browser's scroll restoration setting.
 let scrollRestorationOwners = 0
 let previousScrollRestoration: ScrollRestoration
 
-function getScrollHistoryState(history: RouterHistory) {
-  const existing = scrollHistoryRegistry.get(history)
-  if (existing) {
-    return existing
-  }
-
-  const originalDestroy = history.destroy
-  const callbacks = new Set<() => void>()
-  let destroying = false
-  const state: ScrollHistoryState = {
-    callbacks,
-    release: () => {
-      if (destroying || callbacks.size) {
-        return
+/** Runs `listener` when `history.destroy()` is called. Returns an unsubscribe. */
+function onHistoryDestroy(history: RouterHistory, listener: () => void) {
+  let hook = historyDestroyHooks.get(history)
+  if (!hook) {
+    const listeners = new Set<() => void>()
+    const originalDestroy = history.destroy
+    const destroy = () => {
+      // Listeners unsubscribe themselves; the last one restores `destroy`.
+      for (const listener of [...listeners]) {
+        listener()
       }
-      if (history.destroy === wrapper) {
-        history.destroy = originalDestroy
-      }
-      // An external wrapper may retain this generation after reattachment.
-      if (scrollHistoryRegistry.get(history) === state) {
-        scrollHistoryRegistry.delete(history)
-      }
-    },
-  }
-  const wrapper = () => {
-    destroying = true
-    try {
-      for (const callback of [...callbacks]) {
-        callback()
-      }
-    } finally {
-      callbacks.clear()
-      destroying = false
-      state.release()
       originalDestroy.call(history)
     }
+    const current: HistoryDestroyHook = (hook = {
+      listeners,
+      restore: () => {
+        if (history.destroy === destroy) {
+          history.destroy = originalDestroy
+        }
+        // An external wrapper may retain this generation after reattachment.
+        if (historyDestroyHooks.get(history) === current) {
+          historyDestroyHooks.delete(history)
+        }
+      },
+    })
+    history.destroy = destroy
+    historyDestroyHooks.set(history, hook)
   }
-  history.destroy = wrapper
-  scrollHistoryRegistry.set(history, state)
-  return state
+  const { listeners, restore } = hook
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+    if (!listeners.size) {
+      restore()
+    }
+  }
 }
 
 /**
@@ -254,14 +250,11 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
 
   const history = router.history
   if (scroll.history !== history) {
-    const historyState = getScrollHistoryState(history)
-    let cleanedUp = false
     const cleanup = () => {
-      if (cleanedUp) {
+      if (scroll.historyCleanup !== cleanup) {
         return
       }
-      cleanedUp = true
-      historyState.callbacks.delete(cleanup)
+      unsubscribe()
       scroll.captureCleanup?.()
       scroll.captureCleanup = undefined
       scroll.renderedCleanup?.()
@@ -269,9 +262,8 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       trackedScrollTargets.clear()
       scroll.history = undefined
       scroll.historyCleanup = undefined
-      historyState.release()
     }
-    historyState.callbacks.add(cleanup)
+    const unsubscribe = onHistoryDestroy(history, cleanup)
     scroll.history = history
     scroll.historyCleanup = cleanup
   }
@@ -453,5 +445,5 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
       ignoreScroll = false
     }
   })
-  router._scroll.renderedCleanup = unsubscribeRendered
+  scroll.renderedCleanup = unsubscribeRendered
 }
