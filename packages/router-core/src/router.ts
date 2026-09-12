@@ -30,7 +30,7 @@ import {
 } from './new-process-route-tree'
 import {
   compileDecodeCharMap,
-  interpolatePathname,
+  interpolatePath,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -56,6 +56,7 @@ import {
 } from './rewrite'
 import { createRouterStores } from './stores'
 import type { SieveCache } from './sieve-cache'
+import type { InterpolationPlan } from './path'
 import type {
   ProcessRouteTreeResult,
   ProcessedTree,
@@ -1016,11 +1017,12 @@ type LightweightRouteMatchCacheEntry = [
   result: LightweightRouteMatchResult,
 ]
 
-type InterpolationPlan = [
-  keys: Array<string>,
-  paths: SieveCache<string | undefined, string>,
-  decoder: ((encoded: string) => string) | undefined,
-]
+/** Indexes and caches rebuilt together when the route tree changes. */
+type RouteTreeCaches<TRouteTree extends AnyRoute> =
+  ProcessRouteTreeResult<TRouteTree> & {
+    resolvePathCache: SieveCache<string, string>
+    unmatchedPathCache: SieveCache<string, InterpolationPlan>
+  }
 
 export type CreateRouterFn = <
   TRouteTree extends AnyRoute,
@@ -1051,8 +1053,7 @@ declare global {
   var __TSR_CACHE__:
     | {
         routeTree: AnyRoute
-        processRouteTreeResult: ProcessRouteTreeResult<AnyRoute>
-        resolvePathCache: SieveCache<string, string>
+        processRouteTreeResult: RouteTreeCaches<AnyRoute>
       }
     | undefined
 }
@@ -1162,8 +1163,7 @@ export class RouterCore<
   routesByPath!: RoutesByPath<TRouteTree>
   processedTree!: ProcessedTree<TRouteTree, any, any>
   resolvePathCache!: SieveCache<string, string>
-  private pathCache = createSieveCache<string, InterpolationPlan>(32)
-  private routeBranchCache = new WeakMap<AnyRoute, ReadonlyArray<AnyRoute>>()
+  private unmatchedPathCache!: SieveCache<string, InterpolationPlan>
   private lightweightCache = new WeakMap<
     ParsedLocation,
     LightweightRouteMatchCacheEntry
@@ -1282,7 +1282,7 @@ export class RouterCore<
 
     if (this.options.routeTree !== this.routeTree) {
       this.routeTree = this.options.routeTree as TRouteTree
-      let processRouteTreeResult: ProcessRouteTreeResult<TRouteTree>
+      let processRouteTreeResult: RouteTreeCaches<TRouteTree>
       if (
         process.env.NODE_ENV !== 'development' &&
         (isServer ?? this.isServer) &&
@@ -1290,10 +1290,8 @@ export class RouterCore<
         globalThis.__TSR_CACHE__.routeTree === this.routeTree
       ) {
         const cached = globalThis.__TSR_CACHE__
-        this.resolvePathCache = cached.resolvePathCache
         processRouteTreeResult = cached.processRouteTreeResult as any
       } else {
-        this.resolvePathCache = createSieveCache(1000)
         processRouteTreeResult = this.buildRouteTree()
         // only cache if nothing else is cached yet
         if (
@@ -1304,7 +1302,6 @@ export class RouterCore<
           globalThis.__TSR_CACHE__ = {
             routeTree: this.routeTree,
             processRouteTreeResult: processRouteTreeResult as any,
-            resolvePathCache: this.resolvePathCache,
           }
         }
       }
@@ -1370,7 +1367,7 @@ export class RouterCore<
     )
   }
 
-  buildRouteTree = () => {
+  buildRouteTree = (): RouteTreeCaches<TRouteTree> => {
     const result = processRouteTree(
       this.routeTree,
       this.options.caseSensitive,
@@ -1384,17 +1381,16 @@ export class RouterCore<
       processRouteMasks(this.options.routeMasks, result.processedTree)
     }
 
-    return result
+    return {
+      ...result,
+      resolvePathCache: createSieveCache(1000),
+      // Arbitrary templates (for example, masks) have no route object to key by.
+      unmatchedPathCache: createSieveCache<string, InterpolationPlan>(32),
+    }
   }
 
-  setRoutes({
-    routesById,
-    routesByPath,
-    processedTree,
-  }: ProcessRouteTreeResult<TRouteTree>) {
-    this.routesById = routesById as RoutesById<TRouteTree>
-    this.routesByPath = routesByPath as RoutesByPath<TRouteTree>
-    this.processedTree = processedTree
+  setRoutes(caches: RouteTreeCaches<TRouteTree>) {
+    Object.assign(this, caches)
 
     const notFoundRoute = this.options.notFoundRoute
 
@@ -1535,15 +1531,6 @@ export class RouterCore<
     })
   }
 
-  private getRouteBranch(route: AnyRoute) {
-    let branch = this.routeBranchCache.get(route)
-    if (!branch) {
-      branch = buildRouteBranch(route)
-      this.routeBranchCache.set(route, branch)
-    }
-    return branch
-  }
-
   matchRoutes: MatchRoutesFn = (
     pathnameOrNext: string | ParsedLocation,
     locationSearchOrOpts?: AnySchema | MatchRoutesOpts,
@@ -1674,7 +1661,7 @@ export class RouterCore<
       const usedParams: Record<string, unknown> = createNull()
       const interpolatedPath =
         isServer === undefined
-          ? interpolatePathname(
+          ? interpolatePath(
               route.fullPath,
               rawParams,
               this.pathParamsDecoder,
@@ -1682,7 +1669,7 @@ export class RouterCore<
               undefined,
               this.isServer,
             )
-          : interpolatePathname(
+          : interpolatePath(
               route.fullPath,
               rawParams,
               this.pathParamsDecoder,
@@ -1901,15 +1888,16 @@ export class RouterCore<
   private interpolatePath(
     path: string,
     params: Record<string, unknown>,
+    route?: AnyRoute,
   ): string {
     const decoder = this.pathParamsDecoder
-    let plan = this.pathCache.get(path)
+    let plan = route ? route._pathCache : this.unmatchedPathCache.get(path)
     let interpolated: string | undefined
-    if (!plan || plan[2] !== decoder) {
+    if (!plan || plan[2] !== decoder || plan[3] !== path) {
       const keys: Array<string> = []
       interpolated =
         isServer === undefined
-          ? interpolatePathname(
+          ? interpolatePath(
               path,
               params,
               decoder,
@@ -1917,9 +1905,18 @@ export class RouterCore<
               keys,
               this.isServer,
             )
-          : interpolatePathname(path, params, decoder, undefined, keys)
-      plan = [keys, createSieveCache<string | undefined, string>(128), decoder]
-      this.pathCache.set(path, plan)
+          : interpolatePath(path, params, decoder, undefined, keys)
+      plan = [
+        keys,
+        createSieveCache<string | undefined, string>(128),
+        decoder,
+        path,
+      ]
+      if (route) {
+        route._pathCache = plan
+      } else {
+        this.unmatchedPathCache.set(path, plan)
+      }
     }
     const [keys, paths] = plan
     // Single-param templates use the value itself as the Map key. Compound keys
@@ -1932,7 +1929,7 @@ export class RouterCore<
         return (
           interpolated ||
           (isServer === undefined
-            ? interpolatePathname(
+            ? interpolatePath(
                 path,
                 params,
                 decoder,
@@ -1940,7 +1937,7 @@ export class RouterCore<
                 undefined,
                 this.isServer,
               )
-            : interpolatePathname(path, params, decoder))
+            : interpolatePath(path, params, decoder))
         )
       }
       key = keys.length === 1 ? value : key! + value?.length + ':' + value
@@ -1953,7 +1950,7 @@ export class RouterCore<
       key,
       (interpolated ||=
         isServer === undefined
-          ? interpolatePathname(
+          ? interpolatePath(
               path,
               params,
               decoder,
@@ -1961,7 +1958,7 @@ export class RouterCore<
               undefined,
               this.isServer,
             )
-          : interpolatePathname(path, params, decoder)),
+          : interpolatePath(path, params, decoder)),
     )
     return interpolated
   }
@@ -2051,7 +2048,7 @@ export class RouterCore<
 
       let destRoutes: ReadonlyArray<AnyRoute>
       if (destRoute) {
-        destRoutes = this.getRouteBranch(destRoute)
+        destRoutes = destRoute._branch ??= buildRouteBranch(destRoute)
       } else if (nextTo.includes('$')) {
         // Route templates must match routesByPath exactly. A miss here is a
         // typed destination mismatch, not a concrete URL to route-match.
@@ -2099,7 +2096,7 @@ export class RouterCore<
             // Normalize it to "/evil.example" to keep it on the current origin.
             normalizeProtocolRelative(
               nextTo.includes('$')
-                ? this.interpolatePath(nextTo, nextParams)
+                ? this.interpolatePath(nextTo, nextParams, destRoute)
                 : nextTo,
             ),
           )
