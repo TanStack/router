@@ -20,7 +20,9 @@ app.use(async (req, res, next) => {
   }
 })
 
-app.listen(PORT, (error) => {
-  if (error) throw error
-  console.log(`Server is running on http://localhost:${PORT}`)
+const httpServer = app.listen(PORT, (error) => {
+  if (error) {
+    throw error
+  }
+  console.log(`E2E app: http://localhost:${httpServer.address().port}`)
 })

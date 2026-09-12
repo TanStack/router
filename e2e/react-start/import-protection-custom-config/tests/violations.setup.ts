@@ -1,9 +1,9 @@
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
-import { chromium } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
+import { stripVTControlCharacters } from 'node:util'
+import { chromium, expect } from '@playwright/test'
+import { appServerReadyPattern } from '@tanstack/router-e2e-utils'
 
 import { extractViolationsFromLog } from './violations.utils'
 import type { FullConfig } from '@playwright/test'
@@ -12,7 +12,6 @@ import type { Violation } from './violations.utils'
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
 
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
   while (true) {
     if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for ${url}`)
@@ -119,7 +118,6 @@ async function runDevPass(
   cwd: string,
   port: number,
 ): Promise<Array<Violation>> {
-  const baseURL = `http://localhost:${port}`
   const logChunks: Array<string> = []
   const child = startDevServer(cwd, port)
 
@@ -127,6 +125,19 @@ async function runDevPass(
   child.stderr?.on('data', (d: Buffer) => logChunks.push(d.toString()))
 
   try {
+    await expect
+      .poll(
+        () =>
+          appServerReadyPattern.exec(
+            stripVTControlCharacters(logChunks.join('')),
+          )?.groups?.E2E_APP_PORT,
+        { timeout: 30_000 },
+      )
+      .toBeTruthy()
+    const port = appServerReadyPattern.exec(
+      stripVTControlCharacters(logChunks.join('')),
+    )!.groups!.E2E_APP_PORT
+    const baseURL = `http://localhost:${port}`
     await waitForHttpOk(baseURL, 30_000)
 
     const browser = await chromium.launch()
@@ -146,7 +157,7 @@ async function runDevPass(
 }
 
 async function captureDevViolations(cwd: string): Promise<void> {
-  const port = await getTestServerPort(`${packageJson.name}_dev`)
+  const port = 0
 
   const coldViolations = await runDevPass(cwd, port)
 

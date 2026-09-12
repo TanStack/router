@@ -1,12 +1,11 @@
+import { spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { spawn } from 'node:child_process'
+import { stripVTControlCharacters } from 'node:util'
+import { appServerReadyPattern, test } from '@tanstack/router-e2e-utils'
 import { expect } from '@playwright/test'
-import { getTestServerPort, test } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
 import type { Page } from '@playwright/test'
 
-const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
 const fixtureRoot = path.resolve(import.meta.dirname, '..')
 const workspaceRoot = path.resolve(import.meta.dirname, '../../../..')
 const errorOverlaySelector = 'rsbuild-error-overlay'
@@ -15,7 +14,7 @@ const syntaxErrorRoutePatch = '\nexport const broken = ;\n'
 const devServerTimeout = 30_000
 
 class DevServer {
-  readonly url: string
+  url = ''
   private stopPromise: Promise<void> | null = null
   private startupError: Error | null = null
   private readonly startupErrorPromise: Promise<never>
@@ -24,7 +23,16 @@ class DevServer {
     readonly port: number,
     private readonly childProcess: ReturnType<typeof spawn>,
   ) {
-    this.url = `http://localhost:${port}`
+    let log = ''
+    const captureAddress = (data: Buffer) => {
+      log += data.toString()
+      const match = appServerReadyPattern.exec(stripVTControlCharacters(log))
+      if (match?.groups?.E2E_APP_PORT) {
+        this.url = `http://localhost:${match.groups.E2E_APP_PORT}`
+      }
+    }
+    this.childProcess.stdout?.on('data', captureAddress)
+    this.childProcess.stderr?.on('data', captureAddress)
     this.startupErrorPromise = new Promise<never>((_, reject) => {
       this.childProcess.once('error', (error) => {
         this.startupError = error
@@ -45,7 +53,7 @@ class DevServer {
           VITE_SERVER_PORT: String(port),
           VITE_NODE_ENV: 'test',
         },
-        stdio: 'ignore',
+        stdio: ['ignore', 'pipe', 'pipe'],
       }),
     )
 
@@ -351,7 +359,7 @@ test('shows a module syntax error through the error overlay', async ({
 }) => {
   const homeRouteFile = path.resolve(fixtureRoot, 'src/routes/index.tsx')
   const originalSource = await fs.promises.readFile(homeRouteFile, 'utf-8')
-  const port = await getTestServerPort(`${e2ePortKey}-syntax-error-overlay`)
+  const port = 0
   await using devServer = await DevServer.start(port)
 
   try {
