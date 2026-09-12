@@ -411,8 +411,6 @@ function useLinkPropsFor<
     }
   }
 
-  const blockedLink = isActive === undefined
-
   const [resolvedStateProps, resolvedClassName, resolvedStyle] =
     resolveStateProps(isActive, activeProps, inactiveProps, className, style)
 
@@ -460,8 +458,6 @@ function useLinkPropsFor<
 
   return {
     ...propsSafeToSpread,
-    // State props may override `ref` and handlers, but not on a blocked link (spread first).
-    ...(blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers(onClick, handleClick),
     onBlur: composeHandlers(onBlur, handleLeave),
@@ -469,7 +465,9 @@ function useLinkPropsFor<
     onMouseEnter: composeHandlers(onMouseEnter, enqueuePreload),
     onMouseLeave: composeHandlers(onMouseLeave, handleLeave),
     onTouchStart: composeHandlers(onTouchStart, handleTouchStart),
-    ...(!blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
+    // State props override element props, `ref` and handlers, but never the
+    // routing attributes below.
+    ...resolvedStateProps,
     href,
     ...(host !== 'a' && { disabled: !!linkDisabled }),
     target,
@@ -647,14 +645,10 @@ function getServerLinkProps(
   const [resolvedStateProps, resolvedClassName, resolvedStyle] =
     resolveStateProps(isActive, activeProps, inactiveProps, className, style)
 
-  // State props may override `ref`, but not on a blocked link (assigned first).
-  if (blockedLink) {
-    Object.assign(props, resolvedStateProps)
-    props.ref = forwardedRef
-  } else {
-    props.ref = forwardedRef
-    Object.assign(props, resolvedStateProps)
-  }
+  // State props override element props and `ref`, but never the routing
+  // attributes assigned below.
+  props.ref = forwardedRef
+  Object.assign(props, resolvedStateProps)
   props.href = hrefOption
   if (host !== 'a') {
     props.disabled = !!linkDisabled
