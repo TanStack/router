@@ -1,8 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
-const PORT = await getTestServerPort(packageJson.name)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
 
 /**
@@ -20,9 +19,9 @@ export default defineConfig({
   },
 
   webServer: {
-    command: `VITE_NODE_ENV="test" pnpm build && VITE_NODE_ENV="test" VITE_SERVER_PORT=${PORT} PORT=${PORT} pnpm start`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    command: `pnpm build && PORT=${PORT} pnpm start`,
+    wait: appServerReady,
+    reuseExistingServer: false,
     stdout: 'pipe',
     env: {
       NODE_OPTIONS: `${process.env.NODE_OPTIONS ?? ''} --import=@tanstack/router-e2e-utils/mock-api`,
