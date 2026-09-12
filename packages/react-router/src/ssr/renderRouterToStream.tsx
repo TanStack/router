@@ -3,11 +3,10 @@ import ReactDOMServer from 'react-dom/server'
 import { isbot } from 'isbot'
 import {
   createSsrStreamResponse,
-  transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
 } from '@tanstack/router-core/ssr/server'
+import { transformPipeableStreamWithRouter } from './transform-pipeable-stream-with-router'
 import type { AnyRouter } from '@tanstack/router-core'
-import type { ReadableStream } from 'node:stream/web'
 import type { ReactNode } from 'react'
 
 const noop = () => {}

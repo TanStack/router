@@ -8,7 +8,6 @@
 // transformStreamWithRouter calls controller.enqueue unconditionally,
 // allowing controller.[[queue]] to accumulate Uint8Array chunks (external
 // memory) when the consumer drains slower than the producer.
-import { ReadableStream } from 'node:stream/web'
 import { describe, expect, it } from 'vitest'
 import { transformStreamWithRouter } from '../src/ssr/transformStreamWithRouter'
 

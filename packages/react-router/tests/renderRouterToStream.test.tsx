@@ -1,6 +1,8 @@
+import { PassThrough } from 'node:stream'
 import { afterEach, describe, expect, onTestFinished, test, vi } from 'vitest'
 import { attachRouterServerSsrUtils } from '@tanstack/router-core/ssr/server'
 import { createMemoryHistory, createRootRoute, createRouter } from '../src'
+import { transformPipeableStreamWithRouter } from '../src/ssr/transform-pipeable-stream-with-router'
 
 const reactDomServerMocks = vi.hoisted(() => ({
   renderToReadableStream: undefined as undefined | (() => unknown),
@@ -258,6 +260,37 @@ describe('renderRouterToStream - pipeable sync errors', () => {
       ])
       expect(terminated).toBe(true)
     } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('destroying the pipeable response cancels the React adapter', async () => {
+    const router = await buildRouter()
+    const cleanup = vi.spyOn(router.serverSsr!, 'cleanup')
+    const input = new PassThrough()
+    let aborts = 0
+    const output = transformPipeableStreamWithRouter(router, input, {
+      onAbort: () => {
+        aborts++
+      },
+    })
+    output.on('error', () => {})
+
+    try {
+      input.write('<p>x</p>')
+      await new Promise((resolve) => setImmediate(resolve))
+
+      output.destroy(new Error('client gone'))
+      await new Promise((resolve) => setImmediate(resolve))
+      await Promise.resolve()
+
+      expect(aborts).toEqual(1)
+      expect(input.destroyed).toEqual(true)
+      expect(cleanup).toHaveBeenCalledOnce()
+    } finally {
+      if (!input.destroyed) {
+        input.destroy()
+      }
       router.serverSsr?.cleanup()
     }
   })
