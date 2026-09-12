@@ -72,7 +72,10 @@
   "nx": {
     "targets": {
       "build": {
-        "inputs": ["...", "{workspaceRoot}/eslint.config.js"]
+        "inputs": [
+          "...",
+          "{workspaceRoot}/eslint.config.js"
+        ]
       }
     }
   }
