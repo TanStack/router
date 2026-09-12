@@ -161,6 +161,75 @@ declare module '@tanstack/solid-router' {
 
 As long as there are any required properties on the `StaticDataRouteOption`, you'll be required to pass in an object.
 
+## Scoping Static Data by Route Prefix
+
+Augmenting `StaticDataRouteOption` types `staticData` the same way for every route in your app. If different sections of your route tree need different static data shapes — for example, each pathless layout route defines its own page-chrome configuration — you can register a shape per route-id prefix with `StaticDataByRoutePrefix`:
+
+<!-- ::start:framework -->
+
+# React
+
+```tsx
+declare module '@tanstack/react-router' {
+  interface StaticDataByRoutePrefix {
+    '/_sidebar': { appBar?: { title: string } }
+    '/_details': { backTo: string }
+  }
+}
+```
+
+# Solid
+
+```tsx
+declare module '@tanstack/solid-router' {
+  interface StaticDataByRoutePrefix {
+    '/_sidebar': { appBar?: { title: string } }
+    '/_details': { backTo: string }
+  }
+}
+```
+
+<!-- ::end:framework -->
+
+Every route whose id is the prefix itself or starts with `` `${prefix}/` `` gets its `staticData` typed as the registered shape. A route under `/_sidebar` now type-errors if it declares `staticData` matching another section's shape:
+
+```tsx
+export const Route = createFileRoute('/_sidebar/home')({
+  staticData: {
+    // Object literal may only specify known properties, and 'backTo' does not exist...
+    backTo: '/',
+  },
+})
+```
+
+A matching prefix fully replaces the global static data shape for those routes: `staticData` is typed as exactly the registered shape, and a `StaticDataRouteOption` augmentation no longer applies there — even one with required properties, as in [Enforcing Static Data](#enforcing-static-data) above. Routes that match no registered prefix keep the plain `StaticDataRouteOption` behavior, unchanged. If several registered prefixes match the same route id (for example `/_sidebar` and `/_sidebar/settings`), `staticData` accepts the union of the registered shapes.
+
+Prefix-scoped `staticData` is always optional to declare, even when the registered shape has required properties: the registry constrains the shape of `staticData` where it is provided, not its presence. This lets a layout route declare defaults while its children override them selectively.
+
+You can look up the shape registered for a given route id with `StaticDataByRouteId`, which is useful when typing your own utilities that read `staticData`:
+
+<!-- ::start:framework -->
+
+# React
+
+```tsx
+import type { StaticDataByRouteId } from '@tanstack/react-router'
+
+// { appBar?: { title: string } } — '/_sidebar/home' matches the '/_sidebar' prefix
+type HomeStaticData = StaticDataByRouteId<'/_sidebar/home'>
+```
+
+# Solid
+
+```tsx
+import type { StaticDataByRouteId } from '@tanstack/solid-router'
+
+// { appBar?: { title: string } } — '/_sidebar/home' matches the '/_sidebar' prefix
+type HomeStaticData = StaticDataByRouteId<'/_sidebar/home'>
+```
+
+<!-- ::end:framework -->
+
 ## Common Patterns
 
 ### Controlling Layout Visibility

@@ -28,7 +28,8 @@ import type {
   RouteConstraints,
   RouteIds,
   RouteLoaderEntry,
-  UpdatableRouteOptions,
+  UpdatableRouteOptionsWithoutStaticData,
+  UpdatableStaticRouteOptionByRouteId,
   UseNavigateResult,
 } from '@tanstack/router-core'
 import type { UseLoaderDepsRoute } from './useLoaderDeps'
@@ -104,7 +105,7 @@ export class FileRoute<
       TMiddlewares,
       THandlers
     > &
-      UpdatableRouteOptions<
+      UpdatableRouteOptionsWithoutStaticData<
         TParentRoute,
         TId,
         TFullPath,
@@ -115,7 +116,8 @@ export class FileRoute<
         AnyContext,
         TRouteContextFn,
         TBeforeLoadFn
-      >,
+      > &
+      UpdatableStaticRouteOptionByRouteId<TId>,
   ): Route<
     TRegister,
     TParentRoute,
