@@ -255,22 +255,26 @@ export function replaceEqualDeep(
 
   const prevKeys = Object.keys(prev)
   const nextKeys = Object.keys(next)
+  const length = nextKeys.length
   // Holes or extra keys on an array, non-enumerable keys on an object, or symbol
   // keys on `next` make a value opaque: it passes through untouched rather than
-  // being compared or copied by its indices or string keys only.
+  // being compared or copied by its indices or string keys only. A hole and an
+  // extra key cancel out in the key count, but extra keys sort after the indices,
+  // so only a dense index-only `next` has its last index as its last key.
   // (`getOwnPropertySymbols` is ~4x the cost of the other two, so `prev` — normally an
-  // earlier `next` — is not checked for symbols.)
+  // earlier `next` — is not checked for symbols, and arrays are not checked at all.)
   if (
     array
-      ? prevKeys.length !== prev.length || nextKeys.length !== next.length
+      ? prevKeys.length !== prev.length ||
+        length !== next.length ||
+        (length && nextKeys[length - 1] !== `${length - 1}`)
       : prevKeys.length !== Object.getOwnPropertyNames(prev).length ||
-        nextKeys.length !== Object.getOwnPropertyNames(next).length ||
+        length !== Object.getOwnPropertyNames(next).length ||
         Object.getOwnPropertySymbols(next).length
   ) {
     return next
   }
 
-  const length = nextKeys.length
   let i = 0
   let n: any
 

@@ -256,6 +256,28 @@ describe('replaceEqualDeep', () => {
     expect(result).toBe(next)
   })
 
+  // A hole and an extra key cancel out in `Object.keys(array).length`, so the
+  // key count alone would admit such an array and the copy would drop the key
+  // and fill the hole.
+  describe('non-dense arrays', () => {
+    it('passes a sparse array with an extra key through untouched', () => {
+      const next = Object.assign([1, ,], { extra: 'x' }) as Array<unknown>
+      expect(Object.keys(next)).toHaveLength(next.length)
+      expect(replaceEqualDeep([1, 3], next)).toBe(next)
+      expect(replaceEqualDeep([1, undefined], next)).toBe(next)
+    })
+
+    it('still shares dense arrays', () => {
+      const prev = [1, 2, undefined]
+      expect(replaceEqualDeep(prev, [1, 2, undefined])).toBe(prev)
+      expect(replaceEqualDeep(prev, [1, 3, undefined])).toStrictEqual([
+        1,
+        3,
+        undefined,
+      ])
+    })
+  })
+
   it('should replace all parent objects if some nested value changes', () => {
     const prev = {
       todo: { id: '1', meta: { createdAt: 0 }, state: { done: false } },
