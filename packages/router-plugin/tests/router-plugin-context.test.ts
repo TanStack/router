@@ -13,6 +13,7 @@ import type { UnpluginOptions, TransformResult } from 'unplugin'
 const referencePluginName =
   'tanstack-router:code-splitter:compile-reference-file'
 const virtualPluginName = 'tanstack-router:code-splitter:compile-virtual-file'
+const sharedPluginName = 'tanstack-router:code-splitter:compile-shared-file'
 
 function getCodeSplitterPlugin(
   plugins: ReturnType<typeof createRouterCodeSplitterPlugin>,
@@ -30,6 +31,17 @@ function getReferencePlugin(
   plugins: ReturnType<typeof createRouterCodeSplitterPlugin>,
 ) {
   return getCodeSplitterPlugin(plugins, referencePluginName)
+}
+
+function getTransformIdFilter(plugin: UnpluginOptions) {
+  const transform = plugin.transform as
+    | { filter?: { id?: unknown } }
+    | undefined
+  const idFilter = transform?.filter?.id
+  if (!(idFilter instanceof RegExp)) {
+    throw new Error('Expected regular expression transform ID filter')
+  }
+  return idFilter
 }
 
 async function configurePlugin(
@@ -90,6 +102,32 @@ function countProgramHotDeclarations(code: string) {
 }
 
 describe('router plugin context', () => {
+  it('matches only direct router virtual module query parameters', () => {
+    const plugins = createRouterCodeSplitterPlugin(
+      { target: 'react' },
+      createRouterPluginContext(),
+    )
+    const virtualFilter = getTransformIdFilter(
+      getCodeSplitterPlugin(plugins, virtualPluginName),
+    )
+    const sharedFilter = getTransformIdFilter(
+      getCodeSplitterPlugin(plugins, sharedPluginName),
+    )
+
+    expect(virtualFilter.test('/route.tsx?tsr-split=component')).toBe(true)
+    expect(sharedFilter.test('/route.tsx?tsr-shared=1')).toBe(true)
+    expect(
+      virtualFilter.test(
+        'virtual:vite-rsc/css?type=rsc&id=%2Froute.tsx%3Ftsr-split%3Dcomponent',
+      ),
+    ).toBe(false)
+    expect(
+      sharedFilter.test(
+        'virtual:vite-rsc/css?type=rsc&id=%2Froute.tsx%3Ftsr-shared%3D1',
+      ),
+    ).toBe(false)
+  })
+
   it.each([
     { mode: 'production', production: true },
     { mode: 'development with addHmr disabled', production: false },
