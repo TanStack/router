@@ -1,5 +1,6 @@
 import express from 'express'
 import { toNodeHandler } from 'srvx/node'
+import type { AddressInfo } from 'node:net'
 import type { NodeHttp1Handler } from 'srvx'
 
 const DEVELOPMENT = process.env.NODE_ENV === 'development'
@@ -40,7 +41,11 @@ if (DEVELOPMENT) {
   })
 }
 
-app.listen(PORT, (error) => {
-  if (error) throw error
-  console.log(`Server is running on http://localhost:${PORT}`)
+const httpServer = app.listen(PORT, (error) => {
+  if (error) {
+    throw error
+  }
+  console.log(
+    `E2E app: http://localhost:${(httpServer.address() as AddressInfo).port}`,
+  )
 })

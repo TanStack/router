@@ -8,8 +8,8 @@
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
-    "test:e2e:mockMode": "rm -rf port*.txt; playwright test --project=chromium",
-    "test:e2e:errorMode": "rm -rf port*.txt; BEHAVIOR=error playwright test --project=chromium",
+    "test:e2e:mockMode": "playwright test --project=chromium",
+    "test:e2e:errorMode": "BEHAVIOR=error playwright test --project=chromium",
     "test:e2e": "pnpm run test:e2e:mockMode && pnpm run test:e2e:errorMode"
   },
   "dependencies": {
@@ -29,5 +29,19 @@
     "@typescript/native": "npm:typescript@^7.0.2",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "{projectRoot}/dist",
+          "{projectRoot}/test-results",
+          "{projectRoot}/webserver-build.log",
+          "{projectRoot}/violations.*.json",
+          "{projectRoot}/error-build.log",
+          "{projectRoot}/error-*-result.json"
+        ]
+      }
+    }
   }
 }

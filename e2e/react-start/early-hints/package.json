@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "gen-certs": "node --import tsx tests/gen-certs.ts",
     "start": "pnpm gen-certs && srvx --prod --tls --cert=tests/.tmp/tls/server.crt --key=tests/.tmp/tls/server.key -s ../client dist/server/server.js",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

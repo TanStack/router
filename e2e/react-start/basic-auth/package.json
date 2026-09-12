@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "start": "node .output/server/index.mjs",
     "prisma-generate": "prisma generate",
-    "test:e2e": "exit 0; rm -rf port*.txt; pnpm run prisma-generate && playwright test --project=chromium"
+    "test:e2e": "exit 0; pnpm run prisma-generate && playwright test --project=chromium"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
