@@ -623,7 +623,7 @@ export function compileCodeSplitReferenceRoute(
                         ) {
                           programPath.unshiftContainer('body', [
                             template.statement(
-                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
+                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl.replace(/'/g, "\\'")}')`,
                             )(),
                           ])
                         }
@@ -719,7 +719,7 @@ export function compileCodeSplitReferenceRoute(
                         ) {
                           programPath.unshiftContainer('body', [
                             template.statement(
-                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl}')`,
+                              `const ${splitNodeMeta.localImporterIdent} = () => import('${splitUrl.replace(/'/g, "\\'")}')`,
                             )(),
                           ])
                         }
