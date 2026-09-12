@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { z } from 'zod'
+import * as z from 'zod'
 import { configSchema, getConfig } from '@tanstack/router-plugin'
 import type { CompileStartFrameworkOptions } from './types'
 

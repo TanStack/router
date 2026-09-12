@@ -79,8 +79,8 @@ catalogs:
       specifier: ^3.5.25
       version: 3.5.25
     zod:
-      specifier: ^4.5.4
-      version: 4.5.4
+      specifier: ^4.6.1
+      version: 4.6.1
 
 overrides:
   '@types/babel__traverse': ^7.28.0
@@ -556,8 +556,8 @@ importers:
         specifier: 29.1.1
         version: 29.1.1(@noble/hashes@2.0.1)
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -13758,7 +13758,7 @@ importers:
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
 
   packages/react-router-devtools:
     dependencies:
@@ -14199,11 +14199,11 @@ importers:
         specifier: ^3.0.0
         version: 3.1.1
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
       seroval-plugins:
-        specifier: ^1.6.2
-        version: 1.6.2(seroval@1.6.2)
+        specifier: ^1.6.7
+        version: 1.6.7(seroval@1.6.7)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14359,7 +14359,7 @@ importers:
         version: 3.9.6
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14429,7 +14429,7 @@ importers:
         version: 2.11.11(@testing-library/jest-dom@6.6.3)(solid-js@1.9.12)(supports-color@10.2.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14643,7 +14643,7 @@ importers:
         version: 4.1.4(@types/node@25.0.9)(@vitest/ui@4.1.4)(jsdom@25.0.1(supports-color@10.2.2))(msw@2.7.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
 
   packages/solid-router-devtools:
     dependencies:
@@ -14896,8 +14896,8 @@ importers:
         specifier: workspace:*
         version: link:../start-storage-context
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -14987,8 +14987,8 @@ importers:
         specifier: ^4.0.7
         version: 4.0.7
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
       source-map:
         specifier: ^0.7.6
         version: 0.7.6
@@ -15009,7 +15009,7 @@ importers:
         version: 4.0.3
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15066,8 +15066,8 @@ importers:
         specifier: npm:h3@2.0.1-rc.20
         version: h3@2.0.1-rc.20(crossws@0.4.12(srvx@0.11.22))
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15112,8 +15112,8 @@ importers:
         specifier: workspace:*
         version: link:../start-client-core
       seroval:
-        specifier: ^1.6.2
-        version: 1.6.2
+        specifier: ^1.6.7
+        version: 1.6.7
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -15305,7 +15305,7 @@ importers:
         version: 3.5.25(@typescript/typescript6@6.0.2)
       zod:
         specifier: 'catalog:'
-        version: 4.5.4
+        version: 4.6.1
 
   packages/vue-router-devtools:
     dependencies:
@@ -27611,8 +27611,8 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
-  seroval-plugins@1.6.2:
-    resolution: {integrity: sha512-TfxuUjlbBESzUOWdTkTKqvSmav0ABym+itetDXLK6mDz8SmrpdI30aF8RTXE8Bvq+tH/1yIDkvy3W0lfQb1ipQ==}
+  seroval-plugins@1.6.7:
+    resolution: {integrity: sha512-4Nk35ttD3DTDJW4hgw5StsVAPeU6qnDFnULAouw6tQ7oLTV/ICXrWpsXo2EE52eSP2joUMazbVf52mFEcADqRw==}
     engines: {node: '>=10'}
     peerDependencies:
       seroval: ^1.0
@@ -27621,8 +27621,8 @@ packages:
     resolution: {integrity: sha512-46uFvgrXTVxZcUorgSSRZ4y+ieqLLQRMlG4bnCZKW3qI6BZm7Rg4ntMW4p1mILEEBZWrFlcpp0AyIIlM6jD9iw==}
     engines: {node: '>=10'}
 
-  seroval@1.6.2:
-    resolution: {integrity: sha512-mPT+SD2TrlB6wvte1KkYOYUkubaTbd6pZ/6Kk3C9nxzrHmCZyhxOO7XGAeL7f+yLKZglzGtM9odUVvg/EhO+vQ==}
+  seroval@1.6.7:
+    resolution: {integrity: sha512-AeDcLh0yO2SFm9W71essgnSzLV9DI8ZH0x0knXn2DMnUZj728mpLbxjlbB6IqKCmqh8JA3cEqRyGoNkt584JcQ==}
     engines: {node: '>=10'}
 
   serve-index@1.9.1:
@@ -29483,6 +29483,9 @@ packages:
 
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
+
+  zod@4.6.1:
+    resolution: {integrity: sha512-341aRWQsve0rvronKNTqZpjmzdbUDlFuzHaI/XLg/Ej82qffDJRRfBTCuv7+9q/rMjB6LSLyEBnW4InJeMtt/Q==}
 
   zustand@5.0.12:
     resolution: {integrity: sha512-i77ae3aZq4dhMlRhJVCYgMLKuSiZAaUPAct2AksxQ+gOtimhGMdXljRT21P5BNpeT4kXlLIckvkPM029OljD7g==}
@@ -43589,13 +43592,13 @@ snapshots:
     dependencies:
       seroval: 1.5.4
 
-  seroval-plugins@1.6.2(seroval@1.6.2):
+  seroval-plugins@1.6.7(seroval@1.6.7):
     dependencies:
-      seroval: 1.6.2
+      seroval: 1.6.7
 
   seroval@1.5.4: {}
 
-  seroval@1.6.2: {}
+  seroval@1.6.7: {}
 
   serve-index@1.9.1(supports-color@10.2.2):
     dependencies:
@@ -45760,6 +45763,8 @@ snapshots:
   zod@4.4.3: {}
 
   zod@4.5.4: {}
+
+  zod@4.6.1: {}
 
   zustand@5.0.12(@types/react@19.2.9)(immer@10.1.1)(react@19.2.3)(use-sync-external-store@1.6.0(react@19.2.3)):
     optionalDependencies:

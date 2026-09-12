@@ -10,7 +10,7 @@ Zod v3 does not implement Standard Schema, so the `@tanstack/zod-adapter` wrappe
 
 ```tsx
 import { zodValidator, fallback } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const schema = z.object({
   count: fallback(z.number(), 0),

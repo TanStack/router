@@ -264,7 +264,7 @@ Validate query string parameters using a Standard Schema:
 ```ts
 // Use @tanstack/<framework>-start for your framework (react, solid, vue)
 import { getValidatedQuery } from '@tanstack/react-start/server'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const serverFn = createServerFn({ method: 'GET' }).handler(async () => {
   const query = await getValidatedQuery(

@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/solid-router'
 import { getRouteApi, useSearch } from '@tanstack/solid-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const routeApi = getRouteApi('/(group)/inside')
 
