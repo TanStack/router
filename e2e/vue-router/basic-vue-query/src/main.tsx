@@ -1,4 +1,4 @@
-import { createApp } from 'vue'
+import { createApp, defineComponent } from 'vue'
 import {
   ErrorComponent,
   Link,
@@ -108,6 +108,21 @@ function PostsIndexRouteComponent() {
   return <div>Select a post.</div>
 }
 
+const PostRouteComponent = defineComponent({
+  setup() {
+    const params = postRoute.useParams()
+    useQuery(() => postQueryOptions(params.value.postId))
+    const post = postRoute.useLoaderData()
+
+    return () => (
+      <div class="space-y-2">
+        <h4 class="text-xl font-bold underline">{post.value.title}</h4>
+        <div class="text-sm">{post.value.body}</div>
+      </div>
+    )
+  },
+})
+
 const postRoute = createRoute({
   getParentRoute: () => postsRoute,
   path: '$postId',
@@ -133,19 +148,6 @@ function PostErrorComponent({ error }: ErrorComponentProps) {
         retry
       </button>
       <ErrorComponent error={error} />
-    </div>
-  )
-}
-
-function PostRouteComponent() {
-  const postId = postRoute.useParams().value.postId
-  useQuery(postQueryOptions(postId))
-  const post = postRoute.useLoaderData()
-
-  return (
-    <div class="space-y-2">
-      <h4 class="text-xl font-bold underline">{post.value.title}</h4>
-      <div class="text-sm">{post.value.body}</div>
     </div>
   )
 }

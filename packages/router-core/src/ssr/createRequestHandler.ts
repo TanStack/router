@@ -1,4 +1,4 @@
-import { createMemoryHistory } from '@tanstack/history'
+import { createServerHistory } from '@tanstack/history'
 import { _getRenderedMatches } from '../load-client'
 import { mergeHeaders } from './headers'
 import {
@@ -118,9 +118,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       const href = url.href.replace(url.origin, '')
 
       // Create a history for the router
-      const history = createMemoryHistory({
-        initialEntries: [href],
-      })
+      const history = createServerHistory(href)
 
       // Update the router with the history and context
       router.update({

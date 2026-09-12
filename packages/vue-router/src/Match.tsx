@@ -1,7 +1,7 @@
 import * as Vue from 'vue'
 import { isNotFound, rootRouteId } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
 import { ClientOnly } from './ClientOnly'
 import { useRouter } from './useRouter'
@@ -29,10 +29,10 @@ export const Match = Vue.defineComponent({
 
     const routeId = props.routeId
 
-    const activeMatch = useStore(
+    const activeMatch = useSelector(
       router.stores.getMatchStore(routeId),
       (value) => value,
-      { equal: Object.is },
+      { compare: Object.is },
     )
     // Provide routeId context (stable string) for children.
     // MatchInner, Outlet, and useMatch all consume this.
@@ -158,7 +158,7 @@ export const MatchInner = Vue.defineComponent({
 
     // Use routeId from context (provided by parent Match) — stable string.
     const routeId = Vue.inject(routeIdContext)!
-    const activeMatch = useStore(router.stores.getMatchStore(routeId))
+    const activeMatch = useSelector(router.stores.getMatchStore(routeId))
 
     // Combined selector for match state AND remount key
     // This ensures both are computed in the same selector call with consistent data
@@ -295,11 +295,11 @@ export const Outlet = Vue.defineComponent({
     const router = useRouter()
     const parentRouteId = Vue.inject(routeIdContext)!
 
-    const parentMatch = useStore(router.stores.getMatchStore(parentRouteId))
+    const parentMatch = useSelector(router.stores.getMatchStore(parentRouteId))
 
     const route = router.routesById[parentRouteId]!
 
-    const childRouteId = useStore(router.stores.matches, (matches) => {
+    const childRouteId = useSelector(router.stores.matches, (matches) => {
       const index = matches.findIndex(
         (match) => match.routeId === parentRouteId,
       )

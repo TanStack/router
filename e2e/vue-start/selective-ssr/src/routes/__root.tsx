@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { defineComponent } from 'vue'
 import {
   Body,
   ClientOnly,
@@ -13,6 +14,93 @@ import {
 import { z } from 'zod'
 import { ssrSchema } from '~/search'
 import appCss from '~/styles/app.css?url'
+
+const RootDocument = defineComponent({
+  setup(_, { slots }) {
+    const routerState = useRouterState({
+      select: (state) => ({
+        isLoading: state.isLoading,
+        status: state.status,
+      }),
+    })
+    return () => (
+      <Html>
+        <head>
+          <HeadContent />
+        </head>
+        <Body>
+          <div class="p-2 flex gap-2 text-lg">
+            <h1>Selective SSR E2E Test</h1>
+            <Link
+              to="/"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Home
+            </Link>
+          </div>
+          <hr />
+          <ClientOnly>
+            <div>
+              router isLoading:{' '}
+              <b data-testid="router-isLoading">
+                {routerState.value.isLoading ? 'true' : 'false'}
+              </b>
+            </div>
+            <div>
+              router status:{' '}
+              <b data-testid="router-status">{routerState.value.status}</b>
+            </div>
+          </ClientOnly>
+          <hr />
+          {slots.default?.()}
+          <Scripts />
+        </Body>
+      </Html>
+    )
+  },
+})
+
+const RouteComponent = defineComponent({
+  setup() {
+    const search = Route.useSearch()
+    const loaderData = Route.useLoaderData()
+    const context = Route.useRouteContext()
+    return () => {
+      if (
+        typeof window === 'undefined' &&
+        search.value.root?.expected?.render === 'client-only'
+      ) {
+        const error = `Expected component for ${Route.id} to be executed on the client, but it is running on the server`
+        console.error(error)
+        throw new Error(error)
+      }
+      return (
+        <div data-testid="root-container">
+          <h2 data-testid="root-heading">root</h2>
+          <div>
+            ssr: <b>{JSON.stringify(search.value.root?.ssr ?? 'undefined')}</b>
+          </div>
+          <div>
+            expected data location execution:{' '}
+            <b data-testid="root-data-expected">
+              {search.value.root?.expected?.data}
+            </b>
+          </div>
+          <div>
+            loader: <b data-testid="root-loader">{loaderData.value.root}</b>
+          </div>
+          <div>
+            context: <b data-testid="root-context">{context.value.root}</b>
+          </div>
+          <hr />
+          <Outlet />
+        </div>
+      )
+    }
+  },
+})
 
 export const Route = createRootRoute({
   head: () => ({
@@ -74,84 +162,5 @@ export const Route = createRootRoute({
     return { root: typeof window === 'undefined' ? 'server' : 'client' }
   },
   shellComponent: RootDocument,
-  component: () => {
-    const search = Route.useSearch()
-    if (
-      typeof window === 'undefined' &&
-      search.value.root?.expected?.render === 'client-only'
-    ) {
-      const error = `Expected component for ${Route.id} to be executed on the client, but it is running on the server`
-      console.error(error)
-      throw new Error(error)
-    }
-    const loaderData = Route.useLoaderData()
-    const context = Route.useRouteContext()
-    return (
-      <div data-testid="root-container">
-        <h2 data-testid="root-heading">root</h2>
-        <div>
-          ssr: <b>{JSON.stringify(search.value.root?.ssr ?? 'undefined')}</b>
-        </div>
-        <div>
-          expected data location execution:{' '}
-          <b data-testid="root-data-expected">
-            {search.value.root?.expected?.data}
-          </b>
-        </div>
-        <div>
-          loader: <b data-testid="root-loader">{loaderData.value.root}</b>
-        </div>
-        <div>
-          context: <b data-testid="root-context">{context.value.root}</b>
-        </div>
-        <hr />
-        <Outlet />
-      </div>
-    )
-  },
+  component: RouteComponent,
 })
-
-function RootDocument(_: unknown, { slots }: { slots: any }) {
-  const routerState = useRouterState({
-    select: (state) => ({
-      isLoading: state.isLoading,
-      status: state.status,
-    }),
-  })
-  return (
-    <Html>
-      <head>
-        <HeadContent />
-      </head>
-      <Body>
-        <div class="p-2 flex gap-2 text-lg">
-          <h1>Selective SSR E2E Test</h1>
-          <Link
-            to="/"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Home
-          </Link>
-        </div>
-        <hr />
-        <ClientOnly>
-          <div>
-            router isLoading:{' '}
-            <b data-testid="router-isLoading">
-              {routerState.value.isLoading ? 'true' : 'false'}
-            </b>
-          </div>
-          <div>
-            router status:{' '}
-            <b data-testid="router-status">{routerState.value.status}</b>
-          </div>
-        </ClientOnly>
-        <hr />
-        {slots.default?.()}
-        <Scripts />
-      </Body>
-    </Html>
-  )
-}

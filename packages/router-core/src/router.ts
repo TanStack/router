@@ -2201,6 +2201,10 @@ export class RouterCore<
     ignoreBlocker,
     ...next
   }) => {
+    if (isServer ?? this.isServer) {
+      return
+    }
+
     const nextLocation = next.maskedLocation ?? next
     if (nextLocation.external && !(isServer ?? this.isServer)) {
       return documentNavigation(this, nextLocation.publicHref, {
@@ -2303,6 +2307,10 @@ export class RouterCore<
     ignoreBlocker,
     ...rest
   }: BuildNextOptions & CommitLocationOptions = {}): Promise<void> => {
+    if (isServer ?? this.isServer) {
+      return Promise.resolve()
+    }
+
     const location = this.buildLocation({
       ...(rest as any),
       _includeValidateSearch: true,
@@ -2346,6 +2354,10 @@ export class RouterCore<
     publicHref,
     ...rest
   }) => {
+    if (isServer ?? this.isServer) {
+      return
+    }
+
     const hrefScheme = href ? getUrlScheme(href) : undefined
 
     if (hrefScheme || reloadDocument) {

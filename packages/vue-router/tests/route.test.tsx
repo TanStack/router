@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { cleanup, render, screen } from '@testing-library/vue'
 import { afterEach, beforeEach, describe, expect, it, test, vi } from 'vitest'
 
@@ -207,17 +208,25 @@ describe('onEnter event', () => {
 describe('useLoaderDeps', () => {
   test('returns a Ref', async () => {
     const rootRoute = createRootRoute()
+    const IndexComponent = defineComponent({
+      setup() {
+        const deps = indexRoute.useLoaderDeps()
+        return () => {
+          // deps should be a Vue ref, so we access .value to get the value
+          expect(typeof deps).toBe('object')
+
+          expect(deps.value).toEqual({ testDep: 'value' })
+
+          return <div>Index</div>
+        }
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
       loaderDeps: ({ search }) => ({ testDep: 'value' }),
-      component: () => {
-        const deps = indexRoute.useLoaderDeps()
-        // deps should be a Vue ref, so we access .value to get the value
-        expect(typeof deps).toBe('object')
-        expect(deps.value).toEqual({ testDep: 'value' })
-        return <div>Index</div>
-      },
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, history })
@@ -228,18 +237,27 @@ describe('useLoaderDeps', () => {
 
   test('returns a Ref via Route API', async () => {
     const rootRoute = createRootRoute()
+    const IndexComponent = defineComponent({
+      setup() {
+        const api = getRouteApi('/')
+
+        const deps = api.useLoaderDeps()
+        return () => {
+          // deps should be a Vue ref, so we access .value to get the value
+          expect(typeof deps).toBe('object')
+
+          expect(deps.value).toEqual({ testDep: 'api-value' })
+
+          return <div>Index with API</div>
+        }
+      },
+    })
+
     const indexRoute = createRoute({
       getParentRoute: () => rootRoute,
       path: '/',
       loaderDeps: ({ search }) => ({ testDep: 'api-value' }),
-      component: () => {
-        const api = getRouteApi('/')
-        const deps = api.useLoaderDeps()
-        // deps should be a Vue ref, so we access .value to get the value
-        expect(typeof deps).toBe('object')
-        expect(deps.value).toEqual({ testDep: 'api-value' })
-        return <div>Index with API</div>
-      },
+      component: IndexComponent,
     })
     const routeTree = rootRoute.addChildren([indexRoute])
     const router = createRouter({ routeTree, history })

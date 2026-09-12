@@ -1,5 +1,11 @@
 # @tanstack/react-router
 
+## 1.170.35
+
+### Patch Changes
+
+- [#7824](https://github.com/TanStack/router/pull/7824) [`8c43c71`](https://github.com/TanStack/router/commit/8c43c712523fc63dc3a814f3a19617e270ce8ed1) - Upgrade TanStack Store to 0.11 and migrate router subscriptions to useSelector, preserving selector comparisons and Vue subscription cleanup.
+
 ## 1.170.34
 
 ### Patch Changes
