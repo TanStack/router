@@ -25,8 +25,6 @@ export default defineConfig({
   testDir: './tests',
   workers: 1,
   reporter: [['line']],
-  globalSetup: './tests/setup/global.setup.ts',
-  globalTeardown: './tests/setup/global.teardown.ts',
   use: { baseURL },
   webServer: {
     command: isDev ? `${devCommand} --port ${PORT}` : startCommand,

@@ -14,8 +14,6 @@
     "preview": "vite preview",
     "preview:rsbuild": "rsbuild preview",
     "start": "node server.js",
-    "test:e2e:startDummyServer": "node -e 'import(\"./tests/setup/global.setup.ts\").then(m => m.default())' & node -e 'import(\"./tests/setup/waitForDummyServer.ts\").then(m => m.default())'",
-    "test:e2e:stopDummyServer": "node -e 'import(\"./tests/setup/global.teardown.ts\").then(m => m.default())'",
     "test:e2e:local": "playwright test --project=chromium"
   },
   "dependencies": {
@@ -63,7 +61,10 @@
         },
         {
           "toolchain": "vite",
-          "mode": "prerender"
+          "mode": "prerender",
+          "env": {
+            "NODE_OPTIONS": "--import=@tanstack/router-e2e-utils/mock-api"
+          }
         },
         {
           "toolchain": "vite",
@@ -87,7 +88,10 @@
         },
         {
           "toolchain": "rsbuild",
-          "mode": "prerender"
+          "mode": "prerender",
+          "env": {
+            "NODE_OPTIONS": "--import=@tanstack/router-e2e-utils/mock-api"
+          }
         },
         {
           "toolchain": "rsbuild",

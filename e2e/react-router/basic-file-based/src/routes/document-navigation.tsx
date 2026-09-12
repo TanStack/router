@@ -5,7 +5,7 @@ export const Route = createFileRoute('/document-navigation')({
   component: DocumentNavigation,
 })
 
-const adminHref = `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}/`
+const adminHref = `http://127.0.0.1:${window.location.port}/external.html`
 
 function DocumentNavigation() {
   const navigate = Route.useNavigate()
