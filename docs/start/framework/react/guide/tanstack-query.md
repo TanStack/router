@@ -1,6 +1,12 @@
 ---
 id: tanstack-query
 title: TanStack Query
+updated: "2026-09-11"
+testedWith:
+  "@tanstack/react-start": "1.168.52"
+  "@tanstack/react-query": "5.102.0"
+  react: "19.2.3"
+  vite: "8.0.14"
 description: Use TanStack Query with TanStack Start for request-isolated SSR, hydration, route preloading, streaming, and mutation invalidation.
 ---
 
