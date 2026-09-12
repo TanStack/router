@@ -92,7 +92,7 @@
         "outputs": [
           "...",
           "{projectRoot}/tests/generator/*/routeTree.gen.{ts,js}",
-          "{projectRoot}/tests/generator/file-modification/routes/(test)/*.tsx"
+          "{projectRoot}/tests/generator/file-modification/routes/*/*.tsx"
         ]
       }
     }
