@@ -67,7 +67,7 @@ catalog:
   vue: ^3.5.25
   zod: ^4.5.4
   '@types/node': 25.0.9
-  '@playwright/test': ^1.61.0
+  '@playwright/test': ^1.63.0
   '@tanstack/query-core': ^5.102.0
   '@tanstack/react-query': ^5.102.0
   '@tanstack/solid-query': ^5.102.0

@@ -67,22 +67,26 @@
         "{projectRoot}/dist",
         "{projectRoot}/port-*.txt",
         "{projectRoot}/test-results"
-      ]
+      ],
+      "parallelism": false
     },
     "test:e2e:nitro": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:e2e:basepath": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:e2e:preview": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:types": {
       "cache": true,
@@ -136,6 +140,9 @@
       "cache": true,
       "dependsOn": ["build"],
       "inputs": ["buildProduction", "dependentTaskOutputs"]
+    },
+    "test:e2e*": {
+      "parallelism": false
     }
   },
   "plugins": [
