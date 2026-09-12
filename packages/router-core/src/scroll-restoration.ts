@@ -201,8 +201,6 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
     scroll.restoration = true
     ignoreScroll = false
 
-    history.scrollRestoration = 'manual'
-
     document.addEventListener(
       'scroll',
       (event) => {
