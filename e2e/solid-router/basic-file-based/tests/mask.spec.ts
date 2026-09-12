@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { apiTest as test } from '@tanstack/router-e2e-utils'
 
 test('route masks transform params and expose masked pathname in the browser (solid)', async ({
   page,

@@ -125,8 +125,7 @@ webServer: {
 
 ## 5. Use `E2E_PORT_KEY` for all server ports
 
-If your setup uses `getTestServerPort`, `getDummyServerPort`,
-`e2eStartDummyServer`, or `e2eStopDummyServer`, use
+If your setup uses `getTestServerPort`, use
 `process.env.E2E_PORT_KEY` first.
 
 ```ts
@@ -140,8 +139,7 @@ const PORT = await getTestServerPort(e2ePortKey)
 Dummy server setup/teardown should use the same key:
 
 ```ts
-await e2eStartDummyServer(process.env.E2E_PORT_KEY ?? packageJson.name)
-await e2eStopDummyServer(process.env.E2E_PORT_KEY ?? packageJson.name)
+
 ```
 
 ## 6. Clean stale port files once per Playwright run
@@ -201,3 +199,21 @@ If `playwrightModes` is not configured, the plugin still supports:
 
 This generates legacy shard targets under `test:e2e--shard-...` plus a parent
 `test:e2e` target.
+
+## Mock API and standalone development
+
+Applications use `https://jsonplaceholder.typicode.com` directly. Ordinary dev,
+build, and start commands reach the public API. E2E browser suites opt into
+`apiTest` from the private E2E utilities, which installs the shared MSW handlers
+through the official Playwright adapter. Routing disables the browser HTTP cache;
+suites without API requests keep the ordinary Playwright fixture.
+
+Start application servers preload `@tanstack/router-e2e-utils/mock-api` through
+Playwright's `webServer.env.NODE_OPTIONS`. Prerender modes set the same Node
+preload in their Nx mode metadata, so cached builds and fresh servers use the
+same URL without an API listener or fixture port. Other origins pass through;
+unmatched requests to the API origin fail through a final MSW handler.
+
+External navigation uses `localhost` and `127.0.0.1` on the same application
+listener, with a static destination document where needed. The application port
+allocator is independent of API mocking and is removed in the next stack PR.

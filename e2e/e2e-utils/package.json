@@ -5,7 +5,7 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "build": "vite build",
     "test:eslint": "eslint ./src",
-    "test:unit": "exit 0; vitest --typecheck"
+    "test:unit": "vitest run"
   },
   "type": "module",
   "types": "dist/types/index.d.ts",
@@ -22,7 +22,8 @@
         "default": "./dist/cjs/index.cjs"
       }
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./mock-api": "./mock-api.mjs"
   },
   "sideEffects": false,
   "files": [
@@ -32,11 +33,13 @@
   "engines": {
     "node": ">=20.19"
   },
-  "dependencies": {},
   "devDependencies": {
-    "get-port-please": "^3.2.0",
+    "@msw/playwright": "0.6.7",
+    "msw": "2.15.0",
+    "rimraf": "catalog:",
     "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4",
-    "rimraf": "catalog:"
+    "vitest": "catalog:",
+    "get-port-please": "^3.2.0"
   }
 }
