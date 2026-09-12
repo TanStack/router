@@ -25,12 +25,13 @@ const baseURL = `http://localhost:${checkpoint.port}`
 
 export default defineConfig({
   testDir: './tests',
+  outputDir: `./test-results/${checkpoint.name}/${production ? 'production' : 'development'}`,
   use: { browserName: 'chromium', baseURL },
   projects: [{ name: checkpoint.name, testMatch: checkpoint.testMatch }],
   webServer: {
     command: production
       ? `PORT=${checkpoint.port} node checkpoints/${checkpoint.name}/.output/server/index.mjs`
-      : `pnpm exec vite checkpoints/${checkpoint.name} --port ${checkpoint.port}`,
+      : `pnpm exec vite checkpoints/${checkpoint.name} --port ${checkpoint.port} --strictPort`,
     url: baseURL,
     env: { APP_ORIGIN: baseURL },
     timeout: 120_000,

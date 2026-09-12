@@ -48,6 +48,8 @@ A route loader can run during browser navigation, so it must not connect to Post
 
 The index route now makes its dependency on search explicit:
 
+<!-- tested-source: data-loader -->
+
 ```tsx
 validateSearch: z.object({ q: z.string().max(200).catch('') }),
 loaderDeps: ({ search }) => ({ q: search.q }),
@@ -74,7 +76,7 @@ Stop the development server, then run:
 COURSE_CHECKPOINT=03-data pnpm test:e2e
 ```
 
-The test writes a uniquely named record directly to the dedicated database, checks that its title appears in raw server HTML, opens its detail page, reloads it, and checks an unknown note's 404 response. It deletes only its own test records. That distinguishes a working database loader from an app that still displays its old static array.
+The runner prepares an isolated test database automatically. The test writes a uniquely named record directly to that database, checks that its title appears in raw server HTML, opens its detail page, reloads it, and checks an unknown note's 404 response. It deletes only its own test records. That distinguishes a working database loader from an app that still displays its old static array.
 
 If the database is unavailable, the checkpoint displays a generic recovery page. Inspect the server terminal for connection details. Do not display credentials or raw database errors to a reader.
 
