@@ -46,10 +46,31 @@ const listCopy = list.map((item) => ({ ...item }))
 const listChanged = list.map((item, index) =>
   index === 10 ? { id: -1 } : { ...item },
 )
+const listShared = list.map((item, index) => (index === 10 ? { id: -1 } : item))
 const wide = Object.fromEntries(
   Array.from({ length: 12 }, (_, index) => [`key${index}`, `value${index}`]),
 )
 const wideChanged = { ...wide, key7: 'changed' }
+const searchAllChanged = {
+  tab: 'other',
+  page: 3,
+  sort: 'oldest',
+  filter: 'sold',
+}
+const searchReordered = {
+  filter: 'available',
+  sort: 'newest',
+  page: 2,
+  tab: 'specs',
+}
+const searchSubset = { tab: 'specs', page: 2, sort: 'newest' }
+const wider = Object.fromEntries(
+  Array.from({ length: 64 }, (_, index) => [`key${index}`, `value${index}`]),
+)
+const widerChangedLast = { ...wider, key63: 'changed' }
+const numbers = Array.from({ length: 1024 }, (_, index) => index)
+const numbersCopy = [...numbers]
+const numbersChangedLast = numbers.map((n, index) => (index === 1023 ? -1 : n))
 
 expect(replaceEqualDeep(empty, {})).toBe(empty)
 expect(replaceEqualDeep(search, searchCopy)).toBe(search)
@@ -59,6 +80,17 @@ expect(replaceEqualDeep(nested, nestedLeafChanged).ids).toBe(nested.ids)
 expect(replaceEqualDeep(list, listCopy)).toBe(list)
 expect(replaceEqualDeep(list, listChanged)[3]).toBe(list[3])
 expect(replaceEqualDeep(wide, wideChanged)).toStrictEqual(wideChanged)
+expect(replaceEqualDeep(list, listShared)[3]).toBe(list[3])
+expect(replaceEqualDeep(search, searchAllChanged)).toStrictEqual(
+  searchAllChanged,
+)
+expect(replaceEqualDeep(search, searchReordered)).toBe(search)
+expect(replaceEqualDeep(search, searchSubset)).toStrictEqual(searchSubset)
+expect(replaceEqualDeep(wider, widerChangedLast)).toStrictEqual(
+  widerChangedLast,
+)
+expect(replaceEqualDeep(numbers, numbersCopy)).toBe(numbers)
+expect(replaceEqualDeep(numbers, numbersChangedLast)[1023]).toBe(-1)
 expect(nullReplaceEqualDeep(emptyNull, {})).toBe(emptyNull)
 expect(
   nullReplaceEqualDeep(searchWithConstructorKey, searchWithConstructorKeyCopy),
@@ -165,6 +197,48 @@ describe('replaceEqualDeep', () => {
   bench('wide flat object with one changed leaf (null-proto)', () => {
     for (let i = 0; i < iterations; i++) {
       sink = nullReplaceEqualDeep(wide, wideChanged)
+    }
+  })
+
+  bench('flat search with all leaves changed', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(search, searchAllChanged)
+    }
+  })
+
+  bench('equal flat search with reordered keys', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(search, searchReordered)
+    }
+  })
+
+  bench('flat search with a key removed', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(search, searchSubset)
+    }
+  })
+
+  bench('array of shared objects with one changed item', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(list, listShared)
+    }
+  })
+
+  bench('wider flat object (64 keys) with the last leaf changed', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(wider, widerChangedLast)
+    }
+  })
+
+  bench('equal long primitive array', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(numbers, numbersCopy)
+    }
+  })
+
+  bench('long primitive array with the last item changed', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(numbers, numbersChangedLast)
     }
   })
 })

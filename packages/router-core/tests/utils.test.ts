@@ -256,6 +256,28 @@ describe('replaceEqualDeep', () => {
     expect(result).toBe(next)
   })
 
+  // A hole and an extra key cancel out in `Object.keys(array).length`, so the
+  // key count alone would admit such an array and the copy would drop the key
+  // and fill the hole.
+  describe('non-dense arrays', () => {
+    it('passes a sparse array with an extra key through untouched', () => {
+      const next = Object.assign([1, ,], { extra: 'x' }) as Array<unknown>
+      expect(Object.keys(next)).toHaveLength(next.length)
+      expect(replaceEqualDeep([1, 3], next)).toBe(next)
+      expect(replaceEqualDeep([1, undefined], next)).toBe(next)
+    })
+
+    it('still shares dense arrays', () => {
+      const prev = [1, 2, undefined]
+      expect(replaceEqualDeep(prev, [1, 2, undefined])).toBe(prev)
+      expect(replaceEqualDeep(prev, [1, 3, undefined])).toStrictEqual([
+        1,
+        3,
+        undefined,
+      ])
+    })
+  })
+
   it('should replace all parent objects if some nested value changes', () => {
     const prev = {
       todo: { id: '1', meta: { createdAt: 0 }, state: { done: false } },
@@ -409,6 +431,132 @@ describe('replaceEqualDeep', () => {
       expect(result[0]).toBe(prev[0])
       expect(result[1]).not.toBe(prev[1])
       expect(result[2]).toBe(prev[2])
+    })
+  })
+
+  // The scan stops at the first difference; everything after it is resolved by
+  // the copy loop, which must share and recurse exactly like the scan does.
+  describe('split-phase copy', () => {
+    it('returns prev for equal objects whose keys are ordered differently', () => {
+      const prev = { a: 1, b: { x: 1 }, c: 3 }
+      const next = { c: 3, a: 1, b: { x: 1 } }
+      expect(replaceEqualDeep(prev, next)).toBe(prev)
+    })
+
+    it('copies when a reordered next has a key that prev lacks', () => {
+      const prev: Record<string, unknown> = { a: 1, b: 2 }
+      const next = { b: 2, c: undefined }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result).not.toBe(prev)
+      expect(result).not.toBe(next)
+      expect('c' in result).toBe(true)
+      expect('a' in result).toBe(false)
+    })
+
+    it('includes keys that only exist in next after the first difference', () => {
+      const prev: Record<string, unknown> = { a: 1, b: 2, d: 4 }
+      const next = { a: 9, b: 2, c: undefined }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect('c' in result).toBe(true)
+      expect('d' in result).toBe(false)
+    })
+
+    it('shares equal children that come after the first difference', () => {
+      const prev = { a: 1, b: { x: 1 }, c: [1, 2], d: 'same' }
+      const next = { a: 2, b: { x: 1 }, c: [1, 2], d: 'same' }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result.b).toBe(prev.b)
+      expect(result.c).toBe(prev.c)
+    })
+
+    it('recurses into changed children that come after the first difference', () => {
+      const prev = { a: 1, b: { x: 1, y: { z: 1 } } }
+      const next = { a: 2, b: { x: 2, y: { z: 1 } } }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result.b).not.toBe(prev.b)
+      expect(result.b).not.toBe(next.b)
+      expect(result.b.y).toBe(prev.b.y)
+    })
+
+    it('takes the next value when an entry changes between object and primitive', () => {
+      const prev = { a: { x: 1 }, b: null, c: 's', d: [1], e: 0 }
+      const next = { a: null, b: { x: 1 }, c: {}, d: 's', e: [1] }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result.b).toBe(next.b)
+      expect(result.c).toBe(next.c)
+      expect(result.e).toBe(next.e)
+    })
+
+    it('takes the next value when a later entry changes between object and primitive', () => {
+      const prev = { k: 0, a: { x: 1 }, b: undefined, c: [1] }
+      const next = { k: 1, a: undefined, b: { x: 1 }, c: 's' }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result.b).toBe(next.b)
+    })
+
+    it('copies a shorter next array, sharing its equal prefix', () => {
+      const prev = [{ a: 1 }, { b: 1 }, { c: 1 }]
+      const next = [{ a: 1 }, { b: 1 }]
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result).not.toBe(prev)
+      expect(result).not.toBe(next)
+      expect(result[0]).toBe(prev[0])
+      expect(result[1]).toBe(prev[1])
+    })
+
+    it('copies a longer next array, sharing the equal prefix', () => {
+      const prev = [{ a: 1 }]
+      const next = [{ a: 1 }, { b: 1 }]
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result[0]).toBe(prev[0])
+      expect(result[1]).toBe(next[1])
+    })
+
+    it('copies a next object whose entries all match a larger prev', () => {
+      const prev = { a: { x: 1 }, b: 2 }
+      const next = { a: { x: 1 } }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result).not.toBe(prev)
+      expect(result).not.toBe(next)
+      expect(result.a).toBe(prev.a)
+    })
+
+    it('handles a change in the last entry of a long array', () => {
+      const prev = Array.from({ length: 1024 }, (_, index) => ({ index }))
+      const next = prev.map((item, index) =>
+        index === 1023 ? { index: -1 } : item,
+      )
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result).not.toBe(prev)
+      expect(result[0]).toBe(prev[0])
+      expect(result[1022]).toBe(prev[1022])
+      expect(result[1023]).not.toBe(prev[1023])
+      expect(result[1023]).toStrictEqual(next[1023])
+    })
+
+    it('stops sharing beyond the depth limit', () => {
+      const nest = (depth: number) => {
+        let value: any = { leaf: true }
+        for (let i = 0; i < depth; i++) {
+          value = { child: value }
+        }
+        return value
+      }
+      const prev = nest(510)
+      const next = nest(510)
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result).toStrictEqual(next)
     })
   })
 })
