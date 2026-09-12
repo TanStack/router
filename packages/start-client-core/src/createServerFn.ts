@@ -102,13 +102,14 @@ export const createServerFn: CreateServerFn<Register> = (options, __opts) => {
       // this is primarily useful for letting users create their own abstractions on top of `createServerFn`
 
       const newMiddleware = [...(resolvedOptions.middleware || [])]
-      middleware.map((m) => {
-        if (TSS_SERVER_FUNCTION_FACTORY in m) {
-          if (m.options.middleware) {
-            newMiddleware.push(...m.options.middleware)
+      // forEach skips holes and ignores items appended during iteration
+      middleware.forEach((item) => {
+        if (TSS_SERVER_FUNCTION_FACTORY in item) {
+          if (item.options.middleware) {
+            newMiddleware.push(...item.options.middleware)
           }
         } else {
-          newMiddleware.push(m)
+          newMiddleware.push(item)
         }
       })
 
