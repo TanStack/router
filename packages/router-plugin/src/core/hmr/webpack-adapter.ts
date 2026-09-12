@@ -69,18 +69,16 @@ export function createWebpackHmrStatement(
 if (import.meta.webpackHot) {
   const hot = import.meta.webpackHot
   const hotData = hot.data ??= {}
+  const previousRoute = hotData['tsr-route']
   const routeId = hotData['tsr-route-id'] ?? Route.id ?? (Route.isRoot ? '__root__' : ${staticRouteIdLiteral})
   if (routeId) {
     hotData['tsr-route-id'] = routeId
   }
-  const existingRoute =
-    typeof window !== 'undefined' && routeId
-      ? window.__TSR_ROUTER__?.routesById?.[routeId]
-      : undefined
-  if (routeId && existingRoute && existingRoute !== Route) {
-    (${handleRouteUpdateCode})(routeId, Route)${reactRefreshCall}
+  if (previousRoute && routeId && previousRoute !== Route) {
+    (${handleRouteUpdateCode})(routeId, Route, previousRoute)${reactRefreshCall}
   }
   hot.dispose((data) => {
+    data['tsr-route'] = Route
     if (routeId) {
       data['tsr-route-id'] = routeId
     }
