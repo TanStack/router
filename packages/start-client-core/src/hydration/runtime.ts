@@ -21,6 +21,18 @@ const gateRegistry = /* @__PURE__ */ new Map<string, HydrationGateRecord>()
 const resolvedGateIds = /* @__PURE__ */ new Set<string>()
 const fallbackHtmlByGateId = /* @__PURE__ */ new Map<string, string>()
 
+function deleteChildMarkerIds(
+  marker: Element,
+  ids: { delete: (id: string) => unknown },
+) {
+  marker.querySelectorAll(hydrateIdSelector).forEach((childMarker) => {
+    const id = childMarker.getAttribute(hydrateIdAttribute)
+    if (id) {
+      ids.delete(id)
+    }
+  })
+}
+
 export function createResolvedGate(
   id: string,
   when: HydrationWhen,
@@ -89,12 +101,7 @@ export function releaseGate(
     replayEventsByGateId.delete(gate.id)
     if (marker && replayEventsByGateId.size) {
       // Nested markers can queue events before their gates are registered.
-      marker.querySelectorAll(hydrateIdSelector).forEach((childMarker) => {
-        const id = childMarker.getAttribute(hydrateIdAttribute)
-        if (id) {
-          replayEventsByGateId.delete(id)
-        }
-      })
+      deleteChildMarkerIds(marker, replayEventsByGateId)
     }
   }
 }
@@ -187,13 +194,7 @@ export function clearResolvedGateIdsInMarker(marker: Element) {
   if (ownId) {
     resolvedGateIds.delete(ownId)
   }
-
-  marker.querySelectorAll(hydrateIdSelector).forEach((childMarker) => {
-    const childId = childMarker.getAttribute(hydrateIdAttribute)
-    if (childId) {
-      resolvedGateIds.delete(childId)
-    }
-  })
+  deleteChildMarkerIds(marker, resolvedGateIds)
 }
 
 export function saveFallbackHtml(id: string, element: Element) {
