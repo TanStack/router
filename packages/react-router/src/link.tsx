@@ -13,7 +13,7 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
-import { useForwardedRef, useIntersectionObserver } from './utils'
+import { useForwardedRef } from './utils'
 
 import { useHydrated } from './ClientOnly'
 import type {
@@ -35,13 +35,14 @@ import type {
 // Keep that classification with the href instead of parsing it again on render.
 type LinkState = [href: string | undefined, isActive?: boolean]
 
-// Keep a referentially stable value while the contents are equal. Links
+// Keep referentially stable values while their contents are equal. Links
 // routinely pass inline `params` / `search` object literals, which would
 // otherwise change `_options` identity on every parent render, rebuild the
-// store selector, and discard its memoized selection.
+// store selector, and discard its memoized selection. One ref holds all of
+// them; each entry is replaced only when its own contents change.
 //
 // The router reuses a built location for as long as it sees the same options
-// object, so the reference returned here is its invalidation signal: pass a
+// object, so the references returned here are its invalidation signal: pass a
 // new object to change a destination. Like every other React prop, an object
 // mutated in place is not re-read. `deepEqual` short-circuits on reference
 // equality, so an unchanged reference costs nothing.
@@ -49,12 +50,22 @@ type LinkState = [href: string | undefined, isActive?: boolean]
 // `ignoreUndefined: false` is required: an explicit `undefined` clears an
 // inherited param or search key, so `{}` and `{ category: undefined }` build
 // different locations and must not be treated as equal here.
-function useValueStable<T>(value: T): T {
-  const ref = React.useRef(value)
-  if (!deepEqual(ref.current, value, { ignoreUndefined: false })) {
-    ref.current = value
-  }
-  return ref.current
+function useStableValues<T extends ReadonlyArray<unknown>>(...values: T): T {
+  const ref = React.useRef<ReadonlyArray<unknown>>(values)
+  const stable = ref.current as Array<unknown>
+  values.forEach((value, index) => {
+    if (!deepEqual(stable[index], value, { ignoreUndefined: false })) {
+      stable[index] = value
+    }
+  })
+  return ref.current as T
+}
+
+function preloadLink(router: AnyRouter, options: unknown) {
+  router.preloadRoute(options as any).catch((err) => {
+    console.warn(err)
+    console.warn(preloadWarning)
+  })
 }
 
 function compareLinkState(a: LinkState, b: LinkState) {
@@ -219,14 +230,17 @@ function useLinkPropsFor<
   const isHydrated = useHydrated()
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const stableSearch = useValueStable(options.search)
+  const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
+    options.search,
+    options.params,
+    activeOptions,
+  )
+  // `_options` is the options object from the render that last changed the
+  // destination. `dest` is its copy that the link owns: one stable object per
+  // link lets the router reuse location-independent results.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const stableParams = useValueStable(options.params)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const stableActiveOptions = useValueStable(activeOptions)
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const _options = React.useMemo(
-    () => options,
+  const [_options, dest] = React.useMemo(
+    () => [options, { ...options } as any] as const,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
@@ -241,9 +255,6 @@ function useLinkPropsFor<
       options.unsafeRelative,
     ],
   )
-  // One stable object per link lets the router reuse location-independent results.
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const dest = React.useMemo(() => ({ ..._options }) as any, [_options])
 
   // Derive inside the selector so `compareLinkState` can bail out. Deriving after
   // the subscription instead re-renders every link on every navigation, because
@@ -304,16 +315,8 @@ function useLinkPropsFor<
   const preloadDelay =
     userPreloadDelay ?? router.options.defaultPreloadDelay ?? 0
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const doPreload = React.useCallback(() => {
-    // `preloadRoute` builds the location itself; it is no longer held in render
-    // state. It only reads the options, so `_options` can go through as-is.
-    router.preloadRoute(_options as any).catch((err) => {
-      console.warn(err)
-      console.warn(preloadWarning)
-    })
-  }, [router, _options])
-
+  // `preloadRoute` builds the location itself and only reads the options, so
+  // `_options` goes through as-is.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const enqueuePreload = React.useCallback(
     (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
@@ -335,7 +338,7 @@ function useLinkPropsFor<
       }
 
       if (!preloadDelay) {
-        doPreload()
+        preloadLink(router, _options)
         return
       }
 
@@ -347,26 +350,38 @@ function useLinkPropsFor<
         innerRef,
         setTimeout(() => {
           timeoutMap.delete(innerRef)
-          doPreload()
+          preloadLink(router, _options)
         }, preloadDelay),
       )
     },
-    [doPreload, innerRef, preload, preloadDelay],
+    [router, _options, innerRef, preload, preloadDelay],
   )
 
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useIntersectionObserver(innerRef, enqueuePreload, preload !== 'viewport')
-
+  // Preload side effects: `render` preloads once per link, `viewport` watches
+  // the element. The cleanup also cancels a pending intent timer.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   React.useEffect(() => {
-    if (hasRenderFetched.current) {
-      return
-    }
-    if (preload === 'render') {
-      doPreload()
+    if (preload === 'render' && !hasRenderFetched.current) {
       hasRenderFetched.current = true
+      preloadLink(router, _options)
     }
-  }, [doPreload, preload])
+    let observer: IntersectionObserver | undefined
+    if (
+      preload === 'viewport' &&
+      innerRef.current &&
+      typeof IntersectionObserver === 'function'
+    ) {
+      observer = new IntersectionObserver(
+        (entries) => enqueuePreload(entries.pop()),
+        { rootMargin: '100px' },
+      )
+      observer.observe(innerRef.current)
+    }
+    return () => {
+      observer?.disconnect()
+      enqueuePreload()
+    }
+  }, [router, _options, preload, enqueuePreload, innerRef])
 
   const props = collectElementProps(options, host)
   props.ref = innerRef
@@ -408,8 +423,9 @@ function useLinkPropsFor<
   }
 
   const handleTouchStart = () => {
-    if (preload !== 'intent') return
-    doPreload()
+    if (preload === 'intent') {
+      preloadLink(router, _options)
+    }
   }
 
   const handleLeave = () => {
