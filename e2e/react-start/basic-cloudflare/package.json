@@ -33,5 +33,15 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "wrangler": "^4.74.0"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/.wrangler/deploy"
+        ]
+      }
+    }
   }
 }
