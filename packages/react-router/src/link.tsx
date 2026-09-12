@@ -13,8 +13,6 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
-import { useForwardedRef } from './utils'
-
 import { useHydrated } from './ClientOnly'
 import type {
   ActiveOptions,
@@ -68,8 +66,8 @@ function preloadLink(router: AnyRouter, options: unknown) {
   })
 }
 
-function compareLinkState(a: LinkState, b: LinkState) {
-  return a[0] === b[0] && a[1] === b[1]
+const LINK_SELECTOR_OPTIONS = {
+  compare: (a: LinkState, b: LinkState) => a[0] === b[0] && a[1] === b[1],
 }
 
 function resolveExternalLink(
@@ -201,12 +199,14 @@ function useLinkPropsFor<
   // 3. In client bundles, `isServer` is `false`, so the early return never executes
   // ==========================================================================
 
+  // The link's own ref: the element for the viewport observer and the key
+  // of a pending intent timer. A forwarded ref is attached alongside it.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const innerRef = useForwardedRef(forwardedRef)
+  const innerRef = React.useRef<Element>(null)
 
   const {
     activeOptions,
-    to: toOption,
+    to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
     hashScrollIntoView,
@@ -223,8 +223,7 @@ function useLinkPropsFor<
     onMouseEnter,
     onMouseLeave,
     onTouchStart,
-  } = options
-  const to = toOption as string | undefined
+  } = options as typeof options & { to?: string }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const isHydrated = useHydrated()
@@ -300,7 +299,7 @@ function useLinkPropsFor<
   const [href, isActive] = useSelector(
     router.stores.location,
     selectLinkState,
-    { compare: compareLinkState },
+    LINK_SELECTOR_OPTIONS,
   )
   const externalLink = isActive === undefined ? href : undefined
   const linkDisabled = disabled || href === undefined
@@ -320,18 +319,10 @@ function useLinkPropsFor<
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const enqueuePreload = React.useCallback(
     (e?: React.MouseEvent | React.FocusEvent | IntersectionObserverEntry) => {
-      if (!e) {
-        cancelPreload(innerRef)
-        return
-      }
-
-      if (
-        !(
-          (e as IntersectionObserverEntry).isIntersecting ??
-          preload === 'intent'
-        )
-      ) {
-        if ((e as IntersectionObserverEntry).isIntersecting === false) {
+      const isIntersecting = (e as IntersectionObserverEntry | undefined)
+        ?.isIntersecting
+      if (!(isIntersecting ?? preload === 'intent')) {
+        if (isIntersecting === false) {
           cancelPreload(innerRef)
         }
         return
@@ -379,12 +370,21 @@ function useLinkPropsFor<
     }
     return () => {
       observer?.disconnect()
-      enqueuePreload()
+      cancelPreload(innerRef)
     }
   }, [router, _options, preload, enqueuePreload, innerRef])
 
   const props = collectElementProps(options, host)
-  props.ref = innerRef
+  // A forwarded ref is filled alongside the link's own ref.
+  props.ref = forwardedRef
+    ? (element: Element | null) => {
+        innerRef.current = element
+        if (typeof forwardedRef === 'function') {
+          return forwardedRef(element)
+        }
+        forwardedRef.current = element
+      }
+    : innerRef
   // External links get no router behavior: element props pass through as given.
   if (externalLink) {
     props.href = externalLink
@@ -393,11 +393,12 @@ function useLinkPropsFor<
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
-    // Check actual element's target attribute as fallback
-    const elementTarget = (
-      e.currentTarget as HTMLAnchorElement | SVGAElement
-    ).getAttribute('target')
-    const effectiveTarget = target !== undefined ? target : elementTarget
+    // The element's own target attribute is the fallback.
+    const effectiveTarget =
+      target ??
+      (e.currentTarget as HTMLAnchorElement | SVGAElement).getAttribute(
+        'target',
+      )
 
     if (
       !linkDisabled &&
@@ -522,15 +523,15 @@ function applyLinkState(
     props.disabled = linkDisabled
   }
   props.target = target
-  // Merge class and style with the state's. Assign only when one side gave a
-  // value, so links without them do not carry `undefined` keys.
+  // Merge class and style with the state's. Links without either keep their
+  // props as given and carry no `undefined` keys.
   const stateStyle = stateProps.style
-  if (style !== undefined || stateStyle !== undefined) {
+  if (style || stateStyle) {
     props.style =
       style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle
   }
   const stateClassName = stateProps.className
-  if (className !== undefined || stateClassName !== undefined) {
+  if (className || stateClassName) {
     props.className = className
       ? stateClassName
         ? `${className} ${stateClassName}`
@@ -808,8 +809,8 @@ export function createLink<const TComp>(
  * @returns An anchor-like element that navigates without full page reloads.
  * @link https://tanstack.com/router/latest/docs/framework/react/api/router/linkComponent
  */
-export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
-  (props, ref) => {
+export const Link: LinkComponent<'a'> = React.memo(
+  React.forwardRef<Element, any>((props, ref) => {
     const host = props._asChild || 'a'
     const linkProps = useLinkPropsFor(props as any, ref, host)
 
@@ -821,8 +822,37 @@ export const Link: LinkComponent<'a'> = React.forwardRef<Element, any>(
         : props.children
 
     return React.createElement(host, linkProps, children)
-  },
+  }),
+  areLinkPropsEqual,
 ) as any
+
+// A Link's output depends only on its props, the router context and the
+// location store, which React tracks for memoized components, so a parent
+// re-render with equal props can skip it. Router options are compared by
+// value: destinations are usually inline object literals. Element props are
+// compared by reference, since they may hold arbitrary (even cyclic) data.
+function areLinkPropsEqual(
+  prev: Record<string, unknown>,
+  next: Record<string, unknown>,
+): boolean {
+  let extraKeys = 0
+  for (const key in next) {
+    extraKeys++
+    if (
+      prev[key] !== next[key] &&
+      !(
+        ROUTER_OPTION_KEYS.has(key) &&
+        deepEqual(prev[key], next[key], { ignoreUndefined: false })
+      )
+    ) {
+      return false
+    }
+  }
+  for (const _key in prev) {
+    extraKeys--
+  }
+  return extraKeys === 0
+}
 
 export type LinkOptionsFnOptions<
   TOptions,
