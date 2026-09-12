@@ -17,6 +17,7 @@ import { Route as ClientOnlyRouteImport } from './routes/client-only'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as LinksRouteImport } from './routes/links'
+import { Route as LoaderSerializationRouteImport } from './routes/loader-serialization'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
 import { Route as PlainTsTypeAssertionRouteImport } from './routes/plain-ts-type-assertion'
 import { Route as PostsRouteImport } from './routes/posts'
@@ -121,6 +122,11 @@ const InlineScriptsRoute = InlineScriptsRouteImport.update({
 const LinksRoute = LinksRouteImport.update({
   id: '/links',
   path: '/links',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoaderSerializationRoute = LoaderSerializationRouteImport.update({
+  id: '/loader-serialization',
+  path: '/loader-serialization',
   getParentRoute: () => rootRouteImport,
 } as any)
 const NotFoundRouteRoute = NotFoundRouteRouteImport.update({
@@ -481,6 +487,7 @@ export interface FileRoutesByFullPath {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/loader-serialization': typeof LoaderSerializationRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/posts': typeof PostsRouteWithChildren
   '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
@@ -553,6 +560,7 @@ export interface FileRoutesByTo {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/loader-serialization': typeof LoaderSerializationRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
   '/scripts': typeof ScriptsRoute
@@ -622,6 +630,7 @@ export interface FileRoutesById {
   '/deferred': typeof DeferredRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
+  '/loader-serialization': typeof LoaderSerializationRoute
   '/plain-ts-type-assertion': typeof PlainTsTypeAssertionRoute
   '/posts': typeof PostsRouteWithChildren
   '/primitive-beforeload-error': typeof PrimitiveBeforeloadErrorRoute
@@ -699,6 +708,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/loader-serialization'
     | '/plain-ts-type-assertion'
     | '/posts'
     | '/primitive-beforeload-error'
@@ -771,6 +781,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/loader-serialization'
     | '/plain-ts-type-assertion'
     | '/primitive-beforeload-error'
     | '/scripts'
@@ -839,6 +850,7 @@ export interface FileRouteTypes {
     | '/deferred'
     | '/inline-scripts'
     | '/links'
+    | '/loader-serialization'
     | '/plain-ts-type-assertion'
     | '/posts'
     | '/primitive-beforeload-error'
@@ -916,6 +928,7 @@ export interface RootRouteChildren {
   DeferredRoute: typeof DeferredRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
+  LoaderSerializationRoute: typeof LoaderSerializationRoute
   PlainTsTypeAssertionRoute: typeof PlainTsTypeAssertionRoute
   PostsRoute: typeof PostsRouteWithChildren
   PrimitiveBeforeloadErrorRoute: typeof PrimitiveBeforeloadErrorRoute
@@ -991,6 +1004,13 @@ declare module '@tanstack/react-router' {
       path: '/links'
       fullPath: '/links'
       preLoaderRoute: typeof LinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/loader-serialization': {
+      id: '/loader-serialization'
+      path: '/loader-serialization'
+      fullPath: '/loader-serialization'
+      preLoaderRoute: typeof LoaderSerializationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/not-found': {
@@ -1731,6 +1751,7 @@ const rootRouteChildren: RootRouteChildren = {
   DeferredRoute: DeferredRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
+  LoaderSerializationRoute: LoaderSerializationRoute,
   PlainTsTypeAssertionRoute: PlainTsTypeAssertionRoute,
   PostsRoute: PostsRouteWithChildren,
   PrimitiveBeforeloadErrorRoute: PrimitiveBeforeloadErrorRoute,
