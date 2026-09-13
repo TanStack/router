@@ -2,6 +2,7 @@
 
 import { render } from '@testing-library/vue'
 import { bench, describe } from 'vitest'
+import { getRouteSegments } from '@tanstack/router-core'
 import * as Vue from 'vue'
 import {
   Link,
@@ -37,7 +38,12 @@ const createRouterRenderer = (routesCount: number) => (children: Vue.VNode) => {
 const InterpolatePathLink = Vue.defineComponent({
   props: ['to', 'params'],
   setup(props, { slots }) {
-    const href = interpolatePath(props.to, props.params)
+    const router = useRouter()
+    const href = interpolatePath(
+      props.to,
+      getRouteSegments(router.routesByPath[props.to])!,
+      props.params,
+    )
 
     return () => Vue.h('a', { href }, slots.default?.())
   },

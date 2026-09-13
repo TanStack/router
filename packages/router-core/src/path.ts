@@ -1,12 +1,12 @@
-import { isServer } from '@tanstack/router-core/isServer'
 import { last } from './utils'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
-  SEGMENT_TYPE_PATHNAME,
+  SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_WILDCARD,
-  parseSegment,
 } from './new-process-route-tree'
 import type { SieveCache } from './sieve-cache'
+import type { DynamicPathSegment } from './new-process-route-tree'
+import type { AnyRoute } from './route'
 
 /** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
@@ -27,13 +27,13 @@ export function cleanPath(path: string) {
 
 /** Trim leading slashes (except preserving root '/'). */
 export function trimPathLeft(path: string) {
-  return path === '/' ? path : path.replace(/^\/{1,}/, '')
+  return path === '/' ? path : path.replace(/^\/+/, '')
 }
 
 /** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
   const len = path.length
-  return len > 1 && path[len - 1] === '/' ? path.replace(/\/{1,}$/, '') : path
+  return len > 1 && path[len - 1] === '/' ? path.replace(/\/+$/, '') : path
 }
 
 /** Trim both leading and trailing slashes. */
@@ -191,7 +191,7 @@ export function resolvePath({
 
 /**
  * Create a pre-compiled decode config from allowed characters.
- * This should be called once at router initialization.
+ * Created once for the router's fixed encoding configuration.
  */
 export function compileDecodeCharMap(
   pathParamsAllowedCharacters: ReadonlyArray<string>,
@@ -199,21 +199,46 @@ export function compileDecodeCharMap(
   const charMap = new Map(
     pathParamsAllowedCharacters.map((char) => [encodeURIComponent(char), char]),
   )
-  // Escape special regex characters and join with |
-  const pattern = Array.from(charMap.keys())
-    .map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-    .join('|')
-  const regex = new RegExp(pattern, 'g')
+  // Encoded keys contain no '|', and only these four regexp metacharacters.
+  const regex = new RegExp(
+    [...charMap.keys()].join('|').replace(/[.*()]/g, '\\$&'),
+    'g',
+  )
   return (encoded: string) =>
     encoded.replace(regex, (match) => charMap.get(match) ?? match)
 }
 
 export type InterpolationPlan = [
-  keys: Array<string>,
   paths: SieveCache<string | undefined, string>,
-  decoder: ((encoded: string) => string) | undefined,
   path: string,
+  segments: RouteInterpolation,
 ]
+
+export type InterpolationSegment = string | DynamicPathSegment
+
+export type RouteInterpolation = Array<InterpolationSegment> & {
+  names?: Array<string>
+}
+
+export function getRouteSegments(route: AnyRoute) {
+  return route._interpolation
+}
+
+/** Devtools checks navigation availability separately from the hot formatter. */
+export function hasMissingPathParams(
+  segments: RouteInterpolation,
+  params: Record<string, unknown>,
+): boolean {
+  return segments.some((part) => {
+    if (typeof part === 'string') {
+      return false
+    }
+    const [kind, key] = part
+    return kind === SEGMENT_TYPE_WILDCARD
+      ? !params[key]
+      : kind === SEGMENT_TYPE_PARAM && !(key in params)
+  })
+}
 
 function encodeParam(
   key: string,
@@ -224,176 +249,63 @@ function encodeParam(
     return '' + (value ?? undefined)
   }
 
-  if (key === '_splat') {
-    // Early return if value only contains URL-safe characters (performance optimization)
-    if (!value || /^[a-zA-Z0-9\-._~!/]*$/.test(value)) {
-      return value
-    }
-    // the splat/catch-all routes shouldn't have the '/' encoded out
-    // Use encodeURIComponent for each segment to properly encode spaces,
-    // plus signs, and other special characters that encodeURI leaves unencoded
+  const splat = key === '_splat'
+  // Early return if the splat contains only URL-safe characters.
+  if (splat && (!value || /^[a-zA-Z0-9\-._~!/]*$/.test(value))) {
     return value
-      .split('/')
-      .map((segment) => encodePathParam(segment, decoder))
-      .join('/')
-  } else {
-    return encodePathParam(value, decoder)
   }
+  let encoded = encodeURIComponent(value)
+  if (splat) {
+    // Splats preserve '/', but still encode spaces, '+', '?' and '#'.
+    // Restore separators before allowed characters can decode a literal '%2F'.
+    encoded = encoded.replaceAll('%2F', '/')
+  }
+  return decoder ? decoder(encoded) : encoded
 }
 
-/**
- * Interpolate params and wildcards into a route pathname.
- *
- * - Encodes params safely (configurable allowed characters)
- * - Supports `{-$optional}` segments, `{prefix{$id}suffix}` and `{$}` wildcards
- * - Collects optional metadata in the same pass without allocating it for callers
- */
+/** Substitute current values into parsed segments, optionally collecting raw params. */
 export function interpolatePath(
-  path: string | undefined,
+  path: string,
+  segments: RouteInterpolation,
   params: Record<string, unknown>,
   decoder?: (encoded: string) => string,
   usedParams?: Record<string, unknown>,
-  keys?: Array<string>,
-  server?: boolean,
-  metadata?: { isMissingParams: boolean },
 ): string {
-  if (!path?.includes('$')) {
-    return path || '/'
-  }
-
-  if (isServer ?? server) {
-    // Fast path for common templates like `/posts/$id` or `/files/$`.
-    // Braced segments (`{...}`) are more complex (prefix/suffix/optional) and are
-    // handled by the general parser below.
-    if (path.indexOf('{') === -1) {
-      const length = path.length
-      let cursor = 0
-      let joined = ''
-
-      while (cursor < length) {
-        // Skip slashes between segments. '/' code is 47
-        while (cursor < length && path.charCodeAt(cursor) === 47) {
-          cursor++
-        }
-        if (cursor >= length) {
-          break
-        }
-
-        const start = cursor
-        let end = path.indexOf('/', cursor)
-        if (end === -1) {
-          end = length
-        }
-        cursor = end
-
-        const part = path.substring(start, end)
-
-        // `$id` or `$` (splat). '$' code is 36
-        if (part.charCodeAt(0) === 36) {
-          const splat = part.length === 1
-          const key = splat ? '_splat' : part.substring(1)
-          const value = params[key]
-          keys?.push(key)
-          if (metadata && (splat ? !value : !(key in params))) {
-            metadata.isMissingParams = true
-          }
-          if (usedParams) {
-            usedParams[key] = value
-            if (splat) {
-              // TODO: Deprecate *
-              usedParams['*'] = value
-            }
-          }
-          if (!splat || value) {
-            joined += '/' + encodeParam(key, value, decoder)
-          }
-        } else {
-          joined += '/' + part
-        }
-      }
-
-      if (path.endsWith('/')) {
-        joined += '/'
-      }
-
-      return joined || '/'
-    }
-  }
-
-  let cursor = 0
-  let segment
+  // One parsed template serves both trailing-slash variants.
+  const trailingSlash = path.endsWith('/') ? '/' : ''
   let joined = ''
-  while (cursor < path.length) {
-    const start = cursor
-    segment = parseSegment(path, start, segment)
-    const end = segment[5]
-    cursor = end + 1
-
-    if (start === end) {
+  for (const part of segments) {
+    if (typeof part === 'string') {
+      joined += part
       continue
     }
-
-    const kind = segment[0]
-
-    if (kind === SEGMENT_TYPE_PATHNAME) {
-      joined += '/' + path.substring(start, end)
-      continue
-    }
-
-    const prefixEnd = segment[1]
-    const suffixStart = segment[4]
-    const key =
-      kind === SEGMENT_TYPE_WILDCARD
-        ? '_splat'
-        : path.substring(segment[2], segment[3])
+    const [kind, key, prefix, rawSuffix] = part
+    const splat = kind === SEGMENT_TYPE_WILDCARD
+    const suffix =
+      splat && rawSuffix !== undefined ? rawSuffix + trailingSlash : rawSuffix
     let paramValue = params[key]
-    keys?.push(key)
-
-    if (kind === SEGMENT_TYPE_WILDCARD) {
-      if (usedParams) {
-        usedParams[key] = paramValue
-        // TODO: Deprecate *
+    // An omitted optional contributes neither a segment nor used-param metadata.
+    if (kind === SEGMENT_TYPE_OPTIONAL_PARAM && paramValue == null) {
+      continue
+    }
+    if (usedParams) {
+      // Match identity needs current raw values, never data retained from another call.
+      usedParams[key] = paramValue
+      // TODO: Deprecate *
+      if (splat) {
         usedParams['*'] = paramValue
       }
-      if (!paramValue) {
-        if (metadata) {
-          metadata.isMissingParams = true
-        }
-        // A missing wildcard keeps its affixes, but omits a bare segment.
-        if (prefixEnd === start && suffixStart === end) {
-          continue
-        }
-        paramValue = ''
+    }
+    if (splat && !paramValue) {
+      // A missing wildcard keeps its affixes, but omits a bare segment.
+      if (prefix === '/' && !suffix) {
+        continue
       }
-    } else {
-      // Named parameters: $id or {-$id}.
-      if (kind === SEGMENT_TYPE_OPTIONAL_PARAM) {
-        if (paramValue == null) {
-          continue
-        }
-      } else if (metadata && !(key in params)) {
-        metadata.isMissingParams = true
-      }
-      if (usedParams) {
-        usedParams[key] = paramValue
-      }
+      paramValue = ''
     }
 
-    joined +=
-      '/' +
-      path.substring(start, prefixEnd) +
-      encodeParam(key, paramValue, decoder) +
-      path.substring(suffixStart, end)
+    joined += prefix + encodeParam(key, paramValue, decoder) + (suffix || '')
   }
 
-  if (path.endsWith('/')) {
-    joined += '/'
-  }
-
-  return joined || '/'
-}
-
-function encodePathParam(value: string, decoder?: (encoded: string) => string) {
-  const encoded = encodeURIComponent(value)
-  return decoder?.(encoded) ?? encoded
+  return joined + trailingSlash || '/'
 }
