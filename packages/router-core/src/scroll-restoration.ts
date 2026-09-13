@@ -1,4 +1,5 @@
 import { isServer } from '@tanstack/router-core/isServer'
+import { resetScrollStateKey } from './history'
 import type { AnyRouter } from './router'
 import type { ParsedLocation } from './location'
 
@@ -239,12 +240,14 @@ export function setupScrollRestoration(router: AnyRouter, force?: boolean) {
   router.subscribe('onRendered', (event) => {
     const behavior = router.options.scrollRestorationBehavior
     const scrollToTopSelectors = router.options.scrollToTopSelectors
-    const shouldResetScroll = scroll.next
+    const shouldResetScroll =
+      event.toLocation.state[resetScrollStateKey] ?? scroll.next
     const hashNavigation = scroll.hash
     let scrollToTopElements: Set<Element> | undefined
     trackedScrollTargets.clear()
     scroll.next = true
     scroll.hash = false
+    scroll.pending = false
 
     if (
       typeof router.options.scrollRestoration === 'function' &&

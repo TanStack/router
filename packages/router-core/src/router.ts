@@ -37,6 +37,7 @@ import {
 import { createSieveCache } from './sieve-cache'
 import { isNotFound } from './not-found'
 import { setupScrollRestoration } from './scroll-restoration'
+import { resetScrollStateKey } from './history'
 import { defaultParseSearch, defaultStringifySearch } from './searchParams'
 import { rootRouteId } from './root'
 import { isRedirect } from './redirect'
@@ -946,6 +947,7 @@ export function _getUserHistoryState({
   __TSR_key: _tsrKey,
   __TSR_index: _tsrIndex,
   __hashScrollIntoViewOptions: _hashScroll,
+  [resetScrollStateKey]: _resetScroll,
   ...state
 }: ParsedHistoryState): HistoryState {
   return state
@@ -1119,6 +1121,7 @@ export class RouterCore<
     next: boolean
     // True until the current PUSH/REPLACE renders, so its hash owns window scroll.
     hash?: boolean
+    pending?: boolean
     restoring?: boolean
     restoration?: boolean
     reset?: boolean
@@ -2198,6 +2201,12 @@ export class RouterCore<
     }
 
     let historyAction: HistoryAction | undefined
+    const nextResetScroll = next.resetScroll ?? true
+    const pendingSamePathReset =
+      this._scroll.pending === true &&
+      this._scroll.next &&
+      this.latestLocation.pathname === next.pathname
+    const resetScroll = nextResetScroll || pendingSamePathReset
     const isSameLocation =
       trimPathRight(this.latestLocation.href) === trimPathRight(next.href) &&
       deepEqual(
@@ -2259,6 +2268,7 @@ export class RouterCore<
 
       nextHistory.state.__hashScrollIntoViewOptions =
         hashScrollIntoView ?? this.options.defaultHashScrollIntoView ?? true
+      nextHistory.state[resetScrollStateKey] = resetScroll
 
       this.shouldViewTransition = viewTransition
 
@@ -2277,7 +2287,8 @@ export class RouterCore<
       }
     }
 
-    this._scroll.next = next.resetScroll ?? true
+    this._scroll.next = resetScroll
+    this._scroll.pending = true
 
     return this._commitPromise
   }
