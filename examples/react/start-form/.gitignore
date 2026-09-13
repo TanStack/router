@@ -1,0 +1,5 @@
+node_modules
+.output
+.tanstack
+test-results
+playwright-report

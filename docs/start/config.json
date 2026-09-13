@@ -95,6 +95,10 @@
               "to": "framework/react/guide/server-functions"
             },
             {
+              "label": "Forms and Mutations",
+              "to": "framework/react/guide/tanstack-form"
+            },
+            {
               "label": "Streaming Data from Server Functions",
               "to": "framework/react/guide/streaming-data-from-server-functions"
             },
