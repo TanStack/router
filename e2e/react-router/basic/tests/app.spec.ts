@@ -62,3 +62,20 @@ test('Link in SVG does not trigger a full page reload', async ({ page }) => {
 
   expect(fullPageLoad).toBeFalsy()
 })
+
+test('Applies and updates React props on the devtools toggle button', async ({
+  page,
+}) => {
+  const initialToggleButton = page.getByRole('button', {
+    name: 'Custom Router Devtools',
+  })
+
+  await expect(initialToggleButton).toHaveClass(/initial-devtools-toggle/)
+
+  await page.getByRole('button', { name: 'Update devtools props' }).click()
+
+  const updatedToggleButton = page.getByRole('button', {
+    name: 'Updated Router Devtools',
+  })
+  await expect(updatedToggleButton).toHaveClass(/updated-devtools-toggle/)
+})
