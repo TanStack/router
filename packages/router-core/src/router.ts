@@ -1928,18 +1928,17 @@ export class RouterCore<
       const currentLocation =
         dest._fromLocation || this._pendingLocation || this.latestLocation
 
-      // Use lightweight matching - only computes what buildLocation needs
-      // (fullPath, search, params) without creating full match objects
-      const lightweight = this.matchRoutesLightweight(currentLocation)
-
       // Value-affecting reads of the current location go through these two.
+      // The lightweight match (fullPath, search, params without full match
+      // objects) is only computed when a build actually reads it.
+      let lightweight: LightweightRouteMatchResult | undefined
       const current = () => {
         usedCurrent = true
         return currentLocation
       }
       const currentMatch = () => {
         usedCurrent = true
-        return lightweight
+        return (lightweight ??= this.matchRoutesLightweight(currentLocation))
       }
 
       // check that from path exists in the current route tree
@@ -1982,10 +1981,11 @@ export class RouterCore<
         trimPathRight(nextTo) as keyof typeof this.routesByPath
       ] as AnyRoute | undefined
 
+      const isTemplate = nextTo.includes('$')
       let destRoutes: ReadonlyArray<AnyRoute>
       if (destRoute) {
         destRoutes = destRoute._branch ??= buildRouteBranch(destRoute)
-      } else if (nextTo.includes('$')) {
+      } else if (isTemplate) {
         // Route templates must match routesByPath exactly. A miss here is a
         // typed destination mismatch, not a concrete URL to route-match.
         destRoutes = []
@@ -2003,7 +2003,7 @@ export class RouterCore<
       }
 
       // One parsed template serves both trailing-slash variants.
-      const interpolation = nextTo.includes('$')
+      const interpolation = isTemplate
         ? (destRoute?._interpolation ??
           parseSegments(false, { fullPath: nextTo }, 0))
         : undefined
