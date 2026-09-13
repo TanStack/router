@@ -77,7 +77,11 @@ test('#4476: pending navigation keeps the query observer mounted and its fetchQu
     },
     errorComponent: ({ error }) => {
       routeError(error)
-      return <div data-testid="page-two-error">{error.name}</div>
+      return (
+        <div data-testid="page-two-error">
+          {error instanceof Error ? error.name : String(error)}
+        </div>
+      )
     },
     component: () => {
       const { data } = pageTwoRoute.useRouteContext()

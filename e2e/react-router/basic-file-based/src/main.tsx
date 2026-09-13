@@ -24,6 +24,16 @@ const router = createRouter({
   defaultStaleTime: 5000,
   scrollRestoration: true,
   routeMasks: [mask],
+  rewrite: {
+    output: ({ url }) => {
+      if (url.pathname === '/document-navigation-target') {
+        return new URL(
+          `http://localhost:${import.meta.env.VITE_EXTERNAL_PORT}/`,
+        )
+      }
+      return url
+    },
+  },
 })
 
 // Register things for typesafety

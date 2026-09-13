@@ -56,7 +56,7 @@
   },
   "devDependencies": {
     "@typescript-eslint/rule-tester": "^8.23.0",
-    "combinate": "^1.1.11",
+    "combinate": "catalog:",
     "eslint": "^9.22.0",
     "vite": "*",
     "@tanstack/vite-config": "catalog:",

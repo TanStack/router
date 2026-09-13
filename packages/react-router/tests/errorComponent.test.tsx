@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 
 import {
+  CatchBoundary,
+  ErrorComponent,
   HeadContent,
   Link,
   Outlet,
@@ -23,7 +25,11 @@ import {
 import type { ErrorComponentProps, RouterHistory } from '../src'
 
 function MyErrorComponent(props: ErrorComponentProps) {
-  return <div>Error: {props.error.message}</div>
+  return <div>Error: {getErrorMessage(props.error)}</div>
+}
+
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error)
 }
 
 async function asyncToThrowFn() {
@@ -324,7 +330,9 @@ test('ancestor route errorComponent resets when a background child generation re
   let loaderCalls = 0
   const rootRoute = createRootRoute({
     component: Outlet,
-    errorComponent: ({ error }) => <div>Ancestor error: {error.message}</div>,
+    errorComponent: ({ error }) => (
+      <div>Ancestor error: {getErrorMessage(error)}</div>
+    ),
   })
   const childRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -420,6 +428,62 @@ test('errorComponent receives primitive errors thrown from beforeLoad', async ()
     }),
   ).toBeInTheDocument()
   expect(screen.queryByText('About route content')).not.toBeInTheDocument()
+})
+
+test.each([
+  ['false', false],
+  ['zero', 0],
+  ['negative zero', -0],
+  ['bigint zero', 0n],
+  ['empty string', ''],
+  ['null', null],
+  ['undefined', undefined],
+  ['NaN', NaN],
+] as const)('CatchBoundary renders falsy thrown value %s', (_, thrown) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  const onCatch = vi.fn()
+
+  function ThrowFalsy(): never {
+    throw thrown
+  }
+
+  render(
+    <CatchBoundary
+      getResetKey={() => 0}
+      errorComponent={({ error }) => (
+        <div>{Object.is(error, thrown) ? 'Caught value' : 'Wrong value'}</div>
+      )}
+      onCatch={onCatch}
+    >
+      <ThrowFalsy />
+    </CatchBoundary>,
+  )
+
+  expect(screen.getByText('Caught value')).toBeInTheDocument()
+  expect(screen.queryByText('Wrong value')).not.toBeInTheDocument()
+  expect(onCatch).toHaveBeenCalledWith(thrown, expect.anything())
+})
+
+test.each([
+  ['null', null],
+  ['undefined', undefined],
+] as const)('default error UI renders thrown %s', async (_, thrown) => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+  function ThrowFalsy(): never {
+    throw thrown
+  }
+
+  const rootRoute = createRootRoute({ component: ThrowFalsy })
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: ['/'] }),
+  })
+
+  render(<RouterProvider router={router} />)
+
+  expect(await screen.findByText('Something went wrong!')).toBeInTheDocument()
 })
 
 test.each(['beforeLoad', 'loader'] as const)(
@@ -736,7 +800,9 @@ test('#4684: SSR renders head content when beforeLoad throws', async () => {
     component: function FailingRoute() {
       return <div>Route content</div>
     },
-    errorComponent: ({ error }) => <div>Error UI: {error.message}</div>,
+    errorComponent: ({ error }) => (
+      <div>Error UI: {getErrorMessage(error)}</div>
+    ),
   })
 
   const handler = createRequestHandler({
@@ -867,4 +933,116 @@ describe('notFoundComponent is rendered when an error is thrown in params.parse'
     expect(rootLoader).toHaveBeenCalledTimes(2)
     expect(notFoundComponent).toBeInTheDocument()
   })
+})
+
+test.each([
+  [new Error('Error message'), 'Error message'],
+  [{ message: 'Serialized message' }, 'Serialized message'],
+  [{ message: 0 }, undefined],
+  ['Thrown string', undefined],
+  [false, undefined],
+  [0, undefined],
+  [0n, undefined],
+  ['', undefined],
+  [null, undefined],
+  [undefined, undefined],
+  [NaN, undefined],
+  [Symbol('error'), undefined],
+  [Object.create(null), undefined],
+])('default error details render %s', (error, expected) => {
+  const { container } = render(<ErrorComponent error={error} />)
+
+  expect(screen.getByText('Something went wrong!')).toBeInTheDocument()
+  expect(container.querySelector('code')?.textContent).toBe(expected)
+})
+
+test.each([false, 0, -0, 0n, '', null, undefined, NaN])(
+  'CatchBoundary resets after throwing %s',
+  (thrown) => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    let shouldThrow = true
+    let resetKey = 0
+    const onCatch = vi.fn()
+
+    function Child() {
+      if (shouldThrow) {
+        throw thrown
+      }
+      return <div>Recovered child</div>
+    }
+
+    function App() {
+      return (
+        <CatchBoundary
+          getResetKey={() => resetKey}
+          onCatch={onCatch}
+          errorComponent={({ reset }) => <button onClick={reset}>Reset</button>}
+        >
+          <Child />
+        </CatchBoundary>
+      )
+    }
+
+    const { rerender } = render(<App />)
+    shouldThrow = false
+    rerender(<App />)
+    expect(screen.queryByText('Recovered child')).not.toBeInTheDocument()
+    fireEvent.click(screen.getByText('Reset'))
+    expect(screen.getByText('Recovered child')).toBeInTheDocument()
+
+    shouldThrow = true
+    rerender(<App />)
+    shouldThrow = false
+    resetKey++
+    rerender(<App />)
+    expect(screen.getByText('Recovered child')).toBeInTheDocument()
+    expect(onCatch).toHaveBeenCalledTimes(2)
+  },
+)
+
+test('CatchBoundary tracks reset keys while healthy', () => {
+  vi.spyOn(console, 'error').mockImplementation(() => {})
+  let resetKey: unknown
+  let shouldThrow = false
+
+  function Child() {
+    if (shouldThrow) {
+      throw null
+    }
+    return <div>Healthy child</div>
+  }
+
+  function App() {
+    return (
+      <CatchBoundary
+        getResetKey={() => resetKey}
+        errorComponent={() => <div>Caught error</div>}
+      >
+        <Child />
+      </CatchBoundary>
+    )
+  }
+
+  const { rerender } = render(<App />)
+  expect(screen.getByText('Healthy child')).toBeInTheDocument()
+
+  resetKey = {}
+  rerender(<App />)
+  expect(screen.getByText('Healthy child')).toBeInTheDocument()
+
+  shouldThrow = true
+  rerender(<App />)
+  expect(screen.getByText('Caught error')).toBeInTheDocument()
+
+  shouldThrow = false
+  rerender(<App />)
+  expect(screen.getByText('Caught error')).toBeInTheDocument()
+
+  resetKey = undefined
+  rerender(<App />)
+  expect(screen.getByText('Healthy child')).toBeInTheDocument()
+
+  shouldThrow = true
+  rerender(<App />)
+  expect(screen.getByText('Caught error')).toBeInTheDocument()
 })

@@ -43,40 +43,82 @@ same workload through the Flame profiler.
   after a forced GC. Under plain `vitest bench` the suites only smoke-test:
   timing output is meaningless; real numbers come from CodSpeed.
 - Under CodSpeed the bench fn runs several warmup invocations plus the
-  measured one **on the same mount**, so bench fns must be idempotent and
-  module-level counters/LCGs are used where ids must never repeat across
-  invocations.
-- Plain `vitest bench` never runs suite hooks (`beforeAll`/`afterAll`) and
+  measured one. Client suite hooks mount a fresh app before each invocation
+  and tear it down afterward, outside the measurement window. This prevents
+  warmup navigation history and caches from changing the starting state.
+  Module-level counters/LCGs keep generated URLs unique across invocations.
+- Plain `vitest bench` never runs suite hooks (`beforeEach`/`afterEach`) and
   only honors tinybench's `setup`/`teardown` options; the CodSpeed runner
   does the exact opposite. Client benches therefore register **both** — in
   any given mode exactly one pair runs.
-- The process runs with V8 determinism flags (predictable GC schedule,
-  `--no-opt`). Never call `global.gc()` manually in **churn** scenarios —
-  their signal is accumulation across iterations, which a forced collection
-  masks. **Peak** scenarios do the opposite: they set
-  `pinGcBetweenIterations` on the request loop so a collection runs between
-  iterations. Their signal is the footprint of a single request, and without
-  pinned GC points the measured peak flips by a whole payload depending on
-  whether iteration i's garbage is collected before iteration i+1 allocates.
-  Because of `--no-opt`, allocation counts overstate production; numbers are
-  for regression tracking, not absolute claims.
+- Worker flags live in `runtime.ts` and apply only to the CodSpeed memory
+  instrument. They supplement the integration's predictable execution flags;
+  the retained overrides are described below.
+- Before each CodSpeed invocation, a setup hook yields to the event loop,
+  outside the measurement marker and before CodSpeed forces GC. Promise-only
+  warmup chains can keep WeakRef targets alive through a collection in the same
+  job. Client app setup also runs before the forced GC.
+- Do not force GC inside a measured request loop or poll `heapUsed` to choose
+  how much work to do. Both introduce allocator activity from the harness into
+  the measurement. Footprint scenarios run exactly one large request per
+  invocation; churn scenarios retain their fixed sequential request counts.
+- Error-path cases use separate isolated workers so one case's module and
+  allocator history cannot contaminate the next case.
 - Keep each bench under **~1.5M allocations** (instrument overhead grows past
   2M); this is the main constraint when tuning iteration counts.
 
+## Worker settings
+
+All scenarios use [`memoryConfig`](./runtime.ts). It adds these flags only in
+memory mode:
+
+- `--no-flush-bytecode`
+- `--no-minor-gc-task`
+- `--no-incremental-marking`
+- `--initial-old-space-size=512`
+
+`--jitless` was removed after repeated CI comparisons. Ten unchanged-commit
+repetitions with these four flags kept all 48 peak-memory results within 1%
+(worst spread: 0.834%). With JIT enabled, all 16 subsets of the four flags were
+tested. Removing bytecode, minor-GC-task, incremental-marking, or heap-budget
+overrides from this profile produced worst client peak spreads of 6.616%, 2.714%,
+2.109%, and 10.669%, respectively. Smaller combinations also exceeded 1% in at
+least one tracked metric. This supports retaining the four-flag profile; it does
+not establish that every override is required in every individual scenario.
+
+A server-only heap-budget profile initially passed five repetitions, but further
+confirmation produced a 24.46% server peak outlier. That configuration was
+rejected. Allocated bytes and allocation counts remain imperfectly repeatable:
+a client confirmation with the retained four flags showed a 6.77% allocated-byte
+spread and a 5.91% allocation-count spread. Client peaks remained within 0.834%
+across all 15 observations with the retained profile. Experiment details and CI runs are recorded in
+[PR #8260](https://github.com/TanStack/router/pull/8260).
+
+These settings trade production GC behavior for repeatable regression signals.
+They suppress bytecode reclamation and change collection scheduling. The 512 MiB
+initial/minimum old-generation allocation budget can postpone automatic full
+collections. This does not preallocate 512 MiB, and the smallest sufficient budget
+was not determined. Results describe this controlled worker profile, not a
+production application's absolute memory footprint.
+
 ## Bench shapes and signals
 
-- **Churn (leak detector):** N sequential iterations at steady state. If one
-  iteration leaks L bytes, peak grows by ~N·L; healthy builds show a flat
-  timeline floor independent of N. Tuning check: doubling N must leave peak
-  roughly unchanged.
-- **Peak (footprint):** one (or very few) large operations; peak memory
-  scaling with the workload is the signal.
+- **Churn:** a fixed number of sequential operations, measuring native
+  allocation activity and peak outstanding native allocations.
+- **Peak (footprint):** one large operation, measuring its native footprint.
+
+CodSpeed reports native allocator activity, not individual JavaScript object
+allocations or retained JS heap size. V8 can reuse heap pages without a visible
+native allocation. These benchmarks can detect native buffering and allocator
+regressions, but a flat graph does not establish that route data or JS objects
+are collectable. Absolute numbers include Node/framework/jsdom activity under
+benchmark-specific V8 settings; compare identical harness versions.
 
 ## Scenarios
 
 ### Server
 
-| Scenario                | Shape | Guards against                                            |
+| Scenario                | Shape | Exercises                                                 |
 | ----------------------- | ----- | --------------------------------------------------------- |
 | `request-churn`         | churn | cross-request retention in document SSR (unique URLs)     |
 | `server-fn-churn`       | churn | retention in the server-function RPC path                 |
@@ -88,7 +130,7 @@ same workload through the Flame profiler.
 
 ### Client
 
-| Scenario                  | Shape | Guards against                                           |
+| Scenario                  | Shape | Exercises                                                |
 | ------------------------- | ----- | -------------------------------------------------------- |
 | `navigation-churn`        | churn | per-navigation retention at steady state                 |
 | `unique-location-churn`   | churn | unbounded href/search-keyed caches (never-repeated URLs) |
@@ -103,14 +145,10 @@ same workload through the Flame profiler.
   server response is fully consumed before the next request. Pairing a single
   navigation with its render signal via `Promise.all([navigate, rendered])`
   is fine — never overlap distinct work items.
-- Randomness only via the seeded LCG in `bench-utils.ts`; no `Math.random`,
-  `Date.now`, or timers with a nonzero delay — anywhere async ordering must be
-  staged (`streaming-peak`'s deferred sections, `aborted-requests`' deferred
-  loader data and post-abort drain), chain **0ms `setTimeout` hops** and count
-  event-loop turns instead. A wall-clock delay races renderer work differently
-  depending on runner load and instrumentation overhead, which makes the
-  single measured run non-reproducible; 0ms hops fire in registration order in
-  the timers phase, so the interleaving is a pure function of the schedule.
+- Randomness only via the seeded LCG in `bench-utils.ts`. Deferred streaming
+  uses counted zero-delay timer hops to stage work. Timers still depend on the
+  event loop, so validate repeatability on CI instead of assuming deterministic
+  ordering from a zero delay alone.
 - Sanity assertions run once at module load and throw on wrong
   status/markers, so a bench can never silently measure the wrong thing.
 - Server requests follow `benchmarks/ssr` conventions: document GETs send
@@ -184,7 +222,7 @@ pnpm --filter @benchmarks/memory-client clean:profiles
 ```
 
 Client memory benches are useful for regression tracking of router/React/jsdom
-integration behavior, especially retained route/cache data. They are not pure
+integration behavior and native allocation activity. They are not pure
 browser-memory measurements, and local Flame attribution can include jsdom,
 React DOM, and profiler shutdown frames.
 
@@ -200,3 +238,20 @@ WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/mem
 WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:solid
 WITH_INSTRUMENTATION=1 codspeed run --mode memory -- pnpm nx run @benchmarks/memory-client:test:perf:vue
 ```
+
+Run the benchmark workflow on an experiment branch:
+
+```bash
+gh workflow run client-nav-benchmarks.yml --ref <experiment-branch>
+```
+
+Repeat at the same commit, using distinct branch names if runs should overlap
+(the workflow serializes runs on the same ref). Compare all 48 fresh memory
+results: 18 client and 30 server. Exclude CPU simulation results, inherited
+CodSpeed results, and failed or incomplete repetitions. For each workload, calculate
+`100 * (max / min - 1)` across runs for peak bytes, allocated bytes, and
+allocation counts; aggregate averages hide unstable cases.
+
+Observed spreads below 1% establish repeatability in the tested sample, not a
+bound on future runs. Changes to worker flags or workload lifecycles establish
+new measurement baselines.

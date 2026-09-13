@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import {
   compileDecodeCharMap,
   exactPathTest,
@@ -15,7 +15,7 @@ import {
   parseSegment,
   processRouteTree,
 } from '../src/new-process-route-tree'
-import { createLRUCache } from '../src/lru-cache'
+import { createSieveCache } from '../src/sieve-cache'
 import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe.each([{ basepath: '/' }, { basepath: '/app' }, { basepath: '/app/' }])(
@@ -281,10 +281,14 @@ describe('resolvePath', () => {
   })
 
   it('caches route-template paths without changing param syntax', () => {
-    const cache = createLRUCache<string, string>(10)
+    const cache = createSieveCache<string, string>(10)
+    const set = vi.spyOn(cache, 'set')
 
-    expect(resolvePath({ base: '/', to: '/{$id}', cache })).toBe('/{$id}')
-    expect(resolvePath({ base: '/', to: '/$id', cache })).toBe('/$id')
+    expect(resolvePath({ base: '/', to: '{$id}', cache })).toBe('/{$id}')
+    expect(resolvePath({ base: '/', to: '$id', cache })).toBe('/$id')
+    expect(resolvePath({ base: '/', to: '{$id}', cache })).toBe('/{$id}')
+    expect(resolvePath({ base: '/', to: '$id', cache })).toBe('/$id')
+    expect(set).toHaveBeenCalledTimes(2)
   })
 })
 

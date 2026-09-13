@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as LayoutRouteImport } from './routes/_layout'
 import { Route as DeferredRouteImport } from './routes/deferred'
 import { Route as DeferredWithoutSuspenseRouteImport } from './routes/deferred-without-suspense'
+import { Route as ErrorNormalizationRouteImport } from './routes/error-normalization'
 import { Route as InlineScriptsRouteImport } from './routes/inline-scripts'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as NotFoundRouteRouteImport } from './routes/not-found/route'
@@ -87,6 +88,11 @@ const DeferredRoute = DeferredRouteImport.update({
 const DeferredWithoutSuspenseRoute = DeferredWithoutSuspenseRouteImport.update({
   id: '/deferred-without-suspense',
   path: '/deferred-without-suspense',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ErrorNormalizationRoute = ErrorNormalizationRouteImport.update({
+  id: '/error-normalization',
+  path: '/error-normalization',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InlineScriptsRoute = InlineScriptsRouteImport.update({
@@ -393,6 +399,7 @@ export interface FileRoutesByFullPath {
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
+  '/error-normalization': typeof ErrorNormalizationRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
@@ -451,6 +458,7 @@ export interface FileRoutesByTo {
   '/specialChars': typeof SpecialCharsRouteRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
+  '/error-normalization': typeof ErrorNormalizationRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/scripts': typeof ScriptsRoute
@@ -509,6 +517,7 @@ export interface FileRoutesById {
   '/_layout': typeof LayoutRouteWithChildren
   '/deferred': typeof DeferredRoute
   '/deferred-without-suspense': typeof DeferredWithoutSuspenseRoute
+  '/error-normalization': typeof ErrorNormalizationRoute
   '/inline-scripts': typeof InlineScriptsRoute
   '/links': typeof LinksRoute
   '/posts': typeof PostsRouteWithChildren
@@ -572,6 +581,7 @@ export interface FileRouteTypes {
     | '/specialChars'
     | '/deferred'
     | '/deferred-without-suspense'
+    | '/error-normalization'
     | '/inline-scripts'
     | '/links'
     | '/posts'
@@ -630,6 +640,7 @@ export interface FileRouteTypes {
     | '/specialChars'
     | '/deferred'
     | '/deferred-without-suspense'
+    | '/error-normalization'
     | '/inline-scripts'
     | '/links'
     | '/scripts'
@@ -687,6 +698,7 @@ export interface FileRouteTypes {
     | '/_layout'
     | '/deferred'
     | '/deferred-without-suspense'
+    | '/error-normalization'
     | '/inline-scripts'
     | '/links'
     | '/posts'
@@ -750,6 +762,7 @@ export interface RootRouteChildren {
   LayoutRoute: typeof LayoutRouteWithChildren
   DeferredRoute: typeof DeferredRoute
   DeferredWithoutSuspenseRoute: typeof DeferredWithoutSuspenseRoute
+  ErrorNormalizationRoute: typeof ErrorNormalizationRoute
   InlineScriptsRoute: typeof InlineScriptsRoute
   LinksRoute: typeof LinksRoute
   PostsRoute: typeof PostsRouteWithChildren
@@ -795,6 +808,13 @@ declare module '@tanstack/solid-router' {
       path: '/deferred-without-suspense'
       fullPath: '/deferred-without-suspense'
       preLoaderRoute: typeof DeferredWithoutSuspenseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/error-normalization': {
+      id: '/error-normalization'
+      path: '/error-normalization'
+      fullPath: '/error-normalization'
+      preLoaderRoute: typeof ErrorNormalizationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inline-scripts': {
@@ -1398,6 +1418,7 @@ const rootRouteChildren: RootRouteChildren = {
   LayoutRoute: LayoutRouteWithChildren,
   DeferredRoute: DeferredRoute,
   DeferredWithoutSuspenseRoute: DeferredWithoutSuspenseRoute,
+  ErrorNormalizationRoute: ErrorNormalizationRoute,
   InlineScriptsRoute: InlineScriptsRoute,
   LinksRoute: LinksRoute,
   PostsRoute: PostsRouteWithChildren,

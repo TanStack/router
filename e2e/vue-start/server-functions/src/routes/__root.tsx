@@ -25,7 +25,11 @@ export const Route = createRootRoute({
     links: [{ rel: 'stylesheet', href: appCss }],
   }),
   errorComponent: (props) => {
-    return <p>{props.error.stack}</p>
+    return (
+      <p>
+        {props.error instanceof Error ? props.error.stack : String(props.error)}
+      </p>
+    )
   },
   notFoundComponent: () => <NotFound />,
   component: RootComponent,

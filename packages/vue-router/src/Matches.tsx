@@ -1,6 +1,6 @@
 import * as Vue from 'vue'
 import { isServer } from '@tanstack/router-core/isServer'
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from '@tanstack/vue-store'
 import { CatchBoundary } from './CatchBoundary'
 import { useRouter } from './useRouter'
 import { useTransitionerSetup } from './Transitioner'
@@ -76,7 +76,12 @@ const errorComponentFn: ErrorRouteComponentType = (
 ) => {
   return Vue.h('div', { class: 'error' }, [
     Vue.h('h1', null, 'Error'),
-    Vue.h('p', null, props.error.message || String(props.error)),
+    Vue.h(
+      'p',
+      null,
+      (props.error as { message?: string } | null)?.message ||
+        String(props.error),
+    ),
     Vue.h('button', { onClick: props.reset }, 'Try Again'),
   ])
 }
@@ -86,7 +91,7 @@ const MatchesInner = Vue.defineComponent({
   setup() {
     const router = useRouter()
 
-    const matches = useStore(router.stores.matches)
+    const matches = useSelector(router.stores.matches)
     const routeId = Vue.computed(() => matches.value[0]?.routeId)
 
     return () => {
@@ -105,11 +110,11 @@ const MatchesInner = Vue.defineComponent({
         errorComponent: errorComponentFn,
         onCatch:
           process.env.NODE_ENV !== 'production'
-            ? (error: Error) => {
+            ? (error: unknown) => {
                 console.warn(
                   `Warning: The following error wasn't caught by any route! At the very least, consider setting an 'errorComponent' in your RootRoute!`,
                 )
-                console.warn(`Warning: ${error.message || error.toString()}`)
+                console.warn('Warning:', error)
               }
             : undefined,
         children: childElement,
@@ -133,12 +138,12 @@ export type UseMatchRouteOptions<
 export function useMatchRoute<TRouter extends AnyRouter = RegisteredRouter>() {
   const router = useRouter()
 
-  const location = useStore(router.stores.location, (value) => value.href)
-  const resolvedLocation = useStore(
+  const location = useSelector(router.stores.location, (value) => value.href)
+  const resolvedLocation = useSelector(
     router.stores.resolvedLocation,
     (value) => value?.href,
   )
-  const status = useStore(router.stores.status)
+  const status = useSelector(router.stores.status)
 
   return <
     const TFrom extends string = string,
@@ -271,7 +276,7 @@ export function useMatches<
   opts?: UseMatchesBaseOptions<TRouter, TSelected>,
 ): Vue.Ref<UseMatchesResult<TRouter, TSelected>> {
   const router = useRouter<TRouter>()
-  return useStore(router.stores.matches, (matches) => {
+  return useSelector(router.stores.matches, (matches) => {
     return opts?.select
       ? opts.select(matches as Array<MakeRouteMatchUnion<TRouter>>)
       : (matches as any)

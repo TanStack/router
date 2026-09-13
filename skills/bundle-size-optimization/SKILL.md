@@ -8,27 +8,46 @@ description: Use when working in this repository on JS bundle size, gzip regress
 ## Overview
 
 Optimize measured client bundles, not source text. The source of truth is `@benchmarks/bundle-size:build`, `benchmarks/bundle-size/results/current.json`, and emitted JS in `benchmarks/bundle-size/dist/`.
+Use `benchmark:bundle-size:run` for local iterations. It uses the same measurement script and builds the selected packages through Nx.
 
 ## Commands
 
-| Need               | Command                                                                                                                                                                                                                                                              |
-| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Full benchmark     | `CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache >/tmp/bundle-size-build.log 2>&1 && pnpm benchmark:bundle-size:query`                                                                           |
-| One scenario       | `CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache -- --scenario react-router.minimal >/tmp/bundle-size-build.log 2>&1 && pnpm benchmark:bundle-size:query --id react-router.minimal`              |
-| Read result        | `pnpm benchmark:bundle-size:query --id react-router.minimal`                                                                                                                                                                                                         |
-| Compare results    | `pnpm benchmark:bundle-size:diff --baseline /tmp/base-current.json --id react-router.minimal`                                                                                                                                                                        |
-| History deltas     | `git fetch --quiet origin gh-pages && pnpm benchmark:bundle-size:history --id react-router.minimal --top-deltas 20`                                                                                                                                                  |
-| Source attribution | `CI=1 NX_DAEMON=false pnpm nx run @benchmarks/bundle-size:build --outputStyle=stream --skipRemoteCache --skipNxCache -- --scenario react-router.minimal --analysis >/tmp/bundle-size-build.log 2>&1 && pnpm benchmark:bundle-size:analyze --id react-router.minimal` |
-| Symbol refs        | `pnpm ts:symbol-references -- --project packages/router-core/tsconfig.json --file packages/router-core/src/utils.ts --symbol last`                                                                                                                                   |
+| Need                       | Command                                                                                                                                                                                     |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Full benchmark             | `pnpm benchmark:bundle-size:run`                                                                                                                                                            |
+| Save baseline              | `pnpm benchmark:bundle-size:run --name baseline --scenario react-router.minimal`                                                                                                            |
+| Measure and compare        | `pnpm benchmark:bundle-size:run --baseline baseline --scenario react-router.minimal`                                                                                                        |
+| Save a candidate           | `pnpm benchmark:bundle-size:run --name candidate --baseline baseline --scenario react-router.minimal`                                                                                       |
+| Test, measure, compare     | `pnpm benchmark:bundle-size:run --baseline baseline --scenario react-router.minimal --test-projects @tanstack/router-core,@tanstack/react-router -- tests/path.test.ts tests/link.test.tsx` |
+| Read result                | `pnpm benchmark:bundle-size:query --id react-router.minimal`                                                                                                                                |
+| Compare existing results   | `pnpm benchmark:bundle-size:diff --baseline ./baseline.json --id react-router.minimal`                                                                                                      |
+| History deltas             | `git fetch --quiet origin gh-pages && pnpm benchmark:bundle-size:history --id react-router.minimal --top-deltas 20`                                                                         |
+| Collect source attribution | `pnpm benchmark:bundle-size:run --scenario react-router.minimal --analysis`                                                                                                                 |
+| Read source attribution    | `pnpm benchmark:bundle-size:analyze --id react-router.minimal`                                                                                                                              |
+| Symbol refs                | `pnpm ts:symbol-references -- --project packages/router-core/tsconfig.json --file packages/router-core/src/utils.ts --symbol last`                                                          |
+
+Named runs save metrics and logs in `benchmarks/bundle-size/results/runs/<name>/`. Existing named results cannot be overwritten.
+Without `--name`, runs replace `results/current.json` and the logs for the steps they run.
+`--baseline` accepts a run name or a JSON file path. `--results-dir <dir>` changes the results root for the current and named runs.
+Emitted bundles still use `dist/` unless `--dist-dir` specifies another directory.
+For named results, pass `--current benchmarks/bundle-size/results/runs/<name>/current.json` to the query, diff, or analysis tools.
 
 ## Rules
 
 - Run one Nx command at a time.
-- Redirect noisy Nx build output to a log file, then print only `query`, `diff`, or `analyze` output. If the build fails, search/read the log for the error instead of printing the full log.
+- Use the runner instead of shell chains for environment variables, redirection, exit codes, log tails, and result queries.
+- For agent runs, use `pnpm --silent benchmark:bundle-size:run ...` to omit the package-manager command echo.
+- The runner sets `CI=1` and `NX_DAEMON=false`. It saves full output in `tests.log` and `measure.log` beside `current.json`.
+- If a step fails, the runner stops and prints at most 40 log lines, limited to 8,000 characters. Read the reported log for more detail.
+- Quiet stdout does not indicate an Nx hang. Inspect the reported log for progress before applying the Nx reset/retry guardrail.
+- Use `--test-projects` for the packages that changed. Pass unit-test file selectors and flags after `--`.
+- The runner does not select tests automatically. Keep type tests, performance benchmarks, and e2e tests separate.
+- Keep baseline and candidate scenario selections and measurement flags identical. Use a new `--name` for each retained snapshot.
+- Do not add `--skip-package-builds` after package source changes. The default rebuilds through Nx and preserves valid package caches.
 - Track `gzipBytes` first; also inspect `initialGzipBytes`, `rawBytes`, `brotliBytes`, `jsFiles`, and per-file `files`.
 - Dist paths use `scenarioDir`/`outDir`, not metric ids: `react-router.minimal` maps to `dist/react-router-minimal/`.
 - For tiny changes, measure after each candidate; gzip can move opposite raw bytes.
-- To compare a base commit, run the same scenario in a separate worktree under `/var/folders/6f/2t42ntqs4yv4h6qwzbh5pmcm0000gn/T/opencode` and diff the two `current.json` files.
+- To compare a base commit, measure the same scenario in a separate worktree. Pass its saved `current.json` path to `--baseline`.
 - Use history for prior patterns and baselines, not source attribution. It is commit-level data.
 - Runtime performance and security may never be sacrificed for bundle size.
 - Do not stop after the first verified win. Keep iterating through reasonable local, emitted-JS, and algorithmic candidates until measured regressions, readability, or risk rule out the remaining paths.
@@ -71,11 +90,11 @@ Before calling an optimization final, prove which exact production hunks should 
 
 ## Optimization Loop
 
-1. Measure baseline scenario.
+1. Measure the baseline scenario with `--name baseline`.
 2. Inspect diff, emitted JS, per-file sizes, and analysis sources if needed.
 3. Analyze the algorithm before syntax. Identify redundant loops, duplicate branches, repeated scans/slices/lowercasing, allocation-heavy paths, search order, and data-shape choices.
 4. Make the smallest behavior-preserving algorithmic edit that removes work or code shape first; use syntax-only edits only after algorithmic candidates are exhausted.
-5. Re-measure and keep only proven wins.
+5. Re-measure with `--baseline baseline` and keep only proven wins.
 6. Run package unit/types, relevant e2e, and `git diff --check`.
 7. Run the attribution round, then the post-optimization coverage/perf workflow before finalizing.
 

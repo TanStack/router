@@ -3,5 +3,10 @@
   "compilerOptions": {
     "types": ["node", "vite/client", "vitest/globals"]
   },
-  "include": ["bench-utils.ts", "bench-utils.test.ts", "vitest.unit.config.ts"]
+  "include": [
+    "bench-utils.ts",
+    "bench-utils.test.ts",
+    "scenarios/streaming/shared-data.ts",
+    "vitest.unit.config.ts"
+  ]
 }

@@ -1,7 +1,7 @@
 import { invariant } from './invariant'
-import { createLRUCache } from './lru-cache'
+import { createSieveCache } from './sieve-cache'
 import { last } from './utils'
-import type { LRUCache } from './lru-cache'
+import type { SieveCache } from './sieve-cache'
 
 export const SEGMENT_TYPE_PATHNAME = 0
 export const SEGMENT_TYPE_PARAM = 1
@@ -535,11 +535,11 @@ export type ProcessedTree<
   /** a mini route tree generated from the flat `routeMasks` list */
   masksTree: AnySegmentNode<TFlat> | null
   /** @deprecated keep until v2 so that `router.matchRoute` can keep not caring about the actual route tree */
-  singleCache: LRUCache<string, AnySegmentNode<TSingle>>
+  singleCache: SieveCache<string, AnySegmentNode<TSingle>>
   /** a cache of route matches from the `segmentTree` */
-  matchCache: LRUCache<string, RouteMatch<TTree> | null>
+  matchCache: SieveCache<string, RouteMatch<TTree> | null>
   /** a cache of route matches from the `masksTree` */
-  flatCache: LRUCache<string, ReturnType<typeof findMatch<TFlat>>> | null
+  flatCache: SieveCache<string, ReturnType<typeof findMatch<TFlat>>> | null
 }
 
 export function processRouteMasks<
@@ -558,7 +558,7 @@ export function processRouteMasks<
     nodes.sort(sortDynamic)
   }
   processedTree.masksTree = segmentTree
-  processedTree.flatCache = createLRUCache<
+  processedTree.flatCache = createSieveCache<
     string,
     ReturnType<typeof findMatch<TRouteLike>>
   >(1000)
@@ -721,8 +721,8 @@ export function processRouteTree<
   }
   const processedTree: ProcessedTree<TRouteLike, any, any> = {
     segmentTree,
-    singleCache: createLRUCache<string, AnySegmentNode<any>>(1000),
-    matchCache: createLRUCache<string, RouteMatch<TRouteLike> | null>(1000),
+    singleCache: createSieveCache<string, AnySegmentNode<any>>(1000),
+    matchCache: createSieveCache<string, RouteMatch<TRouteLike> | null>(1000),
     flatCache: null,
     masksTree: null,
   }

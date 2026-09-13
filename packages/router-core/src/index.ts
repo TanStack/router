@@ -163,6 +163,8 @@ export type {
   DefaultSearchValidator,
   ErrorRouteProps,
   ErrorComponentProps,
+  DefaultErrorBoundaryTypes,
+  ErrorBoundaryTypes,
   NotFoundRouteProps,
   ResolveParams,
   ParseParamsFn,
@@ -317,6 +319,7 @@ export {
   isModuleNotFoundError,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
+  getUrlScheme,
   isDangerousProtocol,
   buildDevStylesUrl,
 } from './utils'

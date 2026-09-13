@@ -1,5 +1,5 @@
 import { expect } from '@playwright/test'
-import { test } from '@tanstack/router-e2e-utils'
+import { collectBrowserErrors, test } from '@tanstack/router-e2e-utils'
 
 const buildUrl = (baseURL: string, pathname: string) =>
   baseURL.replace(/\/$/, '') + pathname
@@ -151,6 +151,23 @@ test('client navigation preserves the SSR inline shell stylesheet', async ({
   await page.goto(buildUrl(baseURL!, '/'))
   await waitForHydration(page)
 
+  const inlineStyle = page.locator('style[data-tsr-inline-css]')
+  await expect(inlineStyle).toHaveCount(1)
+  const original = await inlineStyle.evaluateHandle(
+    (style: HTMLStyleElement) => {
+      const mutations: Array<MutationRecord> = []
+      const observer = new MutationObserver((records) => {
+        mutations.push(...records)
+      })
+      observer.observe(style, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      })
+      return { style, sheet: style.sheet, observer, mutations }
+    },
+  )
+
   await expect.poll(() => getInlineCssTexts(page)).toHaveLength(1)
   await expect
     .poll(() => getInlineCssTexts(page))
@@ -161,6 +178,28 @@ test('client navigation preserves the SSR inline shell stylesheet', async ({
 
   await page.getByTestId('nav-dashboard').click()
   await page.waitForURL('**/app/dashboard')
+  await expect(page).toHaveTitle('Inline CSS dashboard')
+  await expect(page.getByTestId('dashboard-card')).toBeVisible()
+
+  await page.getByTestId('nav-home').click()
+  await expect(page).toHaveTitle('Inline CSS E2E')
+  await expect(page.getByTestId('home')).toBeVisible()
+
+  // #8250: unchanged CSS text can hide a redundant innerHTML write that
+  // replaces the stylesheet or fails under Trusted Types. Observe native DOM
+  // mutations and CSSOM identity without patching the innerHTML setter.
+  expect(
+    await original.evaluate(({ style, sheet, observer, mutations }) => {
+      const mutationCount = mutations.length + observer.takeRecords().length
+      observer.disconnect()
+      return {
+        connected: style.isConnected,
+        sameSheet: style.sheet === sheet,
+        mutationCount,
+      }
+    }),
+  ).toEqual({ connected: true, sameSheet: true, mutationCount: 0 })
+  await original.dispose()
 
   await expect.poll(() => getInlineCssTexts(page)).toHaveLength(1)
   await expect
@@ -169,4 +208,46 @@ test('client navigation preserves the SSR inline shell stylesheet', async ({
   await expect
     .poll(() => getStyle(page, 'shell', 'background-color'))
     .toBe('rgb(240, 249, 255)')
+})
+
+test('client navigation preserves inline CSS with Trusted Types enforced', async ({
+  page,
+}) => {
+  const browserErrors = collectBrowserErrors(page)
+  const csp = "require-trusted-types-for 'script'; trusted-types 'none'"
+  await page.route('/', async (route) => {
+    const response = await route.fetch()
+    await route.fulfill({
+      response,
+      headers: { ...response.headers(), 'content-security-policy': csp },
+    })
+  })
+
+  const response = await page.goto('/')
+  expect(response?.headers()['content-security-policy']).toBe(csp)
+  expect(await page.evaluate(() => 'trustedTypes' in window)).toBe(true)
+  await waitForHydration(page)
+
+  const violations = await page.evaluateHandle(() => {
+    const directives: Array<string> = []
+    document.addEventListener('securitypolicyviolation', (event) => {
+      directives.push(event.effectiveDirective)
+    })
+    return directives
+  })
+
+  await page.getByTestId('nav-dashboard').click()
+  await expect(page).toHaveTitle('Inline CSS dashboard')
+  await expect(page.getByTestId('dashboard-card')).toBeVisible()
+  await expect
+    .poll(() => getStyle(page, 'shell', 'background-color'))
+    .toBe('rgb(240, 249, 255)')
+
+  await page.getByTestId('nav-home').click()
+  await expect(page).toHaveTitle('Inline CSS E2E')
+  await expect(page.getByTestId('home')).toBeVisible()
+
+  expect(await violations.jsonValue()).toEqual([])
+  expect(browserErrors).toEqual([])
+  await violations.dispose()
 })

@@ -59,7 +59,11 @@ test('#6107: lazy chunk hover failure is non-fatal and navigation renders defaul
     defaultPreloadDelay: 0,
     defaultErrorComponent: ({ error }) => {
       defaultErrorRendered(error)
-      return <div data-testid="default-error">{error.message}</div>
+      return (
+        <div data-testid="default-error">
+          {error instanceof Error ? error.message : String(error)}
+        </div>
+      )
     },
   })
   const preloadRoute = vi.spyOn(router, 'preloadRoute')

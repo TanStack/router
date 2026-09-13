@@ -5,7 +5,9 @@ export function getRouter() {
   const router = createRouter({
     routeTree,
     defaultPreload: 'intent',
-    defaultErrorComponent: (err) => <p>{err.error.stack}</p>,
+    defaultErrorComponent: (err) => (
+      <p>{err.error instanceof Error ? err.error.stack : String(err.error)}</p>
+    ),
     defaultNotFoundComponent: () => <p>not found</p>,
     scrollRestoration: true,
   })

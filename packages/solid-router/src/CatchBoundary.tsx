@@ -45,7 +45,7 @@ export function CatchBoundary(
   )
 }
 
-export function ErrorComponent({ error }: { error: any }) {
+export function ErrorComponent({ error }: { error: Error }) {
   const [show, setShow] = Solid.createSignal(
     process.env.NODE_ENV !== 'production',
   )

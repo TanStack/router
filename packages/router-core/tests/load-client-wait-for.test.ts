@@ -4,6 +4,72 @@ import { waitFor } from '../src/load-client'
 import { waitForRequest } from '../src/ssr/createRequestHandler'
 
 describe('waitFor', () => {
+  test.each(['resolve', 'reject'] as const)(
+    'removes its abort listener after the value %ss',
+    async (outcome) => {
+      const controller = new AbortController()
+      const add = vi.spyOn(controller.signal, 'addEventListener')
+      const remove = vi.spyOn(controller.signal, 'removeEventListener')
+      const value =
+        outcome === 'resolve' ? Promise.resolve(42) : Promise.reject(42)
+      const result = waitFor(value, controller.signal)
+      if (outcome === 'resolve') {
+        await expect(result).resolves.toBe(42)
+      } else {
+        await expect(result).rejects.toBe(42)
+      }
+      expect(add).toHaveBeenCalledOnce()
+      expect(remove).toHaveBeenCalledExactlyOnceWith(
+        'abort',
+        add.mock.calls[0]![1],
+      )
+    },
+  )
+
+  test('observes a late rejection and cleans up after an active wait is aborted', async () => {
+    const controller = new AbortController()
+    const add = vi.spyOn(controller.signal, 'addEventListener')
+    const remove = vi.spyOn(controller.signal, 'removeEventListener')
+    let rejectValue!: (error: Error) => void
+    const value = new Promise<never>((_, reject) => {
+      rejectValue = reject
+    })
+    const result = waitFor(value, controller.signal)
+    const canceled = expect(result).rejects.toBe(controller.signal)
+
+    controller.abort()
+    await canceled
+    rejectValue(new Error('late failure'))
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(add).toHaveBeenCalledOnce()
+    expect(remove).toHaveBeenCalledExactlyOnceWith(
+      'abort',
+      add.mock.calls[0]![1],
+    )
+  })
+
+  test('removes its abort listener when reading a thenable throws', async () => {
+    const controller = new AbortController()
+    const add = vi.spyOn(controller.signal, 'addEventListener')
+    const remove = vi.spyOn(controller.signal, 'removeEventListener')
+    const error = new Error('then getter failed')
+    const value: PromiseLike<never> = {
+      get then(): never {
+        throw error
+      },
+    }
+
+    await expect(waitFor(value, controller.signal)).rejects.toBe(error)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(add).toHaveBeenCalledOnce()
+    expect(remove).toHaveBeenCalledExactlyOnceWith(
+      'abort',
+      add.mock.calls[0]![1],
+    )
+  })
+
   test('observes a rejected value when the signal is already aborted', async () => {
     const controller = new AbortController()
     const error = new Error('late failure')
