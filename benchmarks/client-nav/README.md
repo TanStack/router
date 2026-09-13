@@ -115,3 +115,100 @@ Typecheck benchmark sources (baseline + scenarios):
 ```bash
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav:test:types --outputStyle=stream --skipRemoteCache
 ```
+
+## Opt-in React Link performance suite
+
+`link-performance/` contains additional client-navigation and SSR workloads for
+focused Link work. They are **not included** in the regular client-nav/SSR
+aggregate projects or their CodSpeed build dependencies. Benchmark discovery
+also requires `TSR_LINK_PERF=1`; without it, no extended benchmark files or app
+bundles are imported.
+
+```bash
+TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run
+TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:ssr --outputStyle=stream --skipRemoteCache -- --run
+
+# Select a feature and save the normal Vitest JSON report.
+TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run -t "updater|optional|splat" --outputJson /tmp/link-perf.json
+```
+
+The cases cover repeated versus unique destination params, updater functions,
+relative/inherited values, search middleware chains, param stringification,
+optional and splat segments, encoding, masks, basepath/rewrites, and active
+props with structured search. These exercise different costs: cache hits and
+misses, parameter cloning, callbacks, middleware traversal, URI encoding,
+building masked/public locations, active-state comparisons, and prop merging.
+Existing preload, mount, and route-tree-scale scenarios remain responsible for
+those separate workloads.
+
+- **Client:** 200 persistent measured Links, four control Links, and eight
+  completed navigations per timed batch. The existing client harness checks
+  hrefs and active state during its untimed warm-up lap. Control navigations
+  replace the history entry, keeping history size constant. Post-measurement
+  assertions also check that the measured anchors stayed mounted.
+- **SSR:** four fresh-router requests per timed batch, each rendering 200
+  measured Links through `RouterProvider` and `renderToString`. Router creation,
+  `router.load()`, rendering, and history cleanup are included. This isolates
+  Router SSR Link work, not Start HTTP handling, dehydration, or streaming.
+  HTML assertions run outside the timed batch.
+- Both use the same code-based workload definitions and production JSX/library
+  builds. The regular Vitest entry points use at least 100 warm-up iterations,
+  one second of warm-up time, and five-second measurement windows. The client
+  and server bundles assert their resolved `isServer` environment. React and
+  React DOM remain external so comparisons can share the same renderer runtime.
+  These bundles are Node-hosted (jsdom for client mode), not browser deployments.
+
+Run the gate tests and typecheck separately:
+
+```bash
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:unit --outputStyle=stream --skipRemoteCache
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:types --outputStyle=stream --skipRemoteCache
+```
+
+For before/after comparisons, use identical benchmark files and dependencies
+on both refs, build each ref through its Nx targets, and alternate fresh
+Vitest processes. Report the actual refs, per-case means and relative margins
+of error; rerun noisy or borderline results with `-t` rather than interpreting
+a small difference as a proven speedup. Client and SSR times have different
+batch units and should not be compared directly.
+
+### Stable paired comparisons
+
+For regression decisions, prefer the paired runner over a whole-file Vitest
+run. It starts a fresh process for every case and repetition, avoiding JIT
+feedback from earlier cases. Inside each process, both revisions share the
+same production React installation but have separate router/app modules and
+router instances. Initialization order alternates between repetitions.
+
+```bash
+# Build the baseline using these same benchmark sources in its own checkout.
+# --baseline points to that checkout's link-performance/dist directory.
+TSR_LINK_PERF=1 pnpm nx run @benchmarks/react-link-performance:test:perf:stable -- \
+  --baseline /path/to/baseline/benchmarks/client-nav/link-performance/dist \
+  --outputJson /tmp/paired-links.json
+
+# Narrow a comparison, or increase independent process repetitions.
+TSR_LINK_PERF=1 pnpm nx run @benchmarks/react-link-performance:test:perf:stable -- \
+  --baseline /path/to/baseline/benchmarks/client-nav/link-performance/dist \
+  --mode ssr -t "middleware|unique-params" --repeats 6 \
+  --outputJson /tmp/paired-links-ssr.json
+```
+
+The runner requires Node with `process.threadCpuUsage` (Node 24 works).
+It fixes V8 random/hash seeds, warms each variant for at least two seconds
+and 100 batches, then alternates ABBA/BAAB blocks calibrated to roughly 500 ms.
+Both variants do exactly the same number of batches per block. It records
+main-thread CPU time, wall time, and whole-process CPU time; GC during
+measurement is not disabled or discarded.
+
+The default is four independent process repetitions. Reported 95% intervals
+use their paired log-ratios, not the many correlated batches as independent
+samples. A faster/slower verdict requires CPU and wall intervals to agree.
+Intervals overlapping zero or disagreeing metrics are inconclusive; narrow
+intervals entirely inside +/-2% are reported separately.
+
+An A/A calibration uses the current `dist` directory as `--baseline`. Its
+intervals should contain zero before trusting similarly sized A/B differences.
+Shared-machine contention can still make small changes unresolved. Do not
+interpret a point estimate alone, or an inconclusive result, as proof that
+a workload is unchanged.
