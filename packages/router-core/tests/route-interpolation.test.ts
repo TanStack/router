@@ -19,8 +19,10 @@ test.each([
   { path: '/{-$id}', params: {}, missing: false },
   { path: '/pre{-$id}suffix', params: { id: null }, missing: false },
   { path: '/files/$', params: {}, missing: true },
+  { path: '/files/$', params: { _splat: null }, missing: true },
   { path: '/files/$', params: { _splat: '' }, missing: true },
-  { path: '/files/{$}.txt', params: { _splat: 0 }, missing: true },
+  { path: '/files/{$}.txt', params: { _splat: 0 }, missing: false },
+  { path: '/files/{$}.txt', params: { _splat: false }, missing: false },
   { path: '/files/$/ignored', params: { _splat: 'a/b' }, missing: false },
 ])(
   'preserves navigation availability for $path: $params',

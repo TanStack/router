@@ -81,6 +81,12 @@ describe.each([false, true])(
         expected: '/files/prefixa/bsuffix',
       },
       { path: '/files/$', params: { _splat: '' }, expected: '/files' },
+      { path: '/files/$', params: { _splat: 0 }, expected: '/files/0' },
+      {
+        path: '/files/prefix{$}.txt',
+        params: { _splat: 0 },
+        expected: '/files/prefix0.txt',
+      },
       {
         path: '/$id/$id/',
         params: { id: '123' },
@@ -798,6 +804,12 @@ describe.each([{ server: true }, { server: false }])(
           name: 'should interpolate the path with the param being a falsey number',
           path: '/users/$id',
           params: { id: 0 },
+          result: '/users/0',
+        },
+        {
+          name: 'should interpolate the path with the splat param being a falsey number',
+          path: '/users/$',
+          params: { _splat: 0 },
           result: '/users/0',
         },
         {
