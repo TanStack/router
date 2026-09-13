@@ -223,138 +223,141 @@ export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
   replaceEqualDeep(prev, next, true)
 
 /**
- * Returns `prev` when the supported values are deeply equal; otherwise copies
- * `next` with its equal children shared from `prev`.
- * This can be used for structural sharing between immutable JSON values for example.
- * Own `__proto__` keys are unsupported when copying ordinary objects.
- * Do not use this with signals
+ * Reuse equal children between immutable plain objects and dense arrays.
+ * Return `prev` for deeply equal values; otherwise return an object already
+ * containing the resolved children or create a copy with the shared children.
+ * Getters and own `__proto__` keys in ordinary object copies are unsupported.
+ * Do not use this with signals.
  */
 export function replaceEqualDeep<T>(
   prev: any,
   next: T,
   _nullProto?: boolean,
+  _depth?: number,
+): T
+export function replaceEqualDeep(
+  prev: any,
+  next: any,
+  _nullProto?: boolean,
   _depth = 0,
-): T {
+): any {
   if (isServer) {
     return next
   }
   if (prev === next) {
     return prev
   }
-  if (_depth > 500) {
+
+  if (_depth++ > 500) {
     return next
   }
 
-  const value = next as any
-  const array = Array.isArray(value)
+  const array = Array.isArray(prev) && Array.isArray(next)
+
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) {
+    return next
+  }
+
+  const prevKeys: Array<any> = Object.keys(prev)
+  const previousCount = prevKeys.length
+  const nextKeys: Array<any> = Object.keys(next)
+  const length = nextKeys.length
+  // Hidden object keys and symbols on next make the value opaque. Arrays
+  // must have only dense enumerable indices: a hole and an extra key can
+  // cancel out in the count, so also check the last key of both arrays.
   if (
-    array ? !Array.isArray(prev) : !isPlainObject(prev) || !isPlainObject(value)
+    array
+      ? previousCount !== prev.length ||
+        length !== next.length ||
+        (previousCount && last(prevKeys) !== `${previousCount - 1}`) ||
+        (length && last(nextKeys) !== `${length - 1}`)
+      : previousCount !== Object.getOwnPropertyNames(prev).length ||
+        length !== Object.getOwnPropertyNames(next).length ||
+        Object.getOwnPropertySymbols(next).length
   ) {
     return next
   }
 
-  const previousKeys = Object.keys(prev)
-  const keys = Object.keys(value)
-  const count = keys.length
-  if (array) {
-    // Reject holes and extra enumerable string keys before using indices.
-    if (
-      previousKeys.length !== prev.length ||
-      count !== value.length ||
-      (previousKeys.length > 0 &&
-        previousKeys[previousKeys.length - 1] !== String(prev.length - 1)) ||
-      (count > 0 && keys[count - 1] !== String(count - 1))
-    ) {
-      return next
-    }
-  } else if (
-    previousKeys.length !== Object.getOwnPropertyNames(prev).length ||
-    count !== Object.getOwnPropertyNames(value).length ||
-    Object.getOwnPropertySymbols(value).length > 0
-  ) {
-    return next
-  }
+  let i = 0
+  let child: any
+  let previous: any
+  let key: any
 
-  let equal = previousKeys.length === count
-  // The key lists are private scratch space. Arrays reuse next's exact-size
-  // list as their result; objects keep next's keys and overwrite prev's list
-  // with resolved children after each ownership check.
-  const children: Array<any> = array ? keys : previousKeys
   if (array) {
-    // An identical array needs no child resolution or buffer writes. If an
-    // entry differs, copy the known-identical prefix directly from prev.
-    let start = 0
-    if (equal) {
-      while (start < count && prev[start] === value[start]) {
-        start++
+    // Entries before the first difference already resolve to prev.
+    for (; i < length; i++) {
+      key = i
+      previous = prev[key]
+      child = next[key]
+      child =
+        previous === child
+          ? previous
+          : typeof previous === 'object'
+            ? replaceEqualDeep(previous, child, _nullProto, _depth)
+            : child
+      if (child !== previous) {
+        break
       }
-      if (start === count) {
-        return prev
-      }
     }
-    // Filling lets numeric results use packed numeric storage in V8.
-    if (count > 0 && typeof value[0] === 'number') {
-      children.fill(0)
+    if (i === length && previousCount === length) {
+      return prev
     }
-    for (let index = 0; index < start; index++) {
-      children[index] = prev[index]
-    }
-    for (let index = start; index < count; index++) {
-      const previous = prev[index]
-      const incoming = value[index]
-      const child =
+  } else {
+    let equal = previousCount === length
+    let unchanged = true
+    for (; i < length; i++) {
+      key = nextKeys[i]!
+      previous = prev[key]
+      const incoming = next[key]
+      child =
         previous === incoming
           ? previous
           : typeof previous === 'object'
-            ? replaceEqualDeep(previous, incoming, _nullProto, _depth + 1)
+            ? replaceEqualDeep(previous, incoming, _nullProto, _depth)
             : incoming
-      children[index] = child
-      if (child !== previous) {
-        equal = false
-      }
+      equal &&=
+        child === previous && (prevKeys[i] === key || hasOwn.call(prev, key))
+      unchanged &&= Object.is(child, incoming)
+      // This key has been checked; its private slot can hold the result.
+      prevKeys[i] = child
     }
-    return (equal ? prev : children) as T
+    if (equal) {
+      return Object.getOwnPropertySymbols(prev).length ? next : prev
+    }
+    if (unchanged && (!_nullProto || !Object.getPrototypeOf(next))) {
+      return next
+    }
   }
 
-  for (let index = 0; index < count; index++) {
-    const key = keys[index]!
-    const previous = prev[key]
-    const incoming = value[key]
-    const child =
-      previous === incoming
-        ? previous
-        : typeof previous === 'object'
-          ? replaceEqualDeep(previous, incoming, _nullProto, _depth + 1)
-          : incoming
-    if (
-      equal &&
-      (child !== previous ||
-        (previousKeys[index] !== key && !hasOwn.call(prev, key)))
-    ) {
-      equal = false
+  // Reuse the validated array key list; it is private and has the right length.
+  const copy: any = array ? nextKeys.fill(0) : _nullProto ? createNull() : {}
+  for (let j = 0; j < length; j++) {
+    key = array ? j : nextKeys[j]!
+    if (array) {
+      previous = prev[key]
+      if (j > i) {
+        child = next[key]
+        child =
+          previous === child
+            ? previous
+            : typeof previous === 'object'
+              ? replaceEqualDeep(previous, child, _nullProto, _depth)
+              : child
+      }
+      copy[key] = j < i ? previous : child
+    } else {
+      copy[key] = prevKeys[j]
     }
-    children[index] = child
   }
-  if (equal) {
-    return Object.getOwnPropertySymbols(prev).length ? next : prev
-  }
-  const result = _nullProto ? Object.create(null) : {}
-  for (let index = 0; index < count; index++) {
-    result[keys[index]!] = children[index]
-  }
-  return result
+  return copy
 }
 
 export function isPlainObject(o: unknown): boolean {
   if (!o || typeof o !== 'object') {
     return false
   }
-  // An own constructor is data and cannot identify the object's prototype.
-  if (o.constructor === Object && !hasOwn.call(o, 'constructor')) {
-    return true
-  }
-  const proto = Object.getPrototypeOf(o)
-  return proto === null || proto.constructor === Object
+  // An own constructor is data, so classify the actual prototype.
+  return (Object.getPrototypeOf(o)?.constructor ?? Object) === Object
 }
 
 /**

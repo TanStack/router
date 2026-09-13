@@ -13,6 +13,14 @@ const emptyNull = createNull()
 const search = { tab: 'specs', page: 2, sort: 'newest', filter: 'available' }
 const searchCopy = { ...search }
 const searchChanged = { ...search, page: 3 }
+// parseSearch and path extraction produce null-prototype records. Exercise
+// these separately from ordinary selector objects: their property storage differs.
+const nullSearch = Object.assign(createNull(), search)
+const nullSearchCopy = Object.assign(createNull(), searchCopy)
+const nullSearchChanged = Object.assign(createNull(), searchChanged)
+const decimalRecord = { x: 0.5, y: 1.5, width: 640.5, height: 480.5 }
+const decimalRecordCopy = { ...decimalRecord }
+const decimalRecordChanged = { ...decimalRecord, x: 1.5 }
 // `?constructor=foo` decodes to an own `constructor` key on a null-proto record.
 const searchWithConstructorKey = Object.assign(createNull(), {
   constructor: 'foo',
@@ -123,6 +131,15 @@ const mixedPairs: Array<[unknown, unknown]> = [
 expect(replaceEqualDeep(empty, {})).toBe(empty)
 expect(replaceEqualDeep(search, searchCopy)).toBe(search)
 expect(replaceEqualDeep(search, searchChanged)).toStrictEqual(searchChanged)
+expect(nullReplaceEqualDeep(nullSearch, nullSearchCopy)).toBe(nullSearch)
+expect(nullReplaceEqualDeep(nullSearch, searchCopy)).toBe(nullSearch)
+expect(replaceEqualDeep(decimalRecord, decimalRecordCopy)).toBe(decimalRecord)
+expect(replaceEqualDeep(decimalRecord, decimalRecordChanged)).toStrictEqual(
+  decimalRecordChanged,
+)
+expect(nullReplaceEqualDeep(nullSearch, nullSearchChanged)).toStrictEqual(
+  nullSearchChanged,
+)
 expect(replaceEqualDeep(nested, nestedCopy)).toBe(nested)
 expect(replaceEqualDeep(nested, nestedLeafChanged).ids).toBe(nested.ids)
 expect(replaceEqualDeep(list, listCopy)).toBe(list)
@@ -234,6 +251,49 @@ describe('replaceEqualDeep', () => {
   bench('flat search with one changed leaf', () => {
     for (let i = 0; i < iterations; i++) {
       sink = replaceEqualDeep(search, searchChanged)
+    }
+  })
+
+  bench('equal parsed null-proto search', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = nullReplaceEqualDeep(nullSearch, nullSearchCopy)
+    }
+  })
+
+  bench('equal ordinary search against a null-proto previous value', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = nullReplaceEqualDeep(nullSearch, searchCopy)
+    }
+  })
+
+  bench('parsed null-proto search with one changed leaf', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = nullReplaceEqualDeep(nullSearch, nullSearchChanged)
+    }
+  })
+
+  bench('search update requiring a null-proto copy', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = nullReplaceEqualDeep(nullSearch, searchChanged)
+    }
+  })
+
+  bench('changed selector followed by the same incoming reference', () => {
+    for (let i = 0; i < iterations; i++) {
+      const current = replaceEqualDeep(search, searchChanged)
+      sink = replaceEqualDeep(current, searchChanged)
+    }
+  })
+
+  bench('equal record with decimal values', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(decimalRecord, decimalRecordCopy)
+    }
+  })
+
+  bench('changed record with decimal values', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(decimalRecord, decimalRecordChanged)
     }
   })
 

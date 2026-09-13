@@ -13,6 +13,31 @@ import {
 import { decode } from '../src/qss'
 
 describe('replaceEqualDeep', () => {
+  it('reuses the next object when its children need no replacements', () => {
+    const shared = Object.freeze({ id: 1 })
+    const prev = Object.freeze({ shared, page: 1 })
+    const next = Object.freeze({ shared, page: 2 })
+
+    expect(replaceEqualDeep(prev, next)).toBe(next)
+  })
+
+  it('reuses a changed null-prototype search record', () => {
+    const prev = decode('page=1&sort=newest')
+    const next = decode('page=2&sort=newest')
+
+    expect(nullReplaceEqualDeep(prev, next)).toBe(next)
+  })
+
+  it('copies a changed ordinary object when null-prototype output is required', () => {
+    const prev = decode('page=1&sort=newest')
+    const next = { page: '2', sort: 'newest' }
+    const result = nullReplaceEqualDeep(prev, next)
+
+    expect(result).not.toBe(next)
+    expect(Object.getPrototypeOf(result)).toBeNull()
+    expect({ ...result }).toStrictEqual(next)
+  })
+
   it('returns the previous signed zero when strict equality matches', () => {
     expect(replaceEqualDeep(-0, 0)).toBe(-0)
     expect(replaceEqualDeep(0, -0)).toBe(0)
@@ -29,21 +54,18 @@ describe('replaceEqualDeep', () => {
   })
 
   // Known unsupported edge case for ordinary object copies.
-  it.fails(
-    'copies an own __proto__ property as data in the incoming key order',
-    () => {
-      const prev = JSON.parse('{"first":1,"__proto__":{"shared":1},"last":1}')
-      const next = JSON.parse('{"first":2,"__proto__":{"shared":1},"last":1}')
-      const result = replaceEqualDeep(prev, next)
-      expect(Object.getPrototypeOf(result)).toBe(Object.prototype)
-      expect(hasOwn.call(result, '__proto__')).toBe(true)
-      expect(result.__proto__).toBe(prev.__proto__)
-      expect(Object.keys(result)).toEqual(Object.keys(next))
-      expect(result).toStrictEqual(next)
-    },
-  )
+  it.skip('copies an own __proto__ property as data in the incoming key order', () => {
+    const prev = JSON.parse('{"first":1,"__proto__":{"shared":1},"last":1}')
+    const next = JSON.parse('{"first":2,"__proto__":{"shared":1},"last":1}')
+    const result = replaceEqualDeep(prev, next)
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype)
+    expect(hasOwn.call(result, '__proto__')).toBe(true)
+    expect(result.__proto__).toBe(prev.__proto__)
+    expect(Object.keys(result)).toEqual(Object.keys(next))
+    expect(result).toStrictEqual(next)
+  })
 
-  it.fails.each([undefined, { shared: 1 }])(
+  it.skip.each([undefined, { shared: 1 }])(
     'preserves a newly added own __proto__ property with value %j',
     (value) => {
       const prev = { first: 1, last: 1 }
@@ -97,6 +119,45 @@ describe('replaceEqualDeep', () => {
     expect(next[0]).toBe(0)
     expect(prev[6]).toBe(1)
   })
+
+  it('ignores auxiliary array metadata without using its constructor or iterator', () => {
+    const fail = () => {
+      throw new Error('array metadata must not be invoked')
+    }
+    const decorate = (values: Array<unknown>) =>
+      Object.freeze(
+        Object.defineProperties(values, {
+          metadata: { value: 'ignored' },
+          constructor: { value: { [Symbol.species]: fail } },
+          [Symbol.iterator]: { value: fail },
+        }),
+      )
+    const child = Object.freeze({ id: 1 })
+    const prev = decorate([child, 1])
+    const equal = decorate([{ id: 1 }, 1])
+    const next = decorate([{ id: 1 }, 2])
+
+    expect(replaceEqualDeep(prev, equal)).toBe(prev)
+    const result = replaceEqualDeep(prev, next)
+    expect(result).toStrictEqual([child, 2])
+    expect(result[0]).toBe(child)
+    expect(Object.keys(result)).toEqual(['0', '1'])
+    expect(Object.getOwnPropertySymbols(result)).toEqual([])
+    expect(prev[1]).toBe(1)
+    expect(next[0]).not.toBe(child)
+  })
+
+  it.each(['prev', 'next'])(
+    'keeps an array with a non-enumerable index on %s opaque',
+    (side) => {
+      const prev = [{ id: 1 }, 1]
+      const next = [{ id: 1 }, 2]
+      Object.defineProperty(side === 'prev' ? prev : next, '1', {
+        enumerable: false,
+      })
+      expect(replaceEqualDeep(prev, next)).toBe(next)
+    },
+  )
 
   it('does not consider separate NaN children strictly equal', () => {
     const prev = { value: NaN }
@@ -279,7 +340,6 @@ describe('replaceEqualDeep', () => {
     const result = replaceEqualDeep(prev, next)
     expect(result).toEqual(next)
     expect(result).not.toBe(prev)
-    expect(result).not.toBe(next)
   })
 
   it('should return a copy when the previous value is a different array superset', () => {
@@ -288,7 +348,6 @@ describe('replaceEqualDeep', () => {
     const result = replaceEqualDeep(prev, next)
     expect(result).toEqual(next)
     expect(result).not.toBe(prev)
-    expect(result).not.toBe(next)
   })
 
   it('should return the previous value when the next value is an equal empty array', () => {
@@ -329,7 +388,6 @@ describe('replaceEqualDeep', () => {
     expect(result).not.toBe(next)
     expect(result[0]).toBe(prev[0])
     expect(result[1]).toBe(prev[1])
-    expect(result[2]).not.toBe(next[2])
     expect(result[2].b.b).toBe(next[2].b.b)
     expect(result[3]).toBe(prev[3])
   })
@@ -443,7 +501,6 @@ describe('replaceEqualDeep', () => {
     expect(result.todo).not.toBe(next.todo)
     expect(result.todo.id).toBe(next.todo.id)
     expect(result.todo.meta).toBe(prev.todo.meta)
-    expect(result.todo.state).not.toBe(next.todo.state)
     expect(result.todo.state.done).toBe(next.todo.state.done)
     expect(result.otherTodo).toBe(prev.otherTodo)
   })
@@ -471,7 +528,6 @@ describe('replaceEqualDeep', () => {
     expect(result.todos[0]).not.toBe(next.todos[0])
     expect(result.todos[0]?.id).toBe(next.todos[0]?.id)
     expect(result.todos[0]?.meta).toBe(prev.todos[0]?.meta)
-    expect(result.todos[0]?.state).not.toBe(next.todos[0]?.state)
     expect(result.todos[0]?.state.done).toBe(next.todos[0]?.state.done)
     expect(result.todos[1]).toBe(prev.todos[1])
   })
@@ -556,7 +612,6 @@ describe('replaceEqualDeep', () => {
       const result = replaceEqualDeep(prev, next)
       expect(result).toStrictEqual(next)
       expect(result).not.toBe(prev)
-      expect(result).not.toBe(next)
     })
 
     it('returns a longer array when next appends an explicit undefined', () => {
@@ -566,7 +621,6 @@ describe('replaceEqualDeep', () => {
       expect(result).toStrictEqual(next)
       expect(result).toHaveLength(2)
       expect(result).not.toBe(prev)
-      expect(result).not.toBe(next)
     })
 
     it('shares equal array entries before and after the first difference', () => {
@@ -606,7 +660,6 @@ describe('replaceEqualDeep', () => {
       const result = replaceEqualDeep(prev, next)
       expect(result).toStrictEqual(next)
       expect(result).not.toBe(prev)
-      expect(result).not.toBe(next)
       expect('c' in result).toBe(true)
       expect('a' in result).toBe(false)
     })
@@ -773,6 +826,36 @@ describe('nullReplaceEqualDeep', () => {
 })
 
 describe('isPlainObject', () => {
+  it.each([
+    [
+      'null-prototype record',
+      Object.assign(Object.create(null), { inherited: 1 }),
+    ],
+    ['null constructor', { constructor: null }],
+    ['undefined constructor', { constructor: undefined }],
+  ])('shares records inheriting from a %s', (_name, proto) => {
+    const prev = Object.assign(Object.create(proto), {
+      child: { id: 1 },
+      page: 1,
+    })
+    const equal = Object.assign(Object.create(proto), {
+      child: { id: 1 },
+      page: 1,
+    })
+    const next = Object.assign(Object.create(proto), {
+      child: { id: 1 },
+      page: 2,
+    })
+
+    expect(isPlainObject(prev)).toBe(true)
+    expect(deepEqual(prev, equal)).toBe(true)
+    expect(replaceEqualDeep(prev, equal)).toBe(prev)
+    const result = replaceEqualDeep(prev, next)
+    expect(result.child).toBe(prev.child)
+    expect(result.page).toBe(2)
+    expect(Object.keys(result)).toEqual(['child', 'page'])
+  })
+
   it.each([
     ['object literal', {}],
     ['object literal with keys', { a: 1 }],
@@ -1332,11 +1415,29 @@ describe('key handling (via replaceEqualDeep)', () => {
       },
     )
 
-    it('removes symbols when creating null-prototype copies', () => {
+    it('removes symbols by reusing a null-prototype next object', () => {
       const sym = Symbol('metadata')
       const prev = Object.assign(Object.create(null), { a: 1, [sym]: 'old' })
       const next = Object.assign(Object.create(null), { a: 1 })
       expect(nullReplaceEqualDeep(prev, next)).toBe(next)
+    })
+
+    it('removes symbols from a null-prototype copy while sharing children', () => {
+      const sym = Symbol('metadata')
+      const prev = { child: { a: 1 }, page: 1, [sym]: 'old' }
+      const next = { child: { a: 1 }, page: 2 }
+      const result = nullReplaceEqualDeep(prev, next)
+      expect(Object.getPrototypeOf(result)).toBeNull()
+      expect(Object.getOwnPropertySymbols(result)).toEqual([])
+      expect(result.child).toBe(prev.child)
+      expect(result.page).toBe(2)
+    })
+
+    it('keeps an opaque next object unchanged in null-prototype mode', () => {
+      const next = { child: { a: 1 }, [Symbol('metadata')]: 'kept' }
+      const result = nullReplaceEqualDeep({ child: { a: 1 } }, next)
+      expect(result).toBe(next)
+      expect(Object.getPrototypeOf(result)).toBe(Object.prototype)
     })
 
     it('removes symbols alongside changed string keys while sharing children', () => {

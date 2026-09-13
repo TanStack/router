@@ -2,4 +2,4 @@
 '@tanstack/router-core': patch
 ---
 
-Reimplement `replaceEqualDeep` with temporary key lists for resolved children. Speed up equal arrays and shared array prefixes while retaining recursive sharing of changed children and consistent signed-zero behavior. Correctly remove previous symbol properties and keep sparse arrays with extra keys and built-in objects with an own `constructor` opaque.
+Reduce structural-sharing allocations by reusing array key storage and returning incoming objects when their children need no replacements. Preserve signed zero consistently, remove stale symbol properties, and keep sparse arrays with extra keys and built-ins with an own `constructor` opaque.
