@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789244537103,
+  "lastUpdate": 1789300728800,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,102 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "manuel.schiller@caligano.de",
-            "name": "Manuel Schiller",
-            "username": "schiller-manuel"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "8146db7e54f5d508f1fb7d3927edd0a2f71dc930",
-          "message": "fix(router-plugin): detect typed root route context for HMR (#7420)",
-          "timestamp": "2026-05-17T00:42:32+02:00",
-          "tree_id": "29f3c518b91f80da68ec3173c02a8a3526a6cf30",
-          "url": "https://github.com/TanStack/router/commit/8146db7e54f5d508f1fb7d3927edd0a2f71dc930"
-        },
-        "date": 1778971493225,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89421,
-            "unit": "bytes",
-            "extra": "raw=280786; brotli=77765; initial_gzip=89281"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93034,
-            "unit": "bytes",
-            "extra": "raw=292571; brotli=80812; initial_gzip=92894"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36404,
-            "unit": "bytes",
-            "extra": "raw=109055; brotli=32776; initial_gzip=36277"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41232,
-            "unit": "bytes",
-            "extra": "raw=123609; brotli=37053; initial_gzip=41104"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54605,
-            "unit": "bytes",
-            "extra": "raw=155286; brotli=49043; initial_gzip=54470"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59850,
-            "unit": "bytes",
-            "extra": "raw=171849; brotli=53669; initial_gzip=59718"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104458,
-            "unit": "bytes",
-            "extra": "raw=330391; brotli=90236; initial_gzip=104316"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107971,
-            "unit": "bytes",
-            "extra": "raw=340970; brotli=93354; initial_gzip=107832"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102026,
-            "unit": "bytes",
-            "extra": "raw=324724; brotli=87704; initial_gzip=101850"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105402,
-            "unit": "bytes",
-            "extra": "raw=335407; brotli=90597; initial_gzip=105226"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50850,
-            "unit": "bytes",
-            "extra": "raw=156279; brotli=44849; initial_gzip=50716"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56768,
-            "unit": "bytes",
-            "extra": "raw=173593; brotli=49886; initial_gzip=56634"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -24860,6 +24764,138 @@ window.BENCHMARK_DATA = {
             "value": 71242,
             "unit": "bytes",
             "extra": "raw=206335; brotli=63258; initial_gzip=71113"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "6340397+schiller-manuel@users.noreply.github.com",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "bc57fa3f12450cf34c731450947c7c8f1ea05e58",
+          "message": "fix(router-core): review follow-ups for Link stack (#8410)\n\n* chore(benchmarks): remove TSR_LINK_PERF opt-in flag\n\nThe router-core Link/path benchmarks and the react-link-performance\nproject are never part of the CodSpeed matrix or the client-nav/SSR\naggregate projects, so the env-var gate only added friction. Rely on\nstandard vitest name filtering (-t) to narrow runs instead.\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n\n* fix(router-core): treat 0 and false as provided _splat values\n\nSplat interpolation used a falsy check, so _splat: 0 was omitted like a\nmissing param while $id: 0 interpolated to '/0'. Only undefined, null,\nand '' now omit a splat segment, matching how other path params are\nstringified.\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n\n* test(router-core): use path-derived ids in original-param-names fixtures\n\nThe matcher only uses route ids as routesById keys and for the pathless\n'_' check, so unrelated ids worked but never occur in a real router.\nAlign the fixtures with the sibling test file's convention where each\nid mirrors its fullPath.\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n\n* perf(solid-router): shorten conditional Link class and style spreads\n\nSpread `cond && { value }` instead of `cond ? { value } : undefined`,\nmatching the neighbouring `active && STATIC_ACTIVE_ATTRIBUTES` spread.\nFalsy operands spread to nothing, so the emitted props are unchanged.\n\nMeasured with the bundle-size benchmark on solid-router.full:\ngzip 39205 -> 39198 (-7), raw -12, brotli -33.\n\nCovered by the existing `six-adults-open` changeset.\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n\n* test(router-core): drop the unused server axis from interpolatePath tests\n\nThe `interpolatePath (server: $server)` block never read its `server`\nargument since interpolation stopped taking a server flag, so it ran every\ncase twice under a misleading label. The remaining diff is re-indentation;\nreview with `git show -w`.\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n\n* test(router-core): interpolate paths through the production API in tests\n\n`interpolateTestPath` only survived as a compatibility layer from the\nsegment-reuse refactor: it emulated the removed\n`(path, params, decoder, usedParams, keys, metadata)` signature by parsing\nthe template, re-implementing the param-name loop and folding\n`hasMissingPathParams` into a metadata flag.\n\nCall the real functions instead. Tests now parse templates with\n`parseSegments(false, { fullPath }, 0)` exactly like `buildLocation` does\nfor templates without a processed route, pass the segments to\n`interpolatePath`, and read names and availability from `getParamNames`\nand `hasMissingPathParams`. The prepared-route tests compare route-owned\nsegments against that standalone parse directly, and the interpolation\nbench derives its reference values the same way.\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n\n---------\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>",
+          "timestamp": "2026-09-13T13:55:08+02:00",
+          "tree_id": "c67cba8dc16a9927b05323e3032af5e6a5d20295",
+          "url": "https://github.com/TanStack/router/commit/bc57fa3f12450cf34c731450947c7c8f1ea05e58"
+        },
+        "date": 1789300727005,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 86027,
+            "unit": "bytes",
+            "extra": "raw=268007; brotli=74968; initial_gzip=85890"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89601,
+            "unit": "bytes",
+            "extra": "raw=280006; brotli=78085; initial_gzip=89461"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34236,
+            "unit": "bytes",
+            "extra": "raw=98262; brotli=30992; initial_gzip=34111"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39198,
+            "unit": "bytes",
+            "extra": "raw=113259; brotli=35337; initial_gzip=39074"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50707,
+            "unit": "bytes",
+            "extra": "raw=140397; brotli=45869; initial_gzip=50582"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56433,
+            "unit": "bytes",
+            "extra": "raw=159043; brotli=50911; initial_gzip=56307"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99278,
+            "unit": "bytes",
+            "extra": "raw=311270; brotli=86095; initial_gzip=99140"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106799,
+            "unit": "bytes",
+            "extra": "raw=338402; brotli=92657; initial_gzip=106660"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 100021,
+            "unit": "bytes",
+            "extra": "raw=312659; brotli=86820; initial_gzip=99160"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102505,
+            "unit": "bytes",
+            "extra": "raw=321281; brotli=88882; initial_gzip=102366"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102630,
+            "unit": "bytes",
+            "extra": "raw=321968; brotli=88645; initial_gzip=102455"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103048,
+            "unit": "bytes",
+            "extra": "raw=322944; brotli=88982; initial_gzip=102880"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105984,
+            "unit": "bytes",
+            "extra": "raw=332334; brotli=91457; initial_gzip=105809"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47492,
+            "unit": "bytes",
+            "extra": "raw=140384; brotli=42293; initial_gzip=47367"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50618,
+            "unit": "bytes",
+            "extra": "raw=147928; brotli=45070; initial_gzip=47428"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52665,
+            "unit": "bytes",
+            "extra": "raw=156139; brotli=46673; initial_gzip=52535"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67221,
+            "unit": "bytes",
+            "extra": "raw=192496; brotli=59994; initial_gzip=67095"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71187,
+            "unit": "bytes",
+            "extra": "raw=205096; brotli=63376; initial_gzip=71061"
           }
         ]
       }
