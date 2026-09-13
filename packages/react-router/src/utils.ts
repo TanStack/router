@@ -57,22 +57,3 @@ export function usePrevious<T>(value: T): T | null {
   // return the previous value only
   return ref.current.prev
 }
-
-/**
- * React hook to take a `React.ForwardedRef` and returns a `ref` that can be used on a DOM element.
- *
- * @param ref - The forwarded ref
- * @returns The inner ref returned by `useRef`
- * @example
- * ```tsx
- * const MyComponent = React.forwardRef((props, ref) => {
- *  const innerRef = useForwardedRef(ref)
- *  return <div ref={innerRef} />
- * })
- * ```
- */
-export function useForwardedRef<T>(ref?: React.ForwardedRef<T>) {
-  const innerRef = React.useRef<T>(null)
-  React.useImperativeHandle(ref, () => innerRef.current!, [])
-  return innerRef
-}
