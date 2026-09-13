@@ -68,9 +68,57 @@ const wider = Object.fromEntries(
   Array.from({ length: 64 }, (_, index) => [`key${index}`, `value${index}`]),
 )
 const widerChangedLast = { ...wider, key63: 'changed' }
+const widerChangedFirst = { ...wider, key0: 'changed' }
+const widerAllChanged = Object.fromEntries(
+  Object.keys(wider).map((key) => [key, 'changed']),
+)
+const widerSubset = Object.fromEntries(Object.entries(wider).slice(0, 8))
 const numbers = Array.from({ length: 1024 }, (_, index) => index)
 const numbersCopy = [...numbers]
 const numbersChangedLast = numbers.map((n, index) => (index === 1023 ? -1 : n))
+const numbersChangedFirst = numbers.map((n, index) => (index === 0 ? -1 : n))
+const numbersChangedMiddle = numbers.map((n, index) => (index === 512 ? -1 : n))
+const numbersAllChanged = numbers.map((n) => -n - 1)
+const numbersShorter = numbers.slice(0, 512)
+const numbersLonger = [...numbers, undefined, undefined]
+const smallNumbers = [1, 2, 3, 4]
+const smallNumbersChanged = [9, 2, 3, 4]
+const consumedNumbers = replaceEqualDeep(numbers, numbersChangedLast)
+const longList = Array.from({ length: 1024 }, (_, id) => ({ id }))
+const longListCopy = [...longList]
+const longListClonedLast = [...longList]
+longListClonedLast[1023] = { id: 1023 }
+const longListChangedLast = [...longList]
+longListChangedLast[1023] = { id: -1 }
+const longListClonedThenChanged = [...longListChangedLast]
+longListClonedThenChanged[1022] = { id: 1022 }
+const numericCases = [
+  ['fractional', Array.from({ length: 1024 }, (_, index) => index + 0.5)],
+  [
+    'large integer',
+    Array.from({ length: 1024 }, (_, index) => 2 ** 40 + index),
+  ],
+] as const
+const numericResults = numericCases.map(([name, prev]) => {
+  const next = [...prev]
+  next[1023] = -1.5
+  const result = replaceEqualDeep(prev, next)
+  expect(result).toStrictEqual(next)
+  return { name, prev, next, result }
+})
+const mixedPairs: Array<[unknown, unknown]> = [
+  [search, search],
+  [search, searchCopy],
+  [search, searchChanged],
+  [search, searchSubset],
+  [searchSubset, search],
+  [nested, nestedCopy],
+  [list, listChanged],
+  [list, listShared],
+  [smallNumbers, smallNumbersChanged],
+  [emptyNull, createNull()],
+  [searchWithConstructorKey, searchWithConstructorKeyCopy],
+]
 
 expect(replaceEqualDeep(empty, {})).toBe(empty)
 expect(replaceEqualDeep(search, searchCopy)).toBe(search)
@@ -90,7 +138,32 @@ expect(replaceEqualDeep(wider, widerChangedLast)).toStrictEqual(
   widerChangedLast,
 )
 expect(replaceEqualDeep(numbers, numbersCopy)).toBe(numbers)
+expect(replaceEqualDeep(longList, longListCopy)).toBe(longList)
+expect(replaceEqualDeep(longList, longListClonedLast)).toBe(longList)
+expect(replaceEqualDeep(longList, longListChangedLast)).toStrictEqual(
+  longListChangedLast,
+)
+const sharedLongList = replaceEqualDeep(longList, longListClonedThenChanged)
+expect(sharedLongList).toStrictEqual(longListClonedThenChanged)
+expect(sharedLongList[1022]).toBe(longList[1022])
+expect(replaceEqualDeep(widerSubset, wider)).toStrictEqual(wider)
+expect(replaceEqualDeep(wider, widerChangedFirst)).toStrictEqual(
+  widerChangedFirst,
+)
+expect(replaceEqualDeep(wider, widerAllChanged)).toStrictEqual(widerAllChanged)
 expect(replaceEqualDeep(numbers, numbersChangedLast)[1023]).toBe(-1)
+for (const [prev, next] of mixedPairs) {
+  expect(replaceEqualDeep(prev, next)).toStrictEqual(next)
+}
+for (const next of [
+  numbersChangedFirst,
+  numbersChangedMiddle,
+  numbersAllChanged,
+  numbersShorter,
+  numbersLonger,
+]) {
+  expect(replaceEqualDeep(numbers, next)).toStrictEqual(next)
+}
 expect(nullReplaceEqualDeep(emptyNull, {})).toBe(emptyNull)
 expect(
   nullReplaceEqualDeep(searchWithConstructorKey, searchWithConstructorKeyCopy),
@@ -230,6 +303,52 @@ describe('replaceEqualDeep', () => {
     }
   })
 
+  bench('flat object growing from 8 to 64 keys', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(widerSubset, wider)
+    }
+  })
+
+  for (const [name, next] of [
+    ['first leaf changed', widerChangedFirst],
+    ['all leaves changed', widerAllChanged],
+  ] as const) {
+    bench(`wider flat object (64 keys) with ${name}`, () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(wider, next)
+      }
+    })
+  }
+
+  bench('equal long array of shared objects', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(longList, longListCopy)
+    }
+  })
+
+  for (const [name, next] of [
+    ['cloned but equal', longListClonedLast],
+    ['changed', longListChangedLast],
+    ['changed after a cloned but equal item', longListClonedThenChanged],
+  ] as const) {
+    bench(`long array of shared objects with the last item ${name}`, () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(longList, next)
+      }
+    })
+  }
+
+  for (const length of [0, 1, 4]) {
+    const prev = Array.from({ length }, (_, index) => index)
+    const next = [...prev]
+    expect(replaceEqualDeep(prev, next)).toBe(prev)
+    bench(`equal primitive array of length ${length}`, () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(prev, next)
+      }
+    })
+  }
+
   bench('equal long primitive array', () => {
     for (let i = 0; i < iterations; i++) {
       sink = replaceEqualDeep(numbers, numbersCopy)
@@ -241,6 +360,77 @@ describe('replaceEqualDeep', () => {
       sink = replaceEqualDeep(numbers, numbersChangedLast)
     }
   })
+
+  for (const [name, next] of [
+    ['first item changed', numbersChangedFirst],
+    ['middle item changed', numbersChangedMiddle],
+    ['all items changed', numbersAllChanged],
+    ['shortened', numbersShorter],
+    ['appended undefined values', numbersLonger],
+  ] as const) {
+    bench(`long primitive array with ${name}`, () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(numbers, next)
+      }
+    })
+  }
+
+  bench('small primitive array with the first item changed', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = replaceEqualDeep(smallNumbers, smallNumbersChanged)
+    }
+  })
+
+  bench('mixed search and array updates', () => {
+    for (let i = 0; i < iterations; i++) {
+      const [prev, next] = mixedPairs[i % mixedPairs.length]!
+      sink = replaceEqualDeep(prev, next)
+    }
+  })
+
+  for (const { name, prev, next } of numericResults) {
+    bench(`long ${name} array with the last item changed`, () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = replaceEqualDeep(prev, next)
+      }
+    })
+  }
+})
+
+describe('consume structurally shared arrays', () => {
+  bench('sum changed primitive array by index', () => {
+    for (let i = 0; i < iterations; i++) {
+      let sum = 0
+      for (let j = 0; j < consumedNumbers.length; j++) {
+        sum += consumedNumbers[j]!
+      }
+      sink = sum
+    }
+  })
+
+  bench('reduce changed primitive array', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = consumedNumbers.reduce((sum, value) => sum + value, 0)
+    }
+  })
+
+  for (const { name, result } of numericResults) {
+    bench(`sum changed ${name} array by index`, () => {
+      for (let i = 0; i < iterations; i++) {
+        let sum = 0
+        for (let j = 0; j < result.length; j++) {
+          sum += result[j]!
+        }
+        sink = sum
+      }
+    })
+
+    bench(`reduce changed ${name} array`, () => {
+      for (let i = 0; i < iterations; i++) {
+        sink = result.reduce((sum, value) => sum + value, 0)
+      }
+    })
+  }
 })
 
 describe('deepEqual', () => {
