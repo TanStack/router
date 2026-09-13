@@ -1,0 +1,9 @@
+node_modules
+.env
+.output
+.tanstack
+test-results
+playwright-report
+**/src/generated/
+.postgres/
+.postgres-password
