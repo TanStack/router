@@ -1,7 +1,7 @@
 ---
 id: databases
 title: Databases
-description: Connect a database to TanStack Start through server functions and server routes, and compare supported database providers.
+description: Build a TanStack Start app with PostgreSQL and Prisma, including migrations, server-only queries, validated mutations, transaction rollback, and deployment.
 ---
 
 Databases are at the core of any dynamic application, providing the necessary infrastructure to store, retrieve, and manage data. TanStack Start makes it easy to integrate with a variety of databases, offering a flexible approach to managing your application's data layer.
@@ -10,31 +10,94 @@ Databases are at the core of any dynamic application, providing the necessary in
 
 TanStack Start is **designed to work with any database provider**, so if you already have a preferred database system, you can integrate it with TanStack Start using the provided full-stack APIs. Whether you're working with SQL, NoSQL, or other types of databases, TanStack Start can handle your needs.
 
-## How simple is it to use a database with TanStack Start?
+## Build a PostgreSQL app with Prisma
 
-Using a database with TanStack Start is as simple as calling into your database's adapter/client/driver/service from a TanStack Start server function or server route.
+The [PostgreSQL example](../examples/start-postgres) is a runnable shared notebook using Prisma 7. It includes a schema, committed migrations, loader reads, validated server functions, transaction rollback, and browser tests. It has no user accounts, so anyone with access can write to it. Add [endpoint authorization](./authentication-server-primitives#protect-data-first) before using the pattern for private data.
 
-Here's an abstract example of how you might connect with a database and read/write to it:
+### Create and migrate a local database
 
-```tsx
-import { createServerFn } from '@tanstack/react-start'
+After installing the repository dependencies and building its framework packages as described in [Contributing](https://github.com/TanStack/router/blob/main/CONTRIBUTING.md), run:
 
-const db = createMyDatabaseClient()
-
-export const getUser = createServerFn().handler(async ({ context }) => {
-  const user = await db.getUser(context.userId)
-  return user
-})
-
-export const createUser = createServerFn({ method: 'POST' }).handler(
-  async ({ data }) => {
-    const user = await db.createUser(data)
-    return user
-  },
-)
+```sh
+cd examples/react/start-postgres
+cp .env.example .env
+docker compose up -d --wait
+pnpm db:generate
+pnpm db:migrate
+pnpm dev
 ```
 
-This is obviously contrived, but it demonstrates that you can use literally any database provider with TanStack Start as long as you can call into it from a server function or server route.
+With Docker Compose v2 installed, the example's Compose file starts PostgreSQL 17 on localhost:5433. Its `.env.example` contains local demo credentials. Keep your own `.env` out of Git, and change the port and connection URL together if the port is occupied. The example README also includes native PostgreSQL initialization commands. An existing local PostgreSQL server works with a dedicated database and a matching `DATABASE_URL`.
+
+The schema relates each note to a category:
+
+```prisma
+model Category {
+  name String @id
+  notes Note[]
+}
+
+model Note {
+  slug String @id
+  title String
+  categoryName String
+  category Category @relation(fields: [categoryName], references: [name])
+}
+```
+
+`pnpm db:migrate` runs `prisma migrate deploy` to apply committed SQL. For subsequent schema changes, run `pnpm db:dev --name your_change` against a development database, then regenerate the client with `pnpm db:generate`. Review and commit the generated migration SQL. Do not use development reset commands against production data.
+
+### Keep the database on the server
+
+The example's `src/server/db.server.ts` creates one Prisma client per server module instance, backed by the PostgreSQL driver adapter. It reads `DATABASE_URL` only on the server and declares a server-only import boundary:
+
+```ts
+import '@tanstack/react-start/server-only'
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '../generated/prisma/client'
+
+const connectionString = process.env.DATABASE_URL
+if (!connectionString) {
+  throw new Error('Set DATABASE_URL before starting the server')
+}
+
+export const db = new PrismaClient({
+  adapter: new PrismaPg({ connectionString, max: 5 }),
+})
+```
+
+A connection pool can be shared by requests. Account-specific query results must not be shared without appropriate isolation. Five connections is this example's setting, not a universal recommendation; budget connections across every application instance.
+
+Route loaders can run in the browser after navigation. Call a server function from the loader, then perform the database query inside that function. The example selects only `slug`, `title`, and `categoryName`, so it does not serialize the client or connection configuration. See [Import Protection](./import-protection) and [Server Functions](./server-functions).
+
+### Validate and write atomically
+
+The POST server function validates the slug format and bounds the title and category lengths before entering a transaction. Browser input attributes are only interface feedback; the server validates again. The example also enables Start's CSRF middleware in `src/start.ts` for server-function requests and tests that a cross-site call is rejected. CSRF protection does not replace endpoint authorization.
+
+Inside the transaction, it upserts a category and creates a note. If the unique note slug already exists, PostgreSQL rejects the insert and Prisma rolls back both operations. A newly created category does not remain behind. The handler catches Prisma's `P2002` unique-constraint error and returns a specific message. Unexpected errors reach the generic error interface instead of exposing database details.
+
+After a successful write, the component awaits `router.invalidate()` to reload its Router-owned data. It keeps the form pending through the write and reload, and disables its JavaScript-dependent form until hydration. If Query owns your data instead, invalidate the relevant Query keys.
+
+See the example's [server functions](https://github.com/TanStack/router/blob/main/examples/react/start-postgres/src/server/notes.ts) and [form route](https://github.com/TanStack/router/blob/main/examples/react/start-postgres/src/routes/index.tsx) for the complete implementation. Keep transactions short; do not hold one open while waiting for external APIs.
+
+### Test the production build
+
+```sh
+pnpm exec playwright install chromium
+pnpm test:e2e
+pnpm build
+POSTGRES_EXAMPLE_PRODUCTION=1 pnpm test:e2e
+```
+
+The test script starts an isolated PostgreSQL 17 server on localhost:3121, generates the client, applies migrations, and removes the database after the run. It supplies the test connection string automatically. Keep ports 3120 and 3121 free. The tests verify initial HTML contains persisted notes, data survives reload, whitespace-only titles fail server validation, and duplicate-note failure rolls back its new category.
+
+Also build with a harmless test credential and search client assets and any published source maps for it. Inspect response bodies too. A successful connection does not prove the credentials stayed on the server.
+
+### Deploy with an explicit migration step
+
+This example targets a Node-compatible host using Nitro and Prisma's `pg` adapter. Set `DATABASE_URL` in the production server environment; do not assume `.env` is loaded by the Node entry point. Generate the Prisma client at build time. Apply committed migrations once as a release step, not during requests or independently on every instance startup.
+
+For a hosted database, follow its TLS and pooling instructions. A transaction pooler may require a separate direct migration connection. Other runtimes may require a different adapter. Retain backups and plan schema compatibility before deploying changes, because rolling back application code does not roll back the database. See [Hosting](./hosting), [Environment Variables](./environment-variables), and [Prisma's PostgreSQL connector](https://www.prisma.io/docs/orm/v7/core-concepts/supported-databases/postgresql).
 
 ## Recommended Database Providers
 
@@ -106,4 +169,4 @@ Instant Postgres, Zero Setup: Get a production-ready Postgres database in second
 
 ## Documentation & APIs
 
-Documentation for integrating different databases with TanStack Start is coming soon! In the meantime, keep an eye on our examples and guide to learn how to fully leverage your data layer across your TanStack Start application.
+Use the runnable PostgreSQL example above for the complete setup-to-mutation workflow. The same server boundary applies to other providers: keep credentials and privileged queries in server functions or server routes, validate inputs, and authorize private operations at their endpoint.
