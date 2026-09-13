@@ -3,10 +3,9 @@ import { interpolatePath } from '../src/path'
 import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PATHNAME,
-  findSingleMatch,
   parseSegment,
-  processRouteTree,
 } from '../src/new-process-route-tree'
+import { findTestRouteMatch } from './routerTestUtils'
 import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
@@ -138,22 +137,15 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
     })
 
     describe('matchPathname', () => {
-      const { processedTree } = processRouteTree({
-        id: '__root__',
-        isRoot: true,
-        fullPath: '/',
-        path: '/',
-      })
       const matchPathname = (
         from: string,
         options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
       ) => {
-        const match = findSingleMatch(
+        const match = findTestRouteMatch(
           options.to,
           options.caseSensitive ?? false,
           options.fuzzy ?? false,
           from,
-          processedTree,
         )
         const result = match ? match.rawParams : undefined
         if (options.to && !result) return

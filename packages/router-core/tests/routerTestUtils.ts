@@ -6,6 +6,7 @@ import {
   createNonReactiveReadonlyStore,
 } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
+import { findRouteMatch, processRouteTree } from '../src/new-process-route-tree'
 import type { RouterHistory } from '@tanstack/history'
 import type {
   AnyRouter,
@@ -29,6 +30,23 @@ const getStoreConfig: GetStoreConfig = (opts) => {
     createReadonlyStore: createAtom,
     batch,
   }
+}
+
+export function findTestRouteMatch(
+  pattern: string,
+  caseSensitive: boolean,
+  fuzzy: boolean,
+  pathname: string,
+) {
+  const { processedTree } = processRouteTree(
+    {
+      id: pattern || '/',
+      fullPath: pattern === '/' ? '' : pattern,
+      path: pattern || '/',
+    },
+    caseSensitive,
+  )
+  return findRouteMatch(pathname, processedTree, fuzzy)
 }
 
 export function createTestRouter<
