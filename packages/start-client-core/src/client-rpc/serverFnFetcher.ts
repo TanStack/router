@@ -340,25 +340,14 @@ async function processFramedResponse(
   plugins: Array<SerovalPlugin<any, any>>,
 ) {
   const reader = jsonStream.getReader()
-  const refs = Object.assign(new Map<number, unknown>(), {
-    types: new Map<number, number>(),
-  })
-  const options = { refs, plugins }
+  const options = { refs: new Map(), plugins }
 
+  // TODO: promises and streams that Seroval created from earlier records stay
+  // pending after a transport failure. Rejecting them needs a Seroval API for
+  // aborting a cross-JSON deserialization session; do not reach into
+  // Seroval's refs to do it here.
   const fail = (error: unknown) => {
     void reader.cancel(error).catch(() => {})
-    // Seroval tags its resolver handles (not the promises themselves) with
-    // PromiseConstructor's node type, 22. Other refs can be application data.
-    for (const [id, type] of refs.types) {
-      if (type === 22) {
-        const deferred = refs.get(id) as {
-          p: Promise<unknown>
-          f: (reason: unknown) => void
-        }
-        void deferred.p.catch(() => {})
-        deferred.f(error)
-      }
-    }
   }
 
   let result: any

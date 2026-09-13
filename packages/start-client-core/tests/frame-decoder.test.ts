@@ -234,7 +234,7 @@ describe('frame-decoder', () => {
   })
 
   it.each(['invalid JSON', 'invalid patch', 'read failure'] as const)(
-    'rejects pending framed promises and raw streams after %s',
+    'cancels the response and fails raw streams after %s',
     async (failure) => {
       const log = vi.spyOn(console, 'error').mockImplementation(() => {})
       const cancel = vi.fn()
@@ -246,12 +246,9 @@ describe('frame-decoder', () => {
         cancel,
       })
       const ready = createControlledPromise<string>()
-      const late = createControlledPromise<{ nested: Promise<unknown> }>()
       const dispose = toCrossJSONStream(
         {
           ready,
-          late,
-          pending: new Promise<unknown>(() => {}),
           raw: new RawStream(new ReadableStream<Uint8Array>()),
         },
         {
@@ -282,14 +279,8 @@ describe('frame-decoder', () => {
         const rawReader = result.raw.getReader()
 
         ready.resolve('ready')
-        late.resolve({ nested: new Promise<unknown>(() => {}) })
         await expect(result.ready).resolves.toBe('ready')
-        const { nested } = await result.late
-        const failures = Promise.allSettled([
-          result.pending,
-          nested,
-          rawReader.read(),
-        ])
+        const failures = Promise.allSettled([rawReader.read()])
 
         const transportError = new Error('transport failed')
         if (failure === 'read failure') {
@@ -314,11 +305,8 @@ describe('frame-decoder', () => {
         }
         await expect(failures).resolves.toEqual([
           { status: 'rejected', reason: error },
-          { status: 'rejected', reason: error },
-          { status: 'rejected', reason: error },
         ])
         await expect(result.ready).resolves.toBe('ready')
-        await expect(result.late).resolves.toEqual({ nested })
         rawReader.releaseLock()
         await vi.waitFor(() => expect(body.locked).toBe(false))
       } finally {
@@ -328,14 +316,14 @@ describe('frame-decoder', () => {
     },
   )
 
-  it('rejects only Seroval promise handles when initial framed deserialization fails', async () => {
-    const actual = await vi.importActual<typeof import('seroval')>('seroval')
+  // Promises and streams that Seroval created from earlier records cannot be
+  // settled by the client after a transport failure without a Seroval API for
+  // aborting a cross-JSON deserialization session.
+  it.todo('rejects pending framed promises after a transport failure')
+
+  it('cancels the response when the initial framed deserialization fails', async () => {
     const error = new Error('initial deserialization failed')
-    const applicationReject = vi.fn()
-    let result!: { pending: Promise<unknown> }
-    serovalMocks.fromCrossJSON.mockImplementationOnce((value, options) => {
-      result = actual.fromCrossJSON(value, options)
-      Object.assign(result, { p: result.pending, f: applicationReject })
+    serovalMocks.fromCrossJSON.mockImplementationOnce(() => {
       throw error
     })
 
@@ -348,7 +336,7 @@ describe('frame-decoder', () => {
       cancel,
     })
     const dispose = toCrossJSONStream(
-      { pending: new Promise<unknown>(() => {}) },
+      { value: 'first' },
       {
         refs: new Map(),
         onParse(value) {
@@ -373,8 +361,6 @@ describe('frame-decoder', () => {
           ),
         ),
       ).rejects.toBe(error)
-      await expect(result.pending).rejects.toBe(error)
-      expect(applicationReject).not.toHaveBeenCalled()
       expect(cancel).toHaveBeenCalledExactlyOnceWith(error)
       await vi.waitFor(() => expect(body.locked).toBe(false))
     } finally {
