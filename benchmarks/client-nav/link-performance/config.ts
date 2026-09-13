@@ -9,7 +9,6 @@ export function createLinkPerformanceConfig(
   target: 'client' | 'ssr',
 ): UserConfig {
   const server = target === 'ssr'
-  const enabled = process.env.TSR_LINK_PERF === '1'
 
   return {
     root,
@@ -62,9 +61,8 @@ export function createLinkPerformanceConfig(
         },
       },
       include: [],
-      passWithNoTests: !enabled,
       benchmark: {
-        include: enabled ? [`${target}.bench.ts`] : [],
+        include: [`${target}.bench.ts`],
       },
     },
   }
