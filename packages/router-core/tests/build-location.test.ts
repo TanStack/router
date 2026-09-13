@@ -40,7 +40,7 @@ test.each([false, true])(
       history: createMemoryHistory({ initialEntries: ['/items/one'] }),
       isServer,
     })
-    const interpolate = vi.spyOn(pathUtils, 'interpolatePathname')
+    const interpolate = vi.spyOn(pathUtils, 'interpolatePath')
     try {
       const matches = router.matchRoutes('/items/one', {})
       expect(matches.at(-1)?.pathname).toBe('/items/one')
@@ -55,7 +55,7 @@ test.each([false, true])(
   },
 )
 
-test('keeps interpolation caches router-local and follows decoder changes', () => {
+test('shares interpolation on reused routes and follows decoder changes', () => {
   const rootRoute = new BaseRootRoute({})
   const route = new BaseRoute({
     getParentRoute: () => rootRoute,
@@ -85,7 +85,7 @@ test('keeps interpolation caches router-local and follows decoder changes', () =
   expect(
     other.buildLocation({ to: '/items/$id', params: { id: '@one' } }).href,
   ).toBe('/items/@one')
-  expect(decoder).toHaveBeenCalledOnce()
+  expect(decoder).not.toHaveBeenCalled()
 
   router.pathParamsDecoder = pathUtils.compileDecodeCharMap(['+'])
   expect(

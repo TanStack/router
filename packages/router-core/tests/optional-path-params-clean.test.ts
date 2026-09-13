@@ -87,53 +87,44 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
 
     describe('interpolatePath', () => {
       it('should interpolate optional dynamic params when present', () => {
-        const result = interpolatePath({
-          path: '/posts/{-$category}',
-          params: { category: 'tech' },
+        const result = interpolatePath('/posts/{-$category}', {
+          category: 'tech',
         })
-        expect(result.interpolatedPath).toBe('/posts/tech')
+        expect(result).toBe('/posts/tech')
       })
 
       it('should omit optional dynamic params when missing', () => {
-        const result = interpolatePath({
-          path: '/posts/{-$category}',
-          params: {},
-        })
-        expect(result.interpolatedPath).toBe('/posts')
+        const result = interpolatePath('/posts/{-$category}', {})
+        expect(result).toBe('/posts')
       })
 
       it('should handle multiple optional dynamic params', () => {
-        const result1 = interpolatePath({
-          path: '/posts/{-$category}/{-$slug}',
-          params: { category: 'tech', slug: 'hello' },
+        const result1 = interpolatePath('/posts/{-$category}/{-$slug}', {
+          category: 'tech',
+          slug: 'hello',
         })
-        expect(result1.interpolatedPath).toBe('/posts/tech/hello')
+        expect(result1).toBe('/posts/tech/hello')
 
-        const result2 = interpolatePath({
-          path: '/posts/{-$category}/{-$slug}',
-          params: { category: 'tech' },
+        const result2 = interpolatePath('/posts/{-$category}/{-$slug}', {
+          category: 'tech',
         })
-        expect(result2.interpolatedPath).toBe('/posts/tech')
+        expect(result2).toBe('/posts/tech')
 
-        const result3 = interpolatePath({
-          path: '/posts/{-$category}/{-$slug}',
-          params: {},
-        })
-        expect(result3.interpolatedPath).toBe('/posts')
+        const result3 = interpolatePath('/posts/{-$category}/{-$slug}', {})
+        expect(result3).toBe('/posts')
       })
 
       it('should handle mixed required and optional dynamic params', () => {
-        const result = interpolatePath({
-          path: '/posts/{-$category}/user/$id',
-          params: { category: 'tech', id: '123' },
+        const result = interpolatePath('/posts/{-$category}/user/$id', {
+          category: 'tech',
+          id: '123',
         })
-        expect(result.interpolatedPath).toBe('/posts/tech/user/123')
+        expect(result).toBe('/posts/tech/user/123')
 
-        const result2 = interpolatePath({
-          path: '/posts/{-$category}/user/$id',
-          params: { id: '123' },
+        const result2 = interpolatePath('/posts/{-$category}/user/$id', {
+          id: '123',
         })
-        expect(result2.interpolatedPath).toBe('/posts/user/123')
+        expect(result2).toBe('/posts/user/123')
       })
     })
 
@@ -206,44 +197,41 @@ describe('Optional Path Parameters - Clean Comprehensive Tests', () => {
 
   describe('Edge Cases', () => {
     it('should handle optional params with wildcards', () => {
-      const result = interpolatePath({
-        path: '/docs/{-$version}/$',
-        params: { version: 'v1', _splat: 'guide/intro' },
+      const result = interpolatePath('/docs/{-$version}/$', {
+        version: 'v1',
+        _splat: 'guide/intro',
       })
-      expect(result.interpolatedPath).toBe('/docs/v1/guide/intro')
+      expect(result).toBe('/docs/v1/guide/intro')
 
-      const result2 = interpolatePath({
-        path: '/docs/{-$version}/$',
-        params: { _splat: 'guide/intro' },
+      const result2 = interpolatePath('/docs/{-$version}/$', {
+        _splat: 'guide/intro',
       })
-      expect(result2.interpolatedPath).toBe('/docs/guide/intro')
+      expect(result2).toBe('/docs/guide/intro')
     })
 
     it('should work with complex patterns', () => {
       const pattern = '/app/{-$env}/api/{-$version}/users/$id/{-$tab}'
 
       // All params provided
-      const result1 = interpolatePath({
-        path: pattern,
-        params: { env: 'prod', version: 'v2', id: '123', tab: 'settings' },
+      const result1 = interpolatePath(pattern, {
+        env: 'prod',
+        version: 'v2',
+        id: '123',
+        tab: 'settings',
       })
-      expect(result1.interpolatedPath).toBe(
-        '/app/prod/api/v2/users/123/settings',
-      )
+      expect(result1).toBe('/app/prod/api/v2/users/123/settings')
 
       // Only required param
-      const result2 = interpolatePath({
-        path: pattern,
-        params: { id: '123' },
-      })
-      expect(result2.interpolatedPath).toBe('/app/api/users/123')
+      const result2 = interpolatePath(pattern, { id: '123' })
+      expect(result2).toBe('/app/api/users/123')
 
       // Mix of optional and required
-      const result3 = interpolatePath({
-        path: pattern,
-        params: { env: 'dev', id: '456', tab: 'profile' },
+      const result3 = interpolatePath(pattern, {
+        env: 'dev',
+        id: '456',
+        tab: 'profile',
       })
-      expect(result3.interpolatedPath).toBe('/app/dev/api/users/456/profile')
+      expect(result3).toBe('/app/dev/api/users/456/profile')
     })
   })
 })

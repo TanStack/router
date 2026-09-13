@@ -37,8 +37,11 @@ const InterpolatePathLink = ({
   to,
   params,
   children,
-}: React.PropsWithChildren<LinkProps>) => {
-  const href = interpolatePath({ path: to, params }).interpolatedPath
+}: React.PropsWithChildren<{
+  to: string
+  params: Record<string, number>
+}>) => {
+  const href = interpolatePath(to, params)
   return <a href={href}>{children}</a>
 }
 
