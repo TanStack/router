@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   compileDecodeCharMap,
   exactPathTest,
+  hasMissingPathParams,
+  interpolatePath,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
@@ -11,11 +13,12 @@ import {
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
   findSingleMatch,
+  getParamNames,
+  parseSegments,
 } from '../src/new-process-route-tree'
 import { createSieveCache } from '../src/sieve-cache'
 import {
   createTestPathInterpolator as createPathInterpolator,
-  interpolateTestPath as interpolatePath,
   parseTestPathname as parsePathname,
   processTestRouteTree as processRouteTree,
 } from './routerTestUtils'
@@ -97,9 +100,8 @@ describe.each([false, true])(
       ({ path, params, expected, normalized }) => {
         const interpolate = createPathInterpolator({ isServer: server })
         const options = { path, params, server }
-        expect(
-          interpolatePath(path, params, undefined, undefined, undefined),
-        ).toBe(expected)
+        const segments = parseSegments(false, { fullPath: path }, 0)
+        expect(interpolatePath(path, segments, params)).toBe(expected)
         expect(interpolate(options)).toBe(normalized ?? expected)
         expect(interpolate({ ...options, params: { ...params } })).toBe(
           normalized ?? expected,
@@ -237,18 +239,18 @@ describe.each([false, true])(
       const usedParams: Record<string, unknown> = Object.create(null)
       interpolatePath(
         '/posts/{-$category}',
+        parseSegments(false, { fullPath: '/posts/{-$category}' }, 0),
         {},
         undefined,
         usedParams,
-        undefined,
       )
       expect(usedParams).toEqual({})
       interpolatePath(
         '/files/$',
+        parseSegments(false, { fullPath: '/files/$' }, 0),
         { _splat: 'docs/guide' },
         undefined,
         usedParams,
-        undefined,
       )
       expect(usedParams).toEqual({
         _splat: 'docs/guide',
@@ -284,25 +286,15 @@ describe.each([false, true])(
       'keeps mixed segment metadata in one pass for $params',
       ({ params, path, used, missing }) => {
         const template = '/root/prefix{$id}suffix/{-$language}/files/{$}.txt'
+        const segments = parseSegments(false, { fullPath: template }, 0)
         const usedParams: Record<string, unknown> = Object.create(null)
-        const keys: Array<string> = []
-        const metadata = { isMissingParams: false }
         expect(
-          interpolatePath(
-            template,
-            params,
-            undefined,
-            usedParams,
-            keys,
-            metadata,
-          ),
+          interpolatePath(template, segments, params, undefined, usedParams),
         ).toBe(path)
-        expect(keys).toEqual(['id', 'language', '_splat'])
+        expect(getParamNames(segments)).toEqual(['id', 'language', '_splat'])
         expect(usedParams).toEqual(used)
-        expect(metadata.isMissingParams).toBe(missing)
-        expect(
-          interpolatePath(template, params, undefined, undefined, undefined),
-        ).toBe(path)
+        expect(hasMissingPathParams(segments, params)).toBe(missing)
+        expect(interpolatePath(template, segments, params)).toBe(path)
       },
     )
 
@@ -345,20 +337,13 @@ describe.each([false, true])(
     ])(
       'preserves missing-param metadata for $path with $params',
       ({ path, params, pathname, usedParams, missing }) => {
+        const segments = parseSegments(false, { fullPath: path }, 0)
         const collectedParams: Record<string, unknown> = Object.create(null)
-        const metadata = { isMissingParams: false }
         expect(
-          interpolatePath(
-            path,
-            params,
-            undefined,
-            collectedParams,
-            undefined,
-            metadata,
-          ),
+          interpolatePath(path, segments, params, undefined, collectedParams),
         ).toBe(pathname)
         expect(collectedParams).toEqual(usedParams)
-        expect(metadata.isMissingParams).toBe(missing)
+        expect(hasMissingPathParams(segments, params)).toBe(missing)
       },
     )
 
@@ -678,12 +663,16 @@ describe('interpolatePath', () => {
           throw new Error('A bare splat consumes the rest of the template')
         },
       }
+      const segments = parseSegments(
+        false,
+        { fullPath: '/files/$/$ignored' },
+        0,
+      )
       const used: Record<string, unknown> = Object.create(null)
-      const keys: Array<string> = []
       expect(
-        interpolatePath('/files/$/$ignored', params, undefined, used, keys),
+        interpolatePath('/files/$/$ignored', segments, params, undefined, used),
       ).toBe(_splat ? '/files/value' : '/files')
-      expect(keys).toEqual(['_splat'])
+      expect(getParamNames(segments)).toEqual(['_splat'])
       expect(used).toEqual({ _splat, '*': _splat })
     },
   )
@@ -697,16 +686,15 @@ describe('interpolatePath', () => {
         throw new Error('Static paths must not read params')
       },
     }
+    const segments = parseSegments(false, { fullPath: path }, 0)
     const decoder = vi.fn()
     const usedParams: Record<string, unknown> = Object.create(null)
-    const keys: Array<string> = []
-    const metadata = { isMissingParams: false }
-    expect(
-      interpolatePath(path, params, decoder, usedParams, keys, metadata),
-    ).toBe(expected)
+    expect(interpolatePath(path, segments, params, decoder, usedParams)).toBe(
+      expected,
+    )
     expect(usedParams).toEqual({})
-    expect(keys).toEqual([])
-    expect(metadata.isMissingParams).toBe(false)
+    expect(getParamNames(segments)).toEqual([])
+    expect(hasMissingPathParams(segments, params)).toBe(false)
     expect(decoder).not.toHaveBeenCalled()
   })
 
@@ -733,18 +721,9 @@ describe('interpolatePath', () => {
   ])(
     'collects only missing status for $path',
     ({ path, params, expected, missing }) => {
-      const metadata = { isMissingParams: false }
-      expect(
-        interpolatePath(
-          path,
-          params,
-          undefined,
-          undefined,
-          undefined,
-          metadata,
-        ),
-      ).toBe(expected)
-      expect(metadata.isMissingParams).toBe(missing)
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params)).toBe(expected)
+      expect(hasMissingPathParams(segments, params)).toBe(missing)
     },
   )
 
@@ -859,9 +838,8 @@ describe('interpolatePath', () => {
         result: '/users/sean/cassiere',
       },
     ])('$name', ({ path, params, decoder, result }) => {
-      expect(interpolatePath(path, params, decoder, undefined, undefined)).toBe(
-        result,
-      )
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params, decoder)).toBe(result)
     })
   })
 
@@ -890,9 +868,8 @@ describe('interpolatePath', () => {
     ])(
       'should preserve trailing slash for $path',
       ({ path, params, result }) => {
-        expect(
-          interpolatePath(path, params, undefined, undefined, undefined),
-        ).toBe(result)
+        const segments = parseSegments(false, { fullPath: path }, 0)
+        expect(interpolatePath(path, segments, params)).toBe(result)
       },
     )
   })
@@ -930,9 +907,8 @@ describe('interpolatePath', () => {
         result: '/prefixbar-suffix',
       },
     ])('$name', ({ to, params, result }) => {
-      expect(interpolatePath(to, params, undefined, undefined, undefined)).toBe(
-        result,
-      )
+      const segments = parseSegments(false, { fullPath: to }, 0)
+      expect(interpolatePath(to, segments, params)).toBe(result)
     })
   })
 
@@ -993,9 +969,8 @@ describe('interpolatePath', () => {
         result: '/query%3Dvalue',
       },
     ])('$name', ({ path, params, result }) => {
-      expect(
-        interpolatePath(path, params, undefined, undefined, undefined),
-      ).toBe(result)
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params)).toBe(result)
     })
   })
 
@@ -1038,9 +1013,8 @@ describe('interpolatePath', () => {
         result: '/prefixfoobar.suffix',
       },
     ])('$name', ({ to, params, result }) => {
-      expect(interpolatePath(to, params, undefined, undefined, undefined)).toBe(
-        result,
-      )
+      const segments = parseSegments(false, { fullPath: to }, 0)
+      expect(interpolatePath(to, segments, params)).toBe(result)
     })
   })
 
@@ -1087,17 +1061,9 @@ describe('interpolatePath', () => {
         expectedResult: '/hello',
       },
     ])('$name', ({ path, params, expectedResult }) => {
-      const metadata = { isMissingParams: false }
-      const result = interpolatePath(
-        path,
-        params,
-        undefined,
-        undefined,
-        undefined,
-        metadata,
-      )
-      expect(result).toBe(expectedResult)
-      expect(metadata.isMissingParams).toBe(true)
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params)).toBe(expectedResult)
+      expect(hasMissingPathParams(segments, params)).toBe(true)
     })
   })
 
@@ -1120,10 +1086,8 @@ describe('interpolatePath', () => {
         const nextParams = { _splat: '' }
         const interpolatedNextTo = interpolatePath(
           nextTo,
+          parseSegments(false, { fullPath: nextTo }, 0),
           nextParams,
-          undefined,
-          undefined,
-          undefined,
         )
         expect(interpolatedNextTo).toBe(`/splat${tail}`)
       },

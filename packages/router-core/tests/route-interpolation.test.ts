@@ -2,12 +2,13 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import {
+  cleanPath,
   compileDecodeCharMap,
   hasMissingPathParams,
   interpolatePath,
 } from '../src/path'
 import * as routeTreeUtils from '../src/new-process-route-tree'
-import { createTestRouter, interpolateTestPath } from './routerTestUtils'
+import { createTestRouter } from './routerTestUtils'
 
 afterEach(() => vi.restoreAllMocks())
 
@@ -33,6 +34,11 @@ test.each([
 )
 
 test('encodes splats equivalently without interpreting literal encoded separators', () => {
+  const segments = routeTreeUtils.parseSegments(
+    false,
+    { fullPath: '/files/$' },
+    0,
+  )
   for (const allowed of [[], ['@', '+'], ['%'], ['/']]) {
     const decoder = compileDecodeCharMap(allowed)
     for (const value of [
@@ -45,9 +51,9 @@ test('encodes splats equivalently without interpreting literal encoded separator
         .split('/')
         .map((part) => decoder(encodeURIComponent(part)))
         .join('/')
-      expect(interpolateTestPath('/files/$', { _splat: value }, decoder)).toBe(
-        `/files/${expected}`,
-      )
+      expect(
+        interpolatePath('/files/$', segments, { _splat: value }, decoder),
+      ).toBe(`/files/${expected}`)
     }
   }
 })
@@ -79,6 +85,14 @@ describe.each([false, true])(
         scrollRestoration: false,
       })
       history.destroy()
+      // The reference is the standalone parse buildLocation uses for templates
+      // without a processed route.
+      const template = routeTreeUtils.parseSegments(
+        false,
+        { fullPath: cleanPath(path) },
+        0,
+      )
+      const decoder = compileDecodeCharMap(['@', '+'])
       const inputs: Array<Record<string, unknown>> = [
         {},
         { id: '', lang: null, _splat: '' },
@@ -89,19 +103,12 @@ describe.each([false, true])(
       for (const params of [...inputs, ...inputs]) {
         const expectedUsed = Object.create(null)
         const actualUsed = Object.create(null)
-        const expectedKeys: Array<string> = []
-        const actualKeys = (route._interpolation ?? []).flatMap((part) =>
-          typeof part === 'string' ? [] : [part[1 /* key */]],
-        )
-        const expectedMeta = { isMissingParams: false }
-        const decoder = compileDecodeCharMap(['@', '+'])
-        const expected = interpolateTestPath(
+        const expected = interpolatePath(
           path,
+          template,
           params,
           decoder,
           expectedUsed,
-          expectedKeys,
-          expectedMeta,
         )
         expect(
           route._interpolation
@@ -115,12 +122,16 @@ describe.each([false, true])(
             : path,
         ).toBe(expected)
         expect(actualUsed).toEqual(expectedUsed)
-        expect(actualKeys).toEqual(expectedKeys)
+        expect(
+          route._interpolation
+            ? routeTreeUtils.getParamNames(route._interpolation)
+            : [],
+        ).toEqual(routeTreeUtils.getParamNames(template))
         expect(
           route._interpolation
             ? hasMissingPathParams(route._interpolation, params)
             : false,
-        ).toBe(expectedMeta.isMissingParams)
+        ).toBe(hasMissingPathParams(template, params))
       }
     })
 
@@ -257,7 +268,13 @@ test.each([false, true])(
       const params = { _splat: 'a/b', lang: 'en' }
       expect(
         interpolatePath(child.fullPath, child._interpolation!, params),
-      ).toBe(interpolateTestPath(child.fullPath, params))
+      ).toBe(
+        interpolatePath(
+          child.fullPath,
+          routeTreeUtils.parseSegments(false, { fullPath: child.fullPath }, 0),
+          params,
+        ),
+      )
     }
   },
 )

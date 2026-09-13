@@ -7,7 +7,7 @@ import { BaseRootRoute, BaseRoute } from '../src'
 import { compileDecodeCharMap, interpolatePath } from '../src/path'
 import { parseSegments } from '../src/new-process-route-tree'
 import { decodePath } from '../src/utils'
-import { createTestRouter, interpolateTestPath } from './routerTestUtils'
+import { createTestRouter } from './routerTestUtils'
 import type { AnyRoute } from '../src'
 import type { PathInterpolationTestOptions } from './routerTestUtils'
 
@@ -146,6 +146,15 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
     scrollRestoration: false,
   })
   router.history.destroy()
+  // Reference values come from a fresh standalone parse, independent of any
+  // route-owned segments under test.
+  const referencePathname = (input: PathInterpolationTestOptions) =>
+    interpolatePath(
+      input.path,
+      parseSegments(false, { fullPath: input.path }, 0),
+      input.params,
+      input.decoder,
+    )
   // Mirrors how buildLocation turns a template into a canonical pathname.
   const canonicalPathname = (
     path: string,
@@ -168,27 +177,11 @@ describe.each(scenarios)('$name', ({ inputs, register = true }) => {
       path: input.path,
       params: input.params,
       route: register ? routes.get(input.path) : undefined,
-      expected: decodePath(
-        interpolateTestPath(
-          input.path,
-          input.params,
-          input.decoder,
-          undefined,
-          undefined,
-        ),
-      ),
+      expected: decodePath(referencePathname(input)),
     }))
   let checksum = 0
   const expected = inputs.reduce(
-    (sum, input) =>
-      sum +
-      interpolateTestPath(
-        input.path,
-        input.params,
-        input.decoder,
-        undefined,
-        undefined,
-      ).length,
+    (sum, input) => sum + referencePathname(input).length,
     0,
   )
   const cachedExpected = calls.reduce((sum, call) => {
