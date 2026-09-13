@@ -39,85 +39,82 @@ const cases = [
   },
 ]
 
-// Opt in explicitly; these extra cases are not part of default CI benchmarks.
-if (process.env.TSR_LINK_PERF === '1') {
-  for (const server of [false, true]) {
-    for (const primeLinks of [false, true]) {
-      describe(`matching interpolation (server: ${server}, Link-primed: ${primeLinks})`, () => {
-        for (const scenario of cases) {
-          const root = new BaseRootRoute({})
-          let parent: AnyRoute = root
-          for (const path of scenario.segments) {
-            const parentRoute = parent
-            const route = new BaseRoute({
-              getParentRoute: () => parentRoute,
-              path,
-            })
-            parent.addChildren([route])
-            parent = route
-          }
-          const history = createMemoryHistory({ initialEntries: ['/'] })
-          const router = createTestRouter({
-            routeTree: root,
-            history,
-            isServer: server,
-            scrollRestoration: false,
+for (const server of [false, true]) {
+  for (const primeLinks of [false, true]) {
+    describe(`matching interpolation (server: ${server}, Link-primed: ${primeLinks})`, () => {
+      for (const scenario of cases) {
+        const root = new BaseRootRoute({})
+        let parent: AnyRoute = root
+        for (const path of scenario.segments) {
+          const parentRoute = parent
+          const route = new BaseRoute({
+            getParentRoute: () => parentRoute,
+            path,
           })
-          history.destroy()
-          const options = { _controller: new AbortController() }
-
-          for (const path of scenario.paths) {
-            router.getMatchedRoutes(path)
-          }
-          if (primeLinks) {
-            const paths = scenario.misses
-              ? scenario.paths
-                  .slice(0, 32)
-                  .map((path) => path.replace('item%20', 'cached%20'))
-              : scenario.paths
-            for (const path of paths) {
-              const [routes, params] = router.getMatchedRoutes(path)
-              for (const route of routes) {
-                const to: string = route.fullPath
-                if (to.includes('$')) {
-                  router.buildLocation({ to, params })
-                }
-              }
-            }
-          }
-
-          let expected = 0
-          for (const path of scenario.paths) {
-            const matches = router.matchRoutes(path, {}, options)
-            expect(matches.at(-1)?.routeId).toBe(parent.id)
-            for (const match of matches) {
-              expect(match.paramsError).toBeUndefined()
-              expected +=
-                match.id.length + Object.keys(match._strictParams).length
-            }
-          }
-          let checksum = 0
-          bench(
-            scenario.name,
-            () => {
-              let length = 0
-              for (const path of scenario.paths) {
-                for (const match of router.matchRoutes(path, {}, options)) {
-                  length +=
-                    match.id.length + Object.keys(match._strictParams).length
-                }
-              }
-              checksum = length
-            },
-            {
-              time: 1000,
-              warmupTime: 300,
-              throws: true,
-              teardown: () => expect(checksum).toBe(expected),
-            },
-          )
+          parent.addChildren([route])
+          parent = route
         }
-      })
-    }
+        const history = createMemoryHistory({ initialEntries: ['/'] })
+        const router = createTestRouter({
+          routeTree: root,
+          history,
+          isServer: server,
+          scrollRestoration: false,
+        })
+        history.destroy()
+        const options = { _controller: new AbortController() }
+
+        for (const path of scenario.paths) {
+          router.getMatchedRoutes(path)
+        }
+        if (primeLinks) {
+          const paths = scenario.misses
+            ? scenario.paths
+                .slice(0, 32)
+                .map((path) => path.replace('item%20', 'cached%20'))
+            : scenario.paths
+          for (const path of paths) {
+            const [routes, params] = router.getMatchedRoutes(path)
+            for (const route of routes) {
+              const to: string = route.fullPath
+              if (to.includes('$')) {
+                router.buildLocation({ to, params })
+              }
+            }
+          }
+        }
+
+        let expected = 0
+        for (const path of scenario.paths) {
+          const matches = router.matchRoutes(path, {}, options)
+          expect(matches.at(-1)?.routeId).toBe(parent.id)
+          for (const match of matches) {
+            expect(match.paramsError).toBeUndefined()
+            expected +=
+              match.id.length + Object.keys(match._strictParams).length
+          }
+        }
+        let checksum = 0
+        bench(
+          scenario.name,
+          () => {
+            let length = 0
+            for (const path of scenario.paths) {
+              for (const match of router.matchRoutes(path, {}, options)) {
+                length +=
+                  match.id.length + Object.keys(match._strictParams).length
+              }
+            }
+            checksum = length
+          },
+          {
+            time: 1000,
+            warmupTime: 300,
+            throws: true,
+            teardown: () => expect(checksum).toBe(expected),
+          },
+        )
+      }
+    })
   }
 }

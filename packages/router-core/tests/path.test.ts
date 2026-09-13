@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   compileDecodeCharMap,
   exactPathTest,
+  hasMissingPathParams,
+  interpolatePath,
   removeTrailingSlash,
   resolvePath,
   trimPathLeft,
@@ -11,11 +13,12 @@ import {
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
   findSingleMatch,
+  getParamNames,
+  parseSegments,
 } from '../src/new-process-route-tree'
 import { createSieveCache } from '../src/sieve-cache'
 import {
   createTestPathInterpolator as createPathInterpolator,
-  interpolateTestPath as interpolatePath,
   parseTestPathname as parsePathname,
   processTestRouteTree as processRouteTree,
 } from './routerTestUtils'
@@ -81,6 +84,12 @@ describe.each([false, true])(
         expected: '/files/prefixa/bsuffix',
       },
       { path: '/files/$', params: { _splat: '' }, expected: '/files' },
+      { path: '/files/$', params: { _splat: 0 }, expected: '/files/0' },
+      {
+        path: '/files/prefix{$}.txt',
+        params: { _splat: 0 },
+        expected: '/files/prefix0.txt',
+      },
       {
         path: '/$id/$id/',
         params: { id: '123' },
@@ -91,9 +100,8 @@ describe.each([false, true])(
       ({ path, params, expected, normalized }) => {
         const interpolate = createPathInterpolator({ isServer: server })
         const options = { path, params, server }
-        expect(
-          interpolatePath(path, params, undefined, undefined, undefined),
-        ).toBe(expected)
+        const segments = parseSegments(false, { fullPath: path }, 0)
+        expect(interpolatePath(path, segments, params)).toBe(expected)
         expect(interpolate(options)).toBe(normalized ?? expected)
         expect(interpolate({ ...options, params: { ...params } })).toBe(
           normalized ?? expected,
@@ -231,18 +239,18 @@ describe.each([false, true])(
       const usedParams: Record<string, unknown> = Object.create(null)
       interpolatePath(
         '/posts/{-$category}',
+        parseSegments(false, { fullPath: '/posts/{-$category}' }, 0),
         {},
         undefined,
         usedParams,
-        undefined,
       )
       expect(usedParams).toEqual({})
       interpolatePath(
         '/files/$',
+        parseSegments(false, { fullPath: '/files/$' }, 0),
         { _splat: 'docs/guide' },
         undefined,
         usedParams,
-        undefined,
       )
       expect(usedParams).toEqual({
         _splat: 'docs/guide',
@@ -278,25 +286,15 @@ describe.each([false, true])(
       'keeps mixed segment metadata in one pass for $params',
       ({ params, path, used, missing }) => {
         const template = '/root/prefix{$id}suffix/{-$language}/files/{$}.txt'
+        const segments = parseSegments(false, { fullPath: template }, 0)
         const usedParams: Record<string, unknown> = Object.create(null)
-        const keys: Array<string> = []
-        const metadata = { isMissingParams: false }
         expect(
-          interpolatePath(
-            template,
-            params,
-            undefined,
-            usedParams,
-            keys,
-            metadata,
-          ),
+          interpolatePath(template, segments, params, undefined, usedParams),
         ).toBe(path)
-        expect(keys).toEqual(['id', 'language', '_splat'])
+        expect(getParamNames(segments)).toEqual(['id', 'language', '_splat'])
         expect(usedParams).toEqual(used)
-        expect(metadata.isMissingParams).toBe(missing)
-        expect(
-          interpolatePath(template, params, undefined, undefined, undefined),
-        ).toBe(path)
+        expect(hasMissingPathParams(segments, params)).toBe(missing)
+        expect(interpolatePath(template, segments, params)).toBe(path)
       },
     )
 
@@ -339,20 +337,13 @@ describe.each([false, true])(
     ])(
       'preserves missing-param metadata for $path with $params',
       ({ path, params, pathname, usedParams, missing }) => {
+        const segments = parseSegments(false, { fullPath: path }, 0)
         const collectedParams: Record<string, unknown> = Object.create(null)
-        const metadata = { isMissingParams: false }
         expect(
-          interpolatePath(
-            path,
-            params,
-            undefined,
-            collectedParams,
-            undefined,
-            metadata,
-          ),
+          interpolatePath(path, segments, params, undefined, collectedParams),
         ).toBe(pathname)
         expect(collectedParams).toEqual(usedParams)
-        expect(metadata.isMissingParams).toBe(missing)
+        expect(hasMissingPathParams(segments, params)).toBe(missing)
       },
     )
 
@@ -662,465 +653,447 @@ describe('resolvePath', () => {
   })
 })
 
-describe.each([{ server: true }, { server: false }])(
-  'interpolatePath (server: $server)',
-  ({ server }) => {
-    it.each(['value', '', undefined])(
-      'stops interpolation at a bare splat with value %s',
-      (_splat) => {
-        const params = {
-          _splat,
-          get ignored() {
-            throw new Error('A bare splat consumes the rest of the template')
-          },
-        }
-        const used: Record<string, unknown> = Object.create(null)
-        const keys: Array<string> = []
-        expect(
-          interpolatePath('/files/$/$ignored', params, undefined, used, keys),
-        ).toBe(_splat ? '/files/value' : '/files')
-        expect(keys).toEqual(['_splat'])
-        expect(used).toEqual({ _splat, '*': _splat })
-      },
-    )
-
-    it.each([
-      { path: '/', expected: '/' },
-      { path: '/about/', expected: '/about/' },
-    ])('preserves static paths: $path', ({ path, expected }) => {
+describe('interpolatePath', () => {
+  it.each(['value', '', undefined])(
+    'stops interpolation at a bare splat with value %s',
+    (_splat) => {
       const params = {
-        get unused() {
-          throw new Error('Static paths must not read params')
+        _splat,
+        get ignored() {
+          throw new Error('A bare splat consumes the rest of the template')
         },
       }
-      const decoder = vi.fn()
-      const usedParams: Record<string, unknown> = Object.create(null)
-      const keys: Array<string> = []
-      const metadata = { isMissingParams: false }
+      const segments = parseSegments(
+        false,
+        { fullPath: '/files/$/$ignored' },
+        0,
+      )
+      const used: Record<string, unknown> = Object.create(null)
       expect(
-        interpolatePath(path, params, decoder, usedParams, keys, metadata),
-      ).toBe(expected)
-      expect(usedParams).toEqual({})
-      expect(keys).toEqual([])
-      expect(metadata.isMissingParams).toBe(false)
-      expect(decoder).not.toHaveBeenCalled()
-    })
+        interpolatePath('/files/$/$ignored', segments, params, undefined, used),
+      ).toBe(_splat ? '/files/value' : '/files')
+      expect(getParamNames(segments)).toEqual(['_splat'])
+      expect(used).toEqual({ _splat, '*': _splat })
+    },
+  )
 
+  it.each([
+    { path: '/', expected: '/' },
+    { path: '/about/', expected: '/about/' },
+  ])('preserves static paths: $path', ({ path, expected }) => {
+    const params = {
+      get unused() {
+        throw new Error('Static paths must not read params')
+      },
+    }
+    const segments = parseSegments(false, { fullPath: path }, 0)
+    const decoder = vi.fn()
+    const usedParams: Record<string, unknown> = Object.create(null)
+    expect(interpolatePath(path, segments, params, decoder, usedParams)).toBe(
+      expected,
+    )
+    expect(usedParams).toEqual({})
+    expect(getParamNames(segments)).toEqual([])
+    expect(hasMissingPathParams(segments, params)).toBe(false)
+    expect(decoder).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      path: '/users/$id',
+      params: {},
+      expected: '/users/undefined',
+      missing: true,
+    },
+    {
+      path: '/users/$id',
+      params: { id: 'one' },
+      expected: '/users/one',
+      missing: false,
+    },
+    {
+      path: '/posts/{-$category}',
+      params: {},
+      expected: '/posts',
+      missing: false,
+    },
+    { path: '/files/$', params: {}, expected: '/files', missing: true },
+  ])(
+    'collects only missing status for $path',
+    ({ path, params, expected, missing }) => {
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params)).toBe(expected)
+      expect(hasMissingPathParams(segments, params)).toBe(missing)
+    },
+  )
+
+  describe('regular usage', () => {
     it.each([
       {
+        name: 'should interpolate the path',
         path: '/users/$id',
-        params: {},
-        expected: '/users/undefined',
-        missing: true,
+        params: { id: '123' },
+        result: '/users/123',
       },
       {
+        name: 'should interpolate the path',
         path: '/users/$id',
-        params: { id: 'one' },
-        expected: '/users/one',
-        missing: false,
+        params: { id: '123_' },
+        result: '/users/123_',
       },
       {
-        path: '/posts/{-$category}',
-        params: {},
-        expected: '/posts',
-        missing: false,
+        name: 'should interpolate the path with multiple params',
+        path: '/users/$id/$name',
+        params: { id: '123', name: 'tanner' },
+        result: '/users/123/tanner',
       },
-      { path: '/files/$', params: {}, expected: '/files', missing: true },
+      {
+        name: 'should interpolate the path with multiple params',
+        path: '/users/$id/$name',
+        params: { id: '123_', name: 'tanner' },
+        result: '/users/123_/tanner',
+      },
+      {
+        name: 'should interpolate the path with extra params',
+        path: '/users/$id',
+        params: { id: '123', name: 'tanner' },
+        result: '/users/123',
+      },
+      {
+        name: 'should interpolate the path with missing params',
+        path: '/users/$id/$name',
+        params: { id: '123' },
+        result: '/users/123/undefined',
+      },
+      {
+        name: 'should interpolate the path with missing params and extra params',
+        path: '/users/$id',
+        params: { name: 'john' },
+        result: '/users/undefined',
+      },
+      {
+        name: 'should interpolate the path with the param being a number',
+        path: '/users/$id',
+        params: { id: 123 },
+        result: '/users/123',
+      },
+      {
+        name: 'should interpolate the path with the param being a falsey number',
+        path: '/users/$id',
+        params: { id: 0 },
+        result: '/users/0',
+      },
+      {
+        name: 'should interpolate the path with the splat param being a falsey number',
+        path: '/users/$',
+        params: { _splat: 0 },
+        result: '/users/0',
+      },
+      {
+        name: 'should interpolate the path with URI component encoding',
+        path: '/users/$id',
+        params: { id: '?#@john+smith' },
+        result: '/users/%3F%23%40john%2Bsmith',
+      },
+      {
+        name: 'should interpolate the path without URI encoding characters in decodeCharMap',
+        path: '/users/$id',
+        params: { id: '?#@john+smith' },
+        result: '/users/%3F%23@john+smith',
+        decoder: compileDecodeCharMap(['@', '+']),
+      },
+      {
+        name: 'should interpolate the path with the splat param at the end',
+        path: '/users/$',
+        params: { _splat: '123' },
+        result: '/users/123',
+      },
+      {
+        name: 'should interpolate the path with a single named path param and the splat param at the end',
+        path: '/users/$username/$',
+        params: { username: 'seancassiere', _splat: '123' },
+        result: '/users/seancassiere/123',
+      },
+      {
+        name: 'should interpolate the path with 2 named path params with the splat param at the end',
+        path: '/users/$username/$id/$',
+        params: { username: 'seancassiere', id: '123', _splat: '456' },
+        result: '/users/seancassiere/123/456',
+      },
+      {
+        name: 'should interpolate the path with multiple named path params with the splat param at the end',
+        path: '/$username/settings/$repo/$id/$',
+        params: {
+          username: 'sean-cassiere',
+          repo: 'my-repo',
+          id: '123',
+          _splat: '456',
+        },
+        result: '/sean-cassiere/settings/my-repo/123/456',
+      },
+      {
+        name: 'should interpolate the path with the splat param containing slashes',
+        path: '/users/$',
+        params: { _splat: 'sean/cassiere' },
+        result: '/users/sean/cassiere',
+      },
+    ])('$name', ({ path, params, decoder, result }) => {
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params, decoder)).toBe(result)
+    })
+  })
+
+  describe('preserve trailing slash', () => {
+    it.each([
+      {
+        path: '/',
+        params: {},
+        result: '/',
+      },
+      {
+        path: '/a/b/',
+        params: {},
+        result: '/a/b/',
+      },
+      {
+        path: '/a/$id/',
+        params: { id: '123' },
+        result: '/a/123/',
+      },
+      {
+        path: '/a/{-$id}/',
+        params: { id: '123' },
+        result: '/a/123/',
+      },
     ])(
-      'collects only missing status for $path',
-      ({ path, params, expected, missing }) => {
-        const metadata = { isMissingParams: false }
-        expect(
-          interpolatePath(
-            path,
-            params,
-            undefined,
-            undefined,
-            undefined,
-            metadata,
-          ),
-        ).toBe(expected)
-        expect(metadata.isMissingParams).toBe(missing)
+      'should preserve trailing slash for $path',
+      ({ path, params, result }) => {
+        const segments = parseSegments(false, { fullPath: path }, 0)
+        expect(interpolatePath(path, segments, params)).toBe(result)
       },
     )
+  })
 
-    describe('regular usage', () => {
-      it.each([
-        {
-          name: 'should interpolate the path',
-          path: '/users/$id',
-          params: { id: '123' },
-          result: '/users/123',
-        },
-        {
-          name: 'should interpolate the path',
-          path: '/users/$id',
-          params: { id: '123_' },
-          result: '/users/123_',
-        },
-        {
-          name: 'should interpolate the path with multiple params',
-          path: '/users/$id/$name',
-          params: { id: '123', name: 'tanner' },
-          result: '/users/123/tanner',
-        },
-        {
-          name: 'should interpolate the path with multiple params',
-          path: '/users/$id/$name',
-          params: { id: '123_', name: 'tanner' },
-          result: '/users/123_/tanner',
-        },
-        {
-          name: 'should interpolate the path with extra params',
-          path: '/users/$id',
-          params: { id: '123', name: 'tanner' },
-          result: '/users/123',
-        },
-        {
-          name: 'should interpolate the path with missing params',
-          path: '/users/$id/$name',
-          params: { id: '123' },
-          result: '/users/123/undefined',
-        },
-        {
-          name: 'should interpolate the path with missing params and extra params',
-          path: '/users/$id',
-          params: { name: 'john' },
-          result: '/users/undefined',
-        },
-        {
-          name: 'should interpolate the path with the param being a number',
-          path: '/users/$id',
-          params: { id: 123 },
-          result: '/users/123',
-        },
-        {
-          name: 'should interpolate the path with the param being a falsey number',
-          path: '/users/$id',
-          params: { id: 0 },
-          result: '/users/0',
-        },
-        {
-          name: 'should interpolate the path with URI component encoding',
-          path: '/users/$id',
-          params: { id: '?#@john+smith' },
-          result: '/users/%3F%23%40john%2Bsmith',
-        },
-        {
-          name: 'should interpolate the path without URI encoding characters in decodeCharMap',
-          path: '/users/$id',
-          params: { id: '?#@john+smith' },
-          result: '/users/%3F%23@john+smith',
-          decoder: compileDecodeCharMap(['@', '+']),
-        },
-        {
-          name: 'should interpolate the path with the splat param at the end',
-          path: '/users/$',
-          params: { _splat: '123' },
-          result: '/users/123',
-        },
-        {
-          name: 'should interpolate the path with a single named path param and the splat param at the end',
-          path: '/users/$username/$',
-          params: { username: 'seancassiere', _splat: '123' },
-          result: '/users/seancassiere/123',
-        },
-        {
-          name: 'should interpolate the path with 2 named path params with the splat param at the end',
-          path: '/users/$username/$id/$',
-          params: { username: 'seancassiere', id: '123', _splat: '456' },
-          result: '/users/seancassiere/123/456',
-        },
-        {
-          name: 'should interpolate the path with multiple named path params with the splat param at the end',
-          path: '/$username/settings/$repo/$id/$',
-          params: {
-            username: 'sean-cassiere',
-            repo: 'my-repo',
-            id: '123',
-            _splat: '456',
-          },
-          result: '/sean-cassiere/settings/my-repo/123/456',
-        },
-        {
-          name: 'should interpolate the path with the splat param containing slashes',
-          path: '/users/$',
-          params: { _splat: 'sean/cassiere' },
-          result: '/users/sean/cassiere',
-        },
-      ])('$name', ({ path, params, decoder, result }) => {
-        expect(
-          interpolatePath(path, params, decoder, undefined, undefined),
-        ).toBe(result)
-      })
+  describe('wildcard (prefix + suffix)', () => {
+    it.each([
+      {
+        name: 'regular',
+        to: '/$',
+        params: { _splat: 'bar/foo/me' },
+        result: '/bar/foo/me',
+      },
+      {
+        name: 'regular curly braces',
+        to: '/{$}',
+        params: { _splat: 'bar/foo/me' },
+        result: '/bar/foo/me',
+      },
+      {
+        name: 'with prefix',
+        to: '/prefix{$}',
+        params: { _splat: 'bar' },
+        result: '/prefixbar',
+      },
+      {
+        name: 'with suffix',
+        to: '/{$}-suffix',
+        params: { _splat: 'bar' },
+        result: '/bar-suffix',
+      },
+      {
+        name: 'with prefix + suffix',
+        to: '/prefix{$}-suffix',
+        params: { _splat: 'bar' },
+        result: '/prefixbar-suffix',
+      },
+    ])('$name', ({ to, params, result }) => {
+      const segments = parseSegments(false, { fullPath: to }, 0)
+      expect(interpolatePath(to, segments, params)).toBe(result)
     })
+  })
 
-    describe('preserve trailing slash', () => {
-      it.each([
-        {
-          path: '/',
-          params: {},
-          result: '/',
-        },
-        {
-          path: '/a/b/',
-          params: {},
-          result: '/a/b/',
-        },
-        {
-          path: '/a/$id/',
-          params: { id: '123' },
-          result: '/a/123/',
-        },
-        {
-          path: '/a/{-$id}/',
-          params: { id: '123' },
-          result: '/a/123/',
-        },
-      ])(
-        'should preserve trailing slash for $path',
-        ({ path, params, result }) => {
-          expect(
-            interpolatePath(path, params, undefined, undefined, undefined),
-          ).toBe(result)
-        },
-      )
+  describe('splat params with special characters', () => {
+    it.each([
+      {
+        name: 'should encode spaces in splat param',
+        path: '/$',
+        params: { _splat: 'file name.pdf' },
+        result: '/file%20name.pdf',
+      },
+      {
+        name: 'should preserve parentheses in splat param (RFC 3986 unreserved)',
+        path: '/$',
+        params: { _splat: 'file(1).pdf' },
+        result: '/file(1).pdf',
+      },
+      {
+        name: 'should encode brackets in splat param',
+        path: '/$',
+        params: { _splat: 'file[1].pdf' },
+        result: '/file%5B1%5D.pdf',
+      },
+      {
+        name: 'should encode spaces in nested splat param paths',
+        path: '/$',
+        params: { _splat: 'folder/sub folder/file name.pdf' },
+        result: '/folder/sub%20folder/file%20name.pdf',
+      },
+      {
+        name: 'should encode spaces and brackets but preserve parentheses',
+        path: '/$',
+        params: { _splat: 'docs/file (copy) [2].pdf' },
+        result: '/docs/file%20(copy)%20%5B2%5D.pdf',
+      },
+      {
+        name: 'should encode hash in splat param',
+        path: '/$',
+        params: { _splat: 'page#section' },
+        result: '/page%23section',
+      },
+      {
+        name: 'should handle splat param with prefix and special characters',
+        path: '/files/prefix{$}',
+        params: { _splat: 'my file.pdf' },
+        result: '/files/prefixmy%20file.pdf',
+      },
+      {
+        name: 'should encode plus signs in splat param',
+        path: '/$',
+        params: { _splat: 'file+name.pdf' },
+        result: '/file%2Bname.pdf',
+      },
+      {
+        name: 'should encode equals signs in splat param',
+        path: '/$',
+        params: { _splat: 'query=value' },
+        result: '/query%3Dvalue',
+      },
+    ])('$name', ({ path, params, result }) => {
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params)).toBe(result)
     })
+  })
 
-    describe('wildcard (prefix + suffix)', () => {
-      it.each([
-        {
-          name: 'regular',
-          to: '/$',
-          params: { _splat: 'bar/foo/me' },
-          result: '/bar/foo/me',
-        },
-        {
-          name: 'regular curly braces',
-          to: '/{$}',
-          params: { _splat: 'bar/foo/me' },
-          result: '/bar/foo/me',
-        },
-        {
-          name: 'with prefix',
-          to: '/prefix{$}',
-          params: { _splat: 'bar' },
-          result: '/prefixbar',
-        },
-        {
-          name: 'with suffix',
-          to: '/{$}-suffix',
-          params: { _splat: 'bar' },
-          result: '/bar-suffix',
-        },
-        {
-          name: 'with prefix + suffix',
-          to: '/prefix{$}-suffix',
-          params: { _splat: 'bar' },
-          result: '/prefixbar-suffix',
-        },
-      ])('$name', ({ to, params, result }) => {
-        expect(
-          interpolatePath(to, params, undefined, undefined, undefined),
-        ).toBe(result)
-      })
+  describe('named params (prefix + suffix)', () => {
+    it.each([
+      {
+        name: 'regular',
+        to: '/$foo',
+        params: { foo: 'bar' },
+        result: '/bar',
+      },
+      {
+        name: 'regular curly braces',
+        to: '/{$foo}',
+        params: { foo: 'bar' },
+        result: '/bar',
+      },
+      {
+        name: 'with prefix',
+        to: '/prefix{$bar}',
+        params: { bar: 'baz' },
+        result: '/prefixbaz',
+      },
+      {
+        name: 'with suffix',
+        to: '/{$foo}.suffix',
+        params: { foo: 'bar' },
+        result: '/bar.suffix',
+      },
+      {
+        name: 'with suffix',
+        to: '/{$foo}.suffix',
+        params: { foo: 'bar_' },
+        result: '/bar_.suffix',
+      },
+      {
+        name: 'with prefix and suffix',
+        to: '/prefix{$param}.suffix',
+        params: { param: 'foobar' },
+        result: '/prefixfoobar.suffix',
+      },
+    ])('$name', ({ to, params, result }) => {
+      const segments = parseSegments(false, { fullPath: to }, 0)
+      expect(interpolatePath(to, segments, params)).toBe(result)
     })
+  })
 
-    describe('splat params with special characters', () => {
-      it.each([
-        {
-          name: 'should encode spaces in splat param',
-          path: '/$',
-          params: { _splat: 'file name.pdf' },
-          result: '/file%20name.pdf',
+  describe('should handle missing _splat parameter for', () => {
+    it.each([
+      {
+        name: 'basic splat route',
+        path: '/hello/$',
+        params: {},
+        expectedResult: '/hello',
+      },
+      {
+        name: 'splat route with prefix',
+        path: '/hello/prefix{$}',
+        params: {},
+        expectedResult: '/hello/prefix',
+      },
+      {
+        name: 'splat route with suffix',
+        path: '/hello/{$}suffix',
+        params: {},
+        expectedResult: '/hello/suffix',
+      },
+      {
+        name: 'splat route with prefix and suffix',
+        path: '/hello/prefix{$}suffix',
+        params: {},
+        expectedResult: '/hello/prefixsuffix',
+      },
+      {
+        name: 'splat route with empty splat',
+        path: '/hello/$',
+        params: {
+          _splat: '',
         },
-        {
-          name: 'should preserve parentheses in splat param (RFC 3986 unreserved)',
-          path: '/$',
-          params: { _splat: 'file(1).pdf' },
-          result: '/file(1).pdf',
+        expectedResult: '/hello',
+      },
+      {
+        name: 'splat route with undefined splat',
+        path: '/hello/$',
+        params: {
+          _splat: undefined,
         },
-        {
-          name: 'should encode brackets in splat param',
-          path: '/$',
-          params: { _splat: 'file[1].pdf' },
-          result: '/file%5B1%5D.pdf',
-        },
-        {
-          name: 'should encode spaces in nested splat param paths',
-          path: '/$',
-          params: { _splat: 'folder/sub folder/file name.pdf' },
-          result: '/folder/sub%20folder/file%20name.pdf',
-        },
-        {
-          name: 'should encode spaces and brackets but preserve parentheses',
-          path: '/$',
-          params: { _splat: 'docs/file (copy) [2].pdf' },
-          result: '/docs/file%20(copy)%20%5B2%5D.pdf',
-        },
-        {
-          name: 'should encode hash in splat param',
-          path: '/$',
-          params: { _splat: 'page#section' },
-          result: '/page%23section',
-        },
-        {
-          name: 'should handle splat param with prefix and special characters',
-          path: '/files/prefix{$}',
-          params: { _splat: 'my file.pdf' },
-          result: '/files/prefixmy%20file.pdf',
-        },
-        {
-          name: 'should encode plus signs in splat param',
-          path: '/$',
-          params: { _splat: 'file+name.pdf' },
-          result: '/file%2Bname.pdf',
-        },
-        {
-          name: 'should encode equals signs in splat param',
-          path: '/$',
-          params: { _splat: 'query=value' },
-          result: '/query%3Dvalue',
-        },
-      ])('$name', ({ path, params, result }) => {
-        expect(
-          interpolatePath(path, params, undefined, undefined, undefined),
-        ).toBe(result)
-      })
+        expectedResult: '/hello',
+      },
+    ])('$name', ({ path, params, expectedResult }) => {
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params)).toBe(expectedResult)
+      expect(hasMissingPathParams(segments, params)).toBe(true)
     })
+  })
 
-    describe('named params (prefix + suffix)', () => {
-      it.each([
-        {
-          name: 'regular',
-          to: '/$foo',
-          params: { foo: 'bar' },
-          result: '/bar',
-        },
-        {
-          name: 'regular curly braces',
-          to: '/{$foo}',
-          params: { foo: 'bar' },
-          result: '/bar',
-        },
-        {
-          name: 'with prefix',
-          to: '/prefix{$bar}',
-          params: { bar: 'baz' },
-          result: '/prefixbaz',
-        },
-        {
-          name: 'with suffix',
-          to: '/{$foo}.suffix',
-          params: { foo: 'bar' },
-          result: '/bar.suffix',
-        },
-        {
-          name: 'with suffix',
-          to: '/{$foo}.suffix',
-          params: { foo: 'bar_' },
-          result: '/bar_.suffix',
-        },
-        {
-          name: 'with prefix and suffix',
-          to: '/prefix{$param}.suffix',
-          params: { param: 'foobar' },
-          result: '/prefixfoobar.suffix',
-        },
-      ])('$name', ({ to, params, result }) => {
-        expect(
-          interpolatePath(to, params, undefined, undefined, undefined),
-        ).toBe(result)
-      })
-    })
-
-    describe('should handle missing _splat parameter for', () => {
-      it.each([
-        {
-          name: 'basic splat route',
-          path: '/hello/$',
-          params: {},
-          expectedResult: '/hello',
-        },
-        {
-          name: 'splat route with prefix',
-          path: '/hello/prefix{$}',
-          params: {},
-          expectedResult: '/hello/prefix',
-        },
-        {
-          name: 'splat route with suffix',
-          path: '/hello/{$}suffix',
-          params: {},
-          expectedResult: '/hello/suffix',
-        },
-        {
-          name: 'splat route with prefix and suffix',
-          path: '/hello/prefix{$}suffix',
-          params: {},
-          expectedResult: '/hello/prefixsuffix',
-        },
-        {
-          name: 'splat route with empty splat',
-          path: '/hello/$',
-          params: {
-            _splat: '',
-          },
-          expectedResult: '/hello',
-        },
-        {
-          name: 'splat route with undefined splat',
-          path: '/hello/$',
-          params: {
-            _splat: undefined,
-          },
-          expectedResult: '/hello',
-        },
-      ])('$name', ({ path, params, expectedResult }) => {
-        const metadata = { isMissingParams: false }
-        const result = interpolatePath(
-          path,
-          params,
-          undefined,
-          undefined,
-          undefined,
-          metadata,
+  describe('resolvePath + interpolatePath', () => {
+    it.each(['never', 'preserve', 'always'] as const)(
+      'trailing slash: %s',
+      (trailingSlash) => {
+        const tail = trailingSlash === 'always' ? '/' : ''
+        const defaultedFromPath = '/'
+        const fromPath = resolvePath({
+          base: defaultedFromPath,
+          to: '.',
+          trailingSlash,
+        })
+        const nextTo = resolvePath({
+          base: fromPath,
+          to: '/splat/$',
+          trailingSlash,
+        })
+        const nextParams = { _splat: '' }
+        const interpolatedNextTo = interpolatePath(
+          nextTo,
+          parseSegments(false, { fullPath: nextTo }, 0),
+          nextParams,
         )
-        expect(result).toBe(expectedResult)
-        expect(metadata.isMissingParams).toBe(true)
-      })
-    })
-
-    describe('resolvePath + interpolatePath', () => {
-      it.each(['never', 'preserve', 'always'] as const)(
-        'trailing slash: %s',
-        (trailingSlash) => {
-          const tail = trailingSlash === 'always' ? '/' : ''
-          const defaultedFromPath = '/'
-          const fromPath = resolvePath({
-            base: defaultedFromPath,
-            to: '.',
-            trailingSlash,
-          })
-          const nextTo = resolvePath({
-            base: fromPath,
-            to: '/splat/$',
-            trailingSlash,
-          })
-          const nextParams = { _splat: '' }
-          const interpolatedNextTo = interpolatePath(
-            nextTo,
-            nextParams,
-            undefined,
-            undefined,
-            undefined,
-          )
-          expect(interpolatedNextTo).toBe(`/splat${tail}`)
-        },
-      )
-    })
-  },
-)
+        expect(interpolatedNextTo).toBe(`/splat${tail}`)
+      },
+    )
+  })
+})
 
 describe('matchPathname', () => {
   const { processedTree } = processRouteTree({

@@ -159,10 +159,6 @@ async function sampleReplica(
 }
 
 async function main() {
-  if (process.env.TSR_LINK_PERF !== '1') {
-    console.log('Link performance sampling is disabled; set TSR_LINK_PERF=1.')
-    return
-  }
   const { values } = parseArgs({
     options: {
       baseline: { type: 'string' },

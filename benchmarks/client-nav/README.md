@@ -123,7 +123,7 @@ construction. `scenarios/mount` includes construction but also rendering and
 loading. To isolate initialization, use the core construction benchmark:
 
 ```bash
-TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache -- bench tests/route-tree-construction.bench.ts --run --testNamePattern=1000.routes --outputJson /tmp/route-tree-construction.json
+CI=1 NX_DAEMON=false pnpm nx run @tanstack/router-core:test:unit --outputStyle=stream --skipRemoteCache -- bench tests/route-tree-construction.bench.ts --run --testNamePattern=1000.routes --outputJson /tmp/route-tree-construction.json
 ```
 
 It covers 100, 1,000, and 10,000 static, dynamic, nested, or mixed routes.
@@ -138,16 +138,16 @@ router or repeatedly initialized tree is not a construction baseline.
 
 `link-performance/` contains additional client-navigation and SSR workloads for
 focused Link work. They are **not included** in the regular client-nav/SSR
-aggregate projects or their CodSpeed build dependencies. Benchmark discovery
-also requires `TSR_LINK_PERF=1`; without it, no extended benchmark files or app
-bundles are imported.
+aggregate projects or their CodSpeed build dependencies; they only run through
+the dedicated `@benchmarks/react-link-performance` targets below. Use `-t` to
+narrow a run to specific cases.
 
 ```bash
-TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run
-TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:ssr --outputStyle=stream --skipRemoteCache -- --run
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:ssr --outputStyle=stream --skipRemoteCache -- --run
 
 # Select a feature and save the normal Vitest JSON report.
-TSR_LINK_PERF=1 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run -t "updater|optional|splat" --outputJson /tmp/link-perf.json
+CI=1 NX_DAEMON=false pnpm nx run @benchmarks/react-link-performance:test:perf:client --outputStyle=stream --skipRemoteCache -- --run -t "updater|optional|splat" --outputJson /tmp/link-perf.json
 ```
 
 The cases cover repeated versus unique destination params, updater functions,
@@ -203,12 +203,12 @@ harness loader does not transpile their emitted JavaScript a second time.
 ```bash
 # Build the baseline using these same benchmark sources in its own checkout.
 # --baseline points to that checkout's link-performance/dist directory.
-TSR_LINK_PERF=1 pnpm nx run @benchmarks/react-link-performance:test:perf:stable -- \
+pnpm nx run @benchmarks/react-link-performance:test:perf:stable -- \
   --baseline /path/to/baseline/benchmarks/client-nav/link-performance/dist \
   --outputJson /tmp/paired-links.json
 
 # Narrow a comparison, or increase independent process repetitions.
-TSR_LINK_PERF=1 pnpm nx run @benchmarks/react-link-performance:test:perf:stable -- \
+pnpm nx run @benchmarks/react-link-performance:test:perf:stable -- \
   --baseline /path/to/baseline/benchmarks/client-nav/link-performance/dist \
   --mode ssr -t "middleware|unique-params" --repeats 6 \
   --outputJson /tmp/paired-links-ssr.json

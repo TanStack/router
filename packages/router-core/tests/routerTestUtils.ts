@@ -8,14 +8,13 @@ import {
   createNonReactiveReadonlyStore,
 } from '../src'
 import { createRequestHandler } from '../src/ssr/createRequestHandler'
-import { cleanPath, hasMissingPathParams, interpolatePath } from '../src/path'
 import {
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
   parseSegment,
-  parseSegments,
   processRouteTree,
 } from '../src/new-process-route-tree'
+import type { interpolatePath } from '../src/path'
 import type { SegmentKind } from '../src/new-process-route-tree'
 import type { RouterHistory } from '@tanstack/history'
 import type {
@@ -115,29 +114,6 @@ export function createTestPathInterpolator(
     return router.buildLocation({ to: options.path, params: options.params })
       .pathname
   }
-}
-
-export function interpolateTestPath(
-  path: string,
-  params: Record<string, unknown>,
-  decoder?: (encoded: string) => string,
-  usedParams?: Record<string, unknown>,
-  keys?: Array<string>,
-  metadata?: { isMissingParams: boolean },
-) {
-  const segments = parseSegments(false, { fullPath: cleanPath(path) }, 0)
-  if (keys) {
-    for (const segment of segments) {
-      if (typeof segment !== 'string') {
-        keys.push(segment[1 /* key */])
-      }
-    }
-  }
-  const pathname = interpolatePath(path, segments, params, decoder, usedParams)
-  if (metadata && hasMissingPathParams(segments, params)) {
-    metadata.isMissingParams = true
-  }
-  return pathname
 }
 
 export function parseTestPathname(to: string | undefined) {

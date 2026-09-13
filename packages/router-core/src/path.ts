@@ -218,6 +218,11 @@ export function getRouteSegments(route: AnyRoute) {
   return route._interpolation
 }
 
+/** A splat is missing when it has no value; `0` and `false` are stringified like any other param. */
+function isMissingSplat(value: unknown): boolean {
+  return value == null || value === ''
+}
+
 /** Devtools checks navigation availability separately from the hot formatter. */
 export function hasMissingPathParams(
   segments: RouteInterpolation,
@@ -229,7 +234,7 @@ export function hasMissingPathParams(
     }
     const [kind, key] = part
     return kind === SEGMENT_TYPE_WILDCARD
-      ? !params[key]
+      ? isMissingSplat(params[key])
       : kind === SEGMENT_TYPE_PARAM && !(key in params)
   })
 }
@@ -290,7 +295,7 @@ export function interpolatePath(
         usedParams['*'] = paramValue
       }
     }
-    if (splat && !paramValue) {
+    if (splat && isMissingSplat(paramValue)) {
       // A missing wildcard keeps its affixes, but omits a bare segment.
       if (prefix === '/' && !suffix) {
         continue
