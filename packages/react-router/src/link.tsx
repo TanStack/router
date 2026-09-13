@@ -4,10 +4,8 @@ import * as React from 'react'
 import { useSelector } from '@tanstack/react-store'
 import {
   deepEqual,
-  exactPathTest,
   functionalUpdate,
   getUrlScheme,
-  hasKeys,
   isDangerousProtocol,
   preloadWarning,
   removeTrailingSlash,
@@ -42,16 +40,20 @@ type LinkState = [href: string | undefined, isActive?: boolean]
 // otherwise change `_options` identity on every parent render, rebuild the
 // store selector, and discard its memoized selection.
 //
+// The kept value is a shallow copy, never the caller's object: the router
+// reuses a built location for as long as it sees the same options object, so
+// a params object mutated in place, or one backed by accessors, has to yield
+// a new reference here on the render that observes the change.
+//
 // `ignoreUndefined: false` is required: an explicit `undefined` clears an
 // inherited param or search key, so `{}` and `{ category: undefined }` build
 // different locations and must not be treated as equal here.
 function useValueStable<T>(value: T): T {
-  const ref = React.useRef(value)
-  // `deepEqual` short-circuits on reference equality, so this covers both cases.
+  const ref = React.useRef<T | undefined>(undefined)
   if (!deepEqual(ref.current, value, { ignoreUndefined: false })) {
-    ref.current = value
+    ref.current = value && typeof value === 'object' ? { ...value } : value
   }
-  return ref.current
+  return ref.current as T
 }
 
 function compareLinkState(a: LinkState, b: LinkState) {
@@ -203,10 +205,6 @@ export function useLinkProps<
         ? router.buildLocation(options as any)
         : undefined
 
-    // Use publicHref - it contains the correct href for display
-    // When a rewrite changes the origin, publicHref is the full URL
-    // Otherwise it's the origin-stripped path
-    // This avoids constructing URL objects in the hot path
     const hrefOption = next
       ? getHrefOption(next, router, disabled)
       : (directExternalLink ?? undefined)
@@ -215,76 +213,6 @@ export function useLinkProps<
     const externalLink =
       directExternalLink ??
       (hrefOption && getUrlScheme(hrefOption) ? hrefOption : undefined)
-
-    const isActive = (() => {
-      if (!next || (!disabled && !hrefOption) || externalLink) {
-        return false
-      }
-
-      const currentLocation = router.stores.location.get()
-
-      const exact = activeOptions?.exact ?? false
-
-      if (exact) {
-        const testExact = exactPathTest(
-          currentLocation.pathname,
-          next.pathname,
-          router.basepath,
-        )
-        if (!testExact) {
-          return false
-        }
-      } else {
-        const currentPathSplit = removeTrailingSlash(
-          currentLocation.pathname,
-          router.basepath,
-        )
-        const nextPathSplit = removeTrailingSlash(
-          next.pathname,
-          router.basepath,
-        )
-
-        const pathIsFuzzyEqual =
-          currentPathSplit.startsWith(nextPathSplit) &&
-          (currentPathSplit.length === nextPathSplit.length ||
-            currentPathSplit[nextPathSplit.length] === '/')
-
-        if (!pathIsFuzzyEqual) {
-          return false
-        }
-      }
-
-      const includeSearch = activeOptions?.includeSearch ?? true
-      if (includeSearch) {
-        if (currentLocation.search !== next.search) {
-          const currentSearchEmpty =
-            !currentLocation.search ||
-            (typeof currentLocation.search === 'object' &&
-              !hasKeys(currentLocation.search))
-          const nextSearchEmpty =
-            !next.search ||
-            (typeof next.search === 'object' &&
-              !hasKeys(next.search as Record<string, unknown>))
-
-          if (!(currentSearchEmpty && nextSearchEmpty)) {
-            const searchTest = deepEqual(currentLocation.search, next.search, {
-              partial: !exact,
-              ignoreUndefined: !activeOptions?.explicitUndefined,
-            })
-            if (!searchTest) {
-              return false
-            }
-          }
-        }
-      }
-
-      // Hash is not available on the server
-      if (activeOptions?.includeHash) {
-        return false
-      }
-
-      return true
-    })()
 
     if (externalLink) {
       return {
@@ -299,79 +227,27 @@ export function useLinkProps<
       }
     }
 
-    const resolvedActiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-      isActive
-        ? (functionalUpdate(activeProps as any, {}) ?? STATIC_ACTIVE_OBJECT)
-        : STATIC_EMPTY_OBJECT
-
-    const resolvedInactiveProps: React.HTMLAttributes<HTMLAnchorElement> =
-      isActive
-        ? STATIC_EMPTY_OBJECT
-        : (functionalUpdate(inactiveProps, {}) ?? STATIC_EMPTY_OBJECT)
-
-    const resolvedStyle = (() => {
-      const baseStyle = style
-      const activeStyle = resolvedActiveProps.style
-      const inactiveStyle = resolvedInactiveProps.style
-
-      if (!baseStyle && !activeStyle && !inactiveStyle) {
-        return undefined
-      }
-
-      if (baseStyle && !activeStyle && !inactiveStyle) {
-        return baseStyle
-      }
-
-      if (!baseStyle && activeStyle && !inactiveStyle) {
-        return activeStyle
-      }
-
-      if (!baseStyle && !activeStyle && inactiveStyle) {
-        return inactiveStyle
-      }
-
-      return {
-        ...baseStyle,
-        ...activeStyle,
-        ...inactiveStyle,
-      }
-    })()
-
-    const resolvedClassName = (() => {
-      const baseClassName = className
-      const activeClassName = resolvedActiveProps.className
-      const inactiveClassName = resolvedInactiveProps.className
-
-      if (!baseClassName && !activeClassName && !inactiveClassName) {
-        return ''
-      }
-
-      let out = ''
-
-      if (baseClassName) {
-        out = baseClassName
-      }
-
-      if (activeClassName) {
-        out = out ? `${out} ${activeClassName}` : activeClassName
-      }
-
-      if (inactiveClassName) {
-        out = out ? `${out} ${inactiveClassName}` : inactiveClassName
-      }
-
-      return out
-    })()
-
     const blockedLink = !disabled && !hrefOption
+    // Hash is not available on the server, so it never counts as hydrated.
+    const isActive =
+      !!next &&
+      !blockedLink &&
+      resolveIsActive(
+        router.stores.location.get(),
+        next,
+        activeOptions,
+        router.basepath,
+        false,
+      )
+    const [resolvedStateProps, resolvedClassName, resolvedStyle] =
+      resolveStateProps(isActive, activeProps, inactiveProps, className, style)
 
     return {
       ...propsSafeToSpread,
-      ...(blockedLink ? resolvedActiveProps : STATIC_EMPTY_OBJECT),
-      ...(blockedLink ? resolvedInactiveProps : STATIC_EMPTY_OBJECT),
+      // State props may override `ref`, but not on a blocked link (spread first).
+      ...(blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
       ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
-      ...(!blockedLink ? resolvedActiveProps : STATIC_EMPTY_OBJECT),
-      ...(!blockedLink ? resolvedInactiveProps : STATIC_EMPTY_OBJECT),
+      ...(!blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
       href: hrefOption,
       disabled: !!linkDisabled,
       target,
@@ -421,6 +297,9 @@ export function useLinkProps<
       options.unsafeRelative,
     ],
   )
+  // One stable object per link lets the router reuse location-independent results.
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const dest = React.useMemo(() => ({ ..._options }) as any, [_options])
 
   // Derive inside the selector so `compareLinkState` can bail out. Deriving after
   // the subscription instead re-renders every link on every navigation, because
@@ -436,10 +315,10 @@ export function useLinkProps<
         return [directExternalLink ?? undefined]
       }
 
-      const next = router.buildLocation({
-        _fromLocation: location,
-        ..._options,
-      } as any)
+      if (!_options._fromLocation) {
+        dest._fromLocation = location
+      }
+      const next = router.buildLocation(dest)
 
       // Use publicHref - it contains the correct href for display
       // When a rewrite changes the origin, publicHref is the full URL
@@ -459,7 +338,7 @@ export function useLinkProps<
             ),
       ]
     },
-    [stableActiveOptions, disabled, isHydrated, _options, router, to],
+    [stableActiveOptions, disabled, isHydrated, _options, dest, router, to],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -566,20 +445,8 @@ export function useLinkProps<
 
   const blockedLink = isActive === undefined
 
-  // Only one state contributes props, so resolve and merge it once.
-  const resolvedStateProps: React.HTMLAttributes<HTMLAnchorElement> =
-    functionalUpdate(isActive ? (activeProps as any) : inactiveProps, {}) ??
-    (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
-
-  const stateClassName = resolvedStateProps.className
-  const resolvedClassName = className
-    ? stateClassName
-      ? `${className} ${stateClassName}`
-      : className
-    : stateClassName
-  const stateStyle = resolvedStateProps.style
-  const resolvedStyle =
-    style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle
+  const [resolvedStateProps, resolvedClassName, resolvedStyle] =
+    resolveStateProps(isActive, activeProps, inactiveProps, className, style)
 
   // The click handler
   const handleClick = (e: React.MouseEvent) => {
@@ -625,6 +492,7 @@ export function useLinkProps<
 
   return {
     ...propsSafeToSpread,
+    // State props may override `ref` and handlers, but not on a blocked link (spread first).
     ...(blockedLink ? resolvedStateProps : STATIC_EMPTY_OBJECT),
     ref: innerRef as React.ComponentPropsWithRef<'a'>['ref'],
     onClick: composeHandlers(onClick, handleClick),
@@ -648,6 +516,34 @@ const STATIC_EMPTY_OBJECT = {}
 const STATIC_ACTIVE_OBJECT = { className: 'active' }
 const STATIC_DISABLED_PROPS = { role: 'link', 'aria-disabled': true }
 const STATIC_ACTIVE_PROPS = { 'data-status': 'active', 'aria-current': 'page' }
+
+// Only one state contributes props; merge its class and style with the base ones.
+function resolveStateProps(
+  isActive: boolean | undefined,
+  activeProps: unknown,
+  inactiveProps: unknown,
+  className: string | undefined,
+  style: React.CSSProperties | undefined,
+): [
+  stateProps: React.HTMLAttributes<HTMLAnchorElement>,
+  className: string | undefined,
+  style: React.CSSProperties | undefined,
+] {
+  const stateProps: React.HTMLAttributes<HTMLAnchorElement> =
+    functionalUpdate((isActive ? activeProps : inactiveProps) as any, {}) ??
+    (isActive ? STATIC_ACTIVE_OBJECT : STATIC_EMPTY_OBJECT)
+  const stateClassName = stateProps.className
+  const stateStyle = stateProps.style
+  return [
+    stateProps,
+    className
+      ? stateClassName
+        ? `${className} ${stateClassName}`
+        : className
+      : stateClassName,
+    style && stateStyle ? { ...style, ...stateStyle } : style || stateStyle,
+  ]
+}
 
 const timeoutMap = new WeakMap<object, ReturnType<typeof setTimeout>>()
 const cancelPreload = (eventTarget: object) => {

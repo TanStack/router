@@ -314,8 +314,6 @@ export {
   functionalUpdate,
   hasKeys,
   replaceEqualDeep,
-  isPlainObject,
-  isPlainArray,
   deepEqual,
   createControlledPromise,
   isModuleNotFoundError,
