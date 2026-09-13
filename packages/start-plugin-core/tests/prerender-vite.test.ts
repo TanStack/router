@@ -1,3 +1,6 @@
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { prerenderWithVite } from '../src/vite/prerender'
 
@@ -46,17 +49,25 @@ function makeStartConfig() {
 }
 
 describe('Vite prerender network sink', () => {
-  beforeEach(() => {
+  let routeOptionsOutputDir: string
+
+  beforeEach(async () => {
+    routeOptionsOutputDir = await mkdtemp(join(tmpdir(), 'prerender-vite-'))
+    await writeFile(
+      join(routeOptionsOutputDir, 'server.mjs'),
+      'globalThis.TSS_PRERENDER_ROUTE_TREE = async () => undefined\n',
+    )
     preview.mockReset().mockResolvedValue({
       resolvedUrls: { local: ['http://127.0.0.1:4173/'] },
       close: vi.fn(),
     })
   })
 
-  afterEach(() => {
+  afterEach(async () => {
     restoreEnv('TSS_PRERENDERING', originalPrerendering)
     restoreEnv('TSS_CLIENT_OUTPUT_DIR', originalClientOutputDir)
     vi.unstubAllGlobals()
+    await rm(routeOptionsOutputDir, { recursive: true, force: true })
   })
 
   it('does not fetch a raw redirect outside the preview origin', async () => {
@@ -72,6 +83,7 @@ describe('Vite prerender network sink', () => {
       environments: {
         ssr: { config: { configFile: '/vite.config.ts' } },
         client: { config: { build: { outDir: '/client' } } },
+        prerender: { config: { build: { outDir: routeOptionsOutputDir } } },
       },
     } as any
 
@@ -103,6 +115,7 @@ describe('Vite prerender network sink', () => {
       environments: {
         ssr: { config: { configFile: '/vite.config.ts' } },
         client: { config: { build: { outDir: '/client' } } },
+        prerender: { config: { build: { outDir: routeOptionsOutputDir } } },
       },
     } as any
 

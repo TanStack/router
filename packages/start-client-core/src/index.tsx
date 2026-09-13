@@ -116,6 +116,7 @@ export type {
 } from './constants'
 
 export type * from './serverRoute'
+export type * from './prerenderParams'
 
 export type * from './startEntry'
 
