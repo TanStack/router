@@ -2900,14 +2900,17 @@ function needsInheritedParams(
 const EMPTY_RECORD: Record<string, never> = Object.freeze({})
 
 // Keep this separate from recursive execution to limit JIT compiler memory.
+// A counted loop instead of `for...of`: Maglev's inlined array iteration
+// deoptimizes on route option shapes and recompiles later, whereas indexed
+// reads stay optimized once compiled.
 function getSearchMiddlewares(
   destRoutes: ReadonlyArray<AnyRoute>,
   includeValidateSearch: boolean | undefined,
 ) {
   const middlewares = [] as Array<SearchMiddleware<any>>
 
-  for (const route of destRoutes) {
-    const routeOptions = route.options
+  for (let i = 0; i < destRoutes.length; i++) {
+    const routeOptions = destRoutes[i]!.options
     if ('search' in routeOptions) {
       if (routeOptions.search?.middlewares) {
         middlewares.push(...routeOptions.search.middlewares)
