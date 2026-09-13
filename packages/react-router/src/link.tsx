@@ -40,20 +40,21 @@ type LinkState = [href: string | undefined, isActive?: boolean]
 // otherwise change `_options` identity on every parent render, rebuild the
 // store selector, and discard its memoized selection.
 //
-// The kept value is a shallow copy, never the caller's object: the router
-// reuses a built location for as long as it sees the same options object, so
-// a params object mutated in place, or one backed by accessors, has to yield
-// a new reference here on the render that observes the change.
+// The router reuses a built location for as long as it sees the same options
+// object, so the reference returned here is its invalidation signal: pass a
+// new object to change a destination. Like every other React prop, an object
+// mutated in place is not re-read. `deepEqual` short-circuits on reference
+// equality, so an unchanged reference costs nothing.
 //
 // `ignoreUndefined: false` is required: an explicit `undefined` clears an
 // inherited param or search key, so `{}` and `{ category: undefined }` build
 // different locations and must not be treated as equal here.
 function useValueStable<T>(value: T): T {
-  const ref = React.useRef<T | undefined>(undefined)
+  const ref = React.useRef(value)
   if (!deepEqual(ref.current, value, { ignoreUndefined: false })) {
-    ref.current = value && typeof value === 'object' ? { ...value } : value
+    ref.current = value
   }
-  return ref.current as T
+  return ref.current
 }
 
 function compareLinkState(a: LinkState, b: LinkState) {
