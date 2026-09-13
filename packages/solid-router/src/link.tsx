@@ -276,8 +276,8 @@ export function useLinkProps<
       href: base.href,
       disabled: base.disabled,
       target: base.target,
-      ...(style && hasKeys(style) ? { style } : undefined),
-      ...(className ? { class: className } : undefined),
+      ...(style && hasKeys(style) && { style }),
+      ...(className && { class: className }),
       ...(active && STATIC_ACTIVE_ATTRIBUTES),
     } as ResolvedLinkStateProps
   }
