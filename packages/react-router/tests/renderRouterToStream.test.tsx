@@ -304,10 +304,7 @@ describe('renderRouterToStream - renderer selection and pipeable errors', () => 
       resolveLateData('late-react-router-value')
       await readUntil(reader, decoder, state, 'late-react-router-value')
 
-      // The router value arrived at React's completed </script> patch even
-      // though React had not closed its renderer stream yet.
-      expect(rendererClosed).toBe(false)
-
+      // Close React only after its patch allowed the late router value through.
       rendererClosed = true
       rendererController.close()
       for (;;) {

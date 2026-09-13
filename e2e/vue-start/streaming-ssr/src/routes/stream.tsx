@@ -1,4 +1,4 @@
-import { Await, createFileRoute } from '@tanstack/vue-router'
+import { Await, createFileRoute, useRouter } from '@tanstack/vue-router'
 import {
   Suspense,
   defineComponent,
@@ -33,8 +33,10 @@ const decoder = new TextDecoder('utf-8')
 const StreamRoute = defineComponent({
   setup() {
     const data = Route.useLoaderData()
+    const router = useRouter()
     const streamData = ref<Array<string>>([])
     const streamComplete = ref(false)
+    const streamReadCount = ref(0)
     let reader: ReadableStreamDefaultReader | undefined
     let mounted = false
     let activeStream: ReadableStream | undefined
@@ -81,6 +83,7 @@ const StreamRoute = defineComponent({
         reader = activeReader
         activeStream = stream
         reading = true
+        streamReadCount.value++
 
         let chunk
         while (!(chunk = await activeReader.read()).done) {
@@ -105,6 +108,9 @@ const StreamRoute = defineComponent({
           reader = undefined
         }
         reading = false
+        if (activeStream !== data.value.stream) {
+          scheduleRead()
+        }
       }
     }
 
@@ -129,6 +135,12 @@ const StreamRoute = defineComponent({
     return () => (
       <div style={{ padding: '20px' }}>
         <h2>ReadableStream Test</h2>
+        <button
+          data-testid="refresh-stream"
+          onClick={() => router.invalidate()}
+        >
+          Refresh stream
+        </button>
         <Suspense>
           {{
             default: () => (
@@ -146,7 +158,10 @@ const StreamRoute = defineComponent({
         </Suspense>
         <div data-testid="stream-container">
           <h3>Stream chunks:</h3>
-          <div data-testid="stream-data">
+          <div
+            data-testid="stream-data"
+            data-read-count={streamReadCount.value}
+          >
             {streamData.value.map((chunk, i) => (
               <div data-testid={`stream-chunk-${i}`}>{chunk}</div>
             ))}

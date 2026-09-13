@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest'
-import { RawStream } from '@tanstack/router-core'
+import { RawStream, createControlledPromise } from '@tanstack/router-core'
+import { createRawStreamRPCPlugin } from '@tanstack/router-core/ssr/server'
 import { runWithStartContext } from '@tanstack/start-storage-context'
+import { SerovalDeserializationError, toCrossJSONStream } from 'seroval'
 import { createFrameDecoder } from '../src/client-rpc/frame-decoder'
 import {
   serverFnFetcher,
@@ -229,6 +231,155 @@ describe('frame-decoder', () => {
     await lastPatch
     await expect(request).resolves.toBe(result)
     await vi.waitFor(() => expect(body.locked).toBe(false))
+  })
+
+  it.each(['invalid JSON', 'invalid patch', 'read failure'] as const)(
+    'rejects pending framed promises and raw streams after %s',
+    async (failure) => {
+      const log = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const cancel = vi.fn()
+      let controller!: ReadableStreamDefaultController<Uint8Array>
+      const body = new ReadableStream<Uint8Array>({
+        start(value) {
+          controller = value
+        },
+        cancel,
+      })
+      const ready = createControlledPromise<string>()
+      const late = createControlledPromise<{ nested: Promise<unknown> }>()
+      const dispose = toCrossJSONStream(
+        {
+          ready,
+          late,
+          pending: new Promise<unknown>(() => {}),
+          raw: new RawStream(new ReadableStream<Uint8Array>()),
+        },
+        {
+          refs: new Map(),
+          plugins: [createRawStreamRPCPlugin(() => {})],
+          onParse(value) {
+            controller.enqueue(encodeJSONFrame(JSON.stringify(value)))
+          },
+        },
+      )
+
+      try {
+        const result = await runWithStartContext(
+          { startOptions: undefined } as any,
+          async () =>
+            serverFnFetcher(
+              'http://localhost/_serverFn/test',
+              [{ method: 'POST' }],
+              async () =>
+                new Response(body, {
+                  headers: {
+                    'content-type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                    [X_TSS_SERIALIZED]: 'true',
+                  },
+                }),
+            ),
+        )
+        const rawReader = result.raw.getReader()
+
+        ready.resolve('ready')
+        late.resolve({ nested: new Promise<unknown>(() => {}) })
+        await expect(result.ready).resolves.toBe('ready')
+        const { nested } = await result.late
+        const failures = Promise.allSettled([
+          result.pending,
+          nested,
+          rawReader.read(),
+        ])
+
+        const transportError = new Error('transport failed')
+        if (failure === 'read failure') {
+          controller.error(transportError)
+        } else {
+          controller.enqueue(
+            encodeJSONFrame(failure === 'invalid JSON' ? '{' : '{}'),
+          )
+        }
+
+        await vi.waitFor(() => expect(log).toHaveBeenCalledOnce())
+        const error = log.mock.calls[0]![1]
+        if (failure === 'read failure') {
+          expect(error).toBe(transportError)
+        } else {
+          expect(error).toBeInstanceOf(
+            failure === 'invalid JSON'
+              ? SyntaxError
+              : SerovalDeserializationError,
+          )
+          expect(cancel).toHaveBeenCalledExactlyOnceWith(error)
+        }
+        await expect(failures).resolves.toEqual([
+          { status: 'rejected', reason: error },
+          { status: 'rejected', reason: error },
+          { status: 'rejected', reason: error },
+        ])
+        await expect(result.ready).resolves.toBe('ready')
+        await expect(result.late).resolves.toEqual({ nested })
+        rawReader.releaseLock()
+        await vi.waitFor(() => expect(body.locked).toBe(false))
+      } finally {
+        dispose()
+        log.mockRestore()
+      }
+    },
+  )
+
+  it('rejects only Seroval promise handles when initial framed deserialization fails', async () => {
+    const actual = await vi.importActual<typeof import('seroval')>('seroval')
+    const error = new Error('initial deserialization failed')
+    const applicationReject = vi.fn()
+    let result!: { pending: Promise<unknown> }
+    serovalMocks.fromCrossJSON.mockImplementationOnce((value, options) => {
+      result = actual.fromCrossJSON(value, options)
+      Object.assign(result, { p: result.pending, f: applicationReject })
+      throw error
+    })
+
+    const cancel = vi.fn()
+    let controller!: ReadableStreamDefaultController<Uint8Array>
+    const body = new ReadableStream<Uint8Array>({
+      start(value) {
+        controller = value
+      },
+      cancel,
+    })
+    const dispose = toCrossJSONStream(
+      { pending: new Promise<unknown>(() => {}) },
+      {
+        refs: new Map(),
+        onParse(value) {
+          controller.enqueue(encodeJSONFrame(JSON.stringify(value)))
+        },
+      },
+    )
+
+    try {
+      await expect(
+        runWithStartContext({ startOptions: undefined } as any, async () =>
+          serverFnFetcher(
+            'http://localhost/_serverFn/test',
+            [{ method: 'POST' }],
+            async () =>
+              new Response(body, {
+                headers: {
+                  'content-type': TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+                  [X_TSS_SERIALIZED]: 'true',
+                },
+              }),
+          ),
+        ),
+      ).rejects.toBe(error)
+      await expect(result.pending).rejects.toBe(error)
+      expect(applicationReject).not.toHaveBeenCalled()
+      expect(cancel).toHaveBeenCalledExactlyOnceWith(error)
+      await vi.waitFor(() => expect(body.locked).toBe(false))
+    } finally {
+      dispose()
+    }
   })
 
   describe('createFrameDecoder', () => {

@@ -1921,9 +1921,16 @@ describe('transformReadableStreamWithRouter — cleanup side-effects', () => {
     },
   )
 
-  test.each(internalSplitOffsets(DOCUMENT_CLOSE))(
-    'relocates the structural document close split at byte %s',
-    async (splitAt) => {
+  test.each(
+    ['', '</body>'].flatMap((prefix) =>
+      internalSplitOffsets(prefix + DOCUMENT_CLOSE).map((splitAt) => ({
+        prefix,
+        splitAt,
+      })),
+    ),
+  )(
+    'relocates the structural document close after "$prefix" split at byte $splitAt',
+    async ({ prefix, splitAt }) => {
       const { router, finishSerialization } = makeRouter()
       const upstream = makeManualUpstream()
       const output = transformReadableStreamWithRouter(
@@ -1935,9 +1942,10 @@ describe('transformReadableStreamWithRouter — cleanup side-effects', () => {
       const patch = '<script>beforeClose()</script>'
       const beforeClose = `${shell}${patch}<main>app</main>`
       const afterClose = '<script>rendererPatch()</script>'
+      const close = prefix + DOCUMENT_CLOSE
 
-      upstream.push(beforeClose + DOCUMENT_CLOSE.slice(0, splitAt))
-      upstream.push(DOCUMENT_CLOSE.slice(splitAt) + afterClose)
+      upstream.push(beforeClose + close.slice(0, splitAt))
+      upstream.push(close.slice(splitAt) + afterClose)
       upstream.close()
       const reader = output.getReader()
       expect(Buffer.from((await reader.read()).value!).toString()).toBe(shell)
@@ -1946,7 +1954,7 @@ describe('transformReadableStreamWithRouter — cleanup side-effects', () => {
       reader.releaseLock()
 
       await expect(readAll(output)).resolves.toBe(
-        '<main>app</main>' + afterClose + DOCUMENT_CLOSE,
+        '<main>app</main>' + prefix + afterClose + DOCUMENT_CLOSE,
       )
     },
   )

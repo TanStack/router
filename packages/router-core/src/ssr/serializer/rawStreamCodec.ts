@@ -119,6 +119,9 @@ export function fromEncodedStream(
     start(controller) {
       const dispose = source.on({
         next(value) {
+          if (done) {
+            return
+          }
           try {
             controller.enqueue(decode(value!))
           } catch (error) {
@@ -131,17 +134,23 @@ export function fromEncodedStream(
           }
         },
         throw(error) {
-          done = true
-          unsubscribe = undefined
-          controller.error(error)
+          if (!done) {
+            done = true
+            unsubscribe = undefined
+            controller.error(error)
+          }
         },
         return() {
-          done = true
-          unsubscribe = undefined
-          controller.close()
+          if (!done) {
+            done = true
+            unsubscribe = undefined
+            controller.close()
+          }
         },
       })
-      if (!done) {
+      if (done) {
+        dispose()
+      } else {
         unsubscribe = dispose
       }
     },

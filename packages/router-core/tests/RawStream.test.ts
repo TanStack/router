@@ -565,8 +565,43 @@ describe('RawStream', () => {
           emitted,
         )(stream).getReader()
 
+        expect(unsubscribe).toHaveBeenCalledTimes(emitted ? 0 : 1)
         await reader.cancel()
-        expect(unsubscribe).not.toHaveBeenCalled()
+        expect(unsubscribe).toHaveBeenCalledTimes(emitted ? 0 : 1)
+      },
+    )
+
+    it.each([false, true])(
+      'disposes a malformed buffered JSON stream (ended: %s)',
+      async (ended) => {
+        const stream = createStream<string | undefined>()
+        stream.next(pluginIndex === 1 ? 'b%' : '%')
+        stream.next(encoded)
+        if (ended) {
+          stream.return(undefined)
+        }
+        const on = stream.on.bind(stream)
+        const unsubscribe = vi.fn()
+        vi.spyOn(stream, 'on').mockImplementation((listener) => {
+          unsubscribe.mockImplementation(on(listener))
+          return unsubscribe
+        })
+
+        const reader = getRawStreamFactory(
+          pluginIndex,
+          false,
+        )(stream).getReader()
+
+        expect(unsubscribe).toHaveBeenCalledOnce()
+        await expect(reader.read()).rejects.toMatchObject({
+          name: 'InvalidCharacterError',
+        })
+        stream.next(encoded)
+        await expect(reader.cancel()).rejects.toMatchObject({
+          name: 'InvalidCharacterError',
+        })
+        expect(unsubscribe).toHaveBeenCalledOnce()
+        reader.releaseLock()
       },
     )
 

@@ -340,7 +340,26 @@ async function processFramedResponse(
   plugins: Array<SerovalPlugin<any, any>>,
 ) {
   const reader = jsonStream.getReader()
-  const options = { refs: new Map(), plugins }
+  const refs = Object.assign(new Map<number, unknown>(), {
+    types: new Map<number, number>(),
+  })
+  const options = { refs, plugins }
+
+  const fail = (error: unknown) => {
+    void reader.cancel(error).catch(() => {})
+    // Seroval tags its resolver handles (not the promises themselves) with
+    // PromiseConstructor's node type, 22. Other refs can be application data.
+    for (const [id, type] of refs.types) {
+      if (type === 22) {
+        const deferred = refs.get(id) as {
+          p: Promise<unknown>
+          f: (reason: unknown) => void
+        }
+        void deferred.p.catch(() => {})
+        deferred.f(error)
+      }
+    }
+  }
 
   let result: any
   const initialPostProcessPromises: Array<Promise<unknown>> = []
@@ -356,7 +375,7 @@ async function processFramedResponse(
       initialPostProcessPromises,
     )
   } catch (error) {
-    void reader.cancel(error).catch(() => {})
+    fail(error)
     reader.releaseLock()
     throw error
   }
@@ -378,7 +397,7 @@ async function processFramedResponse(
         observePostProcessPromises(postProcessPromises)
       }
     } catch (error) {
-      void reader.cancel(error).catch(() => {})
+      fail(error)
       console.error('Stream processing error:', error)
     } finally {
       reader.releaseLock()

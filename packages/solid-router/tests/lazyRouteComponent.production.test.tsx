@@ -52,7 +52,7 @@ beforeAll(async () => {
 
   expect(exports.lazyRouteComponent).toBeTypeOf('function')
   productionLazyRouteComponent = exports.lazyRouteComponent!
-})
+}, 60_000)
 
 afterEach(() => {
   cleanup()

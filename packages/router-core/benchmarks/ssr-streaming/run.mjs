@@ -12,7 +12,7 @@ import { arch, cpus, platform, tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
-import { build } from '../../node_modules/esbuild/lib/main.js'
+import { build } from 'esbuild'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const repo = resolve(here, '../../../..')
@@ -509,6 +509,11 @@ function writeSummary(results, path, warmComparison) {
           value.implementation === 'worktree' &&
           value.comparisonBaseline === comparison.baseline,
       )
+      if (!baseline || !worktree) {
+        throw new Error(
+          `Missing warm result row for ${comparison.scenario}/${comparison.framework}/${comparison.rendererSafePoint ?? '-'}/${comparison.mode}/${comparison.baseline}`,
+        )
+      }
       lines.push(
         `| ${comparison.baseline} | ${comparison.scenario} | ${comparison.framework} | ${comparison.rendererSafePoint ?? '-'} | ${comparison.mode} | ${(baseline.statistics.elapsedMs.mean * 1000).toFixed(2)} | ${(worktree.statistics.elapsedMs.mean * 1000).toFixed(2)} | ${comparison.aggregateElapsedPercent.toFixed(1)}% | ${comparison.pairedElapsedPercent.geometricMean.toFixed(1)}% | ${comparison.pairedElapsedPercent.median.toFixed(1)}% | ${comparison.pairedElapsedPercent.p10.toFixed(1)}% | ${comparison.pairedElapsedPercent.p90.toFixed(1)}% | ${comparison.aggregateWallElapsedPercent.toFixed(1)}% |`,
       )
