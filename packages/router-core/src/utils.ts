@@ -324,7 +324,7 @@ export function replaceEqualDeep(
     if (equal) {
       return Object.getOwnPropertySymbols(prev).length ? next : prev
     }
-    if (unchanged && (!_nullProto || !Object.getPrototypeOf(next))) {
+    if (unchanged) {
       return next
     }
   }

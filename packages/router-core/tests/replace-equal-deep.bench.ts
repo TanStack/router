@@ -142,6 +142,10 @@ expect(nullReplaceEqualDeep(nullSearch, nullSearchChanged)).toStrictEqual(
 )
 expect(replaceEqualDeep(nested, nestedCopy)).toBe(nested)
 expect(replaceEqualDeep(nested, nestedLeafChanged).ids).toBe(nested.ids)
+const nullNestedResult = nullReplaceEqualDeep(nested, nestedLeafChanged)
+expect(nullNestedResult).toEqual(nestedLeafChanged)
+expect(nullNestedResult.ids).toBe(nested.ids)
+expect(Object.getPrototypeOf(nullNestedResult)).toBeNull()
 expect(replaceEqualDeep(list, listCopy)).toBe(list)
 expect(replaceEqualDeep(list, listChanged)[3]).toBe(list[3])
 expect(replaceEqualDeep(wide, wideChanged)).toStrictEqual(wideChanged)
@@ -272,9 +276,21 @@ describe('replaceEqualDeep', () => {
     }
   })
 
-  bench('search update requiring a null-proto copy', () => {
+  bench('ordinary search update in null-proto mode', () => {
     for (let i = 0; i < iterations; i++) {
       sink = nullReplaceEqualDeep(nullSearch, searchChanged)
+    }
+  })
+
+  bench('equal ordinary search in null-proto mode', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = nullReplaceEqualDeep(search, searchCopy)
+    }
+  })
+
+  bench('successive ordinary search update in null-proto mode', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = nullReplaceEqualDeep(search, searchChanged)
     }
   })
 
@@ -306,6 +322,12 @@ describe('replaceEqualDeep', () => {
   bench('nested search sharing unchanged subtrees', () => {
     for (let i = 0; i < iterations; i++) {
       sink = replaceEqualDeep(nested, nestedLeafChanged)
+    }
+  })
+
+  bench('nested search sharing unchanged subtrees in null-proto mode', () => {
+    for (let i = 0; i < iterations; i++) {
+      sink = nullReplaceEqualDeep(nested, nestedLeafChanged)
     }
   })
 

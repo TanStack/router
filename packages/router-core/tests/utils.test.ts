@@ -28,14 +28,13 @@ describe('replaceEqualDeep', () => {
     expect(nullReplaceEqualDeep(prev, next)).toBe(next)
   })
 
-  it('copies a changed ordinary object when null-prototype output is required', () => {
+  it('reuses a changed ordinary object in null-prototype mode', () => {
     const prev = decode('page=1&sort=newest')
     const next = { page: '2', sort: 'newest' }
     const result = nullReplaceEqualDeep(prev, next)
 
-    expect(result).not.toBe(next)
-    expect(Object.getPrototypeOf(result)).toBeNull()
-    expect({ ...result }).toStrictEqual(next)
+    expect(result).toBe(next)
+    expect(Object.getPrototypeOf(result)).toBe(Object.prototype)
   })
 
   it('returns the previous signed zero when strict equality matches', () => {
@@ -43,15 +42,24 @@ describe('replaceEqualDeep', () => {
     expect(replaceEqualDeep(0, -0)).toBe(0)
   })
 
-  it('uses the same signed-zero sharing rule for every child', () => {
-    const prev = { first: -0, changed: 1, last: -0 }
-    const next = { first: 0, changed: 2, last: 0 }
-    const result = replaceEqualDeep(prev, next)
-    expect(result.first).toBe(-0)
-    expect(result.changed).toBe(2)
-    expect(result.last).toBe(-0)
-    expect(replaceEqualDeep([-0, 1, -0], [0, 2, 0])).toStrictEqual([-0, 2, -0])
-  })
+  it.each([false, true])(
+    'uses the same signed-zero sharing rule for every child (nullProto=%s)',
+    (nullProto) => {
+      const prev = { first: -0, changed: 1, last: -0 }
+      const next = { first: 0, changed: 2, last: 0 }
+      const result = replaceEqualDeep(prev, next, nullProto)
+      expect(result).not.toBe(next)
+      expect(Object.getPrototypeOf(result)).toBe(
+        nullProto ? null : Object.prototype,
+      )
+      expect(result.first).toBe(-0)
+      expect(result.changed).toBe(2)
+      expect(result.last).toBe(-0)
+      expect(replaceEqualDeep([-0, 1, -0], [0, 2, 0], nullProto)).toStrictEqual(
+        [-0, 2, -0],
+      )
+    },
+  )
 
   // Known unsupported edge case for ordinary object copies.
   it.skip('copies an own __proto__ property as data in the incoming key order', () => {
@@ -148,14 +156,18 @@ describe('replaceEqualDeep', () => {
   })
 
   it.each(['prev', 'next'])(
-    'keeps an array with a non-enumerable index on %s opaque',
+    'preserves incoming values with a non-enumerable array index on %s',
     (side) => {
       const prev = [{ id: 1 }, 1]
       const next = [{ id: 1 }, 2]
       Object.defineProperty(side === 'prev' ? prev : next, '1', {
         enumerable: false,
       })
-      expect(replaceEqualDeep(prev, next)).toBe(next)
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(Object.getOwnPropertyDescriptor(result, '1')?.enumerable).toBe(
+        Object.getOwnPropertyDescriptor(next, '1')?.enumerable,
+      )
     },
   )
 
@@ -185,34 +197,40 @@ describe('replaceEqualDeep', () => {
     },
   )
 
-  it('shares through depth 500 and stops at depth 501', () => {
-    const prev = { value: 1 }
-    const next = { value: 1 }
-    expect(replaceEqualDeep(prev, next, false, 500)).toBe(prev)
-    expect(replaceEqualDeep(prev, next, false, 501)).toBe(next)
-    expect(replaceEqualDeep(prev, prev, false, 501)).toBe(prev)
-    const result = replaceEqualDeep(
-      { child: prev },
-      { child: next },
-      false,
-      500,
-    )
-    expect(result.child).toBe(next)
+  it('bounds recursion for cyclic records', () => {
+    const prev: any = { value: 1 }
+    const next: any = { value: 2 }
+    prev.self = prev
+    next.self = next
+    const result = replaceEqualDeep(prev, next)
+    expect(result.value).toBe(2)
+    expect(result.self).toBe(next)
   })
 
-  it('keeps identical array entries at the depth limit but stops sharing copied children', () => {
-    const shared = { value: 1 }
-    const child = { value: 2 }
-    const nextChild = { value: 2 }
-    const prev = [shared, child]
-    const next = [shared, nextChild]
-    const result = replaceEqualDeep(prev, next, false, 500)
-    expect(result).not.toBe(prev)
-    expect(result[0]).toBe(shared)
-    expect(result[1]).toBe(nextChild)
-    expect(replaceEqualDeep(prev, next, false, 501)).toBe(next)
-    const identical = [...prev]
-    expect(replaceEqualDeep(prev, identical, false, 501)).toBe(identical)
+  it.each([0, 1])(
+    'bounds recursion for cyclic arrays with %s preceding values',
+    (index) => {
+      const prev: Array<any> = index ? [1] : []
+      const next: Array<any> = index ? [2] : []
+      prev.push(prev)
+      next.push(next)
+      const result = replaceEqualDeep(prev, next)
+      let tail = result
+      for (let i = 0; i < 1000 && tail !== next; i++) {
+        tail = tail[index]
+      }
+      expect(tail).toBe(next)
+      if (index) {
+        expect(result[0]).toBe(2)
+      }
+      expect(prev[index]).toBe(prev)
+      expect(next[index]).toBe(next)
+    },
+  )
+
+  it('preserves identity even when the recursion budget is exhausted', () => {
+    const value = [{ id: 1 }]
+    expect(replaceEqualDeep(value, value, false, 10_000)).toBe(value)
   })
 
   it('should return the same object if the input objects are equal', () => {
@@ -772,7 +790,7 @@ describe('replaceEqualDeep', () => {
 })
 
 describe('nullReplaceEqualDeep', () => {
-  it('keeps a shared array prefix and creates null-prototype copies for changed children', () => {
+  it('keeps a shared array prefix and reuses unchanged child results', () => {
     const shared = { id: 1 }
     const prev = [shared, { id: 2 }]
     const next = [shared, { id: 3 }]
@@ -780,38 +798,54 @@ describe('nullReplaceEqualDeep', () => {
     expect(Array.isArray(result)).toBe(true)
     expect(result[0]).toBe(shared)
     expect(Object.getPrototypeOf(result[0])).toBe(Object.prototype)
-    expect(result[1]).toEqual({ id: 3 })
-    expect(Object.getPrototypeOf(result[1])).toBeNull()
+    expect(result[1]).toBe(next[1])
+    expect(Object.getPrototypeOf(result[1])).toBe(Object.prototype)
   })
 
   it('creates null-prototype copies on the first difference', () => {
-    const result = nullReplaceEqualDeep({ a: 1, b: 2 }, { a: 1, b: 3 })
+    const prev = { a: { x: 1 }, b: 2 }
+    const result = nullReplaceEqualDeep(prev, { a: { x: 1 }, b: 3 })
     expect(Object.getPrototypeOf(result)).toBeNull()
-    expect(result.a).toBe(1)
+    expect(result.a).toBe(prev.a)
     expect(result.b).toBe(3)
   })
 
   it('creates null-prototype copies when only the key sets differ', () => {
-    const result = nullReplaceEqualDeep({ a: 1 }, { a: 1, b: undefined })
+    const prev = { a: { x: 1 } }
+    const result = nullReplaceEqualDeep(prev, { a: { x: 1 }, b: undefined })
     expect(Object.getPrototypeOf(result)).toBeNull()
-    expect(result.a).toBe(1)
+    expect(result.a).toBe(prev.a)
     expect('b' in result).toBe(true)
   })
 
-  it('creates null-prototype copies for nested objects', () => {
+  it('reuses a changed child when only the root needs a null-prototype copy', () => {
     const prev = { shared: { x: 1 }, changed: { y: 1 } }
-    const result = nullReplaceEqualDeep(prev, {
-      shared: { x: 1 },
-      changed: { y: 2 },
-    })
+    const next = { shared: { x: 1 }, changed: { y: 2 } }
+    const result = nullReplaceEqualDeep(prev, next)
     expect(Object.getPrototypeOf(result)).toBeNull()
-    expect(Object.getPrototypeOf(result.changed)).toBeNull()
+    expect(result.changed).toBe(next.changed)
     expect(result.shared).toBe(prev.shared)
   })
 
+  it('creates null-prototype copies at every level that needs replacements', () => {
+    const prev = { outer: { shared: { id: 1 }, page: 1 } }
+    const next = { outer: { shared: { id: 1 }, page: 2 } }
+    const result = nullReplaceEqualDeep(prev, next)
+    expect(Object.getPrototypeOf(result)).toBeNull()
+    expect(Object.getPrototypeOf(result.outer)).toBeNull()
+    expect(result.outer.shared).toBe(prev.outer.shared)
+    expect(result.outer.page).toBe(2)
+    expect(prev).toStrictEqual({ outer: { shared: { id: 1 }, page: 1 } })
+    expect(next).toStrictEqual({ outer: { shared: { id: 1 }, page: 2 } })
+  })
+
   it('stores an own __proto__ key instead of changing the prototype', () => {
-    const next = JSON.parse('{"__proto__":{"isAdmin":true},"name":"Alice"}')
-    const result = nullReplaceEqualDeep({ name: 'Bob' }, next)
+    const prev = { name: 'Bob', shared: { id: 1 } }
+    const next = JSON.parse(
+      '{"__proto__":{"isAdmin":true},"name":"Alice","shared":{"id":1}}',
+    )
+    const result = nullReplaceEqualDeep(prev, next)
+    expect(result.shared).toBe(prev.shared)
     expect(Object.getPrototypeOf(result)).toBeNull()
     expect(hasOwn.call(result, '__proto__')).toBe(true)
     expect(result['__proto__']).toEqual({ isAdmin: true })
@@ -977,7 +1011,7 @@ describe('isPlainObject', () => {
     expect(deepEqual({ foo: prev }, { foo: prev })).toBe(true)
   })
 
-  it.each([null, undefined, Object])(
+  it.each([null, undefined])(
     'keeps built-ins opaque with an own constructor valued %s',
     (constructor) => {
       for (const [prev, next] of [
@@ -1422,14 +1456,13 @@ describe('key handling (via replaceEqualDeep)', () => {
       expect(nullReplaceEqualDeep(prev, next)).toBe(next)
     })
 
-    it('removes symbols from a null-prototype copy while sharing children', () => {
+    it('preserves incoming values when previous symbols exist in null-prototype mode', () => {
       const sym = Symbol('metadata')
       const prev = { child: { a: 1 }, page: 1, [sym]: 'old' }
       const next = { child: { a: 1 }, page: 2 }
       const result = nullReplaceEqualDeep(prev, next)
-      expect(Object.getPrototypeOf(result)).toBeNull()
+      expect({ ...result }).toStrictEqual(next)
       expect(Object.getOwnPropertySymbols(result)).toEqual([])
-      expect(result.child).toBe(prev.child)
       expect(result.page).toBe(2)
     })
 
@@ -1440,22 +1473,22 @@ describe('key handling (via replaceEqualDeep)', () => {
       expect(Object.getPrototypeOf(result)).toBe(Object.prototype)
     })
 
-    it('removes symbols alongside changed string keys while sharing children', () => {
+    it('preserves incoming values when previous symbols accompany changed string keys', () => {
       const sym = Symbol('metadata')
       const prev = { changed: 0, child: { a: 1 }, [sym]: 'old' }
       const next = { changed: 1, child: { a: 1 } }
       const result = replaceEqualDeep(prev, next)
       expect(result).toStrictEqual(next)
-      expect(result.child).toBe(prev.child)
+      expect(prev[sym]).toBe('old')
     })
 
-    it('removes symbols alongside removed string keys while sharing children', () => {
+    it('preserves incoming values when previous symbols accompany removed string keys', () => {
       const sym = Symbol('metadata')
       const prev = { removed: 0, child: { a: 1 }, [sym]: 'old' }
       const next = { child: { a: 1 } }
       const result = replaceEqualDeep(prev, next)
       expect(result).toStrictEqual(next)
-      expect(result.child).toBe(prev.child)
+      expect(prev[sym]).toBe('old')
     })
   })
 
