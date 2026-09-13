@@ -379,6 +379,10 @@
               "to": "framework/react/guide/rendering-markdown"
             },
             {
+              "label": "Images and Fonts",
+              "to": "framework/react/guide/images-and-fonts"
+            },
+            {
               "label": "SEO",
               "to": "framework/react/guide/seo"
             },

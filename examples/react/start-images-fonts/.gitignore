@@ -1,0 +1,7 @@
+node_modules
+.output
+.tanstack
+dist
+test-results
+playwright-report
+src/assets/
