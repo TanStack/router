@@ -94,7 +94,7 @@ test.each([false, true])(
   },
 )
 
-test('blocked custom links keep the validated props and forwarded ref', () => {
+test('blocked custom links keep the validated routing props and apply state props like any inactive link', () => {
   const CustomLink = createLink(
     React.forwardRef<
       HTMLAnchorElement,
@@ -108,13 +108,17 @@ test('blocked custom links keep the validated props and forwarded ref', () => {
     history: createMemoryHistory(),
   })
   const ref = React.createRef<HTMLAnchorElement>()
-  const unwantedRef = vi.fn()
+  const stateRef = vi.fn()
+  const stateClick = vi.fn()
+  const baseClick = vi.fn()
   const search = vi.fn(() => ({}))
   const buildLocation = vi.spyOn(router, 'buildLocation')
   const inactiveProps = vi.fn(() => ({
     href: 'javascript:override()',
     disabled: false,
-    ref: unwantedRef,
+    target: '_blank',
+    ref: stateRef,
+    onClick: stateClick,
     className: 'inactive-state',
     title: 'Inactive',
   }))
@@ -124,6 +128,7 @@ test('blocked custom links keep the validated props and forwarded ref', () => {
         to="javascript:blocked()"
         ref={ref}
         search={search}
+        onClick={baseClick}
         inactiveProps={inactiveProps}
       >
         Target
@@ -136,15 +141,24 @@ test('blocked custom links keep the validated props and forwarded ref', () => {
     const html = renderToString(tree)
     expect(html).toContain('data-disabled="true"')
     expect(html).toContain('class="inactive-state"')
+    expect(html).toContain('title="Inactive"')
     expect(html).not.toContain('href=')
+    expect(html).not.toContain('target=')
     router.isServer = false
     const anchor = render(tree).getByText('Target')
     expect(anchor).toHaveAttribute('data-disabled', 'true')
     expect(anchor).not.toHaveAttribute('href')
+    expect(anchor).not.toHaveAttribute('target')
     expect(anchor).toHaveClass('inactive-state')
-    expect(ref.current).toBe(anchor)
+    expect(anchor).toHaveAttribute('title', 'Inactive')
+    // The selected state props win over the forwarded ref and base handlers,
+    // exactly as they do on any other inactive link.
+    expect(stateRef).toHaveBeenCalledWith(anchor)
+    expect(ref.current).toBeNull()
+    fireEvent.click(anchor)
+    expect(stateClick).toHaveBeenCalledOnce()
+    expect(baseClick).not.toHaveBeenCalled()
     expect(inactiveProps).toHaveBeenCalled()
-    expect(unwantedRef).not.toHaveBeenCalled()
     expect(buildLocation).not.toHaveBeenCalled()
     expect(search).not.toHaveBeenCalled()
   } finally {
