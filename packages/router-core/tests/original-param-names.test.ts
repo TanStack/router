@@ -13,8 +13,12 @@ test('keeps original names when different templates share a trie prefix', () => 
     isRoot: true,
     fullPath: '/',
     children: [
-      { id: '/first', path: '$id/first', fullPath: '/$id/first' },
-      { id: '/second', path: '{$name}/second', fullPath: '/{$name}/second' },
+      { id: '/$id/first', path: '$id/first', fullPath: '/$id/first' },
+      {
+        id: '/{$name}/second',
+        path: '{$name}/second',
+        fullPath: '/{$name}/second',
+      },
     ],
   }).processedTree
   expect(findRouteMatch('/one/first', tree)?.rawParams).toEqual({ id: 'one' })
@@ -23,20 +27,20 @@ test('keeps original names when different templates share a trie prefix', () => 
   })
 })
 
-test('keeps a terminal route names when a later alias adds a parser', () => {
+test("keeps a terminal route's names when a later alias adds a parser", () => {
   const tree = processRouteTree({
     id: '__root__',
     isRoot: true,
     fullPath: '/',
     children: [
-      { id: '/first', path: '$id/detail', fullPath: '/$id/detail' },
+      { id: '/$id/detail', path: '$id/detail', fullPath: '/$id/detail' },
       {
-        id: '/alias',
+        id: '/$name',
         path: '$name',
         fullPath: '/$name',
         children: [
           {
-            id: '/alias/detail',
+            id: '/$name/detail',
             path: 'detail',
             fullPath: '/$name/detail',
             options: {
@@ -48,7 +52,7 @@ test('keeps a terminal route names when a later alias adds a parser', () => {
     ],
   }).processedTree
   const match = findRouteMatch('/abc/detail', tree)
-  expect(match?.route.id).toBe('/first')
+  expect(match?.route.id).toBe('/$id/detail')
   expect(match?.rawParams).toEqual({ id: 'abc' })
 })
 
@@ -76,7 +80,7 @@ test('resumes through a route-less parse gate with skipped optional names', () =
             },
             children: [
               {
-                id: '/leaf',
+                id: '/$id/_layout/{-$lang}/$slug',
                 path: '{-$lang}/$slug',
                 fullPath: '/$id/{-$lang}/$slug',
               },
