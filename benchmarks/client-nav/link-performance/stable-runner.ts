@@ -3,7 +3,6 @@ import { createHash } from 'node:crypto'
 import {
   copyFileSync,
   mkdirSync,
-  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -12,6 +11,7 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { LINK_CASES } from './cases'
+import { createStagingDirectory } from './staging'
 import { classify, mean, summarizeRatios } from './statistics'
 import type { LinkCaseId } from './cases'
 import type {
@@ -223,8 +223,7 @@ async function main() {
   }
   const output = resolve(values.outputJson)
   mkdirSync(dirname(output), { recursive: true })
-  mkdirSync(resolve(projectRoot, 'dist'), { recursive: true })
-  const staging = mkdtempSync(resolve(projectRoot, 'dist/comparison-'))
+  const staging = createStagingDirectory()
   try {
     for (const mode of modes) {
       const baselineInput = resolve(values.baseline, mode, 'app.js')
