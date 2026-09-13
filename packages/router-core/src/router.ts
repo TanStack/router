@@ -1370,6 +1370,16 @@ export class RouterCore<
         route.init({
           originalIndex: i,
         })
+        if (
+          process.env.NODE_ENV !== 'production' &&
+          !(isServer ?? this.isServer)
+        ) {
+          // HMR modules retain this route even when another app creates a router.
+          Object.defineProperty(route, '_hmrRouter', {
+            value: this,
+            configurable: true,
+          })
+        }
       },
     )
     if (this.options.routeMasks) {
