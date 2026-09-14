@@ -70,7 +70,10 @@ describe('setupScrollRestoration', () => {
 
     expect(router._scroll.restoring).toBe(true)
     expect(router._scroll.restoration).toBe(true)
-    expect(window.history.scrollRestoration).toBe('manual')
+    // The browser's own restoration stays on: it handles the window before
+    // first paint (Safari swipe-back previews, hard refresh); the router only
+    // corrects afterwards and restores individual scroll containers.
+    expect(window.history.scrollRestoration).toBe('auto')
     expect(
       windowAddEventListener.mock.calls.some(([event]) => event === 'pagehide'),
     ).toBe(true)
