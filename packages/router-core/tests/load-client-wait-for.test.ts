@@ -49,7 +49,7 @@ describe('waitFor', () => {
     )
   })
 
-  test('removes its abort listener when reading a thenable throws', async () => {
+  test('rejects without an abort listener when reading a thenable throws', async () => {
     const controller = new AbortController()
     const add = vi.spyOn(controller.signal, 'addEventListener')
     const remove = vi.spyOn(controller.signal, 'removeEventListener')
@@ -63,11 +63,23 @@ describe('waitFor', () => {
     await expect(waitFor(value, controller.signal)).rejects.toBe(error)
     await new Promise((resolve) => setTimeout(resolve, 0))
 
-    expect(add).toHaveBeenCalledOnce()
-    expect(remove).toHaveBeenCalledExactlyOnceWith(
-      'abort',
-      add.mock.calls[0]![1],
-    )
+    expect(add).not.toHaveBeenCalled()
+    expect(remove).not.toHaveBeenCalled()
+  })
+
+  test('resolves a plain value without registering an abort listener', async () => {
+    const controller = new AbortController()
+    const add = vi.spyOn(controller.signal, 'addEventListener')
+
+    const result = waitFor(42, controller.signal)
+    // Still asynchronous: a queued replacement navigation gets a microtask.
+    let settled = false
+    void result.then(() => {
+      settled = true
+    })
+    expect(settled).toBe(false)
+    await expect(result).resolves.toBe(42)
+    expect(add).not.toHaveBeenCalled()
   })
 
   test('observes a rejected value when the signal is already aborted', async () => {
