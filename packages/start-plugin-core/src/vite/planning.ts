@@ -7,6 +7,7 @@ import {
   START_ENVIRONMENT_NAMES,
 } from '../constants'
 import { getBundlerOptions } from '../utils'
+import { createServerFnTransportAliases } from '../server-fn-transport'
 import type { CompileStartFrameworkOptions } from '../types'
 import type { ResolvedStartEntryPlan } from '../planning'
 import type * as vite from 'vite'
@@ -49,6 +50,7 @@ export function createViteConfigPlan(opts: {
   clientOutputDirectory: string
   serverOutputDirectory: string
   serverFnProviderEnv: string
+  serverFnTransport?: 'bundled' | 'lazy'
   optimizeDepsExclude: Array<string>
   noExternal: Array<string>
 }) {
@@ -131,6 +133,7 @@ export function createViteConfigPlan(opts: {
       ],
       alias: {
         ...opts.entryAliases.alias,
+        ...createServerFnTransportAliases(opts.serverFnTransport),
       },
     },
   } satisfies Pick<vite.UserConfig, 'environments' | 'resolve'>
@@ -140,6 +143,7 @@ export function createViteDefineConfig(opts: {
   command: 'serve' | 'build'
   mode: string | undefined
   serverFnBase: string
+  serverFnTransport?: 'bundled' | 'lazy'
   routerBasepath: string
   spaEnabled: boolean | undefined
   devSsrStylesEnabled: boolean
@@ -150,6 +154,10 @@ export function createViteDefineConfig(opts: {
 }) {
   return {
     ...defineReplaceEnv('TSS_SERVER_FN_BASE', opts.serverFnBase),
+    ...defineReplaceEnv(
+      'TSS_SERVER_FN_TRANSPORT',
+      opts.serverFnTransport ?? 'bundled',
+    ),
     ...defineReplaceEnv('TSS_ROUTER_BASEPATH', opts.routerBasepath),
     ...(opts.command === 'serve'
       ? defineReplaceEnv('TSS_SHELL', opts.spaEnabled ? 'true' : 'false')

@@ -1,18 +1,6 @@
-import {
-  makeSerovalPlugin,
-  defaultSerovalPlugins as routerDefaultSerovalPlugins,
-} from '@tanstack/router-core'
 import { getStartOptions } from './getStartOptions'
-import type { AnySerializationAdapter } from '@tanstack/router-core'
-import type { Plugin } from 'seroval'
+import { createSerovalPlugins } from './createSerovalPlugins'
 
-export function getDefaultSerovalPlugins(): Array<Plugin<any, any>> {
-  const start = getStartOptions()
-  const adapters = start?.serializationAdapters as
-    | Array<AnySerializationAdapter>
-    | undefined
-  return [
-    ...(adapters?.map(makeSerovalPlugin) ?? []),
-    ...routerDefaultSerovalPlugins,
-  ]
+export function getDefaultSerovalPlugins() {
+  return createSerovalPlugins(getStartOptions()?.serializationAdapters)
 }

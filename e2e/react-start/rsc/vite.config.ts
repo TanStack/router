@@ -15,6 +15,10 @@ export default defineConfig({
   },
   plugins: [
     tanstackStart({
+      serverFns: {
+        transport:
+          process.env.E2E_SERVER_FN_TRANSPORT === 'lazy' ? 'lazy' : 'bundled',
+      },
       rsc: {
         enabled: true,
       },

@@ -27,6 +27,14 @@
           "toolchain": "rsbuild",
           "mode": "ssr",
           "shards": 6
+        },
+        {
+          "toolchain": "vite",
+          "mode": "ssr",
+          "name": "lazy-transport",
+          "env": {
+            "E2E_SERVER_FN_TRANSPORT": "lazy"
+          }
         }
       ]
     }
