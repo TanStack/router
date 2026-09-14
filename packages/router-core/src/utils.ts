@@ -375,14 +375,12 @@ export function deepEqual(
     return true
   }
 
-  if (typeof a !== typeof b) {
-    return false
-  }
-
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false
     for (let i = 0, l = a.length; i < l; i++) {
-      if (!deepEqual(a[i], b[i], opts)) return false
+      const av = a[i]
+      const bv = b[i]
+      if (av !== bv && !deepEqual(av, bv, opts)) return false
     }
     return true
   }
@@ -408,15 +406,13 @@ export function deepEqual(
       }
     }
 
-    let bCount = 0
     for (const k in b) {
       if (!ignoreUndefined || b[k] !== undefined) {
-        bCount++
-        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) return false
+        if (aCount-- === 0 || !deepEqual(a[k], b[k], opts)) return false
       }
     }
 
-    return aCount === bCount
+    return aCount === 0
   }
 
   return false
