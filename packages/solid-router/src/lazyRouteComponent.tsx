@@ -1,6 +1,10 @@
 import { Dynamic } from 'solid-js/web'
 import { createResource } from 'solid-js'
-import { isModuleNotFoundError } from '@tanstack/router-core'
+import {
+  clearModuleNotFoundReload,
+  isModuleNotFoundError,
+  reloadForModuleNotFound,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import type { AsyncRouteComponent } from './route'
 
@@ -22,6 +26,9 @@ export function lazyRouteComponent<
       error = undefined
       loadPromise = importer()
         .then((res) => {
+          // The module is present, so the deployment it belongs to is live and
+          // it may spend a reload again if a later one leaves it stale.
+          clearModuleNotFoundReload(importer)
           // Resolved clients have no preload work; SSR can reuse the import.
           if (!(isServer ?? typeof window === 'undefined')) {
             loadPromise = undefined
@@ -53,21 +60,13 @@ export function lazyRouteComponent<
         // Record the error, recover the promise with a null return,
         // and we will attempt module not found resolution during the render path.
 
-        if (
-          error instanceof Error &&
-          typeof window !== 'undefined' &&
-          typeof sessionStorage !== 'undefined'
-        ) {
-          // Again, we want to reload one time on module not found error and not enter
-          // a reload loop if there is some other issue besides an old deploy.
-          // That's why we store our reload attempt in sessionStorage.
-          // Use error.message as key because it contains the module path that failed.
-          const storageKey = `tanstack_router_reload:${error.message}`
-          if (!sessionStorage.getItem(storageKey)) {
-            sessionStorage.setItem(storageKey, '1')
-            window.location.reload()
-
-            // Return empty component while we wait for window to reload
+        // Again, we want to reload one time on module not found error and not enter
+        // a reload loop if there is some other issue besides an old deploy.
+        // That's why we store our reload attempt in sessionStorage.
+        if (error instanceof Error && typeof window !== 'undefined') {
+          // Stay empty while the reload lands, so a render in that window
+          // cannot surface an error the incoming document is about to replace.
+          if (reloadForModuleNotFound(importer)) {
             return {
               default: () => null,
             }

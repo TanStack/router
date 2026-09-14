@@ -317,6 +317,8 @@ export {
   deepEqual,
   createControlledPromise,
   isModuleNotFoundError,
+  reloadForModuleNotFound,
+  clearModuleNotFoundReload,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
   getUrlScheme,
