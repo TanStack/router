@@ -5,24 +5,40 @@ import { deepEqual } from '../src/utils'
 // performance work on its loops cannot change it silently.
 describe('deepEqual contract', () => {
   it.each([
-    undefined,
-    {},
-    { partial: true },
-    { ignoreUndefined: false },
-    { partial: true, ignoreUndefined: false },
-  ])('compares nested records and arrays with %j', (opts) => {
-    const a = Object.freeze({
-      page: 1,
-      nested: Object.freeze({ ids: Object.freeze([1, 2]) }),
-    })
-    expect(deepEqual(a, { page: 1, nested: { ids: [1, 2] } }, opts)).toBe(true)
-    expect(deepEqual(a, { page: 1, nested: { ids: [1, 3] } }, opts)).toBe(false)
-  })
+    [undefined, undefined],
+    [true, undefined],
+    [undefined, true],
+    [true, true],
+  ] as const)(
+    'compares nested records and arrays with partial=%s explicitUndefined=%s',
+    (partial, explicitUndefined) => {
+      const a = Object.freeze({
+        page: 1,
+        nested: Object.freeze({ ids: Object.freeze([1, 2]) }),
+      })
+      expect(
+        deepEqual(
+          a,
+          { page: 1, nested: { ids: [1, 2] } },
+          partial,
+          explicitUndefined,
+        ),
+      ).toBe(true)
+      expect(
+        deepEqual(
+          a,
+          { page: 1, nested: { ids: [1, 3] } },
+          partial,
+          explicitUndefined,
+        ),
+      ).toBe(false)
+    },
+  )
 
   it('keeps partial comparison directional and arrays length-exact', () => {
-    expect(deepEqual({ a: 1, b: 2 }, { a: 1 }, { partial: true })).toBe(true)
-    expect(deepEqual({ a: 1 }, { a: 1, b: 2 }, { partial: true })).toBe(false)
-    expect(deepEqual([1, 2], [1], { partial: true })).toBe(false)
+    expect(deepEqual({ a: 1, b: 2 }, { a: 1 }, true)).toBe(true)
+    expect(deepEqual({ a: 1 }, { a: 1, b: 2 }, true)).toBe(false)
+    expect(deepEqual([1, 2], [1], true)).toBe(false)
   })
 
   it('retains inherited enumeration, symbols, and hidden-property policy', () => {
@@ -37,20 +53,12 @@ describe('deepEqual contract', () => {
 
   it('retains current undefined-key behavior rather than changing the contract', () => {
     expect(deepEqual({ a: undefined }, {})).toBe(true)
-    expect(deepEqual({ a: undefined }, {}, { ignoreUndefined: false })).toBe(
-      false,
-    )
+    expect(deepEqual({ a: undefined }, {}, false, true)).toBe(false)
     // Existing quirk: this performance patch deliberately does NOT repair it.
-    expect(
-      deepEqual({ a: undefined }, { b: undefined }, { ignoreUndefined: false }),
-    ).toBe(true)
-    expect(
-      deepEqual(
-        {},
-        { a: undefined },
-        { partial: true, ignoreUndefined: false },
-      ),
-    ).toBe(true)
+    expect(deepEqual({ a: undefined }, { b: undefined }, false, true)).toBe(
+      true,
+    )
+    expect(deepEqual({}, { a: undefined }, true, true)).toBe(true)
   })
 
   it('retains numeric equality', () => {
@@ -85,18 +93,13 @@ describe('deepEqual contract', () => {
         throw new Error('must not read')
       },
     }
-    expect(deepEqual({}, b, { ignoreUndefined: false })).toBe(false)
+    expect(deepEqual({}, b, false, true)).toBe(false)
   })
 
-  it('does not inspect options on an identical child', () => {
+  it('short-circuits identical children', () => {
     const shared = {}
-    const opts = {
-      get partial(): boolean {
-        throw new Error('must not read')
-      },
-    }
-    expect(deepEqual(shared, shared, opts)).toBe(true)
-    expect(deepEqual([shared], [shared], opts)).toBe(true)
+    expect(deepEqual(shared, shared, true, true)).toBe(true)
+    expect(deepEqual([shared], [shared], true, true)).toBe(true)
   })
 
   it('keeps different class instances opaque', () => {

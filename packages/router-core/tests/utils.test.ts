@@ -362,43 +362,43 @@ describe('deepEqual', () => {
     it('should return `true` for equal objects', () => {
       const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
       const b = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
-      expect(deepEqual(a, b, { partial })).toEqual(true)
-      expect(deepEqual(b, a, { partial })).toEqual(true)
+      expect(deepEqual(a, b, partial)).toEqual(true)
+      expect(deepEqual(b, a, partial)).toEqual(true)
     })
 
     it('should return `false` for non equal objects', () => {
       const a = { a: { b: 'b' }, c: 'c' }
       const b = { a: { b: 'c' }, c: 'c' }
-      expect(deepEqual(a, b, { partial })).toEqual(false)
-      expect(deepEqual(b, a, { partial })).toEqual(false)
+      expect(deepEqual(a, b, partial)).toEqual(false)
+      expect(deepEqual(b, a, partial)).toEqual(false)
     })
 
     it('should return `true` for equal objects and ignore `undefined` properties', () => {
       const a = { a: 'a', b: undefined, c: 'c' }
       const b = { a: 'a', c: 'c' }
-      expect(deepEqual(a, b, { partial })).toEqual(true)
-      expect(deepEqual(b, a, { partial })).toEqual(true)
+      expect(deepEqual(a, b, partial)).toEqual(true)
+      expect(deepEqual(b, a, partial)).toEqual(true)
     })
 
     it('should return `true` for equal objects and ignore `undefined` nested properties', () => {
       const a = { a: { b: 'b', x: undefined }, c: 'c' }
       const b = { a: { b: 'b' }, c: 'c', d: undefined }
-      expect(deepEqual(a, b, { partial })).toEqual(true)
-      expect(deepEqual(b, a, { partial })).toEqual(true)
+      expect(deepEqual(a, b, partial)).toEqual(true)
+      expect(deepEqual(b, a, partial)).toEqual(true)
     })
 
     it('should return `true` for equal arrays and ignore `undefined` object properties', () => {
       const a = { a: { b: 'b' }, c: undefined }
       const b = { a: { b: 'b' } }
-      expect(deepEqual([a], [b], { partial })).toEqual(true)
-      expect(deepEqual([b], [a], { partial })).toEqual(true)
+      expect(deepEqual([a], [b], partial)).toEqual(true)
+      expect(deepEqual([b], [a], partial)).toEqual(true)
     })
 
     it('should return `true` for equal arrays and ignore nested `undefined` object properties', () => {
       const a = { a: { b: 'b', x: undefined }, c: 'c' }
       const b = { a: { b: 'b' }, c: 'c' }
-      expect(deepEqual([a], [b], { partial })).toEqual(true)
-      expect(deepEqual([b], [a], { partial })).toEqual(true)
+      expect(deepEqual([a], [b], partial)).toEqual(true)
+      expect(deepEqual([b], [a], partial)).toEqual(true)
     })
   })
 
@@ -409,15 +409,15 @@ describe('deepEqual', () => {
       it('should return `false` for objects', () => {
         const a = { a: { b: 'b', x: undefined }, c: 'c' }
         const b = { a: { b: 'b' }, c: 'c', d: undefined }
-        expect(deepEqual(a, b, { partial, ignoreUndefined })).toEqual(false)
-        expect(deepEqual(b, a, { partial, ignoreUndefined })).toEqual(false)
+        expect(deepEqual(a, b, partial, !ignoreUndefined)).toEqual(false)
+        expect(deepEqual(b, a, partial, !ignoreUndefined)).toEqual(false)
       })
 
       it('should return `false` for arrays', () => {
         const a = { a: { b: 'b', x: undefined }, c: 'c' }
         const b = { a: { b: 'b' }, c: 'c' }
-        expect(deepEqual([a], [b], { partial, ignoreUndefined })).toEqual(false)
-        expect(deepEqual([b], [a], { partial, ignoreUndefined })).toEqual(false)
+        expect(deepEqual([a], [b], partial, !ignoreUndefined)).toEqual(false)
+        expect(deepEqual([b], [a], partial, !ignoreUndefined)).toEqual(false)
       })
     })
     describe('partial = true', () => {
@@ -425,15 +425,15 @@ describe('deepEqual', () => {
       it('should return `true` for objects', () => {
         const a = { a: { b: 'b' }, c: 'c' }
         const b = { a: { b: 'b' }, c: 'c', d: undefined }
-        expect(deepEqual(a, b, { partial, ignoreUndefined })).toEqual(true)
-        expect(deepEqual(b, a, { partial, ignoreUndefined })).toEqual(true)
+        expect(deepEqual(a, b, partial, !ignoreUndefined)).toEqual(true)
+        expect(deepEqual(b, a, partial, !ignoreUndefined)).toEqual(true)
       })
 
       it('should return `true` for arrays', () => {
         const a = { a: { b: 'b', x: undefined }, c: 'c' }
         const b = { a: { b: 'b' }, c: 'c' }
-        expect(deepEqual([a], [b], { partial, ignoreUndefined })).toEqual(true)
-        expect(deepEqual([b], [a], { partial, ignoreUndefined })).toEqual(true)
+        expect(deepEqual([a], [b], partial, !ignoreUndefined)).toEqual(true)
+        expect(deepEqual([b], [a], partial, !ignoreUndefined)).toEqual(true)
       })
     })
   })
@@ -442,15 +442,15 @@ describe('deepEqual', () => {
     it('correctly compares partially equal objects', () => {
       const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }] }
       const b = { a: { b: 'b' }, c: 'c' }
-      expect(deepEqual(a, b, { partial: true })).toEqual(true)
-      expect(deepEqual(b, a, { partial: true })).toEqual(false)
+      expect(deepEqual(a, b, true)).toEqual(true)
+      expect(deepEqual(b, a, true)).toEqual(false)
     })
 
     it('correctly compares partially equal objects and ignores `undefined` object properties', () => {
       const a = { a: { b: 'b' }, c: 'c', d: [{ d: 'd ' }], e: undefined }
       const b = { a: { b: 'b' }, c: 'c', d: undefined }
-      expect(deepEqual(a, b, { partial: true })).toEqual(true)
-      expect(deepEqual(b, a, { partial: true })).toEqual(false)
+      expect(deepEqual(a, b, true)).toEqual(true)
+      expect(deepEqual(b, a, true)).toEqual(false)
     })
   })
 
@@ -487,7 +487,7 @@ describe('deepEqual', () => {
         Object.prototype.x = 'x'
         const a = { a: 1 }
         const b = { a: 1 }
-        expect(deepEqual(a, b, { ignoreUndefined: false })).toEqual(true)
+        expect(deepEqual(a, b, false, true)).toEqual(true)
       },
     )
 

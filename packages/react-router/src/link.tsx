@@ -45,14 +45,14 @@ type LinkState = [href: string | undefined, isActive?: boolean]
 // mutated in place is not re-read. `deepEqual` short-circuits on reference
 // equality, so an unchanged reference costs nothing.
 //
-// `ignoreUndefined: false` is required: an explicit `undefined` clears an
+// `explicitUndefined` is required: an explicit `undefined` clears an
 // inherited param or search key, so `{}` and `{ category: undefined }` build
 // different locations and must not be treated as equal here.
 function useStableValues<T extends ReadonlyArray<unknown>>(...values: T): T {
   const ref = React.useRef<ReadonlyArray<unknown>>(values)
   const stable = ref.current as Array<unknown>
   values.forEach((value, index) => {
-    if (!deepEqual(stable[index], value, { ignoreUndefined: false })) {
+    if (!deepEqual(stable[index], value, false, true)) {
       stable[index] = value
     }
   })
@@ -111,10 +111,12 @@ function resolveIsActive(
   }
 
   if (activeOptions?.includeSearch ?? true) {
-    const searchTest = deepEqual(location.search, next.search, {
-      partial: !activeOptions?.exact,
-      ignoreUndefined: !activeOptions?.explicitUndefined,
-    })
+    const searchTest = deepEqual(
+      location.search,
+      next.search,
+      !activeOptions?.exact,
+      activeOptions?.explicitUndefined,
+    )
     if (!searchTest) {
       return false
     }
@@ -852,7 +854,7 @@ function areLinkPropsEqual(
     }
     if (
       !ROUTER_OPTION_KEYS.has(key) ||
-      !deepEqual(prev[key], next[key], { ignoreUndefined: false })
+      !deepEqual(prev[key], next[key], false, true)
     ) {
       return false
     }

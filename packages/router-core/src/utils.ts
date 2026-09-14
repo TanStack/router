@@ -363,13 +363,19 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
 }
 
 /**
- * Perform a deep equality check with options for partial comparison and
- * ignoring `undefined` values. Optimized for router state comparisons.
+ * Perform a deep equality check optimized for router state comparisons.
+ *
+ * - `partial`: `b` may omit keys that `a` has (arrays stay length-exact).
+ * - `explicitUndefined`: keys holding `undefined` take part in the comparison
+ *   instead of being ignored.
+ *
+ * Internal: the flags are positional so hot callers pass no options object.
  */
 export function deepEqual(
   a: any,
   b: any,
-  opts?: { partial?: boolean; ignoreUndefined?: boolean },
+  partial?: boolean,
+  explicitUndefined?: boolean,
 ): boolean {
   if (a === b) {
     return true
@@ -380,25 +386,25 @@ export function deepEqual(
     for (let i = 0, l = a.length; i < l; i++) {
       const av = a[i]
       const bv = b[i]
-      if (av !== bv && !deepEqual(av, bv, opts)) return false
+      if (av !== bv && !deepEqual(av, bv, partial, explicitUndefined)) {
+        return false
+      }
     }
     return true
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const ignoreUndefined = opts?.ignoreUndefined ?? true
-
-    if (opts?.partial) {
+    if (partial) {
       for (const k in b) {
-        if (!ignoreUndefined || b[k] !== undefined) {
-          if (!deepEqual(a[k], b[k], opts)) return false
+        if (explicitUndefined || b[k] !== undefined) {
+          if (!deepEqual(a[k], b[k], partial, explicitUndefined)) return false
         }
       }
       return true
     }
 
     let aCount = 0
-    if (!ignoreUndefined) {
+    if (explicitUndefined) {
       aCount = Object.keys(a).length
     } else {
       for (const k in a) {
@@ -407,8 +413,13 @@ export function deepEqual(
     }
 
     for (const k in b) {
-      if (!ignoreUndefined || b[k] !== undefined) {
-        if (aCount-- === 0 || !deepEqual(a[k], b[k], opts)) return false
+      if (explicitUndefined || b[k] !== undefined) {
+        if (
+          aCount-- === 0 ||
+          !deepEqual(a[k], b[k], partial, explicitUndefined)
+        ) {
+          return false
+        }
       }
     }
 

@@ -2,7 +2,7 @@ import { bench, describe, expect } from 'vitest'
 import { deepEqual } from '../src/utils'
 
 // Workloads modeled on the router's callers: Link inline-option stabilization
-// (`ignoreUndefined: false`), active-state search comparison (`partial`),
+// (`explicitUndefined`), active-state search comparison (`partial`),
 // matchRoute params (`partial`), and search-middleware value comparisons.
 // Inputs rotate over a pool so a single hidden-class or cached shape does not
 // dominate; the "fresh" cases build their incoming value inside the timed op.
@@ -66,9 +66,12 @@ expect(deepEqual(search, shared)).toBe(true)
 for (let index = 0; index < linkOptions.length; index++) {
   for (let slot = 0; slot < 3; slot++) {
     expect(
-      deepEqual(linkOptions[index]![slot], linkOptionsEqual[index]![slot], {
-        ignoreUndefined: false,
-      }),
+      deepEqual(
+        linkOptions[index]![slot],
+        linkOptionsEqual[index]![slot],
+        false,
+        true,
+      ),
     ).toBe(true)
   }
 }
@@ -93,9 +96,9 @@ describe('deepEqual', () => {
   )
 
   bench(
-    'equal flat record (ignoreUndefined: false)',
+    'equal flat record (explicitUndefined)',
     () => {
-      sink += +deepEqual(search, next(searchEqual), { ignoreUndefined: false })
+      sink += +deepEqual(search, next(searchEqual), false, true)
     },
     options,
   )
@@ -103,7 +106,7 @@ describe('deepEqual', () => {
   bench(
     'equal flat record (partial)',
     () => {
-      sink += +deepEqual(search, next(searchEqual), { partial: true })
+      sink += +deepEqual(search, next(searchEqual), true)
     },
     options,
   )
@@ -141,12 +144,13 @@ describe('deepEqual', () => {
   )
 
   bench(
-    'fresh equal flat record (ignoreUndefined: false)',
+    'fresh equal flat record (explicitUndefined)',
     () => {
       sink += +deepEqual(
         search,
         { page: 1, sort: 'asc', filter: 'open', tags: search.tags },
-        { ignoreUndefined: false },
+        false,
+        true,
       )
     },
     options,
@@ -155,11 +159,7 @@ describe('deepEqual', () => {
   bench(
     'fresh partial mismatch',
     () => {
-      sink += +deepEqual(
-        search,
-        { page: 1, sort: 'desc' },
-        { partial: true, ignoreUndefined: true },
-      )
+      sink += +deepEqual(search, { page: 1, sort: 'desc' }, true)
     },
     options,
   )
@@ -171,9 +171,7 @@ describe('deepEqual', () => {
         const previous = linkOptions[index]!
         const incoming = linkOptionsEqual[index]!
         for (let slot = 0; slot < 3; slot++) {
-          sink += +deepEqual(previous[slot], incoming[slot], {
-            ignoreUndefined: false,
-          })
+          sink += +deepEqual(previous[slot], incoming[slot], false, true)
         }
       }
     },

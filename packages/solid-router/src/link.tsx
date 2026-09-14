@@ -212,10 +212,12 @@ export function useLinkProps<
     }
 
     if (activeOptions?.includeSearch ?? true) {
-      const searchTest = deepEqual(current.search, nextLocation.search, {
-        partial: !activeOptions?.exact,
-        ignoreUndefined: !activeOptions?.explicitUndefined,
-      })
+      const searchTest = deepEqual(
+        current.search,
+        nextLocation.search,
+        !activeOptions?.exact,
+        activeOptions?.explicitUndefined,
+      )
       if (!searchTest) {
         return false
       }

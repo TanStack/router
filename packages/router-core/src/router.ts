@@ -2720,13 +2720,13 @@ export class RouterCore<
     }
 
     if (location.params) {
-      if (!deepEqual(match.rawParams, location.params, { partial: true })) {
+      if (!deepEqual(match.rawParams, location.params, true)) {
         return false
       }
     }
 
     if (opts?.includeSearch ?? true) {
-      return deepEqual(baseLocation.search, next.search, { partial: true })
+      return deepEqual(baseLocation.search, next.search, true)
         ? match.rawParams
         : false
     }
