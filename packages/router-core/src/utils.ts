@@ -218,7 +218,9 @@ export function hasKeys(obj: Record<string, unknown>) {
   return false
 }
 
-export const createNull = () => Object.create(null)
+// SSR copies benefit from fast properties; client structural sharing does not.
+export const createNull = () =>
+  isServer ? Object.setPrototypeOf({}, null) : Object.create(null)
 export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
   replaceEqualDeep(prev, next, createNull)
 
