@@ -1,20 +1,28 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import { Suspense } from 'solid-js'
+import {
+  delay,
+  makeDeferred,
+  makeLevelData,
+  nestedLevelDelays,
+  nestedPlainDelay,
+  nestedPlainMessage,
+} from '../../../../streaming-ssr-fixtures'
 
 const getLevel1Data = createServerFn({ method: 'GET' }).handler(async () => {
-  await new Promise((r) => setTimeout(r, 200))
-  return { level: 1, timestamp: Date.now() }
+  await delay(nestedLevelDelays[0])
+  return makeLevelData(1)
 })
 
 const getLevel2Data = createServerFn({ method: 'GET' }).handler(async () => {
-  await new Promise((r) => setTimeout(r, 400))
-  return { level: 2, timestamp: Date.now() }
+  await delay(nestedLevelDelays[1])
+  return makeLevelData(2)
 })
 
 const getLevel3Data = createServerFn({ method: 'GET' }).handler(async () => {
-  await new Promise((r) => setTimeout(r, 600))
-  return { level: 3, timestamp: Date.now() }
+  await delay(nestedLevelDelays[2])
+  return makeLevelData(3)
 })
 
 export const Route = createFileRoute('/nested-deferred')({
@@ -23,9 +31,7 @@ export const Route = createFileRoute('/nested-deferred')({
       level1: getLevel1Data(),
       level2: getLevel2Data(),
       level3: getLevel3Data(),
-      plainDeferred: new Promise<string>((r) =>
-        setTimeout(() => r('Plain deferred resolved!'), 300),
-      ),
+      plainDeferred: makeDeferred(nestedPlainMessage, nestedPlainDelay),
     }
   },
   component: NestedDeferred,

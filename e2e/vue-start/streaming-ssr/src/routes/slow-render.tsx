@@ -1,14 +1,19 @@
 import { Await, createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
 import { Suspense } from 'vue'
+import {
+  makeDeferredMessage,
+  makeServerData,
+  slowRenderComponents,
+  slowRenderDeferredDelay,
+  slowRenderDeferredMessage,
+  slowRenderQuickName,
+  sourceMarker,
+} from '../../../../streaming-ssr-fixtures'
 
-const getQuickData = createServerFn({ method: 'GET' }).handler(() => {
-  return {
-    name: 'Quick data',
-    timestamp: Date.now(),
-    source: 'server' as const,
-  }
-})
+const getQuickData = createServerFn({ method: 'GET' }).handler(() =>
+  makeServerData(slowRenderQuickName),
+)
 
 function SlowComponent(props: { data: string; index: number }) {
   const startTime = Date.now()
@@ -23,17 +28,11 @@ export const Route = createFileRoute('/slow-render')({
     const quickData = await getQuickData()
     return {
       quickData,
-      deferredData: new Promise<{ message: string; source: string }>((r) =>
-        setTimeout(
-          () =>
-            r({
-              message: 'Deferred resolved!',
-              source: typeof window === 'undefined' ? 'server' : 'client',
-            }),
-          50,
-        ),
+      deferredData: makeDeferredMessage(
+        slowRenderDeferredMessage,
+        slowRenderDeferredDelay,
       ),
-      loaderSource: typeof window === 'undefined' ? 'server' : 'client',
+      loaderSource: sourceMarker(),
     }
   },
   component: SlowRender,
@@ -70,9 +69,9 @@ function SlowRender() {
           fallback: () => <div data-testid="deferred-loading">Loading...</div>,
         }}
       </Suspense>
-      <SlowComponent data="Slow component 1" index={1} />
-      <SlowComponent data="Slow component 2" index={2} />
-      <SlowComponent data="Slow component 3" index={3} />
+      {slowRenderComponents.map((data, index) => (
+        <SlowComponent data={data} index={index + 1} />
+      ))}
     </div>
   )
 }

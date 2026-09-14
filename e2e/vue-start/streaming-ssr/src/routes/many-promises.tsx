@@ -1,30 +1,9 @@
 import { Await, createFileRoute } from '@tanstack/vue-router'
 import { Suspense } from 'vue'
-
-function createDelayedPromise<T>(value: T, delayMs: number): Promise<T> {
-  return new Promise((resolve) => setTimeout(() => resolve(value), delayMs))
-}
+import { createManyPromises } from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/many-promises')({
-  loader: async () => {
-    return {
-      immediate1: createDelayedPromise('immediate-1', 0),
-      immediate2: createDelayedPromise('immediate-2', 10),
-      immediate3: createDelayedPromise('immediate-3', 20),
-      fast1: createDelayedPromise('fast-1', 50),
-      fast2: createDelayedPromise('fast-2', 75),
-      fast3: createDelayedPromise('fast-3', 100),
-      fast4: createDelayedPromise('fast-4', 125),
-      medium1: createDelayedPromise('medium-1', 150),
-      medium2: createDelayedPromise('medium-2', 200),
-      medium3: createDelayedPromise('medium-3', 250),
-      slow1: createDelayedPromise('slow-1', 300),
-      slow2: createDelayedPromise('slow-2', 400),
-      slow3: createDelayedPromise('slow-3', 500),
-      verySlow1: createDelayedPromise('very-slow-1', 600),
-      verySlow2: createDelayedPromise('very-slow-2', 800),
-    }
-  },
+  loader: async () => createManyPromises(),
   component: ManyPromises,
 })
 

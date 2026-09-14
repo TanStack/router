@@ -1,26 +1,11 @@
 import { Suspense, useState } from 'react'
 import { Await, createFileRoute } from '@tanstack/react-router'
-
-// Keep the expensive allocation request-driven. The corresponding E2E test is
-// opt-in, so the normal streaming suite never creates this payload.
-const ROUTER_HTML_PAYLOAD_CHARS = 17 * 1024 * 1024
+import { createRouterHtmlPayload } from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/router-html-buffer')({
   loader: () => {
     return {
-      // Resolving after the shell starts streaming makes this value arrive in
-      // a router hydration script instead of ordinary rendered HTML.
-      payload: new Promise<{
-        value: string
-        source: 'server' | 'client'
-      }>((resolve) => {
-        setTimeout(() => {
-          resolve({
-            value: 'x'.repeat(ROUTER_HTML_PAYLOAD_CHARS),
-            source: typeof window === 'undefined' ? 'server' : 'client',
-          })
-        }, 100)
-      }),
+      payload: createRouterHtmlPayload(),
     }
   },
   component: RouterHtmlBufferRoute,

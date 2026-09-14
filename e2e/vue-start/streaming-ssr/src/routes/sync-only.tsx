@@ -1,14 +1,8 @@
 import { createFileRoute } from '@tanstack/vue-router'
+import { makeSyncOnlyData } from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/sync-only')({
-  loader: async () => {
-    return {
-      message: 'Hello from sync loader!',
-      timestamp: Date.now(),
-      items: ['item-1', 'item-2', 'item-3'],
-      source: typeof window === 'undefined' ? 'server' : 'client',
-    }
-  },
+  loader: async () => makeSyncOnlyData(),
   component: SyncOnly,
 })
 
@@ -22,7 +16,7 @@ function SyncOnly() {
       <p data-testid="sync-timestamp">Loaded at: {data.value.timestamp}</p>
       <p data-testid="sync-source">Source: {data.value.source}</p>
       <ul data-testid="sync-items">
-        {data.value.items.map((item) => (
+        {data.value.items.map((item: string) => (
           <li data-testid={`sync-item-${item}`}>{item}</li>
         ))}
       </ul>

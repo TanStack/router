@@ -1,22 +1,16 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createEffect, createSignal, onCleanup, Suspense } from 'solid-js'
+import {
+  createChunkStream,
+  createStreamPromise,
+} from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/stream')({
   component: StreamRoute,
   loader() {
     return {
-      promise: new Promise<string>((resolve) =>
-        setTimeout(() => resolve('promise-resolved'), 150),
-      ),
-      stream: new ReadableStream({
-        async start(controller) {
-          for (let i = 0; i < 5; i++) {
-            await new Promise((resolve) => setTimeout(resolve, 200))
-            controller.enqueue(`chunk-${i}`)
-          }
-          controller.close()
-        },
-      }),
+      promise: createStreamPromise(),
+      stream: createChunkStream(),
     }
   },
 })

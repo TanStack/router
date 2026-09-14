@@ -1,46 +1,40 @@
 import { Await, createFileRoute } from '@tanstack/solid-router'
 import { createServerFn } from '@tanstack/solid-start'
 import { Suspense } from 'solid-js'
+import {
+  deferredDataDelay,
+  deferredDataMessage,
+  deferredImmediateName,
+  deferredServerDelay,
+  deferredSlowName,
+  delay,
+  makeDeferredMessage,
+  makeServerData,
+  sourceMarker,
+} from '../../../../streaming-ssr-fixtures'
 
 const getImmediateData = createServerFn({ method: 'GET' })
   .validator((data: { name: string }) => data)
-  .handler(({ data }) => {
-    return {
-      name: data.name,
-      timestamp: Date.now(),
-      source: 'server' as const,
-    }
-  })
+  .handler(({ data }) => makeServerData(data.name))
 
 const getSlowData = createServerFn({ method: 'GET' })
   .validator((data: { name: string; delay: number }) => data)
   .handler(async ({ data }) => {
-    await new Promise((r) => setTimeout(r, data.delay))
-    return {
-      name: data.name,
-      timestamp: Date.now(),
-      source: 'server' as const,
-    }
+    await delay(data.delay)
+    return makeServerData(data.name)
   })
 
 export const Route = createFileRoute('/deferred')({
   loader: async () => {
     return {
-      deferredData: new Promise<{ message: string; source: string }>((r) =>
-        setTimeout(
-          () =>
-            r({
-              message: 'Deferred data loaded!',
-              source: typeof window === 'undefined' ? 'server' : 'client',
-            }),
-          1000,
-        ),
-      ),
+      deferredData: makeDeferredMessage(deferredDataMessage, deferredDataDelay),
       deferredServerData: getSlowData({
-        data: { name: 'Slow User', delay: 800 },
+        data: { name: deferredSlowName, delay: deferredServerDelay },
       }),
-      immediateData: await getImmediateData({ data: { name: 'Fast User' } }),
-      loaderSource: typeof window === 'undefined' ? 'server' : 'client',
+      immediateData: await getImmediateData({
+        data: { name: deferredImmediateName },
+      }),
+      loaderSource: sourceMarker(),
     }
   },
   component: Deferred,

@@ -1,14 +1,8 @@
 import { createFileRoute } from '@tanstack/solid-router'
+import { makeSyncOnlyData } from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/sync-only')({
-  loader: async () => {
-    return {
-      message: 'Hello from sync loader!',
-      timestamp: Date.now(),
-      items: ['item-1', 'item-2', 'item-3'],
-      source: typeof window === 'undefined' ? 'server' : 'client',
-    }
-  },
+  loader: async () => makeSyncOnlyData(),
   component: SyncOnly,
 })
 

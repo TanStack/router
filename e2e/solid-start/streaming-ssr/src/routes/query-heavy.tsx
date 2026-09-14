@@ -2,48 +2,36 @@ import { queryOptions, useQuery } from '@tanstack/solid-query'
 import { createFileRoute } from '@tanstack/solid-router'
 import { Suspense } from 'solid-js'
 
-type QueryType = 'sync' | 'fast-async' | 'slow-async'
+import {
+  delay,
+  makeQueryData,
+  queryHeavyItems,
+} from '../../../../streaming-ssr-fixtures'
+import type { QueryData } from '../../../../streaming-ssr-fixtures'
 
-type QueryData = {
-  type: QueryType
-  id: number
-  value: string
-  source: string
-}
-
-function makeQueryOptions(
-  type: QueryType,
-  id: number,
-  value: string,
-  delayMs = 0,
-) {
+function makeQueryOptions(item: (typeof queryHeavyItems)[number]) {
   return queryOptions({
-    queryKey: ['streaming-ssr-query-heavy', type, id],
+    queryKey: ['streaming-ssr-query-heavy', item.type, item.id],
     queryFn: async (): Promise<QueryData> => {
-      if (delayMs > 0) {
-        await new Promise((resolve) => setTimeout(resolve, delayMs))
+      if (item.delayMs > 0) {
+        await delay(item.delayMs)
       }
 
-      return {
-        type,
-        id,
-        value,
-        source: typeof window === 'undefined' ? 'server' : 'client',
-      }
+      return makeQueryData(item)
     },
     staleTime: Infinity,
   })
 }
 
-const syncQuery1 = makeQueryOptions('sync', 1, 'sync-value-1')
-const syncQuery2 = makeQueryOptions('sync', 2, 'sync-value-2')
-const syncQuery3 = makeQueryOptions('sync', 3, 'sync-value-3')
-const fastAsyncQuery1 = makeQueryOptions('fast-async', 1, 'fast-async-1', 50)
-const fastAsyncQuery2 = makeQueryOptions('fast-async', 2, 'fast-async-2', 75)
-const fastAsyncQuery3 = makeQueryOptions('fast-async', 3, 'fast-async-3', 100)
-const slowAsyncQuery1 = makeQueryOptions('slow-async', 1, 'slow-async-1', 200)
-const slowAsyncQuery2 = makeQueryOptions('slow-async', 2, 'slow-async-2', 300)
-const slowAsyncQuery3 = makeQueryOptions('slow-async', 3, 'slow-async-3', 400)
+const syncQuery1 = makeQueryOptions(queryHeavyItems[0])
+const syncQuery2 = makeQueryOptions(queryHeavyItems[1])
+const syncQuery3 = makeQueryOptions(queryHeavyItems[2])
+const fastAsyncQuery1 = makeQueryOptions(queryHeavyItems[3])
+const fastAsyncQuery2 = makeQueryOptions(queryHeavyItems[4])
+const fastAsyncQuery3 = makeQueryOptions(queryHeavyItems[5])
+const slowAsyncQuery1 = makeQueryOptions(queryHeavyItems[6])
+const slowAsyncQuery2 = makeQueryOptions(queryHeavyItems[7])
+const slowAsyncQuery3 = makeQueryOptions(queryHeavyItems[8])
 
 type QueryOptions = ReturnType<typeof makeQueryOptions>
 

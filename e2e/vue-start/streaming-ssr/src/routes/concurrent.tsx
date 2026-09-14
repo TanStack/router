@@ -1,42 +1,9 @@
 import { Await, createFileRoute } from '@tanstack/vue-router'
 import { Suspense } from 'vue'
-
-function createConcurrentPromises(
-  count: number,
-  delayMs: number,
-): Array<Promise<string>> {
-  const sharedPromise = new Promise<void>((resolve) =>
-    setTimeout(resolve, delayMs),
-  )
-  return Array.from({ length: count }, (_, i) =>
-    sharedPromise.then(() => `concurrent-${i + 1}`),
-  )
-}
+import { createConcurrentLoaderData } from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/concurrent')({
-  loader: async () => {
-    const batch1 = createConcurrentPromises(5, 100)
-    const batch2 = createConcurrentPromises(5, 200)
-    const batch3 = createConcurrentPromises(5, 300)
-
-    return {
-      concurrent1_1: batch1[0],
-      concurrent1_2: batch1[1],
-      concurrent1_3: batch1[2],
-      concurrent1_4: batch1[3],
-      concurrent1_5: batch1[4],
-      concurrent2_1: batch2[0],
-      concurrent2_2: batch2[1],
-      concurrent2_3: batch2[2],
-      concurrent2_4: batch2[3],
-      concurrent2_5: batch2[4],
-      concurrent3_1: batch3[0],
-      concurrent3_2: batch3[1],
-      concurrent3_3: batch3[2],
-      concurrent3_4: batch3[3],
-      concurrent3_5: batch3[4],
-    }
-  },
+  loader: async () => createConcurrentLoaderData(),
   component: Concurrent,
 })
 

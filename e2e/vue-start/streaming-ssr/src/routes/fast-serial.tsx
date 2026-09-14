@@ -1,22 +1,23 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
+import {
+  fastSerialStaticData,
+  makeFastSerialSmallData,
+  sourceMarker,
+} from '../../../../streaming-ssr-fixtures'
 
-const getSmallData = createServerFn({ method: 'GET' }).handler(() => {
-  return {
-    value: 'small-data',
-    timestamp: Date.now(),
-    source: 'server' as const,
-  }
-})
+const getSmallData = createServerFn({ method: 'GET' }).handler(() =>
+  makeFastSerialSmallData(),
+)
 
 export const Route = createFileRoute('/fast-serial')({
   loader: async () => {
     const data = await getSmallData()
     return {
       serverData: data,
-      staticData: 'This is static data',
+      staticData: fastSerialStaticData,
       timestamp: Date.now(),
-      loaderSource: typeof window === 'undefined' ? 'server' : 'client',
+      loaderSource: sourceMarker(),
     }
   },
   component: FastSerial,
