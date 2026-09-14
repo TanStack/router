@@ -142,6 +142,31 @@ export type RouterManagedTag =
   | RouterManagedScriptTag
   | RouterManagedStyleTag
 
+/**
+ * `<link>` rels that are unique by nature: at most one such tag is valid in the
+ * document. For these, a child route's tag must override its parent's rather
+ * than being concatenated, mirroring how meta tags dedupe by name/property.
+ * Deliberately narrow — rels like `stylesheet`, `preload`, `icon` and
+ * `alternate` legitimately repeat and must not be collapsed.
+ */
+const UNIQUE_LINK_RELS = new Set<string>(['canonical'])
+const LINK_REL_TOKEN_SEPARATOR = /[\t\n\f\r ]+/
+
+function uniqueLinkRelKey(tag: RouterManagedTag): string | undefined {
+  if (tag.tag !== 'link') {
+    return undefined
+  }
+  const rel = tag.attrs?.rel
+  const uniqueRel =
+    typeof rel === 'string'
+      ? rel
+          .toLowerCase()
+          .split(LINK_REL_TOKEN_SEPARATOR)
+          .find((token) => UNIQUE_LINK_RELS.has(token))
+      : undefined
+  return uniqueRel === undefined ? undefined : `link:${uniqueRel}`
+}
+
 export function appendUniqueUserTags(
   target: Array<RouterManagedTag>,
   tags: Array<RouterManagedTag>,
@@ -155,15 +180,32 @@ export function appendUniqueUserTags(
     return
   }
 
+  // Tags arrive parent-first, so the last occurrence of a unique-by-nature
+  // link rel is the deepest (child) match and is the one that should win.
+  const lastUniqueRelIndex = new Map<string, number>()
+  tags.forEach((tag, index) => {
+    const relKey = uniqueLinkRelKey(tag)
+    if (relKey !== undefined) {
+      lastUniqueRelIndex.set(relKey, index)
+    }
+  })
+
   const seen = new Set<string>()
-  for (const tag of tags) {
+  tags.forEach((tag, index) => {
+    const relKey = uniqueLinkRelKey(tag)
+    if (relKey !== undefined) {
+      if (lastUniqueRelIndex.get(relKey) === index) {
+        target.push(tag)
+      }
+      return
+    }
     const key = JSON.stringify(tag)
     if (seen.has(key)) {
-      continue
+      return
     }
     seen.add(key)
     target.push(tag)
-  }
+  })
 }
 
 export type ManifestCssLink =
