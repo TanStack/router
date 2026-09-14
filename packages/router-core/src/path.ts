@@ -8,6 +8,10 @@ import type { SieveCache } from './sieve-cache'
 import type { DynamicPathSegment } from './new-process-route-tree'
 import type { AnyRoute } from './route'
 
+// Hoisted: a regex literal allocates a new RegExp each time it is evaluated.
+const REPEATED_SLASHES_RE = /\/{2,}/g
+const TRAILING_SLASHES_RE = /\/+$/
+
 /** Join path segments, cleaning duplicate slashes between parts. */
 export function joinPaths(paths: Array<string | undefined>) {
   return cleanPath(
@@ -22,7 +26,7 @@ export function joinPaths(paths: Array<string | undefined>) {
 /** Remove repeated slashes from a path string. */
 export function cleanPath(path: string) {
   // remove double slashes
-  return path.replace(/\/{2,}/g, '/')
+  return path.replace(REPEATED_SLASHES_RE, '/')
 }
 
 /** Trim leading slashes (except preserving root '/'). */
@@ -33,7 +37,9 @@ export function trimPathLeft(path: string) {
 /** Trim trailing slashes (except preserving root '/'). */
 export function trimPathRight(path: string) {
   const len = path.length
-  return len > 1 && path[len - 1] === '/' ? path.replace(/\/+$/, '') : path
+  return len > 1 && path[len - 1] === '/'
+    ? path.replace(TRAILING_SLASHES_RE, '')
+    : path
 }
 
 /** Trim both leading and trailing slashes. */
@@ -239,6 +245,9 @@ export function hasMissingPathParams(
   })
 }
 
+// Splat values made only of URL-safe characters are used as-is.
+const URL_SAFE_SPLAT_RE = /^[a-zA-Z0-9\-._~!/]*$/
+
 function encodeParam(
   key: string,
   value: unknown,
@@ -249,8 +258,7 @@ function encodeParam(
   }
 
   const splat = key === '_splat'
-  // Early return if the splat contains only URL-safe characters.
-  if (splat && (!value || /^[a-zA-Z0-9\-._~!/]*$/.test(value))) {
+  if (splat && (!value || URL_SAFE_SPLAT_RE.test(value))) {
     return value
   }
   let encoded = encodeURIComponent(value)
