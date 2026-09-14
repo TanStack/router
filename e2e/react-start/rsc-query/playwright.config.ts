@@ -1,8 +1,7 @@
 import { defineConfig, devices } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
-const PORT = await getTestServerPort(packageJson.name)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 const baseURL = `http://localhost:${PORT}`
 
 export default defineConfig({
@@ -16,9 +15,9 @@ export default defineConfig({
 
   webServer: {
     // RSC production builds are not yet supported, use dev mode
-    command: `pnpm dev:e2e`,
-    url: baseURL,
-    reuseExistingServer: !process.env.CI,
+    command: `pnpm dev:e2e --port 0`,
+    wait: appServerReady,
+    reuseExistingServer: false,
     stdout: 'pipe',
     env: {
       VITE_NODE_ENV: 'test',

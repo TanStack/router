@@ -1,10 +1,7 @@
 import { expect } from '@playwright/test'
-import { apiTest as test, getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
+import { apiTest as test } from '@tanstack/router-e2e-utils'
 
-const appPort = await getTestServerPort(
-  process.env.E2E_PORT_KEY ?? packageJson.name,
-)
+const appPort = Number(process.env.E2E_APP_PORT ?? 0)
 const adminHref = `http://127.0.0.1:${appPort}/external.html`
 
 for (const role of ['button', 'link'] as const) {

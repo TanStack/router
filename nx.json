@@ -63,11 +63,7 @@
       "cache": true,
       "dependsOn": ["^build", "test:e2e--*"],
       "inputs": ["default", "^production", "dependentTaskOutputs"],
-      "outputs": [
-        "{projectRoot}/dist",
-        "{projectRoot}/port-*.txt",
-        "{projectRoot}/test-results"
-      ],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"],
       "parallelism": false
     },
     "test:e2e:nitro": {

@@ -45,7 +45,7 @@ Supported toolchains:
 
 For each `{ toolchain, mode }` entry, the plugin generates:
 
-- `build:e2e--<toolchain>-<mode>`
+- `build:<toolchain>:<mode>`
 - `test:e2e--<toolchain>-<mode>`
 
 If `shards > 1`, it also generates:
@@ -59,7 +59,7 @@ Finally, it generates:
 
 ## 3. Environment variables injected by inferred targets
 
-Each inferred `build:e2e:*` and `test:e2e:*` target sets:
+Each inferred `build:<toolchain>:<mode>` and `test:e2e--<toolchain>-<mode>` target sets:
 
 - `MODE=<mode>`
 - `TOOLCHAIN=<toolchain>`
@@ -67,25 +67,23 @@ Each inferred `build:e2e:*` and `test:e2e:*` target sets:
 - `E2E_DIST=dist-<toolchain>-<mode>`
 - `E2E_DIST_DIR=dist-<toolchain>-<mode>`
 
-Each inferred `test:e2e:*` target also sets:
-
-- `E2E_PORT_KEY=<package-name>-<toolchain>-<mode>`
-- For shard targets: `E2E_PORT_KEY=<package-name>-<toolchain>-<mode>-shard-<index>-of-<count>`
-
 ## 4. Build behavior and webServer command
 
-Each inferred e2e target depends on the inferred `build:e2e--<toolchain>-<mode>`
-target, which runs:
+Each inferred e2e target depends on the inferred `build:<toolchain>:<mode>`
+target. It runs `vite build && tsc --noEmit` or
+`rsbuild build && tsc --noEmit`, selecting the toolchain explicitly. Ordinary
+package build scripts do not need to know about E2E mocking.
 
-```sh
-vite build && tsc --noEmit
-```
-
-with the mode/toolchain env above.
-
-This command is intentionally fixed (it does not call `pnpm build`). This avoids
-accidentally selecting the wrong build path in projects that include multiple
-toolchains.
+The React, Solid, and Vue basic examples preload the same MSW handlers in
+Nx prerender builds (through mode metadata) and Playwright application servers
+with Node's native option:
+`NODE_OPTIONS='--import=@tanstack/router-e2e-utils/mock-api'`.
+The handlers return canned posts and users at `https://jsonplaceholder.typicode.com` inside
+each Node process, including prerendering. No API listener or fixture port is
+needed. Playwright starts only the application server. A cached build uses the
+same URL when started by a fresh process with the preload enabled. Ordinary
+`pnpm dev`, builds, and standalone servers use the public API without MSW.
+Application code uses the public URL in both cases; test setup enables mocking.
 
 The inferred build target uses standard production inputs and explicit mode-
 specific outputs (`dist-<toolchain>-<mode>`). Mode env values are passed through
@@ -99,7 +97,7 @@ Good:
 ```ts
 webServer: {
   command: `PORT=${PORT} pnpm start`,
-  url: baseURL,
+  wait: appServerReady,
 }
 ```
 
@@ -110,7 +108,7 @@ const distDir = process.env.E2E_DIST_DIR ?? 'dist'
 
 webServer: {
   command: `pnpm preview --outDir ${distDir} --port ${PORT}`,
-  url: baseURL,
+  wait: appServerReady,
 }
 ```
 
@@ -119,61 +117,50 @@ Avoid:
 ```ts
 webServer: {
   command: `MODE=spa pnpm build && PORT=${PORT} pnpm start`,
-  url: baseURL,
+  wait: appServerReady,
 }
 ```
 
-## 5. Use `E2E_PORT_KEY` for all server ports
+## 5. Let each server bind its own port
 
-If your setup uses `getTestServerPort`, use
-`process.env.E2E_PORT_KEY` first.
+Use port `0` in server commands. The OS chooses a free port while binding the
+listening socket. Do not reserve ports, write port files, or restore ports from
+Nx outputs.
 
-```ts
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from './package.json' with { type: 'json' }
-
-const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
-const PORT = await getTestServerPort(e2ePortKey)
-```
-
-Dummy server setup/teardown should use the same key:
+Playwright's `webServer.wait` captures the address printed after listening.
+It exports named capture groups to subsequent servers and test workers. The
+shared `appServerReady` pattern captures `E2E_APP_PORT`; configs read that value
+when reloaded in workers to configure `use.baseURL`.
 
 ```ts
+import { appServerReady } from '@tanstack/router-e2e-utils'
 
+const baseURL = `http://localhost:${process.env.E2E_APP_PORT ?? 0}`
+
+// Inside defineConfig:
+use: { baseURL },
+webServer: {
+  command: 'pnpm preview --port 0',
+  wait: appServerReady,
+  reuseExistingServer: false,
+},
 ```
 
-## 6. Clean stale port files once per Playwright run
+Canned posts/users requests use `https://jsonplaceholder.typicode.com`. Node builds and
+servers preload `@tanstack/router-e2e-utils/mock-api` through `NODE_OPTIONS`.
+Browser API suites import `apiTest as test` from the E2E utilities. That fixture
+uses the official MSW Playwright adapter with the same handlers. Opt in only
+where the API is needed: Playwright routing disables the browser HTTP cache.
 
-If the project allocates ports through `@tanstack/router-e2e-utils`, clean stale
-`port-*.txt` files before resolving the port.
+External-navigation tests use another hostname on the existing app listener,
+with a static HTML asset when the test needs a distinct destination document.
+No API server, fixture-port environment variable, or build launcher is needed.
 
-Important: do this only in the main Playwright config load. Playwright loads the
-config more than once, and unconditional cleanup can remap the port after the
-web server has already started.
+Custom servers must print their actual `server.address().port`, not the
+requested port. SPA servers bind their backend first and use its actual port
+for proxying. Playwright owns server shutdown.
 
-```ts
-import fs from 'node:fs'
-import packageJson from './package.json' with { type: 'json' }
-
-const e2ePortKey = process.env.E2E_PORT_KEY ?? packageJson.name
-
-if (process.env.TEST_WORKER_INDEX === undefined) {
-  for (const portFile of [
-    `port-${e2ePortKey}.txt`,
-    `port-${e2ePortKey}_start.txt`,
-    `port-${e2ePortKey}-external.txt`,
-  ]) {
-    fs.rmSync(portFile, { force: true })
-  }
-}
-```
-
-Include the `*_start` file only if your test setup allocates a separate
-`START_PORT` key.
-
-Avoid broad cleanup such as `rm -rf port*.txt` in shared shard runs.
-
-## 7. Run inferred targets
+## 6. Run inferred targets
 
 Examples:
 
@@ -199,21 +186,3 @@ If `playwrightModes` is not configured, the plugin still supports:
 
 This generates legacy shard targets under `test:e2e--shard-...` plus a parent
 `test:e2e` target.
-
-## Mock API and standalone development
-
-Applications use `https://jsonplaceholder.typicode.com` directly. Ordinary dev,
-build, and start commands reach the public API. E2E browser suites opt into
-`apiTest` from the private E2E utilities, which installs the shared MSW handlers
-through the official Playwright adapter. Routing disables the browser HTTP cache;
-suites without API requests keep the ordinary Playwright fixture.
-
-Start application servers preload `@tanstack/router-e2e-utils/mock-api` through
-Playwright's `webServer.env.NODE_OPTIONS`. Prerender modes set the same Node
-preload in their Nx mode metadata, so cached builds and fresh servers use the
-same URL without an API listener or fixture port. Other origins pass through;
-unmatched requests to the API origin fail through a final MSW handler.
-
-External navigation uses `localhost` and `127.0.0.1` on the same application
-listener, with a static destination document where needed. The application port
-allocator is independent of API mocking and is removed in the next stack PR.

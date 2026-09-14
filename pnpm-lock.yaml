@@ -576,9 +576,6 @@ importers:
       '@msw/playwright':
         specifier: 0.6.7
         version: 0.6.7(msw@2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2))
-      get-port-please:
-        specifier: ^3.2.0
-        version: 3.2.0
       msw:
         specifier: 2.15.0
         version: 2.15.0(@types/node@25.0.9)(@typescript/typescript6@6.0.2)
