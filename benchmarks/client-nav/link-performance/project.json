@@ -59,7 +59,19 @@
     },
     "test:unit": {
       "executor": "nx:run-commands",
-      "dependsOn": [],
+      "inputs": [
+        "...",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/harness.ts",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/links/shared.ts",
+        "{workspaceRoot}/benchmarks/client-nav/setup-helpers.ts",
+        "{workspaceRoot}/benchmarks/client-nav/tsconfig.json"
+      ],
+      "dependsOn": [
+        {
+          "projects": ["@tanstack/history"],
+          "target": "build"
+        }
+      ],
       "options": {
         "command": "vitest run --config ./link-performance/vitest.config.ts",
         "cwd": "benchmarks/client-nav"
@@ -67,6 +79,15 @@
     },
     "test:types": {
       "executor": "nx:run-commands",
+      "inputs": [
+        "...",
+        "{workspaceRoot}/benchmarks/client-nav/jsdom.ts",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/harness.ts",
+        "{workspaceRoot}/benchmarks/client-nav/scenarios/links/shared.ts",
+        "{workspaceRoot}/benchmarks/client-nav/setup-helpers.ts",
+        "{workspaceRoot}/benchmarks/client-nav/tsconfig.json",
+        "{workspaceRoot}/benchmarks/client-nav/vitest.setup.ts"
+      ],
       "dependsOn": [
         {
           "projects": ["@tanstack/react-router"],

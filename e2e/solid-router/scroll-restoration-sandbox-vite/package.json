@@ -28,5 +28,15 @@
     "@tanstack/router-e2e-utils": "workspace:^",
     "vite": "^8.0.14",
     "vite-plugin-solid": "^2.11.11"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-hash"
+        ]
+      }
+    }
   }
 }

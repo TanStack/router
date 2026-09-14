@@ -31,5 +31,15 @@
     "typescript": "~5.8.3",
     "vite": "^8.0.14",
     "vue-tsc": "^3.3.8"
+  },
+  "nx": {
+    "targets": {
+      "test:e2e": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-hash"
+        ]
+      }
+    }
   }
 }
