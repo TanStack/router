@@ -147,15 +147,16 @@ export function useLinkProps<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   forwardedRef?: React.ForwardedRef<Element>,
-): React.ComponentPropsWithRef<'a'> {
-  return useLinkPropsFor(options, forwardedRef)
-}
-
-// `host` is what the props are rendered on: `'a'` for `Link`, the component
-// given to `createLink`, or `undefined` for the public hook. `Link` never
-// renders `type` and an anchor never receives `disabled`, so those are left
-// out here rather than copied away from the result in the component.
-function useLinkPropsFor<
+): React.ComponentPropsWithRef<'a'>
+/**
+ * `host` is what the props are rendered on: `'a'` for `Link` or the component
+ * given to `createLink`. `Link` never renders `type` and an anchor never
+ * receives `disabled`, so those are left out here rather than copied away
+ * from the result in the component. Stripped from the public declarations.
+ *
+ * @internal
+ */
+export function useLinkProps<
   TRouter extends AnyRouter = RegisteredRouter,
   const TFrom extends string = string,
   const TTo extends string | undefined = undefined,
@@ -164,6 +165,17 @@ function useLinkPropsFor<
 >(
   options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
   forwardedRef: React.ForwardedRef<Element> | undefined,
+  host: 'a' | React.ElementType,
+): React.ComponentPropsWithRef<'a'>
+export function useLinkProps<
+  TRouter extends AnyRouter = RegisteredRouter,
+  const TFrom extends string = string,
+  const TTo extends string | undefined = undefined,
+  const TMaskFrom extends string = TFrom,
+  const TMaskTo extends string = '',
+>(
+  options: UseLinkPropsOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  forwardedRef?: React.ForwardedRef<Element>,
   host?: 'a' | React.ElementType,
 ): React.ComponentPropsWithRef<'a'> {
   const router = useRouter()
@@ -820,7 +832,7 @@ export function createLink<const TComp>(
 export const Link: LinkComponent<'a'> = React.memo(
   React.forwardRef<Element, any>((props, ref) => {
     const host = props._asChild || 'a'
-    const linkProps = useLinkPropsFor(props as any, ref, host)
+    const linkProps = useLinkProps(props as any, ref, host)
 
     const children =
       typeof props.children === 'function'
