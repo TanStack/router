@@ -72,14 +72,20 @@ task-exclusions:
   # Mutable counters are scratch state, not artifacts to replay from cache.
   - project: tanstack-react-start-e2e-basic-tsr-config
     target: test:e2e
+    exclude-reads:
+      - e2e/react-start/basic-tsr-config/count.txt
     exclude-writes:
       - e2e/react-start/basic-tsr-config/count.txt
   - project: tanstack-solid-start-e2e-basic-tsr-config
     target: test:e2e
+    exclude-reads:
+      - e2e/solid-start/basic-tsr-config/count.txt
     exclude-writes:
       - e2e/solid-start/basic-tsr-config/count.txt
   - project: tanstack-vue-start-e2e-basic-tsr-config
     target: test:e2e
+    exclude-reads:
+      - e2e/vue-start/basic-tsr-config/count.txt
     exclude-writes:
       - e2e/vue-start/basic-tsr-config/count.txt
   # Paraglide downloads compiler plugins from the URLs in settings.json.
