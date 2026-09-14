@@ -3,16 +3,19 @@
 import { beforeEach, expect, test, vi } from 'vitest'
 import { createStream, fromCrossJSON } from 'seroval'
 import {
+  TSS_CONTENT_TYPE_FRAMED_VERSIONED,
+  X_TSS_SERIALIZED,
+} from '@tanstack/start-client-core'
+import {
   FRAME_HEADER_SIZE,
   FRAME_TYPE_CHUNK,
   FRAME_TYPE_JSON,
   MAX_FRAMED_STREAMS,
-  TSS_CONTENT_TYPE_FRAMED_VERSIONED,
-  X_TSS_SERIALIZED,
-} from '@tanstack/start-client-core'
+} from '@tanstack/start-client-core/client-rpc'
 import { RawStream } from '@tanstack/router-core'
 import { defaultSerovalDeserializerPlugins } from '@tanstack/router-core/ssr/server'
 import { handleServerAction } from '../src/server-functions-handler'
+import type * as StartClientCore from '@tanstack/start-client-core'
 
 const mocks = vi.hoisted(() => ({
   action: vi.fn(),
@@ -28,8 +31,7 @@ vi.mock('../src/request-response', () => ({
 }))
 
 vi.mock('@tanstack/start-client-core', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@tanstack/start-client-core')>()
+  const actual = await importOriginal<typeof StartClientCore>()
   const { defaultSerovalDeserializerPlugins } =
     await import('@tanstack/router-core/ssr/server')
   return {
@@ -47,7 +49,7 @@ beforeEach(() => {
 async function readFrames(response: Response) {
   const frames: Array<{ type: number; payload: Uint8Array }> = []
   const reader = response.body!.getReader()
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read()
     if (done) {
       return frames

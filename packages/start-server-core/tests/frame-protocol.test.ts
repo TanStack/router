@@ -6,12 +6,8 @@ import {
   FRAME_TYPE_ERROR,
   FRAME_TYPE_JSON,
   MAX_FRAME_PAYLOAD_SIZE,
-} from '@tanstack/start-client-core'
-import {
-  createMultiplexedStream,
-  encodeErrorPayload,
-  encodeFrame,
-} from '../src/frame-protocol'
+} from '@tanstack/start-client-core/client-rpc'
+import { createMultiplexedStream } from '../src/frame-protocol'
 import type {
   LateStreamRegistration,
   MultiplexedStreamRecord,
@@ -37,95 +33,96 @@ function createRecordStream(
   })
 }
 
+async function readFrames(stream: ReadableStream<Uint8Array>) {
+  const reader = stream.getReader()
+  const frames: Array<Uint8Array> = []
+  for (;;) {
+    const { done, value } = await reader.read()
+    if (done) {
+      return frames
+    }
+    frames.push(value)
+  }
+}
+
 describe('frame-protocol', () => {
-  describe('encodeFrame', () => {
-    it('should encode frame with header and payload', () => {
+  describe('frame encoding', () => {
+    it('should encode JSON, chunk, and end frames', async () => {
       const payload = new Uint8Array([1, 2, 3, 4])
-      const frame = encodeFrame(FRAME_TYPE_CHUNK, 42, payload)
-
-      expect(frame.length).toBe(FRAME_HEADER_SIZE + payload.length)
-
-      // Check header
-      const view = new DataView(frame.buffer)
-      expect(view.getUint8(0)).toBe(FRAME_TYPE_CHUNK)
-      expect(view.getUint32(1, false)).toBe(42) // streamId big-endian
-      expect(view.getUint32(5, false)).toBe(4) // length big-endian
-
-      // Check payload
-      expect(frame.slice(FRAME_HEADER_SIZE)).toEqual(payload)
-    })
-
-    it('should handle empty payload', () => {
-      const frame = encodeFrame(FRAME_TYPE_END, 1, new Uint8Array(0))
-
-      expect(frame.length).toBe(FRAME_HEADER_SIZE)
-
-      const view = new DataView(frame.buffer)
-      expect(view.getUint8(0)).toBe(FRAME_TYPE_END)
-      expect(view.getUint32(5, false)).toBe(0) // length is 0
-    })
-  })
-
-  describe('chunk frames', () => {
-    it('should encode binary chunk with frame type CHUNK', () => {
-      const chunk = new Uint8Array([0xff, 0xfe, 0xfd])
-      const frame = encodeFrame(FRAME_TYPE_CHUNK, 123, chunk)
-
-      const view = new DataView(frame.buffer)
-      expect(view.getUint8(0)).toBe(FRAME_TYPE_CHUNK)
-      expect(view.getUint32(1, false)).toBe(123)
-      expect(view.getUint32(5, false)).toBe(3)
-
-      expect(frame.slice(FRAME_HEADER_SIZE)).toEqual(chunk)
-    })
-  })
-
-  describe('end frames', () => {
-    it('should encode end frame with empty payload', () => {
-      const frame = encodeFrame(FRAME_TYPE_END, 456, new Uint8Array(0))
-
-      expect(frame.length).toBe(FRAME_HEADER_SIZE)
-
-      const view = new DataView(frame.buffer)
-      expect(view.getUint8(0)).toBe(FRAME_TYPE_END)
-      expect(view.getUint32(1, false)).toBe(456)
-      expect(view.getUint32(5, false)).toBe(0)
-    })
-  })
-
-  describe('encodeErrorPayload', () => {
-    it('should encode Error message', () => {
-      const frame = encodeFrame(
-        FRAME_TYPE_ERROR,
-        789,
-        encodeErrorPayload(new Error('Something went wrong')),
+      const rawStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(payload)
+          controller.close()
+        },
+      })
+      const frames = await readFrames(
+        createMultiplexedStream(
+          createRecordStream([
+            createRecord('{"result":"ok"}', [{ id: 42, stream: rawStream }]),
+          ]),
+        ),
       )
 
-      const view = new DataView(frame.buffer)
+      expect(frames).toHaveLength(3)
+      const jsonView = new DataView(frames[0]!.buffer, frames[0]!.byteOffset)
+      expect(jsonView.getUint8(0)).toBe(FRAME_TYPE_JSON)
+      expect(jsonView.getUint32(1, false)).toBe(0)
+
+      const chunkView = new DataView(frames[1]!.buffer, frames[1]!.byteOffset)
+      expect(frames[1]!.length).toBe(FRAME_HEADER_SIZE + payload.length)
+      expect(chunkView.getUint8(0)).toBe(FRAME_TYPE_CHUNK)
+      expect(chunkView.getUint32(1, false)).toBe(42)
+      expect(chunkView.getUint32(5, false)).toBe(payload.length)
+      expect(frames[1]!.slice(FRAME_HEADER_SIZE)).toEqual(payload)
+
+      const endView = new DataView(frames[2]!.buffer, frames[2]!.byteOffset)
+      expect(frames[2]!.length).toBe(FRAME_HEADER_SIZE)
+      expect(endView.getUint8(0)).toBe(FRAME_TYPE_END)
+      expect(endView.getUint32(1, false)).toBe(42)
+      expect(endView.getUint32(5, false)).toBe(0)
+    })
+
+    it.each([
+      [new Error('Something went wrong'), 'Something went wrong'],
+      ['string error', 'string error'],
+      [undefined, 'Unknown error'],
+    ])('should encode raw stream error payload %j', async (error, message) => {
+      const errorStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(error)
+        },
+      })
+      const frames = await readFrames(
+        createMultiplexedStream(
+          createRecordStream([
+            createRecord('{}', [{ id: 789, stream: errorStream }]),
+          ]),
+        ),
+      )
+      const frame = frames.find((value) => value[0] === FRAME_TYPE_ERROR)!
+      const view = new DataView(frame.buffer, frame.byteOffset)
       expect(view.getUint8(0)).toBe(FRAME_TYPE_ERROR)
       expect(view.getUint32(1, false)).toBe(789)
+      expect(new TextDecoder().decode(frame.slice(FRAME_HEADER_SIZE))).toBe(
+        message,
+      )
+    })
 
+    it('should bound oversized raw-stream error messages', async () => {
+      const errorStream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.error(new Error('x'.repeat(MAX_FRAME_PAYLOAD_SIZE + 1)))
+        },
+      })
+      const frames = await readFrames(
+        createMultiplexedStream(
+          createRecordStream([
+            createRecord('{}', [{ id: 1, stream: errorStream }]),
+          ]),
+        ),
+      )
+      const frame = frames.find((value) => value[0] === FRAME_TYPE_ERROR)!
       const payload = frame.slice(FRAME_HEADER_SIZE)
-      expect(new TextDecoder().decode(payload)).toBe('Something went wrong')
-    })
-
-    it('should handle non-Error values', () => {
-      expect(new TextDecoder().decode(encodeErrorPayload('string error'))).toBe(
-        'string error',
-      )
-    })
-
-    it('should handle undefined error', () => {
-      expect(new TextDecoder().decode(encodeErrorPayload(undefined))).toBe(
-        'Unknown error',
-      )
-    })
-
-    it('should bound oversized raw-stream error messages', () => {
-      const payload = encodeErrorPayload(
-        new Error('x'.repeat(MAX_FRAME_PAYLOAD_SIZE + 1)),
-      )
-
       expect(payload.byteLength).toBeLessThan(MAX_FRAME_PAYLOAD_SIZE)
       expect(new TextDecoder().decode(payload)).toMatch(/…$/)
     })
@@ -143,9 +140,11 @@ describe('frame-protocol', () => {
       const reader = multiplexed.getReader()
       const chunks: Array<Uint8Array> = []
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         chunks.push(value)
       }
 
@@ -175,9 +174,11 @@ describe('frame-protocol', () => {
       const reader = multiplexed.getReader()
       const chunks: Array<Uint8Array> = []
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         chunks.push(value)
       }
 
@@ -207,7 +208,7 @@ describe('frame-protocol', () => {
       )
       const reader = multiplexed.getReader()
       const frames: Array<Uint8Array> = []
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
         if (done) {
           break
@@ -573,8 +574,11 @@ describe('frame-protocol', () => {
 
       // Read first batch (JSON + first chunks from both streams)
       for (let i = 0; i < 3; i++) {
-        const { value } = await reader.read()
-        if (value) chunks.push(value)
+        const next = await reader.read()
+        if (next.done) {
+          break
+        }
+        chunks.push(next.value)
       }
 
       // Release gates to let streams continue
@@ -582,9 +586,11 @@ describe('frame-protocol', () => {
       resolve2!()
 
       // Read remaining chunks
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         chunks.push(value)
       }
 
@@ -636,9 +642,11 @@ describe('frame-protocol', () => {
       resolveGate!()
 
       // Read remaining frames
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         chunks.push(value)
       }
 
@@ -695,9 +703,11 @@ describe('frame-protocol', () => {
       await Promise.resolve()
       startJson!()
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         chunks.push(value)
       }
 
@@ -738,9 +748,11 @@ describe('frame-protocol', () => {
       const reader = multiplexed.getReader()
       const chunks: Array<Uint8Array> = []
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         chunks.push(value)
       }
 
@@ -801,17 +813,21 @@ describe('frame-protocol', () => {
       // Read the first record and its stream.
       for (let i = 0; i < 3; i++) {
         const { value, done } = await reader.read()
-        if (done) break
-        if (value) chunks.push(value)
+        if (done) {
+          break
+        }
+        chunks.push(value)
       }
 
       // Release JSON to complete
       resolveJson!()
 
       // Read remaining
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         chunks.push(value)
       }
 
@@ -844,9 +860,11 @@ describe('frame-protocol', () => {
       const reader = multiplexed.getReader()
       const chunks: Array<Uint8Array> = []
 
-      while (true) {
+      for (;;) {
         const { done, value } = await reader.read()
-        if (done) break
+        if (done) {
+          break
+        }
         chunks.push(value)
       }
 

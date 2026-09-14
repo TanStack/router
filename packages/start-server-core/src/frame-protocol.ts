@@ -15,7 +15,7 @@ import {
   FRAME_TYPE_ERROR,
   FRAME_TYPE_JSON,
   MAX_FRAME_PAYLOAD_SIZE,
-} from '@tanstack/start-client-core'
+} from '@tanstack/start-client-core/client-rpc'
 
 type FrameType =
   | typeof FRAME_TYPE_JSON
@@ -33,7 +33,7 @@ const MAX_ERROR_MESSAGE_CODE_UNITS = 4096
 /**
  * Encodes a single frame with header and payload.
  */
-export function encodeFrame(
+function encodeFrame(
   type: FrameType,
   streamId: number,
   payload: Uint8Array,
@@ -60,7 +60,7 @@ export function encodeFrame(
 }
 
 /** Encodes an error message payload, truncated to a bounded length. */
-export function encodeErrorPayload(error: unknown): Uint8Array {
+function encodeErrorPayload(error: unknown): Uint8Array {
   const originalMessage =
     error instanceof Error ? error.message : String(error ?? 'Unknown error')
   const message =

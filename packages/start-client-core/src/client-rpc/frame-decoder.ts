@@ -177,7 +177,7 @@ export function createFrameDecoder(input: ReadableStream<Uint8Array>) {
         }
         if (!header) {
           for (const entry of rawStreams.values()) {
-            if (entry[1] !== false) {
+            if (entry[1]) {
               throw new Error('Incomplete raw stream')
             }
           }
@@ -239,9 +239,12 @@ export function createFrameDecoder(input: ReadableStream<Uint8Array>) {
           const controller = entry[1]
           if (controller) {
             if (-controller.desiredSize! > MAX_UNREAD_RAW_STREAM_BYTES) {
-              throw new Error(
-                `Raw stream ${streamId} has too many unread bytes`,
+              controller.error(
+                new Error(`Raw stream ${streamId} has too many unread bytes`),
               )
+              entry[1] = null
+              payload = empty
+              continue
             }
             // A small view would pin its whole network buffer; copy those.
             const chunk =

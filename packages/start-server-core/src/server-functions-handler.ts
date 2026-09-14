@@ -4,8 +4,6 @@ import {
   defaultSerovalDeserializerPlugins as routerDefaultSerovalPlugins,
 } from '@tanstack/router-core/ssr/server'
 import {
-  MAX_FRAMED_STREAMS,
-  MAX_FRAME_PAYLOAD_SIZE,
   TSS_CONTENT_TYPE_FRAMED_VERSIONED,
   TSS_FORMDATA_CONTEXT,
   X_TSS_RAW_RESPONSE,
@@ -13,6 +11,10 @@ import {
   getSerovalPlugins,
   safeObjectMerge,
 } from '@tanstack/start-client-core'
+import {
+  MAX_FRAMED_STREAMS,
+  MAX_FRAME_PAYLOAD_SIZE,
+} from '@tanstack/start-client-core/client-rpc'
 import { fromJSON, toCrossJSONAsync, toCrossJSONStream } from 'seroval'
 import { getResponse } from './request-response'
 import { getServerFnById } from './getServerFnById'
