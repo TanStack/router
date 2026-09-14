@@ -339,7 +339,10 @@ export function transformReadableStreamWithRouter(
   try {
     opts?.signal?.throwIfAborted()
     if (hydrationScripts.reserveFastPath()) {
-      return makeFastPathStream(serverSsr, reader, opts)
+      // Hydration already drained: pass application output through from the
+      // first byte. The merge stream handles this with the same pass-through
+      // it uses after hydration finishes mid-stream.
+      return makeMergeStream(serverSsr, reader, undefined, opts)
     }
     const hydrationOutput = hydrationScripts.claimOutput()
     if (hydrationOutput.state === HydrationScriptOutputState.Failed) {
@@ -353,113 +356,22 @@ export function transformReadableStreamWithRouter(
   }
 }
 
-// The fast path forwards renderer bytes without scanning or copying them.
-function makeFastPathStream(
-  serverSsr: NonNullable<AnyRouter['serverSsr']>,
-  reader: AppStreamReader,
-  opts?: TransformStreamWithRouterOptions,
-) {
-  let terminal = false
-  let controller!: ReadableStreamDefaultController<Uint8Array>
-  let appString: string | undefined
-  let appStringOffset = 0
-  // Assigned after the stream exists; `terminate` can run before that when an
-  // already-cleaned owner fires its cleanup listener synchronously.
-  let disarmLifecycle = (): void => {}
-
-  function terminate(kind: Termination, reason?: unknown) {
-    if (terminal) {
-      return
-    }
-    terminal = true
-    disarmLifecycle()
-    appString = undefined
-    return finalizeSsrStream(
-      kind,
-      reason,
-      controller,
-      reader,
-      serverSsr,
-      opts?.onAbort,
-    )
-  }
-
-  const stream = new ReadableStream<Uint8Array>({
-    start(c) {
-      controller = c
-    },
-    async pull(c) {
-      if (terminal) {
-        return
-      }
-      try {
-        for (;;) {
-          if (appString !== undefined) {
-            const encoded = encodeStringSource(appString, appStringOffset)
-            appStringOffset += encoded.read
-            if (appStringOffset === appString.length) {
-              appString = undefined
-              appStringOffset = 0
-            }
-            if (encoded.bytes.byteLength > 0) {
-              c.enqueue(encoded.bytes)
-              return
-            }
-            continue
-          }
-          const { done, value } = await reader.read()
-          if (terminal) {
-            return
-          }
-          if (done) {
-            serverSsr.setRenderFinished()
-            return terminate('complete')
-          }
-          if (typeof value === 'string') {
-            if (value.length > 0) {
-              appString = value
-            }
-          } else if (value.byteLength > 0) {
-            c.enqueue(value)
-            return
-          }
-        }
-      } catch (error) {
-        if (terminal) {
-          return
-        }
-        console.error('Error processing appStream:', error)
-        return terminate('failure', error)
-      }
-    },
-    cancel(reason) {
-      return terminate('cancel', reason)
-    },
-  })
-
-  disarmLifecycle = armStreamLifecycle(
-    serverSsr,
-    opts,
-    () => terminal,
-    terminate,
-  )
-
-  return stream
-}
-
 // The merge path searches only router- and renderer-owned ASCII delimiters.
 // Application bytes otherwise leave through zero-copy subarray views.
+// Without a hydration output the stream starts in pass-through.
 function makeMergeStream(
   serverSsr: NonNullable<AnyRouter['serverSsr']>,
   reader: AppStreamReader,
-  hydrationOutput: HydrationScriptOutput,
+  hydrationOutput: HydrationScriptOutput | undefined,
   opts?: TransformStreamWithRouterOptions,
 ) {
   const hydrationScripts = serverSsr.hydrationScripts
   let controller!: ReadableStreamDefaultController<Uint8Array>
   let terminal = false
   let appDone = false
-  let applicationPhase: ApplicationPhase = ApplicationPhase.BeforeBoundary
+  let applicationPhase: ApplicationPhase = hydrationOutput
+    ? ApplicationPhase.BeforeBoundary
+    : ApplicationPhase.PassThrough
   let insertionBoundary = false
 
   let stopHydrationOutputListener: (() => void) | undefined
@@ -475,11 +387,8 @@ function makeMergeStream(
   const useScriptCloseSafePoints = opts?.rendererSafePoint === 'script-close'
   const useRecordEndSafePoints = opts?.rendererSafePoint === 'record-end'
 
-  const barrierMatcher: ByteMatcherState = {
-    pattern: HYDRATION_SCRIPT_BOUNDARY_BYTES,
-    anchorIndex: HYDRATION_SCRIPT_BOUNDARY_ANCHOR_INDEX,
-    matched: 0,
-  }
+  // Both matchers are created on first use; pass-through never needs them.
+  let barrierMatcher: ByteMatcherState | undefined
   let safePointMatcher: ByteMatcherState | undefined
   // Split document closes carry at most 13 bytes across chunks. This uses
   // findExactBytes + getExactBytesPrefixAtEnd instead of advanceByteMatcher
@@ -568,7 +477,15 @@ function makeMergeStream(
       // barrier early.
       return emitAppRange(value.length, false)
     }
-    const matchEnd = advanceByteMatcher(barrierMatcher, value, appOffset)
+    const matchEnd = advanceByteMatcher(
+      (barrierMatcher ??= {
+        pattern: HYDRATION_SCRIPT_BOUNDARY_BYTES,
+        anchorIndex: HYDRATION_SCRIPT_BOUNDARY_ANCHOR_INDEX,
+        matched: 0,
+      }),
+      value,
+      appOffset,
+    )
     if (matchEnd === undefined) {
       return emitAppRange(value.length, false)
     }
@@ -619,7 +536,8 @@ function makeMergeStream(
     startIndex: number,
     endIndex: number,
   ) {
-    const hydrationState = hydrationOutput.state
+    // Merge-only: pass-through never scans for safe points.
+    const hydrationState = hydrationOutput!.state
     if (
       endIndex === startIndex ||
       hydrationState === HydrationScriptOutputState.Done
@@ -864,7 +782,7 @@ function makeMergeStream(
     const scriptsCanInterruptRead =
       applicationPhase !== ApplicationPhase.BeforeBoundary &&
       insertionBoundary &&
-      hydrationOutput.state !== HydrationScriptOutputState.Done
+      hydrationOutput!.state !== HydrationScriptOutputState.Done
     if (!scriptsCanInterruptRead && !appReadPending) {
       const result = await reader.read()
       if (terminal) {
@@ -879,9 +797,11 @@ function makeMergeStream(
     await wake
   }
 
-  async function pump() {
-    while (!terminal) {
-      if (applicationPhase === ApplicationPhase.PassThrough) {
+  // Pass-through forwards application records unchanged and only encodes
+  // string records; it skips the merge bookkeeping entirely.
+  async function pumpPassThrough() {
+    try {
+      for (;;) {
         if (appBytes) {
           const remainder =
             appOffset === 0 ? appBytes : appBytes.subarray(appOffset)
@@ -891,17 +811,49 @@ function makeMergeStream(
           }
           continue
         }
+        if (appString !== undefined) {
+          loadNextAppStringChunk()
+          continue
+        }
         if (appDone) {
           terminate('complete')
           return
         }
-        await loadNextAppChunk()
-        continue
+        if (appReadPending) {
+          // A merge-phase prefetch is still in flight; it wakes the pump.
+          await waitForWake()
+          continue
+        }
+        let result: ReadableStreamReadResult<AppStreamValue> | undefined =
+          settledAppRead
+        if (result) {
+          settledAppRead = undefined
+        } else {
+          result = await reader.read()
+          if (terminal) {
+            return
+          }
+        }
+        if (result.done || typeof result.value === 'string') {
+          acceptAppRead(result)
+          continue
+        }
+        if (result.value.byteLength > 0) {
+          controller.enqueue(result.value)
+          return
+        }
       }
+    } catch (error) {
+      handlePumpError(error)
+    }
+  }
 
-      const hydrationState = hydrationOutput.state
+  async function pump() {
+    const output = hydrationOutput!
+    while (!terminal) {
+      const hydrationState = output.state
       if (hydrationState === HydrationScriptOutputState.Active) {
-        controller.enqueue(hydrationOutput.pullChunk())
+        controller.enqueue(output.pullChunk())
         return
       }
       if (
@@ -912,19 +864,19 @@ function makeMergeStream(
         if (!appDone && !appBytes && appString === undefined) {
           startAppRead()
         }
-        controller.enqueue(hydrationOutput.pullChunk())
+        controller.enqueue(output.pullChunk())
         return
       }
       if (
         applicationPhase === ApplicationPhase.Merge &&
         hydrationState === HydrationScriptOutputState.Done &&
         closeCarry === undefined &&
-        hydrationScripts.reserveFastPath(hydrationOutput)
+        hydrationScripts.reserveFastPath(output)
       ) {
         applicationPhase = ApplicationPhase.PassThrough
         stopHydrationOutputListener?.()
         stopHydrationOutputListener = undefined
-        continue
+        return pumpPassThrough()
       }
       if (appBytes) {
         if (processAppChunk()) {
@@ -984,20 +936,26 @@ function makeMergeStream(
       controller = c
     },
     pull() {
-      return pump().catch(handlePumpError)
+      // One async frame per pull: pass-through must stay as cheap as a plain
+      // read-and-forward loop.
+      return applicationPhase === ApplicationPhase.PassThrough
+        ? pumpPassThrough()
+        : pump().catch(handlePumpError)
     },
     cancel(reason) {
       return terminate('cancel', reason)
     },
   })
 
-  stopHydrationOutputListener = hydrationOutput.subscribe(() => {
-    if (hydrationOutput.state === HydrationScriptOutputState.Failed) {
-      terminate('failure', hydrationOutput.error)
-      return
-    }
-    wakePump()
-  })
+  if (hydrationOutput) {
+    stopHydrationOutputListener = hydrationOutput.subscribe(() => {
+      if (hydrationOutput.state === HydrationScriptOutputState.Failed) {
+        terminate('failure', hydrationOutput.error)
+        return
+      }
+      wakePump()
+    })
+  }
   disarmLifecycle = armStreamLifecycle(
     serverSsr,
     opts,

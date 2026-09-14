@@ -156,8 +156,10 @@ Disabled hydration and initial pass-through do not require a boundary.
 
 ## Transform paths
 
-The transform uses initial pass-through or merge mode.
-Merge mode can later change to dynamic pass-through.
+One stream implementation serves every request.
+It starts in pass-through when the hydration state can reserve the fast path before any application output.
+Otherwise it starts in merge mode and can change to pass-through later.
+Both entries use the same `PassThrough` phase.
 
 ### Initial pass-through
 
@@ -169,7 +171,8 @@ The hydration state reserves initial pass-through only when all these conditions
 - No queued or active hydration output remains.
 - No consumer or earlier fast-path reservation conflicts with this reservation.
 
-This path forwards each `Uint8Array` from the renderer unchanged.
+The stream then never claims the hydration output and never scans.
+It forwards each `Uint8Array` from the renderer unchanged.
 It does not scan, copy, or move those bytes.
 
 A Node renderer can also send string records.
@@ -231,7 +234,7 @@ The transform uses an exact search and a carry of at most 13 bytes for that patt
 | `HeldClose`      | Keep the canonical close while later output drains.            |
 | `PassThrough`    | Forward all later application output without scanning.         |
 
-Only `Merge` can enter `PassThrough`.
+A stream starts in `PassThrough` when initial pass-through is reserved; otherwise only `Merge` can enter it.
 `HeldClose` must preserve final document order, so it cannot enter that phase.
 
 A ready late record starts only after the boundary and at a safe point.
