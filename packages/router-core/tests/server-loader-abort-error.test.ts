@@ -1,6 +1,11 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute, createControlledPromise } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  createControlledPromise,
+  redirect,
+} from '../src'
 import { createRequestHandler } from '../src/ssr/server'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
@@ -121,7 +126,7 @@ describe('loader user-thrown abort values', () => {
     expect(render).not.toHaveBeenCalled()
   })
 
-  test('response cleanup aborts the controller retained by deferred loader data', async () => {
+  test('response cleanup aborts deferred loader data with a shared AbortError reason', async () => {
     const deferred = createControlledPromise<string>()
     let loaderSignal: AbortSignal | undefined
     const rootRoute = new BaseRootRoute({})
@@ -143,7 +148,66 @@ describe('loader user-thrown abort values', () => {
 
     expect(response.status).toBe(200)
     expect(loaderSignal?.aborted).toBe(true)
+    const firstReason = loaderSignal?.reason
+    expect(firstReason).toMatchObject({
+      name: 'AbortError',
+      message: expect.stringContaining('settled'),
+    })
+    expect(firstReason).not.toBeInstanceOf(DOMException)
+
+    const nextDeferred = createControlledPromise<string>()
+    const nextRootRoute = new BaseRootRoute({})
+    const nextRouter = createTestRouter({
+      routeTree: nextRootRoute.addChildren([
+        new BaseRoute({
+          getParentRoute: () => nextRootRoute,
+          path: '/next',
+          loader: ({ abortController }) => {
+            loaderSignal = abortController.signal
+            return { deferred: nextDeferred }
+          },
+        }),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/next'] }),
+      isServer: true,
+    })
+
+    const nextResponse = await loadServerResponse(nextRouter, '/next')
+
+    expect(nextResponse.status).toBe(200)
+    expect(loaderSignal?.reason).toBe(firstReason)
     deferred.resolve('late data')
+    nextDeferred.resolve('late data')
+  })
+
+  test('redirect aborts match controllers with an AbortError-shaped reason', async () => {
+    let loaderSignal: AbortSignal | undefined
+    const rootRoute = new BaseRootRoute()
+    const sourceRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/source',
+      loader: ({ abortController }) => {
+        loaderSignal = abortController.signal
+        return redirect({
+          href: 'https://other.example/ignored',
+          headers: { Location: '/target' },
+        })
+      },
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([sourceRoute]),
+      isServer: true,
+    })
+
+    const response = await loadServerResponse(router, '/source')
+
+    expect(response.status).toBe(307)
+    expect(loaderSignal?.aborted).toBe(true)
+    expect(loaderSignal?.reason).toMatchObject({
+      name: 'AbortError',
+      message: expect.stringContaining('redirect'),
+    })
+    expect(loaderSignal?.reason).not.toHaveProperty('matches')
   })
 
   test('request cancellation thrown from route context does not call onError', async () => {

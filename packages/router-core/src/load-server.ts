@@ -48,6 +48,16 @@ const NOT_FOUND = 2
 const REDIRECTED = 3
 const SKIPPED = 4
 
+const MATCH_SETTLED_ABORT_REASON = Object.freeze({
+  name: 'AbortError',
+  message: 'TanStack Router aborted this server match because it settled.',
+})
+
+const REDIRECT_ABORT_REASON = Object.freeze({
+  name: 'AbortError',
+  message: 'TanStack Router aborted this server match because of a redirect.',
+})
+
 type LoaderOutcome =
   | [typeof SUCCESS, data: unknown]
   | [typeof ERROR, error: unknown]
@@ -450,7 +460,10 @@ function createLoaderTask(
           (cause) => normalize(cause, true),
         )
         .then((result): LoaderOutcome => {
-          if (signal?.aborted || match.abortController.signal.reason === lane) {
+          if (
+            signal?.aborted ||
+            match.abortController.signal.reason === REDIRECT_ABORT_REASON
+          ) {
             return [SKIPPED]
           }
           if (result[0] === ERROR) {
@@ -519,7 +532,7 @@ async function getNotFoundBoundary(
 function abortMatches(
   matches: Array<AnyRouteMatch>,
   start = 0,
-  reason?: unknown,
+  reason: unknown = MATCH_SETTLED_ABORT_REASON,
 ): void {
   for (let index = start; index < matches.length; index++) {
     matches[index]!.abortController.abort(reason)
@@ -683,7 +696,12 @@ async function executeServerLane(
       abortController: new AbortController(),
     })),
   } as MatchedLane
-  const abortLane = () => abortMatches(matched.matches, 0, signal?.reason)
+  const abortLane = () =>
+    abortMatches(
+      matched.matches,
+      0,
+      signal?.reason ?? MATCH_SETTLED_ABORT_REASON,
+    )
   if (signal?.aborted) {
     abortLane()
     signal.throwIfAborted()
@@ -773,7 +791,7 @@ async function executeServerLane(
     signal?.throwIfAborted()
 
     if (control?.[1][0] === REDIRECTED) {
-      abortMatches(lane.matches, 0, lane)
+      abortMatches(lane.matches, 0, REDIRECT_ABORT_REASON)
       return { type: 'redirect', redirect: control[1][1] }
     }
 
@@ -817,7 +835,7 @@ async function executeServerLane(
     signal?.throwIfAborted()
     if (requiredFailure) {
       if (requiredFailure[1][0] === REDIRECTED) {
-        abortMatches(lane.matches)
+        abortMatches(lane.matches, 0, REDIRECT_ABORT_REASON)
         return { type: 'redirect', redirect: requiredFailure[1][1] }
       }
       failure = requiredFailure

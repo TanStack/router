@@ -1,5 +1,6 @@
 // @vitest-environment node
 
+import { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import {
@@ -10,14 +11,10 @@ import {
   BaseRootRoute,
   BaseRoute,
   RouterCore,
-  redirect,
-  type AnyRouter,
-} from '@tanstack/router-core'
-import {
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
+  redirect,
 } from '@tanstack/router-core'
-import { ReadableStream as NodeReadableStream } from 'node:stream/web'
 import {
   attachRouterServerSsrUtils,
   createSsrStreamResponse,
@@ -31,11 +28,17 @@ import {
   getStaticHandlerInlineCssDefault,
   resolveInlineCssForRequest,
 } from '../src/inlineCss'
+import type { AnyRouter } from '@tanstack/router-core'
 
 const startMocks = vi.hoisted(() => {
+  const hadServerFnBase = Object.prototype.hasOwnProperty.call(
+    process.env,
+    'TSS_SERVER_FN_BASE',
+  )
   const previousServerFnBase = process.env.TSS_SERVER_FN_BASE
   process.env.TSS_SERVER_FN_BASE = '/_serverFn/'
   return {
+    hadServerFnBase,
     previousServerFnBase,
     requestMiddleware: [] as Array<any>,
     serverFnResult: undefined as undefined | Response | object,
@@ -165,7 +168,7 @@ afterEach(() => {
 })
 
 afterAll(() => {
-  if (startMocks.previousServerFnBase === undefined) {
+  if (!startMocks.hadServerFnBase) {
     delete (process.env as Partial<NodeJS.ProcessEnv>).TSS_SERVER_FN_BASE
   } else {
     process.env.TSS_SERVER_FN_BASE = startMocks.previousServerFnBase
@@ -602,6 +605,48 @@ it('keeps the request URL when server code attempts navigation', async () => {
   expect(await response.text()).toBe('request data')
   expect(loader).toHaveBeenCalledTimes(1)
   expect(load).toHaveBeenCalledTimes(1)
+})
+
+describe('createStartHandler router request Accept handling', () => {
+  it('returns 406 JSON for router requests that do not accept HTML', async () => {
+    startMocks.routerFactory = vi.fn(makeRouter)
+    const render = vi.fn(() => new Response('must not render'))
+    const handler = createStartHandler(render)
+
+    const response = await handler(
+      new Request('http://localhost/', {
+        headers: { accept: 'application/json' },
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(406)
+    expect(response.headers.get('content-type')).toContain('application/json')
+    expect(await response.json()).toEqual({
+      error: 'Only HTML requests are supported here',
+    })
+    expect(render).not.toHaveBeenCalled()
+  })
+
+  it.each(['text/html', '*/*', undefined])(
+    'does not return 406 for Accept: %s',
+    async (accept) => {
+      startMocks.routerFactory = vi.fn(makeRouter)
+      const render = vi.fn(() => new Response('ok'))
+      const handler = createStartHandler(render)
+
+      const response = await handler(
+        new Request('http://localhost/', {
+          headers: accept === undefined ? undefined : { accept },
+        }),
+        {},
+      )
+
+      expect(response.status).not.toBe(406)
+      expect(await response.text()).toBe('ok')
+      expect(render).toHaveBeenCalledTimes(1)
+    },
+  )
 })
 
 describe('createStartHandler SSR cleanup ownership', () => {
