@@ -1,5 +1,23 @@
 # @tanstack/vue-router
 
+## 1.170.33
+
+### Patch Changes
+
+- [#8326](https://github.com/TanStack/router/pull/8326) [`cb8749e`](https://github.com/TanStack/router/commit/cb8749e9fcd32d2290bf6c957b2701c3c0a14da5) - Remove an unnecessary match Fragment to reduce VNode allocation and transient JIT compilation memory while preserving route content and scroll restoration.
+
+- [#8318](https://github.com/TanStack/router/pull/8318) [`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8) - Allow active and inactive Link props to override base element props in React and Solid while preserving class/style merging. Keep React's `href`, `target`, and `disabled` values controlled by routing options. Preserve Vue object and nested-array class bindings, including reactive updates and server rendering, without mutating cached bindings during VNode normalization.
+
+- [#8327](https://github.com/TanStack/router/pull/8327) [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef) - Make `pathParamsAllowedCharacters` initialization-only. Configure it when creating the router; changing allowed characters requires a new router instance. Remove decoder-update bookkeeping and decoder-change checks from route-owned path caches.
+
+- [#8370](https://github.com/TanStack/router/pull/8370) [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5) - Stop exporting the internal `isPlainObject` and `isPlainArray` helpers.
+
+- [#8318](https://github.com/TanStack/router/pull/8318) [`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8) - Reduce Link bundle size by sharing exact/fuzzy active-path checks and resolving only the selected active or inactive props. Avoid unnecessary class/style allocations while preserving reactive style updates, server rendering, and each framework's prop-override behavior.
+
+- Updated dependencies [[`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6), [`b747fb8`](https://github.com/TanStack/router/commit/b747fb8891b3347b1ffdfe0fa81e7d15049cb776), [`6cfb1e8`](https://github.com/TanStack/router/commit/6cfb1e8b564be282584765352250bf61747895ed), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`8fff7fa`](https://github.com/TanStack/router/commit/8fff7fa1f2e6f061916b0bf5e0ec486b2e732f94), [`f021f6d`](https://github.com/TanStack/router/commit/f021f6d1c6dce6c9b54d70766f1d636d8fd9e184), [`ae68535`](https://github.com/TanStack/router/commit/ae68535929043607d4ee9438f8ae401f3a064862), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`873c830`](https://github.com/TanStack/router/commit/873c830ccb2610a864ee697250e10fcc99772ffa), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`f151ab0`](https://github.com/TanStack/router/commit/f151ab018eede64ae849b77e68f3cdf31cb95cc5), [`bc57fa3`](https://github.com/TanStack/router/commit/bc57fa3f12450cf34c731450947c7c8f1ea05e58), [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244), [`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734), [`9448caa`](https://github.com/TanStack/router/commit/9448caa03a89076b9770631c356c0cc502802c09), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef)]:
+  - @tanstack/router-core@1.171.30
+  - @tanstack/history@1.162.4
+
 ## 1.170.32
 
 ### Patch Changes
