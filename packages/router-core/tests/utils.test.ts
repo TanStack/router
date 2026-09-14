@@ -602,6 +602,14 @@ describe('decodePath', () => {
       expect(decodePath('/back%60tick')).toBe('/back%60tick')
     })
 
+    it('should keep caret encoded', () => {
+      expect(decodePath('/1000-1500%5EABC').path).toBe('/1000-1500%5EABC')
+    })
+
+    it('should normalize lowercase caret encoding to uppercase', () => {
+      expect(decodePath('/1000-1500%5eABC').path).toBe('/1000-1500%5EABC')
+    })
+
     it('should decode space (handled by encodePathLikeUrl for outgoing URLs)', () => {
       expect(decodePath('/file%20name')).toBe('/file name')
     })
