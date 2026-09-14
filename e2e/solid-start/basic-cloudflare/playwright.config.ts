@@ -14,9 +14,6 @@ export default defineConfig({
 
   reporter: [['line']],
 
-  globalSetup: './tests/setup/global.setup.ts',
-  globalTeardown: './tests/setup/global.teardown.ts',
-
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
     baseURL,

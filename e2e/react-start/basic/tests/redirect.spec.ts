@@ -1,20 +1,18 @@
 import queryString from 'node:querystring'
-import { expect, type Page } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { getTestServerPort, test } from '@tanstack/router-e2e-utils'
 import combinateImport from 'combinate'
-import {
-  getDummyServerPort,
-  getTestServerPort,
-  test,
-} from '@tanstack/router-e2e-utils'
-import { getE2EPortKey } from './utils/getE2EPortKey.ts'
+import type { Page } from '@playwright/test'
+import packageJson from '../package.json' with { type: 'json' }
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
-const e2ePortKey = getE2EPortKey()
 
-const PORT = await getTestServerPort(e2ePortKey)
+const PORT = await getTestServerPort(
+  process.env.E2E_PORT_KEY ?? packageJson.name,
+)
 
-const EXTERNAL_HOST_PORT = await getDummyServerPort(e2ePortKey)
+const EXTERNAL_ORIGIN = `http://127.0.0.1:${PORT}`
 const POSTS_URL = `http://localhost:${PORT}/posts`
 
 async function waitForRouterIdle(page: Page) {
@@ -111,7 +109,7 @@ test.describe('redirects', () => {
         page,
       }) => {
         const q = queryString.stringify({
-          externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+          externalHost: `${EXTERNAL_ORIGIN}/`,
         })
 
         if (scenario === 'navigate') {
@@ -124,7 +122,7 @@ test.describe('redirects', () => {
           await page.goto(`/redirect/external/via-${thrower}?${q}`)
         }
 
-        const url = `http://localhost:${EXTERNAL_HOST_PORT}/`
+        const url = `${EXTERNAL_ORIGIN}/`
 
         await page.waitForURL(url)
         expect(page.url()).toBe(url)
@@ -147,7 +145,7 @@ test.describe('redirects', () => {
         }) => {
           let fullPageLoad = false
           const q = queryString.stringify({
-            externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+            externalHost: `${EXTERNAL_ORIGIN}/`,
             reloadDocument,
           })
 
@@ -170,10 +168,7 @@ test.describe('redirects', () => {
             await page.goto(`/redirect/${target}/serverFn/via-${thrower}?${q}`)
           }
 
-          const url =
-            target === 'internal'
-              ? POSTS_URL
-              : `http://localhost:${EXTERNAL_HOST_PORT}/`
+          const url = target === 'internal' ? POSTS_URL : `${EXTERNAL_ORIGIN}/`
 
           await page.waitForURL(url)
 
@@ -202,7 +197,7 @@ test.describe('redirects', () => {
         page,
       }) => {
         const q = queryString.stringify({
-          externalHost: `http://localhost:${EXTERNAL_HOST_PORT}/`,
+          externalHost: `${EXTERNAL_ORIGIN}/`,
           reloadDocument,
         })
 
@@ -219,10 +214,7 @@ test.describe('redirects', () => {
 
         await button.click()
 
-        const url =
-          target === 'internal'
-            ? POSTS_URL
-            : `http://localhost:${EXTERNAL_HOST_PORT}/`
+        const url = target === 'internal' ? POSTS_URL : `${EXTERNAL_ORIGIN}/`
         await page.waitForURL(url)
         expect(page.url()).toBe(url)
         if (target === 'internal') {
