@@ -1522,12 +1522,12 @@ export class RouterCore<
 
   /** Resolve a path using the router's trailing-slash policy. */
   resolvePathWithBase = (from: string, path: string) => {
-    return resolvePath({
-      base: from,
-      to: path,
-      trailingSlash: this.options.trailingSlash,
-      cache: this.resolvePathCache,
-    })
+    return resolvePath(
+      from,
+      path,
+      this.options.trailingSlash,
+      this.resolvePathCache,
+    )
   }
 
   matchRoutes: MatchRoutesFn = (
