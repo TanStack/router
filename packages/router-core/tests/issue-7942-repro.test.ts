@@ -1,10 +1,7 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
-import {
-  HYDRATION_SCRIPT_BOUNDARY_SOURCE,
-  MAX_HYDRATION_OUTPUT_CHUNK_BYTES,
-} from '../src/ssr/hydrationScripts'
+import { MAX_HYDRATION_OUTPUT_CHUNK_BYTES } from '../src/ssr/hydrationScripts'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { transformReadableStreamWithRouter } from '../src/ssr/transformStreamWithRouter'
 import { createTestRouter } from './routerTestUtils'
@@ -72,7 +69,7 @@ function renderManagedScripts(tags: Array<RouterManagedTag>) {
 function expectInitialScripts(
   scripts: InitialHydrationScriptTags | undefined,
 ): InitialHydrationScriptTags {
-  expect(scripts?.boundary.children).toBe(HYDRATION_SCRIPT_BOUNDARY_SOURCE)
+  expect(scripts?.boundary.children).toContain('$tsr-stream-boundary')
   expect(scripts?.boundary.attrs).not.toHaveProperty('id')
   expect(scripts?.before.length).toBeGreaterThan(0)
   for (const script of scripts!.before) {

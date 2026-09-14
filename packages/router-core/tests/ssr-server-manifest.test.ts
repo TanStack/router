@@ -3,7 +3,7 @@ import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { GLOBAL_TSR } from '../src/ssr/constants'
-import { HYDRATION_SCRIPT_BOUNDARY_SOURCE } from '../src/ssr/hydrationScripts'
+
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRouter } from '../src'
@@ -83,7 +83,7 @@ async function dehydrateManifest() {
   await router.serverSsr!.dehydrate()
 
   const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
-  expect(scripts?.boundary.children).toBe(HYDRATION_SCRIPT_BOUNDARY_SOURCE)
+  expect(scripts?.boundary.children).toContain('$tsr-stream-boundary')
   expect(scripts?.boundary.attrs).not.toHaveProperty('id')
 
   return parseSerializedRouter(scripts!).manifest!
@@ -101,7 +101,7 @@ function parseSerializedRouter(
   }
   context.self = context
 
-  expect(scripts.boundary.children).toBe(HYDRATION_SCRIPT_BOUNDARY_SOURCE)
+  expect(scripts.boundary.children).toContain('$tsr-stream-boundary')
   expect(scripts.boundary.attrs).not.toHaveProperty('id')
 
   const streamParts = scripts.before

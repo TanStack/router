@@ -5,6 +5,7 @@ import {
   SCRIPT_CLOSE_ANCHOR_INDEX,
   SCRIPT_CLOSE_BYTES,
   advanceByteMatcher,
+  encodeIntoBoundedChunk,
   findExactBytes,
   getExactBytesPrefixAtEnd,
 } from './htmlBoundaryScanner'
@@ -42,7 +43,7 @@ export type TransformStreamWithRouterOptions = {
 
 type AppStreamValue = Uint8Array | string
 /** Renderer output: UTF-8 bytes, or string records from a Node pipeable. */
-export type AppStream =
+type AppStream =
   | ReadableStream<Uint8Array>
   | ReadableStream<string>
   | ReadableStream<AppStreamValue>
@@ -133,8 +134,6 @@ const ApplicationPhase = {
 type ApplicationPhase = (typeof ApplicationPhase)[keyof typeof ApplicationPhase]
 type Termination = 'complete' | 'cancel' | 'failure'
 type AppStreamReader = ReadableStreamDefaultReader<AppStreamValue>
-
-const textEncoder = new TextEncoder()
 
 function releaseReader(reader: AppStreamReader) {
   try {
@@ -311,12 +310,7 @@ function encodeStringSource(value: string, offset: number) {
     ),
   )
   const output = new Uint8Array(capacity)
-  // encodeInto() stops before a code point that does not fit, so it never
-  // splits a surrogate pair across chunks.
-  const { read, written } = textEncoder.encodeInto(
-    offset === 0 ? value : value.slice(offset),
-    output,
-  )
+  const { read, written } = encodeIntoBoundedChunk(value, offset, output)
   return {
     bytes: written === output.length ? output : output.subarray(0, written),
     read,
@@ -533,6 +527,26 @@ function makeMergeStream(
     }
   }
 
+  function emitAppRange(
+    end: number,
+    safePoint: boolean,
+    finishCurrentChunk = end === appBytes!.length,
+  ) {
+    const value = appBytes!
+    const output =
+      appOffset === 0 && end === value.length
+        ? value
+        : value.subarray(appOffset, end)
+    appOffset = end
+    if (safePoint) {
+      insertionBoundary = true
+    }
+    if (finishCurrentChunk) {
+      finishAppChunk()
+    }
+    return enqueueAppBytes(output)
+  }
+
   function loadNextAppStringChunk() {
     const value = appString!
     const encoded = encodeStringSource(value, appStringOffset)
@@ -552,30 +566,16 @@ function makeMergeStream(
       // the barrier scan for the whole pre-<Scripts> document and prevents
       // barrier-lookalike bytes in application content from lifting the
       // barrier early.
-      const remainder = appOffset === 0 ? value : value.subarray(appOffset)
-      finishAppChunk()
-      return enqueueAppBytes(remainder)
+      return emitAppRange(value.length, false)
     }
     const matchEnd = advanceByteMatcher(barrierMatcher, value, appOffset)
     if (matchEnd === undefined) {
-      const remainder = appOffset === 0 ? value : value.subarray(appOffset)
-      finishAppChunk()
-      return enqueueAppBytes(remainder)
+      return emitAppRange(value.length, false)
     }
 
-    const throughBarrier =
-      appOffset === 0 && matchEnd === value.length
-        ? value
-        : value.subarray(appOffset, matchEnd)
-    appOffset = matchEnd
-    const emitted = enqueueAppBytes(throughBarrier)
     applicationPhase = ApplicationPhase.Merge
-    insertionBoundary = true
     hydrationScripts.liftBarrier()
-    if (appOffset === value.length) {
-      finishAppChunk()
-    }
-    return emitted
+    return emitAppRange(matchEnd, true)
   }
 
   // Advance past a canonical close that ends `consumed` bytes into the current
@@ -611,16 +611,7 @@ function makeMergeStream(
       return false
     }
 
-    const throughSafePoint =
-      appOffset === 0 && matchEnd === value.length
-        ? value
-        : value.subarray(appOffset, matchEnd)
-    appOffset = matchEnd
-    insertionBoundary = true
-    if (appOffset === value.length) {
-      finishAppChunk()
-    }
-    return enqueueAppBytes(throughSafePoint)
+    return emitAppRange(matchEnd, true)
   }
 
   function findSafePointEnd(
@@ -643,17 +634,14 @@ function makeMergeStream(
       anchorIndex: SCRIPT_CLOSE_ANCHOR_INDEX,
       matched: 0,
     })
-    const outputReady = hydrationState === HydrationScriptOutputState.Ready
-    const matchEnd = advanceByteMatcher(
-      matcher,
-      scanValue,
-      startIndex,
-      !outputReady,
-    )
+    // Active drains before app bytes, Done is excluded above, and Failed
+    // terminates through the subscriber; only Ready and Waiting reach here.
+    const waiting = hydrationState === HydrationScriptOutputState.Waiting
+    const matchEnd = advanceByteMatcher(matcher, scanValue, startIndex, waiting)
     if (matchEnd === undefined) {
       return undefined
     }
-    if (!outputReady) {
+    if (waiting) {
       // Bytes after the last match are processed again on the next pull.
       matcher.matched = 0
     }
@@ -753,13 +741,8 @@ function makeMergeStream(
     if (useScriptCloseSafePoints && processUntilSafePoint(safeEnd)) {
       return true
     }
-    const output =
-      appOffset === 0 && safeEnd === value.length
-        ? value
-        : value.subarray(appOffset, safeEnd)
     closeCarry = partial === undefined ? undefined : value.slice(partial)
-    finishAppChunk()
-    return enqueueAppBytes(output)
+    return emitAppRange(safeEnd, false, true)
   }
 
   function processAppChunk() {
@@ -779,9 +762,7 @@ function makeMergeStream(
       return true
     }
 
-    const remainder = appOffset === 0 ? value : value.subarray(appOffset)
-    finishAppChunk()
-    return enqueueAppBytes(remainder)
+    return emitAppRange(value.length, false)
   }
 
   function terminate(kind: Termination, reason?: unknown) {

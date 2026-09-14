@@ -1,7 +1,6 @@
 import { createHash } from 'node:crypto'
 import { describe, expect, test, vi } from 'vitest'
 import {
-  HYDRATION_SCRIPT_BOUNDARY_SOURCE,
   HydrationScriptOutputState,
   MAX_HYDRATION_OUTPUT_CHUNK_BYTES,
   createHydrationScripts,
@@ -10,6 +9,15 @@ import type { HydrationScriptOutput } from '../src/ssr/hydrationScripts'
 
 const decoder = new TextDecoder()
 const encoder = new TextEncoder()
+
+function getBoundarySource() {
+  const scripts = createHydrationScripts(undefined, [])
+  const source = scripts.takeInitialHydrationScriptTags()!.boundary.children!
+  scripts.cleanup()
+  return source
+}
+
+const HYDRATION_SCRIPT_BOUNDARY_SOURCE = getBoundarySource()
 
 function createReadyOutput(nonce?: string) {
   const scripts = createHydrationScripts(nonce, ['boot()'])

@@ -5,6 +5,7 @@ import { getCrossReferenceHeader } from 'seroval'
 import { invariant } from '../invariant'
 import minifiedTsrBootStrapScript from './tsrScript?script-string'
 import { GLOBAL_TSR } from './constants'
+import { encodeIntoBoundedChunk } from './htmlBoundaryScanner'
 import type { RouterManagedTag } from '../manifest'
 
 export const SSR_SERIALIZATION_SCOPE_ID = 'tsr'
@@ -24,9 +25,9 @@ const STREAM_PART_ATTRIBUTE = 'data-tsr-stream-part'
 const INITIAL_CLEANUP_SOURCE = `{let s=document.currentScript,p;while((p=s.previousElementSibling)&&p.hasAttribute('${STREAM_PART_ATTRIBUTE}'))p.remove();s.remove()}`
 const INITIAL_CLEANUP_SUFFIX = SOURCE_SEPARATOR + INITIAL_CLEANUP_SOURCE
 const DYNAMIC_CLOSE_SOURCE = 'document.currentScript.remove()</script>'
-export const HYDRATION_SCRIPT_BOUNDARY_SOURCE =
+const HYDRATION_SCRIPT_BOUNDARY_SOURCE =
   `document.currentScript.remove()` + HYDRATION_SCRIPT_BOUNDARY_TAIL
-export const HYDRATION_SCRIPT_BOUNDARY_SUFFIX =
+const HYDRATION_SCRIPT_BOUNDARY_SUFFIX =
   HYDRATION_SCRIPT_BOUNDARY_TAIL + '</script>'
 export const HYDRATION_SCRIPT_BOUNDARY_ANCHOR_INDEX =
   HYDRATION_SCRIPT_BOUNDARY_SUFFIX.lastIndexOf('*')
@@ -421,10 +422,11 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
       } else if (offset === bytes.length) {
         break
       } else {
-        const target = offset === 0 ? bytes : bytes.subarray(offset)
-        const result = encoder.encodeInto(
-          this.source.slice(this.sourceOffset),
-          target,
+        const result = encodeIntoBoundedChunk(
+          this.source,
+          this.sourceOffset,
+          bytes,
+          offset,
         )
         if (result.read === 0) {
           break
@@ -577,12 +579,7 @@ class HydrationScriptsOwner implements HydrationScriptOutput {
     ) {
       return
     }
-    if (
-      this.initialTaken ||
-      this.consumer !== undefined ||
-      this.producerDone ||
-      this.active
-    ) {
+    if (this.initialTaken || this.consumer !== undefined || this.producerDone) {
       if (process.env.NODE_ENV !== 'production') {
         throw new Error(
           'Invariant failed: hydration output is already committed; ' +

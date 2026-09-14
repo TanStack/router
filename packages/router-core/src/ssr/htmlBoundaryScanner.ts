@@ -1,12 +1,26 @@
 const textEncoder = new TextEncoder()
 
-export const DOCUMENT_CLOSE = '</body></html>'
+const DOCUMENT_CLOSE = '</body></html>'
 export const SCRIPT_CLOSE = '</script>'
 export const DOCUMENT_CLOSE_ANCHOR_INDEX = DOCUMENT_CLOSE.indexOf('y')
 export const SCRIPT_CLOSE_ANCHOR_INDEX = SCRIPT_CLOSE.indexOf('p')
 
 export const DOCUMENT_CLOSE_BYTES = textEncoder.encode(DOCUMENT_CLOSE)
 export const SCRIPT_CLOSE_BYTES = textEncoder.encode(SCRIPT_CLOSE)
+
+export function encodeIntoBoundedChunk(
+  source: string,
+  sourceOffset: number,
+  output: Uint8Array,
+  outputOffset = 0,
+) {
+  // encodeInto() stops before a code point that does not fit, so it never
+  // splits a surrogate pair across chunks.
+  return textEncoder.encodeInto(
+    sourceOffset === 0 ? source : source.slice(sourceOffset),
+    outputOffset === 0 ? output : output.subarray(outputOffset),
+  )
+}
 
 /**
  * State for matching a fixed ASCII sequence across input chunks.

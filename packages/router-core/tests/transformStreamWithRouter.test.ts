@@ -10,8 +10,7 @@ import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { GLOBAL_TSR } from '../src/ssr/constants'
 import {
-  HYDRATION_SCRIPT_BOUNDARY_SOURCE,
-  HYDRATION_SCRIPT_BOUNDARY_SUFFIX,
+  HYDRATION_SCRIPT_BOUNDARY_BYTES,
   HydrationScriptOutputState,
   MAX_HYDRATION_OUTPUT_CHUNK_BYTES,
 } from '../src/ssr/hydrationScripts'
@@ -25,11 +24,22 @@ import {
   transformPipeableStreamWithRouter,
   transformReadableStreamWithRouter,
 } from '../src/ssr/transformStreamWithRouter'
-import { DOCUMENT_CLOSE, SCRIPT_CLOSE } from '../src/ssr/htmlBoundaryScanner'
+import {
+  DOCUMENT_CLOSE_BYTES,
+  SCRIPT_CLOSE,
+} from '../src/ssr/htmlBoundaryScanner'
 import { createTestRouter } from './routerTestUtils'
 import type { RouterManagedTag } from '../src/manifest'
 import type { HydrationScriptOutput } from '../src/ssr/hydrationScripts'
 
+const decoder = new TextDecoder()
+const DOCUMENT_CLOSE = decoder.decode(DOCUMENT_CLOSE_BYTES)
+const HYDRATION_SCRIPT_BOUNDARY_SUFFIX = decoder.decode(
+  HYDRATION_SCRIPT_BOUNDARY_BYTES,
+)
+const HYDRATION_SCRIPT_BOUNDARY_SOURCE =
+  `document.currentScript.remove()` +
+  HYDRATION_SCRIPT_BOUNDARY_SUFFIX.slice(0, -SCRIPT_CLOSE.length)
 const SCRIPT_BARRIER_HTML = `<script>${HYDRATION_SCRIPT_BOUNDARY_SOURCE}</script>`
 
 function internalSplitOffsets(value: string) {
@@ -400,7 +410,7 @@ function createRealSsrRouter(dehydratedData: Record<string, any>) {
 }
 
 describe('transformReadableStreamWithRouter — real SSR scripts', () => {
-  test('uses the fast path after Scripts takes all eager hydration scripts', async () => {
+  test('uses pass-through after Scripts takes all eager hydration scripts', async () => {
     const router = createRealSsrRouter({ eager: 'loader-data' })
     attachRouterServerSsrUtils({ router, manifest: undefined })
 
@@ -420,7 +430,7 @@ describe('transformReadableStreamWithRouter — real SSR scripts', () => {
 
     const output = transformReadableStreamWithRouter(router, upstream.stream)
 
-    // Fast-path reservation must not require render completion in advance.
+    // Pass-through reservation must not require render completion in advance.
     expect(setRenderFinished).not.toHaveBeenCalled()
     upstream.push(html)
     upstream.close()
@@ -910,7 +920,7 @@ describe('transformReadableStreamWithRouter — cleanup side-effects', () => {
     }
   })
 
-  test('initial fast path preserves renderer bytes after document closes', async () => {
+  test('byte-0 pass-through preserves renderer bytes after document closes', async () => {
     const { router, cleanupCalls, claimCalls } = makeRouter({
       reserveFastPath: () => true,
     })
@@ -1439,7 +1449,7 @@ describe('transformReadableStreamWithRouter — cleanup side-effects', () => {
     expect(aborts).toHaveLength(1)
   })
 
-  test('SSR fast path is used when explicitly safe', async () => {
+  test('SSR byte-0 pass-through is used when explicitly safe', async () => {
     let setRenderFinishedCalls = 0
     const { router, cleanupCalls } = makeRouter({
       reserveFastPath: () => true,
@@ -1462,7 +1472,7 @@ describe('transformReadableStreamWithRouter — cleanup side-effects', () => {
     expect(cleanupCalls.count).toBe(1)
   })
 
-  test('SSR fast path is bypassed when not explicitly safe', async () => {
+  test('SSR pass-through is bypassed when not explicitly safe', async () => {
     const { router, emitScriptBatch, finishSerialization } = makeRouter({
       reserveFastPath: () => false,
     })
@@ -1486,12 +1496,12 @@ describe('transformReadableStreamWithRouter — cleanup side-effects', () => {
 
   const lifetimeTimeoutCases = [
     {
-      name: 'fast path with an active reader',
+      name: 'pass-through with an active reader',
       reserveFastPath: true,
       activeReader: true,
     },
     {
-      name: 'fast path without an active reader',
+      name: 'pass-through without an active reader',
       reserveFastPath: true,
       activeReader: false,
     },
@@ -2504,7 +2514,7 @@ describe('transformReadableStreamWithRouter — hydration output ordering', () =
     await expect(readAll(out)).resolves.toBe(source)
   })
 
-  test('pipeable initial fast path encodes string records independently', async () => {
+  test('pipeable byte-0 pass-through encodes string records independently', async () => {
     const { router } = makeRouter({
       reserveFastPath: () => true,
     })
@@ -2525,7 +2535,7 @@ describe('transformReadableStreamWithRouter — hydration output ordering', () =
     expect(actual.includes(Buffer.from('😀'))).toBe(false)
   })
 
-  test('pipeable initial fast path bounds one large string record', async () => {
+  test('pipeable byte-0 pass-through bounds one large string record', async () => {
     const { router, cleanupCalls } = makeRouter({
       reserveFastPath: () => true,
     })
@@ -2543,7 +2553,7 @@ describe('transformReadableStreamWithRouter — hydration output ordering', () =
     expect(cleanupCalls.count).toBe(1)
   })
 
-  test('pipeable fast path handles an encoding set during the first read', async () => {
+  test('pipeable pass-through handles an encoding set during the first read', async () => {
     const { router } = makeRouter({
       reserveFastPath: () => true,
     })

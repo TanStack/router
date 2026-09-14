@@ -9,8 +9,7 @@ import {
   createSsrStreamResponse,
 } from '../src/ssr/handlerCallback'
 import {
-  HYDRATION_SCRIPT_BOUNDARY_SOURCE,
-  HYDRATION_SCRIPT_BOUNDARY_SUFFIX,
+  HYDRATION_SCRIPT_BOUNDARY_BYTES,
   HydrationScriptOutputState,
   createHydrationScripts,
 } from '../src/ssr/hydrationScripts'
@@ -26,6 +25,12 @@ import type {
 } from '../src/ssr/hydrationScripts'
 
 type HydrationScripts = ReturnType<typeof createHydrationScripts>
+const HYDRATION_SCRIPT_BOUNDARY_SUFFIX = new TextDecoder().decode(
+  HYDRATION_SCRIPT_BOUNDARY_BYTES,
+)
+const HYDRATION_SCRIPT_BOUNDARY_SOURCE =
+  `document.currentScript.remove()` +
+  HYDRATION_SCRIPT_BOUNDARY_SUFFIX.slice(0, -'</script>'.length)
 
 /**
  * CI-stable tests for the SSR cleanup contract. These do not rely on GC
@@ -428,7 +433,7 @@ describe('serverSsr.cleanup', () => {
     router.serverSsr?.cleanup()
   })
 
-  test('stream fast path only reserves when no SSR work is pending', async () => {
+  test('stream pass-through only reserves when no SSR work is pending', async () => {
     const router = buildRouter()
     attachRouterServerSsrUtils({ router, manifest: undefined })
 
@@ -557,7 +562,7 @@ describe('serverSsr.cleanup', () => {
     hydrationScripts.cleanup()
   })
 
-  test('stream fast path rejects while SSR work is pending', async () => {
+  test('stream pass-through rejects while SSR work is pending', async () => {
     const value = deferred<string>()
     const router = buildRouter({ value: value.promise })
     attachRouterServerSsrUtils({ router, manifest: undefined })
@@ -1317,7 +1322,7 @@ describe('serverSsr.cleanup', () => {
     expect(router.serverSsr).toBeUndefined()
   })
 
-  test('disabled hydration streams through the fast path without a boundary', async () => {
+  test('disabled hydration streams through pass-through without a boundary', async () => {
     const router = buildRouter()
     attachRouterServerSsrUtils({ router, manifest: undefined })
     const serverSsr = router.serverSsr!

@@ -10,7 +10,7 @@
 // memory) when the consumer drains slower than the producer.
 import { describe, expect, it } from 'vitest'
 import {
-  HYDRATION_SCRIPT_BOUNDARY_SOURCE,
+  HYDRATION_SCRIPT_BOUNDARY_BYTES,
   HydrationScriptOutputState,
 } from '../src/ssr/hydrationScripts'
 import { transformReadableStreamWithRouter } from '../src/ssr/transformStreamWithRouter'
@@ -18,7 +18,7 @@ import type { HydrationScriptOutput } from '../src/ssr/hydrationScripts'
 
 const enabled = process.env.RUN_BACKPRESSURE_PERF === '1'
 const requiresGc = typeof (globalThis as any).gc === 'function'
-const SCRIPT_BARRIER_HTML = `<script>${HYDRATION_SCRIPT_BOUNDARY_SOURCE}</script>`
+const SCRIPT_BARRIER_HTML = `<script>document.currentScript.remove()${new TextDecoder().decode(HYDRATION_SCRIPT_BOUNDARY_BYTES).slice(0, -'</script>'.length)}</script>`
 
 function createFastProducer(
   chunkCount: number,

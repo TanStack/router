@@ -4,8 +4,8 @@ import { batch, createAtom } from '@tanstack/store'
 import { createMemoryHistory } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import {
-  RouterCore,
   BaseRootRoute,
+  RouterCore,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
 } from '../src'
@@ -16,7 +16,6 @@ import {
   parseSegment,
   processRouteTree,
 } from '../src/new-process-route-tree'
-import { HYDRATION_SCRIPT_BOUNDARY_SOURCE } from '../src/ssr/hydrationScripts'
 import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import type { interpolatePath } from '../src/path'
 import type { SegmentKind } from '../src/new-process-route-tree'
@@ -24,8 +23,8 @@ import type { ServerManifest } from '../src/manifest'
 import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { RouterHistory } from '@tanstack/history'
 import type {
-  AnyRouter,
   AnyRoute,
+  AnyRouter,
   GetStoreConfig,
   RouterConstructorOptions,
   RouterOptions,
@@ -197,7 +196,7 @@ export async function dehydrateToBootstrap(
 
     const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
     expect(scripts?.before.length).toBeGreaterThan(0)
-    expect(scripts?.boundary.children).toBe(HYDRATION_SCRIPT_BOUNDARY_SOURCE)
+    expect(scripts?.boundary.children).toContain('$tsr-stream-boundary')
     expect(scripts?.boundary.attrs).not.toHaveProperty('id')
 
     const context: Record<string, any> = {

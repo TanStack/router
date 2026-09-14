@@ -2,11 +2,9 @@ import { describe, expect, test } from 'vitest'
 import {
   HYDRATION_SCRIPT_BOUNDARY_ANCHOR_INDEX,
   HYDRATION_SCRIPT_BOUNDARY_BYTES,
-  HYDRATION_SCRIPT_BOUNDARY_SOURCE,
-  HYDRATION_SCRIPT_BOUNDARY_SUFFIX,
+  createHydrationScripts,
 } from '../src/ssr/hydrationScripts'
 import {
-  DOCUMENT_CLOSE,
   DOCUMENT_CLOSE_ANCHOR_INDEX,
   DOCUMENT_CLOSE_BYTES,
   SCRIPT_CLOSE,
@@ -19,6 +17,15 @@ import {
 import type { ByteMatcherState } from '../src/ssr/htmlBoundaryScanner'
 
 const encoder = new TextEncoder()
+const decoder = new TextDecoder()
+const DOCUMENT_CLOSE = decoder.decode(DOCUMENT_CLOSE_BYTES)
+const HYDRATION_SCRIPT_BOUNDARY_SUFFIX = decoder.decode(
+  HYDRATION_SCRIPT_BOUNDARY_BYTES,
+)
+const HYDRATION_SCRIPT_BOUNDARY_SOURCE = createHydrationScripts(
+  undefined,
+  [],
+).takeInitialHydrationScriptTags()!.boundary.children!
 
 function chunksAtEverySplit(value: Uint8Array) {
   return Array.from({ length: value.length + 1 }, (_, split) => [
