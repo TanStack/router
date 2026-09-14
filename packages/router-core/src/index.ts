@@ -104,6 +104,7 @@ export {
 } from './manifest'
 export { isMatch } from './Matches'
 export { _getAssetMatches, _getRenderedMatches } from './load-client'
+export { composeSsrBodyScripts, getSsrBodyScriptParts } from './ssr/bodyScripts'
 export type {
   AnyMatchAndValue,
   FindValueByIndex,

@@ -23,43 +23,39 @@ const FACTORY_BINARY = `((s,u=1)=>new ReadableStream({start(c,f){f=s.on({next(b)
 
 const FACTORY_TEXT = `((s,u=1,e=new TextEncoder)=>new ReadableStream({start(c,f){f=s.on({next(v){const x=v.slice(1);if(v[0]==='t')c.enqueue(e.encode(x));else{const d=atob(x),a=new Uint8Array(d.length);for(let i=0;i<d.length;i++)a[i]=d.charCodeAt(i);c.enqueue(a)}},throw(x){s=u=0;c.error(x)},return(){s=u=0;c.close()}});u=u&&f},cancel(){u&&u()}}))`
 
-const RawStreamFactoryBinaryPlugin = /* @__PURE__ */ createPlugin<
-  RawStreamFactory,
-  PluginInfo
->({
-  tag: 'tss/RawStreamFactory',
-  test(value) {
-    return value === BINARY_FACTORY
-  },
-  parse: {
-    stream() {
-      return {}
+function makeFactoryPlugin(
+  tag: string,
+  sentinel: RawStreamFactory,
+  source: string,
+) {
+  return createPlugin<RawStreamFactory, PluginInfo>({
+    tag,
+    test(value) {
+      return value === sentinel
     },
-  },
-  serialize() {
-    return FACTORY_BINARY
-  },
-  deserialize: undefined as never,
-})
+    parse: {
+      stream() {
+        return {}
+      },
+    },
+    serialize() {
+      return source
+    },
+    deserialize: undefined as never,
+  })
+}
 
-const RawStreamFactoryTextPlugin = /* @__PURE__ */ createPlugin<
-  RawStreamFactory,
-  PluginInfo
->({
-  tag: 'tss/RawStreamFactoryText',
-  test(value) {
-    return value === TEXT_FACTORY
-  },
-  parse: {
-    stream() {
-      return {}
-    },
-  },
-  serialize() {
-    return FACTORY_TEXT
-  },
-  deserialize: undefined as never,
-})
+const RawStreamFactoryBinaryPlugin = /* @__PURE__ */ makeFactoryPlugin(
+  'tss/RawStreamFactory',
+  BINARY_FACTORY,
+  FACTORY_BINARY,
+)
+
+const RawStreamFactoryTextPlugin = /* @__PURE__ */ makeFactoryPlugin(
+  'tss/RawStreamFactoryText',
+  TEXT_FACTORY,
+  FACTORY_TEXT,
+)
 
 interface RawStreamSSRNode extends PluginInfo {
   factory: SerovalNode

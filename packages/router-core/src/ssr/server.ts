@@ -22,6 +22,7 @@ export {
   transformReadableStreamWithRouter,
 } from './transformStreamWithRouter'
 export type { TransformStreamWithRouterOptions } from './transformStreamWithRouter'
+export { renderSsrHtmlResponse } from './renderSsrHtmlResponse'
 export {
   attachRouterServerSsrUtils,
   getNormalizedURL,

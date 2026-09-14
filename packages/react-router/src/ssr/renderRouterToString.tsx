@@ -1,8 +1,5 @@
 import ReactDOMServer from 'react-dom/server'
-import {
-  getSsrStatus,
-  transformHtmlStringWithRouter,
-} from '@tanstack/router-core/ssr/server'
+import { renderSsrHtmlResponse } from '@tanstack/router-core/ssr/server'
 import type { ReactNode } from 'react'
 import type { AnyRouter } from '@tanstack/router-core'
 
@@ -15,23 +12,9 @@ export const renderRouterToString = async ({
   responseHeaders: Headers
   children: ReactNode
 }) => {
-  try {
-    const html = await transformHtmlStringWithRouter(
-      router,
-      ReactDOMServer.renderToString(children),
-    )
-
-    return new Response(html, {
-      status: getSsrStatus(router),
-      headers: responseHeaders,
-    })
-  } catch (error) {
-    console.error('Render to string error:', error)
-    return new Response('Internal Server Error', {
-      status: 500,
-      headers: responseHeaders,
-    })
-  } finally {
-    router.serverSsr?.cleanup()
-  }
+  return renderSsrHtmlResponse({
+    router,
+    responseHeaders,
+    render: () => ReactDOMServer.renderToString(children),
+  })
 }

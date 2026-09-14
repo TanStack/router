@@ -17,11 +17,12 @@ import type { AnyRouter } from '@tanstack/router-core'
 
 function createLazyErrorComponent() {
   return lazyRouteComponent(
-    async () => ({
-      ErrorComponent: ({ error }: { error: Error }) => (
-        <div data-testid="error-component">Route error: {error.message}</div>
-      ),
-    }),
+    () =>
+      Promise.resolve({
+        ErrorComponent: ({ error }: { error: Error }) => (
+          <div data-testid="error-component">Route error: {error.message}</div>
+        ),
+      }),
     'ErrorComponent',
   )
 }

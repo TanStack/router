@@ -1,5 +1,9 @@
 import { useSelector } from '@tanstack/react-store'
-import { _getAssetMatches, deepEqual } from '@tanstack/router-core'
+import {
+  composeSsrBodyScripts,
+  deepEqual,
+  getSsrBodyScriptParts,
+} from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
@@ -8,6 +12,8 @@ import type { RouterManagedTag } from '@tanstack/router-core'
 type ScriptRenderAsset = RouterManagedTag & {
   preventScriptHoist?: boolean
 }
+
+const routeScriptAttrs = { suppressHydrationWarning: true }
 
 /**
  * Render body script tags collected from route matches and SSR manifests.
@@ -18,64 +24,33 @@ export const Scripts = () => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
 
+  const getParts = (matches: Array<any>) => {
+    const parts = getSsrBodyScriptParts(
+      matches,
+      router.ssr?.manifest,
+      nonce,
+      routeScriptAttrs,
+    )
+    for (const script of parts[1]) {
+      if (typeof script.attrs?.src === 'string') {
+        const scriptWithHoist = script as ScriptRenderAsset
+        scriptWithHoist.preventScriptHoist = true
+      }
+    }
+    return parts
+  }
+
   const getScripts = (matches: Array<any>) => {
-    matches = _getAssetMatches(matches)
-    const scripts = matches
-      .flatMap((match) => match.scripts ?? [])
-      .filter(Boolean)
-      .map(
-        ({ children, ...script }) =>
-          ({
-            tag: 'script',
-            attrs: {
-              ...script,
-              suppressHydrationWarning: true,
-              nonce,
-            },
-            children,
-          }) satisfies RouterManagedTag,
-      ) as Array<ScriptRenderAsset>
-    const manifest = router.ssr?.manifest
-
-    if (!manifest) {
-      return scripts
-    }
-
-    for (const match of matches) {
-      const manifestScripts = manifest.routes[match.routeId]?.scripts
-
-      if (!manifestScripts) {
-        continue
-      }
-
-      for (const asset of manifestScripts) {
-        scripts.push({
-          tag: 'script',
-          attrs: { ...asset.attrs, nonce },
-          children: asset.children,
-          ...(typeof asset.attrs?.src === 'string'
-            ? { preventScriptHoist: true }
-            : {}),
-        })
-      }
-    }
-
-    return scripts
+    return composeSsrBodyScripts(getParts(matches))
   }
 
   if (isServer ?? router.isServer) {
     const activeMatches = router.stores.matches.get()
-    const scripts = getScripts(activeMatches)
-    const initialHydrationScripts =
-      router.serverSsr?.takeInitialHydrationScriptTags()
     return renderScripts(
-      initialHydrationScripts
-        ? [
-            ...initialHydrationScripts.before,
-            ...scripts,
-            initialHydrationScripts.boundary,
-          ]
-        : scripts,
+      composeSsrBodyScripts(
+        getParts(activeMatches),
+        router.serverSsr?.takeInitialHydrationScriptTags(),
+      ),
     )
   }
 
