@@ -1,10 +1,11 @@
-import { afterEach, beforeEach, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import minifiedTsrBootStrapScript from '../src/ssr/tsrScript?script-string'
 
 type TsrBootstrap = {
   h: () => void
   e: () => void
   c: () => void
+  buffer: Array<() => void>
 }
 
 // Assign `self.$_TSR`.
@@ -42,5 +43,14 @@ describe('$_TSR client teardown', () => {
 
     expect((window as any).$_TSR).toBeUndefined()
     expect((window as any).$R.tsr).toBeUndefined()
+  })
+
+  test('preserves adapter payloads queued before the bootstrap script', () => {
+    const pending = vi.fn()
+    ;(window as any).$_TSR = { buffer: [pending] }
+
+    const tsr = installBootstrap()
+
+    expect(tsr.buffer).toEqual([pending])
   })
 })
