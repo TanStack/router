@@ -1289,6 +1289,25 @@ export class RouterCore<
       }
     }
 
+    const nextBasepath = this.options.basepath ?? '/'
+    const nextRewriteOption = this.options.rewrite
+    const basepathChanged = basepathWasUnset || prevBasepath !== nextBasepath
+    const rewriteChanged = prevRewriteOption !== nextRewriteOption
+
+    if (basepathChanged || rewriteChanged) {
+      this.basepath = nextBasepath
+
+      const trimmed = trimPath(nextBasepath)
+      const basepathRewrite =
+        trimmed && trimmed !== '/' ? rewriteBasepath(nextBasepath) : undefined
+      // The basepath is stripped first on input and re-added last on output.
+      this.rewrite =
+        basepathRewrite && nextRewriteOption
+          ? composeRewrites([basepathRewrite, nextRewriteOption])
+          : (basepathRewrite ?? nextRewriteOption)
+    }
+
+    // Parse once, with the final rewrite in place.
     if (this.history) {
       this.updateLatestLocation()
     }
@@ -1321,51 +1340,19 @@ export class RouterCore<
       this.setRoutes(processRouteTreeResult)
     }
 
-    if (!this.stores && this.latestLocation) {
-      const config = this.getStoreConfig(this)
-      this.batch = config.batch
-      this.stores = createRouterStores(this.latestLocation, config)
+    if (!this.stores) {
+      if (this.latestLocation) {
+        const config = this.getStoreConfig(this)
+        this.batch = config.batch
+        this.stores = createRouterStores(this.latestLocation, config)
 
-      if (!(isServer ?? this.isServer)) {
-        setupScrollRestoration(this)
+        if (!(isServer ?? this.isServer)) {
+          setupScrollRestoration(this)
+        }
       }
-    }
-
-    const nextBasepath = this.options.basepath ?? '/'
-    const nextRewriteOption = this.options.rewrite
-    const basepathChanged = basepathWasUnset || prevBasepath !== nextBasepath
-    const rewriteChanged = prevRewriteOption !== nextRewriteOption
-
-    if (basepathChanged || rewriteChanged) {
-      this.basepath = nextBasepath
-
-      const rewrites: Array<LocationRewrite> = []
-      const trimmed = trimPath(nextBasepath)
-      if (trimmed && trimmed !== '/') {
-        rewrites.push(
-          rewriteBasepath({
-            basepath: nextBasepath,
-          }),
-        )
-      }
-      if (nextRewriteOption) {
-        rewrites.push(nextRewriteOption)
-      }
-
-      this.rewrite =
-        rewrites.length === 0
-          ? undefined
-          : rewrites.length === 1
-            ? rewrites[0]
-            : composeRewrites(rewrites)
-
-      if (this.history) {
-        this.updateLatestLocation()
-      }
-
-      if (this.stores) {
-        this.stores.location.set(this.latestLocation)
-      }
+    } else if (basepathChanged || rewriteChanged) {
+      // Existing stores hold the location parsed with the previous rewrite.
+      this.stores.location.set(this.latestLocation)
     }
   }
 
@@ -1491,10 +1478,8 @@ export class RouterCore<
       // (We were already doing this, so just keeping it for now)
       url.search = searchStr
 
-      const fullPath = url.href.replace(url.origin, '')
-
       return {
-        href: fullPath,
+        href: url.href.replace(url.origin, ''),
         publicHref: href,
         // An input rewrite can expose a path like "//evil.example".
         // Normalize it to "/evil.example" to keep it on the current origin.
@@ -2514,18 +2499,16 @@ export class RouterCore<
     const committedMatches = this._committed
     const filter = opts?.filter
     const preloads = this._preloads
-    const invalidIds = new Set(
-      [
-        ...committedMatches,
-        ...this._cache.values(),
-        ...[...(preloads?.values() ?? [])].flat(),
-        ...(this._tx?.[3 /* matches */] ?? []),
-      ]
-        .filter(
-          (match) => !filter || filter(match as MakeRouteMatchUnion<this>),
-        )
-        .map((match) => match.id),
-    )
+    const invalidIds = new Set<string>()
+    const consider = (match: AnyRouteMatch) => {
+      if (!filter || filter(match as MakeRouteMatchUnion<this>)) {
+        invalidIds.add(match.id)
+      }
+    }
+    committedMatches.forEach(consider)
+    this._cache.forEach(consider)
+    preloads?.forEach((matches) => matches.forEach(consider))
+    this._tx?.[3 /* matches */].forEach(consider)
     const discardedPreloads: Array<AbortController> = []
     for (const [controller, matches] of preloads ?? []) {
       if (matches.some((match) => invalidIds.has(match.id))) {

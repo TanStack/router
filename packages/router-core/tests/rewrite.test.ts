@@ -9,7 +9,7 @@ import type { LocationRewrite } from '../src'
 
 describe('rewrite helpers', () => {
   test('basepath rewrite strips input and restores output', () => {
-    const rewrite = rewriteBasepath({ basepath: '/app/' })
+    const rewrite = rewriteBasepath('/app/')
     const inputUrl = new URL('https://example.com/app/posts')
 
     expect(executeRewriteInput(rewrite, inputUrl).pathname).toBe('/posts')
@@ -19,17 +19,38 @@ describe('rewrite helpers', () => {
   })
 
   test('basepath rewrite handles root output', () => {
-    const rewrite = rewriteBasepath({ basepath: '/app' })
+    const rewrite = rewriteBasepath('/app')
     const url = new URL('https://example.com/')
 
     expect(executeRewriteOutput(rewrite, url).pathname).toBe('/app/')
   })
 
   test('case-insensitive basepath input preserves original suffix casing', () => {
-    const rewrite = rewriteBasepath({ basepath: '/App' })
+    const rewrite = rewriteBasepath('/App')
     const url = new URL('https://example.com/app/Users')
 
     expect(executeRewriteInput(rewrite, url).pathname).toBe('/Users')
+  })
+
+  test('case-sensitive basepath input only strips an exact-case basepath', () => {
+    const rewrite = rewriteBasepath('/App', true)
+
+    expect(
+      executeRewriteInput(rewrite, new URL('https://example.com/app/users'))
+        .pathname,
+    ).toBe('/app/users')
+    expect(
+      executeRewriteInput(rewrite, new URL('https://example.com/App/users'))
+        .pathname,
+    ).toBe('/users')
+  })
+
+  test('basepath rewrite output collapses repeated slashes', () => {
+    const rewrite = rewriteBasepath('/app')
+    const url = new URL('https://example.com/')
+    url.pathname = '/posts//1'
+
+    expect(executeRewriteOutput(rewrite, url).pathname).toBe('/app/posts/1')
   })
 
   test('composeRewrites applies input forward and output backward', () => {

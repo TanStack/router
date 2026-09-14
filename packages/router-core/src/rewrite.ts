@@ -1,4 +1,4 @@
-import { joinPaths, trimPath } from './path'
+import { cleanPath, trimPath } from './path'
 import type { LocationRewrite } from './router'
 
 /** Compose multiple rewrite pairs into a single in/out rewrite. */
@@ -20,22 +20,17 @@ export function composeRewrites(rewrites: Array<LocationRewrite>) {
 }
 
 /** Create a rewrite pair that strips/adds a basepath on input/output. */
-export function rewriteBasepath(opts: {
-  basepath: string
-  caseSensitive?: boolean
-}) {
-  const trimmedBasepath = trimPath(opts.basepath)
+export function rewriteBasepath(basepath: string, caseSensitive?: boolean) {
+  const trimmedBasepath = trimPath(basepath)
   const normalizedBasepath = `/${trimmedBasepath}`
-  const checkBasepath = opts.caseSensitive
+  const checkBasepath = caseSensitive
     ? normalizedBasepath
     : normalizedBasepath.toLowerCase()
   const checkBasepathWithSlash = `${checkBasepath}/`
 
   return {
     input: ({ url }) => {
-      const pathname = opts.caseSensitive
-        ? url.pathname
-        : url.pathname.toLowerCase()
+      const pathname = caseSensitive ? url.pathname : url.pathname.toLowerCase()
 
       // Handle exact basepath match (e.g., /my-app -> /)
       if (pathname === checkBasepath) {
@@ -47,7 +42,9 @@ export function rewriteBasepath(opts: {
       return url
     },
     output: ({ url }) => {
-      url.pathname = joinPaths(['/', trimmedBasepath, url.pathname])
+      // `url.pathname` always starts with "/", so only slashes already inside
+      // it can repeat; cleanPath keeps the joinPaths normalization.
+      url.pathname = cleanPath(`/${trimmedBasepath}${url.pathname}`)
       return url
     },
   } satisfies LocationRewrite
