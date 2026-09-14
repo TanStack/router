@@ -1,5 +1,13 @@
 # @tanstack/solid-router
 
+## 2.0.0-rc.8
+
+### Patch Changes
+
+- [#8348](https://github.com/TanStack/router/pull/8348) [`8981eb7`](https://github.com/TanStack/router/commit/8981eb78775ef3ff3701b51189e2d9dff34b488f) - Bump solid-js and @solidjs/web to ^2.0.0-rc.8 and @solidjs/vite-plugin to ^3.0.0-next.43 across the monorepo (with @rsbuild/plugin-solid ^2.0.0-rc.0 and @solidjs/babel-plugin ^2.0.0-rc.8 for the rsbuild/webpack paths). rc.8 is ESM-only and declares `engines.node >= 22.12`. @solidjs/vite-plugin 3.0.0-next.43 is the first release that honors `resolve.noExternal` patterns when it externalizes the dependencies of packages that consume the Solid runtime (solidjs/solid-vite-plugin#360); on next.41 and next.42, `vite dev` fails for TanStack Start apps with "Package import specifier '#tanstack-router-entry' is not defined".
+
+- [#8399](https://github.com/TanStack/router/pull/8399) [`9de3573`](https://github.com/TanStack/router/commit/9de3573f7f838dfcc2f0992300497fe7e442b12b) - Declare navigations to Solid's observe tier. On Solid's dev and observe builds (`OBSERVE` defined), the match publish inside `startTransition` is wrapped in `OBSERVE.attribution.withOrigin` with the destination route's `fullPath`, params, `to`/`from` pathnames and `at` from the history change that started the load, so the holds and re-runs a navigation causes are named after the route and the record spans the loader wait. The pending offer, the initial load and same-location reloads are published undeclared. Nothing changes in production, where `OBSERVE` is undefined.
+
 ## 2.0.0-rc.7
 
 ### Patch Changes

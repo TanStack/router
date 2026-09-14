@@ -1,5 +1,11 @@
 # @tanstack/solid-router-ssr-query
 
+## 2.0.0-rc.6
+
+### Patch Changes
+
+- [#8348](https://github.com/TanStack/router/pull/8348) [`8981eb7`](https://github.com/TanStack/router/commit/8981eb78775ef3ff3701b51189e2d9dff34b488f) - Bump solid-js and @solidjs/web to ^2.0.0-rc.8 and @solidjs/vite-plugin to ^3.0.0-next.43 across the monorepo (with @rsbuild/plugin-solid ^2.0.0-rc.0 and @solidjs/babel-plugin ^2.0.0-rc.8 for the rsbuild/webpack paths). rc.8 is ESM-only and declares `engines.node >= 22.12`. @solidjs/vite-plugin 3.0.0-next.43 is the first release that honors `resolve.noExternal` patterns when it externalizes the dependencies of packages that consume the Solid runtime (solidjs/solid-vite-plugin#360); on next.41 and next.42, `vite dev` fails for TanStack Start apps with "Package import specifier '#tanstack-router-entry' is not defined".
+
 ## 2.0.0-rc.5
 
 ### Patch Changes
