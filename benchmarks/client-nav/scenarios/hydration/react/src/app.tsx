@@ -8,6 +8,7 @@ import {
   createRootRoute,
   createRoute,
   createRouter,
+  useHydrated,
 } from '@tanstack/react-router'
 import {
   clientUrl,
@@ -18,7 +19,11 @@ import {
 import type { ReactNode } from 'react'
 import type { Diagnostics } from '../fixture'
 
-export function createFixtureRouter(server: boolean, diagnostics: Diagnostics) {
+export function createFixtureRouter(
+  server: boolean,
+  diagnostics: Diagnostics,
+  onHydrated: () => void = () => {},
+) {
   function beforeLoad() {
     diagnostics.beforeLoads++
     if (!server) {
@@ -177,8 +182,19 @@ export function createFixtureRouter(server: boolean, diagnostics: Diagnostics) {
           ))}
         </nav>
         <section id="details">Details</section>
+        <HydrationComplete />
       </>
     )
+  }
+
+  function HydrationComplete() {
+    const hydrated = useHydrated()
+    useEffect(() => {
+      if (hydrated) {
+        onHydrated()
+      }
+    }, [hydrated])
+    return null
   }
 
   return createRouter({

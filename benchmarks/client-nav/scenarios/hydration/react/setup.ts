@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { Script } from 'node:vm'
 import { JSDOM, VirtualConsole } from 'jsdom'
 import { clientUrl, hashLinkCount, ordinaryLinkCount } from './fixture'
+import { settleHydration } from './settle'
 import type { FixtureArtifact } from './fixture'
 import type * as Client from './src/client'
 
@@ -16,7 +17,6 @@ type TaskHooks = {
 }
 
 const turn = () => new Promise<void>((resolve) => setImmediate(resolve))
-const maxSettleTurns = 100
 
 export function setup({ countRenders = false } = {}) {
   // Compile once, outside measurement. Evaluation below creates fresh objects
@@ -149,25 +149,27 @@ export function setup({ countRenders = false } = {}) {
           sample.executingScript.current = null
         }
       }
-      await sample.app.start(countRenders)
-      let idleTurns = 0
-      for (let index = 0; index < maxSettleTurns; index++) {
-        await turn()
-        if (sample.errors.length) {
-          throw new Error(sample.errors.join('\n'))
-        }
-        if (sample.app.ready() && sample.immediates.size === 0) {
-          if (++idleTurns === 2) {
-            sample.completed = true
-            return
-          }
-        } else {
-          idleTurns = 0
-        }
-      }
-      throw new Error(
-        `Hydration did not settle: ${JSON.stringify(sample.app.snapshot())}`,
+      await settleHydration(
+        sample.app.start(countRenders),
+        () => sample.immediates.size === 0,
+        () => {
+          const progress = sample.app.snapshot()
+          return JSON.stringify({
+            diagnostics: progress.diagnostics,
+            errors: [...sample.errors, ...progress.errors],
+            restoredMatches: progress.matches?.length,
+            pendingSchedulerCallbacks: sample.immediates.size,
+          })
+        },
       )
+      if (sample.errors.length) {
+        throw new Error(sample.errors.join('\n'))
+      }
+      assert.ok(
+        sample.app.ready(),
+        'Hydration committed without the expected active links',
+      )
+      sample.completed = true
     } catch (error) {
       sample.failed = true
       throw error

@@ -20,16 +20,30 @@ export async function start(countRenders = false) {
     throw new Error('Missing SSR hydration payload')
   }
   diagnostics = createDiagnostics(countRenders)
-  router = createFixtureRouter(false, diagnostics)
+  let resolveHydrated!: () => void
+  let rejectHydrated!: (error: unknown) => void
+  const hydrated = new Promise<void>((resolve, reject) => {
+    resolveHydrated = resolve
+    rejectHydrated = reject
+  })
+  router = createFixtureRouter(false, diagnostics, resolveHydrated)
   // This is the same restoration path used by Start, without a module-cached
   // RouterClient/StartClient promise or a live server in the worker.
   await hydrate(router)
   window.$_TSR.h()
   startTransition(() => {
     root = hydrateRoot(document, <RouterProvider router={router!} />, {
-      onRecoverableError: (error) => errors.push(String(error)),
+      onRecoverableError: (error) => {
+        errors.push(String(error))
+        rejectHydrated(error)
+      },
+      onUncaughtError: (error) => {
+        errors.push(String(error))
+        rejectHydrated(error)
+      },
     })
   })
+  await hydrated
 }
 
 export function ready() {

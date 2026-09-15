@@ -148,10 +148,13 @@ measures a fresh application with warm code, not JavaScript download/parse cost.
 
 The timed region executes the serialized payload, creates the router and its
 small code-based route tree, calls the public client `hydrate` API, and hydrates
-the existing document with React. Completion requires the mount effect and the
-matching hash Links' follow-up active-state commit, followed by two idle React
-scheduler turns. Ending at `hydrateRoot` or the first mount would miss the
-post-hydration Link updates. Timer turns use `setImmediate`; scrolling is a no-op
+the existing document with React. A separate completion component signals from
+its post-hydration effect, after the same snapshot transition as hash-sensitive
+Links. The harness awaits that signal and two idle React scheduler turns, then
+checks the expected active links. It allows concurrent hydration to take as many
+turns as needed under CPU instrumentation, with a 60-second failure watchdog.
+Ending at `hydrateRoot` or the first mount would miss post-hydration Link updates.
+Timer turns use `setImmediate`; scrolling is a no-op
 because this is CPU simulation rather than browser layout/paint measurement.
 
 Untimed assertions verify restored contexts and every loader row, zero client
