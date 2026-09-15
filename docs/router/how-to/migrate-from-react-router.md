@@ -503,7 +503,7 @@ function Component() {
 
 ```typescript
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   page: z.number().catch(1),
@@ -567,7 +567,7 @@ For routes with search parameters, add validation schemas:
 
 ```typescript
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const postsSearchSchema = z.object({
   page: z.number().min(1).catch(1),

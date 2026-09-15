@@ -430,7 +430,7 @@ export const rateLimitLogin = (ip: string): boolean => {
 ### 4. Input Validation
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 
 const loginSchema = z.object({
   email: z.string().email().max(255),

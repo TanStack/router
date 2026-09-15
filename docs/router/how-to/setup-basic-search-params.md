@@ -10,7 +10,7 @@ Set up search parameters with schema validation (recommended for production):
 
 ```tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const productSearchSchema = z.object({
   page: z.number().default(1).catch(1),
@@ -54,7 +54,7 @@ TanStack Router supports any standard schema-compliant validation library. This 
 Using Zod v4:
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   page: z.number().default(1),
@@ -75,7 +75,7 @@ npm install zod @tanstack/zod-adapter
 
 ```tsx
 import { zodValidator, fallback } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   page: fallback(z.number(), 1).default(1),
@@ -99,7 +99,7 @@ The rest of this guide uses Zod v4 for examples, but the patterns apply to any v
 Start by identifying what search parameters your route needs:
 
 ```tsx
-import { z } from 'zod'
+import * as z from 'zod'
 
 const shopSearchSchema = z.object({
   // Pagination

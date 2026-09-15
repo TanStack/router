@@ -9,7 +9,7 @@ import {
   waitFor,
 } from '@solidjs/testing-library'
 
-import { z } from 'zod'
+import * as z from 'zod'
 import { trailingSlashOptions } from '@tanstack/router-core'
 import {
   Outlet,

@@ -9,7 +9,7 @@ import {
   createCompositeComponent,
 } from '@tanstack/react-start/rsc'
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query'
-import { z } from 'zod'
+import * as z from 'zod'
 
 // Replace with your own data layer
 declare const db: {
