@@ -16,6 +16,15 @@ type IdentifierScopeFrame = {
 }
 type IdentifierScopeStack = Array<IdentifierScopeFrame>
 
+/**
+ * A detached description of an expression: identifier, member access or call,
+ * and the names involved. Holding one does not keep the parsed file alive.
+ */
+export type ExpressionSummary =
+  | { type: 'identifier'; name: string }
+  | { type: 'member'; object: ExpressionSummary; property: string }
+  | { type: 'call'; callee: ExpressionSummary }
+
 export type ModuleInfoBinding =
   | {
       type: 'import'
@@ -24,7 +33,7 @@ export type ModuleInfoBinding =
     }
   | {
       type: 'var'
-      init: t.Expression | null
+      init: ExpressionSummary | null
     }
 
 export interface ExtractedModuleInfo {
@@ -86,6 +95,46 @@ function getModuleExportName(node: t.Identifier | t.StringLiteral) {
   return t.isIdentifier(node) ? node.name : node.value
 }
 
+/**
+ * Projects an expression onto the parts module info consumers read. Anything
+ * they cannot resolve summarizes to `null`, like an absent initializer.
+ */
+export function summarizeExpression(
+  expression: t.Expression | null | undefined,
+): ExpressionSummary | null {
+  if (!expression) {
+    return null
+  }
+
+  const expr = unwrapExpression(expression)
+
+  if (t.isIdentifier(expr)) {
+    return { type: 'identifier', name: expr.name }
+  }
+
+  if (t.isMemberExpression(expr)) {
+    // `computed` is deliberately not distinguished: consumers have always
+    // treated `obj[prop]` and `obj.prop` alike.
+    if (!t.isIdentifier(expr.property) || !t.isExpression(expr.object)) {
+      return null
+    }
+    const object = summarizeExpression(expr.object)
+    if (!object) {
+      return null
+    }
+    return { type: 'member', object, property: expr.property.name }
+  }
+
+  if (t.isCallExpression(expr)) {
+    const callee = t.isExpression(expr.callee)
+      ? summarizeExpression(expr.callee)
+      : null
+    return callee ? { type: 'call', callee } : null
+  }
+
+  return null
+}
+
 function addVariableDeclarationModuleInfo(
   declaration: t.VariableDeclaration,
   bindings: Map<string, ModuleInfoBinding>,
@@ -95,7 +144,7 @@ function addVariableDeclarationModuleInfo(
     for (const name of collectIdentifiersFromPattern(declarator.id)) {
       bindings.set(name, {
         type: 'var',
-        init: declarator.init ?? null,
+        init: summarizeExpression(declarator.init),
       })
       exportMap?.set(name, name)
     }
@@ -552,7 +601,9 @@ export function extractModuleInfoFromAst(ast: t.File): ExtractedModuleInfo {
         const synth = '__default_export__'
         bindings.set(synth, {
           type: 'var',
-          init: t.isExpression(declaration) ? declaration : null,
+          init: t.isExpression(declaration)
+            ? summarizeExpression(declaration)
+            : null,
         })
         exportMap.set('default', synth)
       }
