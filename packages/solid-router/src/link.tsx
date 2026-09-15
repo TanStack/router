@@ -18,7 +18,6 @@ import { useRouter } from './useRouter'
 
 import { useIntersectionObserver } from './utils'
 
-import { useHydrated } from './ClientOnly'
 import type {
   AnyRouter,
   Constrain,
@@ -124,6 +123,13 @@ export function useLinkProps<
     'href',
   ])
 
+  const [hydrating, setHydrating] = Solid.createSignal(
+    !(isServer ?? router.isServer) && !!Solid.sharedConfig.context,
+  )
+  if (hydrating()) {
+    Solid.onMount(() => setHydrating(false))
+  }
+
   const currentLocation = Solid.createMemo(
     () => router.stores.location.get(),
     undefined,
@@ -134,8 +140,21 @@ export function useLinkProps<
     // Rebuild when inherited search/hash or the current route context changes.
     const _fromLocation = currentLocation()
     const nextOptions = { _fromLocation, ...options } as any
+    const hash = nextOptions.hash
+    const hydrateHash =
+      !options.href &&
+      !options._fromLocation &&
+      (hash === true || typeof hash === 'function') &&
+      hydrating()
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(nextOptions))
+    return Solid.untrack(() => {
+      // Keep the source location identity for shared route matching. Literal
+      // destinations don't depend on hydration and need no post-mount rebuild.
+      if (hydrateHash) {
+        nextOptions.hash = hash === true ? '' : hash('')
+      }
+      return router.buildLocation(nextOptions)
+    })
   })
 
   const hrefOption = Solid.createMemo(() => {
@@ -184,9 +203,6 @@ export function useLinkProps<
     return _href && getUrlScheme(_href) ? _href : undefined
   })
 
-  const shouldHydrateHash = !isServer && !!router.options.ssr
-  const hasHydrated = (isServer ?? router.isServer) ? undefined : useHydrated()
-
   const isActive = Solid.createMemo(() => {
     if (externalLink() !== undefined) {
       return false
@@ -224,9 +240,7 @@ export function useLinkProps<
     }
 
     if (activeOptions?.includeHash) {
-      const currentHash =
-        shouldHydrateHash && !hasHydrated?.() ? '' : current.hash
-      return currentHash === nextLocation.hash
+      return (hydrating() ? '' : current.hash) === nextLocation.hash
     }
     return true
   })
