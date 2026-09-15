@@ -1470,10 +1470,7 @@ export class RouterCore<
 
       // The URL constructor normalizes the encoding of the history href; an
       // input rewrite may then change the URL before it is parsed.
-      let url = new URL(href, this.origin)
-      if (this.rewrite) {
-        url = executeRewriteInput(this.rewrite, url)
-      }
+      const url = executeRewriteInput(this.rewrite, new URL(href, this.origin))
 
       const parsedSearch = this.options.parseSearch(url.search)
       const searchStr = this.options.stringifySearch(parsedSearch)
