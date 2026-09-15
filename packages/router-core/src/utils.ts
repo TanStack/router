@@ -363,44 +363,48 @@ export function isPlainArray(value: unknown): value is Array<unknown> {
 }
 
 /**
- * Perform a deep equality check with options for partial comparison and
- * ignoring `undefined` values. Optimized for router state comparisons.
+ * Perform a deep equality check optimized for router state comparisons.
+ *
+ * - `partial`: `b` may omit keys that `a` has (arrays stay length-exact).
+ * - `explicitUndefined`: keys holding `undefined` take part in the comparison
+ *   instead of being ignored.
+ *
+ * Internal: the flags are positional so hot callers pass no options object.
  */
 export function deepEqual(
   a: any,
   b: any,
-  opts?: { partial?: boolean; ignoreUndefined?: boolean },
+  partial?: boolean,
+  explicitUndefined?: boolean,
 ): boolean {
   if (a === b) {
     return true
   }
 
-  if (typeof a !== typeof b) {
-    return false
-  }
-
   if (Array.isArray(a) && Array.isArray(b)) {
     if (a.length !== b.length) return false
     for (let i = 0, l = a.length; i < l; i++) {
-      if (!deepEqual(a[i], b[i], opts)) return false
+      const av = a[i]
+      const bv = b[i]
+      if (av !== bv && !deepEqual(av, bv, partial, explicitUndefined)) {
+        return false
+      }
     }
     return true
   }
 
   if (isPlainObject(a) && isPlainObject(b)) {
-    const ignoreUndefined = opts?.ignoreUndefined ?? true
-
-    if (opts?.partial) {
+    if (partial) {
       for (const k in b) {
-        if (!ignoreUndefined || b[k] !== undefined) {
-          if (!deepEqual(a[k], b[k], opts)) return false
+        if (explicitUndefined || b[k] !== undefined) {
+          if (!deepEqual(a[k], b[k], partial, explicitUndefined)) return false
         }
       }
       return true
     }
 
     let aCount = 0
-    if (!ignoreUndefined) {
+    if (explicitUndefined) {
       aCount = Object.keys(a).length
     } else {
       for (const k in a) {
@@ -408,15 +412,18 @@ export function deepEqual(
       }
     }
 
-    let bCount = 0
     for (const k in b) {
-      if (!ignoreUndefined || b[k] !== undefined) {
-        bCount++
-        if (bCount > aCount || !deepEqual(a[k], b[k], opts)) return false
+      if (explicitUndefined || b[k] !== undefined) {
+        if (
+          aCount-- === 0 ||
+          !deepEqual(a[k], b[k], partial, explicitUndefined)
+        ) {
+          return false
+        }
       }
     }
 
-    return aCount === bCount
+    return aCount === 0
   }
 
   return false
@@ -708,11 +715,12 @@ export function decodePath(path: string) {
  * encodePathLikeUrl('/path/already%20encoded') // '/path/already%20encoded' (preserved)
  */
 export function encodePathLikeUrl(path: string): string {
-  // Encode whitespace and non-ASCII characters that browsers encode in URLs
-
-  // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
-  // eslint-disable-next-line no-control-regex
-  if (!/\s|[^\u0000-\u007F]/.test(path)) return path
+  // Encode whitespace and non-ASCII characters that browsers encode in URLs.
+  // The test uses one character class: it matches the same code units as the
+  // replacement pattern below and is cheaper than the alternation.
+  if (!/[\s\u0080-\uFFFF]/.test(path)) {
+    return path
+  }
   // biome-ignore lint/suspicious/noControlCharactersInRegex: intentional ASCII range check
   // eslint-disable-next-line no-control-regex
   return path.replace(/\s|[^\u0000-\u007F]/gu, encodeURIComponent)

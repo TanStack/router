@@ -1,5 +1,26 @@
 # @tanstack/solid-start
 
+## 1.168.52
+
+### Patch Changes
+
+- [#8397](https://github.com/TanStack/router/pull/8397) [`ab99818`](https://github.com/TanStack/router/commit/ab99818225835a1553a9f3513cd2093ff1b257be) - Support Rsbuild 2.2: preserve function-based Rspack watch exclusions and regular-expression flags when adding monorepo build-output exclusions, and leave string-valued Babel loader options intact in the Solid Start plugin.
+
+- Updated dependencies [[`ab99818`](https://github.com/TanStack/router/commit/ab99818225835a1553a9f3513cd2093ff1b257be)]:
+  - @tanstack/start-plugin-core@1.171.44
+
+## 1.168.51
+
+### Patch Changes
+
+- Updated dependencies [[`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8), [`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8), [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef), [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5), [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244), [`9b2adaf`](https://github.com/TanStack/router/commit/9b2adaf8c3fca905f156c42f6a4fe17a787afcc8)]:
+  - @tanstack/solid-router@1.170.34
+  - @tanstack/start-server-core@1.169.35
+  - @tanstack/solid-start-client@1.168.33
+  - @tanstack/solid-start-server@1.167.40
+  - @tanstack/start-client-core@1.170.30
+  - @tanstack/start-plugin-core@1.171.43
+
 ## 1.168.50
 
 ### Patch Changes
