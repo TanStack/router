@@ -41,20 +41,20 @@ describe('replaceEqualDeep', () => {
   })
 
   describe('symbol properties', () => {
-    it('should look at symbol properties in the object comparison', () => {
+    it('passes objects with differing symbol values through untouched', () => {
       const propertyKey = Symbol('property')
       const obj1 = { a: 1, [propertyKey]: 2 }
       const obj2 = { a: 1, [propertyKey]: 3 }
       const result = replaceEqualDeep(obj1, obj2)
-      expect(result).toStrictEqual(obj2)
+      expect(result).toBe(obj2)
     })
 
-    it('should copy over symbol properties when creating a new object', () => {
+    it('never copies an object with symbol properties partially', () => {
       const propertyKey = Symbol('property')
       const obj1 = { a: 1, [propertyKey]: 2 }
       const obj2 = { a: 3, [propertyKey]: 2 }
       const result = replaceEqualDeep(obj1, obj2)
-      expect(result).toStrictEqual(obj2)
+      expect(result).toBe(obj2)
     })
   })
 
@@ -852,15 +852,14 @@ describe('decodePath', () => {
 })
 
 /**
- * Tests for getEnumerableOwnKeys behavior (internal function).
- * Tested indirectly through replaceEqualDeep since getEnumerableOwnKeys is not exported.
+ * Tests for the key handling of replaceEqualDeep.
  *
- * getEnumerableOwnKeys should:
- * 1. Return array of all enumerable own keys (strings + symbols)
- * 2. Return false if any property is non-enumerable
- * 3. Handle objects with no symbols efficiently (optimization target)
+ * Plain objects are compared and copied by their enumerable own string keys.
+ * Objects with symbol keys (checked on `next`) or non-enumerable keys are opaque:
+ * `next` passes through untouched, so no data is dropped and no stale object is
+ * reused (Apollo's preloadQuery refs carry symbol keys, see #4237).
  */
-describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
+describe('key handling (via replaceEqualDeep)', () => {
   describe('plain objects with string keys only', () => {
     it('should handle empty objects', () => {
       const prev = {}
@@ -931,24 +930,24 @@ describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
     })
   })
 
-  describe('objects with symbol keys', () => {
-    it('should handle objects with single symbol key', () => {
+  describe('objects with symbol keys pass through untouched', () => {
+    it('returns next for a single symbol key', () => {
       const sym = Symbol('test')
       const prev = { [sym]: 1 }
       const next = { [sym]: 1 }
-      expect(replaceEqualDeep(prev, next)).toBe(prev)
+      expect(replaceEqualDeep(prev, next)).toBe(next)
     })
 
-    it('should handle objects with multiple symbol keys', () => {
+    it('returns next for multiple symbol keys', () => {
       const sym1 = Symbol('a')
       const sym2 = Symbol('b')
       const sym3 = Symbol('c')
       const prev = { [sym1]: 1, [sym2]: 2, [sym3]: 3 }
       const next = { [sym1]: 1, [sym2]: 2, [sym3]: 3 }
-      expect(replaceEqualDeep(prev, next)).toBe(prev)
+      expect(replaceEqualDeep(prev, next)).toBe(next)
     })
 
-    it('should detect differences in symbol values', () => {
+    it('keeps differing symbol values', () => {
       const sym = Symbol('test')
       const prev = { [sym]: 1 }
       const next = { [sym]: 2 }
@@ -957,23 +956,31 @@ describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
       expect(result[sym]).toBe(2)
     })
 
-    it('should handle global symbols', () => {
+    it('returns next for global symbols', () => {
       const sym = Symbol.for('global.test.key')
       const prev = { [sym]: 'value' }
       const next = { [sym]: 'value' }
+      expect(replaceEqualDeep(prev, next)).toBe(next)
+    })
+
+    it('does not share a symbol-keyed prev when next has no symbols', () => {
+      // Only `next` is checked for symbols; a former `next` returned as-is is the usual prev.
+      const sym = Symbol('test')
+      const prev = { a: 1, [sym]: 1 }
+      const next = { a: 1 }
       expect(replaceEqualDeep(prev, next)).toBe(prev)
     })
   })
 
   describe('objects with mixed string and symbol keys', () => {
-    it('should handle objects with both string and symbol keys', () => {
+    it('returns next when both string and symbol keys are present', () => {
       const sym = Symbol('test')
       const prev = { a: 1, b: 2, [sym]: 3 }
       const next = { a: 1, b: 2, [sym]: 3 }
-      expect(replaceEqualDeep(prev, next)).toBe(prev)
+      expect(replaceEqualDeep(prev, next)).toBe(next)
     })
 
-    it('should detect differences in string keys when symbols present', () => {
+    it('keeps string differences when symbols present', () => {
       const sym = Symbol('test')
       const prev = { a: 1, b: 2, [sym]: 3 }
       const next = { a: 1, b: 99, [sym]: 3 }
@@ -983,7 +990,7 @@ describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
       expect(result[sym]).toBe(3)
     })
 
-    it('should detect differences in symbol keys when strings present', () => {
+    it('keeps symbol differences when strings present', () => {
       const sym = Symbol('test')
       const prev = { a: 1, b: 2, [sym]: 3 }
       const next = { a: 1, b: 2, [sym]: 99 }
@@ -993,11 +1000,20 @@ describe('getEnumerableOwnKeys behavior (via replaceEqualDeep)', () => {
       expect(result[sym]).toBe(99)
     })
 
-    it('should handle complex nested objects with symbols', () => {
+    it('shares plain siblings around a nested symbol-keyed object', () => {
       const sym = Symbol('nested')
-      const prev = { outer: { inner: 1, [sym]: { deep: 'value' } } }
-      const next = { outer: { inner: 1, [sym]: { deep: 'value' } } }
-      expect(replaceEqualDeep(prev, next)).toBe(prev)
+      const prev = {
+        outer: { inner: 1, [sym]: { deep: 'value' } },
+        plain: { x: 1 },
+      }
+      const next = {
+        outer: { inner: 1, [sym]: { deep: 'value' } },
+        plain: { x: 1 },
+      }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).not.toBe(prev)
+      expect(result.outer).toBe(next.outer)
+      expect(result.plain).toBe(prev.plain)
     })
   })
 
