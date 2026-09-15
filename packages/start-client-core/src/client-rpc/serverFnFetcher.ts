@@ -331,13 +331,11 @@ async function getResponse(fn: () => Promise<Response>) {
     return jsonPayload
   }
 
-  // Otherwise, if it's not OK, throw the content
-  if (!response.ok) {
-    throw new Error(await response.text())
-  }
-
-  // Or return the response itself
-  return response
+  // Otherwise, throw the content. An untagged response that isn't JSON did not
+  // come from the server-functions handler - something between the browser and
+  // the server answered instead (a proxy, a bot challenge, a captive portal),
+  // so it must not be handed back as the function's result.
+  throw new Error(await response.text())
 }
 
 /**
