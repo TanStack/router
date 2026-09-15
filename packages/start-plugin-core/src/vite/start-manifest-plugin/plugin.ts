@@ -68,16 +68,18 @@ export function startManifestPlugin(opts: {
           return getEmptyStartManifestModule(clientEntry)
         }
 
-        const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
         // TODO this needs further discussion with vite-rsc, this is a temporary workaround
         // If the client bundle isn't available yet (e.g., during RSC scan builds),
         // return a dummy manifest. The real manifest will be generated in the actual build.
         if (!clientBuild) {
           return getEmptyStartManifestModule(clientEntry)
         }
+        const { routes: routeTreeRoutes, hasServerRoutes } =
+          globalThis.TSS_ROUTES_MANIFEST!
         const startManifest = buildStartManifest({
           clientBuild,
           routeTreeRoutes,
+          hasServerRoutes,
           basePath: resolvedStartConfig.basePaths.publicBase,
           inlineCss: startConfig.server.build.inlineCss,
           additionalRouteAssets: getViteAdditionalRouteAssets({
@@ -87,7 +89,8 @@ export function startManifestPlugin(opts: {
           }),
         })
 
-        return `export const tsrStartManifest = () => (${serializeStartManifest(startManifest)})`
+        return `export const hasServerRoutes = ${startManifest.hasServerRoutes !== false}
+export const tsrStartManifest = () => (${serializeStartManifest(startManifest)})`
       },
     }),
   ]
@@ -139,7 +142,8 @@ function getAssetFileNameByName(
 }
 
 function getEmptyStartManifestModule(clientEntry: string) {
-  return `export const tsrStartManifest = () => ({
+  return `export const hasServerRoutes = true
+export const tsrStartManifest = () => ({
       routes: {
         __root__: {
           preloads: ['${clientEntry}'],

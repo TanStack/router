@@ -45,16 +45,13 @@ import type {
   AnyStartInstanceOptions,
   RouteMethod,
   RouteMethodHandlerFn,
-  RouterEntry,
-  StartEntry,
 } from '@tanstack/start-client-core'
 import type { RequestHandler } from './request-handler'
-import type {
-  AnyRoute,
-  AnyRouter,
-  AnySerializationAdapter,
-  Register,
-} from '@tanstack/router-core'
+import type { AnyRoute, AnyRouter, Register } from '@tanstack/router-core'
+import type * as RouterEntry from '#tanstack-router-entry'
+import type * as StartEntry from '#tanstack-start-entry'
+import type * as PluginAdaptersEntry from '#tanstack-start-plugin-adapters'
+import type * as ManifestEntry from 'tanstack-start-manifest:v'
 import type {
   HandlerCallback,
   HandlerCallbackResult,
@@ -84,20 +81,16 @@ function getStartResponseHeaders(opts: { router: AnyRouter }) {
   return headers
 }
 
-interface PluginAdaptersEntry {
-  hasPluginAdapters: boolean
-  pluginSerializationAdapters: Array<AnySerializationAdapter>
-}
-
-interface Entries {
-  startEntry: StartEntry
-  routerEntry: RouterEntry
-  pluginAdapters: PluginAdaptersEntry
-}
-
 // Cached entries - promises stored immediately to prevent concurrent imports
 // that can cause race conditions during module initialization
-let entriesPromise: Promise<Entries> | undefined
+let entriesPromise:
+  | Promise<{
+      routerEntry: typeof RouterEntry
+      startEntry: typeof StartEntry
+      pluginAdapters: typeof PluginAdaptersEntry
+      manifest: typeof ManifestEntry
+    }>
+  | undefined
 let hasWarnedMissingCsrfMiddleware = false
 const defaultCsrfMiddleware = createCsrfMiddleware({
   filter: (ctx) => ctx.handlerType === 'serverFn',
@@ -114,27 +107,18 @@ const createEarlyHintsForRequest: typeof createEarlyHintsCollector =
     ? () => undefined
     : createEarlyHintsCollector
 
-async function loadEntries(): Promise<Entries> {
-  const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-    import('#tanstack-router-entry'),
-    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-    import('#tanstack-start-entry'),
-    // @ts-ignore When building, we currently don't respect tsconfig.ts' `include` so we are not picking up the .d.ts from start-client-core
-    import('#tanstack-start-plugin-adapters'),
-  ])
-  return {
-    routerEntry: routerEntry as unknown as RouterEntry,
-    startEntry: startEntry as unknown as StartEntry,
-    pluginAdapters: pluginAdapters as unknown as PluginAdaptersEntry,
-  }
-}
-
 function getEntries() {
-  if (!entriesPromise) {
-    entriesPromise = loadEntries()
-  }
-  return entriesPromise
+  return (entriesPromise ??= Promise.all([
+    import('#tanstack-router-entry'),
+    import('#tanstack-start-entry'),
+    import('#tanstack-start-plugin-adapters'),
+    import('tanstack-start-manifest:v'),
+  ]).then(([routerEntry, startEntry, pluginAdapters, manifest]) => ({
+    routerEntry,
+    startEntry,
+    pluginAdapters,
+    manifest,
+  })))
 }
 
 function hasCsrfMiddleware(
@@ -496,6 +480,8 @@ export function createStartHandler<TRegister = Register>(
       const { url, handledProtocolRelativeURL } = getNormalizedURL(request.url)
       const href = url.pathname + url.search + url.hash
       const origin = getOrigin(request)
+      const isServerFnRequest =
+        !!SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)
 
       if (handledProtocolRelativeURL) {
         return Response.redirect(url, 308)
@@ -522,7 +508,9 @@ export function createStartHandler<TRegister = Register>(
         ...startOptions,
         requestMiddleware: hasStartInstance
           ? startOptions.requestMiddleware
-          : [defaultCsrfMiddleware],
+          : isServerFnRequest
+            ? [defaultCsrfMiddleware]
+            : undefined,
         serializationAdapters,
       }
 
@@ -571,7 +559,7 @@ export function createStartHandler<TRegister = Register>(
       }
 
       // Check for server function requests first (early exit)
-      if (SERVER_FN_BASE && url.pathname.startsWith(SERVER_FN_BASE)) {
+      if (isServerFnRequest) {
         if (
           process.env.NODE_ENV !== 'production' &&
           process.env.TSS_DISABLE_CSRF_MIDDLEWARE_WARNING !== 'true' &&
@@ -655,6 +643,19 @@ export function createStartHandler<TRegister = Register>(
           )
         }
 
+        const earlyHints = createEarlyHintsForRequest({
+          onEarlyHints: requestOpts?.onEarlyHints,
+          responseLinkHeader: requestOpts?.responseLinkHeader,
+        })
+
+        let routerInstance: AnyRouter | undefined
+        if (!matchedRoutes && earlyHints) {
+          routerInstance = await getRouter()
+          matchedRoutes = routerInstance.getMatchedRoutes(
+            routerInstance.latestLocation.pathname,
+          )[0]
+        }
+
         const manifest = await waitForRequest(
           resolveManifestForRequest({
             request,
@@ -664,15 +665,9 @@ export function createStartHandler<TRegister = Register>(
           request.signal,
         )
 
-        const earlyHints = createEarlyHintsForRequest({
-          onEarlyHints: requestOpts?.onEarlyHints,
-          responseLinkHeader: requestOpts?.responseLinkHeader,
-        })
-
         earlyHints?.collectStatic({ manifest, matchedRoutes })
 
-        const routerInstance = await getRouter()
-
+        routerInstance ??= await getRouter()
         attachRouterServerSsrUtils({
           router: routerInstance,
           manifest,
@@ -737,6 +732,10 @@ export function createStartHandler<TRegister = Register>(
           },
           async () => {
             try {
+              if (entries.manifest.hasServerRoutes === false) {
+                return await executeRouter(context)
+              }
+
               return await handleServerRoutes({
                 getRouter,
                 request,
@@ -754,19 +753,29 @@ export function createStartHandler<TRegister = Register>(
         )
       }
 
-      const middlewares = flattenedRequestMiddlewares.map(
-        (d) => d.options.server,
-      )
-      const { response: middlewareResponse } = await executeMiddleware(
-        [...middlewares, requestHandlerMiddleware],
-        {
-          request,
-          pathname: url.pathname,
-          handlerType: 'router',
-          context: createNullProtoObject(requestOpts?.context),
-        },
-        request.signal,
-      )
+      const context = createNullProtoObject(requestOpts?.context)
+      let middlewareResponse: HandlerCallbackResult
+      if (flattenedRequestMiddlewares.length) {
+        const middlewares = flattenedRequestMiddlewares.map(
+          (d) => d.options.server,
+        )
+        const result = await executeMiddleware(
+          [...middlewares, requestHandlerMiddleware],
+          { request, pathname: url.pathname, handlerType: 'router', context },
+          request.signal,
+        )
+        middlewareResponse = result.response
+      } else {
+        middlewareResponse = await waitForRequest(
+          requestHandlerMiddleware({ context }),
+          request.signal,
+          (late) => disposeLateResponse(late, request.signal),
+        )
+        if (request.signal.aborted) {
+          disposeLateResponse(middlewareResponse, request.signal)
+          throw request.signal.reason
+        }
+      }
 
       const response = await handleRedirectResponse(
         middlewareResponse,
