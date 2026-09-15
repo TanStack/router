@@ -163,7 +163,9 @@ export function createFixtureRouter(server: boolean, diagnostics: Diagnostics) {
           </tbody>
         </table>
         <nav>
-          <For each={Array.from({ length: hashLinkCount }, (_, index) => index)}>
+          <For
+            each={Array.from({ length: hashLinkCount }, (_, index) => index)}
+          >
             {(index) => (
               <Link
                 id={`hash-${index}`}
