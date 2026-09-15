@@ -6293,6 +6293,65 @@ describe('search middleware', () => {
     expect(postsLink).toHaveAttribute('data-status', 'active')
   })
 
+  test('retainSearchParams before stripSearchParams omits defaults from Link href and stays active', async () => {
+    // Regression for https://github.com/TanStack/router/issues/8309
+    const defaults = { myParam: 'foo' }
+    const rootRoute = createRootRoute({
+      validateSearch: z.object({
+        myParam: z.string().default('foo'),
+      }),
+      search: {
+        middlewares: [retainSearchParams(true), stripSearchParams(defaults)],
+      },
+      component: () => {
+        const { myParam } = rootRoute.useSearch()
+        return (
+          <>
+            <div data-testid="search-value">{myParam}</div>
+            <Link data-testid="home-link" to="/">
+              Home
+            </Link>
+            <Link data-testid="about-link" to="/about">
+              About
+            </Link>
+            <Outlet />
+          </>
+        )
+      },
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => <h1>Index</h1>,
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+      component: () => <h1>About</h1>,
+    })
+
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByTestId('search-value')).toHaveTextContent('foo')
+    expect(router.state.location.search).toEqual({})
+
+    const homeLink = await screen.findByTestId('home-link')
+    const homeHref = homeLink.getAttribute('href')
+    expect(homeHref).toBe('/')
+    expect(getSearchParamsFromURI(homeHref!).size).toBe(0)
+    expect(homeLink).toHaveAttribute('data-status', 'active')
+
+    const aboutLink = await screen.findByTestId('about-link')
+    const aboutHref = aboutLink.getAttribute('href')
+    expect(aboutHref).toBe('/about')
+    expect(getSearchParamsFromURI(aboutHref!).size).toBe(0)
+  })
+
   describe('reloadDocument', () => {
     test('link to /posts with params', async () => {
       const rootRoute = createRootRoute()

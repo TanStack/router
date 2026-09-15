@@ -132,6 +132,16 @@ export function stripSearchParams<
             if (meta) {
               ;(meta.removed ||= new Map()).set(key, value)
             }
+          } else if (
+            meta &&
+            !(key in result) &&
+            hasOwn.call(search as object, key) &&
+            deepEqual((search as Record<string, unknown>)[key], value)
+          ) {
+            // next() dropped this key (e.g. Link with no search prop returns {}).
+            // Still mark the default as removed so outer retainSearchParams does
+            // not put the defaulted value back into the built href.
+            ;(meta.removed ||= new Map()).set(key, value)
           }
         },
       )
