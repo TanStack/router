@@ -1,5 +1,21 @@
 # @tanstack/router-core
 
+## 1.171.31
+
+### Patch Changes
+
+- [#8417](https://github.com/TanStack/router/pull/8417) [`bc80866`](https://github.com/TanStack/router/commit/bc80866f6d6eb3e6f152ee3682eb783c96403e83) - Speed up `deepEqual`: identical array elements no longer recurse, the exact comparison keeps a single key counter, and the redundant `typeof` early exit is gone. Equal numeric arrays compare ~70% faster and record comparisons 5–12% faster in the mixed-mode workloads that Link option stabilization and active-state checks produce, with a slightly smaller bundle. Behavior, including key enumeration and getter read order, is unchanged.
+
+- [#8418](https://github.com/TanStack/router/pull/8418) [`e561fa1`](https://github.com/TanStack/router/commit/e561fa1d7118e3d29267cc3b6ce1130d6581f387) - `deepEqual` now takes its flags as positional arguments — `deepEqual(a, b, partial?, explicitUndefined?)` — instead of an options object. The router's hot callers (Link option stabilization and active-state checks, `matchRoute`) no longer allocate an options object per comparison, and the comparator reads two booleans instead of a polymorphic object. `explicitUndefined` replaces `ignoreUndefined: false`. `deepEqual` is an internal helper; it stays exported for compatibility of two-argument calls.
+
+- [#8419](https://github.com/TanStack/router/pull/8419) [`a1c8d1a`](https://github.com/TanStack/router/commit/a1c8d1aa759c227eae9601a030321ac4c53c24bd) - `resolvePath` (internal helper) now takes positional arguments — `resolvePath(base, to, trailingSlash?, cache?)` — so `buildLocation` and `matchRoute` no longer allocate an options object per path resolution.
+
+- [#8422](https://github.com/TanStack/router/pull/8422) [`a0b2ad9`](https://github.com/TanStack/router/commit/a0b2ad99aee64af08d16b0e4ff26b3ba42a99f0a) - Parse the location once when `router.update()` changes the basepath or rewrite, collect `invalidate()` match ids in a single pass, and specialize internal basepath composition without arrays or loops. Preserve basepath case sensitivity when creating and updating the router.
+
+  Rebuild server route trees when `caseSensitive` changes and reuse the server cache only when the route tree and case sensitivity both match.
+
+- [#8421](https://github.com/TanStack/router/pull/8421) [`1ca361b`](https://github.com/TanStack/router/commit/1ca361ba52a627d2f76ab33323bd83d1d0aa65a3) - Parse masked locations without mutating shared state and simplify input rewrite handling.
+
 ## 1.171.30
 
 ### Patch Changes
