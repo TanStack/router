@@ -51,7 +51,6 @@ import {
   replaceRouteChunk,
 } from './load-client'
 import {
-  composeRewrites,
   executeRewriteInput,
   executeRewriteOutput,
   rewriteBasepath,
@@ -1244,9 +1243,6 @@ export class RouterCore<
     }
 
     const prevOptions = this.options
-    const prevBasepath = this.basepath ?? prevOptions?.basepath ?? '/'
-    const basepathWasUnset = this.basepath === undefined
-    const prevRewriteOption = prevOptions?.rewrite
 
     this.options = {
       ...prevOptions,
@@ -1291,20 +1287,22 @@ export class RouterCore<
 
     const nextBasepath = this.options.basepath ?? '/'
     const nextRewriteOption = this.options.rewrite
-    const basepathChanged = basepathWasUnset || prevBasepath !== nextBasepath
-    const rewriteChanged = prevRewriteOption !== nextRewriteOption
+    const rewriteChanged =
+      this.basepath !== nextBasepath ||
+      prevOptions?.rewrite !== nextRewriteOption ||
+      prevOptions?.caseSensitive !== this.options.caseSensitive
 
-    if (basepathChanged || rewriteChanged) {
+    if (rewriteChanged) {
       this.basepath = nextBasepath
 
-      const trimmed = trimPath(nextBasepath)
-      const basepathRewrite =
-        trimmed && trimmed !== '/' ? rewriteBasepath(nextBasepath) : undefined
-      // The basepath is stripped first on input and re-added last on output.
       this.rewrite =
-        basepathRewrite && nextRewriteOption
-          ? composeRewrites([basepathRewrite, nextRewriteOption])
-          : (basepathRewrite ?? nextRewriteOption)
+        nextBasepath !== '/' && trimPath(nextBasepath)
+          ? rewriteBasepath(
+              nextBasepath,
+              this.options.caseSensitive,
+              nextRewriteOption,
+            )
+          : nextRewriteOption
     }
 
     // Parse once, with the final rewrite in place.
@@ -1350,7 +1348,7 @@ export class RouterCore<
           setupScrollRestoration(this)
         }
       }
-    } else if (basepathChanged || rewriteChanged) {
+    } else if (rewriteChanged) {
       // Existing stores hold the location parsed with the previous rewrite.
       this.stores.location.set(this.latestLocation)
     }

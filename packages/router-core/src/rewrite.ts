@@ -20,7 +20,11 @@ export function composeRewrites(rewrites: Array<LocationRewrite>) {
 }
 
 /** Create a rewrite pair that strips/adds a basepath on input/output. */
-export function rewriteBasepath(basepath: string, caseSensitive?: boolean) {
+export function rewriteBasepath(
+  basepath: string,
+  caseSensitive?: boolean,
+  rewrite?: LocationRewrite,
+) {
   const trimmedBasepath = trimPath(basepath)
   const normalizedBasepath = `/${trimmedBasepath}`
   const checkBasepath = caseSensitive
@@ -28,7 +32,7 @@ export function rewriteBasepath(basepath: string, caseSensitive?: boolean) {
     : normalizedBasepath.toLowerCase()
   const checkBasepathWithSlash = `${checkBasepath}/`
 
-  return {
+  const basepathRewrite = {
     input: ({ url }) => {
       const pathname = caseSensitive ? url.pathname : url.pathname.toLowerCase()
 
@@ -48,6 +52,16 @@ export function rewriteBasepath(basepath: string, caseSensitive?: boolean) {
       return url
     },
   } satisfies LocationRewrite
+
+  // Strip the basepath before custom input and restore it after custom output.
+  return rewrite
+    ? ({
+        input: ({ url }) =>
+          executeRewriteInput(rewrite, basepathRewrite.input({ url })),
+        output: ({ url }) =>
+          basepathRewrite.output({ url: executeRewriteOutput(rewrite, url) }),
+      } satisfies LocationRewrite)
+    : basepathRewrite
 }
 
 /** Execute a location input rewrite if provided. */
