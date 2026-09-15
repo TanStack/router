@@ -9,8 +9,8 @@ Cross-framework client-side CPU benchmarks for:
 The benchmarks run in jsdom against production builds of real apps, and are
 tracked in CI by CodSpeed (simulation mode).
 
-> **Scope:** these benchmarks cover the client router. The React hydration
-> scenario also covers document hydration and the Router state-restoration path
+> **Scope:** these benchmarks cover the client router. The hydration
+> scenarios also cover DOM hydration and the Router state-restoration path
 > used by Start. Start-specific entry-point initialization, streamed payload
 > arrival and client server-function calls are not included. Server request work
 > is covered by `benchmarks/ssr`.
@@ -58,7 +58,7 @@ be attributed to a specific feature area.
 | `control-flow`                           | Loader-thrown `redirect` (including a 2-hop chain), `notFound()` with `notFoundComponent`, loader errors with `errorComponent`, and boundary reset on recovery navigation.                                                                                                                                                           |
 | `head`                                   | `HeadContent` per-navigation work: nested route `head()` evaluation, title/meta/link dedupe across matches, and head tag DOM updates during navigation.                                                                                                                                                                              |
 | `history`                                | History push/replace/back/forward traversal, location masking, registered-but-never-blocking `useBlocker`, and `useCanGoBack`/`useLocation` subscriptions.                                                                                                                                                                           |
-| `hydration` (React only)                 | Initial document hydration: execute the SSR payload, restore `beforeLoad` context and loader data, and hydrate 192 ordinary and eight hash-sensitive Links through their follow-up effects.                                                                                                                                          |
+| `hydration`                              | Initial DOM hydration: execute the SSR payload, restore `beforeLoad` context and loader data, and hydrate 192 ordinary and eight hash-sensitive Links through their follow-up effects in React, Solid, and Vue.                                                                                                                    |
 | `links`                                  | Per-navigation cost of ~200 mounted `<Link>`s: link prop building, active-state recompute across `activeOptions` variants, `activeProps` swaps, and `useMatchRoute` probes (the `MatchRoute` component is avoided: vue-router's implementation leaks one subscription per render).                                                   |
 | `loaders`                                | Client loader dispatch: always-stale re-runs (`staleTime: 0`), cached revisits (re-run once per lap by the `invalidate` step), `loaderDeps`-keyed caching, `router.invalidate()`, and `useLoaderData` selectors.                                                                                                                     |
 | `mount`                                  | Cold start: `createRouter` (route-tree processing) + first render + initial `router.load()` + unmount, with a fresh router per mount.                                                                                                                                                                                                |
@@ -121,12 +121,12 @@ Typecheck benchmark sources (baseline + scenarios):
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav:test:types --outputStyle=stream --skipRemoteCache
 ```
 
-## React hydration
+## Hydration
 
-`scenarios/hydration/react` is one initial-hydration workload: 192 ordinary
-Links, eight hash-sensitive Links, and three matched routes with three
-`beforeLoad` contexts and two loader results. The server URL has no fragment;
-the client URL has `#details`, matching half of the hash-sensitive Links.
+`scenarios/hydration/{react,solid,vue}` provide the same initial-hydration
+workload: 192 ordinary Links, eight hash-sensitive Links, and three matched
+routes with three `beforeLoad` contexts and two loader results. The server URL
+has no fragment; the client URL has `#details`, matching half of the hash-sensitive Links.
 
 ```bash
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav-hydration-react:test:perf --outputStyle=stream --skipRemoteCache
@@ -134,10 +134,12 @@ CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav-hydration-react:test:uni
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav-hydration-react:test:types:client --outputStyle=stream --skipRemoteCache
 ```
 
+Replace `react` with `solid` or `vue` to run the other adapters.
+
 The build generates static HTML and its real Router SSR bootstrap scripts once
-with `createRequestHandler` and `defaultStreamHandler`. Generation fully consumes
-the response and runs outside the CodSpeed action. The measured worker only
-reads these artifacts; it does not import a server renderer or start a server.
+with `createRequestHandler` and the adapter's streaming renderer. Generation
+fully consumes the response and runs outside the CodSpeed action. The measured
+worker only reads these artifacts; it does not import a server renderer or start a server.
 
 Each invocation uses a fresh jsdom window and a fresh evaluation of the complete
 production client bundle in that window's realm. HTML parsing, bundle evaluation,
@@ -148,12 +150,24 @@ measures a fresh application with warm code, not JavaScript download/parse cost.
 
 The timed region executes the serialized payload, creates the router and its
 small code-based route tree, calls the public client `hydrate` API, and hydrates
-the existing document with React. A separate completion component signals from
-its post-hydration effect, after the same snapshot transition as hash-sensitive
-Links. The harness awaits that signal and two idle React scheduler turns, then
-checks the expected active links. It allows concurrent hydration to take as many
-turns as needed under CPU instrumentation, with a 60-second failure watchdog.
-Ending at `hydrateRoot` or the first mount would miss post-hydration Link updates.
+the existing DOM with the framework's native renderer:
+
+- **React:** a separate completion component signals from its post-hydration
+  effect, after the same snapshot transition as hash-sensitive Links. The harness
+  awaits that signal and two idle React scheduler turns, then checks the expected
+  active links. Concurrent hydration can take as many turns as needed under CPU
+  instrumentation, with a 60-second failure watchdog.
+- **Solid:** execute the native hydration bootstrap and retain the server's
+  component/key hierarchy. Wait for mount, the router's rendered event, active-link
+  effects, and two idle turns. DOM identity assertions include every workload
+  element so template fallback cannot silently replace server nodes.
+- **Vue:** mount a `createSSRApp` into its server-rendered container and flush
+  post-mount updates with `nextTick`, followed by two idle turns. Production
+  hydration-mismatch diagnostics remain enabled so incorrect server DOM fails the
+  scenario. Completion is independent of the expected DOM state.
+
+Solid and Vue bound settlement to 100 turns. Ending at the hydration call or the
+first mount would miss post-hydration Link updates.
 Timer turns use `setImmediate`; scrolling is a no-op
 because this is CPU simulation rather than browser layout/paint measurement.
 
@@ -161,8 +175,8 @@ Untimed assertions verify restored contexts and every loader row, zero client
 `beforeLoad`/loader calls, expected hrefs/active state, original DOM-node identity,
 working event handlers, and absence of hydration errors. Root unmount, pending
 task cancellation, and window disposal also run outside measurement. Diagnostic
-tests count Link renders and check they stop before the measured region ends;
-render counting is disabled in the timed workload.
+tests count Link renders or reactive evaluations and check they stop before the
+measured region ends; counting is disabled in the timed workload.
 
 CodSpeed uses suite `beforeEach`/`afterEach` hooks. Ordinary Vitest instead
 installs Tinybench's public Task iteration hooks from its stage-level `setup`.
@@ -170,8 +184,8 @@ Using only stage-level setup would let later iterations reuse an already
 hydrated document. The hydration unit tests cover fresh-state setup through
 both paths.
 
-This scenario is included in the React aggregate build and CodSpeed run. Land
-the benchmark independently to establish main's baseline before comparing a
+Each scenario is included in its framework's aggregate build and CodSpeed run.
+Land the benchmark independently to establish main's baseline before comparing a
 hydration optimization. Regenerate each revision's artifacts with identical
 fixture data and dependencies; do not pin an old hydration wire format forever.
 
