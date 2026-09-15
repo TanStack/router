@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789509632272,
+  "lastUpdate": 1789512563590,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,114 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "41898282+github-actions[bot]@users.noreply.github.com",
-            "name": "github-actions[bot]",
-            "username": "github-actions[bot]"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "35a7d9cd5a0e6e19a6ad6f5b79b89b4f069a17bc",
-          "message": "ci: Version Packages (#7452)",
-          "timestamp": "2026-05-20T23:32:04+02:00",
-          "tree_id": "ea6477b9210d06575857ebbf2036b30a5b639fe5",
-          "url": "https://github.com/TanStack/router/commit/35a7d9cd5a0e6e19a6ad6f5b79b89b4f069a17bc"
-        },
-        "date": 1779312885418,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89392,
-            "unit": "bytes",
-            "extra": "raw=280592; brotli=77753; initial_gzip=89251"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93000,
-            "unit": "bytes",
-            "extra": "raw=292362; brotli=80787; initial_gzip=92858"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36382,
-            "unit": "bytes",
-            "extra": "raw=108877; brotli=32748; initial_gzip=36255"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41237,
-            "unit": "bytes",
-            "extra": "raw=123417; brotli=37095; initial_gzip=41112"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54602,
-            "unit": "bytes",
-            "extra": "raw=155092; brotli=49073; initial_gzip=54472"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59850,
-            "unit": "bytes",
-            "extra": "raw=171641; brotli=53624; initial_gzip=59717"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104471,
-            "unit": "bytes",
-            "extra": "raw=330207; brotli=90378; initial_gzip=104331"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105545,
-            "unit": "bytes",
-            "extra": "raw=331889; brotli=91398; initial_gzip=104647"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107950,
-            "unit": "bytes",
-            "extra": "raw=340769; brotli=93220; initial_gzip=107811"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102028,
-            "unit": "bytes",
-            "extra": "raw=324532; brotli=87842; initial_gzip=101852"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105399,
-            "unit": "bytes",
-            "extra": "raw=335193; brotli=90648; initial_gzip=105223"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50864,
-            "unit": "bytes",
-            "extra": "raw=156111; brotli=44882; initial_gzip=50729"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 55032,
-            "unit": "bytes",
-            "extra": "raw=164852; brotli=48898; initial_gzip=51606"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56786,
-            "unit": "bytes",
-            "extra": "raw=173407; brotli=49999; initial_gzip=56653"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -25124,6 +25016,138 @@ window.BENCHMARK_DATA = {
             "value": 71073,
             "unit": "bytes",
             "extra": "raw=204747; brotli=63221; initial_gzip=70945"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "6340397+schiller-manuel@users.noreply.github.com",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1ca361ba52a627d2f76ab33323bd83d1d0aa65a3",
+          "message": "refactor(router-core): parse masked locations without mutating shared state (#8421)\n\n* refactor(router-core): parse masked locations without mutating shared state\n\n`parseLocation` built the presented location of a masked entry by parsing\nthe stored `__tempLocation` and then patching and `delete`-ing keys on the\nresulting `state`, which `replaceEqualDeep` may have shared with the\nprevious location, before spreading the result once more. The inner parser\nnow takes the state to use, so the masked branch passes the intended state\nup front and assigns `maskedLocation` on the fresh object.\n\nThe slow parsing path only runs the input rewrite when one is configured,\nand `resolvePathWithBase` is inlined into its two callers.\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>\n(cherry picked from commit cc6159628cd22faf9c16e6e432cb35093b2826a8)\n\n* refactor(router-core): remove redundant input rewrite guard\n\n---------\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>",
+          "timestamp": "2026-09-16T00:42:50+02:00",
+          "tree_id": "6de34a3bc0e0b6c1f182b001a714e785f12387f4",
+          "url": "https://github.com/TanStack/router/commit/1ca361ba52a627d2f76ab33323bd83d1d0aa65a3"
+        },
+        "date": 1789512561523,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85872,
+            "unit": "bytes",
+            "extra": "raw=267514; brotli=74941; initial_gzip=85736"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89436,
+            "unit": "bytes",
+            "extra": "raw=279485; brotli=78010; initial_gzip=89296"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34129,
+            "unit": "bytes",
+            "extra": "raw=97802; brotli=30848; initial_gzip=34001"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39102,
+            "unit": "bytes",
+            "extra": "raw=112799; brotli=35241; initial_gzip=38973"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50568,
+            "unit": "bytes",
+            "extra": "raw=139937; brotli=45796; initial_gzip=50442"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56268,
+            "unit": "bytes",
+            "extra": "raw=158583; brotli=50838; initial_gzip=56141"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99116,
+            "unit": "bytes",
+            "extra": "raw=310790; brotli=85981; initial_gzip=98978"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106616,
+            "unit": "bytes",
+            "extra": "raw=337923; brotli=92466; initial_gzip=106477"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99856,
+            "unit": "bytes",
+            "extra": "raw=312179; brotli=86684; initial_gzip=98999"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102350,
+            "unit": "bytes",
+            "extra": "raw=320747; brotli=88701; initial_gzip=102211"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102507,
+            "unit": "bytes",
+            "extra": "raw=321640; brotli=88561; initial_gzip=102333"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 102928,
+            "unit": "bytes",
+            "extra": "raw=322616; brotli=88914; initial_gzip=102759"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105807,
+            "unit": "bytes",
+            "extra": "raw=331967; brotli=91331; initial_gzip=105633"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47378,
+            "unit": "bytes",
+            "extra": "raw=139922; brotli=42226; initial_gzip=47250"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50489,
+            "unit": "bytes",
+            "extra": "raw=147466; brotli=45023; initial_gzip=47299"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52532,
+            "unit": "bytes",
+            "extra": "raw=155679; brotli=46588; initial_gzip=52401"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67062,
+            "unit": "bytes",
+            "extra": "raw=192036; brotli=59798; initial_gzip=66935"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71034,
+            "unit": "bytes",
+            "extra": "raw=204636; brotli=63089; initial_gzip=70908"
           }
         ]
       }
