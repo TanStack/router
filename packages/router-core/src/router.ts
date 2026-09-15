@@ -1057,6 +1057,7 @@ declare global {
   var __TSR_CACHE__:
     | {
         routeTree: AnyRoute
+        caseSensitive: boolean | undefined
         processRouteTreeResult: RouteTreeCaches<AnyRoute>
       }
     | undefined
@@ -1310,14 +1311,19 @@ export class RouterCore<
       this.updateLatestLocation()
     }
 
-    if (this.options.routeTree !== this.routeTree) {
+    if (
+      this.options.routeTree !== this.routeTree ||
+      ((isServer ?? this.isServer) &&
+        prevOptions?.caseSensitive !== this.options.caseSensitive)
+    ) {
       this.routeTree = this.options.routeTree as TRouteTree
       let processRouteTreeResult: RouteTreeCaches<TRouteTree>
       if (
         process.env.NODE_ENV !== 'development' &&
         (isServer ?? this.isServer) &&
         globalThis.__TSR_CACHE__ &&
-        globalThis.__TSR_CACHE__.routeTree === this.routeTree
+        globalThis.__TSR_CACHE__.routeTree === this.routeTree &&
+        globalThis.__TSR_CACHE__.caseSensitive === this.options.caseSensitive
       ) {
         const cached = globalThis.__TSR_CACHE__
         processRouteTreeResult = cached.processRouteTreeResult as any
@@ -1331,6 +1337,7 @@ export class RouterCore<
         ) {
           globalThis.__TSR_CACHE__ = {
             routeTree: this.routeTree,
+            caseSensitive: this.options.caseSensitive,
             processRouteTreeResult: processRouteTreeResult as any,
           }
         }
