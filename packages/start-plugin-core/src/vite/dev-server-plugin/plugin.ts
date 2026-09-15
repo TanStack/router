@@ -70,9 +70,7 @@ export function devServerPlugin({
 
               // Look up route file paths from manifest
               // Only routes registered in the manifest are used - this prevents path injection
-              const routesManifest = (globalThis as any).TSS_ROUTES_MANIFEST as
-                | Record<string, { filePath: string; children?: Array<string> }>
-                | undefined
+              const routesManifest = globalThis.TSS_ROUTES_MANIFEST?.routes
 
               if (routesManifest && ids.length > 0) {
                 for (const routeId of ids) {

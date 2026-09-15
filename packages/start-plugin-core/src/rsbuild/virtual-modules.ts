@@ -86,7 +86,8 @@ function generateManifestModuleDev(
   scriptFormat: ScriptFormat,
 ): string {
   const scriptFormatProperty = getScriptFormatProperty(scriptFormat)
-  return `const fallbackManifest = {
+  return `export const hasServerRoutes = true
+const fallbackManifest = {
 ${scriptFormatProperty}  routes: {
     __root__: {
       preloads: ['${devClientEntryUrl}'],
@@ -103,10 +104,12 @@ function buildStartManifestData(
   inlineCss: InlineCssOptions,
   scriptFormat: ScriptFormat,
 ) {
-  const routeTreeRoutes = globalThis.TSS_ROUTES_MANIFEST
+  const { routes: routeTreeRoutes, hasServerRoutes } =
+    globalThis.TSS_ROUTES_MANIFEST!
   return buildStartManifest({
     clientBuild,
     routeTreeRoutes,
+    hasServerRoutes,
     basePath: publicBase,
     inlineCss,
     scriptFormat,
@@ -133,10 +136,18 @@ function generateManifestModuleBuild(
 ): string {
   if (!clientBuild) {
     return `const tsrStartManifestData = ${JSON.stringify(START_MANIFEST_PLACEHOLDER)}
-export const tsrStartManifest = () => tsrStartManifestData`
+export const tsrStartManifest = () => tsrStartManifestData
+export const hasServerRoutes = true`
   }
 
-  return `export const tsrStartManifest = () => (${serializeStartManifestData(clientBuild, publicBase, inlineCss, scriptFormat)})`
+  const manifest = buildStartManifestData(
+    clientBuild,
+    publicBase,
+    inlineCss,
+    scriptFormat,
+  )
+  return `export const hasServerRoutes = ${manifest.hasServerRoutes !== false}
+export const tsrStartManifest = () => (${JSON.stringify(manifest)})`
 }
 
 /**
@@ -388,7 +399,8 @@ export function registerVirtualModules(
             opts.scriptFormat,
           )
     } else {
-      content[paths.manifest] = 'export default {}'
+      content[paths.manifest] =
+        'export const hasServerRoutes = true\nexport default {}'
     }
 
     // Server fn resolver — SSR and provider environments
@@ -528,13 +540,14 @@ export function createFromReadableStream() { throw new Error('RSC SSR decode is 
       const devClientEntryUrl = opts.getDevClientEntryUrl(
         resolvedStartConfig.basePaths.publicBase,
       )
+      if (isDev) {
+        return generateManifestModuleDev(devClientEntryUrl, opts.scriptFormat)
+      }
       return generateManifestModuleBuild(
         newClientBuild,
         resolvedStartConfig.basePaths.publicBase,
         devClientEntryUrl,
-        !isDev
-          ? startConfig.server.build.inlineCss
-          : { enabled: false, transformAssets: false },
+        startConfig.server.build.inlineCss,
         opts.scriptFormat,
       )
     },
