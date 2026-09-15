@@ -223,6 +223,20 @@ async function getFetchBody(
 }
 
 /**
+ * Whether an error is an abort, i.e. the caller cancelled the request (e.g. TanStack Query
+ * cancelling a query on unmount). Covers both `DOMException` (the standard `fetch` abort) and any
+ * `Error` with `name === 'AbortError'`.
+ */
+function isAbortError(error: unknown): boolean {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'name' in error &&
+    (error as { name: unknown }).name === 'AbortError'
+  )
+}
+
+/**
  * Retrieves a response from a given function and manages potential errors
  * and special response types including redirects and not found errors.
  *
@@ -238,7 +252,11 @@ async function getResponse(fn: () => Promise<Response>) {
     if (error instanceof Response) {
       response = error
     } else {
-      console.log(error)
+      // A caller aborting the request is expected control flow, not a failure, so don't log it.
+      // We still rethrow so the caller can handle the cancellation.
+      if (!isAbortError(error)) {
+        console.log(error)
+      }
       throw error
     }
   }
