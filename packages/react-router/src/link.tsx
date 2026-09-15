@@ -13,7 +13,7 @@ import {
 import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
 
-import { useHydrated } from './ClientOnly'
+import { useHydratedWhen } from './ClientOnly'
 import type {
   ActiveOptions,
   AnyRouter,
@@ -257,7 +257,7 @@ export function useLinkProps<
   } = options as typeof options & { to?: string }
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const isHydrated = useHydrated()
+  const isHydrated = useHydratedWhen(!!activeOptions?.includeHash)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [stableSearch, stableParams, stableActiveOptions] = useStableValues(
