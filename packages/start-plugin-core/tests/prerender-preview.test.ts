@@ -59,28 +59,24 @@ describe('prerender preview worker lifecycle', () => {
     const { preview, worker } = await ready()
 
     expect(preview.baseUrl.href).toBe('http://127.0.0.1:4173/')
-    expect(construct).toHaveBeenCalledWith(
-      expect.objectContaining({
-        pathname: expect.stringMatching(/prerender-worker\.js$/),
-      }),
-      {
-        workerData: { configFile: options.configFile },
-        env: {
-          ...process.env,
-          TSS_PRERENDERING: 'true',
-          TSS_CLIENT_OUTPUT_DIR: options.outputDir,
-        },
+    expect(construct).toHaveBeenCalledWith(expect.any(URL), {
+      workerData: { configFile: options.configFile },
+      env: {
+        ...process.env,
+        TSS_PRERENDERING: 'true',
+        TSS_CLIENT_OUTPUT_DIR: options.outputDir,
       },
-    )
+    })
     expect(process.env.TSS_PRERENDERING).toBe(before.prerendering)
     expect(process.env.TSS_CLIENT_OUTPUT_DIR).toBe(before.outputDir)
 
     const closing = preview.close()
     worker.emit('message', { type: 'closed' })
+    worker.emit('exit', 0)
     await closing
   })
 
-  it('awaits preview.close before terminating and reuses the close promise', async () => {
+  it('awaits a successful worker exit after preview.close and reuses the close promise', async () => {
     const { preview, worker } = await ready()
     const closing = preview.close()
 
@@ -89,12 +85,30 @@ describe('prerender preview worker lifecycle', () => {
     expect(worker.terminate).not.toHaveBeenCalled()
 
     worker.emit('message', { type: 'closed' })
+    let closed = false
+    void closing.then(() => {
+      closed = true
+    })
+    await Promise.resolve()
+    expect(closed).toBe(false)
+    expect(worker.terminate).not.toHaveBeenCalled()
+    worker.emit('exit', 0)
     await closing
 
-    expect(worker.terminate).toHaveBeenCalledOnce()
+    expect(worker.terminate).not.toHaveBeenCalled()
     expect(worker.listenerCount('message')).toBe(0)
     expect(worker.listenerCount('error')).toBe(0)
     expect(worker.listenerCount('exit')).toBe(0)
+  })
+
+  it('propagates an unsuccessful exit after the preview has closed', async () => {
+    const { preview, worker } = await ready()
+    const closing = preview.close()
+    worker.emit('message', { type: 'closed' })
+    worker.emit('exit', 1)
+    await expect(closing).rejects.toThrow(
+      'Prerender preview worker exited with code 1',
+    )
   })
 
   it('terminates when preview startup fails', async () => {

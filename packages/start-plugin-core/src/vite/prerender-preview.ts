@@ -14,8 +14,16 @@ export async function startPrerenderPreview({
   configFile,
   outputDir,
 }: PrerenderWorkerData & { outputDir: string }) {
+  const entry = new URL(
+    /* @vite-ignore */ './prerender-worker.js',
+    import.meta.url,
+  )
+  // A module bootstrap preserves inherited eval/stdin flags and V8 options.
   const worker = new NodeWorker(
-    new URL(/* @vite-ignore */ './prerender-worker.js', import.meta.url),
+    new URL(
+      'data:text/javascript,' +
+        encodeURIComponent(`import ${JSON.stringify(entry.href)}`),
+    ),
     {
       workerData: { configFile } satisfies PrerenderWorkerData,
       env: {
@@ -27,13 +35,15 @@ export async function startPrerenderPreview({
   )
   const failure = new AbortController()
   const onError = (error: Error) => failure.abort(error)
-  const onExit = (code: number) => {
-    failure.abort(
-      new Error(`Prerender preview worker exited with code ${code}`),
-    )
-  }
   worker.once('error', onError)
-  worker.once('exit', onExit)
+  const exited = new Promise<number>((resolve) => {
+    worker.once('exit', (code: number) => {
+      failure.abort(
+        new Error(`Prerender preview worker exited with code ${code}`),
+      )
+      resolve(code)
+    })
+  })
 
   async function readMessage() {
     try {
@@ -54,7 +64,6 @@ export async function startPrerenderPreview({
       await worker.terminate()
     } finally {
       worker.off('error', onError)
-      worker.off('exit', onExit)
     }
   }
 
@@ -95,10 +104,14 @@ export async function startPrerenderPreview({
       if (message.type !== 'closed') {
         throw new Error('Prerender preview worker did not finish closing')
       }
-    } finally {
-      // The HTTP server has closed, but application imports can own intervals
-      // or connections that outlive its requests.
+      if ((await exited) !== 0) {
+        throw failure.signal.reason
+      }
+    } catch (error) {
       await terminate()
+      throw error
+    } finally {
+      worker.off('error', onError)
     }
   }
 }

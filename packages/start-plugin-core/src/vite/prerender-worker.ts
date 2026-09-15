@@ -21,7 +21,12 @@ if (!url) {
 
 port.once('message', () => {
   server.close().then(
-    () => send({ type: 'closed' }),
+    () => {
+      send({ type: 'closed' })
+      // Exit this worker through Node's shutdown hooks so plugins can clean up
+      // external resources. The parent build keeps running.
+      process.exit(process.exitCode ?? 0)
+    },
     (error: Error) => send({ type: 'error', error }),
   )
 })
