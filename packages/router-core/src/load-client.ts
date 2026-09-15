@@ -1071,27 +1071,39 @@ function materializeRedirect(
   while (outcome[0 /* kind */] === REDIRECTED) {
     const redirect = outcome[1 /* redirect */]
     const redirectOptions = redirect.options
-    if (
-      redirectOptions.reloadDocument
-        ? options[3 /* preload */]
-        : options[1 /* redirects */] >= 20
-    ) {
-      return outcome
-    }
     try {
-      if (redirectOptions.href && redirectOptions.reloadDocument) {
+      if (redirectOptions.href || redirect.headers.has('Location')) {
         router.resolveRedirect(redirect)
+        if (redirectOptions.reloadDocument) {
+          return outcome
+        }
+      }
+      if (
+        redirectOptions.reloadDocument
+          ? options[3 /* preload */]
+          : options[1 /* redirects */] >= 20
+      ) {
         return outcome
       }
-      return [
-        REDIRECTED,
-        redirect,
-        router.buildLocation({
-          ...redirectOptions,
-          _fromLocation: lane[0 /* location */],
-          _includeValidateSearch: true,
-        }),
-      ]
+      const location = router.buildLocation({
+        ...redirectOptions,
+        _fromLocation: lane[0 /* location */],
+        _includeValidateSearch: true,
+      })
+      const publicLocation = location.maskedLocation ?? location
+      if (publicLocation.external) {
+        // Loader outcomes can be shared by lanes with different search/params.
+        // Keep the resolved destination local to this lane.
+        const resolved = redirect.clone() as AnyRedirect
+        resolved.options = { ...redirectOptions }
+        resolved.headers.set('Location', publicLocation.publicHref)
+        router.resolveRedirect(resolved)
+        // A two-item outcome marks a terminal redirect for preloads.
+        return options[3 /* preload */]
+          ? [REDIRECTED, resolved]
+          : [REDIRECTED, resolved, publicLocation]
+      }
+      return [REDIRECTED, redirect, location]
     } catch (cause) {
       outcome = failed ? [ERROR, cause] : normalizeError(route, cause)
       failed = true
@@ -1607,19 +1619,17 @@ export function commitMatches(
   const cached = new Map<string, AnyRouteMatch>()
   if (process.env.NODE_ENV === 'production' || !tx[6 /* refresh */]) {
     const now = Date.now()
+    // The rendered prefix and settled descendants supersede older generations.
+    // Unsettled matches beyond a fallback must not evict a newer preload.
+    const superseded = new Set<string>()
+    for (let index = 0; index < matches.length; index++) {
+      const match = matches[index]!
+      if (index < cut || match.status === 'success') {
+        superseded.add(match.id)
+      }
+    }
     for (const match of [...previous, ...previousCached.values()]) {
-      // Rendered-prefix ids and settled successes anywhere in the lane are
-      // authoritative: retaining an older same-id generation would shadow them
-      // at the next planning pass. Unsettled beyond-boundary matches are not —
-      // they must not evict a newer same-id preload.
-      if (
-        match.status !== 'success' ||
-        matches.some(
-          (candidate, index) =>
-            candidate.id === match.id &&
-            (index < cut || candidate.status === 'success'),
-        )
-      ) {
+      if (match.status !== 'success' || superseded.has(match.id)) {
         continue
       }
       const work = match as WorkMatch
@@ -1705,7 +1715,7 @@ function followRedirect(
   }
   if (options.reloadDocument) {
     return router.navigate({
-      href: location.publicHref,
+      href: (location.maskedLocation ?? location).publicHref,
       reloadDocument: true,
       replace: true,
       ignoreBlocker: true,

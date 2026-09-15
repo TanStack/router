@@ -7,10 +7,10 @@ const unused = 'remove me from virtual modules';
 export function Page() {
   return <>
       <Hydrate when={visible()} h="0_466696e41d">
-      {<_H />}
-    </Hydrate>
+{<_H />}
+</Hydrate>
       <Hydrate when={idle()} h="2_466696e41d">
-      {<_H2 />}
-    </Hydrate>
+{<_H2 />}
+</Hydrate>
     </>;
 }

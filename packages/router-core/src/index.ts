@@ -133,6 +133,8 @@ export {
   exactPathTest,
   resolvePath,
   interpolatePath,
+  getRouteSegments,
+  hasMissingPathParams,
 } from './path'
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
@@ -312,15 +314,13 @@ export {
   functionalUpdate,
   hasKeys,
   replaceEqualDeep,
-  isPlainObject,
-  isPlainArray,
   deepEqual,
   createControlledPromise,
   isModuleNotFoundError,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
+  getUrlScheme,
   isDangerousProtocol,
-  isAbsoluteUrl,
   buildDevStylesUrl,
 } from './utils'
 export type {

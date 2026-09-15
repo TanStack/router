@@ -2,4 +2,4 @@
 '@tanstack/router-core': patch
 ---
 
-fix(router-core): resolve `MatchRoute`/`useMatchRoute` return types for pathless (layout) routes. `TFrom` now also accepts a plain `string` and the resolved path is narrowed via `Extract<TResolved, string>`, so matching a route nested under a pathless layout no longer widens the returned params to `never`.
+fix(router-core): resolve `MatchRoute`/`useMatchRoute` return types for pathless (layout) routes by looking the resolved path up with `RouteByPath` (fullPath-keyed) instead of `RouteById` (id-keyed). Matching a route nested under a pathless layout now returns its params instead of `never`.

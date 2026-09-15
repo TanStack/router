@@ -6,6 +6,6 @@ export function Page() {
   return <HW when={interaction({
     events: 'focusin'
   })} h="0_f555ef3ac2">
-    {<_H />}
-  </HW>;
+{<_H />}
+</HW>;
 }
