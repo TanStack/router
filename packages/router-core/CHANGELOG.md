@@ -1,5 +1,120 @@
 # @tanstack/router-core
 
+## 1.171.30
+
+### Patch Changes
+
+- [#8321](https://github.com/TanStack/router/pull/8321) [`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6) - Cache route branches and interpolated paths on their route objects, removing the fixed template limit for registered routes and reusing cached paths across server requests. Rebuild tree-dependent caches together, preserve decoder and trailing-slash isolation, and keep unregistered templates bounded.
+
+- [#8390](https://github.com/TanStack/router/pull/8390) [`b747fb8`](https://github.com/TanStack/router/commit/b747fb8891b3347b1ffdfe0fa81e7d15049cb776) - Keep the Link location cache out of server bundles: `buildLocation` only creates, reads and writes it when `isServer` is false. Render React Links on the server without the extra prop copies and the forwarded-ref hook. Link SSR rendering is 20-40% faster in the Link benchmarks and the React Start SSR request loop about 7% faster.
+
+  React `activeProps` and `inactiveProps` now follow one precedence rule on every link, including links whose destination is blocked for using a disallowed scheme: state props override element props, `ref` and event handlers, while `href`, `disabled` and `target` stay controlled by the router. Previously a blocked link ignored a `ref` or handler from its inactive props.
+
+  React `Link` and `useLinkProps` split router options from element props with one key set on the client and the server. Element props pass through as given: external links forward them verbatim, falsy values included, and `useLinkProps` now returns `children` for router-controlled links as it already did for external ones.
+
+- [#8382](https://github.com/TanStack/router/pull/8382) [`6cfb1e8`](https://github.com/TanStack/router/commit/6cfb1e8b564be282584765352250bf61747895ed) - `buildLocation` no longer structurally shares the built `search` and `state` with the current location. The observable `location.search` and `location.state` still preserve equal nested references across navigations, because `parseLocation` stabilizes them once a location is committed. A search whose contents equal the current search but list its keys in a different order now serializes in the requested order, so navigating to it creates a new history entry instead of being treated as the same location. A `state` object passed to `navigate` or `buildLocation` is never mutated.
+
+- [#8325](https://github.com/TanStack/router/pull/8325) [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274) - Reuse the already-owned raw-param snapshot during lightweight source matching instead of copying it again.
+
+- [#8325](https://github.com/TanStack/router/pull/8325) [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274) - Reduce transient JIT compilation memory during navigation by separating search middleware collection from recursive execution.
+
+- [#8252](https://github.com/TanStack/router/pull/8252) [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734) - Collect shared pathname-cache keys during interpolation instead of parsing templates twice, and share dynamic-segment handling to reduce bundle size.
+
+- [#8319](https://github.com/TanStack/router/pull/8319) [`873c830`](https://github.com/TanStack/router/commit/873c830ccb2610a864ee697250e10fcc99772ffa) - Simplify path interpolation into ordered segment-type blocks with shared prefix/value/suffix assembly. Preserve one-pass parsing and optional metadata collection, and reuse the public result object instead of allocating and clearing a missing-parameter callback.
+
+- [#8252](https://github.com/TanStack/router/pull/8252) [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734) - Reuse pathname interpolation across Links with bounded router-scoped caches. Keep parameter callbacks and navigation state independent of the cache.
+
+- [#8327](https://github.com/TanStack/router/pull/8327) [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef) - Make `pathParamsAllowedCharacters` initialization-only. Configure it when creating the router; changing allowed characters requires a new router instance. Remove decoder-update bookkeeping and decoder-change checks from route-owned path caches.
+
+- [#8370](https://github.com/TanStack/router/pull/8370) [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5) - Stop exporting the internal `isPlainObject` and `isPlainArray` helpers.
+
+- [#8327](https://github.com/TanStack/router/pull/8327) [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef) - Initialize routes directly during route-tree processing, removing the callback indirection while preserving parent-first initialization and route indexes.
+
+- [#8328](https://github.com/TanStack/router/pull/8328) [`f151ab0`](https://github.com/TanStack/router/commit/f151ab018eede64ae849b77e68f3cdf31cb95cc5) - Reduce duplication in navigation parameter handling while preserving parameter inheritance, null-prototype dictionaries, and updater isolation.
+
+- [#8410](https://github.com/TanStack/router/pull/8410) [`bc57fa3`](https://github.com/TanStack/router/commit/bc57fa3f12450cf34c731450947c7c8f1ea05e58) - Treat `0` and `false` as provided `_splat` values when interpolating paths. Only `undefined`, `null`, and `''` now omit a splat segment, matching how other path params are stringified.
+
+- [#8354](https://github.com/TanStack/router/pull/8354) [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244) - Use lightweight request history for SSR and make server navigation a no-op. Use redirect() to issue HTTP redirects. Server hrefs use the same normalization as browser history to handle protocol-relative URLs and control characters.
+
+- [#8321](https://github.com/TanStack/router/pull/8321) [`d76a332`](https://github.com/TanStack/router/commit/d76a33284bc0668f7af4c972a6d32bd0f42b22a6) - Consolidate internal path interpolation into `interpolatePath`, returning a pathname directly and collecting metadata only when requested. Update router and devtools callers without changing route parsing or interpolation caching.
+
+- [#8327](https://github.com/TanStack/router/pull/8327) [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef) - Reduce route-tree initialization work by avoiding temporary path-joining arrays and duplicate ID normalization.
+
+- [#8327](https://github.com/TanStack/router/pull/8327) [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef) - Reuse parsed route segments when generating paths for navigation, Links, and Devtools. Preserve interpolation metadata and refresh segments when the route tree is rebuilt, without reparsing templates for new parameter values.
+
+- [#8252](https://github.com/TanStack/router/pull/8252) [`7e349c3`](https://github.com/TanStack/router/commit/7e349c3071ef7a346698d320fc0989998ad55734) - Reduce the bundle cost of shared Link pathname interpolation while preserving its rendering performance. Reuse one interpolation pass for pathname and optional metadata, keep the bounded cache on the router, and simplify React Link active-state and prop merging.
+
+- [#8385](https://github.com/TanStack/router/pull/8385) [`9448caa`](https://github.com/TanStack/router/commit/9448caa03a89076b9770631c356c0cc502802c09) - Collect search middlewares with a counted loop so the optimized code stays valid across navigations. This removes a JIT recompilation that raised peak memory in the interrupted-navigations client memory benchmark.
+
+- [#8370](https://github.com/TanStack/router/pull/8370) [`e9396c9`](https://github.com/TanStack/router/commit/e9396c928945d1dd6fd3f3bd8052143794f688b5) - Reuse built locations for Links whose destination does not depend on the current location. `buildLocation` keeps the result per options object when the build never read the current location, and the React `Link` passes one stable options object per instance, so navigations resolve unchanged Links with a lookup instead of a full build. The per-route pathname interpolation cache this replaces is removed. Link `params`, `search` and `activeOptions` are compared by value on render, so inline object literals with unchanged contents keep reusing the Link's location. Pass a new object to change a destination; like any other React prop, an object mutated in place is not re-read.
+
+- [#8325](https://github.com/TanStack/router/pull/8325) [`700a714`](https://github.com/TanStack/router/commit/700a714c5fb64199b4edfaa3273d230c9894e274) - Cache normalized route pathnames so repeated Link destinations do not decode the same interpolation result again.
+
+- [#8327](https://github.com/TanStack/router/pull/8327) [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef) - Share compact parsed route segments between matching and interpolation, preserve original parameter names, and avoid reparsing templates while building paths. Simplify route-tree traversal, reuse existing path helpers, and keep Devtools-only navigation validation out of the production formatter. Preserve dynamic match identity for standalone legacy fallback routes.
+
+- [#8327](https://github.com/TanStack/router/pull/8327) [`634da91`](https://github.com/TanStack/router/commit/634da9176e16fa8aa49af459bbb054fcae7d85ef) - Pass route initialization indexes directly instead of wrapping each index in an options object.
+
+- Updated dependencies [[`8fff7fa`](https://github.com/TanStack/router/commit/8fff7fa1f2e6f061916b0bf5e0ec486b2e732f94), [`f021f6d`](https://github.com/TanStack/router/commit/f021f6d1c6dce6c9b54d70766f1d636d8fd9e184), [`ae68535`](https://github.com/TanStack/router/commit/ae68535929043607d4ee9438f8ae401f3a064862), [`9872d2a`](https://github.com/TanStack/router/commit/9872d2ac39fc05f4ef6566c0b421f71ceb115244)]:
+  - @tanstack/history@1.162.4
+
+## 1.171.29
+
+### Patch Changes
+
+- [#8313](https://github.com/TanStack/router/pull/8313) [`f9836f1`](https://github.com/TanStack/router/commit/f9836f16f0e25b0a8495f5e01e3f303b1cbc8725) - Avoid constructing a query serializer when search is empty or all values are undefined.
+
+- [#8308](https://github.com/TanStack/router/pull/8308) [`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8) - Validate navigation and redirect destinations, keep ambiguous relative URLs on the current origin, and constrain prerender requests and output paths. Prevent redirect headers from appearing in serialized server function response bodies.
+
+  Preserve native form HTTP redirects, route error handling and masks for document redirects, and per-navigation destinations for shared loader redirects. Avoid redundant origin parsing and reduce link styling and server-rendering work. Configured origins must already be normalized.
+
+  Keep blocked-link inactive props consistent during React hydration, honor explicit redirect Location headers before checking route options, and refresh Vue link state when destinations become internal. Reuse the protocol-relative URL check while parsing redirect schemes once.
+
+  Reduce React link bundle size by sharing pathname comparisons, state-prop selection, and element creation.
+
+  Share normalized pathname comparisons in Solid and Vue links to reduce bundle size.
+
+- [#8288](https://github.com/TanStack/router/pull/8288) [`9871c06`](https://github.com/TanStack/router/commit/9871c0625806001d6bf373524821a00303438a91) - Reduce cache maintenance work during navigation by indexing incoming match IDs once per commit.
+
+- [#8287](https://github.com/TanStack/router/pull/8287) [`0654c0a`](https://github.com/TanStack/router/commit/0654c0a1a427db24d9af13c1d6ad1217a588c0c9) - Use full-document navigation when an output rewrite produces a cross-origin destination, including the public URL of a route mask.
+
+  Respect registered history blockers during document navigation, passing history locations and the requested push or replace action.
+
+- Updated dependencies [[`9c1871c`](https://github.com/TanStack/router/commit/9c1871ccc88bc1157186b8b460941a304ec740b8), [`0654c0a`](https://github.com/TanStack/router/commit/0654c0a1a427db24d9af13c1d6ad1217a588c0c9)]:
+  - @tanstack/history@1.162.3
+
+## 1.171.28
+
+### Patch Changes
+
+- [#8222](https://github.com/TanStack/router/pull/8222) [`edf0e16`](https://github.com/TanStack/router/commit/edf0e16ebfe82ec6e8f68f403a1fda8de9e28889) - Make each load transaction's completion follow its current successor so a burst of back-to-back loads wakes each superseded waiter once instead of once per successor. Previously every superseded `load()` re-polled the current transaction on each later completion, which was quadratic in microtask work.
+
+- [#8165](https://github.com/TanStack/router/pull/8165) [`2f20c00`](https://github.com/TanStack/router/commit/2f20c00224c5ba63467551914e0c37012588c4c2) - Exclude structural descendants below error and not-found boundaries from route lifecycle callbacks. Preserve lifecycle membership through invalidation, hydration, background reloads, and superseded navigation publication.
+
+- [#8209](https://github.com/TanStack/router/pull/8209) [`28a5e45`](https://github.com/TanStack/router/commit/28a5e4504e4ea5cb1480667a4bea2588a53e110f) - Preserve falsy thrown values in React and Vue error boundaries. Type React and Vue boundary error components and `onCatch` callbacks as `unknown`. Solid boundary errors remain typed as `Error`; SSR now wraps non-`Error` loader errors to match Solid’s native boundary behavior, preserving the original value in `cause`. Router state and loader `onError` values are unchanged.
+
+  When upgrading React or Vue, narrow boundary errors (for example, with `error instanceof Error`) before reading `message` or `stack`. `ErrorComponentProps<TError>` remains available for values narrowed to a specific error type. Route `onError` types are unchanged.
+
+- [#8207](https://github.com/TanStack/router/pull/8207) [`08eff50`](https://github.com/TanStack/router/commit/08eff50c447a154a3373909009e9e4375cea17ce) - Fix consumer typechecking with `skipLibCheck: false` by omitting the internal beforeLoad context field from published dehydrated match declarations.
+
+  Retain the exported `isAbsoluteUrl` declaration used by framework bindings so the package entry point does not reference a stripped symbol.
+
+- [#8259](https://github.com/TanStack/router/pull/8259) [`216c0c4`](https://github.com/TanStack/router/commit/216c0c48036fd1a33163b70dcabfed2b893808b0) - Reduce Promise allocations during client navigation and static server SSR policy resolution. Skip cancellable waits for synchronous beforeLoad results while preserving navigation cancellation.
+
+- [#8240](https://github.com/TanStack/router/pull/8240) [`2f91503`](https://github.com/TanStack/router/commit/2f9150309bc472f4a75cbe98adcdb50c76b12c7a) - Avoid quadratic resource handoff scans when navigating with many cached route matches.
+
+- [#8161](https://github.com/TanStack/router/pull/8161) [`f0b5eda`](https://github.com/TanStack/router/commit/f0b5eda544606686a8a8d675a686ca1366428b96) - Retain successful not-found matches as terminal shared boundaries during client navigation, preserving route context while the destination loads.
+
+- [#8142](https://github.com/TanStack/router/pull/8142) [`50eafca`](https://github.com/TanStack/router/commit/50eafcaebbbedb6fde3b2816de7a0ace8cde4832) - Avoid unnecessary JSON.parse calls for search parameter values that cannot begin valid JSON, while preserving custom parser behavior.
+
+- [#8251](https://github.com/TanStack/router/pull/8251) [`0497cae`](https://github.com/TanStack/router/commit/0497caeef3ff7e1c1c6080eca38bca24e7ec320b) - Use URL.canParse for absolute URL checks in links, navigation, redirects, and build configuration. Preserve a URL constructor fallback for older browsers.
+
+- [#8230](https://github.com/TanStack/router/pull/8230) [`ee28348`](https://github.com/TanStack/router/commit/ee283480dfa51150a2e0b096a6eff94a89ff8b3f) - Replace the internal LRU cache behind path resolution, route matching and the SSR manifest lookup with a smaller SIEVE cache whose hits no longer relink a list, and fix an eviction edge case in the old implementation.
+
+- [#8244](https://github.com/TanStack/router/pull/8244) [`c18e690`](https://github.com/TanStack/router/commit/c18e69081475a7c98f9d40bd0fe6da78ccb84598) - Reduce promise allocations during client navigation when loader data and route components are already available.
+
+- Updated dependencies [[`9035abc`](https://github.com/TanStack/router/commit/9035abc41163d83409ef582f7743a3c7be57dd93)]:
+  - @tanstack/history@1.162.2
+
 ## 1.171.27
 
 ### Patch Changes

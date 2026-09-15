@@ -2,8 +2,6 @@
 title: Share Search Parameters Across Routes
 ---
 
-# How to Share Search Parameters Across Routes
-
 Search parameters automatically inherit from parent routes in TanStack Router. When a parent route validates search parameters, child routes can access them via `Route.useSearch()` alongside their own parameters.
 
 ## How Parameter Inheritance Works

@@ -366,14 +366,7 @@ export function createManifestAssetResolvers(
       return cachedPath
     }
 
-    let assetPath = joinURL(basePath, fileName)
-    if (basePath === './') {
-      // Avoid inserting a leading slash if base path is purely relative
-      assetPath = './' + fileName
-    } else if (basePath.startsWith('./') && assetPath.startsWith('/')) {
-      assetPath = '.' + assetPath
-    }
-
+    const assetPath = joinURL(basePath, fileName)
     assetPathByFileName.set(fileName, assetPath)
     return assetPath
   }

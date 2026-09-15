@@ -1,7 +1,74 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { decode, encode } from '../src/qss'
 
+afterEach(() => vi.unstubAllGlobals())
+
 describe('encode function', () => {
+  it.each([{}, { skipped: undefined }])(
+    'does not allocate a native serializer for %j',
+    (input) => {
+      const Original = URLSearchParams
+      const constructor = vi.fn(function () {
+        return new Original()
+      })
+      vi.stubGlobal('URLSearchParams', constructor)
+      expect(encode(input)).toBe('')
+      expect(constructor).not.toHaveBeenCalled()
+    },
+  )
+
+  it('keeps getter and serializer order, including inherited values', () => {
+    const calls: Array<string> = []
+    const input = Object.create({
+      get inherited() {
+        calls.push('get inherited')
+        return 'last'
+      },
+    })
+    Object.defineProperties(input, {
+      skipped: {
+        enumerable: true,
+        get() {
+          calls.push('get skipped')
+          return undefined
+        },
+      },
+      own: {
+        enumerable: true,
+        get() {
+          calls.push('get own')
+          return 'first'
+        },
+      },
+    })
+    expect(
+      encode(input, (value) => {
+        calls.push(`stringify ${value}`)
+        return value
+      }),
+    ).toBe('own=first&inherited=last')
+    expect(calls).toEqual([
+      'get skipped',
+      'get own',
+      'stringify first',
+      'get inherited',
+      'stringify last',
+    ])
+  })
+
+  it('preserves falsy values and empty serializer output', () => {
+    expect(encode({ zero: 0, false: false, null: null, empty: '' })).toBe(
+      'zero=0&false=false&null=null&empty=',
+    )
+    expect(encode({ value: 'present' }, () => '')).toBe('value=')
+  })
+
+  it('retains native set semantics for keys that normalize to the same string', () => {
+    expect(encode({ '\uD800': 'first', '\uD801': 'second' })).toBe(
+      '%EF%BF%BD=second',
+    )
+  })
+
   it('should encode an object into a query string without a prefix', () => {
     const obj = { token: 'foo', key: 'value' }
     const queryString = encode(obj)

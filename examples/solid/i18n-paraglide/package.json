@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.2",
-    "@tanstack/solid-router": "^1.170.30",
-    "@tanstack/router-plugin": "^1.168.35",
+    "@tanstack/solid-router": "^1.170.34",
+    "@tanstack/router-plugin": "^1.168.38",
     "solid-js": "^1.9.10",
     "tailwindcss": "^4.2.2"
   },
@@ -23,5 +23,16 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "@inlang/paraglide-js": "^2.4.0"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "outputs": [
+          "...",
+          "{projectRoot}/src/paraglide",
+          "{projectRoot}/project.inlang/cache"
+        ]
+      }
+    }
   }
 }

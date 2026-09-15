@@ -765,8 +765,13 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
   if (typeof url === 'string') url = url.replace('\\', '%5C')
 
   const rawUrl = new URL(url, base)
-  const { path: decodedPathname, handledProtocolRelativeURL } = decodePath(
-    rawUrl.pathname,
+  // URL parsing has already handled backslashes and ignored controls. A pathname
+  // like "//evil.example" would become a protocol-relative URL when rebuilt below.
+  const handledProtocolRelativeURL = rawUrl.pathname.startsWith('//')
+  const decodedPathname = decodePath(
+    handledProtocolRelativeURL
+      ? rawUrl.pathname.replace(/^\/+/, '/')
+      : rawUrl.pathname,
   )
   const searchParams = new URLSearchParams(rawUrl.search)
   const normalizedHref =
