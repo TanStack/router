@@ -387,6 +387,9 @@ export function useLinkProps<
     if (!preload) {
       return
     }
+    if (preload === 'intent') {
+      return () => cancelPreload(innerRef)
+    }
     if (preload === 'render' && !hasRenderFetched.current) {
       hasRenderFetched.current = true
       preloadLink(router, _options)
