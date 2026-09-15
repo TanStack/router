@@ -2,8 +2,8 @@ import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import {
-  createCompositeComponent,
   CompositeComponent,
+  createCompositeComponent,
 } from '@tanstack/react-start/rsc'
 import { clientStyles, formatTime, pageStyles } from '~/utils/styles'
 import {
@@ -310,31 +310,37 @@ function RscSsrFalseComponent() {
   const [hasRestoredDrawing, setHasRestoredDrawing] =
     React.useState(hasSavedDrawing)
 
-  // Initialize canvas and restore saved drawing
-  React.useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Mark as mounted at the start of the effect
-    hasMounted.current = true
-
-    // Set white background first
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    // Try to restore saved drawing from localStorage
-    const savedDrawingData = localStorage.getItem('drawing-canvas-data')
-    if (savedDrawingData) {
-      const img = new Image()
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0)
+  // The canvas slot can mount after the route while its RSC is decoding.
+  const initializeCanvas = React.useCallback(
+    (canvas: HTMLCanvasElement | null) => {
+      canvasRef.current = canvas
+      if (!canvas) {
+        return
       }
-      img.src = savedDrawingData
-    }
-  }, [])
+
+      const ctx = canvas.getContext('2d')
+      if (!ctx) {
+        return
+      }
+
+      hasMounted.current = true
+
+      // Set white background first
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // Try to restore saved drawing from localStorage
+      const savedDrawingData = localStorage.getItem('drawing-canvas-data')
+      if (savedDrawingData) {
+        const img = new Image()
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0)
+        }
+        img.src = savedDrawingData
+      }
+    },
+    [],
+  )
 
   // Save color to localStorage when it changes (but not on initial mount)
   React.useEffect(() => {
@@ -560,7 +566,7 @@ function RscSsrFalseComponent() {
 
             {/* Canvas */}
             <canvas
-              ref={canvasRef}
+              ref={initializeCanvas}
               data-testid="drawing-canvas"
               width={tools.canvasSize.width}
               height={tools.canvasSize.height}
