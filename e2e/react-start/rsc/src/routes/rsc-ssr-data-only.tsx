@@ -183,6 +183,7 @@ export const Route = createFileRoute('/rsc-ssr-data-only')({
     return {
       ...bundle,
       loaderTimestamp: Date.now(),
+      pruningLoaderMarker: 'data-only-server-loader',
     }
   },
   pendingComponent: () => (
