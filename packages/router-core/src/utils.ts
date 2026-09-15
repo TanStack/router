@@ -223,10 +223,11 @@ export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
   replaceEqualDeep(prev, next, true)
 
 /**
- * This function returns `prev` if `next` is deeply equal.
- * If not, it will replace any deeply equal children of `b` with those of `a`.
- * This can be used for structural sharing between immutable JSON values for example.
- * Do not use this with signals
+ * Reuse equal children between immutable plain objects and dense arrays.
+ * Return `prev` for deeply equal values; otherwise return an object already
+ * containing the resolved children or create a copy with the shared children.
+ * Getters and own `__proto__` keys in ordinary object copies are unsupported.
+ * Do not use this with signals.
  */
 export function replaceEqualDeep<T>(
   prev: any,
@@ -247,28 +248,30 @@ export function replaceEqualDeep(
     return prev
   }
 
-  if (_depth > 500) return next
+  if (_depth++ > 500) {
+    return next
+  }
 
   const array = Array.isArray(prev) && Array.isArray(next)
 
-  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) {
+    return next
+  }
 
-  const prevKeys = Object.keys(prev)
-  const nextKeys = Object.keys(next)
+  const prevKeys: Array<any> = Object.keys(prev)
+  const previousCount = prevKeys.length
+  const nextKeys: Array<any> = Object.keys(next)
   const length = nextKeys.length
-  // Holes or extra keys on an array, non-enumerable keys on an object, or symbol
-  // keys on `next` make a value opaque: it passes through untouched rather than
-  // being compared or copied by its indices or string keys only. A hole and an
-  // extra key cancel out in the key count, but extra keys sort after the indices,
-  // so only a dense index-only `next` has its last index as its last key.
-  // (`getOwnPropertySymbols` is ~4x the cost of the other two, so `prev` — normally an
-  // earlier `next` — is not checked for symbols, and arrays are not checked at all.)
+  // Hidden object keys and symbols on next make the value opaque. Arrays
+  // must have only dense enumerable indices: a hole and an extra key can
+  // cancel out in the count, so also check the last key of both arrays.
   if (
     array
-      ? prevKeys.length !== prev.length ||
+      ? previousCount !== prev.length ||
         length !== next.length ||
-        (length && nextKeys[length - 1] !== `${length - 1}`)
-      : prevKeys.length !== Object.getOwnPropertyNames(prev).length ||
+        (previousCount && last(prevKeys) !== `${previousCount - 1}`) ||
+        (length && last(nextKeys) !== `${length - 1}`)
+      : previousCount !== Object.getOwnPropertyNames(prev).length ||
         length !== Object.getOwnPropertyNames(next).length ||
         Object.getOwnPropertySymbols(next).length
   ) {
@@ -276,57 +279,75 @@ export function replaceEqualDeep(
   }
 
   let i = 0
-  let n: any
+  let child: any
+  let previous: any
+  let key: any
 
-  // Most calls find `next` deeply equal, so nothing is allocated while entries
-  // keep matching: scan up to the first difference, sharing equal children on
-  // the way. Arrays and objects get their own loop so that each keyed access
-  // only ever sees one kind of key. Only an object entry of `prev` can share
-  // anything; the recursive call returns `next`'s entry for `null` and for
-  // mismatched types. When the key counts differ, the scan still runs: every
-  // child it resolves is exactly what the copy below shares.
   if (array) {
+    // Entries before the first difference already resolve to prev.
     for (; i < length; i++) {
-      const p = prev[i]
-      n = next[i]
-      if (p !== n && typeof p === 'object') {
-        n = replaceEqualDeep(p, n, _nullProto, _depth + 1)
-      }
-      if (n !== p) break
-    }
-  } else {
-    for (; i < length; i++) {
-      const key = nextKeys[i]!
-      const p = prev[key]
-      n = next[key]
-      if (p !== n && typeof p === 'object') {
-        n = replaceEqualDeep(p, n, _nullProto, _depth + 1)
-      }
-      // Equal key counts can still hide a key that only `next` has (as `undefined`).
-      // The same key at the same position of both key lists proves it is `prev`'s
-      // own key; only reordered keys need the `hasOwn` lookup.
-      if (n !== p || (prevKeys[i] !== key && !hasOwn.call(prev, key))) {
+      key = i
+      previous = prev[key]
+      child = next[key]
+      child =
+        previous === child
+          ? previous
+          : typeof previous === 'object'
+            ? replaceEqualDeep(previous, child, _nullProto, _depth)
+            : child
+      if (child !== previous) {
         break
       }
     }
-  }
-  // Everything in `next` matched and `prev` has no additional keys.
-  if (i === length && prevKeys.length === length) return prev
-
-  // Equality is ruled out from here on, so this loop only builds the result:
-  // the scanned prefix is shared from `prev`, entry `i` keeps the value the scan
-  // already computed, and the rest is resolved without any equality bookkeeping.
-  const copy: any = array ? [] : _nullProto ? Object.create(null) : {}
-  for (let j = 0; j < length; j++) {
-    const key = array ? j : nextKeys[j]!
-    const p = prev[key]
-    if (j > i) {
-      n = next[key]
-      if (p !== n && typeof p === 'object') {
-        n = replaceEqualDeep(p, n, _nullProto, _depth + 1)
-      }
+    if (i === length && previousCount === length) {
+      return prev
     }
-    copy[key] = j < i ? p : n
+  } else {
+    let equal = previousCount === length
+    let unchanged = true
+    for (; i < length; i++) {
+      key = nextKeys[i]!
+      previous = prev[key]
+      const incoming = next[key]
+      child =
+        previous === incoming
+          ? previous
+          : typeof previous === 'object'
+            ? replaceEqualDeep(previous, incoming, _nullProto, _depth)
+            : incoming
+      equal &&=
+        child === previous && (prevKeys[i] === key || hasOwn.call(prev, key))
+      unchanged &&= Object.is(child, incoming)
+      // This key has been checked; its private slot can hold the result.
+      prevKeys[i] = child
+    }
+    if (equal) {
+      return Object.getOwnPropertySymbols(prev).length ? next : prev
+    }
+    if (unchanged) {
+      return next
+    }
+  }
+
+  // Reuse the validated array key list; it is private and has the right length.
+  const copy: any = array ? nextKeys.fill(0) : _nullProto ? createNull() : {}
+  for (let j = 0; j < length; j++) {
+    key = array ? j : nextKeys[j]!
+    if (array) {
+      previous = prev[key]
+      if (j > i) {
+        child = next[key]
+        child =
+          previous === child
+            ? previous
+            : typeof previous === 'object'
+              ? replaceEqualDeep(previous, child, _nullProto, _depth)
+              : child
+      }
+      copy[key] = j < i ? previous : child
+    } else {
+      copy[key] = prevKeys[j]
+    }
   }
   return copy
 }
@@ -335,14 +356,8 @@ export function isPlainObject(o: unknown): boolean {
   if (!o || typeof o !== 'object') {
     return false
   }
-  // Literals inherit `Object`; null-prototype records have no constructor at all.
-  if ((o.constructor ?? Object) === Object) {
-    return true
-  }
-  // An own `constructor` key (`?constructor=foo`) hides the inherited one, so
-  // only the prototype can tell such a record from a class instance.
-  const proto = Object.getPrototypeOf(o)
-  return proto === null || proto.constructor === Object
+  // An own constructor is data, so classify the actual prototype.
+  return (Object.getPrototypeOf(o)?.constructor ?? Object) === Object
 }
 
 /**
