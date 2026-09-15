@@ -869,7 +869,9 @@ export async function loadServerRoute(
   router: AnyRouter,
   opts?: ServerLoadOptions,
 ): Promise<void> {
-  router.updateLatestLocation()
+  if (!opts?._skipLocationUpdate) {
+    router.updateLatestLocation()
+  }
   const next = router.latestLocation
   const previous = router._committed
   const previousEnd = router._lifecycleEnd

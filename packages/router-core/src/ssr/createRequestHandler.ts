@@ -128,6 +128,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
 
       await router.load({
         _signal: request.signal,
+        _skipLocationUpdate: true,
       })
       request.signal.throwIfAborted()
 

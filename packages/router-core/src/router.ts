@@ -791,6 +791,8 @@ export type LoadFn = (opts?: {
   sync?: boolean
   action?: { type: HistoryAction }
   _signal?: AbortSignal
+  /** @private Reuse the location already prepared for this SSR request. */
+  _skipLocationUpdate?: boolean
 }) => Promise<void>
 
 export type CommitLocationFn = ({
