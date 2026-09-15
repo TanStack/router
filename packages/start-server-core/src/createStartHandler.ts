@@ -416,14 +416,26 @@ async function executeMiddleware(
  */
 function handlerToMiddleware(
   handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any, any>,
+  matchedRoutes: ReadonlyArray<AnyRoute>,
   mayDefer: boolean = false,
 ): TODO {
-  if (mayDefer) {
-    return handler
-  }
   return async (ctx: TODO) => {
-    const response = await handler({ ...ctx, next: throwIfMayNotDefer })
-    if (!response) {
+    // Parse only for a selected server handler, leaving app-router validation
+    // to the router when a request falls through to rendering.
+    const params = Object.assign(Object.create(null), ctx.params)
+    for (const route of matchedRoutes) {
+      const parse = route.options.params?.parse ?? route.options.parseParams
+      if (parse) {
+        Object.assign(params, parse(params))
+      }
+    }
+
+    const response = await handler({
+      ...ctx,
+      params,
+      next: mayDefer ? ctx.next : throwIfMayNotDefer,
+    })
+    if (!mayDefer && !response) {
       throwRouteHandlerError()
     }
     return response
@@ -945,7 +957,9 @@ async function handleServerRoutes({
       const mayDefer = !!foundRoute.options.component
 
       if (typeof handler === 'function') {
-        routeMiddlewares.push(handlerToMiddleware(handler, mayDefer))
+        routeMiddlewares.push(
+          handlerToMiddleware(handler, matchedRoutes, mayDefer),
+        )
       } else {
         if (handler.middleware?.length) {
           const handlerMiddlewares = flattenMiddlewares(handler.middleware)
@@ -954,7 +968,9 @@ async function handleServerRoutes({
           }
         }
         if (handler.handler) {
-          routeMiddlewares.push(handlerToMiddleware(handler.handler, mayDefer))
+          routeMiddlewares.push(
+            handlerToMiddleware(handler.handler, matchedRoutes, mayDefer),
+          )
         }
       }
     }
