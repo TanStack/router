@@ -396,6 +396,8 @@ Return `Response` objects binary data, or custom content types.
 
 Use server functions without JavaScript by leveraging the `.url` property with HTML forms.
 
+A native form submission is not an RPC call, so the response goes to the browser rather than to the client runtime. Return a `Response`, or a `redirect()`, to control what the browser does next. A redirect is the usual choice, because it sends the browser to a real page instead of leaving it on the server function URL. Any other serializable return value is sent as a JSON body, which the browser will display as-is.
+
 ### Middleware
 
 Compose server functions with middleware for authentication, logging, and shared logic. See the [Middleware guide](./middleware.md).
