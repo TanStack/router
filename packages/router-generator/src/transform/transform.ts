@@ -218,23 +218,30 @@ function findExportedRouteCalls(
         continue
       }
 
-      const init = getRouteConstructorInit(declarator.init)
-      if (!init) {
-        if (isDirectRouteConstructorCall(declarator.init)) {
+      // The exported `Route` may be wrapped by one or more higher-order
+      // handlers (e.g. `wrap('x')(createFileRoute('/path')({...}))`), so search
+      // the whole init expression for the `createFileRoute('/path')({...})`
+      // call rather than requiring it to be the top-level init. The wrapper is
+      // opaque to the generator; we only need the inner constructor call.
+      const inits = findRouteConstructorInits(declarator.init)
+      if (inits.length === 0) {
+        if (containsRouteConstructorCall(declarator.init)) {
           hasMalformedRouteCall = true
         }
         continue
       }
 
-      const routeIdArg = init.innerCall.arguments[0]
-      if (isSupportedRouteId(routeIdArg)) {
-        calls.push({
-          callee: init.callee,
-          routeIdArg,
-          optionsArg: init.outerCall.arguments[0],
-        })
-      } else {
-        hasUnsupportedRouteId = true
+      for (const init of inits) {
+        const routeIdArg = init.innerCall.arguments[0]
+        if (isSupportedRouteId(routeIdArg)) {
+          calls.push({
+            callee: init.callee,
+            routeIdArg,
+            optionsArg: init.outerCall.arguments[0],
+          })
+        } else {
+          hasUnsupportedRouteId = true
+        }
       }
     }
   }
@@ -258,16 +265,16 @@ function getLocalBindingName(node: t.Identifier | t.StringLiteral) {
   return t.isIdentifier(node) ? node.name : null
 }
 
-function getRouteConstructorInit(expression: t.Expression | null | undefined) {
-  if (!expression || !t.isCallExpression(expression)) {
+function getRouteConstructorInit(node: t.Node | null | undefined) {
+  if (!node || !t.isCallExpression(node)) {
     return null
   }
 
-  if (!t.isCallExpression(expression.callee)) {
+  if (!t.isCallExpression(node.callee)) {
     return null
   }
 
-  const innerCall = expression.callee
+  const innerCall = node.callee
 
   if (
     !t.isIdentifier(innerCall.callee) ||
@@ -278,20 +285,62 @@ function getRouteConstructorInit(expression: t.Expression | null | undefined) {
 
   return {
     callee: innerCall.callee,
-    outerCall: expression,
+    outerCall: node,
     innerCall,
   }
 }
 
-function isDirectRouteConstructorCall(
-  expression: t.Expression | null | undefined,
-) {
-  return (
-    !!expression &&
-    t.isCallExpression(expression) &&
-    t.isIdentifier(expression.callee) &&
-    isRouteConstructor(expression.callee)
-  )
+// Walks the call-expression tree of an exported route binding to find every
+// `createFileRoute('/path')({...})` call, regardless of any higher-order
+// wrappers around it (e.g. `wrap('x')(createFileRoute('/path')({...}))`). Only
+// call expressions are traversed (callee + arguments), which is sufficient for
+// HOF wrappers of arbitrary depth.
+function findRouteConstructorInits(node: t.Node | null | undefined) {
+  const inits: Array<NonNullable<ReturnType<typeof getRouteConstructorInit>>> =
+    []
+
+  const visit = (current: t.Node | null | undefined) => {
+    if (!current || !t.isCallExpression(current)) {
+      return
+    }
+
+    const init = getRouteConstructorInit(current)
+    if (init) {
+      // Don't descend into a matched call's id/options arguments; a route
+      // constructor cannot legitimately appear inside them.
+      inits.push(init)
+      return
+    }
+
+    visit(current.callee)
+    for (const arg of current.arguments) {
+      visit(arg)
+    }
+  }
+
+  visit(node)
+
+  return inits
+}
+
+// Detects a route constructor call (`createFileRoute(...)`) anywhere in the
+// expression, even when it is malformed (e.g. missing the options call or
+// wrapped by a HOF). Used to surface a helpful error instead of silently
+// leaving the route untouched.
+function containsRouteConstructorCall(node: t.Node | null | undefined): boolean {
+  if (!node || !t.isCallExpression(node)) {
+    return false
+  }
+
+  if (t.isIdentifier(node.callee) && isRouteConstructor(node.callee)) {
+    return true
+  }
+
+  if (containsRouteConstructorCall(node.callee)) {
+    return true
+  }
+
+  return node.arguments.some((arg) => containsRouteConstructorCall(arg))
 }
 
 function isRouteConstructor(callee: t.Identifier): callee is t.Identifier & {
