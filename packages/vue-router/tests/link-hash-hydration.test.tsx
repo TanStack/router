@@ -172,6 +172,12 @@ async function checkHashHydration(clientUrl: string) {
       other: ['/', false],
     },
     {
+      id: 'omitted',
+      server: ['/', true],
+      details: ['/', false],
+      other: ['/', false],
+    },
+    {
       id: 'inherited',
       hash: true,
       server: ['/', true],
@@ -184,6 +190,21 @@ async function checkHashHydration(clientUrl: string) {
       server: ['/#-child', false],
       details: ['/#details-child', false],
       other: ['/#other-child', false],
+    },
+    {
+      id: 'identity',
+      hash: (previous = '') => previous,
+      server: ['/', true],
+      details: ['/#details', true],
+      other: ['/#other', true],
+    },
+    {
+      id: 'function-insensitive',
+      hash: (previous) => `${previous}-child`,
+      insensitive: true,
+      server: ['/#-child', true],
+      details: ['/#details-child', true],
+      other: ['/#other-child', true],
     },
     {
       id: 'inherited-insensitive',
@@ -259,49 +280,69 @@ async function checkHashHydration(clientUrl: string) {
   expect(error).not.toHaveBeenCalled()
 }
 
-test('uses the live hash on the first render of a client-only mount', async () => {
-  const renders: Array<boolean> = []
-  const page = Vue.defineComponent({
-    setup: () => () => (
-      <nav>
-        {(['details', true] as const).map((hash) => (
-          <Link to="/" hash={hash} activeOptions={{ includeHash: true }}>
-            {({ isActive }: { isActive: boolean }) => {
-              renders.push(isActive)
-              return String(isActive)
-            }}
-          </Link>
-        ))}
-      </nav>
-    ),
-  })
-  const router = makeRouter(false, '/#details', page)
-  await router.load()
-  const container = document.createElement('div')
-  document.body.appendChild(container)
-  const app = Vue.createApp({
-    setup: () => () => <RouterProvider router={router} />,
-  })
-  app.mount(container)
-  cleanups.push(() => app.unmount())
-  expect(renders).toEqual([true, true])
-  for (const anchor of container.querySelectorAll('a')) {
-    expect(anchor.getAttribute('href')).toBe('/#details')
-    expect(anchor.className).toBe('active')
-    expect(anchor.getAttribute('aria-current')).toBe('page')
-  }
-  await Vue.nextTick()
-  expect(renders.every(Boolean)).toBe(true)
-})
+test.each([false, true])(
+  'uses the live hash on the first render of a client-only mount (SSR options: %s)',
+  async (ssr) => {
+    const renders: Array<boolean> = []
+    const hashInputs: Array<string> = []
+    const inherit = (previous = '') => {
+      hashInputs.push(previous)
+      return previous
+    }
+    const page = Vue.defineComponent({
+      setup: () => () => (
+        <nav>
+          {(['details', true, inherit] as const).map((hash) => (
+            <Link to="/" hash={hash} activeOptions={{ includeHash: true }}>
+              {({ isActive }: { isActive: boolean }) => {
+                renders.push(isActive)
+                return String(isActive)
+              }}
+            </Link>
+          ))}
+        </nav>
+      ),
+    })
+    const router = makeRouter(false, '/#details', page)
+    if (ssr) {
+      router.options.ssr = {}
+    }
+    await router.load()
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const app = Vue.createApp({
+      setup: () => () => <RouterProvider router={router} />,
+    })
+    app.mount(container)
+    cleanups.push(() => app.unmount())
+    expect(renders).toEqual([true, true, true])
+    expect(hashInputs[0]).toBe('details')
+    for (const anchor of container.querySelectorAll('a')) {
+      expect(anchor.getAttribute('href')).toBe('/#details')
+      expect(anchor.className).toBe('active')
+      expect(anchor.getAttribute('aria-current')).toBe('page')
+    }
+    await Vue.nextTick()
+    expect(renders.every(Boolean)).toBe(true)
+  },
+)
 
 test('new Links mounted after hydration use the live hash immediately', async () => {
   const show = Vue.ref(false)
   const renders: Array<boolean> = []
+  const hashInputs: Array<string> = []
   const page = Vue.defineComponent({
     setup: () => () => (
       <div>
         {show.value && (
-          <Link to="/" hash="details" activeOptions={{ includeHash: true }}>
+          <Link
+            to="/"
+            hash={(previous = '') => {
+              hashInputs.push(previous)
+              return previous
+            }}
+            activeOptions={{ includeHash: true }}
+          >
             {({ isActive }: { isActive: boolean }) => {
               renders.push(isActive)
               return String(isActive)
@@ -320,9 +361,130 @@ test('new Links mounted after hydration use the live hash immediately', async ()
   await Vue.nextTick()
   const anchor = container.querySelector('a')!
   expect(renders[0]).toBe(true)
+  expect(hashInputs[0]).toBe('details')
   expect(anchor.getAttribute('href')).toBe('/#details')
   expect(anchor.className).toBe('active')
   expect(anchor.getAttribute('aria-current')).toBe('page')
   expect(warn).not.toHaveBeenCalled()
   expect(error).not.toHaveBeenCalled()
 })
+
+test('hydration only rebuilds destinations that depend on the current hash', async () => {
+  const page = Vue.defineComponent({
+    setup: () => () => (
+      <nav>
+        <Link id="ordinary" to="/">
+          ordinary
+        </Link>
+        <Link
+          id="literal"
+          to="/"
+          hash="details"
+          activeOptions={{ includeHash: true }}
+        >
+          literal
+        </Link>
+        <Link id="inherited" to="/" hash={true}>
+          inherited
+        </Link>
+      </nav>
+    ),
+  })
+  const { router, mount, container } = await prepareHydration(page)
+  const build = vi.spyOn(router, 'buildLocation')
+  const count = (id: string) =>
+    build.mock.calls.filter(
+      ([options]) => (options as { id?: string }).id === id,
+    ).length
+  mount()
+  const initial = ['ordinary', 'literal', 'inherited'].map(count)
+  expect(initial.every((calls) => calls > 0)).toBe(true)
+  await Vue.nextTick()
+  expect(count('ordinary')).toBe(initial[0])
+  expect(count('literal')).toBe(initial[1])
+  expect(count('inherited')).toBeGreaterThan(initial[2]!)
+  expect(container.querySelector('#literal')).toHaveAttribute(
+    'aria-current',
+    'page',
+  )
+  expect(container.querySelector('#inherited')).toHaveAttribute(
+    'href',
+    '/#details',
+  )
+})
+
+test('hash options stay reactive when an ordinary link becomes hash-dependent', async () => {
+  const hash = Vue.ref<LinkOptions['hash']>()
+  const activeOptions = Vue.reactive({ includeHash: false })
+  const page = Vue.defineComponent({
+    setup: () => () => (
+      <Link to="/" hash={hash.value} activeOptions={activeOptions}>
+        {({ isActive }: { isActive: boolean }) => String(isActive)}
+      </Link>
+    ),
+  })
+  const { container, mount } = await prepareHydration(page)
+  const anchor = container.querySelector('a')!
+  mount()
+  await Vue.nextTick()
+  for (const [nextHash, includeHash, href, active] of [
+    [undefined, true, '/', false],
+    [true, true, '/#details', true],
+    [(previous = '') => `${previous}-child`, true, '/#details-child', false],
+    ['other', false, '/#other', true],
+    [undefined, false, '/', true],
+  ] satisfies Array<[LinkOptions['hash'], boolean, string, boolean]>) {
+    hash.value = nextHash
+    activeOptions.includeHash = includeHash
+    await Vue.nextTick()
+    expect(container.querySelector('a')).toBe(anchor)
+    expect(anchor).toHaveAttribute('href', href)
+    expect(anchor.textContent).toBe(String(active))
+  }
+})
+
+test.each(['inherit', 'function', 'href'] as const)(
+  'preserves explicit source/href precedence during hydration (%s)',
+  async (kind) => {
+    const source = makeRouter(true, '/#preset', undefined).stores.location.get()
+    const updater = vi.fn((previous = '') => `${previous}-child`)
+    const page = Vue.defineComponent({
+      setup: () => () => (
+        <Link
+          to="/"
+          hash={kind === 'inherit' ? true : updater}
+          href={kind === 'href' ? '/#fixed' : undefined}
+          _fromLocation={kind === 'href' ? undefined : source}
+          activeOptions={{ includeHash: true }}
+        >
+          {({ isActive }: { isActive: boolean }) => String(isActive)}
+        </Link>
+      ),
+    })
+    const { container, mount } = await prepareHydration(page)
+    const anchor = container.querySelector('a')!
+    const href =
+      kind === 'href'
+        ? '/#fixed'
+        : kind === 'inherit'
+          ? '/#preset'
+          : '/#preset-child'
+    expect(anchor).toHaveAttribute('href', href)
+    expect(anchor.textContent).toBe('false')
+    const warn = vi.spyOn(console, 'warn')
+    const error = vi.spyOn(console, 'error')
+    mount()
+    await Vue.nextTick()
+    expect(container.querySelector('a')).toBe(anchor)
+    expect(anchor).toHaveAttribute('href', href)
+    expect(anchor.textContent).toBe('false')
+    expect(warn).not.toHaveBeenCalled()
+    expect(error).not.toHaveBeenCalled()
+    if (kind === 'href') {
+      expect(updater).not.toHaveBeenCalled()
+    } else if (kind === 'function') {
+      expect(updater).toHaveBeenCalledWith('preset')
+      expect(updater).not.toHaveBeenCalledWith('')
+    }
+  },
+)

@@ -192,24 +192,28 @@ function useLinkPropsImpl(
   // Vue assigns vnode.el before setup only when reusing server DOM. A fresh
   // client mount must use the live hash immediately, even on an SSR router.
   const hydrating = Vue.ref(Vue.getCurrentInstance()?.vnode.el != null)
-  Vue.onMounted(() => {
-    hydrating.value = false
-  })
-
-  const renderLocation = Vue.computed(() => {
-    const location = currentLocation.value
-    // Fragments are not sent to the server. Reproduce its empty hash for both
-    // active matching and inherited/function hash hrefs until hydration ends.
-    return hydrating.value && location.hash
-      ? { ...location, hash: '' }
-      : location
-  })
+  if (hydrating.value) {
+    Vue.onMounted(() => {
+      hydrating.value = false
+    })
+  }
 
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
 
     const options = getOptions()
-    const opts = { _fromLocation: renderLocation.value, ...options }
+    const opts = { _fromLocation: currentLocation.value, ...options }
+    const hash = options.hash
+    // Only hash-dependent destinations need the server's empty hash. Keep
+    // the source location identity so links share the route-match cache.
+    if (
+      !options.href &&
+      !options._fromLocation &&
+      (hash === true || typeof hash === 'function') &&
+      hydrating.value
+    ) {
+      opts.hash = hash === true ? '' : hash('')
+    }
     return router.buildLocation(opts)
   })
 
@@ -246,10 +250,11 @@ function useLinkPropsImpl(
       return false
     }
     return getIsActive(
-      renderLocation.value,
+      currentLocation.value,
       next.value,
       options.activeOptions,
       router,
+      options.activeOptions?.includeHash && hydrating.value,
     )
   })
 
@@ -679,6 +684,7 @@ function getIsActive(
   },
   activeOptions: LinkOptions['activeOptions'],
   router: AnyRouter,
+  hydrating = false,
 ) {
   const currentPath = removeTrailingSlash(loc.pathname, router.basepath)
   const nextPath = removeTrailingSlash(nextLoc.pathname, router.basepath)
@@ -709,7 +715,7 @@ function getIsActive(
   }
 
   if (activeOptions?.includeHash) {
-    return loc.hash === nextLoc.hash
+    return (hydrating ? '' : loc.hash) === nextLoc.hash
   }
   return true
 }

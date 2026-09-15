@@ -1,5 +1,7 @@
 ---
+'@tanstack/react-router': patch
+'@tanstack/solid-router': patch
 '@tanstack/vue-router': patch
 ---
 
-Fix Link hydration when the client URL has a fragment. Match the server's empty hash for initial active state and inherited or function-based hash hrefs, then update to the client hash after hydration. Client-only mounts continue to use the live hash immediately.
+Compute hash-sensitive Link active states and inherited or function-derived hash hrefs from the server's empty hash during hydration. Use the live hash after hydration and immediately for client-only mounts, without a hydration update for ordinary links.
