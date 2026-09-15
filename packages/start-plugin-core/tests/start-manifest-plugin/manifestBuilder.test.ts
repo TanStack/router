@@ -301,6 +301,57 @@ describe('createChunkCssAssetCollector', () => {
 })
 
 describe('buildStartManifest', () => {
+  // https://github.com/TanStack/router/commit/49b01ffea0304938d5ec9a9822c8bb8ea5c18091
+  test('production manifests are independent of the checkout path', () => {
+    const outputs = ['/checkout/app', '/another/location/app'].map((root) => {
+      const rootPath = `${root}/src/routes/__root.tsx`
+      const aboutPath = `${root}/src/routes/about.tsx`
+      const routeTreeRoutes = {
+        __root__: Object.freeze({
+          filePath: rootPath,
+          children: ['/about'],
+        }),
+        '/about': Object.freeze({ filePath: aboutPath }),
+      }
+      const manifest = buildStartManifest({
+        clientBuild: normalizeTestBuild({
+          'entry.js': makeChunk({
+            fileName: 'entry.js',
+            isEntry: true,
+            importedCss: ['entry.css'],
+            moduleIds: [`${rootPath}?tsr-split=component`],
+          }),
+          'about.js': makeChunk({
+            fileName: 'about.js',
+            importedCss: ['about.css'],
+            moduleIds: [`${aboutPath}?tsr-split=component`],
+          }),
+        }),
+        routeTreeRoutes,
+        basePath: '/assets',
+      })
+      const serialized = serializeStartManifest(manifest)
+      const emitted = deserializeSerializedManifest(serialized)
+
+      expect(routeTreeRoutes.__root__).toEqual({
+        filePath: rootPath,
+        children: ['/about'],
+      })
+      expect(routeTreeRoutes['/about']).toEqual({ filePath: aboutPath })
+      expect(emitted.routes.__root__?.preloads).toEqual(['/assets/entry.js'])
+      expect(emitted.routes.__root__?.scripts).toEqual([
+        { attrs: { type: 'module', async: true, src: '/assets/entry.js' } },
+      ])
+      expect(emitted.routes.__root__?.css).toEqual(['/assets/entry.css'])
+      expect(emitted.routes['/about']?.preloads).toEqual(['/assets/about.js'])
+      expect(emitted.routes['/about']?.css).toEqual(['/assets/about.css'])
+
+      return serialized
+    })
+
+    expect(outputs[0]).toBe(outputs[1])
+  })
+
   test('skips inline CSS transforms when no relative URLs need rebasing', () => {
     expect(shouldRebaseInlineCssUrls('.root {\n  color: red;\n}')).toBe(false)
     expect(shouldRebaseInlineCssUrls('.root{background:url(/dot.svg)}')).toBe(
