@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1789504744842,
+  "lastUpdate": 1789505520590,
   "repoUrl": "https://github.com/TanStack/router",
   "entries": {
     "Benchmark": [
@@ -89,114 +89,6 @@ window.BENCHMARK_DATA = {
       }
     ],
     "Bundle Size (gzip)": [
-      {
-        "commit": {
-          "author": {
-            "email": "manuel.schiller@caligano.de",
-            "name": "Manuel Schiller",
-            "username": "schiller-manuel"
-          },
-          "committer": {
-            "email": "noreply@github.com",
-            "name": "GitHub",
-            "username": "web-flow"
-          },
-          "distinct": true,
-          "id": "d024a5487bc28418c0589f163fbc56eb8d633753",
-          "message": "perf: optimize and test rewrite (#7448)\n\noptimize and test rewrite",
-          "timestamp": "2026-05-20T22:54:58+02:00",
-          "tree_id": "23ccdf868bb3577dd14a9928a61b7c0c6eb3ad2c",
-          "url": "https://github.com/TanStack/router/commit/d024a5487bc28418c0589f163fbc56eb8d633753"
-        },
-        "date": 1779310656957,
-        "tool": "customSmallerIsBetter",
-        "benches": [
-          {
-            "name": "react-router.minimal",
-            "value": 89419,
-            "unit": "bytes",
-            "extra": "raw=280750; brotli=77727; initial_gzip=89278"
-          },
-          {
-            "name": "react-router.full",
-            "value": 93044,
-            "unit": "bytes",
-            "extra": "raw=292535; brotli=80834; initial_gzip=92903"
-          },
-          {
-            "name": "solid-router.minimal",
-            "value": 36417,
-            "unit": "bytes",
-            "extra": "raw=109035; brotli=32701; initial_gzip=36291"
-          },
-          {
-            "name": "solid-router.full",
-            "value": 41235,
-            "unit": "bytes",
-            "extra": "raw=123589; brotli=37056; initial_gzip=41108"
-          },
-          {
-            "name": "vue-router.minimal",
-            "value": 54595,
-            "unit": "bytes",
-            "extra": "raw=155250; brotli=49057; initial_gzip=54464"
-          },
-          {
-            "name": "vue-router.full",
-            "value": 59847,
-            "unit": "bytes",
-            "extra": "raw=171813; brotli=53617; initial_gzip=59714"
-          },
-          {
-            "name": "react-start.minimal",
-            "value": 104463,
-            "unit": "bytes",
-            "extra": "raw=330365; brotli=90267; initial_gzip=104322"
-          },
-          {
-            "name": "react-start.deferred-hydration",
-            "value": 105551,
-            "unit": "bytes",
-            "extra": "raw=332047; brotli=91343; initial_gzip=104653"
-          },
-          {
-            "name": "react-start.full",
-            "value": 107979,
-            "unit": "bytes",
-            "extra": "raw=340944; brotli=93302; initial_gzip=107837"
-          },
-          {
-            "name": "react-start.rsbuild.minimal",
-            "value": 102020,
-            "unit": "bytes",
-            "extra": "raw=324686; brotli=87637; initial_gzip=101844"
-          },
-          {
-            "name": "react-start.rsbuild.full",
-            "value": 105398,
-            "unit": "bytes",
-            "extra": "raw=335369; brotli=90623; initial_gzip=105222"
-          },
-          {
-            "name": "solid-start.minimal",
-            "value": 50877,
-            "unit": "bytes",
-            "extra": "raw=156269; brotli=44925; initial_gzip=50745"
-          },
-          {
-            "name": "solid-start.deferred-hydration",
-            "value": 55087,
-            "unit": "bytes",
-            "extra": "raw=165015; brotli=48857; initial_gzip=51662"
-          },
-          {
-            "name": "solid-start.full",
-            "value": 56784,
-            "unit": "bytes",
-            "extra": "raw=173583; brotli=49918; initial_gzip=56653"
-          }
-        ]
-      },
       {
         "commit": {
           "author": {
@@ -24967,6 +24859,138 @@ window.BENCHMARK_DATA = {
           "url": "https://github.com/TanStack/router/commit/856cfcd05a53a12cde9d2c6c0dc3935c86671f69"
         },
         "date": 1789504743078,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "react-router.minimal",
+            "value": 85987,
+            "unit": "bytes",
+            "extra": "raw=267878; brotli=75010; initial_gzip=85848"
+          },
+          {
+            "name": "react-router.full",
+            "value": 89549,
+            "unit": "bytes",
+            "extra": "raw=279846; brotli=78052; initial_gzip=89409"
+          },
+          {
+            "name": "solid-router.minimal",
+            "value": 34225,
+            "unit": "bytes",
+            "extra": "raw=98163; brotli=30940; initial_gzip=34097"
+          },
+          {
+            "name": "solid-router.full",
+            "value": 39187,
+            "unit": "bytes",
+            "extra": "raw=113160; brotli=35297; initial_gzip=39060"
+          },
+          {
+            "name": "vue-router.minimal",
+            "value": 50669,
+            "unit": "bytes",
+            "extra": "raw=140298; brotli=45916; initial_gzip=50544"
+          },
+          {
+            "name": "vue-router.full",
+            "value": 56395,
+            "unit": "bytes",
+            "extra": "raw=158944; brotli=50881; initial_gzip=56270"
+          },
+          {
+            "name": "react-start.minimal",
+            "value": 99233,
+            "unit": "bytes",
+            "extra": "raw=311141; brotli=86053; initial_gzip=99095"
+          },
+          {
+            "name": "react-start.query-integration",
+            "value": 106758,
+            "unit": "bytes",
+            "extra": "raw=338273; brotli=92608; initial_gzip=106617"
+          },
+          {
+            "name": "react-start.deferred-hydration",
+            "value": 99969,
+            "unit": "bytes",
+            "extra": "raw=312530; brotli=86653; initial_gzip=99115"
+          },
+          {
+            "name": "react-start.full",
+            "value": 102460,
+            "unit": "bytes",
+            "extra": "raw=321116; brotli=88842; initial_gzip=102323"
+          },
+          {
+            "name": "react-start.rsbuild.minimal",
+            "value": 102606,
+            "unit": "bytes",
+            "extra": "raw=321835; brotli=88547; initial_gzip=102432"
+          },
+          {
+            "name": "react-start.rsbuild.minimal-iife",
+            "value": 103025,
+            "unit": "bytes",
+            "extra": "raw=322811; brotli=88969; initial_gzip=102856"
+          },
+          {
+            "name": "react-start.rsbuild.full",
+            "value": 105941,
+            "unit": "bytes",
+            "extra": "raw=332162; brotli=91315; initial_gzip=105767"
+          },
+          {
+            "name": "solid-start.minimal",
+            "value": 47470,
+            "unit": "bytes",
+            "extra": "raw=140285; brotli=42240; initial_gzip=47341"
+          },
+          {
+            "name": "solid-start.deferred-hydration",
+            "value": 50596,
+            "unit": "bytes",
+            "extra": "raw=147829; brotli=45040; initial_gzip=47406"
+          },
+          {
+            "name": "solid-start.full",
+            "value": 52643,
+            "unit": "bytes",
+            "extra": "raw=156040; brotli=46723; initial_gzip=52513"
+          },
+          {
+            "name": "vue-start.minimal",
+            "value": 67181,
+            "unit": "bytes",
+            "extra": "raw=192397; brotli=59946; initial_gzip=67054"
+          },
+          {
+            "name": "vue-start.full",
+            "value": 71148,
+            "unit": "bytes",
+            "extra": "raw=204997; brotli=63212; initial_gzip=71022"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "6340397+schiller-manuel@users.noreply.github.com",
+            "name": "Manuel Schiller",
+            "username": "schiller-manuel"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "83895f127216fc7e5437b3d1190bc4f62521a0d4",
+          "message": "test(router-core): add a Link-like buildLocation benchmark (#8423)\n\nMirrors what useLinkProps does on every location publication: 32 links, each\nwith a stable dest object, pointing _fromLocation at a fresh location and\ncalling router.buildLocation inside their selector. Covers the static-cache\nhit, search updaters (with and without middleware), relative destinations,\ninherited params and masks. Baseline (Node 24.8, hz, mean of two runs):\n\n  static cache hit         1,928,000   search updater   41,600\n  + retainSearchParams        30,850   relative         29,800\n  params: true                35,050   masked           20,500\n\n\n(cherry picked from commit d4787b65e25e0817f747fc3c6dc0209889ffe174)\n\nCo-authored-by: Copilot App <223556219+Copilot@users.noreply.github.com>",
+          "timestamp": "2026-09-15T22:48:37+02:00",
+          "tree_id": "45b72acf8dac71c978c1ad100a66da6912ffd4c0",
+          "url": "https://github.com/TanStack/router/commit/83895f127216fc7e5437b3d1190bc4f62521a0d4"
+        },
+        "date": 1789505519433,
         "tool": "customSmallerIsBetter",
         "benches": [
           {
