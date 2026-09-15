@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ErrorComponentHydrationRouteImport } from './routes/error-component-hydration'
 import { Route as UseQueryRouteImport } from './routes/useQuery'
 import { Route as LoaderFetchQueryTypeRouteImport } from './routes/loader-fetchQuery/$type'
 import { Route as NotFoundReloadIdRouteImport } from './routes/not-found-reload.$id'
@@ -17,6 +18,11 @@ import { Route as NotFoundReloadIdRouteImport } from './routes/not-found-reload.
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ErrorComponentHydrationRoute = ErrorComponentHydrationRouteImport.update({
+  id: '/error-component-hydration',
+  path: '/error-component-hydration',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UseQueryRoute = UseQueryRouteImport.update({
@@ -37,12 +43,14 @@ const NotFoundReloadIdRoute = NotFoundReloadIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/error-component-hydration': typeof ErrorComponentHydrationRoute
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
   '/not-found-reload/$id': typeof NotFoundReloadIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/error-component-hydration': typeof ErrorComponentHydrationRoute
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
   '/not-found-reload/$id': typeof NotFoundReloadIdRoute
@@ -50,6 +58,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/error-component-hydration': typeof ErrorComponentHydrationRoute
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
   '/not-found-reload/$id': typeof NotFoundReloadIdRoute
@@ -58,14 +67,21 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/error-component-hydration'
     | '/useQuery'
     | '/loader-fetchQuery/$type'
     | '/not-found-reload/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/useQuery' | '/loader-fetchQuery/$type' | '/not-found-reload/$id'
+  to:
+    | '/'
+    | '/error-component-hydration'
+    | '/useQuery'
+    | '/loader-fetchQuery/$type'
+    | '/not-found-reload/$id'
   id:
     | '__root__'
     | '/'
+    | '/error-component-hydration'
     | '/useQuery'
     | '/loader-fetchQuery/$type'
     | '/not-found-reload/$id'
@@ -73,6 +89,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ErrorComponentHydrationRoute: typeof ErrorComponentHydrationRoute
   UseQueryRoute: typeof UseQueryRoute
   LoaderFetchQueryTypeRoute: typeof LoaderFetchQueryTypeRoute
   NotFoundReloadIdRoute: typeof NotFoundReloadIdRoute
@@ -85,6 +102,13 @@ declare module '@tanstack/solid-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/error-component-hydration': {
+      id: '/error-component-hydration'
+      path: '/error-component-hydration'
+      fullPath: '/error-component-hydration'
+      preLoaderRoute: typeof ErrorComponentHydrationRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/useQuery': {
@@ -113,6 +137,7 @@ declare module '@tanstack/solid-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ErrorComponentHydrationRoute: ErrorComponentHydrationRoute,
   UseQueryRoute: UseQueryRoute,
   LoaderFetchQueryTypeRoute: LoaderFetchQueryTypeRoute,
   NotFoundReloadIdRoute: NotFoundReloadIdRoute,
