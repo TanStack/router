@@ -25,15 +25,49 @@ afterAll(async () => {
   }
 })
 
-it.each(['success', 'invalid-page', 'startup-error'])(
-  'releases preview resources after %s and lets the caller exit',
-  async (scenario) => {
+it.each([
+  { id: 'success', scenario: 'success', execArgv: [] },
+  { id: 'invalid-page', scenario: 'invalid-page', execArgv: [] },
+  { id: 'startup-error', scenario: 'startup-error', execArgv: [] },
+  {
+    id: 'input-type-inline',
+    scenario: 'success',
+    execArgv: [
+      '--input-type=module',
+      '--eval',
+      'await import(process.argv[1])',
+    ],
+  },
+  {
+    id: 'input-type-separated',
+    scenario: 'success',
+    execArgv: [
+      '--input-type',
+      'module',
+      '--eval',
+      'await import(process.argv[1])',
+    ],
+  },
+  {
+    id: 'input-type-with-v8-option',
+    scenario: 'success',
+    execArgv: [
+      '--max-old-space-size=512',
+      '--input-type=module',
+      '--eval',
+      'await import(process.argv[1])',
+    ],
+  },
+])(
+  'releases preview resources and lets the caller exit: $id',
+  async ({ id, scenario, execArgv }) => {
     const { stdout } = await exec(
       process.execPath,
       [
+        ...execArgv,
         resolve(import.meta.dirname, 'fixtures/prerender-worker/driver.mjs'),
         join(directory, 'compiled/esm/vite/prerender.js'),
-        join(directory, scenario),
+        join(directory, id),
         scenario,
       ],
       { timeout: 10_000 },

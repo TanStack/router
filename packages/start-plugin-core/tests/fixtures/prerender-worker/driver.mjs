@@ -50,6 +50,10 @@ const result = prerenderWithVite({
 
 if (scenario === 'success') {
   await result
+  assert.equal(
+    await readFile(join(outputDir, 'exit-hook.txt'), 'utf8'),
+    'Preview exit hook completed',
+  )
   assert.equal(completed.length, 2)
   for (const pathname of ['index.html', 'about/index.html']) {
     assert.match(
