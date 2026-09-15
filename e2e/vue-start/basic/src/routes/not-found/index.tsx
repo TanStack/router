@@ -1,9 +1,10 @@
+import { defineComponent } from 'vue'
 import { Link, createFileRoute } from '@tanstack/vue-router'
 
-export const Route = createFileRoute('/not-found/')({
-  component: () => {
+const RouteComponent = defineComponent({
+  setup() {
     const preload = Route.useSearch({ select: (s) => s.preload })
-    return (
+    return () => (
       <div>
         <div class="mb-2">
           <Link
@@ -28,4 +29,8 @@ export const Route = createFileRoute('/not-found/')({
       </div>
     )
   },
+})
+
+export const Route = createFileRoute('/not-found/')({
+  component: RouteComponent,
 })

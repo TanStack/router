@@ -1,4 +1,4 @@
-import { createMemoryHistory } from '@tanstack/history'
+import { createServerHistory } from '@tanstack/history'
 import {
   createCsrfMiddleware,
   createNullProtoObject,
@@ -10,8 +10,8 @@ import {
 import {
   _getRenderedMatches,
   executeRewriteInput,
+  isDangerousProtocol,
   isRedirect,
-  isResolvedRedirect,
 } from '@tanstack/router-core'
 import {
   attachRouterServerSsrUtils,
@@ -551,9 +551,7 @@ export function createStartHandler<TRegister = Register>(
           isShell = request.headers.get(HEADERS.TSS_SHELL) === 'true'
         }
 
-        const history = createMemoryHistory({
-          initialEntries: [href],
-        })
+        const history = createServerHistory(href)
 
         router.update({
           history,
@@ -626,9 +624,9 @@ export function createStartHandler<TRegister = Register>(
 
         const result = await handleRedirectResponse(
           middlewareResponse,
-          request,
           getRouter,
           request.signal,
+          request.headers.get('x-tsr-serverFn') === 'true',
         )
         bindSsrResponseToRequest(router ?? undefined, result, request.signal)
         request.signal.throwIfAborted()
@@ -771,9 +769,9 @@ export function createStartHandler<TRegister = Register>(
 
       const response = await handleRedirectResponse(
         middlewareResponse,
-        request,
         getRouter,
         request.signal,
+        false,
       )
       bindSsrResponseToRequest(router ?? undefined, response, request.signal)
       request.signal.throwIfAborted()
@@ -793,11 +791,13 @@ export function createStartHandler<TRegister = Register>(
   return requestHandler(startRequestResolver)
 }
 
+const relativeRedirectProtocols = new Set<string>()
+
 async function handleRedirectResponse(
   response: HandlerCallbackResult,
-  request: Request,
   getRouter: () => Promise<AnyRouter>,
   signal: AbortSignal,
+  serializeRedirect: boolean,
 ): Promise<SsrResponse> {
   signal.throwIfAborted()
   const ssrResponse = normalizeSsrResponse(response)
@@ -805,31 +805,21 @@ async function handleRedirectResponse(
     return ssrResponse
   }
 
-  if (isResolvedRedirect(ssrResponse.response)) {
-    if (request.headers.get('x-tsr-serverFn') === 'true') {
-      return waitForRequest(
-        replaceSsrResponse(
-          ssrResponse,
-          Response.json(
-            { ...ssrResponse.response.options, isSerializedRedirect: true },
-            { headers: ssrResponse.response.headers },
-          ),
-          'redirect response replaced',
-        ),
-        signal,
-      )
-    }
-    return ssrResponse
-  }
-
   const opts = ssrResponse.response.options
-  if (opts.to && typeof opts.to === 'string' && !opts.to.startsWith('/')) {
+  const href = ssrResponse.response.headers.get('Location') || opts.href
+  if (
+    !href &&
+    opts.to &&
+    typeof opts.to === 'string' &&
+    !opts.to.startsWith('/')
+  ) {
     throw new Error(
       `Server side redirects must use absolute paths via the 'href' or 'to' options. The redirect() method's "to" property accepts an internal path only. Use the "href" property to provide an external URL. Received: ${JSON.stringify(opts)}`,
     )
   }
 
   if (
+    !href &&
     ['params', 'search', 'hash'].some(
       (d) => typeof (opts as TODO)[d] === 'function',
     )
@@ -845,17 +835,32 @@ async function handleRedirectResponse(
   }
 
   signal.throwIfAborted()
-  const router = await waitForRequest(getRouter(), signal)
-  signal.throwIfAborted()
-  const redirect = router.resolveRedirect(ssrResponse.response)
+  let redirect = ssrResponse.response
+  // Unambiguous relative hrefs need no route resolution or protocol policy.
+  // Every scheme falls back to the router to honor its custom allowlist.
+  if (href && !isDangerousProtocol(href, relativeRedirectProtocols)) {
+    redirect.options.href = href
+    redirect.headers.set('Location', href)
+  } else {
+    const router = await waitForRequest(getRouter(), signal)
+    signal.throwIfAborted()
+    redirect = router.resolveRedirect(redirect)
+  }
 
-  if (request.headers.get('x-tsr-serverFn') === 'true') {
+  if (serializeRedirect) {
+    const redirectOptions = { ...(redirect.options as TODO) }
+    delete redirectOptions.headers
+    const responseHeaders = new Headers(redirect.headers)
+    responseHeaders.set('content-type', 'application/json')
     return waitForRequest(
       replaceSsrResponse(
         ssrResponse,
         Response.json(
-          { ...ssrResponse.response.options, isSerializedRedirect: true },
-          { headers: ssrResponse.response.headers },
+          {
+            ...redirectOptions,
+            isSerializedRedirect: true,
+          },
+          { headers: responseHeaders },
         ),
         'redirect response replaced',
       ),
@@ -980,9 +985,9 @@ async function handleServerRoutes({
 
     const resolved = await handleRedirectResponse(
       response,
-      request,
       getRouter,
       request.signal,
+      false,
     )
     return waitForRequest(
       stripSsrResponseBody(resolved, 'HEAD body stripped'),
