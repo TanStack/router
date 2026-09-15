@@ -301,6 +301,31 @@ describe('createChunkCssAssetCollector', () => {
 })
 
 describe('buildStartManifest', () => {
+  test.each([false, true, undefined])(
+    'preserves the server-route flag (%s) through both manifest serializers',
+    (hasServerRoutes) => {
+      const manifest = buildStartManifest({
+        clientBuild: normalizeTestBuild({
+          'entry.js': makeChunk({ fileName: 'entry.js', isEntry: true }),
+        }),
+        routeTreeRoutes: {
+          __root__: {},
+        },
+        hasServerRoutes,
+        basePath: '/',
+      })
+
+      expect(manifest.hasServerRoutes).toBe(hasServerRoutes)
+      expect(
+        deserializeSerializedManifest(serializeStartManifest(manifest))
+          .hasServerRoutes,
+      ).toBe(hasServerRoutes)
+      expect(JSON.parse(JSON.stringify(manifest)).hasServerRoutes).toBe(
+        hasServerRoutes,
+      )
+    },
+  )
+
   test('skips inline CSS transforms when no relative URLs need rebasing', () => {
     expect(shouldRebaseInlineCssUrls('.root {\n  color: red;\n}')).toBe(false)
     expect(shouldRebaseInlineCssUrls('.root{background:url(/dot.svg)}')).toBe(

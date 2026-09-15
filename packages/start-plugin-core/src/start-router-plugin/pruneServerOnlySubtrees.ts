@@ -4,6 +4,10 @@ import type {
   RouteNode,
 } from '@tanstack/router-generator'
 
+export function hasServerOptions(node: RouteNode) {
+  return node.createFileRouteProps?.has(SERVER_PROP)
+}
+
 export function pruneServerOnlySubtrees({
   rootRouteNode,
   acc,
@@ -39,8 +43,8 @@ function prune(
   }
 
   const allServerOnly =
-    node.createFileRouteProps?.has(SERVER_PROP) &&
-    node.createFileRouteProps.size === 1 &&
+    hasServerOptions(node) &&
+    node.createFileRouteProps?.size === 1 &&
     allChildrenServerOnly
   // prune this subtree
   if (allServerOnly) {

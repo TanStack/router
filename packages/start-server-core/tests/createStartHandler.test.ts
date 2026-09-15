@@ -45,20 +45,33 @@ const startMocks = vi.hoisted(() => {
     serverFnHandler: undefined as undefined | (() => unknown),
     router: undefined as undefined | AnyRouter,
     routerFactory: undefined as undefined | (() => AnyRouter),
+    hasServerRoutes: true as boolean | undefined,
+    hasStartInstance: true,
   }
 })
 
 vi.mock('#tanstack-start-entry', () => ({
-  startInstance: {
-    getOptions: () => ({
-      requestMiddleware: startMocks.requestMiddleware,
-      serializationAdapters: [],
-    }),
+  get startInstance() {
+    return startMocks.hasStartInstance
+      ? {
+          getOptions: () => ({
+            requestMiddleware: startMocks.requestMiddleware,
+            serializationAdapters: [],
+          }),
+        }
+      : undefined
   },
 }))
 
 vi.mock('#tanstack-router-entry', () => ({
   getRouter: () => startMocks.routerFactory?.() ?? startMocks.router,
+}))
+
+vi.mock('tanstack-start-manifest:v', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./fixtures/start-manifest')>()),
+  get hasServerRoutes() {
+    return startMocks.hasServerRoutes
+  },
 }))
 
 vi.mock('../src/server-functions-handler', () => ({
@@ -164,6 +177,8 @@ afterEach(() => {
   startMocks.serverFnHandler = undefined
   startMocks.router = undefined
   startMocks.routerFactory = undefined
+  startMocks.hasServerRoutes = true
+  startMocks.hasStartInstance = true
   vi.unstubAllEnvs()
 })
 
@@ -578,6 +593,141 @@ describe('createStartHandler redirect safety', () => {
       )
       expect(response.headers.get('content-type')).not.toBe('application/json')
       expect(await response.text()).toBe('')
+    },
+  )
+})
+
+describe('createStartHandler server-route handling', () => {
+  it('keeps default CSRF protection on server function requests', async () => {
+    startMocks.hasStartInstance = false
+    startMocks.hasServerRoutes = false
+    startMocks.router = makeRouter()
+    startMocks.serverFnResult = new Response('server function')
+    const handler = createStartHandler(() => new Response('app response'))
+    const headers = { 'sec-fetch-site': 'cross-site' }
+
+    const page = await handler(
+      new Request('http://localhost/', { headers }),
+      {},
+    )
+    const serverFn = await handler(
+      new Request('http://localhost/_serverFn/test', {
+        method: 'POST',
+        headers,
+      }),
+      {},
+    )
+
+    expect(page.status).toBe(200)
+    expect(serverFn.status).toBe(403)
+  })
+
+  it.each([true, undefined])(
+    'runs server middleware when hasServerRoutes is %s',
+    async (flag) => {
+      const middleware = vi.fn(({ next }) => next())
+      const rootRoute = new BaseRootRoute({
+        server: { middleware: [createMiddleware().server(middleware)] },
+      })
+      const router = new RouterCore(
+        {
+          history: createMemoryHistory({ initialEntries: ['/'] }),
+          routeTree: rootRoute.addChildren([
+            new BaseRoute({
+              getParentRoute: () => rootRoute,
+              path: '/',
+              component: () => null,
+            }),
+          ]),
+        },
+        getStoreConfig,
+      )
+      router.isServer = true
+      startMocks.router = router
+      startMocks.hasServerRoutes = flag
+
+      const handler = createStartHandler(() => new Response('app response'))
+      const response = await handler(new Request('http://localhost/'), {})
+
+      expect(response.status).toBe(200)
+      expect(middleware).toHaveBeenCalledOnce()
+    },
+  )
+
+  it.each([false, true])(
+    'skips server-route matching (request middleware=%s)',
+    async (hasMiddleware) => {
+      const middleware = vi.fn()
+      startMocks.requestMiddleware = hasMiddleware
+        ? [
+            createMiddleware().server(({ next }) => {
+              middleware()
+              return next({ context: { message: 'global middleware' } })
+            }),
+          ]
+        : []
+      const router = makeRouter()
+      startMocks.router = router
+      startMocks.hasServerRoutes = false
+      const getMatchedRoutes = vi.spyOn(router, 'getMatchedRoutes')
+      const load = router.load
+      vi.spyOn(router, 'load').mockImplementation((options) => {
+        expect(getMatchedRoutes).not.toHaveBeenCalled()
+        return load(options)
+      })
+      const handler = createStartHandler<{
+        server: { requestContext: { message: string } }
+      }>(({ router: loadedRouter }) => {
+        expect(loadedRouter.state.matches.at(-1)?.routeId).toBe('/')
+        return Response.json(
+          loadedRouter.options.additionalContext?.serverContext,
+        )
+      })
+
+      const response = await handler(new Request('http://localhost/'), {
+        context: { message: 'request context' },
+      })
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({
+        message: hasMiddleware ? 'global middleware' : 'request context',
+      })
+      expect(middleware).toHaveBeenCalledTimes(hasMiddleware ? 1 : 0)
+      expect(getMatchedRoutes).toHaveBeenCalled()
+    },
+  )
+
+  it.each([false, true])(
+    'preserves static Link headers and early hints (callback=%s)',
+    async (callback) => {
+      const phases: Array<string> = []
+      const router = makeRouterWithRouteWork({
+        loader: () => {
+          phases.push('loader')
+        },
+      })
+      startMocks.router = router
+      startMocks.hasServerRoutes = false
+      const handler = createStartHandler(
+        ({ responseHeaders }) =>
+          new Response('app response', { headers: responseHeaders }),
+      )
+
+      const response = await handler(new Request('http://localhost/work'), {
+        responseLinkHeader: true,
+        onEarlyHints: callback
+          ? (event) => {
+              phases.push(event.phase)
+            }
+          : undefined,
+      })
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('Link')).toContain('</assets/work.js>')
+      expect(response.headers.get('Link')).toContain('</assets/work.css>')
+      expect(phases).toEqual(
+        callback ? ['static', 'loader', 'dynamic'] : ['loader'],
+      )
     },
   )
 })
@@ -2061,6 +2211,7 @@ describe('createStartHandler request cancellation', () => {
       }
       const router = makeRouterWithRouteWork({ [hook]: routeWork })
       startMocks.router = router
+      startMocks.hasServerRoutes = false
       const requestController = new AbortController()
       const render = vi.fn(() => new Response('must not render'))
       const handler = createStartHandler(render)
@@ -2085,6 +2236,7 @@ describe('createStartHandler request cancellation', () => {
   it('settles and cleans up while the render callback is still pending', async () => {
     const router = makeRouter()
     startMocks.router = router
+    startMocks.hasServerRoutes = false
     const requestController = new AbortController()
     let notifyRenderStarted!: () => void
     const renderStarted = new Promise<void>((resolve) => {
@@ -2269,6 +2421,7 @@ describe('createStartHandler request cancellation', () => {
   it('disposes a side-cloned stream when the request aborts after handoff', async () => {
     const router = makeRouter()
     startMocks.router = router
+    startMocks.hasServerRoutes = false
     const requestController = new AbortController()
     let cancelCalls = 0
     let siblingResponse!: Response

@@ -5,10 +5,5 @@
     "module": "esnext",
     "types": ["node"]
   },
-  "include": [
-    "src",
-    "tests",
-    "vite.config.ts",
-    "../start-client-core/src/start-entry.d.ts"
-  ]
+  "include": ["src", "tests", "vite.config.ts"]
 }

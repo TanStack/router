@@ -9,8 +9,10 @@ import { VITE_ENVIRONMENT_NAMES } from '../../constants'
 import { routesManifestPlugin } from '../../start-router-plugin/generator-plugins/routes-manifest-plugin'
 import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
-import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
-import { SERVER_PROP } from '../../start-router-plugin/constants'
+import {
+  hasServerOptions,
+  pruneServerOnlySubtrees,
+} from '../../start-router-plugin/pruneServerOnlySubtrees'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
 import type {
@@ -25,10 +27,7 @@ function isServerOnlyNode(node: RouteNode | undefined) {
   if (!node?.createFileRouteProps) {
     return false
   }
-  return (
-    node.createFileRouteProps.has(SERVER_PROP) &&
-    node.createFileRouteProps.size === 1
-  )
+  return hasServerOptions(node) === true && node.createFileRouteProps.size === 1
 }
 
 export function tanStackStartRouter(
@@ -59,9 +58,10 @@ export function tanStackStartRouter(
   }
 
   let generatorInstance: Generator | null = null
+  let isBuild = false
 
-  const clientTreeGeneratorPlugin: GeneratorPlugin = {
-    name: 'start-client-tree-plugin',
+  const routesPlugin = {
+    ...routesManifestPlugin(() => isBuild),
     init({ generator }) {
       generatorInstance = generator
     },
@@ -70,7 +70,7 @@ export function tanStackStartRouter(
         invalidate()
       }
     },
-  }
+  } satisfies GeneratorPlugin
 
   let routeTreeFileFooter: Array<string> | null = null
 
@@ -95,6 +95,9 @@ export function tanStackStartRouter(
     applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.client,
     configureServer(server) {
       clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
+    },
+    configResolved(config) {
+      isBuild = config.command === 'build' && !config.build.watch
     },
     config() {
       type LoadObjectHook = Extract<
@@ -146,7 +149,7 @@ export function tanStackStartRouter(
     clientTreePlugin,
     tanstackRouterGenerator(() => {
       const routerConfig = getConfig().startConfig.router
-      const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
+      const plugins: Array<GeneratorPlugin> = [routesPlugin]
       if (startPluginOpts.prerender?.enabled === true) {
         plugins.push(prerenderRoutesPlugin())
       }
@@ -165,6 +168,7 @@ export function tanStackStartRouter(
           ...routerConfig.codeSplittingOptions,
           deleteNodes: ['ssr', 'server', 'headers'],
           addHmr: true,
+          compilerPlugins: isBuild ? [routesPlugin] : [],
         },
         plugin: {
           vite: { environmentName: VITE_ENVIRONMENT_NAMES.client },

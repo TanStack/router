@@ -51,6 +51,7 @@ type DedupeRoute = {
 }
 
 export interface StartManifest {
+  hasServerRoutes?: boolean
   scriptFormat?: ScriptFormat
   routes: Record<string, RouteTreeRoute>
   inlineCss?: {
@@ -257,6 +258,7 @@ function appendAdditionalRouteEntries(
 export function buildStartManifest(options: {
   clientBuild: NormalizedClientBuild
   routeTreeRoutes: RouteTreeRoutes
+  hasServerRoutes?: boolean
   basePath: string
   inlineCss?: InlineCssOptions
   scriptFormat?: ScriptFormat
@@ -298,6 +300,7 @@ export function buildStartManifest(options: {
 
   const result: StartManifest = {
     routes,
+    hasServerRoutes: options.hasServerRoutes,
   }
 
   if (options.scriptFormat === 'iife') {
