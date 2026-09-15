@@ -237,7 +237,7 @@ export function replaceEqualDeep<T>(
 export function replaceEqualDeep(
   prev: any,
   next: any,
-  _nullProto = false,
+  _nullProto?: boolean,
   _depth = 0,
 ): any {
   if (isServer) {
@@ -249,68 +249,84 @@ export function replaceEqualDeep(
 
   if (_depth > 500) return next
 
-  const array = isPlainArray(prev) && isPlainArray(next)
+  const array = Array.isArray(prev) && Array.isArray(next)
 
   if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
 
-  const prevItems = array ? prev : Object.keys(prev)
-  const nextItems = array ? next : Object.keys(next)
-  // Non-enumerable keys, or symbol keys on `next`, make an object opaque: it passes
-  // through untouched rather than being compared or copied by its string keys only.
+  const prevKeys = Object.keys(prev)
+  const nextKeys = Object.keys(next)
+  const length = nextKeys.length
+  // Holes or extra keys on an array, non-enumerable keys on an object, or symbol
+  // keys on `next` make a value opaque: it passes through untouched rather than
+  // being compared or copied by its indices or string keys only. A hole and an
+  // extra key cancel out in the key count, but extra keys sort after the indices,
+  // so only a dense index-only `next` has its last index as its last key.
   // (`getOwnPropertySymbols` is ~4x the cost of the other two, so `prev` — normally an
-  // earlier `next` — is not checked for symbols.)
+  // earlier `next` — is not checked for symbols, and arrays are not checked at all.)
   if (
-    !array &&
-    (prevItems.length !== Object.getOwnPropertyNames(prev).length ||
-      nextItems.length !== Object.getOwnPropertyNames(next).length ||
-      Object.getOwnPropertySymbols(next).length)
+    array
+      ? prevKeys.length !== prev.length ||
+        length !== next.length ||
+        (length && nextKeys[length - 1] !== `${length - 1}`)
+      : prevKeys.length !== Object.getOwnPropertyNames(prev).length ||
+        length !== Object.getOwnPropertyNames(next).length ||
+        Object.getOwnPropertySymbols(next).length
   ) {
     return next
   }
-  const nextSize = nextItems.length
 
-  // Most calls find `next` deeply equal, so the copy waits for the first difference.
-  let copy: any
-  let equal = prevItems.length === nextSize
+  let i = 0
+  let n: any
 
-  for (let i = 0; i < nextSize; i++) {
-    const key = array ? i : (nextItems[i] as any)
-    const p = prev[key]
-    let n = next[key]
-    if (p !== n && p && n && typeof p === 'object' && typeof n === 'object') {
-      n = replaceEqualDeep(p, n, _nullProto, _depth + 1)
+  // Most calls find `next` deeply equal, so nothing is allocated while entries
+  // keep matching: scan up to the first difference, sharing equal children on
+  // the way. Arrays and objects get their own loop so that each keyed access
+  // only ever sees one kind of key. Only an object entry of `prev` can share
+  // anything; the recursive call returns `next`'s entry for `null` and for
+  // mismatched types. When the key counts differ, the scan still runs: every
+  // child it resolves is exactly what the copy below shares.
+  if (array) {
+    for (; i < length; i++) {
+      const p = prev[i]
+      n = next[i]
+      if (p !== n && typeof p === 'object') {
+        n = replaceEqualDeep(p, n, _nullProto, _depth + 1)
+      }
+      if (n !== p) break
     }
-    if (p !== n) {
-      equal = false
-      copy ??= copyItems(prev, nextItems, i, array, _nullProto)
-    } else if (equal && !array && !hasOwn.call(prev, key)) {
+  } else {
+    for (; i < length; i++) {
+      const key = nextKeys[i]!
+      const p = prev[key]
+      n = next[key]
+      if (p !== n && typeof p === 'object') {
+        n = replaceEqualDeep(p, n, _nullProto, _depth + 1)
+      }
       // Equal key counts can still hide a key that only `next` has (as `undefined`).
-      equal = false
+      // The same key at the same position of both key lists proves it is `prev`'s
+      // own key; only reordered keys need the `hasOwn` lookup.
+      if (n !== p || (prevKeys[i] !== key && !hasOwn.call(prev, key))) {
+        break
+      }
     }
-    if (copy) copy[key] = n
   }
+  // Everything in `next` matched and `prev` has no additional keys.
+  if (i === length && prevKeys.length === length) return prev
 
-  return equal
-    ? prev
-    : (copy ?? copyItems(prev, nextItems, nextSize, array, _nullProto))
-}
-
-// Copies the first `end` entries from `prev`; they are known to be deep-equal.
-function copyItems(
-  prev: any,
-  keys: ArrayLike<any>,
-  end: number,
-  array: boolean,
-  nullProto: boolean,
-) {
-  const copy: any = array
-    ? new Array(keys.length)
-    : nullProto
-      ? Object.create(null)
-      : {}
-  for (let i = 0; i < end; i++) {
-    const key = array ? i : keys[i]
-    copy[key] = prev[key]
+  // Equality is ruled out from here on, so this loop only builds the result:
+  // the scanned prefix is shared from `prev`, entry `i` keeps the value the scan
+  // already computed, and the rest is resolved without any equality bookkeeping.
+  const copy: any = array ? [] : _nullProto ? Object.create(null) : {}
+  for (let j = 0; j < length; j++) {
+    const key = array ? j : nextKeys[j]!
+    const p = prev[key]
+    if (j > i) {
+      n = next[key]
+      if (p !== n && typeof p === 'object') {
+        n = replaceEqualDeep(p, n, _nullProto, _depth + 1)
+      }
+    }
+    copy[key] = j < i ? p : n
   }
   return copy
 }
