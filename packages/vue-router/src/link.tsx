@@ -189,11 +189,27 @@ function useLinkPropsImpl(
     })
   }
 
+  // Vue assigns vnode.el before setup only when reusing server DOM. A fresh
+  // client mount must use the live hash immediately, even on an SSR router.
+  const hydrating = Vue.ref(Vue.getCurrentInstance()?.vnode.el != null)
+  Vue.onMounted(() => {
+    hydrating.value = false
+  })
+
+  const renderLocation = Vue.computed(() => {
+    const location = currentLocation.value
+    // Fragments are not sent to the server. Reproduce its empty hash for both
+    // active matching and inherited/function hash hrefs until hydration ends.
+    return hydrating.value && location.hash
+      ? { ...location, hash: '' }
+      : location
+  })
+
   const next = Vue.computed(() => {
     // Rebuild when inherited search/hash or the current route context changes.
 
     const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
+    const opts = { _fromLocation: renderLocation.value, ...options }
     return router.buildLocation(opts)
   })
 
@@ -230,7 +246,7 @@ function useLinkPropsImpl(
       return false
     }
     return getIsActive(
-      currentLocation.value,
+      renderLocation.value,
       next.value,
       options.activeOptions,
       router,
