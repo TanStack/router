@@ -1442,13 +1442,10 @@ export class RouterCore<
     locationToParse,
     previousLocation,
   ) => {
-    const parse = ({
-      pathname,
-      search,
-      hash,
-      href,
-      state,
-    }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
+    const parse = (
+      { pathname, search, hash, href }: HistoryLocation,
+      state: HistoryLocation['state'],
+    ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
       // Fast path: no rewrite configured and pathname doesn't need encoding
       // Characters that need encoding: space, high unicode, control chars
       // eslint-disable-next-line no-control-regex
@@ -1471,11 +1468,9 @@ export class RouterCore<
         }
       }
 
-      // Before we do any processing, we need to allow rewrites to modify the URL
-      // build up the full URL by combining the href from history with the router's origin
-      const fullUrl = new URL(href, this.origin)
-
-      const url = executeRewriteInput(this.rewrite, fullUrl)
+      // The URL constructor normalizes the encoding of the history href; an
+      // input rewrite may then change the URL before it is parsed.
+      const url = executeRewriteInput(this.rewrite, new URL(href, this.origin))
 
       const parsedSearch = this.options.parseSearch(url.search)
       const searchStr = this.options.stringifySearch(parsedSearch)
@@ -1500,34 +1495,24 @@ export class RouterCore<
       }
     }
 
-    const location = parse(locationToParse)
+    const location = parse(locationToParse, locationToParse.state)
 
     const { __tempLocation, __tempKey } = location.state
 
     if (__tempLocation && (!__tempKey || __tempKey === this.tempLocationKey)) {
-      // Sync up the location keys
-      const parsedTempLocation = parse(__tempLocation) as any
-      parsedTempLocation.state.key = location.state.key // TODO: Remove in v2 - use __TSR_key instead
-      parsedTempLocation.state.__TSR_key = location.state.__TSR_key
-
-      delete parsedTempLocation.state.__tempLocation
-
-      return {
-        ...parsedTempLocation,
-        maskedLocation: location,
-      }
+      // A masked entry stores the real location in its state. That location is
+      // presented, adopting the committed entry's keys, while the URL that was
+      // written to history remains available as `maskedLocation`.
+      const parsedTempLocation = parse(__tempLocation, {
+        ...__tempLocation.state,
+        __tempLocation: undefined,
+        key: location.state.key, // TODO: Remove in v2 - use __TSR_key instead
+        __TSR_key: location.state.__TSR_key,
+      })
+      parsedTempLocation.maskedLocation = location
+      return parsedTempLocation
     }
     return location
-  }
-
-  /** Resolve a path using the router's trailing-slash policy. */
-  resolvePathWithBase = (from: string, path: string) => {
-    return resolvePath(
-      from,
-      path,
-      this.options.trailingSlash,
-      this.resolvePathCache,
-    )
   }
 
   matchRoutes: MatchRoutesFn = (
@@ -1957,7 +1942,7 @@ export class RouterCore<
       }
 
       const to = dest.to ? `${dest.to}` : '.'
-      const nextTo = this.resolvePathWithBase(
+      const nextTo = resolvePath(
         // Absolute destinations resolve without a base.
         to[0] === '/'
           ? ''
@@ -1965,6 +1950,8 @@ export class RouterCore<
             ? current().pathname
             : (dest.from ?? currentMatch()[1 /* fullPath */]),
         to,
+        this.options.trailingSlash,
+        this.resolvePathCache,
       )
 
       const destRoute = this.routesByPath[
@@ -2677,7 +2664,12 @@ export class RouterCore<
     const matchLocation = {
       ...location,
       to: location.to
-        ? this.resolvePathWithBase(location.from || '', location.to as string)
+        ? resolvePath(
+            location.from || '',
+            location.to as string,
+            this.options.trailingSlash,
+            this.resolvePathCache,
+          )
         : undefined,
       params: location.params || {},
       leaveParams: true,
