@@ -19,13 +19,13 @@ describe('getNormalizedURL', () => {
         `https://example.com${pathname}?next=//other.example#//section`,
       )
       expect(url.href).toBe(
-        'https://example.com/other.example/path?next=%2F%2Fother.example#//section',
+        'https://example.com/other.example/path?next=//other.example#//section',
       )
       expect(handledProtocolRelativeURL).toBe(true)
     },
   )
 
-  test('should return URL that is in standardized format', () => {
+  test('normalizes the pathname and preserves the public query spelling', () => {
     const url1 = 'https://example.com/%EB%8C%80%7C/path?query=%EB%8C%80|#hash'
     const url2 = 'https://example.com/%EB%8C%80|/path?query=%EB%8C%80%7C#hash'
 
@@ -36,9 +36,20 @@ describe('getNormalizedURL', () => {
     expect(normalizedUrl1.url.pathname).toBe(normalizedUrl2.url.pathname)
     expect(new URL(url1).pathname).not.toBe(new URL(url2).pathname)
 
-    expect(normalizedUrl1.url.search).toBe(`?query=%EB%8C%80%7C`)
-    expect(normalizedUrl1.url.search).toBe(normalizedUrl2.url.search)
+    expect(normalizedUrl1.url.search).toBe(new URL(url1).search)
+    expect(normalizedUrl2.url.search).toBe(new URL(url2).search)
     expect(new URL(url1).search).not.toBe(new URL(url2).search)
+  })
+
+  test.each([
+    '?q=a%2Ab',
+    '?q=two%20words',
+    '?q=two+words',
+    '?q=x%2By',
+    '?a=1&&b=2',
+  ])('preserves %s for canonical redirect comparison', (search) => {
+    const { url } = getNormalizedURL(`https://example.com/path${search}`)
+    expect(url.search).toBe(search)
   })
 
   const testCases = [

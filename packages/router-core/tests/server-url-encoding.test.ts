@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, defaultStringifySearch } from '../src'
 import { createTestRouter, loadServerResponse } from './routerTestUtils'
 
 const asciiControls = [...Array.from({ length: 32 }, (_, code) => code), 127]
@@ -127,4 +127,107 @@ describe.each([false, true])('SSR URL encoding (rewrite: %s)', (rewrite) => {
       }
     },
   )
+})
+
+test('canonicalizes a rewritten path without redirecting again for search encoding', async () => {
+  function setupRouter() {
+    const root = new BaseRootRoute()
+    const target = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/target',
+      loader: ({ location }) => location.search,
+    })
+    return createTestRouter({
+      routeTree: root.addChildren([target]),
+      isServer: true,
+      stringifySearch: (search) =>
+        defaultStringifySearch(search).replaceAll('+', '%20'),
+      rewrite: {
+        input: ({ url }) => {
+          if (url.pathname === '/legacy') {
+            url.pathname = '/target'
+          }
+          return url
+        },
+      },
+    })
+  }
+
+  const router = setupRouter()
+  const response = await loadServerResponse(router, '/legacy?q=hello%20world')
+
+  expect(response.status).toBe(307)
+  expect(response.headers.get('Location')).toBe('/target?q=hello%20world')
+
+  const followUp = setupRouter()
+  const finalResponse = await loadServerResponse(
+    followUp,
+    response.headers.get('Location')!,
+  )
+
+  expect(finalResponse.status).toBe(200)
+  expect(finalResponse.headers.get('Location')).toBeNull()
+  expect(followUp.state.matches.at(-1)?.loaderData).toEqual({
+    q: 'hello world',
+  })
+})
+
+test('canonicalizes search encoding after input and output rename a parameter', async () => {
+  function setupRouter() {
+    const root = new BaseRootRoute()
+    const target = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/target',
+      loader: ({ location }) => location.search,
+    })
+    return createTestRouter({
+      routeTree: root.addChildren([target]),
+      isServer: true,
+      rewrite: {
+        input: ({ url }) => {
+          url.pathname = '/target'
+          const value = url.searchParams.get('public')
+          if (value !== null) {
+            url.searchParams.delete('public')
+            url.searchParams.set('internal', value)
+          }
+          return url
+        },
+        output: ({ url }) => {
+          url.pathname = '/public'
+          const value = url.searchParams.get('internal')
+          if (value !== null) {
+            url.searchParams.delete('internal')
+            url.searchParams.set('public', value)
+          }
+          url.search = url.search.replaceAll('+', '%20')
+          return url
+        },
+      },
+    })
+  }
+
+  const router = setupRouter()
+  const response = await loadServerResponse(
+    router,
+    '/public?keep=x%2By&public=hello+world',
+  )
+
+  expect(response.status).toBe(307)
+  expect(response.headers.get('Location')).toBe(
+    '/public?keep=x%2By&public=hello%20world',
+  )
+
+  const followUp = setupRouter()
+  const finalResponse = await loadServerResponse(
+    followUp,
+    response.headers.get('Location')!,
+  )
+
+  expect(finalResponse.status).toBe(200)
+  expect(finalResponse.headers.get('Location')).toBeNull()
+  expect(followUp.state.matches.at(-1)?.loaderData).toEqual({
+    keep: 'x+y',
+    internal: 'hello world',
+  })
 })
