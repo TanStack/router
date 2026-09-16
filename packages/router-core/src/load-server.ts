@@ -912,17 +912,21 @@ export async function loadServerRoute(
   const previousEnd = router._lifecycleEnd
   let result: ServerLoadResult
   try {
-    const canonical = router.buildLocation({
-      to: next.pathname,
-      search: true,
-      params: true,
-      hash: true,
-      state: true,
-      _includeValidateSearch: true,
-    })
-    if (next.publicHref !== canonical.publicHref) {
-      const href = canonical.publicHref || '/'
-      throw redirect({ href })
+    const method = opts?._requestMethod ?? 'GET'
+    // A 307 after a server handler has run could replay its side effects.
+    if (method === 'GET' || method === 'HEAD') {
+      const canonical = router.buildLocation({
+        to: next.pathname,
+        search: true,
+        params: true,
+        hash: true,
+        state: true,
+        _includeValidateSearch: true,
+      })
+      if (next.publicHref !== canonical.publicHref) {
+        const href = canonical.publicHref || '/'
+        throw redirect({ href })
+      }
     }
 
     const fromLocation = router.stores.resolvedLocation.get()

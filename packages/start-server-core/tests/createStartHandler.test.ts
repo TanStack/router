@@ -868,6 +868,67 @@ describe('createStartHandler server-route handling', () => {
 })
 
 describe('createStartHandler request location reuse', () => {
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
+    'renders a noncanonical %s request after its server handler',
+    async (method) => {
+      const writes: Array<string> = []
+      const root = new BaseRootRoute()
+      const route = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/work',
+        component: () => null,
+        loader: ({ location }) => location.search,
+        server: {
+          handlers: {
+            ANY: async ({ request, next }) => {
+              writes.push(await request.text())
+              return next()
+            },
+          },
+        },
+      })
+      startMocks.routerFactory = () =>
+        new RouterCore(
+          { isServer: true, routeTree: root.addChildren([route]) },
+          getStoreConfig,
+        )
+      const handler = createStartHandler(({ router }) =>
+        Response.json(router.state.matches.at(-1)?.loaderData),
+      )
+
+      const response = await handler(
+        new Request('http://localhost/work/?q=a%2Ab', {
+          method,
+          body: 'write once',
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('Location')).toBeNull()
+      expect(await response.json()).toEqual({ q: 'a*b' })
+      expect(writes).toEqual(['write once'])
+    },
+  )
+
+  it.each(['GET', 'HEAD'])(
+    'keeps canonical redirects for %s requests',
+    async (method) => {
+      startMocks.router = makeRouterWithRouteWork({})
+      const render = vi.fn(() => new Response('rendered'))
+      const handler = createStartHandler(render)
+
+      const response = await handler(
+        new Request('http://localhost/work/?q=a%2Ab', { method }),
+        {},
+      )
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('Location')).toBe('/work?q=a*b')
+      expect(render).not.toHaveBeenCalled()
+    },
+  )
+
   it.each(
     [
       ['q=a%2Ab', 'q=a*b', { q: 'a*b' }],

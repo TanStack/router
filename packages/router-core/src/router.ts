@@ -790,6 +790,8 @@ export type LoadFn = (opts?: {
   _signal?: AbortSignal
   /** @private Reuse the location already prepared for this SSR request. */
   _skipLocationUpdate?: boolean
+  /** @private HTTP method for this SSR request. Defaults to GET. */
+  _requestMethod?: string
 }) => Promise<void>
 
 export type CommitLocationFn = ({

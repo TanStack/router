@@ -26,6 +26,47 @@ test('canonicalizes search before SSR without rerunning the loader during hydrat
   expect(serverFnRequests).toEqual([])
 })
 
+test('hydrates a noncanonical form POST without submitting it again', async ({
+  page,
+}) => {
+  await page.goto('/')
+  await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
+
+  const posts: Array<string> = []
+  page.on('request', (request) => {
+    if (request.isNavigationRequest() && request.method() === 'POST') {
+      posts.push(request.url())
+    }
+  })
+
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().isNavigationRequest() &&
+      response.request().method() === 'POST',
+  )
+  await page.evaluate(() => {
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = '/?q=a%2Ab'
+    const input = document.createElement('input')
+    input.name = 'message'
+    input.value = 'write once'
+    form.append(input)
+    document.body.append(form)
+    form.submit()
+  })
+
+  const response = await responsePromise
+  expect(response.status()).toBe(200)
+  expect(response.headers().location).toBeUndefined()
+  expect(response.request().redirectedFrom()).toBeNull()
+  await expect(page).toHaveURL(/\/\?q=a\*b$/)
+  await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
+  await expect(page.getByTestId('loader-data')).toHaveText('loaded')
+  await page.waitForLoadState('networkidle')
+  expect(posts).toEqual([response.url()])
+})
+
 test('a root pendingComponent preserves the SSR document during hydration', async ({
   page,
 }) => {
