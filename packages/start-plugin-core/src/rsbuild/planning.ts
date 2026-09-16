@@ -1,6 +1,7 @@
 import { createRequire } from 'node:module'
 import { join } from 'pathe'
 import { mergeRsbuildConfig } from '@rsbuild/core'
+import { createServerFnTransportAliases } from '../server-fn-transport'
 import { ENTRY_POINTS } from '../constants'
 import type { EnvironmentConfig } from '@rsbuild/core'
 import type { ResolvedStartEntryPlan } from '../planning'
@@ -97,6 +98,7 @@ export function createRsbuildEnvironmentPlan(opts: {
   serverOutputDirectory: string
   publicBase: string
   serverFnProviderEnv: string
+  serverFnTransport?: 'bundled' | 'lazy'
   environmentOverrides?: RsbuildEnvironmentOverrides
   scriptFormat?: ScriptFormat
   rsc?: boolean | undefined
@@ -104,6 +106,7 @@ export function createRsbuildEnvironmentPlan(opts: {
 }): RsbuildEnvironmentPlanResult {
   const alias = {
     ...opts.entryAliases.alias,
+    ...createServerFnTransportAliases(opts.serverFnTransport),
     ...(opts.rsc
       ? {
           'react-server-dom-rspack/server$': resolveFromRoot(

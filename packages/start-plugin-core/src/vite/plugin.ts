@@ -166,6 +166,7 @@ export function tanStackStartVite(
           clientOutputDirectory: resolvedStartConfig.outputDirectories.client,
           serverOutputDirectory: resolvedStartConfig.outputDirectories.server,
           serverFnProviderEnv,
+          serverFnTransport: startConfig.serverFns.transport,
           optimizeDepsExclude: crawlFrameworkPkgsResult.optimizeDeps.exclude,
           noExternal: crawlFrameworkPkgsResult.ssr.noExternal.sort(),
         })
@@ -180,6 +181,7 @@ export function tanStackStartVite(
             command,
             mode: viteConfig.mode,
             serverFnBase: TSS_SERVER_FN_BASE,
+            serverFnTransport: startConfig.serverFns.transport,
             routerBasepath,
             spaEnabled: startConfig.spa?.enabled,
             devSsrStylesEnabled: startConfig.dev.ssrStyles.enabled,

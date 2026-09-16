@@ -15,6 +15,12 @@ const rsbuildClientOutput: 'module' | 'iife' | undefined = (() => {
 
 export function getStartModeConfig() {
   return {
+    serverFns: {
+      transport:
+        process.env.E2E_SERVER_FN_TRANSPORT === 'lazy'
+          ? ('lazy' as const)
+          : ('bundled' as const),
+    },
     spa: isSpaMode
       ? {
           enabled: true,

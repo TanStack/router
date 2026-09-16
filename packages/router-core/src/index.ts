@@ -473,10 +473,11 @@ export type {
 } from './ssr/serializer/transformer'
 
 export {
-  createSerializationAdapter,
   makeSerovalPlugin,
   makeSsrSerovalPlugin,
 } from './ssr/serializer/transformer'
+
+export { createSerializationAdapter } from './ssr/serializer/serializationAdapter'
 
 export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
 
