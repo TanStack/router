@@ -200,9 +200,8 @@ describe('issue #7942', () => {
     const payloadOffset = result.text.indexOf(payload)
     const injectedStart = result.text.lastIndexOf('<script>', payloadOffset)
     const dynamicClose = 'document.currentScript.remove()</script>'
-    const appMainOffset = result.text.indexOf('<main>app</main>')
     const injectedEnd =
-      result.text.lastIndexOf(dynamicClose, appMainOffset) + dynamicClose.length
+      result.text.lastIndexOf(dynamicClose) + dynamicClose.length
     expect(payloadOffset).toBeGreaterThan(injectedStart)
     expect(injectedStart).toBeGreaterThanOrEqual(earliestInjectionOffset)
     expect(injectedStart).toBeLessThanOrEqual(appShell.length)

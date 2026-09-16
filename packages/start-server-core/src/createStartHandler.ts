@@ -800,8 +800,7 @@ export function createStartHandler<TRegister = Register>(
           middlewareResponse,
           getRouter,
           signal,
-          isServerFnRequest &&
-            request.headers.get('x-tsr-serverFn') === 'true',
+          isServerFnRequest && request.headers.get('x-tsr-serverFn') === 'true',
         )
         if (request.method === 'HEAD') {
           result = stripSsrResponseBody(result, 'HEAD body stripped')
