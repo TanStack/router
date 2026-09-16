@@ -139,9 +139,21 @@ export const handleServerAction = async ({
             throw new Error('Payload too large')
           }
           // If there's a payload, we should try to parse it
-          const payload: any = payloadParam
-            ? parsePayload(JSON.parse(payloadParam))
-            : {}
+          let payload: any = {}
+          if (payloadParam) {
+            let parsedJson: unknown
+            try {
+              parsedJson = JSON.parse(payloadParam)
+            } catch (error) {
+              if (error instanceof SyntaxError) {
+                throw new Response('Invalid server function payload', {
+                  status: 400,
+                })
+              }
+              throw error
+            }
+            payload = parsePayload(parsedJson)
+          }
           payload.context = safeObjectMerge(payload.context, context)
           payload.method = methodUpper
           // Send it through!
@@ -150,7 +162,16 @@ export const handleServerAction = async ({
 
         let jsonPayload
         if (contentType?.includes('application/json')) {
-          jsonPayload = await request.json()
+          try {
+            jsonPayload = await request.json()
+          } catch (error) {
+            if (error instanceof SyntaxError) {
+              throw new Response('Invalid server function payload', {
+                status: 400,
+              })
+            }
+            throw error
+          }
         }
 
         const payload = jsonPayload ? parsePayload(jsonPayload) : {}
