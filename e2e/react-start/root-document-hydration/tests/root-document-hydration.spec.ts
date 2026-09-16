@@ -1,6 +1,31 @@
 import { expect } from '@playwright/test'
 import { test } from '@tanstack/router-e2e-utils'
 
+test('canonicalizes search before SSR without rerunning the loader during hydration', async ({
+  page,
+}) => {
+  const serverFnRequests: Array<string> = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/_serverFn/')) {
+      serverFnRequests.push(request.url())
+    }
+  })
+
+  const response = await page.goto('/?q=a%2Ab')
+  expect(response?.status()).toBe(200)
+  const redirectedFrom = response!.request().redirectedFrom()
+  expect(redirectedFrom?.url()).toMatch(/\/\?q=a%2Ab$/)
+  expect((await redirectedFrom!.response())?.status()).toBe(307)
+  expect(redirectedFrom!.redirectedFrom()).toBeNull()
+  await expect(page).toHaveURL(/\/\?q=a\*b$/)
+  await expect(page.locator('html')).toHaveAttribute('data-hydrated', 'true')
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('loader-runtime')).toHaveText('server')
+  await expect(page.getByTestId('loader-data')).toHaveText('loaded')
+  expect(serverFnRequests).toEqual([])
+})
+
 test('a root pendingComponent preserves the SSR document during hydration', async ({
   page,
 }) => {
