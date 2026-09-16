@@ -4,7 +4,9 @@ import {
   deepEqual,
   encodePathLikeUrl,
   escapeHtml,
+  hasOwn,
   isPlainArray,
+  nullReplaceEqualDeep,
   replaceEqualDeep,
 } from '../src/utils'
 
@@ -344,6 +346,110 @@ describe('replaceEqualDeep', () => {
 
     next.foo = 'baz'
     expect(replaceEqualDeep(current, next)).toEqual(next)
+  })
+
+  // The copy is only allocated at the first difference; everything compared
+  // before that point has to be carried over from `prev`.
+  describe('lazy copy', () => {
+    it('keeps earlier equal entries, including explicit undefined, when a later key differs', () => {
+      const prev = { a: { x: 1 }, b: undefined, c: 1 }
+      const next = { a: { x: 1 }, b: undefined, c: 2 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result).not.toBe(prev)
+      expect(result).not.toBe(next)
+      expect(result.a).toBe(prev.a)
+      expect('b' in result).toBe(true)
+    })
+
+    it('includes keys that only exist in next before the first difference', () => {
+      const prev: Record<string, unknown> = { a: 1 }
+      const next = { b: undefined, a: 2 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect('b' in result).toBe(true)
+    })
+
+    it('keeps the key order of next', () => {
+      const prev = { a: 1, b: 2, c: 3 }
+      expect(Object.keys(replaceEqualDeep(prev, { c: 3, b: 2, a: 9 }))).toEqual(
+        ['c', 'b', 'a'],
+      )
+      expect(Object.keys(replaceEqualDeep(prev, { b: 9, a: 1, c: 3 }))).toEqual(
+        ['b', 'a', 'c'],
+      )
+    })
+
+    it('copies when only the key sets differ', () => {
+      const prev = { a: 1, b: 2 }
+      const next = { a: 1 }
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result).not.toBe(prev)
+      expect(result).not.toBe(next)
+    })
+
+    it('returns a longer array when next appends an explicit undefined', () => {
+      const prev = [1]
+      const next = [1, undefined]
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result).toHaveLength(2)
+      expect(result).not.toBe(prev)
+      expect(result).not.toBe(next)
+    })
+
+    it('shares equal array entries before and after the first difference', () => {
+      const prev = [{ a: 1 }, { b: 1 }, { c: 1 }]
+      const next = [{ a: 1 }, { b: 2 }, { c: 1 }]
+      const result = replaceEqualDeep(prev, next)
+      expect(result).toStrictEqual(next)
+      expect(result[0]).toBe(prev[0])
+      expect(result[1]).not.toBe(prev[1])
+      expect(result[2]).toBe(prev[2])
+    })
+  })
+})
+
+describe('nullReplaceEqualDeep', () => {
+  it('creates null-prototype copies on the first difference', () => {
+    const result = nullReplaceEqualDeep({ a: 1, b: 2 }, { a: 1, b: 3 })
+    expect(Object.getPrototypeOf(result)).toBeNull()
+    expect(result.a).toBe(1)
+    expect(result.b).toBe(3)
+  })
+
+  it('creates null-prototype copies when only the key sets differ', () => {
+    const result = nullReplaceEqualDeep({ a: 1 }, { a: 1, b: undefined })
+    expect(Object.getPrototypeOf(result)).toBeNull()
+    expect(result.a).toBe(1)
+    expect('b' in result).toBe(true)
+  })
+
+  it('creates null-prototype copies for nested objects', () => {
+    const prev = { shared: { x: 1 }, changed: { y: 1 } }
+    const result = nullReplaceEqualDeep(prev, {
+      shared: { x: 1 },
+      changed: { y: 2 },
+    })
+    expect(Object.getPrototypeOf(result)).toBeNull()
+    expect(Object.getPrototypeOf(result.changed)).toBeNull()
+    expect(result.shared).toBe(prev.shared)
+  })
+
+  it('stores an own __proto__ key instead of changing the prototype', () => {
+    const next = JSON.parse('{"__proto__":{"isAdmin":true},"name":"Alice"}')
+    const result = nullReplaceEqualDeep({ name: 'Bob' }, next)
+    expect(Object.getPrototypeOf(result)).toBeNull()
+    expect(hasOwn.call(result, '__proto__')).toBe(true)
+    expect(result['__proto__']).toEqual({ isAdmin: true })
+    expect(result.name).toBe('Alice')
+    expect(({} as any).isAdmin).toBeUndefined()
+  })
+
+  it('returns prev when a plain next equals a null-prototype prev', () => {
+    const prev = Object.assign(Object.create(null), { a: 1, b: { c: 2 } })
+    expect(nullReplaceEqualDeep(prev, { a: 1, b: { c: 2 } })).toBe(prev)
   })
 })
 
