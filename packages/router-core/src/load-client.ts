@@ -493,6 +493,7 @@ function releaseOwnedFlight(
     ) {
       // Keep work discoverable only while the current lane is still running
       // beforeLoad. Loader planning performs the matching zero-owner sweep.
+      router._unowned = true
       return
     }
     router._flights.delete(match.id)
@@ -517,17 +518,18 @@ function transferMatchResources(
 ): void {
   const abort: Array<AbortController> = []
   for (const match of previous as Array<WorkMatch>) {
-    if (!next?.includes(match)) {
+    if (match._flight && !next?.includes(match)) {
       const flight = match._flight
       match._flight = undefined
       if (
         deferSameIdFlight &&
-        flight?.[2 /* leases */] === 1 &&
+        flight[2 /* leases */] === 1 &&
         router._flights?.get(match.id) === flight &&
         next?.some((candidate) => candidate.id === match.id)
       ) {
         // The successor has not made its same-ID reload decision yet.
         flight[2 /* leases */] = 0
+        router._unowned = true
       } else {
         const controller = releaseOwnedFlight(router, match, flight)
         if (controller) {
@@ -1389,14 +1391,16 @@ async function executeClientLane(
       }
       planSuccessfulLane()
     }
-    if (!signal.aborted && !options[3 /* preload */]) {
+    if (!signal.aborted && !options[3 /* preload */] && router._unowned) {
+      // Clear before abort callbacks can reenter and reserve another generation.
+      router._unowned = false
       const abort: Array<AbortController> = []
-      for (const [id, flight] of router._flights ?? []) {
+      router._flights?.forEach((flight, id) => {
         if (!flight[2 /* leases */]) {
           router._flights!.delete(id)
           abort.push(flight[1 /* controller */])
         }
-      }
+      })
       for (const controller of abort) {
         controller.abort()
       }
@@ -1608,71 +1612,77 @@ export function commitMatches(
 ): void {
   const previous = router._committed
   const previousEnd = router._lifecycleEnd
-  const previousCached = router._cache
-  for (const match of matches) {
+  const cached = router._cache
+  const retained: Array<AnyRouteMatch> = []
+  const previousMatches: Array<AnyRouteMatch> = []
+  const cut = _getRenderedMatches(matches).length
+  // The rendered prefix and settled descendants supersede older generations.
+  // Unsettled matches beyond a fallback must not evict a newer preload.
+  const superseded = new Set<string>()
+  for (let index = 0; index < matches.length; index++) {
+    const match = matches[index]!
     match.preload = false
     if (resolvedPrefix) {
       match._assetEnd = undefined
     }
-  }
-  const cut = _getRenderedMatches(matches).length
-  const cached = new Map<string, AnyRouteMatch>()
-  if (process.env.NODE_ENV === 'production' || !tx[6 /* refresh */]) {
-    const now = Date.now()
-    // The rendered prefix and settled descendants supersede older generations.
-    // Unsettled matches beyond a fallback must not evict a newer preload.
-    const superseded = new Set<string>()
-    for (let index = 0; index < matches.length; index++) {
-      const match = matches[index]!
-      if (index < cut || match.status === 'success') {
-        superseded.add(match.id)
-      }
+    if (index < cut || match.status === 'success') {
+      superseded.add(match.id)
     }
-    for (const match of [...previous, ...previousCached.values()]) {
-      if (match.status !== 'success' || superseded.has(match.id)) {
-        continue
-      }
-      const work = match as WorkMatch
-      const route = getRoute(router, work)
-      if (
-        !route.options.loader ||
+  }
+  const now = Date.now()
+  let canCache = (match: AnyRouteMatch) => {
+    if (match.status !== 'success' || superseded.has(match.id)) {
+      return false
+    }
+    const options = getRoute(router, match).options
+    return (
+      options.loader &&
+      !(
         now - match.updatedAt >=
-          (match.preload
-            ? (route.options.preloadGcTime ??
-              router.options.defaultPreloadGcTime ??
-              300_000)
-            : (route.options.gcTime ?? router.options.defaultGcTime ?? 300_000))
-      ) {
-        continue
-      }
-      cached.set(
-        match.id,
-        previousCached.get(match.id) === match
-          ? match
-          : ({
-              ...match,
-              _flight: undefined,
-              isFetching: false,
-              context: {},
-            } as WorkMatch),
+        ((match.preload
+          ? (options.preloadGcTime ?? router.options.defaultPreloadGcTime)
+          : (options.gcTime ?? router.options.defaultGcTime)) ?? 300_000)
       )
+    )
+  }
+  if (process.env.NODE_ENV !== 'production' && tx[6 /* refresh */]) {
+    // Refresh rejects old code/data without a development-mode check per entry.
+    canCache = () => false
+  }
+  // Prune first so an eligible cached generation takes precedence over the
+  // departing committed generation with the same ID.
+  cached.forEach((match) =>
+    (canCache(match) ? retained : previousMatches).push(match),
+  )
+  // Compact dense retirements instead of repeatedly shrinking the backing map.
+  if (previousMatches.length > retained.length) {
+    cached.clear()
+    for (const match of retained) {
+      cached.set(match.id, match)
+    }
+  } else {
+    for (const match of previousMatches) {
+      cached.delete(match.id)
+    }
+  }
+  for (const match of previous as Array<WorkMatch>) {
+    previousMatches.push(match)
+    if (canCache(match) && !cached.has(match.id)) {
+      cached.set(match.id, {
+        ...match,
+        _flight: undefined,
+        isFetching: false,
+        context: {},
+      } as WorkMatch)
     }
   }
   // The lane becomes committed before publication can synchronously reenter.
   tx[3 /* matches */] = []
-  router._cache = cached
   // Publish lifecycle membership with its branch before observers can reenter.
   const nextEnd = (router._lifecycleEnd = lifecycleEnd(matches))
   publishMatches(router, matches)
   // Retained cache objects keep their leases; only departing owners need handoff.
-  const previousMatches = [...previousCached.values(), ...previous]
-  transferMatchResources(
-    router,
-    previousMatches.filter(
-      (match: WorkMatch) => match._flight && cached.get(match.id) !== match,
-    ),
-    matches,
-  )
+  transferMatchResources(router, previousMatches, matches)
   if (process.env.NODE_ENV !== 'production') {
     const handoff = tx[6 /* refresh */]?.[0 /* handoff */]
     if (handoff && router._handoff === handoff) {
