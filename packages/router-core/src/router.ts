@@ -2139,7 +2139,19 @@ export class RouterCore<
         } else {
           // A same-origin rewrite can produce a pathname like "//evil.example".
           // Normalize it to "/evil.example" so the link stays on this origin.
-          publicHref = normalizeProtocolRelative(getUrlPath(rewrittenUrl))
+          const trailingSlashOpt = this.options.trailingSlash ?? 'never'
+          let rewrittenPathname = rewrittenUrl.pathname
+          if (trailingSlashOpt === 'never') {
+            rewrittenPathname = trimPathRight(rewrittenPathname)
+          } else if (
+            trailingSlashOpt === 'always' &&
+            !rewrittenPathname.endsWith('/')
+          ) {
+            rewrittenPathname += '/'
+          }
+          publicHref = normalizeProtocolRelative(
+            rewrittenPathname + rewrittenUrl.search + rewrittenUrl.hash,
+          )
         }
       } else {
         // Fast path: no rewrite, skip URL construction entirely
