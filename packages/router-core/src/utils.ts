@@ -333,35 +333,18 @@ function getEnumerableOwnKeys(o: object) {
   return keys
 }
 
-// Copied from: https://github.com/jonschlinkert/is-plain-object
-export function isPlainObject(o: any) {
-  if (!hasObjectPrototype(o)) {
+export function isPlainObject(o: unknown): boolean {
+  if (!o || typeof o !== 'object') {
     return false
   }
-
-  // If has modified constructor
-  const ctor = o.constructor
-  if (typeof ctor === 'undefined') {
+  // Literals inherit `Object`; null-prototype records have no constructor at all.
+  if ((o.constructor ?? Object) === Object) {
     return true
   }
-
-  // If has modified prototype
-  const prot = ctor.prototype
-  if (!hasObjectPrototype(prot)) {
-    return false
-  }
-
-  // If constructor does not have an Object-specific method
-  if (!prot.hasOwnProperty('isPrototypeOf')) {
-    return false
-  }
-
-  // Most likely a plain Object
-  return true
-}
-
-function hasObjectPrototype(o: any) {
-  return Object.prototype.toString.call(o) === '[object Object]'
+  // An own `constructor` key (`?constructor=foo`) hides the inherited one, so
+  // only the prototype can tell such a record from a class instance.
+  const proto = Object.getPrototypeOf(o)
+  return proto === null || proto.constructor === Object
 }
 
 /**
