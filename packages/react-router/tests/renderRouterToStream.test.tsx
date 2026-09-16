@@ -52,6 +52,68 @@ function unwrapResponse(
 }
 
 describe('renderRouterToStream - pipeable sync errors', () => {
+  test('passes the import map to readable stream rendering', async () => {
+    const importMap = {
+      imports: { package: '/package.js' },
+      integrity: { '/package.js': 'sha384-readable' },
+      scopes: { '/scope/': { dependency: '/dependency.js' } },
+    }
+    const stream = Object.assign(
+      new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.close()
+        },
+      }),
+      { allReady: Promise.resolve() },
+    )
+    reactDomServerMocks.renderToReadableStream = vi.fn(
+      (_children?: unknown, options?: { importMap?: typeof importMap }) => {
+        expect(options?.importMap).toBe(importMap)
+        return stream
+      },
+    )
+
+    const router = await buildRouter()
+    router.options.ssr = { importMap }
+    try {
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      })
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
+  test('passes the import map to pipeable stream rendering', async () => {
+    const importMap = {
+      imports: { package: '/package.js' },
+      integrity: { '/package.js': 'sha384-pipeable' },
+      scopes: { '/scope/': { dependency: '/dependency.js' } },
+    }
+    reactDomServerMocks.renderToPipeableStream.mockImplementationOnce(
+      (_children, options) => {
+        expect(options.importMap).toBe(importMap)
+        return { abort: vi.fn(), pipe: vi.fn() }
+      },
+    )
+
+    const router = await buildRouter()
+    router.options.ssr = { importMap }
+    try {
+      await renderRouterToStream({
+        request: new Request('http://localhost/'),
+        router,
+        responseHeaders: new Headers(),
+        children: null,
+      })
+    } finally {
+      router.serverSsr?.cleanup()
+    }
+  })
+
   test('request abort cancels readable rendering without consuming the response body', async () => {
     const cancel = vi.fn()
     const stream = Object.assign(new ReadableStream<Uint8Array>({ cancel }), {
