@@ -1,5 +1,21 @@
 # @tanstack/router-core
 
+## 1.171.32
+
+### Patch Changes
+
+- [#8363](https://github.com/TanStack/router/pull/8363) [`cecae54`](https://github.com/TanStack/router/commit/cecae5440b8edaea77c5448fe3d74bbd20fe10a4) - Detect plain objects by constructor instead of `Object.prototype.toString` dispatches in `isPlainObject`, which gates every `deepEqual` and `replaceEqualDeep` recursion step. Object literals, `JSON.parse` output and null-prototype objects are still plain; objects from another realm no longer are. Records with an own `constructor` key (for example the search params of `?constructor=foo`) fall back to a prototype check, so they keep structural sharing while class instances stay opaque.
+
+- [#8364](https://github.com/TanStack/router/pull/8364) [`0103578`](https://github.com/TanStack/router/commit/01035782e53af9b929c784b94ddd64b95efb89c7) - Compare and copy plain objects in `replaceEqualDeep` by their string keys only, skipping the symbol-key lookup that dominated key enumeration. Objects with non-enumerable own properties, or symbol keys on the incoming value, now pass through untouched instead of being structurally shared.
+
+- [#8411](https://github.com/TanStack/router/pull/8411) [`ce10dcd`](https://github.com/TanStack/router/commit/ce10dcd4d9d3d23738744e453205aad5c6dbd716) - Reduce structural-sharing allocations by reusing array key storage and returning incoming objects when their children need no replacements. Preserve signed zero consistently, remove stale symbol properties, and keep sparse arrays with extra keys and built-ins with an own `constructor` opaque.
+
+  Null-prototype mode now applies only when constructing a copy; existing incoming objects can be reused with their original prototype.
+
+- [#8362](https://github.com/TanStack/router/pull/8362) [`84936cc`](https://github.com/TanStack/router/commit/84936cc04530bba11059c57b293a794922bbc5aa) - Allocate the `replaceEqualDeep` result only at the first difference, so structural sharing of search, params, state and loader data no longer allocates when the new value is deeply equal to the previous one.
+
+- [#8389](https://github.com/TanStack/router/pull/8389) [`bbd2336`](https://github.com/TanStack/router/commit/bbd2336b8446de3f7dd85070895e7cf43980183e) - Split `replaceEqualDeep` into an equality scan and a copy phase: arrays and objects are scanned by dedicated loops up to the first difference, matching keys prove ownership without a `hasOwnProperty` lookup, and once a difference is found the result is built without any further equality bookkeeping. Deeply equal search, params, state and loader data are recognised faster and changed values are copied with less work per entry.
+
 ## 1.171.31
 
 ### Patch Changes
