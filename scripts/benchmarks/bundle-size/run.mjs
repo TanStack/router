@@ -70,6 +70,7 @@ export function run(argv, execute = spawnSync) {
 Named runs use <results-root>/runs/<name>/current.json.
 Without --name, current.json is replaced in the results root.
 Logs stay beside current.json; failures print a bounded log tail.
+With --scenario, comparisons report only the scenarios measured in this run.
 Arguments after -- go to the selected unit tests, not the measurement.`)
     return 0
   }
@@ -241,6 +242,7 @@ Arguments after -- go to the selected unit tests, not the measurement.`)
       '--current',
       currentPath,
       ...(baselinePath ? ['--baseline', baselinePath] : []),
+      ...(baselinePath && values.scenario ? ['--current-only'] : []),
     ],
     false,
   )

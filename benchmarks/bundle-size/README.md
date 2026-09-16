@@ -91,6 +91,8 @@ Without `--name`, runs replace `current.json` and the logs for the steps they ru
 Emitted bundles still use the shared `dist/` directory. To retain emitted bundles for a candidate, pass a separate `--dist-dir`.
 
 `--baseline` accepts a run name or a JSON file path, such as `--baseline ./baseline.json`.
+With `--scenario`, the comparison reports only the scenarios measured in the current run, even when the baseline contains more scenarios. Selected scenarios missing from the baseline remain visible with `n/a` for their baseline and deltas.
+Without `--scenario`, comparisons include scenarios from either result file.
 `--results-dir <dir>` changes the results root, including the location of named runs.
 Use the same scenario selection and measurement flags for the baseline and candidate.
 
@@ -107,6 +109,8 @@ pnpm benchmark:bundle-size:query --id react-router.minimal
 pnpm benchmark:bundle-size:diff --baseline /tmp/base-current.json --id react-router.minimal
 pnpm benchmark:bundle-size:history --id react-router.minimal --top-deltas 20
 ```
+
+Use `pnpm benchmark:bundle-size:diff --baseline /tmp/base-current.json --current-only` to compare only scenarios present in the current results. This applies to both text and `--json` output; an explicit `--id` takes precedence.
 
 For source attribution, run an analysis build. This uses hidden source maps and writes source estimates into `current.json`; those estimates are for investigation only, not tracking.
 
