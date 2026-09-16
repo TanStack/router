@@ -49,7 +49,7 @@ The router exposes two href properties on the location object:
 
 ### Canonical URLs
 
-On initial load, the router compares the incoming public URL with the URL built from its search serializer and output rewrite. During SSR, a difference produces a redirect before rendering. In a client-only app, the router replaces the current history entry.
+On initial load, the router compares the incoming public URL with the URL built from its search serializer and output rewrite. During SSR, a difference produces a redirect before rendering for GET and HEAD requests. Other methods render without an automatic canonical redirect to avoid replaying form submissions or other writes. Explicit application redirects still work for any method. In a client-only app, the router replaces the current history entry.
 
 For example, with the default search serializer, `?q=a%2Ab` redirects to `?q=a*b`. A custom `stringifySearch` or output rewrite determines the canonical spelling instead. Input and output rewrites should agree so following the redirect produces a stable URL.
 
