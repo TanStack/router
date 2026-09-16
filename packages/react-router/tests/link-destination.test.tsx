@@ -10,6 +10,7 @@ import {
   createRoute,
   createRouter,
   retainSearchParams,
+  useLinkProps,
 } from '../src'
 
 describe('Link destination updates', () => {
@@ -17,6 +18,70 @@ describe('Link destination updates', () => {
   afterEach(() => {
     cleanup()
     vi.unstubAllEnvs()
+  })
+
+  test('keeps direct-hook href and click navigation aligned for prototype-backed options', async () => {
+    class Destination {
+      to = '/target' as const
+
+      get hash() {
+        return 'details'
+      }
+    }
+    const destination = new Destination()
+    function TargetLink() {
+      return <a {...useLinkProps(destination)}>Target</a>
+    }
+    const rootRoute = createRootRoute({ component: TargetLink })
+    const index = createRoute({ getParentRoute: () => rootRoute, path: '/' })
+    const target = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([index, target]),
+      history,
+    })
+    render(<RouterProvider router={router} />)
+
+    const link = await screen.findByRole('link', { name: 'Target' })
+    const href = link.getAttribute('href')
+    await act(async () => {
+      fireEvent.click(link)
+    })
+    expect(router.state.location.href).toBe(href)
+    history.destroy()
+  })
+
+  test('uses an explicit direct-hook href for both rendering and navigation', async () => {
+    function TargetLink() {
+      return (
+        <a {...useLinkProps({ to: '/', href: '/target?tab=one#details' })}>
+          Target
+        </a>
+      )
+    }
+    const rootRoute = createRootRoute({ component: TargetLink })
+    const index = createRoute({ getParentRoute: () => rootRoute, path: '/' })
+    const target = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/target',
+    })
+    const history = createMemoryHistory({ initialEntries: ['/'] })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([index, target]),
+      history,
+    })
+    render(<RouterProvider router={router} />)
+
+    const link = await screen.findByRole('link', { name: 'Target' })
+    expect(link).toHaveAttribute('href', '/target?tab=one#details')
+    await act(async () => {
+      fireEvent.click(link)
+    })
+    expect(router.state.location.href).toBe('/target?tab=one#details')
+    history.destroy()
   })
 
   function setupFixedLink(
