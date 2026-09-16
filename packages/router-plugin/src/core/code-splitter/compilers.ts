@@ -28,7 +28,11 @@ import type {
   CodeSplitCompilerPlugin,
   CompileCodeSplitReferenceRouteOptions,
 } from './plugins'
-import type { GeneratorResult, ParseAstOptions } from '@tanstack/router-utils'
+import type {
+  GeneratorResult,
+  ParseAstOptions,
+  ParseAstResult,
+} from '@tanstack/router-utils'
 import type { CodeSplitGroupings, SplitRouteIdentNodes } from '../constants'
 import type { SplitNodeMeta } from './types'
 
@@ -153,8 +157,14 @@ export function computeSharedBindings(opts: {
   filename?: string
   codeSplitGroupings: CodeSplitGroupings
 }): Set<string> {
-  const ast = parseAst(opts)
+  return computeSharedBindingsFromAst(parseAst(opts), opts.codeSplitGroupings)
+}
 
+/** Internal analysis of the original, unmodified reference AST. */
+export function computeSharedBindingsFromAst(
+  ast: t.File,
+  codeSplitGroupings: CodeSplitGroupings,
+): Set<string> {
   // Early bailout: collect all module-level locally-declared binding names.
   // This is a cheap loop over program.body (no traversal). If the file has
   // no local bindings (aside from `Route`), nothing can be shared — skip
@@ -173,9 +183,7 @@ export function computeSharedBindings(opts: {
   }
 
   function findIndexForSplitNode(str: string) {
-    return opts.codeSplitGroupings.findIndex((group) =>
-      group.includes(str as any),
-    )
+    return codeSplitGroupings.findIndex((group) => group.includes(str as any))
   }
 
   // Find the route options object — needs babel.traverse for scope resolution
@@ -361,14 +369,22 @@ function removeSharedDeclarations(ast: t.File, sharedBindings: Set<string>) {
   })
 }
 
-export function compileCodeSplitReferenceRoute(
-  opts: ParseAstOptions &
-    CompileCodeSplitReferenceRouteOptions & {
-      compilerPlugins?: Array<CodeSplitCompilerPlugin>
-    },
-): GeneratorResult | null {
-  const ast = parseAst(opts)
+type ReferenceCompilerOptions = ParseAstOptions &
+  CompileCodeSplitReferenceRouteOptions & {
+    compilerPlugins?: Array<CodeSplitCompilerPlugin>
+  }
 
+export function compileCodeSplitReferenceRoute(
+  opts: ReferenceCompilerOptions,
+): GeneratorResult | null {
+  return compileCodeSplitReferenceRouteFromAst(parseAst(opts), opts)
+}
+
+/** Internal compiler: consumes the AST after grouping and shared-binding analysis. */
+export function compileCodeSplitReferenceRouteFromAst(
+  ast: ParseAstResult,
+  opts: ReferenceCompilerOptions,
+): GeneratorResult | null {
   const refIdents = findReferencedIdentifiers(ast)
 
   const knownExportedIdents = new Set<string>()
@@ -1395,8 +1411,13 @@ export function compileCodeSplitSharedRoute(
 export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
   groupings: CodeSplitGroupings | undefined
 } {
-  const ast = parseAst(opts)
+  return detectCodeSplitGroupingsFromAst(parseAst(opts))
+}
 
+/** Internal analysis of the original, unmodified reference AST. */
+export function detectCodeSplitGroupingsFromAst(ast: t.File): {
+  groupings: CodeSplitGroupings | undefined
+} {
   let codeSplitGroupings: CodeSplitGroupings | undefined = undefined
 
   babel.traverse(ast, {
