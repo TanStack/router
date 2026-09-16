@@ -2503,11 +2503,11 @@ export class RouterCore<
     this._cache.forEach(consider)
     preloads?.forEach((matches) => matches.forEach(consider))
     this._tx?.[3 /* matches */].forEach(consider)
-    const abort: Array<AbortController> = []
+    const discardedPreloads: Array<AbortController> = []
     for (const [controller, matches] of preloads ?? []) {
       if (matches.some((match) => invalidIds.has(match.id))) {
         preloads!.delete(controller)
-        abort.push(controller)
+        discardedPreloads.push(controller)
       }
     }
     const invalidate = (d: MakeRouteMatch<TRouteTree>) => {
@@ -2544,14 +2544,9 @@ export class RouterCore<
     // The superseding load must not discover any same-ID generation selected
     // for replacement. Existing owners release it in their normal order.
     for (const id of invalidIds) {
-      const flight = this._flights?.get(id)
       this._flights?.delete(id)
-      // A reserved discovery has no remaining match owner to retire it later.
-      if (flight && !flight[2 /* leases */]) {
-        abort.push(flight[1 /* controller */])
-      }
     }
-    for (const controller of abort) {
+    for (const controller of discardedPreloads) {
       controller.abort()
     }
 
