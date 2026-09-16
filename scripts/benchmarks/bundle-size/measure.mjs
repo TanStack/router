@@ -7,11 +7,12 @@ import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs as parseNodeArgs } from 'node:util'
 import vm from 'node:vm'
-import { brotliCompressSync, gzipSync } from 'node:zlib'
 import { execFileSync } from 'node:child_process'
 
 import { build } from 'vite'
 import { writeReport } from './report.mjs'
+import { measureFileSizes } from './compress.mjs'
+import { createTimings } from './timings.mjs'
 
 const BENCHMARK_NAME = 'Bundle Size (gzip)'
 
@@ -168,6 +169,7 @@ function parseArgs(argv) {
       sourcemap: { type: 'boolean' },
       'skip-package-builds': { type: 'boolean' },
       'measurements-only': { type: 'boolean' },
+      timings: { type: 'boolean' },
     },
   })
 
@@ -182,6 +184,7 @@ function parseArgs(argv) {
     sourcemap: values.sourcemap === true,
     skipPackageBuilds: values['skip-package-builds'] === true,
     measurementsOnly: values['measurements-only'] === true,
+    timings: values.timings === true || process.env.BUNDLE_SIZE_TIMINGS === '1',
   }
 }
 
@@ -311,38 +314,6 @@ function collectAllViteJsFiles(manifest) {
   }
 
   return [...files].sort()
-}
-
-function sizesForFiles(baseDir, fileList) {
-  let rawBytes = 0
-  let gzipBytes = 0
-  let brotliBytes = 0
-  const files = []
-
-  for (const relativeFile of fileList) {
-    const fullPath = path.join(baseDir, relativeFile)
-    const content = fs.readFileSync(fullPath)
-    const rawByteLength = content.byteLength
-    const gzipByteLength = gzipSync(content).byteLength
-    const brotliByteLength = brotliCompressSync(content).byteLength
-
-    rawBytes += rawByteLength
-    gzipBytes += gzipByteLength
-    brotliBytes += brotliByteLength
-    files.push({
-      file: relativeFile,
-      rawBytes: rawByteLength,
-      gzipBytes: gzipByteLength,
-      brotliBytes: brotliByteLength,
-    })
-  }
-
-  return {
-    rawBytes,
-    gzipBytes,
-    brotliBytes,
-    files,
-  }
 }
 
 async function findManifestFiles(rootDir) {
@@ -880,7 +851,16 @@ async function appendHistoryFile({ historyPath, measuredAtIso, sha, benches }) {
 
 async function main() {
   const args = parseArgs(process.argv.slice(2))
+  const timings = args.timings ? createTimings() : undefined
+  const finishOverall = timings?.start('overall')
+  try {
+    await measure(args, timings)
+  } finally {
+    finishOverall?.()
+  }
+}
 
+async function measure(args, timings) {
   if (
     args.measurementsOnly &&
     (args.sha || args.measuredAt || args.appendHistory)
@@ -905,11 +885,19 @@ async function main() {
     : new Date().toISOString()
   const startedAt = Date.now()
   const scenarios = filterScenarios(args.scenario)
-  const packageBuildProjects = buildRequiredPackages({
-    repoRoot,
-    scenarios,
-    skipPackageBuilds: args.skipPackageBuilds,
-  })
+  const finishPackageBuilds = args.skipPackageBuilds
+    ? undefined
+    : timings?.start('package-builds')
+  let packageBuildProjects
+  try {
+    packageBuildProjects = buildRequiredPackages({
+      repoRoot,
+      scenarios,
+      skipPackageBuilds: args.skipPackageBuilds,
+    })
+  } finally {
+    finishPackageBuilds?.()
+  }
 
   await fsp.mkdir(resultsDir, { recursive: true })
   await fsp.mkdir(distDir, { recursive: true })
@@ -920,18 +908,32 @@ async function main() {
     const root = path.join(scenariosRoot, scenario.dir)
     const outDir = path.join(distDir, scenario.outDir || scenario.dir)
 
-    await buildScenario({
-      root,
-      outDir,
-      scenario,
-      sourcemap: args.sourcemap || args.analysis,
-    })
+    const finishBuild = timings?.start('scenario-build', scenario.id)
+    try {
+      await buildScenario({
+        root,
+        outDir,
+        scenario,
+        sourcemap: args.sourcemap || args.analysis,
+      })
+    } finally {
+      finishBuild?.()
+    }
 
-    const bundleInfo = await resolveBundleFiles({ outDir, scenario })
-    const sizes = sizesForFiles(bundleInfo.manifestOutDir, bundleInfo.jsFiles)
-    const initialSizes = sizesForFiles(
+    const finishManifest = timings?.start('manifest-resolution', scenario.id)
+    let bundleInfo
+    try {
+      bundleInfo = await resolveBundleFiles({ outDir, scenario })
+    } finally {
+      finishManifest?.()
+    }
+    const { sizes, initialSizes } = measureFileSizes(
       bundleInfo.manifestOutDir,
+      bundleInfo.jsFiles,
       bundleInfo.initialJsFiles,
+      timings
+        ? (phase, durationMs) => timings.record(phase, durationMs, scenario.id)
+        : undefined,
     )
     const initialFileSet = new Set(bundleInfo.initialJsFiles)
     const files = sizes.files.map((file) => ({
@@ -961,10 +963,15 @@ async function main() {
     }
 
     if (args.analysis) {
-      metric.sources = sourceAttributionForFiles(
-        bundleInfo.manifestOutDir,
-        bundleInfo.jsFiles,
-      )
+      const finishAnalysis = timings?.start('analysis', scenario.id)
+      try {
+        metric.sources = sourceAttributionForFiles(
+          bundleInfo.manifestOutDir,
+          bundleInfo.jsFiles,
+        )
+      } finally {
+        finishAnalysis?.()
+      }
     }
 
     metrics.push(metric)

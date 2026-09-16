@@ -49,6 +49,7 @@ export function run(argv, execute = spawnSync) {
       'dist-dir': { type: 'string' },
       analysis: { type: 'boolean' },
       sourcemap: { type: 'boolean' },
+      timings: { type: 'boolean' },
       'skip-package-builds': { type: 'boolean' },
       help: { type: 'boolean', short: 'h' },
     },
@@ -65,6 +66,7 @@ export function run(argv, execute = spawnSync) {
   --dist-dir <dir>          Override the emitted bundle directory
   --analysis               Include source attribution in current.json
   --sourcemap              Emit hidden source maps
+  --timings                Record fresh phase timings in measure.log
   --skip-package-builds    Reuse package builds only when they are unchanged
 
 Named runs use <results-root>/runs/<name>/current.json.
@@ -221,6 +223,7 @@ Arguments after -- go to the selected unit tests, not the measurement.`)
   for (const [option, value] of Object.entries({
     analysis: values.analysis,
     sourcemap: values.sourcemap,
+    timings: values.timings,
     'skip-package-builds': values['skip-package-builds'],
   })) {
     if (value) {
