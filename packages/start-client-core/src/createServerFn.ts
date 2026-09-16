@@ -242,7 +242,7 @@ export async function executeMiddleware(
     const startContext = getStartContextServerOnly({ throwIfNotFound: false })
     if (startContext?.executedRequestMiddlewares) {
       flattenedMiddlewares = flattenedMiddlewares.filter(
-        (m) => !startContext.executedRequestMiddlewares.has(m),
+        (m) => !startContext.executedRequestMiddlewares!.has(m),
       )
     }
   }
