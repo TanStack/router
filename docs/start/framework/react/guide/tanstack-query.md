@@ -6,7 +6,7 @@ description: Use TanStack Query with TanStack Start for request-isolated SSR, hy
 
 TanStack Start uses Router loaders to coordinate navigation. TanStack Query can own the fetched data, freshness, and mutation state. Use them together when your application needs a query cache across routes, background updates, or mutation-driven invalidation.
 
-The [React Query example](../examples/start-basic-react-query) includes a `/preferences` page that reads and updates a display name stored in a cookie. Its [tests](https://github.com/TanStack/router/blob/main/examples/react/start-basic-react-query/tests/preferences.spec.ts) check server-rendered data, isolation between requests, hydration without a duplicate read, and invalidation after a server function. The preference cookie is not an authentication mechanism.
+The [React Query example](https://github.com/TanStack/router/tree/main/examples/react/start-basic-react-query) includes a `/preferences` page that reads and updates a display name stored in a cookie. Its [tests](https://github.com/TanStack/router/blob/main/examples/react/start-basic-react-query/tests/preferences.spec.ts) check server-rendered data, isolation between requests, hydration without a duplicate read, and invalidation after a server function. The preference cookie is not an authentication mechanism.
 
 ## Install and create a QueryClient per router
 
