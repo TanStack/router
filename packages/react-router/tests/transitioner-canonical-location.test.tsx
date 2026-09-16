@@ -58,7 +58,7 @@ describe('mount canonicalization preserves history', () => {
       expect(loader).toHaveBeenCalledTimes(1)
       expect(router.state.status).toBe('idle')
 
-      await act(async () => {
+      await act(() => {
         history.back()
       })
       await screen.findByText('Previous page')

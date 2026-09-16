@@ -47,7 +47,7 @@ describe('Link destination updates', () => {
 
     const link = await screen.findByRole('link', { name: 'Target' })
     const href = link.getAttribute('href')
-    await act(async () => {
+    await act(() => {
       fireEvent.click(link)
     })
     expect(router.state.location.href).toBe(href)
@@ -77,7 +77,7 @@ describe('Link destination updates', () => {
 
     const link = await screen.findByRole('link', { name: 'Target' })
     expect(link).toHaveAttribute('href', '/target?tab=one#details')
-    await act(async () => {
+    await act(() => {
       fireEvent.click(link)
     })
     expect(router.state.location.href).toBe('/target?tab=one#details')

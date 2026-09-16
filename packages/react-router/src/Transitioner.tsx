@@ -49,14 +49,25 @@ export function Transitioner({
 
     router.updateLatestLocation()
     const location = router.latestLocation
-    const nextLocation = router.buildLocation({
+    // Match the private Link destination layout: this cold call shares the
+    // builder's feedback with every subsequent Link selection.
+    const destination = {
+      from: undefined,
+      _fromLocation: undefined,
       to: location.pathname,
-      search: true,
       params: true,
+      search: true,
       hash: true,
       state: true,
+      mask: undefined,
+      unsafeRelative: undefined,
+      href: undefined,
+      leaveParams: undefined,
       _includeValidateSearch: true,
-    })
+      _isNavigate: undefined,
+      unmaskOnReload: undefined,
+    } as const
+    const nextLocation = router.buildLocation(destination)
 
     // Check if the current URL matches the canonical form.
     // Compare publicHref (browser-facing URL) consistently with server

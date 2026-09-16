@@ -266,11 +266,34 @@ export function useLinkProps<
     activeOptions,
   )
   // `_options` is the options object from the render that last changed the
-  // destination. `dest` is its copy that the link owns: one stable object per
-  // link lets the router reuse location-independent results.
+  // destination. `dest` is the link's private, stable builder record. Keep its
+  // field order aligned with Transitioner's canonicalization record so the
+  // shared builder sees the same layout regardless of presentation props.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const [_options, dest] = React.useMemo(
-    () => [options, { ...options } as any] as const,
+    () => {
+      // Keep the enumerable-own-property semantics used by navigation's spread.
+      const buildOptions = { ...options } as any
+      return [
+        options,
+        {
+          from: buildOptions.from,
+          _fromLocation: buildOptions._fromLocation,
+          to: buildOptions.to,
+          params: buildOptions.params,
+          search: buildOptions.search,
+          hash: buildOptions.hash,
+          state: buildOptions.state,
+          mask: buildOptions.mask,
+          unsafeRelative: buildOptions.unsafeRelative,
+          href: buildOptions.href,
+          leaveParams: buildOptions.leaveParams,
+          _includeValidateSearch: buildOptions._includeValidateSearch,
+          _isNavigate: buildOptions._isNavigate,
+          unmaskOnReload: buildOptions.unmaskOnReload,
+        } as any,
+      ] as const
+    },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
