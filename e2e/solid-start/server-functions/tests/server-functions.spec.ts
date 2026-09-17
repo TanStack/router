@@ -191,11 +191,15 @@ test('POST server functions return single-flight loader data', async ({
   await page.getByTestId('single-flight-mutate').click()
   const response = await responsePromise
 
-  // The router subscribes under its named source id ("tsr", Solid's
-  // multi-source single-flight protocol): the request advertises the
-  // sources the client consumes, the response echoes the ones the server
-  // folded.
-  expect(response.request().headers()['x-single-flight']).toBe('tsr')
+  // Two consumers ride the mutation (Solid's multi-source single-flight
+  // protocol): Start's loader-data slice under its named source id "tsr",
+  // and the router's response-metadata consumer under the reserved unnamed
+  // id "true". The request advertises every source the client consumes;
+  // the response echoes only the ones the server folded — nothing collects
+  // for the unnamed slot, so the router's id never comes back.
+  expect(
+    response.request().headers()['x-single-flight'].split(',').sort(),
+  ).toEqual(['true', 'tsr'])
   expect(response.headers()['x-single-flight']).toBe('tsr')
 
   await expect(page.getByTestId('single-flight-count')).toHaveText(
