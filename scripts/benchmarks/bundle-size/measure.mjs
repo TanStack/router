@@ -984,7 +984,7 @@ async function measure(args, timings) {
     measuredAt: measuredAtIso,
     status: {
       state: 'success',
-      command: `node ${path.relative(repoRoot, fileURLToPath(import.meta.url))}${args.scenario ? ` --scenario ${args.scenario}` : ''}${args.analysis ? ' --analysis' : ''}${args.sourcemap ? ' --sourcemap' : ''}${args.skipPackageBuilds ? ' --skip-package-builds' : ''}`,
+      command: `node ${path.relative(repoRoot, fileURLToPath(import.meta.url))}${args.scenario ? ` --scenario ${args.scenario}` : ''}${args.analysis ? ' --analysis' : ''}${args.sourcemap ? ' --sourcemap' : ''}${args.timings ? ' --timings' : ''}${args.skipPackageBuilds ? ' --skip-package-builds' : ''}`,
       scenarioFilter: args.scenario || null,
       measuredScenarios: scenarios.map((scenario) => scenario.id),
       packageBuildProjects,
