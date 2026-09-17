@@ -65,6 +65,29 @@ Full stdout and stderr stay in the log files. A positive bundle-size delta does 
 
 For agent runs, use `pnpm --silent benchmark:bundle-size:run ...` to omit the package-manager command echo.
 
+### Phase Timings
+
+To diagnose measurement time, request a fresh run:
+
+```bash
+pnpm benchmark:bundle-size:run --scenario react-router.minimal --analysis --timings
+```
+
+The runner directly executes `measure.mjs` on every invocation, rebuilding the selected scenarios and recording fresh timings in `measure.log`. Its package-build step still uses Nx and may restore cached packages. Use `--skip-package-builds` only when those packages are already built and unchanged.
+
+`measure.mjs` also accepts `--timings` directly. Alternatively, set `BUNDLE_SIZE_TIMINGS=1`. Timing lines go to stderr with the prefix `[bundle-size:timing]` followed by JSON containing `phase`, `durationMs`, and, for scenario phases, `scenario`. They are diagnostics only and do not add fields to the size metrics.
+
+The cached `pnpm benchmark:bundle-size` / Nx build path can replay terminal output from an earlier execution, including old timing lines. Setting `BUNDLE_SIZE_TIMINGS=1` does not invalidate that cache or guarantee fresh timings. Use the direct runner above for timing investigations; refreshing `current.json` after a cache hit does not remeasure build time.
+
+- `package-builds`: elapsed time for the package-build invocation, including Nx startup/cache handling; omitted when package builds are skipped.
+- `scenario-build`: elapsed time for each scenario's build and cleanup.
+- `manifest-resolution`: manifest discovery, parsing, entry selection, and collection of all/initial JS file lists.
+- `gzip` / `brotli`: accumulated codec time across distinct files for each scenario, using Node's default compression settings. File reads and summation are excluded; initial files reuse already measured sizes.
+- `analysis`: source attribution, when `--analysis` is enabled.
+- `overall`: measurement execution through report/history writing. Module imports, process startup, and the outer runner's tests/report command are excluded.
+
+Phases that start also report elapsed work on failure; compression reports partial accumulated times before propagating the error. Timing records alone do not indicate success. `overall` contains the other phases, so nested timings must not be added to it. The phase breakdown also excludes overhead such as file reads and result writing, so its sum is not expected to equal `overall`.
+
 ## Compare Optimization Candidates
 
 Before you change the implementation, save a named baseline:
