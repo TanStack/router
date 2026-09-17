@@ -114,6 +114,7 @@ test('runs targeted tests before measurement and saves named results and logs', 
   assert.equal(measure.args[0], measurePath)
   assert.ok(measure.args.includes('react-router.minimal,react-router.full'))
   assert.ok(!measure.args.includes('--skip-package-builds'))
+  assert.ok(!measure.args.includes('--timings'))
   assert.ok(!measure.args.includes('tests/path.test.ts'))
   for (const { options } of calls) {
     assert.equal(options.env.CI, '1')
@@ -167,6 +168,7 @@ test('accepts an external baseline and forwards measurement options', (t) => {
         path.join(root, 'dist with spaces'),
         '--analysis',
         '--sourcemap',
+        '--timings',
         '--skip-package-builds',
       ],
       execute,
@@ -178,8 +180,10 @@ test('accepts an external baseline and forwards measurement options', (t) => {
     path.join(root, 'dist with spaces'),
     '--analysis',
     '--sourcemap',
+    '--timings',
     '--skip-package-builds',
   ])
+  assert.ok(calls.slice(1).every(({ args }) => !args.includes('--timings')))
   assert.match(reports.join(''), /100 -> 90 \(-10\)/)
 })
 
@@ -285,6 +289,10 @@ test('reports help and argument errors through the CLI entry point', () => {
   })
   assert.equal(help.status, 0)
   assert.match(help.stdout, /Usage: pnpm benchmark:bundle-size:run/)
+  assert.match(
+    help.stdout,
+    /--timings\s+Record fresh phase timings in measure\.log/,
+  )
   const invalid = spawnSync(process.execPath, [scriptPath, '--unknown'], {
     encoding: 'utf8',
   })
