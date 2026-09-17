@@ -1,12 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { fetchPosts } from '../posts'
 
+const obj = { name: 'test' }
+
 export const Route = createFileRoute('/')({
+  beforeLoad() {
+    console.log(obj);
+  },
   async loader({ context }) {
-    return await fetchPosts(context)
+    return await fetchPosts(context, obj)
   },
   component() {
-    return <Component />
+    return <Component name={obj.name} />
   },
   pendingComponent() {
     return <PendingComponent />
@@ -19,12 +24,12 @@ export const Route = createFileRoute('/')({
   },
 })
 
-function Component() {
-  return <div>Component</div>
+function Component({ name }: { name: string }) {
+  return <div>Component {name}</div>
 }
 
 function PendingComponent() {
-  return <div>Pending</div>
+  return <div>Pending {obj.name}</div>
 }
 
 function NotFoundComponent() {

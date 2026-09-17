@@ -1,3 +1,4 @@
+import { obj } from "method-shorthand.tsx?tsr-shared=1";
 const $$splitErrorComponentImporter = () => import('method-shorthand.tsx?tsr-split=errorComponent');
 const $$splitNotFoundComponentImporter = () => import('method-shorthand.tsx?tsr-split=notFoundComponent');
 const $$splitComponentImporter = () => import('method-shorthand.tsx?tsr-split=component');
@@ -5,10 +6,13 @@ import { lazyRouteComponent } from '@tanstack/react-router';
 import { createFileRoute } from '@tanstack/react-router';
 import { fetchPosts } from '../posts';
 export const Route = createFileRoute('/')({
+  beforeLoad() {
+    console.log(obj);
+  },
   async loader({
     context
   }) {
-    return await fetchPosts(context);
+    return await fetchPosts(context, obj);
   },
   component: lazyRouteComponent($$splitComponentImporter, 'component'),
   pendingComponent() {
@@ -18,5 +22,5 @@ export const Route = createFileRoute('/')({
   errorComponent: lazyRouteComponent($$splitErrorComponentImporter, 'errorComponent')
 });
 function PendingComponent() {
-  return <div>Pending</div>;
+  return <div>Pending {obj.name}</div>;
 }
