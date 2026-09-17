@@ -4,6 +4,7 @@ import { routerContext } from './routerContext'
 import { SafeFragment } from './SafeFragment'
 import { Matches } from './Matches'
 import { serializeMatchTransfer } from './registryTransfer'
+import { setupFlightDataConsumer } from './flightData'
 import type {
   AnyRouter,
   RegisteredRouter,
@@ -53,6 +54,15 @@ export function RouterContextProvider<
       ? router.load().then(() => true)
       : true,
   )
+
+  // Client-side, the provider is where the router meets Solid's
+  // server-function transport: it consumes the response metadata mutations
+  // return (`redirect()`, `reload()`, `respond(value, { revalidate })`) so
+  // a mutation's navigation and reload happen without the caller wrapping
+  // the call. Never on the server — a render has no mutations to answer.
+  if (!(isServer ?? router.isServer)) {
+    Solid.onCleanup(setupFlightDataConsumer(router))
+  }
 
   const OptionalWrapper = router.options.Wrap || SafeFragment
 

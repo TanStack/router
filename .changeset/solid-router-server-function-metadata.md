@@ -1,0 +1,5 @@
+---
+'@tanstack/solid-router': patch
+---
+
+Consume Solid server-function response metadata. `RouterContextProvider` registers the router as the transport's unnamed single-flight consumer on the client, so the response helpers a mutation returns take effect without the caller wrapping the call: `redirect()` navigates — same-origin targets softly under the router with `replace`, other origins through a document navigation via `navigate({ href })` so the protocol allowlist and blockers still apply — and any declaration of a write (`redirect()`, `reload({ revalidate })`, `respond(value, { revalidate })`, the reserved `revalidate: '*'`) reloads route data through `router.invalidate()`. An empty declaration (`revalidate: []`) is honored as nothing to reload. Navigation runs before invalidation so a redirect costs one load: the destination commits with its shared layouts reloaded and the page being left never reruns its own loaders. `X-Revalidate` keys name entries in caches the router does not own and are left to those caches' consumers.
