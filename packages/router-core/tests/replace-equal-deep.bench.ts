@@ -189,7 +189,7 @@ expect(nullReplaceEqualDeep(emptyNull, {})).toBe(emptyNull)
 expect(
   nullReplaceEqualDeep(searchWithConstructorKey, searchWithConstructorKeyCopy),
 ).toBe(searchWithConstructorKey)
-expect(deepEqual(search, searchCopy, { partial: true })).toBe(true)
+expect(deepEqual(search, searchCopy, true)).toBe(true)
 expect(isPlainObject(search)).toBe(true)
 expect(isPlainObject(emptyNull)).toBe(true)
 expect(isPlainObject(searchWithConstructorKey)).toBe(true)
@@ -524,7 +524,7 @@ describe('deepEqual', () => {
 
   bench('equal flat search (partial)', () => {
     for (let i = 0; i < iterations; i++) {
-      sink = deepEqual(search, searchCopy, { partial: true })
+      sink = deepEqual(search, searchCopy, true)
     }
   })
 
