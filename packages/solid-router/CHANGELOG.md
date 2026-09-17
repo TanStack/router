@@ -1,5 +1,32 @@
 # @tanstack/solid-router
 
+## 2.0.0-rc.8
+
+### Patch Changes
+
+- [#8348](https://github.com/TanStack/router/pull/8348) [`8981eb7`](https://github.com/TanStack/router/commit/8981eb78775ef3ff3701b51189e2d9dff34b488f) - Bump solid-js and @solidjs/web to ^2.0.0-rc.8 and @solidjs/vite-plugin to ^3.0.0-next.43 across the monorepo (with @rsbuild/plugin-solid ^2.0.0-rc.0 and @solidjs/babel-plugin ^2.0.0-rc.8 for the rsbuild/webpack paths). rc.8 is ESM-only and declares `engines.node >= 22.12`. @solidjs/vite-plugin 3.0.0-next.43 is the first release that honors `resolve.noExternal` patterns when it externalizes the dependencies of packages that consume the Solid runtime (solidjs/solid-vite-plugin#360); on next.41 and next.42, `vite dev` fails for TanStack Start apps with "Package import specifier '#tanstack-router-entry' is not defined".
+
+- [#8179](https://github.com/TanStack/router/pull/8179) [`465d15a`](https://github.com/TanStack/router/commit/465d15a15d82ff583adb7deba3f3e83dac98a6b8) - Stop installing intent-preload listeners on `<Link>` when intent preloading is off.
+
+  `useLinkProps` handed out `onFocus`/`onBlur`/`onMouseEnter`/`onMouseLeave` (and the
+  mouse-over/out/touch-start pair) unconditionally, with the `preload() !== 'intent'`
+  check living _inside_ each handler. Solid does not delegate `mouseenter`,
+  `mouseleave`, `focus` or `blur`, so every anchor installed four real listeners that
+  did nothing but return — on a list view that is four per row (a 165-row board
+  measured 660 listeners whose only job was to bail).
+
+  The handlers are now resolved through getters: with intent preloading off the
+  property yields whatever the consumer passed (or `undefined`, which `spread()`
+  treats as removal), and nothing is attached. Behaviour is unchanged — the getters
+  stay reactive, so flipping `preload` back to `'intent'` re-runs the consuming
+  spread and attaches the composed handler.
+
+- [#8109](https://github.com/TanStack/router/pull/8109) [`d46b8ee`](https://github.com/TanStack/router/commit/d46b8ee00b942855cef525d83d2e28b6d31b41b7) - Preserve caller-provided roles on enabled links.
+
+- [#8399](https://github.com/TanStack/router/pull/8399) [`9de3573`](https://github.com/TanStack/router/commit/9de3573f7f838dfcc2f0992300497fe7e442b12b) - Declare navigations to Solid's observe tier. On Solid's dev and observe builds (`OBSERVE` defined), the match publish inside `startTransition` is wrapped in `OBSERVE.attribution.withOrigin` with the destination route's `fullPath`, params, `to`/`from` pathnames and `at` from the history change that started the load, so the holds and re-runs a navigation causes are named after the route and the record spans the loader wait. The pending offer, the initial load and same-location reloads are published undeclared. Nothing changes in production, where `OBSERVE` is undefined.
+
+- [#8461](https://github.com/TanStack/router/pull/8461) [`bf7f924`](https://github.com/TanStack/router/commit/bf7f924b602061c73edd4fb6d0535cc0d727098e) - Consume Solid server-function response metadata. `RouterContextProvider` registers the router as the transport's unnamed single-flight consumer on the client, so the response helpers a mutation returns take effect without the caller wrapping the call: `redirect()` navigates — same-origin targets softly under the router with `replace`, other origins through a document navigation via `navigate({ href })` so the protocol allowlist and blockers still apply — and any declaration of a write (`redirect()`, `reload({ revalidate })`, `respond(value, { revalidate })`, the reserved `revalidate: '*'`) reloads route data through `router.invalidate()`. An empty declaration (`revalidate: []`) is honored as nothing to reload. Navigation runs before invalidation so a redirect costs one load: the destination commits with its shared layouts reloaded and the page being left never reruns its own loaders. `X-Revalidate` keys name entries in caches the router does not own and are left to those caches' consumers.
+
 ## 2.0.0-rc.7
 
 ### Patch Changes
