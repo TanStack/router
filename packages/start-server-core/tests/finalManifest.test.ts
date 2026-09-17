@@ -85,6 +85,99 @@ describe('final manifest resolver', () => {
     expect(getBaseManifest).toHaveBeenCalledTimes(2)
   })
 
+  it.each([undefined, true, false])(
+    'shares cached promises without transforms for inlineCss=%s',
+    async (inlineCss) => {
+      const getBaseManifest = vi.fn(async () => baseManifest)
+      const resolver = createFinalManifestResolver({
+        inlineCss,
+        cacheCreateTransform: true,
+      })
+      const requestOpts = {
+        request: new Request('https://example.com'),
+        requestInlineCss: undefined,
+        getBaseManifest,
+      }
+      const defaultManifest = await resolver.resolveCached(requestOpts)
+      const cachedDefault = resolver.resolveCached(requestOpts)
+
+      expect(resolver.resolveCached(requestOpts)).toBe(cachedDefault)
+      await expect(cachedDefault).resolves.toBe(defaultManifest)
+      expect(!!defaultManifest.inlineCss).toBe(inlineCss ?? true)
+
+      const overrideOpts = {
+        ...requestOpts,
+        requestInlineCss: !(inlineCss ?? true),
+      }
+      const overrideManifest = await resolver.resolveCached(overrideOpts)
+      const cachedOverride = resolver.resolveCached(overrideOpts)
+
+      expect(resolver.resolveCached(overrideOpts)).toBe(cachedOverride)
+      await expect(cachedOverride).resolves.toBe(overrideManifest)
+      expect(!!overrideManifest.inlineCss).toBe(overrideOpts.requestInlineCss)
+      expect(cachedOverride).not.toBe(cachedDefault)
+      expect(getBaseManifest).toHaveBeenCalledTimes(2)
+    },
+  )
+
+  it('loads current assets for uncached requests without transforms', async () => {
+    const getBaseManifest = vi.fn(async () => baseManifest)
+    const resolver = createFinalManifestResolver({
+      cacheCreateTransform: false,
+    })
+    const requestOpts = {
+      request: new Request('https://example.com'),
+      requestInlineCss: undefined,
+      getBaseManifest,
+    }
+    const cached = await resolver.resolveCached(requestOpts)
+    getBaseManifest.mockResolvedValue({
+      ...baseManifest,
+      inlineCss: { styles: { '/assets/app.css': '.app{color:blue}' } },
+    })
+
+    const uncached = await resolver.resolveUncached(requestOpts)
+
+    expect(uncached.inlineCss?.styles['/assets/app.css']).toBe(
+      '.app{color:blue}',
+    )
+    expect(cached.inlineCss?.styles['/assets/app.css']).toBe('.app{color:red}')
+    expect(getBaseManifest).toHaveBeenCalledTimes(2)
+  })
+
+  it('evaluates request-dependent inline CSS without transforms unless overridden', async () => {
+    const inlineCss = vi.fn(({ request }: { request: Request }) =>
+      request.url.endsWith('/inline'),
+    )
+    const resolver = createFinalManifestResolver({
+      inlineCss,
+      cacheCreateTransform: true,
+    })
+    const getBaseManifest = vi.fn(async () => baseManifest)
+
+    const inline = await resolver.resolveCached({
+      request: new Request('https://example.com/inline'),
+      requestInlineCss: undefined,
+      getBaseManifest,
+    })
+    const linked = await resolver.resolveCached({
+      request: new Request('https://example.com/linked'),
+      requestInlineCss: undefined,
+      getBaseManifest,
+    })
+    const overridden = await resolver.resolveCached({
+      request: new Request('https://example.com/linked'),
+      requestInlineCss: true,
+      getBaseManifest,
+    })
+
+    expect(inline.inlineCss).toBeDefined()
+    expect(linked.inlineCss).toBeUndefined()
+    expect(overridden).toBe(inline)
+    expect(inlineCss).toHaveBeenCalledTimes(2)
+    expect(getBaseManifest).toHaveBeenCalledTimes(2)
+  })
+
   it('evicts rejected cached final manifest promises so requests can retry', async () => {
     const getBaseManifest = vi
       .fn<() => Promise<ServerManifest>>()

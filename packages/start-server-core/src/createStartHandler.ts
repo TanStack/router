@@ -538,7 +538,6 @@ export function createStartHandler<TRegister = Register>(
       // in these cases we would prefer to redirect to the new path
       const { url, handledProtocolRelativeURL } = getNormalizedURL(request.url)
       const href = url.pathname + url.search + url.hash
-      const origin = url.origin
 
       if (handledProtocolRelativeURL) {
         return Response.redirect(url, 308)
@@ -579,14 +578,15 @@ export function createStartHandler<TRegister = Register>(
       }
 
       // Flatten request middlewares once
-      const flattenedRequestMiddlewares = requestStartOptions.requestMiddleware
-        ? flattenMiddlewares(requestStartOptions.requestMiddleware)
+      const requestMiddlewares = requestStartOptions.requestMiddleware
+      const flattenedRequestMiddlewares = requestMiddlewares?.length
+        ? flattenMiddlewares(requestMiddlewares)
         : []
 
       // Create set for deduplication
-      const executedRequestMiddlewares = new Set<TODO>(
-        flattenedRequestMiddlewares,
-      )
+      const executedRequestMiddlewares = flattenedRequestMiddlewares.length
+        ? new Set<TODO>(flattenedRequestMiddlewares)
+        : undefined
 
       // Memoized router getter
       const getRouter = (): Promise<AnyRouter> => {
@@ -608,14 +608,17 @@ export function createStartHandler<TRegister = Register>(
             history,
             isShell,
             isPrerendering: IS_PRERENDERING,
-            origin: requestRouter.options.origin ?? origin,
+            origin: requestRouter.options.origin ?? url.origin,
             // Start-owned options that RouterConstructorOptions omits.
             ...{
               defaultSsr: requestStartOptions.defaultSsr,
-              serializationAdapters: [
-                ...requestStartOptions.serializationAdapters,
-                ...(requestRouter.options.serializationAdapters || []),
-              ],
+              serializationAdapters: requestRouter.options.serializationAdapters
+                ?.length
+                ? [
+                    ...requestStartOptions.serializationAdapters,
+                    ...requestRouter.options.serializationAdapters,
+                  ]
+                : requestStartOptions.serializationAdapters,
             },
             basepath: ROUTER_BASEPATH,
           })
@@ -938,18 +941,15 @@ async function handleServerRoutes({
     matchedRoutes?: ReadonlyArray<AnyRoute>,
   ) => Promise<SsrResponse>
   context: any
-  executedRequestMiddlewares: Set<AnyRequestMiddleware>
+  executedRequestMiddlewares: Set<AnyRequestMiddleware> | undefined
 }): Promise<SsrResponse> {
   const router = await getRouter()
-  const location = router.latestLocation
-  // Preserve the encoded pathname exposed to server handlers and middleware.
-  const pathname = location.href.split(/[?#]/, 1)[0]!
+  const { pathname } = router.latestLocation
   // this will perform a fuzzy match, however for server routes we need an exact match
   // if the route is not an exact match, executeRouter will handle rendering the app router
   // The cached match avoids another route-tree traversal during the app router render.
-  const [matchedRoutes, rawParams, foundRoute] = router.getMatchedRoutes(
-    location.pathname,
-  )
+  const [matchedRoutes, rawParams, foundRoute] =
+    router.getMatchedRoutes(pathname)
 
   const isExactMatch = foundRoute && rawParams['**'] === undefined
 
@@ -965,10 +965,10 @@ async function handleServerRoutes({
     const serverMiddleware = route.options.server?.middleware as
       | Array<AnyRequestMiddleware>
       | undefined
-    if (serverMiddleware) {
+    if (serverMiddleware?.length) {
       const flattened = flattenMiddlewares(serverMiddleware)
       for (const m of flattened) {
-        if (!executedRequestMiddlewares.has(m)) {
+        if (!executedRequestMiddlewares?.has(m)) {
           routeMiddlewares.push(m.options.server)
         }
       }
@@ -1017,6 +1017,10 @@ async function handleServerRoutes({
         }
       }
     }
+  }
+
+  if (!routeMiddlewares.length && !terminalNext) {
+    return executeRouter(context, matchedRoutes)
   }
 
   const response = await executeMiddleware(
