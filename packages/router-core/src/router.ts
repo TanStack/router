@@ -33,6 +33,7 @@ import {
 import {
   compileDecodeCharMap,
   interpolatePath,
+  removeTrailingSlash,
   resolvePath,
   trimPath,
   trimPathRight,
@@ -2702,11 +2703,18 @@ export class RouterCore<
       ? this.latestLocation
       : this.stores.resolvedLocation.get() || this.stores.location.get()
 
+    const matchTo = opts?.fuzzy
+      ? next.pathname
+      : removeTrailingSlash(next.pathname, this.basepath)
+    const matchFrom = opts?.fuzzy
+      ? baseLocation.pathname
+      : removeTrailingSlash(baseLocation.pathname, this.basepath)
+
     const match = findSingleMatch(
-      next.pathname,
+      matchTo,
       opts?.caseSensitive ?? false,
       opts?.fuzzy ?? false,
-      baseLocation.pathname,
+      matchFrom,
       this.processedTree,
     )
 
