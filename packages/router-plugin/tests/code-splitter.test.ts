@@ -10,9 +10,13 @@ import {
   collectLocalBindingsFromStatement,
   collectModuleLevelRefsFromNode,
   compileCodeSplitReferenceRoute,
+  compileCodeSplitReferenceRouteFromAst,
   compileCodeSplitSharedRoute,
   compileCodeSplitVirtualRoute,
   computeSharedBindings,
+  computeSharedBindingsFromAst,
+  detectCodeSplitGroupingsFromAst,
+  detectCodeSplitGroupingsFromRoute,
   expandDestructuredDeclarations,
   expandSharedDestructuredDeclarators,
   expandTransitively,
@@ -76,7 +80,7 @@ describe('code-splitter works', () => {
               codeSplitGroupings: grouping,
             })
 
-            const compileResult = compileCodeSplitReferenceRoute({
+            const opts = {
               code,
               filename,
               id: filename,
@@ -85,9 +89,32 @@ describe('code-splitter works', () => {
               targetFramework: framework,
               sharedBindings:
                 sharedBindings.size > 0 ? sharedBindings : undefined,
-            })
+            }
+            const compileResult = compileCodeSplitReferenceRoute(opts)
 
-            await expect(compileResult?.code || code).toMatchFileSnapshot(
+            // Exercise the plugin's parse-once ordering across the entire
+            // snapshot matrix, including scope-sensitive shared extraction.
+            const ast = parseAst({ code, filename })
+            expect(detectCodeSplitGroupingsFromAst(ast)).toEqual(
+              detectCodeSplitGroupingsFromRoute({ code, filename }),
+            )
+            const parsedSharedBindings = computeSharedBindingsFromAst(
+              ast,
+              grouping,
+            )
+            expect(parsedSharedBindings).toEqual(sharedBindings)
+            const parsedResult = compileCodeSplitReferenceRouteFromAst(ast, {
+              ...opts,
+              sharedBindings:
+                parsedSharedBindings.size > 0
+                  ? parsedSharedBindings
+                  : undefined,
+            })
+            expect(parsedResult?.code).toBe(compileResult?.code)
+            expect(parsedResult?.map).toEqual(compileResult?.map)
+            expect(parsedResult === null).toBe(compileResult === null)
+
+            await expect(parsedResult?.code || code).toMatchFileSnapshot(
               path.join(dirs.snapshots, groupName, filename),
             )
           },
