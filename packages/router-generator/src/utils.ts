@@ -123,6 +123,30 @@ export function multiSortBy<T>(
   return result
 }
 
+/**
+ * Sorts route nodes by root, path depth, index status, and finally `routePath`.
+ * The `routePath` comparison keeps the output consistent when the earlier
+ * values are the same.
+ */
+export function sortRouteNodes(
+  routeNodes: Array<RouteNode>,
+  indexTokenSegmentRegex: RegExp,
+): Array<RouteNode> {
+  return multiSortBy(routeNodes, [
+    (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
+    (d) =>
+      d.routePath === undefined
+        ? undefined
+        : countSlashSeparatedParts(d.routePath),
+    (d) => {
+      const segments = d.routePath?.split('/').filter(Boolean) ?? []
+      const last = segments[segments.length - 1] ?? ''
+      return indexTokenSegmentRegex.test(last) ? -1 : 1
+    },
+    (d) => d.routePath,
+  ])
+}
+
 export function cleanPath(path: string) {
   // remove double slashes
   return path.replace(/\/{2,}/g, '/')
@@ -162,13 +186,12 @@ const DISALLOWED_ESCAPE_CHARS = new Set([
   '%',
 ])
 
-export function determineInitialRoutePath(routePath: string) {
+function determineInitialRoutePathFromParts(
+  routePath: string,
+  parts: Array<string>,
+) {
   const originalRoutePath =
-    cleanPath(
-      `/${(cleanPath(routePath) || '').split(SPLIT_REGEX).join('/')}`,
-    ) || ''
-
-  const parts = routePath.split(SPLIT_REGEX)
+    cleanPath(`/${cleanPath(parts.join('/')) || ''}`) || ''
 
   // Escape any characters that in square brackets
   // we keep the original path untouched
@@ -205,6 +228,21 @@ export function determineInitialRoutePath(routePath: string) {
     routePath: final,
     originalRoutePath,
   }
+}
+
+export function determineInitialRoutePath(routePath: string) {
+  return determineInitialRoutePathFromParts(
+    routePath,
+    routePath.split(SPLIT_REGEX),
+  )
+}
+
+/**
+ * Resolves bracket escapes in an explicit route path or ID without applying
+ * the dot-delimited flat-file route convention.
+ */
+export function determineInitialRoutePathFromExplicitPath(routePath: string) {
+  return determineInitialRoutePathFromParts(routePath, [routePath])
 }
 
 /**

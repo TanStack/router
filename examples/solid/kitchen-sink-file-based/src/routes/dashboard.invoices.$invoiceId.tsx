@@ -35,7 +35,7 @@ function InvoiceComponent() {
   })
   const [notes, setNotes] = Solid.createSignal(search().notes ?? '')
 
-  Solid.createEffect(() => {
+  Solid.createEffect(notes, () => {
     navigate({
       search: (old) => ({
         ...old,

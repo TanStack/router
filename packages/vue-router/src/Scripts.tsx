@@ -1,90 +1,64 @@
 import * as Vue from 'vue'
+import { _getAssetMatches } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { isServer } from '@tanstack/router-core/isServer'
 import { Asset } from './Asset'
 import { useRouter } from './useRouter'
 import type { RouterManagedTag } from '@tanstack/router-core'
 
-type ScriptsRenderState = {
-  scripts: Array<RouterManagedTag>
-  assetScripts: Array<RouterManagedTag>
-  mounted: boolean
-  nonce?: string
-}
-
 export const Scripts = Vue.defineComponent({
   name: 'Scripts',
   setup() {
     const router = useRouter()
     const nonce = router.options.ssr?.nonce
-    const matches = useStore(router.stores.matches, (value) => value)
+    const matches = useStore(router.stores.matches, _getAssetMatches)
 
-    const getAssetScripts = (matches: Array<any>) => {
+    const scripts = Vue.computed(() => {
+      const userScripts: Array<RouterManagedTag> = []
       const assetScripts: Array<RouterManagedTag> = []
       const manifest = router.ssr?.manifest
-
-      if (!manifest) {
-        return []
-      }
-
-      matches.forEach((match) => {
-        const routeManifest = manifest.routes[match.routeId]
-
-        routeManifest?.scripts?.forEach((asset) => {
+      for (const match of matches.value) {
+        for (const script of match.scripts ?? []) {
+          if (!script) {
+            continue
+          }
+          const { children, ...attrs } = script
+          userScripts.push({
+            tag: 'script',
+            attrs: { ...attrs, nonce },
+            children,
+          })
+        }
+        for (const asset of manifest?.routes[match.routeId]?.scripts ?? []) {
           assetScripts.push({
             tag: 'script',
             attrs: { ...asset.attrs, nonce },
             children: asset.children,
           })
-        })
-      })
-
-      return assetScripts
-    }
-
-    const getScripts = (matches: Array<any>): Array<RouterManagedTag> =>
-      (
-        matches
-          .map((match) => match.scripts!)
-          .flat(1)
-          .filter(Boolean) as Array<RouterManagedTag>
-      ).map(
-        ({ children, ...script }) =>
-          ({
-            tag: 'script',
-            attrs: {
-              ...script,
-              nonce,
-            },
-            children,
-          }) satisfies RouterManagedTag,
-      )
-
-    const assetScripts = Vue.computed<Array<RouterManagedTag>>(() =>
-      getAssetScripts(matches.value),
-    )
-    const scripts = Vue.computed<Array<RouterManagedTag>>(() =>
-      getScripts(matches.value),
-    )
+        }
+      }
+      return [userScripts, assetScripts] as const
+    })
 
     const mounted = Vue.ref(false)
     Vue.onMounted(() => {
       mounted.value = true
     })
 
-    return () =>
-      renderScripts(router, {
-        scripts: scripts.value,
-        assetScripts: assetScripts.value,
-        mounted: mounted.value,
-        nonce,
-      })
+    return () => {
+      return renderScripts(router, scripts.value, mounted.value, nonce)
+    }
   },
 })
 
 function renderScripts(
   router: ReturnType<typeof useRouter>,
-  { scripts, assetScripts, mounted, nonce }: ScriptsRenderState,
+  [scripts, assetScripts]: readonly [
+    Array<RouterManagedTag>,
+    Array<RouterManagedTag>,
+  ],
+  mounted: boolean,
+  nonce?: string,
 ) {
   const allScripts: Array<RouterManagedTag> = []
 

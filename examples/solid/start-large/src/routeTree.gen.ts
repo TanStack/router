@@ -9,23 +9,18 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RelativeRouteImport } from './routes/relative'
-import { Route as LinkPropsRouteImport } from './routes/linkProps'
-import { Route as AbsoluteRouteImport } from './routes/absolute'
-import { Route as SearchRouteRouteImport } from './routes/search/route'
-import { Route as ParamsRouteRouteImport } from './routes/params/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SearchSearchPlaceholderRouteImport } from './routes/search/searchPlaceholder'
+import { Route as AbsoluteRouteImport } from './routes/absolute'
+import { Route as LinkPropsRouteImport } from './routes/linkProps'
+import { Route as ParamsRouteRouteImport } from './routes/params/route'
+import { Route as RelativeRouteImport } from './routes/relative'
+import { Route as SearchRouteRouteImport } from './routes/search/route'
 import { Route as ParamsParamsPlaceholderRouteImport } from './routes/params/$paramsPlaceholder'
+import { Route as SearchSearchPlaceholderRouteImport } from './routes/search/searchPlaceholder'
 
-const RelativeRoute = RelativeRouteImport.update({
-  id: '/relative',
-  path: '/relative',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LinkPropsRoute = LinkPropsRouteImport.update({
-  id: '/linkProps',
-  path: '/linkProps',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AbsoluteRoute = AbsoluteRouteImport.update({
@@ -33,9 +28,9 @@ const AbsoluteRoute = AbsoluteRouteImport.update({
   path: '/absolute',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SearchRouteRoute = SearchRouteRouteImport.update({
-  id: '/search',
-  path: '/search',
+const LinkPropsRoute = LinkPropsRouteImport.update({
+  id: '/linkProps',
+  path: '/linkProps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ParamsRouteRoute = ParamsRouteRouteImport.update({
@@ -43,20 +38,25 @@ const ParamsRouteRoute = ParamsRouteRouteImport.update({
   path: '/params',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const RelativeRoute = RelativeRouteImport.update({
+  id: '/relative',
+  path: '/relative',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SearchSearchPlaceholderRoute = SearchSearchPlaceholderRouteImport.update({
-  id: '/searchPlaceholder',
-  path: '/searchPlaceholder',
-  getParentRoute: () => SearchRouteRoute,
+const SearchRouteRoute = SearchRouteRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ParamsParamsPlaceholderRoute = ParamsParamsPlaceholderRouteImport.update({
   id: '/$paramsPlaceholder',
   path: '/$paramsPlaceholder',
   getParentRoute: () => ParamsRouteRoute,
+} as any)
+const SearchSearchPlaceholderRoute = SearchSearchPlaceholderRouteImport.update({
+  id: '/searchPlaceholder',
+  path: '/searchPlaceholder',
+  getParentRoute: () => SearchRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -134,18 +134,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/relative': {
-      id: '/relative'
-      path: '/relative'
-      fullPath: '/relative'
-      preLoaderRoute: typeof RelativeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/linkProps': {
-      id: '/linkProps'
-      path: '/linkProps'
-      fullPath: '/linkProps'
-      preLoaderRoute: typeof LinkPropsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/absolute': {
@@ -155,11 +148,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AbsoluteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteRouteImport
+    '/linkProps': {
+      id: '/linkProps'
+      path: '/linkProps'
+      fullPath: '/linkProps'
+      preLoaderRoute: typeof LinkPropsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/params': {
@@ -169,19 +162,19 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ParamsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/relative': {
+      id: '/relative'
+      path: '/relative'
+      fullPath: '/relative'
+      preLoaderRoute: typeof RelativeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/search/searchPlaceholder': {
-      id: '/search/searchPlaceholder'
-      path: '/searchPlaceholder'
-      fullPath: '/search/searchPlaceholder'
-      preLoaderRoute: typeof SearchSearchPlaceholderRouteImport
-      parentRoute: typeof SearchRouteRoute
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/params/$paramsPlaceholder': {
       id: '/params/$paramsPlaceholder'
@@ -189,6 +182,13 @@ declare module '@tanstack/solid-router' {
       fullPath: '/params/$paramsPlaceholder'
       preLoaderRoute: typeof ParamsParamsPlaceholderRouteImport
       parentRoute: typeof ParamsRouteRoute
+    }
+    '/search/searchPlaceholder': {
+      id: '/search/searchPlaceholder'
+      path: '/searchPlaceholder'
+      fullPath: '/search/searchPlaceholder'
+      preLoaderRoute: typeof SearchSearchPlaceholderRouteImport
+      parentRoute: typeof SearchRouteRoute
     }
   }
 }

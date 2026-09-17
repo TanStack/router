@@ -10,18 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as UsersZodIndexRouteImport } from './routes/users/zod.index'
-import { Route as UsersValibotIndexRouteImport } from './routes/users/valibot.index'
 import { Route as UsersArktypeIndexRouteImport } from './routes/users/arktype.index'
+import { Route as UsersValibotIndexRouteImport } from './routes/users/valibot.index'
+import { Route as UsersZodIndexRouteImport } from './routes/users/zod.index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersZodIndexRoute = UsersZodIndexRouteImport.update({
-  id: '/users/zod/',
-  path: '/users/zod/',
+const UsersArktypeIndexRoute = UsersArktypeIndexRouteImport.update({
+  id: '/users/arktype/',
+  path: '/users/arktype/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UsersValibotIndexRoute = UsersValibotIndexRouteImport.update({
@@ -29,9 +29,9 @@ const UsersValibotIndexRoute = UsersValibotIndexRouteImport.update({
   path: '/users/valibot/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const UsersArktypeIndexRoute = UsersArktypeIndexRouteImport.update({
-  id: '/users/arktype/',
-  path: '/users/arktype/',
+const UsersZodIndexRoute = UsersZodIndexRouteImport.update({
+  id: '/users/zod/',
+  path: '/users/zod/',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -78,11 +78,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/zod/': {
-      id: '/users/zod/'
-      path: '/users/zod'
-      fullPath: '/users/zod/'
-      preLoaderRoute: typeof UsersZodIndexRouteImport
+    '/users/arktype/': {
+      id: '/users/arktype/'
+      path: '/users/arktype'
+      fullPath: '/users/arktype/'
+      preLoaderRoute: typeof UsersArktypeIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/users/valibot/': {
@@ -92,11 +92,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof UsersValibotIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/users/arktype/': {
-      id: '/users/arktype/'
-      path: '/users/arktype'
-      fullPath: '/users/arktype/'
-      preLoaderRoute: typeof UsersArktypeIndexRouteImport
+    '/users/zod/': {
+      id: '/users/zod/'
+      path: '/users/zod'
+      fullPath: '/users/zod/'
+      preLoaderRoute: typeof UsersZodIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

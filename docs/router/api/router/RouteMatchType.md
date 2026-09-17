@@ -11,9 +11,8 @@ interface RouteMatch {
   routeId: string
   pathname: string
   params: Route['allParams']
-  status: 'pending' | 'success' | 'error' | 'redirected' | 'notFound'
+  status: 'pending' | 'success' | 'error' | 'notFound'
   isFetching: false | 'beforeLoad' | 'loader'
-  showPending: boolean
   error: unknown
   paramsError: unknown
   searchError: unknown
@@ -21,9 +20,17 @@ interface RouteMatch {
   loaderData?: Route['loaderData']
   context: Route['allContext']
   search: Route['fullSearchSchema']
-  fetchedAt: number
   abortController: AbortController
-  cause: 'enter' | 'stay'
+  cause: 'preload' | 'enter' | 'stay'
   ssr?: boolean | 'data-only'
 }
 ```
+
+`status` describes the match's render state. `isFetching` independently exposes
+active `beforeLoad` or loader work. In particular, a successful match can report
+`isFetching: 'loader'` while stale data remains visible during a background
+reload.
+
+The router state can contain matches below the pending, error, or not-found
+boundary. Those matches remain observable as part of the structurally matched
+lane even though the route renderer stops at the boundary.

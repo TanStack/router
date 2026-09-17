@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { renderToStringAsync } from '@solidjs/web'
+import { renderToStream } from '@solidjs/web'
 import {
   RouterProvider,
   createMemoryHistory,
@@ -44,9 +44,7 @@ describe('ClientOnly (server)', () => {
     await router.load()
 
     // Initial render (SSR)
-    const html = await renderToStringAsync(() => (
-      <RouterProvider router={router} />
-    ))
+    const html = await renderToStream(() => <RouterProvider router={router} />)
 
     expect(html).include('Loading...')
     expect(html).not.include('Client Only Content')

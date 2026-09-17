@@ -1,21 +1,10 @@
-import { expectTypeOf, test, vi } from 'vitest'
+import { expectTypeOf, test } from 'vitest'
 import type {
   CompositeComponentResult,
   ValidateCompositeComponent,
 } from '../src/ServerComponentTypes'
 import { CompositeComponent } from '../src/CompositeComponent'
 
-vi.mock('@tanstack/start-server-core', () => {
-  return {
-    getRequest: () => undefined,
-  }
-})
-
-vi.mock('@tanstack/start-storage-context', () => {
-  return {
-    getStartContext: () => undefined,
-  }
-})
 import { JSX } from 'react'
 
 test('when a server component is created with no props', () => {

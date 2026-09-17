@@ -23,6 +23,33 @@ export default [
     },
   },
   {
+    name: 'react-start-rsc/import-boundaries',
+    files: ['src/**/*.{ts,tsx}'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@tanstack/start-server-core',
+              message:
+                'Import from a dedicated @tanstack/start-server-core subpath to avoid pulling the full server barrel into the RSC module graph.',
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            "ImportExpression[source.value='@tanstack/start-server-core']",
+          message:
+            'Dynamically import a dedicated @tanstack/start-server-core subpath instead of the root barrel.',
+        },
+      ],
+    },
+  },
+  {
     files: ['**/__tests__/**'],
     rules: {
       '@typescript-eslint/no-unnecessary-condition': 'off',

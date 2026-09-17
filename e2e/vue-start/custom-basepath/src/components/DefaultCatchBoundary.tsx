@@ -1,17 +1,15 @@
 import {
   ErrorComponent,
   Link,
-  rootRouteId,
-  useMatch,
+  useLocation,
   useRouter,
 } from '@tanstack/vue-router'
 import type { ErrorComponentProps } from '@tanstack/vue-router'
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter()
-  const isRoot = useMatch({
-    strict: false,
-    select: (state) => state.id === rootRouteId,
+  const isRoot = useLocation({
+    select: (location) => location.pathname === '/',
   })
 
   console.error(error)

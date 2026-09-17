@@ -1,17 +1,17 @@
 ---
-name: router-core/auth-and-guards
+name: auth-and-guards
 description: >-
   Route protection with beforeLoad, redirect()/throw redirect(),
   isRedirect helper, authenticated layout routes (_authenticated),
   non-redirect auth (inline login), RBAC with roles and permissions,
   auth provider integration (Auth0, Clerk, Supabase), router context
   for auth state.
-type: sub-skill
-library: tanstack-router
-library_version: '1.166.2'
+metadata:
+  type: sub-skill
+  library: tanstack-router
+  library_version: '1.171.15'
 requires:
   - router-core
-  - router-core/data-loading
 sources:
   - TanStack/router:docs/router/guide/authenticated-routes.md
   - TanStack/router:docs/router/how-to/setup-authentication.md
@@ -21,9 +21,9 @@ sources:
 
 # Auth and Guards
 
-> **This skill covers the routing side of auth.** For the **server-side primitives** — session cookies (`HttpOnly`/`Secure`/`SameSite`), `useSession`-style helpers, OAuth `state` + PKCE, password-reset enumeration defense, CSRF, rate limiting — see [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md). The two skills are designed to be used together.
+> **This skill covers the routing side of auth.** Route guards are UX and navigation control; the data/API boundary still belongs in the server function, server route, or API endpoint that reads or mutates private data. For the **server-side primitives** — session cookies (`HttpOnly`/`Secure`/`SameSite`), `useSession`-style helpers, OAuth `state` + PKCE, password-reset enumeration defense, CSRF, rate limiting — see [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md).
 >
-> **CRITICAL**: A route guard (`beforeLoad`) does NOT protect a `createServerFn` declared on that route. Server functions are RPC endpoints reachable by direct POST regardless of which route renders them. See "Route guards do not protect server functions" below.
+> **CRITICAL**: A route guard (`beforeLoad`) does NOT protect a `createServerFn` declared on that route. Server functions are API endpoints reachable independently of the route that calls them. See "Route guards do not protect server functions" below.
 
 ## Setup
 
@@ -377,7 +377,7 @@ export const Route = createFileRoute('/_authenticated')({
 
 ### CRITICAL: Route guards do not protect server functions
 
-A `beforeLoad` redirect protects the **route's UI**, not the **server functions** declared on it. `createServerFn` produces an RPC endpoint reachable by direct POST regardless of which route renders the calling UI. An attacker doesn't have to load `/_authenticated/orders` — they can curl the RPC endpoint directly.
+A `beforeLoad` redirect protects the **route's UI**, not the **server functions** declared on it. `createServerFn` produces an RPC endpoint reachable directly with its declared HTTP method regardless of which route renders the calling UI. An attacker doesn't have to load `/_authenticated/orders` — they can call this GET RPC endpoint directly.
 
 ```tsx
 // WRONG — handler has no auth check; the route guard doesn't help
@@ -408,7 +408,11 @@ const getMyOrders = createServerFn({ method: 'GET' })
   })
 ```
 
-Rule of thumb: every `createServerFn` that touches user data needs `authMiddleware` (or an equivalent in-handler check). The route guard is for the page experience; the RPC guard is for the data. See [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md) for the full session/middleware pattern.
+Rule of thumb: every `createServerFn`, server route, or API endpoint that touches user data needs `authMiddleware` (or an equivalent in-handler check). The route guard is for the page experience; the endpoint guard is for the data. See [start-core/auth-server-primitives](../../../../start-client-core/skills/start-core/auth-server-primitives/SKILL.md) for the full session/middleware pattern.
+
+### CRITICAL: The anonymous destination can still disclose protected data
+
+Protect the entire anonymous response, not only the API call. A public login or unauthorized page still leaks data if its title, copy, search params, or serialized loader state names the protected user, tenant, record, or resource. Test a direct anonymous request and follow redirects. Assert that the handler rejects before reading private data, no protected loader runs, the final HTML and serialized state contain no protected identity, and the redirect contains only a sanitized relative return URL.
 
 ### HIGH: Auth check in component instead of beforeLoad
 
@@ -434,8 +438,6 @@ export const Route = createFileRoute('/_authenticated/dashboard')({
   component: Dashboard,
 })
 ```
-
-`beforeLoad` runs before any component rendering and before the loader. It completely prevents the flash.
 
 ### HIGH: Not re-throwing redirects in try/catch
 
@@ -489,8 +491,6 @@ export const Route = createFileRoute('/_authenticated')({
 ```
 
 Place protected routes as children of the `_authenticated` layout route. Public routes (login, home, etc.) live outside it.
-
----
 
 ## Cross-References
 

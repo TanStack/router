@@ -1,17 +1,24 @@
 import { afterEach, beforeEach, expect, test } from 'vitest'
-import { cleanup, render, screen } from '@testing-library/react'
+import { act, cleanup, render, screen } from '@testing-library/react'
 
 import {
   Link,
   Outlet,
   RouterProvider,
   createBrowserHistory,
+  createControlledPromise,
+  createLazyRoute,
   createRootRoute,
   createRoute,
   createRouter,
   notFound,
   rootRouteId,
 } from '../src'
+import {
+  RouterServer,
+  createRequestHandler,
+  renderRouterToString,
+} from '../src/ssr/server'
 import type { NotFoundRouteProps, RouterHistory } from '../src'
 
 let history: RouterHistory
@@ -26,6 +33,179 @@ afterEach(() => {
   window.history.replaceState(null, 'root', '/')
   cleanup()
 })
+
+test('navigating to an actively preloaded missing URL renders the global not-found boundary', async () => {
+  const missingLoaderStarted = createControlledPromise<void>()
+  const missingLoader = createControlledPromise<void>()
+  const rootRoute = createRootRoute({
+    component: Outlet,
+    notFoundComponent: () => <div>Missing URL boundary</div>,
+    loader: ({ location }) => {
+      if (location.pathname === '/missing') {
+        missingLoaderStarted.resolve()
+        return missingLoader
+      }
+      return
+    },
+    shouldReload: true,
+  })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Home</div>,
+  })
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByText('Home')).toBeInTheDocument()
+
+  const preload = router.preloadRoute({ to: '/missing' } as any)
+  await missingLoaderStarted
+  const navigation = router.navigate({ to: '/missing' } as any)
+  missingLoader.resolve()
+  await act(() => Promise.all([preload, navigation]))
+
+  expect(screen.getByText('Missing URL boundary')).toBeInTheDocument()
+  expect(screen.queryByText('Home')).not.toBeInTheDocument()
+})
+
+test('a lazy route notFoundComponent handles an eager beforeLoad failure', async () => {
+  const rootRoute = createRootRoute({
+    component: Outlet,
+    notFoundComponent: () => <div>Root not found</div>,
+  })
+  const indexRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/',
+    component: () => <div>Home</div>,
+  })
+  const failingRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/lazy-not-found',
+    beforeLoad: () => {
+      throw notFound()
+    },
+  }).lazy(() =>
+    Promise.resolve(
+      createLazyRoute('/lazy-not-found')({
+        notFoundComponent: () => <div>Lazy route not found</div>,
+      }),
+    ),
+  )
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([indexRoute, failingRoute]),
+    history,
+  })
+
+  render(<RouterProvider router={router} />)
+  expect(await screen.findByText('Home')).toBeInTheDocument()
+
+  await act(() => router.navigate({ to: '/lazy-not-found' }))
+
+  expect(screen.getByText('Lazy route not found')).toBeInTheDocument()
+  expect(screen.queryByText('Root not found')).not.toBeInTheDocument()
+})
+
+test('SSR uses a lazy route notFoundComponent for an eager beforeLoad failure', async () => {
+  const rootRoute = createRootRoute({
+    component: Outlet,
+    notFoundComponent: () => <div>Root not found</div>,
+  })
+  const failingRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/lazy-not-found',
+    beforeLoad: () => {
+      throw notFound()
+    },
+  }).lazy(() =>
+    Promise.resolve(
+      createLazyRoute('/lazy-not-found')({
+        notFoundComponent: () => <div>Lazy route not found</div>,
+      }),
+    ),
+  )
+  const handler = createRequestHandler({
+    request: new Request('http://localhost/lazy-not-found'),
+    createRouter: () =>
+      createRouter({
+        routeTree: rootRoute.addChildren([failingRoute]),
+        isServer: true,
+      }),
+  })
+
+  const response = await handler(({ router, responseHeaders }) =>
+    renderRouterToString({
+      router,
+      responseHeaders,
+      children: <RouterServer router={router} />,
+    }),
+  )
+
+  expect(response.status).toBe(404)
+  const html = await response.text()
+  expect(html).toContain('Lazy route not found')
+  expect(html).not.toContain('Root not found')
+})
+
+test.each(['client', 'server'] as const)(
+  'a lazy child boundary handles a fuzzy URL miss on the %s',
+  async (environment) => {
+    const rootRoute = createRootRoute({
+      component: Outlet,
+      notFoundComponent: () => <div>Root fuzzy boundary</div>,
+    })
+    const parentRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/parent',
+      component: Outlet,
+      notFoundComponent: () => <div>Parent fuzzy boundary</div>,
+    })
+    const childRoute = createRoute({
+      getParentRoute: () => parentRoute,
+      path: '/child',
+    }).lazy(() =>
+      Promise.resolve(
+        createLazyRoute('/parent/child')({
+          notFoundComponent: () => <div>Lazy child fuzzy boundary</div>,
+        }),
+      ),
+    )
+    const routeTree = rootRoute.addChildren([
+      parentRoute.addChildren([childRoute]),
+    ])
+
+    if (environment === 'client') {
+      const router = createRouter({ routeTree, history })
+      render(<RouterProvider router={router} />)
+      await act(() => router.navigate({ to: '/parent/child/missing' as any }))
+
+      expect(screen.getByText('Lazy child fuzzy boundary')).toBeInTheDocument()
+      expect(
+        screen.queryByText('Parent fuzzy boundary'),
+      ).not.toBeInTheDocument()
+      return
+    }
+
+    const response = await createRequestHandler({
+      request: new Request('http://localhost/parent/child/missing'),
+      createRouter: () => createRouter({ routeTree, isServer: true }),
+    })(({ router, responseHeaders }) =>
+      renderRouterToString({
+        router,
+        responseHeaders,
+        children: <RouterServer router={router} />,
+      }),
+    )
+
+    expect(response.status).toBe(404)
+    const html = await response.text()
+    expect(html).toContain('Lazy child fuzzy boundary')
+    expect(html).not.toContain('Parent fuzzy boundary')
+  },
+)
 
 test.each([
   {

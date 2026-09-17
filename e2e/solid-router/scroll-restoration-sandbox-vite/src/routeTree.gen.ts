@@ -12,10 +12,10 @@ import { createFileRoute } from '@tanstack/solid-router'
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as testsPageWithSearchRouteImport } from './routes/(tests)/page-with-search'
-import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
-import { Route as testsLazyWithLoaderPageRouteImport } from './routes/(tests)/lazy-with-loader-page'
 import { Route as testsLazyPageRouteImport } from './routes/(tests)/lazy-page'
+import { Route as testsLazyWithLoaderPageRouteImport } from './routes/(tests)/lazy-with-loader-page'
+import { Route as testsNormalPageRouteImport } from './routes/(tests)/normal-page'
+import { Route as testsPageWithSearchRouteImport } from './routes/(tests)/page-with-search'
 
 const testsVirtualPageLazyRouteImport = createFileRoute(
   '/(tests)/virtual-page',
@@ -26,23 +26,13 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const testsVirtualPageLazyRoute = testsVirtualPageLazyRouteImport
+const testsLazyPageRoute = testsLazyPageRouteImport
   .update({
-    id: '/(tests)/virtual-page',
-    path: '/virtual-page',
+    id: '/(tests)/lazy-page',
+    path: '/lazy-page',
     getParentRoute: () => rootRouteImport,
   } as any)
-  .lazy(() => import('./routes/(tests)/virtual-page.lazy').then((d) => d.Route))
-const testsPageWithSearchRoute = testsPageWithSearchRouteImport.update({
-  id: '/(tests)/page-with-search',
-  path: '/page-with-search',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const testsNormalPageRoute = testsNormalPageRouteImport.update({
-  id: '/(tests)/normal-page',
-  path: '/normal-page',
-  getParentRoute: () => rootRouteImport,
-} as any)
+  .lazy(() => import('./routes/(tests)/lazy-page.lazy').then((d) => d.Route))
 const testsLazyWithLoaderPageRoute = testsLazyWithLoaderPageRouteImport
   .update({
     id: '/(tests)/lazy-with-loader-page',
@@ -52,13 +42,23 @@ const testsLazyWithLoaderPageRoute = testsLazyWithLoaderPageRouteImport
   .lazy(() =>
     import('./routes/(tests)/lazy-with-loader-page.lazy').then((d) => d.Route),
   )
-const testsLazyPageRoute = testsLazyPageRouteImport
+const testsNormalPageRoute = testsNormalPageRouteImport.update({
+  id: '/(tests)/normal-page',
+  path: '/normal-page',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsPageWithSearchRoute = testsPageWithSearchRouteImport.update({
+  id: '/(tests)/page-with-search',
+  path: '/page-with-search',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const testsVirtualPageLazyRoute = testsVirtualPageLazyRouteImport
   .update({
-    id: '/(tests)/lazy-page',
-    path: '/lazy-page',
+    id: '/(tests)/virtual-page',
+    path: '/virtual-page',
     getParentRoute: () => rootRouteImport,
   } as any)
-  .lazy(() => import('./routes/(tests)/lazy-page.lazy').then((d) => d.Route))
+  .lazy(() => import('./routes/(tests)/virtual-page.lazy').then((d) => d.Route))
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -130,25 +130,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/virtual-page': {
-      id: '/(tests)/virtual-page'
-      path: '/virtual-page'
-      fullPath: '/virtual-page'
-      preLoaderRoute: typeof testsVirtualPageLazyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(tests)/page-with-search': {
-      id: '/(tests)/page-with-search'
-      path: '/page-with-search'
-      fullPath: '/page-with-search'
-      preLoaderRoute: typeof testsPageWithSearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(tests)/normal-page': {
-      id: '/(tests)/normal-page'
-      path: '/normal-page'
-      fullPath: '/normal-page'
-      preLoaderRoute: typeof testsNormalPageRouteImport
+    '/(tests)/lazy-page': {
+      id: '/(tests)/lazy-page'
+      path: '/lazy-page'
+      fullPath: '/lazy-page'
+      preLoaderRoute: typeof testsLazyPageRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(tests)/lazy-with-loader-page': {
@@ -158,11 +144,25 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof testsLazyWithLoaderPageRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(tests)/lazy-page': {
-      id: '/(tests)/lazy-page'
-      path: '/lazy-page'
-      fullPath: '/lazy-page'
-      preLoaderRoute: typeof testsLazyPageRouteImport
+    '/(tests)/normal-page': {
+      id: '/(tests)/normal-page'
+      path: '/normal-page'
+      fullPath: '/normal-page'
+      preLoaderRoute: typeof testsNormalPageRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/page-with-search': {
+      id: '/(tests)/page-with-search'
+      path: '/page-with-search'
+      fullPath: '/page-with-search'
+      preLoaderRoute: typeof testsPageWithSearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(tests)/virtual-page': {
+      id: '/(tests)/virtual-page'
+      path: '/virtual-page'
+      fullPath: '/virtual-page'
+      preLoaderRoute: typeof testsVirtualPageLazyRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

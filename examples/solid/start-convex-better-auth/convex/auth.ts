@@ -4,6 +4,7 @@ import { betterAuth } from 'better-auth'
 import { components } from './_generated/api'
 import { query } from './_generated/server'
 import type { GenericCtx } from '@convex-dev/better-auth'
+import type { BetterAuthOptions } from 'better-auth'
 import type { DataModel } from './_generated/dataModel'
 
 const siteUrl = process.env.SITE_URL!
@@ -16,7 +17,7 @@ export const createAuth = (
   ctx: GenericCtx<DataModel>,
   { optionsOnly } = { optionsOnly: false },
 ) => {
-  return betterAuth({
+  return betterAuth<BetterAuthOptions>({
     // disable logging when createAuth is called just to generate options.
     // this is not required, but there's a lot of noise in logs without it.
     logger: {

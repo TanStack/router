@@ -17,7 +17,7 @@ import { pageStyles, clientStyles, formatTime } from '~/utils/styles'
 const getSearchResultsServerComponent = createServerFn({
   method: 'GET',
 })
-  .inputValidator((data: { query: string; page: number }) => data)
+  .validator((data: { query: string; page: number }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
     const instanceId = Math.random().toString(36).slice(2, 8)

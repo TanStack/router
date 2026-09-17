@@ -84,6 +84,9 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           <Link to="/deferred" style={{ marginRight: '10px' }}>
             Deferred
           </Link>
+          <Link to="/deferred-rejection" style={{ marginRight: '10px' }}>
+            Deferred Rejection
+          </Link>
           <Link to="/stream" style={{ marginRight: '10px' }}>
             Stream
           </Link>

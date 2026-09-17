@@ -1,5 +1,124 @@
 # @tanstack/router-vite-plugin
 
+## 1.167.30
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.30
+
+## 1.167.29
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.29
+
+## 1.167.28
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.28
+
+## 1.167.27
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.27
+
+## 1.167.26
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.26
+
+## 1.167.25
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.25
+
+## 1.167.24
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.24
+
+## 1.167.23
+
+### Patch Changes
+
+- Updated dependencies [[`49f6863`](https://github.com/TanStack/router/commit/49f686324574ea65851317cbba084eb386a911c6)]:
+  - @tanstack/router-plugin@1.168.23
+
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.22
+
+## 1.167.21
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.21
+
+## 1.167.20
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.20
+
+## 1.167.19
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.19
+
+## 1.167.18
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.18
+
+## 1.167.17
+
+### Patch Changes
+
+- Updated dependencies [[`837897f`](https://github.com/TanStack/router/commit/837897f0733b836dd63880546eec4c20cf06be59)]:
+  - @tanstack/router-plugin@1.168.17
+
+## 1.167.16
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.16
+
+## 1.167.15
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.15
+
+## 1.167.14
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.14
+
 ## 1.167.13
 
 ### Patch Changes

@@ -24,7 +24,7 @@ const getCollisionContext = createServerFn()
 
 const postCollisionContext = createServerFn({ method: 'POST' })
   .middleware([collisionMiddleware])
-  .inputValidator((data: unknown) => {
+  .validator((data: unknown) => {
     if (!(data instanceof FormData)) {
       throw new Error('Expected FormData')
     }

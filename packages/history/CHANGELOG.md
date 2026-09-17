@@ -1,5 +1,11 @@
 # @tanstack/history
 
+## 1.162.1
+
+### Patch Changes
+
+- [#7985](https://github.com/TanStack/router/pull/7985) [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b) - perf: compact private bundle boundaries- [#7975](https://github.com/TanStack/router/issues/7975)
+
 ## 1.162.0
 
 ### Minor Changes

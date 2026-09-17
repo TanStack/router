@@ -1,7 +1,10 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src/default-entry"
+    "rootDir": "./src",
+    "paths": {
+      "@tanstack/react-start/server": ["./src/server.tsx"]
+    }
   },
   "include": ["src/default-entry"]
 }

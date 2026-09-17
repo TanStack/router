@@ -84,8 +84,8 @@ export function useLoaderData<
     from: opts.from!,
     strict: opts.strict,
     structuralSharing: opts.structuralSharing,
-    select: (s: any) => {
-      return opts.select ? opts.select(s.loaderData) : s.loaderData
+    select: (match) => {
+      return opts.select ? opts.select(match.loaderData) : match.loaderData
     },
-  } as any) as UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
+  }) as UseLoaderDataResult<TRouter, TFrom, TStrict, TSelected>
 }

@@ -2,7 +2,7 @@ import * as path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import dts from 'vite-plugin-dts'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

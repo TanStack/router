@@ -23,10 +23,12 @@ export {
   expandSharedDestructuredDeclarators,
   expandTransitively,
   extractModuleInfoFromAst,
+  getVariableDeclaratorForExpressionPath,
   removeBindingsTransitivelyDependingOn,
   removeModuleLevelBindings,
   retainModuleLevelDeclarations,
   stripUnreferencedTopLevelExpressionStatements,
+  unwrapExpression,
   unwrapExportedDeclarations,
 } from './compiler-helpers'
 export type { ExtractedModuleInfo, ModuleInfoBinding } from './compiler-helpers'

@@ -2,7 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vitest/config'
 import codspeedPlugin from '@codspeed/vitest-plugin'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 
 const rootDir = fileURLToPath(new URL('.', import.meta.url))
 

@@ -63,7 +63,7 @@ export function devServerPlugin({
               // Parse route IDs from query param
               const urlObj = new URL(url, 'http://localhost')
               const routesParam = urlObj.searchParams.get('routes')
-              const routeIds = routesParam ? routesParam.split(',') : []
+              const ids = routesParam ? routesParam.split(',') : []
 
               // Build entries list from route file paths
               const entries: Array<string> = []
@@ -74,8 +74,8 @@ export function devServerPlugin({
                 | Record<string, { filePath: string; children?: Array<string> }>
                 | undefined
 
-              if (routesManifest && routeIds.length > 0) {
-                for (const routeId of routeIds) {
+              if (routesManifest && ids.length > 0) {
+                for (const routeId of ids) {
                   const route = routesManifest[routeId]
                   if (route?.filePath) {
                     entries.push(route.filePath)

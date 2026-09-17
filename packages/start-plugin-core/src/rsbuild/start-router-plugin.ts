@@ -59,7 +59,7 @@ export function registerRouterPlugins(
         },
         routerPluginContext,
       )
-      utils.appendPlugins(generatorPlugin as any)
+      utils.appendPlugins(generatorPlugin)
     }
 
     if (
@@ -79,7 +79,7 @@ export function registerRouterPlugins(
         },
         routerPluginContext,
       )
-      utils.appendPlugins(splitterPlugin as any)
+      utils.appendPlugins(splitterPlugin)
     }
   })
 }

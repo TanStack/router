@@ -4,7 +4,7 @@ import { Suspense } from 'react'
 
 // Server function that returns immediately
 const getImmediateData = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string }) => data)
+  .validator((data: { name: string }) => data)
   .handler(({ data }) => {
     return {
       name: data.name,
@@ -16,7 +16,7 @@ const getImmediateData = createServerFn({ method: 'GET' })
 
 // Server function that takes time to complete
 const getSlowData = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string; delay: number }) => data)
+  .validator((data: { name: string; delay: number }) => data)
   .handler(async ({ data }) => {
     await new Promise((r) => setTimeout(r, data.delay))
     return {

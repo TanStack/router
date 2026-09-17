@@ -112,8 +112,8 @@ export function resolvePath({
   trailingSlash = 'never',
   cache,
 }: ResolvePathOptions) {
+  const isBase = to === '.'
   const isAbsolute = to.startsWith('/')
-  const isBase = !isAbsolute && to === '.'
 
   let key
   if (cache) {
@@ -148,7 +148,11 @@ export function resolvePath({
           // ignore inter-slashes
         }
       } else if (value === '..') {
-        baseSegments.pop()
+        if (baseSegments.length > 1) {
+          baseSegments.pop()
+        } else {
+          baseSegments = ['']
+        }
       } else if (value === '.') {
         // ignore
       } else {

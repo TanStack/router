@@ -13,27 +13,27 @@ function stringify(data: any) {
 }
 
 const $stringPost = createServerFn({ method: 'POST' })
-  .inputValidator(z.string())
+  .validator(z.string())
   .handler((ctx) => ctx.data)
 
 const $stringGet = createServerFn({ method: 'GET' })
-  .inputValidator(z.string())
+  .validator(z.string())
   .handler((ctx) => ctx.data)
 
 const $undefinedPost = createServerFn({ method: 'POST' })
-  .inputValidator(z.undefined())
+  .validator(z.undefined())
   .handler((ctx) => ctx.data)
 
 const $undefinedGet = createServerFn({ method: 'GET' })
-  .inputValidator(z.undefined())
+  .validator(z.undefined())
   .handler((ctx) => ctx.data)
 
 const $nullPost = createServerFn({ method: 'POST' })
-  .inputValidator(z.null())
+  .validator(z.null())
   .handler((ctx) => ctx.data)
 
 const $nullGet = createServerFn({ method: 'GET' })
-  .inputValidator(z.null())
+  .validator(z.null())
   .handler((ctx) => ctx.data)
 
 interface PrimitiveComponentProps<T> {

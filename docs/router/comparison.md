@@ -80,7 +80,7 @@ Feature/Capability Key:
 | React Server Function Middleware               | ✅                                               | 🛑                                                    | 🛑                                                    |
 | API Routes                                     | ✅                                               | ✅                                                    | ✅                                                    |
 | API Middleware                                 | ✅                                               | ✅                                                    | ✅                                                    |
-| React Server Components                        | 🛑                                               | 🟡 (Experimental)                                     | ✅                                                    |
+| React Server Components                        | 🟡 (Experimental)                                | 🟡 (Experimental)                                     | ✅                                                    |
 | `<Form>` API                                   | 🛑                                               | ✅                                                    | ✅                                                    |
 
 [bp-tanstack-router]: https://badgen.net/bundlephobia/minzip/@tanstack/react-router

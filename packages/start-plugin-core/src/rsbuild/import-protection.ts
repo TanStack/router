@@ -752,6 +752,11 @@ function buildCompilationGraph(opts: {
     for (const connection of connections) {
       if (!connection.module) continue
 
+      // Only consider modules that are not errored
+      if ('error' in connection.module && connection.module.error) {
+        continue
+      }
+
       const resolved = getModuleFile(connection.module)
       const specifier = getConnectionRequest(connection.dependency)
 

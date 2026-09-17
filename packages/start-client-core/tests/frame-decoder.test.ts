@@ -50,7 +50,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Unknown frame type')
@@ -65,7 +65,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Invalid raw frame streamId')
@@ -84,7 +84,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Invalid JSON frame streamId')
@@ -105,7 +105,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Frame payload too large')
@@ -125,7 +125,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Incomplete frame')
@@ -140,7 +140,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await reader.cancel()
@@ -169,7 +169,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('Too many raw streams')
@@ -186,7 +186,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
 
       await expect(reader.read()).rejects.toThrow('buffer exceeded')
@@ -207,7 +207,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
 
       const reader = jsonChunks.getReader()
       const chunks: Array<string> = []
@@ -240,7 +240,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks, getOrCreateStream } = createFrameDecoder(input)
+      const { chunks: jsonChunks, getStream: getOrCreateStream } =
+        createFrameDecoder(input)
 
       // Pre-create the stream before consuming
       const stream5 = getOrCreateStream(5)
@@ -276,7 +277,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
 
       const reader = jsonChunks.getReader()
       const chunks: Array<string> = []
@@ -301,7 +302,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
       const { value } = await reader.read()
 
@@ -326,7 +327,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
       const { value } = await reader.read()
 
@@ -353,7 +354,7 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { jsonChunks } = createFrameDecoder(input)
+      const { chunks: jsonChunks } = createFrameDecoder(input)
       const reader = jsonChunks.getReader()
       const { value } = await reader.read()
 
@@ -387,7 +388,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
 
       // Pre-create streams before consuming
       const stream1 = getOrCreateStream(1)
@@ -428,7 +430,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
 
       // Pre-create stream 3
       const stream3 = getOrCreateStream(3)
@@ -480,7 +483,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
 
       // First, fully consume JSON stream (this processes all frames)
       const jsonReader = jsonChunks.getReader()
@@ -536,7 +540,8 @@ describe('frame-decoder', () => {
         },
       })
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(input)
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
 
       // Drain JSON (processes all frames)
       const jsonReader = jsonChunks.getReader()
@@ -557,6 +562,147 @@ describe('frame-decoder', () => {
 
       const { done: finalDone } = await reader.read()
       expect(finalDone).toBe(true)
+    })
+
+    it('should reassemble a chunk payload that spans many small reads', async () => {
+      // A large binary payload delivered in tiny network reads forces the
+      // multi-chunk (copy) path; the contiguous fast path must not change the
+      // reassembled bytes.
+      const payload = new Uint8Array(300)
+      for (let i = 0; i < payload.length; i++) payload[i] = i % 256
+
+      const jsonFrame = encodeJSONFrame('{"ref":11}')
+      const chunkFrame = encodeChunkFrame(11, payload)
+      const endFrame = encodeEndFrame(11)
+
+      const combined = new Uint8Array(
+        jsonFrame.length + chunkFrame.length + endFrame.length,
+      )
+      combined.set(jsonFrame, 0)
+      combined.set(chunkFrame, jsonFrame.length)
+      combined.set(endFrame, jsonFrame.length + chunkFrame.length)
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          // 7-byte reads: smaller than the 9-byte header and the payload, so
+          // both header and payload span multiple buffered chunks.
+          for (let i = 0; i < combined.length; i += 7) {
+            controller.enqueue(combined.subarray(i, i + 7))
+          }
+          controller.close()
+        },
+      })
+
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
+      const stream11 = getOrCreateStream(11)
+
+      const jsonReader = jsonChunks.getReader()
+      const { value: jsonValue } = await jsonReader.read()
+      expect(jsonValue).toBe('{"ref":11}')
+
+      const rawReader = stream11.getReader()
+      const received: Array<number> = []
+      while (true) {
+        const { done, value } = await rawReader.read()
+        if (done) break
+        if (value) received.push(...value)
+      }
+      expect(received).toEqual(Array.from(payload))
+    })
+
+    it('reassembles a large chunk payload delivered one byte at a time', async () => {
+      // Forces the header slow path AND many whole-chunk consumptions within a
+      // single extract, exercising the head-pointer advance + fully-drained
+      // reset. With the previous bufferList.shift() this path was O(n^2).
+      const payload = new Uint8Array(200)
+      for (let i = 0; i < payload.length; i++) {
+        payload[i] = (i * 7) % 256
+      }
+
+      const jsonFrame = encodeJSONFrame('{"ref":21}')
+      const chunkFrame = encodeChunkFrame(21, payload)
+      const endFrame = encodeEndFrame(21)
+
+      const combined = new Uint8Array(
+        jsonFrame.length + chunkFrame.length + endFrame.length,
+      )
+      combined.set(jsonFrame, 0)
+      combined.set(chunkFrame, jsonFrame.length)
+      combined.set(endFrame, jsonFrame.length + chunkFrame.length)
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (let i = 0; i < combined.length; i++) {
+            controller.enqueue(combined.subarray(i, i + 1))
+          }
+          controller.close()
+        },
+      })
+
+      const { getStream: getOrCreateStream, chunks: jsonChunks } =
+        createFrameDecoder(input)
+      const stream21 = getOrCreateStream(21)
+
+      const jsonReader = jsonChunks.getReader()
+      const { value: jsonValue } = await jsonReader.read()
+      expect(jsonValue).toBe('{"ref":21}')
+
+      const rawReader = stream21.getReader()
+      const received: Array<number> = []
+      while (true) {
+        const { done, value } = await rawReader.read()
+        if (done) {
+          break
+        }
+        if (value) {
+          received.push(...value)
+        }
+      }
+      expect(received).toEqual(Array.from(payload))
+    })
+
+    it('decodes many frames when reads never align with frame boundaries', async () => {
+      // 100-byte frames fed in 7-byte reads never align until the very end, so
+      // consumed chunks accumulate and the head pointer climbs past the
+      // compaction threshold repeatedly, exercising the splice() prefix drop.
+      const FRAME_COUNT = 7
+      const expected: Array<string> = []
+      const frames: Array<Uint8Array> = []
+      for (let i = 0; i < FRAME_COUNT; i++) {
+        const payload = `frame-${i}`.padEnd(91, '.') // 91 bytes => 100-byte frame
+        expected.push(payload)
+        frames.push(encodeJSONFrame(payload))
+      }
+
+      const totalLen = frames.reduce((acc, f) => acc + f.length, 0)
+      const combined = new Uint8Array(totalLen)
+      let offset = 0
+      for (const f of frames) {
+        combined.set(f, offset)
+        offset += f.length
+      }
+
+      const input = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (let i = 0; i < combined.length; i += 7) {
+            controller.enqueue(combined.subarray(i, i + 7))
+          }
+          controller.close()
+        },
+      })
+
+      const { chunks: jsonChunks } = createFrameDecoder(input)
+      const reader = jsonChunks.getReader()
+      const received: Array<string> = []
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        received.push(value)
+      }
+      expect(received).toEqual(expected)
     })
   })
 })

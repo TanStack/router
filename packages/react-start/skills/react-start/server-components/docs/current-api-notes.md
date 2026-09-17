@@ -29,7 +29,7 @@ Use low-level APIs only for custom transport:
 
 ## Current validation API
 
-Use `.inputValidator(...)` on `createServerFn`.
+Use `.validator(...)` on `createServerFn`.
 
 Important because some current RSC docs snippets still show the older `.validator(...)` spelling. Normalize those examples before copying them into real code.
 
@@ -48,7 +48,7 @@ You may still find older official repo examples using `renderRsc` and older conf
 
 ### Old validation snippets
 
-If you see `.validator(z.object(...))` in an RSC example, rewrite it to `.inputValidator(z.object(...))` to match the current server function API.
+If you see `.validator(z.object(...))` in an RSC example, rewrite it to `.validator(z.object(...))` to match the current server function API.
 
 ### Old Vite config shapes
 

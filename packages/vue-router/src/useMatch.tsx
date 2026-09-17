@@ -2,11 +2,7 @@ import * as Vue from 'vue'
 import { invariant } from '@tanstack/router-core'
 import { useStore } from '@tanstack/vue-store'
 import { isServer } from '@tanstack/router-core/isServer'
-import {
-  injectDummyPendingMatch,
-  injectPendingMatch,
-  routeIdContext,
-} from './matchContext'
+import { routeIdContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
   AnyRouter,
@@ -83,7 +79,7 @@ export function useMatch<
     const nearestRouteId = opts.from ? undefined : Vue.inject(routeIdContext)
     const matchStore =
       (opts.from ?? nearestRouteId)
-        ? router.stores.getRouteMatchStore(opts.from ?? nearestRouteId!)
+        ? router.stores.getMatchStore(opts.from ?? nearestRouteId!)
         : undefined
     const match = matchStore?.get()
 
@@ -114,53 +110,37 @@ export function useMatch<
     >
   }
 
-  const hasPendingNearestMatch = opts.from
-    ? injectDummyPendingMatch()
-    : injectPendingMatch()
   // Set up reactive match value based on lookup strategy.
   let match: Readonly<Vue.Ref<any>>
+  const nearestRouteId = Vue.inject(routeIdContext)
 
   if (opts.from) {
-    // routeId case: single subscription via per-routeId computed store.
-    // The store reference is stable (cached by routeId).
-    const matchStore = router.stores.getRouteMatchStore(opts.from)
-    match = useStore(matchStore, (value) => value)
+    // routeId case: subscribe to the stable per-route presentation atom.
+    const matchStore = router.stores.getMatchStore(opts.from)
+    match = useStore(matchStore)
   } else {
-    // matchId case: use routeId from context for stable store lookup.
+    // Nearest-match case: use the routeId from context for stable lookup.
     // The routeId is provided by the nearest Match component and doesn't
     // change for the component's lifetime, so the store is stable.
-    const nearestRouteId = Vue.inject(routeIdContext)
     if (nearestRouteId) {
-      match = useStore(
-        router.stores.getRouteMatchStore(nearestRouteId),
-        (value) => value,
-      )
+      match = useStore(router.stores.getMatchStore(nearestRouteId))
     } else {
       // No route context — will fall through to error handling below
       match = Vue.ref(undefined) as Readonly<Vue.Ref<undefined>>
     }
   }
 
-  const hasPendingRouteMatch = opts.from
-    ? useStore(router.stores.pendingRouteIds, (ids) => ids)
-    : undefined
-  const isTransitioning = useStore(
-    router.stores.isTransitioning,
-    (value) => value,
-    { equal: Object.is },
-  )
-
-  const result = Vue.computed(() => {
-    const selectedMatch = match.value
+  const ownsMatch =
+    nearestRouteId !== undefined &&
+    (opts.from ?? nearestRouteId) === nearestRouteId
+  let lastOwnedMatch: any
+  const result = Vue.computed<any>(() => {
+    if (match.value !== undefined && ownsMatch) {
+      lastOwnedMatch = match.value
+    }
+    const selectedMatch = match.value ?? lastOwnedMatch
     if (selectedMatch === undefined) {
-      const hasPendingMatch = opts.from
-        ? Boolean(hasPendingRouteMatch?.value[opts.from!])
-        : hasPendingNearestMatch.value
-      if (
-        !hasPendingMatch &&
-        !isTransitioning.value &&
-        (opts.shouldThrow ?? true)
-      ) {
+      if (opts.shouldThrow ?? true) {
         if (process.env.NODE_ENV !== 'production') {
           throw new Error(
             `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,

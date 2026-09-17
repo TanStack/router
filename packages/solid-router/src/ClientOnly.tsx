@@ -33,7 +33,7 @@ export function ClientOnly(props: ClientOnlyProps) {
   const hydrated = useHydrated()
   return (
     <Solid.Show when={hydrated()} fallback={props.fallback ?? null}>
-      <>{props.children}</>
+      {props.children}
     </Solid.Show>
   )
 }
@@ -60,7 +60,9 @@ export function ClientOnly(props: ClientOnlyProps) {
 let globalHydrated = false
 
 export function useHydrated(): Solid.Accessor<boolean> {
-  const [hydrated, setHydrated] = Solid.createSignal(globalHydrated)
+  const [hydrated, setHydrated] = Solid.createSignal(
+    globalHydrated && !Solid.sharedConfig.hydrating,
+  )
 
   Solid.createEffect(
     () => true,

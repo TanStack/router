@@ -166,6 +166,26 @@ function rewriteConfigByFolderName(folderName: string, config: Config) {
         config.virtualRouteConfig = virtualRouteConfig
       }
       break
+    case 'virtual-pathless-layout-dotted-filename':
+      {
+        const virtualRouteConfig = rootRoute('root.route.tsx', [
+          index('index.route.tsx'),
+          layout('pathless.layout.tsx', [
+            route('subpath', 'subpath.route.tsx'),
+          ]),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
+    case 'virtual-explicit-dotted-paths':
+      {
+        const virtualRouteConfig = rootRoute('root.tsx', [
+          route('direct.path', 'direct.tsx'),
+          physical('/mounted.path', 'physical-routes'),
+        ])
+        config.virtualRouteConfig = virtualRouteConfig
+      }
+      break
     case 'virtual-root-sibling-routes':
       {
         // Test case for issue #5431: Virtual routes that are siblings at the root level

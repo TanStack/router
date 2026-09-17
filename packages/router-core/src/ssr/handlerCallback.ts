@@ -30,6 +30,40 @@ export function normalizeSsrResponse(
     : { response: result, serverSsrCleanup: 'none' }
 }
 
+export function disposeSsrResponse(
+  response: SsrResponse,
+  reason?: unknown,
+): Promise<void> {
+  if (response.serverSsrCleanup !== 'stream') {
+    return Promise.resolve()
+  }
+  try {
+    return Promise.resolve(response.dispose(reason))
+  } catch (error) {
+    return Promise.reject(error)
+  }
+}
+
+export function disposeSsrResponseDetached(
+  result: HandlerCallbackResult,
+  reason?: unknown,
+  onError: (error: unknown) => void = console.error,
+): void {
+  const ssrResponse = normalizeSsrResponse(result)
+  if (ssrResponse.serverSsrCleanup === 'stream') {
+    void disposeSsrResponse(ssrResponse, reason).catch(onError)
+    return
+  }
+
+  if (ssrResponse.response.body) {
+    try {
+      void ssrResponse.response.body.cancel(reason).catch(onError)
+    } catch (error) {
+      onError(error)
+    }
+  }
+}
+
 export function createSsrStreamResponse<TRouter extends AnyRouter>(
   router: TRouter,
   response: Response,
@@ -43,18 +77,54 @@ export function createSsrStreamResponse<TRouter extends AnyRouter>(
     response,
     serverSsrCleanup: 'stream',
     async dispose(reason?: unknown) {
-      if (disposed) return
+      if (disposed) {
+        return
+      }
       disposed = true
+
+      // Sever router ownership before asking user/renderer stream machinery to
+      // cancel. A custom stream is allowed to ignore cancellation forever.
+      router.serverSsr?.cleanup()
 
       try {
         await response.body!.cancel(reason)
       } catch {
-        // ignore; fallback cleanup below still releases router SSR state
+        // Cleanup above already released router SSR state.
       }
-
-      router.serverSsr?.cleanup()
     },
   }
+}
+
+export function bindSsrResponseToRequest(
+  router: AnyRouter | undefined,
+  result: HandlerCallbackResult,
+  signal: AbortSignal,
+): SsrResponse {
+  const ssrResponse = normalizeSsrResponse(result)
+  if (ssrResponse.serverSsrCleanup !== 'stream') {
+    if (signal.aborted) {
+      disposeSsrResponseDetached(result, signal.reason)
+    }
+    return ssrResponse
+  }
+
+  const failed = (error: unknown) => {
+    router?.serverSsr?.cleanup()
+    console.error(error)
+  }
+  const abort = () => {
+    disposeSsrResponseDetached(ssrResponse, signal.reason, failed)
+  }
+  if (signal.aborted) {
+    abort()
+    return ssrResponse
+  }
+
+  signal.addEventListener('abort', abort, { once: true })
+  router?.serverSsr?.onCleanup(() => {
+    signal.removeEventListener('abort', abort)
+  })
+  return ssrResponse
 }
 
 export async function replaceSsrResponse(
@@ -63,9 +133,7 @@ export async function replaceSsrResponse(
   reason?: unknown,
 ): Promise<SsrResponse> {
   const ssrResponse = normalizeSsrResponse(result)
-  if (ssrResponse.serverSsrCleanup === 'stream') {
-    await ssrResponse.dispose(reason)
-  }
+  await disposeSsrResponse(ssrResponse, reason)
   return { response, serverSsrCleanup: 'none' }
 }
 
@@ -74,9 +142,7 @@ export async function stripSsrResponseBody(
   reason?: unknown,
 ): Promise<SsrResponse> {
   const ssrResponse = normalizeSsrResponse(result)
-  if (ssrResponse.serverSsrCleanup === 'stream') {
-    await ssrResponse.dispose(reason)
-  }
+  await disposeSsrResponse(ssrResponse, reason)
   return {
     response: new Response(null, ssrResponse.response),
     serverSsrCleanup: 'none',

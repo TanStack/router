@@ -27,9 +27,9 @@ export const RouterContextProvider = Vue.defineComponent({
       ...restAttrs,
       context: {
         ...router.options.context,
-        ...((restAttrs.context as Record<string, any>) || {}),
+        ...(restAttrs.context || {}),
       },
-    } as any)
+    })
 
     // Provide router to all child components
     provideRouter(router)

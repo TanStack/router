@@ -179,21 +179,23 @@ export function useBlocker(
         location: HistoryLocation,
       ): AnyShouldBlockFnLocation {
         const parsedLocation = router.parseLocation(location)
-        const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
-        if (matchedRoutes.foundRoute === undefined) {
+        const [, rawParams, foundRoute] = router.getMatchedRoutes(
+          parsedLocation.pathname,
+        )
+        if (foundRoute === undefined) {
           return {
             routeId: '__notFound__',
             fullPath: parsedLocation.pathname,
             pathname: parsedLocation.pathname,
-            params: matchedRoutes.routeParams,
+            params: rawParams,
             search: parsedLocation.search,
           }
         }
         return {
-          routeId: matchedRoutes.foundRoute.id,
-          fullPath: matchedRoutes.foundRoute.fullPath,
+          routeId: foundRoute.id,
+          fullPath: foundRoute.fullPath,
           pathname: parsedLocation.pathname,
-          params: matchedRoutes.routeParams,
+          params: rawParams,
           search: parsedLocation.search,
         }
       }
@@ -373,21 +375,23 @@ const BlockImpl = Vue.defineComponent({
           location: HistoryLocation,
         ): AnyShouldBlockFnLocation {
           const parsedLocation = router.parseLocation(location)
-          const matchedRoutes = router.getMatchedRoutes(parsedLocation.pathname)
-          if (matchedRoutes.foundRoute === undefined) {
+          const [, rawParams, foundRoute] = router.getMatchedRoutes(
+            parsedLocation.pathname,
+          )
+          if (foundRoute === undefined) {
             return {
               routeId: '__notFound__',
               fullPath: parsedLocation.pathname,
               pathname: parsedLocation.pathname,
-              params: matchedRoutes.routeParams,
+              params: rawParams,
               search: parsedLocation.search,
             }
           }
           return {
-            routeId: matchedRoutes.foundRoute.id,
-            fullPath: matchedRoutes.foundRoute.fullPath,
+            routeId: foundRoute.id,
+            fullPath: foundRoute.fullPath,
             pathname: parsedLocation.pathname,
-            params: matchedRoutes.routeParams,
+            params: rawParams,
             search: parsedLocation.search,
           }
         }
@@ -457,7 +461,7 @@ const BlockImpl = Vue.defineComponent({
       }
 
       // If slot is a function that takes resolver, call it with the resolver
-      const slotContent = defaultSlot(resolver.value as any)
+      const slotContent = defaultSlot(resolver.value)
       return Vue.h(Vue.Fragment, null, slotContent)
     }
   },
@@ -483,7 +487,7 @@ export function Block(opts: PromptProps | LegacyPromptProps): Vue.VNode {
       : { default: () => children }
     : undefined
 
-  return Vue.h(BlockImpl, rest as any, slots)
+  return Vue.h(BlockImpl, rest, slots)
 }
 
 type LegacyPromptProps = {

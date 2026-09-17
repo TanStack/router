@@ -9,35 +9,35 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as LoginRouteImport } from './routes/login'
-import { Route as PathlessLayoutRouteImport } from './routes/_pathlessLayout'
-import { Route as AuthRouteImport } from './routes/_auth'
-import { Route as DashboardRouteRouteImport } from './routes/dashboard.route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ExpensiveIndexRouteImport } from './routes/expensive/index'
-import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
-import { Route as FooBarRouteImport } from './routes/foo/bar'
-import { Route as PathlessLayoutRouteBRouteImport } from './routes/_pathlessLayout.route-b'
-import { Route as PathlessLayoutRouteARouteImport } from './routes/_pathlessLayout.route-a'
+import { Route as AuthRouteImport } from './routes/_auth'
+import { Route as PathlessLayoutRouteImport } from './routes/_pathlessLayout'
+import { Route as DashboardRouteRouteImport } from './routes/dashboard.route'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthProfileRouteImport } from './routes/_auth.profile'
-import { Route as DashboardUsersRouteRouteImport } from './routes/dashboard.users.route'
+import { Route as PathlessLayoutRouteARouteImport } from './routes/_pathlessLayout.route-a'
+import { Route as PathlessLayoutRouteBRouteImport } from './routes/_pathlessLayout.route-b'
+import { Route as DashboardIndexRouteImport } from './routes/dashboard.index'
 import { Route as DashboardInvoicesRouteRouteImport } from './routes/dashboard.invoices.route'
-import { Route as DashboardUsersIndexRouteImport } from './routes/dashboard.users.index'
+import { Route as DashboardUsersRouteRouteImport } from './routes/dashboard.users.route'
+import { Route as ExpensiveIndexRouteImport } from './routes/expensive/index'
+import { Route as FooBarRouteImport } from './routes/foo/bar'
 import { Route as DashboardInvoicesIndexRouteImport } from './routes/dashboard.invoices.index'
-import { Route as DashboardUsersUserRouteImport } from './routes/dashboard.users.user'
 import { Route as DashboardInvoicesInvoiceIdRouteImport } from './routes/dashboard.invoices.$invoiceId'
+import { Route as DashboardUsersIndexRouteImport } from './routes/dashboard.users.index'
+import { Route as DashboardUsersUserRouteImport } from './routes/dashboard.users.user'
 
-const LoginRoute = LoginRouteImport.update({
-  id: '/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PathlessLayoutRoute = PathlessLayoutRouteImport.update({
-  id: '/_pathlessLayout',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRoute = AuthRouteImport.update({
   id: '/_auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PathlessLayoutRoute = PathlessLayoutRouteImport.update({
+  id: '/_pathlessLayout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRouteRoute = DashboardRouteRouteImport.update({
@@ -45,44 +45,29 @@ const DashboardRouteRoute = DashboardRouteRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
-} as any)
-const ExpensiveIndexRoute = ExpensiveIndexRouteImport.update({
-  id: '/expensive/',
-  path: '/expensive/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardIndexRoute = DashboardIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DashboardRouteRoute,
-} as any)
-const FooBarRoute = FooBarRouteImport.update({
-  id: '/foo/bar',
-  path: '/foo/bar',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PathlessLayoutRouteBRoute = PathlessLayoutRouteBRouteImport.update({
-  id: '/route-b',
-  path: '/route-b',
-  getParentRoute: () => PathlessLayoutRoute,
-} as any)
-const PathlessLayoutRouteARoute = PathlessLayoutRouteARouteImport.update({
-  id: '/route-a',
-  path: '/route-a',
-  getParentRoute: () => PathlessLayoutRoute,
 } as any)
 const AuthProfileRoute = AuthProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
   getParentRoute: () => AuthRoute,
 } as any)
-const DashboardUsersRouteRoute = DashboardUsersRouteRouteImport.update({
-  id: '/users',
-  path: '/users',
+const PathlessLayoutRouteARoute = PathlessLayoutRouteARouteImport.update({
+  id: '/route-a',
+  path: '/route-a',
+  getParentRoute: () => PathlessLayoutRoute,
+} as any)
+const PathlessLayoutRouteBRoute = PathlessLayoutRouteBRouteImport.update({
+  id: '/route-b',
+  path: '/route-b',
+  getParentRoute: () => PathlessLayoutRoute,
+} as any)
+const DashboardIndexRoute = DashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
 const DashboardInvoicesRouteRoute = DashboardInvoicesRouteRouteImport.update({
@@ -90,20 +75,25 @@ const DashboardInvoicesRouteRoute = DashboardInvoicesRouteRouteImport.update({
   path: '/invoices',
   getParentRoute: () => DashboardRouteRoute,
 } as any)
-const DashboardUsersIndexRoute = DashboardUsersIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => DashboardUsersRouteRoute,
+const DashboardUsersRouteRoute = DashboardUsersRouteRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => DashboardRouteRoute,
+} as any)
+const ExpensiveIndexRoute = ExpensiveIndexRouteImport.update({
+  id: '/expensive/',
+  path: '/expensive/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FooBarRoute = FooBarRouteImport.update({
+  id: '/foo/bar',
+  path: '/foo/bar',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardInvoicesIndexRoute = DashboardInvoicesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => DashboardInvoicesRouteRoute,
-} as any)
-const DashboardUsersUserRoute = DashboardUsersUserRouteImport.update({
-  id: '/user',
-  path: '/user',
-  getParentRoute: () => DashboardUsersRouteRoute,
 } as any)
 const DashboardInvoicesInvoiceIdRoute =
   DashboardInvoicesInvoiceIdRouteImport.update({
@@ -111,6 +101,16 @@ const DashboardInvoicesInvoiceIdRoute =
     path: '/$invoiceId',
     getParentRoute: () => DashboardInvoicesRouteRoute,
   } as any)
+const DashboardUsersIndexRoute = DashboardUsersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => DashboardUsersRouteRoute,
+} as any)
+const DashboardUsersUserRoute = DashboardUsersUserRouteImport.update({
+  id: '/user',
+  path: '/user',
+  getParentRoute: () => DashboardUsersRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -228,18 +228,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/login': {
-      id: '/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof LoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_pathlessLayout': {
-      id: '/_pathlessLayout'
-      path: ''
+    '/': {
+      id: '/'
+      path: '/'
       fullPath: '/'
-      preLoaderRoute: typeof PathlessLayoutRouteImport
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_auth': {
@@ -249,6 +242,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_pathlessLayout': {
+      id: '/_pathlessLayout'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof PathlessLayoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/dashboard': {
       id: '/dashboard'
       path: '/dashboard'
@@ -256,47 +256,12 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof DashboardRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/expensive/': {
-      id: '/expensive/'
-      path: '/expensive'
-      fullPath: '/expensive/'
-      preLoaderRoute: typeof ExpensiveIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard/': {
-      id: '/dashboard/'
-      path: '/'
-      fullPath: '/dashboard/'
-      preLoaderRoute: typeof DashboardIndexRouteImport
-      parentRoute: typeof DashboardRouteRoute
-    }
-    '/foo/bar': {
-      id: '/foo/bar'
-      path: '/foo/bar'
-      fullPath: '/foo/bar'
-      preLoaderRoute: typeof FooBarRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_pathlessLayout/route-b': {
-      id: '/_pathlessLayout/route-b'
-      path: '/route-b'
-      fullPath: '/route-b'
-      preLoaderRoute: typeof PathlessLayoutRouteBRouteImport
-      parentRoute: typeof PathlessLayoutRoute
-    }
-    '/_pathlessLayout/route-a': {
-      id: '/_pathlessLayout/route-a'
-      path: '/route-a'
-      fullPath: '/route-a'
-      preLoaderRoute: typeof PathlessLayoutRouteARouteImport
-      parentRoute: typeof PathlessLayoutRoute
     }
     '/_auth/profile': {
       id: '/_auth/profile'
@@ -305,11 +270,25 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof AuthProfileRouteImport
       parentRoute: typeof AuthRoute
     }
-    '/dashboard/users': {
-      id: '/dashboard/users'
-      path: '/users'
-      fullPath: '/dashboard/users'
-      preLoaderRoute: typeof DashboardUsersRouteRouteImport
+    '/_pathlessLayout/route-a': {
+      id: '/_pathlessLayout/route-a'
+      path: '/route-a'
+      fullPath: '/route-a'
+      preLoaderRoute: typeof PathlessLayoutRouteARouteImport
+      parentRoute: typeof PathlessLayoutRoute
+    }
+    '/_pathlessLayout/route-b': {
+      id: '/_pathlessLayout/route-b'
+      path: '/route-b'
+      fullPath: '/route-b'
+      preLoaderRoute: typeof PathlessLayoutRouteBRouteImport
+      parentRoute: typeof PathlessLayoutRoute
+    }
+    '/dashboard/': {
+      id: '/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof DashboardIndexRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
     '/dashboard/invoices': {
@@ -319,12 +298,26 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof DashboardInvoicesRouteRouteImport
       parentRoute: typeof DashboardRouteRoute
     }
-    '/dashboard/users/': {
-      id: '/dashboard/users/'
-      path: '/'
-      fullPath: '/dashboard/users/'
-      preLoaderRoute: typeof DashboardUsersIndexRouteImport
-      parentRoute: typeof DashboardUsersRouteRoute
+    '/dashboard/users': {
+      id: '/dashboard/users'
+      path: '/users'
+      fullPath: '/dashboard/users'
+      preLoaderRoute: typeof DashboardUsersRouteRouteImport
+      parentRoute: typeof DashboardRouteRoute
+    }
+    '/expensive/': {
+      id: '/expensive/'
+      path: '/expensive'
+      fullPath: '/expensive/'
+      preLoaderRoute: typeof ExpensiveIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/foo/bar': {
+      id: '/foo/bar'
+      path: '/foo/bar'
+      fullPath: '/foo/bar'
+      preLoaderRoute: typeof FooBarRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/dashboard/invoices/': {
       id: '/dashboard/invoices/'
@@ -333,19 +326,26 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof DashboardInvoicesIndexRouteImport
       parentRoute: typeof DashboardInvoicesRouteRoute
     }
-    '/dashboard/users/user': {
-      id: '/dashboard/users/user'
-      path: '/user'
-      fullPath: '/dashboard/users/user'
-      preLoaderRoute: typeof DashboardUsersUserRouteImport
-      parentRoute: typeof DashboardUsersRouteRoute
-    }
     '/dashboard/invoices/$invoiceId': {
       id: '/dashboard/invoices/$invoiceId'
       path: '/$invoiceId'
       fullPath: '/dashboard/invoices/$invoiceId'
       preLoaderRoute: typeof DashboardInvoicesInvoiceIdRouteImport
       parentRoute: typeof DashboardInvoicesRouteRoute
+    }
+    '/dashboard/users/': {
+      id: '/dashboard/users/'
+      path: '/'
+      fullPath: '/dashboard/users/'
+      preLoaderRoute: typeof DashboardUsersIndexRouteImport
+      parentRoute: typeof DashboardUsersRouteRoute
+    }
+    '/dashboard/users/user': {
+      id: '/dashboard/users/user'
+      path: '/user'
+      fullPath: '/dashboard/users/user'
+      preLoaderRoute: typeof DashboardUsersUserRouteImport
+      parentRoute: typeof DashboardUsersRouteRoute
     }
   }
 }

@@ -10,7 +10,7 @@ import { ComplexPreloadContentB } from './ComplexPreloadContentB'
 export const getComplexPreloadServerComponentB = createServerFn({
   method: 'GET',
 })
-  .inputValidator((data: { title: string }) => data)
+  .validator((data: { title: string }) => data)
   .handler(async ({ data }) => {
     return renderServerComponent(<ComplexPreloadContentB data={data} />)
   })

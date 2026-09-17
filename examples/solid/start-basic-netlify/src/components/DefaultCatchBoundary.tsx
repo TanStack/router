@@ -1,17 +1,15 @@
 import {
   ErrorComponent,
   Link,
-  rootRouteId,
-  useMatch,
+  useLocation,
   useRouter,
 } from '@tanstack/solid-router'
 import type { ErrorComponentProps } from '@tanstack/solid-router'
 
 export function DefaultCatchBoundary({ error }: ErrorComponentProps) {
   const router = useRouter()
-  const isRoot = useMatch({
-    strict: false,
-    select: (state) => state.id === rootRouteId,
+  const isRoot = useLocation({
+    select: (location) => location.pathname === '/',
   })
 
   console.error('DefaultCatchBoundary Error:', error)

@@ -21,4 +21,4 @@ export const withZodValidator = createServerFn({
 }).handler(createSsrRpc("43606a369c85444a332f701d6399564b6a3691aabab63dfc9a0b7c341fb798f3"));
 export const withValidatorFn = createServerFn({
   method: 'GET'
-}).inputValidator(z.number()).handler(createSsrRpc("5cf922ac733d835fee496964cbf0b4b4067cb43d51f2efa484d072e6bb7dae44"));
+}).validator(z.number()).handler(createSsrRpc("5cf922ac733d835fee496964cbf0b4b4067cb43d51f2efa484d072e6bb7dae44"));

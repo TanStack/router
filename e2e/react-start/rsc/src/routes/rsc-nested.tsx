@@ -20,7 +20,7 @@ import { pageStyles, clientStyles, formatTime } from '~/utils/styles'
 const getProductCardServerComponent = createServerFn({
   method: 'GET',
 })
-  .inputValidator((data: { productId: string }) => data)
+  .validator((data: { productId: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 
@@ -200,7 +200,7 @@ const getProductCardServerComponent = createServerFn({
 const getProductReviewsServerComponent = createServerFn({
   method: 'GET',
 })
-  .inputValidator((data: { productId: string }) => data)
+  .validator((data: { productId: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

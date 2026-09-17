@@ -31,6 +31,29 @@ export type RsbuildEnvironmentName =
   (typeof RSBUILD_ENVIRONMENT_NAMES)[keyof typeof RSBUILD_ENVIRONMENT_NAMES]
 
 type RsbuildDistPath = NonNullable<EnvironmentConfig['output']>['distPath']
+type RsbuildDistPathObject = Exclude<RsbuildDistPath, string>
+
+function createPublicAssetDistPath(root: string): RsbuildDistPathObject {
+  return {
+    root,
+    css: `${RSBUILD_CLIENT_ASSETS_DIR}/css`,
+    cssAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/css/async`,
+    svg: `${RSBUILD_CLIENT_ASSETS_DIR}/svg`,
+    font: `${RSBUILD_CLIENT_ASSETS_DIR}/font`,
+    wasm: `${RSBUILD_CLIENT_ASSETS_DIR}/wasm`,
+    image: `${RSBUILD_CLIENT_ASSETS_DIR}/image`,
+    media: `${RSBUILD_CLIENT_ASSETS_DIR}/media`,
+    assets: `${RSBUILD_CLIENT_ASSETS_DIR}/assets`,
+  }
+}
+
+function createClientAssetDistPath(root: string): RsbuildDistPathObject {
+  return {
+    ...createPublicAssetDistPath(root),
+    js: `${RSBUILD_CLIENT_ASSETS_DIR}/js`,
+    jsAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/js/async`,
+  }
+}
 
 export interface RsbuildResolvedEntryAliases {
   client: string
@@ -121,19 +144,7 @@ export function createRsbuildEnvironmentPlan(opts: {
           output: {
             target: 'web',
             module: clientOutputModule,
-            distPath: {
-              root: opts.clientOutputDirectory,
-              js: `${RSBUILD_CLIENT_ASSETS_DIR}/js`,
-              jsAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/js/async`,
-              css: `${RSBUILD_CLIENT_ASSETS_DIR}/css`,
-              cssAsync: `${RSBUILD_CLIENT_ASSETS_DIR}/css/async`,
-              svg: `${RSBUILD_CLIENT_ASSETS_DIR}/svg`,
-              font: `${RSBUILD_CLIENT_ASSETS_DIR}/font`,
-              wasm: `${RSBUILD_CLIENT_ASSETS_DIR}/wasm`,
-              image: `${RSBUILD_CLIENT_ASSETS_DIR}/image`,
-              media: `${RSBUILD_CLIENT_ASSETS_DIR}/media`,
-              assets: `${RSBUILD_CLIENT_ASSETS_DIR}/assets`,
-            },
+            distPath: createClientAssetDistPath(opts.clientOutputDirectory),
             assetPrefix: opts.publicBase,
           },
           resolve: {
@@ -171,9 +182,8 @@ export function createRsbuildEnvironmentPlan(opts: {
             // which requires `--experimental-vm-modules`. Emit CJS for the dev
             // server bundle so SSR works without extra Node flags.
             ...(opts.dev ? { module: false } : {}),
-            distPath: {
-              root: opts.serverOutputDirectory,
-            },
+            distPath: createPublicAssetDistPath(opts.serverOutputDirectory),
+            assetPrefix: opts.publicBase,
           },
           resolve: {
             alias,
@@ -208,9 +218,10 @@ export function createRsbuildEnvironmentPlan(opts: {
                 output: {
                   target: 'node',
                   ...(opts.dev ? { module: false } : {}),
-                  distPath: {
-                    root: `${opts.serverOutputDirectory}/${opts.serverFnProviderEnv}`,
-                  },
+                  distPath: createPublicAssetDistPath(
+                    `${opts.serverOutputDirectory}/${opts.serverFnProviderEnv}`,
+                  ),
+                  assetPrefix: opts.publicBase,
                 },
                 resolve: {
                   alias,

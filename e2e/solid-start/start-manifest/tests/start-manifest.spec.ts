@@ -18,12 +18,14 @@ const buildUrl = (baseURL: string, pathname: string) =>
 async function getColor(testId: string, page: Page) {
   return page
     .getByTestId(testId)
+    .first()
     .evaluate((element) => getComputedStyle(element).color)
 }
 
 async function getBackgroundColor(testId: string, page: Page) {
   return page
     .getByTestId(testId)
+    .first()
     .evaluate((element) => getComputedStyle(element).backgroundColor)
 }
 
@@ -32,6 +34,19 @@ function getStylesheetHrefsFromHtml(html: string) {
     html.matchAll(/<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"/g),
     (match) => match[1]!,
   )
+}
+
+function getModulepreloadHrefsFromHtml(html: string) {
+  return Array.from(
+    html.matchAll(/<link[^>]+rel="modulepreload"[^>]+href="([^"]+)"/g),
+    (match) => match[1]!,
+  )
+}
+
+function getHeadHtml(html: string) {
+  const headEnd = html.indexOf('</head>')
+  expect(headEnd).toBeGreaterThan(-1)
+  return html.slice(0, headEnd)
 }
 
 async function getHeadStylesheetHrefs(page: Page) {
@@ -354,7 +369,7 @@ test('shared widget CSS stays applied when navigating from static to lazy route'
 }) => {
   await page.goto(buildUrl(baseURL!, '/lazy-css-static'))
 
-  const widget = page.getByTestId('shared-widget')
+  const widget = page.getByTestId('shared-widget').first()
   await expect(widget).toBeVisible()
   expect(await getBackgroundColor('shared-widget', page)).toBe(SHARED_WIDGET_BG)
   expect(
@@ -392,7 +407,7 @@ test('shared widget CSS stays applied when navigating from lazy to static route'
   await page.getByTestId('nav-/lazy-css-static').click()
   await page.waitForURL('**/lazy-css-static')
 
-  const widget = page.getByTestId('shared-widget')
+  const widget = page.getByTestId('shared-widget').first()
   await expect(widget).toBeVisible()
   await expect
     .poll(() => getBackgroundColor('shared-widget', page), {
@@ -413,7 +428,7 @@ test('shared widget CSS is applied on direct navigation to lazy route', async ({
   await page.goto(buildUrl(baseURL!, '/lazy-css-lazy'))
   await expect(page.getByTestId('lazy-css-lazy-heading')).toBeVisible()
 
-  const widget = page.getByTestId('shared-widget')
+  const widget = page.getByTestId('shared-widget').first()
   await expect(widget).toBeVisible()
 
   await expect
@@ -426,6 +441,62 @@ test('shared widget CSS is applied on direct navigation to lazy route', async ({
       (element) => getComputedStyle(element).borderTopColor,
     ),
   ).toBe(SHARED_WIDGET_BORDER)
+})
+
+test('direct SSR entry emits head modulepreload hints for the lazy() chunk', async ({
+  baseURL,
+  request,
+}) => {
+  const response = await request.get(buildUrl(baseURL!, '/lazy-css-lazy'))
+  const ssrHtml = await response.text()
+
+  expect(response.ok()).toBe(true)
+
+  // The SSR'd lazy() boundary resolves through the client-assets manifest:
+  // the lazy chunk and the widget chunk it statically imports are
+  // modulepreload-hinted from the initial <head>, alongside the lazy
+  // chunk's stylesheet.
+  const headHtml = getHeadHtml(ssrHtml)
+  const headPreloads = getModulepreloadHrefsFromHtml(headHtml)
+
+  expect(
+    headPreloads.filter((href) => href.includes('SharedWidgetLazy-')),
+  ).toHaveLength(1)
+  expect(
+    headPreloads.filter((href) => /\/SharedWidget-[^/]+\.js$/.test(href)),
+  ).toHaveLength(1)
+
+  const headStylesheets = getStylesheetHrefsFromHtml(headHtml)
+  expect(countMatchingStylesheetHrefs(headStylesheets, 'SharedWidget-')).toBe(1)
+
+  // Routes that never render the lazy component emit no hints for it.
+  const homeResponse = await request.get(buildUrl(baseURL!, '/'))
+  const homeHtml = await homeResponse.text()
+
+  expect(homeResponse.ok()).toBe(true)
+  expect(homeHtml).not.toContain('SharedWidgetLazy-')
+})
+
+test('SSR serializes the asset map gating hydration of the lazy() boundary', async ({
+  baseURL,
+  request,
+}) => {
+  const response = await request.get(buildUrl(baseURL!, '/lazy-css-lazy'))
+  const ssrHtml = await response.text()
+
+  expect(response.ok()).toBe(true)
+
+  const headPreloads = getModulepreloadHrefsFromHtml(getHeadHtml(ssrHtml))
+  const lazyChunkHref = headPreloads.find((href) =>
+    href.includes('SharedWidgetLazy-'),
+  )
+  expect(lazyChunkHref).toBeTruthy()
+
+  // Solid serializes a boundary → entry-chunk map into the hydration
+  // payload; the client awaits those imports before hydrating the boundary,
+  // so the map must point at the same chunk the head hints preloaded.
+  const assetMaps = ssrHtml.match(/_\$HY\.r\["[^"]*_assets"\]=[^;]*/g) ?? []
+  expect(assetMaps.some((map) => map.includes(lazyChunkHref!))).toBe(true)
 })
 
 test('shared widget CSS persists after navigating away from lazy and back', async ({

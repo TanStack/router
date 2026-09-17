@@ -1,5 +1,162 @@
 # @tanstack/vue-start-server
 
+## 1.167.31
+
+### Patch Changes
+
+- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13), [`f500760`](https://github.com/TanStack/router/commit/f5007607d62e932b8df19de866cdc6bddcff8db3), [`1aafca9`](https://github.com/TanStack/router/commit/1aafca9b45d24f8f0dba78e716fc9582346c6ca1), [`aa10b65`](https://github.com/TanStack/router/commit/aa10b6589eeda215f5a60ea0af95a3101d8c414e)]:
+  - @tanstack/router-core@1.171.22
+  - @tanstack/vue-router@1.170.24
+  - @tanstack/start-server-core@1.169.26
+
+## 1.167.30
+
+### Patch Changes
+
+- Updated dependencies [[`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05)]:
+  - @tanstack/router-core@1.171.21
+  - @tanstack/start-server-core@1.169.25
+  - @tanstack/vue-router@1.170.23
+
+## 1.167.29
+
+### Patch Changes
+
+- Updated dependencies [[`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246), [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a)]:
+  - @tanstack/router-core@1.171.20
+  - @tanstack/start-server-core@1.169.24
+  - @tanstack/vue-router@1.170.22
+
+## 1.167.28
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-server-core@1.169.23
+
+## 1.167.27
+
+### Patch Changes
+
+- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
+  - @tanstack/router-core@1.171.19
+  - @tanstack/start-server-core@1.169.22
+  - @tanstack/vue-router@1.170.21
+
+## 1.167.26
+
+### Patch Changes
+
+- Updated dependencies [[`2435885`](https://github.com/TanStack/router/commit/2435885fa8b5e31c8c4b74d93920919f27316ebf), [`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`86bf510`](https://github.com/TanStack/router/commit/86bf510c2923afb76804223bd04afc2a809b33e7), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
+  - @tanstack/vue-router@1.170.20
+  - @tanstack/router-core@1.171.18
+  - @tanstack/start-server-core@1.169.21
+
+## 1.167.25
+
+### Patch Changes
+
+- Updated dependencies [[`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5)]:
+  - @tanstack/router-core@1.171.17
+  - @tanstack/start-server-core@1.169.20
+  - @tanstack/vue-router@1.170.19
+
+## 1.167.24
+
+### Patch Changes
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+  - @tanstack/vue-router@1.170.18
+  - @tanstack/start-server-core@1.169.19
+
+## 1.167.23
+
+### Patch Changes
+
+- [#7944](https://github.com/TanStack/router/pull/7944) [`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162) - Use focused server entrypoints for shared constants and handler helpers so build tooling and framework renderers do not traverse the full Start server barrel.
+
+- Updated dependencies [[`65f7b7f`](https://github.com/TanStack/router/commit/65f7b7f791272f2ea581a1fe0fcd43183bc01162)]:
+  - @tanstack/start-server-core@1.169.18
+
+## 1.167.22
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+  - @tanstack/start-server-core@1.169.17
+  - @tanstack/vue-router@1.170.17
+
+## 1.167.21
+
+### Patch Changes
+
+- Updated dependencies [[`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b)]:
+  - @tanstack/router-core@1.171.14
+  - @tanstack/start-server-core@1.169.16
+  - @tanstack/vue-router@1.170.16
+
+## 1.167.20
+
+### Patch Changes
+
+- Updated dependencies [[`96eca43`](https://github.com/TanStack/router/commit/96eca43ab8ee21917a8075521bef6dcf15fc7a43)]:
+  - @tanstack/start-server-core@1.169.15
+
+## 1.167.19
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/start-server-core@1.169.14
+
+## 1.167.18
+
+### Patch Changes
+
+- Updated dependencies [[`776d8ef`](https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03)]:
+  - @tanstack/router-core@1.171.13
+  - @tanstack/start-server-core@1.169.13
+  - @tanstack/vue-router@1.170.15
+
+## 1.167.17
+
+### Patch Changes
+
+- Updated dependencies [[`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107)]:
+  - @tanstack/router-core@1.171.12
+  - @tanstack/start-server-core@1.169.12
+  - @tanstack/vue-router@1.170.14
+
+## 1.167.16
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/router-core@1.171.11
+  - @tanstack/vue-router@1.170.13
+  - @tanstack/start-server-core@1.169.11
+
+## 1.167.15
+
+### Patch Changes
+
+- Updated dependencies [[`2cca73c`](https://github.com/TanStack/router/commit/2cca73c92262ffd96dac4e283c9f69fb37f4b43a), [`7a83e67`](https://github.com/TanStack/router/commit/7a83e67e6596fbef21cb0a88a7127f5935bed2ba), [`76b3d3b`](https://github.com/TanStack/router/commit/76b3d3b24522bd3d1d216674c441252c9b8f184c)]:
+  - @tanstack/router-core@1.171.10
+  - @tanstack/start-server-core@1.169.10
+  - @tanstack/vue-router@1.170.12
+
+## 1.167.14
+
+### Patch Changes
+
+- Updated dependencies [[`b4cd5af`](https://github.com/TanStack/router/commit/b4cd5af8d0f9d4aaa2d29095e6a261b9181bc778)]:
+  - @tanstack/router-core@1.171.9
+  - @tanstack/start-client-core@1.170.7
+  - @tanstack/start-server-core@1.169.9
+  - @tanstack/vue-router@1.170.11
+
 ## 1.167.13
 
 ### Patch Changes

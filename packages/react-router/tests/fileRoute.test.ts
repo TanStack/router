@@ -1,5 +1,5 @@
 /* eslint-disable */
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import {
   getRouteApi,
   createFileRoute,
@@ -7,7 +7,32 @@ import {
   createLazyFileRoute,
   LazyRoute,
   AnyRoute,
+  FileRoute,
 } from '../src'
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('createFileRoute', () => {
+  it('creates a non-root route without a deprecation warning', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // @ts-expect-error
+    const route = createFileRoute('')({})
+
+    expect(route.isRoot).toBe(false)
+    expect(warn).not.toHaveBeenCalled()
+  })
+
+  it('keeps the deprecation warning for direct FileRoute usage', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    // @ts-expect-error
+    const route = new FileRoute('').createRoute({})
+
+    expect(route.isRoot).toBe(false)
+    expect(warn).toHaveBeenCalledOnce()
+  })
+})
 
 describe('createFileRoute has the same hooks as getRouteApi', () => {
   const routeApi = getRouteApi('foo')

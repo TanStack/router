@@ -1,25 +1,30 @@
 import * as Solid from 'solid-js'
 import {
+  _getAssetMatches,
   appendUniqueUserTags,
   escapeHtml,
   getAssetCrossOrigin,
   getScriptPreloadAttrs,
   resolveManifestCssLink,
 } from '@tanstack/router-core'
+import { isServer } from '@tanstack/router-core/isServer'
 import { useRouter } from './useRouter'
+import type { HeadTag } from '@solidjs/web'
 import type {
   AssetCrossOriginConfig,
   RouterManagedTag,
 } from '@tanstack/router-core'
 
 /**
- * Build the list of head/link/meta/script tags to render for active matches.
+ * Build the head/link/meta/script tags from the renderable presented prefix.
  * Used internally by `HeadContent`.
  */
 export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   const router = useRouter()
   const nonce = router.options.ssr?.nonce
-  const activeMatches = Solid.createMemo(() => router.stores.matches.get())
+  const activeMatches = Solid.createMemo(() =>
+    _getAssetMatches(router.stores.matches.get()),
+  )
   const routeMeta = Solid.createMemo(() =>
     activeMatches()
       .map((match) => match.meta)
@@ -35,7 +40,9 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       const metas = routeMetasArray[i]!
       for (let j = metas.length - 1; j >= 0; j--) {
         const m = metas[j]
-        if (!m) continue
+        if (!m) {
+          continue
+        }
 
         if (m.title) {
           if (!title) {
@@ -45,8 +52,6 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
             }
           }
         } else if ('script:ld+json' in m) {
-          // Handle JSON-LD structured data
-          // Content is HTML-escaped to prevent XSS when injected via innerHTML
           try {
             const json = JSON.stringify(m['script:ld+json'])
             resultMeta.push({
@@ -57,16 +62,15 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
               children: escapeHtml(json),
             })
           } catch {
-            // Skip invalid JSON-LD objects
+            // Skip invalid JSON-LD objects.
           }
         } else {
           const attribute = m.name ?? m.property
           if (attribute) {
             if (metaByAttribute[attribute]) {
               continue
-            } else {
-              metaByAttribute[attribute] = true
             }
+            metaByAttribute[attribute] = true
           }
 
           resultMeta.push({
@@ -84,23 +88,21 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
       resultMeta.push(title)
     }
 
-    if (router.options.ssr?.nonce) {
+    if (nonce) {
       resultMeta.push({
         tag: 'meta',
         attrs: {
           property: 'csp-nonce',
-          content: router.options.ssr.nonce,
+          content: nonce,
         },
       })
     }
     resultMeta.reverse()
-
     return resultMeta
   })
 
   const links = Solid.createMemo(() => {
-    const matches = activeMatches()
-    const constructed = matches
+    return activeMatches()
       .flatMap((match) => match.links ?? [])
       .filter((link) => link !== undefined)
       .map((link) => ({
@@ -110,10 +112,9 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
           nonce,
         },
       })) satisfies Array<RouterManagedTag>
-
-    return constructed
   })
 
+  const retainedManifestCssTags = new Map<string, RouterManagedTag>()
   const manifestCssTags = Solid.createMemo(() => {
     const manifest = router.ssr?.manifest
     const tags: Array<RouterManagedTag> = []
@@ -123,9 +124,9 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     }
 
     for (const match of activeMatches()) {
-      manifest.routes[match.routeId]?.css?.forEach((link) => {
+      for (const link of manifest.routes[match.routeId]?.css ?? []) {
         const resolvedLink = resolveManifestCssLink(link)
-        tags.push({
+        const tag: RouterManagedTag = {
           tag: 'link',
           attrs: {
             rel: 'stylesheet',
@@ -135,9 +136,16 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
               resolvedLink.crossOrigin,
             nonce,
           },
-        })
-      })
+        }
+        const key = JSON.stringify(tag)
+        if (!retainedManifestCssTags.has(key)) {
+          retainedManifestCssTags.set(key, tag)
+        }
+      }
     }
+
+    // Lazy modules are cached and do not reinsert their CSS when revisited.
+    tags.push(...retainedManifestCssTags.values())
 
     if (manifest.inlineStyle) {
       tags.push({
@@ -155,38 +163,33 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
   })
 
   const preloadLinks = Solid.createMemo(() => {
-    const matches = activeMatches()
-    const preloadLinks: Array<RouterManagedTag> = []
-
-    matches.forEach((match) =>
-      router.ssr?.manifest?.routes[match.routeId]?.preloads
-        ?.filter(Boolean)
-        .forEach((preload) => {
-          preloadLinks.push({
-            tag: 'link',
-            attrs: {
-              ...getScriptPreloadAttrs(
-                router.ssr?.manifest,
-                preload,
-                assetCrossOrigin,
-              ),
-              nonce,
-            },
-          })
-        }),
-    )
-
-    return preloadLinks
+    const manifest = router.ssr?.manifest
+    const tags: Array<RouterManagedTag> = []
+    for (const match of activeMatches()) {
+      for (const preload of manifest?.routes[match.routeId]?.preloads ?? []) {
+        if (!preload) {
+          continue
+        }
+        tags.push({
+          tag: 'link',
+          attrs: {
+            ...getScriptPreloadAttrs(manifest, preload, assetCrossOrigin),
+            nonce,
+          },
+        })
+      }
+    }
+    return tags
   })
 
   const styles = Solid.createMemo(() => {
     return activeMatches()
       .flatMap((match) => match.styles ?? [])
       .filter((style) => style !== undefined)
-      .map(({ children, ...style }) => ({
+      .map(({ children, ...attrs }) => ({
         tag: 'style',
         attrs: {
-          ...style,
+          ...attrs,
           nonce,
         },
         children: children as string | undefined,
@@ -197,22 +200,17 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     return activeMatches()
       .flatMap((match) => match.headScripts ?? [])
       .filter((script) => script !== undefined)
-      .map(({ children, ...script }) => ({
+      .map(({ children, ...attrs }) => ({
         tag: 'script',
         attrs: {
-          ...script,
+          ...attrs,
           nonce,
         },
         children: children as string | undefined,
       })) satisfies Array<RouterManagedTag>
   })
 
-  // Cache tag objects by key across renders so that unchanged tags keep a
-  // stable object identity. `<For>` keys by reference, so reusing the previous
-  // object for an unchanged tag lets it reconcile the existing DOM node in
-  // place instead of remounting it. Remounting head nodes on navigation
-  // detaches/re-fetches stylesheets (e.g. the app stylesheet), causing a FOUC.
-  return Solid.createMemo((prev: Array<RouterManagedTag> | undefined) => {
+  return Solid.createMemo(() => {
     const next: Array<RouterManagedTag> = []
     appendUniqueUserTags(next, meta())
     appendUniqueUserTags(next, links())
@@ -220,36 +218,73 @@ export const useTags = (assetCrossOrigin?: AssetCrossOriginConfig) => {
     next.push(...preloadLinks())
     appendUniqueUserTags(next, styles())
     appendUniqueUserTags(next, headScripts())
-
-    if (prev === undefined) {
-      return next
-    }
-    return replaceEqualTags(prev, next)
+    return next
   })
 }
 
-function replaceEqualTags(
-  prev: Array<RouterManagedTag>,
-  next: Array<RouterManagedTag>,
-) {
-  const prevByKey = new Map<string, RouterManagedTag>()
-  for (const tag of prev) {
-    prevByKey.set(JSON.stringify(tag), tag)
+const INLINE_CSS_HYDRATION_ATTR = 'data-tsr-inline-css'
+
+/**
+ * Convert the router-managed tags into head registry descriptors for
+ * `useHead`. Pure data mapping — it is evaluated inside the registry's own
+ * flush boundary (server) / effect (client), so it must not allocate
+ * reactive owners.
+ */
+export function toHeadTags(tags: Array<RouterManagedTag>): Array<HeadTag> {
+  return tags.map(toHeadTag)
+}
+
+function toHeadTag(t: RouterManagedTag): HeadTag {
+  const props: Record<string, any> = { ...t.attrs }
+  let children: string | undefined = t.children
+
+  if (
+    t.tag === 'style' &&
+    t.inlineCss &&
+    (process.env.TSS_INLINE_CSS_ENABLED === 'true' ||
+      (process.env.TSS_INLINE_CSS_ENABLED === undefined && isServer))
+  ) {
+    // Mark the inline-CSS style so the client can find it again: the
+    // serialized manifest omits the CSS text, so on the client the tag
+    // arrives with `children === undefined` and the text is recovered from
+    // the server-rendered element.
+    props[INLINE_CSS_HYDRATION_ATTR] = ''
   }
 
-  let isEqual = prev.length === next.length
-  const result = next.map((tag, index) => {
-    const existing = prevByKey.get(JSON.stringify(tag))
-    if (existing) {
-      if (existing !== prev[index]) {
-        isEqual = false
-      }
-      return existing
-    }
+  if (
+    t.tag === 'style' &&
+    t.inlineCss &&
+    children === undefined &&
+    typeof document !== 'undefined'
+  ) {
+    children =
+      document.querySelector<HTMLStyleElement>(
+        `style[${INLINE_CSS_HYDRATION_ATTR}]`,
+      )?.textContent ?? ''
+  }
 
-    isEqual = false
-    return tag
-  })
+  if (children !== undefined) {
+    props.children = children
+  }
 
-  return isEqual ? prev : result
+  const headTag: HeadTag = { tag: t.tag, props }
+
+  // Inline scripts and styles have no natural registry identity: the
+  // registry assigns them per-runtime unique ids, which can never match
+  // between server and client, so hydration would append a client copy
+  // next to the server-rendered one. A stable content-derived key gives
+  // both runtimes the same identity to reconcile on.
+  if (t.tag === 'style' || (t.tag === 'script' && props.src === undefined)) {
+    headTag.key = `tsr-${hashString(t.tag + JSON.stringify(props))}`
+  }
+
+  return headTag
+}
+
+function hashString(s: string): string {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) {
+    h = ((h << 5) + h + s.charCodeAt(i)) | 0
+  }
+  return (h >>> 0).toString(36)
 }

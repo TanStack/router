@@ -6,7 +6,7 @@ import { ConditionalVioletPanel } from './ConditionalVioletPanel'
 export const getConditionalCssServerComponent = createServerFn({
   method: 'GET',
 })
-  .inputValidator((data: { branch?: 'orange' | 'violet' }) => data)
+  .validator((data: { branch?: 'orange' | 'violet' }) => data)
   .handler(async ({ data }) => {
     const branch = data.branch === 'violet' ? 'violet' : 'orange'
 

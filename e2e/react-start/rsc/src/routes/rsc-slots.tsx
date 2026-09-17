@@ -18,7 +18,7 @@ import {
 // ============================================================================
 
 const getSlottedServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { title: string }) => data)
+  .validator((data: { title: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

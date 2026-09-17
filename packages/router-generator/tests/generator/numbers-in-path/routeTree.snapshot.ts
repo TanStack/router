@@ -9,15 +9,15 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AboutRouteImport } from './routes/about'
-import { Route as R03RouteImport } from './routes/03'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as R02IndexRouteImport } from './routes/02.index'
+import { Route as R03RouteImport } from './routes/03'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as R01ExampleIndexRouteImport } from './routes/01-example/index'
+import { Route as R02IndexRouteImport } from './routes/02.index'
 
-const AboutRoute = AboutRouteImport.update({
-  id: '/about',
-  path: '/about',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const R03Route = R03RouteImport.update({
@@ -25,19 +25,19 @@ const R03Route = R03RouteImport.update({
   path: '/03',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const R02IndexRoute = R02IndexRouteImport.update({
-  id: '/02/',
-  path: '/02/',
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const R01ExampleIndexRoute = R01ExampleIndexRouteImport.update({
   id: '/01-example/',
   path: '/01-example/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R02IndexRoute = R02IndexRouteImport.update({
+  id: '/02/',
+  path: '/02/',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -81,11 +81,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/about': {
-      id: '/about'
-      path: '/about'
-      fullPath: '/about'
-      preLoaderRoute: typeof AboutRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/03': {
@@ -95,18 +95,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof R03RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/02/': {
-      id: '/02/'
-      path: '/02'
-      fullPath: '/02/'
-      preLoaderRoute: typeof R02IndexRouteImport
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/01-example/': {
@@ -114,6 +107,13 @@ declare module '@tanstack/react-router' {
       path: '/01-example'
       fullPath: '/01-example/'
       preLoaderRoute: typeof R01ExampleIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/02/': {
+      id: '/02/'
+      path: '/02'
+      fullPath: '/02/'
+      preLoaderRoute: typeof R02IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

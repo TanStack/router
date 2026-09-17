@@ -39,8 +39,8 @@
     "react-dom": "^19.0.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.50.1",
-    "@rsbuild/core": "^2.0.8",
+    "@playwright/test": "^1.61.0",
+    "@rsbuild/core": "^2.1.0",
     "@rsbuild/plugin-react": "^2.0.0",
     "@tanstack/eslint-plugin-start": "workspace:^",
     "@tanstack/router-e2e-utils": "workspace:^",
@@ -49,7 +49,7 @@
     "@types/react-dom": "^19.0.3",
     "@typescript-eslint/parser": "^8.23.0",
     "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-rsc": "^0.5.20",
+    "@vitejs/plugin-rsc": "^0.5.30",
     "eslint": "^9.22.0",
     "srvx": "^0.10.0",
     "typescript": "^5.7.2",

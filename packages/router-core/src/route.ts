@@ -74,9 +74,17 @@ export type RoutePathOptionsIntersection<TCustomId, TPath> = {
 
 export type SearchFilter<TInput, TResult = TInput> = (prev: TInput) => TResult
 
+export type SearchMiddlewareMeta = {
+  removed?: Map<string, unknown>
+  removedAny?: Set<string>
+  defaulted?: Map<string, unknown>
+  explicit?: unknown
+}
+
 export type SearchMiddlewareContext<TSearchSchema> = {
   search: TSearchSchema
   next: (newSearch: TSearchSchema) => TSearchSchema
+  meta?: SearchMiddlewareMeta
 }
 
 export type SearchMiddleware<TSearchSchema> = (
@@ -692,10 +700,6 @@ export interface Route<
     THandlers
   >
   isRoot: TParentRoute extends AnyRoute ? true : false
-  /** @internal */
-  _componentsPromise?: Promise<void>
-  /** @internal */
-  _componentsLoaded?: boolean
   lazyFn?: () => Promise<
     LazyRoute<
       Route<
@@ -721,9 +725,7 @@ export interface Route<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
-  /** @internal */
-  _lazyLoaded?: boolean
+  _lazy?: Promise<void> | true
   rank: number
   to: TrimPathRight<TFullPath>
   init: (opts: { originalIndex: number }) => void
@@ -1281,9 +1283,7 @@ export interface UpdatableRouteOptions<
   preloadGcTime?: number
   search?: {
     middlewares?: Array<
-      SearchMiddleware<
-        ResolveFullSearchSchemaInput<TParentRoute, TSearchValidator>
-      >
+      SearchMiddleware<ResolveFullSearchSchema<TParentRoute, TSearchValidator>>
     >
   }
   /** 
@@ -1705,10 +1705,7 @@ export class BaseRoute<
     >
   >
   /** @internal */
-  _lazyPromise?: Promise<void>
-  /** @internal */
-  _componentsPromise?: Promise<void>
-
+  _lazy?: Promise<void> | true
   constructor(
     options?: RouteOptions<
       TRegister,

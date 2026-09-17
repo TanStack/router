@@ -17,7 +17,7 @@ import { pageStyles, clientStyles, formatTime } from '~/utils/styles'
 const getContextAwareServerComponent = createServerFn({
   method: 'GET',
 })
-  .inputValidator((data: { userId: string }) => data)
+  .validator((data: { userId: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

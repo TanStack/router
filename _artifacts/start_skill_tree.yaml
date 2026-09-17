@@ -37,7 +37,7 @@ skills:
     path: 'skills/start-core/server-functions/SKILL.md'
     package: 'packages/start-client-core'
     description: >-
-      createServerFn (GET/POST), inputValidator (Zod or function),
+      createServerFn (GET/POST), validator (Zod or function),
       useServerFn hook, server context utilities (getRequest,
       getRequestHeader, setResponseHeader, setResponseStatus), error
       handling (throw errors, redirect, notFound), streaming

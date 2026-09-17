@@ -41,7 +41,7 @@ export const getDocumentHeads = createServerFn({ method: 'GET' }).handler(
 )
 
 export const getDocument = createServerFn({ method: 'GET' })
-  .inputValidator((id: string) => id)
+  .validator((id: string) => id)
   .handler(async ({ data: id }) => {
     await new Promise((resolve) => setTimeout(resolve, 200))
 

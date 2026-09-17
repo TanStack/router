@@ -56,7 +56,7 @@ function drainBody(response: Response) {
 }
 
 describe('renderRouterToStream - bot abort', () => {
-  test('request abort during bot wait returns and terminates response stream', async () => {
+  test('request abort during bot wait terminates before rendering starts', async () => {
     const neverReady = new Promise<void>(() => {})
     solidMocks.pipeTo.mockImplementationOnce(
       (writable: WritableStream<Uint8Array>) => {
@@ -99,6 +99,7 @@ describe('renderRouterToStream - bot abort', () => {
       expect(result).not.toBe(false)
       expect(solidMocks.pipeTo).not.toHaveBeenCalled()
       const response = unwrapResponse(result as Exclude<typeof result, false>)
+      expect(response.body).not.toBeNull()
 
       const terminated = await Promise.race([
         drainBody(response),

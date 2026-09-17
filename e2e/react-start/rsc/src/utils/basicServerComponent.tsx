@@ -8,7 +8,7 @@ import { serverBox, serverBadge, serverHeader, timestamp } from './serverStyles'
 // ============================================================================
 
 export const getBasicServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { label?: string }) => data)
+  .validator((data: { label?: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

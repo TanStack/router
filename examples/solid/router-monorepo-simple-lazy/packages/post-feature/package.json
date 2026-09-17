@@ -16,14 +16,15 @@
     }
   },
   "dependencies": {
-    "@tanstack/solid-query": "^6.0.0-beta.4",
+    "@tanstack/solid-query": "^6.0.0-rc.1",
     "@router-solid-mono-simple-lazy/router": "workspace:*",
-    "solid-js": "2.0.0-beta.14",
-    "@solidjs/web": "2.0.0-beta.14"
+    "solid-js": "^2.0.0-rc.8",
+    "@solidjs/web": "^2.0.0-rc.8"
   },
   "devDependencies": {
-    "vite-plugin-solid": "^3.0.0-next.5",
-    "typescript": "^6.0.2",
+    "@solidjs/vite-plugin": "^3.0.0-next.43",
+    "@typescript/native": "npm:typescript@^7.0.2",
+    "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "vite-plugin-dts": "^4.5.4"
   }

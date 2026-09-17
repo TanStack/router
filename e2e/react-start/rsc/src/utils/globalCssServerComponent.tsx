@@ -9,7 +9,7 @@ import { GlobalCssContent } from './GlobalCssContent'
 // ============================================================================
 
 export const getGlobalCssServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { title?: string }) => data)
+  .validator((data: { title?: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

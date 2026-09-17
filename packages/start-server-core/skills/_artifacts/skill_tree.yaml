@@ -1,6 +1,6 @@
 library:
   name: '@tanstack/start-server-core'
-  version: '1.166.2'
+  version: '1.169.17'
   repository: 'https://github.com/TanStack/router'
   description: >-
     Server-side runtime for TanStack Start: createStartHandler,

@@ -33,7 +33,7 @@ export const getBoards = createServerFn({ method: 'GET' }).handler(async () => {
 })
 
 export const getBoard = createServerFn({ method: 'GET' })
-  .inputValidator(z.string())
+  .validator(z.string())
   .handler(async ({ data }) => {
     await delay(DELAY)
     const board = boards.find((b) => b.id === data)
@@ -42,7 +42,7 @@ export const getBoard = createServerFn({ method: 'GET' })
   })
 
 export const createColumn = createServerFn()
-  .inputValidator(newColumnSchema)
+  .validator(newColumnSchema)
   .handler(async ({ data }) => {
     await delay(DELAY)
     const newColumn = newColumnSchema.parse(data)
@@ -62,7 +62,7 @@ export const createColumn = createServerFn()
   })
 
 export const createItem = createServerFn()
-  .inputValidator(itemSchema)
+  .validator(itemSchema)
   .handler(async ({ data }) => {
     await delay(DELAY)
     const item = itemSchema.parse(data)
@@ -75,7 +75,7 @@ export const createItem = createServerFn()
   })
 
 export const deleteItem = createServerFn({ method: 'GET' })
-  .inputValidator(deleteItemSchema)
+  .validator(deleteItemSchema)
   .handler(async ({ data }) => {
     await delay(DELAY)
     const { id } = deleteItemSchema.parse(data)
@@ -85,7 +85,7 @@ export const deleteItem = createServerFn({ method: 'GET' })
   })
 
 export const updateItem = createServerFn()
-  .inputValidator(itemSchema)
+  .validator(itemSchema)
   .handler(async ({ data }) => {
     await delay(DELAY)
     const item = itemSchema.parse(data)
@@ -97,7 +97,7 @@ export const updateItem = createServerFn()
   })
 
 export const updateColumn = createServerFn()
-  .inputValidator(updateColumnSchema)
+  .validator(updateColumnSchema)
   .handler(async ({ data }) => {
     await delay(DELAY)
     const column = updateColumnSchema.parse(data)
@@ -109,7 +109,7 @@ export const updateColumn = createServerFn()
   })
 
 export const updateBoard = createServerFn()
-  .inputValidator(updateBoardSchema)
+  .validator(updateBoardSchema)
   .handler(async ({ data }) => {
     await delay(DELAY)
     const update = updateBoardSchema.parse(data)
@@ -119,7 +119,7 @@ export const updateBoard = createServerFn()
   })
 
 export const deleteColumn = createServerFn({ method: 'GET' })
-  .inputValidator(deleteColumnSchema)
+  .validator(deleteColumnSchema)
   .handler(async ({ data }) => {
     await delay(DELAY)
     const { id } = deleteColumnSchema.parse(data)

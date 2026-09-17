@@ -10,8 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/app'
-import { Route as AppcomprasComprasOrdenesRouteImport } from './routes/app.(compras)/compras_.ordenes'
 import { Route as AppcomprasCompras_masRouteImport } from './routes/app.(compras)/compras_._mas'
+import { Route as AppcomprasComprasOrdenesRouteImport } from './routes/app.(compras)/compras_.ordenes'
 import { Route as AppcomprasCompras_masDivisionesRouteImport } from './routes/app.(compras)/compras_._mas.divisiones'
 
 const AppRoute = AppRouteImport.update({
@@ -19,17 +19,17 @@ const AppRoute = AppRouteImport.update({
   path: '/app',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppcomprasCompras_masRoute = AppcomprasCompras_masRouteImport.update({
+  id: '/(compras)/compras_/_mas',
+  path: '/compras',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppcomprasComprasOrdenesRoute =
   AppcomprasComprasOrdenesRouteImport.update({
     id: '/(compras)/compras_/ordenes',
     path: '/compras/ordenes',
     getParentRoute: () => AppRoute,
   } as any)
-const AppcomprasCompras_masRoute = AppcomprasCompras_masRouteImport.update({
-  id: '/(compras)/compras_/_mas',
-  path: '/compras',
-  getParentRoute: () => AppRoute,
-} as any)
 const AppcomprasCompras_masDivisionesRoute =
   AppcomprasCompras_masDivisionesRouteImport.update({
     id: '/divisiones',
@@ -90,18 +90,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/app/(compras)/compras_/ordenes': {
-      id: '/app/(compras)/compras_/ordenes'
-      path: '/compras/ordenes'
-      fullPath: '/app/compras/ordenes'
-      preLoaderRoute: typeof AppcomprasComprasOrdenesRouteImport
-      parentRoute: typeof AppRoute
-    }
     '/app/(compras)/compras_/_mas': {
       id: '/app/(compras)/compras_/_mas'
       path: '/compras'
       fullPath: '/app/compras'
       preLoaderRoute: typeof AppcomprasCompras_masRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/app/(compras)/compras_/ordenes': {
+      id: '/app/(compras)/compras_/ordenes'
+      path: '/compras/ordenes'
+      fullPath: '/app/compras/ordenes'
+      preLoaderRoute: typeof AppcomprasComprasOrdenesRouteImport
       parentRoute: typeof AppRoute
     }
     '/app/(compras)/compras_/_mas/divisiones': {

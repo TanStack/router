@@ -19,7 +19,7 @@ import { pageStyles, clientStyles, formatTime } from '~/utils/styles'
 // ============================================================================
 
 const getPageLayoutBundle = createServerFn({ method: 'GET' })
-  .inputValidator((data: { pageTitle: string }) => data)
+  .validator((data: { pageTitle: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
     const bundleId = Math.random().toString(36).slice(2, 8)

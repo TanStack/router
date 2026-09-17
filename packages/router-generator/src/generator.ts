@@ -38,6 +38,7 @@ import {
   removeLayoutSegmentsAndUnderscoresWithEscape,
   removeTrailingSlash,
   replaceBackslash,
+  sortRouteNodes,
   trimPathLeft,
 } from './utils'
 import { fillTemplate, getTargetTemplate } from './template'
@@ -616,19 +617,10 @@ export class Generator {
         ? this.indexTokenSegmentRegex
         : createTokenRegex(config.indexToken, { type: 'segment' })
 
-    const sortedRouteNodes = multiSortBy(acc.routeNodes, [
-      (d) => (d.routePath?.includes(`/${rootPathId}`) ? -1 : 1),
-      (d) =>
-        d.routePath === undefined
-          ? undefined
-          : countSlashSeparatedParts(d.routePath),
-      (d) => {
-        const segments = d.routePath?.split('/').filter(Boolean) ?? []
-        const last = segments[segments.length - 1] ?? ''
-        return indexTokenSegmentRegex.test(last) ? -1 : 1
-      },
-      (d) => d,
-    ])
+    const sortedRouteNodes = sortRouteNodes(
+      acc.routeNodes,
+      indexTokenSegmentRegex,
+    )
 
     const routeImports: Array<ImportDeclaration> = []
     const virtualRouteNodes: Array<string> = []

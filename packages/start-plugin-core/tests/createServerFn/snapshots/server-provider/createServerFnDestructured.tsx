@@ -78,7 +78,7 @@ const withValidatorFn_createServerFn_handler = createServerRpc({
 }, opts => withValidatorFn.__executeServer(opts));
 const withValidatorFn = createServerFn({
   method: 'GET'
-}).inputValidator(z.number()).handler(withValidatorFn_createServerFn_handler, async ({
+}).validator(z.number()).handler(withValidatorFn_createServerFn_handler, async ({
   input
 }) => {
   return null;

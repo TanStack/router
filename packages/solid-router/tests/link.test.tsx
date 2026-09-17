@@ -44,12 +44,16 @@ import type { JSX } from '@solidjs/web'
 
 const ioObserveMock = vi.fn()
 const ioDisconnectMock = vi.fn()
+let ioCallback: IntersectionObserverCallback
 let history: RouterHistory
 
 beforeEach(() => {
   const io = getIntersectionObserverMock({
     observe: ioObserveMock,
     disconnect: ioDisconnectMock,
+    onCreate: (callback) => {
+      ioCallback = callback
+    },
   })
   vi.stubGlobal('IntersectionObserver', io)
   history = createBrowserHistory()
@@ -57,6 +61,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  vi.useRealTimers()
   history.destroy?.()
   window.history.replaceState(null, 'root', '/')
   vi.resetAllMocks()
@@ -577,6 +582,45 @@ describe('Link', () => {
       ).toHaveTextContent('false')
     })
 
+    test('updates href when link options change reactively', async () => {
+      const [to, setTo] = Solid.createSignal<'/a' | '/b'>('/a')
+      const rootRoute = createRootRoute({
+        component: () => (
+          <>
+            <button onClick={() => setTo('/b')}>Change destination</button>
+            <Link data-testid="dynamic-link" to={to()}>
+              Destination
+            </Link>
+          </>
+        ),
+      })
+      const aRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/a',
+      })
+      const bRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/b',
+      })
+      const router = createRouter({
+        routeTree: rootRoute.addChildren([aRoute, bRoute]),
+        history,
+      })
+
+      render(() => <RouterProvider router={router} />)
+
+      const link = await screen.findByTestId('dynamic-link')
+      expect(link).toHaveAttribute('href', '/a')
+
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Change destination' }),
+      )
+
+      await waitFor(() => {
+        expect(link).toHaveAttribute('href', '/b')
+      })
+    })
+
     test('updates exact and fuzzy active state before the next route renders', async () => {
       const postLoader = createControlledPromise()
 
@@ -736,14 +780,14 @@ describe('Link', () => {
 
       fireEvent.click(screen.getByTestId('switch-post'))
 
-      // In Solid, Suspense (Loading) keeps old content visible during transitions
-      // instead of showing a fallback, so "Post 1" stays visible while loading.
-      // The current-post link uses params={true} which tracks current URL params.
-      // In Solid, the href updates after the loader resolves (no startTransition batching).
+      expect(await screen.findByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByText('Post 2')).not.toBeInTheDocument()
+      expect(router.state.location.pathname).toBe('/posts/2')
+      expect(currentPost).toHaveClass('active')
+
       await waitFor(() => {
-        expect(router.state.location.pathname).toBe('/posts/2')
+        expect(currentPost).toHaveAttribute('href', '/posts/2')
       })
-      expect(screen.getByText('Post 1')).toBeInTheDocument()
 
       postLoader.resolve()
 
@@ -834,11 +878,15 @@ describe('Link', () => {
 
       fireEvent.click(screen.getByTestId('switch-search'))
 
-      // In Solid, Suspense keeps old content visible during transitions
+      expect(await screen.findByText('Loading...')).toBeInTheDocument()
+      expect(screen.queryByText('Posts 2')).not.toBeInTheDocument()
+      expect(router.state.location.search).toEqual({ page: 2 })
+      expect(staticSearch).toHaveClass('inactive')
+      expect(currentSearch).toHaveClass('active')
+
       await waitFor(() => {
-        expect(router.state.location.search).toEqual({ page: 2 })
+        expect(currentSearch).toHaveAttribute('href', '/posts?page=2')
       })
-      expect(screen.getByText('Posts 1')).toBeInTheDocument()
 
       postsLoader.resolve()
 
@@ -906,8 +954,10 @@ describe('Link', () => {
 
       await fireEvent.click(screen.getByTestId('switch-hash'))
 
+      // Router state is synchronously fresh; the DOM settles with the
+      // scheduler within the same turn.
       expect(router.state.location.hash).toBe('second')
-      expect(staticHash).toHaveClass('inactive')
+      await waitFor(() => expect(staticHash).toHaveClass('inactive'))
       expect(currentHash).toHaveClass('active')
 
       await waitFor(() => {
@@ -1422,22 +1472,21 @@ describe('Link', () => {
       '/Dashboard/posts?page=2&filter=inactive',
     )
 
-    await fireEvent.click(updateSearchLink)
+    fireEvent.click(updateSearchLink)
 
-    // Wait for navigation to complete and search params to update
     await waitFor(() => {
+      expect(window.location.pathname).toBe('/Dashboard/posts')
       expect(window.location.search).toBe('?page=2&filter=inactive')
+      expect(screen.getByTestId('current-page')).toHaveTextContent('Page: 2')
+      expect(screen.getByTestId('current-filter')).toHaveTextContent(
+        'Filter: inactive',
+      )
     })
-
-    await screen.findByTestId('current-page')
-    // Verify search was updated
-    expect(window.location.pathname).toBe('/Dashboard/posts')
-    expect(window.location.search).toBe('?page=2&filter=inactive')
-
     expect(router.state.location.search).toEqual({
       page: 2,
       filter: 'inactive',
     })
+    await vi.waitFor(() => expect(router.state.status).toBe('idle'))
   })
 
   test('when navigating to /posts with invalid search', async () => {
@@ -4612,7 +4661,8 @@ describe('Link', () => {
     const onPostsText = await screen.findByText('On Posts')
     expect(onPostsText).toBeInTheDocument()
 
-    expect(fromInvoicesLink).not.toBeInTheDocument()
+    // resolvedLocation settles with the scheduler just after the match swap.
+    await waitFor(() => expect(fromInvoicesLink).not.toBeInTheDocument())
 
     expect(ErrorComponent).not.toHaveBeenCalled()
   })
@@ -4955,6 +5005,128 @@ describe('Link', () => {
 
     expect(ioObserveMock).toHaveBeenCalledOnce() // it should not observe again
     expect(ioDisconnectMock).not.toHaveBeenCalled() // it should not disconnect again
+  })
+
+  test('Link.preload="viewport" should respect preloadDelay', async () => {
+    const rootRoute = createRootRoute()
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => (
+        <>
+          <Link to="/about" preload="viewport" preloadDelay={50}>
+            Viewport Link
+          </Link>
+          <Link to="/about" preload="intent" preloadDelay={50}>
+            Intent Link
+          </Link>
+        </>
+      ),
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history,
+    })
+    const preloadRouteSpy = vi.spyOn(router, 'preloadRoute')
+
+    render(() => <RouterProvider router={router} />)
+
+    const viewportLink = await screen.findByRole('link', {
+      name: 'Viewport Link',
+    })
+    const intentLink = await screen.findByRole('link', { name: 'Intent Link' })
+    vi.useFakeTimers()
+
+    ioCallback([], {} as IntersectionObserver)
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    fireEvent.mouseLeave(viewportLink)
+
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(49)
+    expect(preloadRouteSpy).not.toHaveBeenCalled()
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledOnce()
+
+    ioCallback(
+      [
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(49)
+
+    ioCallback(
+      [
+        {
+          isIntersecting: false,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+        {
+          isIntersecting: true,
+          target: viewportLink,
+        } as unknown as IntersectionObserverEntry,
+      ],
+      {} as IntersectionObserver,
+    )
+    await vi.advanceTimersByTimeAsync(1)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
+
+    fireEvent.mouseEnter(intentLink)
+    fireEvent.mouseLeave(intentLink)
+    await vi.advanceTimersByTimeAsync(50)
+    expect(preloadRouteSpy).toHaveBeenCalledTimes(2)
   })
 
   test("Router.preload='render', should trigger the route loader on render", async () => {

@@ -1,8 +1,9 @@
 import path from 'node:path'
 import * as t from '@babel/types'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { parseAst } from '@tanstack/router-utils'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
+import { unpluginRouterComposedFactory } from '../src/core/router-composed-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
 import { createRouterPluginContext } from '../src/core/router-plugin-context'
 import { normalizePath } from '../src/core/utils'
@@ -11,19 +12,30 @@ import type { UnpluginOptions, TransformResult } from 'unplugin'
 
 const referencePluginName =
   'tanstack-router:code-splitter:compile-reference-file'
+const virtualPluginName = 'tanstack-router:code-splitter:compile-virtual-file'
 
-function getReferencePlugin(
+function getCodeSplitterPlugin(
   plugins: ReturnType<typeof createRouterCodeSplitterPlugin>,
+  pluginName: string,
 ): UnpluginOptions {
   const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
-  const plugin = pluginArray.find((item) => item.name === referencePluginName)
+  const plugin = pluginArray.find((item) => item.name === pluginName)
   if (!plugin) {
-    throw new Error('Reference code-splitter plugin not found')
+    throw new Error(`Code-splitter plugin "${pluginName}" not found`)
   }
   return plugin
 }
 
-async function configurePlugin(plugin: UnpluginOptions) {
+function getReferencePlugin(
+  plugins: ReturnType<typeof createRouterCodeSplitterPlugin>,
+) {
+  return getCodeSplitterPlugin(plugins, referencePluginName)
+}
+
+async function configurePlugin(
+  plugin: UnpluginOptions,
+  command: 'serve' | 'build' = 'serve',
+) {
   const hook = plugin.vite?.configResolved
   if (!hook) {
     return
@@ -31,6 +43,7 @@ async function configurePlugin(plugin: UnpluginOptions) {
 
   const config = {
     root: process.cwd(),
+    command,
     plugins: [{ name: referencePluginName }],
   } as never
 
@@ -77,6 +90,87 @@ function countProgramHotDeclarations(code: string) {
 }
 
 describe('router plugin context', () => {
+  it.each([
+    { mode: 'production', production: true },
+    { mode: 'development with addHmr disabled', production: false },
+  ])(
+    'does not run React HMR compiler plugins in $mode',
+    async ({ production }) => {
+      const routeFile = normalizePath(
+        path.join(process.cwd(), 'src/routes/lowercase.tsx'),
+      )
+      const routeCode = `
+import { createFileRoute } from '@tanstack/react-router'
+
+export const Route = createFileRoute('/lowercase')({ component })
+
+function component() {
+  return <div>Hello</div>
+}
+`
+
+      const context = createRouterPluginContext()
+      context.routesByFile.set(routeFile, { routeId: '/lowercase' })
+
+      if (production) {
+        vi.stubEnv('NODE_ENV', 'production')
+      }
+
+      try {
+        const plugins = createRouterCodeSplitterPlugin(
+          {
+            target: 'react',
+            autoCodeSplitting: true,
+            codeSplittingOptions: production ? undefined : { addHmr: false },
+          },
+          context,
+        )
+        const referencePlugin = getReferencePlugin(plugins)
+        const virtualPlugin = getCodeSplitterPlugin(plugins, virtualPluginName)
+
+        await configurePlugin(referencePlugin, production ? 'build' : 'serve')
+
+        const referenceCode = getCode(
+          await transformReferenceRoute(referencePlugin, routeCode, routeFile),
+        )
+        const virtualCode = getCode(
+          await transformReferenceRoute(
+            virtualPlugin,
+            routeCode,
+            `${routeFile}?tsr-split=component`,
+          ),
+        )
+
+        expect(referenceCode).not.toContain('TSRFastRefreshAnchor')
+        expect(virtualCode).toContain('function component()')
+        expect(virtualCode).toContain('export { component }')
+        expect(virtualCode).not.toContain('SplitComponent')
+      } finally {
+        if (production) {
+          vi.unstubAllEnvs()
+        }
+      }
+    },
+  )
+
+  it('does not install the standalone route HMR plugin in production', () => {
+    vi.stubEnv('NODE_ENV', 'production')
+
+    try {
+      const plugins = unpluginRouterComposedFactory(
+        { target: 'react', autoCodeSplitting: false },
+        { framework: 'vite' },
+      )
+
+      const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
+      expect(
+        pluginArray.some((plugin) => plugin.name === 'tanstack-router:hmr'),
+      ).toBe(false)
+    } finally {
+      vi.unstubAllEnvs()
+    }
+  })
+
   it('keeps multiple code-splitter instances isolated by explicit context', async () => {
     const routeFile = normalizePath(
       path.join(process.cwd(), 'src/routes-a/owned.tsx'),

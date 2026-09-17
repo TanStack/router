@@ -1,5 +1,139 @@
 # @tanstack/start-client-core
 
+## 1.170.22
+
+### Patch Changes
+
+- Updated dependencies [[`7e93431`](https://github.com/TanStack/router/commit/7e93431ae9ff58c91c3c5ca10ffcb8414c1d0b13)]:
+  - @tanstack/router-core@1.171.22
+  - @tanstack/start-storage-context@1.167.24
+
+## 1.170.21
+
+### Patch Changes
+
+- Updated dependencies [[`51138a8`](https://github.com/TanStack/router/commit/51138a824cea053738f125c4c95073bd6286ff05)]:
+  - @tanstack/router-core@1.171.21
+  - @tanstack/start-storage-context@1.167.23
+
+## 1.170.20
+
+### Patch Changes
+
+- [#8009](https://github.com/TanStack/router/pull/8009) [`c59788c`](https://github.com/TanStack/router/commit/c59788ca20f2d2e7f264a859ebe01b7646ba3154) - perf: drop consumed chunks from the client frame decoder buffer with an O(1) head pointer instead of `Array.prototype.shift()` (O(n)). The previous approach degraded to O(n^2) when a single large frame (e.g. a big `RawStream` payload) was assembled from many small network reads.
+
+- Updated dependencies [[`44a8c3e`](https://github.com/TanStack/router/commit/44a8c3e1d2af305064b2363d97fc7847c6f1a246), [`5253e70`](https://github.com/TanStack/router/commit/5253e70db2083d68a788fb7c9a043bb0c5518f2a)]:
+  - @tanstack/router-core@1.171.20
+  - @tanstack/start-storage-context@1.167.22
+
+## 1.170.19
+
+### Patch Changes
+
+- [#7978](https://github.com/TanStack/router/pull/7978) [`2fbc99f`](https://github.com/TanStack/router/commit/2fbc99f2c262b057cb957e6ebba1ee073c655186) - compact private frame decoder result keys
+
+- [#7980](https://github.com/TanStack/router/pull/7980) [`6bede65`](https://github.com/TanStack/router/commit/6bede65d7074dcd83455151b66b4574268bc782c) - compact deferred hydration private state
+
+## 1.170.18
+
+### Patch Changes
+
+- Updated dependencies [[`ea3a665`](https://github.com/TanStack/router/commit/ea3a665d81cbb5074c2d77ec953255ab534e7db9)]:
+  - @tanstack/router-core@1.171.19
+  - @tanstack/start-storage-context@1.167.21
+
+## 1.170.17
+
+### Patch Changes
+
+- [#7985](https://github.com/TanStack/router/pull/7985) [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b) - perf: compact private bundle boundaries- [#7975](https://github.com/TanStack/router/issues/7975)
+
+- Updated dependencies [[`84db4a8`](https://github.com/TanStack/router/commit/84db4a842311df3f7e58073f6f12aaf371aeb5c7), [`9cac62a`](https://github.com/TanStack/router/commit/9cac62a5c7f99ef070991ea6f1fa7e42c746d46b), [`6aefb33`](https://github.com/TanStack/router/commit/6aefb3392595a07a93f89301d7b5e3558ff9190c)]:
+  - @tanstack/router-core@1.171.18
+  - @tanstack/start-storage-context@1.167.20
+
+## 1.170.16
+
+### Patch Changes
+
+- [#7962](https://github.com/TanStack/router/pull/7962) [`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5) - Update Seroval dependencies to version 1.6.2.
+
+- Updated dependencies [[`b2908c6`](https://github.com/TanStack/router/commit/b2908c642ac09aa08e6d965d2a820d7186e42fd5)]:
+  - @tanstack/router-core@1.171.17
+  - @tanstack/start-storage-context@1.167.19
+
+## 1.170.15
+
+### Patch Changes
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+  - @tanstack/start-storage-context@1.167.18
+
+## 1.170.14
+
+### Patch Changes
+
+- Updated dependencies [[`e2dd204`](https://github.com/TanStack/router/commit/e2dd2049cb42eb219d3b447b8605066d19d9c1fa)]:
+  - @tanstack/router-core@1.171.15
+  - @tanstack/start-storage-context@1.167.17
+
+## 1.170.13
+
+### Patch Changes
+
+- [#7662](https://github.com/TanStack/router/pull/7662) [`ba52d2b`](https://github.com/TanStack/router/commit/ba52d2b8f9e95d6becd1be14c020b35f3231e02c) - perf: zero-copy frame payload extraction in the client frame decoder. When a frame's bytes are fully contained in the first buffered chunk (the common case), return a subarray view instead of allocating a new buffer and copying. This is on the hot path for decoding streamed server-function responses and `RawStream` payloads.
+
+- Updated dependencies [[`9809a06`](https://github.com/TanStack/router/commit/9809a0619d4ed3fe8c2a393af5b9eca4b6c7695b)]:
+  - @tanstack/router-core@1.171.14
+  - @tanstack/start-storage-context@1.167.16
+
+## 1.170.12
+
+### Patch Changes
+
+- [#7566](https://github.com/TanStack/router/pull/7566) [`9bebf8d`](https://github.com/TanStack/router/commit/9bebf8dc9f2bf74b680c065a5aa63d03b9622825) - Add `validator()` as the canonical server function and middleware validator method. Deprecate `inputValidator()` and emit compiler warnings for remaining uses.
+
+## 1.170.11
+
+### Patch Changes
+
+- Updated dependencies [[`776d8ef`](https://github.com/TanStack/router/commit/776d8ef283e5bd9ffe97d43bc3a7f58064cd7e03)]:
+  - @tanstack/router-core@1.171.13
+  - @tanstack/start-storage-context@1.167.15
+
+## 1.170.10
+
+### Patch Changes
+
+- Updated dependencies [[`df1076c`](https://github.com/TanStack/router/commit/df1076c03ae5a51ab384bebd4d6afda20fb6f107)]:
+  - @tanstack/router-core@1.171.12
+  - @tanstack/start-storage-context@1.167.14
+
+## 1.170.9
+
+### Patch Changes
+
+- Updated dependencies [[`ac10815`](https://github.com/TanStack/router/commit/ac10815f387d25b15163ff711b4049e8f8482d01)]:
+  - @tanstack/router-core@1.171.11
+  - @tanstack/start-storage-context@1.167.13
+
+## 1.170.8
+
+### Patch Changes
+
+- Updated dependencies [[`2cca73c`](https://github.com/TanStack/router/commit/2cca73c92262ffd96dac4e283c9f69fb37f4b43a), [`7a83e67`](https://github.com/TanStack/router/commit/7a83e67e6596fbef21cb0a88a7127f5935bed2ba), [`76b3d3b`](https://github.com/TanStack/router/commit/76b3d3b24522bd3d1d216674c441252c9b8f184c)]:
+  - @tanstack/router-core@1.171.10
+  - @tanstack/start-storage-context@1.167.12
+
+## 1.170.7
+
+### Patch Changes
+
+- Updated dependencies [[`b4cd5af`](https://github.com/TanStack/router/commit/b4cd5af8d0f9d4aaa2d29095e6a261b9181bc778)]:
+  - @tanstack/router-core@1.171.9
+  - @tanstack/start-storage-context@1.167.11
+
 ## 1.170.6
 
 ### Patch Changes

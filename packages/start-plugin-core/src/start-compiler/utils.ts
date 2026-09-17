@@ -25,6 +25,13 @@ export function codeFrameError(
   return new Error(frame)
 }
 
+/**
+ * Converts a bundler module ID to its physical-file identity for diagnostics,
+ * filesystem matching, and file-based invalidation.
+ *
+ * Do not use this for IDs passed to resolve/load hooks or as module cache keys:
+ * virtual prefixes and queries can be part of the module's semantic identity.
+ */
 export function cleanId(id: string): string {
   // Remove null byte prefix used by Vite/Rollup for virtual modules
   if (id.startsWith('\0')) {
@@ -39,7 +46,7 @@ export function cleanId(id: string): string {
  * E.g., `foo().bar()` -> `foo()`
  *
  * This is a common pattern used when removing method calls from chains
- * (e.g., removing .server() from middleware on client, or .inputValidator() on client).
+ * (e.g., removing .server() from middleware on client, or .validator() on client).
  *
  * @param callPath - The path to the CallExpression to strip
  */

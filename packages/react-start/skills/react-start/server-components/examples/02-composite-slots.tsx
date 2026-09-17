@@ -32,7 +32,7 @@ declare const db: {
 }
 
 const getPostCard = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ postId: z.string() }))
+  .validator(z.object({ postId: z.string() }))
   .handler(async ({ data }) => {
     const post = await db.posts.findById(data.postId)
 
@@ -93,7 +93,7 @@ function PostActions(props: { postId: string; authorId: string }) {
 
 // Component-prop slot variant
 const getProductCard = createServerFn({ method: 'GET' })
-  .inputValidator(z.object({ productId: z.string() }))
+  .validator(z.object({ productId: z.string() }))
   .handler(async ({ data }) => {
     const product = await db.products.findById(data.productId)
 

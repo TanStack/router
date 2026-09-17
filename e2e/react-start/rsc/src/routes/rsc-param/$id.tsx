@@ -18,7 +18,7 @@ import {
 import { clientStyles, pageStyles } from '~/utils/styles'
 
 const getParamRsc = createServerFn({ method: 'GET' })
-  .inputValidator((data: { id: string }) => data)
+  .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const serverTimestamp = Date.now()
 

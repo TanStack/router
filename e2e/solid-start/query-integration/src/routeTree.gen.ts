@@ -9,18 +9,19 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UseQueryRouteImport } from './routes/useQuery'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as UseQueryRouteImport } from './routes/useQuery'
 import { Route as LoaderFetchQueryTypeRouteImport } from './routes/loader-fetchQuery/$type'
+import { Route as NotFoundReloadIdRouteImport } from './routes/not-found-reload.$id'
 
-const UseQueryRoute = UseQueryRouteImport.update({
-  id: '/useQuery',
-  path: '/useQuery',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UseQueryRoute = UseQueryRouteImport.update({
+  id: '/useQuery',
+  path: '/useQuery',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
@@ -28,51 +29,69 @@ const LoaderFetchQueryTypeRoute = LoaderFetchQueryTypeRouteImport.update({
   path: '/loader-fetchQuery/$type',
   getParentRoute: () => rootRouteImport,
 } as any)
+const NotFoundReloadIdRoute = NotFoundReloadIdRouteImport.update({
+  id: '/not-found-reload/$id',
+  path: '/not-found-reload/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/not-found-reload/$id': typeof NotFoundReloadIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/not-found-reload/$id': typeof NotFoundReloadIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/useQuery': typeof UseQueryRoute
   '/loader-fetchQuery/$type': typeof LoaderFetchQueryTypeRoute
+  '/not-found-reload/$id': typeof NotFoundReloadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/useQuery' | '/loader-fetchQuery/$type'
+  fullPaths:
+    | '/'
+    | '/useQuery'
+    | '/loader-fetchQuery/$type'
+    | '/not-found-reload/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/useQuery' | '/loader-fetchQuery/$type'
-  id: '__root__' | '/' | '/useQuery' | '/loader-fetchQuery/$type'
+  to: '/' | '/useQuery' | '/loader-fetchQuery/$type' | '/not-found-reload/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/useQuery'
+    | '/loader-fetchQuery/$type'
+    | '/not-found-reload/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   UseQueryRoute: typeof UseQueryRoute
   LoaderFetchQueryTypeRoute: typeof LoaderFetchQueryTypeRoute
+  NotFoundReloadIdRoute: typeof NotFoundReloadIdRoute
 }
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/useQuery': {
-      id: '/useQuery'
-      path: '/useQuery'
-      fullPath: '/useQuery'
-      preLoaderRoute: typeof UseQueryRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/useQuery': {
+      id: '/useQuery'
+      path: '/useQuery'
+      fullPath: '/useQuery'
+      preLoaderRoute: typeof UseQueryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/loader-fetchQuery/$type': {
@@ -82,6 +101,13 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LoaderFetchQueryTypeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/not-found-reload/$id': {
+      id: '/not-found-reload/$id'
+      path: '/not-found-reload/$id'
+      fullPath: '/not-found-reload/$id'
+      preLoaderRoute: typeof NotFoundReloadIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -89,6 +115,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   UseQueryRoute: UseQueryRoute,
   LoaderFetchQueryTypeRoute: LoaderFetchQueryTypeRoute,
+  NotFoundReloadIdRoute: NotFoundReloadIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

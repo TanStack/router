@@ -1,5 +1,160 @@
 # @tanstack/solid-router-devtools
 
+## 2.0.0-rc.5
+
+### Patch Changes
+
+- [#8192](https://github.com/TanStack/router/pull/8192) [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b) - Bump solid-js, @solidjs/web, and @solidjs/signals to ^2.0.0-rc.6 across the monorepo. rc.6 provides the named flight-data source API (registerFlightDataSource / two-argument subscribeFlightData) that the Start single-flight integration now requires; @tanstack/solid-start's peer floor moves to rc.6 accordingly.
+
+- Updated dependencies [[`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b), [`96f50d9`](https://github.com/TanStack/router/commit/96f50d94a68ab1e52beb05769999d8959958256b), [`b445b89`](https://github.com/TanStack/router/commit/b445b892819f70e4e2650a4df7ce18e718a0ddcb)]:
+  - @tanstack/solid-router@2.0.0-rc.5
+
+## 2.0.0-rc.4
+
+### Patch Changes
+
+- [#8189](https://github.com/TanStack/router/pull/8189) [`22fd367`](https://github.com/TanStack/router/commit/22fd367d8103edd0150acf3be75af9aa03eec6c3) - Bump solid-js and @solidjs/web to ^2.0.0-rc.4 and @solidjs/vite-plugin to ^3.0.0-next.35 across the monorepo.
+
+- Updated dependencies [[`22fd367`](https://github.com/TanStack/router/commit/22fd367d8103edd0150acf3be75af9aa03eec6c3)]:
+  - @tanstack/solid-router@2.0.0-rc.4
+
+## 2.0.0-rc.3
+
+### Patch Changes
+
+- [#8170](https://github.com/TanStack/router/pull/8170) [`a09f492`](https://github.com/TanStack/router/commit/a09f492463986c7553573dcb535d94bf8eea1ae9) - Run Solid Start server functions through the Solid 2 server-function runtime, including request handling, serialization, middleware, direct SSR calls, and no-JS forms.
+
+  POST server functions now use Solid 2's single-flight transport to return updated Router loader and hydration data with the mutation response.
+
+- Updated dependencies [[`a09f492`](https://github.com/TanStack/router/commit/a09f492463986c7553573dcb535d94bf8eea1ae9)]:
+  - @tanstack/solid-router@2.0.0-rc.3
+
+## 2.0.0-rc.2
+
+### Patch Changes
+
+- [#8166](https://github.com/TanStack/router/pull/8166) [`eaa2e8d`](https://github.com/TanStack/router/commit/eaa2e8d5ce0df6b55e3bb787844e44e1a49f6548) - Bump solid-js and @solidjs/web to ^2.0.0-rc.2 and @solidjs/vite-plugin to ^3.0.0-next.32 across the monorepo.
+
+- Updated dependencies [[`eaa2e8d`](https://github.com/TanStack/router/commit/eaa2e8d5ce0df6b55e3bb787844e44e1a49f6548)]:
+  - @tanstack/solid-router@2.0.0-rc.2
+
+## 2.0.0-rc.1
+
+### Patch Changes
+
+- [#8081](https://github.com/TanStack/router/pull/8081) [`252caa8`](https://github.com/TanStack/router/commit/252caa85343cdb6ff8d599b266f213bd14f6ece2) - `lazyRouteComponent` now delegates to Solid's `lazy()` using its `{ export }`
+  option (solid-js 2.0.0-rc.1): the module namespace passes through untouched,
+  so SSR'd route chunks resolve their client assets (stylesheet links,
+  modulepreload hints, hydration gating) through the client-assets manifest,
+  and hydration claims the component synchronously from the preloaded module.
+  Failed chunk downloads are retried by the next preload or render, and the
+  module-not-found reload-once behavior is unchanged. Solid packages are
+  bumped to the 2.0.0-rc.1 line (`@solidjs/vite-plugin` 3.0.0-next.30).
+
+- [#8080](https://github.com/TanStack/router/pull/8080) [`b60b741`](https://github.com/TanStack/router/commit/b60b741a882ef5f55544b437decb29b09e7e547e) - Register head tags through Solid's `useHead` registry. `HeadContent` now
+  feeds the route-derived tags to Solid's head registry as one reactive group
+  instead of rendering elements in-tree: the registry owns head emission on
+  both runtimes (SSR splicing/streaming and client-side patching), replacing
+  the manual relocate-into-head, imperative script injection, and
+  `document.title` syncing. Inline scripts and styles carry a stable
+  content-derived key so server and client reconcile on the same identity.
+  `HeadContent` can now be rendered anywhere in the tree. The dedicated
+  development entry (`index.dev`) and its `development` export conditions are
+  retired along with it.
+- Updated dependencies [[`252caa8`](https://github.com/TanStack/router/commit/252caa85343cdb6ff8d599b266f213bd14f6ece2), [`b60b741`](https://github.com/TanStack/router/commit/b60b741a882ef5f55544b437decb29b09e7e547e)]:
+  - @tanstack/solid-router@2.0.0-rc.1
+
+## 2.0.0-rc.0
+
+### Patch Changes
+
+- [#8058](https://github.com/TanStack/router/pull/8058) [`56cc90e`](https://github.com/TanStack/router/commit/56cc90ea2c29b8d8c3aa21252b60f0995083b713) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-rc.0`, and migrate from `vite-plugin-solid` to its new name `@solidjs/vite-plugin` at `3.0.0-next.28`
+
+  `vite-plugin-solid` was renamed to `@solidjs/vite-plugin`; its final release (`3.0.0-next.27`) is a re-export shim over the new package. `@solidjs/vite-plugin@3.0.0-next.28` requires `solid-js`/`@solidjs/web` `^2.0.0-rc.0`, so the rename and the `rc` bump land together.
+
+  `@tanstack/router-plugin` is intentionally untouched: it detects the Solid JSX plugin by its Vite plugin _name_ (`solid`), which the renamed package still registers, and its `vite-plugin-solid` peer is optional — so it keeps working for both Solid 1 and Solid 2 consumers without a change.
+
+  Also bumps `@tanstack/solid-query` and `@tanstack/solid-query-devtools` to `^6.0.0-rc.0` (whose peer requires `solid-js >=2.0.0-rc.0`), and converges `@tanstack/query-core` on `5.101.4` — `solid-query` depends on query-core `5.101.0`, which previously resolved to a stale `5.99.0` and produced two incompatible `QueryClient` types.
+
+- Updated dependencies [[`56cc90e`](https://github.com/TanStack/router/commit/56cc90ea2c29b8d8c3aa21252b60f0995083b713)]:
+  - @tanstack/solid-router@2.0.0-rc.0
+
+## 2.0.0-beta.25
+
+### Patch Changes
+
+- [#8014](https://github.com/TanStack/router/pull/8014) [`980ed57`](https://github.com/TanStack/router/commit/980ed5794acd88b8dccf8e2969ecdf9106ff7b0a) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.32`
+
+- Updated dependencies [[`980ed57`](https://github.com/TanStack/router/commit/980ed5794acd88b8dccf8e2969ecdf9106ff7b0a)]:
+  - @tanstack/solid-router@2.0.0-beta.30
+
+## 2.0.0-beta.24
+
+### Patch Changes
+
+- [#7928](https://github.com/TanStack/router/pull/7928) [`3d40733`](https://github.com/TanStack/router/commit/3d40733d4a053dfde499f9f0b55cf7c1d5624915) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.29`
+
+- Updated dependencies [[`3d40733`](https://github.com/TanStack/router/commit/3d40733d4a053dfde499f9f0b55cf7c1d5624915)]:
+  - @tanstack/solid-router@2.0.0-beta.29
+
+## 2.0.0-beta.23
+
+### Patch Changes
+
+- [#7916](https://github.com/TanStack/router/pull/7916) [`84c43e0`](https://github.com/TanStack/router/commit/84c43e0595c4f5b69291bf75a6e380c47543d319) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.27`
+
+- Updated dependencies [[`84c43e0`](https://github.com/TanStack/router/commit/84c43e0595c4f5b69291bf75a6e380c47543d319)]:
+  - @tanstack/solid-router@2.0.0-beta.28
+
+## 2.0.0-beta.22
+
+### Patch Changes
+
+- [#7888](https://github.com/TanStack/router/pull/7888) [`a7e9835`](https://github.com/TanStack/router/commit/a7e9835e1c333688bde4da482745f50d9c5a7f8c) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.25`
+
+- Updated dependencies [[`a7e9835`](https://github.com/TanStack/router/commit/a7e9835e1c333688bde4da482745f50d9c5a7f8c)]:
+  - @tanstack/solid-router@2.0.0-beta.27
+
+## 2.0.0-beta.21
+
+### Patch Changes
+
+- [#7865](https://github.com/TanStack/router/pull/7865) [`714e11f`](https://github.com/TanStack/router/commit/714e11f1915d3356134bea1ed8ab74617d91f55b) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.21`
+
+- Updated dependencies [[`714e11f`](https://github.com/TanStack/router/commit/714e11f1915d3356134bea1ed8ab74617d91f55b)]:
+  - @tanstack/solid-router@2.0.0-beta.26
+
+## 2.0.0-beta.20
+
+### Patch Changes
+
+- [#7850](https://github.com/TanStack/router/pull/7850) [`62f3b26`](https://github.com/TanStack/router/commit/62f3b2697f6da8d495af880d808064dc10962786) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.20`
+
+- Updated dependencies [[`62f3b26`](https://github.com/TanStack/router/commit/62f3b2697f6da8d495af880d808064dc10962786)]:
+  - @tanstack/solid-router@2.0.0-beta.25
+
+## 2.0.0-beta.19
+
+### Patch Changes
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.17`
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.18`
+
+- [#7813](https://github.com/TanStack/router/pull/7813) [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.19` and `vite-plugin-solid` to `3.0.0-next.11`
+
+- Updated dependencies [[`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482), [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482), [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482), [`ebe104c`](https://github.com/TanStack/router/commit/ebe104c01c35229d755458febe8ea40fb446a482)]:
+  - @tanstack/solid-router@2.0.0-beta.24
+
+## 2.0.0-beta.18
+
+### Patch Changes
+
+- [#7688](https://github.com/TanStack/router/pull/7688) [`259efbe`](https://github.com/TanStack/router/commit/259efbe5301df3246f1a13dd7eece24f1d3038f9) - Upgrade `solid-js` and `@solidjs/web` to `2.0.0-beta.15`
+
+- Updated dependencies [[`41e7a24`](https://github.com/TanStack/router/commit/41e7a24f693b0f58c2bef89a2b8c4d084acbd531), [`51b4bd4`](https://github.com/TanStack/router/commit/51b4bd4f372ac81ac0cd5a3cf51150f7b799c95e), [`259efbe`](https://github.com/TanStack/router/commit/259efbe5301df3246f1a13dd7eece24f1d3038f9)]:
+  - @tanstack/solid-router@2.0.0-beta.22
+
 ## 2.0.0-beta.17
 
 ### Patch Changes
@@ -163,6 +318,15 @@
 
 - Updated dependencies [[`a0191af`](https://github.com/TanStack/router/commit/a0191afd21afe0e7571af8b0faab171f62e71db7)]:
   - @tanstack/solid-router@2.0.0-alpha.0
+
+## 1.167.1
+
+### Patch Changes
+
+- Updated dependencies [[`45c4ad8`](https://github.com/TanStack/router/commit/45c4ad8d629e291fab70c37900525449e415ffcd)]:
+  - @tanstack/router-core@1.171.16
+  - @tanstack/solid-router@1.170.19
+  - @tanstack/router-devtools-core@1.168.1
 
 ## 1.167.0
 

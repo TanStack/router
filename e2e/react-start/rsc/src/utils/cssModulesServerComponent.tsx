@@ -9,7 +9,7 @@ import { CssModulesContent } from './CssModulesContent'
 // ============================================================================
 
 export const getCssModulesServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { title?: string }) => data)
+  .validator((data: { title?: string }) => data)
   .handler(async ({ data }) => {
     return renderServerComponent(
       <>

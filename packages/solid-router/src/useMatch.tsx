@@ -70,30 +70,43 @@ export function useMatch<
   ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow>
 > {
   const router = useRouter<TRouter>()
-  const nearestMatch = opts.from
-    ? undefined
-    : Solid.useContext(nearestMatchContext)
+  const contextMatch = Solid.useContext(nearestMatchContext)
+  const nearestMatch = opts.from ? undefined : contextMatch
 
   const match = () => {
     if (opts.from) {
-      return router.stores.matches
-        .get()
-        .find((match) => match.routeId === opts.from)
+      return router.stores.getMatchStore(opts.from).get()
     }
 
-    return nearestMatch?.match()
+    return nearestMatch?.[1 /* match */]()
   }
 
   // The returned accessor can be read after the owning scope has been
   // disposed (e.g. async work started by a route component that resolves
   // after navigating away). Once disposed, keep returning the last known
-  // value instead of throwing on the now-missing match.
+  // value instead of dropping to undefined for the now-missing match.
   let isDisposed = false
   if (Solid.getOwner()) {
     Solid.onCleanup(() => {
       isDisposed = true
     })
   }
+
+  Solid.createEffect(match, (selectedMatch) => {
+    if (selectedMatch !== undefined) {
+      return
+    }
+
+    if (opts.shouldThrow ?? true) {
+      if (process.env.NODE_ENV !== 'production') {
+        throw new Error(
+          `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
+        )
+      }
+
+      invariant()
+    }
+  })
 
   return Solid.createMemo((prev: TSelected | undefined) => {
     const selectedMatch = match()
@@ -103,31 +116,10 @@ export function useMatch<
         return prev
       }
 
-      const hasPendingMatch = opts.from
-        ? Boolean(router.stores.pendingRouteIds.get()[opts.from!])
-        : (nearestMatch?.hasPending() ?? false)
-
-      if (
-        prev !== undefined &&
-        (hasPendingMatch || router.stores.isTransitioning.get())
-      ) {
-        return prev
-      }
-
-      if (!hasPendingMatch && (opts.shouldThrow ?? true)) {
-        if (process.env.NODE_ENV !== 'production') {
-          throw new Error(
-            `Invariant failed: Could not find ${opts.from ? `an active match from "${opts.from}"` : 'a nearest match!'}`,
-          )
-        }
-
-        invariant()
-      }
-
       return undefined
     }
 
-    const res = opts.select ? opts.select(selectedMatch as any) : selectedMatch
+    const res = opts.select ? opts.select(selectedMatch) : selectedMatch
     if (prev === undefined) return res as TSelected
     return replaceEqualDeep(prev, res) as TSelected
   }) as any

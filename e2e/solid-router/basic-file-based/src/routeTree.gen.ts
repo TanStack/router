@@ -9,150 +9,119 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as RemountDepsRouteImport } from './routes/remountDeps'
-import { Route as PostsRouteImport } from './routes/posts'
-import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
-import { Route as MasksRouteImport } from './routes/masks'
-import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
-import { Route as EditingBRouteImport } from './routes/editing-b'
-import { Route as EditingARouteImport } from './routes/editing-a'
-import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
-import { Route as AnchorRouteImport } from './routes/anchor'
-import { Route as LayoutRouteImport } from './routes/_layout'
-import { Route as Char45824Char54620Char48124Char44397RouteRouteImport } from './routes/대한민국/route'
-import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
-import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
-import { Route as RelativeIndexRouteImport } from './routes/relative/index'
-import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
-import { Route as PostsIndexRouteImport } from './routes/posts.index'
-import { Route as ParamsPsIndexRouteImport } from './routes/params-ps/index'
-import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
-import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
-import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
-import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
-import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
-import { Route as groupInsideRouteImport } from './routes/(group)/inside'
-import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
+import { Route as LayoutRouteImport } from './routes/_layout'
+import { Route as AnchorRouteImport } from './routes/anchor'
+import { Route as ComponentTypesTestRouteImport } from './routes/component-types-test'
+import { Route as EditingARouteImport } from './routes/editing-a'
+import { Route as EditingBRouteImport } from './routes/editing-b'
+import { Route as HoverPreloadHashRouteImport } from './routes/hover-preload-hash'
+import { Route as MasksRouteImport } from './routes/masks'
+import { Route as NonNestedRouteRouteImport } from './routes/non-nested/route'
+import { Route as NotRemountDepsRouteImport } from './routes/notRemountDeps'
+import { Route as PostsRouteImport } from './routes/posts'
+import { Route as RemountDepsRouteImport } from './routes/remountDeps'
+import { Route as SearchParamsRouteRouteImport } from './routes/search-params/route'
+import { Route as Char45824Char54620Char48124Char44397RouteRouteImport } from './routes/대한민국/route'
 import { Route as anotherGroupOnlyrouteinsideRouteImport } from './routes/(another-group)/onlyrouteinside'
-import { Route as RelativeUseNavigateRouteRouteImport } from './routes/relative/useNavigate/route'
-import { Route as RelativeLinkRouteRouteImport } from './routes/relative/link/route'
-import { Route as ParamsPsNonNestedRouteRouteImport } from './routes/params-ps/non-nested/route'
-import { Route as NonNestedSuffixRouteRouteImport } from './routes/non-nested/suffix/route'
-import { Route as NonNestedPrefixRouteRouteImport } from './routes/non-nested/prefix/route'
-import { Route as NonNestedPathRouteRouteImport } from './routes/non-nested/path/route'
-import { Route as NonNestedNamedRouteRouteImport } from './routes/non-nested/named/route'
+import { Route as groupLayoutRouteImport } from './routes/(group)/_layout'
+import { Route as groupInsideRouteImport } from './routes/(group)/inside'
+import { Route as groupLazyinsideRouteImport } from './routes/(group)/lazyinside'
+import { Route as LayoutLayout2RouteImport } from './routes/_layout/_layout-2'
 import { Route as NonNestedDeepRouteRouteImport } from './routes/non-nested/deep/route'
-import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
-import { Route as ParamsPsWildcardIndexRouteImport } from './routes/params-ps/wildcard/index'
-import { Route as ParamsPsNamedIndexRouteImport } from './routes/params-ps/named/index'
-import { Route as Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport } from './routes/대한민국/🚀.$id'
-import { Route as Char45824Char54620Char48124Char44397WildcardSplatRouteImport } from './routes/대한민국/wildcard.$'
-import { Route as TransitionTypingCreateResourceRouteImport } from './routes/transition/typing/create-resource'
-import { Route as TransitionCountCreateResourceRouteImport } from './routes/transition/count/create-resource'
-import { Route as RelativeUseNavigateRelativeUseNavigateBRouteImport } from './routes/relative/useNavigate/relative-useNavigate-b'
-import { Route as RelativeUseNavigateRelativeUseNavigateARouteImport } from './routes/relative/useNavigate/relative-useNavigate-a'
-import { Route as RelativeLinkRelativeLinkBRouteImport } from './routes/relative/link/relative-link-b'
-import { Route as RelativeLinkRelativeLinkARouteImport } from './routes/relative/link/relative-link-a'
-import { Route as RedirectPreloadThirdRouteImport } from './routes/redirect/preload/third'
-import { Route as RedirectPreloadSecondRouteImport } from './routes/redirect/preload/second'
-import { Route as RedirectPreloadFirstRouteImport } from './routes/redirect/preload/first'
-import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
-import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
-import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
-import { Route as ParamsSingleValueRouteImport } from './routes/params.single.$value'
-import { Route as ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport } from './routes/params-ps/wildcard/{$}suffix@대'
-import { Route as ParamsPsWildcardChar123Char125suffixRouteImport } from './routes/params-ps/wildcard/{$}suffix'
-import { Route as ParamsPsWildcardPrefixChar123Char125RouteImport } from './routes/params-ps/wildcard/prefix{$}'
-import { Route as ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport } from './routes/params-ps/wildcard/prefix@대{$}'
-import { Route as ParamsPsWildcardSplatRouteImport } from './routes/params-ps/wildcard/$'
-import { Route as ParamsPsNamedChar123fooChar125suffixRouteImport } from './routes/params-ps/named/{$foo}suffix'
-import { Route as ParamsPsNamedPrefixChar123fooChar125RouteImport } from './routes/params-ps/named/prefix{$foo}'
-import { Route as MasksPublicUsernameRouteImport } from './routes/masks.public.$username'
-import { Route as MasksAdminUserIdRouteImport } from './routes/masks.admin.$userId'
-import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
-import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
-import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
+import { Route as NonNestedNamedRouteRouteImport } from './routes/non-nested/named/route'
+import { Route as NonNestedPathRouteRouteImport } from './routes/non-nested/path/route'
+import { Route as NonNestedPrefixRouteRouteImport } from './routes/non-nested/prefix/route'
+import { Route as NonNestedSuffixRouteRouteImport } from './routes/non-nested/suffix/route'
+import { Route as ParamsPsIndexRouteImport } from './routes/params-ps/index'
+import { Route as ParamsPsNonNestedRouteRouteImport } from './routes/params-ps/non-nested/route'
+import { Route as PostsIndexRouteImport } from './routes/posts.index'
+import { Route as PostsPostIdRouteImport } from './routes/posts.$postId'
+import { Route as RedirectIndexRouteImport } from './routes/redirect/index'
+import { Route as RedirectTargetRouteImport } from './routes/redirect/$target'
+import { Route as RelativeIndexRouteImport } from './routes/relative/index'
+import { Route as RelativeLinkRouteRouteImport } from './routes/relative/link/route'
+import { Route as RelativeUseNavigateRouteRouteImport } from './routes/relative/useNavigate/route'
+import { Route as SearchParamsIndexRouteImport } from './routes/search-params/index'
+import { Route as SearchParamsDefaultRouteImport } from './routes/search-params/default'
 import { Route as groupLayoutInsidelayoutRouteImport } from './routes/(group)/_layout.insidelayout'
-import { Route as ParamsPsNonNestedFooRouteRouteImport } from './routes/params-ps/non-nested/$foo_/route'
-import { Route as ParamsPsNamedFooRouteRouteImport } from './routes/params-ps/named/$foo/route'
-import { Route as NonNestedSuffixChar123bazChar125suffixRouteRouteImport } from './routes/non-nested/suffix/{$baz}suffix.route'
-import { Route as NonNestedPrefixPrefixChar123bazChar125RouteRouteImport } from './routes/non-nested/prefix/prefix{$baz}.route'
-import { Route as NonNestedPathBazRouteRouteImport } from './routes/non-nested/path/baz.route'
-import { Route as NonNestedNamedBazRouteRouteImport } from './routes/non-nested/named/$baz.route'
+import { Route as groupSubfolderInsideRouteImport } from './routes/(group)/subfolder/inside'
+import { Route as LayoutLayout2LayoutARouteImport } from './routes/_layout/_layout-2/layout-a'
+import { Route as LayoutLayout2LayoutBRouteImport } from './routes/_layout/_layout-2/layout-b'
+import { Route as MasksAdminUserIdRouteImport } from './routes/masks.admin.$userId'
+import { Route as MasksPublicUsernameRouteImport } from './routes/masks.public.$username'
 import { Route as NonNestedDeepBazRouteRouteImport } from './routes/non-nested/deep/$baz.route'
-import { Route as RelativeUseNavigateWithSearchIndexRouteImport } from './routes/relative/useNavigate/with-search/index'
-import { Route as RelativeUseNavigatePathIndexRouteImport } from './routes/relative/useNavigate/path/index'
-import { Route as RelativeUseNavigateNestedIndexRouteImport } from './routes/relative/useNavigate/nested/index'
-import { Route as RelativeLinkWithSearchIndexRouteImport } from './routes/relative/link/with-search/index'
-import { Route as RelativeLinkPathIndexRouteImport } from './routes/relative/link/path/index'
-import { Route as RelativeLinkNestedIndexRouteImport } from './routes/relative/link/nested/index'
-import { Route as NonNestedSuffixChar123bazChar125suffixIndexRouteImport } from './routes/non-nested/suffix/{$baz}suffix.index'
-import { Route as NonNestedPrefixPrefixChar123bazChar125IndexRouteImport } from './routes/non-nested/prefix/prefix{$baz}.index'
-import { Route as NonNestedPathBazIndexRouteImport } from './routes/non-nested/path/baz.index'
-import { Route as NonNestedNamedBazIndexRouteImport } from './routes/non-nested/named/$baz.index'
+import { Route as NonNestedNamedBazRouteRouteImport } from './routes/non-nested/named/$baz.route'
+import { Route as NonNestedPathBazRouteRouteImport } from './routes/non-nested/path/baz.route'
+import { Route as NonNestedPrefixPrefixChar123bazChar125RouteRouteImport } from './routes/non-nested/prefix/prefix{$baz}.route'
+import { Route as NonNestedSuffixChar123bazChar125suffixRouteRouteImport } from './routes/non-nested/suffix/{$baz}suffix.route'
+import { Route as ParamsPsNamedIndexRouteImport } from './routes/params-ps/named/index'
+import { Route as ParamsPsNamedFooRouteRouteImport } from './routes/params-ps/named/$foo/route'
+import { Route as ParamsPsNamedPrefixChar123fooChar125RouteImport } from './routes/params-ps/named/prefix{$foo}'
+import { Route as ParamsPsNamedChar123fooChar125suffixRouteImport } from './routes/params-ps/named/{$foo}suffix'
+import { Route as ParamsPsNonNestedFooRouteRouteImport } from './routes/params-ps/non-nested/$foo_/route'
+import { Route as ParamsPsWildcardIndexRouteImport } from './routes/params-ps/wildcard/index'
+import { Route as ParamsPsWildcardSplatRouteImport } from './routes/params-ps/wildcard/$'
+import { Route as ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport } from './routes/params-ps/wildcard/prefix@대{$}'
+import { Route as ParamsPsWildcardPrefixChar123Char125RouteImport } from './routes/params-ps/wildcard/prefix{$}'
+import { Route as ParamsPsWildcardChar123Char125suffixRouteImport } from './routes/params-ps/wildcard/{$}suffix'
+import { Route as ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport } from './routes/params-ps/wildcard/{$}suffix@대'
+import { Route as ParamsSingleValueRouteImport } from './routes/params.single.$value'
+import { Route as PostsPostIdEditRouteImport } from './routes/posts_.$postId.edit'
+import { Route as RedirectTargetIndexRouteImport } from './routes/redirect/$target/index'
+import { Route as RedirectTargetViaBeforeLoadRouteImport } from './routes/redirect/$target/via-beforeLoad'
+import { Route as RedirectTargetViaLoaderRouteImport } from './routes/redirect/$target/via-loader'
+import { Route as RedirectPreloadFirstRouteImport } from './routes/redirect/preload/first'
+import { Route as RedirectPreloadSecondRouteImport } from './routes/redirect/preload/second'
+import { Route as RedirectPreloadThirdRouteImport } from './routes/redirect/preload/third'
+import { Route as RelativeLinkRelativeLinkARouteImport } from './routes/relative/link/relative-link-a'
+import { Route as RelativeLinkRelativeLinkBRouteImport } from './routes/relative/link/relative-link-b'
+import { Route as RelativeUseNavigateRelativeUseNavigateARouteImport } from './routes/relative/useNavigate/relative-useNavigate-a'
+import { Route as RelativeUseNavigateRelativeUseNavigateBRouteImport } from './routes/relative/useNavigate/relative-useNavigate-b'
+import { Route as TransitionCountCreateResourceRouteImport } from './routes/transition/count/create-resource'
+import { Route as TransitionTypingCreateResourceRouteImport } from './routes/transition/typing/create-resource'
+import { Route as Char45824Char54620Char48124Char44397WildcardSplatRouteImport } from './routes/대한민국/wildcard.$'
+import { Route as Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport } from './routes/대한민국/🚀.$id'
 import { Route as NonNestedDeepBazIndexRouteImport } from './routes/non-nested/deep/$baz.index'
-import { Route as ParamsPsNonNestedFooBarRouteImport } from './routes/params-ps/non-nested/$foo_/$bar'
-import { Route as NonNestedSuffixChar123bazChar125suffixBarRouteImport } from './routes/non-nested/suffix/{$baz}suffix_.bar'
-import { Route as NonNestedSuffixChar123bazChar125suffixFooRouteImport } from './routes/non-nested/suffix/{$baz}suffix.foo'
-import { Route as NonNestedPrefixPrefixChar123bazChar125BarRouteImport } from './routes/non-nested/prefix/prefix{$baz}_.bar'
-import { Route as NonNestedPrefixPrefixChar123bazChar125FooRouteImport } from './routes/non-nested/prefix/prefix{$baz}.foo'
-import { Route as NonNestedPathBazBarRouteImport } from './routes/non-nested/path/baz_.bar'
-import { Route as NonNestedPathBazFooRouteImport } from './routes/non-nested/path/baz.foo'
-import { Route as NonNestedNamedBazBarRouteImport } from './routes/non-nested/named/$baz_.bar'
-import { Route as NonNestedNamedBazFooRouteImport } from './routes/non-nested/named/$baz.foo'
-import { Route as ParamsPsNamedFooBarRouteRouteImport } from './routes/params-ps/named/$foo/$bar.route'
 import { Route as NonNestedDeepBazBarRouteRouteImport } from './routes/non-nested/deep/$baz_.bar.route'
-import { Route as RelativeUseNavigatePathPathIndexRouteImport } from './routes/relative/useNavigate/path/$path/index'
-import { Route as RelativeUseNavigateNestedDeepIndexRouteImport } from './routes/relative/useNavigate/nested/deep/index'
-import { Route as RelativeLinkPathPathIndexRouteImport } from './routes/relative/link/path/$path/index'
-import { Route as RelativeLinkNestedDeepIndexRouteImport } from './routes/relative/link/nested/deep/index'
+import { Route as NonNestedNamedBazIndexRouteImport } from './routes/non-nested/named/$baz.index'
+import { Route as NonNestedNamedBazFooRouteImport } from './routes/non-nested/named/$baz.foo'
+import { Route as NonNestedNamedBazBarRouteImport } from './routes/non-nested/named/$baz_.bar'
+import { Route as NonNestedPathBazIndexRouteImport } from './routes/non-nested/path/baz.index'
+import { Route as NonNestedPathBazFooRouteImport } from './routes/non-nested/path/baz.foo'
+import { Route as NonNestedPathBazBarRouteImport } from './routes/non-nested/path/baz_.bar'
+import { Route as NonNestedPrefixPrefixChar123bazChar125IndexRouteImport } from './routes/non-nested/prefix/prefix{$baz}.index'
+import { Route as NonNestedPrefixPrefixChar123bazChar125FooRouteImport } from './routes/non-nested/prefix/prefix{$baz}.foo'
+import { Route as NonNestedPrefixPrefixChar123bazChar125BarRouteImport } from './routes/non-nested/prefix/prefix{$baz}_.bar'
+import { Route as NonNestedSuffixChar123bazChar125suffixIndexRouteImport } from './routes/non-nested/suffix/{$baz}suffix.index'
+import { Route as NonNestedSuffixChar123bazChar125suffixFooRouteImport } from './routes/non-nested/suffix/{$baz}suffix.foo'
+import { Route as NonNestedSuffixChar123bazChar125suffixBarRouteImport } from './routes/non-nested/suffix/{$baz}suffix_.bar'
+import { Route as ParamsPsNamedFooBarRouteRouteImport } from './routes/params-ps/named/$foo/$bar.route'
+import { Route as ParamsPsNonNestedFooBarRouteImport } from './routes/params-ps/non-nested/$foo_/$bar'
+import { Route as RelativeLinkNestedIndexRouteImport } from './routes/relative/link/nested/index'
+import { Route as RelativeLinkPathIndexRouteImport } from './routes/relative/link/path/index'
+import { Route as RelativeLinkWithSearchIndexRouteImport } from './routes/relative/link/with-search/index'
+import { Route as RelativeUseNavigateNestedIndexRouteImport } from './routes/relative/useNavigate/nested/index'
+import { Route as RelativeUseNavigatePathIndexRouteImport } from './routes/relative/useNavigate/path/index'
+import { Route as RelativeUseNavigateWithSearchIndexRouteImport } from './routes/relative/useNavigate/with-search/index'
 import { Route as NonNestedDeepBazBarIndexRouteImport } from './routes/non-nested/deep/$baz_.bar.index'
-import { Route as ParamsPsNamedFooBarBazRouteImport } from './routes/params-ps/named/$foo/$bar.$baz'
-import { Route as NonNestedDeepBazBarQuxRouteImport } from './routes/non-nested/deep/$baz_.bar_.qux'
 import { Route as NonNestedDeepBazBarFooRouteRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo.route'
+import { Route as NonNestedDeepBazBarQuxRouteImport } from './routes/non-nested/deep/$baz_.bar_.qux'
+import { Route as ParamsPsNamedFooBarBazRouteImport } from './routes/params-ps/named/$foo/$bar.$baz'
+import { Route as RelativeLinkNestedDeepIndexRouteImport } from './routes/relative/link/nested/deep/index'
+import { Route as RelativeLinkPathPathIndexRouteImport } from './routes/relative/link/path/$path/index'
+import { Route as RelativeUseNavigateNestedDeepIndexRouteImport } from './routes/relative/useNavigate/nested/deep/index'
+import { Route as RelativeUseNavigatePathPathIndexRouteImport } from './routes/relative/useNavigate/path/$path/index'
 import { Route as NonNestedDeepBazBarFooIndexRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo.index'
 import { Route as NonNestedDeepBazBarFooQuxRouteImport } from './routes/non-nested/deep/$baz_.bar.$foo_.qux'
 
-const RemountDepsRoute = RemountDepsRouteImport.update({
-  id: '/remountDeps',
-  path: '/remountDeps',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PostsRoute = PostsRouteImport.update({
-  id: '/posts',
-  path: '/posts',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotRemountDepsRoute = NotRemountDepsRouteImport.update({
-  id: '/notRemountDeps',
-  path: '/notRemountDeps',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MasksRoute = MasksRouteImport.update({
-  id: '/masks',
-  path: '/masks',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const HoverPreloadHashRoute = HoverPreloadHashRouteImport.update({
-  id: '/hover-preload-hash',
-  path: '/hover-preload-hash',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EditingBRoute = EditingBRouteImport.update({
-  id: '/editing-b',
-  path: '/editing-b',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EditingARoute = EditingARouteImport.update({
-  id: '/editing-a',
-  path: '/editing-a',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ComponentTypesTestRoute = ComponentTypesTestRouteImport.update({
-  id: '/component-types-test',
-  path: '/component-types-test',
+const LayoutRoute = LayoutRouteImport.update({
+  id: '/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnchorRoute = AnchorRouteImport.update({
@@ -160,8 +129,54 @@ const AnchorRoute = AnchorRouteImport.update({
   path: '/anchor',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LayoutRoute = LayoutRouteImport.update({
-  id: '/_layout',
+const ComponentTypesTestRoute = ComponentTypesTestRouteImport.update({
+  id: '/component-types-test',
+  path: '/component-types-test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditingARoute = EditingARouteImport.update({
+  id: '/editing-a',
+  path: '/editing-a',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EditingBRoute = EditingBRouteImport.update({
+  id: '/editing-b',
+  path: '/editing-b',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HoverPreloadHashRoute = HoverPreloadHashRouteImport.update({
+  id: '/hover-preload-hash',
+  path: '/hover-preload-hash',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasksRoute = MasksRouteImport.update({
+  id: '/masks',
+  path: '/masks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NonNestedRouteRoute = NonNestedRouteRouteImport.update({
+  id: '/non-nested',
+  path: '/non-nested',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotRemountDepsRoute = NotRemountDepsRouteImport.update({
+  id: '/notRemountDeps',
+  path: '/notRemountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsRoute = PostsRouteImport.update({
+  id: '/posts',
+  path: '/posts',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RemountDepsRoute = RemountDepsRouteImport.update({
+  id: '/remountDeps',
+  path: '/remountDeps',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
+  id: '/search-params',
+  path: '/search-params',
   getParentRoute: () => rootRouteImport,
 } as any)
 const Char45824Char54620Char48124Char44397RouteRoute =
@@ -170,64 +185,20 @@ const Char45824Char54620Char48124Char44397RouteRoute =
     path: '/대한민국',
     getParentRoute: () => rootRouteImport,
   } as any)
-const SearchParamsRouteRoute = SearchParamsRouteRouteImport.update({
-  id: '/search-params',
-  path: '/search-params',
+const anotherGroupOnlyrouteinsideRoute =
+  anotherGroupOnlyrouteinsideRouteImport.update({
+    id: '/(another-group)/onlyrouteinside',
+    path: '/onlyrouteinside',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const groupLayoutRoute = groupLayoutRouteImport.update({
+  id: '/(group)/_layout',
   getParentRoute: () => rootRouteImport,
 } as any)
-const NonNestedRouteRoute = NonNestedRouteRouteImport.update({
-  id: '/non-nested',
-  path: '/non-nested',
+const groupInsideRoute = groupInsideRouteImport.update({
+  id: '/(group)/inside',
+  path: '/inside',
   getParentRoute: () => rootRouteImport,
-} as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => SearchParamsRouteRoute,
-} as any)
-const RelativeIndexRoute = RelativeIndexRouteImport.update({
-  id: '/relative/',
-  path: '/relative/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RedirectIndexRoute = RedirectIndexRouteImport.update({
-  id: '/redirect/',
-  path: '/redirect/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsIndexRoute = PostsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => PostsRoute,
-} as any)
-const ParamsPsIndexRoute = ParamsPsIndexRouteImport.update({
-  id: '/params-ps/',
-  path: '/params-ps/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SearchParamsDefaultRoute = SearchParamsDefaultRouteImport.update({
-  id: '/default',
-  path: '/default',
-  getParentRoute: () => SearchParamsRouteRoute,
-} as any)
-const RedirectTargetRoute = RedirectTargetRouteImport.update({
-  id: '/redirect/$target',
-  path: '/redirect/$target',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PostsPostIdRoute = PostsPostIdRouteImport.update({
-  id: '/$postId',
-  path: '/$postId',
-  getParentRoute: () => PostsRoute,
-} as any)
-const LayoutLayout2Route = LayoutLayout2RouteImport.update({
-  id: '/_layout-2',
-  getParentRoute: () => LayoutRoute,
 } as any)
 const groupLazyinsideRoute = groupLazyinsideRouteImport
   .update({
@@ -236,50 +207,13 @@ const groupLazyinsideRoute = groupLazyinsideRouteImport
     getParentRoute: () => rootRouteImport,
   } as any)
   .lazy(() => import('./routes/(group)/lazyinside.lazy').then((d) => d.Route))
-const groupInsideRoute = groupInsideRouteImport.update({
-  id: '/(group)/inside',
-  path: '/inside',
-  getParentRoute: () => rootRouteImport,
+const LayoutLayout2Route = LayoutLayout2RouteImport.update({
+  id: '/_layout-2',
+  getParentRoute: () => LayoutRoute,
 } as any)
-const groupLayoutRoute = groupLayoutRouteImport.update({
-  id: '/(group)/_layout',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const anotherGroupOnlyrouteinsideRoute =
-  anotherGroupOnlyrouteinsideRouteImport.update({
-    id: '/(another-group)/onlyrouteinside',
-    path: '/onlyrouteinside',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const RelativeUseNavigateRouteRoute =
-  RelativeUseNavigateRouteRouteImport.update({
-    id: '/relative/useNavigate',
-    path: '/relative/useNavigate',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const RelativeLinkRouteRoute = RelativeLinkRouteRouteImport.update({
-  id: '/relative/link',
-  path: '/relative/link',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParamsPsNonNestedRouteRoute = ParamsPsNonNestedRouteRouteImport.update({
-  id: '/params-ps/non-nested',
-  path: '/params-ps/non-nested',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NonNestedSuffixRouteRoute = NonNestedSuffixRouteRouteImport.update({
-  id: '/suffix',
-  path: '/suffix',
-  getParentRoute: () => NonNestedRouteRoute,
-} as any)
-const NonNestedPrefixRouteRoute = NonNestedPrefixRouteRouteImport.update({
-  id: '/prefix',
-  path: '/prefix',
-  getParentRoute: () => NonNestedRouteRoute,
-} as any)
-const NonNestedPathRouteRoute = NonNestedPathRouteRouteImport.update({
-  id: '/path',
-  path: '/path',
+const NonNestedDeepRouteRoute = NonNestedDeepRouteRouteImport.update({
+  id: '/deep',
+  path: '/deep',
   getParentRoute: () => NonNestedRouteRoute,
 } as any)
 const NonNestedNamedRouteRoute = NonNestedNamedRouteRouteImport.update({
@@ -287,120 +221,176 @@ const NonNestedNamedRouteRoute = NonNestedNamedRouteRouteImport.update({
   path: '/named',
   getParentRoute: () => NonNestedRouteRoute,
 } as any)
-const NonNestedDeepRouteRoute = NonNestedDeepRouteRouteImport.update({
-  id: '/deep',
-  path: '/deep',
+const NonNestedPathRouteRoute = NonNestedPathRouteRouteImport.update({
+  id: '/path',
+  path: '/path',
   getParentRoute: () => NonNestedRouteRoute,
 } as any)
-const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => RedirectTargetRoute,
+const NonNestedPrefixRouteRoute = NonNestedPrefixRouteRouteImport.update({
+  id: '/prefix',
+  path: '/prefix',
+  getParentRoute: () => NonNestedRouteRoute,
 } as any)
-const ParamsPsWildcardIndexRoute = ParamsPsWildcardIndexRouteImport.update({
-  id: '/params-ps/wildcard/',
-  path: '/params-ps/wildcard/',
+const NonNestedSuffixRouteRoute = NonNestedSuffixRouteRouteImport.update({
+  id: '/suffix',
+  path: '/suffix',
+  getParentRoute: () => NonNestedRouteRoute,
+} as any)
+const ParamsPsIndexRoute = ParamsPsIndexRouteImport.update({
+  id: '/params-ps/',
+  path: '/params-ps/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ParamsPsNonNestedRouteRoute = ParamsPsNonNestedRouteRouteImport.update({
+  id: '/params-ps/non-nested',
+  path: '/params-ps/non-nested',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsIndexRoute = PostsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PostsRoute,
+} as any)
+const PostsPostIdRoute = PostsPostIdRouteImport.update({
+  id: '/$postId',
+  path: '/$postId',
+  getParentRoute: () => PostsRoute,
+} as any)
+const RedirectIndexRoute = RedirectIndexRouteImport.update({
+  id: '/redirect/',
+  path: '/redirect/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectTargetRoute = RedirectTargetRouteImport.update({
+  id: '/redirect/$target',
+  path: '/redirect/$target',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelativeIndexRoute = RelativeIndexRouteImport.update({
+  id: '/relative/',
+  path: '/relative/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelativeLinkRouteRoute = RelativeLinkRouteRouteImport.update({
+  id: '/relative/link',
+  path: '/relative/link',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelativeUseNavigateRouteRoute =
+  RelativeUseNavigateRouteRouteImport.update({
+    id: '/relative/useNavigate',
+    path: '/relative/useNavigate',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const SearchParamsIndexRoute = SearchParamsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SearchParamsRouteRoute,
+} as any)
+const SearchParamsDefaultRoute = SearchParamsDefaultRouteImport.update({
+  id: '/default',
+  path: '/default',
+  getParentRoute: () => SearchParamsRouteRoute,
+} as any)
+const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
+  id: '/insidelayout',
+  path: '/insidelayout',
+  getParentRoute: () => groupLayoutRoute,
+} as any)
+const groupSubfolderInsideRoute = groupSubfolderInsideRouteImport.update({
+  id: '/(group)/subfolder/inside',
+  path: '/subfolder/inside',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
+  id: '/layout-a',
+  path: '/layout-a',
+  getParentRoute: () => LayoutLayout2Route,
+} as any)
+const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
+  id: '/layout-b',
+  path: '/layout-b',
+  getParentRoute: () => LayoutLayout2Route,
+} as any)
+const MasksAdminUserIdRoute = MasksAdminUserIdRouteImport.update({
+  id: '/admin/$userId',
+  path: '/admin/$userId',
+  getParentRoute: () => MasksRoute,
+} as any)
+const MasksPublicUsernameRoute = MasksPublicUsernameRouteImport.update({
+  id: '/public/$username',
+  path: '/public/$username',
+  getParentRoute: () => MasksRoute,
+} as any)
+const NonNestedDeepBazRouteRoute = NonNestedDeepBazRouteRouteImport.update({
+  id: '/$baz',
+  path: '/$baz',
+  getParentRoute: () => NonNestedDeepRouteRoute,
+} as any)
+const NonNestedNamedBazRouteRoute = NonNestedNamedBazRouteRouteImport.update({
+  id: '/$baz',
+  path: '/$baz',
+  getParentRoute: () => NonNestedNamedRouteRoute,
+} as any)
+const NonNestedPathBazRouteRoute = NonNestedPathBazRouteRouteImport.update({
+  id: '/baz',
+  path: '/baz',
+  getParentRoute: () => NonNestedPathRouteRoute,
+} as any)
+const NonNestedPrefixPrefixChar123bazChar125RouteRoute =
+  NonNestedPrefixPrefixChar123bazChar125RouteRouteImport.update({
+    id: '/prefix{$baz}',
+    path: '/prefix{$baz}',
+    getParentRoute: () => NonNestedPrefixRouteRoute,
+  } as any)
+const NonNestedSuffixChar123bazChar125suffixRouteRoute =
+  NonNestedSuffixChar123bazChar125suffixRouteRouteImport.update({
+    id: '/{$baz}suffix',
+    path: '/{$baz}suffix',
+    getParentRoute: () => NonNestedSuffixRouteRoute,
+  } as any)
 const ParamsPsNamedIndexRoute = ParamsPsNamedIndexRouteImport.update({
   id: '/params-ps/named/',
   path: '/params-ps/named/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const Char45824Char54620Char48124Char44397Char55357Char56960IdRoute =
-  Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport.update({
-    id: '/🚀/$id',
-    path: '/🚀/$id',
-    getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
-  } as any)
-const Char45824Char54620Char48124Char44397WildcardSplatRoute =
-  Char45824Char54620Char48124Char44397WildcardSplatRouteImport.update({
-    id: '/wildcard/$',
-    path: '/wildcard/$',
-    getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
-  } as any)
-const TransitionTypingCreateResourceRoute =
-  TransitionTypingCreateResourceRouteImport.update({
-    id: '/transition/typing/create-resource',
-    path: '/transition/typing/create-resource',
+const ParamsPsNamedFooRouteRoute = ParamsPsNamedFooRouteRouteImport.update({
+  id: '/params-ps/named/$foo',
+  path: '/params-ps/named/$foo',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParamsPsNamedPrefixChar123fooChar125Route =
+  ParamsPsNamedPrefixChar123fooChar125RouteImport.update({
+    id: '/params-ps/named/prefix{$foo}',
+    path: '/params-ps/named/prefix{$foo}',
     getParentRoute: () => rootRouteImport,
   } as any)
-const TransitionCountCreateResourceRoute =
-  TransitionCountCreateResourceRouteImport.update({
-    id: '/transition/count/create-resource',
-    path: '/transition/count/create-resource',
+const ParamsPsNamedChar123fooChar125suffixRoute =
+  ParamsPsNamedChar123fooChar125suffixRouteImport.update({
+    id: '/params-ps/named/{$foo}suffix',
+    path: '/params-ps/named/{$foo}suffix',
     getParentRoute: () => rootRouteImport,
   } as any)
-const RelativeUseNavigateRelativeUseNavigateBRoute =
-  RelativeUseNavigateRelativeUseNavigateBRouteImport.update({
-    id: '/relative-useNavigate-b',
-    path: '/relative-useNavigate-b',
-    getParentRoute: () => RelativeUseNavigateRouteRoute,
+const ParamsPsNonNestedFooRouteRoute =
+  ParamsPsNonNestedFooRouteRouteImport.update({
+    id: '/$foo_',
+    path: '/$foo',
+    getParentRoute: () => ParamsPsNonNestedRouteRoute,
   } as any)
-const RelativeUseNavigateRelativeUseNavigateARoute =
-  RelativeUseNavigateRelativeUseNavigateARouteImport.update({
-    id: '/relative-useNavigate-a',
-    path: '/relative-useNavigate-a',
-    getParentRoute: () => RelativeUseNavigateRouteRoute,
-  } as any)
-const RelativeLinkRelativeLinkBRoute =
-  RelativeLinkRelativeLinkBRouteImport.update({
-    id: '/relative-link-b',
-    path: '/relative-link-b',
-    getParentRoute: () => RelativeLinkRouteRoute,
-  } as any)
-const RelativeLinkRelativeLinkARoute =
-  RelativeLinkRelativeLinkARouteImport.update({
-    id: '/relative-link-a',
-    path: '/relative-link-a',
-    getParentRoute: () => RelativeLinkRouteRoute,
-  } as any)
-const RedirectPreloadThirdRoute = RedirectPreloadThirdRouteImport.update({
-  id: '/redirect/preload/third',
-  path: '/redirect/preload/third',
+const ParamsPsWildcardIndexRoute = ParamsPsWildcardIndexRouteImport.update({
+  id: '/params-ps/wildcard/',
+  path: '/params-ps/wildcard/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RedirectPreloadSecondRoute = RedirectPreloadSecondRouteImport.update({
-  id: '/redirect/preload/second',
-  path: '/redirect/preload/second',
+const ParamsPsWildcardSplatRoute = ParamsPsWildcardSplatRouteImport.update({
+  id: '/params-ps/wildcard/$',
+  path: '/params-ps/wildcard/$',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RedirectPreloadFirstRoute = RedirectPreloadFirstRouteImport.update({
-  id: '/redirect/preload/first',
-  path: '/redirect/preload/first',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
-  id: '/via-loader',
-  path: '/via-loader',
-  getParentRoute: () => RedirectTargetRoute,
-} as any)
-const RedirectTargetViaBeforeLoadRoute =
-  RedirectTargetViaBeforeLoadRouteImport.update({
-    id: '/via-beforeLoad',
-    path: '/via-beforeLoad',
-    getParentRoute: () => RedirectTargetRoute,
-  } as any)
-const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
-  id: '/posts_/$postId/edit',
-  path: '/posts/$postId/edit',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParamsSingleValueRoute = ParamsSingleValueRouteImport.update({
-  id: '/params/single/$value',
-  path: '/params/single/$value',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParamsPsWildcardChar123Char125suffixAtChar45824Route =
-  ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport.update({
-    id: '/params-ps/wildcard/{$}suffix@대',
-    path: '/params-ps/wildcard/{$}suffix@대',
-    getParentRoute: () => rootRouteImport,
-  } as any)
-const ParamsPsWildcardChar123Char125suffixRoute =
-  ParamsPsWildcardChar123Char125suffixRouteImport.update({
-    id: '/params-ps/wildcard/{$}suffix',
-    path: '/params-ps/wildcard/{$}suffix',
+const ParamsPsWildcardPrefixAtChar45824Char123Char125Route =
+  ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport.update({
+    id: '/params-ps/wildcard/prefix@대{$}',
+    path: '/params-ps/wildcard/prefix@대{$}',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ParamsPsWildcardPrefixChar123Char125Route =
@@ -409,101 +399,215 @@ const ParamsPsWildcardPrefixChar123Char125Route =
     path: '/params-ps/wildcard/prefix{$}',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ParamsPsWildcardPrefixAtChar45824Char123Char125Route =
-  ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport.update({
-    id: '/params-ps/wildcard/prefix@대{$}',
-    path: '/params-ps/wildcard/prefix@대{$}',
+const ParamsPsWildcardChar123Char125suffixRoute =
+  ParamsPsWildcardChar123Char125suffixRouteImport.update({
+    id: '/params-ps/wildcard/{$}suffix',
+    path: '/params-ps/wildcard/{$}suffix',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ParamsPsWildcardSplatRoute = ParamsPsWildcardSplatRouteImport.update({
-  id: '/params-ps/wildcard/$',
-  path: '/params-ps/wildcard/$',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ParamsPsNamedChar123fooChar125suffixRoute =
-  ParamsPsNamedChar123fooChar125suffixRouteImport.update({
-    id: '/params-ps/named/{$foo}suffix',
-    path: '/params-ps/named/{$foo}suffix',
+const ParamsPsWildcardChar123Char125suffixAtChar45824Route =
+  ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport.update({
+    id: '/params-ps/wildcard/{$}suffix@대',
+    path: '/params-ps/wildcard/{$}suffix@대',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ParamsPsNamedPrefixChar123fooChar125Route =
-  ParamsPsNamedPrefixChar123fooChar125RouteImport.update({
-    id: '/params-ps/named/prefix{$foo}',
-    path: '/params-ps/named/prefix{$foo}',
+const ParamsSingleValueRoute = ParamsSingleValueRouteImport.update({
+  id: '/params/single/$value',
+  path: '/params/single/$value',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PostsPostIdEditRoute = PostsPostIdEditRouteImport.update({
+  id: '/posts_/$postId/edit',
+  path: '/posts/$postId/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectTargetIndexRoute = RedirectTargetIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => RedirectTargetRoute,
+} as any)
+const RedirectTargetViaBeforeLoadRoute =
+  RedirectTargetViaBeforeLoadRouteImport.update({
+    id: '/via-beforeLoad',
+    path: '/via-beforeLoad',
+    getParentRoute: () => RedirectTargetRoute,
+  } as any)
+const RedirectTargetViaLoaderRoute = RedirectTargetViaLoaderRouteImport.update({
+  id: '/via-loader',
+  path: '/via-loader',
+  getParentRoute: () => RedirectTargetRoute,
+} as any)
+const RedirectPreloadFirstRoute = RedirectPreloadFirstRouteImport.update({
+  id: '/redirect/preload/first',
+  path: '/redirect/preload/first',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectPreloadSecondRoute = RedirectPreloadSecondRouteImport.update({
+  id: '/redirect/preload/second',
+  path: '/redirect/preload/second',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedirectPreloadThirdRoute = RedirectPreloadThirdRouteImport.update({
+  id: '/redirect/preload/third',
+  path: '/redirect/preload/third',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelativeLinkRelativeLinkARoute =
+  RelativeLinkRelativeLinkARouteImport.update({
+    id: '/relative-link-a',
+    path: '/relative-link-a',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RelativeLinkRelativeLinkBRoute =
+  RelativeLinkRelativeLinkBRouteImport.update({
+    id: '/relative-link-b',
+    path: '/relative-link-b',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RelativeUseNavigateRelativeUseNavigateARoute =
+  RelativeUseNavigateRelativeUseNavigateARouteImport.update({
+    id: '/relative-useNavigate-a',
+    path: '/relative-useNavigate-a',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeUseNavigateRelativeUseNavigateBRoute =
+  RelativeUseNavigateRelativeUseNavigateBRouteImport.update({
+    id: '/relative-useNavigate-b',
+    path: '/relative-useNavigate-b',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const TransitionCountCreateResourceRoute =
+  TransitionCountCreateResourceRouteImport.update({
+    id: '/transition/count/create-resource',
+    path: '/transition/count/create-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
-const MasksPublicUsernameRoute = MasksPublicUsernameRouteImport.update({
-  id: '/public/$username',
-  path: '/public/$username',
-  getParentRoute: () => MasksRoute,
-} as any)
-const MasksAdminUserIdRoute = MasksAdminUserIdRouteImport.update({
-  id: '/admin/$userId',
-  path: '/admin/$userId',
-  getParentRoute: () => MasksRoute,
-} as any)
-const LayoutLayout2LayoutBRoute = LayoutLayout2LayoutBRouteImport.update({
-  id: '/layout-b',
-  path: '/layout-b',
-  getParentRoute: () => LayoutLayout2Route,
-} as any)
-const LayoutLayout2LayoutARoute = LayoutLayout2LayoutARouteImport.update({
-  id: '/layout-a',
-  path: '/layout-a',
-  getParentRoute: () => LayoutLayout2Route,
-} as any)
-const groupSubfolderInsideRoute = groupSubfolderInsideRouteImport.update({
-  id: '/(group)/subfolder/inside',
-  path: '/subfolder/inside',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const groupLayoutInsidelayoutRoute = groupLayoutInsidelayoutRouteImport.update({
-  id: '/insidelayout',
-  path: '/insidelayout',
-  getParentRoute: () => groupLayoutRoute,
-} as any)
-const ParamsPsNonNestedFooRouteRoute =
-  ParamsPsNonNestedFooRouteRouteImport.update({
-    id: '/$foo_',
-    path: '/$foo',
-    getParentRoute: () => ParamsPsNonNestedRouteRoute,
+const TransitionTypingCreateResourceRoute =
+  TransitionTypingCreateResourceRouteImport.update({
+    id: '/transition/typing/create-resource',
+    path: '/transition/typing/create-resource',
+    getParentRoute: () => rootRouteImport,
   } as any)
-const ParamsPsNamedFooRouteRoute = ParamsPsNamedFooRouteRouteImport.update({
-  id: '/params-ps/named/$foo',
-  path: '/params-ps/named/$foo',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NonNestedSuffixChar123bazChar125suffixRouteRoute =
-  NonNestedSuffixChar123bazChar125suffixRouteRouteImport.update({
-    id: '/{$baz}suffix',
-    path: '/{$baz}suffix',
-    getParentRoute: () => NonNestedSuffixRouteRoute,
+const Char45824Char54620Char48124Char44397WildcardSplatRoute =
+  Char45824Char54620Char48124Char44397WildcardSplatRouteImport.update({
+    id: '/wildcard/$',
+    path: '/wildcard/$',
+    getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
   } as any)
-const NonNestedPrefixPrefixChar123bazChar125RouteRoute =
-  NonNestedPrefixPrefixChar123bazChar125RouteRouteImport.update({
-    id: '/prefix{$baz}',
-    path: '/prefix{$baz}',
-    getParentRoute: () => NonNestedPrefixRouteRoute,
+const Char45824Char54620Char48124Char44397Char55357Char56960IdRoute =
+  Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport.update({
+    id: '/🚀/$id',
+    path: '/🚀/$id',
+    getParentRoute: () => Char45824Char54620Char48124Char44397RouteRoute,
   } as any)
-const NonNestedPathBazRouteRoute = NonNestedPathBazRouteRouteImport.update({
-  id: '/baz',
-  path: '/baz',
-  getParentRoute: () => NonNestedPathRouteRoute,
+const NonNestedDeepBazIndexRoute = NonNestedDeepBazIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NonNestedDeepBazRouteRoute,
 } as any)
-const NonNestedNamedBazRouteRoute = NonNestedNamedBazRouteRouteImport.update({
-  id: '/$baz',
-  path: '/$baz',
+const NonNestedDeepBazBarRouteRoute =
+  NonNestedDeepBazBarRouteRouteImport.update({
+    id: '/$baz_/bar',
+    path: '/$baz/bar',
+    getParentRoute: () => NonNestedDeepRouteRoute,
+  } as any)
+const NonNestedNamedBazIndexRoute = NonNestedNamedBazIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NonNestedNamedBazRouteRoute,
+} as any)
+const NonNestedNamedBazFooRoute = NonNestedNamedBazFooRouteImport.update({
+  id: '/foo',
+  path: '/foo',
+  getParentRoute: () => NonNestedNamedBazRouteRoute,
+} as any)
+const NonNestedNamedBazBarRoute = NonNestedNamedBazBarRouteImport.update({
+  id: '/$baz_/bar',
+  path: '/$baz/bar',
   getParentRoute: () => NonNestedNamedRouteRoute,
 } as any)
-const NonNestedDeepBazRouteRoute = NonNestedDeepBazRouteRouteImport.update({
-  id: '/$baz',
-  path: '/$baz',
-  getParentRoute: () => NonNestedDeepRouteRoute,
+const NonNestedPathBazIndexRoute = NonNestedPathBazIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => NonNestedPathBazRouteRoute,
 } as any)
-const RelativeUseNavigateWithSearchIndexRoute =
-  RelativeUseNavigateWithSearchIndexRouteImport.update({
+const NonNestedPathBazFooRoute = NonNestedPathBazFooRouteImport.update({
+  id: '/foo',
+  path: '/foo',
+  getParentRoute: () => NonNestedPathBazRouteRoute,
+} as any)
+const NonNestedPathBazBarRoute = NonNestedPathBazBarRouteImport.update({
+  id: '/baz_/bar',
+  path: '/baz/bar',
+  getParentRoute: () => NonNestedPathRouteRoute,
+} as any)
+const NonNestedPrefixPrefixChar123bazChar125IndexRoute =
+  NonNestedPrefixPrefixChar123bazChar125IndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => NonNestedPrefixPrefixChar123bazChar125RouteRoute,
+  } as any)
+const NonNestedPrefixPrefixChar123bazChar125FooRoute =
+  NonNestedPrefixPrefixChar123bazChar125FooRouteImport.update({
+    id: '/foo',
+    path: '/foo',
+    getParentRoute: () => NonNestedPrefixPrefixChar123bazChar125RouteRoute,
+  } as any)
+const NonNestedPrefixPrefixChar123bazChar125BarRoute =
+  NonNestedPrefixPrefixChar123bazChar125BarRouteImport.update({
+    id: '/prefix{$baz}_/bar',
+    path: '/prefix{$baz}/bar',
+    getParentRoute: () => NonNestedPrefixRouteRoute,
+  } as any)
+const NonNestedSuffixChar123bazChar125suffixIndexRoute =
+  NonNestedSuffixChar123bazChar125suffixIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => NonNestedSuffixChar123bazChar125suffixRouteRoute,
+  } as any)
+const NonNestedSuffixChar123bazChar125suffixFooRoute =
+  NonNestedSuffixChar123bazChar125suffixFooRouteImport.update({
+    id: '/foo',
+    path: '/foo',
+    getParentRoute: () => NonNestedSuffixChar123bazChar125suffixRouteRoute,
+  } as any)
+const NonNestedSuffixChar123bazChar125suffixBarRoute =
+  NonNestedSuffixChar123bazChar125suffixBarRouteImport.update({
+    id: '/{$baz}suffix_/bar',
+    path: '/{$baz}suffix/bar',
+    getParentRoute: () => NonNestedSuffixRouteRoute,
+  } as any)
+const ParamsPsNamedFooBarRouteRoute =
+  ParamsPsNamedFooBarRouteRouteImport.update({
+    id: '/$bar',
+    path: '/$bar',
+    getParentRoute: () => ParamsPsNamedFooRouteRoute,
+  } as any)
+const ParamsPsNonNestedFooBarRoute = ParamsPsNonNestedFooBarRouteImport.update({
+  id: '/$bar',
+  path: '/$bar',
+  getParentRoute: () => ParamsPsNonNestedFooRouteRoute,
+} as any)
+const RelativeLinkNestedIndexRoute = RelativeLinkNestedIndexRouteImport.update({
+  id: '/nested/',
+  path: '/nested/',
+  getParentRoute: () => RelativeLinkRouteRoute,
+} as any)
+const RelativeLinkPathIndexRoute = RelativeLinkPathIndexRouteImport.update({
+  id: '/path/',
+  path: '/path/',
+  getParentRoute: () => RelativeLinkRouteRoute,
+} as any)
+const RelativeLinkWithSearchIndexRoute =
+  RelativeLinkWithSearchIndexRouteImport.update({
     id: '/with-search/',
     path: '/with-search/',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RelativeUseNavigateNestedIndexRoute =
+  RelativeUseNavigateNestedIndexRouteImport.update({
+    id: '/nested/',
+    path: '/nested/',
     getParentRoute: () => RelativeUseNavigateRouteRoute,
   } as any)
 const RelativeUseNavigatePathIndexRoute =
@@ -512,139 +616,11 @@ const RelativeUseNavigatePathIndexRoute =
     path: '/path/',
     getParentRoute: () => RelativeUseNavigateRouteRoute,
   } as any)
-const RelativeUseNavigateNestedIndexRoute =
-  RelativeUseNavigateNestedIndexRouteImport.update({
-    id: '/nested/',
-    path: '/nested/',
-    getParentRoute: () => RelativeUseNavigateRouteRoute,
-  } as any)
-const RelativeLinkWithSearchIndexRoute =
-  RelativeLinkWithSearchIndexRouteImport.update({
+const RelativeUseNavigateWithSearchIndexRoute =
+  RelativeUseNavigateWithSearchIndexRouteImport.update({
     id: '/with-search/',
     path: '/with-search/',
-    getParentRoute: () => RelativeLinkRouteRoute,
-  } as any)
-const RelativeLinkPathIndexRoute = RelativeLinkPathIndexRouteImport.update({
-  id: '/path/',
-  path: '/path/',
-  getParentRoute: () => RelativeLinkRouteRoute,
-} as any)
-const RelativeLinkNestedIndexRoute = RelativeLinkNestedIndexRouteImport.update({
-  id: '/nested/',
-  path: '/nested/',
-  getParentRoute: () => RelativeLinkRouteRoute,
-} as any)
-const NonNestedSuffixChar123bazChar125suffixIndexRoute =
-  NonNestedSuffixChar123bazChar125suffixIndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => NonNestedSuffixChar123bazChar125suffixRouteRoute,
-  } as any)
-const NonNestedPrefixPrefixChar123bazChar125IndexRoute =
-  NonNestedPrefixPrefixChar123bazChar125IndexRouteImport.update({
-    id: '/',
-    path: '/',
-    getParentRoute: () => NonNestedPrefixPrefixChar123bazChar125RouteRoute,
-  } as any)
-const NonNestedPathBazIndexRoute = NonNestedPathBazIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => NonNestedPathBazRouteRoute,
-} as any)
-const NonNestedNamedBazIndexRoute = NonNestedNamedBazIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => NonNestedNamedBazRouteRoute,
-} as any)
-const NonNestedDeepBazIndexRoute = NonNestedDeepBazIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => NonNestedDeepBazRouteRoute,
-} as any)
-const ParamsPsNonNestedFooBarRoute = ParamsPsNonNestedFooBarRouteImport.update({
-  id: '/$bar',
-  path: '/$bar',
-  getParentRoute: () => ParamsPsNonNestedFooRouteRoute,
-} as any)
-const NonNestedSuffixChar123bazChar125suffixBarRoute =
-  NonNestedSuffixChar123bazChar125suffixBarRouteImport.update({
-    id: '/{$baz}suffix_/bar',
-    path: '/{$baz}suffix/bar',
-    getParentRoute: () => NonNestedSuffixRouteRoute,
-  } as any)
-const NonNestedSuffixChar123bazChar125suffixFooRoute =
-  NonNestedSuffixChar123bazChar125suffixFooRouteImport.update({
-    id: '/foo',
-    path: '/foo',
-    getParentRoute: () => NonNestedSuffixChar123bazChar125suffixRouteRoute,
-  } as any)
-const NonNestedPrefixPrefixChar123bazChar125BarRoute =
-  NonNestedPrefixPrefixChar123bazChar125BarRouteImport.update({
-    id: '/prefix{$baz}_/bar',
-    path: '/prefix{$baz}/bar',
-    getParentRoute: () => NonNestedPrefixRouteRoute,
-  } as any)
-const NonNestedPrefixPrefixChar123bazChar125FooRoute =
-  NonNestedPrefixPrefixChar123bazChar125FooRouteImport.update({
-    id: '/foo',
-    path: '/foo',
-    getParentRoute: () => NonNestedPrefixPrefixChar123bazChar125RouteRoute,
-  } as any)
-const NonNestedPathBazBarRoute = NonNestedPathBazBarRouteImport.update({
-  id: '/baz_/bar',
-  path: '/baz/bar',
-  getParentRoute: () => NonNestedPathRouteRoute,
-} as any)
-const NonNestedPathBazFooRoute = NonNestedPathBazFooRouteImport.update({
-  id: '/foo',
-  path: '/foo',
-  getParentRoute: () => NonNestedPathBazRouteRoute,
-} as any)
-const NonNestedNamedBazBarRoute = NonNestedNamedBazBarRouteImport.update({
-  id: '/$baz_/bar',
-  path: '/$baz/bar',
-  getParentRoute: () => NonNestedNamedRouteRoute,
-} as any)
-const NonNestedNamedBazFooRoute = NonNestedNamedBazFooRouteImport.update({
-  id: '/foo',
-  path: '/foo',
-  getParentRoute: () => NonNestedNamedBazRouteRoute,
-} as any)
-const ParamsPsNamedFooBarRouteRoute =
-  ParamsPsNamedFooBarRouteRouteImport.update({
-    id: '/$bar',
-    path: '/$bar',
-    getParentRoute: () => ParamsPsNamedFooRouteRoute,
-  } as any)
-const NonNestedDeepBazBarRouteRoute =
-  NonNestedDeepBazBarRouteRouteImport.update({
-    id: '/$baz_/bar',
-    path: '/$baz/bar',
-    getParentRoute: () => NonNestedDeepRouteRoute,
-  } as any)
-const RelativeUseNavigatePathPathIndexRoute =
-  RelativeUseNavigatePathPathIndexRouteImport.update({
-    id: '/path/$path/',
-    path: '/path/$path/',
     getParentRoute: () => RelativeUseNavigateRouteRoute,
-  } as any)
-const RelativeUseNavigateNestedDeepIndexRoute =
-  RelativeUseNavigateNestedDeepIndexRouteImport.update({
-    id: '/nested/deep/',
-    path: '/nested/deep/',
-    getParentRoute: () => RelativeUseNavigateRouteRoute,
-  } as any)
-const RelativeLinkPathPathIndexRoute =
-  RelativeLinkPathPathIndexRouteImport.update({
-    id: '/path/$path/',
-    path: '/path/$path/',
-    getParentRoute: () => RelativeLinkRouteRoute,
-  } as any)
-const RelativeLinkNestedDeepIndexRoute =
-  RelativeLinkNestedDeepIndexRouteImport.update({
-    id: '/nested/deep/',
-    path: '/nested/deep/',
-    getParentRoute: () => RelativeLinkRouteRoute,
   } as any)
 const NonNestedDeepBazBarIndexRoute =
   NonNestedDeepBazBarIndexRouteImport.update({
@@ -652,21 +628,45 @@ const NonNestedDeepBazBarIndexRoute =
     path: '/',
     getParentRoute: () => NonNestedDeepBazBarRouteRoute,
   } as any)
-const ParamsPsNamedFooBarBazRoute = ParamsPsNamedFooBarBazRouteImport.update({
-  id: '/$baz',
-  path: '/$baz',
-  getParentRoute: () => ParamsPsNamedFooBarRouteRoute,
-} as any)
-const NonNestedDeepBazBarQuxRoute = NonNestedDeepBazBarQuxRouteImport.update({
-  id: '/$baz_/bar_/qux',
-  path: '/$baz/bar/qux',
-  getParentRoute: () => NonNestedDeepRouteRoute,
-} as any)
 const NonNestedDeepBazBarFooRouteRoute =
   NonNestedDeepBazBarFooRouteRouteImport.update({
     id: '/$foo',
     path: '/$foo',
     getParentRoute: () => NonNestedDeepBazBarRouteRoute,
+  } as any)
+const NonNestedDeepBazBarQuxRoute = NonNestedDeepBazBarQuxRouteImport.update({
+  id: '/$baz_/bar_/qux',
+  path: '/$baz/bar/qux',
+  getParentRoute: () => NonNestedDeepRouteRoute,
+} as any)
+const ParamsPsNamedFooBarBazRoute = ParamsPsNamedFooBarBazRouteImport.update({
+  id: '/$baz',
+  path: '/$baz',
+  getParentRoute: () => ParamsPsNamedFooBarRouteRoute,
+} as any)
+const RelativeLinkNestedDeepIndexRoute =
+  RelativeLinkNestedDeepIndexRouteImport.update({
+    id: '/nested/deep/',
+    path: '/nested/deep/',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RelativeLinkPathPathIndexRoute =
+  RelativeLinkPathPathIndexRouteImport.update({
+    id: '/path/$path/',
+    path: '/path/$path/',
+    getParentRoute: () => RelativeLinkRouteRoute,
+  } as any)
+const RelativeUseNavigateNestedDeepIndexRoute =
+  RelativeUseNavigateNestedDeepIndexRouteImport.update({
+    id: '/nested/deep/',
+    path: '/nested/deep/',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
+  } as any)
+const RelativeUseNavigatePathPathIndexRoute =
+  RelativeUseNavigatePathPathIndexRouteImport.update({
+    id: '/path/$path/',
+    path: '/path/$path/',
+    getParentRoute: () => RelativeUseNavigateRouteRoute,
   } as any)
 const NonNestedDeepBazBarFooIndexRoute =
   NonNestedDeepBazBarFooIndexRouteImport.update({
@@ -1343,67 +1343,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/solid-router' {
   interface FileRoutesByPath {
-    '/remountDeps': {
-      id: '/remountDeps'
-      path: '/remountDeps'
-      fullPath: '/remountDeps'
-      preLoaderRoute: typeof RemountDepsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof PostsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/notRemountDeps': {
-      id: '/notRemountDeps'
-      path: '/notRemountDeps'
-      fullPath: '/notRemountDeps'
-      preLoaderRoute: typeof NotRemountDepsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/masks': {
-      id: '/masks'
-      path: '/masks'
-      fullPath: '/masks'
-      preLoaderRoute: typeof MasksRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/hover-preload-hash': {
-      id: '/hover-preload-hash'
-      path: '/hover-preload-hash'
-      fullPath: '/hover-preload-hash'
-      preLoaderRoute: typeof HoverPreloadHashRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/editing-b': {
-      id: '/editing-b'
-      path: '/editing-b'
-      fullPath: '/editing-b'
-      preLoaderRoute: typeof EditingBRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/editing-a': {
-      id: '/editing-a'
-      path: '/editing-a'
-      fullPath: '/editing-a'
-      preLoaderRoute: typeof EditingARouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/component-types-test': {
-      id: '/component-types-test'
-      path: '/component-types-test'
-      fullPath: '/component-types-test'
-      preLoaderRoute: typeof ComponentTypesTestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/anchor': {
-      id: '/anchor'
-      path: '/anchor'
-      fullPath: '/anchor'
-      preLoaderRoute: typeof AnchorRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_layout': {
@@ -1413,18 +1357,46 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof LayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/대한민국': {
-      id: '/대한민국'
-      path: '/대한민국'
-      fullPath: '/대한민국'
-      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteRouteImport
+    '/anchor': {
+      id: '/anchor'
+      path: '/anchor'
+      fullPath: '/anchor'
+      preLoaderRoute: typeof AnchorRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/search-params': {
-      id: '/search-params'
-      path: '/search-params'
-      fullPath: '/search-params'
-      preLoaderRoute: typeof SearchParamsRouteRouteImport
+    '/component-types-test': {
+      id: '/component-types-test'
+      path: '/component-types-test'
+      fullPath: '/component-types-test'
+      preLoaderRoute: typeof ComponentTypesTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editing-a': {
+      id: '/editing-a'
+      path: '/editing-a'
+      fullPath: '/editing-a'
+      preLoaderRoute: typeof EditingARouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/editing-b': {
+      id: '/editing-b'
+      path: '/editing-b'
+      fullPath: '/editing-b'
+      preLoaderRoute: typeof EditingBRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/hover-preload-hash': {
+      id: '/hover-preload-hash'
+      path: '/hover-preload-hash'
+      fullPath: '/hover-preload-hash'
+      preLoaderRoute: typeof HoverPreloadHashRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/masks': {
+      id: '/masks'
+      path: '/masks'
+      fullPath: '/masks'
+      preLoaderRoute: typeof MasksRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/non-nested': {
@@ -1434,95 +1406,39 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof NonNestedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/notRemountDeps': {
+      id: '/notRemountDeps'
+      path: '/notRemountDeps'
+      fullPath: '/notRemountDeps'
+      preLoaderRoute: typeof NotRemountDepsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/search-params/': {
-      id: '/search-params/'
-      path: '/'
-      fullPath: '/search-params/'
-      preLoaderRoute: typeof SearchParamsIndexRouteImport
-      parentRoute: typeof SearchParamsRouteRoute
-    }
-    '/relative/': {
-      id: '/relative/'
-      path: '/relative'
-      fullPath: '/relative/'
-      preLoaderRoute: typeof RelativeIndexRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof PostsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/redirect/': {
-      id: '/redirect/'
-      path: '/redirect'
-      fullPath: '/redirect/'
-      preLoaderRoute: typeof RedirectIndexRouteImport
+    '/remountDeps': {
+      id: '/remountDeps'
+      path: '/remountDeps'
+      fullPath: '/remountDeps'
+      preLoaderRoute: typeof RemountDepsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof PostsIndexRouteImport
-      parentRoute: typeof PostsRoute
-    }
-    '/params-ps/': {
-      id: '/params-ps/'
-      path: '/params-ps'
-      fullPath: '/params-ps/'
-      preLoaderRoute: typeof ParamsPsIndexRouteImport
+    '/search-params': {
+      id: '/search-params'
+      path: '/search-params'
+      fullPath: '/search-params'
+      preLoaderRoute: typeof SearchParamsRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/search-params/default': {
-      id: '/search-params/default'
-      path: '/default'
-      fullPath: '/search-params/default'
-      preLoaderRoute: typeof SearchParamsDefaultRouteImport
-      parentRoute: typeof SearchParamsRouteRoute
-    }
-    '/redirect/$target': {
-      id: '/redirect/$target'
-      path: '/redirect/$target'
-      fullPath: '/redirect/$target'
-      preLoaderRoute: typeof RedirectTargetRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof PostsPostIdRouteImport
-      parentRoute: typeof PostsRoute
-    }
-    '/_layout/_layout-2': {
-      id: '/_layout/_layout-2'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof LayoutLayout2RouteImport
-      parentRoute: typeof LayoutRoute
-    }
-    '/(group)/lazyinside': {
-      id: '/(group)/lazyinside'
-      path: '/lazyinside'
-      fullPath: '/lazyinside'
-      preLoaderRoute: typeof groupLazyinsideRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(group)/inside': {
-      id: '/(group)/inside'
-      path: '/inside'
-      fullPath: '/inside'
-      preLoaderRoute: typeof groupInsideRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(group)/_layout': {
-      id: '/(group)/_layout'
-      path: ''
-      fullPath: ''
-      preLoaderRoute: typeof groupLayoutRouteImport
+    '/대한민국': {
+      id: '/대한민국'
+      path: '/대한민국'
+      fullPath: '/대한민국'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397RouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(another-group)/onlyrouteinside': {
@@ -1532,46 +1448,39 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof anotherGroupOnlyrouteinsideRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/relative/useNavigate': {
-      id: '/relative/useNavigate'
-      path: '/relative/useNavigate'
-      fullPath: '/relative/useNavigate'
-      preLoaderRoute: typeof RelativeUseNavigateRouteRouteImport
+    '/(group)/_layout': {
+      id: '/(group)/_layout'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof groupLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/relative/link': {
-      id: '/relative/link'
-      path: '/relative/link'
-      fullPath: '/relative/link'
-      preLoaderRoute: typeof RelativeLinkRouteRouteImport
+    '/(group)/inside': {
+      id: '/(group)/inside'
+      path: '/inside'
+      fullPath: '/inside'
+      preLoaderRoute: typeof groupInsideRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/params-ps/non-nested': {
-      id: '/params-ps/non-nested'
-      path: '/params-ps/non-nested'
-      fullPath: '/params-ps/non-nested'
-      preLoaderRoute: typeof ParamsPsNonNestedRouteRouteImport
+    '/(group)/lazyinside': {
+      id: '/(group)/lazyinside'
+      path: '/lazyinside'
+      fullPath: '/lazyinside'
+      preLoaderRoute: typeof groupLazyinsideRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/non-nested/suffix': {
-      id: '/non-nested/suffix'
-      path: '/suffix'
-      fullPath: '/non-nested/suffix'
-      preLoaderRoute: typeof NonNestedSuffixRouteRouteImport
-      parentRoute: typeof NonNestedRouteRoute
+    '/_layout/_layout-2': {
+      id: '/_layout/_layout-2'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof LayoutLayout2RouteImport
+      parentRoute: typeof LayoutRoute
     }
-    '/non-nested/prefix': {
-      id: '/non-nested/prefix'
-      path: '/prefix'
-      fullPath: '/non-nested/prefix'
-      preLoaderRoute: typeof NonNestedPrefixRouteRouteImport
-      parentRoute: typeof NonNestedRouteRoute
-    }
-    '/non-nested/path': {
-      id: '/non-nested/path'
-      path: '/path'
-      fullPath: '/non-nested/path'
-      preLoaderRoute: typeof NonNestedPathRouteRouteImport
+    '/non-nested/deep': {
+      id: '/non-nested/deep'
+      path: '/deep'
+      fullPath: '/non-nested/deep'
+      preLoaderRoute: typeof NonNestedDeepRouteRouteImport
       parentRoute: typeof NonNestedRouteRoute
     }
     '/non-nested/named': {
@@ -1581,26 +1490,180 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof NonNestedNamedRouteRouteImport
       parentRoute: typeof NonNestedRouteRoute
     }
-    '/non-nested/deep': {
-      id: '/non-nested/deep'
-      path: '/deep'
-      fullPath: '/non-nested/deep'
-      preLoaderRoute: typeof NonNestedDeepRouteRouteImport
+    '/non-nested/path': {
+      id: '/non-nested/path'
+      path: '/path'
+      fullPath: '/non-nested/path'
+      preLoaderRoute: typeof NonNestedPathRouteRouteImport
       parentRoute: typeof NonNestedRouteRoute
     }
-    '/redirect/$target/': {
-      id: '/redirect/$target/'
-      path: '/'
-      fullPath: '/redirect/$target/'
-      preLoaderRoute: typeof RedirectTargetIndexRouteImport
-      parentRoute: typeof RedirectTargetRoute
+    '/non-nested/prefix': {
+      id: '/non-nested/prefix'
+      path: '/prefix'
+      fullPath: '/non-nested/prefix'
+      preLoaderRoute: typeof NonNestedPrefixRouteRouteImport
+      parentRoute: typeof NonNestedRouteRoute
     }
-    '/params-ps/wildcard/': {
-      id: '/params-ps/wildcard/'
-      path: '/params-ps/wildcard'
-      fullPath: '/params-ps/wildcard/'
-      preLoaderRoute: typeof ParamsPsWildcardIndexRouteImport
+    '/non-nested/suffix': {
+      id: '/non-nested/suffix'
+      path: '/suffix'
+      fullPath: '/non-nested/suffix'
+      preLoaderRoute: typeof NonNestedSuffixRouteRouteImport
+      parentRoute: typeof NonNestedRouteRoute
+    }
+    '/params-ps/': {
+      id: '/params-ps/'
+      path: '/params-ps'
+      fullPath: '/params-ps/'
+      preLoaderRoute: typeof ParamsPsIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/params-ps/non-nested': {
+      id: '/params-ps/non-nested'
+      path: '/params-ps/non-nested'
+      fullPath: '/params-ps/non-nested'
+      preLoaderRoute: typeof ParamsPsNonNestedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof PostsIndexRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof PostsPostIdRouteImport
+      parentRoute: typeof PostsRoute
+    }
+    '/redirect/': {
+      id: '/redirect/'
+      path: '/redirect'
+      fullPath: '/redirect/'
+      preLoaderRoute: typeof RedirectIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/$target': {
+      id: '/redirect/$target'
+      path: '/redirect/$target'
+      fullPath: '/redirect/$target'
+      preLoaderRoute: typeof RedirectTargetRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relative/': {
+      id: '/relative/'
+      path: '/relative'
+      fullPath: '/relative/'
+      preLoaderRoute: typeof RelativeIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relative/link': {
+      id: '/relative/link'
+      path: '/relative/link'
+      fullPath: '/relative/link'
+      preLoaderRoute: typeof RelativeLinkRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relative/useNavigate': {
+      id: '/relative/useNavigate'
+      path: '/relative/useNavigate'
+      fullPath: '/relative/useNavigate'
+      preLoaderRoute: typeof RelativeUseNavigateRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search-params/': {
+      id: '/search-params/'
+      path: '/'
+      fullPath: '/search-params/'
+      preLoaderRoute: typeof SearchParamsIndexRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/search-params/default': {
+      id: '/search-params/default'
+      path: '/default'
+      fullPath: '/search-params/default'
+      preLoaderRoute: typeof SearchParamsDefaultRouteImport
+      parentRoute: typeof SearchParamsRouteRoute
+    }
+    '/(group)/_layout/insidelayout': {
+      id: '/(group)/_layout/insidelayout'
+      path: '/insidelayout'
+      fullPath: '/insidelayout'
+      preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
+      parentRoute: typeof groupLayoutRoute
+    }
+    '/(group)/subfolder/inside': {
+      id: '/(group)/subfolder/inside'
+      path: '/subfolder/inside'
+      fullPath: '/subfolder/inside'
+      preLoaderRoute: typeof groupSubfolderInsideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_layout/_layout-2/layout-a': {
+      id: '/_layout/_layout-2/layout-a'
+      path: '/layout-a'
+      fullPath: '/layout-a'
+      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/_layout/_layout-2/layout-b': {
+      id: '/_layout/_layout-2/layout-b'
+      path: '/layout-b'
+      fullPath: '/layout-b'
+      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
+      parentRoute: typeof LayoutLayout2Route
+    }
+    '/masks/admin/$userId': {
+      id: '/masks/admin/$userId'
+      path: '/admin/$userId'
+      fullPath: '/masks/admin/$userId'
+      preLoaderRoute: typeof MasksAdminUserIdRouteImport
+      parentRoute: typeof MasksRoute
+    }
+    '/masks/public/$username': {
+      id: '/masks/public/$username'
+      path: '/public/$username'
+      fullPath: '/masks/public/$username'
+      preLoaderRoute: typeof MasksPublicUsernameRouteImport
+      parentRoute: typeof MasksRoute
+    }
+    '/non-nested/deep/$baz': {
+      id: '/non-nested/deep/$baz'
+      path: '/$baz'
+      fullPath: '/non-nested/deep/$baz'
+      preLoaderRoute: typeof NonNestedDeepBazRouteRouteImport
+      parentRoute: typeof NonNestedDeepRouteRoute
+    }
+    '/non-nested/named/$baz': {
+      id: '/non-nested/named/$baz'
+      path: '/$baz'
+      fullPath: '/non-nested/named/$baz'
+      preLoaderRoute: typeof NonNestedNamedBazRouteRouteImport
+      parentRoute: typeof NonNestedNamedRouteRoute
+    }
+    '/non-nested/path/baz': {
+      id: '/non-nested/path/baz'
+      path: '/baz'
+      fullPath: '/non-nested/path/baz'
+      preLoaderRoute: typeof NonNestedPathBazRouteRouteImport
+      parentRoute: typeof NonNestedPathRouteRoute
+    }
+    '/non-nested/prefix/prefix{$baz}': {
+      id: '/non-nested/prefix/prefix{$baz}'
+      path: '/prefix{$baz}'
+      fullPath: '/non-nested/prefix/prefix{$baz}'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteImport
+      parentRoute: typeof NonNestedPrefixRouteRoute
+    }
+    '/non-nested/suffix/{$baz}suffix': {
+      id: '/non-nested/suffix/{$baz}suffix'
+      path: '/{$baz}suffix'
+      fullPath: '/non-nested/suffix/{$baz}suffix'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRouteImport
+      parentRoute: typeof NonNestedSuffixRouteRoute
     }
     '/params-ps/named/': {
       id: '/params-ps/named/'
@@ -1609,151 +1672,11 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ParamsPsNamedIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/대한민국/🚀/$id': {
-      id: '/대한민국/🚀/$id'
-      path: '/🚀/$id'
-      fullPath: '/대한민국/🚀/$id'
-      preLoaderRoute: typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport
-      parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
-    }
-    '/대한민국/wildcard/$': {
-      id: '/대한민국/wildcard/$'
-      path: '/wildcard/$'
-      fullPath: '/대한민국/wildcard/$'
-      preLoaderRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRouteImport
-      parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
-    }
-    '/transition/typing/create-resource': {
-      id: '/transition/typing/create-resource'
-      path: '/transition/typing/create-resource'
-      fullPath: '/transition/typing/create-resource'
-      preLoaderRoute: typeof TransitionTypingCreateResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/transition/count/create-resource': {
-      id: '/transition/count/create-resource'
-      path: '/transition/count/create-resource'
-      fullPath: '/transition/count/create-resource'
-      preLoaderRoute: typeof TransitionCountCreateResourceRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/relative/useNavigate/relative-useNavigate-b': {
-      id: '/relative/useNavigate/relative-useNavigate-b'
-      path: '/relative-useNavigate-b'
-      fullPath: '/relative/useNavigate/relative-useNavigate-b'
-      preLoaderRoute: typeof RelativeUseNavigateRelativeUseNavigateBRouteImport
-      parentRoute: typeof RelativeUseNavigateRouteRoute
-    }
-    '/relative/useNavigate/relative-useNavigate-a': {
-      id: '/relative/useNavigate/relative-useNavigate-a'
-      path: '/relative-useNavigate-a'
-      fullPath: '/relative/useNavigate/relative-useNavigate-a'
-      preLoaderRoute: typeof RelativeUseNavigateRelativeUseNavigateARouteImport
-      parentRoute: typeof RelativeUseNavigateRouteRoute
-    }
-    '/relative/link/relative-link-b': {
-      id: '/relative/link/relative-link-b'
-      path: '/relative-link-b'
-      fullPath: '/relative/link/relative-link-b'
-      preLoaderRoute: typeof RelativeLinkRelativeLinkBRouteImport
-      parentRoute: typeof RelativeLinkRouteRoute
-    }
-    '/relative/link/relative-link-a': {
-      id: '/relative/link/relative-link-a'
-      path: '/relative-link-a'
-      fullPath: '/relative/link/relative-link-a'
-      preLoaderRoute: typeof RelativeLinkRelativeLinkARouteImport
-      parentRoute: typeof RelativeLinkRouteRoute
-    }
-    '/redirect/preload/third': {
-      id: '/redirect/preload/third'
-      path: '/redirect/preload/third'
-      fullPath: '/redirect/preload/third'
-      preLoaderRoute: typeof RedirectPreloadThirdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/redirect/preload/second': {
-      id: '/redirect/preload/second'
-      path: '/redirect/preload/second'
-      fullPath: '/redirect/preload/second'
-      preLoaderRoute: typeof RedirectPreloadSecondRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/redirect/preload/first': {
-      id: '/redirect/preload/first'
-      path: '/redirect/preload/first'
-      fullPath: '/redirect/preload/first'
-      preLoaderRoute: typeof RedirectPreloadFirstRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/redirect/$target/via-loader': {
-      id: '/redirect/$target/via-loader'
-      path: '/via-loader'
-      fullPath: '/redirect/$target/via-loader'
-      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
-      parentRoute: typeof RedirectTargetRoute
-    }
-    '/redirect/$target/via-beforeLoad': {
-      id: '/redirect/$target/via-beforeLoad'
-      path: '/via-beforeLoad'
-      fullPath: '/redirect/$target/via-beforeLoad'
-      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
-      parentRoute: typeof RedirectTargetRoute
-    }
-    '/posts_/$postId/edit': {
-      id: '/posts_/$postId/edit'
-      path: '/posts/$postId/edit'
-      fullPath: '/posts/$postId/edit'
-      preLoaderRoute: typeof PostsPostIdEditRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/params/single/$value': {
-      id: '/params/single/$value'
-      path: '/params/single/$value'
-      fullPath: '/params/single/$value'
-      preLoaderRoute: typeof ParamsSingleValueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/params-ps/wildcard/{$}suffix@대': {
-      id: '/params-ps/wildcard/{$}suffix@대'
-      path: '/params-ps/wildcard/{$}suffix@대'
-      fullPath: '/params-ps/wildcard/{$}suffix@대'
-      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/params-ps/wildcard/{$}suffix': {
-      id: '/params-ps/wildcard/{$}suffix'
-      path: '/params-ps/wildcard/{$}suffix'
-      fullPath: '/params-ps/wildcard/{$}suffix'
-      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/params-ps/wildcard/prefix{$}': {
-      id: '/params-ps/wildcard/prefix{$}'
-      path: '/params-ps/wildcard/prefix{$}'
-      fullPath: '/params-ps/wildcard/prefix{$}'
-      preLoaderRoute: typeof ParamsPsWildcardPrefixChar123Char125RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/params-ps/wildcard/prefix@대{$}': {
-      id: '/params-ps/wildcard/prefix@대{$}'
-      path: '/params-ps/wildcard/prefix@대{$}'
-      fullPath: '/params-ps/wildcard/prefix@대{$}'
-      preLoaderRoute: typeof ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/params-ps/wildcard/$': {
-      id: '/params-ps/wildcard/$'
-      path: '/params-ps/wildcard/$'
-      fullPath: '/params-ps/wildcard/$'
-      preLoaderRoute: typeof ParamsPsWildcardSplatRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/params-ps/named/{$foo}suffix': {
-      id: '/params-ps/named/{$foo}suffix'
-      path: '/params-ps/named/{$foo}suffix'
-      fullPath: '/params-ps/named/{$foo}suffix'
-      preLoaderRoute: typeof ParamsPsNamedChar123fooChar125suffixRouteImport
+    '/params-ps/named/$foo': {
+      id: '/params-ps/named/$foo'
+      path: '/params-ps/named/$foo'
+      fullPath: '/params-ps/named/$foo'
+      preLoaderRoute: typeof ParamsPsNamedFooRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/params-ps/named/prefix{$foo}': {
@@ -1763,47 +1686,12 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ParamsPsNamedPrefixChar123fooChar125RouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/masks/public/$username': {
-      id: '/masks/public/$username'
-      path: '/public/$username'
-      fullPath: '/masks/public/$username'
-      preLoaderRoute: typeof MasksPublicUsernameRouteImport
-      parentRoute: typeof MasksRoute
-    }
-    '/masks/admin/$userId': {
-      id: '/masks/admin/$userId'
-      path: '/admin/$userId'
-      fullPath: '/masks/admin/$userId'
-      preLoaderRoute: typeof MasksAdminUserIdRouteImport
-      parentRoute: typeof MasksRoute
-    }
-    '/_layout/_layout-2/layout-b': {
-      id: '/_layout/_layout-2/layout-b'
-      path: '/layout-b'
-      fullPath: '/layout-b'
-      preLoaderRoute: typeof LayoutLayout2LayoutBRouteImport
-      parentRoute: typeof LayoutLayout2Route
-    }
-    '/_layout/_layout-2/layout-a': {
-      id: '/_layout/_layout-2/layout-a'
-      path: '/layout-a'
-      fullPath: '/layout-a'
-      preLoaderRoute: typeof LayoutLayout2LayoutARouteImport
-      parentRoute: typeof LayoutLayout2Route
-    }
-    '/(group)/subfolder/inside': {
-      id: '/(group)/subfolder/inside'
-      path: '/subfolder/inside'
-      fullPath: '/subfolder/inside'
-      preLoaderRoute: typeof groupSubfolderInsideRouteImport
+    '/params-ps/named/{$foo}suffix': {
+      id: '/params-ps/named/{$foo}suffix'
+      path: '/params-ps/named/{$foo}suffix'
+      fullPath: '/params-ps/named/{$foo}suffix'
+      preLoaderRoute: typeof ParamsPsNamedChar123fooChar125suffixRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/(group)/_layout/insidelayout': {
-      id: '/(group)/_layout/insidelayout'
-      path: '/insidelayout'
-      fullPath: '/insidelayout'
-      preLoaderRoute: typeof groupLayoutInsidelayoutRouteImport
-      parentRoute: typeof groupLayoutRoute
     }
     '/params-ps/non-nested/$foo_': {
       id: '/params-ps/non-nested/$foo_'
@@ -1812,74 +1700,277 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof ParamsPsNonNestedFooRouteRouteImport
       parentRoute: typeof ParamsPsNonNestedRouteRoute
     }
-    '/params-ps/named/$foo': {
-      id: '/params-ps/named/$foo'
-      path: '/params-ps/named/$foo'
-      fullPath: '/params-ps/named/$foo'
-      preLoaderRoute: typeof ParamsPsNamedFooRouteRouteImport
+    '/params-ps/wildcard/': {
+      id: '/params-ps/wildcard/'
+      path: '/params-ps/wildcard'
+      fullPath: '/params-ps/wildcard/'
+      preLoaderRoute: typeof ParamsPsWildcardIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/non-nested/suffix/{$baz}suffix': {
-      id: '/non-nested/suffix/{$baz}suffix'
-      path: '/{$baz}suffix'
-      fullPath: '/non-nested/suffix/{$baz}suffix'
-      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRouteImport
-      parentRoute: typeof NonNestedSuffixRouteRoute
+    '/params-ps/wildcard/$': {
+      id: '/params-ps/wildcard/$'
+      path: '/params-ps/wildcard/$'
+      fullPath: '/params-ps/wildcard/$'
+      preLoaderRoute: typeof ParamsPsWildcardSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/non-nested/prefix/prefix{$baz}': {
-      id: '/non-nested/prefix/prefix{$baz}'
-      path: '/prefix{$baz}'
-      fullPath: '/non-nested/prefix/prefix{$baz}'
-      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRouteImport
-      parentRoute: typeof NonNestedPrefixRouteRoute
+    '/params-ps/wildcard/prefix@대{$}': {
+      id: '/params-ps/wildcard/prefix@대{$}'
+      path: '/params-ps/wildcard/prefix@대{$}'
+      fullPath: '/params-ps/wildcard/prefix@대{$}'
+      preLoaderRoute: typeof ParamsPsWildcardPrefixAtChar45824Char123Char125RouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/non-nested/path/baz': {
-      id: '/non-nested/path/baz'
-      path: '/baz'
-      fullPath: '/non-nested/path/baz'
-      preLoaderRoute: typeof NonNestedPathBazRouteRouteImport
-      parentRoute: typeof NonNestedPathRouteRoute
+    '/params-ps/wildcard/prefix{$}': {
+      id: '/params-ps/wildcard/prefix{$}'
+      path: '/params-ps/wildcard/prefix{$}'
+      fullPath: '/params-ps/wildcard/prefix{$}'
+      preLoaderRoute: typeof ParamsPsWildcardPrefixChar123Char125RouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/non-nested/named/$baz': {
-      id: '/non-nested/named/$baz'
-      path: '/$baz'
-      fullPath: '/non-nested/named/$baz'
-      preLoaderRoute: typeof NonNestedNamedBazRouteRouteImport
-      parentRoute: typeof NonNestedNamedRouteRoute
+    '/params-ps/wildcard/{$}suffix': {
+      id: '/params-ps/wildcard/{$}suffix'
+      path: '/params-ps/wildcard/{$}suffix'
+      fullPath: '/params-ps/wildcard/{$}suffix'
+      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/non-nested/deep/$baz': {
-      id: '/non-nested/deep/$baz'
-      path: '/$baz'
-      fullPath: '/non-nested/deep/$baz'
-      preLoaderRoute: typeof NonNestedDeepBazRouteRouteImport
+    '/params-ps/wildcard/{$}suffix@대': {
+      id: '/params-ps/wildcard/{$}suffix@대'
+      path: '/params-ps/wildcard/{$}suffix@대'
+      fullPath: '/params-ps/wildcard/{$}suffix@대'
+      preLoaderRoute: typeof ParamsPsWildcardChar123Char125suffixAtChar45824RouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/params/single/$value': {
+      id: '/params/single/$value'
+      path: '/params/single/$value'
+      fullPath: '/params/single/$value'
+      preLoaderRoute: typeof ParamsSingleValueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/posts_/$postId/edit': {
+      id: '/posts_/$postId/edit'
+      path: '/posts/$postId/edit'
+      fullPath: '/posts/$postId/edit'
+      preLoaderRoute: typeof PostsPostIdEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/$target/': {
+      id: '/redirect/$target/'
+      path: '/'
+      fullPath: '/redirect/$target/'
+      preLoaderRoute: typeof RedirectTargetIndexRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/via-beforeLoad': {
+      id: '/redirect/$target/via-beforeLoad'
+      path: '/via-beforeLoad'
+      fullPath: '/redirect/$target/via-beforeLoad'
+      preLoaderRoute: typeof RedirectTargetViaBeforeLoadRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/$target/via-loader': {
+      id: '/redirect/$target/via-loader'
+      path: '/via-loader'
+      fullPath: '/redirect/$target/via-loader'
+      preLoaderRoute: typeof RedirectTargetViaLoaderRouteImport
+      parentRoute: typeof RedirectTargetRoute
+    }
+    '/redirect/preload/first': {
+      id: '/redirect/preload/first'
+      path: '/redirect/preload/first'
+      fullPath: '/redirect/preload/first'
+      preLoaderRoute: typeof RedirectPreloadFirstRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/preload/second': {
+      id: '/redirect/preload/second'
+      path: '/redirect/preload/second'
+      fullPath: '/redirect/preload/second'
+      preLoaderRoute: typeof RedirectPreloadSecondRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redirect/preload/third': {
+      id: '/redirect/preload/third'
+      path: '/redirect/preload/third'
+      fullPath: '/redirect/preload/third'
+      preLoaderRoute: typeof RedirectPreloadThirdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relative/link/relative-link-a': {
+      id: '/relative/link/relative-link-a'
+      path: '/relative-link-a'
+      fullPath: '/relative/link/relative-link-a'
+      preLoaderRoute: typeof RelativeLinkRelativeLinkARouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/link/relative-link-b': {
+      id: '/relative/link/relative-link-b'
+      path: '/relative-link-b'
+      fullPath: '/relative/link/relative-link-b'
+      preLoaderRoute: typeof RelativeLinkRelativeLinkBRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/useNavigate/relative-useNavigate-a': {
+      id: '/relative/useNavigate/relative-useNavigate-a'
+      path: '/relative-useNavigate-a'
+      fullPath: '/relative/useNavigate/relative-useNavigate-a'
+      preLoaderRoute: typeof RelativeUseNavigateRelativeUseNavigateARouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/useNavigate/relative-useNavigate-b': {
+      id: '/relative/useNavigate/relative-useNavigate-b'
+      path: '/relative-useNavigate-b'
+      fullPath: '/relative/useNavigate/relative-useNavigate-b'
+      preLoaderRoute: typeof RelativeUseNavigateRelativeUseNavigateBRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/transition/count/create-resource': {
+      id: '/transition/count/create-resource'
+      path: '/transition/count/create-resource'
+      fullPath: '/transition/count/create-resource'
+      preLoaderRoute: typeof TransitionCountCreateResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/transition/typing/create-resource': {
+      id: '/transition/typing/create-resource'
+      path: '/transition/typing/create-resource'
+      fullPath: '/transition/typing/create-resource'
+      preLoaderRoute: typeof TransitionTypingCreateResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/대한민국/wildcard/$': {
+      id: '/대한민국/wildcard/$'
+      path: '/wildcard/$'
+      fullPath: '/대한민국/wildcard/$'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397WildcardSplatRouteImport
+      parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
+    }
+    '/대한민국/🚀/$id': {
+      id: '/대한민국/🚀/$id'
+      path: '/🚀/$id'
+      fullPath: '/대한민국/🚀/$id'
+      preLoaderRoute: typeof Char45824Char54620Char48124Char44397Char55357Char56960IdRouteImport
+      parentRoute: typeof Char45824Char54620Char48124Char44397RouteRoute
+    }
+    '/non-nested/deep/$baz/': {
+      id: '/non-nested/deep/$baz/'
+      path: '/'
+      fullPath: '/non-nested/deep/$baz/'
+      preLoaderRoute: typeof NonNestedDeepBazIndexRouteImport
+      parentRoute: typeof NonNestedDeepBazRouteRoute
+    }
+    '/non-nested/deep/$baz_/bar': {
+      id: '/non-nested/deep/$baz_/bar'
+      path: '/$baz/bar'
+      fullPath: '/non-nested/deep/$baz/bar'
+      preLoaderRoute: typeof NonNestedDeepBazBarRouteRouteImport
       parentRoute: typeof NonNestedDeepRouteRoute
     }
-    '/relative/useNavigate/with-search/': {
-      id: '/relative/useNavigate/with-search/'
-      path: '/with-search'
-      fullPath: '/relative/useNavigate/with-search/'
-      preLoaderRoute: typeof RelativeUseNavigateWithSearchIndexRouteImport
-      parentRoute: typeof RelativeUseNavigateRouteRoute
+    '/non-nested/named/$baz/': {
+      id: '/non-nested/named/$baz/'
+      path: '/'
+      fullPath: '/non-nested/named/$baz/'
+      preLoaderRoute: typeof NonNestedNamedBazIndexRouteImport
+      parentRoute: typeof NonNestedNamedBazRouteRoute
     }
-    '/relative/useNavigate/path/': {
-      id: '/relative/useNavigate/path/'
-      path: '/path'
-      fullPath: '/relative/useNavigate/path/'
-      preLoaderRoute: typeof RelativeUseNavigatePathIndexRouteImport
-      parentRoute: typeof RelativeUseNavigateRouteRoute
+    '/non-nested/named/$baz/foo': {
+      id: '/non-nested/named/$baz/foo'
+      path: '/foo'
+      fullPath: '/non-nested/named/$baz/foo'
+      preLoaderRoute: typeof NonNestedNamedBazFooRouteImport
+      parentRoute: typeof NonNestedNamedBazRouteRoute
     }
-    '/relative/useNavigate/nested/': {
-      id: '/relative/useNavigate/nested/'
+    '/non-nested/named/$baz_/bar': {
+      id: '/non-nested/named/$baz_/bar'
+      path: '/$baz/bar'
+      fullPath: '/non-nested/named/$baz/bar'
+      preLoaderRoute: typeof NonNestedNamedBazBarRouteImport
+      parentRoute: typeof NonNestedNamedRouteRoute
+    }
+    '/non-nested/path/baz/': {
+      id: '/non-nested/path/baz/'
+      path: '/'
+      fullPath: '/non-nested/path/baz/'
+      preLoaderRoute: typeof NonNestedPathBazIndexRouteImport
+      parentRoute: typeof NonNestedPathBazRouteRoute
+    }
+    '/non-nested/path/baz/foo': {
+      id: '/non-nested/path/baz/foo'
+      path: '/foo'
+      fullPath: '/non-nested/path/baz/foo'
+      preLoaderRoute: typeof NonNestedPathBazFooRouteImport
+      parentRoute: typeof NonNestedPathBazRouteRoute
+    }
+    '/non-nested/path/baz_/bar': {
+      id: '/non-nested/path/baz_/bar'
+      path: '/baz/bar'
+      fullPath: '/non-nested/path/baz/bar'
+      preLoaderRoute: typeof NonNestedPathBazBarRouteImport
+      parentRoute: typeof NonNestedPathRouteRoute
+    }
+    '/non-nested/prefix/prefix{$baz}/': {
+      id: '/non-nested/prefix/prefix{$baz}/'
+      path: '/'
+      fullPath: '/non-nested/prefix/prefix{$baz}/'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125IndexRouteImport
+      parentRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRoute
+    }
+    '/non-nested/prefix/prefix{$baz}/foo': {
+      id: '/non-nested/prefix/prefix{$baz}/foo'
+      path: '/foo'
+      fullPath: '/non-nested/prefix/prefix{$baz}/foo'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125FooRouteImport
+      parentRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRoute
+    }
+    '/non-nested/prefix/prefix{$baz}_/bar': {
+      id: '/non-nested/prefix/prefix{$baz}_/bar'
+      path: '/prefix{$baz}/bar'
+      fullPath: '/non-nested/prefix/prefix{$baz}/bar'
+      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125BarRouteImport
+      parentRoute: typeof NonNestedPrefixRouteRoute
+    }
+    '/non-nested/suffix/{$baz}suffix/': {
+      id: '/non-nested/suffix/{$baz}suffix/'
+      path: '/'
+      fullPath: '/non-nested/suffix/{$baz}suffix/'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixIndexRouteImport
+      parentRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRoute
+    }
+    '/non-nested/suffix/{$baz}suffix/foo': {
+      id: '/non-nested/suffix/{$baz}suffix/foo'
+      path: '/foo'
+      fullPath: '/non-nested/suffix/{$baz}suffix/foo'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixFooRouteImport
+      parentRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRoute
+    }
+    '/non-nested/suffix/{$baz}suffix_/bar': {
+      id: '/non-nested/suffix/{$baz}suffix_/bar'
+      path: '/{$baz}suffix/bar'
+      fullPath: '/non-nested/suffix/{$baz}suffix/bar'
+      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixBarRouteImport
+      parentRoute: typeof NonNestedSuffixRouteRoute
+    }
+    '/params-ps/named/$foo/$bar': {
+      id: '/params-ps/named/$foo/$bar'
+      path: '/$bar'
+      fullPath: '/params-ps/named/$foo/$bar'
+      preLoaderRoute: typeof ParamsPsNamedFooBarRouteRouteImport
+      parentRoute: typeof ParamsPsNamedFooRouteRoute
+    }
+    '/params-ps/non-nested/$foo_/$bar': {
+      id: '/params-ps/non-nested/$foo_/$bar'
+      path: '/$bar'
+      fullPath: '/params-ps/non-nested/$foo/$bar'
+      preLoaderRoute: typeof ParamsPsNonNestedFooBarRouteImport
+      parentRoute: typeof ParamsPsNonNestedFooRouteRoute
+    }
+    '/relative/link/nested/': {
+      id: '/relative/link/nested/'
       path: '/nested'
-      fullPath: '/relative/useNavigate/nested/'
-      preLoaderRoute: typeof RelativeUseNavigateNestedIndexRouteImport
-      parentRoute: typeof RelativeUseNavigateRouteRoute
-    }
-    '/relative/link/with-search/': {
-      id: '/relative/link/with-search/'
-      path: '/with-search'
-      fullPath: '/relative/link/with-search/'
-      preLoaderRoute: typeof RelativeLinkWithSearchIndexRouteImport
+      fullPath: '/relative/link/nested/'
+      preLoaderRoute: typeof RelativeLinkNestedIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
     '/relative/link/path/': {
@@ -1889,152 +1980,33 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof RelativeLinkPathIndexRouteImport
       parentRoute: typeof RelativeLinkRouteRoute
     }
-    '/relative/link/nested/': {
-      id: '/relative/link/nested/'
+    '/relative/link/with-search/': {
+      id: '/relative/link/with-search/'
+      path: '/with-search'
+      fullPath: '/relative/link/with-search/'
+      preLoaderRoute: typeof RelativeLinkWithSearchIndexRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/useNavigate/nested/': {
+      id: '/relative/useNavigate/nested/'
       path: '/nested'
-      fullPath: '/relative/link/nested/'
-      preLoaderRoute: typeof RelativeLinkNestedIndexRouteImport
-      parentRoute: typeof RelativeLinkRouteRoute
-    }
-    '/non-nested/suffix/{$baz}suffix/': {
-      id: '/non-nested/suffix/{$baz}suffix/'
-      path: '/'
-      fullPath: '/non-nested/suffix/{$baz}suffix/'
-      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixIndexRouteImport
-      parentRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRoute
-    }
-    '/non-nested/prefix/prefix{$baz}/': {
-      id: '/non-nested/prefix/prefix{$baz}/'
-      path: '/'
-      fullPath: '/non-nested/prefix/prefix{$baz}/'
-      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125IndexRouteImport
-      parentRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRoute
-    }
-    '/non-nested/path/baz/': {
-      id: '/non-nested/path/baz/'
-      path: '/'
-      fullPath: '/non-nested/path/baz/'
-      preLoaderRoute: typeof NonNestedPathBazIndexRouteImport
-      parentRoute: typeof NonNestedPathBazRouteRoute
-    }
-    '/non-nested/named/$baz/': {
-      id: '/non-nested/named/$baz/'
-      path: '/'
-      fullPath: '/non-nested/named/$baz/'
-      preLoaderRoute: typeof NonNestedNamedBazIndexRouteImport
-      parentRoute: typeof NonNestedNamedBazRouteRoute
-    }
-    '/non-nested/deep/$baz/': {
-      id: '/non-nested/deep/$baz/'
-      path: '/'
-      fullPath: '/non-nested/deep/$baz/'
-      preLoaderRoute: typeof NonNestedDeepBazIndexRouteImport
-      parentRoute: typeof NonNestedDeepBazRouteRoute
-    }
-    '/params-ps/non-nested/$foo_/$bar': {
-      id: '/params-ps/non-nested/$foo_/$bar'
-      path: '/$bar'
-      fullPath: '/params-ps/non-nested/$foo/$bar'
-      preLoaderRoute: typeof ParamsPsNonNestedFooBarRouteImport
-      parentRoute: typeof ParamsPsNonNestedFooRouteRoute
-    }
-    '/non-nested/suffix/{$baz}suffix_/bar': {
-      id: '/non-nested/suffix/{$baz}suffix_/bar'
-      path: '/{$baz}suffix/bar'
-      fullPath: '/non-nested/suffix/{$baz}suffix/bar'
-      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixBarRouteImport
-      parentRoute: typeof NonNestedSuffixRouteRoute
-    }
-    '/non-nested/suffix/{$baz}suffix/foo': {
-      id: '/non-nested/suffix/{$baz}suffix/foo'
-      path: '/foo'
-      fullPath: '/non-nested/suffix/{$baz}suffix/foo'
-      preLoaderRoute: typeof NonNestedSuffixChar123bazChar125suffixFooRouteImport
-      parentRoute: typeof NonNestedSuffixChar123bazChar125suffixRouteRoute
-    }
-    '/non-nested/prefix/prefix{$baz}_/bar': {
-      id: '/non-nested/prefix/prefix{$baz}_/bar'
-      path: '/prefix{$baz}/bar'
-      fullPath: '/non-nested/prefix/prefix{$baz}/bar'
-      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125BarRouteImport
-      parentRoute: typeof NonNestedPrefixRouteRoute
-    }
-    '/non-nested/prefix/prefix{$baz}/foo': {
-      id: '/non-nested/prefix/prefix{$baz}/foo'
-      path: '/foo'
-      fullPath: '/non-nested/prefix/prefix{$baz}/foo'
-      preLoaderRoute: typeof NonNestedPrefixPrefixChar123bazChar125FooRouteImport
-      parentRoute: typeof NonNestedPrefixPrefixChar123bazChar125RouteRoute
-    }
-    '/non-nested/path/baz_/bar': {
-      id: '/non-nested/path/baz_/bar'
-      path: '/baz/bar'
-      fullPath: '/non-nested/path/baz/bar'
-      preLoaderRoute: typeof NonNestedPathBazBarRouteImport
-      parentRoute: typeof NonNestedPathRouteRoute
-    }
-    '/non-nested/path/baz/foo': {
-      id: '/non-nested/path/baz/foo'
-      path: '/foo'
-      fullPath: '/non-nested/path/baz/foo'
-      preLoaderRoute: typeof NonNestedPathBazFooRouteImport
-      parentRoute: typeof NonNestedPathBazRouteRoute
-    }
-    '/non-nested/named/$baz_/bar': {
-      id: '/non-nested/named/$baz_/bar'
-      path: '/$baz/bar'
-      fullPath: '/non-nested/named/$baz/bar'
-      preLoaderRoute: typeof NonNestedNamedBazBarRouteImport
-      parentRoute: typeof NonNestedNamedRouteRoute
-    }
-    '/non-nested/named/$baz/foo': {
-      id: '/non-nested/named/$baz/foo'
-      path: '/foo'
-      fullPath: '/non-nested/named/$baz/foo'
-      preLoaderRoute: typeof NonNestedNamedBazFooRouteImport
-      parentRoute: typeof NonNestedNamedBazRouteRoute
-    }
-    '/params-ps/named/$foo/$bar': {
-      id: '/params-ps/named/$foo/$bar'
-      path: '/$bar'
-      fullPath: '/params-ps/named/$foo/$bar'
-      preLoaderRoute: typeof ParamsPsNamedFooBarRouteRouteImport
-      parentRoute: typeof ParamsPsNamedFooRouteRoute
-    }
-    '/non-nested/deep/$baz_/bar': {
-      id: '/non-nested/deep/$baz_/bar'
-      path: '/$baz/bar'
-      fullPath: '/non-nested/deep/$baz/bar'
-      preLoaderRoute: typeof NonNestedDeepBazBarRouteRouteImport
-      parentRoute: typeof NonNestedDeepRouteRoute
-    }
-    '/relative/useNavigate/path/$path/': {
-      id: '/relative/useNavigate/path/$path/'
-      path: '/path/$path'
-      fullPath: '/relative/useNavigate/path/$path/'
-      preLoaderRoute: typeof RelativeUseNavigatePathPathIndexRouteImport
+      fullPath: '/relative/useNavigate/nested/'
+      preLoaderRoute: typeof RelativeUseNavigateNestedIndexRouteImport
       parentRoute: typeof RelativeUseNavigateRouteRoute
     }
-    '/relative/useNavigate/nested/deep/': {
-      id: '/relative/useNavigate/nested/deep/'
-      path: '/nested/deep'
-      fullPath: '/relative/useNavigate/nested/deep/'
-      preLoaderRoute: typeof RelativeUseNavigateNestedDeepIndexRouteImport
+    '/relative/useNavigate/path/': {
+      id: '/relative/useNavigate/path/'
+      path: '/path'
+      fullPath: '/relative/useNavigate/path/'
+      preLoaderRoute: typeof RelativeUseNavigatePathIndexRouteImport
       parentRoute: typeof RelativeUseNavigateRouteRoute
     }
-    '/relative/link/path/$path/': {
-      id: '/relative/link/path/$path/'
-      path: '/path/$path'
-      fullPath: '/relative/link/path/$path/'
-      preLoaderRoute: typeof RelativeLinkPathPathIndexRouteImport
-      parentRoute: typeof RelativeLinkRouteRoute
-    }
-    '/relative/link/nested/deep/': {
-      id: '/relative/link/nested/deep/'
-      path: '/nested/deep'
-      fullPath: '/relative/link/nested/deep/'
-      preLoaderRoute: typeof RelativeLinkNestedDeepIndexRouteImport
-      parentRoute: typeof RelativeLinkRouteRoute
+    '/relative/useNavigate/with-search/': {
+      id: '/relative/useNavigate/with-search/'
+      path: '/with-search'
+      fullPath: '/relative/useNavigate/with-search/'
+      preLoaderRoute: typeof RelativeUseNavigateWithSearchIndexRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
     }
     '/non-nested/deep/$baz_/bar/': {
       id: '/non-nested/deep/$baz_/bar/'
@@ -2043,12 +2015,12 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof NonNestedDeepBazBarIndexRouteImport
       parentRoute: typeof NonNestedDeepBazBarRouteRoute
     }
-    '/params-ps/named/$foo/$bar/$baz': {
-      id: '/params-ps/named/$foo/$bar/$baz'
-      path: '/$baz'
-      fullPath: '/params-ps/named/$foo/$bar/$baz'
-      preLoaderRoute: typeof ParamsPsNamedFooBarBazRouteImport
-      parentRoute: typeof ParamsPsNamedFooBarRouteRoute
+    '/non-nested/deep/$baz_/bar/$foo': {
+      id: '/non-nested/deep/$baz_/bar/$foo'
+      path: '/$foo'
+      fullPath: '/non-nested/deep/$baz/bar/$foo'
+      preLoaderRoute: typeof NonNestedDeepBazBarFooRouteRouteImport
+      parentRoute: typeof NonNestedDeepBazBarRouteRoute
     }
     '/non-nested/deep/$baz_/bar_/qux': {
       id: '/non-nested/deep/$baz_/bar_/qux'
@@ -2057,12 +2029,40 @@ declare module '@tanstack/solid-router' {
       preLoaderRoute: typeof NonNestedDeepBazBarQuxRouteImport
       parentRoute: typeof NonNestedDeepRouteRoute
     }
-    '/non-nested/deep/$baz_/bar/$foo': {
-      id: '/non-nested/deep/$baz_/bar/$foo'
-      path: '/$foo'
-      fullPath: '/non-nested/deep/$baz/bar/$foo'
-      preLoaderRoute: typeof NonNestedDeepBazBarFooRouteRouteImport
-      parentRoute: typeof NonNestedDeepBazBarRouteRoute
+    '/params-ps/named/$foo/$bar/$baz': {
+      id: '/params-ps/named/$foo/$bar/$baz'
+      path: '/$baz'
+      fullPath: '/params-ps/named/$foo/$bar/$baz'
+      preLoaderRoute: typeof ParamsPsNamedFooBarBazRouteImport
+      parentRoute: typeof ParamsPsNamedFooBarRouteRoute
+    }
+    '/relative/link/nested/deep/': {
+      id: '/relative/link/nested/deep/'
+      path: '/nested/deep'
+      fullPath: '/relative/link/nested/deep/'
+      preLoaderRoute: typeof RelativeLinkNestedDeepIndexRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/link/path/$path/': {
+      id: '/relative/link/path/$path/'
+      path: '/path/$path'
+      fullPath: '/relative/link/path/$path/'
+      preLoaderRoute: typeof RelativeLinkPathPathIndexRouteImport
+      parentRoute: typeof RelativeLinkRouteRoute
+    }
+    '/relative/useNavigate/nested/deep/': {
+      id: '/relative/useNavigate/nested/deep/'
+      path: '/nested/deep'
+      fullPath: '/relative/useNavigate/nested/deep/'
+      preLoaderRoute: typeof RelativeUseNavigateNestedDeepIndexRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
+    }
+    '/relative/useNavigate/path/$path/': {
+      id: '/relative/useNavigate/path/$path/'
+      path: '/path/$path'
+      fullPath: '/relative/useNavigate/path/$path/'
+      preLoaderRoute: typeof RelativeUseNavigatePathPathIndexRouteImport
+      parentRoute: typeof RelativeUseNavigateRouteRoute
     }
     '/non-nested/deep/$baz_/bar/$foo/': {
       id: '/non-nested/deep/$baz_/bar/$foo/'

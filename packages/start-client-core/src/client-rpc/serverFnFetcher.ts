@@ -157,11 +157,10 @@ export async function serverFnFetcher(
 
   let body = undefined
   if (first.method === 'POST') {
-    const fetchBody = await getFetchBody(first)
-    if (fetchBody?.contentType) {
-      headers.set('content-type', fetchBody.contentType)
+    body = await getFetchBody(first)
+    if (typeof body === 'string') {
+      headers.set('content-type', 'application/json')
     }
-    body = fetchBody?.body
   }
 
   return await getResponse(async () =>
@@ -204,7 +203,7 @@ async function serialize(data: any) {
 
 async function getFetchBody(
   opts: FunctionMiddlewareClientFnOptions<any, any, any>,
-): Promise<{ body: FormData | string; contentType?: string } | undefined> {
+): Promise<FormData | string | undefined> {
   if (opts.data instanceof FormData) {
     let serializedContext = undefined
     // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
@@ -214,11 +213,11 @@ async function getFetchBody(
     if (serializedContext !== undefined) {
       opts.data.set(TSS_FORMDATA_CONTEXT, serializedContext)
     }
-    return { body: opts.data }
+    return opts.data
   }
   const serializedBody = await serializePayload(opts)
   if (serializedBody) {
-    return { body: serializedBody, contentType: 'application/json' }
+    return serializedBody
   }
   return undefined
 }
@@ -274,18 +273,15 @@ async function getResponse(fn: () => Promise<Response>) {
         throw new Error('No response body for framed response')
       }
 
-      const { getOrCreateStream, jsonChunks } = createFrameDecoder(
-        response.body,
-      )
+      const { getStream, chunks } = createFrameDecoder(response.body)
 
       // Create deserialize plugin that wires up the raw streams
-      const rawStreamPlugin =
-        createRawStreamDeserializePlugin(getOrCreateStream)
+      const rawStreamPlugin = createRawStreamDeserializePlugin(getStream)
       const plugins = [rawStreamPlugin, ...(serovalPlugins || [])]
 
       const refs = new Map()
       result = await processFramedResponse({
-        jsonStream: jsonChunks,
+        jsonStream: chunks,
         onMessage: (msg: any) => fromCrossJSON(msg, { refs, plugins }),
         onError(msg, error) {
           console.error(msg, error)

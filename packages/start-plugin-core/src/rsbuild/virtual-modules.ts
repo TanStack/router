@@ -1,4 +1,4 @@
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { generateSerializationAdaptersModule } from '../serialization-adapters-module'
 import { generateServerFnResolverModule } from '../start-compiler/server-fn-resolver-module'
 import { buildStartManifest } from '../start-manifest-plugin/manifestBuilder'

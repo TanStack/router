@@ -44,6 +44,7 @@ export function lazyRouteComponent<
 
     // Use existing promise or create new one
     if (!loadPromise) {
+      error = undefined
       loadPromise = importer()
         .then((res) => {
           loadPromise = undefined
@@ -147,7 +148,7 @@ export function lazyRouteComponent<
   })
 
   // Add preload method
-  ;(lazyComp as any).preload = load
+  lazyComp.preload = load
 
   return lazyComp as any
 }

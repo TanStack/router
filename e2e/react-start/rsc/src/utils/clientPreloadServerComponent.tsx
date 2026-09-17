@@ -9,7 +9,7 @@ import { ClientPreloadContent } from './ClientPreloadContent'
 // ============================================================================
 
 export const getClientPreloadServerComponent = createServerFn({ method: 'GET' })
-  .inputValidator((data: { title: string }) => data)
+  .validator((data: { title: string }) => data)
   .handler(async ({ data }) => {
     return renderServerComponent(<ClientPreloadContent data={data} />)
   })

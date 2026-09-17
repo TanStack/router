@@ -5,10 +5,11 @@ description: >-
   Vite plugin, StartClient, StartServer, Solid-specific setup,
   re-exports from @tanstack/start-client-core. Full project setup
   with Solid.
-type: framework
-library: tanstack-start
-library_version: '1.166.2'
-framework: solid
+metadata:
+  type: framework
+  library: tanstack-start
+  library_version: '1.166.2'
+  framework: solid
 requires:
   - start-core
 sources:
@@ -44,7 +45,7 @@ Server utilities (`getRequest`, `getRequestHeader`, `setResponseHeader`, `setCoo
 
 ```bash
 npm i @tanstack/solid-start @tanstack/solid-router solid-js
-npm i -D vite vite-plugin-solid typescript
+npm i -D vite @solidjs/vite-plugin typescript
 ```
 
 ### 2. package.json
@@ -81,7 +82,7 @@ npm i -D vite vite-plugin-solid typescript
 ```ts
 import { defineConfig } from 'vite'
 import { tanstackStart } from '@tanstack/solid-start/plugin/vite'
-import solidPlugin from 'vite-plugin-solid'
+import solidPlugin from '@solidjs/vite-plugin'
 
 export default defineConfig({
   plugins: [
@@ -174,7 +175,7 @@ import { createServerFn, useServerFn } from '@tanstack/solid-start'
 import { createSignal } from 'solid-js'
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string; title: string }) => data)
+  .validator((data: { id: string; title: string }) => data)
   .handler(async ({ data }) => {
     await db.posts.update(data.id, { title: data.title })
     return { success: true }

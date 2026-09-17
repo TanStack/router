@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-router-devtools",
-  "version": "2.0.0-beta.17",
+  "version": "2.0.0-rc.5",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -27,12 +27,12 @@
     "clean": "rimraf ./dist && rimraf ./coverage",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
-    "test:types:ts60": "tsc",
+    "test:types:ts60": "tsc6",
+    "test:types:ts70": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build && tsc -p tsconfig.build.json"
   },
@@ -66,21 +66,21 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-beta.14",
+    "@solidjs/web": "^2.0.0-rc.8",
     "@tanstack/router-devtools-core": "workspace:*"
   },
   "devDependencies": {
-    "@solidjs/web": "2.0.0-beta.14",
+    "@solidjs/vite-plugin": "^3.0.0-next.43",
+    "@solidjs/web": "^2.0.0-rc.8",
     "@types/node": ">=20",
-    "solid-js": "2.0.0-beta.14",
-    "vite": "*",
-    "vite-plugin-solid": "^3.0.0-next.5"
+    "solid-js": "^2.0.0-rc.8",
+    "vite": "*"
   },
   "peerDependencies": {
-    "@solidjs/web": "2.0.0-beta.14",
+    "@solidjs/web": "^2.0.0-rc.8",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
-    "solid-js": "2.0.0-beta.14"
+    "solid-js": "^2.0.0-rc.8"
   },
   "peerDependenciesMeta": {
     "@tanstack/router-core": {

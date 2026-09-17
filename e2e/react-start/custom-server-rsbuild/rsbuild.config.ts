@@ -28,7 +28,7 @@ import { tanstackStart } from '@tanstack/react-start/plugin/rsbuild'
 //     explicit prefix.
 export default defineConfig({
   plugins: [
-    pluginReact(),
+    pluginReact({ splitChunks: false }),
     tanstackStart({
       rsbuild: {
         installDevServerMiddleware: false,

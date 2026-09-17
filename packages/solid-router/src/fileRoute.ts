@@ -43,11 +43,14 @@ export function createFileRoute<
   TFullPath extends RouteConstraints['TFullPath'] =
     FileRoutesByPath[TFilePath]['fullPath'],
 >(
+  // eslint-disable-next-line unused-imports/no-unused-vars
   path?: TFilePath,
 ): FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>['createRoute'] {
-  return new FileRoute<TFilePath, TParentRoute, TId, TPath, TFullPath>(path, {
-    silent: true,
-  }).createRoute
+  return (options) => {
+    const route = createRoute(options as any)
+    ;(route as any).isRoot = false
+    return route as any
+  }
 }
 
 /** 
@@ -212,7 +215,7 @@ export class LazyRoute<TRoute extends AnyRoute> {
   }
 
   useRouteContext: UseRouteContextRoute<TRoute['id']> = (opts) => {
-    return useRouteContext({ ...(opts as any), from: this.options.id }) as any
+    return useRouteContext({ ...(opts as any), from: this.options.id })
   }
 
   useSearch: UseSearchRoute<TRoute['id']> = (opts) => {

@@ -5,10 +5,11 @@ description: >-
   Vite plugin, StartClient, StartServer, Vue-specific setup,
   re-exports from @tanstack/start-client-core. Full project setup
   with Vue.
-type: framework
-library: tanstack-start
-library_version: '1.166.2'
-framework: vue
+metadata:
+  type: framework
+  library: tanstack-start
+  library_version: '1.166.2'
+  framework: vue
 requires:
   - start-core
 sources:
@@ -175,7 +176,7 @@ import { createServerFn, useServerFn } from '@tanstack/vue-start'
 import { ref } from 'vue'
 
 const updatePost = createServerFn({ method: 'POST' })
-  .inputValidator((data: { id: string; title: string }) => data)
+  .validator((data: { id: string; title: string }) => data)
   .handler(async ({ data }) => {
     await db.posts.update(data.id, { title: data.title })
     return { success: true }

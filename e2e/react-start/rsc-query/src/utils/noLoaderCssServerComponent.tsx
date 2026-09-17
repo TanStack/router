@@ -5,7 +5,7 @@ import { CssModulesContent } from './CssModulesContent'
 export const getNoLoaderCssServerComponent = createServerFn({
   method: 'GET',
 })
-  .inputValidator((data: { title?: string; delayMs?: number }) => data)
+  .validator((data: { title?: string; delayMs?: number }) => data)
   .handler(async ({ data }) => {
     await new Promise((resolve) => setTimeout(resolve, data.delayMs ?? 150))
 

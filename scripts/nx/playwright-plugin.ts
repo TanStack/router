@@ -90,10 +90,15 @@ function createNodesInternal(
 
 const CI_TARGET_NAME = 'test:e2e'
 const MODE_TARGET_SEPARATOR = '--'
-const TEST_INPUTS: TargetConfiguration['inputs'] = ['default', '^production']
+const TEST_INPUTS: TargetConfiguration['inputs'] = [
+  'default',
+  'dependentTaskOutputs',
+  '^buildProduction',
+]
 const BUILD_INPUTS: TargetConfiguration['inputs'] = [
-  'production',
-  '^production',
+  'buildProduction',
+  'dependentTaskOutputs',
+  '^buildProduction',
 ]
 
 const PLAYWRIGHT_TOOLCHAINS = ['vite', 'rsbuild'] as const
@@ -105,6 +110,33 @@ type PlaywrightMode = (typeof PLAYWRIGHT_MODES)[number]
 const PLAYWRIGHT_BUILD_COMMANDS: Record<PlaywrightToolchain, string> = {
   vite: 'vite build && tsc --noEmit',
   rsbuild: 'rsbuild build && tsc --noEmit',
+}
+
+function captureCommandOutput(command: string, outputFile?: string): string {
+  if (!outputFile) {
+    return command
+  }
+
+  if (!/^[a-zA-Z0-9._-]+$/.test(outputFile)) {
+    throw new Error(
+      `[Playwright Sharding Plugin] Invalid E2E_BUILD_LOG value: ${outputFile}. ` +
+        `Expected a filename containing only letters, numbers, dots, dashes, and underscores.`,
+    )
+  }
+
+  const escapedCommand = command.replaceAll("'", "'\\''")
+  return `bash -o pipefail -c '{ ${escapedCommand}; } 2>&1 | tee ${outputFile}'`
+}
+
+function getTestOutputs(
+  modeKey: string,
+  portKey: string,
+): TargetConfiguration['outputs'] {
+  return [
+    `{projectRoot}/port-${portKey}*.txt`,
+    `{projectRoot}/test-results/${portKey}`,
+    `{projectRoot}/violations.${modeKey}.*.json`,
+  ]
 }
 
 type PlaywrightModeMetadata = {
@@ -231,22 +263,28 @@ function buildModeTargets(
     const buildTargetName = `build:${modeMetadata.toolchain}:${modeMetadata.mode}${modeMetadata.name ? `:${modeMetadata.name}` : ''}`
     const shardCount = modeMetadata.shards ?? 1
     const distDir = `dist-${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
+    const modeKey = `${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
     const modeEnv = {
       ...modeMetadata.env,
       MODE: modeMetadata.mode,
       TOOLCHAIN: modeMetadata.toolchain,
       E2E_TOOLCHAIN: modeMetadata.toolchain,
+      E2E_MODE_KEY: modeKey,
       E2E_DIST: distDir,
       E2E_DIST_DIR: distDir,
     }
-    const modePortKey = `${packageName}-${modeMetadata.toolchain}-${modeMetadata.mode}${variantPathSuffix}`
+    const buildLog = modeEnv.E2E_BUILD_LOG
+    const modePortKey = `${packageName}-${modeKey}-e2e`
     const modeDescription = `${modeMetadata.toolchain}/${modeMetadata.mode}${modeMetadata.name ? `/${modeMetadata.name}` : ''}`
     const modeShardTargets: Array<string> = []
 
     targets[buildTargetName] = {
       executor: 'nx:run-commands',
       options: {
-        command: PLAYWRIGHT_BUILD_COMMANDS[modeMetadata.toolchain],
+        command: captureCommandOutput(
+          PLAYWRIGHT_BUILD_COMMANDS[modeMetadata.toolchain],
+          buildLog,
+        ),
         cwd: projectRoot,
         env: modeEnv,
       },
@@ -254,7 +292,10 @@ function buildModeTargets(
       cache: true,
       inputs: BUILD_INPUTS,
       dependsOn: ['^build'],
-      outputs: [`{projectRoot}/${distDir}`],
+      outputs: [
+        `{projectRoot}/${distDir}`,
+        ...(buildLog ? [`{projectRoot}/${buildLog}`] : []),
+      ],
       metadata: {
         technologies: ['playwright'],
         description: `Build artifacts for ${modeDescription} e2e tests`,
@@ -266,7 +307,7 @@ function buildModeTargets(
       targets[modeTargetName] = {
         executor: 'nx:run-commands',
         options: {
-          command: 'playwright test --project=chromium',
+          command: `playwright test --project=chromium --output=test-results/${modePortKey}`,
           cwd: projectRoot,
           env: {
             ...modeEnv,
@@ -275,6 +316,7 @@ function buildModeTargets(
         },
         cache: true,
         inputs: TEST_INPUTS,
+        outputs: getTestOutputs(modeKey, modePortKey),
         dependsOn: [buildTargetName],
         metadata: {
           technologies: ['playwright'],
@@ -290,7 +332,7 @@ function buildModeTargets(
         targets[shardTargetName] = {
           executor: 'nx:run-commands',
           options: {
-            command: `playwright test --project=chromium --shard=${shardIndex}/${shardCount}`,
+            command: `playwright test --project=chromium --shard=${shardIndex}/${shardCount} --output=test-results/${shardPortKey}`,
             cwd: projectRoot,
             env: {
               ...modeEnv,
@@ -299,6 +341,7 @@ function buildModeTargets(
           },
           cache: true,
           inputs: TEST_INPUTS,
+          outputs: getTestOutputs(modeKey, shardPortKey),
           dependsOn: [buildTargetName],
           metadata: {
             technologies: ['playwright'],

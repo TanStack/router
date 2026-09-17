@@ -9,23 +9,27 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/root'
-import { Route as pipeRouteImport } from './routes/pipe'
-import { Route as postsPostsRouteImport } from './routes/posts/posts'
-import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
 import { Route as homeRouteImport } from './routes/home'
-import { Route as postsPostsDetailRouteImport } from './routes/posts/posts-detail'
+import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
+import { Route as postsPostsRouteImport } from './routes/posts/posts'
+import { Route as pipeRouteImport } from './routes/pipe'
 import { Route as layoutSecondLayoutRouteImport } from './routes/layout/second-layout'
-import { Route as postsPostsHomeRouteImport } from './routes/posts/posts-home'
 import { Route as ClassicHelloRouteRouteImport } from './routes/file-based-subtree/hello/route'
+import { Route as postsPostsHomeRouteImport } from './routes/posts/posts-home'
+import { Route as postsPostsDetailRouteImport } from './routes/posts/posts-detail'
 import { Route as ClassicHelloIndexRouteImport } from './routes/file-based-subtree/hello/index'
-import { Route as ClassicHelloWorldRouteImport } from './routes/file-based-subtree/hello/world'
 import { Route as ClassicHelloUniverseRouteImport } from './routes/file-based-subtree/hello/universe'
-import { Route as bRouteImport } from './routes/b'
+import { Route as ClassicHelloWorldRouteImport } from './routes/file-based-subtree/hello/world'
 import { Route as aRouteImport } from './routes/a'
+import { Route as bRouteImport } from './routes/b'
 
-const pipeRoute = pipeRouteImport.update({
-  id: '/special|pipe',
-  path: '/special|pipe',
+const homeRoute = homeRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const layoutFirstLayoutRoute = layoutFirstLayoutRouteImport.update({
+  id: '/_first',
   getParentRoute: () => rootRouteImport,
 } as any)
 const postsPostsRoute = postsPostsRouteImport.update({
@@ -33,42 +37,33 @@ const postsPostsRoute = postsPostsRouteImport.update({
   path: '/posts',
   getParentRoute: () => rootRouteImport,
 } as any)
-const layoutFirstLayoutRoute = layoutFirstLayoutRouteImport.update({
-  id: '/_first',
+const pipeRoute = pipeRouteImport.update({
+  id: '/special|pipe',
+  path: '/special|pipe',
   getParentRoute: () => rootRouteImport,
-} as any)
-const homeRoute = homeRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const postsPostsDetailRoute = postsPostsDetailRouteImport.update({
-  id: '/$postId',
-  path: '/$postId',
-  getParentRoute: () => postsPostsRoute,
 } as any)
 const layoutSecondLayoutRoute = layoutSecondLayoutRouteImport.update({
   id: '/_second-layout',
   getParentRoute: () => layoutFirstLayoutRoute,
-} as any)
-const postsPostsHomeRoute = postsPostsHomeRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => postsPostsRoute,
 } as any)
 const ClassicHelloRouteRoute = ClassicHelloRouteRouteImport.update({
   id: '/classic/hello',
   path: '/classic/hello',
   getParentRoute: () => rootRouteImport,
 } as any)
+const postsPostsHomeRoute = postsPostsHomeRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => postsPostsRoute,
+} as any)
+const postsPostsDetailRoute = postsPostsDetailRouteImport.update({
+  id: '/$postId',
+  path: '/$postId',
+  getParentRoute: () => postsPostsRoute,
+} as any)
 const ClassicHelloIndexRoute = ClassicHelloIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ClassicHelloRouteRoute,
-} as any)
-const ClassicHelloWorldRoute = ClassicHelloWorldRouteImport.update({
-  id: '/world',
-  path: '/world',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 const ClassicHelloUniverseRoute = ClassicHelloUniverseRouteImport.update({
@@ -76,14 +71,19 @@ const ClassicHelloUniverseRoute = ClassicHelloUniverseRouteImport.update({
   path: '/universe',
   getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
-const bRoute = bRouteImport.update({
-  id: '/route-without-file/layout-b',
-  path: '/route-without-file/layout-b',
-  getParentRoute: () => layoutSecondLayoutRoute,
+const ClassicHelloWorldRoute = ClassicHelloWorldRouteImport.update({
+  id: '/world',
+  path: '/world',
+  getParentRoute: () => ClassicHelloRouteRoute,
 } as any)
 const aRoute = aRouteImport.update({
   id: '/route-without-file/layout-a',
   path: '/route-without-file/layout-a',
+  getParentRoute: () => layoutSecondLayoutRoute,
+} as any)
+const bRoute = bRouteImport.update({
+  id: '/route-without-file/layout-b',
+  path: '/route-without-file/layout-b',
   getParentRoute: () => layoutSecondLayoutRoute,
 } as any)
 
@@ -179,18 +179,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/vue-router' {
   interface FileRoutesByPath {
-    '/special|pipe': {
-      id: '/special|pipe'
-      path: '/special|pipe'
-      fullPath: '/special|pipe'
-      preLoaderRoute: typeof pipeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/posts': {
-      id: '/posts'
-      path: '/posts'
-      fullPath: '/posts'
-      preLoaderRoute: typeof postsPostsRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof homeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_first': {
@@ -200,19 +193,19 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof layoutFirstLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof homeRouteImport
+    '/posts': {
+      id: '/posts'
+      path: '/posts'
+      fullPath: '/posts'
+      preLoaderRoute: typeof postsPostsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/posts/$postId': {
-      id: '/posts/$postId'
-      path: '/$postId'
-      fullPath: '/posts/$postId'
-      preLoaderRoute: typeof postsPostsDetailRouteImport
-      parentRoute: typeof postsPostsRoute
+    '/special|pipe': {
+      id: '/special|pipe'
+      path: '/special|pipe'
+      fullPath: '/special|pipe'
+      preLoaderRoute: typeof pipeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_first/_second-layout': {
       id: '/_first/_second-layout'
@@ -221,13 +214,6 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof layoutSecondLayoutRouteImport
       parentRoute: typeof layoutFirstLayoutRoute
     }
-    '/posts/': {
-      id: '/posts/'
-      path: '/'
-      fullPath: '/posts/'
-      preLoaderRoute: typeof postsPostsHomeRouteImport
-      parentRoute: typeof postsPostsRoute
-    }
     '/classic/hello': {
       id: '/classic/hello'
       path: '/classic/hello'
@@ -235,18 +221,25 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof ClassicHelloRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/posts/': {
+      id: '/posts/'
+      path: '/'
+      fullPath: '/posts/'
+      preLoaderRoute: typeof postsPostsHomeRouteImport
+      parentRoute: typeof postsPostsRoute
+    }
+    '/posts/$postId': {
+      id: '/posts/$postId'
+      path: '/$postId'
+      fullPath: '/posts/$postId'
+      preLoaderRoute: typeof postsPostsDetailRouteImport
+      parentRoute: typeof postsPostsRoute
+    }
     '/classic/hello/': {
       id: '/classic/hello/'
       path: '/'
       fullPath: '/classic/hello/'
       preLoaderRoute: typeof ClassicHelloIndexRouteImport
-      parentRoute: typeof ClassicHelloRouteRoute
-    }
-    '/classic/hello/world': {
-      id: '/classic/hello/world'
-      path: '/world'
-      fullPath: '/classic/hello/world'
-      preLoaderRoute: typeof ClassicHelloWorldRouteImport
       parentRoute: typeof ClassicHelloRouteRoute
     }
     '/classic/hello/universe': {
@@ -256,18 +249,25 @@ declare module '@tanstack/vue-router' {
       preLoaderRoute: typeof ClassicHelloUniverseRouteImport
       parentRoute: typeof ClassicHelloRouteRoute
     }
-    '/_first/_second-layout/route-without-file/layout-b': {
-      id: '/_first/_second-layout/route-without-file/layout-b'
-      path: '/route-without-file/layout-b'
-      fullPath: '/route-without-file/layout-b'
-      preLoaderRoute: typeof bRouteImport
-      parentRoute: typeof layoutSecondLayoutRoute
+    '/classic/hello/world': {
+      id: '/classic/hello/world'
+      path: '/world'
+      fullPath: '/classic/hello/world'
+      preLoaderRoute: typeof ClassicHelloWorldRouteImport
+      parentRoute: typeof ClassicHelloRouteRoute
     }
     '/_first/_second-layout/route-without-file/layout-a': {
       id: '/_first/_second-layout/route-without-file/layout-a'
       path: '/route-without-file/layout-a'
       fullPath: '/route-without-file/layout-a'
       preLoaderRoute: typeof aRouteImport
+      parentRoute: typeof layoutSecondLayoutRoute
+    }
+    '/_first/_second-layout/route-without-file/layout-b': {
+      id: '/_first/_second-layout/route-without-file/layout-b'
+      path: '/route-without-file/layout-b'
+      fullPath: '/route-without-file/layout-b'
+      preLoaderRoute: typeof bRouteImport
       parentRoute: typeof layoutSecondLayoutRoute
     }
   }

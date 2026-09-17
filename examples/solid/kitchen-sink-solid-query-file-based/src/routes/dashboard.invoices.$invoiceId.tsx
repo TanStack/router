@@ -38,7 +38,7 @@ function InvoiceComponent() {
   const updateInvoiceMutation = useUpdateInvoiceMutation(params().invoiceId)
   const [notes, setNotes] = Solid.createSignal(search().notes ?? '')
 
-  Solid.createEffect(() => {
+  Solid.createEffect(notes, () => {
     navigate({
       search: (old) => ({
         ...old,
@@ -47,7 +47,7 @@ function InvoiceComponent() {
       replace: true,
       params: true,
     })
-  }, [notes])
+  })
 
   return (
     <form

@@ -4,6 +4,8 @@ import { TSR_SCRIPT_BARRIER_ID } from './constants'
 import type { AnyRouter } from '../router'
 
 export type TransformStreamWithRouterOptions = {
+  /** The request lifetime that owns this response stream. */
+  signal?: AbortSignal
   /** Timeout for serialization to complete after app render finishes (default: 60000ms) */
   timeoutMs?: number
   /** Maximum lifetime of the stream transform (default: 120000ms). Safety net for cleanup. */
@@ -196,6 +198,22 @@ function createAbortNotifier(opts?: TransformStreamWithRouterOptions) {
   }
 }
 
+function listenToAbort(
+  signal: AbortSignal | undefined,
+  onAbort: (reason?: unknown) => void,
+) {
+  if (!signal) {
+    return
+  }
+  if (signal.aborted) {
+    onAbort(signal.reason)
+    return
+  }
+  const listener = () => onAbort(signal.reason)
+  signal.addEventListener('abort', listener, { once: true })
+  return () => signal.removeEventListener('abort', listener)
+}
+
 export function transformStreamWithRouter(
   router: AnyRouter,
   appStream: ReadableStream,
@@ -224,6 +242,7 @@ function makeFastPathStream(
   let controller: ReadableStreamDefaultController<Uint8Array> | undefined
   let state: MergeState = MergeState.ReadingBody
   let lifetimeTimeoutHandle: ReturnType<typeof setTimeout> | undefined
+  let stopListeningToAbort: (() => void) | undefined
   let stopListeningToInjectedHtml: (() => void) | undefined
   const readerState = createReaderState(appStream)
   const notifyAbort = createAbortNotifier(opts)
@@ -251,6 +270,8 @@ function makeFastPathStream(
       clearTimeout(lifetimeTimeoutHandle)
       lifetimeTimeoutHandle = undefined
     }
+    stopListeningToAbort?.()
+    stopListeningToAbort = undefined
     try {
       stopListeningToInjectedHtml?.()
     } catch {
@@ -360,6 +381,11 @@ function makeFastPathStream(
     },
   })
 
+  stopListeningToAbort = listenToAbort(opts?.signal, (reason) => {
+    safeError(reason)
+    cleanup(reason)
+  })
+
   return stream
 }
 
@@ -380,6 +406,7 @@ function makeMainStream(
   let stopListeningToSerializationFinished: (() => void) | undefined
   let serializationTimeoutHandle: ReturnType<typeof setTimeout> | undefined
   let lifetimeTimeoutHandle: ReturnType<typeof setTimeout> | undefined
+  let stopListeningToAbort: (() => void) | undefined
   let cleanedUp = false
 
   let controller: ReadableStreamDefaultController<Uint8Array> | undefined
@@ -509,6 +536,8 @@ function makeMainStream(
     }
     stopListeningToInjectedHtml = undefined
     stopListeningToSerializationFinished = undefined
+    stopListeningToAbort?.()
+    stopListeningToAbort = undefined
 
     if (serializationTimeoutHandle !== undefined) {
       clearTimeout(serializationTimeoutHandle)
@@ -763,7 +792,14 @@ function makeMainStream(
     if (cleanedUp || isDone()) return stream
   }
 
-  // Transform the appStream
+  stopListeningToAbort = listenToAbort(opts?.signal, (reason) => {
+    safeError(reason)
+    cleanup(reason)
+  })
+  if (cleanedUp || isDone())
+    return stream
+
+    // Transform the appStream
   ;(async () => {
     try {
       while (true) {

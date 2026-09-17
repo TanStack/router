@@ -1,12 +1,12 @@
 # domain_map.yaml
 # Library: @tanstack/virtual-file-routes
-# Version: 1.161.4
+# Version: 1.162.0
 # Date: 2026-03-08
 # Status: reviewed
 
 library:
   name: '@tanstack/virtual-file-routes'
-  version: '1.161.4'
+  version: '1.162.0'
   repository: 'https://github.com/TanStack/router'
   description: >-
     Programmatic route tree building as an alternative to filesystem
@@ -61,6 +61,13 @@ skills:
           an absolute or wrong-relative directory causes routes to
           not be found.
         priority: MEDIUM
+        status: active
+
+      - mistake: 'Creating duplicate effective paths or physical mounts'
+        mechanism: >-
+          Virtual nodes and mounted physical subtrees can resolve to the same
+          path or ID. Regenerate and inspect the full tree after every refactor.
+        priority: HIGH
         status: active
 
 gaps: []

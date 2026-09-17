@@ -12,9 +12,12 @@ export const Route = createFileRoute('/demo/start/api-request')({
 function Home() {
   const [names, setNames] = createSignal<Array<string>>([])
 
-  createEffect(() => {
-    getNames().then(setNames)
-  }, [])
+  createEffect(
+    () => {},
+    () => {
+      getNames().then(setNames)
+    },
+  )
 
   return (
     <div

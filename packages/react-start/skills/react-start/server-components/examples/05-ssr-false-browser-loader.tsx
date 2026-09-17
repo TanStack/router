@@ -7,7 +7,7 @@ import { renderServerComponent } from '@tanstack/react-start/rsc'
 import { z } from 'zod'
 
 const getDrawingTools = createServerFn({ method: 'POST' })
-  .inputValidator(z.object({ savedState: z.string().nullable() }))
+  .validator(z.object({ savedState: z.string().nullable() }))
   .handler(async ({ data }) => {
     const Tools = await renderServerComponent(
       <ToolPalette savedState={data.savedState} />,

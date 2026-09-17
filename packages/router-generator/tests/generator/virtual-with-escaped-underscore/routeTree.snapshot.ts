@@ -11,8 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as indexRouteImport } from './routes/index'
 import { Route as ApiIndexRouteImport } from './routes/physical-routes/index'
-import { Route as ApiChar91_Char93helloRouteImport } from './routes/physical-routes/[_]hello'
 import { Route as ApiChar91_Char93authDotrouteRouteImport } from './routes/physical-routes/[_]auth.route'
+import { Route as ApiChar91_Char93helloRouteImport } from './routes/physical-routes/[_]hello'
 
 const indexRoute = indexRouteImport.update({
   id: '/',
@@ -24,17 +24,17 @@ const ApiIndexRoute = ApiIndexRouteImport.update({
   path: '/api/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiChar91_Char93helloRoute = ApiChar91_Char93helloRouteImport.update({
-  id: '/api/_hello',
-  path: '/api/_hello',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiChar91_Char93authDotrouteRoute =
   ApiChar91_Char93authDotrouteRouteImport.update({
     id: '/api/_auth',
     path: '/api/_auth',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiChar91_Char93helloRoute = ApiChar91_Char93helloRouteImport.update({
+  id: '/api/_hello',
+  path: '/api/_hello',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof indexRoute
@@ -86,18 +86,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/_hello': {
-      id: '/api/_hello'
-      path: '/api/_hello'
-      fullPath: '/api/_hello'
-      preLoaderRoute: typeof ApiChar91_Char93helloRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/_auth': {
       id: '/api/_auth'
       path: '/api/_auth'
       fullPath: '/api/_auth'
       preLoaderRoute: typeof ApiChar91_Char93authDotrouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/_hello': {
+      id: '/api/_hello'
+      path: '/api/_hello'
+      fullPath: '/api/_hello'
+      preLoaderRoute: typeof ApiChar91_Char93helloRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

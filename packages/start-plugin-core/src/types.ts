@@ -46,6 +46,7 @@ export interface StartCompilerTransformContext {
   readonly providerEnvName: string
   readonly types: typeof t
   parseExpression: (code: string) => t.Expression
+  warn?: (message: string) => void
 }
 
 export interface StartCompilerImportTransform {

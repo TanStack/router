@@ -13,29 +13,74 @@ const REACT_REFRESH_ROUTE_COMPONENT_IDENTS = new Set([
   'notFoundComponent',
 ])
 
-function hoistInlineRouteComponents(ctx: {
+type RouteComponentContext = {
   programPath: Parameters<typeof getUniqueProgramIdentifier>[0]
   insertionPath: { insertBefore: (nodes: Array<t.VariableDeclaration>) => void }
   routeOptions: t.ObjectExpression
-}) {
-  const hoistedDeclarations: Array<t.VariableDeclaration> = []
+}
 
-  ctx.routeOptions.properties.forEach((prop) => {
+function isReactComponentName(name: string) {
+  const firstCharacter = name[0]
+
+  return (
+    firstCharacter !== undefined &&
+    firstCharacter >= 'A' &&
+    firstCharacter <= 'Z'
+  )
+}
+
+function getRouteComponentKey(prop: t.ObjectProperty) {
+  const key = getObjectPropertyKeyName(prop)
+
+  return key && REACT_REFRESH_ROUTE_COMPONENT_IDENTS.has(key) ? key : undefined
+}
+
+function prepareRouteComponentsForReactRefresh(ctx: RouteComponentContext) {
+  const hoistedDeclarations: Array<t.VariableDeclaration> = []
+  let modified = false
+
+  for (const prop of ctx.routeOptions.properties) {
     if (!t.isObjectProperty(prop)) {
-      return
+      continue
     }
 
-    const key = getObjectPropertyKeyName(prop)
+    const key = getRouteComponentKey(prop)
 
-    if (!key || !REACT_REFRESH_ROUTE_COMPONENT_IDENTS.has(key)) {
-      return
+    if (!key) {
+      continue
+    }
+
+    if (t.isIdentifier(prop.value)) {
+      if (isReactComponentName(prop.value.name)) {
+        continue
+      }
+
+      const bindingNode = ctx.programPath.scope.getBinding(prop.value.name)
+        ?.path.node
+      const isLocalComponentBinding =
+        t.isFunctionDeclaration(bindingNode) ||
+        t.isClassDeclaration(bindingNode) ||
+        t.isVariableDeclarator(bindingNode)
+
+      if (!isLocalComponentBinding) {
+        continue
+      }
+
+      const componentIdentifier = getUniqueProgramIdentifier(
+        ctx.programPath,
+        `TSR${key[0]!.toUpperCase()}${key.slice(1)}`,
+      )
+
+      ctx.programPath.scope.rename(prop.value.name, componentIdentifier.name)
+      modified = true
+      continue
     }
 
     if (
       !t.isArrowFunctionExpression(prop.value) &&
       !t.isFunctionExpression(prop.value)
     ) {
-      return
+      continue
     }
 
     const hoistedIdentifier = getUniqueProgramIdentifier(
@@ -50,14 +95,14 @@ function hoistInlineRouteComponents(ctx: {
     )
 
     prop.value = t.cloneNode(hoistedIdentifier)
-  })
-
-  if (hoistedDeclarations.length === 0) {
-    return false
+    modified = true
   }
 
-  ctx.insertionPath.insertBefore(hoistedDeclarations)
-  return true
+  if (hoistedDeclarations.length > 0) {
+    ctx.insertionPath.insertBefore(hoistedDeclarations)
+  }
+
+  return modified
 }
 
 export function createReactRefreshRouteComponentsPlugin(): ReferenceRouteCompilerPlugin {
@@ -66,27 +111,32 @@ export function createReactRefreshRouteComponentsPlugin(): ReferenceRouteCompile
     getStableRouteOptionKeys() {
       return [...REACT_REFRESH_ROUTE_COMPONENT_IDENTS]
     },
-    onUnsplittableRoute(ctx) {
-      if (!ctx.opts.addHmr) {
-        return
-      }
-
-      if (hoistInlineRouteComponents(ctx)) {
+    onAddHmr(ctx) {
+      if (prepareRouteComponentsForReactRefresh(ctx)) {
         return { modified: true }
       }
 
       return
     },
-    onAddHmr(ctx) {
-      if (!ctx.opts.addHmr) {
+    onVirtualRouteSplitNode(ctx) {
+      if (
+        ctx.splitNodeMeta.splitStrategy !== 'lazyRouteComponent' ||
+        !t.isFunctionDeclaration(ctx.splitNode) ||
+        !ctx.splitNode.id ||
+        isReactComponentName(ctx.splitNode.id.name)
+      ) {
         return
       }
 
-      if (hoistInlineRouteComponents(ctx)) {
-        return { modified: true }
-      }
+      const componentIdentifier = getUniqueProgramIdentifier(
+        ctx.programPath,
+        ctx.splitNodeMeta.localExporterIdent,
+      )
 
-      return
+      ctx.programPath.scope.rename(
+        ctx.splitNode.id.name,
+        componentIdentifier.name,
+      )
     },
   }
 }

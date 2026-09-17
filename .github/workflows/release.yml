@@ -55,6 +55,7 @@ jobs:
           commit: 'ci: changeset release'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: --max-old-space-size=8192
       - name: Create GitHub Release
         if: steps.changesets.outputs.published == 'true'
         run: node scripts/create-github-release.mjs ${{ steps.dist-tag.outputs.prerelease == 'true' && '--prerelease' }} ${{ steps.dist-tag.outputs.latest == 'true' && '--latest' }}

@@ -5,8 +5,9 @@ title: useParentMatches hook
 
 The `useParentMatches` hook returns all of the parent [`RouteMatch`](./RouteMatchType.md) objects from the root down to the immediate parent of the current match in context. **It does not include the current match, which can be obtained using the `useMatch` hook.**
 
-> [!IMPORTANT]
-> If the router has pending matches and they are showing their pending component fallbacks, pending matches are used instead of active matches.
+The result is derived from the router's current match presentation. During a
+navigation that may still be the previous presentation; after pending UI is
+published it is the destination's complete structurally matched lane.
 
 ## useParentMatches options
 

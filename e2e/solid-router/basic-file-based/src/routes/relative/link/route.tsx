@@ -4,7 +4,7 @@ import {
   createFileRoute,
   useNavigate,
 } from '@tanstack/solid-router'
-import { createTrackedEffect } from 'solid-js'
+import { onSettled } from 'solid-js'
 
 export const Route = createFileRoute('/relative/link')({
   component: RouteComponent,
@@ -13,7 +13,7 @@ export const Route = createFileRoute('/relative/link')({
 function RouteComponent() {
   const navigate = useNavigate()
 
-  createTrackedEffect(() => {
+  onSettled(() => {
     console.log('navigate')
   })
 

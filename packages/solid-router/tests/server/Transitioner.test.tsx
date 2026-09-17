@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { renderToStringAsync } from '@solidjs/web'
+import { renderToStream } from '@solidjs/web'
 import {
   createMemoryHistory,
   createRootRoute,
@@ -33,7 +33,7 @@ describe('Transitioner (server)', () => {
 
     await router.load()
 
-    await renderToStringAsync(() => <RouterProvider router={router} />)
+    await renderToStream(() => <RouterProvider router={router} />)
 
     expect(loadSpy).toHaveBeenCalledTimes(1)
     expect(loader).toHaveBeenCalledTimes(1)

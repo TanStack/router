@@ -1,6 +1,6 @@
 {
   "name": "@tanstack/solid-start-client",
-  "version": "2.0.0-beta.21",
+  "version": "2.0.0-rc.7",
   "description": "Modern and scalable routing for Solid applications",
   "author": "Tanner Linsley",
   "license": "MIT",
@@ -30,12 +30,12 @@
     "test:unit:dev": "vitest --watch",
     "test:eslint": "eslint ./src",
     "test:types": "pnpm run \"/^test:types:ts[0-9]{2}$/\"",
-    "test:types:ts55": "node ../../node_modules/typescript55/lib/tsc.js",
     "test:types:ts56": "node ../../node_modules/typescript56/lib/tsc.js",
     "test:types:ts57": "node ../../node_modules/typescript57/lib/tsc.js",
     "test:types:ts58": "node ../../node_modules/typescript58/lib/tsc.js",
     "test:types:ts59": "node ../../node_modules/typescript59/lib/tsc.js",
-    "test:types:ts60": "tsc",
+    "test:types:ts60": "tsc6",
+    "test:types:ts70": "tsc",
     "test:build": "publint --strict && attw --ignore-rules no-resolution --pack .",
     "build": "vite build"
   },
@@ -77,11 +77,11 @@
   },
   "devDependencies": {
     "@solidjs/testing-library": "^0.8.10",
-    "@solidjs/web": "2.0.0-beta.14",
+    "@solidjs/vite-plugin": "^3.0.0-next.43",
+    "@solidjs/web": "^2.0.0-rc.8",
     "@testing-library/jest-dom": "^6.6.3",
-    "solid-js": "2.0.0-beta.14",
-    "vite": "*",
-    "vite-plugin-solid": "^3.0.0-next.5"
+    "solid-js": "^2.0.0-rc.8",
+    "vite": "*"
   },
   "peerDependencies": {
     "@solidjs/web": ">=2.0.0-0 <3.0.0",

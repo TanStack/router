@@ -77,7 +77,7 @@ const connectToDatabase = createServerFn().handler(async () => {
 
 // Authentication (server-only)
 const authenticateUser = createServerFn()
-  .inputValidator(z.object({ token: z.string() }))
+  .validator(z.object({ token: z.string() }))
   .handler(async ({ data }) => {
     const jwtSecret = process.env.JWT_SECRET // Server-only
     return jwt.verify(data.token, jwtSecret)
@@ -257,7 +257,7 @@ import { createServerFn } from '@tanstack/react-start'
 
 // Server-side API calls (can use secret keys)
 const fetchUserData = createServerFn()
-  .inputValidator(z.object({ userId: z.string() }))
+  .validator(z.object({ userId: z.string() }))
   .handler(async ({ data }) => {
     const response = await fetch(
       `${process.env.EXTERNAL_API_URL}/users/${data.userId}`,
@@ -394,14 +394,14 @@ Use Zod for runtime validation of environment variables:
 import { z } from 'zod'
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
+  DATABASE_URL: z.url(),
   JWT_SECRET: z.string().min(32),
   NODE_ENV: z.enum(['development', 'production', 'test']),
 })
 
 const clientEnvSchema = z.object({
   VITE_APP_NAME: z.string(),
-  VITE_API_URL: z.string().url(),
+  VITE_API_URL: z.url(),
   VITE_AUTH0_DOMAIN: z.string(),
   VITE_AUTH0_CLIENT_ID: z.string(),
 })

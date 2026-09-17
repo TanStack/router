@@ -9,6 +9,11 @@ import {
 import type { AnyRouter } from '@tanstack/router-core'
 import type { Component } from 'vue'
 
+const isAbortError = (request: Request, error: unknown) =>
+  (request.signal.aborted && error === request.signal.reason) ||
+  (error instanceof Error && error.name === 'AbortError') ||
+  (error as any)?.code === 'ABORT_ERR'
+
 function prependDoctype(
   readable: globalThis.ReadableStream,
 ): NodeReadableStream<Uint8Array> {
@@ -107,7 +112,10 @@ export const renderRouterToStream = async ({
       }
 
       return new Response(`<!DOCTYPE html>${fullHtml}`, {
-        status: router.stores.statusCode.get(),
+        status:
+          router._serverResult?.type === 'render'
+            ? router._serverResult.status
+            : 200,
         headers: responseHeaders,
       })
     } finally {
@@ -126,25 +134,57 @@ export const renderRouterToStream = async ({
     }
   }
   const abortVuePipe = (reason?: unknown) => {
-    if (writerDone) return
+    if (writerDone) {
+      return
+    }
+
     writerDone = true
     void innerWriter
       .abort(reason)
       .catch(() => {})
       .finally(releaseWriter)
   }
+  const handleWriterError = (err: unknown) => {
+    if (isAbortError(request, err)) {
+      return
+    }
+
+    throw err
+  }
+  const handleWriteError = (err: unknown) => {
+    if (writerDone || isAbortError(request, err)) {
+      return
+    }
+
+    throw err
+  }
 
   const vueWritable = new WritableStream({
     write(chunk) {
-      return innerWriter.write(chunk)
+      if (writerDone) {
+        return
+      }
+
+      return innerWriter.write(chunk).catch(handleWriteError)
     },
     close() {
+      if (writerDone) {
+        return
+      }
+
       writerDone = true
-      return innerWriter.close().finally(releaseWriter)
+      return innerWriter.close().catch(handleWriterError).finally(releaseWriter)
     },
     abort(reason) {
+      if (writerDone) {
+        return
+      }
+
       writerDone = true
-      return innerWriter.abort(reason).finally(releaseWriter)
+      return innerWriter
+        .abort(reason)
+        .catch(handleWriterError)
+        .finally(releaseWriter)
     },
   })
 
@@ -174,13 +214,16 @@ export const renderRouterToStream = async ({
   const responseStream = transformReadableStreamWithRouter(
     router,
     doctypedStream,
-    { onAbort: abortVuePipe },
+    { signal: request.signal, onAbort: abortVuePipe },
   )
 
   return createSsrStreamResponse(
     router,
     new Response(responseStream as any, {
-      status: router.stores.statusCode.get(),
+      status:
+        router._serverResult?.type === 'render'
+          ? router._serverResult.status
+          : 200,
       headers: responseHeaders,
     }),
   )

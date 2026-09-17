@@ -4,7 +4,7 @@ import { getLocale } from '@/paraglide/runtime.js'
 import { createServerFn } from '@tanstack/react-start'
 
 const getServerMessage = createServerFn()
-  .inputValidator((emoji: string) => emoji)
+  .validator((emoji: string) => emoji)
   .handler((ctx) => {
     return m.server_message({ emoji: ctx.data })
   })

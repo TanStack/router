@@ -9,33 +9,33 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
 import { Route as homeRouteImport } from './routes/home'
+import { Route as layoutFirstLayoutRouteImport } from './routes/layout/first-layout'
 import { Route as layoutSecondLayoutRouteImport } from './routes/layout/second-layout'
-import { Route as bRouteImport } from './routes/b'
 import { Route as aRouteImport } from './routes/a'
+import { Route as bRouteImport } from './routes/b'
 
-const layoutFirstLayoutRoute = layoutFirstLayoutRouteImport.update({
-  id: '/_first',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const homeRoute = homeRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const layoutFirstLayoutRoute = layoutFirstLayoutRouteImport.update({
+  id: '/_first',
   getParentRoute: () => rootRouteImport,
 } as any)
 const layoutSecondLayoutRoute = layoutSecondLayoutRouteImport.update({
   id: '/_second-layout',
   getParentRoute: () => layoutFirstLayoutRoute,
 } as any)
-const bRoute = bRouteImport.update({
-  id: '/route-without-file/layout-b',
-  path: '/route-without-file/layout-b',
-  getParentRoute: () => layoutSecondLayoutRoute,
-} as any)
 const aRoute = aRouteImport.update({
   id: '/route-without-file/layout-a',
   path: '/route-without-file/layout-a',
+  getParentRoute: () => layoutSecondLayoutRoute,
+} as any)
+const bRoute = bRouteImport.update({
+  id: '/route-without-file/layout-b',
+  path: '/route-without-file/layout-b',
   getParentRoute: () => layoutSecondLayoutRoute,
 } as any)
 
@@ -81,18 +81,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/_first': {
-      id: '/_first'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof layoutFirstLayoutRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof homeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_first': {
+      id: '/_first'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof layoutFirstLayoutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_first/_second-layout': {
@@ -102,18 +102,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof layoutSecondLayoutRouteImport
       parentRoute: typeof layoutFirstLayoutRoute
     }
-    '/_first/_second-layout/route-without-file/layout-b': {
-      id: '/_first/_second-layout/route-without-file/layout-b'
-      path: '/route-without-file/layout-b'
-      fullPath: '/route-without-file/layout-b'
-      preLoaderRoute: typeof bRouteImport
-      parentRoute: typeof layoutSecondLayoutRoute
-    }
     '/_first/_second-layout/route-without-file/layout-a': {
       id: '/_first/_second-layout/route-without-file/layout-a'
       path: '/route-without-file/layout-a'
       fullPath: '/route-without-file/layout-a'
       preLoaderRoute: typeof aRouteImport
+      parentRoute: typeof layoutSecondLayoutRoute
+    }
+    '/_first/_second-layout/route-without-file/layout-b': {
+      id: '/_first/_second-layout/route-without-file/layout-b'
+      path: '/route-without-file/layout-b'
+      fullPath: '/route-without-file/layout-b'
+      preLoaderRoute: typeof bRouteImport
       parentRoute: typeof layoutSecondLayoutRoute
     }
   }

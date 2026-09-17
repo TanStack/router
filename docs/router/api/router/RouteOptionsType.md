@@ -56,6 +56,7 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(rawSearchParams: unknown) => TSearchSchema`
 - Optional
 - A function that will be called when this route is matched and passed the raw search params from the current location and return valid parsed search params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's search params and the return type will be inferred into the rest of the router.
+- This is a planning callback. It must be deterministic and side-effect-free for the same input; do not navigate or mutate application/router state from it.
 - Optionally, the parameter type can be tagged with the `SearchSchemaInput` type like this: `(searchParams: TSearchSchemaInput & SearchSchemaInput) => TSearchSchema`. If this tag is present, `TSearchSchemaInput` will be used to type the `search` property of `<Link />` and `navigate()` **instead of** `TSearchSchema`. The difference between `TSearchSchemaInput` and `TSearchSchema` can be useful, for example, to express optional search parameters.
 
 ### `search.middlewares` property
@@ -70,6 +71,7 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(rawParams: Record<string, string>) => TParams`
 - Optional
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function does not throw, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
+- This is a planning callback. It must be deterministic and side-effect-free for the same input.
 
 ### `stringifyParams` method (⚠️ deprecated, use `params.stringify` instead)
 
@@ -82,6 +84,7 @@ The `RouteOptions` type accepts an object with the following properties:
 - Type: `(rawParams: Record<string, string>) => TParams | false`
 - Optional
 - A function that will be called when this route is matched and passed the raw params from the current location and return valid parsed params. If this function throws, the route will be put into an error state and the error will be thrown during render. If this function returns parsed params, its return value will be used as the route's params and the return type will be inferred into the rest of the router.
+- This is a planning callback. It must be deterministic and side-effect-free for the same input.
 - Experimental: returning `false` during incoming route matching skips this route and allows matching to continue to another candidate route.
 
 ### `params.priority` property
@@ -112,14 +115,14 @@ type beforeLoad = (
     location: ParsedLocation
     navigate: NavigateFn<AnyRoute> // @deprecated
     buildLocation: BuildLocationFn<AnyRoute>
-    cause: 'enter' | 'stay'
+    cause: 'preload' | 'enter' | 'stay'
   },
 ) => Promise<TRouteContext> | TRouteContext | void
 ```
 
 - Optional
 - [`ParsedLocation`](./ParsedLocationType.md)
-- This async function is called before a route is loaded. If an error is thrown here, the route's loader will not be called and the route will not render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
+- This async function is called before a route is loaded. If it fails, the route's loader and its descendants will not run. During navigation, ordinary errors become the match's error state and are passed to the `onError` function. During a preload, ordinary errors and not-found results are represented in the returned speculative match lane instead of rejecting the `preloadRoute` promise.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
 - If this function returns a `TRouteContext` object, that object will be merged into the route's context and be made available in the `loader` and other related route components/methods.
 - It's common to use this function to check if a user is authenticated and redirect them to a login page if they are not. To do this, you can either return or throw a `redirect` object from this function.
@@ -156,9 +159,9 @@ type loader =
 
 - Optional
 - [`ParsedLocation`](./ParsedLocationType.md)
-- This async function is called when a route is matched and passed the route's match object. If an error is thrown here, the route will be put into an error state and the error will be thrown during render. If thrown during a navigation, the navigation will be canceled and the error will be passed to the `onError` function. If thrown during a preload event, the error will be logged to the console and the preload will fail.
+- This async function is called when a route is matched and passed the route's match object. During navigation, ordinary errors become the match's error state and are passed to the `onError` function. During a preload, ordinary errors and not-found results are represented in the returned speculative match lane instead of rejecting the `preloadRoute` promise.
 - If this function returns a promise, the route will be put into a pending state and cause rendering to suspend until the promise resolves. If this route's pendingMs threshold is reached, the `pendingComponent` will be shown until it resolves. If the promise rejects, the route will be put into an error state and the error will be thrown during render.
-- If this function returns a `TLoaderData` object, that object will be stored on the route match until the route match is no longer active. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
+- If this function returns a `TLoaderData` object, that object will be stored on the route match and can remain available in the in-memory cache after the match becomes inactive. Navigation-owned data uses `gcTime` for retention, while preload-owned data uses `preloadGcTime`. It can be accessed using the `useLoaderData` hook in any component that is a child of the route match before another `<Outlet />` is rendered.
 - Deps must be returned by your `loaderDeps` function in order to appear.
 - Use the object form to configure loader-specific behavior like `staleReloadMode`.
 - `staleReloadMode: 'background'` preserves stale-while-revalidate behavior for stale successful matches.
@@ -176,6 +179,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 
 - Optional
 - A function that will be called before this route is matched to provide additional unique identification to the route match and serve as a dependency tracker for when the match should be reloaded. It should return any serializable value that can uniquely identify the route match from navigation to navigation.
+- This is a planning callback and cache-key function. It must be deterministic and side-effect-free for the same validated search input. The returned value and any serialization methods on it, such as `toJSON`, must also be side-effect-free.
 - By default, path params are already used to uniquely identify a route match, so it's unnecessary to return these here.
 - If your route match relies on search params for unique identification, it's required that you return them here so they can be made available in the `loader`'s `deps` argument.
 
@@ -186,19 +190,26 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Defaults to `routerOptions.defaultStaleTime`, which defaults to `0`
 - The amount of time in milliseconds that a route match's loader data will be considered fresh. If a route match is matched again within this time frame, its loader data will not be reloaded.
 
+### `preload` property
+
+- Type: `boolean`
+- Optional
+- Defaults to `true`
+- If `false`, speculative preloads still run this route's `beforeLoad` function but skip its `loader`. A navigation runs both `beforeLoad` and the skipped `loader` normally.
+
 ### `preloadStaleTime` property
 
 - Type: `number`
 - Optional
 - Defaults to `routerOptions.defaultPreloadStaleTime`, which defaults to `30_000` ms (30 seconds)
-- The amount of time in milliseconds that a route match's loader data will be considered fresh when preloading. If a route match is preloaded again within this time frame, its loader data will not be reloaded. If a route match is loaded (for navigation) within this time frame, the normal `staleTime` is used instead.
+- The amount of time in milliseconds that loader data produced by a preload is considered fresh. Another preload or the first navigation can reuse it within this interval. After navigation accepts the generation, subsequent freshness uses `staleTime`.
 
 ### `gcTime` property
 
 - Type: `number`
 - Optional
-- Defaults to `routerOptions.defaultGcTime`, which defaults to 30 minutes.
-- The amount of time in milliseconds that a route match's loader data will be kept in memory after a preload or it is no longer in use.
+- Defaults to `routerOptions.defaultGcTime`, which defaults to 5 minutes.
+- The retention window in milliseconds for unused loader data from an ordinary load. Once the data is older than this value, it is eligible for pruning during a later cache reconciliation.
 
 ### `shouldReload` property
 
@@ -234,12 +245,12 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Defaults to `routerOptions.defaultPendingMinMs` which defaults to `500`
 - The minimum amount of time in milliseconds that the pending component will be shown for if it is shown. This is useful to prevent the pending component from flashing on the screen for a split second.
 
-### `preloadMaxAge` property
+### `preloadGcTime` property
 
 - Type: `number`
 - Optional
-- Defaults to `30_000` ms (30 seconds)
-- The maximum amount of time in milliseconds that a route's preloaded route data will be cached for. If a route is not matched within this time frame, its loader data will be discarded.
+- Defaults to `routerOptions.defaultPreloadGcTime`, which defaults to 5 minutes.
+- The retention window in milliseconds for unused loader data produced by a preload. Once the data is older than this value, it is eligible for pruning during a later cache reconciliation. Use `preloadStaleTime` to control whether retained data is fresh enough to reuse without reloading.
 
 ### `preSearchFilters` property (⚠️ deprecated, use `search.middlewares` instead)
 
@@ -262,7 +273,7 @@ type loaderDeps = (opts: { search: TFullSearchSchema }) => Record<string, any>
 - Type: `(error: any) => void`
 - Optional
 - A function that will be called when an error is thrown during a navigation or preload event.
-- If this function throws a [`redirect`](./redirectFunction.md), then the router will process and apply the redirect immediately.
+- If this function throws a [`redirect`](./redirectFunction.md), the redirect replaces the original error and becomes control flow for the current navigation or preload operation. If it throws a not-found result, that result replaces the original error in the current match lane.
 
 ### `onEnter` property
 

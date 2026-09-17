@@ -9,17 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as StaticRouteImport } from './routes/static'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as StaticRouteImport } from './routes/static'
 
-const StaticRoute = StaticRouteImport.update({
-  id: '/static',
-  path: '/static',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StaticRoute = StaticRouteImport.update({
+  id: '/static',
+  path: '/static',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -51,18 +51,18 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/vue-router' {
   interface FileRoutesByPath {
-    '/static': {
-      id: '/static'
-      path: '/static'
-      fullPath: '/static'
-      preLoaderRoute: typeof StaticRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/': {
       id: '/'
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/static': {
+      id: '/static'
+      path: '/static'
+      fullPath: '/static'
+      preLoaderRoute: typeof StaticRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

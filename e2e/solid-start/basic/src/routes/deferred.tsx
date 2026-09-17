@@ -3,13 +3,13 @@ import { createServerFn } from '@tanstack/solid-start'
 import { Loading, createMemo, createSignal } from 'solid-js'
 
 const personServerFn = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string }) => data)
+  .validator((data: { name: string }) => data)
   .handler(({ data }) => {
     return { name: data.name, randomNumber: Math.floor(Math.random() * 100) }
   })
 
 const slowServerFn = createServerFn({ method: 'GET' })
-  .inputValidator((data: { name: string }) => data)
+  .validator((data: { name: string }) => data)
   .handler(async ({ data }) => {
     await new Promise((r) => setTimeout(r, 1000))
     return { name: data.name, randomNumber: Math.floor(Math.random() * 100) }

@@ -1,9 +1,9 @@
-import { VIRTUAL_MODULES } from '@tanstack/start-server-core'
+import { VIRTUAL_MODULES } from '@tanstack/start-server-core/virtual-modules'
 import { describe, expect, test, vi } from 'vitest'
 import { DEV_CLIENT_ENTRY, START_ENVIRONMENT_NAMES } from '../src/constants'
 import { startManifestPlugin } from '../src/vite/start-manifest-plugin/plugin'
 
-vi.mock('@tanstack/start-server-core', () => ({
+vi.mock('@tanstack/start-server-core/virtual-modules', () => ({
   VIRTUAL_MODULES: {
     startManifest: 'tanstack-start-manifest:v',
   },

@@ -135,7 +135,6 @@ skills:
       for auth state.
     requires:
       - 'router-core'
-      - 'router-core/data-loading'
     sources:
       - 'TanStack/router:docs/router/guide/authenticated-routes.md'
       - 'TanStack/router:docs/router/how-to/setup-authentication.md'

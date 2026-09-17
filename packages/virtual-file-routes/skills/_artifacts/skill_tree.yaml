@@ -1,6 +1,6 @@
 library:
   name: '@tanstack/virtual-file-routes'
-  version: '1.161.4'
+  version: '1.162.0'
   repository: 'https://github.com/TanStack/router'
   description: >-
     Programmatic route tree building as an alternative to filesystem

@@ -29,7 +29,7 @@ The `NotFoundError` object accepts/contains the following properties:
 
 - Type: `any`
 - Optional
-- Custom data that is passed into to `notFoundComponent` when the not-found error is handled
+- Custom data that is passed into `notFoundComponent` when the not-found error is handled
 
 ### `throw` property
 

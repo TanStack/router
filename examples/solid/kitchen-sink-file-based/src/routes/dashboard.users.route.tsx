@@ -51,7 +51,7 @@ function UsersComponent() {
 
   const [filterDraft, setFilterDraft] = Solid.createSignal(filterBy() ?? '')
 
-  Solid.createEffect(() => {
+  Solid.createEffect(filterBy, () => {
     setFilterDraft(filterBy() ?? '')
   })
 
@@ -69,7 +69,7 @@ function UsersComponent() {
       replace: true,
     })
 
-  Solid.createEffect(() => {
+  Solid.createEffect(filterDraft, () => {
     navigate({
       search: (old) => {
         return {
