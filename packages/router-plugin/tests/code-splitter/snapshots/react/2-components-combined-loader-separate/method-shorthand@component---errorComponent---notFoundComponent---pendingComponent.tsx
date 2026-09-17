@@ -12,9 +12,6 @@ function PendingComponent() {
 function NotFoundComponent() {
   return <div>Not found</div>;
 }
-function ErrorComponent() {
-  return <div>Error</div>;
-}
 const SplitComponent = function () {
   return <Component name={obj.name} />;
 };
@@ -23,10 +20,6 @@ const SplitPendingComponent = function () {
   return <PendingComponent />;
 };
 export { SplitPendingComponent as pendingComponent };
-const SplitErrorComponent = function () {
-  return <ErrorComponent />;
-};
-export { SplitErrorComponent as errorComponent };
 const SplitNotFoundComponent = function () {
   return <NotFoundComponent />;
 };

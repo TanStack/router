@@ -20,6 +20,7 @@ export const Route = createFileRoute('/')({
     return <NotFoundComponent />
   },
   errorComponent() {
+    super.test;
     return <ErrorComponent />
   },
 })

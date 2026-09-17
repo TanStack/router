@@ -158,6 +158,16 @@ function getRouteProp(
     return undefined
   }
 
+  // while `super` is allowed in methods, it is a SyntaxError in functions
+  // so we bail early and skip that edge case
+  const usesSuper = t.traverseFast(property, (node) =>
+    t.isSuper(node) ? t.traverseFast.stop : undefined,
+  )
+
+  if (usesSuper) {
+    return undefined
+  }
+
   const value = t.functionExpression(
     null,
     property.params,

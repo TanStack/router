@@ -1,5 +1,4 @@
 import { obj } from "method-shorthand.tsx?tsr-shared=1";
-const $$splitErrorComponentImporter = () => import('method-shorthand.tsx?tsr-split=errorComponent');
 const $$splitNotFoundComponentImporter = () => import('method-shorthand.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent');
 const $$splitPendingComponentImporter = () => import('method-shorthand.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent');
 const $$splitComponentImporter = () => import('method-shorthand.tsx?tsr-split=component---loader---notFoundComponent---pendingComponent');
@@ -15,5 +14,11 @@ export const Route = createFileRoute('/')({
   component: lazyRouteComponent($$splitComponentImporter, 'component'),
   pendingComponent: lazyRouteComponent($$splitPendingComponentImporter, 'pendingComponent'),
   notFoundComponent: lazyRouteComponent($$splitNotFoundComponentImporter, 'notFoundComponent'),
-  errorComponent: lazyRouteComponent($$splitErrorComponentImporter, 'errorComponent')
+  errorComponent() {
+    super.test;
+    return <ErrorComponent />;
+  }
 });
+function ErrorComponent() {
+  return <div>Error</div>;
+}
