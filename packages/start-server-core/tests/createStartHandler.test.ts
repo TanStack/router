@@ -868,6 +868,331 @@ describe('createStartHandler server-route handling', () => {
 })
 
 describe('createStartHandler request location reuse', () => {
+  it.each(['POST', 'PUT', 'PATCH', 'DELETE'])(
+    'renders a noncanonical %s request after its server handler',
+    async (method) => {
+      const writes: Array<string> = []
+      const root = new BaseRootRoute()
+      const route = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/work',
+        component: () => null,
+        loader: ({ location }) => location.search,
+        server: {
+          handlers: {
+            ANY: async ({ request, next }) => {
+              writes.push(await request.text())
+              return next()
+            },
+          },
+        },
+      })
+      startMocks.routerFactory = () =>
+        new RouterCore(
+          { isServer: true, routeTree: root.addChildren([route]) },
+          getStoreConfig,
+        )
+      const handler = createStartHandler(({ router }) =>
+        Response.json(router.state.matches.at(-1)?.loaderData),
+      )
+
+      const response = await handler(
+        new Request('http://localhost/work/?q=a%2Ab', {
+          method,
+          body: 'write once',
+        }),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      expect(response.headers.get('Location')).toBeNull()
+      expect(await response.json()).toEqual({ q: 'a*b' })
+      expect(writes).toEqual(['write once'])
+    },
+  )
+
+  it.each(['GET', 'HEAD'])(
+    'keeps canonical redirects for %s requests',
+    async (method) => {
+      startMocks.router = makeRouterWithRouteWork({})
+      const render = vi.fn(() => new Response('rendered'))
+      const handler = createStartHandler(render)
+
+      const response = await handler(
+        new Request('http://localhost/work/?q=a%2Ab', { method }),
+        {},
+      )
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('Location')).toBe('/work?q=a*b')
+      expect(render).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(
+    [
+      ['q=a%2Ab', 'q=a*b', { q: 'a*b' }],
+      ['q=two%20words', 'q=two+words', { q: 'two words' }],
+      ['a=1&&b=2', 'a=1&b=2', { a: 1, b: 2 }],
+    ].flatMap(([search, canonical, data]) =>
+      [false, true].map((rewrite) => ({ search, canonical, data, rewrite })),
+    ),
+  )(
+    'redirects noncanonical search $search once (rewrite=$rewrite)',
+    async ({ search, canonical, data, rewrite }) => {
+      const rootRoute = new BaseRootRoute({})
+      const route = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/work',
+        component: () => null,
+        loader: ({ location }) => location.search,
+      })
+      const routeTree = rootRoute.addChildren([route])
+      startMocks.routerFactory = () =>
+        new RouterCore(
+          {
+            isServer: true,
+            routeTree,
+            rewrite: rewrite
+              ? { input: ({ url }) => url, output: ({ url }) => url }
+              : undefined,
+          },
+          getStoreConfig,
+        )
+      const handler = createStartHandler(({ router }) =>
+        Response.json(router.state.matches.at(-1)?.loaderData),
+      )
+
+      const response = await handler(
+        new Request(`http://localhost/work?${search}`),
+        {},
+      )
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('Location')).toBe(`/work?${canonical}`)
+
+      const followUp = await handler(
+        new Request(
+          new URL(response.headers.get('Location')!, 'http://localhost'),
+        ),
+        {},
+      )
+
+      expect(followUp.status).toBe(200)
+      expect(followUp.headers.get('Location')).toBeNull()
+      expect(await followUp.json()).toEqual(data)
+    },
+  )
+
+  it('passes the raw query to a custom search parser', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const route = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/work',
+      component: () => null,
+      loader: ({ location }) => location.search,
+    })
+    startMocks.router = new RouterCore(
+      {
+        isServer: true,
+        routeTree: rootRoute.addChildren([route]),
+        parseSearch: (search) => ({ q: decodeURIComponent(search.slice(1)) }),
+        stringifySearch: ({ q }) => (q ? `?${encodeURIComponent(q)}` : ''),
+      },
+      getStoreConfig,
+    )
+    const handler = createStartHandler(({ router }) =>
+      Response.json(router.state.matches.at(-1)?.loaderData),
+    )
+
+    const response = await handler(
+      new Request('http://localhost/work?hello%20world'),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+    expect(response.headers.get('Location')).toBeNull()
+    expect(await response.json()).toEqual({ q: 'hello world' })
+  })
+
+  it.each([false, true])(
+    'redirects custom search encoding once (rewrite=%s)',
+    async (rewrite) => {
+      const rootRoute = new BaseRootRoute({})
+      const loader = vi.fn()
+      const route = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/work',
+        component: () => null,
+        loader: ({ location }) => {
+          loader()
+          return location.search
+        },
+      })
+      const routeTree = rootRoute.addChildren([route])
+      startMocks.routerFactory = () =>
+        new RouterCore(
+          {
+            isServer: true,
+            routeTree,
+            rewrite: rewrite
+              ? { input: ({ url }) => url, output: ({ url }) => url }
+              : undefined,
+            stringifySearch: (search) => {
+              const query = new URLSearchParams(search).toString()
+              return query ? `?${query.replaceAll('+', '%20')}` : ''
+            },
+          },
+          getStoreConfig,
+        )
+      const handler = createStartHandler(({ router }) =>
+        Response.json(router.state.matches.at(-1)?.loaderData),
+      )
+
+      const response = await handler(
+        new Request('http://localhost/work?q=two+words'),
+        {},
+      )
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('Location')).toBe('/work?q=two%20words')
+
+      const followUp = await handler(
+        new Request(
+          new URL(response.headers.get('Location')!, 'http://localhost'),
+        ),
+        {},
+      )
+
+      expect(followUp.status).toBe(200)
+      expect(followUp.headers.get('Location')).toBeNull()
+      expect(await followUp.json()).toEqual({ q: 'two words' })
+      expect(loader).toHaveBeenCalledOnce()
+    },
+  )
+
+  it.each([false, true])(
+    'redirects a renamed search parameter once (output uses percent-encoded spaces=%s)',
+    async (percentEncodedSpaces) => {
+      const rootRoute = new BaseRootRoute({})
+      const route = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/work',
+        component: () => null,
+        loader: ({ location }) => location.search,
+      })
+      const routeTree = rootRoute.addChildren([route])
+      startMocks.routerFactory = () =>
+        new RouterCore(
+          {
+            isServer: true,
+            routeTree,
+            stringifySearch: (search) => {
+              const query = new URLSearchParams(search).toString()
+              return query ? `?${query.replaceAll('+', '%20')}` : ''
+            },
+            rewrite: {
+              input: ({ url }) => {
+                if (url.searchParams.has('public')) {
+                  url.searchParams.set(
+                    'internal',
+                    url.searchParams.get('public')!,
+                  )
+                  url.searchParams.delete('public')
+                }
+                return url
+              },
+              output: ({ url }) => {
+                if (url.searchParams.has('internal')) {
+                  url.searchParams.set(
+                    'public',
+                    url.searchParams.get('internal')!,
+                  )
+                  url.searchParams.delete('internal')
+                }
+                if (percentEncodedSpaces) {
+                  url.search = url.search.replaceAll('+', '%20')
+                }
+                return url
+              },
+            },
+          },
+          getStoreConfig,
+        )
+      const handler = createStartHandler(({ router }) =>
+        Response.json(router.state.matches.at(-1)?.loaderData),
+      )
+
+      const response = await handler(
+        new Request(
+          `http://localhost/work?public=two${percentEncodedSpaces ? '+' : '%20'}words`,
+        ),
+        {},
+      )
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('Location')).toBe(
+        `/work?public=two${percentEncodedSpaces ? '%20' : '+'}words`,
+      )
+
+      const followUp = await handler(
+        new Request(
+          new URL(response.headers.get('Location')!, 'http://localhost'),
+        ),
+        {},
+      )
+
+      expect(followUp.status).toBe(200)
+      expect(followUp.headers.get('Location')).toBeNull()
+      expect(await followUp.json()).toEqual({ internal: 'two words' })
+    },
+  )
+
+  it.each(['/work/?q=two%20words&page=1', '/work?q=two%20words'])(
+    'redirects meaningful canonical changes for %s',
+    async (href) => {
+      const rootRoute = new BaseRootRoute({})
+      const route = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/work',
+        component: () => null,
+        validateSearch: (search) => ({
+          q: search.q,
+          page: search.page ?? 1,
+        }),
+        loader: ({ location }) => location.search,
+      })
+      const routeTree = rootRoute.addChildren([route])
+      startMocks.routerFactory = () =>
+        new RouterCore(
+          {
+            isServer: true,
+            routeTree,
+            rewrite: { input: ({ url }) => url, output: ({ url }) => url },
+          },
+          getStoreConfig,
+        )
+      const handler = createStartHandler(({ router }) =>
+        Response.json(router.state.matches.at(-1)?.loaderData),
+      )
+
+      const response = await handler(new Request(`http://localhost${href}`), {})
+
+      expect(response.status).toBe(307)
+      expect(response.headers.get('Location')).toBe('/work?q=two+words&page=1')
+
+      const followUp = await handler(
+        new Request(
+          new URL(response.headers.get('Location')!, 'http://localhost'),
+        ),
+        {},
+      )
+
+      expect(followUp.status).toBe(200)
+      expect(await followUp.json()).toEqual({ q: 'two words', page: 1 })
+    },
+  )
+
   it.each(
     ['plain', 'café'].flatMap((path) =>
       [false, true].map((renderApp) => ({ path, renderApp })),
