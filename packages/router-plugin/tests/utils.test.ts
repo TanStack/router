@@ -157,6 +157,17 @@ describe('getObjectPropertyKeyName', () => {
     expect(getObjectPropertyKeyName(prop)).toBe('errorComponent')
   })
 
+  it('returns object method keys', () => {
+    const method = t.objectMethod(
+      'method',
+      t.identifier('loader'),
+      [],
+      t.blockStatement([]),
+    )
+
+    expect(getObjectPropertyKeyName(method)).toBe('loader')
+  })
+
   it('returns undefined for computed identifier keys', () => {
     const prop = t.objectProperty(
       t.identifier('component'),
