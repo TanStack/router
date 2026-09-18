@@ -21,6 +21,7 @@ export default defineConfig(async () => {
       port: 3000,
     },
     build: {
+      outDir: process.env.E2E_DIST_DIR ?? 'dist',
       cssCodeSplit,
     },
     plugins: [

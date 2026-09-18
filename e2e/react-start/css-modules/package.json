@@ -57,6 +57,10 @@
     "metadata": {
       "playwrightModes": [
         {
+          "toolchain": "vite",
+          "mode": "ssr"
+        },
+        {
           "toolchain": "rsbuild",
           "mode": "ssr"
         }
