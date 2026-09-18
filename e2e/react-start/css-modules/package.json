@@ -13,6 +13,7 @@
     "dev:cloudflare": "echo 'Cloudflare dev mode has React duplication issues - use build+preview instead' && exit 1",
     "dev:e2e:cloudflare": "echo 'Cloudflare dev mode has React duplication issues - use build+preview instead' && exit 1",
     "build": "vite build && tsc --noEmit",
+    "build:rsbuild": "rsbuild build && tsc --noEmit",
     "preview": "vite preview",
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e:dev": "MODE=dev playwright test --project=chromium",
@@ -36,6 +37,9 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.29.0",
     "@playwright/test": "^1.61.0",
+    "@rsbuild/core": "^2.1.0",
+    "@rsbuild/plugin-react": "^2.0.0",
+    "@rsbuild/plugin-sass": "^2.0.1",
     "@tanstack/router-e2e-utils": "workspace:*",
     "@types/node": "^22.10.2",
     "@types/react": "^19.0.8",
@@ -48,5 +52,19 @@
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",
     "wrangler": "^4.74.0"
+  },
+  "nx": {
+    "metadata": {
+      "playwrightModes": [
+        {
+          "toolchain": "vite",
+          "mode": "ssr"
+        },
+        {
+          "toolchain": "rsbuild",
+          "mode": "ssr"
+        }
+      ]
+    }
   }
 }
