@@ -2100,7 +2100,7 @@ export class RouterCore<
       // A literal search never reads the current one. The result is not
       // structurally shared with the current search: `parseLocation` keeps
       // equal nested values stable once the location is committed.
-      const nextSearch: Record<string, unknown> = middlewares.length
+      const nextSearch: Record<string, unknown> = middlewares
         ? applySearchMiddleware(middlewares, fromSearch(), dest)
         : dest.search === true
           ? fromSearch()
@@ -2916,20 +2916,25 @@ function getSearchMiddlewares(
   destRoutes: ReadonlyArray<AnyRoute>,
   includeValidateSearch: boolean | undefined,
 ) {
-  const middlewares = [] as Array<SearchMiddleware<any>>
+  // Allocated on first use: most destinations have no middleware at all.
+  let middlewares: Array<SearchMiddleware<any>> | undefined
 
   for (let i = 0; i < destRoutes.length; i++) {
     const routeOptions = destRoutes[i]!.options
     if ('search' in routeOptions) {
       if (routeOptions.search?.middlewares) {
-        middlewares.push(...routeOptions.search.middlewares)
+        ;(middlewares ??= []).push(...routeOptions.search.middlewares)
       }
     }
     // TODO remove preSearchFilters and postSearchFilters in v2
     else if (routeOptions.preSearchFilters || routeOptions.postSearchFilters) {
+      // The closures below only capture variables declared inside their own
+      // block: capturing a loop-body variable would make Maglev allocate a
+      // context on every iteration, even when no closure is created.
+      const legacyOptions = routeOptions
       const legacyMiddleware: SearchMiddleware<any> = ({ search, next }) => {
-        const nextSearch = routeOptions.preSearchFilters
-          ? routeOptions.preSearchFilters.reduce(
+        const nextSearch = legacyOptions.preSearchFilters
+          ? legacyOptions.preSearchFilters.reduce(
               (prev, next) => next(prev),
               search,
             )
@@ -2937,18 +2942,18 @@ function getSearchMiddlewares(
 
         const result = next(nextSearch)
 
-        return routeOptions.postSearchFilters
-          ? routeOptions.postSearchFilters.reduce(
+        return legacyOptions.postSearchFilters
+          ? legacyOptions.postSearchFilters.reduce(
               (prev, next) => next(prev),
               result,
             )
           : result
       }
-      middlewares.push(legacyMiddleware)
+      ;(middlewares ??= []).push(legacyMiddleware)
     }
 
-    const routeValidateSearch = routeOptions.validateSearch
-    if (includeValidateSearch && routeValidateSearch) {
+    if (includeValidateSearch && routeOptions.validateSearch) {
+      const routeValidateSearch = routeOptions.validateSearch
       const validate: SearchMiddleware<any> = ({ search, next, meta }) => {
         const result = next(search)
         try {
@@ -2968,7 +2973,7 @@ function getSearchMiddlewares(
         return result
       }
 
-      middlewares.push(validate)
+      ;(middlewares ??= []).push(validate)
     }
   }
 
