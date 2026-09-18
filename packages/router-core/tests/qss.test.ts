@@ -4,18 +4,35 @@ import { decode, encode } from '../src/qss'
 afterEach(() => vi.unstubAllGlobals())
 
 describe('encode function', () => {
-  it.each([{}, { skipped: undefined }])(
-    'does not allocate a native serializer for %j',
-    (input) => {
-      const Original = URLSearchParams
-      const constructor = vi.fn(function () {
-        return new Original()
-      })
-      vi.stubGlobal('URLSearchParams', constructor)
-      expect(encode(input)).toBe('')
-      expect(constructor).not.toHaveBeenCalled()
-    },
-  )
+  it.each([
+    [{}, ''],
+    [{ skipped: undefined }, ''],
+    [
+      { token: 'foo', key: 'value*-._', page: 2 },
+      'token=foo&key=value*-._&page=2',
+    ],
+  ])('does not allocate a native serializer for %j', (input, expected) => {
+    const Original = URLSearchParams
+    const constructor = vi.fn(function () {
+      return new Original()
+    })
+    vi.stubGlobal('URLSearchParams', constructor)
+    expect(encode(input)).toBe(expected)
+    expect(constructor).not.toHaveBeenCalled()
+  })
+
+  it('serializes like application/x-www-form-urlencoded', () => {
+    expect(encode({ "!'()~*-._ ": "!'()~*-._ " })).toBe(
+      '%21%27%28%29%7E*-._+=%21%27%28%29%7E*-._+',
+    )
+    expect(encode({ 'a b+c': '=&?#/%' })).toBe('a+b%2Bc=%3D%26%3F%23%2F%25')
+    expect(encode({ ü日: '😀' })).toBe('%C3%BC%E6%97%A5=%F0%9F%98%80')
+  })
+
+  it('keeps pair order when plain pairs surround an encoded one', () => {
+    expect(encode({ a: '1', b: 'x y', c: '3', d: '' })).toBe('a=1&b=x+y&c=3&d=')
+    expect(encode({ 'x y': '1', b: '2' })).toBe('x+y=1&b=2')
+  })
 
   it('keeps getter and serializer order, including inherited values', () => {
     const calls: Array<string> = []
