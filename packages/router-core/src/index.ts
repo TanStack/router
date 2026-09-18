@@ -323,6 +323,8 @@ export {
   getUrlScheme,
   isDangerousProtocol,
   buildDevStylesUrl,
+  safeStringify,
+  defaultStringifyLoaderDeps,
 } from './utils'
 export type {
   NoInfer,
