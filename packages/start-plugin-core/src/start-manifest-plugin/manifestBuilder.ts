@@ -17,6 +17,8 @@ import type {
 import type { InlineCssTemplate } from './inlineCss'
 import type { NormalizedClientBuild, NormalizedClientChunk } from '../types'
 
+const VISITING_CHUNK = 1
+
 type RouteTreeRoute = {
   filePath?: string
   preloads?: Array<string>
@@ -410,6 +412,7 @@ export function createChunkCssAssetCollector(options: {
   getStylesheetLink: (cssFile: string) => ManifestCssLink
 }) {
   const linksByChunk = new Map<NormalizedClientChunk, Array<ManifestCssLink>>()
+  const stateByChunk = new Map<NormalizedClientChunk, number>()
 
   const appendAsset = (
     links: Array<ManifestCssLink>,
@@ -432,34 +435,31 @@ export function createChunkCssAssetCollector(options: {
       return cachedLinks
     }
 
+    if (stateByChunk.get(chunk) === VISITING_CHUNK) {
+      return []
+    }
+    stateByChunk.set(chunk, VISITING_CHUNK)
+
     const links: Array<ManifestCssLink> = []
     const seenLinks = new Set<ManifestCssLink>()
-    const visitedChunks = new Set<NormalizedClientChunk>()
 
-    const visitChunk = (currentChunk: NormalizedClientChunk) => {
-      if (visitedChunks.has(currentChunk)) {
-        return
-      }
-      visitedChunks.add(currentChunk)
-
-      for (let i = 0; i < currentChunk.imports.length; i++) {
-        const importedChunk = options.chunksByFileName.get(
-          currentChunk.imports[i]!,
-        )
-        if (importedChunk) {
-          visitChunk(importedChunk)
-        }
+    for (let i = 0; i < chunk.imports.length; i++) {
+      const importedChunk = options.chunksByFileName.get(chunk.imports[i]!)
+      if (!importedChunk) {
+        continue
       }
 
-      for (const cssFile of currentChunk.css) {
-        appendAsset(links, seenLinks, options.getStylesheetLink(cssFile))
+      const importedLinks = getChunkCssAssets(importedChunk)
+      for (let j = 0; j < importedLinks.length; j++) {
+        appendAsset(links, seenLinks, importedLinks[j]!)
       }
     }
 
-    visitChunk(chunk)
+    for (const cssFile of chunk.css) {
+      appendAsset(links, seenLinks, options.getStylesheetLink(cssFile))
+    }
 
-    // Cache only the completed traversal. A nested visit in a cycle may have
-    // skipped an ancestor whose CSS has not been collected yet.
+    stateByChunk.delete(chunk)
     linksByChunk.set(chunk, links)
     return links
   }
