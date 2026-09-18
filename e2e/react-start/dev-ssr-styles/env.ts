@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import * as z from 'zod'
 
 const ssrStylesModeSchema = z
   .enum(['default', 'disabled', 'custom-basepath'])

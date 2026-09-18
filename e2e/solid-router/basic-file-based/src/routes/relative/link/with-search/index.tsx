@@ -1,5 +1,5 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 export const Route = createFileRoute('/relative/link/with-search/')({
   component: RouteComponent,

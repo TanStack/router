@@ -1,7 +1,7 @@
 import { Link, createFileRoute } from '@tanstack/solid-router'
 import { Suspense } from 'solid-js'
 import { queryOptions, useQuery } from '@tanstack/solid-query'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const searchSchema = z.object({
   n: z.number().default(1),

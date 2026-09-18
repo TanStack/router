@@ -391,7 +391,7 @@ Use Zod for runtime validation of environment variables:
 
 ```typescript
 // src/config/env.ts
-import { z } from 'zod'
+import * as z from 'zod'
 
 const envSchema = z.object({
   DATABASE_URL: z.url(),

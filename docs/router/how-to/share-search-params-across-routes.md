@@ -19,7 +19,7 @@ Share parameters across your entire application by validating them in the root r
 ```tsx
 // routes/__root.tsx
 import { createRootRoute, Outlet } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const globalSearchSchema = z.object({
   theme: z.enum(['light', 'dark']).default('light'),
@@ -47,7 +47,7 @@ function RootComponent() {
 ```tsx
 // routes/products/index.tsx
 import { createFileRoute } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const productSearchSchema = z.object({
   page: z.number().default(1),
@@ -80,7 +80,7 @@ Share parameters within a section of your app using layout routes:
 ```tsx
 // routes/_authenticated.tsx
 import { createFileRoute, Outlet } from '@tanstack/react-router'
-import { z } from 'zod'
+import * as z from 'zod'
 
 const authSearchSchema = z.object({
   impersonate: z.string().optional(),

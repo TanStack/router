@@ -9,7 +9,7 @@ import {
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 
-import { z } from 'zod'
+import * as z from 'zod'
 import {
   Link,
   Outlet,
