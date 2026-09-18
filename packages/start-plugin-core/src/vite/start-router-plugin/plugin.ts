@@ -10,6 +10,8 @@ import { routesManifestPlugin } from '../../start-router-plugin/generator-plugin
 import { prerenderRoutesPlugin } from '../../start-router-plugin/generator-plugins/prerender-routes-plugin'
 import { buildRouteTreeFileFooterFromConfig } from '../../start-router-plugin/route-tree-footer'
 import { pruneServerOnlySubtrees } from '../../start-router-plugin/pruneServerOnlySubtrees'
+import { buildServerRouteTree } from '../../start-router-plugin/server-route-tree'
+import { withSsrRouteOptionPruning } from '../../start-router-plugin/ssr-route-options'
 import { SERVER_PROP } from '../../start-router-plugin/constants'
 import type { GetConfigFn } from '../../types'
 import type { TanStackStartVitePluginCoreOptions } from '../types'
@@ -37,6 +39,11 @@ export function tanStackStartRouter(
   corePluginOpts: TanStackStartVitePluginCoreOptions,
 ): Array<PluginOption> {
   const routerPluginContext = createRouterPluginContext()
+  let isBuild = false
+  const serverRouteEnvironmentNames = new Set([
+    VITE_ENVIRONMENT_NAMES.server,
+    corePluginOpts.providerEnvironmentName,
+  ])
 
   const getGeneratedRouteTreePath = () => {
     const { startConfig } = getConfig()
@@ -48,7 +55,6 @@ export function tanStackStartRouter(
     if (!clientEnvironment) {
       return
     }
-
     const mod = clientEnvironment.moduleGraph.getModuleById(
       getGeneratedRouteTreePath(),
     )
@@ -89,22 +95,27 @@ export function tanStackStartRouter(
   }
 
   let resolvedGeneratedRouteTreePath: string | null = null
-  const clientTreePlugin: Plugin = {
-    name: 'tanstack-start:route-tree-client-plugin',
+  const routeTreePlugin: Plugin = {
+    name: 'tanstack-start:route-tree-plugin',
     enforce: 'pre',
-    applyToEnvironment: (env) => env.name === VITE_ENVIRONMENT_NAMES.client,
+    applyToEnvironment: (env) =>
+      env.name === VITE_ENVIRONMENT_NAMES.client ||
+      (isBuild &&
+        getConfig().startConfig.router.enableRouteGeneration !== false &&
+        serverRouteEnvironmentNames.has(env.name)),
     configureServer(server) {
       clientEnvironment = server.environments[VITE_ENVIRONMENT_NAMES.client]
     },
-    config() {
+    config(_config, { command }) {
+      isBuild = command === 'build'
       type LoadObjectHook = Extract<
-        typeof clientTreePlugin.load,
+        typeof routeTreePlugin.load,
         { filter?: unknown }
       >
       resolvedGeneratedRouteTreePath = normalizePath(
         getGeneratedRouteTreePath(),
       )
-      ;(clientTreePlugin.load as LoadObjectHook).filter = {
+      ;(routeTreePlugin.load as LoadObjectHook).filter = {
         id: { include: new RegExp(resolvedGeneratedRouteTreePath) },
       }
     },
@@ -116,6 +127,9 @@ export function tanStackStartRouter(
       async handler() {
         if (!generatorInstance) {
           throw new Error('Generator instance not initialized')
+        }
+        if (this.environment.name !== VITE_ENVIRONMENT_NAMES.client) {
+          return buildServerRouteTree(generatorInstance)
         }
         const crawlingResult = await generatorInstance.getCrawlingResult()
         if (!crawlingResult) {
@@ -143,7 +157,7 @@ export function tanStackStartRouter(
     },
   }
   return [
-    clientTreePlugin,
+    routeTreePlugin,
     tanstackRouterGenerator(() => {
       const routerConfig = getConfig().startConfig.router
       const plugins = [clientTreeGeneratorPlugin, routesManifestPlugin()]
@@ -171,18 +185,22 @@ export function tanStackStartRouter(
         },
       }
     }, routerPluginContext),
-    tanStackRouterCodeSplitter(() => {
-      const routerConfig = getConfig().startConfig.router
-      return {
-        ...routerConfig,
-        codeSplittingOptions: {
-          ...routerConfig.codeSplittingOptions,
-          addHmr: false,
-        },
-        plugin: {
-          vite: { environmentName: VITE_ENVIRONMENT_NAMES.server },
-        },
-      }
-    }, routerPluginContext),
+    ...Array.from(serverRouteEnvironmentNames).map((environmentName) =>
+      tanStackRouterCodeSplitter(() => {
+        const { startConfig } = getConfig()
+        const routerConfig = startConfig.router
+        return {
+          ...routerConfig,
+          codeSplittingOptions: isBuild
+            ? withSsrRouteOptionPruning(routerConfig.codeSplittingOptions, {
+                addHmr: false,
+              })
+            : { ...routerConfig.codeSplittingOptions, addHmr: false },
+          plugin: {
+            vite: { environmentName },
+          },
+        }
+      }, routerPluginContext),
+    ),
   ]
 }

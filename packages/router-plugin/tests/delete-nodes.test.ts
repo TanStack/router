@@ -34,6 +34,31 @@ const testGroups: Array<{
 ]
 
 describe('code-splitter delete nodes', () => {
+  it('should delete route options declared as object methods', () => {
+    const compileResult = compileCodeSplitReferenceRoute({
+      code: `
+import { createFileRoute } from '@tanstack/react-router'
+import crypto from 'node:crypto'
+
+export const Route = createFileRoute('/')({
+  ssr() {
+    return crypto.randomInt(0, 2) === 0
+  },
+  component: () => <div>hello world</div>,
+})
+`,
+      filename: 'ssr-method.tsx',
+      id: 'ssr-method.tsx',
+      addHmr: false,
+      codeSplitGroupings: [],
+      deleteNodes: new Set(['ssr']),
+      targetFramework: 'react',
+    })
+
+    expect(compileResult?.code).not.toContain('ssr()')
+    expect(compileResult?.code).not.toContain('node:crypto')
+  })
+
   describe.each(frameworks)('FRAMEWORK=%s', (framework) => {
     describe.each(testGroups)(
       'SPLIT_GROUP=$name',
