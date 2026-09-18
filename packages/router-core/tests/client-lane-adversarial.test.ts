@@ -674,21 +674,27 @@ describe('adversarial client lane ownership', () => {
     expect(contextWorkAborted).toBe(true)
   })
 
-  test.each(
-    ([false, true] as const).flatMap((isServer) => [
-      {
-        isServer,
-        thrownType: 'AbortSignal',
-        createThrownValue: (signal: AbortSignal) => signal,
-      },
-      {
-        isServer,
-        thrownType: 'AbortError',
-        createThrownValue: () =>
-          new DOMException('The operation was aborted.', 'AbortError'),
-      },
-    ]),
-  )(
+  test.each([
+    {
+      isServer: false,
+      thrownType: 'AbortSignal',
+      createThrownValue: (signal: AbortSignal) => signal,
+    },
+    {
+      isServer: false,
+      thrownType: 'AbortError',
+      createThrownValue: () =>
+        new DOMException('The operation was aborted.', 'AbortError'),
+    },
+    {
+      isServer: true,
+      thrownType: 'AbortError',
+      createThrownValue: () =>
+        Object.assign(new Error('The operation was aborted.'), {
+          name: 'AbortError',
+        }),
+    },
+  ])(
     'treats a user-thrown $thrownType in beforeLoad as an ordinary route error (isServer=$isServer)',
     async ({ isServer, createThrownValue }) => {
       let matchSignal: AbortSignal | undefined
@@ -718,7 +724,8 @@ describe('adversarial client lane ownership', () => {
       }
 
       const match = router.state.matches.at(-1)
-      expect(matchSignal?.aborted).toBe(isServer)
+      // The payload finished, so the controller is left alone on both sides.
+      expect(matchSignal?.aborted).toBe(false)
       expect(match).toMatchObject({
         routeId: brokenRoute.id,
         status: 'error',

@@ -18,6 +18,9 @@ on:
   pull_request:
     paths:
       - 'packages/**'
+      - '!packages/**/tests/**'
+      - '!packages/**/__tests__/**'
+      - '!packages/**/*.test.*'
       - 'benchmarks/**'
   workflow_dispatch:
 
