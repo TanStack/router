@@ -146,12 +146,13 @@ function useHydrationGate(props: InternalHydrateProps) {
 
   React.useEffect(() => {
     const gate = gateRef.current!
+    const marker = markerElementRef.current
     return () => {
       const controller = prefetchControllerRef.current
       controller?.abortController.abort()
       controller?.cleanup?.()
       controller?.hydrationListeners.clear()
-      releaseGate(gate)
+      releaseGate(gate, marker)
     }
   }, [])
 
