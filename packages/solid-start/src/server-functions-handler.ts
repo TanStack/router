@@ -2,9 +2,9 @@ import {
   configureServerFunctionsServer,
   createNoJSHandler,
   handleServerFunctionRequest,
-  parseServerFunctionUrl,
+  parseServerFunctionActionUrl,
   registerFlightDataSource,
-  serverFunctionUrl,
+  serverFunctionActionUrl,
 } from '@solidjs/web/server-functions/server'
 import { redirect } from '@tanstack/solid-router'
 import { provideRequestEvent } from '@solidjs/web/storage'
@@ -94,7 +94,7 @@ export async function handleSolidServerFunctionRequest(
 }
 
 function getSolidServerFunctionId(request: Request) {
-  const parsedId = parseServerFunctionUrl(request.url)
+  const parsedId = parseServerFunctionActionUrl(request.url)
   if (parsedId) {
     return parsedId
   }
@@ -117,12 +117,12 @@ function withSolidServerFunctionId(request: Request, serverFnId: string) {
   // Solid resolves the function id from the request URL's pathname
   // (endpoint mount + id segment). Requests that carried the id some other
   // way (e.g. an `?id=` query) are rewritten onto that canonical shape.
-  if (parseServerFunctionUrl(request.url) === serverFnId) {
+  if (parseServerFunctionActionUrl(request.url) === serverFnId) {
     return request
   }
 
   const url = new URL(request.url)
-  const canonicalUrl = new URL(serverFunctionUrl(serverFnId), url.origin)
+  const canonicalUrl = new URL(serverFunctionActionUrl(serverFnId), url.origin)
   canonicalUrl.search = url.search
   return new Request(canonicalUrl, request)
 }

@@ -66,21 +66,21 @@
     "node": ">=20.19"
   },
   "dependencies": {
-    "@solidjs/web": "^2.0.0-rc.8",
+    "@solidjs/web": "^2.0.0-rc.9",
     "@tanstack/router-devtools-core": "workspace:*"
   },
   "devDependencies": {
-    "@solidjs/vite-plugin": "^3.0.0-next.43",
-    "@solidjs/web": "^2.0.0-rc.8",
+    "@solidjs/vite-plugin": "^3.0.0-next.44",
+    "@solidjs/web": "^2.0.0-rc.9",
     "@types/node": ">=20",
-    "solid-js": "^2.0.0-rc.8",
+    "solid-js": "^2.0.0-rc.9",
     "vite": "*"
   },
   "peerDependencies": {
-    "@solidjs/web": "^2.0.0-rc.8",
+    "@solidjs/web": "^2.0.0-rc.9",
     "@tanstack/router-core": "workspace:^",
     "@tanstack/solid-router": "workspace:^",
-    "solid-js": "^2.0.0-rc.8"
+    "solid-js": "^2.0.0-rc.9"
   },
   "peerDependenciesMeta": {
     "@tanstack/router-core": {
