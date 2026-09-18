@@ -7,6 +7,7 @@ import {
   generateFromAst,
   getVariableDeclaratorForExpressionPath,
   parseAst,
+  summarizeExpression,
   unwrapExpression,
 } from '@tanstack/router-utils'
 import babel from '@babel/core'
@@ -23,7 +24,10 @@ import type {
   RewriteCandidate,
   ServerFn,
 } from './types'
-import type { ModuleInfoBinding } from '@tanstack/router-utils'
+import type {
+  ExpressionSummary,
+  ModuleInfoBinding,
+} from '@tanstack/router-utils'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerEnvironment,
@@ -1249,7 +1253,10 @@ export class StartCompiler {
           ...(await Promise.all(
             unresolvedCandidates.map(async (candidate) => ({
               path: candidate.path,
-              kind: await this.resolveExprKind(candidate.path.node, id),
+              kind: await this.resolveExprKind(
+                summarizeExpression(candidate.path.node),
+                id,
+              ),
             })),
           )),
         )
@@ -1806,8 +1813,7 @@ export class StartCompiler {
       isLookupKind(resolvedKind) &&
       getLookupSetup(resolvedKind, this.externalLookupSetup)?.type ===
         'directCall' &&
-      binding.init &&
-      t.isCallExpression(unwrapExpression(binding.init))
+      binding.init?.type === 'call'
     ) {
       binding.resolvedKind = 'None'
       return 'None'
@@ -1817,7 +1823,7 @@ export class StartCompiler {
   }
 
   private async resolveExprKind(
-    expr: t.Expression | null,
+    expr: ExpressionSummary | null,
     fileId: string,
     visited = new Set<string>(),
   ): Promise<Kind> {
@@ -1825,62 +1831,48 @@ export class StartCompiler {
       return 'None'
     }
 
-    expr = unwrapExpression(expr)
-
-    let result: Kind = 'None'
-
-    if (t.isCallExpression(expr)) {
-      if (!t.isExpression(expr.callee)) {
-        return 'None'
-      }
-      const calleeKind = await this.resolveCalleeKind(
-        expr.callee,
-        fileId,
-        visited,
-      )
-      if (calleeKind === 'Root' || calleeKind === 'Builder') {
-        return 'Builder'
-      }
-      // For method chain patterns (callee is MemberExpression like .server() or .client()),
-      // return the resolved kind if valid
-      if (t.isMemberExpression(expr.callee)) {
-        if (this.validLookupKinds.has(calleeKind as LookupKind)) {
-          return calleeKind
-        }
-      }
-      // For direct calls (callee is Identifier like createServerOnlyFn()),
-      // trust calleeKind if it resolved to a valid LookupKind. This means
-      // resolveBindingKind successfully traced the import back to
-      // @tanstack/start-fn-stubs (via fast path or slow path through re-exports).
-      // This handles both direct imports from @tanstack/react-start and imports
-      // from intermediate packages that re-export from @tanstack/start-client-core.
-      if (t.isIdentifier(expr.callee)) {
-        if (this.validLookupKinds.has(calleeKind as LookupKind)) {
-          return calleeKind
-        }
-      }
-    } else if (t.isMemberExpression(expr) && t.isIdentifier(expr.property)) {
-      result = await this.resolveCalleeKind(expr.object, fileId, visited)
+    if (expr.type === 'identifier') {
+      return this.resolveIdentifierKind(expr.name, fileId, visited)
     }
 
-    if (result === 'None' && t.isIdentifier(expr)) {
-      result = await this.resolveIdentifierKind(expr.name, fileId, visited)
+    if (expr.type === 'member') {
+      return this.resolveCalleeKind(expr.object, fileId, visited)
     }
 
-    return result
+    const calleeKind = await this.resolveCalleeKind(
+      expr.callee,
+      fileId,
+      visited,
+    )
+    if (calleeKind === 'Root' || calleeKind === 'Builder') {
+      return 'Builder'
+    }
+
+    // A method chain (`.server()`, `.client()`) or a direct call to a factory
+    // (`createServerOnlyFn()`) takes the kind of its callee, which means
+    // resolveBindingKind traced the import back to @tanstack/start-fn-stubs,
+    // directly or through re-exports. A callee that is itself a call does not.
+    if (
+      expr.callee.type !== 'call' &&
+      this.validLookupKinds.has(calleeKind as LookupKind)
+    ) {
+      return calleeKind
+    }
+
+    return 'None'
   }
 
   private async resolveCalleeKind(
-    callee: t.Expression,
+    callee: ExpressionSummary,
     fileId: string,
     visited = new Set<string>(),
   ): Promise<Kind> {
-    if (t.isIdentifier(callee)) {
+    if (callee.type === 'identifier') {
       return this.resolveIdentifierKind(callee.name, fileId, visited)
     }
 
-    if (t.isMemberExpression(callee) && t.isIdentifier(callee.property)) {
-      const prop = callee.property.name
+    if (callee.type === 'member') {
+      const prop = callee.property
 
       // Check if this property matches any method chain pattern
       const possibleKinds = IdentifierToKinds.get(prop)
@@ -1917,7 +1909,7 @@ export class StartCompiler {
       }
 
       // Check if the object is a namespace import
-      if (t.isIdentifier(callee.object)) {
+      if (callee.object.type === 'identifier') {
         const info = await this.getModuleInfo(fileId)
         const binding = info.bindings.get(callee.object.name)
         if (
@@ -1929,7 +1921,7 @@ export class StartCompiler {
             {
               type: 'import',
               source: binding.source,
-              importedName: callee.property.name,
+              importedName: prop,
             },
             fileId,
             visited,
