@@ -137,8 +137,7 @@ test.describe('RSC Stream Flash Prevention', () => {
     const notifications = page
       .getByTestId('notification-list')
       .locator('[data-testid^="notification-notif_"]')
-    const count = await notifications.count()
-    expect(count).toBe(7)
+    await expect(notifications).toHaveCount(7)
 
     // Check first notification
     const firstNotification = notifications.first()
