@@ -1,10 +1,16 @@
 import { describe, expect, test, vi } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import {
+  BaseRootRoute,
+  BaseRoute,
+  RouterCore,
+  createNonReactiveMutableStore,
+  createNonReactiveReadonlyStore,
+} from '../src'
 import { commitMatches } from '../src/load-client'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRouteMatch, AnyRouter } from '../src'
-import type { LoaderFlight, LoadTransaction } from '../src/load-client'
+import type { LoadTransaction, LoaderFlight } from '../src/load-client'
 
 type Match = AnyRouteMatch & { _flight?: LoaderFlight }
 
@@ -178,16 +184,55 @@ describe('commit cache ownership', () => {
     expect(onAbort).toHaveBeenCalledOnce()
   })
 
-  test('uses cache contents after synchronous publication mutation', () => {
-    const retainedFlight = resource()
-    const retained = match('retained', retainedFlight)
-    const { router, publish, commit } = setup([], [retained])
-    publish.mockImplementation(() => router._cache.delete('retained'))
+  test('a synchronous publication observer can clear retained preloads', async () => {
+    let signal: AbortSignal | undefined
+    let observe: (() => void) | undefined
+    const root = new BaseRootRoute({})
+    const home = new BaseRoute({ getParentRoute: () => root, path: '/' })
+    const other = new BaseRoute({ getParentRoute: () => root, path: '/other' })
+    const retained = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/retained',
+      preloadGcTime: Infinity,
+      loader: ({ abortController }) => {
+        signal = abortController.signal
+        return 'retained data'
+      },
+    })
+    // Framework adapters supply this public batching hook. Observe a complete
+    // store publication synchronously, before commit's resource handoff.
+    const router = new RouterCore(
+      {
+        routeTree: root.addChildren([home, other, retained]),
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+        isServer: false,
+      },
+      () => ({
+        createMutableStore: createNonReactiveMutableStore,
+        createReadonlyStore: createNonReactiveReadonlyStore,
+        batch: (fn) => {
+          fn()
+          observe?.()
+        },
+      }),
+    )
+    await router.load()
+    await router.preloadRoute({ to: '/retained' })
+    const abort = vi.fn(() => {
+      expect(router.state.matches.at(-1)?.routeId).toBe(other.id)
+    })
+    signal!.addEventListener('abort', abort)
+    observe = () => {
+      if (router.state.matches.at(-1)?.routeId === other.id) {
+        observe = undefined
+        router.clearCache()
+      }
+    }
 
-    commit()
+    await router.navigate({ to: '/other' })
 
-    expect(retained._flight).toBeUndefined()
-    expect(retainedFlight[1].signal.aborted).toBe(true)
+    expect(signal!.aborted).toBe(true)
+    expect(abort).toHaveBeenCalledOnce()
   })
 
   test('uses the captured cache if publication replaces the router cache', () => {
@@ -253,3 +298,86 @@ test('an unrelated navigation retains a fresh preload flight and evicts an expir
   expect(freshLoader).toHaveBeenCalledOnce()
   expect(router.state.matches.at(-1)?.loaderData).toBe('fresh data')
 })
+
+test.each([false, true])(
+  'cache retirement reentry preserves successor ownership (retained=%s)',
+  async (keepUnrelated) => {
+    const root = new BaseRootRoute({})
+    const home = new BaseRoute({ getParentRoute: () => root, path: '/' })
+    const enteredOther = vi.fn()
+    const other = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/other',
+      onEnter: enteredOther,
+    })
+    let firstSignal: AbortSignal | undefined
+    const secondSignals: Array<AbortSignal> = []
+    let retainedSignal: AbortSignal | undefined
+    const first = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/first',
+      preloadGcTime: 0,
+      loader: ({ abortController }) => {
+        firstSignal = abortController.signal
+        return 'first'
+      },
+    })
+    const secondLoader = vi.fn(
+      ({ abortController }: { abortController: AbortController }) => {
+        secondSignals.push(abortController.signal)
+        return `second ${secondSignals.length}`
+      },
+    )
+    const second = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/second',
+      preloadGcTime: 0,
+      preloadStaleTime: Infinity,
+      loader: secondLoader,
+    })
+    const retainedLoader = vi.fn(
+      ({ abortController }: { abortController: AbortController }) => {
+        retainedSignal = abortController.signal
+        return 'retained'
+      },
+    )
+    const retained = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/retained',
+      preloadGcTime: Infinity,
+      preloadStaleTime: Infinity,
+      loader: retainedLoader,
+    })
+    const router = createTestRouter({
+      routeTree: root.addChildren([home, other, first, second, retained]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+    })
+    await router.load()
+    await router.preloadRoute({ to: '/first' })
+    await router.preloadRoute({ to: '/second' })
+    if (keepUnrelated) {
+      await router.preloadRoute({ to: '/retained' })
+    }
+    let successor: Promise<void> | undefined
+    const firstAbort = vi.fn(() => {
+      expect(router.state.matches.at(-1)?.routeId).toBe(other.id)
+      successor = router.navigate({ to: '/second' })
+    })
+    const secondAbort = vi.fn()
+    firstSignal!.addEventListener('abort', firstAbort)
+    secondSignals[0]!.addEventListener('abort', secondAbort)
+    await router.navigate({ to: '/other' })
+    await successor
+    expect(firstAbort).toHaveBeenCalledOnce()
+    expect(secondAbort).toHaveBeenCalledOnce()
+    expect(secondLoader).toHaveBeenCalledTimes(2)
+    expect(secondSignals[1]!.aborted).toBe(false)
+    expect(router.state.matches.at(-1)?.loaderData).toBe('second 2')
+    expect(enteredOther).not.toHaveBeenCalled()
+    if (keepUnrelated) {
+      expect(retainedSignal?.aborted).toBe(false)
+      await router.navigate({ to: '/retained' })
+      expect(retainedLoader).toHaveBeenCalledOnce()
+    }
+  },
+)
