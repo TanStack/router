@@ -1453,21 +1453,26 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   }
   const matches = tx[3 /* matches */]
   const presented = router.stores.matches.get()
+  // Only the first presented `pending` entry is the painted boundary. The
+  // fallback replaces every match after it, so those carry `pending` in the
+  // offered snapshot without ever rendering.
+  const paintedBoundary = presented.findIndex(
+    (candidate) => candidate.status === 'pending',
+  )
   let session = router._pending
   for (let index = 0; index < matches.length; index++) {
     const match = matches[index]!
-    const success = match.status === 'success' && !match._notFound
     const presentedPending =
-      presented[index]?.id === match.id &&
-      presented[index]?.status === 'pending'
-    if (success && !presentedPending) {
+      index === paintedBoundary && presented[index]?.id === match.id
+    // A settled match never keeps the boundary, even while it is painted. The
+    // boundary advances so the next presented snapshot carries its real status.
+    if (match.status === 'success' && !match._notFound) {
       continue
     }
     const route = getRoute(router, match as WorkMatch)
-    const delay =
-      success || match.invalid
-        ? 0
-        : (route.options.pendingMs ?? router.options.defaultPendingMs)
+    const delay = match.invalid
+      ? 0
+      : (route.options.pendingMs ?? router.options.defaultPendingMs)
     const component =
       route.options.pendingComponent ??
       (router.options as any).defaultPendingComponent
