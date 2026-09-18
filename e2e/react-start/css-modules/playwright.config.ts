@@ -3,10 +3,7 @@ import { appServerReady } from '@tanstack/router-e2e-utils'
 
 const mode = process.env.MODE ?? 'prod'
 const isDev = mode === 'dev'
-const isRsbuild = process.env.E2E_TOOLCHAIN === 'rsbuild'
-const distDir =
-  process.env.E2E_DIST_DIR ?? (isRsbuild ? 'dist-rsbuild-ssr' : undefined)
-const serverEntry = isRsbuild ? 'index.js' : 'server.js'
+const distDir = process.env.E2E_DIST_DIR
 const viteConfig = process.env.VITE_CONFIG // 'nitro' | 'basepath' | 'cloudflare' | undefined
 const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 
@@ -35,7 +32,7 @@ export default defineConfig({
     command: isDev
       ? devCommand
       : distDir
-        ? `pnpm exec srvx --prod --dir=. -s ${distDir}/client --entry ${distDir}/server/${serverEntry}`
+        ? `pnpm exec srvx --prod --dir=. -s ${distDir}/client --entry ${distDir}/server/server.js`
         : `pnpm build && PORT=${PORT} pnpm start`,
     wait: appServerReady,
     reuseExistingServer: false,

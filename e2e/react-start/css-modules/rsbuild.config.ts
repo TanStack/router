@@ -12,6 +12,10 @@ export default defineConfig({
   },
   tools: {
     rspack(config, { environment }) {
+      if (environment.name === 'ssr') {
+        config.output ??= {}
+        config.output.filename = 'server.js'
+      }
       if (environment.name !== 'client') {
         return
       }
