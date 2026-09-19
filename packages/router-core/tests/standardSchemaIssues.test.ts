@@ -71,11 +71,35 @@ describe('formatStandardSchemaIssues', () => {
     ).toBe('__proto__.constructor: x')
   })
 
-  it('renders a symbol key', () => {
+  it('renders a symbol key unquoted', () => {
     const key = Symbol('secret')
+    expect(formatStandardSchemaIssues([{ message: 'x', path: [key] }])).toBe(
+      '[Symbol(secret)]: x',
+    )
+  })
+
+  it('does not let a symbol collide with a string of the same text', () => {
+    const asSymbol = formatStandardSchemaIssues([
+      { message: 'x', path: [Symbol('secret')] },
+    ])
+    const asString = formatStandardSchemaIssues([
+      { message: 'x', path: ['Symbol(secret)'] },
+    ])
+    expect(asSymbol).toBe('[Symbol(secret)]: x')
+    expect(asString).toBe('["Symbol(secret)"]: x')
+    expect(asSymbol).not.toBe(asString)
+  })
+
+  it('distinguishes two symbols that share a description', () => {
+    const first = Symbol('dup')
+    const second = Symbol('dup')
     expect(
-      formatStandardSchemaIssues([{ message: 'x', path: [key] }]),
-    ).toBe('["Symbol(secret)"]: x')
+      formatStandardSchemaIssues([
+        { message: 'a', path: [first] },
+        { message: 'b', path: [second] },
+        { message: 'c', path: [first] },
+      ]),
+    ).toBe('[Symbol(dup)]: a\n[Symbol(dup)#2]: b\n[Symbol(dup)]: c')
   })
 
   it('joins several issues one per line', () => {
