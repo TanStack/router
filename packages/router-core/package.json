@@ -48,6 +48,16 @@
         "default": "./dist/cjs/index.cjs"
       }
     },
+    "./internal": {
+      "import": {
+        "types": "./dist/esm/internal.d.ts",
+        "default": "./dist/esm/internal.js"
+      },
+      "require": {
+        "types": "./dist/cjs/internal.d.cts",
+        "default": "./dist/cjs/internal.cjs"
+      }
+    },
     "./ssr/server": {
       "import": {
         "types": "./dist/esm/ssr/server.d.ts",

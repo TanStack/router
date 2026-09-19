@@ -1,10 +1,7 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
-import {
-  formatStandardSchemaIssues,
-  isRedirect,
-  parseRedirect,
-} from '@tanstack/router-core'
+import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import { formatStandardSchemaIssues } from '@tanstack/router-core/internal'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'

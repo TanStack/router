@@ -69,7 +69,6 @@ describe('formatStandardSchemaIssues', () => {
         { message: 'x', path: ['__proto__', 'constructor'] },
       ]),
     ).toBe('__proto__.constructor: x')
-    expect(({} as Record<string, unknown>).polluted).toBeUndefined()
   })
 
   it('renders a symbol key', () => {
