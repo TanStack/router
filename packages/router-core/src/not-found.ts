@@ -27,7 +27,7 @@ export type NotFoundError = {
  *
  * @param options Optional settings including `routeId`, `headers`, and `throw`.
  * @returns A not-found error object that can be thrown or returned.
- * @link https://tanstack.com/router/latest/docs/router/framework/react/api/router/notFoundFunction
+ * @link https://tanstack.com/router/latest/docs/framework/react/api/router/notFoundFunction
  */
 export function notFound(options: NotFoundError = {}) {
   ;(options as any).isNotFound = true
