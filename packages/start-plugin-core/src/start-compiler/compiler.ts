@@ -1364,7 +1364,7 @@ export class StartCompiler {
         parseExpression: (expressionCode) =>
           babel.template.expression(expressionCode, {
             placeholderPattern: false,
-          })() as t.Expression,
+          })(),
         warn: warnFn,
 
         generateFunctionId: (opts) => this.generateFunctionId(opts),
@@ -1492,7 +1492,7 @@ export class StartCompiler {
         parseExpression: (expressionCode: string) =>
           babel.template.expression(expressionCode, {
             placeholderPattern: false,
-          })() as t.Expression,
+          })(),
         warn,
       }
 

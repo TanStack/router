@@ -38,7 +38,47 @@
   "nx": {
     "targets": {
       "test:e2e": {
-        "parallelism": false
+        "parallelism": false,
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-vite-ssr",
+          "{projectRoot}/dist-vite-ssr-transform-assets",
+          "{projectRoot}/dist-vite-transform-assets-ssr",
+          "{projectRoot}/dist-rsbuild-ssr",
+          "{projectRoot}/dist-rsbuild-ssr-transform-assets",
+          "{projectRoot}/dist-rsbuild-transform-assets-ssr"
+        ]
+      },
+      "build": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-vite-ssr",
+          "{projectRoot}/dist-rsbuild-ssr"
+        ]
+      },
+      "test:e2e--vite-ssr": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-vite-ssr"
+        ]
+      },
+      "test:e2e--vite-ssr--transform-assets": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-vite-ssr-transform-assets"
+        ]
+      },
+      "test:e2e--rsbuild-ssr": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-rsbuild-ssr"
+        ]
+      },
+      "test:e2e--rsbuild-ssr--transform-assets": {
+        "outputs": [
+          "...",
+          "{projectRoot}/dist-rsbuild-ssr-transform-assets"
+        ]
       }
     },
     "metadata": {

@@ -1395,6 +1395,8 @@ const router = createRouter({
 })
 ```
 
+This setting is fixed when the router is created. To use different allowed characters, create a new router instance.
+
 The following is the list of accepted allowed characters:
 
 - `;`
