@@ -1,6 +1,10 @@
 import { mergeHeaders } from '@tanstack/router-core/ssr/client'
 
-import { isRedirect, parseRedirect } from '@tanstack/router-core'
+import {
+  formatStandardSchemaIssues,
+  isRedirect,
+  parseRedirect,
+} from '@tanstack/router-core'
 import { TSS_SERVER_FUNCTION_FACTORY } from './constants'
 import { getStartOptions } from './getStartOptions'
 import { getStartContextServerOnly } from './getStartContextServerOnly'
@@ -898,7 +902,7 @@ export async function execValidator(
     const result = await validator['~standard'].validate(input)
 
     if (result.issues)
-      throw new Error(JSON.stringify(result.issues, undefined, 2))
+      throw new Error(formatStandardSchemaIssues(result.issues))
 
     return result.value
   }

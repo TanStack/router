@@ -390,6 +390,10 @@ export type {
   ResolveValidatorOutput,
 } from './validators'
 
+// Exported so `start-client-core` can share one formatter. Not part of the
+// documented public API.
+export { formatStandardSchemaIssues } from './standardSchemaIssues'
+
 export type {
   UseRouteContextBaseOptions,
   UseRouteContextOptions,

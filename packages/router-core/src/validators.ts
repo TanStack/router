@@ -27,6 +27,13 @@ export interface AnyStandardSchemaValidateFailure {
 
 export interface AnyStandardSchemaValidateIssue {
   readonly message: string
+  /**
+   * Where the issue occurred. Absent for a root issue. A segment is either the
+   * key itself or an object carrying one, and the key may be a symbol.
+   */
+  readonly path?:
+    | ReadonlyArray<PropertyKey | { readonly key: PropertyKey }>
+    | undefined
 }
 
 export interface AnyStandardSchemaValidateInput {
