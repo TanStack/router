@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import {
   Outlet,
@@ -103,6 +103,7 @@ test('a settled layout renders its shell while its leaf is still loading', async
 // A painted fallback holds through its minimum window before the boundary
 // moves to the leaf that is still loading.
 test('a painted fallback holds its minimum before the shell renders', async () => {
+  vi.useFakeTimers()
   const headerOptions = createLazyRoute('/users/$userId')({
     component: () => (
       <div>
@@ -155,38 +156,47 @@ test('a painted fallback holds its minimum before the shell renders', async () =
     defaultPendingMinMs: 400,
   })
 
+  await router.load()
   render(<RouterProvider router={router} />)
-  await waitFor(() => expect(screen.getByText('User list')).toBeInTheDocument())
+  expect(screen.getByText('User list')).toBeInTheDocument()
 
-  const navigation = router.navigate({
-    to: '/users/$userId',
-    params: { userId: 'u1' },
+  let navigation!: Promise<void>
+  await act(async () => {
+    navigation = router.navigate({
+      to: '/users/$userId',
+      params: { userId: 'u1' },
+    })
+    await vi.advanceTimersByTimeAsync(0)
   })
-
-  await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
+  expect(screen.getByRole('status')).toBeInTheDocument()
   expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
 
-  headerChunk.resolve(headerOptions)
+  await act(async () => {
+    headerChunk.resolve(headerOptions)
+    await vi.advanceTimersByTimeAsync(0)
+  })
 
   // The layout settled, but the painted fallback holds its minimum window.
-  await new Promise((resolve) => setTimeout(resolve, 100))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(100)
+  })
   expect(screen.getByRole('status')).toBeInTheDocument()
   expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
 
   // Once the minimum elapses the shell renders with the leaf still pending.
-  await waitFor(
-    () => expect(screen.getByText('Header shell')).toBeInTheDocument(),
-    { timeout: 5000 },
-  )
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(300)
+  })
+  expect(screen.getByText('Header shell')).toBeInTheDocument()
   expect(screen.getByRole('status')).toBeInTheDocument()
   expect(screen.queryByText('User detail')).not.toBeInTheDocument()
 
-  detailLoader.resolve('detail data')
-  await navigation
-
-  await waitFor(() =>
-    expect(screen.getByText('User detail')).toBeInTheDocument(),
-  )
+  await act(async () => {
+    detailLoader.resolve('detail data')
+    await vi.advanceTimersByTimeAsync(400)
+    await navigation
+  })
+  expect(screen.getByText('User detail')).toBeInTheDocument()
   expect(screen.getByText('Header shell')).toBeInTheDocument()
 })
 
