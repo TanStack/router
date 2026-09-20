@@ -156,9 +156,7 @@ test('a painted fallback holds its minimum before the shell renders', async () =
   })
 
   render(<RouterProvider router={router} />)
-  await waitFor(() =>
-    expect(screen.getByText('User list')).toBeInTheDocument(),
-  )
+  await waitFor(() => expect(screen.getByText('User list')).toBeInTheDocument())
 
   const navigation = router.navigate({
     to: '/users/$userId',
@@ -181,6 +179,92 @@ test('a painted fallback holds its minimum before the shell renders', async () =
     { timeout: 5000 },
   )
   expect(screen.getByRole('status')).toBeInTheDocument()
+  expect(screen.queryByText('User detail')).not.toBeInTheDocument()
+
+  detailLoader.resolve('detail data')
+  await navigation
+
+  await waitFor(() =>
+    expect(screen.getByText('User detail')).toBeInTheDocument(),
+  )
+  expect(screen.getByText('Header shell')).toBeInTheDocument()
+})
+
+// Each boundary shows its own fallback as the boundary moves down the branch.
+test('the pending fallback moves from the layout to the leaf', async () => {
+  const headerOptions = createLazyRoute('/users/$userId')({
+    component: () => (
+      <div>
+        <h1>Header shell</h1>
+        <Outlet />
+      </div>
+    ),
+  })
+  const headerChunk = createControlledPromise<typeof headerOptions>()
+  const detailLoader = createControlledPromise<string>()
+
+  const rootRoute = createRootRoute({ component: Outlet })
+  const authRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_auth',
+    component: Outlet,
+  })
+  const sidebarRoute = createRoute({
+    getParentRoute: () => authRoute,
+    id: '_sidebar',
+    component: Outlet,
+  })
+  const headerRoute = createRoute({
+    getParentRoute: () => authRoute,
+    id: '_header',
+    pendingComponent: () => <p>Header loading</p>,
+  }).lazy(() => headerChunk)
+
+  const listRoute = createRoute({
+    getParentRoute: () => sidebarRoute,
+    path: '/users',
+    component: () => <p>User list</p>,
+  })
+  const detailRoute = createRoute({
+    getParentRoute: () => headerRoute,
+    path: '/users/$userId',
+    loader: () => detailLoader,
+    pendingComponent: () => <p>Leaf loading</p>,
+    component: () => <p>User detail</p>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      authRoute.addChildren([
+        sidebarRoute.addChildren([listRoute]),
+        headerRoute.addChildren([detailRoute]),
+      ]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/users'] }),
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 0,
+  })
+
+  render(<RouterProvider router={router} />)
+  await waitFor(() => expect(screen.getByText('User list')).toBeInTheDocument())
+
+  const navigation = router.navigate({
+    to: '/users/$userId',
+    params: { userId: 'u1' },
+  })
+
+  await waitFor(() =>
+    expect(screen.getByText('Header loading')).toBeInTheDocument(),
+  )
+  expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
+
+  headerChunk.resolve(headerOptions)
+
+  await waitFor(() =>
+    expect(screen.getByText('Header shell')).toBeInTheDocument(),
+  )
+  expect(screen.getByText('Leaf loading')).toBeInTheDocument()
+  expect(screen.queryByText('Header loading')).not.toBeInTheDocument()
   expect(screen.queryByText('User detail')).not.toBeInTheDocument()
 
   detailLoader.resolve('detail data')

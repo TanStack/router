@@ -38,7 +38,10 @@ describe('pending boundary must advance past settled ancestors', () => {
       id: '_header',
       pendingComponent: () => null,
     })
-    const headerChunk = createControlledPromise<any>()
+    const headerChunk =
+      createControlledPromise<
+        Awaited<ReturnType<Parameters<typeof headerRoute.lazy>[0]>>
+      >()
     headerRoute.lazy(() => headerChunk)
 
     const listRoute = new BaseRoute({
@@ -151,7 +154,7 @@ describe('pending boundary must advance past settled ancestors', () => {
     await load
   })
 
-  test('pendingMinMs on a settled boundary does not pin the presented snapshot', async () => {
+  test('a boundary that never paints does not hold the presented snapshot', async () => {
     const leafLoader = createControlledPromise<string>()
 
     const rootRoute = new BaseRootRoute({ component: () => null })
@@ -165,7 +168,10 @@ describe('pending boundary must advance past settled ancestors', () => {
       id: '_layout',
       pendingComponent: () => null,
     })
-    const layoutChunk = createControlledPromise<any>()
+    const layoutChunk =
+      createControlledPromise<
+        Awaited<ReturnType<Parameters<typeof layoutRoute.lazy>[0]>>
+      >()
     layoutRoute.lazy(() => layoutChunk)
 
     const leafRoute = new BaseRoute({
@@ -185,6 +191,8 @@ describe('pending boundary must advance past settled ancestors', () => {
       defaultPendingMs: 0,
       defaultPendingMinMs: 400,
     })
+    // The bare test router never renders, so no render ack arms a minimum
+    // window. The painted hold is covered by the React test instead.
 
     await router.load()
     const navigation = router.navigate({ to: '/leaf' })
@@ -200,6 +208,8 @@ describe('pending boundary must advance past settled ancestors', () => {
       options: { id: layoutRoute.id, component: () => null },
     })
 
+    // Nothing painted the boundary, so no minimum window holds it back and
+    // the boundary advances to the leaf as soon as the layout settles.
     await vi.waitFor(() =>
       expect(
         router.state.matches.map((match) => [match.routeId, match.status]),
@@ -212,5 +222,125 @@ describe('pending boundary must advance past settled ancestors', () => {
 
     leafLoader.resolve('leaf data')
     await navigation
+  })
+
+  test('the boundary steps down as each ancestor in the chain settles', async () => {
+    const layoutLoader = createControlledPromise<string>()
+    const midLoader = createControlledPromise<string>()
+    const leafLoader = createControlledPromise<string>()
+
+    const rootRoute = new BaseRootRoute({ component: () => null })
+    const layoutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      loader: () => layoutLoader,
+      pendingComponent: () => null,
+      component: () => null,
+    })
+    const midRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/mid',
+      loader: () => midLoader,
+      pendingComponent: () => null,
+      component: () => null,
+    })
+    const leafRoute = new BaseRoute({
+      getParentRoute: () => midRoute,
+      path: '/leaf',
+      loader: () => leafLoader,
+      pendingComponent: () => null,
+      component: () => null,
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        layoutRoute.addChildren([midRoute.addChildren([leafRoute])]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/mid/leaf'] }),
+      defaultPendingMs: 0,
+      defaultPendingMinMs: 0,
+    })
+
+    const find = (id: string) =>
+      router.state.matches.find((match) => match.routeId === id)?.status
+
+    const load = router.load()
+
+    await vi.waitFor(() => expect(find(layoutRoute.id)).toBe('pending'))
+
+    layoutLoader.resolve('layout data')
+    // The layout turning successful is what proves the boundary stepped down.
+    // A stuck boundary would keep forcing it pending in the presented snapshot.
+    await vi.waitFor(() => expect(find(layoutRoute.id)).toBe('success'))
+    await vi.waitFor(() => expect(find(midRoute.id)).toBe('pending'))
+
+    midLoader.resolve('mid data')
+    await vi.waitFor(() => expect(find(midRoute.id)).toBe('success'))
+    await vi.waitFor(() => expect(find(leafRoute.id)).toBe('pending'))
+
+    leafLoader.resolve('leaf data')
+    await load
+
+    expect(find(leafRoute.id)).toBe('success')
+  })
+
+  test('a branch with nothing left to load commits without offering a boundary', async () => {
+    const rootRoute = new BaseRootRoute({ component: () => null })
+    const indexRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+      component: () => null,
+    })
+    const layoutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      id: '_layout',
+      pendingComponent: () => null,
+    })
+    const layoutChunk =
+      createControlledPromise<
+        Awaited<ReturnType<Parameters<typeof layoutRoute.lazy>[0]>>
+      >()
+    layoutRoute.lazy(() => layoutChunk)
+
+    const leafRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/leaf',
+      component: () => null,
+    })
+
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        indexRoute,
+        layoutRoute.addChildren([leafRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      defaultPendingMs: 0,
+      defaultPendingMinMs: 0,
+    })
+
+    await router.load()
+    const navigation = router.navigate({ to: '/leaf' })
+
+    await vi.waitFor(() =>
+      expect(
+        router.state.matches.find((match) => match.routeId === layoutRoute.id)
+          ?.status,
+      ).toBe('pending'),
+    )
+
+    layoutChunk.resolve({
+      options: { id: layoutRoute.id, component: () => null },
+    })
+
+    // The leaf has no loader, so once the layout settles no match is left to
+    // offer and the branch commits without another boundary.
+    await navigation
+    expect(
+      router.state.matches.map((match) => [match.routeId, match.status]),
+    ).toEqual([
+      [rootRoute.id, 'success'],
+      [layoutRoute.id, 'success'],
+      [leafRoute.id, 'success'],
+    ])
   })
 })
