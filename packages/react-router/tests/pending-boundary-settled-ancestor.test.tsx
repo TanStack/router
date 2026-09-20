@@ -99,3 +99,95 @@ test('a settled layout renders its shell while its leaf is still loading', async
   )
   expect(screen.getByText('Header shell')).toBeInTheDocument()
 })
+
+// A painted fallback holds through its minimum window before the boundary
+// moves to the leaf that is still loading.
+test('a painted fallback holds its minimum before the shell renders', async () => {
+  const headerOptions = createLazyRoute('/users/$userId')({
+    component: () => (
+      <div>
+        <h1>Header shell</h1>
+        <Outlet />
+      </div>
+    ),
+  })
+  const headerChunk = createControlledPromise<typeof headerOptions>()
+  const detailLoader = createControlledPromise<string>()
+
+  const rootRoute = createRootRoute({ component: Outlet })
+  const authRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    id: '_auth',
+    component: Outlet,
+  })
+  const sidebarRoute = createRoute({
+    getParentRoute: () => authRoute,
+    id: '_sidebar',
+    component: Outlet,
+  })
+  const headerRoute = createRoute({
+    getParentRoute: () => authRoute,
+    id: '_header',
+  }).lazy(() => headerChunk)
+
+  const listRoute = createRoute({
+    getParentRoute: () => sidebarRoute,
+    path: '/users',
+    component: () => <p>User list</p>,
+  })
+  const detailRoute = createRoute({
+    getParentRoute: () => headerRoute,
+    path: '/users/$userId',
+    loader: () => detailLoader,
+    component: () => <p>User detail</p>,
+  })
+
+  const router = createRouter({
+    routeTree: rootRoute.addChildren([
+      authRoute.addChildren([
+        sidebarRoute.addChildren([listRoute]),
+        headerRoute.addChildren([detailRoute]),
+      ]),
+    ]),
+    history: createMemoryHistory({ initialEntries: ['/users'] }),
+    defaultPendingComponent: () => <p role="status">Loading</p>,
+    defaultPendingMs: 0,
+    defaultPendingMinMs: 400,
+  })
+
+  render(<RouterProvider router={router} />)
+  await waitFor(() =>
+    expect(screen.getByText('User list')).toBeInTheDocument(),
+  )
+
+  const navigation = router.navigate({
+    to: '/users/$userId',
+    params: { userId: 'u1' },
+  })
+
+  await waitFor(() => expect(screen.getByRole('status')).toBeInTheDocument())
+  expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
+
+  headerChunk.resolve(headerOptions)
+
+  // The layout settled, but the painted fallback holds its minimum window.
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  expect(screen.getByRole('status')).toBeInTheDocument()
+  expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
+
+  // Once the minimum elapses the shell renders with the leaf still pending.
+  await waitFor(
+    () => expect(screen.getByText('Header shell')).toBeInTheDocument(),
+    { timeout: 5000 },
+  )
+  expect(screen.getByRole('status')).toBeInTheDocument()
+  expect(screen.queryByText('User detail')).not.toBeInTheDocument()
+
+  detailLoader.resolve('detail data')
+  await navigation
+
+  await waitFor(() =>
+    expect(screen.getByText('User detail')).toBeInTheDocument(),
+  )
+  expect(screen.getByText('Header shell')).toBeInTheDocument()
+})

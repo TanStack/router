@@ -1470,6 +1470,21 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     // arms the session deadline, so a live deadline means the outgoing
     // fallback was seen; anything else advances at once.
     if (match.status === 'success' && !match._notFound) {
+      // A painted boundary holds through its minimum window. The render ack
+      // arms the session deadline, so a live deadline means the outgoing
+      // fallback was seen; anything else advances at once.
+      if (presentedPending && session?.[1 /* boundaryId */] === match.id) {
+        const remaining = session[2 /* deadline */] - Date.now()
+        if (remaining > 0) {
+          session[0 /* generation */] = tx
+          clearTimeout(session[3 /* revealTimer */])
+          session[3 /* revealTimer */] = setTimeout(
+            () => offerPending(router, tx),
+            remaining,
+          )
+          return
+        }
+      }
       // Advance past a settled match only toward pending descendants. A
       // terminal settled match that is still painted (e.g. a data-only route
       // whose SSR data arrived as success while the client component still
