@@ -1466,8 +1466,25 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
       index === paintedBoundary && presented[index]?.id === match.id
     // A settled match never keeps the boundary, even while it is painted. The
     // boundary advances so the next presented snapshot carries its real status.
+    // A painted boundary holds through its minimum window. The render ack
+    // arms the session deadline, so a live deadline means the outgoing
+    // fallback was seen; anything else advances at once.
     if (match.status === 'success' && !match._notFound) {
-      continue
+      // Advance past a settled match only toward pending descendants. A
+      // terminal settled match that is still painted (e.g. a data-only route
+      // whose SSR data arrived as success while the client component still
+      // needs its pending phase) falls through and is offered instead.
+      let hasPendingDescendant = false
+      for (let next = index + 1; next < matches.length; next++) {
+        const descendant = matches[next]!
+        if (descendant.status !== 'success' || descendant._notFound) {
+          hasPendingDescendant = true
+          break
+        }
+      }
+      if (hasPendingDescendant || !presentedPending) {
+        continue
+      }
     }
     const route = getRoute(router, match as WorkMatch)
     const delay = match.invalid
