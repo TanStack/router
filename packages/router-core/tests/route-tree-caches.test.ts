@@ -126,6 +126,126 @@ test.each([
   },
 )
 
+test.each(['production', 'development'])(
+  'refreshes server matching caches when case sensitivity changes in %s',
+  (mode) => {
+    vi.stubEnv('NODE_ENV', mode)
+    const { root, item } = createRoutes()
+    const strict = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/strict',
+      caseSensitive: true,
+    })
+    const relaxed = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/relaxed',
+      caseSensitive: false,
+    })
+    const router = createTestRouter({
+      routeTree: root.addChildren([item, strict, relaxed]),
+      history: history(),
+      isServer: true,
+      caseSensitive: false,
+    })
+    expect(router.getMatchedRoutes('/ITEMS/one')[2]).toBe(item)
+
+    for (const caseSensitive of [true, false]) {
+      router.buildLocation({
+        to: '/items/$id',
+        params: { id: 'one' },
+        search: true,
+      })
+      const previousTree = router.processedTree
+      const previousResolve = router.resolvePathCache
+      const previousLightweight = router['lightweightCache']
+      expect(previousTree.matchCache.get('/ITEMS/one')).toBeDefined()
+      expect(previousLightweight.get(router.latestLocation)).toBeDefined()
+
+      router.update({ caseSensitive })
+
+      expect(router.processedTree).not.toBe(previousTree)
+      expect(router.resolvePathCache).not.toBe(previousResolve)
+      expect(router['lightweightCache']).not.toBe(previousLightweight)
+      expect(router.getMatchedRoutes('/ITEMS/one')[2] === item).toBe(
+        !caseSensitive,
+      )
+      expect(router.getMatchedRoutes('/items/one')[2]).toBe(item)
+      expect(router.getMatchedRoutes('/STRICT')[2]).not.toBe(strict)
+      expect(router.getMatchedRoutes('/strict')[2]).toBe(strict)
+      expect(router.getMatchedRoutes('/RELAXED')[2]).toBe(relaxed)
+
+      const currentTree = router.processedTree
+      router.update({ caseSensitive })
+      expect(router.processedTree).toBe(currentTree)
+    }
+  },
+)
+
+test.each([false, true])(
+  'only reuses a server route tree with matching case sensitivity (cached: %s)',
+  (caseSensitive) => {
+    const { routeTree, item } = createRoutes()
+    const createRouter = (sensitive: boolean) =>
+      createTestRouter({
+        routeTree,
+        history: history(),
+        isServer: true,
+        caseSensitive: sensitive,
+      })
+    const first = createRouter(caseSensitive)
+    expect(first.getMatchedRoutes('/ITEMS/one')[2] === item).toBe(
+      !caseSensitive,
+    )
+
+    const same = createRouter(caseSensitive)
+    expect(same.processedTree).toBe(first.processedTree)
+    expect(same.resolvePathCache).toBe(first.resolvePathCache)
+
+    const different = createRouter(!caseSensitive)
+    expect(different.processedTree).not.toBe(first.processedTree)
+    expect(different.resolvePathCache).not.toBe(first.resolvePathCache)
+    expect(different.getMatchedRoutes('/ITEMS/one')[2] === item).toBe(
+      caseSensitive,
+    )
+    expect(different.getMatchedRoutes('/items/one')[2]).toBe(item)
+
+    const reused = createRouter(caseSensitive)
+    expect(reused.processedTree).toBe(first.processedTree)
+    for (const router of [first, same, reused]) {
+      expect(router.getMatchedRoutes('/ITEMS/one')[2] === item).toBe(
+        !caseSensitive,
+      )
+      expect(router.getMatchedRoutes('/items/one')[2]).toBe(item)
+    }
+  },
+)
+
+test('never accesses the server cache on the client', () => {
+  const getCache = vi.fn(() => {
+    throw new Error('Client read the server cache')
+  })
+  const setCache = vi.fn(() => {
+    throw new Error('Client wrote the server cache')
+  })
+  Object.defineProperty(globalThis, '__TSR_CACHE__', {
+    configurable: true,
+    get: getCache,
+    set: setCache,
+  })
+  const router = createTestRouter({
+    routeTree: createRoutes().routeTree,
+    history: history(),
+    isServer: false,
+    caseSensitive: false,
+  })
+  const processedTree = router.processedTree
+  router.update({ caseSensitive: true })
+  expect(router.processedTree).toBe(processedTree)
+  router.update({ routeTree: createRoutes().routeTree })
+  expect(getCache).not.toHaveBeenCalled()
+  expect(setCache).not.toHaveBeenCalled()
+})
+
 test('keeps different route objects independent and resets derived caches when rebuilding', () => {
   vi.stubEnv('NODE_ENV', 'development')
   const firstTree = createRoutes()

@@ -94,23 +94,19 @@ export function exactPathTest(
 // /a/b/c + d = /a/b/c/d
 // /a/b/c + d/ = /a/b/c/d
 // /a/b/c + d/e = /a/b/c/d/e
-interface ResolvePathOptions {
-  base: string
-  to: string
-  trailingSlash?: 'always' | 'never' | 'preserve'
-  cache?: SieveCache<string, string>
-}
-
 /**
  * Resolve a destination path against a base, honoring trailing-slash policy
  * and supporting relative segments (`.`/`..`) and absolute `to` values.
+ *
+ * Internal: parameters are positional so the router's hot callers pass no
+ * options object.
  */
-export function resolvePath({
-  base,
-  to,
-  trailingSlash = 'never',
-  cache,
-}: ResolvePathOptions) {
+export function resolvePath(
+  base: string,
+  to: string,
+  trailingSlash: 'always' | 'never' | 'preserve' = 'never',
+  cache?: SieveCache<string, string>,
+) {
   if (to.includes('//')) {
     to = cleanPath(to)
   }

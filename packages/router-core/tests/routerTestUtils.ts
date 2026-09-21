@@ -1,9 +1,11 @@
+import { runInNewContext } from 'node:vm'
+import { expect } from 'vitest'
 import { batch, createAtom } from '@tanstack/store'
 import { createMemoryHistory } from '@tanstack/history'
 import { isServer } from '@tanstack/router-core/isServer'
 import {
-  RouterCore,
   BaseRootRoute,
+  RouterCore,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
 } from '../src'
@@ -14,12 +16,15 @@ import {
   parseSegment,
   processRouteTree,
 } from '../src/new-process-route-tree'
+import { attachRouterServerSsrUtils } from '../src/ssr/ssr-server'
 import type { interpolatePath } from '../src/path'
 import type { SegmentKind } from '../src/new-process-route-tree'
+import type { ServerManifest } from '../src/manifest'
+import type { TsrSsrGlobal } from '../src/ssr/types'
 import type { RouterHistory } from '@tanstack/history'
 import type {
-  AnyRouter,
   AnyRoute,
+  AnyRouter,
   GetStoreConfig,
   RouterConstructorOptions,
   RouterOptions,
@@ -178,4 +183,39 @@ export function loadServerResponse(
       headers: responseHeaders,
     })
   })
+}
+
+export async function dehydrateToBootstrap(
+  router: AnyRouter,
+  manifest: ServerManifest,
+): Promise<TsrSsrGlobal> {
+  attachRouterServerSsrUtils({ router, manifest })
+  try {
+    await router.load()
+    await router.serverSsr!.dehydrate()
+
+    const scripts = router.serverSsr!.takeInitialHydrationScriptTags()
+    expect(scripts?.before.length).toBeGreaterThan(0)
+    expect(scripts?.boundary.children).toContain('$tsr-stream-boundary')
+    expect(scripts?.boundary.attrs).not.toHaveProperty('id')
+
+    const context: Record<string, any> = {
+      document: {
+        currentScript: {
+          remove() {},
+        },
+      },
+    }
+    context.self = context
+    for (const script of scripts!.before) {
+      expect(script.attrs?.['data-tsr-stream-part']).toBe('')
+      expect(script.children).toBeTruthy()
+      runInNewContext(script.children!, context)
+    }
+
+    expect(context.$_TSR).toBeDefined()
+    return context.$_TSR
+  } finally {
+    router.serverSsr?.cleanup()
+  }
 }

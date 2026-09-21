@@ -681,10 +681,12 @@ function getIsActive(
   }
 
   if (activeOptions?.includeSearch ?? true) {
-    const searchTest = deepEqual(loc.search, nextLoc.search, {
-      partial: !activeOptions?.exact,
-      ignoreUndefined: !activeOptions?.explicitUndefined,
-    })
+    const searchTest = deepEqual(
+      loc.search,
+      nextLoc.search,
+      !activeOptions?.exact,
+      activeOptions?.explicitUndefined,
+    )
     if (!searchTest) {
       return false
     }

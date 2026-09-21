@@ -51,7 +51,6 @@ import {
   replaceRouteChunk,
 } from './load-client'
 import {
-  composeRewrites,
   executeRewriteInput,
   executeRewriteOutput,
   rewriteBasepath,
@@ -116,17 +115,17 @@ import type {
   CommitLocationOptions,
   NavigateFn,
 } from './RouterProvider'
-import type {
-  Manifest,
-  ManifestRouteAssets,
-  RouterManagedTag,
-} from './manifest'
+import type { Manifest, ManifestRouteAssets } from './manifest'
 import type { AnySchema, AnyValidator } from './validators'
 import type { NavigateOptions, ResolveRelativePath, ToOptions } from './link'
 import type {
   AnySerializationAdapter,
   ValidateSerializableInput,
 } from './ssr/serializer/transformer'
+import type {
+  HydrationScriptOutput,
+  InitialHydrationScriptTags,
+} from './ssr/hydrationScripts'
 import type { GetStoreConfig, RouterStores } from './stores'
 
 function isExternalUrl(url: URL, origin: string) {
@@ -146,8 +145,6 @@ export type ControllablePromise<T = any> = Promise<T> & {
   resolve: (value: T) => void
   reject: (value?: any) => void
 }
-
-export type InjectedHtmlEntry = Promise<string>
 
 export interface Register {
   // Lots of things on here like...
@@ -829,17 +826,25 @@ export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
   filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
 }) => void
 
+/**
+ * Server-side SSR request contract.
+ *
+ * Tiering rule: the flat methods are the adapter/framework contract;
+ * `hydrationScripts` is transport for the core SSR stream merger only.
+ * New members must land on the matching tier.
+ */
 export interface ServerSsr {
-  /** Framework-only: injects router-owned HTML into the SSR stream. */
-  injectHtml: (html: string) => void
-  /** Framework-only: injects a router-owned script tag into the SSR stream. */
-  injectScript: (script: string) => void
-  isDehydrated: () => boolean
-  isSerializationFinished: () => boolean
-  /** Framework-only: atomically reserves the pass-through stream path if safe. */
-  reserveStreamFastPath: () => boolean
-  /** Framework-only. */
-  onInjectedHtml: (listener: () => void) => () => void
+  /** @internal Transport access for the core SSR stream merger. */
+  readonly hydrationScripts: {
+    /** Request signal already observed by the live response transform. */
+    requestSignal?: AbortSignal
+    reserveFastPath: (output?: HydrationScriptOutput) => boolean
+    claimOutput: () => HydrationScriptOutput
+    liftBarrier: () => void
+    isInitialTaken: () => boolean
+    skipInitialTake: () => void
+    startSerializationTimeout: (timeoutMs: number) => void
+  }
   /** Framework-only. */
   onRenderFinished: (listener: () => void) => void
   /** Framework-only. */
@@ -852,19 +857,28 @@ export interface ServerSsr {
    * resources whose references would otherwise pin the router (e.g. query
    * cache subscriptions, gcTime timers, abort controllers).
    *
+   * `settled` is true when every value the router dehydrated has settled, so
+   * no loader work can still be pending. It is false when the response ended
+   * early (abort, cancellation, timeout) or never consumed the loader data.
+   *
    * Listeners run synchronously and exactly once. Errors are caught and logged.
+   * A listener registered after cleanup already ran is invoked immediately.
    */
-  onCleanup: (listener: () => void) => void
+  onCleanup: (listener: (settled: boolean) => void) => void
   /** Framework-only. */
-  onSerializationFinished: (listener: () => void) => () => void
+  dehydrate: (opts?: {
+    requestAssets?: ManifestRouteAssets
+    signal?: AbortSignal
+  }) => Promise<void>
+  /**
+   * Framework-only: opt this request out of hydration output entirely (for
+   * example a `hydrate: false` page). Call instead of `dehydrate()`, before
+   * rendering starts. No hydration scripts are emitted, `<Scripts>` renders
+   * no boundary, and the response takes the pass-through stream path.
+   */
+  disableHydration: () => void
   /** Framework-only. */
-  dehydrate: (opts?: { requestAssets?: ManifestRouteAssets }) => Promise<void>
-  /** Framework-only. */
-  takeBufferedScripts: () => RouterManagedTag | undefined
-  /** Framework-only: takes buffered router-owned HTML. */
-  takeBufferedHtml: () => string | undefined
-  /** Framework-only. */
-  liftScriptBarrier: () => void
+  takeInitialHydrationScriptTags: () => InitialHydrationScriptTags | undefined
 }
 
 export interface RouterSsrLifecycle {
@@ -1058,6 +1072,7 @@ declare global {
   var __TSR_CACHE__:
     | {
         routeTree: AnyRoute
+        caseSensitive: boolean | undefined
         processRouteTreeResult: RouteTreeCaches<AnyRoute>
       }
     | undefined
@@ -1244,9 +1259,6 @@ export class RouterCore<
     }
 
     const prevOptions = this.options
-    const prevBasepath = this.basepath ?? prevOptions?.basepath ?? '/'
-    const basepathWasUnset = this.basepath === undefined
-    const prevRewriteOption = prevOptions?.rewrite
 
     this.options = {
       ...prevOptions,
@@ -1289,18 +1301,44 @@ export class RouterCore<
       }
     }
 
+    const nextBasepath = this.options.basepath ?? '/'
+    const nextRewriteOption = this.options.rewrite
+    const rewriteChanged =
+      this.basepath !== nextBasepath ||
+      prevOptions?.rewrite !== nextRewriteOption ||
+      prevOptions?.caseSensitive !== this.options.caseSensitive
+
+    if (rewriteChanged) {
+      this.basepath = nextBasepath
+
+      this.rewrite =
+        nextBasepath !== '/' && trimPath(nextBasepath)
+          ? rewriteBasepath(
+              nextBasepath,
+              this.options.caseSensitive,
+              nextRewriteOption,
+            )
+          : nextRewriteOption
+    }
+
+    // Parse once, with the final rewrite in place.
     if (this.history) {
       this.updateLatestLocation()
     }
 
-    if (this.options.routeTree !== this.routeTree) {
+    if (
+      this.options.routeTree !== this.routeTree ||
+      ((isServer ?? this.isServer) &&
+        prevOptions?.caseSensitive !== this.options.caseSensitive)
+    ) {
       this.routeTree = this.options.routeTree as TRouteTree
       let processRouteTreeResult: RouteTreeCaches<TRouteTree>
       if (
         process.env.NODE_ENV !== 'development' &&
         (isServer ?? this.isServer) &&
         globalThis.__TSR_CACHE__ &&
-        globalThis.__TSR_CACHE__.routeTree === this.routeTree
+        globalThis.__TSR_CACHE__.routeTree === this.routeTree &&
+        globalThis.__TSR_CACHE__.caseSensitive === this.options.caseSensitive
       ) {
         const cached = globalThis.__TSR_CACHE__
         processRouteTreeResult = cached.processRouteTreeResult as any
@@ -1314,6 +1352,7 @@ export class RouterCore<
         ) {
           globalThis.__TSR_CACHE__ = {
             routeTree: this.routeTree,
+            caseSensitive: this.options.caseSensitive,
             processRouteTreeResult: processRouteTreeResult as any,
           }
         }
@@ -1321,51 +1360,19 @@ export class RouterCore<
       this.setRoutes(processRouteTreeResult)
     }
 
-    if (!this.stores && this.latestLocation) {
-      const config = this.getStoreConfig(this)
-      this.batch = config.batch
-      this.stores = createRouterStores(this.latestLocation, config)
+    if (!this.stores) {
+      if (this.latestLocation) {
+        const config = this.getStoreConfig(this)
+        this.batch = config.batch
+        this.stores = createRouterStores(this.latestLocation, config)
 
-      if (!(isServer ?? this.isServer)) {
-        setupScrollRestoration(this)
+        if (!(isServer ?? this.isServer)) {
+          setupScrollRestoration(this)
+        }
       }
-    }
-
-    const nextBasepath = this.options.basepath ?? '/'
-    const nextRewriteOption = this.options.rewrite
-    const basepathChanged = basepathWasUnset || prevBasepath !== nextBasepath
-    const rewriteChanged = prevRewriteOption !== nextRewriteOption
-
-    if (basepathChanged || rewriteChanged) {
-      this.basepath = nextBasepath
-
-      const rewrites: Array<LocationRewrite> = []
-      const trimmed = trimPath(nextBasepath)
-      if (trimmed && trimmed !== '/') {
-        rewrites.push(
-          rewriteBasepath({
-            basepath: nextBasepath,
-          }),
-        )
-      }
-      if (nextRewriteOption) {
-        rewrites.push(nextRewriteOption)
-      }
-
-      this.rewrite =
-        rewrites.length === 0
-          ? undefined
-          : rewrites.length === 1
-            ? rewrites[0]
-            : composeRewrites(rewrites)
-
-      if (this.history) {
-        this.updateLatestLocation()
-      }
-
-      if (this.stores) {
-        this.stores.location.set(this.latestLocation)
-      }
+    } else if (rewriteChanged) {
+      // Existing stores hold the location parsed with the previous rewrite.
+      this.stores.location.set(this.latestLocation)
     }
   }
 
@@ -1450,13 +1457,10 @@ export class RouterCore<
     locationToParse,
     previousLocation,
   ) => {
-    const parse = ({
-      pathname,
-      search,
-      hash,
-      href,
-      state,
-    }: HistoryLocation): ParsedLocation<FullSearchSchema<TRouteTree>> => {
+    const parse = (
+      { pathname, search, hash, href }: HistoryLocation,
+      state: HistoryLocation['state'],
+    ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
       // Fast path: no rewrite configured and pathname doesn't need encoding
       // Characters that need encoding: space, high unicode, control chars
       // eslint-disable-next-line no-control-regex
@@ -1479,11 +1483,9 @@ export class RouterCore<
         }
       }
 
-      // Before we do any processing, we need to allow rewrites to modify the URL
-      // build up the full URL by combining the href from history with the router's origin
-      const fullUrl = new URL(href, this.origin)
-
-      const url = executeRewriteInput(this.rewrite, fullUrl)
+      // The URL constructor normalizes the encoding of the history href; an
+      // input rewrite may then change the URL before it is parsed.
+      const url = executeRewriteInput(this.rewrite, new URL(href, this.origin))
 
       const parsedSearch = this.options.parseSearch(url.search)
       const searchStr = this.options.stringifySearch(parsedSearch)
@@ -1491,10 +1493,8 @@ export class RouterCore<
       // (We were already doing this, so just keeping it for now)
       url.search = searchStr
 
-      const fullPath = url.href.replace(url.origin, '')
-
       return {
-        href: fullPath,
+        href: url.href.replace(url.origin, ''),
         publicHref: href,
         // An input rewrite can expose a path like "//evil.example".
         // Normalize it to "/evil.example" to keep it on the current origin.
@@ -1510,34 +1510,24 @@ export class RouterCore<
       }
     }
 
-    const location = parse(locationToParse)
+    const location = parse(locationToParse, locationToParse.state)
 
     const { __tempLocation, __tempKey } = location.state
 
     if (__tempLocation && (!__tempKey || __tempKey === this.tempLocationKey)) {
-      // Sync up the location keys
-      const parsedTempLocation = parse(__tempLocation) as any
-      parsedTempLocation.state.key = location.state.key // TODO: Remove in v2 - use __TSR_key instead
-      parsedTempLocation.state.__TSR_key = location.state.__TSR_key
-
-      delete parsedTempLocation.state.__tempLocation
-
-      return {
-        ...parsedTempLocation,
-        maskedLocation: location,
-      }
+      // A masked entry stores the real location in its state. That location is
+      // presented, adopting the committed entry's keys, while the URL that was
+      // written to history remains available as `maskedLocation`.
+      const parsedTempLocation = parse(__tempLocation, {
+        ...__tempLocation.state,
+        __tempLocation: undefined,
+        key: location.state.key, // TODO: Remove in v2 - use __TSR_key instead
+        __TSR_key: location.state.__TSR_key,
+      })
+      parsedTempLocation.maskedLocation = location
+      return parsedTempLocation
     }
     return location
-  }
-
-  /** Resolve a path using the router's trailing-slash policy. */
-  resolvePathWithBase = (from: string, path: string) => {
-    return resolvePath({
-      base: from,
-      to: path,
-      trailingSlash: this.options.trailingSlash,
-      cache: this.resolvePathCache,
-    })
   }
 
   matchRoutes: MatchRoutesFn = (
@@ -1967,7 +1957,7 @@ export class RouterCore<
       }
 
       const to = dest.to ? `${dest.to}` : '.'
-      const nextTo = this.resolvePathWithBase(
+      const nextTo = resolvePath(
         // Absolute destinations resolve without a base.
         to[0] === '/'
           ? ''
@@ -1975,6 +1965,8 @@ export class RouterCore<
             ? current().pathname
             : (dest.from ?? currentMatch()[1 /* fullPath */]),
         to,
+        this.options.trailingSlash,
+        this.resolvePathCache,
       )
 
       const destRoute = this.routesByPath[
@@ -2514,18 +2506,16 @@ export class RouterCore<
     const committedMatches = this._committed
     const filter = opts?.filter
     const preloads = this._preloads
-    const invalidIds = new Set(
-      [
-        ...committedMatches,
-        ...this._cache.values(),
-        ...[...(preloads?.values() ?? [])].flat(),
-        ...(this._tx?.[3 /* matches */] ?? []),
-      ]
-        .filter(
-          (match) => !filter || filter(match as MakeRouteMatchUnion<this>),
-        )
-        .map((match) => match.id),
-    )
+    const invalidIds = new Set<string>()
+    const consider = (match: AnyRouteMatch) => {
+      if (!filter || filter(match as MakeRouteMatchUnion<this>)) {
+        invalidIds.add(match.id)
+      }
+    }
+    committedMatches.forEach(consider)
+    this._cache.forEach(consider)
+    preloads?.forEach((matches) => matches.forEach(consider))
+    this._tx?.[3 /* matches */].forEach(consider)
     const discardedPreloads: Array<AbortController> = []
     for (const [controller, matches] of preloads ?? []) {
       if (matches.some((match) => invalidIds.has(match.id))) {
@@ -2689,7 +2679,12 @@ export class RouterCore<
     const matchLocation = {
       ...location,
       to: location.to
-        ? this.resolvePathWithBase(location.from || '', location.to as string)
+        ? resolvePath(
+            location.from || '',
+            location.to as string,
+            this.options.trailingSlash,
+            this.resolvePathCache,
+          )
         : undefined,
       params: location.params || {},
       leaveParams: true,
@@ -2720,13 +2715,13 @@ export class RouterCore<
     }
 
     if (location.params) {
-      if (!deepEqual(match.rawParams, location.params, { partial: true })) {
+      if (!deepEqual(match.rawParams, location.params, true)) {
         return false
       }
     }
 
     if (opts?.includeSearch ?? true) {
-      return deepEqual(baseLocation.search, next.search, { partial: true })
+      return deepEqual(baseLocation.search, next.search, true)
         ? match.rawParams
         : false
     }
