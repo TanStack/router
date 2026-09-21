@@ -2,20 +2,14 @@
 import * as React from 'react'
 import { isServer } from '@tanstack/router-core/isServer'
 
-// Safe version of React.use() that will not cause compilation errors against
-// React 18 with Webpack, which statically analyzes imports and fails when it
-// sees React.use referenced (since 'use' is not exported from React 18).
-// This uses a dynamic string lookup to avoid the static analysis.
-// eslint-disable-next-line prefer-const -- Must be `let` to prevent bundler constant-folding
-let REACT_USE = 'use'
-
 /**
  * React.use if available (React 19+), undefined otherwise.
- * Use dynamic lookup to avoid Webpack compilation errors with React 18.
+ * Reflect.get avoids a static React.use reference that bundlers reject with React 18.
+ * A variable key is not enough: package builds can fold React[key] into React["use"].
  */
 export const reactUse:
   | (<T>(usable: Promise<T> | React.Context<T>) => T)
-  | undefined = (React as any)[REACT_USE]
+  | undefined = Reflect.get(React, 'use')
 
 export function useStableCallback<T extends (...args: Array<any>) => any>(
   fn: T,
