@@ -1,5 +1,11 @@
 # @tanstack/start-plugin-core
 
+## 1.171.47
+
+### Patch Changes
+
+- [#8202](https://github.com/TanStack/router/pull/8202) [`222300b`](https://github.com/TanStack/router/commit/222300b82fe6f2a5e7e7f460ae21a2e35c6230d7) - Fix the Rsbuild Start manifest dropping every route's stylesheets and preloads on Windows by normalizing rspack module paths to the POSIX form the generated route tree uses.
+
 ## 1.171.46
 
 ### Patch Changes
