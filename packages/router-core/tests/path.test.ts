@@ -476,79 +476,43 @@ describe('resolvePath', () => {
     ['/posts', '../../data:text/html,test', '/data:text/html,test'],
   ])('resolves correctly', (a, b, eq) => {
     it(`${a} to ${b} === ${eq}`, () => {
-      expect(resolvePath({ base: a, to: b })).toEqual(eq)
+      expect(resolvePath(a, b)).toEqual(eq)
     })
     it(`${a}/ to ${b} === ${eq} (trailing slash)`, () => {
-      expect(resolvePath({ base: a + '/', to: b })).toEqual(eq)
+      expect(resolvePath(a + '/', b)).toEqual(eq)
     })
     it(`${a}/ to ${b}/ === ${eq} (trailing slash + trailing slash)`, () => {
-      expect(resolvePath({ base: a + '/', to: b + '/' })).toEqual(eq)
+      expect(resolvePath(a + '/', b + '/')).toEqual(eq)
     })
   })
 
   it('normalizes repeated slashes when resolving the base path', () => {
-    expect(resolvePath({ base: '/a//b', to: '.' })).toBe('/a/b')
+    expect(resolvePath('/a//b', '.')).toBe('/a/b')
   })
 
   describe('trailingSlash', () => {
     describe(`'always'`, () => {
       it('keeps trailing slash', () => {
-        expect(
-          resolvePath({
-            base: '/a/b/c',
-            to: 'd/',
-            trailingSlash: 'always',
-          }),
-        ).toBe('/a/b/c/d/')
+        expect(resolvePath('/a/b/c', 'd/', 'always')).toBe('/a/b/c/d/')
       })
       it('adds trailing slash', () => {
-        expect(
-          resolvePath({
-            base: '/a/b/c',
-            to: 'd',
-            trailingSlash: 'always',
-          }),
-        ).toBe('/a/b/c/d/')
+        expect(resolvePath('/a/b/c', 'd', 'always')).toBe('/a/b/c/d/')
       })
     })
     describe(`'never'`, () => {
       it('removes trailing slash', () => {
-        expect(
-          resolvePath({
-            base: '/a/b/c',
-            to: 'd/',
-            trailingSlash: 'never',
-          }),
-        ).toBe('/a/b/c/d')
+        expect(resolvePath('/a/b/c', 'd/', 'never')).toBe('/a/b/c/d')
       })
       it('does not add trailing slash', () => {
-        expect(
-          resolvePath({
-            base: '/a/b/c',
-            to: 'd',
-            trailingSlash: 'never',
-          }),
-        ).toBe('/a/b/c/d')
+        expect(resolvePath('/a/b/c', 'd', 'never')).toBe('/a/b/c/d')
       })
     })
     describe(`'preserve'`, () => {
       it('keeps trailing slash', () => {
-        expect(
-          resolvePath({
-            base: '/a/b/c',
-            to: 'd/',
-            trailingSlash: 'preserve',
-          }),
-        ).toBe('/a/b/c/d/')
+        expect(resolvePath('/a/b/c', 'd/', 'preserve')).toBe('/a/b/c/d/')
       })
       it('does not add trailing slash', () => {
-        expect(
-          resolvePath({
-            base: '/a/b/c',
-            to: 'd',
-            trailingSlash: 'preserve',
-          }),
-        ).toBe('/a/b/c/d')
+        expect(resolvePath('/a/b/c', 'd', 'preserve')).toBe('/a/b/c/d')
       })
     })
 
@@ -559,7 +523,7 @@ describe('resolvePath', () => {
     ] as const)(
       "normalizes repeated slashes with trailingSlash '%s'",
       (trailingSlash, to, expected) => {
-        expect(resolvePath({ base: '/', to, trailingSlash })).toBe(expected)
+        expect(resolvePath('/', to, trailingSlash)).toBe(expected)
       },
     )
   })
@@ -585,13 +549,7 @@ describe('resolvePath', () => {
           },
         ])('$name', ({ to }) => {
           const candidate = base + trimPathLeft(to)
-          expect(
-            resolvePath({
-              base,
-              to: candidate,
-              trailingSlash: 'never',
-            }),
-          ).toEqual(candidate)
+          expect(resolvePath(base, candidate, 'never')).toEqual(candidate)
         })
       })
 
@@ -613,42 +571,28 @@ describe('resolvePath', () => {
           },
         ])('$name', ({ to }) => {
           const candidate = base + trimPathLeft(to)
-          expect(
-            resolvePath({
-              base,
-              to: candidate,
-              trailingSlash: 'never',
-            }),
-          ).toEqual(candidate)
+          expect(resolvePath(base, candidate, 'never')).toEqual(candidate)
         })
       })
     },
   )
 
   it('preserves explicit route-template param syntax', () => {
-    expect(
-      resolvePath({
-        base: '/{$language}',
-        to: '.',
-      }),
-    ).toBe('/{$language}')
+    expect(resolvePath('/{$language}', '.')).toBe('/{$language}')
 
-    expect(
-      resolvePath({
-        base: '/{$language}/posts',
-        to: '../{$language}',
-      }),
-    ).toBe('/{$language}/{$language}')
+    expect(resolvePath('/{$language}/posts', '../{$language}')).toBe(
+      '/{$language}/{$language}',
+    )
   })
 
   it('caches route-template paths without changing param syntax', () => {
     const cache = createSieveCache<string, string>(10)
     const set = vi.spyOn(cache, 'set')
 
-    expect(resolvePath({ base: '/', to: '{$id}', cache })).toBe('/{$id}')
-    expect(resolvePath({ base: '/', to: '$id', cache })).toBe('/$id')
-    expect(resolvePath({ base: '/', to: '{$id}', cache })).toBe('/{$id}')
-    expect(resolvePath({ base: '/', to: '$id', cache })).toBe('/$id')
+    expect(resolvePath('/', '{$id}', undefined, cache)).toBe('/{$id}')
+    expect(resolvePath('/', '$id', undefined, cache)).toBe('/$id')
+    expect(resolvePath('/', '{$id}', undefined, cache)).toBe('/{$id}')
+    expect(resolvePath('/', '$id', undefined, cache)).toBe('/$id')
     expect(set).toHaveBeenCalledTimes(2)
   })
 })
@@ -1073,16 +1017,8 @@ describe('interpolatePath', () => {
       (trailingSlash) => {
         const tail = trailingSlash === 'always' ? '/' : ''
         const defaultedFromPath = '/'
-        const fromPath = resolvePath({
-          base: defaultedFromPath,
-          to: '.',
-          trailingSlash,
-        })
-        const nextTo = resolvePath({
-          base: fromPath,
-          to: '/splat/$',
-          trailingSlash,
-        })
+        const fromPath = resolvePath(defaultedFromPath, '.', trailingSlash)
+        const nextTo = resolvePath(fromPath, '/splat/$', trailingSlash)
         const nextParams = { _splat: '' }
         const interpolatedNextTo = interpolatePath(
           nextTo,
