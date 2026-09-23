@@ -73,6 +73,7 @@ export function createRequestHandler<TRouter extends AnyRouter>({
       await router.load({
         _signal: signal,
         _skipLocationUpdate: true,
+        _requestMethod: request.method,
       })
       signal.throwIfAborted()
 

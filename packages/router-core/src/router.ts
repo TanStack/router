@@ -790,6 +790,8 @@ export type LoadFn = (opts?: {
   _signal?: AbortSignal
   /** @private Reuse the location already prepared for this SSR request. */
   _skipLocationUpdate?: boolean
+  /** @private HTTP method for this SSR request. Defaults to GET. */
+  _requestMethod?: string
 }) => Promise<void>
 
 export type CommitLocationFn = ({
@@ -1463,51 +1465,44 @@ export class RouterCore<
       { pathname, search, hash, href }: HistoryLocation,
       state: HistoryLocation['state'],
     ): ParsedLocation<FullSearchSchema<TRouteTree>> => {
-      // Fast path: no rewrite configured and pathname doesn't need encoding
-      // Characters that need encoding: space, high unicode, control chars
+      let parsedSearch: AnySchema
+      let searchStr: string
+      let fullPath: string
+      let external = false
+
+      // Fast path: no rewrite configured and pathname doesn't need encoding.
       // eslint-disable-next-line no-control-regex
       if (!this.rewrite && !/[ \x00-\x1f\x7f\u0080-\uffff]/.test(pathname)) {
-        const parsedSearch = this.options.parseSearch(search)
-        const searchStr = this.options.stringifySearch(parsedSearch)
-
-        return {
-          href: pathname + searchStr + hash,
-          publicHref: pathname + searchStr + hash,
-          pathname: decodePath(pathname),
-          external: false,
-          searchStr,
-          search: nullReplaceEqualDeep(
-            previousLocation?.search,
-            parsedSearch,
-          ) as any,
-          hash: decodePath(hash.slice(1)),
-          state: replaceEqualDeep(previousLocation?.state, state),
-        }
+        parsedSearch = this.options.parseSearch(search)
+        searchStr = this.options.stringifySearch(parsedSearch)
+        fullPath = pathname + searchStr + hash
+      } else {
+        const url = executeRewriteInput(
+          this.rewrite,
+          new URL(href, this.origin),
+        )
+        parsedSearch = this.options.parseSearch(url.search)
+        searchStr = this.options.stringifySearch(parsedSearch)
+        url.search = searchStr
+        fullPath = url.href.replace(url.origin, '')
+        // An input rewrite can expose "//evil.example". Keep it on this origin.
+        pathname = normalizeProtocolRelative(url.pathname)
+        hash = url.hash
+        external = !!this.rewrite && isExternalUrl(url, this.origin)
       }
 
-      // The URL constructor normalizes the encoding of the history href; an
-      // input rewrite may then change the URL before it is parsed.
-      const url = executeRewriteInput(this.rewrite, new URL(href, this.origin))
-
-      const parsedSearch = this.options.parseSearch(url.search)
-      const searchStr = this.options.stringifySearch(parsedSearch)
-      // Make sure our final url uses the re-stringified pathname, search, and has for consistency
-      // (We were already doing this, so just keeping it for now)
-      url.search = searchStr
-
       return {
-        href: url.href.replace(url.origin, ''),
+        href: fullPath,
+        // Keep the incoming URL so canonicalization can redirect or replace it.
         publicHref: href,
-        // An input rewrite can expose a path like "//evil.example".
-        // Normalize it to "/evil.example" to keep it on the current origin.
-        pathname: decodePath(normalizeProtocolRelative(url.pathname)),
-        external: !!this.rewrite && isExternalUrl(url, this.origin),
+        pathname: decodePath(pathname),
+        external,
         searchStr,
         search: nullReplaceEqualDeep(
           previousLocation?.search,
           parsedSearch,
         ) as any,
-        hash: decodePath(url.hash.slice(1)),
+        hash: decodePath(hash.slice(1)),
         state: replaceEqualDeep(previousLocation?.state, state),
       }
     }
@@ -2245,11 +2240,16 @@ export class RouterCore<
     }
 
     let historyAction: HistoryAction | undefined
+    const currentLocation = this.latestLocation
+    // Internal equality alone does not mean the browser URL is canonical.
     const isSameLocation =
-      trimPathRight(this.latestLocation.href) === trimPathRight(next.href) &&
+      trimPathRight(currentLocation.href) === trimPathRight(next.href) &&
+      (currentLocation.maskedLocation ||
+        trimPathRight(currentLocation.publicHref) ===
+          trimPathRight(next.publicHref)) &&
       deepEqual(
         _getUserHistoryState(next.state),
-        _getUserHistoryState(this.latestLocation.state),
+        _getUserHistoryState(currentLocation.state),
       )
 
     const previousCommitPromise = this._commitPromise

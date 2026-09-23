@@ -728,6 +728,7 @@ export function createStartHandler<TRegister = Register>(
           await routerInstance.load({
             _signal: signal,
             _skipLocationUpdate: true,
+            _requestMethod: request.method,
           })
           signal.throwIfAborted()
 

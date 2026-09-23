@@ -666,12 +666,8 @@ export function getOrigin(request: Request) {
   return 'http://localhost'
 }
 
-// server and browser can decode/encode characters differently in paths and search params.
-// Server generally strictly follows the WHATWG URL Standard, while browsers may differ for legacy reasons.
-// for example, in paths "|" is not encoded on the server but is encoded on chromium (and not on firefox) while "대" is encoded on both sides.
-// Another anomaly is that in Node new URLSearchParams and new URL also decode/encode characters differently.
-// new URLSearchParams() encodes "|" while new URL() does not, and in this instance
-// chromium treats search params differently than paths, i.e. "|" is not encoded in search params.
+// Normalize pathname encoding across server and browser URL implementations.
+// Preserve the query so canonical redirects compare against the requested URL.
 export function getNormalizedURL(url: string | URL, base?: string | URL) {
   // ensure backslashes are encoded correctly in the URL
   if (typeof url === 'string') {
@@ -687,12 +683,7 @@ export function getNormalizedURL(url: string | URL, base?: string | URL) {
       ? rawUrl.pathname.replace(/^\/+/, '/')
       : rawUrl.pathname,
   )
-  const searchParams = new URLSearchParams(rawUrl.search)
-  const normalizedHref =
-    decodedPathname +
-    (searchParams.size > 0 ? '?' : '') +
-    searchParams.toString() +
-    rawUrl.hash
+  const normalizedHref = decodedPathname + rawUrl.search + rawUrl.hash
 
   return {
     url: new URL(normalizedHref, rawUrl.origin),

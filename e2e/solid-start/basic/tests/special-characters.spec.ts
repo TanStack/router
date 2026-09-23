@@ -74,7 +74,7 @@ test.describe('Unicode route rendering', () => {
       await page.goto('/specialChars/search?searchParam=대|')
 
       await page.waitForURL(
-        `${baseURL}/specialChars/search?searchParam=%EB%8C%80|`,
+        `${baseURL}/specialChars/search?searchParam=%EB%8C%80%7C`,
       )
 
       const searchParam = await page
@@ -222,14 +222,14 @@ test.describe('Unicode route rendering', () => {
       ).toBeInViewport()
     })
 
-    test('un-matched malformed paths should return not found on direct navigation in search params', async ({
+    test('should render a replacement character for malformed search params on direct navigation', async ({
       page,
       baseURL,
     }) => {
       await page.goto('/specialChars/malformed/search?searchParam=%E0%A4')
 
       await page.waitForURL(
-        `${baseURL}/specialChars/malformed/search?searchParam=%E0%A4`,
+        `${baseURL}/specialChars/malformed/search?searchParam=%EF%BF%BD`,
       )
 
       await expect(
