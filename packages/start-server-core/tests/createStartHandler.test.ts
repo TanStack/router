@@ -13,6 +13,7 @@ import {
   RouterCore,
   createNonReactiveMutableStore,
   createNonReactiveReadonlyStore,
+  createSerializationAdapter,
   redirect,
 } from '@tanstack/router-core'
 import {
@@ -28,7 +29,7 @@ import {
   getStaticHandlerInlineCssDefault,
   resolveInlineCssForRequest,
 } from '../src/inlineCss'
-import type { AnyRouter } from '@tanstack/router-core'
+import type { AnyRouter, AnySerializationAdapter } from '@tanstack/router-core'
 
 const startMocks = vi.hoisted(() => {
   const hadServerFnBase = Object.prototype.hasOwnProperty.call(
@@ -41,6 +42,7 @@ const startMocks = vi.hoisted(() => {
     hadServerFnBase,
     previousServerFnBase,
     requestMiddleware: [] as Array<any>,
+    serializationAdapters: [] as Array<AnySerializationAdapter>,
     serverFnResult: undefined as undefined | Response | object,
     serverFnHandler: undefined as undefined | (() => unknown),
     router: undefined as undefined | AnyRouter,
@@ -56,7 +58,7 @@ vi.mock('#tanstack-start-entry', () => ({
       ? {
           getOptions: () => ({
             requestMiddleware: startMocks.requestMiddleware,
-            serializationAdapters: [],
+            serializationAdapters: startMocks.serializationAdapters,
           }),
         }
       : undefined
@@ -173,6 +175,7 @@ function makeCompletingStreamResponse(router: ReturnType<typeof makeRouter>) {
 
 afterEach(() => {
   startMocks.requestMiddleware = []
+  startMocks.serializationAdapters = []
   startMocks.serverFnResult = undefined
   startMocks.serverFnHandler = undefined
   startMocks.router = undefined
@@ -598,6 +601,138 @@ describe('createStartHandler redirect safety', () => {
 })
 
 describe('createStartHandler server-route handling', () => {
+  it.each([
+    { path: '/work', method: 'GET', body: 'app response' },
+    { path: '/fallback', method: 'GET', body: 'app response' },
+    { path: '/fallback', method: 'HEAD', body: '' },
+  ])(
+    'renders $method $path alongside API routes',
+    async ({ path, method, body }) => {
+      const root = new BaseRootRoute()
+      startMocks.router = new RouterCore(
+        {
+          isServer: true,
+          routeTree: root.addChildren([
+            new BaseRoute({
+              getParentRoute: () => root,
+              path: '/work',
+              component: () => null,
+            }),
+            new BaseRoute({
+              getParentRoute: () => root,
+              path: '/fallback',
+              component: () => null,
+              server: {
+                handlers: ({ createHandlers }) => createHandlers({ GET: {} }),
+              },
+            }),
+            new BaseRoute({
+              getParentRoute: () => root,
+              path: '/api',
+              server: { handlers: { GET: () => new Response('api response') } },
+            }),
+          ]),
+        },
+        getStoreConfig,
+      )
+      const render = vi.fn(({ router }: { router: AnyRouter }) => {
+        expect(router.state.matches.at(-1)?.routeId).toBe(path)
+        return new Response('app response', {
+          status: 202,
+          headers: { 'x-rendered': 'true' },
+        })
+      })
+      const handler = createStartHandler(render)
+
+      const response = await handler(
+        new Request(`http://localhost${path}`, { method }),
+        {},
+      )
+
+      expect(response.status).toBe(202)
+      expect(response.headers.get('x-rendered')).toBe('true')
+      expect(await response.text()).toBe(body)
+      expect(render).toHaveBeenCalledOnce()
+      expect(startMocks.router.serverSsr).toBeUndefined()
+    },
+  )
+
+  it.each([false, true])(
+    'runs shared route middleware once and preserves its context (global=%s)',
+    async (global) => {
+      const runMiddleware = vi.fn(({ next }) =>
+        next({ context: { message: 'trusted middleware' } }),
+      )
+      const middleware = createMiddleware().server(runMiddleware)
+      startMocks.requestMiddleware = global ? [middleware] : []
+      const root = new BaseRootRoute({
+        server: { middleware: [middleware] },
+      })
+      startMocks.router = new RouterCore(
+        {
+          isServer: true,
+          routeTree: root.addChildren([
+            new BaseRoute({
+              getParentRoute: () => root,
+              path: '/',
+              component: () => null,
+            }),
+          ]),
+        },
+        getStoreConfig,
+      )
+      const handler = createStartHandler<{
+        server: { requestContext: { message: string; requestValue: string } }
+      }>(({ router }) =>
+        Response.json(router.options.additionalContext?.serverContext),
+      )
+
+      const response = await handler(new Request('http://localhost/'), {
+        context: { message: 'request context', requestValue: 'retained' },
+      })
+
+      expect(response.status).toBe(200)
+      expect(await response.json()).toEqual({
+        message: 'trusted middleware',
+        requestValue: 'retained',
+      })
+      expect(runMiddleware).toHaveBeenCalledOnce()
+    },
+  )
+
+  it('keeps adapter order and router adapters isolated to their request', async () => {
+    const adapter = (key: string) =>
+      createSerializationAdapter({
+        key,
+        test: (value: unknown): value is Date => value instanceof Date,
+        toSerializable: (value: Date) => value.toISOString(),
+        fromSerializable: (value: string) => new Date(value),
+      })
+    const startAdapter = adapter('start')
+    const routerAdapter = adapter('router')
+    const startAdapters = [startAdapter]
+    startMocks.serializationAdapters = startAdapters
+    let requestCount = 0
+    startMocks.routerFactory = () => {
+      const router = makeRouter()
+      router.options.serializationAdapters =
+        requestCount++ === 0 ? [routerAdapter] : []
+      return router
+    }
+    const handler = createStartHandler(({ router }) =>
+      Response.json(
+        router.options.serializationAdapters?.map(({ key }) => key),
+      ),
+    )
+
+    const first = await handler(new Request('http://localhost/'), {})
+    const second = await handler(new Request('http://localhost/'), {})
+
+    expect(await first.json()).toEqual(['start', '$TSS/serverfn', 'router'])
+    expect(await second.json()).toEqual(['start', '$TSS/serverfn'])
+    expect(startAdapters).toEqual([startAdapter])
+  })
+
   it('keeps default CSRF protection on server function requests', async () => {
     startMocks.hasStartInstance = false
     startMocks.hasServerRoutes = false
@@ -800,10 +935,8 @@ describe('createStartHandler request location reuse', () => {
         renderApp ? 'app response' : 'server response',
       )
       expect(input).toHaveBeenCalledOnce()
-      expect(serverHandler).toHaveBeenCalledExactlyOnceWith(
-        `/${encodeURIComponent(path)}`,
-      )
-      expect(middlewarePathnames).toEqual([`/${encodeURIComponent(path)}`])
+      expect(serverHandler).toHaveBeenCalledExactlyOnceWith(`/${path}`)
+      expect(middlewarePathnames).toEqual([`/${path}`])
       expect(render).toHaveBeenCalledTimes(renderApp ? 1 : 0)
       expect(
         getMatchedRoutes.mock.calls.every(
@@ -815,6 +948,23 @@ describe('createStartHandler request location reuse', () => {
       }
     },
   )
+
+  it('uses the request URL origin regardless of the Origin header', async () => {
+    startMocks.router = makeRouterWithRouteWork({})
+    const handler = createStartHandler(
+      ({ router }) => new Response(router.origin),
+    )
+
+    const response = await handler(
+      new Request('https://public.example:8443/work', {
+        headers: { Origin: 'https://untrusted.example' },
+      }),
+      {},
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.text()).toBe('https://public.example:8443')
+  })
 
   it('uses the configured origin for server route rewrites', async () => {
     const input = vi.fn(({ url }: { url: URL }) => {
@@ -896,9 +1046,15 @@ describe('createStartHandler request location reuse', () => {
     expect(parseSearch).toHaveBeenCalledExactlyOnceWith('?page=2')
   })
 
-  it.each(['a/b', 'a%b', 'a b', 'a?b', 'a#b'])(
+  it.each([
+    ['a/b', 'a%2Fb'],
+    ['a%b', 'a%25b'],
+    ['a b', 'a b'],
+    ['a?b', 'a%3Fb'],
+    ['a#b', 'a%23b'],
+  ])(
     'preserves encoded params %j when a server handler continues to SSR',
-    async (value) => {
+    async (value, pathname) => {
       const handlerParams: Array<string> = []
       const handlerPathnames: Array<string> = []
       const root = new BaseRootRoute()
@@ -936,7 +1092,7 @@ describe('createStartHandler request location reuse', () => {
 
       expect(response.status).toBe(200)
       expect(handlerParams).toEqual([value])
-      expect(handlerPathnames).toEqual([`/params/${encodeURIComponent(value)}`])
+      expect(handlerPathnames).toEqual([`/params/${pathname}`])
       expect(await response.json()).toEqual({
         params: { value },
         loaderData: value,

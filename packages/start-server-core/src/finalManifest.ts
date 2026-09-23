@@ -190,8 +190,23 @@ export function createFinalManifestResolver(
           transformResolver.getTransformFn({ warmup: true }),
         onError: transformResolver.clearCachedCreateTransform,
       }),
-    resolveCached: (requestOpts) =>
-      resolveRequest(requestOpts, finalManifestCache),
+    resolveCached: (requestOpts) => {
+      if (
+        opts.transformAssets === undefined &&
+        handlerDefaultInlineCss !== undefined
+      ) {
+        const cachedManifest = finalManifestCache.get(
+          getFinalManifestCacheKey(
+            requestOpts.requestInlineCss ?? handlerDefaultInlineCss,
+          ),
+        )
+        if (cachedManifest) {
+          return cachedManifest
+        }
+      }
+
+      return resolveRequest(requestOpts, finalManifestCache)
+    },
     resolveUncached: (requestOpts) => resolveRequest(requestOpts, undefined),
   }
 }
