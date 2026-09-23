@@ -1,5 +1,11 @@
 # @tanstack/react-router
 
+## 1.170.39
+
+### Patch Changes
+
+- [#8435](https://github.com/TanStack/router/pull/8435) [`73bfc15`](https://github.com/TanStack/router/commit/73bfc153eef460e9b670556215a5adb2b5cbf542) - Avoid hydration-triggered rerenders for links that do not compare URL hashes while preserving hash-sensitive active state and ClientOnly behavior.
+
 ## 1.170.38
 
 ### Patch Changes
