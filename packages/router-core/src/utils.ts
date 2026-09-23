@@ -209,7 +209,6 @@ export function functionalUpdate<TPrevious, TResult = TPrevious>(
 }
 
 export const hasOwn = Object.prototype.hasOwnProperty
-const isEnumerable = Object.prototype.propertyIsEnumerable
 
 export function hasKeys(obj: Record<string, unknown>) {
   for (const key in obj) {
@@ -219,140 +218,146 @@ export function hasKeys(obj: Record<string, unknown>) {
 }
 
 export const createNull = () => Object.create(null)
+// Search and params objects use null prototypes so keys like `__proto__` stay data.
 export const nullReplaceEqualDeep: typeof replaceEqualDeep = (prev, next) =>
-  replaceEqualDeep(prev, next, createNull)
+  replaceEqualDeep(prev, next, true)
 
 /**
- * This function returns `prev` if `_next` is deeply equal.
- * If not, it will replace any deeply equal children of `b` with those of `a`.
- * This can be used for structural sharing between immutable JSON values for example.
- * Do not use this with signals
+ * Reuse equal children between immutable plain objects and dense arrays.
+ * Return `prev` for deeply equal values; otherwise return an object already
+ * containing the resolved children or create a copy with the shared children.
+ * Getters and own `__proto__` keys in ordinary object copies are unsupported.
+ * Do not use this with signals.
  */
 export function replaceEqualDeep<T>(
   prev: any,
-  _next: T,
-  _makeObj = () => ({}),
+  next: T,
+  _nullProto?: boolean,
+  _depth?: number,
+): T
+export function replaceEqualDeep(
+  prev: any,
+  next: any,
+  _nullProto?: boolean,
   _depth = 0,
-): T {
+): any {
   if (isServer) {
-    return _next
+    return next
   }
-  if (prev === _next) {
+  if (prev === next) {
     return prev
   }
 
-  if (_depth > 500) return _next
-
-  const next = _next as any
-
-  const array = isPlainArray(prev) && isPlainArray(next)
-
-  if (!array && !(isPlainObject(prev) && isPlainObject(next))) return next
-
-  const prevItems = array ? prev : getEnumerableOwnKeys(prev)
-  if (!prevItems) return next
-  const nextItems = array ? next : getEnumerableOwnKeys(next)
-  if (!nextItems) return next
-  const prevSize = prevItems.length
-  const nextSize = nextItems.length
-  const copy: any = array ? new Array(nextSize) : _makeObj()
-
-  let equalItems = 0
-
-  for (let i = 0; i < nextSize; i++) {
-    const key = array ? i : (nextItems[i] as any)
-    const p = prev[key]
-    const n = next[key]
-
-    if (p === n) {
-      copy[key] = p
-      if (array ? i < prevSize : hasOwn.call(prev, key)) equalItems++
-      continue
-    }
-
-    if (
-      p === null ||
-      n === null ||
-      typeof p !== 'object' ||
-      typeof n !== 'object'
-    ) {
-      copy[key] = n
-      continue
-    }
-
-    const v = replaceEqualDeep(p, n, _makeObj, _depth + 1)
-    copy[key] = v
-    if (v === p) equalItems++
+  if (_depth++ > 500) {
+    return next
   }
 
-  return prevSize === nextSize && equalItems === prevSize ? prev : copy
+  const array = Array.isArray(prev) && Array.isArray(next)
+
+  if (!array && !(isPlainObject(prev) && isPlainObject(next))) {
+    return next
+  }
+
+  const prevKeys: Array<any> = Object.keys(prev)
+  const previousCount = prevKeys.length
+  const nextKeys: Array<any> = Object.keys(next)
+  const length = nextKeys.length
+  // Hidden object keys and symbols on next make the value opaque. Arrays
+  // must have only dense enumerable indices: a hole and an extra key can
+  // cancel out in the count, so also check the last key of both arrays.
+  if (
+    array
+      ? previousCount !== prev.length ||
+        length !== next.length ||
+        (previousCount && last(prevKeys) !== `${previousCount - 1}`) ||
+        (length && last(nextKeys) !== `${length - 1}`)
+      : previousCount !== Object.getOwnPropertyNames(prev).length ||
+        length !== Object.getOwnPropertyNames(next).length ||
+        Object.getOwnPropertySymbols(next).length
+  ) {
+    return next
+  }
+
+  let i = 0
+  let child: any
+  let previous: any
+  let key: any
+
+  if (array) {
+    // Entries before the first difference already resolve to prev.
+    for (; i < length; i++) {
+      key = i
+      previous = prev[key]
+      child = next[key]
+      child =
+        previous === child
+          ? previous
+          : typeof previous === 'object'
+            ? replaceEqualDeep(previous, child, _nullProto, _depth)
+            : child
+      if (child !== previous) {
+        break
+      }
+    }
+    if (i === length && previousCount === length) {
+      return prev
+    }
+  } else {
+    let equal = previousCount === length
+    let unchanged = true
+    for (; i < length; i++) {
+      key = nextKeys[i]!
+      previous = prev[key]
+      const incoming = next[key]
+      child =
+        previous === incoming
+          ? previous
+          : typeof previous === 'object'
+            ? replaceEqualDeep(previous, incoming, _nullProto, _depth)
+            : incoming
+      equal &&=
+        child === previous && (prevKeys[i] === key || hasOwn.call(prev, key))
+      unchanged &&= Object.is(child, incoming)
+      // This key has been checked; its private slot can hold the result.
+      prevKeys[i] = child
+    }
+    if (equal) {
+      return Object.getOwnPropertySymbols(prev).length ? next : prev
+    }
+    if (unchanged) {
+      return next
+    }
+  }
+
+  // Reuse the validated array key list; it is private and has the right length.
+  const copy: any = array ? nextKeys.fill(0) : _nullProto ? createNull() : {}
+  for (let j = 0; j < length; j++) {
+    key = array ? j : nextKeys[j]!
+    if (array) {
+      previous = prev[key]
+      if (j > i) {
+        child = next[key]
+        child =
+          previous === child
+            ? previous
+            : typeof previous === 'object'
+              ? replaceEqualDeep(previous, child, _nullProto, _depth)
+              : child
+      }
+      copy[key] = j < i ? previous : child
+    } else {
+      copy[key] = prevKeys[j]
+    }
+  }
+  return copy
 }
 
-/**
- * Equivalent to `Reflect.ownKeys`, but ensures that objects are "clone-friendly":
- * will return false if object has any non-enumerable properties.
- *
- * Optimized for the common case where objects have no symbol properties.
- */
-function getEnumerableOwnKeys(o: object) {
-  // `Object.keys` returns only enumerable own string keys natively (no per-key
-  // JS callback). If it has fewer entries than `getOwnPropertyNames` (all own
-  // string keys), the object has a non-enumerable own string prop and is not
-  // "clone-friendly" -> bail. This replaces an O(n) loop of
-  // `propertyIsEnumerable` calls with two native calls.
-  const keys = Object.keys(o)
-  if (keys.length !== Object.getOwnPropertyNames(o).length) {
+export function isPlainObject(o: unknown): boolean {
+  if (!o || typeof o !== 'object') {
     return false
   }
-
-  // Only check symbols if the object has any (most plain objects don't)
-  const symbols = Object.getOwnPropertySymbols(o)
-
-  // Fast path: no symbols, return enumerable string keys directly
-  if (symbols.length === 0) {
-    return keys
-  }
-
-  // Slow path: has symbols, include only enumerable ones, bail on any
-  // non-enumerable symbol so it round-trips like the string-key check above.
-  for (const symbol of symbols) {
-    if (!isEnumerable.call(o, symbol)) {
-      return false
-    }
-    ;(keys as Array<string | symbol>).push(symbol)
-  }
-  return keys
-}
-
-// Copied from: https://github.com/jonschlinkert/is-plain-object
-export function isPlainObject(o: any) {
-  if (!hasObjectPrototype(o)) {
-    return false
-  }
-
-  // If has modified constructor
-  const ctor = o.constructor
-  if (typeof ctor === 'undefined') {
-    return true
-  }
-
-  // If has modified prototype
-  const prot = ctor.prototype
-  if (!hasObjectPrototype(prot)) {
-    return false
-  }
-
-  // If constructor does not have an Object-specific method
-  if (!prot.hasOwnProperty('isPrototypeOf')) {
-    return false
-  }
-
-  // Most likely a plain Object
-  return true
-}
-
-function hasObjectPrototype(o: any) {
-  return Object.prototype.toString.call(o) === '[object Object]'
+  // An own constructor is data, so classify the actual prototype.
+  return (Object.getPrototypeOf(o)?.constructor ?? Object) === Object
 }
 
 /**
