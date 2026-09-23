@@ -1099,6 +1099,8 @@ export interface RouterCore<
   _preloads?: Map<AbortController, Array<AnyRouteMatch>>
   /** Owns cancellable work before a client transaction publishes. */
   _preflight?: AbortController
+  /** Set by adapters whose code-split components suspend through hydration and keep the server HTML. */
+  _hydrateWithoutComponentChunks?: boolean
   /** Transfers one reconstructed SSR prefix into its initial client load. */
   _handoff?: HydrationHandoff
   /** Pending-boundary reveal and minimum-visible timing state. */

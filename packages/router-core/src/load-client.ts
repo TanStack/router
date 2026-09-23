@@ -2370,7 +2370,15 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       return false
     }
   })
-  let chunkFailure = 0
+  // Unmerged lazy options would render `<Outlet />` in place of the server
+  // component, so their lane still waits for every chunk.
+  const awaitsChunks =
+    !router._hydrateWithoutComponentChunks ||
+    committed.some((match) => {
+      const route = getRoute(router, match)
+      return route.lazyFn && route._lazy !== true
+    })
+  let chunkFailure = awaitsChunks ? 0 : chunks.length
   try {
     while (
       chunkFailure < chunks.length &&
