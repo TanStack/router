@@ -77,6 +77,19 @@ export interface RouterStores<in out TRouteTree extends AnyRoute> {
   byRoute: Map<string, MatchStore>
 
   /**
+   * The route ids presented before the most recent change to `ids`.
+   */
+  previousIds: Array<string>
+
+  /**
+   * The last match of each route in `previousIds` that is not in `ids`. A
+   * framework tree that still renders a departed route (for example a
+   * dehydrated Suspense boundary that React hydrates once before it applies
+   * the navigation) reads it here instead of from the cleared match store.
+   */
+  departed: Map<string, AnyRouteMatch>
+
+  /**
    * Get the stable atom for a route's presented match. The atom remains in the
    * pool when the route leaves and contains `undefined` until it re-enters.
    */
@@ -95,6 +108,7 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
   // non reactive utilities
   const byRoute = new Map<string, MatchStore>()
+  const departed = new Map<string, AnyRouteMatch>()
 
   // atoms
   const status = createMutableStore<RouterState<TRouteTree>['status']>('idle')
@@ -138,6 +152,8 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
 
     // non-reactive state
     byRoute,
+    previousIds: [] as Array<string>,
+    departed,
 
     // compatibility "big" state
     __store,
@@ -158,12 +174,19 @@ export function createRouterStores<TRouteTree extends AnyRoute>(
       // Publish lane membership first so framework trees reconcile departures
       // before observers of a leaving route receive its tombstone.
       if (!arraysEqual(previousIds, nextIds)) {
+        store.previousIds = previousIds
+        departed.clear()
         ids.set(nextIds)
       }
 
       for (const id of previousIds) {
         if (!nextIds.includes(id)) {
-          byRoute.get(id)!.set(() => undefined)
+          const matchStore = byRoute.get(id)!
+          const lastMatch = matchStore.get()
+          if (lastMatch) {
+            departed.set(id, lastMatch)
+          }
+          matchStore.set(() => undefined)
         }
       }
 

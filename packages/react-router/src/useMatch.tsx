@@ -4,7 +4,7 @@ import * as React from 'react'
 import { useSelector } from '@tanstack/react-store'
 import { invariant, replaceEqualDeep } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
-import { dummyMatchContext, matchContext } from './matchContext'
+import { matchContext } from './matchContext'
 import { useRouter } from './useRouter'
 import type {
   StructuralSharingOption,
@@ -143,9 +143,7 @@ export function useMatch<
   >,
 ): ThrowOrOptional<UseMatchResult<TRouter, TFrom, TStrict, TSelected>, TThrow> {
   const router = useRouter<TRouter>()
-  const nearestRouteId = React.useContext(
-    opts.from ? dummyMatchContext : matchContext,
-  )
+  const nearestRouteId = React.useContext(matchContext)
 
   const routeId = opts.from ?? nearestRouteId
   const matchStore = router.stores.getMatchStore(routeId!)
@@ -174,9 +172,15 @@ export function useMatch<
     useStructuralSharing(opts, router)
 
   // eslint-disable-next-line react-hooks/rules-of-hooks -- condition is static
-  const matchSelection = useSelector(matchStore, (match) =>
-    match ? selector(match as any) : dummyMatch,
-  )
+  const matchSelection = useSelector(matchStore, (match) => {
+    // Only a tree that still renders a departed route may read departed matches.
+    const presentedMatch =
+      match ??
+      (router.stores.departed.has(nearestRouteId!)
+        ? router.stores.departed.get(routeId!)
+        : undefined)
+    return presentedMatch ? selector(presentedMatch) : dummyMatch
+  })
 
   if (matchSelection !== dummyMatch) {
     return matchSelection as any
