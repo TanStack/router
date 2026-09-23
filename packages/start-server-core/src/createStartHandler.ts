@@ -9,7 +9,6 @@ import {
 } from '@tanstack/start-client-core'
 import {
   _getRenderedMatches,
-  executeRewriteInput,
   isDangerousProtocol,
   isPromise,
   isRedirect,
@@ -729,7 +728,10 @@ export function createStartHandler<TRegister = Register>(
           // `additionalContext` is request-scoped and only read from router.options
           // during load; avoid a full router.update() and redundant location parse.
           routerInstance.options.additionalContext = { serverContext }
-          await routerInstance.load({ _signal: signal })
+          await routerInstance.load({
+            _signal: signal,
+            _skipLocationUpdate: true,
+          })
           signal.throwIfAborted()
 
           if (routerInstance._serverResult?.type === 'redirect') {
@@ -774,7 +776,6 @@ export function createStartHandler<TRegister = Register>(
               handleServerRoutes({
                 getRouter,
                 request,
-                url,
                 executeRouter,
                 context,
                 executedRequestMiddlewares,
@@ -909,14 +910,12 @@ async function handleRedirectResponse(
 async function handleServerRoutes({
   getRouter,
   request,
-  url,
   executeRouter,
   context,
   executedRequestMiddlewares,
 }: {
   getRouter: () => Promise<AnyRouter>
   request: Request
-  url: URL
   executeRouter: (
     serverContext: any,
     matchedRoutes?: ReadonlyArray<AnyRoute>,
@@ -925,13 +924,15 @@ async function handleServerRoutes({
   executedRequestMiddlewares: Set<AnyRequestMiddleware>
 }): Promise<SsrResponse> {
   const router = await getRouter()
-  const rewrittenUrl = executeRewriteInput(router.rewrite, url)
-  const pathname = rewrittenUrl.pathname
+  const location = router.latestLocation
+  // Preserve the encoded pathname exposed to server handlers and middleware.
+  const pathname = location.href.split(/[?#]/, 1)[0]!
   // this will perform a fuzzy match, however for server routes we need an exact match
   // if the route is not an exact match, executeRouter will handle rendering the app router
-  // the match will be cached internally, so no extra work is done during the app router render
-  const [matchedRoutes, rawParams, foundRoute] =
-    router.getMatchedRoutes(pathname)
+  // The cached match avoids another route-tree traversal during the app router render.
+  const [matchedRoutes, rawParams, foundRoute] = router.getMatchedRoutes(
+    location.pathname,
+  )
 
   const isExactMatch = foundRoute && rawParams['**'] === undefined
 
