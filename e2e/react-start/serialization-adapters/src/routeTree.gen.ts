@@ -13,9 +13,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ServerFunctionCustomErrorRouteImport } from './routes/server-function/custom-error'
 import { Route as ServerFunctionLateRawStreamRouteImport } from './routes/server-function/late-raw-stream'
 import { Route as ServerFunctionNestedRouteImport } from './routes/server-function/nested'
+import { Route as ServerFunctionTemporalRouteImport } from './routes/server-function/temporal'
 import { Route as SsrDataOnlyRouteImport } from './routes/ssr/data-only'
 import { Route as SsrNestedRouteImport } from './routes/ssr/nested'
 import { Route as SsrStreamRouteImport } from './routes/ssr/stream'
+import { Route as SsrTemporalRouteImport } from './routes/ssr/temporal'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -39,6 +41,11 @@ const ServerFunctionNestedRoute = ServerFunctionNestedRouteImport.update({
   path: '/server-function/nested',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ServerFunctionTemporalRoute = ServerFunctionTemporalRouteImport.update({
+  id: '/server-function/temporal',
+  path: '/server-function/temporal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SsrDataOnlyRoute = SsrDataOnlyRouteImport.update({
   id: '/ssr/data-only',
   path: '/ssr/data-only',
@@ -54,24 +61,33 @@ const SsrStreamRoute = SsrStreamRouteImport.update({
   path: '/ssr/stream',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SsrTemporalRoute = SsrTemporalRouteImport.update({
+  id: '/ssr/temporal',
+  path: '/ssr/temporal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
   '/server-function/late-raw-stream': typeof ServerFunctionLateRawStreamRoute
   '/server-function/nested': typeof ServerFunctionNestedRoute
+  '/server-function/temporal': typeof ServerFunctionTemporalRoute
   '/ssr/data-only': typeof SsrDataOnlyRoute
   '/ssr/nested': typeof SsrNestedRoute
   '/ssr/stream': typeof SsrStreamRoute
+  '/ssr/temporal': typeof SsrTemporalRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
   '/server-function/late-raw-stream': typeof ServerFunctionLateRawStreamRoute
   '/server-function/nested': typeof ServerFunctionNestedRoute
+  '/server-function/temporal': typeof ServerFunctionTemporalRoute
   '/ssr/data-only': typeof SsrDataOnlyRoute
   '/ssr/nested': typeof SsrNestedRoute
   '/ssr/stream': typeof SsrStreamRoute
+  '/ssr/temporal': typeof SsrTemporalRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -79,9 +95,11 @@ export interface FileRoutesById {
   '/server-function/custom-error': typeof ServerFunctionCustomErrorRoute
   '/server-function/late-raw-stream': typeof ServerFunctionLateRawStreamRoute
   '/server-function/nested': typeof ServerFunctionNestedRoute
+  '/server-function/temporal': typeof ServerFunctionTemporalRoute
   '/ssr/data-only': typeof SsrDataOnlyRoute
   '/ssr/nested': typeof SsrNestedRoute
   '/ssr/stream': typeof SsrStreamRoute
+  '/ssr/temporal': typeof SsrTemporalRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -90,27 +108,33 @@ export interface FileRouteTypes {
     | '/server-function/custom-error'
     | '/server-function/late-raw-stream'
     | '/server-function/nested'
+    | '/server-function/temporal'
     | '/ssr/data-only'
     | '/ssr/nested'
     | '/ssr/stream'
+    | '/ssr/temporal'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/server-function/custom-error'
     | '/server-function/late-raw-stream'
     | '/server-function/nested'
+    | '/server-function/temporal'
     | '/ssr/data-only'
     | '/ssr/nested'
     | '/ssr/stream'
+    | '/ssr/temporal'
   id:
     | '__root__'
     | '/'
     | '/server-function/custom-error'
     | '/server-function/late-raw-stream'
     | '/server-function/nested'
+    | '/server-function/temporal'
     | '/ssr/data-only'
     | '/ssr/nested'
     | '/ssr/stream'
+    | '/ssr/temporal'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -118,9 +142,11 @@ export interface RootRouteChildren {
   ServerFunctionCustomErrorRoute: typeof ServerFunctionCustomErrorRoute
   ServerFunctionLateRawStreamRoute: typeof ServerFunctionLateRawStreamRoute
   ServerFunctionNestedRoute: typeof ServerFunctionNestedRoute
+  ServerFunctionTemporalRoute: typeof ServerFunctionTemporalRoute
   SsrDataOnlyRoute: typeof SsrDataOnlyRoute
   SsrNestedRoute: typeof SsrNestedRoute
   SsrStreamRoute: typeof SsrStreamRoute
+  SsrTemporalRoute: typeof SsrTemporalRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -153,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServerFunctionNestedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/server-function/temporal': {
+      id: '/server-function/temporal'
+      path: '/server-function/temporal'
+      fullPath: '/server-function/temporal'
+      preLoaderRoute: typeof ServerFunctionTemporalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/ssr/data-only': {
       id: '/ssr/data-only'
       path: '/ssr/data-only'
@@ -174,6 +207,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SsrStreamRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/ssr/temporal': {
+      id: '/ssr/temporal'
+      path: '/ssr/temporal'
+      fullPath: '/ssr/temporal'
+      preLoaderRoute: typeof SsrTemporalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -182,9 +222,11 @@ const rootRouteChildren: RootRouteChildren = {
   ServerFunctionCustomErrorRoute: ServerFunctionCustomErrorRoute,
   ServerFunctionLateRawStreamRoute: ServerFunctionLateRawStreamRoute,
   ServerFunctionNestedRoute: ServerFunctionNestedRoute,
+  ServerFunctionTemporalRoute: ServerFunctionTemporalRoute,
   SsrDataOnlyRoute: SsrDataOnlyRoute,
   SsrNestedRoute: SsrNestedRoute,
   SsrStreamRoute: SsrStreamRoute,
+  SsrTemporalRoute: SsrTemporalRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
