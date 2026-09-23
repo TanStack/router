@@ -32,6 +32,8 @@ export function registerRouterPlugins(
 
   api.modifyRspackConfig((config, utils) => {
     const envName = utils.environment.name
+    const isBuild = api.context.action === 'build' && !config.watch
+    const routesPlugin = routesManifestPlugin(() => isBuild)
     const { startConfig } = opts.getConfig()
     const routerConfig = startConfig.router
 
@@ -51,7 +53,7 @@ export function registerRouterPlugins(
             })
           },
           plugins: [
-            routesManifestPlugin(),
+            routesPlugin,
             ...(opts.startPluginOpts.prerender?.enabled === true
               ? [prerenderRoutesPlugin()]
               : []),
@@ -67,15 +69,23 @@ export function registerRouterPlugins(
       envName === RSBUILD_ENVIRONMENT_NAMES.server
     ) {
       const isClient = envName === RSBUILD_ENVIRONMENT_NAMES.client
+      const codeSplittingOptions = {
+        ...routerConfig.codeSplittingOptions,
+        deleteNodes: isClient ? ['ssr', 'server', 'headers'] : undefined,
+        addHmr: isClient,
+        compilerPlugins:
+          isBuild &&
+          isClient &&
+          (typeof config.cache !== 'object' ||
+            config.cache.type !== 'persistent')
+            ? [routesPlugin]
+            : [],
+      }
       const splitterPlugin = TanStackRouterCodeSplitterRspack(
         {
           ...routerConfig,
           target: opts.corePluginOpts.framework,
-          codeSplittingOptions: {
-            ...routerConfig.codeSplittingOptions,
-            deleteNodes: isClient ? ['ssr', 'server', 'headers'] : undefined,
-            addHmr: isClient,
-          },
+          codeSplittingOptions,
         },
         routerPluginContext,
       )
