@@ -166,10 +166,10 @@ const postsQuery = queryOptions({
 export const Route = createFileRoute('/posts')({
   // Ensure the data is in the cache before render
   loader: ({ context }) =>
-    context.queryClient.query({ 
-      ...postsQuery, 
+    context.queryClient.query({
+      ...postsQuery,
       // returns data from cache immediately, otherwise executes a fetch
-      staleTime: 'static' 
+      staleTime: 'static',
     }),
   component: PostsPage,
 })
