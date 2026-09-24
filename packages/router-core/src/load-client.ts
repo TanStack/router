@@ -2227,7 +2227,6 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       ...manifest,
       routes: Object.fromEntries(
         Object.entries(manifest.routes).map(([id, route]) => [
-          // Legacy route IDs start with '/', and the root ID is unchanged.
           id.startsWith('\uFFFD') ? hydrateSsrMatchId(id) : id,
           route,
         ]),
