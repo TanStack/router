@@ -157,7 +157,6 @@ describe('hydrate', () => {
 
       mockWindow.$_TSR = await dehydrateToBootstrap(serverRouter, manifest)
 
-      // Internal route IDs in the wire manifest must not look like crawlable URLs.
       expect(
         Object.keys(mockWindow.$_TSR.router!.manifest!.routes).some(
           (id) => id.includes('/') || id.includes('\0'),
@@ -168,7 +167,6 @@ describe('hydrate', () => {
       ])
 
       if (legacy) {
-        // A previous server sent these original route keys in the bootstrap.
         mockWindow.$_TSR.router!.manifest = manifest
       }
 
