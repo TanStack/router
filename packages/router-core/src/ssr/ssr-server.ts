@@ -453,6 +453,14 @@ export function attachRouterServerSsrUtils({
           preparedManifest.routes,
           opts?.requestAssets,
         )
+        // Keep internal route IDs out of crawler-visible URL strings without
+        // adding null bytes to the HTML stream.
+        manifestToDehydrate.routes = Object.fromEntries(
+          Object.entries(manifestToDehydrate.routes).map(([id, route]) => [
+            dehydrateSsrMatchId(id).replaceAll('\0', '\uFFFD'),
+            route,
+          ]),
+        )
       }
       const dehydratedRouter: DehydratedRouter = {
         manifest: manifestToDehydrate,

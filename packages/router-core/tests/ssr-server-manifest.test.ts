@@ -119,6 +119,49 @@ function parseSerializedRouter(
 }
 
 describe('attachRouterServerSsrUtils manifest dehydration', () => {
+  test('keeps pathless route IDs out of hydration scripts while preserving asset URLs', async () => {
+    const rootRoute = new BaseRootRoute({})
+    const layoutRoute = new BaseRoute({
+      getParentRoute: () => rootRoute,
+      id: '_authenticated',
+    })
+    const productRoute = new BaseRoute({
+      getParentRoute: () => layoutRoute,
+      path: '/products/$productId',
+    })
+    const router = createTestRouter({
+      routeTree: rootRoute.addChildren([
+        layoutRoute.addChildren([productRoute]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/products/42'] }),
+      isServer: true,
+    })
+    attachRouterServerSsrUtils({
+      router,
+      manifest: {
+        routes: {
+          [layoutRoute.id]: { preloads: ['/assets/layout.js'] },
+          [productRoute.id]: { preloads: ['/assets/product.js'] },
+        },
+      },
+    })
+    try {
+      await router.load()
+      await router.serverSsr!.dehydrate()
+      const source = router
+        .serverSsr!.takeInitialHydrationScriptTags()!
+        .before.map((script) => script.children)
+        .join('')
+
+      expect(source).not.toContain('/_authenticated')
+      expect(source).toContain('/assets/layout.js')
+      expect(source).toContain('/assets/product.js')
+    } finally {
+      router.serverSsr!.cleanup()
+      router.history.destroy()
+    }
+  })
+
   test.each([
     { label: 'false', value: false, expectedProperty: true },
     { label: 'zero', value: 0, expectedProperty: true },
@@ -156,8 +199,8 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
   test('omits unmatched route assets by default', async () => {
     const manifest = await dehydrateManifest()
 
-    expect(manifest.routes['/posts']).toBeUndefined()
-    expect(manifest.routes['/']?.preloads).toEqual(['/assets/index.js'])
+    expect(manifest.routes['\uFFFDposts']).toBeUndefined()
+    expect(manifest.routes['\uFFFD']?.preloads).toEqual(['/assets/index.js'])
   })
 
   test('preserves script format when dehydrating the manifest', async () => {
@@ -371,7 +414,7 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
           : asset.href === '/assets/shared.css',
       ),
     ).toBe(false)
-    expect(dehydratedManifest.routes['/']?.preloads).toEqual([
+    expect(dehydratedManifest.routes['\uFFFD']?.preloads).toEqual([
       '/assets/index.js',
     ])
   })
@@ -497,10 +540,10 @@ describe('attachRouterServerSsrUtils manifest dehydration', () => {
         crossOrigin: 'anonymous',
       },
     ])
-    expect(dehydratedManifest.routes['/']?.css).toEqual([
+    expect(dehydratedManifest.routes['\uFFFD']?.css).toEqual([
       '/assets/index-linked.css',
     ])
-    expect(dehydratedManifest.routes['/']?.preloads).toEqual([
+    expect(dehydratedManifest.routes['\uFFFD']?.preloads).toEqual([
       '/assets/index.js',
     ])
   })
