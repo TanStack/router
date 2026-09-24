@@ -129,11 +129,9 @@ export const Match = Vue.defineComponent({
 
         return Vue.h(Vue.Fragment, null, [
           content,
-          Vue.h(Vue.Fragment, null, [
-            (isServer ?? router.isServer) && router.options.scrollRestoration
-              ? Vue.h(ScrollRestoration)
-              : null,
-          ]),
+          (isServer ?? router.isServer) && router.options.scrollRestoration
+            ? Vue.h(ScrollRestoration)
+            : null,
         ])
       }
 
