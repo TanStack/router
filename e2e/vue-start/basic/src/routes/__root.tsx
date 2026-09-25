@@ -1,4 +1,5 @@
 /// <reference types="vite/client" />
+import { defineComponent } from 'vue'
 import {
   Body,
   ClientOnly,
@@ -15,6 +16,119 @@ import { TanStackRouterDevtoolsInProd } from '@tanstack/vue-router-devtools'
 import { NotFound } from '~/components/NotFound'
 import '~/styles/app.css'
 import { seo } from '~/utils/seo'
+
+const RootComponent = defineComponent({
+  setup() {
+    const routerState = useRouterState({
+      select: (state) => ({ isLoading: state.isLoading, status: state.status }),
+    })
+    return () => (
+      <Html>
+        <head>
+          <HeadContent />
+        </head>
+        <Body>
+          <div class="p-2 flex gap-2 text-lg">
+            <Link
+              to="/"
+              activeProps={{
+                class: 'font-bold',
+              }}
+              activeOptions={{ exact: true }}
+            >
+              Home
+            </Link>{' '}
+            <Link
+              to="/posts"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Posts
+            </Link>{' '}
+            <Link
+              to="/users"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Users
+            </Link>{' '}
+            <Link
+              to="/layout-a"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Layout
+            </Link>{' '}
+            <Link
+              to="/scripts"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Scripts
+            </Link>{' '}
+            <Link
+              to="/inline-scripts"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Inline Scripts
+            </Link>{' '}
+            <Link
+              to="/deferred"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Deferred
+            </Link>{' '}
+            <Link
+              to="/redirect"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              redirect
+            </Link>{' '}
+            <Link
+              to="/raw-stream"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              Raw Stream
+            </Link>{' '}
+            <Link
+              // @ts-expect-error
+              to="/this-route-does-not-exist"
+              activeProps={{
+                class: 'font-bold',
+              }}
+            >
+              This Route Does Not Exist
+            </Link>
+          </div>
+          <ClientOnly>
+            <div hidden>
+              <b data-testid="router-isLoading">
+                {routerState.value.isLoading ? 'true' : 'false'}
+              </b>
+              <b data-testid="router-status">{routerState.value.status}</b>
+            </div>
+          </ClientOnly>
+          <Outlet />
+          <div class="inline-div">This is an inline styled div</div>
+          <TanStackRouterDevtoolsInProd />
+          <Scripts />
+        </Body>
+      </Html>
+    )
+  },
+})
 
 export const Route = createRootRoute({
   head: () => ({
@@ -70,115 +184,3 @@ export const Route = createRootRoute({
   notFoundComponent: () => <NotFound />,
   component: RootComponent,
 })
-
-function RootComponent() {
-  const routerState = useRouterState({
-    select: (state) => ({ isLoading: state.isLoading, status: state.status }),
-  })
-
-  return (
-    <Html>
-      <head>
-        <HeadContent />
-      </head>
-      <Body>
-        <div class="p-2 flex gap-2 text-lg">
-          <Link
-            to="/"
-            activeProps={{
-              class: 'font-bold',
-            }}
-            activeOptions={{ exact: true }}
-          >
-            Home
-          </Link>{' '}
-          <Link
-            to="/posts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Posts
-          </Link>{' '}
-          <Link
-            to="/users"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Users
-          </Link>{' '}
-          <Link
-            to="/layout-a"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Layout
-          </Link>{' '}
-          <Link
-            to="/scripts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Scripts
-          </Link>{' '}
-          <Link
-            to="/inline-scripts"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Inline Scripts
-          </Link>{' '}
-          <Link
-            to="/deferred"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Deferred
-          </Link>{' '}
-          <Link
-            to="/redirect"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            redirect
-          </Link>{' '}
-          <Link
-            to="/raw-stream"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            Raw Stream
-          </Link>{' '}
-          <Link
-            // @ts-expect-error
-            to="/this-route-does-not-exist"
-            activeProps={{
-              class: 'font-bold',
-            }}
-          >
-            This Route Does Not Exist
-          </Link>
-        </div>
-        <ClientOnly>
-          <div hidden>
-            <b data-testid="router-isLoading">
-              {routerState.value.isLoading ? 'true' : 'false'}
-            </b>
-            <b data-testid="router-status">{routerState.value.status}</b>
-          </div>
-        </ClientOnly>
-        <Outlet />
-        <div class="inline-div">This is an inline styled div</div>
-        <TanStackRouterDevtoolsInProd />
-        <Scripts />
-      </Body>
-    </Html>
-  )
-}

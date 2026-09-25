@@ -20,8 +20,8 @@ await assertGlobalMiddlewareScenario(handler, context)
 
 describe('ssr', () => {
   bench(
-    'ssr global-mw server-route (solid)',
-    () => runGlobalMiddlewareServerRouteLoop(handler),
+    'ssr global-mw server-route 3 middlewares (solid)',
+    () => runGlobalMiddlewareServerRouteLoop(handler, 3),
     globalMiddlewareBenchOptions,
   )
 })

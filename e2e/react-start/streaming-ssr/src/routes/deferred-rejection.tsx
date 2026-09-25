@@ -1,7 +1,9 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
 import { Suspense } from 'react'
-
-const deferredErrorMessage = 'Error in deferred object'
+import {
+  deferredDataDelay,
+  deferredErrorMessage,
+} from '../../../../streaming-ssr-fixtures'
 
 export const Route = createFileRoute('/deferred-rejection')({
   loader: async () => {
@@ -9,7 +11,7 @@ export const Route = createFileRoute('/deferred-rejection')({
       deferredData: new Promise<string>((_resolve, reject) => {
         setTimeout(() => {
           reject(new Error(deferredErrorMessage))
-        }, 1000)
+        }, deferredDataDelay)
       }),
     }
   },
