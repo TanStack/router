@@ -403,10 +403,15 @@ export function useLinkProps<
   // the element. The cleanup also cancels a pending intent timer.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   React.useEffect(() => {
+    // Disabled preloading creates neither an observer nor an intent timer.
+    if (!preload) {
+      return
+    }
     if (preload === 'render' && !hasRenderFetched.current) {
       hasRenderFetched.current = true
       preloadLink(router, _options)
     }
+    let active = true
     let observer: IntersectionObserver | undefined
     if (
       preload === 'viewport' &&
@@ -414,12 +419,18 @@ export function useLinkProps<
       typeof IntersectionObserver === 'function'
     ) {
       observer = new IntersectionObserver(
-        (entries) => enqueuePreload(entries.pop()),
+        (entries) => {
+          // A queued observer notification can arrive after disconnect().
+          if (active) {
+            enqueuePreload(entries.pop())
+          }
+        },
         { rootMargin: '100px' },
       )
       observer.observe(innerRef.current)
     }
     return () => {
+      active = false
       observer?.disconnect()
       cancelPreload(innerRef)
     }
