@@ -57,10 +57,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
-    | '/useQuery'
-    | '/useSuspenseQuery'
-    | '/loader-fetchQuery/$type'
+    '/' | '/useQuery' | '/useSuspenseQuery' | '/loader-fetchQuery/$type'
   fileRoutesByTo: FileRoutesByTo
   to: '/' | '/useQuery' | '/useSuspenseQuery' | '/loader-fetchQuery/$type'
   id:

@@ -14,7 +14,7 @@
   "dependencies": {
     "@convex-dev/react-query": "0.0.0-alpha.8",
     "@tanstack/react-query": "catalog:",
-    "@tanstack/react-query-devtools": "^5.102.3",
+    "@tanstack/react-query-devtools": "catalog:",
     "@tanstack/react-router": "^1.170.39",
     "@tanstack/react-router-devtools": "^1.167.2",
     "@tanstack/react-router-ssr-query": "^1.167.1",

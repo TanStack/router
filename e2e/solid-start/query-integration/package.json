@@ -12,8 +12,8 @@
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
-    "@tanstack/solid-query": "^5.90.9",
-    "@tanstack/solid-query-devtools": "^5.90.0",
+    "@tanstack/solid-query": "catalog:",
+    "@tanstack/solid-query-devtools": "catalog:",
     "@tanstack/solid-router": "workspace:^",
     "@tanstack/solid-router-devtools": "workspace:^",
     "@tanstack/solid-router-ssr-query": "workspace:^",

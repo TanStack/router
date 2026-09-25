@@ -67,7 +67,7 @@
   },
   "devDependencies": {
     "@tanstack/router-core": "workspace:*",
-    "@tanstack/query-core": ">=5.102.0",
+    "@tanstack/query-core": "catalog:",
     "vite": "catalog:",
     "@tanstack/vite-config": "catalog:",
     "vitest": "catalog:",
