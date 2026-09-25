@@ -1461,19 +1461,17 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
   )
   let session = router._pending
   for (let index = 0; index < matches.length; index++) {
-    const match = matches[index]!
-    const presentedPending =
+    let match = matches[index]!
+    let presentedPending =
       index === paintedBoundary && presented[index]?.id === match.id
-    // A settled match never keeps the boundary, even while it is painted. The
-    // boundary advances so the next presented snapshot carries its real status.
-    // A painted boundary holds through its minimum window. The render ack
-    // arms the session deadline, so a live deadline means the outgoing
-    // fallback was seen; anything else advances at once.
     if (match.status === 'success' && !match._notFound) {
+      if (!presentedPending) {
+        continue
+      }
       // A painted boundary holds through its minimum window. The render ack
       // arms the session deadline, so a live deadline means the outgoing
       // fallback was seen; anything else advances at once.
-      if (presentedPending && session?.[1 /* boundaryId */] === match.id) {
+      if (session?.[1 /* boundaryId */] === match.id) {
         const remaining = session[2 /* deadline */] - Date.now()
         if (remaining > 0) {
           session[0 /* generation */] = tx
@@ -1489,16 +1487,16 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
       // terminal settled match that is still painted (e.g. a data-only route
       // whose SSR data arrived as success while the client component still
       // needs its pending phase) falls through and is offered instead.
-      let hasPendingDescendant = false
+      // Select the first unresolved descendant directly; the settled matches
+      // between it and this painted boundary do not need another scan.
       for (let next = index + 1; next < matches.length; next++) {
         const descendant = matches[next]!
         if (descendant.status !== 'success' || descendant._notFound) {
-          hasPendingDescendant = true
+          match = descendant
+          index = next
+          presentedPending = false
           break
         }
-      }
-      if (hasPendingDescendant || !presentedPending) {
-        continue
       }
     }
     const route = getRoute(router, match as WorkMatch)
