@@ -1,6 +1,6 @@
 ---
 name: bundle-size-optimization
-description: Use when working in this repository on JS bundle size, gzip regressions, benchmark scenarios, source attribution, treeshaking, dead code elimination, or bundler annotations, including Webpack.
+description: Use when working in this repository on JS bundle size, gzip regressions, benchmark scenarios, source attribution, treeshaking, dead code elimination, or bundler annotations.
 ---
 
 # Bundle Size Optimization
