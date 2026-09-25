@@ -178,14 +178,14 @@ test('a painted fallback holds its minimum before the shell renders', async () =
 
   // The layout settled, but the painted fallback holds its minimum window.
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(100)
+    await vi.advanceTimersByTimeAsync(399)
   })
   expect(screen.getByRole('status')).toBeInTheDocument()
   expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
 
   // Once the minimum elapses the shell renders with the leaf still pending.
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(300)
+    await vi.advanceTimersByTimeAsync(1)
   })
   expect(screen.getByText('Header shell')).toBeInTheDocument()
   expect(screen.getByRole('status')).toBeInTheDocument()
@@ -193,7 +193,13 @@ test('a painted fallback holds its minimum before the shell renders', async () =
 
   await act(async () => {
     detailLoader.resolve('detail data')
-    await vi.advanceTimersByTimeAsync(400)
+    await vi.advanceTimersByTimeAsync(399)
+  })
+  expect(screen.getByRole('status')).toBeInTheDocument()
+  expect(screen.queryByText('User detail')).not.toBeInTheDocument()
+
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1)
     await navigation
   })
   expect(screen.getByText('User detail')).toBeInTheDocument()

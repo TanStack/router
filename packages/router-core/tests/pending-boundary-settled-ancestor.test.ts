@@ -155,6 +155,7 @@ describe('pending boundary must advance past settled ancestors', () => {
   })
 
   test('a boundary that never paints does not hold the presented snapshot', async () => {
+    vi.useFakeTimers()
     const leafLoader = createControlledPromise<string>()
 
     const rootRoute = new BaseRootRoute({ component: () => null })
@@ -197,12 +198,11 @@ describe('pending boundary must advance past settled ancestors', () => {
     await router.load()
     const navigation = router.navigate({ to: '/leaf' })
 
-    await vi.waitFor(() =>
-      expect(
-        router.state.matches.find((match) => match.routeId === layoutRoute.id)
-          ?.status,
-      ).toBe('pending'),
-    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(
+      router.state.matches.find((match) => match.routeId === layoutRoute.id)
+        ?.status,
+    ).toBe('pending')
 
     layoutChunk.resolve({
       options: { id: layoutRoute.id, component: () => null },
@@ -210,15 +210,14 @@ describe('pending boundary must advance past settled ancestors', () => {
 
     // Nothing painted the boundary, so no minimum window holds it back and
     // the boundary advances to the leaf as soon as the layout settles.
-    await vi.waitFor(() =>
-      expect(
-        router.state.matches.map((match) => [match.routeId, match.status]),
-      ).toEqual([
-        [rootRoute.id, 'success'],
-        [layoutRoute.id, 'success'],
-        [leafRoute.id, 'pending'],
-      ]),
-    )
+    await vi.advanceTimersByTimeAsync(0)
+    expect(
+      router.state.matches.map((match) => [match.routeId, match.status]),
+    ).toEqual([
+      [rootRoute.id, 'success'],
+      [layoutRoute.id, 'success'],
+      [leafRoute.id, 'pending'],
+    ])
 
     leafLoader.resolve('leaf data')
     await navigation
@@ -284,7 +283,7 @@ describe('pending boundary must advance past settled ancestors', () => {
     expect(find(leafRoute.id)).toBe('success')
   })
 
-  test('a branch with nothing left to load commits without offering a boundary', async () => {
+  test('a branch with nothing left to load commits successfully', async () => {
     const rootRoute = new BaseRootRoute({ component: () => null })
     const indexRoute = new BaseRoute({
       getParentRoute: () => rootRoute,
@@ -332,8 +331,7 @@ describe('pending boundary must advance past settled ancestors', () => {
       options: { id: layoutRoute.id, component: () => null },
     })
 
-    // The leaf has no loader, so once the layout settles no match is left to
-    // offer and the branch commits without another boundary.
+    // The leaf has no loader, so settling the layout completes the navigation.
     await navigation
     expect(
       router.state.matches.map((match) => [match.routeId, match.status]),
