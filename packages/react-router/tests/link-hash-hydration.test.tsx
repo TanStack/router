@@ -347,3 +347,30 @@ test('updates hash and active options on the same hydrated link', async () => {
     expect(anchor.textContent).toBe(String(active))
   }
 })
+
+test('updates and removes an explicit href before using the hash updater', async () => {
+  const hash = vi.fn((previous: string) => `${previous}-child`)
+  const tree = (router: ReturnType<typeof makeRouter>, href?: string) => (
+    <RouterContextProvider router={router}>
+      <Link to="/" href={href} hash={hash}>
+        Link
+      </Link>
+    </RouterContextProvider>
+  )
+  const container = document.createElement('div')
+  container.innerHTML = renderToString(tree(makeRouter(true, '/'), '/#one'))
+  const anchor = container.querySelector('a')!
+  const router = makeRouter(false, '/#details')
+  let root: ReturnType<typeof hydrateRoot>
+  await act(() => {
+    root = hydrateRoot(container, tree(router, '/#one'))
+    cleanups.push(() => root.unmount())
+  })
+  await act(() => root.render(tree(router, '/#two')))
+  expect(anchor).toHaveAttribute('href', '/#two')
+  expect(hash).not.toHaveBeenCalled()
+  await act(() => root.render(tree(router)))
+  expect(container.querySelector('a')).toBe(anchor)
+  expect(anchor).toHaveAttribute('href', '/#details-child')
+  expect(hash).toHaveBeenCalledWith('details')
+})

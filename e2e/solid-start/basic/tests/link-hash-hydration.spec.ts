@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { test } from '@tanstack/router-e2e-utils'
 
 test('hash-dependent links reproduce the server state before using the browser hash', async ({
   page,
