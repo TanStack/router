@@ -25,6 +25,22 @@ describe('redirect destination classification', () => {
     ['https://app.example:444/target', 'https://app.example:444/target', true],
     ['mailto:person@example.com', 'mailto:person@example.com', true],
     ['tel:+123456789', 'tel:+123456789', true],
+    [
+      'https://user@app.example/target',
+      'https://user@app.example/target',
+      true,
+    ],
+    [
+      'https://:password@app.example/target',
+      'https://:password@app.example/target',
+      true,
+    ],
+    [
+      'HTTPS://APP.EXAMPLE:443//other.example/path',
+      'https://app.example//other.example/path',
+      true,
+    ],
+    ['HTTPS://OTHER.EXAMPLE:443//path', 'https://other.example//path', true],
   ] as const
 
   const sameOriginDocumentCases = [
@@ -38,9 +54,7 @@ describe('redirect destination classification', () => {
   ] as const
 
   for (const reloadDocument of [undefined, false, true]) {
-    test.each(
-      reloadDocument === true ? [...cases, ...sameOriginDocumentCases] : cases,
-    )(
+    test.each([...cases, ...sameOriginDocumentCases])(
       `resolves %j with reloadDocument=${reloadDocument}`,
       (href, expectedHref, external) => {
         const router = createRouter()
@@ -63,13 +77,68 @@ describe('redirect destination classification', () => {
   }
 
   test.each([
+    '//other.example/path',
+    '//other.example:443/path',
+    '/\\other.example/path',
+    '\\\\other.example/path',
+    '/\t/other.example/path',
     'javascript:alert(1)',
     'java\tscript:alert(1)',
     'custom:value',
     '\x01Ja\tvaScript:alert(1)',
+    '\x01/\\other.example/path',
   ])('rejects the unsafe destination %j', (href) => {
     expect(() => createRouter().resolveRedirect(redirect({ href }))).toThrow(
       'Redirect blocked',
     )
+  })
+
+  test.each(['custom://[', 'blob:https://app.example/id'])(
+    'keeps an explicitly allowed non-HTTP destination opaque: %s',
+    (href) => {
+      const router = createRouter(['custom:', 'blob:'])
+      const result = router.resolveRedirect(redirect({ href }))
+      expect(result.options.href).toBe(href)
+      expect(result.options.reloadDocument).toBe(true)
+    },
+  )
+
+  test('does not implicitly allow HTTP when the configured allowlist excludes it', () => {
+    expect(() =>
+      createRouter([]).resolveRedirect(
+        redirect({ href: 'https://app.example/target' }),
+      ),
+    ).toThrow('Redirect blocked')
+  })
+
+  test('classifies the Location header that takes precedence over options.href', () => {
+    const router = createRouter()
+    const result = router.resolveRedirect(
+      redirect({
+        href: 'javascript:alert(1)',
+        headers: { Location: 'https://app.example/target' },
+      }),
+    )
+    expect(result.options.href).toBe('/target')
+    expect(result.options.reloadDocument).toBeUndefined()
+    expect(() =>
+      router.resolveRedirect(
+        redirect({
+          href: '/safe',
+          headers: { Location: '//other.example/path' },
+        }),
+      ),
+    ).toThrow('Redirect blocked')
+  })
+
+  test('rejects an obfuscated scheme in the authoritative Location header', () => {
+    expect(() =>
+      createRouter().resolveRedirect(
+        redirect({
+          href: '/safe',
+          headers: { Location: '\x01Ja\tvaScript:alert(1)' },
+        }),
+      ),
+    ).toThrow('Redirect blocked')
   })
 })

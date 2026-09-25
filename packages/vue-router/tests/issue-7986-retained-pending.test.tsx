@@ -1,7 +1,7 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/vue'
 import { afterEach, expect, test, vi } from 'vitest'
 import { createControlledPromise } from '@tanstack/router-core'
-import { nextTick } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 import {
   Outlet,
   RouterProvider,
@@ -68,6 +68,18 @@ function setup() {
     },
     component: () => <Outlet />,
   })
+  const Project = defineComponent({
+    setup() {
+      const params = projectRoute.useParams()
+
+      const search = projectRoute.useSearch()
+      return () => (
+        <div data-testid="content">
+          project={params.value.projectId} tab={search.value.tab ?? 'default'}
+        </div>
+      )
+    },
+  })
   const projectRoute = createRoute({
     getParentRoute: () => layoutRoute,
     path: '/projects/$projectId',
@@ -75,16 +87,6 @@ function setup() {
       typeof search.tab === 'string' ? { tab: search.tab } : {},
     component: Project,
   })
-
-  function Project() {
-    const params = projectRoute.useParams()
-    const search = projectRoute.useSearch()
-    return (
-      <div data-testid="content">
-        project={params.value.projectId} tab={search.value.tab ?? 'default'}
-      </div>
-    )
-  }
 
   const router = createRouter({
     routeTree: rootRoute.addChildren([layoutRoute.addChildren([projectRoute])]),
@@ -183,6 +185,19 @@ test('a blocking reload retains the exact successful match', async () => {
   let loaderCalls = 0
 
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
+  const PageComponent = defineComponent({
+    setup() {
+      const loaderData = pageRoute.useLoaderData()
+
+      const search = pageRoute.useSearch()
+      return () => (
+        <div data-testid="content">
+          {loaderData.value} tab={search.value.tab ?? 'default'}
+        </div>
+      )
+    },
+  })
+
   const pageRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/page',
@@ -201,15 +216,7 @@ test('a blocking reload retains the exact successful match', async () => {
         )
       },
     },
-    component: () => {
-      const loaderData = pageRoute.useLoaderData()
-      const search = pageRoute.useSearch()
-      return (
-        <div data-testid="content">
-          {loaderData.value} tab={search.value.tab ?? 'default'}
-        </div>
-      )
-    },
+    component: PageComponent,
   })
   const router = createRouter({
     routeTree: rootRoute.addChildren([pageRoute]),
@@ -259,6 +266,13 @@ test('a cached success retries through pending UI when an error is mounted', asy
   let loaderCalls = 0
 
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
+  const PageComponent = defineComponent({
+    setup() {
+      const loaderData = pageRoute.useLoaderData()
+      return () => <div data-testid="content">{loaderData.value}</div>
+    },
+  })
+
   const pageRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/page',
@@ -277,10 +291,7 @@ test('a cached success retries through pending UI when an error is mounted', asy
         return retry.then(() => 'retried')
       },
     },
-    component: () => {
-      const loaderData = pageRoute.useLoaderData()
-      return <div data-testid="content">{loaderData.value}</div>
-    },
+    component: PageComponent,
     pendingComponent: () => <div data-testid="pending">Pending</div>,
     errorComponent: () => <div data-testid="error">Failed</div>,
   })
@@ -320,6 +331,13 @@ test('a cache-only success retries through pending UI over mounted success', asy
   let loaderCalls = 0
 
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
+  const PageComponent = defineComponent({
+    setup() {
+      const loaderData = pageRoute.useLoaderData()
+      return () => <div data-testid="content">{loaderData.value}</div>
+    },
+  })
+
   const pageRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/page',
@@ -335,10 +353,7 @@ test('a cache-only success retries through pending UI over mounted success', asy
         return `generation ${generation}`
       },
     },
-    component: () => {
-      const loaderData = pageRoute.useLoaderData()
-      return <div data-testid="content">{loaderData.value}</div>
-    },
+    component: PageComponent,
     pendingComponent: () => <div data-testid="pending">Pending</div>,
   })
   const router = createRouter({
@@ -392,6 +407,13 @@ test('a success hidden below an error boundary retries through pending UI', asyn
     component: () => <Outlet />,
     errorComponent: () => <div data-testid="error">Parent failed</div>,
   })
+  const ChildComponent = defineComponent({
+    setup() {
+      const loaderData = childRoute.useLoaderData()
+      return () => <div data-testid="content">{loaderData.value}</div>
+    },
+  })
+
   const childRoute = createRoute({
     getParentRoute: () => parentRoute,
     path: '/child',
@@ -406,10 +428,7 @@ test('a success hidden below an error boundary retries through pending UI', asyn
         return 'initial child'
       },
     },
-    component: () => {
-      const loaderData = childRoute.useLoaderData()
-      return <div data-testid="content">{loaderData.value}</div>
-    },
+    component: ChildComponent,
     pendingComponent: () => <div data-testid="pending">Pending child</div>,
   })
   const router = createRouter({
@@ -648,6 +667,13 @@ test('a superseding navigation replaces an unrelated pending presentation', asyn
   let pageLoads = 0
 
   const rootRoute = createRootRoute({ component: () => <Outlet /> })
+  const PageComponent = defineComponent({
+    setup() {
+      const loaderData = pageRoute.useLoaderData()
+      return () => <div data-testid="content">{loaderData.value}</div>
+    },
+  })
+
   const pageRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/page',
@@ -662,10 +688,7 @@ test('a superseding navigation replaces an unrelated pending presentation', asyn
         return pageReload.then(() => 'reloaded page')
       },
     },
-    component: () => {
-      const loaderData = pageRoute.useLoaderData()
-      return <div data-testid="content">{loaderData.value}</div>
-    },
+    component: PageComponent,
     pendingComponent: () => <div data-testid="page-pending">Page pending</div>,
   })
   const otherRoute = createRoute({
@@ -721,6 +744,18 @@ test('a retained root publishes fresh context with a child fallback', async () =
   const childReady = controlled()
   let retainedLoads = 0
 
+  const RootComponent = defineComponent({
+    setup() {
+      const context = rootRoute.useRouteContext()
+      return () => (
+        <div>
+          <div data-testid="user">{context.value.user}</div>
+          <Outlet />
+        </div>
+      )
+    },
+  })
+
   const rootRoute = createRootRoute({
     validateSearch: (search: Record<string, unknown>): { user: string } => ({
       user: typeof search.user === 'string' ? search.user : 'unknown',
@@ -732,15 +767,7 @@ test('a retained root publishes fresh context with a child fallback', async () =
       }
       return { user: search.user }
     },
-    component: () => {
-      const context = rootRoute.useRouteContext()
-      return (
-        <div>
-          <div data-testid="user">{context.value.user}</div>
-          <Outlet />
-        </div>
-      )
-    },
+    component: RootComponent,
   })
   const sourceRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -801,6 +828,18 @@ test('a retained prefix exposes one fresh context chain before descendant pendin
     beforeLoad: () => ({ rootReady: true }),
     component: () => <Outlet />,
   })
+  const AComponent = defineComponent({
+    setup() {
+      const context = aRoute.useRouteContext()
+      return () => (
+        <div>
+          <div data-testid="user">{context.value.user}</div>
+          <Outlet />
+        </div>
+      )
+    },
+  })
+
   const aRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: 'a',
@@ -814,15 +853,7 @@ test('a retained prefix exposes one fresh context chain before descendant pendin
       }
       return { user: search.user }
     },
-    component: () => {
-      const context = aRoute.useRouteContext()
-      return (
-        <div>
-          <div data-testid="user">{context.value.user}</div>
-          <Outlet />
-        </div>
-      )
-    },
+    component: AComponent,
   })
   const bRoute = createRoute({
     getParentRoute: () => aRoute,
@@ -839,12 +870,10 @@ test('a retained prefix exposes one fresh context chain before descendant pendin
     path: 'd',
     component: () => <div data-testid="source">Source</div>,
   })
-  const eRoute = createRoute({
-    getParentRoute: () => aRoute,
-    path: 'e',
-    component: () => {
+  const EComponent = defineComponent({
+    setup() {
       const context = eRoute.useRouteContext()
-      return (
+      return () => (
         <div>
           <div data-testid="e-user">{context.value.user}</div>
           <Outlet />
@@ -852,6 +881,21 @@ test('a retained prefix exposes one fresh context chain before descendant pendin
       )
     },
   })
+
+  const eRoute = createRoute({
+    getParentRoute: () => aRoute,
+    path: 'e',
+    component: EComponent,
+  })
+  const FPendingComponent = defineComponent({
+    setup() {
+      const context = fRoute.useRouteContext()
+      return () => (
+        <div data-testid="f-pending">F pending for {context.value.user}</div>
+      )
+    },
+  })
+
   const fRoute = createRoute({
     getParentRoute: () => eRoute,
     path: 'f',
@@ -859,12 +903,7 @@ test('a retained prefix exposes one fresh context chain before descendant pendin
       pendingStarted.resolve()
       await pendingReady
     },
-    pendingComponent: () => {
-      const context = fRoute.useRouteContext()
-      return (
-        <div data-testid="f-pending">F pending for {context.value.user}</div>
-      )
-    },
+    pendingComponent: FPendingComponent,
     component: () => <Outlet />,
   })
   const gRoute = createRoute({
@@ -931,15 +970,17 @@ test.each([false, true])(
 
     const rootRoute = createRootRoute({ component: () => <Outlet /> })
     const Parent = Object.assign(
-      () => {
-        const loaderData = parentRoute.useLoaderData()
-        return (
-          <div data-testid="parent-content">
-            {loaderData.value}
-            <Outlet />
-          </div>
-        )
-      },
+      defineComponent({
+        setup() {
+          const loaderData = parentRoute.useLoaderData()
+          return () => (
+            <div data-testid="parent-content">
+              {loaderData.value}
+              <Outlet />
+            </div>
+          )
+        },
+      }),
       {
         preload: () => (++parentPreloads === 1 ? undefined : parentComponent),
       },

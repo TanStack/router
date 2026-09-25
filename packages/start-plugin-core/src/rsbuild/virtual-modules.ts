@@ -298,6 +298,7 @@ export function registerVirtualModules(
       serverFnsById: opts.serverFnsById,
       includeClientReferencedCheck: !isProviderEnvironment(environmentName),
       useStaticImports: Boolean(opts.rscEnabled && isDev),
+      memoizeModules: !isDev,
     })
   }
 

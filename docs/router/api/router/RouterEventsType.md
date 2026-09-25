@@ -47,9 +47,6 @@ type RouterEvents = {
     hrefChanged: boolean
     hashChanged: boolean
   }
-  onInjectedHtml: {
-    type: 'onInjectedHtml'
-  }
   onRendered: {
     type: 'onRendered'
     fromLocation?: ParsedLocation
@@ -67,7 +64,7 @@ Once an event is emitted, the following properties will be present on the event 
 
 ### `type` property
 
-- Type: `onBeforeNavigate | onBeforeLoad | onLoad | onBeforeRouteMount | onResolved | onRendered | onInjectedHtml`
+- Type: `onBeforeNavigate | onBeforeLoad | onLoad | onBeforeRouteMount | onResolved | onRendered`
 - The type of the event
 - This is useful for discriminating between events in a listener function.
 

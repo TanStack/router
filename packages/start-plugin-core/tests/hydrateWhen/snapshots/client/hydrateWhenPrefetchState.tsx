@@ -13,7 +13,7 @@ export function Page() {
       setStatus('prefetched');
       setUnusedStatus('prefetched');
     }} h="0_24b5f958eb" p={_H0_preload}>
-      {<_H />}
-    </Hydrate>
+{<_H />}
+</Hydrate>
     </section>;
 }
