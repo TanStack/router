@@ -123,10 +123,11 @@ export function useLinkProps<
     'href',
   ])
 
-  const [hydrating, setHydrating] = Solid.createSignal(
-    !(isServer ?? router.isServer) && !!Solid.sharedConfig.context,
-  )
-  if (hydrating()) {
+  // Only actual client hydration needs reactive state and a mount callback.
+  let hydrating: Solid.Accessor<boolean> | undefined
+  if (!(isServer ?? router.isServer) && Solid.sharedConfig.context) {
+    const [getHydrating, setHydrating] = Solid.createSignal(true)
+    hydrating = getHydrating
     Solid.onMount(() => setHydrating(false))
   }
 
@@ -140,12 +141,14 @@ export function useLinkProps<
     // Rebuild when inherited search/hash or the current route context changes.
     const _fromLocation = currentLocation()
     const nextOptions = { _fromLocation, ...options } as any
+    // Non-string hashes are either true (inherit) or an updater.
     const hash = nextOptions.hash
     const hydrateHash =
       !options.href &&
       !options._fromLocation &&
-      (hash === true || typeof hash === 'function') &&
-      hydrating()
+      hash &&
+      typeof hash !== 'string' &&
+      hydrating?.()
     // untrack because router-core will also access stores, which are signals in solid
     return Solid.untrack(() => {
       // Keep the source location identity for shared route matching. Literal
@@ -240,7 +243,7 @@ export function useLinkProps<
     }
 
     if (activeOptions?.includeHash) {
-      return (hydrating() ? '' : current.hash) === nextLocation.hash
+      return (hydrating?.() ? '' : current.hash) === nextLocation.hash
     }
     return true
   })
