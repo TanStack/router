@@ -58,7 +58,7 @@ be attributed to a specific feature area.
 | `control-flow`                           | Loader-thrown `redirect` (including a 2-hop chain), `notFound()` with `notFoundComponent`, loader errors with `errorComponent`, and boundary reset on recovery navigation.                                                                                                                                                           |
 | `head`                                   | `HeadContent` per-navigation work: nested route `head()` evaluation, title/meta/link dedupe across matches, and head tag DOM updates during navigation.                                                                                                                                                                              |
 | `history`                                | History push/replace/back/forward traversal, location masking, registered-but-never-blocking `useBlocker`, and `useCanGoBack`/`useLocation` subscriptions.                                                                                                                                                                           |
-| `hydration`                              | Initial DOM hydration: execute the SSR payload, restore `beforeLoad` context and loader data, and hydrate 192 ordinary and eight hash-sensitive Links through their follow-up effects in React, Solid, and Vue.                                                                                                                      |
+| `hydration`                              | Initial DOM hydration: execute the SSR payload, restore `beforeLoad` context and loader data, and hydrate 192 ordinary and eight hash-sensitive Links through their follow-up effects in React and Solid.                                                                                                                            |
 | `links`                                  | Per-navigation cost of ~200 mounted `<Link>`s: link prop building, active-state recompute across `activeOptions` variants, `activeProps` swaps, and `useMatchRoute` probes (the `MatchRoute` component is avoided: vue-router's implementation leaks one subscription per render).                                                   |
 | `loaders`                                | Client loader dispatch: always-stale re-runs (`staleTime: 0`), cached revisits (re-run once per lap by the `invalidate` step), `loaderDeps`-keyed caching, `router.invalidate()`, and `useLoaderData` selectors.                                                                                                                     |
 | `mount`                                  | Cold start: `createRouter` (route-tree processing) + first render + initial `router.load()` + unmount, with a fresh router per mount.                                                                                                                                                                                                |
@@ -123,7 +123,7 @@ CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav:test:types --outputStyle
 
 ## Hydration
 
-`scenarios/hydration/{react,solid,vue}` provide the same initial-hydration
+`scenarios/hydration/{react,solid}` provide the same initial-hydration
 workload: 192 ordinary Links, eight hash-sensitive Links, and three matched
 routes with three `beforeLoad` contexts and two loader results. The server URL
 has no fragment; the client URL has `#details`, matching half of the hash-sensitive Links.
@@ -134,7 +134,7 @@ CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav-hydration-react:test:uni
 CI=1 NX_DAEMON=false pnpm nx run @benchmarks/client-nav-hydration-react:test:types:client --outputStyle=stream --skipRemoteCache
 ```
 
-Replace `react` with `solid` or `vue` to run the other adapters.
+Replace `react` with `solid` to run the other adapter.
 
 The build generates static HTML and its real Router SSR bootstrap scripts once
 with `createRequestHandler` and the adapter's streaming renderer. Generation
@@ -161,12 +161,8 @@ the existing DOM with the framework's native renderer:
   component/key hierarchy. Wait for mount, the router's rendered event, active-link
   effects, and two idle turns. DOM identity assertions include every workload
   element so template fallback cannot silently replace server nodes.
-- **Vue:** mount a `createSSRApp` into its server-rendered container and flush
-  post-mount updates with `nextTick`, followed by two idle turns. Production
-  hydration-mismatch diagnostics remain enabled so incorrect server DOM fails the
-  scenario. Completion is independent of the expected DOM state.
 
-Solid and Vue bound settlement to 100 turns. Ending at the hydration call or the
+Solid bounds settlement to 100 turns. Ending at the hydration call or the
 first mount would miss post-hydration Link updates.
 Timer turns use `setImmediate`; scrolling is a no-op
 because this is CPU simulation rather than browser layout/paint measurement.
