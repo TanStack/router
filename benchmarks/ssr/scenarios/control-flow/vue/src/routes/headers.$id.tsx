@@ -1,4 +1,13 @@
+import { defineComponent } from 'vue'
 import { createFileRoute } from '@tanstack/vue-router'
+
+const HeadersComponent = defineComponent({
+  setup() {
+    const params = Route.useParams()
+
+    return () => <main>{`headers-${params.value.id}`}</main>
+  },
+})
 
 export const Route = createFileRoute('/headers/$id')({
   headers: ({ params }) => ({
@@ -7,9 +16,3 @@ export const Route = createFileRoute('/headers/$id')({
   }),
   component: HeadersComponent,
 })
-
-function HeadersComponent() {
-  const params = Route.useParams()
-
-  return <main>{`headers-${params.value.id}`}</main>
-}

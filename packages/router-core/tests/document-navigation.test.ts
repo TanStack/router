@@ -177,13 +177,13 @@ describe('document navigation', () => {
     expect(windowLocation.replace).not.toHaveBeenCalled()
   })
 
-  test('keeps server commits in memory history', async () => {
+  test('ignores server navigation to an external output', async () => {
     const { router, history } = setupRouter({ isServer: true })
     vi.stubGlobal('window', undefined)
 
     await router.navigate({ to: '/admin' })
 
-    expect(history.location.href).toBe(externalHref)
+    expect(history.location.href).toBe('/')
   })
 
   test.each([

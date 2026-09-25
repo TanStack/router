@@ -159,7 +159,7 @@ function component() {
     try {
       const plugins = unpluginRouterComposedFactory(
         { target: 'react', autoCodeSplitting: false },
-        { framework: 'vite' },
+        { framework: 'vite', versions: {} },
       )
 
       const pluginArray = Array.isArray(plugins) ? plugins : [plugins]
