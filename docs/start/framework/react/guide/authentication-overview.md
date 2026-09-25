@@ -1,7 +1,10 @@
 ---
 id: authentication-overview
-title: Authentication
+title: Choose Authentication for React Apps
+description: Compare hosted services, auth libraries, and custom authentication for React apps built with TanStack Start. Choose an approach before implementing sessions and authorization.
 ---
+
+Choose how your React app will handle identity, sessions, and permissions. This page compares approaches and providers. Once you have chosen an approach, use [Implement Authentication in React](./authentication.md) for the application workflow.
 
 ## Authentication vs Authorization
 

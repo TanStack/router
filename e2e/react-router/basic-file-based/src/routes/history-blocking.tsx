@@ -18,7 +18,9 @@ function HistoryBlocking() {
   const { step } = Route.useSearch()
   const [draft, setDraft] = React.useState('')
   const [ignoreBlocker, setIgnoreBlocker] = React.useState(false)
-  const { status, reset } = useBlocker({
+  const [documentHref, setDocumentHref] = React.useState('/')
+  const [navigationError, setNavigationError] = React.useState('')
+  const { status, reset, proceed } = useBlocker({
     shouldBlockFn: () => draft.length > 0,
     enableBeforeUnload: draft.length > 0,
     withResolver: true,
@@ -45,7 +47,38 @@ function HistoryBlocking() {
       </label>
       <p>{draft ? 'Unsaved changes' : 'No changes'}</p>
       <p>Blocker status: {status}</p>
-      {status === 'blocked' && <button onClick={reset}>Stay here</button>}
+      {status === 'blocked' && (
+        <>
+          <button onClick={reset}>Stay here</button>
+          <button onClick={proceed}>Continue navigation</button>
+        </>
+      )}
+      <label>
+        Document destination
+        <input
+          value={documentHref}
+          onChange={(event) => setDocumentHref(event.target.value)}
+        />
+      </label>
+      {[false, true].map((replace) => (
+        <button
+          key={String(replace)}
+          onClick={() => {
+            setNavigationError('')
+            void router
+              .navigate({
+                href: documentHref,
+                reloadDocument: true,
+                replace,
+                ignoreBlocker,
+              })
+              .catch((error) => setNavigationError(String(error)))
+          }}
+        >
+          {replace ? 'Replace document' : 'Navigate document'}
+        </button>
+      ))}
+      {navigationError && <p role="status">{navigationError}</p>}
       <Link to="/history-blocking" search={{ step: step + 1 }}>
         Add history entry
       </Link>

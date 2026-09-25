@@ -67,6 +67,45 @@ function setup(
 }
 
 describe('commit cache ownership', () => {
+  test.each(['error', 'notFound', 'pending', 'global not found'] as const)(
+    'only supersedes the rendered prefix and settled descendants at a %s boundary',
+    (boundaryKind) => {
+      const cached = [
+        'prefix',
+        'boundary',
+        'settled',
+        'pending',
+        'failed',
+        'unrelated',
+      ].map((id) => match(id, resource()))
+      const next = cached.slice(0, -1).map((entry) => match(entry.id))
+      if (boundaryKind === 'global not found') {
+        next[1]!._notFound = true
+      } else {
+        next[1]!.status = boundaryKind
+      }
+      next[3]!.status = 'pending'
+      next[4]!.status = 'error'
+      const { router, commit } = setup([], cached, next)
+
+      commit()
+
+      expect([...router._cache.keys()]).toEqual([
+        'pending',
+        'failed',
+        'unrelated',
+      ])
+      for (const [index, entry] of cached.entries()) {
+        if (index < 3) {
+          expect(entry._flight).toBeUndefined()
+        } else {
+          expect(router._cache.get(entry.id)).toBe(entry)
+          expect(entry._flight?.[1].signal.aborted).toBe(false)
+        }
+      }
+    },
+  )
+
   test('retains cached identities and releases the committed owner cloned into cache', () => {
     const retainedFlight = resource()
     const departedFlight = resource()
