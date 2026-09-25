@@ -8,7 +8,7 @@
     "dev:e2e": "vite dev",
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
-    "start": "npx serve dist/client",
+    "start": "node spa-server.mjs dist/client",
     "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
