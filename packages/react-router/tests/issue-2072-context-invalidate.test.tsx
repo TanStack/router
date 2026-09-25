@@ -8,7 +8,6 @@ import {
 } from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
 import {
-  Outlet,
   RouterProvider,
   createMemoryHistory,
   createRootRouteWithContext,
@@ -27,9 +26,7 @@ test('#2072: logout invalidates the router with the fresh auth context', async (
   const seen: Array<boolean> = []
   const rootRoute = createRootRouteWithContext<{
     auth: { isAuthenticated: boolean }
-  }>()({
-    component: () => <Outlet />,
-  })
+  }>()()
   const loginRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/login',
@@ -49,7 +46,6 @@ test('#2072: logout invalidates the router with the fresh auth context', async (
         throw redirect({ to: '/login' })
       }
     },
-    component: () => <Outlet />,
   })
   const privateRoute = createRoute({
     getParentRoute: () => authenticatedRoute,
@@ -101,9 +97,7 @@ test('#2072: login invalidates the router with the fresh auth context', async ()
   const seen: Array<boolean> = []
   const rootRoute = createRootRouteWithContext<{
     auth: { isAuthenticated: boolean }
-  }>()({
-    component: () => <Outlet />,
-  })
+  }>()()
   const loginRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/login',
@@ -123,7 +117,6 @@ test('#2072: login invalidates the router with the fresh auth context', async ()
         throw redirect({ to: '/login' })
       }
     },
-    component: () => <Outlet />,
   })
   const privateRoute = createRoute({
     getParentRoute: () => authenticatedRoute,
@@ -161,9 +154,10 @@ test('#2072: login invalidates the router with the fresh auth context', async ()
 
   render(<App />)
   expect(await screen.findByText('Login page')).toBeInTheDocument()
+  expect(seen).toEqual([])
 
   fireEvent.click(screen.getByRole('button', { name: 'Login' }))
 
   expect(await screen.findByText('Private page')).toBeInTheDocument()
-  await waitFor(() => expect(seen).toContain(true))
+  await waitFor(() => expect(seen).toEqual([true]))
 })
