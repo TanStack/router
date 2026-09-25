@@ -2199,7 +2199,18 @@ export async function hydrate(router: AnyRouter): Promise<void> {
       'Invariant failed: Expected to find a dehydrated data on window.$_TSR.router, but we did not. Please file an issue!',
     )
   }
-  router.ssr = { manifest: dehydratedRouter!.manifest }
+  const manifest = dehydratedRouter!.manifest
+  router.ssr = {
+    manifest: manifest && {
+      ...manifest,
+      routes: Object.fromEntries(
+        Object.entries(manifest.routes).map(([id, route]) => [
+          id.startsWith('\uFFFD') ? hydrateSsrMatchId(id) : id,
+          route,
+        ]),
+      ),
+    },
+  }
   router.options.ssr = {
     nonce: (
       document.querySelector('meta[property="csp-nonce"]') as
