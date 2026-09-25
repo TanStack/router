@@ -16,6 +16,13 @@ const getServerEcho = createServerFn()
   .validator((input: string) => input)
   .handler(({ data }) => getEcho(data))
 
+// Isomorphic fn passed directly as the handler, see #8446
+const getInlineIsomorphic = createServerFn().handler(
+  createIsomorphicFn()
+    .server(() => 'server')
+    .client(() => 'client'),
+)
+
 export const Route = createFileRoute('/isomorphic-fns')({
   component: RouteComponent,
   loader() {
@@ -31,13 +38,15 @@ function RouteComponent() {
   async function handleClick() {
     const envOnClick = getEnv()
     const echo = getEcho('hello')
-    const [serverEnv, serverEcho] = await Promise.all([
+    const [serverEnv, serverEcho, inlineIsomorphic] = await Promise.all([
       getServerEnv(),
       getServerEcho({ data: 'hello' }),
+      getInlineIsomorphic(),
     ])
-    setResults({ envOnClick, echo, serverEnv, serverEcho })
+    setResults({ envOnClick, echo, serverEnv, serverEcho, inlineIsomorphic })
   }
-  const { envOnClick, echo, serverEnv, serverEcho } = results || {}
+  const { envOnClick, echo, serverEnv, serverEcho, inlineIsomorphic } =
+    results || {}
   return (
     <div>
       <button onClick={handleClick} data-testid="test-isomorphic-results-btn">
@@ -64,6 +73,13 @@ function RouteComponent() {
           </pre>
           When we called the function on the client it returned:
           <pre data-testid="client-echo-result">{JSON.stringify(echo)}</pre>
+          <br />
+          <h1>
+            <code>getInlineIsomorphic</code>
+          </h1>
+          <pre data-testid="inline-isomorphic-result">
+            {JSON.stringify(inlineIsomorphic)}
+          </pre>
         </div>
       )}
     </div>

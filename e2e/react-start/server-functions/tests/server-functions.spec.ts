@@ -123,6 +123,9 @@ test('isomorphic functions can have different implementations on client and serv
   await expect(page.getByTestId('client-echo-result')).toContainText(
     'client received hello',
   )
+  await expect(page.getByTestId('inline-isomorphic-result')).toContainText(
+    'server',
+  )
 })
 
 test('env-only functions can only be called on the server or client respectively', async ({
@@ -147,6 +150,9 @@ test('env-only functions can only be called on the server or client respectively
   )
   await expect(page.getByTestId('client-on-client')).toContainText(
     'client got: hello',
+  )
+  await expect(page.getByTestId('inline-server-only')).toContainText(
+    'inline server-only handler ran',
   )
 })
 

@@ -1266,3 +1266,52 @@ describe('re-export chain resolution', () => {
     expect(updatedResult!.code).not.toContain('server-only-value')
   })
 })
+
+describe('env-only and isomorphic fns nested in createServerFn().handler()', () => {
+  // https://github.com/TanStack/router/issues/8446
+  const code = `
+    import { createServerFn, createServerOnlyFn, createClientOnlyFn, createIsomorphicFn } from '@tanstack/react-start'
+
+    export const inlineServerOnly = createServerFn().handler(createServerOnlyFn(() => 'server-only-impl'))
+    export const inlineIsomorphic = createServerFn().handler(
+      createIsomorphicFn().server(() => 'server-impl').client(() => 'client-impl'),
+    )
+    export const nestedClientOnly = createServerFn().handler(() => {
+      const readWindow = createClientOnlyFn(() => window.innerWidth)
+      return 'nested-impl'
+    })
+  `
+
+  test.each([
+    { env: 'client', rpc: 'createClientRpc(' },
+    { env: 'server', rpc: 'createSsrRpc(' },
+  ] as const)(
+    '$env caller replaces every handler with an RPC stub',
+    async ({ env, rpc }) => {
+      const compiler = createFullCompiler(env)
+      const result = await compiler.compile({ code, id: '/test/src/test.ts' })
+
+      expect(result!.code.split(rpc)).toHaveLength(4)
+      expect(result!.code).not.toContain('-impl')
+      expect(result!.code).not.toContain('.handler("')
+    },
+  )
+
+  test('server provider keeps the server implementation of each handler', async () => {
+    const compiler = createFullCompiler('server')
+    const result = await compiler.compile({
+      code,
+      id: '/test/src/test.ts?tss-serverfn-split',
+    })
+
+    expect(result!.code).toContain("'server-only-impl'")
+    expect(result!.code).toContain("'server-impl'")
+    expect(result!.code).not.toContain("'client-impl'")
+    expect(result!.code).toContain(
+      'createClientOnlyFn() functions can only be called on the client!',
+    )
+    expect(result!.code).not.toMatch(
+      /create(ServerOnly|ClientOnly|Isomorphic)Fn\((?!\))/,
+    )
+  })
+})
