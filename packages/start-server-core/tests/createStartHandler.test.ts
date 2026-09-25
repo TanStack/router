@@ -1626,6 +1626,99 @@ describe('createStartHandler direct server routes', () => {
     expect(render).not.toHaveBeenCalled()
   })
 
+  it.each(
+    [false, true].flatMap((component) =>
+      ['function', 'object'].flatMap((handlerKind) =>
+        ['params.parse', 'parseParams'].map((parserKind) => ({
+          component,
+          handlerKind,
+          parserKind,
+        })),
+      ),
+    ),
+  )(
+    'parses server handler params (component=$component, handler=$handlerKind, parser=$parserKind)',
+    async ({ component, handlerKind, parserKind }) => {
+      const parse = (params: { itemId: string }) => ({
+        itemId: Number(params.itemId),
+      })
+      const routeHandler = vi.fn(({ params }: any) => Response.json(params))
+      startMocks.router = makeRouter({
+        path: '/items/$itemId',
+        component: component ? () => null : undefined,
+        ...(parserKind === 'params.parse'
+          ? { params: { parse } }
+          : { parseParams: parse }),
+        server: {
+          handlers: {
+            GET:
+              handlerKind === 'function'
+                ? routeHandler
+                : { handler: routeHandler },
+          },
+        },
+      })
+      const render = vi.fn(() => new Response('must not render'))
+      const handler = createStartHandler(render)
+
+      const response = await handler(
+        new Request('http://localhost/items/42'),
+        {},
+      )
+
+      expect(response.status).toBe(200)
+      await expect(response.json()).resolves.toEqual({ itemId: 42 })
+      expect(routeHandler).toHaveBeenCalledOnce()
+      expect(render).not.toHaveBeenCalled()
+    },
+  )
+
+  it.each(['route', 'handler'] as const)(
+    'lets %s middleware catch terminal handler parameter parsing errors',
+    async (placement) => {
+      const error = new Error('Invalid item id')
+      const middleware = createMiddleware().server(async ({ next }) => {
+        try {
+          return await next()
+        } catch (caught) {
+          expect(caught).toBe(error)
+          return new Response(error.message, { status: 400 })
+        }
+      })
+      const routeHandler = vi.fn(() => new Response('must not run'))
+      startMocks.router = makeRouter({
+        path: '/items/$itemId',
+        component: undefined,
+        params: {
+          parse: () => {
+            throw error
+          },
+        },
+        server: {
+          ...(placement === 'route' ? { middleware: [middleware] } : {}),
+          handlers: {
+            GET:
+              placement === 'handler'
+                ? { middleware: [middleware], handler: routeHandler }
+                : routeHandler,
+          },
+        },
+      })
+      const render = vi.fn(() => new Response('must not render'))
+      const handler = createStartHandler(render)
+
+      const response = await handler(
+        new Request('http://localhost/items/nope'),
+        {},
+      )
+
+      expect(response.status).toBe(400)
+      await expect(response.text()).resolves.toBe('Invalid item id')
+      expect(routeHandler).not.toHaveBeenCalled()
+      expect(render).not.toHaveBeenCalled()
+    },
+  )
+
   it.each(['route', 'handler'] as const)(
     'runs %s middleware instead of incorrectly taking the direct path',
     async (placement) => {

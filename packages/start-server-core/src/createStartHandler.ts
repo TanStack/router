@@ -45,6 +45,7 @@ import type {
   AnyRequestMiddleware,
   AnyStartInstanceOptions,
   RouteMethod,
+  RouteMethodHandlerFn,
   RouterEntry,
   StartEntry,
 } from '@tanstack/start-client-core'
@@ -906,6 +907,32 @@ async function handleRedirectResponse(
   return ssrResponse
 }
 
+function withParsedParams(
+  handler: RouteMethodHandlerFn<any, AnyRoute, any, any, any, any, any>,
+  matchedRoutes: ReadonlyArray<AnyRoute>,
+): TODO {
+  if (
+    !matchedRoutes.some(
+      (route) => route.options.params?.parse ?? route.options.parseParams,
+    )
+  ) {
+    return handler
+  }
+
+  return (ctx: TODO) => {
+    // Parse inside the pipeline so middleware can catch errors. Keep the raw
+    // params for app-router validation when the handler defers to rendering.
+    const params = Object.assign(Object.create(null), ctx.params)
+    for (const route of matchedRoutes) {
+      const parse = route.options.params?.parse ?? route.options.parseParams
+      if (parse) {
+        Object.assign(params, parse(params))
+      }
+    }
+    return handler({ ...ctx, params })
+  }
+}
+
 async function handleServerRoutes({
   getRouter,
   request,
@@ -975,27 +1002,23 @@ async function handleServerRoutes({
     if (handler) {
       const mayDefer = !!foundRoute.options.component
 
-      if (typeof handler === 'function') {
-        if (!mayDefer) {
-          terminalHandler = handler
-          terminalNext = throwIfMayNotDefer
-        } else {
-          routeMiddlewares.push(handler)
-        }
-      } else {
+      if (typeof handler !== 'function') {
         if (handler.middleware?.length) {
           const handlerMiddlewares = flattenMiddlewares(handler.middleware)
           for (const m of handlerMiddlewares) {
             routeMiddlewares.push(m.options.server)
           }
         }
-        if (handler.handler) {
-          if (!mayDefer) {
-            terminalHandler = handler.handler
-            terminalNext = throwIfMayNotDefer
-          } else {
-            routeMiddlewares.push(handler.handler)
-          }
+      }
+      const routeHandler =
+        typeof handler === 'function' ? handler : handler.handler
+      if (routeHandler) {
+        const parsedHandler = withParsedParams(routeHandler, matchedRoutes)
+        if (!mayDefer) {
+          terminalHandler = parsedHandler
+          terminalNext = throwIfMayNotDefer
+        } else {
+          routeMiddlewares.push(parsedHandler)
         }
       }
     }
