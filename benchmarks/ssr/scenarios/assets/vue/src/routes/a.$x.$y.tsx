@@ -1,5 +1,20 @@
+import { defineComponent } from 'vue'
 import { createFileRoute } from '@tanstack/vue-router'
 import '../styles/assets-leaf.css'
+
+const LeafComponent = defineComponent({
+  setup() {
+    const params = Route.useParams()
+
+    return () => (
+      <section class="assets-leaf">
+        <p>
+          assets-leaf-{params.value.x}-{params.value.y}
+        </p>
+      </section>
+    )
+  },
+})
 
 export const Route = createFileRoute('/a/$x/$y')({
   head: ({ params }) => ({
@@ -12,15 +27,3 @@ export const Route = createFileRoute('/a/$x/$y')({
   }),
   component: LeafComponent,
 })
-
-function LeafComponent() {
-  const params = Route.useParams()
-
-  return (
-    <section class="assets-leaf">
-      <p>
-        assets-leaf-{params.value.x}-{params.value.y}
-      </p>
-    </section>
-  )
-}
