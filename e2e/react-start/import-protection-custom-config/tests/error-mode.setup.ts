@@ -1,14 +1,14 @@
+import { execSync, spawn } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
-import { execSync, spawn } from 'node:child_process'
-import { chromium } from '@playwright/test'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
+import { stripVTControlCharacters } from 'node:util'
+import { appServerReadyPattern } from '@tanstack/router-e2e-utils'
+import { chromium, expect } from '@playwright/test'
 import type { FullConfig } from '@playwright/test'
 
 async function waitForHttpOk(url: string, timeoutMs: number): Promise<void> {
   const start = Date.now()
-  // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
+
   while (true) {
     if (Date.now() - start > timeoutMs) {
       throw new Error(`Timed out waiting for ${url}`)
@@ -84,8 +84,7 @@ function captureBuild(cwd: string): void {
 }
 
 async function captureDevErrors(cwd: string): Promise<void> {
-  const port = await getTestServerPort(`${packageJson.name}_error_dev`)
-  const baseURL = `http://localhost:${port}`
+  const port = 0
   const logChunks: Array<string> = []
 
   const child = spawn('pnpm', ['exec', 'vite', 'dev', '--port', String(port)], {
@@ -99,10 +98,23 @@ async function captureDevErrors(cwd: string): Promise<void> {
     stdio: ['ignore', 'pipe', 'pipe'],
   })
 
-  child.stdout?.on('data', (d: Buffer) => logChunks.push(d.toString()))
-  child.stderr?.on('data', (d: Buffer) => logChunks.push(d.toString()))
+  child.stdout.on('data', (d: Buffer) => logChunks.push(d.toString()))
+  child.stderr.on('data', (d: Buffer) => logChunks.push(d.toString()))
 
   try {
+    await expect
+      .poll(
+        () =>
+          appServerReadyPattern.exec(
+            stripVTControlCharacters(logChunks.join('')),
+          )?.groups?.E2E_APP_PORT,
+        { timeout: 30_000 },
+      )
+      .toBeTruthy()
+    const port = appServerReadyPattern.exec(
+      stripVTControlCharacters(logChunks.join('')),
+    )!.groups!.E2E_APP_PORT
+    const baseURL = `http://localhost:${port}`
     await waitForHttpOk(baseURL, 30_000)
 
     const browser = await chromium.launch()

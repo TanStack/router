@@ -1,5 +1,18 @@
+import { defineComponent } from 'vue'
 import { redirect, createFileRoute } from '@tanstack/vue-router'
 import { z } from 'zod'
+
+const RouteComponent = defineComponent({
+  setup() {
+    const search = Route.useSearch()
+    return () => (
+      <div>
+        <h1>SearchParams</h1>
+        <div data-testid="search-param">{search.value.step}</div>
+      </div>
+    )
+  },
+})
 
 export const Route = createFileRoute('/search-params/loader-throws-redirect')({
   validateSearch: z.object({
@@ -14,13 +27,5 @@ export const Route = createFileRoute('/search-params/loader-throws-redirect')({
       })
     }
   },
-  component: () => {
-    const search = Route.useSearch()
-    return (
-      <div>
-        <h1>SearchParams</h1>
-        <div data-testid="search-param">{search.value.step}</div>
-      </div>
-    )
-  },
+  component: RouteComponent,
 })

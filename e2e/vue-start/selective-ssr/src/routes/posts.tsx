@@ -1,6 +1,47 @@
+import { defineComponent } from 'vue'
 import { Outlet, createFileRoute } from '@tanstack/vue-router'
 import z from 'zod'
 import { ssrSchema } from '~/search'
+
+const RouteComponent = defineComponent({
+  setup() {
+    const search = Route.useSearch()
+    const loaderData = Route.useLoaderData()
+    const context = Route.useRouteContext()
+    return () => {
+      if (
+        typeof window === 'undefined' &&
+        search.value.posts?.expected?.render === 'client-only'
+      ) {
+        const error = `Expected component for ${Route.id} to be executed on the client, but it is running on the server`
+        console.error(error)
+        throw new Error(error)
+      }
+      return (
+        <div data-testid="posts-container">
+          <h3 data-testid="posts-heading">posts</h3>
+          <div>
+            ssr: <b>{JSON.stringify(search.value.posts?.ssr ?? 'undefined')}</b>
+          </div>
+          <div>
+            expected data location execution:{' '}
+            <b data-testid="posts-data-expected">
+              {search.value.posts?.expected?.data}
+            </b>
+          </div>
+          <div>
+            loader: <b data-testid="posts-loader">{loaderData.value.posts}</b>
+          </div>
+          <div>
+            context: <b data-testid="posts-context">{context.value.posts}</b>
+          </div>
+          <hr />
+          <Outlet />
+        </div>
+      )
+    }
+  },
+})
 
 export const Route = createFileRoute('/posts')({
   validateSearch: z.object({ posts: ssrSchema }),
@@ -46,39 +87,5 @@ export const Route = createFileRoute('/posts')({
     }
     return { posts: typeof window === 'undefined' ? 'server' : 'client' }
   },
-  component: () => {
-    const search = Route.useSearch()
-    const loaderData = Route.useLoaderData()
-    const context = Route.useRouteContext()
-    if (
-      typeof window === 'undefined' &&
-      search.value.posts?.expected?.render === 'client-only'
-    ) {
-      const error = `Expected component for ${Route.id} to be executed on the client, but it is running on the server`
-      console.error(error)
-      throw new Error(error)
-    }
-    return (
-      <div data-testid="posts-container">
-        <h3 data-testid="posts-heading">posts</h3>
-        <div>
-          ssr: <b>{JSON.stringify(search.value.posts?.ssr ?? 'undefined')}</b>
-        </div>
-        <div>
-          expected data location execution:{' '}
-          <b data-testid="posts-data-expected">
-            {search.value.posts?.expected?.data}
-          </b>
-        </div>
-        <div>
-          loader: <b data-testid="posts-loader">{loaderData.value.posts}</b>
-        </div>
-        <div>
-          context: <b data-testid="posts-context">{context.value.posts}</b>
-        </div>
-        <hr />
-        <Outlet />
-      </div>
-    )
-  },
+  component: RouteComponent,
 })
