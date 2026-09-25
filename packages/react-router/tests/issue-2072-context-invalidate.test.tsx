@@ -33,6 +33,11 @@ test('#2072: logout invalidates the router with the fresh auth context', async (
   const loginRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/login',
+    beforeLoad: ({ context }) => {
+      if (context.auth.isAuthenticated) {
+        throw redirect({ to: '/private' })
+      }
+    },
     component: () => <div>Login page</div>,
   })
   const authenticatedRoute = createRoute({
@@ -102,6 +107,11 @@ test('#2072: login invalidates the router with the fresh auth context', async ()
   const loginRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/login',
+    beforeLoad: ({ context }) => {
+      if (context.auth.isAuthenticated) {
+        throw redirect({ to: '/private' })
+      }
+    },
     component: () => <div>Login page</div>,
   })
   const authenticatedRoute = createRoute({
@@ -137,7 +147,6 @@ test('#2072: login invalidates the router with the fresh auth context', async ()
           onClick={() => {
             setIsAuthenticated(true)
             router.invalidate()
-            router.navigate({ to: '/private' })
           }}
         >
           Login
