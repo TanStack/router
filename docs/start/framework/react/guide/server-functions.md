@@ -421,6 +421,8 @@ Server functions are addressed by a generated, stable function ID under the hood
 By default, IDs are SHA256 hashes of the same seed to keep bundles compact and avoid leaking file paths.
 If two server functions end up with the same ID (including when using a custom generator), the system de-duplicates by appending an incrementing suffix like `_1`, `_2`, etc.
 
+Because the IDs belong to a specific build, a deployment can still receive requests for IDs it no longer knows about — from a cached response, a crawler, or a tab that has not reloaded since the previous release. Those requests are answered with a `404`, and the client-side call rejects with an error rather than resolving. If your app should survive a version skew instead of surfacing the error, catch it where the server function is called and prompt a reload.
+
 Customization:
 
 You can customize function ID generation for the production build by providing a `generateFunctionId` function when configuring the TanStack Start build tool plugin.
