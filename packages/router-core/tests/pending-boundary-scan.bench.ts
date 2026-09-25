@@ -74,7 +74,9 @@ for (const depth of [4, 8, 32]) {
             for (let iteration = 0; iteration < 128; iteration++) {
               result += select(matches, painted)
             }
-            return result
+            if (result !== expected * 128) {
+              throw new Error('Unexpected pending boundary')
+            }
           },
           { time: 300, warmupTime: 100 },
         )
