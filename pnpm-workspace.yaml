@@ -9,10 +9,8 @@ trustPolicyExclude:
   - 'chokidar@4.0.3' # known to be safe, installed by sass, prisma, netlify... no planned releases in v4, packages is on v5 now
   - 'semver@6.3.1' # installed by babel, ecosystem has been on v7 for 7 years now, but babel is horribly out of date, 6.3.1 is the latest v6 and was released 3 years ago
   - 'undici@6.21.2' # installed by cheerio@1.0.0 -> html-link-extractor@1.0.5 -> markdown-link-extractor@4.0.3, is only 1 year old, v6, v7 and v8 are maintained in parallel
-  - '@netlify/edge-bundler@14.7.0' # existing Netlify dev transitive flagged by pnpm 11.9 trust downgrade checks
   - '@platformatic/flame@1.7.0' # trusted publishing failed due to a missing sigstore module in npm, then an established maintainer published it manually
-  - '@netlify/serverless-functions-api@2.7.1' # existing Netlify dev transitive flagged by pnpm 11.9 trust downgrade checks
-  - '@netlify/zip-it-and-ship-it@14.1.11' # existing Netlify dev transitive flagged by pnpm 11.9 trust downgrade checks
+  - '@netlify/serverless-functions-api@2.21.2 || 2.18.0' # Netlify's repo went private Aug 2023, provenance never returned for any version since. Two versions: @netlify/server-dev wants ^2.21.2, @netlify/zip-it-and-ship-it pins an exact 2.18.0
 
 packages:
   - 'packages/*'
@@ -38,7 +36,7 @@ catalog:
   '@babel/types': ^7.29.8
   '@arethetypeswrong/cli': ^0.18.4
   '@eslint-react/eslint-plugin': ^1.26.2
-  '@rsbuild/core': ^2.1.0
+  '@rsbuild/core': ^2.2.5
   '@tanstack/vite-config': 0.5.2
   '@testing-library/jest-dom': ^6.6.3
   '@testing-library/react': ^16.2.0
@@ -67,7 +65,7 @@ catalog:
   vue: ^3.5.25
   zod: ^4.5.4
   '@types/node': 25.0.9
-  '@playwright/test': ^1.61.0
+  '@playwright/test': ^1.63.0
   '@tanstack/query-core': ^5.102.0
   '@tanstack/react-query': ^5.102.0
   '@tanstack/solid-query': ^5.102.0

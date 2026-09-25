@@ -1,12 +1,11 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { apiTest as test } from '@tanstack/router-e2e-utils'
 import combinateImport from 'combinate'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
 
 // somehow playwright does not correctly import default exports
 const combinate = (combinateImport as any).default as typeof combinateImport
 
-const PORT = await getTestServerPort(packageJson.name)
+const PORT = Number(process.env.E2E_APP_PORT ?? 0)
 
 test.describe('relative_routing', () => {
   const internalNavigationTestMatrix = combinate({

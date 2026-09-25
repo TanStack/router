@@ -104,6 +104,7 @@ export {
 } from './manifest'
 export { isMatch } from './Matches'
 export { _getAssetMatches, _getRenderedMatches } from './load-client'
+export { composeSsrBodyScripts, getSsrBodyScriptParts } from './ssr/bodyScripts'
 export type {
   AnyMatchAndValue,
   FindValueByIndex,
@@ -133,6 +134,8 @@ export {
   exactPathTest,
   resolvePath,
   interpolatePath,
+  getRouteSegments,
+  hasMissingPathParams,
 } from './path'
 export { encode, decode } from './qss'
 export { rootRouteId } from './root'
@@ -273,7 +276,6 @@ export type {
   ParseLocationFn,
   InvalidateFn,
   ControllablePromise,
-  InjectedHtmlEntry,
   EmitFn,
   LoadFn,
   SubscribeFn,
@@ -312,10 +314,9 @@ export {
   functionalUpdate,
   hasKeys,
   replaceEqualDeep,
-  isPlainObject,
-  isPlainArray,
   deepEqual,
   createControlledPromise,
+  isPromise,
   isModuleNotFoundError,
   DEFAULT_PROTOCOL_ALLOWLIST,
   escapeHtml,
@@ -472,19 +473,10 @@ export type {
   SerializationError,
 } from './ssr/serializer/transformer'
 
-export {
-  createSerializationAdapter,
-  makeSerovalPlugin,
-  makeSsrSerovalPlugin,
-} from './ssr/serializer/transformer'
+export { createSerializationAdapter } from './ssr/serializer/transformer'
+export { makeSerovalPlugin } from './ssr/serializer/makeSerovalPlugin'
 
-export { defaultSerovalPlugins } from './ssr/serializer/seroval-plugins'
-
-export {
-  RawStream,
-  createRawStreamRPCPlugin,
-  createRawStreamDeserializePlugin,
-} from './ssr/serializer/RawStream'
+export { RawStream } from './ssr/serializer/RawStream'
 export type {
   OnRawStreamCallback,
   RawStreamHint,
