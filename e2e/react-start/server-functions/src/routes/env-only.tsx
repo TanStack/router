@@ -22,6 +22,11 @@ const testOnServer = createServerFn().handler(() => {
   return { serverOnServer, clientOnServer }
 })
 
+// Env-only fn passed directly as the handler, see #8446
+const inlineServerOnly = createServerFn().handler(
+  createServerOnlyFn(() => 'inline server-only handler ran'),
+)
+
 export const Route = createFileRoute('/env-only')({
   component: RouteComponent,
 })
@@ -30,7 +35,8 @@ function RouteComponent() {
   const [results, setResults] = useState<Partial<Record<string, string>>>()
 
   async function handleClick() {
-    const { serverOnServer, clientOnServer } = await testOnServer()
+    const [{ serverOnServer, clientOnServer }, inlineServerOnlyResult] =
+      await Promise.all([testOnServer(), inlineServerOnly()])
     const clientOnClient = clientEcho('hello')
     let serverOnClient: string
     try {
@@ -45,11 +51,17 @@ function RouteComponent() {
       clientOnServer,
       clientOnClient,
       serverOnClient,
+      inlineServerOnlyResult,
     })
   }
 
-  const { serverOnServer, clientOnServer, clientOnClient, serverOnClient } =
-    results || {}
+  const {
+    serverOnServer,
+    clientOnServer,
+    clientOnClient,
+    serverOnClient,
+    inlineServerOnlyResult,
+  } = results || {}
 
   return (
     <div>
@@ -73,6 +85,11 @@ function RouteComponent() {
           <pre data-testid="client-on-server">{clientOnServer}</pre>
           When we called the function on the client:
           <pre data-testid="client-on-client">{clientOnClient}</pre>
+          <br />
+          <h1>
+            <code>inlineServerOnly</code>
+          </h1>
+          <pre data-testid="inline-server-only">{inlineServerOnlyResult}</pre>
         </div>
       )}
     </div>

@@ -212,9 +212,11 @@ const BuiltInKindHandlers: Record<
   // ClientOnlyJSX is handled separately via JSX traversal, not here
 }
 
+// In-place rewrites run first: ServerFn and Middleware replace or clone whole
+// subtrees, which would leave nested candidates pointing at detached nodes.
 const BuiltInKindHandlerOrder: Array<
   Exclude<BuiltInLookupKind, 'ClientOnlyJSX'>
-> = ['ServerFn', 'Middleware', 'IsomorphicFn', 'ServerOnlyFn', 'ClientOnlyFn']
+> = ['IsomorphicFn', 'ServerOnlyFn', 'ClientOnlyFn', 'ServerFn', 'Middleware']
 
 // All lookup kinds as an array for iteration with proper typing
 const AllBuiltInLookupKinds = Object.keys(
