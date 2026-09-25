@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { interpolatePath } from '../src/path'
 import {
+  parseTestPathname as parsePathname,
+  processTestRouteTree as processRouteTree,
+} from './routerTestUtils'
+import {
   SEGMENT_TYPE_OPTIONAL_PARAM,
   SEGMENT_TYPE_PARAM,
   SEGMENT_TYPE_PATHNAME,
   SEGMENT_TYPE_WILDCARD,
-  parseSegment,
+  findSingleMatch,
+  parseSegments,
 } from '../src/new-process-route-tree'
-import { findTestRouteMatch } from './routerTestUtils'
 import type { SegmentKind } from '../src/new-process-route-tree'
 
 describe('Optional Path Parameters', () => {
@@ -24,34 +28,6 @@ describe('Optional Path Parameters', () => {
   }>
 
   describe('parsePathname with optional params', () => {
-    const parsePathname = (to: string | undefined) => {
-      let cursor = 0
-      let data
-      const path = to ?? ''
-      const segments: Array<PathSegment> = []
-      while (cursor < path.length) {
-        const start = cursor
-        data = parseSegment(path, start, data)
-        const end = data[5]
-        cursor = end + 1
-        const type = data[0]
-        const value = path.substring(data[2], data[3])
-        const prefix = path.substring(start, data[1])
-        const suffix = path.substring(data[4], end)
-        const segment: PathSegment = {
-          type,
-          value,
-        }
-        if (prefix) {
-          segment.prefixSegment = prefix
-        }
-        if (suffix) {
-          segment.suffixSegment = suffix
-        }
-        segments.push(segment)
-      }
-      return segments
-    }
     it.each([
       {
         name: 'regular optional param',
@@ -368,19 +344,27 @@ describe('Optional Path Parameters', () => {
         result: '/posts/42',
       },
     ])('$name', ({ path, params, result }) => {
-      expect(interpolatePath({ path, params }).interpolatedPath).toBe(result)
+      const segments = parseSegments(false, { fullPath: path }, 0)
+      expect(interpolatePath(path, segments, params)).toBe(result)
     })
   })
 
+  const { processedTree } = processRouteTree({
+    id: '__root__',
+    isRoot: true,
+    fullPath: '/',
+    path: '/',
+  })
   const matchPathname = (
     from: string,
     options: { to: string; caseSensitive?: boolean; fuzzy?: boolean },
   ) => {
-    const match = findTestRouteMatch(
+    const match = findSingleMatch(
       options.to,
       options.caseSensitive ?? false,
       options.fuzzy ?? false,
       from,
+      processedTree,
     )
     const result = match ? match.rawParams : undefined
     if (options.to && !result) return
@@ -490,10 +474,9 @@ describe('Optional Path Parameters', () => {
     it('should handle optional parameters with validation', () => {
       // This test will be expanded when we implement params.parse for optional params
       const path = '/posts/{-$category}'
+      const segments = parseSegments(false, { fullPath: path }, 0)
       const params = { category: 'tech' }
-      expect(interpolatePath({ path, params }).interpolatedPath).toBe(
-        '/posts/tech',
-      )
+      expect(interpolatePath(path, segments, params)).toBe('/posts/tech')
     })
 
     it('should handle multiple consecutive optional parameters correctly', () => {

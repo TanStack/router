@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { apiTest as test } from '@tanstack/router-e2e-utils'
 
 const testCases: Array<{
   name: string

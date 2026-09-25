@@ -1,6 +1,7 @@
 ---
 id: overview
 title: TanStack Start Overview
+description: Build full-stack React applications with TanStack Start, including server rendering, streaming, server functions, and type-safe routing.
 ---
 
 > [!NOTE]

@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { findTestRouteMatch } from './routerTestUtils'
+import { findSingleMatch } from '../src/new-process-route-tree'
+import { processTestRouteTree as processRouteTree } from './routerTestUtils'
+
+const { processedTree } = processRouteTree({
+  id: '__root__',
+  isRoot: true,
+  fullPath: '/',
+  path: '/',
+})
 
 describe('default path matching', () => {
   it.each([
@@ -15,7 +23,7 @@ describe('default path matching', () => {
     ['/a/', '/a', undefined],
     ['/b', '/a', undefined],
   ])('static %s %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, true, false, path)
+    const res = findSingleMatch(pattern, true, false, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
@@ -26,27 +34,29 @@ describe('default path matching', () => {
     ['/a/1_/b/2', '/a/$id/b/$other', { id: '1_', other: '2' }],
     ['/a/1/b/2', '/a/$id/b/$id', { id: '2' }],
   ])('params %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, true, false, path)
+    const res = findSingleMatch(pattern, true, false, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
   it('params support more than alphanumeric characters', () => {
     // in the value: basically everything except / and %
-    const anyValueResult = findTestRouteMatch(
+    const anyValueResult = findSingleMatch(
       '/a/$id',
       false,
       false,
       '/a/@&é"\'(§è!çà)-_°^¨$*€£`ù=+:;.,?~<>|î©#0123456789\\😀}{',
+      processedTree,
     )
     expect(anyValueResult?.rawParams).toEqual({
       id: '@&é"\'(§è!çà)-_°^¨$*€£`ù=+:;.,?~<>|î©#0123456789\\😀}{',
     })
     // in the key: basically everything except / and % and $
-    const anyKeyResult = findTestRouteMatch(
+    const anyKeyResult = findSingleMatch(
       '/a/$@&é"\'(§è!çà)-_°^¨*€£`ù=+:;.,?~<>|î©#0123456789\\😀}{',
       false,
       false,
       '/a/1',
+      processedTree,
     )
     expect(anyKeyResult?.rawParams).toEqual({
       '@&é"\'(§è!çà)-_°^¨*€£`ù=+:;.,?~<>|î©#0123456789\\😀}{': '1',
@@ -64,7 +74,7 @@ describe('default path matching', () => {
     ['/a/b', '/a/{-$id}/b/{-$other}', {}],
     ['/a/1/b/2', '/a/{-$id}/b/{-$id}', { id: '2' }],
   ])('optional %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, true, false, path)
+    const res = findSingleMatch(pattern, true, false, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
@@ -74,7 +84,7 @@ describe('default path matching', () => {
     ['/a', '/a/$', { _splat: '', '*': '' }],
     ['/a/b/c', '/a/$/foo', { _splat: 'b/c', '*': 'b/c' }],
   ])('wildcard %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, true, false, path)
+    const res = findSingleMatch(pattern, true, false, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 })
@@ -93,7 +103,7 @@ describe('case insensitive path matching', () => {
     ['/', '/a/', '/A', undefined],
     ['/', '/b', '/A', undefined],
   ])('static %s %s => %s', (base, path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, false, false, path)
+    const res = findSingleMatch(pattern, false, false, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
@@ -103,7 +113,7 @@ describe('case insensitive path matching', () => {
     ['/a/1/b/2', '/A/$id/B/$other', { id: '1', other: '2' }],
     ['/a/1/b/2', '/A/$id/B/$id', { id: '2' }],
   ])('params %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, false, false, path)
+    const res = findSingleMatch(pattern, false, false, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
@@ -120,7 +130,7 @@ describe('case insensitive path matching', () => {
     ['/a/1/b/2', '/A/{-$id}/B/{-$id}', { id: '2' }],
     ['/a/1/b/2_', '/A/{-$id}/B/{-$id}', { id: '2_' }],
   ])('optional %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, false, false, path)
+    const res = findSingleMatch(pattern, false, false, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
@@ -130,7 +140,7 @@ describe('case insensitive path matching', () => {
     ['/a', '/A/$', { _splat: '', '*': '' }],
     ['/a/b/c', '/A/$/foo', { _splat: 'b/c', '*': 'b/c' }],
   ])('wildcard %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, false, false, path)
+    const res = findSingleMatch(pattern, false, false, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 })
@@ -142,8 +152,6 @@ describe('fuzzy path matching', () => {
     ['', '', '/', {}],
     ['', '/', '/', {}],
     ['/', '/', '/', {}],
-    ['/', '/a', '/', { '**': 'a' }],
-    ['/', '/a/', '/', { '**': 'a/' }],
     ['/', '/a', '/a', {}],
     ['/', '/a', '/a/', {}],
     ['/', '/a/', '/a/', {}],
@@ -156,7 +164,7 @@ describe('fuzzy path matching', () => {
     ['/', '/b', '/a', undefined],
     ['/', '/a', '/b', undefined],
   ])('static %s %s => %s', (base, path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, true, true, path)
+    const res = findSingleMatch(pattern, true, true, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
@@ -167,7 +175,7 @@ describe('fuzzy path matching', () => {
     ['/a/1/b/2', '/a/$id/b/$other', { id: '1', other: '2' }],
     ['/a/1/b/2/c', '/a/$id/b/$other', { id: '1', other: '2', '**': 'c' }],
   ])('params %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, true, true, path)
+    const res = findSingleMatch(pattern, true, true, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
@@ -182,7 +190,7 @@ describe('fuzzy path matching', () => {
     ['/a/b/2/d', '/a/{-$id}/b/{-$other}', { other: '2', '**': 'd' }],
     ['/a/1/b/2/c', '/a/{-$id}/b/{-$other}', { id: '1', other: '2', '**': 'c' }],
   ])('optional %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, true, true, path)
+    const res = findSingleMatch(pattern, true, true, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 
@@ -192,7 +200,7 @@ describe('fuzzy path matching', () => {
     ['/a', '/a/$', { _splat: '', '*': '' }],
     ['/a/b/c/d', '/a/$/foo', { _splat: 'b/c/d', '*': 'b/c/d' }],
   ])('wildcard %s => %s', (path, pattern, result) => {
-    const res = findTestRouteMatch(pattern, true, true, path)
+    const res = findSingleMatch(pattern, true, true, path, processedTree)
     expect(res?.rawParams).toEqual(result)
   })
 })

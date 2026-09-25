@@ -1,7 +1,5 @@
-import { expect, test } from '@playwright/test'
 import { connect } from 'node:http2'
-import { getTestServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
+import { expect, test } from '@playwright/test'
 import type { IncomingHttpHeaders } from 'node:http2'
 
 type Http2Response = {
@@ -48,14 +46,14 @@ function linkHeader(headers: IncomingHttpHeaders): string {
 
 function earlyHintsLinkHeader(response: Http2Response): string {
   expect(response.earlyHints.length).toBe(1)
-  return linkHeader(response.earlyHints[0]!)
+  return linkHeader(response.earlyHints[0])
 }
 
 test.describe('Early Hints - HTTP/2 Protocol', () => {
   let baseURL: string
 
   test.beforeAll(async () => {
-    const PORT = await getTestServerPort(packageJson.name)
+    const PORT = Number(process.env.E2E_APP_PORT ?? 0)
     baseURL = `https://localhost:${PORT}`
   })
 
@@ -137,7 +135,7 @@ test.describe('Early Hints - HTTP/2 Protocol', () => {
 
     expect(response.earlyHints.length).toBe(1)
 
-    const link = linkHeader(response.earlyHints[0]!)
+    const link = linkHeader(response.earlyHints[0])
 
     expect(link).toContain('rel=modulepreload; as=script')
     expect(link).toContain('<https://early-hints.test>; rel=preconnect')
