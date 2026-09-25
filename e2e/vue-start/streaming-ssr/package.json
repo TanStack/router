@@ -13,7 +13,7 @@
     "test:e2e:preview": "MODE=preview playwright test preview-streaming.spec.ts --project=chromium"
   },
   "dependencies": {
-    "@tanstack/vue-query": "^5.90.0",
+    "@tanstack/vue-query": "catalog:",
     "@tanstack/vue-router": "workspace:^",
     "@tanstack/vue-router-ssr-query": "workspace:^",
     "@tanstack/vue-start": "workspace:^",
