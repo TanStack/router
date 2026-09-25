@@ -349,7 +349,7 @@ test('updates hash and active options on the same hydrated link', async () => {
 })
 
 test('updates and removes an explicit href before using the hash updater', async () => {
-  const hash = vi.fn((previous: string) => `${previous}-child`)
+  const hash = vi.fn((previous = '') => `${previous}-child`)
   const tree = (router: ReturnType<typeof makeRouter>, href?: string) => (
     <RouterContextProvider router={router}>
       <Link to="/" href={href} hash={hash}>
