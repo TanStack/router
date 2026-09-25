@@ -7,8 +7,9 @@ import {
   applyResolvedRouterBasepath,
   createStartConfigContext,
 } from '../config-context'
-import { escapeRegExp, normalizePath } from '../utils'
+import { normalizePath } from '../utils'
 import { createServerFnBasePath, normalizePublicBase } from '../planning'
+import { addWorkspaceWatchIgnored } from './watch-ignored'
 import { parseStartConfig, rsbuildClientOutputSchema } from './schema'
 import {
   RSBUILD_CLIENT_ASSETS_DIR,
@@ -444,27 +445,12 @@ export function tanStackStartRsbuild(
           const workspaceDistRealpaths = resolveWorkspacePackageDistRealpaths()
           if (workspaceDistRealpaths.length === 0) return
 
-          const workspaceDistIgnored = new RegExp(
-            workspaceDistRealpaths
-              .map((path) => `^${escapeRegExp(path)}(?:[\\\\/]|$)`)
-              .join('|'),
-          )
-          const ignored = config.watchOptions?.ignored
-
           config.watchOptions = {
             ...(config.watchOptions ?? {}),
-            ignored:
-              ignored == null
-                ? new RegExp(
-                    `${defaultRspackWatchIgnored.source}|${workspaceDistIgnored.source}`,
-                  )
-                : typeof ignored === 'string'
-                  ? [ignored, ...workspaceDistRealpaths]
-                  : Array.isArray(ignored)
-                    ? [...ignored, ...workspaceDistRealpaths]
-                    : new RegExp(
-                        `${ignored.source}|${workspaceDistIgnored.source}`,
-                      ),
+            ignored: addWorkspaceWatchIgnored(
+              config.watchOptions?.ignored,
+              workspaceDistRealpaths,
+            ),
           }
         })
       }
@@ -789,8 +775,6 @@ export function tanStackStartRsbuild(
     },
   }
 }
-
-const defaultRspackWatchIgnored = /[\\/](?:\.git|node_modules)[\\/]/
 
 function seedResolveModules(
   config: RspackConfig,
