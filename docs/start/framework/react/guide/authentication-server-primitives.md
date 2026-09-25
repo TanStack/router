@@ -3,7 +3,7 @@ id: authentication-server-primitives
 title: Authentication Server Primitives
 ---
 
-This guide covers the **server-side primitives** for building authentication in TanStack Start: session cookies, session lookup, OAuth, password-reset hardening, CSRF, and rate limiting. It pairs with the [routing-side guide](../../../../router/guide/authenticated-routes.md) (`_authenticated` layout, `beforeLoad`, redirects, RBAC).
+This guide covers the **server-side primitives** for building authentication in TanStack Start: session cookies, session lookup, OAuth, password-reset hardening, CSRF, and rate limiting. It pairs with the [routing-side guide](/router/latest/docs/framework/react/guide/authenticated-routes) (`_authenticated` layout, `beforeLoad`, redirects, RBAC).
 
 If you can use a managed solution like [Clerk](https://go.clerk.com/wOwHtuJ) or [WorkOS](https://workos.com/), prefer that — they handle most of what this guide describes. Read on if you're rolling your own.
 
@@ -349,7 +349,7 @@ See [Execution Model: Module-Level `process.env` Reads](./execution-model.md#mod
 ## See Also
 
 - [Authentication Overview](./authentication-overview.md) — choosing between partner solutions, OSS libraries, and DIY.
-- [Authenticated Routes (Router)](../../../../router/guide/authenticated-routes.md) — the routing-side guide.
+- [Authenticated Routes (Router)](/router/latest/docs/framework/react/guide/authenticated-routes) — the routing-side guide.
 - [Server Functions](./server-functions.md) — the RPC primitive that auth lives inside.
 - [Middleware](./middleware.md) — composing `authMiddleware`.
 - [OWASP Cheat Sheets — Authentication](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html), [Session Management](https://cheatsheetseries.owasp.org/cheatsheets/Session_Management_Cheat_Sheet.html), [CSRF](https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html).

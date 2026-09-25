@@ -48,6 +48,16 @@ const NOT_FOUND = 2
 const REDIRECTED = 3
 const SKIPPED = 4
 
+const MATCH_SETTLED_ABORT_REASON = Object.freeze({
+  name: 'AbortError',
+  message: 'TanStack Router aborted this server match because it settled.',
+})
+
+const REDIRECT_ABORT_REASON = Object.freeze({
+  name: 'AbortError',
+  message: 'TanStack Router aborted this server match because of a redirect.',
+})
+
 type LoaderOutcome =
   | [typeof SUCCESS, data: unknown]
   | [typeof ERROR, error: unknown]
@@ -155,11 +165,11 @@ function waitFor<T>(value: Promise<T>, signal?: AbortSignal): Promise<T> {
   return signal ? waitForReason(value, signal) : value
 }
 
-async function resolveSsr(
+function resolveSsr(
   router: AnyRouter,
   lane: MatchedLane,
   index: number,
-): Promise<SSROption> {
+): SSROption | Promise<SSROption> {
   const match = lane.matches[index]!
   const route = getRoute(router, match)
   const parentSsr = lane.matches[index - 1]?.ssr
@@ -203,7 +213,14 @@ async function resolveSsr(
       ssr: candidate.ssr,
     })),
   }
-  return inherit((await option(context)) ?? defaultSsr)
+  try {
+    return Promise.resolve(option(context)).then((value) =>
+      inherit(value ?? defaultSsr),
+    )
+  } catch (cause) {
+    // Functional failures keep their asynchronous cancellation checkpoint.
+    return Promise.reject(cause)
+  }
 }
 
 function stampNotFound(
@@ -232,7 +249,9 @@ async function contextualize(
     const match = lane.matches[index]!
     const route = getRoute(router, match)
     try {
-      match.ssr = await resolveSsr(router, lane, index)
+      const ssr = resolveSsr(router, lane, index)
+      // Functional policies are assimilated into a native Promise above.
+      match.ssr = ssr instanceof Promise ? await ssr : ssr
     } catch (cause) {
       signal?.throwIfAborted()
       failure = [
@@ -441,7 +460,10 @@ function createLoaderTask(
           (cause) => normalize(cause, true),
         )
         .then((result): LoaderOutcome => {
-          if (signal?.aborted || match.abortController.signal.reason === lane) {
+          if (
+            signal?.aborted ||
+            match.abortController.signal.reason === REDIRECT_ABORT_REASON
+          ) {
             return [SKIPPED]
           }
           if (result[0] === ERROR) {
@@ -510,7 +532,7 @@ async function getNotFoundBoundary(
 function abortMatches(
   matches: Array<AnyRouteMatch>,
   start = 0,
-  reason?: unknown,
+  reason: unknown = MATCH_SETTLED_ABORT_REASON,
 ): void {
   for (let index = start; index < matches.length; index++) {
     matches[index]!.abortController.abort(reason)
@@ -674,7 +696,12 @@ async function executeServerLane(
       abortController: new AbortController(),
     })),
   } as MatchedLane
-  const abortLane = () => abortMatches(matched.matches, 0, signal?.reason)
+  const abortLane = () =>
+    abortMatches(
+      matched.matches,
+      0,
+      signal?.reason ?? MATCH_SETTLED_ABORT_REASON,
+    )
   if (signal?.aborted) {
     abortLane()
     signal.throwIfAborted()
@@ -764,7 +791,7 @@ async function executeServerLane(
     signal?.throwIfAborted()
 
     if (control?.[1][0] === REDIRECTED) {
-      abortMatches(lane.matches, 0, lane)
+      abortMatches(lane.matches, 0, REDIRECT_ABORT_REASON)
       return { type: 'redirect', redirect: control[1][1] }
     }
 
@@ -808,7 +835,7 @@ async function executeServerLane(
     signal?.throwIfAborted()
     if (requiredFailure) {
       if (requiredFailure[1][0] === REDIRECTED) {
-        abortMatches(lane.matches)
+        abortMatches(lane.matches, 0, REDIRECT_ABORT_REASON)
         return { type: 'redirect', redirect: requiredFailure[1][1] }
       }
       failure = requiredFailure
@@ -845,7 +872,24 @@ async function executeServerLane(
       signal,
     )
     signal?.throwIfAborted()
-    router.serverSsr?.onCleanup(abortLane)
+    // Deferred loader work can outlive this lane, and the request signal above
+    // only covers one way a response ends. SSR cleanup covers them all:
+    //
+    // - client disconnected                          -> abort (work may be pending)
+    // - serialization or lifetime timeout             -> abort (a deferred value hung)
+    // - body disposed server-side (HEAD strip,
+    //   middleware replaced the response)            -> abort (never delivered)
+    // - plain response / `hydrate: false`: the
+    //   loader data was never dehydrated              -> abort (never consumed)
+    // - stream completed: every dehydrated value
+    //   already settled                               -> nothing left to abort
+    //
+    // `settled` is false in exactly the first four cases.
+    router.serverSsr?.onCleanup((settled) => {
+      if (!settled) {
+        abortLane()
+      }
+    })
     return { type: 'render', status: terminal.status, matches: lane.matches }
   } finally {
     signal?.removeEventListener('abort', abortLane)

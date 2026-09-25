@@ -12,6 +12,7 @@
 - Regression coverage must establish a supported public trigger and observable failure. Tests that directly mutate internals do not establish that an application can reach the failing state.
 - Diagnostic counters and profiles may observe that supported path without changing its behavior. A diagnostic control proves only the measured mechanism; verify the final implementation through public behavior or the supported compiler-plugin boundary.
 - For asynchronous setup and cleanup, identify the authoritative state and lifetime before adding flags, timers, or completion callbacks. Preserve intentional ownership transfers and remove obsolete paths when replacing an implementation.
+- For suspected dependency issues, verify the upstream root cause, then propose an upstream fix to the user, including for other `@tanstack/*` packages. **Never implement a workaround in this repository unless the user explicitly authorizes it.**
 - Use Node from `.nvmrc` and pnpm from root `package.json`. Install at the root with `CI=1 pnpm install --frozen-lockfile`.
 - Diagnose registry, store, and network failures separately from dependency incompatibilities. Preserve the lockfile and workspace trust/build policies when troubleshooting installation; bypassing scripts or policies changes the environment being tested.
 - Never manually edit `pnpm-lock.yaml` or any `routeTree.gen.ts`. Regenerate the lockfile with `pnpm install --no-frozen-lockfile` after intentional dependency changes; regenerate route trees through app builds/dev servers or the generator fixture harness.

@@ -9,8 +9,6 @@ export type { StartRequestHandler }
 
 type Framework = 'react' | 'solid' | 'vue'
 
-// Sized to sit just above the 2s measured-run floor on CI (per-iteration
-// cost with the pinned collection is ~0.13-0.19s across frameworks).
 const errorPathsIterations = 18
 const redirectSeed = 0xdecafbad
 const notFoundSeed = 0xdecafb0d
@@ -144,7 +142,6 @@ export function createWorkloadGroup(
       iterations: errorPathsIterations,
       buildRequest: buildRedirectRequest,
       validateResponse: validateRedirectResponse,
-      pinGcBetweenIterations: true,
     })
 
   const runNotFound = () =>
@@ -153,7 +150,6 @@ export function createWorkloadGroup(
       iterations: errorPathsIterations,
       buildRequest: buildNotFoundRequest,
       validateResponse: validateNotFoundResponse,
-      pinGcBetweenIterations: true,
     })
 
   const runError = () =>
@@ -162,7 +158,6 @@ export function createWorkloadGroup(
       iterations: errorPathsIterations,
       buildRequest: buildErrorRequest,
       validateResponse: validateErrorResponse,
-      pinGcBetweenIterations: true,
     })
 
   const runUnmatched = () =>
@@ -171,7 +166,6 @@ export function createWorkloadGroup(
       iterations: errorPathsIterations,
       buildRequest: buildUnmatchedRequest,
       validateResponse: validateNotFoundResponse,
-      pinGcBetweenIterations: true,
     })
 
   return {

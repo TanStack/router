@@ -343,6 +343,8 @@ const navigate = useNavigate()
 navigate({ to: '/about' })
 ```
 
+When the final output URL has a different origin, programmatic navigation performs a full page load automatically. You do not need to set `reloadDocument: true` for cross-origin rewrites. If a route mask is applied, its output URL determines whether navigation stays on the current origin.
+
 ### Hard Links for Cross-Origin Rewrites
 
 When an output rewrite changes the origin (hostname), the `<Link>` component automatically renders a standard anchor tag instead of using client-side navigation:

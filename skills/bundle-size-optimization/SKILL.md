@@ -148,3 +148,8 @@ Validate annotation support and emitted effects with the installed bundler/minif
 - Skipping behavior or benchmark tests because the change is “only bundle size.”
 - Skipping hunk-level attribution and keeping changes only because the full candidate improved.
 - Trading runtime performance, security, readability, or maintainability for bytes.
+
+## Meta work
+
+If you need to work on the bundle size measurements / workflow themselves,
+read `benchmarks/bundle-size/README.md`
