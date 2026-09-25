@@ -78,7 +78,25 @@ describe('prerender public sinks', () => {
     expect(request).not.toHaveBeenCalled()
   })
 
-  it.each([{ outputPath: 'nested', expected: '/client/nested/index.html' }])(
+  it('requests relative pages without automatic redirect following', async () => {
+    const request = vi.fn(async () => htmlResponse())
+
+    await prerender({
+      startConfig: makeStartConfig('/about'),
+      handler: { getClientOutputDirectory: () => '/client', request },
+    })
+
+    expect(request).toHaveBeenCalledWith(
+      '/about/',
+      expect.objectContaining({ redirect: 'manual' }),
+    )
+  })
+
+  it.each([
+    { outputPath: '../escape', expected: undefined },
+    { outputPath: '../client-leak', expected: undefined },
+    { outputPath: 'nested', expected: '/client/nested/index.html' },
+  ])(
     'keeps output $outputPath inside the client directory',
     async ({ outputPath, expected }) => {
       vi.mocked(fsp.writeFile).mockClear()
@@ -109,27 +127,28 @@ describe('prerender public sinks', () => {
     },
   )
 
-  it.each(['https://attacker.test/leak'])(
-    'does not request raw redirect target %j',
-    async (location) => {
-      const request = vi.fn(
-        async () =>
-          new Response(null, {
-            status: 307,
-            headers: { location },
-          }),
-      )
-      const startConfig = makeStartConfig('/about')
-      startConfig.prerender.failOnError = false
+  it.each([
+    'https://attacker.test/leak',
+    '//attacker.test/leak',
+    '/\\attacker.test/leak',
+  ])('does not request raw redirect target %j', async (location) => {
+    const request = vi.fn(
+      async () =>
+        new Response(null, {
+          status: 307,
+          headers: { location },
+        }),
+    )
+    const startConfig = makeStartConfig('/about')
+    startConfig.prerender.failOnError = false
 
-      await prerender({
-        startConfig,
-        handler: { getClientOutputDirectory: () => '/client', request },
-      })
+    await prerender({
+      startConfig,
+      handler: { getClientOutputDirectory: () => '/client', request },
+    })
 
-      expect(request).toHaveBeenCalledTimes(1)
-    },
-  )
+    expect(request).toHaveBeenCalledTimes(1)
+  })
 
   it('keeps a canonical double-slash redirect on the preview origin', async () => {
     const requestedUrls: Array<string> = []
@@ -154,6 +173,61 @@ describe('prerender public sinks', () => {
     expect(requestedUrls).toEqual([
       'http://localhost/about/',
       'http://localhost//attacker.test/leak',
+    ])
+  })
+
+  it.each(['/outside', '/application', '/app-private', '/app/../outside'])(
+    'does not request a redirect outside the router basepath: %s',
+    async (location) => {
+      const request = vi.fn(
+        async () =>
+          new Response(null, {
+            status: 307,
+            headers: { location },
+          }),
+      )
+      const startConfig = makeStartConfig('/page')
+      startConfig.router.basepath = '/app'
+      startConfig.prerender.failOnError = false
+
+      await prerender({
+        startConfig,
+        handler: { getClientOutputDirectory: () => '/client', request },
+      })
+
+      expect(request).toHaveBeenCalledOnce()
+      expect(request).toHaveBeenCalledWith(
+        '/app/page/',
+        expect.objectContaining({ redirect: 'manual' }),
+      )
+    },
+  )
+
+  it('follows a raw redirect on the preview origin and basepath', async () => {
+    const request = vi.fn(async (requestPath: string) => {
+      if (requestPath === '/app/page/') {
+        return new Response(null, {
+          status: 307,
+          headers: { location: 'http://127.0.0.1:4173/app/next/' },
+        })
+      }
+      return htmlResponse()
+    })
+    const startConfig = makeStartConfig('/page')
+    startConfig.router.basepath = '/app'
+
+    await prerender({
+      startConfig,
+      handler: {
+        getClientOutputDirectory: () => '/client',
+        getOrigin: () => 'http://127.0.0.1:4173',
+        request,
+      },
+    })
+
+    expect(request.mock.calls.map(([requestPath]) => requestPath)).toEqual([
+      '/app/page/',
+      '/app/next/',
     ])
   })
 

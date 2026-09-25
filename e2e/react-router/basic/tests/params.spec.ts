@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { expect } from '@playwright/test'
+import { apiTest as test } from '@tanstack/router-e2e-utils'
 
 test.describe('params operations + prefix/suffix', () => {
   test.beforeEach(async ({ page }) => {

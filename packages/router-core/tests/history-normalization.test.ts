@@ -3,9 +3,48 @@ import { describe, expect, test } from 'vitest'
 import { BaseRootRoute, BaseRoute } from '../src'
 import { createTestRouter } from './routerTestUtils'
 
-const fragments = ['/\\section', '\\/section', '\\\\section']
+const fragments = ['//section', '/\\section', '\\/section', '\\\\section']
 
 describe('history normalization boundaries', () => {
+  test.each([false, true])(
+    'normalizes a pathname exposed by the basepath input rewrite (server=%s)',
+    async (isServer) => {
+      const root = new BaseRootRoute()
+      const target = new BaseRoute({
+        getParentRoute: () => root,
+        path: '/target',
+        loader: () => 'target data',
+      })
+      const router = createTestRouter({
+        routeTree: root.addChildren([target]),
+        basepath: '/app',
+        isServer,
+        history: createMemoryHistory({
+          initialEntries: ['/app//target#//section'],
+        }),
+      })
+
+      await router.load()
+
+      expect(router.state.location.pathname).toBe('/target')
+      expect(router.state.location.hash).toBe('//section')
+      if (isServer) {
+        expect(router._serverResult?.type).toBe('redirect')
+        if (router._serverResult?.type === 'redirect') {
+          expect(router._serverResult.redirect.headers.get('Location')).toBe(
+            '/app/target#//section',
+          )
+        }
+      } else {
+        expect(router.state.matches.at(-1)).toMatchObject({
+          routeId: target.id,
+          status: 'success',
+          loaderData: 'target data',
+        })
+      }
+    },
+  )
+
   test('preserves distinct logical and masked fragment data through a rewrite', async () => {
     const router = createTestRouter({
       routeTree: new BaseRootRoute(),
@@ -58,6 +97,26 @@ describe('history normalization boundaries', () => {
       expect(rewrittenOrigins).toEqual(rewrite ? ['https://app.example'] : [])
     },
   )
+
+  test('normalizes protocol-relative paths from output rewrites', () => {
+    const origin = 'https://victim.example'
+    const router = createTestRouter({
+      routeTree: new BaseRootRoute(),
+      history: createMemoryHistory({ initialEntries: ['/'] }),
+      origin,
+      rewrite: {
+        output: ({ url }) =>
+          url.pathname === '/safe'
+            ? new URL(`${origin}//evil.example/path`)
+            : url,
+      },
+    })
+
+    const location = router.buildLocation({ to: '/safe' })
+
+    expect(location.external).toBe(false)
+    expect(location.publicHref).toBe('/evil.example/path')
+  })
 
   test.each(fragments)('preserves fragment data %j on initial load', (hash) => {
     const router = createTestRouter({
