@@ -234,7 +234,7 @@ export type PendingSession = [
   /** Pending reveal time until acknowledged, then minimum-visible-until time. */
   deadline: number,
   revealTimer?: ReturnType<typeof setTimeout>,
-  ack?: Promise<boolean> | true,
+  ack?: Promise<boolean> | boolean,
   component?: unknown,
 ]
 
@@ -1516,15 +1516,8 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
     }
     const min =
       route.options.pendingMinMs ?? router.options.defaultPendingMinMs ?? 0
-    let tookOver = false
-    if (session?.[1 /* boundaryId */] === match.id) {
-      tookOver = session[0 /* generation */] !== tx
-      session[0 /* generation */] = tx
-    } else {
+    if (session?.[1 /* boundaryId */] !== match.id) {
       clearTimeout(session?.[3 /* revealTimer */])
-      router._pending = session = undefined
-    }
-    if (!session) {
       // Hydration and redirects can preserve pending presentation without a session.
       // Do not delay it again; conservatively start pendingMinMs from now.
       router._pending = session = [
@@ -1532,17 +1525,19 @@ function offerPending(router: CoordinatorRouter, tx: LoadTransaction): void {
         match.id,
         presentedPending ? Date.now() + min : tx[4 /* startedAt */] + delay,
         undefined,
-        presentedPending || undefined,
+        presentedPending,
         component,
       ]
     }
+    // A successor or replacement fallback must publish its own offer.
     if (
       session[4 /* ack */] &&
-      !tookOver &&
+      session[0 /* generation */] === tx &&
       session[5 /* component */] === component
     ) {
       return
     }
+    session[0 /* generation */] = tx
     session[5 /* component */] = component
     if (!session[4 /* ack */]) {
       clearTimeout(session[3 /* revealTimer */])
