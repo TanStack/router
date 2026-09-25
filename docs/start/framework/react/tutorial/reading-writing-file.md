@@ -178,7 +178,7 @@ Now let's create a new component `JokesList` to render the jokes on the page wit
 
 ```tsx
 // src/components/JokesList.tsx
-import { Joke } from '../types'
+import type { Joke } from '../types'
 
 interface JokesListProps {
   jokes: Joke[]
