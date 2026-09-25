@@ -1,6 +1,7 @@
 # CPU simulation benchmarks
 
-`client-nav` measures navigation in Node/jsdom; `ssr` measures server requests.
+`client-nav` measures navigation, mounting, and Vue hydration in
+Node/jsdom; `ssr` measures server requests.
 Both suites run through the CodSpeed Vitest integration in CPU simulation mode.
 
 ## Worker runtime
@@ -81,7 +82,7 @@ gh workflow run client-nav-benchmarks.yml --ref <branch>
 Wait for each workflow run to finish before dispatching the next repetition at
 the same commit. The workflow also runs memory benchmarks; exclude those results
 when assessing CPU repeatability. Check that every repetition has all expected
-CPU results (currently 132), rather than inherited results from an earlier run.
+CPU results (currently 133), rather than inherited results from an earlier run.
 Compare each benchmark's minimum and maximum across repetitions; keep input data,
 navigation/request counts, builds, dependencies and Node version fixed when
 testing runtime configuration changes.
