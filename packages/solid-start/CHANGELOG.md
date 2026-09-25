@@ -1,5 +1,20 @@
 # @tanstack/solid-start
 
+## 2.0.0-rc.9
+
+### Patch Changes
+
+- [#8467](https://github.com/TanStack/router/pull/8467) [`0dc3a9e`](https://github.com/TanStack/router/commit/0dc3a9e3a56f589578d8bae994171211f7b148c6) - Bump solid-js and @solidjs/web to ^2.0.0-rc.9 and @solidjs/vite-plugin to ^3.0.0-next.44 across the monorepo (with @solidjs/babel-plugin 2.0.0-rc.9 for the webpack path). @solidjs/vite-plugin 3.0.0-next.44 peer-requires solid-js ^2.0.0-rc.9 and ships the rc.9 compiler.
+
+  rc.9 changed `serverFunctionUrl` to describe a `GET()` reference's own call (`serverFunctionUrl(fn, ...args)`) and moved the id-based form-post address to `serverFunctionActionUrl` / `parseServerFunctionActionUrl` (solidjs/solid#3440); @tanstack/solid-start's server-function handler now uses those.
+
+  Rsbuild apps: `@rsbuild/plugin-solid@2.0.0-rc.0` hard-pins the rc.6 compiler, which emits the old delegated-event key (`el.$$click`) that the rc.9 runtime no longer reads (`_$$click`), so delegated handlers never fire. Until the plugin ships an rc.9-based release, override its `@solidjs/compiler` and `@solidjs/babel-plugin` to 2.0.0-rc.9 (the monorepo does this in `pnpm-workspace.yaml`).
+
+- Updated dependencies [[`0dc3a9e`](https://github.com/TanStack/router/commit/0dc3a9e3a56f589578d8bae994171211f7b148c6), [`81ee38e`](https://github.com/TanStack/router/commit/81ee38eee5695cfdeb623f085f7e54b0e1ef2fe5)]:
+  - @tanstack/solid-router@2.0.0-rc.9
+  - @tanstack/solid-start-client@2.0.0-rc.9
+  - @tanstack/solid-start-server@2.0.0-rc.9
+
 ## 2.0.0-rc.8
 
 ### Patch Changes
