@@ -91,8 +91,8 @@ test('#2072: logout invalidates the router with the fresh auth context', async (
   await waitFor(() => expect(seen).toEqual([true, false]))
 })
 
-// The inverse transition: becoming authenticated must let `beforeLoad` observe
-// the new context and release the previously blocked private route.
+// The inverse transition: becoming authenticated must let the login route's
+// `beforeLoad` observe the new context and redirect to the private route.
 test('#2072: login invalidates the router with the fresh auth context', async () => {
   const seen: Array<boolean> = []
   const rootRoute = createRootRouteWithContext<{
