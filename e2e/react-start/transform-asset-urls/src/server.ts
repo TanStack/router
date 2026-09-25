@@ -83,4 +83,18 @@ const handler = createStartHandler(
     : defaultStreamHandler,
 )
 
-export default createServerEntry({ fetch: handler })
+export default createServerEntry({
+  fetch(request, options) {
+    const scriptUrl = request.headers.get('x-test-script-url')
+    if (scriptUrl) {
+      return createStartHandler({
+        handler: defaultStreamHandler,
+        transformAssets: ({ kind, url }) => ({
+          href: kind === 'script' ? scriptUrl : url,
+        }),
+      })(request, options)
+    }
+
+    return handler(request, options)
+  },
+})
