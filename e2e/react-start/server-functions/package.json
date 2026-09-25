@@ -13,7 +13,7 @@
     "build:rsbuild": "rsbuild build && tsc --noEmit",
     "preview": "vite preview",
     "start": "node server.js",
-    "test:e2e": "rm -rf port*.txt && pnpm build && playwright test --project=chromium && pnpm run test:e2e:rsbuild-cache",
+    "test:e2e": "pnpm build && playwright test --project=chromium && pnpm run test:e2e:rsbuild-cache",
     "test:e2e:rsbuild-cache": "playwright test -c playwright.rsbuild-cache.config.ts --project=chromium"
   },
   "dependencies": {

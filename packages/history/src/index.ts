@@ -281,9 +281,6 @@ export function createHistory(opts: {
 }
 
 function assignKeyAndIndex(index: number, state: HistoryState | undefined) {
-  if (!state) {
-    state = {}
-  }
   const key = createRandomKey()
   return {
     ...state,
@@ -684,7 +681,7 @@ export function createMemoryHistory(
     go: (n) => {
       index = Math.min(Math.max(index + n, 0), entries.length - 1)
     },
-    createHref: (path) => path,
+    createHref: normalizeHref,
     getBlockers: _getBlockers,
     setBlockers: _setBlockers,
   })
@@ -749,8 +746,10 @@ export function parseHref(
   const sanitizedHref = normalizeHref(href)
   const hashIndex = sanitizedHref.indexOf('#')
   const searchIndex = sanitizedHref.indexOf('?')
-
-  const addedKey = createRandomKey()
+  if (!state) {
+    const key = createRandomKey()
+    state = { [stateIndexKey]: 0, key, __TSR_key: key }
+  }
 
   return {
     href: sanitizedHref,
@@ -772,7 +771,7 @@ export function parseHref(
             hashIndex === -1 ? undefined : hashIndex,
           )
         : '',
-    state: state || { [stateIndexKey]: 0, key: addedKey, __TSR_key: addedKey },
+    state,
   }
 }
 
