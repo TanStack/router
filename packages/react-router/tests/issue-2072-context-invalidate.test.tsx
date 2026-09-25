@@ -1,11 +1,5 @@
 import * as React from 'react'
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
 import {
   RouterProvider,
@@ -88,7 +82,7 @@ test('#2072: logout invalidates the router with the fresh auth context', async (
   fireEvent.click(screen.getByRole('button', { name: 'Logout' }))
 
   expect(await screen.findByText('Login page')).toBeInTheDocument()
-  await waitFor(() => expect(seen).toEqual([true, false]))
+  expect(seen).toEqual([true, false])
 })
 
 // The inverse transition: becoming authenticated must let the login route's
@@ -159,5 +153,5 @@ test('#2072: login invalidates the router with the fresh auth context', async ()
   fireEvent.click(screen.getByRole('button', { name: 'Login' }))
 
   expect(await screen.findByText('Private page')).toBeInTheDocument()
-  await waitFor(() => expect(seen).toEqual([true]))
+  expect(seen).toEqual([true])
 })
