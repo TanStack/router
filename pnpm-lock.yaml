@@ -3141,14 +3141,14 @@ importers:
         version: 19.2.3(react@19.2.3)
     devDependencies:
       '@playwright/test':
-        specifier: ^1.61.0
-        version: 1.61.1
+        specifier: ^1.63.0
+        version: 1.63.0
       '@rsbuild/core':
         specifier: ^2.1.0
         version: 2.1.1
       '@rsbuild/plugin-react':
         specifier: ^2.0.0
-        version: 2.0.0(@rsbuild/core@2.1.1)(@rspack/core@2.1.1(@swc/helpers@0.5.23))
+        version: 2.0.0(@rsbuild/core@2.1.1)(@rspack/core@2.2.3(@swc/helpers@0.5.23))
       '@tanstack/router-e2e-utils':
         specifier: workspace:^
         version: link:../../e2e-utils
@@ -3163,13 +3163,13 @@ importers:
         version: 19.2.3(@types/react@19.2.9)
       '@vitejs/plugin-react':
         specifier: ^6.0.1
-        version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.0(supports-color@10.2.2))(rolldown@1.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
+        version: 6.0.1(@rolldown/plugin-babel@0.2.3(@babel/core@7.29.7(supports-color@10.2.2))(rolldown@1.0.2)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0)))(babel-plugin-react-compiler@1.0.0)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       '@vitejs/plugin-rsc':
         specifier: ^0.5.30
         version: 0.5.30(react-dom@19.2.3(react@19.2.3))(react@19.2.3)(vite@8.0.14(@types/node@25.0.9)(esbuild@0.27.4)(jiti@2.7.0)(sass@1.97.2)(terser@5.37.0)(tsx@4.20.3)(yaml@2.9.0))
       react-server-dom-rspack:
         specifier: ^0.0.2
-        version: 0.0.2(@rspack/core@2.1.1(@swc/helpers@0.5.23))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
+        version: 0.0.2(@rspack/core@2.2.3(@swc/helpers@0.5.23))(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
       typescript:
         specifier: npm:@typescript/typescript6@^6.0.2
         version: '@typescript/typescript6@6.0.2'
@@ -44127,9 +44127,9 @@ snapshots:
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
-  react-server-dom-rspack@0.0.2(@rspack/core@2.1.1(@swc/helpers@0.5.23))(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
+  react-server-dom-rspack@0.0.2(@rspack/core@2.2.3(@swc/helpers@0.5.23))(react-dom@19.2.3(react@19.2.3))(react@19.2.3):
     dependencies:
-      '@rspack/core': 2.1.1(@swc/helpers@0.5.23)
+      '@rspack/core': 2.2.3(@swc/helpers@0.5.23)
       react: 19.2.3
       react-dom: 19.2.3(react@19.2.3)
 
