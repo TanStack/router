@@ -102,109 +102,125 @@ test('a settled layout renders its shell while its leaf is still loading', async
 
 // A painted fallback holds through its minimum window before the boundary
 // moves to the leaf that is still loading.
-test('a painted fallback holds its minimum before the shell renders', async () => {
-  vi.useFakeTimers()
-  const headerOptions = createLazyRoute('/users/$userId')({
-    component: () => (
-      <div>
-        <h1>Header shell</h1>
-        <Outlet />
-      </div>
-    ),
-  })
-  const headerChunk = createControlledPromise<typeof headerOptions>()
-  const detailLoader = createControlledPromise<string>()
-
-  const rootRoute = createRootRoute({ component: Outlet })
-  const authRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    id: '_auth',
-    component: Outlet,
-  })
-  const sidebarRoute = createRoute({
-    getParentRoute: () => authRoute,
-    id: '_sidebar',
-    component: Outlet,
-  })
-  const headerRoute = createRoute({
-    getParentRoute: () => authRoute,
-    id: '_header',
-  }).lazy(() => headerChunk)
-
-  const listRoute = createRoute({
-    getParentRoute: () => sidebarRoute,
-    path: '/users',
-    component: () => <p>User list</p>,
-  })
-  const detailRoute = createRoute({
-    getParentRoute: () => headerRoute,
-    path: '/users/$userId',
-    loader: () => detailLoader,
-    component: () => <p>User detail</p>,
-  })
-
-  const router = createRouter({
-    routeTree: rootRoute.addChildren([
-      authRoute.addChildren([
-        sidebarRoute.addChildren([listRoute]),
-        headerRoute.addChildren([detailRoute]),
-      ]),
-    ]),
-    history: createMemoryHistory({ initialEntries: ['/users'] }),
-    defaultPendingComponent: () => <p role="status">Loading</p>,
-    defaultPendingMs: 0,
-    defaultPendingMinMs: 400,
-  })
-
-  await router.load()
-  render(<RouterProvider router={router} />)
-  expect(screen.getByText('User list')).toBeInTheDocument()
-
-  let navigation!: Promise<void>
-  await act(async () => {
-    navigation = router.navigate({
-      to: '/users/$userId',
-      params: { userId: 'u1' },
+test.each(['handover', 'navigate away'])(
+  'a painted fallback holds its minimum before %s',
+  async (completion) => {
+    vi.useFakeTimers()
+    const headerOptions = createLazyRoute('/users/$userId')({
+      component: () => (
+        <div>
+          <h1>Header shell</h1>
+          <Outlet />
+        </div>
+      ),
     })
-    await vi.advanceTimersByTimeAsync(0)
-  })
-  expect(screen.getByRole('status')).toBeInTheDocument()
-  expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
+    const headerChunk = createControlledPromise<typeof headerOptions>()
+    const detailLoader = createControlledPromise<string>()
 
-  await act(async () => {
-    headerChunk.resolve(headerOptions)
-    await vi.advanceTimersByTimeAsync(0)
-  })
+    const rootRoute = createRootRoute({ component: Outlet })
+    const authRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      id: '_auth',
+      component: Outlet,
+    })
+    const sidebarRoute = createRoute({
+      getParentRoute: () => authRoute,
+      id: '_sidebar',
+      component: Outlet,
+    })
+    const headerRoute = createRoute({
+      getParentRoute: () => authRoute,
+      id: '_header',
+    }).lazy(() => headerChunk)
 
-  // The layout settled, but the painted fallback holds its minimum window.
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(399)
-  })
-  expect(screen.getByRole('status')).toBeInTheDocument()
-  expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
+    const listRoute = createRoute({
+      getParentRoute: () => sidebarRoute,
+      path: '/users',
+      component: () => <p>User list</p>,
+    })
+    const detailRoute = createRoute({
+      getParentRoute: () => headerRoute,
+      path: '/users/$userId',
+      loader: () => detailLoader,
+      component: () => <p>User detail</p>,
+    })
 
-  // Once the minimum elapses the shell renders with the leaf still pending.
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(1)
-  })
-  expect(screen.getByText('Header shell')).toBeInTheDocument()
-  expect(screen.getByRole('status')).toBeInTheDocument()
-  expect(screen.queryByText('User detail')).not.toBeInTheDocument()
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([
+        authRoute.addChildren([
+          sidebarRoute.addChildren([listRoute]),
+          headerRoute.addChildren([detailRoute]),
+        ]),
+      ]),
+      history: createMemoryHistory({ initialEntries: ['/users'] }),
+      defaultPendingComponent: () => <p role="status">Loading</p>,
+      defaultPendingMs: 0,
+      defaultPendingMinMs: 400,
+    })
 
-  await act(async () => {
-    detailLoader.resolve('detail data')
-    await vi.advanceTimersByTimeAsync(399)
-  })
-  expect(screen.getByRole('status')).toBeInTheDocument()
-  expect(screen.queryByText('User detail')).not.toBeInTheDocument()
+    await router.load()
+    render(<RouterProvider router={router} />)
+    expect(screen.getByText('User list')).toBeInTheDocument()
 
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(1)
-    await navigation
-  })
-  expect(screen.getByText('User detail')).toBeInTheDocument()
-  expect(screen.getByText('Header shell')).toBeInTheDocument()
-})
+    let navigation!: Promise<void>
+    await act(async () => {
+      navigation = router.navigate({
+        to: '/users/$userId',
+        params: { userId: 'u1' },
+      })
+      await vi.advanceTimersByTimeAsync(0)
+    })
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
+
+    await act(async () => {
+      headerChunk.resolve(headerOptions)
+      await vi.advanceTimersByTimeAsync(0)
+    })
+
+    // The layout settled, but the painted fallback holds its minimum window.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(399)
+    })
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
+
+    if (completion === 'navigate away') {
+      await act(async () => {
+        await router.navigate({ to: '/users' })
+        detailLoader.resolve('obsolete detail data')
+        await vi.advanceTimersByTimeAsync(401)
+        await navigation
+      })
+      expect(screen.getByText('User list')).toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
+      expect(screen.queryByText('Header shell')).not.toBeInTheDocument()
+      return
+    }
+
+    // Once the minimum elapses the shell renders with the leaf still pending.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+    })
+    expect(screen.getByText('Header shell')).toBeInTheDocument()
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('User detail')).not.toBeInTheDocument()
+
+    await act(async () => {
+      detailLoader.resolve('detail data')
+      await vi.advanceTimersByTimeAsync(399)
+    })
+    expect(screen.getByRole('status')).toBeInTheDocument()
+    expect(screen.queryByText('User detail')).not.toBeInTheDocument()
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1)
+      await navigation
+    })
+    expect(screen.getByText('User detail')).toBeInTheDocument()
+    expect(screen.getByText('Header shell')).toBeInTheDocument()
+  },
+)
 
 // Each boundary shows its own fallback as the boundary moves down the branch.
 test('the pending fallback moves from the layout to the leaf', async () => {

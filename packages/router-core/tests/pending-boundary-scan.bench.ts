@@ -29,14 +29,15 @@ function candidate(matches: Array<Match>, painted: number) {
   for (let index = 0; index < matches.length; index++) {
     const match = matches[index]!
     if (match.status === 'success' && !match._notFound) {
-      if (
-        index !== painted ||
-        matches.some(
-          (descendant) =>
-            descendant.status !== 'success' || descendant._notFound,
-        )
-      ) {
+      if (index !== painted) {
         continue
+      }
+      for (let next = index + 1; next < matches.length; next++) {
+        const descendant = matches[next]!
+        if (descendant.status !== 'success' || descendant._notFound) {
+          index = next
+          break
+        }
       }
     }
     return index
@@ -54,6 +55,7 @@ for (const depth of [4, 8, 32]) {
   const cases: Array<[string, Array<Match>, number, number]> = [
     ['unpainted settled ancestors', pending, -1, depth - 1],
     ['painted ancestor with pending leaf', pending, 1, depth - 1],
+    ['painted boundary near pending leaf', pending, depth - 2, depth - 1],
     ['painted ancestor with not-found leaf', notFound, 1, depth - 1],
     ['terminal painted success', settled, depth - 1, depth - 1],
     ['all settled and unpainted', settled, -1, -1],
@@ -83,4 +85,24 @@ for (const depth of [4, 8, 32]) {
       }
     })
   }
+  describe(`${depth} matches: mixed presentations`, () => {
+    for (const [label, select] of [
+      ['original', original],
+      ['candidate', candidate],
+    ] as const) {
+      bench(
+        label,
+        () => {
+          for (let iteration = 0; iteration < 128; iteration++) {
+            const [, matches, painted, expected] =
+              cases[iteration % cases.length]!
+            if (select(matches, painted) !== expected) {
+              throw new Error('Unexpected pending boundary')
+            }
+          }
+        },
+        { time: 300, warmupTime: 100 },
+      )
+    }
+  })
 }
