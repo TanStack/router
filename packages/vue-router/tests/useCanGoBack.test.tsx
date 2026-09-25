@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { beforeEach, describe, expect, test } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@testing-library/vue'
 import {
@@ -23,24 +24,29 @@ describe('useCanGoBack', () => {
   }: {
     initialEntries?: Array<string>
   } = {}) {
-    function RootComponent() {
-      const router = useRouter()
-      const location = useLocation()
-      const canGoBack = useCanGoBack()
+    const RootComponent = defineComponent({
+      setup() {
+        const router = useRouter()
 
-      expect(canGoBack.value).toBe(
-        location.value.pathname === '/' ? false : true,
-      )
+        const location = useLocation()
 
-      return (
-        <>
-          <button onClick={() => router.history.back()}>Back</button>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-          <Outlet />
-        </>
-      )
-    }
+        const canGoBack = useCanGoBack()
+        return () => {
+          expect(canGoBack.value).toBe(
+            location.value.pathname === '/' ? false : true,
+          )
+
+          return (
+            <>
+              <button onClick={() => router.history.back()}>Back</button>
+              <Link to="/">Home</Link>
+              <Link to="/about">About</Link>
+              <Outlet />
+            </>
+          )
+        }
+      },
+    })
 
     const rootRoute = createRootRoute({
       component: RootComponent,

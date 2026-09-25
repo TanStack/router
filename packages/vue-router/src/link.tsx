@@ -9,7 +9,7 @@ import {
 } from '@tanstack/router-core'
 import { isServer } from '@tanstack/router-core/isServer'
 
-import { useStore } from '@tanstack/vue-store'
+import { useSelector } from '@tanstack/vue-store'
 import { useRouter } from './useRouter'
 import { useIntersectionObserver } from './utils'
 
@@ -138,20 +138,17 @@ function useLinkPropsImpl(
             router,
           )
 
-    const {
-      resolvedActiveProps,
-      resolvedInactiveProps,
-      resolvedClassName,
-      resolvedStyle,
-    } = resolveStyleProps(options, isActive)
+    const { resolvedProps, resolvedClass, resolvedStyle } = resolveStyleProps(
+      options,
+      isActive,
+    )
 
     const result = combineResultProps({
       href,
       options,
       isActive,
-      resolvedActiveProps,
-      resolvedInactiveProps,
-      resolvedClassName,
+      resolvedProps,
+      resolvedClass,
       resolvedStyle,
     })
 
@@ -168,11 +165,11 @@ function useLinkPropsImpl(
     ReturnType<typeof router.stores.location.get>
   > = isExternal.value
     ? Vue.shallowRef(router.stores.location.get())
-    : (useStore(router.stores.location, (l) => l, {
-        equal: (prev, next) => prev.href === next.href,
+    : (useSelector(router.stores.location, (l) => l, {
+        compare: (prev, next) => prev.href === next.href,
       }) as Vue.Ref<ReturnType<typeof router.stores.location.get>>)
 
-  // Links that start external skip useStore above. Subscribe if they later
+  // Links that start external skip useSelector above. Subscribe if they later
   // become internal so active state follows subsequent location changes.
   if (isExternal.value) {
     Vue.watchEffect((onCleanup) => {
@@ -425,21 +422,16 @@ function useLinkPropsImpl(
       return getExternalLinkProps(options, router, ref, staticEventHandlers)
     }
 
-    const {
-      resolvedActiveProps,
-      resolvedInactiveProps,
-      resolvedClassName,
-      resolvedStyle,
-    } = resolvedStyleProps.value
+    const { resolvedProps, resolvedClass, resolvedStyle } =
+      resolvedStyleProps.value
     return combineResultProps({
       href: href.value,
       options,
       ref,
       staticEventHandlers,
       isActive: isActive.value,
-      resolvedActiveProps,
-      resolvedInactiveProps,
-      resolvedClassName,
+      resolvedProps,
+      resolvedClass,
       resolvedStyle,
     })
   })
@@ -449,59 +441,48 @@ function useLinkPropsImpl(
 }
 
 function resolveStyleProps(options: AnyLinkPropsOptions, isActive: boolean) {
-  const activeProps = options.activeProps || (() => ({ class: 'active' }))
-  const resolvedActiveProps: StyledProps = (isActive
-    ? typeof activeProps === 'function'
-      ? activeProps()
-      : activeProps
-    : {}) || { class: undefined, style: undefined }
+  const props =
+    (isActive ? options.activeProps : options.inactiveProps) ||
+    (isActive ? STATIC_ACTIVE_PROPS : EMPTY_OBJECT)
+  const resolvedProps: StyledProps =
+    (typeof props === 'function' ? props() : props) || EMPTY_OBJECT
+  const baseClass = options.class
+  const stateClass = resolvedProps.class
+  const resolvedClass = baseClass
+    ? stateClass
+      ? [baseClass, stateClass]
+      : baseClass
+    : stateClass
+      ? stateClass
+      : undefined
 
-  const inactiveProps = options.inactiveProps || (() => ({}))
-
-  const resolvedInactiveProps: StyledProps = (isActive
-    ? {}
-    : typeof inactiveProps === 'function'
-      ? inactiveProps()
-      : inactiveProps) || { class: undefined, style: undefined }
-
-  const classes = [
-    options.class,
-    resolvedActiveProps?.class,
-    resolvedInactiveProps?.class,
-  ].filter(Boolean)
-  const resolvedClassName = classes.length ? classes.join(' ') : undefined
-
-  const result: Record<string, string | number> = {}
-
-  // Merge styles from all sources
-  if (options.style) {
-    Object.assign(result, options.style)
+  const baseStyle = options.style
+  const stateStyle = resolvedProps.style
+  let resolvedStyle: Record<string, string | number> | undefined
+  if (baseStyle || stateStyle) {
+    // Keep a snapshot of reactive styles rather than returning their proxy.
+    const style: Record<string, string | number> = {}
+    Object.assign(style, baseStyle, stateStyle)
+    if (hasKeys(style)) {
+      resolvedStyle = style
+    }
   }
-
-  if (resolvedActiveProps?.style) {
-    Object.assign(result, resolvedActiveProps.style)
-  }
-
-  if (resolvedInactiveProps?.style) {
-    Object.assign(result, resolvedInactiveProps.style)
-  }
-
-  const resolvedStyle = hasKeys(result) ? result : undefined
   return {
-    resolvedActiveProps,
-    resolvedInactiveProps,
-    resolvedClassName,
+    resolvedProps,
+    resolvedClass,
     resolvedStyle,
   }
 }
+
+const STATIC_ACTIVE_PROPS = { class: 'active' }
+const EMPTY_OBJECT = {}
 
 function combineResultProps({
   href,
   options,
   isActive,
-  resolvedActiveProps,
-  resolvedInactiveProps,
-  resolvedClassName,
+  resolvedProps,
+  resolvedClass,
   resolvedStyle,
   ref,
   staticEventHandlers,
@@ -510,9 +491,8 @@ function combineResultProps({
   href: string | undefined
   options: AnyLinkPropsOptions
   isActive: boolean
-  resolvedActiveProps: StyledProps
-  resolvedInactiveProps: StyledProps
-  resolvedClassName?: string
+  resolvedProps: StyledProps
+  resolvedClass?: StyledProps['class']
   resolvedStyle?: Record<string, string | number>
   ref?: Vue.VNodeRef | undefined
   staticEventHandlers?: LinkEventHandlers
@@ -530,8 +510,8 @@ function combineResultProps({
     result.style = resolvedStyle
   }
 
-  if (resolvedClassName) {
-    result.class = resolvedClassName
+  if (resolvedClass) {
+    result.class = resolvedClass
   }
 
   if (disabled) {
@@ -544,15 +524,9 @@ function combineResultProps({
     result['aria-current'] = 'page'
   }
 
-  for (const key of Object.keys(resolvedActiveProps)) {
+  for (const key of Object.keys(resolvedProps)) {
     if (key !== 'class' && key !== 'style') {
-      result[key] = resolvedActiveProps[key]
-    }
-  }
-
-  for (const key of Object.keys(resolvedInactiveProps)) {
-    if (key !== 'class' && key !== 'style') {
-      result[key] = resolvedInactiveProps[key]
+      result[key] = resolvedProps[key]
     }
   }
 
@@ -707,10 +681,12 @@ function getIsActive(
   }
 
   if (activeOptions?.includeSearch ?? true) {
-    const searchTest = deepEqual(loc.search, nextLoc.search, {
-      partial: !activeOptions?.exact,
-      ignoreUndefined: !activeOptions?.explicitUndefined,
-    })
+    const searchTest = deepEqual(
+      loc.search,
+      nextLoc.search,
+      !activeOptions?.exact,
+      activeOptions?.explicitUndefined,
+    )
     if (!searchTest) {
       return false
     }
@@ -959,8 +935,8 @@ const LinkImpl = Vue.defineComponent({
         )
       }
 
-      // Return the component with props and children
-      return Vue.h(Component, linkProps, slotContent)
+      // Vue normalizes class bindings in place; preserve the cached bindings.
+      return Vue.h(Component, { ...linkProps }, slotContent)
     }
   },
 })
