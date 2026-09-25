@@ -4,7 +4,7 @@ import { parseHref } from '../src'
 const baseUrl = new URL('https://victim.example/base')
 
 describe('parseHref', () => {
-  test.each(['\t', '\n', '\r'])(
+  test.each(['\x00', '\x01', '\x1f', '\x7f', '\t', '\n', '\r'])(
     'preserves browser path, query, and fragment interpretation for %j',
     (character) => {
       const href = `/a${character}b?q=a${character}b#a${character}b`
@@ -19,6 +19,30 @@ describe('parseHref', () => {
     expect(parsed.pathname).toEqual('/foo')
     expect(parsed.search).toEqual('?bar=baz')
     expect(parsed.hash).toEqual('#qux')
+  })
+
+  test.each([
+    { __TSR_index: 2 },
+    { __TSR_index: 2, key: 'legacy-key', __TSR_key: 'current-key' },
+  ])('preserves supplied state %j', (state) => {
+    Object.freeze(state)
+    expect(parseHref('/foo', state).state).toBe(state)
+  })
+
+  test('creates independent initial states with matching history keys', () => {
+    const first = parseHref('/foo', undefined)
+    const second = parseHref('/bar', undefined)
+
+    for (const location of [first, second]) {
+      expect(location.state).toEqual({
+        __TSR_index: 0,
+        key: expect.any(String),
+        __TSR_key: location.state.key,
+      })
+    }
+
+    first.state.__TSR_index = 1
+    expect(second.state.__TSR_index).toBe(0)
   })
 
   describe('open redirect prevention', () => {
@@ -60,9 +84,15 @@ describe('parseHref', () => {
     test.each([
       '//evil.com/path',
       '///evil.com/path',
+      '/\\evil.com/path',
+      '/\\\\evil.com/path',
+      '/\\/evil.com/path',
+      '\\/evil.com/path',
+      '\\\\evil.com/path',
+      ' /\\evil.com/path',
       '\x01//evil.com/path',
       '/\t/evil.com/path',
-    ])('keeps authority-like path %j on the current origin', (href) => {
+    ])('keeps protocol-relative input %j on the current origin', (href) => {
       const parsed = parseHref(href, undefined)
       const url = new URL(parsed.href, 'https://victim.example')
 
@@ -70,6 +100,8 @@ describe('parseHref', () => {
     })
 
     test.each([
+      'h\x00ttps://evil.example',
+      'java\x00script:alert(1)',
       '/\x00/evil.example',
       '\x7f//evil.example',
       '/%5c/evil.example',
@@ -87,6 +119,46 @@ describe('parseHref', () => {
       const parsed = parseHref(href, undefined)
 
       expect(new URL(parsed.href, baseUrl).origin).toBe(baseUrl.origin)
+    })
+
+    test('matches WHATWG parsing of protocol-relative prefixes', () => {
+      const alphabet = [
+        '/',
+        '\\',
+        '\t',
+        '\n',
+        '\r',
+        '\x00',
+        '\x0b',
+        ' ',
+        '\x7f',
+      ]
+
+      for (let length = 0; length <= 4; length++) {
+        const count = alphabet.length ** length
+        for (let value = 0; value < count; value++) {
+          let input = ''
+          let cursor = value
+          for (let index = 0; index < length; index++) {
+            input += alphabet[cursor % alphabet.length]
+            cursor = Math.floor(cursor / alphabet.length)
+          }
+          input += 'evil.example/path'
+
+          try {
+            new URL(input, baseUrl)
+          } catch {
+            continue
+          }
+
+          const parsed = parseHref(input, undefined)
+
+          expect(
+            new URL(parsed.href, baseUrl).origin,
+            JSON.stringify(input),
+          ).toBe(baseUrl.origin)
+        }
+      }
     })
 
     test('normal paths remain unchanged', () => {

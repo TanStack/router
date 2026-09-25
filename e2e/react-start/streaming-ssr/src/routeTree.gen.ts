@@ -17,6 +17,7 @@ import { Route as FastSerialRouteImport } from './routes/fast-serial'
 import { Route as ManyPromisesRouteImport } from './routes/many-promises'
 import { Route as NestedDeferredRouteImport } from './routes/nested-deferred'
 import { Route as QueryHeavyRouteImport } from './routes/query-heavy'
+import { Route as RouterHtmlBufferRouteImport } from './routes/router-html-buffer'
 import { Route as SlowRenderRouteImport } from './routes/slow-render'
 import { Route as StreamRouteImport } from './routes/stream'
 import { Route as SyncOnlyRouteImport } from './routes/sync-only'
@@ -61,6 +62,11 @@ const QueryHeavyRoute = QueryHeavyRouteImport.update({
   path: '/query-heavy',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RouterHtmlBufferRoute = RouterHtmlBufferRouteImport.update({
+  id: '/router-html-buffer',
+  path: '/router-html-buffer',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SlowRenderRoute = SlowRenderRouteImport.update({
   id: '/slow-render',
   path: '/slow-render',
@@ -86,6 +92,7 @@ export interface FileRoutesByFullPath {
   '/many-promises': typeof ManyPromisesRoute
   '/nested-deferred': typeof NestedDeferredRoute
   '/query-heavy': typeof QueryHeavyRoute
+  '/router-html-buffer': typeof RouterHtmlBufferRoute
   '/slow-render': typeof SlowRenderRoute
   '/stream': typeof StreamRoute
   '/sync-only': typeof SyncOnlyRoute
@@ -99,6 +106,7 @@ export interface FileRoutesByTo {
   '/many-promises': typeof ManyPromisesRoute
   '/nested-deferred': typeof NestedDeferredRoute
   '/query-heavy': typeof QueryHeavyRoute
+  '/router-html-buffer': typeof RouterHtmlBufferRoute
   '/slow-render': typeof SlowRenderRoute
   '/stream': typeof StreamRoute
   '/sync-only': typeof SyncOnlyRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   '/many-promises': typeof ManyPromisesRoute
   '/nested-deferred': typeof NestedDeferredRoute
   '/query-heavy': typeof QueryHeavyRoute
+  '/router-html-buffer': typeof RouterHtmlBufferRoute
   '/slow-render': typeof SlowRenderRoute
   '/stream': typeof StreamRoute
   '/sync-only': typeof SyncOnlyRoute
@@ -128,6 +137,7 @@ export interface FileRouteTypes {
     | '/many-promises'
     | '/nested-deferred'
     | '/query-heavy'
+    | '/router-html-buffer'
     | '/slow-render'
     | '/stream'
     | '/sync-only'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/many-promises'
     | '/nested-deferred'
     | '/query-heavy'
+    | '/router-html-buffer'
     | '/slow-render'
     | '/stream'
     | '/sync-only'
@@ -154,6 +165,7 @@ export interface FileRouteTypes {
     | '/many-promises'
     | '/nested-deferred'
     | '/query-heavy'
+    | '/router-html-buffer'
     | '/slow-render'
     | '/stream'
     | '/sync-only'
@@ -168,6 +180,7 @@ export interface RootRouteChildren {
   ManyPromisesRoute: typeof ManyPromisesRoute
   NestedDeferredRoute: typeof NestedDeferredRoute
   QueryHeavyRoute: typeof QueryHeavyRoute
+  RouterHtmlBufferRoute: typeof RouterHtmlBufferRoute
   SlowRenderRoute: typeof SlowRenderRoute
   StreamRoute: typeof StreamRoute
   SyncOnlyRoute: typeof SyncOnlyRoute
@@ -231,6 +244,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof QueryHeavyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/router-html-buffer': {
+      id: '/router-html-buffer'
+      path: '/router-html-buffer'
+      fullPath: '/router-html-buffer'
+      preLoaderRoute: typeof RouterHtmlBufferRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/slow-render': {
       id: '/slow-render'
       path: '/slow-render'
@@ -264,6 +284,7 @@ const rootRouteChildren: RootRouteChildren = {
   ManyPromisesRoute: ManyPromisesRoute,
   NestedDeferredRoute: NestedDeferredRoute,
   QueryHeavyRoute: QueryHeavyRoute,
+  RouterHtmlBufferRoute: RouterHtmlBufferRoute,
   SlowRenderRoute: SlowRenderRoute,
   StreamRoute: StreamRoute,
   SyncOnlyRoute: SyncOnlyRoute,

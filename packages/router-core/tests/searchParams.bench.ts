@@ -112,6 +112,14 @@ function stringifyBatch(search: Record<string, unknown>) {
 }
 
 describe('default search serialization', () => {
+  bench('empty object', () => {
+    stringifyBatch({})
+  })
+
+  bench('only undefined values', () => {
+    stringifyBatch({ first: undefined, second: undefined })
+  })
+
   bench('ordinary string values', () => {
     stringifyBatch(ordinaryStrings)
   })

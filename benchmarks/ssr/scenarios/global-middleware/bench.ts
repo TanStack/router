@@ -7,10 +7,13 @@ import {
 import {
   expectedFunctionTotal,
   expectedRequestTotal,
+  getExpectedRequestContext,
   makeDocumentMarker,
   makeServerFnMarker,
   makeServerRouteMarker,
+  setRequestMiddlewareCount,
 } from './shared'
+import type { RequestMiddlewareCount } from './shared'
 import type { StartRequestHandler } from '../../bench-utils'
 
 export type { StartRequestHandler }
@@ -140,6 +143,7 @@ function buildPostRequest(urls: FnUrls, bodies: Array<string>, index: number) {
 export async function setupGlobalMiddlewareBench(
   handler: StartRequestHandler,
 ): Promise<GlobalMiddlewareBenchContext> {
+  setRequestMiddlewareCount(3)
   const urls = await discoverUrls(handler)
   const payloads = createPayloads()
   const bodies = await createBodies(payloads)
@@ -154,6 +158,7 @@ export async function setupGlobalMiddlewareBench(
 }
 
 async function assertDocumentResponse(handler: StartRequestHandler) {
+  setRequestMiddlewareCount(3)
   const id = 'page-sanity'
   const response = await handler.fetch(
     new Request(`${origin}/page/${id}`, documentRequestInit),
@@ -175,7 +180,11 @@ async function assertDocumentResponse(handler: StartRequestHandler) {
   }
 }
 
-async function assertServerRouteResponse(handler: StartRequestHandler) {
+async function assertServerRouteResponseForCount(
+  handler: StartRequestHandler,
+  count: RequestMiddlewareCount,
+) {
+  setRequestMiddlewareCount(count)
   const id = 'route-sanity'
   const response = await handler.fetch(
     new Request(`${origin}/api/ping/${id}`, apiRequestInit),
@@ -199,10 +208,8 @@ async function assertServerRouteResponse(handler: StartRequestHandler) {
     marker?: string
     requestTotal?: number
   }
-  const expectedMarker = makeServerRouteMarker(id, {
-    requestTrace: 'req.r1.r2.r3',
-    requestTotal: expectedRequestTotal,
-  })
+  const expectedContext = getExpectedRequestContext(count)
+  const expectedMarker = makeServerRouteMarker(id, expectedContext)
 
   if (body.marker !== expectedMarker) {
     throw new Error(
@@ -210,9 +217,9 @@ async function assertServerRouteResponse(handler: StartRequestHandler) {
     )
   }
 
-  if (body.requestTotal !== expectedRequestTotal) {
+  if (body.requestTotal !== expectedContext.requestTotal) {
     throw new Error(
-      `Expected server route requestTotal ${expectedRequestTotal}, received ${body.requestTotal}`,
+      `Expected server route requestTotal ${expectedContext.requestTotal}, received ${body.requestTotal}`,
     )
   }
 }
@@ -221,6 +228,7 @@ async function assertServerFnResponse(
   handler: StartRequestHandler,
   context: GlobalMiddlewareBenchContext,
 ) {
+  setRequestMiddlewareCount(3)
   const response = await handler.fetch(
     buildPostRequest(context.urls, context.bodies, 0),
   )
@@ -257,10 +265,14 @@ export async function assertGlobalMiddlewareScenario(
 ) {
   await assertDocumentResponse(handler)
   await assertServerFnResponse(handler, context)
-  await assertServerRouteResponse(handler)
+  for (const count of [0, 1, 2, 3] as const) {
+    await assertServerRouteResponseForCount(handler, count)
+  }
+  setRequestMiddlewareCount(3)
 }
 
 export function runGlobalMiddlewareDocumentLoop(handler: StartRequestHandler) {
+  setRequestMiddlewareCount(3)
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
     concurrency: 16,
@@ -273,6 +285,7 @@ export function runGlobalMiddlewareServerFnLoop(
   handler: StartRequestHandler,
   context: GlobalMiddlewareBenchContext,
 ) {
+  setRequestMiddlewareCount(3)
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
     concurrency: 16,
@@ -284,7 +297,9 @@ export function runGlobalMiddlewareServerFnLoop(
 
 export function runGlobalMiddlewareServerRouteLoop(
   handler: StartRequestHandler,
+  count: RequestMiddlewareCount = 3,
 ) {
+  setRequestMiddlewareCount(count)
   return runRequestLoop(handler, {
     seed: benchmarkSeed,
     concurrency: 16,

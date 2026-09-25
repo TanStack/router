@@ -18,7 +18,7 @@ import {
 
 afterEach(cleanup)
 
-test.each([true])(
+test.each([false, true])(
   'preserves caller click handlers across destination changes (cancel=%s)',
   (cancel) => {
     const router = createRouter({

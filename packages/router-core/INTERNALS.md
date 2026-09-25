@@ -104,6 +104,9 @@ resource ownership, and a promise settling is not permission to publish.
 - `src/ssr/handlerCallback.ts`, `src/ssr/ssr-server.ts`, and
   `src/ssr/transformStreamWithRouter.ts` transfer stream ownership and
   coordinate serialization, injection, abort, and cleanup.
+  `src/ssr/hydrationScripts.ts` owns the request-local hydration script queue
+  and framing; `src/ssr/htmlBoundaryScanner.ts` owns the byte matchers.
+  See `src/ssr/STREAMING.md` for the transport contract.
 - Framework `Transitioner` and `Matches` implementations acknowledge exact
   publications and render only through the selected boundary. Framework
   `RouterClient` and render-to-stream implementations complete hydration and
