@@ -29,7 +29,11 @@
   "nx": {
     "targets": {
       "test:e2e": {
-        "parallelism": false
+        "parallelism": false,
+        "outputs": [
+          "...",
+          "{projectRoot}/.output"
+        ]
       }
     }
   }
