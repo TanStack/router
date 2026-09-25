@@ -1,4 +1,5 @@
 ---
+'@tanstack/router-core': patch
 '@tanstack/start-client-core': minor
 '@tanstack/start-plugin-core': minor
 '@tanstack/start-server-core': patch

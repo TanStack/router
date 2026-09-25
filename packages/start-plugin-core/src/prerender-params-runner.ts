@@ -1,4 +1,9 @@
-import { defaultStringifySearch, interpolatePath } from '@tanstack/router-core'
+import {
+  defaultStringifySearch,
+  hasMissingPathParams,
+  interpolatePath,
+  parsePathTemplate,
+} from '@tanstack/router-core'
 import { collectPrerenderRouteOptions } from './prerender-route-options'
 import type { Page } from './schema'
 import type { RoutePrerenderOptions } from '@tanstack/start-client-core'
@@ -119,6 +124,8 @@ export async function runPrerenderParams({
           )
         }
 
+        const segments = parsePathTemplate(route.path)
+
         const visit = async (entry: unknown) => {
           throwIfAborted(controller.signal)
 
@@ -136,11 +143,17 @@ export async function runPrerenderParams({
 
           const { params, search, prerender } = entry as PrerenderParamsEntry
 
-          const { interpolatedPath, isMissingParams, usedParams } =
-            interpolatePath({ path: route.path, params })
+          const usedParams: Record<string, unknown> = {}
+          const interpolatedPath = interpolatePath(
+            route.path,
+            segments,
+            params,
+            undefined,
+            usedParams,
+          )
 
           if (
-            isMissingParams ||
+            hasMissingPathParams(segments, params) ||
             Object.entries(usedParams).some(
               ([key, value]) => key !== '*' && value == null,
             )
