@@ -1,9 +1,8 @@
-import { expect, test } from '@playwright/test'
-import { getDummyServerPort } from '@tanstack/router-e2e-utils'
-import packageJson from '../package.json' with { type: 'json' }
+import { expect } from '@playwright/test'
+import { apiTest as test } from '@tanstack/router-e2e-utils'
 
-const externalPort = await getDummyServerPort(packageJson.name)
-const adminHref = `http://localhost:${externalPort}/`
+const appPort = Number(process.env.E2E_APP_PORT ?? 0)
+const adminHref = `http://127.0.0.1:${appPort}/external.html`
 
 for (const role of ['button', 'link'] as const) {
   for (const { name, href, replace } of [
@@ -24,7 +23,7 @@ for (const role of ['button', 'link'] as const) {
       await page.goto('/')
       await page.goto('/document-navigation')
       const historyLength = await page.evaluate(() => window.history.length)
-      const response = page.waitForResponse(href.split('#')[0]!)
+      const response = page.waitForResponse(href.split('#')[0])
 
       const control = page.getByRole(role, { name, exact: true })
       if (role === 'link') {

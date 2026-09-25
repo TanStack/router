@@ -1,5 +1,20 @@
+import { defineComponent } from 'vue'
 import { createFileRoute } from '@tanstack/vue-router'
 import { makeLevelData } from '../../../../loaders/shared-data'
+
+const LevelCComponent = defineComponent({
+  setup() {
+    const data = Route.useLoaderData()
+    const params = Route.useParams()
+
+    return () => (
+      <section>
+        <h2>{`csr-rendered-${params.value.c}`}</h2>
+        <p>{data.value.marker}</p>
+      </section>
+    )
+  },
+})
 
 export const Route = createFileRoute('/mix/$a/$b/$c')({
   ssr: false,
@@ -11,15 +26,3 @@ export const Route = createFileRoute('/mix/$a/$b/$c')({
   },
   component: LevelCComponent,
 })
-
-function LevelCComponent() {
-  const data = Route.useLoaderData()
-  const params = Route.useParams()
-
-  return (
-    <section>
-      <h2>{`csr-rendered-${params.value.c}`}</h2>
-      <p>{data.value.marker}</p>
-    </section>
-  )
-}
