@@ -11,7 +11,7 @@
     "start": "pnpx srvx --prod -s ../client dist/server/server.js",
     "test:e2e:dev": "MODE=dev playwright test --project=chromium",
     "test:e2e:prod": "playwright test --project=chromium",
-    "test:e2e": "rm -rf port*.txt; pnpm run test:e2e:dev"
+    "test:e2e": "pnpm run test:e2e:dev"
   },
   "dependencies": {
     "@tanstack/vue-router": "workspace:*",

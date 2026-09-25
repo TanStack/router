@@ -1,6 +1,8 @@
 ---
 id: reading-and-writing-file
 title: Building a Full Stack DevJokes App with TanStack Start
+redirect_from:
+  - /framework/solid/guide/reading-writing-file
 ---
 
 This tutorial will guide you through building a complete full-stack application using TanStack Start. You'll create a DevJokes app where users can view and add developer-themed jokes, demonstrating key concepts of TanStack Start including server functions, file-based data storage, and Solid components.
@@ -152,7 +154,7 @@ export type JokesData = Joke[]
 
 ### Step 1.3: Create Server Functions to Read the File
 
-Let's create a new file `src/serverActions/jokesActions.ts` to create a server function to perform a read-write operation. We will be creating a server function using [`createServerFn`](https://tanstack.com/start/latest/docs/framework/solid/server-functions).
+Let's create a new file `src/serverActions/jokesActions.ts` to create a server function to perform a read-write operation. We will be creating a server function using [`createServerFn`](https://tanstack.com/start/latest/docs/framework/solid/guide/server-functions).
 
 ```tsx
 // src/serverActions/jokesActions.ts

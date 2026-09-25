@@ -1,3 +1,4 @@
+import { defineComponent } from 'vue'
 import { Link, createFileRoute } from '@tanstack/vue-router'
 import { queryOptions, useQuery } from '@tanstack/vue-query'
 import { z } from 'zod'
@@ -16,6 +17,32 @@ const doubleQueryOptions = (n: number) =>
     placeholderData: (oldData) => oldData,
   })
 
+const TransitionPage = defineComponent({
+  setup() {
+    const search = Route.useSearch()
+    const doubleQuery = useQuery(() => doubleQueryOptions(search.value.n))
+    return () => (
+      <div class="p-2">
+        <Link
+          data-testid="increase-button"
+          class="border bg-gray-50 px-3 py-1"
+          from="/transition/count/query"
+          search={(s) => ({ n: s.n + 1 })}
+        >
+          Increase
+        </Link>
+
+        <div class="mt-2">
+          <div data-testid="n-value">n: {doubleQuery.data.value?.n}</div>
+          <div data-testid="double-value">
+            double: {doubleQuery.data.value?.double}
+          </div>
+        </div>
+      </div>
+    )
+  },
+})
+
 export const Route = createFileRoute('/transition/count/query')({
   validateSearch: searchSchema,
   loader: ({ context: { queryClient }, location }) => {
@@ -24,28 +51,3 @@ export const Route = createFileRoute('/transition/count/query')({
   },
   component: TransitionPage,
 })
-
-function TransitionPage() {
-  const search = Route.useSearch()
-  const doubleQuery = useQuery(() => doubleQueryOptions(search.value.n))
-
-  return (
-    <div class="p-2">
-      <Link
-        data-testid="increase-button"
-        class="border bg-gray-50 px-3 py-1"
-        from="/transition/count/query"
-        search={(s) => ({ n: s.n + 1 })}
-      >
-        Increase
-      </Link>
-
-      <div class="mt-2">
-        <div data-testid="n-value">n: {doubleQuery.data.value?.n}</div>
-        <div data-testid="double-value">
-          double: {doubleQuery.data.value?.double}
-        </div>
-      </div>
-    </div>
-  )
-}

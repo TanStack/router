@@ -8,7 +8,7 @@
     "build": "vite build && tsc --noEmit",
     "preview": "vite preview",
     "start": "tsx express-server.ts",
-    "test:e2e": "rm -rf port*.txt; playwright test --project=chromium"
+    "test:e2e": "playwright test --project=chromium"
   },
   "dependencies": {
     "@tanstack/react-router": "workspace:^",

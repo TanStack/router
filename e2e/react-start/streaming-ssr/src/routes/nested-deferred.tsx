@@ -1,40 +1,42 @@
 import { Await, createFileRoute } from '@tanstack/react-router'
 import { createServerFn } from '@tanstack/react-start'
 import { Suspense } from 'react'
+import {
+  delay,
+  makeDeferred,
+  makeLevelData,
+  nestedLevelDelays,
+  nestedPlainDelay,
+  nestedPlainMessage,
+} from '../../../../streaming-ssr-fixtures'
 
-// Multiple server functions with different delays
 const getLevel1Data = createServerFn({ method: 'GET' }).handler(async () => {
-  await new Promise((r) => setTimeout(r, 200))
-  return { level: 1, timestamp: Date.now() }
+  await delay(nestedLevelDelays[0])
+  return makeLevelData(1)
 })
 
 const getLevel2Data = createServerFn({ method: 'GET' }).handler(async () => {
-  await new Promise((r) => setTimeout(r, 400))
-  return { level: 2, timestamp: Date.now() }
+  await delay(nestedLevelDelays[1])
+  return makeLevelData(2)
 })
 
 const getLevel3Data = createServerFn({ method: 'GET' }).handler(async () => {
-  await new Promise((r) => setTimeout(r, 600))
-  return { level: 3, timestamp: Date.now() }
+  await delay(nestedLevelDelays[2])
+  return makeLevelData(3)
 })
 
 export const Route = createFileRoute('/nested-deferred')({
   loader: async () => {
     return {
-      // Multiple deferred promises that resolve at different times
       level1: getLevel1Data(),
       level2: getLevel2Data(),
       level3: getLevel3Data(),
-      // Also a plain deferred promise
-      plainDeferred: new Promise<string>((r) =>
-        setTimeout(() => r('Plain deferred resolved!'), 300),
-      ),
+      plainDeferred: makeDeferred(nestedPlainMessage, nestedPlainDelay),
     }
   },
   component: NestedDeferred,
 })
 
-// Nested component that renders more Await components
 function Level1Content({
   level2,
   level3,
@@ -106,7 +108,6 @@ function NestedDeferred() {
         Tests multiple nested deferred promises resolving at different times.
       </p>
 
-      {/* Plain deferred */}
       <Suspense
         fallback={<div data-testid="plain-loading">Loading plain...</div>}
       >
@@ -116,7 +117,6 @@ function NestedDeferred() {
         />
       </Suspense>
 
-      {/* Nested structure */}
       <div style={{ marginTop: '20px' }}>
         <Suspense
           fallback={<div data-testid="level1-loading">Loading level 1...</div>}
