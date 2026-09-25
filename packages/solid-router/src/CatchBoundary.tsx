@@ -4,15 +4,15 @@ import { renderInNonRouteComponentContext } from './nonRouteComponentContext'
 import type { ErrorRouteComponent } from './route'
 import type { JSX } from '@solidjs/web'
 
-export function CatchBoundary(
-  props: {
-    getResetKey: () => unknown
-    children?: JSX.Element
-    render?: () => JSX.Element
-    errorComponent?: ErrorRouteComponent
-    onCatch?: (error: Error) => void
-  } & Solid.ParentProps,
-) {
+type CatchBoundaryProps = {
+  getResetKey: () => unknown
+  children?: JSX.Element
+  render?: () => JSX.Element
+  errorComponent?: ErrorRouteComponent
+  onCatch?: (error: Error) => void
+} & Solid.ParentProps
+
+export function CatchBoundary(props: CatchBoundaryProps) {
   const [retryKey, setRetryKey] = Solid.createSignal<object>({})
   let resetBoundary: (() => void) | undefined
   let initialized = false
@@ -58,30 +58,97 @@ export function CatchBoundary(
         props.onCatch?.(resolvedError)
         resetBoundary = reset
 
-        return process.env.NODE_ENV !== 'production' ? (
-          renderInNonRouteComponentContext(
-            () => (
-              <Dynamic
-                component={props.errorComponent ?? ErrorComponent}
-                error={resolvedError}
-                reset={reset}
-              />
-            ),
-            'errorComponent',
-          )
-        ) : (
-          <Dynamic
-            component={props.errorComponent ?? ErrorComponent}
-            error={resolvedError}
-            reset={reset}
-          />
-        )
+        return renderErrorComponent(props, resolvedError, reset)
       }}
     >
       <Solid.Show when={retryKey()} keyed>
         {(_retryKey) => props.render?.() ?? props.children}
       </Solid.Show>
     </Solid.Errored>
+  )
+}
+
+// Route load errors already exist in match state during SSR. Render them at
+// the boundary position on both the server and client so Solid hydrates the
+// same owner tree instead of entering its error fallback from only one side.
+export function RouteCatchBoundary(
+  props: CatchBoundaryProps & {
+    hasError: () => boolean
+    getError: () => unknown
+    isServer: boolean
+  },
+) {
+  const [retryKey, setRetryKey] = Solid.createSignal<object>({})
+  let initialized = false
+  let previousError: unknown
+
+  Solid.createEffect(props.getError, (error) => {
+    if (!initialized) {
+      initialized = true
+      previousError = error
+      return
+    }
+    if (Object.is(error, previousError)) {
+      return
+    }
+    previousError = error
+    setRetryKey({})
+  })
+
+  const renderRouteError = () => {
+    const resolvedError = Solid.untrack(props.getError) as Error
+    const reset = () => setRetryKey({})
+
+    if (!props.isServer) {
+      props.onCatch?.(resolvedError)
+    }
+
+    return renderErrorComponent(props, resolvedError, reset)
+  }
+
+  return (
+    <Solid.Show
+      when={props.hasError()}
+      fallback={
+        <CatchBoundary
+          getResetKey={props.getResetKey}
+          errorComponent={props.errorComponent}
+          onCatch={props.onCatch}
+          render={props.render}
+        >
+          {props.children}
+        </CatchBoundary>
+      }
+    >
+      <Solid.Show when={retryKey()} keyed>
+        {(_retryKey) => renderRouteError()}
+      </Solid.Show>
+    </Solid.Show>
+  )
+}
+
+function renderErrorComponent(
+  props: Pick<CatchBoundaryProps, 'errorComponent'>,
+  resolvedError: Error,
+  reset: () => void,
+) {
+  return process.env.NODE_ENV !== 'production' ? (
+    renderInNonRouteComponentContext(
+      () => (
+        <Dynamic
+          component={props.errorComponent ?? ErrorComponent}
+          error={resolvedError}
+          reset={reset}
+        />
+      ),
+      'errorComponent',
+    )
+  ) : (
+    <Dynamic
+      component={props.errorComponent ?? ErrorComponent}
+      error={resolvedError}
+      reset={reset}
+    />
   )
 }
 
