@@ -6293,6 +6293,52 @@ describe('search middleware', () => {
     expect(postsLink).toHaveAttribute('data-status', 'active')
   })
 
+  // https://github.com/TanStack/router/issues/8309
+  test('retainSearchParams before stripSearchParams leaves defaults out of Link hrefs', async () => {
+    const rootRoute = createRootRoute({
+      validateSearch: z.object({ myParam: z.string().default('foo') }),
+      search: {
+        middlewares: [
+          retainSearchParams(true),
+          stripSearchParams({ myParam: 'foo' }),
+        ],
+      },
+      component: () => (
+        <>
+          <Link data-testid="index-link" to="/">
+            index
+          </Link>
+          <Link data-testid="about-link" to="/about">
+            about
+          </Link>
+          <Outlet />
+        </>
+      ),
+    })
+    const indexRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/',
+    })
+    const aboutRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: 'about',
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+      history,
+    })
+
+    render(<RouterProvider router={router} />)
+
+    const indexLink = await screen.findByTestId('index-link')
+    expect(indexLink).toHaveAttribute('href', '/')
+    expect(indexLink).toHaveAttribute('data-status', 'active')
+    expect(await screen.findByTestId('about-link')).toHaveAttribute(
+      'href',
+      '/about',
+    )
+  })
+
   describe('reloadDocument', () => {
     test('link to /posts with params', async () => {
       const rootRoute = createRootRoute()

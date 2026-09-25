@@ -650,6 +650,54 @@ describe('buildLocation - search params', () => {
     expect(location.search).toEqual({ Auth: 'false' })
   })
 
+  // https://github.com/TanStack/router/issues/8309
+  test.each([
+    { retain: true, current: '/about', expected: {} },
+    {
+      retain: true,
+      current: '/about?myParam=bar',
+      expected: { myParam: 'bar' },
+    },
+    { retain: ['myParam'], current: '/about', expected: {} },
+    {
+      retain: ['myParam'],
+      current: '/about?myParam=bar',
+      expected: { myParam: 'bar' },
+    },
+  ] as const)(
+    'Link-style buildLocation with retainSearchParams($retain) before stripSearchParams from $current',
+    async ({ retain, current, expected }) => {
+      const rootRoute = new BaseRootRoute({
+        validateSearch: (search: Record<string, unknown>) => ({
+          myParam: search.myParam === undefined ? 'foo' : `${search.myParam}`,
+        }),
+        search: {
+          middlewares: [
+            retainSearchParams(retain as true | Array<'myParam'>),
+            stripSearchParams({ myParam: 'foo' }),
+          ],
+        },
+      })
+      const indexRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/',
+      })
+      const aboutRoute = new BaseRoute({
+        getParentRoute: () => rootRoute,
+        path: '/about',
+      })
+
+      const router = createTestRouter({
+        routeTree: rootRoute.addChildren([indexRoute, aboutRoute]),
+        history: createMemoryHistory({ initialEntries: [current] }),
+      })
+
+      await router.load()
+
+      expect(router.buildLocation({ to: '/' }).search).toEqual(expected)
+    },
+  )
+
   test('retainSearchParams should keep downstream values added after validation', async () => {
     const rootRoute = new BaseRootRoute({
       validateSearch: (search: Record<string, unknown>) => ({
