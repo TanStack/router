@@ -72,4 +72,28 @@ describe('ServerFunctionSerializationAdapter', () => {
       functionId: 'abc',
     })
   })
+
+  it('resolves the client RPC lazily when revived before its chunk evaluates', async () => {
+    const { ServerFunctionSerializationAdapter } =
+      await import('../src/client/ServerFunctionSerializationAdapter')
+
+    // Hydration revives the reference before any server function stub loaded.
+    const revived = ServerFunctionSerializationAdapter.fromSerializable({
+      functionId: 'abc',
+    })
+    expect(revived.url).toBe('/_serverFn/abc')
+    expect(revived.serverFnMeta).toEqual({ id: 'abc' })
+    expect(ServerFunctionSerializationAdapter.toSerializable(revived)).toEqual({
+      functionId: 'abc',
+    })
+
+    // A route chunk that bundles the client evaluates later.
+    await import('../src/client-rpc/createClientRpc')
+
+    await expect(revived(1, 2)).resolves.toEqual({
+      url: '/_serverFn/abc',
+      args: [1, 2],
+    })
+    expect(serverFnFetcher).toHaveBeenCalledTimes(1)
+  })
 })
