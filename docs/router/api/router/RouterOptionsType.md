@@ -375,9 +375,10 @@ const router = createRouter({
 
 ### `pathParamsAllowedCharacters` property
 
-- Type: `Array<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
+- Type: `ReadonlyArray<';' | ':' | '@' | '&' | '=' | '+' | '$' | ','>`
 - Optional
 - Configures which URI characters are allowed in path params that would ordinarily be escaped by encodeURIComponent.
+- Read only when the router is created. To change these characters, create a new router instance. Router option updates and provider props do not change this setting.
 
 ### `defaultStructuralSharing` property
 

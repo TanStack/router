@@ -21,6 +21,11 @@
         "transitive": true
       }
     ],
+    "streamingSsrTests": [
+      "{workspaceRoot}/e2e/streaming-ssr-assertions.ts",
+      "{workspaceRoot}/e2e/streaming-ssr-fixtures/**/*",
+      "{workspaceRoot}/e2e/streaming-ssr-specs/**/*"
+    ],
     "default": [
       "sharedGlobals",
       "{projectRoot}/**/*",
@@ -62,27 +67,27 @@
     "test:e2e": {
       "cache": true,
       "dependsOn": ["^build", "test:e2e--*"],
-      "inputs": ["default", "^production", "dependentTaskOutputs"],
-      "outputs": [
-        "{projectRoot}/dist",
-        "{projectRoot}/port-*.txt",
-        "{projectRoot}/test-results"
-      ]
+      "inputs": ["buildProduction", "^production", "dependentTaskOutputs"],
+      "outputs": ["{projectRoot}/dist", "{projectRoot}/test-results"],
+      "parallelism": false
     },
     "test:e2e:nitro": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:e2e:basepath": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:e2e:preview": {
       "cache": true,
       "dependsOn": ["^build"],
-      "inputs": ["default", "^production"]
+      "inputs": ["default", "^production"],
+      "parallelism": false
     },
     "test:types": {
       "cache": true,
@@ -117,6 +122,10 @@
         "^production",
         "{workspaceRoot}/benchmarks/ssr/bench-utils.ts",
         "{workspaceRoot}/benchmarks/cpu-simulation.ts",
+        "{workspaceRoot}/benchmarks/ssr/scenarios/*/*.ts",
+        "{workspaceRoot}/benchmarks/memory/*.ts",
+        "{workspaceRoot}/benchmarks/memory/server/*.ts",
+        "{workspaceRoot}/benchmarks/memory/server/scenarios/*/*.ts",
         "dependentTaskOutputs"
       ]
     },
@@ -136,6 +145,9 @@
       "cache": true,
       "dependsOn": ["build"],
       "inputs": ["buildProduction", "dependentTaskOutputs"]
+    },
+    "test:e2e*": {
+      "parallelism": false
     }
   },
   "plugins": [
