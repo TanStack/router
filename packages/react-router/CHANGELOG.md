@@ -1,5 +1,14 @@
 # @tanstack/react-router
 
+## 1.170.40
+
+### Patch Changes
+
+- [#8436](https://github.com/TanStack/router/pull/8436) [`f5ffd38`](https://github.com/TanStack/router/commit/f5ffd3884ba26778a2a8ce53b379a5bded231676) - Skip unused Link preload cleanup when preloading is disabled and ignore queued viewport notifications after their effect has been cleaned up.
+
+- Updated dependencies [[`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47)]:
+  - @tanstack/router-core@1.171.33
+
 ## 1.170.39
 
 ### Patch Changes
