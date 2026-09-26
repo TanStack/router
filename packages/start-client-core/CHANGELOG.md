@@ -1,5 +1,15 @@
 # @tanstack/start-client-core
 
+## 1.170.33
+
+### Patch Changes
+
+- [#8353](https://github.com/TanStack/router/pull/8353) [`76a7c0b`](https://github.com/TanStack/router/commit/76a7c0bfadb42d5f7fe7b9e1748acc7333178c91) - Avoid an unused array when registering server-function middleware.
+
+- Updated dependencies [[`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47)]:
+  - @tanstack/router-core@1.171.33
+  - @tanstack/start-storage-context@1.167.35
+
 ## 1.170.32
 
 ### Patch Changes

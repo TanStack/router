@@ -1,5 +1,11 @@
 # @tanstack/router-core
 
+## 1.171.33
+
+### Patch Changes
+
+- [#8460](https://github.com/TanStack/router/pull/8460) [`0c1b5e3`](https://github.com/TanStack/router/commit/0c1b5e38de71b7e81bbf1fd81c73ee0cd68ffe47) - Abort reserved loader generations with no remaining owners when invalidation removes them from discovery, ensuring their public abort signals are retired.
+
 ## 1.171.32
 
 ### Patch Changes

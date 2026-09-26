@@ -1,5 +1,12 @@
 # @tanstack/router-vite-plugin
 
+## 1.167.41
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @tanstack/router-plugin@1.168.41
+
 ## 1.167.40
 
 ### Patch Changes
