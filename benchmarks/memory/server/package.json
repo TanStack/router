@@ -23,13 +23,13 @@
     "vue": "^3.5.16"
   },
   "devDependencies": {
-    "@codspeed/vitest-plugin": "^5.7.1",
+    "@codspeed/vitest-plugin": "6.0.0-beta.2",
     "@datadog/pprof": "^5.13.2",
     "@platformatic/flame": "^1.6.0",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@vitejs/plugin-vue-jsx": "^5.1.5",
     "@types/react": "catalog:",
     "@typescript/native": "npm:typescript@^7.0.2",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-vue-jsx": "^5.1.5",
     "jsdom": "29.1.1",
     "typescript": "npm:@typescript/typescript6@^6.0.2",
     "vite": "^8.0.14",

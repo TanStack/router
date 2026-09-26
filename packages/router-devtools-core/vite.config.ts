@@ -1,3 +1,4 @@
+import { allowedNodeEnvironmentFlags } from 'node:process'
 import { defineConfig, mergeConfig } from 'vitest/config'
 import { tanstackViteConfig } from '@tanstack/vite-config'
 import solid from 'vite-plugin-solid'
@@ -10,6 +11,11 @@ const config = defineConfig({
     dir: './tests',
     watch: false,
     environment: 'jsdom',
+    // Node 25+ exposes native Web Storage globals that shadow jsdom's storage.
+    // Disable them in test workers so each jsdom window owns its storage.
+    execArgv: allowedNodeEnvironmentFlags.has('--no-experimental-webstorage')
+      ? ['--no-experimental-webstorage']
+      : [],
     typecheck: { enabled: true },
     setupFiles: [],
     server: {
