@@ -11,7 +11,7 @@ function Sibling() {
   return <aside>Sibling</aside>;
 }
 export function Page() {
-  return <>
+  return (<>
       <Hydrate when={visible()} h="0_466696e41d">
         <Outer />
         <Hydrate when={interaction()} h="1_466696e41d">
@@ -21,5 +21,5 @@ export function Page() {
       <Hydrate when={idle()} h="2_466696e41d">
         <Sibling />
       </Hydrate>
-    </>;
+    </>);
 }

@@ -70,14 +70,8 @@ describe('RSC CSS compiler transforms', () => {
 
     expect(code).toMatchInlineSnapshot(`
       "import { createCompositeComponent, renderServerComponent, renderToReadableStream } from '@tanstack/react-start/rsc';
-      export const renderable = renderServerComponent(<Card kind="renderable" />, {
-        __tanstackStartRscCss: import.meta.viteRsc.loadCss()
-      });
-      export const composite = createCompositeComponent(() => ({
-        Card: <Card kind="composite" />
-      }), {
-        __tanstackStartRscCss: import.meta.viteRsc.loadCss()
-      });
+      export const renderable = renderServerComponent(<Card kind="renderable" />, { __tanstackStartRscCss: import.meta.viteRsc.loadCss() });
+      export const composite = createCompositeComponent(() => ({ Card: <Card kind="composite" /> }), { __tanstackStartRscCss: import.meta.viteRsc.loadCss() });
       export const stream = renderToReadableStream(<>{import.meta.viteRsc.loadCss()}<Card kind="stream" /></>);"
     `)
   })
@@ -101,9 +95,7 @@ describe('RSC CSS compiler transforms', () => {
     expect(code).toMatchInlineSnapshot(`
       "import { renderServerComponent, renderToReadableStream } from '@tanstack/react-start/rsc';
       const node = <Card />;
-      export const existingOptions = renderServerComponent(<Card />, {
-        alreadyConfigured: true
-      });
+      export const existingOptions = renderServerComponent(<Card />, { alreadyConfigured: true });
       export const nonJsxStream = renderToReadableStream(node);"
     `)
   })
@@ -133,9 +125,7 @@ describe('RSC CSS compiler transforms', () => {
         "callerCode": "import { renderServerComponent } from '@tanstack/react-start/rsc';
       export const renderable = renderServerComponent(<Card />);",
         "providerCode": "import { renderServerComponent } from '@tanstack/react-start/rsc';
-      export const renderable = renderServerComponent(<Card />, {
-        __tanstackStartRscCss: import.meta.rspackRsc.loadCss()
-      });",
+      export const renderable = renderServerComponent(<Card />, { __tanstackStartRscCss: import.meta.rspackRsc.loadCss() });",
       }
     `)
   })

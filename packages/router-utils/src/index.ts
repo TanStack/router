@@ -1,34 +1,32 @@
 export {
-  parseAst,
-  generateFromAst,
-  deadCodeElimination,
-  findReferencedIdentifiers,
-  stripTypeExports,
+  analyzeModule,
+  generateModule,
+  cloneModuleAst,
+  cloneGeneratedNode,
+  parseStatements,
+  parseExpression,
+  linkGeneratedReference,
 } from './ast'
-export type { ParseAstOptions, ParseAstResult, GeneratorResult } from './ast'
+export type {
+  AnalyzeModuleOptions,
+  ModuleAstClone,
+  GenerateResult,
+} from './ast'
 export { logDiff } from './logger'
-
 export { copyFilesPlugin } from './copy-files-plugin'
-
 export { createIdentifier, decodeIdentifier } from './path-ids'
-
 export {
-  buildDeclarationMap,
-  buildDependencyGraph,
-  collectIdentifiersFromNode,
-  collectIdentifiersFromPattern,
-  collectLocalBindingsFromStatement,
-  collectModuleLevelRefsFromNode,
-  expandDestructuredDeclarations,
-  expandSharedDestructuredDeclarators,
-  expandTransitively,
-  extractModuleInfoFromAst,
-  getVariableDeclaratorForExpressionPath,
-  removeBindingsTransitivelyDependingOn,
-  removeModuleLevelBindings,
-  retainModuleLevelDeclarations,
-  stripUnreferencedTopLevelExpressionStatements,
+  collectModuleReferences,
+  extractModuleInfo,
   unwrapExpression,
-  unwrapExportedDeclarations,
+  moduleDeclarationGraph,
+  expandTransitively,
+  stripTypeExports,
+  removeUnusedBindings,
 } from './compiler-helpers'
-export type { ExtractedModuleInfo, ModuleInfoBinding } from './compiler-helpers'
+export type {
+  ModuleDeclarationGraph,
+  RemoveUnusedBindingsOptions,
+  ExtractedModuleInfo,
+  ModuleInfoBinding,
+} from './compiler-helpers'

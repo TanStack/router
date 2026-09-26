@@ -1,5 +1,5 @@
 const ComponentHelper = () => <span>helper</span>;
-const SplitComponent = () => <div>
+const SplitComponent = () => (<div>
       <ComponentHelper />
-    </div>;
+    </div>);
 export { SplitComponent as component };

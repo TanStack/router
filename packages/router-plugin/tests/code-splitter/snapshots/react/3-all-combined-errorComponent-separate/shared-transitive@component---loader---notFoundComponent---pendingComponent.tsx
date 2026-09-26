@@ -1,8 +1,5 @@
 const BASE_URL = 'https://api.example.com';
-const config = {
-  url: BASE_URL,
-  timeout: 5000
-};
+const config = { url: BASE_URL, timeout: 5000 };
 const fetcher = (path: string) => fetch(`${config.url}${path}`);
 const SplitLoader = async () => {
   return fetcher('/data');

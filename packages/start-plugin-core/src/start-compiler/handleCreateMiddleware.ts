@@ -1,4 +1,4 @@
-import { stripMethodCall } from './utils'
+import { sourcePosition, stripMethodCall } from './utils'
 import type {
   CompilationContext,
   MethodCallInfo,
@@ -10,10 +10,8 @@ function warnInputValidatorDeprecation(
   context: CompilationContext,
   inputValidator: MethodCallInfo,
 ): void {
-  const loc = inputValidator.callPath.node.loc?.start
-  const location = loc
-    ? `${context.id}:${loc.line}:${loc.column + 1} `
-    : `${context.id} `
+  const loc = sourcePosition(context.code, inputValidator.call.start)
+  const location = `${context.id}:${loc.line}:${loc.column + 1} `
 
   context.warn?.(
     `${location}createMiddleware().inputValidator() is deprecated. Use createMiddleware().validator() instead.`,
@@ -51,7 +49,7 @@ export function handleCreateMiddleware(
         continue
       }
 
-      const innerInputExpression = methodCall.callPath.node.arguments[0]
+      const innerInputExpression = methodCall.call.arguments[0]
 
       if (!innerInputExpression) {
         throw new Error(
@@ -60,12 +58,12 @@ export function handleCreateMiddleware(
       }
 
       // remove the validator call expression
-      stripMethodCall(methodCall.callPath)
+      stripMethodCall(methodCall.call, context)
     }
 
     if (server) {
       // remove the server call expression
-      stripMethodCall(server.callPath)
+      stripMethodCall(server.call, context)
     }
   }
 }

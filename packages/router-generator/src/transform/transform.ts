@@ -1,6 +1,7 @@
 import MagicString from 'magic-string'
-import * as t from '@babel/types'
-import { parseAst } from '@tanstack/router-utils'
+import { is } from 'yuku-ast'
+import { analyzeModule, unwrapExpression } from '@tanstack/router-utils'
+import type * as t from '@yuku-toolchain/types'
 import type { TransformOptions, TransformResult } from './types'
 
 const routeConstructors = ['createFileRoute', 'createLazyFileRoute'] as const
@@ -51,10 +52,10 @@ export function transform({
   filename,
   node,
 }: TransformOptions): TransformResult {
-  let ast: ReturnType<typeof parseAst>
+  let ast: ReturnType<typeof analyzeModule>
 
   try {
-    ast = parseAst({ code: source, filename })
+    ast = analyzeModule({ code: source, filename })
   } catch (error) {
     return {
       result: 'error',
@@ -62,7 +63,7 @@ export function transform({
     }
   }
 
-  const exportedRouteNames = getExportedRouteNames(ast.program.body)
+  const exportedRouteNames = getExportedRouteNames(ast.ast.body)
 
   if (exportedRouteNames.size === 0) {
     return { result: 'no-route-export' }
@@ -72,7 +73,7 @@ export function transform({
     calls: routeCalls,
     hasUnsupportedRouteId,
     hasMalformedRouteCall,
-  } = findExportedRouteCalls(ast.program.body, exportedRouteNames)
+  } = findExportedRouteCalls(ast.ast.body, exportedRouteNames)
 
   if (routeCalls.length === 0 && hasMalformedRouteCall) {
     return {
@@ -116,24 +117,24 @@ export function transform({
   const expectedCallee = getExpectedRouteConstructor(ctx.lazy)
   const expectedRouteId = `${routeIdQuote}${ctx.routeId}${routeIdQuote}`
   const currentRouteId = source.slice(
-    routeCall.routeIdArg.start!,
-    routeCall.routeIdArg.end!,
+    routeCall.routeIdArg.start,
+    routeCall.routeIdArg.end,
   )
   const targetModule = `@tanstack/${ctx.target}-router`
-  const imports = parseTargetImports(ast.program.body, source, targetModule)
+  const imports = parseTargetImports(ast.ast.body, source, targetModule)
 
   const s = new MagicString(source)
   let modified = false
 
   if (routeCall.callee.name !== expectedCallee) {
-    s.update(routeCall.callee.start!, routeCall.callee.end!, expectedCallee)
+    s.update(routeCall.callee.start, routeCall.callee.end, expectedCallee)
     modified = true
   }
 
   if (currentRouteId !== expectedRouteId) {
     s.update(
-      routeCall.routeIdArg.start!,
-      routeCall.routeIdArg.end!,
+      routeCall.routeIdArg.start,
+      routeCall.routeIdArg.end,
       expectedRouteId,
     )
     modified = true
@@ -162,17 +163,17 @@ export function transform({
   }
 }
 
-function getExportedRouteNames(body: Array<t.Statement>) {
+function getExportedRouteNames(body: t.Program['body']) {
   const exportedRouteNames = new Set<string>()
 
   for (const statement of body) {
-    if (!t.isExportNamedDeclaration(statement) || statement.source) {
+    if (!is.ExportNamedDeclaration(statement) || statement.source) {
       continue
     }
 
-    if (t.isVariableDeclaration(statement.declaration)) {
+    if (is.VariableDeclaration(statement.declaration)) {
       for (const declarator of statement.declaration.declarations) {
-        if (t.isIdentifier(declarator.id) && declarator.id.name === 'Route') {
+        if (is.Identifier(declarator.id) && declarator.id.name === 'Route') {
           exportedRouteNames.add('Route')
         }
       }
@@ -180,7 +181,7 @@ function getExportedRouteNames(body: Array<t.Statement>) {
 
     for (const specifier of statement.specifiers) {
       if (
-        !t.isExportSpecifier(specifier) ||
+        !is.ExportSpecifier(specifier) ||
         getExportedName(specifier.exported) !== 'Route'
       ) {
         continue
@@ -197,7 +198,7 @@ function getExportedRouteNames(body: Array<t.Statement>) {
 }
 
 function findExportedRouteCalls(
-  body: Array<t.Statement>,
+  body: t.Program['body'],
   exportedRouteNames: Set<string>,
 ): RouteCallAnalysis {
   const calls: Array<RouteCall> = []
@@ -212,7 +213,7 @@ function findExportedRouteCalls(
 
     for (const declarator of declaration.declarations) {
       if (
-        !t.isIdentifier(declarator.id) ||
+        !is.Identifier(declarator.id) ||
         !exportedRouteNames.has(declarator.id.name)
       ) {
         continue
@@ -242,35 +243,41 @@ function findExportedRouteCalls(
   return { calls, hasUnsupportedRouteId, hasMalformedRouteCall }
 }
 
-function getVariableDeclaration(statement: t.Statement) {
-  const declaration = t.isExportNamedDeclaration(statement)
+function getVariableDeclaration(statement: t.ProgramStatement) {
+  const declaration = is.ExportNamedDeclaration(statement)
     ? statement.declaration
     : statement
 
-  return t.isVariableDeclaration(declaration) ? declaration : null
+  return is.VariableDeclaration(declaration) ? declaration : null
 }
 
 function getExportedName(node: t.Identifier | t.StringLiteral) {
-  return t.isIdentifier(node) ? node.name : node.value
+  return is.Identifier(node) ? node.name : node.value
 }
 
 function getLocalBindingName(node: t.Identifier | t.StringLiteral) {
-  return t.isIdentifier(node) ? node.name : null
+  return is.Identifier(node) ? node.name : null
 }
 
 function getRouteConstructorInit(expression: t.Expression | null | undefined) {
-  if (!expression || !t.isCallExpression(expression)) {
+  if (!expression) {
+    return null
+  }
+  expression = unwrapExpression(expression)
+  if (!is.CallExpression(expression)) {
+    return null
+  }
+  const callee = is.Expression(expression.callee)
+    ? unwrapExpression(expression.callee)
+    : expression.callee
+  if (!is.CallExpression(callee)) {
     return null
   }
 
-  if (!t.isCallExpression(expression.callee)) {
-    return null
-  }
-
-  const innerCall = expression.callee
+  const innerCall = callee
 
   if (
-    !t.isIdentifier(innerCall.callee) ||
+    !is.Identifier(innerCall.callee) ||
     !isRouteConstructor(innerCall.callee)
   ) {
     return null
@@ -286,10 +293,11 @@ function getRouteConstructorInit(expression: t.Expression | null | undefined) {
 function isDirectRouteConstructorCall(
   expression: t.Expression | null | undefined,
 ) {
+  expression = expression ? unwrapExpression(expression) : expression
   return (
     !!expression &&
-    t.isCallExpression(expression) &&
-    t.isIdentifier(expression.callee) &&
+    is.CallExpression(expression) &&
+    is.Identifier(expression.callee) &&
     isRouteConstructor(expression.callee)
   )
 }
@@ -305,8 +313,8 @@ function isSupportedRouteId(
 ): arg is SupportedRouteId {
   return (
     !!arg &&
-    (t.isStringLiteral(arg) ||
-      (t.isTemplateLiteral(arg) && arg.expressions.length === 0))
+    (is.StringLiteral(arg) ||
+      (is.TemplateLiteral(arg) && arg.expressions.length === 0))
   )
 }
 
@@ -314,33 +322,37 @@ function getRouteIdQuote(
   source: string,
   arg: SupportedRouteId,
 ): '"' | "'" | '`' {
-  const raw = source.slice(arg.start!, arg.end!)
+  const raw = source.slice(arg.start, arg.end)
 
-  if (raw.startsWith("'")) return "'"
-  if (raw.startsWith('"')) return '"'
+  if (raw.startsWith("'")) {
+    return "'"
+  }
+  if (raw.startsWith('"')) {
+    return '"'
+  }
   return '`'
 }
 
 function getCreateFileRouteProps(
   arg: t.CallExpression['arguments'][number] | undefined,
 ) {
-  if (!arg || !t.isObjectExpression(arg)) {
+  if (!arg || !is.ObjectExpression(arg)) {
     return undefined
   }
 
   const props = new Set<string>()
 
   for (const property of arg.properties) {
-    if (!t.isObjectProperty(property) || property.computed) {
+    if (!is.Property(property) || property.computed) {
       continue
     }
 
-    if (t.isIdentifier(property.key)) {
+    if (is.Identifier(property.key)) {
       props.add(property.key.name)
       continue
     }
 
-    if (t.isStringLiteral(property.key)) {
+    if (is.StringLiteral(property.key)) {
       props.add(property.key.value)
     }
   }
@@ -349,7 +361,7 @@ function getCreateFileRouteProps(
 }
 
 function parseTargetImports(
-  body: Array<t.Statement>,
+  body: t.Program['body'],
   source: string,
   targetModule: string,
 ) {
@@ -357,33 +369,30 @@ function parseTargetImports(
 
   for (const statement of body) {
     if (
-      !t.isImportDeclaration(statement) ||
+      !is.ImportDeclaration(statement) ||
       statement.importKind === 'type' ||
       statement.source.value !== targetModule
     ) {
       continue
     }
 
-    const rawSource = source.slice(
-      statement.source.start!,
-      statement.source.end!,
-    )
-    const importStatement = source.slice(statement.start!, statement.end!)
+    const rawSource = source.slice(statement.source.start, statement.source.end)
+    const importStatement = source.slice(statement.start, statement.end)
 
     imports.push({
       declaration: statement,
       defaultImport: statement.specifiers.find((specifier) =>
-        t.isImportDefaultSpecifier(specifier),
+        is.ImportDefaultSpecifier(specifier),
       )?.local.name,
       namespace: statement.specifiers.find((specifier) =>
-        t.isImportNamespaceSpecifier(specifier),
+        is.ImportNamespaceSpecifier(specifier),
       )?.local.name,
       named: statement.specifiers
         .filter((specifier): specifier is t.ImportSpecifier =>
-          t.isImportSpecifier(specifier),
+          is.ImportSpecifier(specifier),
         )
         .map((specifier) => ({
-          imported: t.isIdentifier(specifier.imported)
+          imported: is.Identifier(specifier.imported)
             ? specifier.imported.name
             : specifier.imported.value,
           local: specifier.local.name,
@@ -420,8 +429,8 @@ function updateRouteImports({
   }
 
   if (analysis.kind === 'rename') {
-    s.update(analysis.imported.start!, analysis.imported.end!, analysis.next)
-    s.update(analysis.local.start!, analysis.local.end!, analysis.next)
+    s.update(analysis.imported.start, analysis.imported.end, analysis.next)
+    s.update(analysis.local.start, analysis.local.end, analysis.next)
     return true
   }
 
@@ -452,12 +461,12 @@ function analyzeRouteImports(
 
   for (const declaration of imports) {
     for (const specifier of declaration.declaration.specifiers) {
-      if (!t.isImportSpecifier(specifier)) {
+      if (!is.ImportSpecifier(specifier)) {
         continue
       }
 
       const imported = specifier.imported
-      if (!t.isIdentifier(imported)) {
+      if (!is.Identifier(imported)) {
         return { kind: 'normalize' }
       }
 
@@ -539,16 +548,16 @@ function normalizeRouteImports({
 
     if (replacement === null) {
       s.remove(
-        declaration.declaration.start!,
-        getRemovalEnd(source, declaration.declaration.end!),
+        declaration.declaration.start,
+        getRemovalEnd(source, declaration.declaration.end),
       )
       modified = true
       continue
     }
 
     s.update(
-      declaration.declaration.start!,
-      declaration.declaration.end!,
+      declaration.declaration.start,
+      declaration.declaration.end,
       replacement,
     )
     modified = true

@@ -1,0 +1,50 @@
+{
+  "timestamp": "2026-09-26T14:39:37.304Z",
+  "node": "v24.8.0",
+  "compilerFingerprint": {
+    "commit": "0ec43cd02c88574bc2d12a42a1f54ddcb00af3b7",
+    "sha256": "413ee3fb6fefb17f03a5050229c0a967298c197a07d2bdf33d8cf12ad5754519",
+    "javascriptFiles": 125,
+    "sourceSha256": "7da7629b973a535ed58b890f548a9eb317446ef0fc72d78c9cdc5350c420c595",
+    "sourceFiles": 137,
+    "dependencyVersions": {
+      "@babel/generator": "7.29.8",
+      "@babel/types": "7.29.8"
+    }
+  },
+  "diagnosticOnly": true,
+  "sampleIntervalMs": 50,
+  "samples": 35,
+  "peakTreeMiB": 655.40625,
+  "peakRootMiB": 655.40625,
+  "descendants": [],
+  "worker": {
+    "buildMs": 1647.9926249999999,
+    "sourceHash": "c6483f0a6aaffaeecd253b4f9b47cf6b629b5afd824b39aa1a1b2dc176a5c2f4",
+    "peakRssKiB": 674400,
+    "before": {
+      "rss": 88539136,
+      "heapTotal": 24625152,
+      "heapUsed": 14198704,
+      "external": 3832029,
+      "arrayBuffers": 36007
+    },
+    "after": {
+      "rss": 685080576,
+      "heapTotal": 366329856,
+      "heapUsed": 268246864,
+      "external": 6894065,
+      "arrayBuffers": 474882
+    },
+    "retained": {
+      "rss": 685309952,
+      "heapTotal": 342818816,
+      "heapUsed": 135713248,
+      "external": 6894065,
+      "arrayBuffers": 54451
+    },
+    "emittedFiles": 163,
+    "emittedCodeBytes": 1214457,
+    "hookTimings": {}
+  }
+}

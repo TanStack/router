@@ -1,7 +1,7 @@
 import path from 'node:path'
-import * as t from '@babel/types'
+import { is } from 'yuku-ast'
 import { describe, expect, it, vi } from 'vitest'
-import { parseAst } from '@tanstack/router-utils'
+import { analyzeModule } from '@tanstack/router-utils'
 import { createRouterCodeSplitterPlugin } from '../src/core/router-code-splitter-plugin'
 import { unpluginRouterComposedFactory } from '../src/core/router-composed-plugin'
 import { createRouterHmrPlugin } from '../src/core/router-hmr-plugin'
@@ -78,12 +78,12 @@ function getCode(result: TransformResult | null | undefined) {
 }
 
 function countProgramHotDeclarations(code: string) {
-  const ast = parseAst({ code })
-  return ast.program.body.filter((statement) => {
+  const ast = analyzeModule({ code })
+  return ast.ast.body.filter((statement) => {
     return (
-      t.isVariableDeclaration(statement) &&
+      is.VariableDeclaration(statement) &&
       statement.declarations.some((declaration) => {
-        return t.isIdentifier(declaration.id) && declaration.id.name === 'hot'
+        return is.Identifier(declaration.id) && declaration.id.name === 'hot'
       })
     )
   }).length
@@ -192,9 +192,9 @@ export const Route = createFileRoute('/changing')({
     const combined = await setup(true)
     const first = await separate(source('firstState', 'first version'))
     expect(first.reference).toContain('tsr-split=component')
-    const virtualImports = parseAst({
+    const virtualImports = analyzeModule({
       code: first.virtual,
-    }).program.body.filter((statement) => t.isImportDeclaration(statement))
+    }).ast.body.filter((statement) => is.ImportDeclaration(statement))
     expect(virtualImports).toEqual(
       expect.arrayContaining([
         expect.objectContaining({

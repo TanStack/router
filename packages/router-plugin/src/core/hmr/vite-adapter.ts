@@ -1,6 +1,6 @@
-import * as template from '@babel/template'
+import { parseStatements } from '@tanstack/router-utils'
 import { getHandleRouteUpdateCode } from './handle-route-update'
-import type * as t from '@babel/types'
+import type { ProgramStatement } from '@yuku-toolchain/types'
 
 /**
  * Emits HMR accept code for Vite / native ESM HMR: `import.meta.hot.accept`
@@ -15,16 +15,15 @@ export function createViteHmrStatement(
   opts: {
     routeId?: string
   } = {},
-): Array<t.Statement> {
+): Array<ProgramStatement> {
   const handleRouteUpdateCode = getHandleRouteUpdateCode(stableRouteOptionKeys)
   // The replacement Route object can be uninitialized; keep a generated id as
   // fallback for the existing router route we need to patch.
   const routeIdFallback =
     typeof opts.routeId === 'string' ? JSON.stringify(opts.routeId) : 'Route.id'
 
-  return [
-    template.statement(
-      `
+  return parseStatements(
+    `
 if (import.meta.hot) {
   const hot = import.meta.hot
   const hotData = hot.data ??= {}
@@ -56,9 +55,5 @@ if (import.meta.hot) {
     })
 }
 `,
-      {
-        syntacticPlaceholders: true,
-      },
-    )(),
-  ]
+  )
 }

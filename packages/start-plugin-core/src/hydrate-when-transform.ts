@@ -1,25 +1,22 @@
 import { relative } from 'node:path'
 import crypto from 'node:crypto'
-import babel from '@babel/core'
-import * as t from '@babel/types'
+import { b, is, nameOf, walk } from 'yuku-ast'
 import {
-  buildDeclarationMap,
-  buildDependencyGraph,
-  collectIdentifiersFromNode,
-  collectIdentifiersFromPattern,
-  collectLocalBindingsFromStatement,
-  deadCodeElimination,
+  analyzeModule,
+  cloneModuleAst,
+  collectModuleReferences,
   expandTransitively,
-  findReferencedIdentifiers,
-  generateFromAst,
-  parseAst,
-  removeModuleLevelBindings,
-  retainModuleLevelDeclarations,
-  stripUnreferencedTopLevelExpressionStatements,
-  unwrapExportedDeclarations,
+  generateModule,
+  moduleDeclarationGraph,
+  parseExpression,
+  parseStatements,
+  removeUnusedBindings,
+  unwrapExpression,
 } from '@tanstack/router-utils'
 import { tssHydrate } from './hydration-constants'
 import { cleanId, codeFrameError } from './start-compiler/utils'
+import type { Module, Symbol } from 'yuku-analyzer'
+import type * as t from '@yuku-toolchain/types'
 import type {
   CompileStartFrameworkOptions,
   StartCompilerPlugin,
@@ -53,34 +50,6 @@ function createBoundaryId(root: string, sourceId: string) {
   }
 }
 
-function getJSXElementName(node: t.JSXElement) {
-  const name = node.openingElement.name
-  return t.isJSXIdentifier(name) ? name.name : undefined
-}
-
-function getJSXAttribute(node: t.JSXOpeningElement, name: string) {
-  for (const item of node.attributes) {
-    if (t.isJSXAttribute(item) && t.isJSXIdentifier(item.name, { name })) {
-      return item
-    }
-  }
-
-  return undefined
-}
-
-function getBooleanProp(node: t.JSXOpeningElement, name: string) {
-  const attr = getJSXAttribute(node, name)
-  if (!attr) return undefined
-  if (!attr.value) return true
-  if (t.isStringLiteral(attr.value)) return attr.value.value !== 'false'
-  if (t.isJSXExpressionContainer(attr.value)) {
-    if (t.isBooleanLiteral(attr.value.expression)) {
-      return attr.value.expression.value
-    }
-  }
-  return undefined
-}
-
 function parseHydrateVirtualId(id: string) {
   const queryIndex = id.indexOf('?')
   const sourceId = cleanId(queryIndex === -1 ? id : id.slice(0, queryIndex))
@@ -109,783 +78,562 @@ function parseHydrateVirtualId(id: string) {
   }
 }
 
-function isObjectPropertyName(
-  property: t.ObjectMethod | t.ObjectProperty,
-  name: string,
-) {
-  if (t.isIdentifier(property.key) && !property.computed) {
-    return property.key.name === name
+interface HydrateAst {
+  ast: t.Program
+  module: Module
+  originalNodes: WeakMap<t.Node, t.Node>
+}
+
+function getJSXElementName(node: t.JSXElement) {
+  return is.JSXIdentifier(node.openingElement.name)
+    ? node.openingElement.name.name
+    : undefined
+}
+
+function getJSXAttribute(node: t.JSXOpeningElement, name: string) {
+  return node.attributes.find(
+    (attribute): attribute is t.JSXAttribute =>
+      is.JSXAttribute(attribute) &&
+      is.JSXIdentifier(attribute.name) &&
+      attribute.name.name === name,
+  )
+}
+
+function getBooleanProp(node: t.JSXOpeningElement, name: string) {
+  const attribute = getJSXAttribute(node, name)
+  if (!attribute) {
+    return undefined
   }
-
-  return t.isStringLiteral(property.key) && property.key.value === name
-}
-
-function isReferenceInsideAnyNode(
-  referencePath: babel.NodePath,
-  nodes: ReadonlySet<t.Node>,
-) {
-  if (nodes.has(referencePath.node)) return true
-  return Boolean(referencePath.findParent((parent) => nodes.has(parent.node)))
-}
-
-function stripBindingsOnlyReferencedBy(
-  path: babel.NodePath<t.JSXElement>,
-  node: t.Node,
-  seen = new Set<string>(),
-  preserve = new Set<string>(),
-) {
-  stripBindingsOnlyReferencedByNodes(path.scope, [node], seen, preserve)
-}
-
-function stripBindingsOnlyReferencedByNodes(
-  scope: babel.NodePath['scope'],
-  nodes: ReadonlyArray<t.Node>,
-  seen = new Set<string>(),
-  preserve = new Set<string>(),
-) {
-  const nodeSet = new Set(nodes)
-  const names = new Set<string>()
-  nodes.forEach((node) => {
-    collectIdentifiersFromNode(node).forEach((name) => names.add(name))
-  })
-
-  for (const name of names) {
-    if (seen.has(name)) continue
-    if (preserve.has(name)) continue
-    const binding = scope.getBinding(name)
-    if (!binding?.constant) continue
-    if (
-      binding.path.findParent(
-        (parentPath) =>
-          parentPath.isExportNamedDeclaration() ||
-          parentPath.isExportDefaultDeclaration(),
-      )
-    ) {
-      continue
-    }
-    if (binding.referencePaths.length === 0) continue
-    if (
-      !binding.referencePaths.every((referencePath) =>
-        isReferenceInsideAnyNode(referencePath, nodeSet),
-      )
-    ) {
-      continue
-    }
-
-    seen.add(name)
-
-    const declarationPath = binding.path.isVariableDeclarator()
-      ? binding.path
-      : binding.path.findParent((parentPath) =>
-          parentPath.isVariableDeclarator(),
-        )
-    const patternHasExternalReferences =
-      declarationPath?.isVariableDeclarator() &&
-      !t.isIdentifier(declarationPath.node.id) &&
-      collectIdentifiersFromPattern(declarationPath.node.id).some(
-        (bindingName) => {
-          if (bindingName === binding.identifier.name) return false
-
-          const siblingBinding = binding.scope.getBinding(bindingName)
-          return siblingBinding?.referencePaths.some(
-            (referencePath) =>
-              !isReferenceInsideAnyNode(referencePath, nodeSet),
-          )
-        },
-      )
-
-    if (patternHasExternalReferences) {
-      continue
-    }
-
-    const bindingNode = binding.path.node
-    if (t.isVariableDeclarator(bindingNode) && bindingNode.init) {
-      stripBindingsOnlyReferencedByNodes(
-        binding.scope,
-        [bindingNode.init],
-        seen,
-        preserve,
-      )
-    } else if (
-      t.isFunctionDeclaration(bindingNode) ||
-      t.isClassDeclaration(bindingNode)
-    ) {
-      stripBindingsOnlyReferencedByNodes(
-        binding.scope,
-        [bindingNode],
-        seen,
-        preserve,
-      )
-    }
-
-    if (binding.path.isVariableDeclarator()) {
-      const declarationPath = binding.path.parentPath
-      if (
-        declarationPath.isVariableDeclaration() &&
-        declarationPath.node.declarations.length === 1
-      ) {
-        declarationPath.remove()
-        continue
-      }
-
-      binding.path.remove()
-      continue
-    }
-
-    if (
-      binding.path.isImportSpecifier() ||
-      binding.path.isImportDefaultSpecifier() ||
-      binding.path.isImportNamespaceSpecifier()
-    ) {
-      const importPath = binding.path.parentPath
-      if (
-        importPath.isImportDeclaration() &&
-        importPath.node.specifiers.length === 1
-      ) {
-        importPath.remove()
-        continue
-      }
-
-      binding.path.remove()
-      continue
-    }
-
-    binding.path.remove()
+  if (!attribute.value) {
+    return true
   }
+  if (is.StringLiteral(attribute.value)) {
+    return attribute.value.value !== 'false'
+  }
+  if (is.JSXExpressionContainer(attribute.value)) {
+    const expression = is.Expression(attribute.value.expression)
+      ? unwrapExpression(attribute.value.expression)
+      : attribute.value.expression
+    if (is.BooleanLiteral(expression)) {
+      return expression.value
+    }
+  }
+  return undefined
 }
 
-function getSingleUseObjectExpressionBinding(
-  path: babel.NodePath<t.JSXElement>,
-  identifier: t.Identifier,
-) {
-  const binding = path.scope.getBinding(identifier.name)
-  if (!binding?.constant) return undefined
-  if (binding.referencePaths.length !== 1) return undefined
-  if (binding.referencePaths[0]?.node !== identifier) return undefined
-  if (!binding.path.isVariableDeclarator()) return undefined
-  const init = binding.path.node.init
-  return t.isObjectExpression(init) ? init : undefined
+function propertyIs(property: t.Property, name: string) {
+  return (
+    (!property.computed || is.StringLiteral(property.key)) &&
+    nameOf(property.key) === name
+  )
 }
 
 function objectExpressionMayHaveProperty(
   node: t.ObjectExpression,
   name: string,
 ) {
-  return node.properties.some((property) => {
-    if (t.isSpreadElement(property)) return true
-    if (!t.isObjectMethod(property) && !t.isObjectProperty(property)) {
+  return node.properties.some(
+    (property) =>
+      is.SpreadElement(property) ||
+      property.computed ||
+      propertyIs(property, name),
+  )
+}
+
+function stripObjectExpressionProperty(node: t.ObjectExpression, name: string) {
+  const before = node.properties.length
+  node.properties = node.properties.filter(
+    (property) => !is.Property(property) || !propertyIs(property, name),
+  )
+  return before !== node.properties.length
+}
+
+function sourceNode(context: HydrateAst, node: t.Node) {
+  return context.originalNodes.get(node) ?? node
+}
+
+function getSingleUseObjectExpressionBinding(
+  context: HydrateAst,
+  identifier: t.Identifier,
+  objectExpressions: WeakMap<t.Node, t.ObjectExpression>,
+) {
+  const original = sourceNode(context, identifier)
+  const symbol = context.module.symbolOf(original)
+  if (
+    !symbol ||
+    symbol.references.length !== 1 ||
+    symbol.references[0]?.node !== original ||
+    symbol.references.some((reference) => reference.isWrite)
+  ) {
+    return undefined
+  }
+  const declarationIdentifier = symbol.declarations[0]
+  const declaration =
+    declarationIdentifier && context.module.parentOf(declarationIdentifier)
+  if (!is.VariableDeclarator(declaration) || !declaration.init) {
+    return undefined
+  }
+  const init = unwrapExpression(declaration.init)
+  if (!is.ObjectExpression(init)) {
+    return undefined
+  }
+  return objectExpressions.get(init)
+}
+
+function isWithin(module: Module, node: t.Node, parent: t.Node) {
+  let current: t.Node | null = node
+  while (current) {
+    if (current === parent) {
       return true
     }
-    if (property.computed) return true
-    return isObjectPropertyName(property, name)
-  })
+    current = module.parentOf(current)
+  }
+  return false
 }
 
-function stripObjectExpressionProperty(
-  path: babel.NodePath<t.JSXElement>,
-  node: t.ObjectExpression,
-  name: string,
+function inspectSplitBoundary(
+  context: HydrateAst,
+  node: t.JSXElement,
+  options: {
+    code: string
+    validate?: boolean
+    collectCaptured?: boolean
+    nestedHydrate?: { localName: string }
+  },
 ) {
-  let modified = false
-
-  node.properties = node.properties.filter((property) => {
-    if (
-      (t.isObjectMethod(property) || t.isObjectProperty(property)) &&
-      isObjectPropertyName(property, name)
-    ) {
-      stripBindingsOnlyReferencedBy(
-        path,
-        t.isObjectProperty(property) ? property.value : property.body,
-      )
-      modified = true
-      return false
-    }
-
-    return true
-  })
-
-  return modified
-}
-
-function throwBoundaryError(
-  code: string,
-  path: babel.NodePath<t.JSXElement>,
-  message: string,
-): never {
-  if (path.node.loc) {
-    throw codeFrameError(code, path.node.loc, message)
-  }
-  throw new Error(message)
-}
-
-function inspectSplitBoundary(options: {
-  code: string
-  path: babel.NodePath<t.JSXElement>
-  validate?: boolean
-  collectCaptured?: boolean
-  nestedHydrate?: {
-    localName: string
-  }
-}) {
-  const { path } = options
-  const capturedNames = options.collectCaptured ? new Set<string>() : undefined
-  const nestedHydrate = options.nestedHydrate
+  const captured = new Set<string>()
   let nestedBoundaryCount = 0
-
+  const fail = (message: string): never => {
+    throw codeFrameError(options.code, sourceNode(context, node), message)
+  }
   if (options.validate) {
-    for (const child of path.node.children) {
+    for (const child of node.children) {
+      const expression =
+        is.JSXExpressionContainer(child) && is.Expression(child.expression)
+          ? unwrapExpression(child.expression)
+          : undefined
       if (
-        t.isJSXExpressionContainer(child) &&
-        (t.isFunctionExpression(child.expression) ||
-          t.isArrowFunctionExpression(child.expression))
+        is.FunctionExpression(expression) ||
+        is.ArrowFunctionExpression(expression)
       ) {
-        throwBoundaryError(
-          options.code,
-          path,
+        fail(
           'Hydrate cannot code-split function-as-children. Use split={false} for this boundary.',
         )
       }
     }
   }
-
-  const rootVisitors = {
-    JSXOpeningElement(openingPath: babel.NodePath<t.JSXOpeningElement>) {
-      if (openingPath.node === path.node.openingElement) {
-        openingPath.skip()
+  const originalBoundary = sourceNode(context, node)
+  walk(node, {
+    enter(current) {
+      if (!options.collectCaptured) {
+        return
+      }
+      const reference = context.module.referenceOf(sourceNode(context, current))
+      const symbol = reference?.symbol
+      if (
+        !reference ||
+        reference.inTypePosition ||
+        !symbol ||
+        symbol.scope === context.module.rootScope
+      ) {
+        return
+      }
+      if (
+        symbol.declarations.some((declaration) =>
+          isWithin(context.module, declaration, originalBoundary),
+        )
+      ) {
+        return
+      }
+      captured.add(symbol.name)
+    },
+    JSXOpeningElement(current, visitor) {
+      if (current === node.openingElement) {
+        visitor.skip()
       }
     },
-    JSXClosingElement(closingPath: babel.NodePath<t.JSXClosingElement>) {
-      closingPath.skip()
+    JSXClosingElement(_current, visitor) {
+      visitor.skip()
     },
-  }
-
-  const validateVisitors = options.validate
-    ? {
-        CallExpression(callPath: babel.NodePath<t.CallExpression>) {
-          if (!t.isIdentifier(callPath.node.callee)) return
-          if (!/^use[A-Z0-9]/.test(callPath.node.callee.name)) return
-
-          throwBoundaryError(
-            options.code,
-            path,
-            'Hydrate cannot code-split JSX that calls hooks during render. Move the hook call into a child component or use split={false}.',
-          )
-        },
-        ThisExpression(thisPath: babel.NodePath<t.ThisExpression>) {
-          void thisPath
-          throwBoundaryError(
-            options.code,
-            path,
-            'Hydrate cannot code-split JSX that captures this.',
-          )
-        },
-        Super(superPath: babel.NodePath<t.Super>) {
-          void superPath
-          throwBoundaryError(
-            options.code,
-            path,
-            'Hydrate cannot code-split JSX that captures super.',
-          )
-        },
+    JSXElement(current) {
+      if (
+        current !== node &&
+        options.nestedHydrate &&
+        getJSXElementName(current) === options.nestedHydrate.localName &&
+        getBooleanProp(current.openingElement, 'split') !== false
+      ) {
+        nestedBoundaryCount++
       }
-    : {}
-
-  const nestedHydrateVisitors = nestedHydrate
-    ? {
-        JSXElement(nestedPath: babel.NodePath<t.JSXElement>) {
-          if (getJSXElementName(nestedPath.node) !== nestedHydrate.localName) {
-            return
-          }
-
-          const split = getBooleanProp(nestedPath.node.openingElement, 'split')
-          if (split === false) return
-
-          nestedBoundaryCount++
-        },
+    },
+    CallExpression(current) {
+      const callee = unwrapExpression(current.callee)
+      if (
+        options.validate &&
+        is.Identifier(callee) &&
+        /^use[A-Z0-9]/.test(callee.name)
+      ) {
+        fail(
+          'Hydrate cannot code-split JSX that calls hooks during render. Move the hook call into a child component or use split={false}.',
+        )
       }
-    : {}
-
-  const captureVisitors = capturedNames
-    ? {
-        Identifier(identifierPath: babel.NodePath<t.Identifier>) {
-          const parent = identifierPath.parent
-          if (
-            t.isJSXOpeningElement(parent) ||
-            t.isJSXClosingElement(parent) ||
-            (t.isObjectProperty(parent, { key: identifierPath.node }) &&
-              !parent.computed &&
-              !parent.shorthand) ||
-            (t.isMemberExpression(parent, {
-              property: identifierPath.node,
-            }) &&
-              !parent.computed)
-          ) {
-            return
-          }
-
-          const binding = identifierPath.scope.getBinding(
-            identifierPath.node.name,
-          )
-          if (!binding) return
-          if (t.isProgram(binding.scope.block)) return
-          if (
-            path.node === binding.scope.block ||
-            path.isAncestor(binding.path)
-          )
-            return
-
-          capturedNames.add(identifierPath.node.name)
-        },
-        JSXIdentifier(identifierPath: babel.NodePath<t.JSXIdentifier>) {
-          if (identifierPath.parentKey !== 'name') return
-          const name = identifierPath.node.name
-          if (!/^[A-Z]/.test(name)) return
-          const binding = identifierPath.scope.getBinding(name)
-          if (!binding) return
-          if (t.isProgram(binding.scope.block)) return
-
-          capturedNames.add(name)
-        },
+    },
+    ThisExpression() {
+      if (options.validate) {
+        fail('Hydrate cannot code-split JSX that captures this.')
       }
-    : {}
-
-  path.traverse({
-    ...rootVisitors,
-    ...validateVisitors,
-    ...nestedHydrateVisitors,
-    ...captureVisitors,
+    },
+    Super() {
+      if (options.validate) {
+        fail('Hydrate cannot code-split JSX that captures super.')
+      }
+    },
   })
-
-  return {
-    captured: capturedNames ? [...capturedNames].sort() : [],
-    nestedBoundaryCount,
-  }
+  return { captured: [...captured].sort(), nestedBoundaryCount }
 }
 
 function getHydrateImport(
-  ast: t.File,
+  ast: t.Program,
   framework: CompileStartFrameworkOptions,
 ) {
-  const hydrateImportSource = `@tanstack/${framework}-start`
-
-  for (const node of ast.program.body) {
-    if (!t.isImportDeclaration(node)) continue
-    if (node.source.value !== hydrateImportSource) continue
-
-    for (const specifier of node.specifiers) {
+  for (const statement of ast.body) {
+    if (
+      !is.ImportDeclaration(statement) ||
+      statement.source.value !== `@tanstack/${framework}-start`
+    ) {
+      continue
+    }
+    for (const specifier of statement.specifiers) {
       if (
-        t.isImportSpecifier(specifier) &&
-        t.isIdentifier(specifier.imported, { name: 'Hydrate' })
+        is.ImportSpecifier(specifier) &&
+        nameOf(specifier.imported) === 'Hydrate'
       ) {
-        return {
-          hydrateLocalName: specifier.local.name,
-        }
+        return { hydrateLocalName: specifier.local.name }
       }
     }
   }
-
   return undefined
 }
 
-function getMeaningfulChildren(
-  children: Array<t.JSXElement['children'][number]>,
-) {
+function getMeaningfulChildren(children: t.JSXElement['children']) {
   return children.filter(
-    (child) => !(t.isJSXText(child) && child.value.trim() === ''),
+    (child) => !is.JSXText(child) || child.value.trim() !== '',
   )
 }
 
-function transformHydrateAst(options: {
-  ast: t.File
-  code: string
-  id: string
-  root: string
-  env: 'client' | 'server'
-  framework: CompileStartFrameworkOptions
-  indexOffset?: number
-}) {
-  if (!options.code.includes('Hydrate')) return null
-
+function transformHydrateAst(
+  options: HydrateAst & {
+    code: string
+    id: string
+    root: string
+    env: 'client' | 'server'
+    framework: CompileStartFrameworkOptions
+    indexOffset?: number
+  },
+) {
+  if (!options.code.includes('Hydrate')) {
+    return null
+  }
   const hydrateImport = getHydrateImport(options.ast, options.framework)
-  if (!hydrateImport) return null
-  const { hydrateLocalName: localName } = hydrateImport
+  if (!hydrateImport) {
+    return null
+  }
+  const localName = hydrateImport.hydrateLocalName
   const sourceId = cleanId(options.id)
   const getBoundaryId = createBoundaryId(options.root, sourceId)
-
   let nextBoundaryIndex = options.indexOffset ?? 0
-  const state = {
-    modified: false,
-    extractedChildNodes: [] as Array<t.Node>,
-    capturedNames: new Set<string>(),
+  const transformation = { modified: false }
+  let lazyName: string | undefined
+  const names = new Set([
+    ...options.module.symbols.map((symbol) => symbol.name),
+    ...options.module.unresolvedReferences.map((reference) => reference.name),
+  ])
+  const fresh = (base: string) => {
+    let name = `_${base}`
+    let count = 2
+    while (names.has(name)) {
+      name = `_${base}${count++}`
+    }
+    names.add(name)
+    return name
   }
-  let lazyIdent: t.Identifier | undefined
-
-  babel.traverse(options.ast, {
-    Program(programPath) {
-      programPath.traverse({
-        JSXElement(path) {
-          if (getJSXElementName(path.node) !== localName) return
-
-          if (options.env === 'server') {
-            path.node.openingElement.attributes =
-              path.node.openingElement.attributes.filter((item) => {
-                if (
-                  t.isJSXAttribute(item) &&
-                  t.isJSXIdentifier(item.name, { name: 'fallback' })
-                ) {
-                  if (item.value) {
-                    stripBindingsOnlyReferencedBy(path, item.value)
-                  }
-                  state.modified = true
-                  return false
-                }
-
-                if (
-                  t.isJSXSpreadAttribute(item) &&
-                  t.isObjectExpression(item.argument)
-                ) {
-                  if (
-                    stripObjectExpressionProperty(
-                      path,
-                      item.argument,
-                      'fallback',
-                    )
-                  ) {
-                    state.modified = true
-                  }
-                  return item.argument.properties.length > 0
-                }
-
-                if (
-                  t.isJSXSpreadAttribute(item) &&
-                  t.isIdentifier(item.argument)
-                ) {
-                  const init = getSingleUseObjectExpressionBinding(
-                    path,
-                    item.argument,
-                  )
-                  if (
-                    init &&
-                    stripObjectExpressionProperty(path, init, 'fallback')
-                  ) {
-                    state.modified = true
-                  }
-                }
-
-                return true
-              })
-          }
-
-          const split = getBooleanProp(path.node.openingElement, 'split')
-          if (split === false) return
-
-          const boundaryInspection = inspectSplitBoundary({
-            code: options.code,
-            path,
-            validate: true,
-            collectCaptured: options.env === 'client',
-            ...(options.env === 'client'
-              ? {
-                  nestedHydrate: {
-                    localName,
-                  },
-                }
-              : {}),
-          })
-
-          const index = nextBoundaryIndex
-          nextBoundaryIndex += 1 + boundaryInspection.nestedBoundaryCount
-          const id = getBoundaryId(index)
-          const exportName = `H${index}`
-
-          const existingHydrateId = getJSXAttribute(
-            path.node.openingElement,
-            'h',
-          )
-          if (existingHydrateId) {
-            existingHydrateId.value = t.stringLiteral(id)
-          } else {
-            path.node.openingElement.attributes.push(
-              t.jsxAttribute(t.jsxIdentifier('h'), t.stringLiteral(id)),
-            )
-          }
-          state.modified = true
-
-          if (options.env === 'server') return
-
-          const needsPreloadProp = path.node.openingElement.attributes.some(
-            (attribute) => {
-              if (t.isJSXAttribute(attribute)) {
-                return t.isJSXIdentifier(attribute.name, { name: 'prefetch' })
-              }
-
-              if (t.isJSXSpreadAttribute(attribute)) {
-                if (t.isObjectExpression(attribute.argument)) {
-                  return objectExpressionMayHaveProperty(
-                    attribute.argument,
-                    'prefetch',
-                  )
-                }
-
-                if (t.isIdentifier(attribute.argument)) {
-                  const init = getSingleUseObjectExpressionBinding(
-                    path,
-                    attribute.argument,
-                  )
-                  return init
-                    ? objectExpressionMayHaveProperty(init, 'prefetch')
-                    : true
-                }
-
-                return true
-              }
-
-              return false
-            },
-          )
-          const childReferenceNodes = getMeaningfulChildren(path.node.children)
-
-          state.extractedChildNodes.push(...childReferenceNodes)
-          boundaryInspection.captured.forEach((name) => {
-            state.capturedNames.add(name)
-          })
-
-          if (!lazyIdent) {
-            lazyIdent =
-              programPath.scope.generateUidIdentifier('lazyRouteComponent')
-            programPath.unshiftContainer('body', [
-              t.importDeclaration(
-                [
-                  t.importSpecifier(
-                    lazyIdent,
-                    t.identifier('lazyRouteComponent'),
-                  ),
-                ],
-                t.stringLiteral(`@tanstack/${options.framework}-router`),
-              ),
-            ])
-          }
-
-          const importIdParams = new URLSearchParams()
-          importIdParams.set(tssHydrate, id)
-          const componentIdent =
-            programPath.scope.generateUidIdentifier(exportName)
-          const declarations = [
-            t.variableDeclarator(
-              componentIdent,
-              t.callExpression(lazyIdent, [
-                t.arrowFunctionExpression(
-                  [],
-                  t.callExpression(t.import(), [
-                    t.stringLiteral(`${sourceId}?${importIdParams.toString()}`),
-                  ]),
-                ),
-                t.stringLiteral(exportName),
-              ]),
-            ),
-          ]
-
-          let preloadIdent: t.Identifier | undefined
-          if (needsPreloadProp) {
-            preloadIdent = programPath.scope.generateUidIdentifier(
-              `${exportName}_preload`,
-            )
-            declarations.push(
-              t.variableDeclarator(
-                preloadIdent,
-                t.memberExpression(componentIdent, t.identifier('preload')),
-              ),
-            )
-          }
-
-          programPath.unshiftContainer('body', [
-            t.variableDeclaration('const', declarations),
-          ])
-          if (preloadIdent) {
-            path.node.openingElement.attributes.push(
-              t.jsxAttribute(
-                t.jsxIdentifier('p'),
-                t.jsxExpressionContainer(preloadIdent),
-              ),
-            )
-          }
-
-          path.node.children = [
-            t.jsxText('\n'),
-            t.jsxExpressionContainer(
-              t.jsxElement(
-                t.jsxOpeningElement(
-                  t.jsxIdentifier(componentIdent.name),
-                  boundaryInspection.captured.map((name) =>
-                    t.jsxAttribute(
-                      t.jsxIdentifier(name),
-                      t.jsxExpressionContainer(t.identifier(name)),
-                    ),
-                  ),
-                  true,
-                ),
-                null,
-                [],
-                true,
-              ),
-            ),
-            t.jsxText('\n'),
-          ]
-          path.skip()
-        },
-      })
-
-      if (state.extractedChildNodes.length > 0) {
-        stripBindingsOnlyReferencedByNodes(
-          programPath.scope,
-          state.extractedChildNodes,
-          new Set<string>(),
-          state.capturedNames,
-        )
-      }
-
-      programPath.skip()
+  const prepend: t.Program['body'] = []
+  // Index before mutation so spreads can resolve declarations later in the file.
+  const objectExpressions = new WeakMap<t.Node, t.ObjectExpression>()
+  walk(options.ast, {
+    ObjectExpression(node) {
+      objectExpressions.set(sourceNode(options, node), node)
     },
   })
-
-  if (!state.modified) return null
-
+  walk(options.ast, {
+    JSXElement(node, visitor) {
+      if (getJSXElementName(node) !== localName) {
+        return
+      }
+      if (options.env === 'server') {
+        node.openingElement.attributes = node.openingElement.attributes.filter(
+          (attribute) => {
+            if (
+              is.JSXAttribute(attribute) &&
+              is.JSXIdentifier(attribute.name) &&
+              attribute.name.name === 'fallback'
+            ) {
+              transformation.modified = true
+              return false
+            }
+            if (is.JSXSpreadAttribute(attribute)) {
+              const argument = unwrapExpression(attribute.argument)
+              const object = is.ObjectExpression(argument)
+                ? argument
+                : is.Identifier(argument)
+                  ? getSingleUseObjectExpressionBinding(
+                      options,
+                      argument,
+                      objectExpressions,
+                    )
+                  : undefined
+              if (object && stripObjectExpressionProperty(object, 'fallback')) {
+                transformation.modified = true
+              }
+              if (is.ObjectExpression(argument)) {
+                return argument.properties.length > 0
+              }
+            }
+            return true
+          },
+        )
+      }
+      if (getBooleanProp(node.openingElement, 'split') === false) {
+        return
+      }
+      const inspection = inspectSplitBoundary(options, node, {
+        code: options.code,
+        validate: true,
+        collectCaptured: options.env === 'client',
+        ...(options.env === 'client' ? { nestedHydrate: { localName } } : {}),
+      })
+      const index = nextBoundaryIndex
+      nextBoundaryIndex += 1 + inspection.nestedBoundaryCount
+      const id = getBoundaryId(index)
+      const exportName = `H${index}`
+      const existingId = getJSXAttribute(node.openingElement, 'h')
+      const idValue: t.StringLiteral = {
+        type: 'Literal',
+        value: id,
+        raw: JSON.stringify(id),
+        start: 0,
+        end: 0,
+      }
+      if (existingId) {
+        existingId.value = idValue
+      } else {
+        node.openingElement.attributes.push(
+          b.JSXAttribute({
+            name: b.JSXIdentifier({ name: 'h' }),
+            value: idValue,
+          }),
+        )
+      }
+      transformation.modified = true
+      if (options.env === 'server') {
+        return
+      }
+      const needsPreload = node.openingElement.attributes.some((attribute) => {
+        if (is.JSXAttribute(attribute)) {
+          return (
+            is.JSXIdentifier(attribute.name) &&
+            attribute.name.name === 'prefetch'
+          )
+        }
+        const argument = unwrapExpression(attribute.argument)
+        const object = is.ObjectExpression(argument)
+          ? argument
+          : is.Identifier(argument)
+            ? getSingleUseObjectExpressionBinding(
+                options,
+                argument,
+                objectExpressions,
+              )
+            : undefined
+        return !object || objectExpressionMayHaveProperty(object, 'prefetch')
+      })
+      if (!lazyName) {
+        lazyName = fresh('lazyRouteComponent')
+        prepend.push(
+          ...parseStatements(
+            `import { lazyRouteComponent as ${lazyName} } from ${JSON.stringify(`@tanstack/${options.framework}-router`)}`,
+          ),
+        )
+      }
+      const query = new URLSearchParams({ [tssHydrate]: id })
+      const componentName = fresh(exportName)
+      prepend.push(
+        ...parseStatements(
+          `const ${componentName} = ${lazyName}(() => import(${JSON.stringify(`${sourceId}?${query}`)}), ${JSON.stringify(exportName)})`,
+        ),
+      )
+      if (needsPreload) {
+        const preloadName = fresh(`${exportName}_preload`)
+        prepend.push(
+          ...parseStatements(`const ${preloadName} = ${componentName}.preload`),
+        )
+        node.openingElement.attributes.push(
+          b.JSXAttribute({
+            name: b.JSXIdentifier({ name: 'p' }),
+            value: b.JSXExpressionContainer({
+              expression: parseExpression(preloadName),
+            }),
+          }),
+        )
+      }
+      const props = inspection.captured
+        .map((name) => `${name}={${name}}`)
+        .join(' ')
+      const child = parseExpression(`<${componentName} ${props} />`)
+      node.children = [b.JSXExpressionContainer({ expression: child })]
+      visitor.skip()
+    },
+  })
+  if (!transformation.modified) {
+    return null
+  }
+  options.ast.body.unshift(...prepend)
   return true
 }
 
 function loadHydrateVirtualModule(options: {
+  module: Module
   id: string
   root: string
   code: string
   framework: CompileStartFrameworkOptions
 }) {
   const { sourceId, splitId, boundaryIndex } = parseHydrateVirtualId(options.id)
-  if (!splitId || boundaryIndex < 0) return null
-  const getBoundaryId = createBoundaryId(options.root, sourceId)
-
-  const ast = parseAst({ code: options.code, sourceFilename: sourceId })
+  if (!splitId || boundaryIndex < 0) {
+    return null
+  }
+  const module = options.module
+  const { program: ast, originalNodes } = cloneModuleAst(module)
+  const context = { ast, module, originalNodes }
   const hydrateImport = getHydrateImport(ast, options.framework)
-  if (!hydrateImport) return null
-  const { hydrateLocalName: localName } = hydrateImport
-
+  if (!hydrateImport) {
+    return null
+  }
+  const getBoundaryId = createBoundaryId(options.root, sourceId)
   let target: t.JSXElement | undefined
-  let targetIndex = -1
-  let targetCaptured: Array<string> = []
+  let captures: Array<string> = []
   let index = 0
-
-  babel.traverse(ast, {
-    JSXElement(path) {
-      if (getJSXElementName(path.node) !== localName) return
-      const split = getBooleanProp(path.node.openingElement, 'split')
-      if (split === false) return
-
-      if (index === boundaryIndex) {
-        const id = getBoundaryId(index)
-        if (id !== splitId) {
-          path.stop()
-          return
-        }
-        targetCaptured = inspectSplitBoundary({
-          code: options.code,
-          path,
-          collectCaptured: true,
-        }).captured
-        target = t.cloneNode(path.node, true)
-        targetIndex = index
-        path.stop()
+  walk(ast, {
+    JSXElement(node, visitor) {
+      if (
+        getJSXElementName(node) !== hydrateImport.hydrateLocalName ||
+        getBooleanProp(node.openingElement, 'split') === false
+      ) {
         return
+      }
+      if (index === boundaryIndex) {
+        if (getBoundaryId(index) === splitId) {
+          target = node
+          captures = inspectSplitBoundary(context, node, {
+            code: options.code,
+            collectCaptured: true,
+          }).captured
+        }
+        visitor.stop()
       }
       index++
     },
   })
-
-  if (!target || targetIndex < 0) return null
-
-  const children = target.children
-  const exportName = `H${targetIndex}`
-  const refIdents = findReferencedIdentifiers(ast)
-
-  removeModuleLevelBindings(ast, new Set(['Route']))
-  const localBindings = new Set<string>()
-  for (const node of ast.program.body) {
-    collectLocalBindingsFromStatement(node, localBindings)
+  if (!target) {
+    return null
   }
-
-  const keepBindings = new Set<string>()
-  const meaningfulChildren = getMeaningfulChildren(children)
-  let returnExpression: t.Expression | t.JSXElement | t.JSXFragment =
-    t.nullLiteral()
-
-  if (meaningfulChildren.length === 1) {
-    const child = meaningfulChildren[0]!
-    if (t.isJSXExpressionContainer(child)) {
-      returnExpression = t.isJSXEmptyExpression(child.expression)
-        ? t.nullLiteral()
+  const children = getMeaningfulChildren(target.children)
+  let expression: t.Expression = b.Literal({ value: null, raw: 'null' })
+  if (children.length === 1) {
+    const child = children[0]!
+    if (is.JSXExpressionContainer(child)) {
+      expression = is.JSXEmptyExpression(child.expression)
+        ? expression
         : child.expression
-    } else if (t.isJSXElement(child) || t.isJSXFragment(child)) {
-      returnExpression = child
-    } else if (t.isJSXText(child)) {
-      returnExpression = t.stringLiteral(child.value)
+    } else if (is.JSXText(child)) {
+      expression = b.Literal({
+        value: child.value,
+        raw: JSON.stringify(child.value),
+      })
+    } else if (is.JSXElement(child) || is.JSXFragment(child)) {
+      expression = child
     }
-  } else if (meaningfulChildren.length > 1) {
-    returnExpression = t.jsxFragment(
-      t.jsxOpeningFragment(),
-      t.jsxClosingFragment(),
-      children,
-    )
+  } else if (children.length > 1) {
+    expression = b.JSXFragment({
+      openingFragment: b.JSXOpeningFragment({}),
+      closingFragment: b.JSXClosingFragment({}),
+      children: target.children,
+    })
   }
-  for (const name of collectIdentifiersFromNode(returnExpression)) {
-    if (localBindings.has(name)) {
-      keepBindings.add(name)
+  const graph = moduleDeclarationGraph(module)
+  const keep = new Set<Symbol>()
+  for (const child of children) {
+    for (const symbol of collectModuleReferences(
+      module,
+      sourceNode(context, child),
+    )) {
+      if (symbol.name !== 'Route') {
+        keep.add(symbol)
+      }
     }
   }
-
-  if (keepBindings.size > 0) {
-    expandTransitively(
-      keepBindings,
-      buildDependencyGraph(buildDeclarationMap(ast), localBindings),
-    )
-  }
-
-  retainModuleLevelDeclarations(ast, keepBindings)
-  unwrapExportedDeclarations(ast)
-
-  ast.program.body.push(
-    t.exportNamedDeclaration(
-      t.functionDeclaration(
-        t.identifier(exportName),
-        targetCaptured.length > 0
-          ? [
-              t.objectPattern(
-                targetCaptured.map((name) =>
-                  t.objectProperty(
-                    t.identifier(name),
-                    t.identifier(name),
-                    false,
-                    true,
-                  ),
-                ),
-              ),
-            ]
-          : [],
-        t.blockStatement([t.returnStatement(returnExpression)]),
-      ),
-    ),
+  const retained = expandTransitively(keep, graph.dependencies)
+  const selected = new Set(
+    [...graph.declarationSymbols]
+      .filter(([, owners]) =>
+        [...owners].some((symbol) => retained.has(symbol)),
+      )
+      .map(([declaration]) => declaration),
   )
-
-  deadCodeElimination(ast, refIdents)
-  stripUnreferencedTopLevelExpressionStatements(ast)
-
-  const result = generateFromAst(ast, {
-    sourceMaps: true,
-    sourceFileName: options.id,
-    filename: options.id,
+  ast.body = ast.body.flatMap((statement): t.Program['body'] => {
+    if (is.ImportDeclaration(statement)) {
+      return [statement]
+    }
+    const declaration =
+      is.ExportNamedDeclaration(statement) ||
+      is.ExportDefaultDeclaration(statement)
+        ? statement.declaration
+        : statement
+    if (is.VariableDeclaration(declaration)) {
+      declaration.declarations = declaration.declarations.filter((item) =>
+        selected.has(sourceNode(context, item)),
+      )
+      return declaration.declarations.length ? [declaration] : []
+    }
+    if (
+      (is.FunctionDeclaration(declaration) ||
+        is.ClassDeclaration(declaration) ||
+        is.TSDeclareFunction(declaration) ||
+        is.TSModuleDeclaration(declaration) ||
+        is.TSEnumDeclaration(declaration)) &&
+      selected.has(sourceNode(context, declaration))
+    ) {
+      return [declaration]
+    }
+    return []
   })
-  return result
+  const params = captures.length ? `{ ${captures.join(', ')} }` : ''
+  const output = parseStatements(
+    `export function H${boundaryIndex}(${params}) { return null; }`,
+  )[0]!
+  walk(output, {
+    ReturnStatement(node) {
+      node.argument = expression
+    },
+  })
+  ast.body.push(output)
+  removeUnusedBindings(module, ast, originalNodes, {
+    preserveInitiallyUnused: false,
+  })
+  return generateModule(ast, { source: options.code, filename: options.id })
 }
-
 export function createHydrateCompilerPlugin(): StartCompilerPlugin {
   type SourceEntry = {
+    module: Module
     code: string
     framework: CompileStartFrameworkOptions
     virtualModules: Map<string, StartCompilerTransformResult | null>
@@ -907,6 +655,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
     id: string,
     code: string,
     framework: CompileStartFrameworkOptions,
+    sourceModule?: Module,
   ) => {
     const sourceId = cleanId(id)
     const sources = getEnvironmentSources(envName)
@@ -916,6 +665,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
     }
 
     const entry = {
+      module: sourceModule ?? analyzeModule({ code, filename: sourceId }),
       code,
       framework,
       virtualModules: new Map<string, StartCompilerTransformResult | null>(),
@@ -943,6 +693,8 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
           : virtualModule.boundaryIndex + 1
       const result = transformHydrateAst({
         ast: context.ast,
+        module: context.module,
+        originalNodes: context.originalNodes,
         code: context.code,
         id: context.id,
         root: context.root,
@@ -952,7 +704,13 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
       })
 
       if (result && virtualModule.boundaryIndex < 0) {
-        setSource(context.envName, context.id, context.code, context.framework)
+        setSource(
+          context.envName,
+          context.id,
+          context.code,
+          context.framework,
+          context.module,
+        )
       }
 
       return !!result
@@ -989,6 +747,7 @@ export function createHydrateCompilerPlugin(): StartCompilerPlugin {
       }
 
       const result = loadHydrateVirtualModule({
+        module: sourceEntry.module,
         code: sourceEntry.code,
         id: context.id,
         root: context.root,

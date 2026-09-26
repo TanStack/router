@@ -26,9 +26,8 @@ it.each(groupings)(
   30_000,
 )
 
-// Shared extraction currently duplicates named default function declarations and
-// drops TypeScript enum/namespace dependencies. Keep their intended contracts.
-it.fails.each(['named-default', 'enum', 'namespace'] as const)(
+// Exercise the declaration forms that fail with the Babel compiler on main.
+it.each(['named-default', 'enum', 'namespace'] as const)(
   'preserves executable route contracts with shared %s declarations',
   async (syntax) => {
     await assertRuntimeContracts({

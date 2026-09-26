@@ -434,9 +434,7 @@ describe('transform', () => {
     if (result.result !== 'error') {
       throw new Error(`expected error result, got ${result.result}`)
     }
-    expect(String(result.error)).toContain(
-      'expected exactly one createFileRoute/createLazyFileRoute call',
-    )
+    expect(String(result.error)).toContain("Duplicate export of 'Route'")
   })
 
   it('prepends a new import when no target-module import exists', async () => {

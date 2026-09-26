@@ -1,3 +1,4 @@
+import { cloneGeneratedNode } from '@tanstack/router-utils'
 import type {
   StartCompilerImportTransform,
   StartCompilerTransformContext,
@@ -6,8 +7,7 @@ import type {
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
 const RSC_CSS_OPTIONS_KEY = '__tanstackStartRscCss'
 
-type BabelTypes = StartCompilerTransformContext['types']
-type BabelExpression = ReturnType<
+type NativeExpression = ReturnType<
   StartCompilerTransformContext['parseExpression']
 >
 
@@ -20,7 +20,7 @@ export function createRscCssCompilerTransforms(opts: {
   loadCssExpression: string
   serverFnProviderOnly?: boolean | undefined
 }): Array<StartCompilerImportTransform> {
-  let loadCssExpression: BabelExpression | undefined
+  let loadCssExpression: NativeExpression | undefined
 
   const getLoadCssExpression = (context: StartCompilerTransformContext) => {
     loadCssExpression ??= context.parseExpression(opts.loadCssExpression)
@@ -54,7 +54,7 @@ function createRscCssCompilerTransform(opts: {
   kind: RscCssTransformKind
   getLoadCssExpression: (
     context: StartCompilerTransformContext,
-  ) => BabelExpression
+  ) => NativeExpression
   serverFnProviderOnly?: boolean | undefined
 }): StartCompilerImportTransform {
   return {
@@ -79,56 +79,60 @@ function createRscCssCompilerTransform(opts: {
         return
       }
 
-      const t = context.types
       const loadCssExpression = opts.getLoadCssExpression(context)
-      const cloneLoadCssExpression = () => t.cloneNode(loadCssExpression)
+      const cloneLoadCssExpression = () => cloneGeneratedNode(loadCssExpression)
 
       for (const candidate of candidates) {
-        const args = candidate.path.node.arguments
-        if (args.length !== 1) continue
+        const args = candidate.node.arguments
+        if (args.length !== 1) {
+          continue
+        }
 
         if (opts.kind === 'renderToReadableStream') {
           const firstArg = args[0]
-          if (!firstArg || !t.isExpression(firstArg)) continue
-          if (!isTopLevelJsx(t, firstArg)) continue
+          if (!firstArg || firstArg.type === 'SpreadElement') {
+            continue
+          }
+          if (!isTopLevelJsx(firstArg)) {
+            continue
+          }
 
           args[0] = createCssFragment(
-            t,
+            context,
             firstArg,
             cloneLoadCssExpression(),
           ) as typeof firstArg
           continue
         }
 
-        args.push(
-          t.objectExpression([
-            t.objectProperty(
-              t.identifier(RSC_CSS_OPTIONS_KEY),
-              cloneLoadCssExpression(),
-            ),
-          ]),
+        const options = context.parseExpression(
+          `{ ${RSC_CSS_OPTIONS_KEY}: null }`,
         )
+        if (
+          options.type === 'ObjectExpression' &&
+          options.properties[0]?.type === 'Property'
+        ) {
+          options.properties[0].value = cloneLoadCssExpression()
+          args.push(options)
+        }
       }
     },
   }
 }
 
-function isTopLevelJsx(t: BabelTypes, expr: BabelExpression): boolean {
-  const unwrapped = unwrapTransparentExpression(t, expr)
-  return t.isJSXElement(unwrapped) || t.isJSXFragment(unwrapped)
+function isTopLevelJsx(expr: NativeExpression): boolean {
+  const unwrapped = unwrapTransparentExpression(expr)
+  return unwrapped.type === 'JSXElement' || unwrapped.type === 'JSXFragment'
 }
 
-function unwrapTransparentExpression(
-  t: BabelTypes,
-  expr: BabelExpression,
-): BabelExpression {
+function unwrapTransparentExpression(expr: NativeExpression): NativeExpression {
   let current = expr
   while (
-    t.isParenthesizedExpression(current) ||
-    t.isTSAsExpression(current) ||
-    t.isTSSatisfiesExpression(current) ||
-    t.isTSTypeAssertion(current) ||
-    t.isTSNonNullExpression(current)
+    current.type === 'ParenthesizedExpression' ||
+    current.type === 'TSAsExpression' ||
+    current.type === 'TSSatisfiesExpression' ||
+    current.type === 'TSTypeAssertion' ||
+    current.type === 'TSNonNullExpression'
   ) {
     current = current.expression
   }
@@ -136,15 +140,24 @@ function unwrapTransparentExpression(
 }
 
 function createCssFragment(
-  t: BabelTypes,
-  original: BabelExpression,
-  loadCssExpression: BabelExpression,
+  context: StartCompilerTransformContext,
+  original: NativeExpression,
+  loadCssExpression: NativeExpression,
 ) {
-  const unwrapped = unwrapTransparentExpression(t, original)
-  return t.jsxFragment(t.jsxOpeningFragment(), t.jsxClosingFragment(), [
-    t.jsxExpressionContainer(loadCssExpression),
-    t.isJSXElement(unwrapped) || t.isJSXFragment(unwrapped)
-      ? unwrapped
-      : t.jsxExpressionContainer(original),
-  ])
+  const fragment = context.parseExpression('<>{null}{null}</>')
+  if (
+    fragment.type !== 'JSXFragment' ||
+    fragment.children[0]?.type !== 'JSXExpressionContainer' ||
+    fragment.children[1]?.type !== 'JSXExpressionContainer'
+  ) {
+    throw new Error('Expected compiler fragment')
+  }
+  fragment.children[0].expression = loadCssExpression
+  const unwrapped = unwrapTransparentExpression(original)
+  if (unwrapped.type === 'JSXElement' || unwrapped.type === 'JSXFragment') {
+    fragment.children[1] = unwrapped
+  } else {
+    fragment.children[1].expression = original
+  }
+  return fragment
 }

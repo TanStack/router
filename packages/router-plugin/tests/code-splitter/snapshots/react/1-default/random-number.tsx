@@ -1,5 +1,5 @@
-const $$splitComponentImporter = () => import('random-number.tsx?tsr-split=component');
-import { lazyRouteComponent } from '@tanstack/react-router';
+const $$splitComponentImporter = () => import("random-number.tsx?tsr-split=component");
+import { lazyRouteComponent } from "@tanstack/react-router";
 import { Await, Link, createFileRoute, defer } from '@tanstack/react-router';
 import { Carbon } from '~/components/Carbon';
 import { twMerge } from 'tailwind-merge';
@@ -15,18 +15,7 @@ import bytesImage from '~/images/bytes.svg';
 import bytesUidotdevImage from '~/images/bytes-uidotdev.png';
 export const textColors = [`text-rose-500`, `text-yellow-500`, `text-teal-500`, `text-blue-500`];
 export const gradients = [`from-rose-500 to-yellow-500`, `from-yellow-500 to-teal-500`, `from-teal-500 to-violet-500`, `from-blue-500 to-pink-500`];
-const courses = [{
-  name: 'The Official TanStack React Query Course',
-  cardStyles: `border-t-4 border-red-500 hover:(border-green-500)`,
-  href: 'https://query.gg/?s=tanstack',
-  description: `Learn how to build enterprise quality apps with TanStack's React Query the easy way with our brand new course.`
-}];
-export const Route = createFileRoute('/')({
-  loader: () => {
-    return {
-      randomNumber: Math.random(),
-      sponsorsPromise: defer(getSponsorsForSponsorPack())
-    };
-  },
-  component: lazyRouteComponent($$splitComponentImporter, 'component')
-});
+const courses = [{ name: 'The Official TanStack React Query Course', cardStyles: `border-t-4 border-red-500 hover:(border-green-500)`, href: 'https://query.gg/?s=tanstack', description: `Learn how to build enterprise quality apps with TanStack's React Query the easy way with our brand new course.` }];
+export const Route = createFileRoute('/')({ loader: () => {
+  return { randomNumber: Math.random(), sponsorsPromise: defer(getSponsorsForSponsorPack()) };
+}, component: lazyRouteComponent($$splitComponentImporter, "component") });
