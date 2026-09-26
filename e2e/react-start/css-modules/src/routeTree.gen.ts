@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AlphaRouteImport } from './routes/alpha'
+import { Route as BetaRouteImport } from './routes/beta'
 import { Route as ModulesRouteImport } from './routes/modules'
 import { Route as QuotesRouteImport } from './routes/quotes'
 import { Route as SassMixinRouteImport } from './routes/sass-mixin'
@@ -17,6 +19,16 @@ import { Route as SassMixinRouteImport } from './routes/sass-mixin'
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AlphaRoute = AlphaRouteImport.update({
+  id: '/alpha',
+  path: '/alpha',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BetaRoute = BetaRouteImport.update({
+  id: '/beta',
+  path: '/beta',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ModulesRoute = ModulesRouteImport.update({
@@ -37,12 +49,16 @@ const SassMixinRoute = SassMixinRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/alpha': typeof AlphaRoute
+  '/beta': typeof BetaRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/alpha': typeof AlphaRoute
+  '/beta': typeof BetaRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
@@ -50,20 +66,31 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/alpha': typeof AlphaRoute
+  '/beta': typeof BetaRoute
   '/modules': typeof ModulesRoute
   '/quotes': typeof QuotesRoute
   '/sass-mixin': typeof SassMixinRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/modules' | '/quotes' | '/sass-mixin'
+  fullPaths: '/' | '/alpha' | '/beta' | '/modules' | '/quotes' | '/sass-mixin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/modules' | '/quotes' | '/sass-mixin'
-  id: '__root__' | '/' | '/modules' | '/quotes' | '/sass-mixin'
+  to: '/' | '/alpha' | '/beta' | '/modules' | '/quotes' | '/sass-mixin'
+  id:
+    | '__root__'
+    | '/'
+    | '/alpha'
+    | '/beta'
+    | '/modules'
+    | '/quotes'
+    | '/sass-mixin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AlphaRoute: typeof AlphaRoute
+  BetaRoute: typeof BetaRoute
   ModulesRoute: typeof ModulesRoute
   QuotesRoute: typeof QuotesRoute
   SassMixinRoute: typeof SassMixinRoute
@@ -76,6 +103,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/alpha': {
+      id: '/alpha'
+      path: '/alpha'
+      fullPath: '/alpha'
+      preLoaderRoute: typeof AlphaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/beta': {
+      id: '/beta'
+      path: '/beta'
+      fullPath: '/beta'
+      preLoaderRoute: typeof BetaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/modules': {
@@ -104,6 +145,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AlphaRoute: AlphaRoute,
+  BetaRoute: BetaRoute,
   ModulesRoute: ModulesRoute,
   QuotesRoute: QuotesRoute,
   SassMixinRoute: SassMixinRoute,
