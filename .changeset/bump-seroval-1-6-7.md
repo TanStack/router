@@ -6,4 +6,4 @@
 '@tanstack/start-static-server-functions': patch
 ---
 
-Update Seroval to 1.6.7 for faster string and binary serialization.
+Update `seroval` and `seroval-plugins` from 1.6.2 to 1.6.7. This picks up the typed array length guard, the `maxBase64Length` and `compactArrayBufferViews` options, and the `isStream` export.

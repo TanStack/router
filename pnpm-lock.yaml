@@ -14343,8 +14343,8 @@ importers:
         specifier: ^1.6.7
         version: 1.6.7
       seroval-plugins:
-        specifier: ^1.6.2
-        version: 1.6.2(seroval@1.6.7)
+        specifier: ^1.6.7
+        version: 1.6.7(seroval@1.6.7)
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -28273,8 +28273,8 @@ packages:
     peerDependencies:
       seroval: ^1.0
 
-  seroval-plugins@1.6.2:
-    resolution: {integrity: sha512-TfxuUjlbBESzUOWdTkTKqvSmav0ABym+itetDXLK6mDz8SmrpdI30aF8RTXE8Bvq+tH/1yIDkvy3W0lfQb1ipQ==}
+  seroval-plugins@1.6.7:
+    resolution: {integrity: sha512-4Nk35ttD3DTDJW4hgw5StsVAPeU6qnDFnULAouw6tQ7oLTV/ICXrWpsXo2EE52eSP2joUMazbVf52mFEcADqRw==}
     engines: {node: '>=10'}
     peerDependencies:
       seroval: ^1.0
@@ -44560,7 +44560,7 @@ snapshots:
     dependencies:
       seroval: 1.5.4
 
-  seroval-plugins@1.6.2(seroval@1.6.7):
+  seroval-plugins@1.6.7(seroval@1.6.7):
     dependencies:
       seroval: 1.6.7
 
