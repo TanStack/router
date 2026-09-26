@@ -240,12 +240,6 @@ export function useLinkProps<
     to,
     preload: userPreload,
     preloadDelay: userPreloadDelay,
-    hashScrollIntoView,
-    replace,
-    startTransition,
-    resetScroll,
-    viewTransition,
-    ignoreBlocker,
     disabled,
     target,
     onClick,
@@ -265,18 +259,18 @@ export function useLinkProps<
     options.params,
     activeOptions,
   )
-  // `_options` is the options object from the render that last changed the
-  // destination. `dest` snapshots it with a fresh cache key when those values
-  // change, even if a useLinkProps caller reuses its options object.
+  // Snapshot destination changes with a fresh cache key, even when a
+  // useLinkProps caller reuses its options object. Derivation and preloading
+  // share the snapshot; clicks read the latest options, including navigation flags.
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const [_options, dest] = React.useMemo(
-    () => [options, { ...options } as any] as const,
+  const _options = React.useMemo(
+    () => ({ ...options }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       router,
       options.from,
-      options._fromLocation,
       options.hash,
+      options.href,
       options.to,
       stableSearch,
       stableParams,
@@ -300,7 +294,7 @@ export function useLinkProps<
         return [directExternalLink ?? undefined]
       }
 
-      const next = router.buildLocation(dest, location)
+      const next = router.buildLocation(_options as any, location)
 
       // Use publicHref - it contains the correct href for display
       // When a rewrite changes the origin, publicHref is the full URL
@@ -320,7 +314,7 @@ export function useLinkProps<
             ),
       ]
     },
-    [stableActiveOptions, disabled, isHydrated, dest, router, to],
+    [stableActiveOptions, disabled, isHydrated, _options, router, to],
   )
 
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -441,15 +435,7 @@ export function useLinkProps<
 
       // All is well? Navigate!
       // N.B. we don't call `router.commitLocation(next) here because we want to run `validateSearch` before committing
-      router.navigate({
-        ..._options,
-        replace,
-        resetScroll,
-        hashScrollIntoView,
-        startTransition,
-        viewTransition,
-        ignoreBlocker,
-      })
+      router.navigate(options as any)
     }
   }
 
@@ -487,7 +473,6 @@ const ROUTER_OPTION_KEYS = /* @__PURE__ */ new Set([
   'mask',
   'from',
   'unsafeRelative',
-  '_fromLocation',
   'reloadDocument',
   'preload',
   'preloadDelay',

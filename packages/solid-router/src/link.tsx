@@ -132,10 +132,10 @@ export function useLinkProps<
 
   const next = Solid.createMemo(() => {
     // Rebuild when inherited search/hash or the current route context changes.
-    const _fromLocation = currentLocation()
-    const nextOptions = { _fromLocation, ...options } as any
+    const fromLocation = currentLocation()
+    const nextOptions = { ...options } as any
     // untrack because router-core will also access stores, which are signals in solid
-    return Solid.untrack(() => router.buildLocation(nextOptions))
+    return Solid.untrack(() => router.buildLocation(nextOptions, fromLocation))
   })
 
   const hrefOption = Solid.createMemo(() => {

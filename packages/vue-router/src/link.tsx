@@ -193,8 +193,7 @@ function useLinkPropsImpl(
     // Rebuild when inherited search/hash or the current route context changes.
 
     const options = getOptions()
-    const opts = { _fromLocation: currentLocation.value, ...options }
-    return router.buildLocation(opts)
+    return router.buildLocation({ ...options }, currentLocation.value)
   })
 
   const href = Vue.computed(() => {

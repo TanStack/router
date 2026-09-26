@@ -599,7 +599,6 @@ export interface BuildNextOptions {
   }
   from?: string
   href?: string
-  _fromLocation?: ParsedLocation
   unsafeRelative?: 'path'
   _isNavigate?: boolean
 }
@@ -820,7 +819,11 @@ export interface MatchRoutesFn {
 
 export type LoadRouteChunkFn = (route: AnyRoute) => Promise<Array<void>>
 
-export type ResolveRedirect = (err: AnyRedirect) => ResolvedRedirect
+export type ResolveRedirect = (
+  err: AnyRedirect,
+  /** @private Source location for the redirect. */
+  _fromLocation?: ParsedLocation,
+) => ResolvedRedirect
 
 export type ClearCacheFn<TRouter extends AnyRouter> = (opts?: {
   filter?: (d: MakeRouteMatchUnion<TRouter>) => boolean
@@ -1917,10 +1920,7 @@ export class RouterCore<
 
       // We allow the caller to override the current location
       const currentLocation =
-        dest._fromLocation ||
-        fromLocation ||
-        this._pendingLocation ||
-        this.latestLocation
+        fromLocation || this._pendingLocation || this.latestLocation
 
       // Value-affecting reads of the current location go through these two.
       // The lightweight match (fullPath, search, params without full match
@@ -2214,7 +2214,7 @@ export class RouterCore<
     if (
       !(isServer ?? this.isServer) &&
       !usedCurrent &&
-      (opts._fromLocation || _fromLocation) &&
+      _fromLocation &&
       !next.maskedLocation
     ) {
       this.staticLocations!.set(opts, next)
@@ -2335,22 +2335,29 @@ export class RouterCore<
   }
 
   /** Convenience helper: build a location from options, then commit it. */
-  buildAndCommitLocation = ({
-    replace,
-    resetScroll,
-    hashScrollIntoView,
-    viewTransition,
-    ignoreBlocker,
-    ...rest
-  }: BuildNextOptions & CommitLocationOptions = {}): Promise<void> => {
+  buildAndCommitLocation = (
+    {
+      replace,
+      resetScroll,
+      hashScrollIntoView,
+      viewTransition,
+      ignoreBlocker,
+      ...rest
+    }: BuildNextOptions & CommitLocationOptions = {},
+    /** @private Source location for relative navigation. */
+    _fromLocation?: ParsedLocation,
+  ): Promise<void> => {
     if (isServer ?? this.isServer) {
       return Promise.resolve()
     }
 
-    const location = this.buildLocation({
-      ...(rest as any),
-      _includeValidateSearch: true,
-    })
+    const location = this.buildLocation(
+      {
+        ...(rest as any),
+        _includeValidateSearch: true,
+      },
+      _fromLocation,
+    )
 
     this._pendingLocation = location as ParsedLocation<
       FullSearchSchema<TRouteTree>
@@ -2383,13 +2390,10 @@ export class RouterCore<
    *
    * @link https://tanstack.com/router/latest/docs/framework/react/api/router/NavigateOptionsType
    */
-  navigate: NavigateFn = async ({
-    to,
-    reloadDocument,
-    href,
-    publicHref,
-    ...rest
-  }) => {
+  navigate: NavigateFn = async (
+    { to, reloadDocument, href, publicHref, ...rest },
+    _fromLocation,
+  ) => {
     if (isServer ?? this.isServer) {
       return
     }
@@ -2402,7 +2406,10 @@ export class RouterCore<
       // When only href is provided (no to), use it directly as it should already
       // be a complete path (possibly with basepath)
       if (to !== undefined || !href) {
-        const location = this.buildLocation({ to, ...rest } as any)
+        const location = this.buildLocation(
+          { to, ...rest } as any,
+          _fromLocation,
+        )
         const publicLocation = location.maskedLocation ?? location
         // Use publicHref which contains the path (origin-stripped is fine for reload)
         href ??= publicLocation.publicHref
@@ -2416,12 +2423,15 @@ export class RouterCore<
       return documentNavigation(this, reloadHref, rest)
     }
 
-    return this.buildAndCommitLocation({
-      ...rest,
-      href,
-      to: to as string,
-      _isNavigate: true,
-    })
+    return this.buildAndCommitLocation(
+      {
+        ...rest,
+        href,
+        to: to as string,
+        _isNavigate: true,
+      },
+      _fromLocation,
+    )
   }
 
   load: LoadFn = async (opts): Promise<void> => {
@@ -2576,12 +2586,16 @@ export class RouterCore<
     return this.load({ sync: opts?.sync })
   }
 
-  resolveRedirect = (redirect: AnyRedirect): AnyRedirect => {
+  resolveRedirect = (
+    redirect: AnyRedirect,
+    /** @private Source location for the redirect. */
+    _fromLocation?: ParsedLocation,
+  ): AnyRedirect => {
     const options = redirect.options
     let href = redirect.headers.get('Location') || options.href
 
     if (!href) {
-      const location = this.buildLocation(options)
+      const location = this.buildLocation(options, _fromLocation)
       href = (location.maskedLocation ?? location).publicHref || '/'
     }
 
