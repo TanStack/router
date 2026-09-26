@@ -2,7 +2,7 @@ import '@testing-library/jest-dom/vitest'
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
 
-import { z } from 'zod'
+import * as z from 'zod'
 import { createSignal } from 'solid-js'
 import {
   Block,

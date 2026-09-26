@@ -1,7 +1,7 @@
 import * as React from 'react'
 import { useNavigate, createFileRoute } from '@tanstack/react-router'
 import { fallback, zodValidator } from '@tanstack/zod-adapter'
-import { z } from 'zod'
+import * as z from 'zod'
 import { Header } from '../../components/Header'
 import { Users, usersQueryOptions } from '../../components/Users'
 import { Content } from '../../components/Content'

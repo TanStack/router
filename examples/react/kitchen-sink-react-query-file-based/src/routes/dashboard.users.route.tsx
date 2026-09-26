@@ -9,7 +9,7 @@ import {
   useNavigate,
 } from '@tanstack/react-router'
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { z } from 'zod'
+import * as z from 'zod'
 import { Spinner } from '../components/Spinner'
 import { usersQueryOptions } from '../utils/queryOptions'
 

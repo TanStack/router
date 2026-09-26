@@ -1,7 +1,7 @@
 import { createFileRoute } from '@tanstack/vue-router'
 import { createServerFn } from '@tanstack/vue-start'
 import { setCookie } from '@tanstack/vue-start/server'
-import { z } from 'zod'
+import * as z from 'zod'
 import Cookies from 'js-cookie'
 import { defineComponent, ref, watch } from 'vue'
 
