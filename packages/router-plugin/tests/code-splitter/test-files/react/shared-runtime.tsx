@@ -1,8 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router'
 
-const Count = { Initial: 0 }
+enum Count {
+  Initial = 0,
+}
 
-const Labels = { component: 'count' }
+namespace Labels {
+  export const component = 'count'
+}
 
 const seed = createSeed()
 const { state, increment } = createState(seed)
@@ -23,7 +27,7 @@ export const Route = createFileRoute('/shared-runtime')({
   },
 })
 
-function createSeed() {
+export default function createSeed() {
   console.log('shared-runtime:seed')
   return { count: Count.Initial, label: Labels.component }
 }
@@ -46,5 +50,3 @@ function createComponentLabel() {
 }
 
 export { state as firstState, state as secondState, state as 'odd-name' }
-
-export default createSeed

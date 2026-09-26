@@ -1,0 +1,174 @@
+{
+  "timestamp": "2026-09-26T13:03:17.189Z",
+  "node": "v24.8.0",
+  "platform": "darwin",
+  "arch": "arm64",
+  "cpu": "Apple M3 Max",
+  "app": "e2e/react-router/basic-file-based-code-splitting",
+  "repetitions": 5,
+  "profile": false,
+  "summary": {
+    "medianBuildMs": 394.354125,
+    "minBuildMs": 391.888125,
+    "maxBuildMs": 409.578667,
+    "medianWallMs": 514.3092079999999,
+    "medianPeakRssMiB": 290.3125
+  },
+  "samples": [
+    {
+      "repetition": 0,
+      "wallMs": 514.3092079999999,
+      "buildMs": 393.94629199999997,
+      "sourceHash": "0c64f15b88b9fd42d89c99640724c7aeb3cf677af7f9316e7784b45ee9f5a0eb",
+      "peakRssKiB": 293360,
+      "before": {
+        "rss": 88817664,
+        "heapTotal": 24363008,
+        "heapUsed": 14162496,
+        "external": 3823837,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 298696704,
+        "heapTotal": 128106496,
+        "heapUsed": 71259712,
+        "external": 5185922,
+        "arrayBuffers": 227152
+      },
+      "retained": {
+        "rss": 290996224,
+        "heapTotal": 118571008,
+        "heapUsed": 47370912,
+        "external": 5185922,
+        "arrayBuffers": 77577
+      },
+      "emittedFiles": 16,
+      "emittedCodeBytes": 277550,
+      "hookTimings": {}
+    },
+    {
+      "repetition": 1,
+      "wallMs": 524.6586249999999,
+      "buildMs": 409.578667,
+      "sourceHash": "0c64f15b88b9fd42d89c99640724c7aeb3cf677af7f9316e7784b45ee9f5a0eb",
+      "peakRssKiB": 296768,
+      "before": {
+        "rss": 88834048,
+        "heapTotal": 25149440,
+        "heapUsed": 14163424,
+        "external": 3823837,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 302546944,
+        "heapTotal": 128892928,
+        "heapUsed": 71324584,
+        "external": 5169538,
+        "arrayBuffers": 210768
+      },
+      "retained": {
+        "rss": 294649856,
+        "heapTotal": 118833152,
+        "heapUsed": 47364760,
+        "external": 5169538,
+        "arrayBuffers": 77577
+      },
+      "emittedFiles": 16,
+      "emittedCodeBytes": 277550,
+      "hookTimings": {}
+    },
+    {
+      "repetition": 2,
+      "wallMs": 530.3969999999999,
+      "buildMs": 405.341708,
+      "sourceHash": "0c64f15b88b9fd42d89c99640724c7aeb3cf677af7f9316e7784b45ee9f5a0eb",
+      "peakRssKiB": 297280,
+      "before": {
+        "rss": 89473024,
+        "heapTotal": 24625152,
+        "heapUsed": 14180440,
+        "external": 3823837,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 304283648,
+        "heapTotal": 133611520,
+        "heapUsed": 60882408,
+        "external": 5081453,
+        "arrayBuffers": 122683
+      },
+      "retained": {
+        "rss": 295157760,
+        "heapTotal": 118833152,
+        "heapUsed": 47359048,
+        "external": 5081453,
+        "arrayBuffers": 77577
+      },
+      "emittedFiles": 16,
+      "emittedCodeBytes": 277550,
+      "hookTimings": {}
+    },
+    {
+      "repetition": 3,
+      "wallMs": 511.7426250000001,
+      "buildMs": 391.888125,
+      "sourceHash": "0c64f15b88b9fd42d89c99640724c7aeb3cf677af7f9316e7784b45ee9f5a0eb",
+      "peakRssKiB": 298000,
+      "before": {
+        "rss": 88768512,
+        "heapTotal": 24100864,
+        "heapUsed": 14178776,
+        "external": 3823837,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 303693824,
+        "heapTotal": 128106496,
+        "heapUsed": 71527056,
+        "external": 5169538,
+        "arrayBuffers": 210768
+      },
+      "retained": {
+        "rss": 295911424,
+        "heapTotal": 118571008,
+        "heapUsed": 47360272,
+        "external": 5169538,
+        "arrayBuffers": 77577
+      },
+      "emittedFiles": 16,
+      "emittedCodeBytes": 277550,
+      "hookTimings": {}
+    },
+    {
+      "repetition": 4,
+      "wallMs": 510.90170799999987,
+      "buildMs": 394.354125,
+      "sourceHash": "0c64f15b88b9fd42d89c99640724c7aeb3cf677af7f9316e7784b45ee9f5a0eb",
+      "peakRssKiB": 302784,
+      "before": {
+        "rss": 88915968,
+        "heapTotal": 24100864,
+        "heapUsed": 14163048,
+        "external": 3823837,
+        "arrayBuffers": 36007
+      },
+      "after": {
+        "rss": 308920320,
+        "heapTotal": 129417216,
+        "heapUsed": 71051128,
+        "external": 5168738,
+        "arrayBuffers": 209968
+      },
+      "retained": {
+        "rss": 300646400,
+        "heapTotal": 118833152,
+        "heapUsed": 47409424,
+        "external": 5168738,
+        "arrayBuffers": 77577
+      },
+      "emittedFiles": 16,
+      "emittedCodeBytes": 277550,
+      "hookTimings": {}
+    }
+  ]
+}
