@@ -4,9 +4,9 @@ import { BaseRootRoute, BaseRoute, retainSearchParams } from '../src'
 import { createTestRouter } from './routerTestUtils'
 import type { AnyRouter, ParsedLocation } from '../src'
 
-// Mirrors what `useLinkProps` does on every location publication: each link
-// owns one stable `dest` object, points `_fromLocation` at the new location
-// and calls `router.buildLocation(dest)` inside its store selector.
+// Measures the legacy options-property source API using stable destinations.
+// The React Link performance suite separately covers the positional source
+// API used by its store selector. Keep this workload stable for comparisons.
 
 const LINKS = 32
 
