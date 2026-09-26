@@ -1148,8 +1148,11 @@ export class RouterCore<
     // True until the current PUSH/REPLACE renders, so its hash owns window scroll.
     hash?: boolean
     restoring?: boolean
-    restoration?: boolean
-    reset?: boolean
+    trackedScrollTargets?: Set<Document | Element>
+    history?: RouterHistory
+    historyCleanup?: () => void
+    captureCleanup?: () => void
+    renderedCleanup?: () => void
   } = { next: true }
   subscribers = new Set<RouterListener<RouterEvent>>()
   /** Accepted off-screen loader generations keyed by match ID. */
@@ -1274,10 +1277,14 @@ export class RouterCore<
 
     this.protocolAllowlist = new Set(this.options.protocolAllowlist)
 
+    let historyChanged = false
     if (
       !this.history ||
       (this.options.history && this.options.history !== this.history)
     ) {
+      if (this.history) {
+        this._scroll.historyCleanup?.()
+      }
       if (!this.options.history) {
         if (!(isServer ?? this.isServer)) {
           this.history = createBrowserHistory() as TRouterHistory
@@ -1285,6 +1292,7 @@ export class RouterCore<
       } else {
         this.history = this.options.history
       }
+      historyChanged = true
     }
 
     this.origin = this.options.origin!
@@ -1370,9 +1378,15 @@ export class RouterCore<
           setupScrollRestoration(this)
         }
       }
-    } else if (rewriteChanged) {
-      // Existing stores hold the location parsed with the previous rewrite.
-      this.stores.location.set(this.latestLocation)
+    } else {
+      if (rewriteChanged) {
+        // Existing stores hold the location parsed with the previous rewrite.
+        this.stores.location.set(this.latestLocation)
+      }
+      if (historyChanged && !(isServer ?? this.isServer)) {
+        // A replaced history needs its own scroll listeners.
+        setupScrollRestoration(this)
+      }
     }
   }
 
