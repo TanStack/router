@@ -14031,6 +14031,9 @@ importers:
       '@tanstack/react-start-server':
         specifier: workspace:*
         version: link:../react-start-server
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/router-utils':
         specifier: workspace:*
         version: link:../router-utils
@@ -14874,6 +14877,9 @@ importers:
 
   packages/solid-start:
     dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/solid-router':
         specifier: workspace:*
         version: link:../solid-router
@@ -15530,6 +15536,9 @@ importers:
 
   packages/vue-start:
     dependencies:
+      '@tanstack/router-core':
+        specifier: workspace:*
+        version: link:../router-core
       '@tanstack/start-client-core':
         specifier: workspace:*
         version: link:../start-client-core
