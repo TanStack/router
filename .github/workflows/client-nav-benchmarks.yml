@@ -22,6 +22,7 @@ on:
       - '!packages/**/__tests__/**'
       - '!packages/**/*.test.*'
       - 'benchmarks/**'
+      - '.nvmrc'
   workflow_dispatch:
 
 concurrency:
