@@ -14,6 +14,58 @@ function makeNode(
 }
 
 describe('transform', () => {
+  it.each([
+    ['literal false', '{ ssr: false }', false],
+    ['literal data-only', "{ ssr: 'data-only' }", 'data-only'],
+    ['literal true', '{ ssr: true }', true],
+    ['missing', '{}', undefined],
+    ['function', '{ ssr: () => false }', undefined],
+    ['method', '{ ssr() { return false } }', undefined],
+    ['later spread', '{ ssr: false, ...options }', undefined],
+    ['literal after spread', '{ ...options, ssr: false }', false],
+    ['later duplicate', "{ ssr: false, ssr: 'data-only' }", 'data-only'],
+    ['later computed property', '{ ssr: false, [key]: value }', undefined],
+    ['literal after computed property', '{ [key]: value, ssr: false }', false],
+  ] as const)('extracts %s SSR metadata', (_, options, expected) => {
+    const node = makeNode()
+    const result = transform({
+      source: [
+        "import { createFileRoute } from '@tanstack/react-router'",
+        '',
+        `export const Route = createFileRoute('/test')(${options})`,
+      ].join('\n'),
+      ctx: {
+        target: 'react',
+        routeId: '/test',
+        lazy: false,
+      },
+      node,
+    })
+
+    expect(result.result).toBe('not-modified')
+    expect(node.staticSsr).toBe(expected)
+  })
+
+  it('extracts SSR metadata from createRootRouteWithContext', () => {
+    const node = makeNode('__root')
+    const result = transform({
+      source: [
+        "import { createRootRouteWithContext } from '@tanstack/react-router'",
+        '',
+        "export const Route = createRootRouteWithContext<{}>()({ ssr: 'data-only' })",
+      ].join('\n'),
+      ctx: {
+        target: 'react',
+        routeId: '/',
+        lazy: false,
+      },
+      node,
+    })
+
+    expect(result.result).toBe('not-modified')
+    expect(node.staticSsr).toBe('data-only')
+  })
+
   it('does not treat root route exports as missing Route exports', async () => {
     const result = await transform({
       source: [
