@@ -68,6 +68,16 @@ export function mergeServerFnsById(
   next: Record<string, ServerFn>,
 ): void {
   for (const [id, fn] of Object.entries(next)) {
+    for (const [existingId, existingFn] of Object.entries(current)) {
+      if (
+        existingId !== id &&
+        existingFn.filename === fn.filename &&
+        existingFn.functionName === fn.functionName
+      ) {
+        delete current[existingId]
+      }
+    }
+
     const existing = current[id]
 
     if (existing) {

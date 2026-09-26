@@ -1,7 +1,10 @@
 import * as t from '@babel/types'
 import babel from '@babel/core'
 import { hasKeys } from '@tanstack/router-core'
-import { getVariableDeclaratorForExpressionPath } from '@tanstack/router-utils'
+import {
+  getVariableDeclaratorForExpressionPath,
+  unwrapExpression,
+} from '@tanstack/router-utils'
 import path from 'pathe'
 import { cleanId, codeFrameError, stripMethodCall } from './utils'
 import type {
@@ -13,6 +16,7 @@ import type {
 import type { CompileStartFrameworkOptions } from '../types'
 
 const TSS_SERVERFN_SPLIT_PARAM = 'tss-serverfn-split'
+const MANUAL_SERVER_FN_ID_PATTERN = /^[a-zA-Z0-9_-]+$/
 
 const providerHmrAcceptTemplate = babel.template.statements(
   `
@@ -137,6 +141,232 @@ function getEnvConfig(
     isClientEnvironment: false,
     runtimeCodeType: 'ssr',
   }
+}
+
+function extractManualServerFnId(
+  candidatePath: babel.NodePath<t.CallExpression>,
+  code: string,
+): string | undefined {
+  const createServerFnCall = getCreateServerFnCallExpression(candidatePath)
+  if (!createServerFnCall) {
+    return undefined
+  }
+
+  const [optionsArg] = createServerFnCall.arguments
+  if (!optionsArg) {
+    return undefined
+  }
+
+  const unwrappedOptionsArg = t.isExpression(optionsArg)
+    ? unwrapExpression(optionsArg)
+    : optionsArg
+
+  if (t.isIdentifier(unwrappedOptionsArg)) {
+    const binding = candidatePath.scope.getBinding(unwrappedOptionsArg.name)
+    const bindingInit = binding?.path.isVariableDeclarator()
+      ? binding.path.node.init
+      : undefined
+    const unwrappedBindingInit =
+      bindingInit && t.isExpression(bindingInit)
+        ? unwrapExpression(bindingInit)
+        : undefined
+
+    if (
+      binding?.constant &&
+      unwrappedBindingInit &&
+      t.isObjectExpression(unwrappedBindingInit) &&
+      unwrappedBindingInit.properties.some(
+        (prop) =>
+          (t.isObjectProperty(prop) || t.isObjectMethod(prop)) &&
+          resolveObjectMemberKey(candidatePath, prop) === 'id',
+      )
+    ) {
+      throw codeFrameError(
+        code,
+        unwrappedOptionsArg.loc!,
+        'createServerFn({ id }) must declare the manual id inline.',
+      )
+    }
+  }
+
+  if (!t.isObjectExpression(unwrappedOptionsArg)) {
+    return undefined
+  }
+
+  let manualFunctionId: string | undefined
+
+  for (const prop of unwrappedOptionsArg.properties) {
+    if (!t.isObjectProperty(prop)) {
+      if (
+        t.isObjectMethod(prop) &&
+        resolveObjectMemberKey(candidatePath, prop) === 'id'
+      ) {
+        throw codeFrameError(
+          code,
+          prop.loc!,
+          'createServerFn({ id }) must use a static string literal or a constant string binding.',
+        )
+      }
+      continue
+    }
+
+    const keyValue = resolveObjectMemberKey(candidatePath, prop)
+    if (prop.computed) {
+      if (keyValue === 'id') {
+        throw codeFrameError(
+          code,
+          prop.loc!,
+          'createServerFn({ [key]: value }) is not supported for manual ids.',
+        )
+      }
+
+      continue
+    }
+
+    if (keyValue !== 'id') {
+      continue
+    }
+
+    if (manualFunctionId !== undefined) {
+      throw codeFrameError(
+        code,
+        prop.loc!,
+        'createServerFn options must not define more than one manual id.',
+      )
+    }
+
+    if (!t.isExpression(prop.value) && !t.isPrivateName(prop.value)) {
+      throw codeFrameError(
+        code,
+        prop.loc!,
+        'createServerFn({ id }) must use a static string literal or a constant string binding.',
+      )
+    }
+
+    const idValue = resolveStaticString(candidatePath, prop.value)
+
+    if (idValue !== undefined) {
+      if (!MANUAL_SERVER_FN_ID_PATTERN.test(idValue)) {
+        throw codeFrameError(
+          code,
+          prop.value.loc!,
+          'createServerFn({ id }) must use a URL-safe id: [a-zA-Z0-9_-]+',
+        )
+      }
+
+      if (idValue in Object.prototype) {
+        throw codeFrameError(
+          code,
+          prop.value.loc!,
+          `createServerFn({ id }) must not use the reserved id: ${idValue}`,
+        )
+      }
+
+      manualFunctionId = idValue
+      continue
+    }
+
+    throw codeFrameError(
+      code,
+      prop.loc!,
+      'createServerFn({ id }) must use a static string literal or a constant string binding.',
+    )
+  }
+
+  return manualFunctionId
+}
+
+function getCreateServerFnCallExpression(
+  candidatePath: babel.NodePath<t.CallExpression>,
+): t.CallExpression | undefined {
+  let currentCall: t.CallExpression = candidatePath.node
+  let sawMethodChain = false
+
+  // Walk inward through the `createServerFn()...method()...` chain.
+  while (
+    t.isMemberExpression(currentCall.callee) &&
+    t.isCallExpression(currentCall.callee.object)
+  ) {
+    const innerCall = currentCall.callee.object
+    if (t.isIdentifier(innerCall.callee, { name: 'createServerFn' })) {
+      return innerCall
+    }
+    sawMethodChain = true
+    currentCall = innerCall
+  }
+
+  return sawMethodChain ? currentCall : undefined
+}
+
+function resolveStaticString(
+  candidatePath: babel.NodePath<t.CallExpression>,
+  value: t.Expression | t.PrivateName,
+): string | undefined {
+  const unwrappedValue = t.isExpression(value) ? unwrapExpression(value) : value
+
+  if (t.isStringLiteral(unwrappedValue)) {
+    return unwrappedValue.value
+  }
+
+  if (
+    t.isTemplateLiteral(unwrappedValue) &&
+    unwrappedValue.expressions.length === 0
+  ) {
+    return unwrappedValue.quasis[0]?.value.cooked ?? undefined
+  }
+
+  if (!t.isIdentifier(unwrappedValue)) {
+    return undefined
+  }
+
+  const binding = candidatePath.scope.getBinding(unwrappedValue.name)
+  const bindingPath = binding?.path
+  const bindingInit =
+    bindingPath && bindingPath.isVariableDeclarator()
+      ? bindingPath.node.init
+      : undefined
+  const unwrappedBindingInit =
+    bindingInit && t.isExpression(bindingInit)
+      ? unwrapExpression(bindingInit)
+      : bindingInit
+
+  if (
+    binding?.constant &&
+    unwrappedBindingInit &&
+    t.isStringLiteral(unwrappedBindingInit)
+  ) {
+    return unwrappedBindingInit.value
+  }
+
+  if (
+    binding?.constant &&
+    unwrappedBindingInit &&
+    t.isTemplateLiteral(unwrappedBindingInit) &&
+    unwrappedBindingInit.expressions.length === 0
+  ) {
+    return unwrappedBindingInit.quasis[0]?.value.cooked ?? undefined
+  }
+
+  return undefined
+}
+
+function resolveObjectMemberKey(
+  candidatePath: babel.NodePath<t.CallExpression>,
+  prop: t.ObjectMethod | t.ObjectProperty,
+): string | undefined {
+  if (prop.computed) {
+    return resolveStaticString(candidatePath, prop.key)
+  }
+
+  if (t.isIdentifier(prop.key)) {
+    return prop.key.name
+  }
+
+  if (t.isStringLiteral(prop.key)) {
+    return prop.key.value
+  }
+
+  return undefined
 }
 
 /**
@@ -271,12 +501,25 @@ export function handleCreateServerFn(
     }
     functionNameSet.add(functionName)
 
-    // Generate function ID using pre-computed relative filename
-    const functionId = context.generateFunctionId({
-      filename: relativeFilename,
-      functionName,
-      extractedFilename,
-    })
+    const manualFunctionId = extractManualServerFnId(
+      candidatePath,
+      context.code,
+    )
+
+    // Generate function ID using pre-computed relative filename unless the user supplied one.
+    const functionId =
+      manualFunctionId !== undefined
+        ? context.reserveFunctionId({
+            filename: relativeFilename,
+            functionName,
+            extractedFilename,
+            functionId: manualFunctionId,
+          })
+        : context.generateFunctionId({
+            filename: relativeFilename,
+            functionName,
+            extractedFilename,
+          })
 
     // Check if this function was already discovered by the client build
     const knownFn = knownFns[functionId]
