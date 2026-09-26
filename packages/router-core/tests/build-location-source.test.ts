@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
-import { BaseRootRoute, BaseRoute } from '../src'
+import { BaseRootRoute, BaseRoute, redirect } from '../src'
 import { createTestRouter } from './routerTestUtils'
 import type { ParsedHistoryState } from '@tanstack/history'
 
@@ -89,26 +89,6 @@ describe.each([false, true])(
       }
     })
 
-    test('preserves explicit option source precedence over the default argument', () => {
-      const { router, source } = setup(isServer)
-      try {
-        const options = Object.freeze({
-          to: '.',
-          search: true,
-          hash: true,
-          _fromLocation: source('explicit', 4),
-        } as const)
-        expect(router.buildLocation(options, source('default', 2)).href).toBe(
-          '/posts/explicit?page=4#explicit',
-        )
-        expect(router.buildLocation(options).href).toBe(
-          '/posts/explicit?page=4#explicit',
-        )
-      } finally {
-        router.history.destroy()
-      }
-    })
-
     test.each([
       true,
       (state: ParsedHistoryState) => ({
@@ -159,17 +139,92 @@ describe.each([false, true])(
           } as const
           const from = source('source', 2)
           const next = router.buildLocation(options, from)
-          const legacy = router.buildLocation({
-            ...options,
-            _fromLocation: from,
-          })
           expect(next.href).toBe('/posts/target?page=2#source')
           expect(next.maskedLocation?.href).toBe('/visible/target?page=1#live')
-          expect(next).toEqual(legacy)
         } finally {
           router.history.destroy()
         }
       },
     )
+  },
+)
+
+test('navigation and redirect resolution use the supplied source without mutating options', async () => {
+  const { router, source } = setup()
+  const from = source('source', 2)
+  const options = Object.freeze({
+    to: '.',
+    search: true,
+    hash: true,
+    state: true,
+  } as const)
+  try {
+    const resolved = router.resolveRedirect(redirect({ ...options }), from)
+    expect(resolved.options.href).toBe('/posts/source?page=2#source')
+    await router.navigate(resolved.options, from)
+    expect(router.state.location.href).toBe('/posts/source?page=2#source')
+    expect(router.state.location.state.sourceArgTest).toBe('source')
+    await router.navigate({ to: '/posts/latest', search: { page: 1 } })
+    await router.navigate(options, from)
+    expect(router.state.location.href).toBe('/posts/source?page=2#source')
+    expect(router.state.location.state.sourceArgTest).toBe('source')
+    expect(options).toEqual({ to: '.', search: true, hash: true, state: true })
+  } finally {
+    router.history.destroy()
+  }
+})
+
+test.each(['context', 'beforeLoad', 'loader'] as const)(
+  '%s navigation keeps its captured source after another navigation',
+  async (hook) => {
+    let navigate: typeof router.navigate | undefined
+    const root = new BaseRootRoute({
+      validateSearch: (search: Record<string, unknown>) => ({
+        page: Number(search.page ?? 0),
+      }),
+    })
+    const posts = new BaseRoute({
+      getParentRoute: () => root,
+      path: '/posts/$id',
+      [hook]: (context: {
+        params: { id: string }
+        navigate: typeof router.navigate
+      }) => {
+        if (context.params.id === 'one') {
+          navigate = context.navigate
+        }
+      },
+    })
+    const history = createMemoryHistory({
+      initialEntries: ['/posts/one?page=2#one'],
+    })
+    history.replace('/posts/one?page=2#one', { sourceArgTest: 'one' })
+    const router = createTestRouter({
+      routeTree: root.addChildren([posts]),
+      history,
+    })
+    try {
+      await router.load()
+      const capturedNavigate = navigate!
+      expect(capturedNavigate).toBeTypeOf('function')
+      await router.navigate({
+        to: '/posts/two',
+        search: { page: 9 },
+        hash: 'two',
+        state: { sourceArgTest: 'two' },
+      })
+      await capturedNavigate({
+        to: '.',
+        search: (search: { page: number }) => ({ page: search.page + 1 }),
+        hash: true,
+        state: (state: ParsedHistoryState) => ({
+          sourceArgTest: `${state.sourceArgTest}-copied`,
+        }),
+      })
+      expect(router.state.location.href).toBe('/posts/one?page=3#one')
+      expect(router.state.location.state.sourceArgTest).toBe('one-copied')
+    } finally {
+      history.destroy()
+    }
   },
 )

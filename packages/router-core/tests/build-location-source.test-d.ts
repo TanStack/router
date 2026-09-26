@@ -1,8 +1,11 @@
 import { expectTypeOf, test } from 'vitest'
-import type { BuildLocationFn, ParsedLocation } from '../src'
+import type { BuildLocationFn, NavigateFn, ParsedLocation } from '../src'
 
 test('keeps the source optional and independently typed', () => {
   expectTypeOf<Parameters<BuildLocationFn>[1]>().toEqualTypeOf<
+    ParsedLocation | undefined
+  >()
+  expectTypeOf<Parameters<NavigateFn>[1]>().toEqualTypeOf<
     ParsedLocation | undefined
   >()
   expectTypeOf<ReturnType<BuildLocationFn>>().toEqualTypeOf<ParsedLocation>()

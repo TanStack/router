@@ -2,11 +2,9 @@ import { bench, describe, expect } from 'vitest'
 import { createMemoryHistory } from '@tanstack/history'
 import { BaseRootRoute, BaseRoute, retainSearchParams } from '../src'
 import { createTestRouter } from './routerTestUtils'
-import type { AnyRouter, ParsedLocation } from '../src'
+import type { AnyRouter } from '../src'
 
-// Measures the legacy options-property source API using stable destinations.
-// The React Link performance suite separately covers the positional source
-// API used by its store selector. Keep this workload stable for comparisons.
+// Measures source changes with stable destinations, as in Link store selectors.
 
 const LINKS = 32
 
@@ -44,15 +42,14 @@ function createBenchRouter(withMiddleware: boolean) {
   return router
 }
 
-type Dest = Record<string, unknown> & { _fromLocation?: ParsedLocation }
+type Dest = Record<string, unknown>
 
 function publication(router: AnyRouter, dests: Array<Dest>) {
   // A fresh location object per publication, like a committed navigation.
   const location = { ...router.latestLocation }
   let checksum = 0
   for (const dest of dests) {
-    dest._fromLocation = location
-    checksum += router.buildLocation(dest as any).href.length
+    checksum += router.buildLocation(dest as any, location).href.length
   }
   return checksum
 }
@@ -71,8 +68,9 @@ function defineCase(
   )
   // Correctness before timing: every link resolves to the expected href.
   dests.forEach((dest, index) => {
-    dest._fromLocation = router.latestLocation
-    expect(router.buildLocation(dest as any).href).toBe(expectedHref(index))
+    expect(router.buildLocation(dest as any, router.latestLocation).href).toBe(
+      expectedHref(index),
+    )
   })
   let checksum = 0
   bench(
