@@ -27,6 +27,12 @@ export function normalizePublicBase(base: string | undefined): string {
     return resolvedBase
   }
 
+  // Preserve relative base paths ('.' / './') so that asset URLs built from
+  // the base stay relative instead of being rewritten to an absolute '/.'.
+  if (resolvedBase === '.' || resolvedBase === './') {
+    return resolvedBase
+  }
+
   return joinPaths(['/', resolvedBase, '/'])
 }
 
