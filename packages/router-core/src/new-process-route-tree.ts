@@ -441,6 +441,8 @@ type SegmentNode<T extends RouteLike> = {
 
 type RouteLike = {
   _interpolation?: RouteInterpolation
+  /** cached root-first ancestry, see `buildRouteBranch` */
+  _branch?: ReadonlyArray<RouteLike>
   id?: string
   path?: string // relative path from the parent,
   children?: Array<RouteLike> // child routes,
@@ -560,10 +562,28 @@ export function findSingleMatch(
   return findMatch(path, tree, fuzzy)
 }
 
+/**
+ * Per-route slice of a route-tree match, aligned with the match's `branch`.
+ * `undefined` for routes that consume no URL (the root and pathless layouts under it).
+ */
+export type RouteMatchData =
+  | readonly [
+      /** raw params introduced by this route's own segments */
+      rawParams: Record<string, string> | undefined,
+      /** index in the matched path where this route's segments end */
+      end: number,
+      /** whether the path matched the template with its exact casing so far */
+      caseSensitive: boolean,
+      /** the suffix of a terminating wildcard, `''` for a bare splat */
+      wildcardSuffix: string | undefined,
+    ]
+  | undefined
+
 type RouteMatch<T extends Extract<RouteLike, { fullPath: string }>> = {
   route: T
   rawParams: Record<string, string>
   branch: ReadonlyArray<T>
+  routeData: ReadonlyArray<RouteMatchData>
 }
 
 export function findRouteMatch<
@@ -587,6 +607,7 @@ export function findRouteMatch<
       path,
       processedTree.segmentTree,
       fuzzy,
+      true,
     ) as RouteMatch<T> | null
   } catch (err) {
     if (err instanceof URIError) {
@@ -596,7 +617,6 @@ export function findRouteMatch<
     }
   }
 
-  if (result) result.branch = buildRouteBranch(result.route)
   processedTree.matchCache.set(key, result)
   return result
 }
@@ -696,6 +716,8 @@ function findMatch<T extends RouteLike>(
   path: string,
   segmentTree: AnySegmentNode<T>,
   fuzzy = false,
+  /** Also resolve the matched route's branch and its per-route match data. */
+  withRouteData = false,
 ): {
   route: T
   /**
@@ -703,14 +725,41 @@ function findMatch<T extends RouteLike>(
    * This will be the exhaustive list of all params defined in the route's path.
    */
   rawParams: Record<string, string>
+  branch?: ReadonlyArray<T>
+  routeData?: ReadonlyArray<RouteMatchData>
 } | null {
   const parts = path.split('/')
   const leaf = getNodeMatch(path, parts, segmentTree, fuzzy)
   if (!leaf) return null
-  const [rawParams] = extractParams(path, parts, leaf)
+  if (!withRouteData) {
+    const [rawParams] = extractParams(path, parts, leaf)
+    return {
+      route: leaf.node.route!,
+      rawParams,
+    }
+  }
+  // Walk the whole branch again: params.parse gates may have merged parsed
+  // values into the frame, and route boundaries need every segment.
+  const route = leaf.node.route!
+  const routeMatch = {
+    // One branch array per route, shared by every match of that route.
+    branch: (route._branch ??= buildRouteBranch(route)) as ReadonlyArray<T>,
+    routeData: [] as Array<RouteMatchData>,
+  }
+  const [rawParams] = extractParams(
+    path,
+    parts,
+    { node: leaf.node, skipped: leaf.skipped },
+    routeMatch,
+  )
+  const fuzzyRemainder = leaf.rawParams?.['**']
+  if (fuzzyRemainder !== undefined) {
+    rawParams['**'] = fuzzyRemainder
+  }
   return {
     route: leaf.node.route!,
     rawParams,
+    ...routeMatch,
   }
 }
 
@@ -727,6 +776,11 @@ type ParamExtractionState = {
  * - the returned `state` can be passed back as `extract` in a future call to continue extracting params from where we left off
  *
  * Inputs are *not* mutated.
+ *
+ * With `routeMatch`, the walk must start from the first node. It records, for
+ * each route of `routeMatch.branch`, the raw params that route introduced and
+ * where its segments end in `path`, using the matched route's template to
+ * find route boundaries and check casing.
  */
 function extractParams<T extends RouteLike>(
   path: string,
@@ -737,10 +791,19 @@ function extractParams<T extends RouteLike>(
     extract?: ParamExtractionState
     rawParams?: Record<string, string>
   },
+  routeMatch?: {
+    branch: ReadonlyArray<T>
+    routeData: Array<RouteMatchData>
+  },
 ): [rawParams: Record<string, string>, state: ParamExtractionState] {
   const list = buildBranch(leaf.node)
   const names = leaf.node.data && getParamNames(leaf.node.data)
-  const rawParams: Record<string, string> = Object.create(null)
+  // Earlier segments seed the result so later segments win for reused names,
+  // the same as a single uninterrupted pass.
+  const rawParams: Record<string, string> = Object.assign(
+    Object.create(null),
+    leaf.rawParams,
+  )
   /** which segment of the path we're currently processing */
   let partIndex = leaf.extract?.part ?? 0
   /** which node of the route tree branch we're currently processing */
@@ -749,19 +812,66 @@ function extractParams<T extends RouteLike>(
   let pathIndex = leaf.extract?.path ?? 0
   /** Next original parameter name, independent of pathless/static nodes. */
   let paramIndex = leaf.extract?.param ?? 0
+  /** The matched route's template, walked in step with the nodes. */
+  const template = routeMatch ? leaf.node.route!.fullPath! : ''
+  /** index of the 1st character of the next template segment */
+  let templateIndex = 0
+  let routeIndex = 0
+  let routeRawParams: Record<string, string> | undefined
+  let caseSensitive = true
+  /** Record every route whose template ends before `templateIndex`. */
+  const flushRoutes = routeMatch
+    ? (end: number, wildcardSuffix: string | undefined) => {
+        while (routeIndex < routeMatch.branch.length) {
+          const fullPath = routeMatch.branch[routeIndex]!.fullPath!
+          if (fullPath !== '/' && fullPath.length >= templateIndex) {
+            break
+          }
+          routeMatch.routeData.push(
+            end
+              ? [
+                  routeRawParams,
+                  Math.min(end, path.length),
+                  caseSensitive,
+                  wildcardSuffix,
+                ]
+              : undefined,
+          )
+          routeRawParams = undefined
+          routeIndex++
+        }
+      }
+    : undefined
   for (; nodeIndex < list.length; partIndex++, nodeIndex++, pathIndex++) {
     const node = list[nodeIndex]!
     // index nodes are terminating nodes, nothing to extract, just leave
-    if (node.kind === SEGMENT_TYPE_INDEX) break
+    if (node.kind === SEGMENT_TYPE_INDEX) {
+      if (flushRoutes) {
+        templateIndex++ // the template's trailing slash
+        flushRoutes(pathIndex, undefined)
+      }
+      break
+    }
     // pathless nodes do not consume a path segment
     if (node.kind === SEGMENT_TYPE_PATHLESS) {
       partIndex--
       pathIndex--
+      flushRoutes?.(pathIndex, undefined)
       continue
     }
     const part = parts[partIndex]
     const currentPathIndex = pathIndex
     if (part) pathIndex += part.length
+    let templateSegment: InterpolationSegment | undefined
+    if (flushRoutes) {
+      const templateStart = templateIndex
+      let templateEnd = template.indexOf('/', templateStart)
+      if (templateEnd === -1 || node.kind === SEGMENT_TYPE_WILDCARD) {
+        templateEnd = template.length
+      }
+      templateSegment = parseSegment(template, templateStart, templateEnd)
+      templateIndex = templateEnd + 1
+    }
     if (
       node.kind === SEGMENT_TYPE_PARAM ||
       node.kind === SEGMENT_TYPE_OPTIONAL_PARAM
@@ -773,6 +883,7 @@ function extractParams<T extends RouteLike>(
       ) {
         partIndex-- // stay on the same part
         pathIndex = currentPathIndex - 1 // undo pathIndex advancement; -1 to account for loop increment
+        flushRoutes?.(pathIndex, undefined)
         continue
       }
       const value =
@@ -784,6 +895,9 @@ function extractParams<T extends RouteLike>(
           : part!
       if (value || node.kind === SEGMENT_TYPE_PARAM) {
         rawParams[name] = decodeURIComponent(value)
+        if (routeMatch) {
+          ;(routeRawParams ??= Object.create(null))![name] = rawParams[name]
+        }
       }
     } else if (node.kind === SEGMENT_TYPE_WILDCARD) {
       const n = node
@@ -795,10 +909,38 @@ function extractParams<T extends RouteLike>(
       // TODO: Deprecate *
       rawParams['*'] = splat
       rawParams._splat = splat
+      if (flushRoutes) {
+        pathIndex = path.length
+        routeRawParams ??= Object.create(null)
+        routeRawParams!['*'] = splat
+        routeRawParams!._splat = splat
+        if (caseSensitive && partIndex) {
+          caseSensitive = matchesTemplateCase(
+            path,
+            templateSegment!,
+            currentPathIndex,
+            pathIndex,
+          )
+        }
+        flushRoutes(pathIndex, n.suffix)
+      }
       break
     }
+    if (flushRoutes) {
+      if (caseSensitive && partIndex) {
+        caseSensitive =
+          typeof templateSegment === 'string'
+            ? part === templateSegment
+            : matchesTemplateCase(
+                path,
+                templateSegment!,
+                currentPathIndex,
+                pathIndex,
+              )
+      }
+      flushRoutes(pathIndex, undefined)
+    }
   }
-  if (leaf.rawParams) Object.assign(rawParams, leaf.rawParams)
   return [
     rawParams,
     {
@@ -808,6 +950,22 @@ function extractParams<T extends RouteLike>(
       param: paramIndex,
     },
   ]
+}
+
+/** Whether a dynamic segment's literal prefix and suffix match the path with their template casing. */
+function matchesTemplateCase(
+  path: string,
+  templateSegment: InterpolationSegment,
+  start: number,
+  end: number,
+): boolean {
+  if (typeof templateSegment === 'string') {
+    return path.substring(start, end) === templateSegment
+  }
+  return (
+    path.startsWith(templateSegment[2 /* prefix */], start) &&
+    path.endsWith(templateSegment[3 /* suffix */] ?? '', end)
+  )
 }
 
 export function buildRouteBranch<T extends RouteLike>(route: T) {
@@ -859,10 +1017,7 @@ function getNodeMatch<T extends RouteLike>(
   // quick check for root index
   // this is an optimization, algorithm should work correctly without this block
   if (path === '/' && segmentTree.index)
-    return { node: segmentTree.index, skipped: 0 } as Pick<
-      Frame,
-      'node' | 'skipped'
-    >
+    return { node: segmentTree.index, skipped: 0 } as MatchStackFrame<T>
 
   const trailingSlash = !last(parts)
   const pathIsIndex = trailingSlash && path !== '/'
@@ -1202,7 +1357,10 @@ function validateParseParams<T extends RouteLike>(
   if (!frame.node.parse) return true
 
   try {
-    if (frame.node.parse(rawParams) === false) return null
+    const result = frame.node.parse(rawParams)
+    if (result === false) return null
+    // Descendant gates see the same parsed ancestors as their route parsers.
+    Object.assign(rawParams, result)
   } catch {
     // Thrown parse errors should be surfaced on the selected match by
     // extractStrictParams, not used as fallback route selection.
