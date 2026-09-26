@@ -77,7 +77,7 @@
     "rimraf": "catalog:"
   },
   "peerDependencies": {
-    "@tanstack/router-core": ">=1.171.28",
+    "@tanstack/router-core": ">=1.171.33",
     "@tanstack/query-core": ">=5.102.0"
   }
 }

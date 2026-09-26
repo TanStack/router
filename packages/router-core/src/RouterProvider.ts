@@ -30,6 +30,8 @@ export type NavigateFn = <
   TMaskTo extends string = '',
 >(
   opts: NavigateOptions<TRouter, TFrom, TTo, TMaskFrom, TMaskTo>,
+  /** @private Source location for relative navigation. */
+  _fromLocation?: ParsedLocation,
 ) => Promise<void>
 
 export type BuildLocationFn = <
@@ -44,4 +46,6 @@ export type BuildLocationFn = <
     _includeValidateSearch?: boolean
     _isNavigate?: boolean
   },
+  /** @private Source for the destination, without mutating opts. */
+  _fromLocation?: ParsedLocation,
 ) => ParsedLocation

@@ -265,8 +265,11 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       ...originalMutationCacheConfig,
       onError: (error, ...rest) => {
         if (isRedirect(error)) {
-          error.options._fromLocation = router.stores.location.get()
-          return router.navigate(router.resolveRedirect(error).options)
+          const fromLocation = router.stores.location.get()
+          return router.navigate(
+            router.resolveRedirect(error, fromLocation).options,
+            fromLocation,
+          )
         }
 
         return originalMutationCacheConfig.onError?.(error, ...rest)
@@ -278,8 +281,11 @@ export function setupCoreRouterSsrQueryIntegration<TRouter extends AnyRouter>({
       ...originalQueryCacheConfig,
       onError: (error, ...rest) => {
         if (isRedirect(error)) {
-          error.options._fromLocation = router.stores.location.get()
-          return router.navigate(router.resolveRedirect(error).options)
+          const fromLocation = router.stores.location.get()
+          return router.navigate(
+            router.resolveRedirect(error, fromLocation).options,
+            fromLocation,
+          )
         }
 
         return originalQueryCacheConfig.onError?.(error, ...rest)
