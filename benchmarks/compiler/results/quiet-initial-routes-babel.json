@@ -1,0 +1,39 @@
+{
+  "timestamp": "2026-09-26T13:30:10.274Z",
+  "workspace": "/Users/Flo/.codex/worktrees/yuku-baseline/router",
+  "node": "v24.8.0",
+  "cpu": "Apple M3 Max",
+  "routes": 250,
+  "repetitions": 3,
+  "summary": {
+    "medianBuildMs": 1800.764417,
+    "medianPeakRssMiB": 729.3125,
+    "medianWallMs": 2123.8952090000002
+  },
+  "samples": [
+    {
+      "buildMs": 1842.582958,
+      "peakRssMiB": 729.65625,
+      "sourceHash": "b4c8485827ae40187aaaf5fb7df6dd644e9cdf6f56aa9b1c65bd2267f2da7139",
+      "chunks": 751,
+      "emittedJsBytes": 722613,
+      "wallMs": 2509.189583
+    },
+    {
+      "buildMs": 1789.710667,
+      "peakRssMiB": 723.484375,
+      "sourceHash": "b4c8485827ae40187aaaf5fb7df6dd644e9cdf6f56aa9b1c65bd2267f2da7139",
+      "chunks": 751,
+      "emittedJsBytes": 722613,
+      "wallMs": 2112.031042
+    },
+    {
+      "buildMs": 1800.764417,
+      "peakRssMiB": 729.3125,
+      "sourceHash": "b4c8485827ae40187aaaf5fb7df6dd644e9cdf6f56aa9b1c65bd2267f2da7139",
+      "chunks": 751,
+      "emittedJsBytes": 722613,
+      "wallMs": 2123.8952090000002
+    }
+  ]
+}
