@@ -61,6 +61,7 @@ Out of the box, TanStack Router will dedupe `title` and `meta` tags, preferring 
 
 - `title` tags defined in nested routes will override a `title` tag defined in a parent route (but you can compose them together, which is covered in a future section of this guide)
 - `meta` tags with the same `name` or `property` will be overridden by the last occurrence of that tag found in nested routes
+- `link` tags with `rel="canonical"` are deduped the same way — the last occurrence in nested routes overrides the parent's canonical link. Other `link` rels such as `stylesheet`, `preload`, and `icon` are not deduped by `rel`; distinct links remain repeatable, while identical tags are still deduped.
 
 ### `<HeadContent />`
 
