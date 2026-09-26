@@ -151,16 +151,8 @@ const allCreateRouteFns = [
  * A binding is "shared" if it is referenced by at least one split property
  * AND at least one non-split property. Only locally-declared module-level
  * bindings are candidates (not imports — bundlers dedupe those).
+ * Analyze the original AST before the reference compiler mutates it.
  */
-export function computeSharedBindings(opts: {
-  code: string
-  filename?: string
-  codeSplitGroupings: CodeSplitGroupings
-}): Set<string> {
-  return computeSharedBindingsFromAst(parseAst(opts), opts.codeSplitGroupings)
-}
-
-/** Internal analysis of the original, unmodified reference AST. */
 export function computeSharedBindingsFromAst(
   ast: t.File,
   codeSplitGroupings: CodeSplitGroupings,
@@ -1405,16 +1397,8 @@ export function compileCodeSplitSharedRoute(
 }
 
 /**
- * This function should read get the options from by searching for the key `codeSplitGroupings`
- * on createFileRoute and return it's values if it exists, else return undefined
+ * Reads inline codeSplitGroupings from the original, unmodified reference AST.
  */
-export function detectCodeSplitGroupingsFromRoute(opts: ParseAstOptions): {
-  groupings: CodeSplitGroupings | undefined
-} {
-  return detectCodeSplitGroupingsFromAst(parseAst(opts))
-}
-
-/** Internal analysis of the original, unmodified reference AST. */
 export function detectCodeSplitGroupingsFromAst(ast: t.File): {
   groupings: CodeSplitGroupings | undefined
 } {
